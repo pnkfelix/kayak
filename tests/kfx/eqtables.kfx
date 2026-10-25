@@ -1,0 +1,53 @@
+"Tables keyed by identity (C194; the Fixpt team's TODO §36): by references,
+ two alike in value being two keys; entries set, set again, deleted and
+ counted; by arrays; and one inside a `letrena`, keyed by references made
+ in its arena, the table's type carrying their region."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect uses (maxeff (alloc @r) (read @r) (write @r) (alloc @t) (read @t) (write @t)))
+
+(define by-refs (subr uses () string)
+  (lambda ()
+    (let ((t (the (eqtable (ref int @r) string @r @t) (make-eqtable (ref-identity))))
+          (a (the (ref int @r) (new 1)))
+          (b (the (ref int @r) (new 1)))
+          (c (the (ref int @r) (new 2))))
+      (begin
+        (eqtable-set! t a "a")
+        (eqtable-set! t b "b")
+        (eqtable-set! t c "c")
+        (eqtable-set! t a "A")
+        (eqtable-delete! t c)
+        (string-append (eqtable-ref t a "-")
+          (string-append (eqtable-ref t b "-")
+            (string-append (eqtable-ref t c "-")
+              (string-append " " (string-append (int->string (eqtable-count t))
+                (if (eqtable-has? t c) " has c" " no c"))))))))))
+
+(define by-arrays (subr uses () int)
+  (lambda ()
+    (let ((t (the (eqtable (arrayof int @r) int @r @t) (make-eqtable (array-identity))))
+          (xs (the (arrayof int @r) (make-array 3 0)))
+          (ys (the (arrayof int @r) (make-array 3 0))))
+      (begin
+        (eqtable-set! t xs 10)
+        (eqtable-set! t ys 20)
+        (array-set! xs 0 5)
+        (+ (eqtable-ref t xs 0) (+ (eqtable-ref t ys 0) (eqtable-count t)))))))
+
+(define in-arena (subr (maxeff (alloc @t) (read @t) (write @t)) (int) int)
+  (lambda (n)
+    (letrena p
+      (let ((t (the (eqtable (ref int p) int p @t) (make-eqtable (ref-identity))))
+            (a (the (ref int p) (rnew p n)))
+            (b (the (ref int p) (rnew p n))))
+        (begin
+          (eqtable-set! t a 1)
+          (eqtable-set! t b 2)
+          (eqtable-set! t a 3)
+          (+ (eqtable-ref t a 0) (* 10 (eqtable-ref t b 0))))))))
+
+(define main (subr (maxeff kfx uses) () string)
+  (lambda ()
+    (string-append (by-refs)
+      (string-append " " (string-append (int->string (by-arrays))
+        (string-append " " (int->string (in-arena 7))))))))

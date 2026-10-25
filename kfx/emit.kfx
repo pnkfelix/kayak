@@ -541,6 +541,11 @@
                   ((has-prefix? (car ls) (string-append "%within " (string-append n " "))) (after-prefix (car ls) (string-append "%within " (string-append n " "))))
                   (else (within-of (cdr ls) n))))))
 
+      (define frozen-region-name (subr kfx (sexp) string)
+        (lambda (r)
+          "A `letregion`'s region, or a `letfreeze`'s: `r`, or `(r heap)` (C193)."
+          (tagcase r (sym (n f p) n) (lst (xs f l p) (if (null? xs) "" (tagcase (car xs) (sym (n f2 p2) n) (else other "")))) (else other ""))))
+
       (define region-lifetime (subr kfx (ctx sexp) string)
         (lambda (c r)
           "The lifetime of the region `r` names: a `letrena`'s, its own; a region
@@ -894,7 +899,7 @@
           "The forms whose last parts stand where they do."
           (or (head-is? e "if") (head-is? e "cond") (head-is? e "case") (head-is? e "tagcase")
               (head-is? e "let") (head-is? e "let*") (head-is? e "begin") (head-is? e "letrec")
-              (head-is? e "letregion") (head-is? e "with"))))
+              (head-is? e "letregion") (head-is? e "letfreeze") (head-is? e "with"))))
 
       (define with-opened (subr kfx (ctx sexp) ctx)
         (lambda (c e)
@@ -1140,7 +1145,8 @@
                 (cond ((sym-is? (car xs) "maxeff") (not (any? (lambda ((x sexp)) (not (crossing-effect? c x))) (cdr xs))))
                       ((or (sym-is? (car xs) "send") (sym-is? (car xs) "init") (sym-is? (car xs) "await") (sym-is? (car xs) "io")) #t)
                       ((sym-is? (car xs) "read")
-                       (or (string=? at "@globals") (string=? at "acyclic") (head-is? (second xs) "globals")))
+                       (or (string=? at "@globals") (string=? at "acyclic") (string=? at "const") (head-is? (second xs) "globals")
+                           (head-is? (second xs) "const") (head-is? (second xs) "acyclic")))
                       ((sym-is? (car xs) "alloc") (or (has-prefix? at "@") (string=? at "acyclic")))
                       (else #f))))
             (else other #f))))
@@ -1465,6 +1471,16 @@
                      "FX-26's processes (C101): kayak-rt's `Addr<M>`, `Inbox<M>`, `ICell<T>`,
                       the region erased."
                      (put ">" (put-type (in-heap c) (second xs) (put (cond ((sym-is? (car xs) "addr") "Addr<") ((sym-is? (car xs) "inbox") "Inbox<") (else "ICell<")) acc))))
+                    ((and (sym-is? (car xs) "eqtable") (i64= (size xs) 5))
+                     "A table keyed by identity (C194): kayak-rt's `EqTable<K, V>`, or
+                      `EqTableAt<'k, K, V>` where its keys live as long as a `letrena`'s
+                      region, so that rustc refuses a table outliving them."
+                     (let ((life (let ((l1 (region-lifetime c (fourth xs)))) (if (string=? l1 "") (element-lifetime c (second xs)) l1))))
+                       (put ">" (put-type c (third xs) (put ", " (put-type c (second xs)
+                         (if (string=? life "") (put "EqTable<" acc) (put ", " (put life (put "EqTableAt<" acc))))))))))
+                    ((and (sym-is? (car xs) "identity") (i64= (size xs) 3))
+                     "That keys have identity (C194): kayak-rt's `IdentityOf<K>`."
+                     (put ">" (put-type c (second xs) (put "IdentityOf<" acc))))
                     ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
                     ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                      (put ">" (put-type c (second xs) (put "Array<" acc))))
@@ -1794,7 +1810,7 @@
                  (let ((xs (cdr (items e))))
                    (tail-calls? (hide t (map binding-name (items (car xs)))) (last (cdr xs)))))
                 ((head-is? e "begin") (tail-calls? t (last (cdr (items e)))))
-                ((head-is? e "letregion") (tail-calls? t (last (cdr (cdr (items e))))))
+                ((or (head-is? e "letregion") (head-is? e "letfreeze")) (tail-calls? t (last (cdr (cdr (items e))))))
                 (else #f))))
       (arms-tail-calls? (subr kfx (tail sexps) bool)
         (lambda (t arms)
@@ -2041,7 +2057,11 @@
                                     (put-let c (items (car xs)) n acc)
                                     (put-let* c (items (car xs)) n acc)))))
                   ((head-is? e "begin") (put-stmts c (cdr (items e)) n t acc))
-                  ((head-is? e "letregion") (put-stmts (with-locals c (list (string-append "%letregion " (sym-name (second (items e)))))) (cdr (cdr (items e))) n t acc))
+                  ((or (head-is? e "letregion") (head-is? e "letfreeze"))
+                   "A `letfreeze` into the heap as a `letregion` (C193): what its body
+                    makes at its region in the heap's arenas, the value of the type it
+                    would have at the heap; frozen, `const` or `acyclic`, to the checker."
+                   (put-stmts (with-locals c (list (string-append "%letregion " (frozen-region-name (second (items e)))))) (cdr (cdr (items e))) n t acc))
                   ((head-is? e "with") (put-stmts (with-opened c e) (cdr (cdr (items e))) n (opened-tail c e t) acc))
                   ((head-is? e "letrec")
                    (let* ((xs (cdr (items e)))
@@ -2538,7 +2558,7 @@
                  (let* ((acc (put ").index(" (put-exp c (car xs) n (value) (put "(" acc))))
                         (acc (put-exp c (second xs) n (value) acc)))
                    (put ")" (put (string-append ", " (words-of-sep (split-words (fact-with c e "blob-element ")) ", ")) acc))))
-                ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
+                ((or (string=? h "letrec") (string=? h "letregion") (string=? h "letfreeze")) (put-block c (list e) n t acc))
                 ((abort? c e)
                  "An abort: an early return, where a `Result` is returned; else no
                   prompt can be running for its tag (the checker masked its region),

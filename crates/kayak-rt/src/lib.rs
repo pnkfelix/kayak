@@ -12,6 +12,7 @@
 mod arena;
 mod array;
 mod blob;
+mod eqtable;
 mod escape;
 mod fixed;
 mod float;
@@ -31,6 +32,7 @@ mod world;
 pub use arena::*;
 pub use array::*;
 pub use blob::*;
+pub use eqtable::*;
 pub use escape::*;
 pub use fixed::*;
 pub use float::*;

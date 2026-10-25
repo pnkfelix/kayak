@@ -89,7 +89,10 @@
                             "" 0 0))
                       ((string=? d "%escape-tag")
                        (lst (list (sym "escape-tag" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #f) (settled-sexp s (car (cdr (cdr args))) #t)) "" 0 0))
-                      ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
+                      ((string=? d "%eqtable")
+                       (lst (list (sym "eqtable" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #f)
+                                  (settled-sexp s (car (cdr (cdr args))) #t) (settled-sexp s (car (cdr (cdr (cdr args)))) #t)) "" 0 0))
+                      ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell") (string=? d "%identity"))
                        (lst (list (sym (after-prefix d "%") "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-sum")
                        (lst (cons (sym "sumof" "" 0)
@@ -1223,7 +1226,9 @@
                                 (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym (binder-kind n) "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
                                 (ty-sexp v s (poly-written args)))
                           "" 0 0))
-                    ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
+                    ((string=? d "%eqtable")
+                     (lst (cons (sym "eqtable" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
+                    ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell") (string=? d "%identity"))
                      (lst (list (sym (after-prefix d "%") "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-sum")
                      (lst (cons (sym "sumof" "" 0)
@@ -1380,7 +1385,7 @@
            around; `seen`, the datatypes looked into."
           (let ((data-at (lambda ((r ty) (what string))
                            (let ((n (region-string s r)))
-                             (if (or (string=? n "acyclic") (string=? n "%fresh") (string-member? n bound))
+                             (if (or (string=? n "acyclic") (string=? n "const") (string=? n "%fresh") (string-member? n bound))
                                  ""
                                  (string-append "a " (string-append what (string-append " at " (string-append (show-ty s r) ", which can be written")))))))))
             (tagcase (walk s t)
@@ -1443,7 +1448,8 @@
             (ty-proc (es ps r) (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
             (ty-data (d args)
               (cond ((null? args) (not (or (string=? d "datum") (has-prefix? d "%module"))))
-                    ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell")) (sync-type? v s (car args) seen))
+                    ((string=? d "%eqtable") "A table, a `RefCell` in Rust (C194): no thread shares it." #f)
+                    ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell") (string=? d "%identity")) (sync-type? v s (car args) seen))
                     ((string=? d "%pairof")
                      "A pair whose tail is a list is that list, in Rust (C68); any other a
                       union's `Value`."

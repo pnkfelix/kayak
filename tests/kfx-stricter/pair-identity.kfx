@@ -1,0 +1,10 @@
+"FX-26's table keyed by pairs' identity, which KFX has not yet: a list
+ seen as a union's value might be rebuilt in Rust, a new pair where FX-26
+ has the old one (C194; the Fixpt team's TODO §36, until the emitter shows
+ no conversion copies a pair at a region that may be written)."
+(define-effect kfx (maxeff (read @globals) (alloc @t) (alloc @k) (read @t) (write @t) (write @k) spin))
+(define main (subr kfx () i64)
+  (lambda ()
+    (let ((t (the (eqtable (pairof int int @k) int @k @t) (make-eqtable (pair-identity))))
+          (p (the (pairof int int @k) (cons 1 2))))
+      (begin (eqtable-set! t p 5) (int->i64 (eqtable-ref t p 0))))))

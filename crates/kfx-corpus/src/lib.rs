@@ -83,6 +83,11 @@ pub mod effect_poly;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/eqtables.rs"]
+pub mod eqtables;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/escapes.rs"]
 pub mod escapes;
 
@@ -110,6 +115,11 @@ pub mod flat_sums;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/floats.rs"]
 pub mod floats;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/frozen-shared.rs"]
+pub mod frozen_shared;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -487,12 +497,14 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("datum", datum::main),
     ("define-star", define_star::main),
     ("effect-poly", effect_poly::main),
+    ("eqtables", eqtables::main),
     ("escapes", escapes::main),
     ("f32", f32::main),
     ("families", families::main),
     ("fixed", fixed::main),
     ("flat-sums", flat_sums::main),
     ("floats", floats::main),
+    ("frozen-shared", frozen_shared::main),
     ("generative", generative::main),
     ("hashes", hashes::main),
     ("imports", imports::main),

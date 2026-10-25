@@ -1062,6 +1062,36 @@ pub mod emitter {
         }
     }
 
+    /// A `letregion`'s region, or a `letfreeze`'s: `r`, or `(r heap)` (C193).
+    pub fn frozen_region_name(r: &'static Sexp) -> Str {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                n
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
     /// The lifetime of the region `r` names: a `letrena`'s, its own; a region
     /// within a place, the place's, where its data is (C40); a `letregion`
     /// inside a `letrena`, that one's, which its data may be in; or ``.
@@ -1675,7 +1705,7 @@ pub mod emitter {
 
     /// The forms whose last parts stand where they do.
     pub fn control_p(e: &'static Sexp) -> bool {
-        (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("with")))
+        (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("letfreeze")) || head_is_p(e, str_lit("with")))
     }
 
     /// `c` in `(with m ...)`: `m`'s values and types, hiding what is outside.
@@ -2119,7 +2149,7 @@ pub mod emitter {
                 } else if (sym_is_p(car(xs), str_lit("send")) || sym_is_p(car(xs), str_lit("init")) || sym_is_p(car(xs), str_lit("await")) || sym_is_p(car(xs), str_lit("io"))) {
                     true
                 } else if sym_is_p(car(xs), str_lit("read")) {
-                    (string_eq_p(at, str_lit("@globals")) || string_eq_p(at, str_lit("acyclic")) || head_is_p(second(xs), str_lit("globals")))
+                    (string_eq_p(at, str_lit("@globals")) || string_eq_p(at, str_lit("acyclic")) || string_eq_p(at, str_lit("const")) || head_is_p(second(xs), str_lit("globals")) || head_is_p(second(xs), str_lit("const")) || head_is_p(second(xs), str_lit("acyclic")))
                 } else if sym_is_p(car(xs), str_lit("alloc")) {
                     (has_prefix_p(at, str_lit("@")) || string_eq_p(at, str_lit("acyclic")))
                 } else {
@@ -2766,6 +2796,26 @@ pub mod emitter {
                         } else {
                             str_lit("ICell<")
                         }, acc)));
+                    } else if (sym_is_p(car(xs), str_lit("eqtable")) && i64_eq(size(xs), 5i64)) {
+                        // A table keyed by identity (C194): kayak-rt's `EqTable<K, V>`, or
+                        // `EqTableAt<'k, K, V>` where its keys live as long as a `letrena`'s
+                        // region, so that rustc refuses a table outliving them.
+                        let life = {
+                            let l1 = region_lifetime(c, fourth(xs));
+                            if string_eq_p(l1, str_lit("")) {
+                                element_lifetime(c, second(xs))
+                            } else {
+                                l1
+                            }
+                        };
+                        return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), if string_eq_p(life, str_lit("")) {
+                            put(str_lit("EqTable<"), acc)
+                        } else {
+                            put(str_lit(", "), put(life, put(str_lit("EqTableAt<"), acc)))
+                        }))));
+                    } else if (sym_is_p(car(xs), str_lit("identity")) && i64_eq(size(xs), 3i64)) {
+                        // That keys have identity (C194): kayak-rt's `IdentityOf<K>`.
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit("IdentityOf<"), acc)));
                     } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                         return put(str_lit("Bytes"), acc);
                     } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
@@ -3398,7 +3448,7 @@ pub mod emitter {
             } else if head_is_p(e, str_lit("begin")) {
                 e = last(cdr(items(e)));
                 continue;
-            } else if head_is_p(e, str_lit("letregion")) {
+            } else if (head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("letfreeze"))) {
                 e = last(cdr(cdr(items(e))));
                 continue;
             } else {
@@ -3784,8 +3834,11 @@ pub mod emitter {
             } else if head_is_p(e, str_lit("begin")) {
                 es = cdr(items(e));
                 continue;
-            } else if head_is_p(e, str_lit("letregion")) {
-                (c, es) = (with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letregion "), sym_name(second(items(e)))), kayak_rt::nil())), cdr(cdr(items(e))));
+            } else if (head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("letfreeze"))) {
+                // A `letfreeze` into the heap as a `letregion` (C193): what its body
+                // makes at its region in the heap's arenas, the value of the type it
+                // would have at the heap; frozen, `const` or `acyclic`, to the checker.
+                (c, es) = (with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letregion "), frozen_region_name(second(items(e)))), kayak_rt::nil())), cdr(cdr(items(e))));
                 continue;
             } else if head_is_p(e, str_lit("with")) {
                 (c, es, t) = (with_opened(c, e), cdr(cdr(items(e))), opened_tail(c, e, t));
@@ -4541,7 +4594,7 @@ pub mod emitter {
                 let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
                 let acc = put_exp(c, second(xs), n, value(), acc);
                 return put(str_lit(")"), put(string_append(str_lit(", "), words_of_sep(split_words(fact_with(c, e, str_lit("blob-element "))), str_lit(", "))), acc));
-            } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
+            } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letfreeze"))) {
                 return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
             } else if abort_p(c, e) {
                 // An abort: an early return, where a `Result` is returned; else no

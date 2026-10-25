@@ -1,0 +1,12 @@
+"A list frozen by `letfreeze`, its cells `const`, but holding references
+ that can still be written: sent to a process, refused, as Fixpt refuses
+ it (C193; choice (a) of the Fixpt team's TODO §36: data frozen that holds
+ a mutable kind crosses no thread)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type cells (listof (ref int @s) const))
+(define make-cells (subr (alloc @s) () cells)
+  (lambda () (letfreeze r (the (listof (ref int @s) r) (cons (new 1) (cons (new 2) nil))))))
+(define main (subr (maxeff kfx (alloc @s) (alloc @p) (send @p)) () i64)
+  (lambda ()
+    (let ((p (the (addr cells @p) (spawn (box cells q) (begin (receive box) #u)))))
+      (begin (send p (make-cells)) 0))))

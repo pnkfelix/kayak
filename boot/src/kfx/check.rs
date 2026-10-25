@@ -3928,7 +3928,7 @@ pub type Snames = List<&'static Sname>;
 pub fn logic_type_forms() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::nil())))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -6149,6 +6149,14 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
                     }
+                } else if (sym_is_p(car(xs), str_lit("identity")) && i64_eq(size(xs), 3i64)) {
+                    // `(identity k kr)` (C194; Fixpt's fx26.md, "Identity"): that keys
+                    // `k`, at `kr`, have identity; made only by the standard procedures.
+                    return ty_data(str_lit("%identity"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_region(v, tvars, third(xs)), kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("eqtable")) && i64_eq(size(xs), 5i64)) {
+                    // `(eqtable k v kr r)` (C194): a table keyed by identity, keys `k` at
+                    // `kr`, values `v`, the table at `r`.
+                    return ty_data(str_lit("%eqtable"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_region(v, tvars, fourth(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))), kayak_rt::nil())))));
                 } else if ((sym_is_p(car(xs), str_lit("addr")) || sym_is_p(car(xs), str_lit("inbox")) || sym_is_p(car(xs), str_lit("icell"))) && i64_eq(size(xs), 3i64)) {
                     // FX-26's processes (C101): `(addr M R)`, the right to send an `M` to a
                     // process's mailbox at `R`; `(inbox M r)`, the right to take from it,
@@ -7716,7 +7724,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return show_size(s, t);
                 } else if string_eq_p(d, str_lit("%poly")) {
                     return string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))));
-                } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
+                } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell")) || string_eq_p(d, str_lit("%eqtable")) || string_eq_p(d, str_lit("%identity"))) {
                     return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))));
                 } else if string_eq_p(d, str_lit("%native")) {
                     // The program's convention, as Fixpt's checker has it now (C181):
@@ -9932,7 +9940,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         // (`generative/invariant.fx`; C183): each argument both ways;
                         // but one marked `+` or `-` (C188), one way.
                         fits_variant(v, s, xs, ys, variance_marks(v, x))
-                    } else if (string_eq_p(x, y) && (string_member_p(x, kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::nil()))))))) || (string_eq_p(x, str_lit("%pairof")) && not(frozen_region_p(s, car(cdr(cdr(xs)))))))) {
+                    } else if (string_eq_p(x, y) && (string_member_p(x, kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::nil()))))))))) || (string_eq_p(x, str_lit("%pairof")) && not(frozen_region_p(s, car(cdr(cdr(xs)))))))) {
                         // Storage that can be written is invariant in what it holds, as
                         // Fixpt's (C188, probing it: a reference, an array, an I-cell, an
                         // address, a bloblet, a mark key, a pair at a region that is not

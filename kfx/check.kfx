@@ -1752,7 +1752,7 @@
         "nat" "nlist" "oneshot" "pairof" "place" "poly" "productof" "prompt-tag" "proves" "ref" "select" "subr"
         "sumof" "bool" "union" "->" "->*"
         ;; And those of KFX's types that FX-26 names as types of its base.
-        "addr" "blobref" "bytevectorof" "escape-tag" "flatarrayof" "flatlayout" "inbox" "vsubr"))
+        "addr" "blobref" "bytevectorof" "escape-tag" "flatarrayof" "flatlayout" "inbox" "vsubr" "eqtable" "identity"))
 (define logic-keywords strings
   (list "lambda" "plambda" "proj" "if" "letrec" "let" "begin" "define" "define*" "define-type"
         "define-generative" "void" "pure" "maxeff" "read" "write" "alloc" "goto" "comefrom" "region" "effect"
@@ -2713,6 +2713,15 @@
                               (ty-data "%flat-array" (list (as-flat (parse-type v (cons "%flat-ok" tvars) (second xs))) (ty-rconst (i64->string k)))))
                              (else (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t)))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                ((and (sym-is? (car xs) "identity") (i64= (size xs) 3))
+                 "`(identity k kr)` (C194; Fixpt's fx26.md, \"Identity\"): that keys
+                  `k`, at `kr`, have identity; made only by the standard procedures."
+                 (ty-data "%identity" (list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
+                ((and (sym-is? (car xs) "eqtable") (i64= (size xs) 5))
+                 "`(eqtable k v kr r)` (C194): a table keyed by identity, keys `k` at
+                  `kr`, values `v`, the table at `r`."
+                 (ty-data "%eqtable" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
+                                           (parse-region v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
                 ((and (or (sym-is? (car xs) "addr") (sym-is? (car xs) "inbox") (sym-is? (car xs) "icell")) (i64= (size xs) 3))
                  "FX-26's processes (C101): `(addr M R)`, the right to send an `M` to a
                   process's mailbox at `R`; `(inbox M r)`, the right to take from it,
@@ -3415,7 +3424,7 @@
                 ((string=? d "%poly")
                  (string-append "(poly (" (string-append (binders-shown (poly-binders-of args))
                    (string-append ") " (string-append (show-ty s (poly-written args)) ")")))))
-                ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
+                ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell") (string=? d "%eqtable") (string=? d "%identity"))
                  (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-tys s args) ")")))))
                 ((string=? d "%native")
                  "The program's convention, as Fixpt's checker has it now (C181):
@@ -4256,7 +4265,7 @@
                       but one marked `+` or `-` (C188), one way."
                      (fits-variant v s xs ys (variance-marks v x)))
                     ((and (string=? x y)
-                          (or (string-member? x (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key"))
+                          (or (string-member? x (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
                               (and (string=? x "%pairof") (not (frozen-region? s (car (cdr (cdr xs))))))))
                      "Storage that can be written is invariant in what it holds, as
                       Fixpt's (C188, probing it: a reference, an array, an I-cell, an

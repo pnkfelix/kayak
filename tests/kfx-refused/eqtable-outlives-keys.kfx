@@ -1,0 +1,11 @@
+"A table keyed by references made in a `letrena`'s arena, given out of it:
+ its type names the arena's region, so the value would outlive its keys;
+ refused, as Fixpt refuses it, and as rustc would (C194: its Rust type
+ carries the keys' lifetime)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define leak (subr (alloc @t) () (eqtable (ref int @heap) int @heap @t))
+  (lambda ()
+    (letrena p
+      (let ((t (the (eqtable (ref int p) int p @t) (make-eqtable (ref-identity)))))
+        t))))
+(define main (subr kfx () i64) (lambda () 0))

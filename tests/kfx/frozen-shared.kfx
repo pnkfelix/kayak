@@ -1,0 +1,43 @@
+"Data frozen by `letfreeze` into the heap (C193; the Fixpt team's TODO
+ §36): a list built at a region of the body's own, written while it is
+ built (a ref counting the cells), then frozen, `const`, and read by
+ `par` branches on threads at once; and one never written, `acyclic`."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type ints (listof int const))
+
+(define-rec
+  (total (subr kfx (ints) int)
+    (lambda (xs) (if (null? xs) 0 (+ (car xs) (total (cdr xs))))))
+  (longest (subr kfx (ints int) int)
+    (lambda (xs best) (if (null? xs) best (longest (cdr xs) (if (> (car xs) best) (car xs) best))))))
+
+"A list of `n` squares, counted as it is built; frozen as it leaves."
+(define squares (subr spin (int) ints)
+  (lambda (n)
+    (letfreeze r
+      (let ((made (the (ref int r) (new 0))))
+        (letrec ((go (subr (maxeff (read r) (write r) (alloc r) spin) (int (listof int r)) (listof int r))
+                   (lambda (k acc)
+                     (if (= k 0)
+                         acc
+                         (begin (set made (+ (get made) 1)) (go (- k 1) (cons (* k k) acc)))))))
+          (go n nil))))))
+
+"Never written: frozen `acyclic`, below `const`."
+(define evens (subr spin (int) (listof int acyclic))
+  (lambda (n)
+    (letfreeze r
+      (letrec ((go (subr (maxeff (alloc r) spin) (int (listof int r)) (listof int r))
+                 (lambda (k acc) (if (= k 0) acc (go (- k 1) (cons (* 2 k) acc))))))
+        (go n nil)))))
+
+(define both (subr kfx (ints) int)
+  (lambda (xs)
+    (par ((a (total xs)) (b (longest xs 0)) (c (total (cdr xs))))
+      (+ a (+ (* 1000 b) (* 1000000 c))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((xs (squares 10)) (ys (evens 5)))
+      (string-append (int->string (both xs)) (string-append " " (int->string (both ys)))))))

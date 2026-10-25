@@ -5314,6 +5314,68 @@ receiver's parameter written at `(goto @k)` where `cwcc`'s is `(goto ?r)`.
 - Left: the fresh region's number in an expression's type (Fixpt's
   `@r.2`, kayak's printer `@r.1` always).
 - Refused 18 to 17; K1 0.
+
+## C193. `letfreeze` into the heap in KFX (2026-10-25)
+
+The Fixpt team's proposal (TODO §36), its step 1, at the user's word: the
+compiler on kayak's runtime wants frozen data tasks share without copying.
+- **The restriction pass** takes `letfreeze` (its plain form and `(r
+  heap)`) and `const` in a type or an effect; data frozen into another
+  place it still refuses, as the checker does.
+- **The emitter** writes a `letfreeze` as a `letregion` (`frozen-region-name`
+  reads `r` or `(r heap)`): what its body makes at `r` in the heap's
+  arenas, the value of the type it would have at the heap (a type at
+  `const` or `acyclic` written so). kayak-rt's `Cons` has no `Cell`, so a
+  frozen list is `Send` and `Sync` where its elements are, rustc checking
+  it, no `unsafe`.
+- **Crossing threads**: reading `const` data was a crossing atom already
+  (C102); a written effect reading `const` (or `(const heap)`) now counts
+  as crossing for a procedure's `Send + Sync`, and a list at `const` is
+  transmissible (`untransmissible`), as one at `acyclic`.
+- **Frozen data holding what may be written** (step 2): the team's choice
+  (a), which needs nothing: the checker refuses mutable data at `const`,
+  and a frozen list of references at another region still holds
+  references that can be written, so it crosses no thread
+  (`tests/kfx-refused/frozen-ref-sent.kfx`, refused by Fixpt in the same
+  words).
+- `tests/kfx/frozen-shared.kfx`: a list built at the body's region while
+  a reference counts its cells, frozen `const`, read by three `par`
+  branches on threads (`par2`), and one never written, frozen `acyclic`;
+  Fixpt's answer, by kayak's Rust, by default and with `unsafe-par`
+  (`cargo test -p kfx-corpus --features kayak-rt/unsafe-par`, run once by
+  hand: the check runs no corpus under that feature).
+
+## C194. Tables keyed by identity, FX-26's and KFX's (2026-10-25)
+
+TODO §36's eq-tables. Kayak's checker had none (`native/eqtables.fx`
+refused), though the engine's tier 1 had the primitives (kind 43).
+- **The checker**: `(identity k kr)` and `(eqtable k v kr r)` (Fixpt's
+  generative types 3 and 4), invariant; `pair-identity`, `ref-identity`,
+  `array-identity`, `icell-identity`, `make-eqtable`, `eqtable-ref`,
+  `eqtable-has?`, `eqtable-set!`, `eqtable-delete!`, `eqtable-count` at
+  Fixpt's types, each operation writing the keys' region, so that no
+  table is keyed by frozen data. `native/eqtables.fx` the same as Fixpt's.
+- **kayak-rt** (`eqtable.rs`): `Identity`, an address, for `&Cell<T>` (a
+  reference), `Array<T>` and `&ICellBox<T>` (an I-cell), none copied
+  where a `Value` boxes it; `IdentityOf<K>`, the dictionary;
+  `EqTableAt<'t, K, V>`, a `RefCell<HashMap<usize, (K, V)>>` by a fixed
+  hasher, made by `alloc` at the keys' lifetime, so rustc refuses a table
+  outliving a `letrena` whose objects key it; `EqTable<K, V>` its heap
+  form. No iteration: the order of addresses is never seen, answers
+  Fixpt's on every run.
+- **The emitter**: `(eqtable k v kr r)` as `EqTableAt<'kr, K, V>` where
+  the keys' region (or what they hold) is a `letrena`'s, else
+  `EqTable<K, V>`; `(identity k kr)` as `IdentityOf<K>`. A table is no
+  `Sync` (`sync-type?`).
+- **Pairs wait**: KFX refuses `pair-identity` (a list seen as a union's
+  value might be rebuilt in Rust; `tests/kfx-stricter/pair-identity.kfx`).
+  `eq?` stays refused.
+- Tests: `tests/kfx/eqtables.kfx` (references, two alike being two keys;
+  set, set again, delete, count; arrays; a table inside a `letrena` keyed
+  by references in its arena), Fixpt's answer by kayak's Rust;
+  `tests/kfx-refused/eqtable-outlives-keys.kfx`, a table given out of its
+  keys' `letrena`, refused by both.
+- The checkers' comparison: refused 17 to 16, the same 354 to 355; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

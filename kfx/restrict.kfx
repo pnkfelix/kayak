@@ -47,8 +47,8 @@
                        (restriction-refused file line (string-append n ", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)")))
                       ((string=? n "list")
                        (restriction-refused file line "list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)"))
-                      ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "letfreeze" "assume" "assert"
-                                              "char-in?" "nat?" "certify-nat" "rmake-icell" "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
+                      ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "assume" "assert"
+                                              "char-in?" "nat?" "certify-nat" "rmake-icell" "pair-identity" "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
                                               "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat"))
                        (restriction-refused file line (string-append n ", FX-26's, which KFX has not yet (C156)")))
                       ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
@@ -58,8 +58,8 @@
                 (cond ((null? xs) #u)
                       ((sym-is? (car xs) "list") (restricted-all (cdr xs) f l))
                       ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
-                            (any? (lambda ((a sexp)) (or (sym-is? a "const") (head-is? a "const"))) (cdr xs)))
-                       (restriction-refused f l "a const region, FX-26's data frozen, which KFX has not yet (C161)"))
+                            (any? (lambda ((a sexp)) (and (head-is? a "const") (not (sym-is? (second (items a)) "heap")))) (cdr xs)))
+                       (restriction-refused f l "data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)"))
                       ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
                             (any? (lambda ((a sexp)) (sym-is? a "heap")) (cdr xs)))
                        (restriction-refused f l "the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)"))

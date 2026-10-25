@@ -180,7 +180,9 @@ pub mod expressions {
                     }), poly_binders_of(args)), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(settled_sexp(s, poly_written(args), false), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%escape-tag")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("escape-tag"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(cdr(args))), true), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
-                } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
+                } else if string_eq_p(d, str_lit("%eqtable")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("eqtable"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(cdr(args))), true), kayak_rt::heap_cons(settled_sexp(s, car(cdr(cdr(cdr(args)))), true), kayak_rt::nil()))))), str_lit(""), 0i64, 0i64)
+                } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell")) || string_eq_p(d, str_lit("%identity"))) {
                     lst(kayak_rt::heap_cons(sym(after_prefix(d, str_lit("%")), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%flat-sum")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("sumof"), str_lit(""), 0i64), kayak_rt::heap_cons({
@@ -2885,7 +2887,11 @@ pub mod expressions {
                         return lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(map(lambda1s(move |n: Str| {
                             lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(binder_kind(n), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                         }), poly_binders_of(args)), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(ty_sexp(v, s, poly_written(args)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
-                    } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
+                    } else if string_eq_p(d, str_lit("%eqtable")) {
+                        return lst(kayak_rt::heap_cons(sym(str_lit("eqtable"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Ty| {
+                            ty_sexp(v, s, x)
+                        }), args)), str_lit(""), 0i64, 0i64);
+                    } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell")) || string_eq_p(d, str_lit("%identity"))) {
                         return lst(kayak_rt::heap_cons(sym(after_prefix(d, str_lit("%")), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
                     } else if string_eq_p(d, str_lit("%flat-sum")) {
                         return lst(kayak_rt::heap_cons(sym(str_lit("sumof"), str_lit(""), 0i64), kayak_rt::heap_cons({
@@ -3214,7 +3220,7 @@ pub mod expressions {
         loop {
             let data_at = lambda2s(move |r: &'static Ty, what: Str| {
                 let n = region_string(s, r);
-                if (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("%fresh")) || string_member_p(n, bound)) {
+                if (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")) || string_eq_p(n, str_lit("%fresh")) || string_member_p(n, bound)) {
                     str_lit("")
                 } else {
                     string_append(str_lit("a "), string_append(what, string_append(str_lit(" at "), string_append(show_ty(s, r), str_lit(", which can be written")))))
@@ -3359,7 +3365,10 @@ pub mod expressions {
                 Ty::TyData(d, args) => {
                     if null_p(args) {
                         return not((string_eq_p(d, str_lit("datum")) || has_prefix_p(d, str_lit("%module"))));
-                    } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
+                    } else if string_eq_p(d, str_lit("%eqtable")) {
+                        // A table, a `RefCell` in Rust (C194): no thread shares it.
+                        return false;
+                    } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell")) || string_eq_p(d, str_lit("%identity"))) {
                         t = car(args);
                         continue;
                     } else if string_eq_p(d, str_lit("%pairof")) {
