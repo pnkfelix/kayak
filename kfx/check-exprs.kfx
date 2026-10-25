@@ -1054,7 +1054,7 @@
                     ((string=? d "%bloblet")
                      (lst (list (sym "bloblet" "" 0) (lst (cons (sym "fields" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) (cdr args))) "" 0 0)
                                 (ty-sexp v s (car args))) "" 0 0))
-                    ((or (string=? d "%native") (string=? d "%fx")) (ty-sexp v s (car args)))
+                    ((or (string=? d "%native") (string=? d "%fx") (has-prefix? d "%spec ")) (ty-sexp v s (car args)))
                     ((string=? d "%blobref") (lst (cons (sym "blobref" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%bytes") (lst (list (sym "bytevectorof" "" 0) (ty-sexp v s (car args))) "" 0 0))
                     ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
@@ -3097,6 +3097,15 @@
             ;; KFX's own, as any procedure of KFX's is.
             (ty-data (d args)
               (cond ((string=? d "%fx") (check-lambda v s params forms (walk s (car args))))
+                    ((has-prefix? d "%spec ")
+                     "A lambda where a specified procedure is expected (C162): checked as
+                      the procedure within, its specification not proved, as FX-26's
+                      checker has it; but one that says what a test proves, which a
+                      branch on its call would trust, refused (Fixpt's `k-claimed`)."
+                     (if (spec-claims? d)
+                         (refuse v "what a test proves, a `lambda` is not checked to prove")
+                         (tagcase (check-lambda v s params forms (walk s (car args)))
+                           (res (t es s2) (res expected es s2)))))
                     ((string=? d "%poly")
                      "A lambda where a poly type is expected, as FX-26 takes it: as the
                       plambda of that type's binders, rigid, in scope (C107, C158)."

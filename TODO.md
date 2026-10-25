@@ -561,10 +561,11 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    way (C155); FX-26's names the checker had not (C156); sizes: facts
    from tests (C157), `(nat s)`, `nlist`, size binders (C158), poly types
    of types and sizes, rank 2 (C159), the confirm forms (C160); `const`
-   regions and `letfreeze` (C161). 169 of the 428
-   programs Fixpt accepts still refused (2026-10-25), the most for
-   specs (named parameters, `requires`, about 30); sizes' rest
-   (`narrayof`, fixed widths, latent bools); `(const p)` into a place
+   regions and `letfreeze` (C161); specifications (C162). 143 of the 428
+   programs Fixpt accepts still refused (2026-10-25): latent bools
+   (`(bool (then P) (else Q))`, an operator's, what a call of a
+   specified predicate proves in a test); sizes' rest
+   (`narrayof`, fixed widths); `(const p)` into a place
    not the heap; then `poly` over other kinds, `const` regions with
    `letfreeze`, termination, conventions, `cwcc`.
 3. FX-26's subsystems: modules, sizes, processes, higher kinds, bloblets,

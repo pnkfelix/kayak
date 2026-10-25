@@ -1109,6 +1109,497 @@
 (define parse-size (subr kfx (cv strings sexp) ty)
   (lambda (v tvars z) (let ((l (parse-size-lin v tvars z))) (if (null? l) size-finite (size-of-lin (car l))))))
 
+"Specifications (C162; Fixpt's `check-specs.fx`, `check-logic.fx`): a
+ procedure type's `(subr E ((x T) ...) R (requires P) (ensures r Q))`,
+ propositions of its `int`s, `nat`s and `bool`s, and of `pure` global
+ procedures' values. FX-26's checker reads them, prints them, and holds a
+ procedure to the one its type expected (behavioural subtyping, by a
+ prover); it proves no body. A specified type is its procedure's, wrapped:
+ `(ty-data \"%spec TEXT\" (P))`, `TEXT` the specification written plainly,
+ `(spec (NAME ...) RESULT REQUIRES ENSURES)`, each name `%none` where a
+ parameter has none; an integer `(lit k)`, `(p i)` (parameter `i`),
+ `(res)`, `(add a b)`, `(sub a b)`, `(mul a b)`, `(call f a ...)`; a
+ proposition `(true)`, `(false)`, `(rel R a b)` (0 `<`, 1 `<=`, 2 `=`, 3
+ not `=`), `(holds a)`, `(not p)`, `(and p ...)`, `(or p ...)`,
+ `(implies p q)`."
+
+(define-datatype sname (sname string string ty))
+(define-type snames (listof sname acyclic))
+
+(define logic-type-forms strings
+  (list "arrayof" "narrayof" "bloblet" "composable" "dletrec" "icell" "listof" "mark-key" "moduleof" "mu"
+        "nat" "nlist" "oneshot" "pairof" "place" "poly" "productof" "prompt-tag" "proves" "ref" "select" "subr"
+        "sumof" "bool" "union" "->" "->*"
+        ;; And those of KFX's types that FX-26 names as types of its base.
+        "addr" "blobref" "bytevectorof" "escape-tag" "flatarrayof" "inbox" "vsubr"))
+(define logic-keywords strings
+  (list "lambda" "plambda" "proj" "if" "letrec" "let" "begin" "define" "define*" "define-type"
+        "define-generative" "void" "pure" "maxeff" "read" "write" "alloc" "goto" "comefrom" "region" "effect"
+        "type" "prompt" "cond" "else" "and" "or" "let*" "define-effect" "module-parameters" "the" "fields"
+        "frozen" "await" "define-rec" "letrena" "letreap" "rlambda" "quote" "product" "extract" "sum" "tagcase"
+        "module" "with" "load-module" "define-datatype" "make-bloblet" "bloblet-ref" "bloblet-set!"
+        "bloblet-freeze" "bloblet-byte" "bloblet-set-byte!" "bloblet-bytes" "rmake-bloblet" "dlambda" "=>" "case"
+        "define-convention"))
+(define logic-base-names strings
+  (list "int" "nat" "i64" "u64" "i32" "u32" "i16" "u16" "i8" "u8" "f64" "f32" "bool" "char" "unit" "string"
+        "symbol" "datum" "void" "false" "nil"))
+
+(define param-name-written (subr kfx (cv strings sexp) string)
+  (lambda (v tvars p)
+    "A procedure type's parameter's name, `(x T)`, or none (\"\"): a list of
+     two whose first is no type form's, keyword's, type's or base type's
+     name, as FX-26's `k-param-name` has it."
+    (tagcase p
+      (lst (xs f l pos)
+        (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f)))
+            (let ((n (sym-name (car xs))))
+              (if (or (string-member? n logic-type-forms) (string-member? n logic-keywords)
+                      (string-member? n logic-base-names) (string-member? n tvars)
+                      (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))
+                  ""
+                  n))
+            ""))
+      (else other ""))))
+
+(define param-type-written (subr kfx (cv strings sexp) sexp)
+  (lambda (v tvars p) (if (string=? (param-name-written v tvars p) "") p (second (items p)))))
+
+(define logic-head (subr kfx (sexp) string)
+  (lambda (x)
+    (tagcase x
+      (lst (xs f l p) (if (and (not (null? xs)) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f))) (sym-name (car xs)) ""))
+      (else other ""))))
+
+(define spec-clause? (subr kfx (sexp) bool)
+  (lambda (x) (or (string=? (logic-head x) "requires") (string=? (logic-head x) "ensures"))))
+
+(define-rec
+  (clauses-count (subr kfx (sexps i64) i64)
+    (lambda (xs n) (if (and (not (null? xs)) (spec-clause? (car xs))) (clauses-count (cdr xs) (i64+ n 1)) n))))
+
+(define clauses-ending (subr kfx (sexps) i64)
+  (lambda (xs) (clauses-count (reverse xs) 0)))
+
+(define-rec
+  (spec-firsts (subr kfx (sexps i64) sexps)
+    (lambda (xs n) (if (i64= n 0) nil (cons (car xs) (spec-firsts (cdr xs) (i64- n 1)))))))
+
+(define-rec
+  (spec-drop (subr kfx (sexps i64) sexps)
+    (lambda (xs n) (if (i64= n 0) xs (spec-drop (cdr xs) (i64- n 1))))))
+
+(define-rec
+  (logic-nth (subr kfx (sexps i64) sexp)
+    (lambda (xs i) (if (i64= i 0) (car xs) (logic-nth (cdr xs) (i64- i 1))))))
+
+(define logic-literal-symbol? (subr kfx (sexp) bool)
+  (lambda (x) (tagcase x (sym (n f p) (string-member? n (list "#t" "#f" "#u"))) (else other #f))))
+
+(define logic-int-ty? (subr kfx (ty) bool)
+  (lambda (t) (tagcase t (ty-int () #t) (ty-nat () #t) (ty-data (d args) (string=? d "%natof")) (else other #f))))
+
+(define logic-bool-ty? (subr kfx (ty) bool)
+  (lambda (t) (tagcase t (ty-bool () #t) (else other #f))))
+
+(define sname-find (subr kfx (snames string) snames)
+  (lambda (ns n) (filter (lambda ((x sname)) (tagcase x (sname (m atom t) (string=? m n)))) ns)))
+
+(define procedure-within (subr kfx (ty) ty)
+  (lambda (t)
+    "The procedure of a specified type, or of a convention's (C116): its
+     `ty-proc`, or `t` itself."
+    (tagcase t
+      (ty-data (d args)
+        (if (and (or (has-prefix? d "%spec ") (string=? d "%fx") (string=? d "%native")) (not (null? args)))
+            (tagcase (car args)
+              (ty-data (d2 args2) (if (and (or (string=? d2 "%fx") (string=? d2 "%native")) (not (null? args2))) (car args2) (car args)))
+              (else other (car args)))
+            t))
+      (else other t))))
+
+(define logic-callee (subr kfx (cv sexps) tys)
+  (lambda (v xs)
+    "Of `(f a ...)`, `f`'s type where its innermost binding is a global's
+     (FX-26's `k-spec-callee?`), or none."
+    (if (or (null? xs) (logic-literal-symbol? (car xs)) (not (tagcase (car xs) (sym (n f p) #t) (else other #f))))
+        nil
+        (let ((b (find-bind (sym-name (car xs)) (cv-binds v))))
+          (if (null? b)
+              nil
+              (tagcase (car b) (bind (n sc wher) (if (string=? wher "global") (tagcase sc (scheme (vs t) (the tys (list t)))) nil))))))))
+
+(define-rec
+  (logic-term (subr kfx (cv snames sexp) string)
+    (lambda (v names x)
+      "An integer of a specification: a literal, a name of an `int` or a
+       `nat`, `(+ a ...)`, `(- a)`, `(- a b ...)`, `(* a ...)`, a logic
+       function's value."
+      (let ((usage "an integer: a literal, an `int` or `nat` named, `(+ a …)`, `(- a b …)` or `(* a …)`"))
+        (tagcase x
+          (num (k f p) (string-append "(lit " (string-append (i64->string k) ")")))
+          (sym (n f p)
+            (if (logic-literal-symbol? x)
+                (refuse v usage)
+                (let ((found (sname-find names n)))
+                  (cond ((null? found) (refuse v (string-append "`" (string-append n "` names no parameter or result here"))))
+                        ((tagcase (car found) (sname (m atom t) (logic-int-ty? t))) (tagcase (car found) (sname (m atom t) atom)))
+                        (else (refuse v (string-append "`" (string-append n "` is not an `int`"))))))))
+          (lst (xs f l p)
+            (let ((hd (logic-head x)))
+              (if (and (not (string-member? hd (list "+" "-" "*"))) (not (null? (logic-callee v xs))))
+                  (logic-call v names xs #f)
+                  (let ((args (map (lambda ((a sexp)) (logic-term v names a)) (if (null? xs) nil (cdr xs)))))
+                    (cond ((and (string=? hd "+") (not (null? args))) (logic-folded "add" (car args) (cdr args)))
+                          ((and (string=? hd "*") (not (null? args))) (logic-folded "mul" (car args) (cdr args)))
+                          ((and (string=? hd "-") (i64= (size args) 1)) (string-append "(sub (lit 0) " (string-append (car args) ")")))
+                          ((and (string=? hd "-") (i64> (size args) 1)) (logic-folded "sub" (car args) (cdr args)))
+                          (else (refuse v usage)))))))
+          (else other (refuse v usage))))))
+  (logic-folded (subr kfx (string string strings) string)
+    (lambda (op a xs)
+      (if (null? xs)
+          a
+          (logic-folded op (string-append "(" (string-append op (string-append " " (string-append a (string-append " " (string-append (car xs) ")"))))))
+                        (cdr xs)))))
+  (logic-call (subr kfx (cv snames sexps bool) string)
+    (lambda (v names xs want-bool)
+      "`(f a ...)`, a logic function's value at its arguments: `f` a global
+       procedure, `pure`, of a `bool` result (`want-bool`) or an `int`'s or
+       `nat`'s; each argument an integer where `f` takes one, else a
+       parameter or the result, named."
+      (let* ((fname (sym-name (car xs)))
+             (t (procedure-within (car (logic-callee v xs)))))
+        (tagcase t
+          (ty-proc (es ps r)
+            (cond ((not (null? es)) (refuse v (string-append "`" (string-append fname "` is called in a specification, so must be `pure`"))))
+                  ((and want-bool (not (logic-bool-ty? r))) (refuse v (string-append "`" (string-append fname "` gives no `bool`, so is no proposition"))))
+                  ((and (not want-bool) (not (logic-int-ty? r))) (refuse v (string-append "`" (string-append fname "` gives no `int` or `nat`, so is no integer"))))
+                  ((not (i64= (size ps) (size (cdr xs))))
+                   (refuse v (string-append "`" (string-append fname (string-append "` takes " (string-append (i64->string (size ps)) (string-append " arguments, not " (i64->string (size (cdr xs))))))))))
+                  (else
+                   (string-append "(call " (string-append fname (string-append (logic-args v names (cdr xs) ps fname) ")"))))))
+          (else other (refuse v (string-append "`" (string-append fname "` is called in a specification, and is no procedure"))))))))
+  (logic-args (subr kfx (cv snames sexps tys string) string)
+    (lambda (v names xs ps fname)
+      (if (null? xs)
+          ""
+          (string-append " "
+            (string-append
+              (if (logic-int-ty? (car ps))
+                  (logic-term v names (car xs))
+                  (let ((found (tagcase (car xs) (sym (n f p) (if (logic-literal-symbol? (car xs)) nil (sname-find names n))) (else other nil))))
+                    (if (null? found)
+                        (refuse v (string-append "an argument of `" (string-append fname "` in a specification: a parameter or the result, named")))
+                        (tagcase (car found) (sname (m atom t) atom)))))
+              (logic-args v names (cdr xs) (cdr ps) fname))))))
+  (logic-prop (subr kfx (cv snames sexp) string)
+    (lambda (v names x)
+      "A proposition: `(< a b)`, `(<= a b)`, `(= a b)`, `(> a b)`, `(>= a b)`
+       of integers; `(not p)`, `(and p ...)`, `(or p ...)`, `(implies p q)`;
+       `#t`, `#f`; a `bool` named; a logic function's `bool`."
+      (let ((usage "a proposition: `(< a b)`, `(<= a b)`, `(= a b)`, `(> a b)`, `(>= a b)`, `(not p)`, `(and p …)`, `(or p …)`, `(implies p q)`, `#t`, `#f`, or a `bool` named"))
+        (tagcase x
+          (sym (n f p)
+            (cond ((string=? n "#t") "(true)")
+                  ((string=? n "#f") "(false)")
+                  ((logic-literal-symbol? x) (refuse v usage))
+                  (else
+                   (let ((found (sname-find names n)))
+                     (cond ((null? found) (refuse v (string-append "`" (string-append n "` names no parameter or result here"))))
+                           ((tagcase (car found) (sname (m atom t) (logic-bool-ty? t)))
+                            (tagcase (car found) (sname (m atom t) (string-append "(holds " (string-append atom ")")))))
+                           (else (refuse v (string-append "`" (string-append n "` is not a `bool`, so not a proposition")))))))))
+          (lst (xs f l p)
+            (let* ((hd (logic-head x))
+                   (args (if (null? xs) nil (cdr xs)))
+                   (n (size args)))
+              (cond ((string=? hd "<") (logic-rel v names hd args "0" #f))
+                    ((string=? hd "<=") (logic-rel v names hd args "1" #f))
+                    ((string=? hd "=") (logic-rel v names hd args "2" #f))
+                    ((string=? hd ">") (logic-rel v names hd args "0" #t))
+                    ((string=? hd ">=") (logic-rel v names hd args "1" #t))
+                    ((string=? hd "not")
+                     (if (i64= n 1) (string-append "(not " (string-append (logic-prop v names (car args)) ")")) (refuse v "`(not p)`")))
+                    ((string=? hd "and") (string-append "(and" (string-append (logic-props v names args) ")")))
+                    ((string=? hd "or") (string-append "(or" (string-append (logic-props v names args) ")")))
+                    ((string=? hd "implies")
+                     (if (i64= n 2)
+                         (string-append "(implies " (string-append (logic-prop v names (car args)) (string-append " " (string-append (logic-prop v names (second args)) ")"))))
+                         (refuse v "`(implies p q)`")))
+                    ((not (null? (logic-callee v xs))) (string-append "(holds " (string-append (logic-call v names xs #t) ")")))
+                    (else (refuse v usage)))))
+          (else other (refuse v usage))))))
+  (logic-props (subr kfx (cv snames sexps) string)
+    (lambda (v names xs)
+      (if (null? xs) "" (string-append " " (string-append (logic-prop v names (car xs)) (logic-props v names (cdr xs)))))))
+  (logic-rel (subr kfx (cv snames string sexps string bool) string)
+    (lambda (v names hd args r swap)
+      (if (not (i64= (size args) 2))
+          (refuse v (string-append "`(" (string-append hd " a b)`")))
+          (let ((x (logic-term v names (car args))) (y (logic-term v names (second args))))
+            (string-append "(rel " (string-append r (string-append " " (string-append (if swap y x) (string-append " " (string-append (if swap x y) ")")))))))))))
+
+(define-rec
+  (logic-snames (subr kfx (strings tys i64) snames)
+    (lambda (ns ts i)
+      "The parameters named, from `i`, with their types."
+      (cond ((or (null? ns) (null? ts)) nil)
+            ((string=? (car ns) "") (logic-snames (cdr ns) (cdr ts) (i64+ i 1)))
+            (else (cons (sname (car ns) (string-append "(p " (string-append (i64->string i) ")")) (car ts))
+                        (logic-snames (cdr ns) (cdr ts) (i64+ i 1))))))))
+
+(define-rec
+  (logic-clauses (subr kfx (cv snames ty sexps strings strings string) string)
+    (lambda (v names result cs req ens rn)
+      "The clauses `cs` read, onto those read so far: `requires`, then
+       `ensures`, each at most once; the specification's text, given the
+       parameters' names."
+      (if (null? cs)
+          (string-append (if (null? req) "(true)" (car req))
+                         (string-append " " (if (null? ens) "(true)" (car ens))))
+          (let* ((c (car cs))
+                 (xs (items c))
+                 (hd (logic-head c))
+                 (usage "a specification is `(requires proposition)`, then `(ensures name proposition)`, each at most once"))
+            (cond ((and (string=? hd "requires") (i64= (size xs) 2) (null? req) (null? ens))
+                   (logic-clauses v names result (cdr cs) (the strings (list (logic-prop v names (second xs)))) ens rn))
+                  ((and (string=? hd "ensures") (i64= (size xs) 3) (null? ens))
+                   (let ((r (second xs)))
+                     (if (and (tagcase r (sym (n f p) #t) (else other #f)) (not (logic-literal-symbol? r)))
+                         (let ((q (logic-prop v (onto names (list (sname (sym-name r) "(res)" result))) (third xs))))
+                           (if (string=? rn "")
+                               (string-append (sym-name r) (string-append " " (logic-clauses v names result (cdr cs) req (the strings (list q)) (sym-name r))))
+                               (logic-clauses v names result (cdr cs) req (the strings (list q)) (sym-name r))))
+                         (refuse v "the result's name: `(ensures name proposition)`"))))
+                  (else (refuse v usage))))))))
+
+(define specified-type (subr kfx (cv strings ty sexps) ty)
+  (lambda (v pnames plain clauses)
+    "`plain`, a procedure type just read, with the specification its clauses
+     say of its parameters, named `pnames` (\"\" for one not named)."
+    (tagcase (procedure-within plain)
+      (ty-proc (es ps r)
+        (let* ((body (logic-clauses v (logic-snames pnames ps 0) r clauses nil nil ""))
+               ;; The result's name is first where an `ensures` names it.
+               (named (not (or (has-prefix? body "(") (string=? body ""))))
+               (rn (if named (car (text-words body)) "%none"))
+               (rest (if named (after-prefix body (string-append rn " ")) body)))
+          (ty-data (string-append "%spec (spec ("
+                     (string-append (words-of (map (lambda ((n string)) (if (string=? n "") "%none" n)) pnames))
+                       (string-append ") " (string-append rn (string-append " " (string-append rest ")"))))))
+                   (list plain))))
+      (else other plain))))
+
+"The prover (Fixpt's `logic::entails`): whether propositions entail
+ another, by refuting them and its negation: the connectives split into
+ cases, each case's relations linear inequalities (a product of two
+ unknowns, and a logic function's value, an unknown of its own) shown to
+ have no solution by Fourier–Motzkin, a `bool` named a flag. Sound, not
+ complete: past a depth of cases, it shows nothing."
+(define spec-parts (subr kfx (string) sexps)
+  (lambda (d) (items (car (read-all (string-chars (after-prefix d "%spec ")) "%spec" 0)))))
+
+(define-rec
+  (logic-lin (subr kfx (sexp) lin)
+    (lambda (x)
+      (let ((xs (items x)) (hd (logic-head x)))
+        (cond ((string=? hd "lit") (lin (tagcase (second xs) (num (k f p) k) (else other (the i64 0))) nil))
+              ((string=? hd "p") (lin 0 (list (lterm (show-sexp x) 1))))
+              ((string=? hd "res") (lin 0 (list (lterm "(res)" 1))))
+              ((string=? hd "add") (lin-add (logic-lin (second xs)) (logic-lin (third xs)) 1))
+              ((string=? hd "sub") (lin-add (logic-lin (second xs)) (logic-lin (third xs)) -1))
+              ((string=? hd "mul")
+               (let ((a (logic-lin (second xs))) (b (logic-lin (third xs))))
+                 (cond ((null? (lin-names a)) (lin-scaled b (tagcase a (lin (c ts) c))))
+                       ((null? (lin-names b)) (lin-scaled a (tagcase b (lin (c ts) c))))
+                       (else (lin 0 (list (lterm (show-sexp x) 1)))))))
+              (else (lin 0 (list (lterm (show-sexp x) 1)))))))))
+
+(define-datatype ptodo (ptodo sexp bool))
+(define-type ptodos (listof ptodo acyclic))
+
+(define-rec
+  (logic-infeasible? (subr kfx (lins lins) bool)
+    (lambda (ges nes)
+      "Whether `ges` (each `>= 0`) and `nes` (each `/= 0`) have no solution."
+      (if (null? nes)
+          (no-solution? ges 64)
+          (and (logic-infeasible? (cons (lin-add (car nes) (lin -1 nil) 1) ges) (cdr nes))
+               (logic-infeasible? (cons (lin-add (lin -1 nil) (car nes) -1) ges) (cdr nes)))))))
+
+(define logic-splits? (subr kfx (ptodo) bool)
+  (lambda (t)
+    (tagcase t
+      (ptodo (x yes)
+        (let ((hd (logic-head x)))
+          (if yes (or (string=? hd "or") (string=? hd "implies")) (string=? hd "and")))))))
+
+(define logic-trivial? (subr kfx (sexp) bool)
+  (lambda (x) (or (string=? (logic-head x) "true") (and (string=? (logic-head x) "and") (string=? (show-sexp x) "(and)")))))
+
+(define-rec
+  (logic-refuted? (subr kfx (lins lins strings ptodos i64) bool)
+    (lambda (ges nes flags todo depth)
+      "Whether the case, `ges`, `nes`, the flags (`+` or `-` and a `bool`'s
+       atom) and what is still to be taken, `todo` (each proposition held
+       or not), has no solution: those that split taken last."
+      (let ((plain (filter (lambda ((t ptodo)) (not (logic-splits? t))) todo))
+            (split (filter logic-splits? todo)))
+        (cond ((not (null? plain)) (logic-step ges nes flags (car plain) (onto (cdr plain) split) depth))
+              ((null? split) (logic-infeasible? ges nes))
+              ((logic-infeasible? ges nes) #t)
+              ((i64<= depth 0) #f)
+              (else
+               (tagcase (car split)
+                 (ptodo (x yes)
+                   (let ((xs (cdr (items x))))
+                     (not (any? (lambda ((w ptodo)) (not (logic-refuted? ges nes flags (cons w (cdr split)) (i64- depth 1))))
+                           (if (string=? (logic-head x) "implies")
+                               (list (ptodo (car xs) #f) (ptodo (second xs) #t))
+                               (map (lambda ((y sexp)) (ptodo y yes)) xs))))))))))))
+  (logic-step (subr kfx (lins lins strings ptodo ptodos i64) bool)
+    (lambda (ges nes flags t rest depth)
+      (tagcase t
+        (ptodo (x yes)
+          (let ((hd (logic-head x)) (xs (cdr (items x))))
+            (cond ((string=? hd "true") (if yes (logic-refuted? ges nes flags rest depth) #t))
+                  ((string=? hd "false") (if yes #t (logic-refuted? ges nes flags rest depth)))
+                  ((string=? hd "not") (logic-refuted? ges nes flags (cons (ptodo (car xs) (not yes)) rest) depth))
+                  ((string=? hd "and") (logic-refuted? ges nes flags (onto (map (lambda ((y sexp)) (ptodo y #t)) xs) rest) depth))
+                  ((string=? hd "or") (logic-refuted? ges nes flags (onto (map (lambda ((y sexp)) (ptodo y #f)) xs) rest) depth))
+                  ((string=? hd "implies") (logic-refuted? ges nes flags (cons (ptodo (car xs) #t) (cons (ptodo (second xs) #f) rest)) depth))
+                  ((string=? hd "holds")
+                   (let ((mine (string-append (if yes "+" "-") (show-sexp (car xs))))
+                         (other (string-append (if yes "-" "+") (show-sexp (car xs)))))
+                     (if (string-member? other flags) #t (logic-refuted? ges nes (cons mine flags) rest depth))))
+                  ((string=? hd "rel")
+                   (let* ((r (tagcase (car xs) (num (k f p) k) (else other (the i64 0))))
+                          (a (logic-lin (second xs)))
+                          (b (logic-lin (third xs)))
+                          (b-a (lin-add b a -1))
+                          (a-b (lin-add a b -1))
+                          (lt (if yes (i64= r 0) (i64= r 1)))
+                          (le (if yes (i64= r 1) (i64= r 0)))
+                          (eq (if yes (i64= r 2) (i64= r 3)))
+                          (ne (if yes (i64= r 3) (i64= r 2))))
+                     (cond ((and yes lt) (logic-refuted? (cons (lin-add b-a (lin -1 nil) 1) ges) nes flags rest depth))
+                           ((and yes le) (logic-refuted? (cons b-a ges) nes flags rest depth))
+                           (lt (logic-refuted? (cons (lin-add a-b (lin -1 nil) 1) ges) nes flags rest depth))
+                           (le (logic-refuted? (cons a-b ges) nes flags rest depth))
+                           (eq (logic-refuted? (cons a-b (cons b-a ges)) nes flags rest depth))
+                           (ne (logic-refuted? ges (cons a-b nes) flags rest depth))
+                           (else #f))))
+                  (else #f))))))))
+
+(define logic-entails? (subr kfx (sexps sexp) bool)
+  (lambda (hyps goal)
+    (or (logic-trivial? goal)
+        (string-member? (show-sexp goal) (map show-sexp hyps))
+        (logic-refuted? nil nil nil (cons (ptodo goal #f) (map (lambda ((h sexp)) (ptodo h #t)) hyps)) 10))))
+
+(define spec-within? (subr kfx (string string) bool)
+  (lambda (a b)
+    "Whether a procedure specified `a` (\"\" for none) is one specified `b`
+     is: it requires no more, and, given `b`'s `requires`, ensures no less."
+    (or (string=? a b)
+        (let* ((pa (if (string=? a "") nil (spec-parts a)))
+               (pb (if (string=? b "") nil (spec-parts b)))
+               (truth (lst (list (sym "true" "" 0)) "" 0 0))
+               (ra (if (null? pa) truth (fourth pa)))
+               (ea (if (null? pa) truth (car (cdr (cdr (cdr (cdr pa)))))))
+               (rb (if (null? pb) truth (fourth pb)))
+               (eb (if (null? pb) truth (car (cdr (cdr (cdr (cdr pb))))))))
+          (and (logic-entails? (list rb) ra) (logic-entails? (list rb ea) eb))))))
+
+(define unspecified (subr kfx (ty) ty)
+  (lambda (t) (tagcase t (ty-data (d args) (if (has-prefix? d "%spec ") (car args) t)) (else other t))))
+
+(define spec-of (subr kfx (ty) string)
+  (lambda (t) (tagcase t (ty-data (d args) (if (has-prefix? d "%spec ") d "")) (else other ""))))
+
+(define-rec
+  (claims-of? (subr kfx (sexp bool) bool)
+    (lambda (ens yes)
+      "Whether an `ensures` says what a test proves where its result is true
+       (`yes`) or false: a conjunct `(implies r p)` (`(implies (not r) p)`),
+       `p` a relation of parameters and literals (Fixpt's `k-ensures-latent`)."
+      (let ((hd (logic-head ens)) (xs (cdr (items ens))))
+        (cond ((string=? hd "and") (any? (lambda ((x sexp)) (claims-of? x yes)) xs))
+              ((string=? hd "implies")
+               (and (string=? (show-sexp (car xs)) (if yes "(holds (res))" "(not (holds (res)))"))
+                    (conjunct-claim? (second xs))))
+              (else #f)))))
+  (conjunct-claim? (subr kfx (sexp) bool)
+    (lambda (q)
+      (let ((hd (logic-head q)) (xs (cdr (items q))))
+        (cond ((string=? hd "and") (any? conjunct-claim? xs))
+              ((string=? hd "rel") (and (logic-plain-term? (second xs)) (logic-plain-term? (third xs))))
+              ((string=? hd "not")
+               (and (string=? (logic-head (car xs)) "rel")
+                    (string=? (show-sexp (second (items (car xs)))) "2")
+                    (logic-plain-term? (third (items (car xs)))) (logic-plain-term? (fourth (items (car xs))))))
+              (else #f)))))
+  (logic-plain-term? (subr kfx (sexp) bool)
+    (lambda (x) (or (string=? (logic-head x) "p") (string=? (logic-head x) "lit")))))
+
+(define spec-claims? (subr kfx (string) bool)
+  (lambda (d)
+    "Whether a specification says what a test proves, which a `lambda`, its
+     body not checked to prove it, may not (Fixpt's `k-claimed`)."
+    (let ((ens (car (cdr (cdr (cdr (cdr (spec-parts d))))))))
+      (or (claims-of? ens #t) (claims-of? ens #f)))))
+
+"Shown, as Fixpt's `k-show-spec`: a parameter by its name, else `$i`; the
+ result by its, else `result`."
+(define-rec
+  (logic-shown (subr kfx (sexps string sexp) string)
+    (lambda (names rn x)
+      (let ((hd (logic-head x)) (xs (cdr (items x))))
+        (cond ((string=? hd "lit") (show-sexp (car xs)))
+              ((string=? hd "p")
+               (let* ((i (tagcase (car xs) (num (k f p) k) (else other (the i64 0))))
+                      (n (if (i64< i (size names)) (show-sexp (logic-nth names i)) "%none")))
+                 (if (string=? n "%none") (string-append "$" (i64->string i)) n)))
+              ((string=? hd "res") (if (string=? rn "%none") "result" rn))
+              ((string=? hd "add") (logic-op-shown names rn "+ " xs))
+              ((string=? hd "sub") (logic-op-shown names rn "- " xs))
+              ((string=? hd "mul") (logic-op-shown names rn "* " xs))
+              ((string=? hd "call") (string-append "(" (string-append (show-sexp (car xs)) (string-append (logic-each-shown names rn (cdr xs)) ")"))))
+              ((string=? hd "true") "#t")
+              ((string=? hd "false") "#f")
+              ((string=? hd "rel")
+               (let* ((r (tagcase (car xs) (num (k f p) k) (else other (the i64 0))))
+                      (ab (string-append (logic-shown names rn (second xs)) (string-append " " (logic-shown names rn (third xs))))))
+                 (cond ((i64= r 3) (string-append "(not (= " (string-append ab "))")))
+                       (else (string-append "(" (string-append (cond ((i64= r 0) "<") ((i64= r 1) "<=") (else "=")) (string-append " " (string-append ab ")"))))))))
+              ((string=? hd "holds") (logic-shown names rn (car xs)))
+              ((string=? hd "not") (string-append "(not " (string-append (logic-shown names rn (car xs)) ")")))
+              ((or (string=? hd "and") (string=? hd "or")) (string-append "(" (string-append hd (string-append (logic-each-shown names rn xs) ")"))))
+              ((string=? hd "implies") (string-append "(implies " (string-append (logic-shown names rn (car xs)) (string-append " " (string-append (logic-shown names rn (second xs)) ")")))))
+              (else (show-sexp x))))))
+  (logic-op-shown (subr kfx (sexps string string sexps) string)
+    (lambda (names rn op xs)
+      (string-append "(" (string-append op (string-append (logic-shown names rn (car xs)) (string-append " " (string-append (logic-shown names rn (second xs)) ")")))))))
+  (logic-each-shown (subr kfx (sexps string sexps) string)
+    (lambda (names rn xs)
+      (if (null? xs) "" (string-append " " (string-append (logic-shown names rn (car xs)) (logic-each-shown names rn (cdr xs))))))))
+
+(define spec-clauses-shown (subr kfx (string) string)
+  (lambda (d)
+    "A specification's clauses, each after a space, those not `#t`."
+    (let* ((ps (spec-parts d))
+           (names (items (second ps)))
+           (rn (show-sexp (third ps)))
+           (req (fourth ps))
+           (ens (car (cdr (cdr (cdr (cdr ps)))))))
+      (string-append (if (logic-trivial? req) "" (string-append " (requires " (string-append (logic-shown names rn req) ")")))
+                     (if (logic-trivial? ens) ""
+                         (string-append " (ensures " (string-append (if (string=? rn "%none") "result" rn)
+                           (string-append " " (string-append (logic-shown names rn ens) ")")))))))))
+
+(define spec-param-names (subr kfx (string) strings)
+  (lambda (d) (map show-sexp (items (second (spec-parts d))))))
+
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
@@ -1322,6 +1813,16 @@
                    (if (null? (find-alias name (cv-aliases v)))
                        (refuse v (string-append "no module defined at the top level gives a type " (show-sexp t)))
                        (parse-type v tvars (sym name "" 0)))))
+                ((and (sym-is? (car xs) "subr") (i64> (size xs) 4) (spec-clause? (last xs)))
+                 "A procedure type with a specification after its result (C162): the
+                  type without it, read as written, then the clauses against its
+                  parameters' names."
+                 (let* ((k (i64- (size xs) (clauses-ending xs)))
+                        (plain (spec-firsts xs k))
+                        (params (items (logic-nth plain (i64- k 2)))))
+                   (specified-type v (map (lambda ((p sexp)) (param-name-written v tvars p)) params)
+                                   (parse-type v tvars (lst plain (datum-file t) 0 (datum-pos t)))
+                                   (spec-drop xs k))))
                 ((and (sym-is? (car xs) "subr") (i64= (size xs) 5) (head-is? (second xs) "conv"))
                  "A procedure of a convention (C116), `(subr (conv C) E (T ...) R)`:
                   the native one, which made code keeps (Fixpt's TODO §97), only as
@@ -1336,12 +1837,12 @@
                    (if (or (string=? conv "native") (string=? conv "fx"))
                        (ty-data (string-append "%" conv)
                                 (list (ty-proc (parse-effect v tvars (third xs))
-                                               (parse-types v tvars (items (fourth xs)))
+                                               (parse-params v tvars (items (fourth xs)))
                                                (parse-type v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
                        (refuse v (string-append "a convention KFX does not have: " (show-sexp (second xs)))))))
                 ((sym-is? (car xs) "subr")
                  (ty-proc (parse-effect v tvars (second xs))
-                          (parse-types v tvars (items (third xs)))
+                          (parse-params v tvars (items (third xs)))
                           (parse-type v tvars (fourth xs))))
                 ((tagcase (car xs) (sym (n at-file at-pos) (or (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))) (else other #f))
                  (no-knot v (lambda ((x string)) x) (parse-application v tvars (name-of v (car xs)) (cdr xs))))
@@ -1349,6 +1850,10 @@
         (else other (refuse v (string-append "a type KFX does not have: " (show-sexp t)))))))
   (parse-types (subr kfx (cv strings sexps) tys)
     (lambda (v tvars ts) (map (lambda ((t sexp)) (parse-type v tvars t)) ts)))
+  (parse-params (subr kfx (cv strings sexps) tys)
+    (lambda (v tvars ts)
+      "A procedure type's parameters, each named or not (C162)."
+      (map (lambda ((t sexp)) (parse-type v tvars (param-type-written v tvars t))) ts)))
 
   (parse-arguments (subr kfx (cv strings strings sexps) tys)
     (lambda (v tvars params args)
@@ -1579,6 +2084,7 @@
         (ty-list (e r) (string-append "(listof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-data (d args)
           (cond ((null? args) d)
+                ((has-prefix? d "%spec ") (show-specified s d (car args)))
                 ((string=? d "%bloblet")
                  (string-append "(bloblet (fields " (string-append (show-tys s (cdr args)) (string-append ") " (string-append (show-ty s (car args)) ")")))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
@@ -1625,6 +2131,28 @@
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
         (ty-var (n) n)
         (ty-meta (k) (string-append "?" (i64->string k))))))
+  (show-specified (subr kfx (st string ty) string)
+    (lambda (s d t)
+      "A specified procedure type (C162): its parameters by their names where
+       it has clauses, and its clauses after its result."
+      (let* ((clauses (spec-clauses-shown d))
+             (inner (walk s t))
+             (conv (tagcase inner
+                     (ty-data (c args) (if (or (string=? c "%fx") (string=? c "%native")) (string-append "(conv " (string-append (after-prefix c "%") ") ")) ""))
+                     (else other ""))))
+        (tagcase (procedure-within inner)
+          (ty-proc (es ps r)
+            (string-append "(subr " (string-append conv (string-append (show-effs es) (string-append " ("
+              (string-append (if (string=? clauses "") (show-tys s ps) (show-named s ps (spec-param-names d)))
+                (string-append ") " (string-append (show-ty s r) (string-append clauses ")")))))))))
+          (else other (show-ty s t))))))
+  (show-named (subr kfx (st tys strings) string)
+    (lambda (s ps names)
+      (if (null? ps)
+          ""
+          (string-append (let ((n (if (null? names) "%none" (car names))))
+                           (if (string=? n "%none") (show-ty s (car ps)) (string-append "(" (string-append n (string-append " " (string-append (show-ty s (car ps)) ")"))))))
+                         (if (null? (cdr ps)) "" (string-append " " (show-named s (cdr ps) (if (null? names) nil (cdr names)))))))))
   (show-fields (subr kfx (st strings tys) string)
     (lambda (s ls ts)
       (if (or (null? ls) (null? ts))
@@ -1832,6 +2360,7 @@
         (cond ((string=? d "%vsubr")
                (ty-proc (tagcase (car args) (ty-proc (es ps r) es) (else other nil)) (repeat-ty (car (cdr args)) n) (car (cdr (cdr args)))))
               ((or (string=? d "%native") (string=? d "%fx")) "A procedure of a convention (C116), called as any is." (car args))
+              ((has-prefix? d "%spec ") "A specified procedure (C162), called as any is." (procedure-within t))
               (else t)))
       (else other t))))
 
@@ -2139,7 +2668,16 @@
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (cond ((and (sized? a "%natof") (tagcase e (ty-nat () #t) (ty-int () #t) (else other #f)))
+      (cond ((or (not (string=? (spec-of a) "")) (not (string=? (spec-of e) "")))
+             "A specified procedure (C162): the procedure within, then behavioural
+              subtyping, Fixpt's `logic::spec_within`: it requires no more than
+              the one expected, and ensures no less."
+             (let ((s2 (fits v s (unspecified a) (unspecified e))))
+               (if (spec-within? (spec-of a) (spec-of e))
+                   s2
+                   (refuse-named v s (string-append "a " (string-append (show-ty s a) (string-append " is here, where a " (string-append (show-ty s e)
+                     " is expected: it requires more, or ensures less, than is expected, as far as the prover can tell"))))))))
+            ((and (sized? a "%natof") (tagcase e (ty-nat () #t) (ty-int () #t) (else other #f)))
              "`(nat s)` below `nat` and `int` (C158)."
              s)
             ((and (sized? a "%nlist") (tagcase e (ty-data (d args) (and (string=? d "%pairof") (sized? (walk s (car (cdr args))) "%nlist"))) (else other #f)))
@@ -2599,7 +3137,7 @@
   (lambda (s t)
     "A procedure's type: KFX's own, or one of any convention (C116), which a
      lambda is checked against as its procedure."
-    (tagcase (walk s t) (ty-proc (es ps r) #t) (ty-data (d args) (string=? d "%fx")) (else other #f))))
+    (tagcase (walk s t) (ty-proc (es ps r) #t) (ty-data (d args) (or (string=? d "%fx") (has-prefix? d "%spec "))) (else other #f))))
 
 (define naming-effs (subr kfx (st string string ty strings) strings)
   (lambda (s name wher t group)

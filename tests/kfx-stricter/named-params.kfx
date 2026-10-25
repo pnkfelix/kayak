@@ -1,0 +1,4 @@
+"A procedure type's parameters named, `(x T)`, as FX-26 has them for its
+ specifications (C162), which KFX has not yet."
+(define twice (subr pure ((x int)) int) (lambda (x) (+ x x)))
+(define main (subr (read (globals twice)) () int) (lambda () (twice 4)))

@@ -4434,3 +4434,38 @@ and never written; `acyclic` below `const`. kayak's checker had
 - **Noticed**: kfx crashes (`car: nil`, `item-value`) on a `define-rec`
   member that is no `(name type value)` (a `define-rec` written inside
   another), rather than refusing it.
+
+## C162. Specifications in procedure types (2026-10-25)
+
+Fixpt's `check-specs.fx`, `check-logic.fx` (and `specs.rs`, `logic.rs`):
+`(subr E ((x T) ...) R (requires P) (ensures r Q))`, propositions of a
+procedure's `int`s, `nat`s and `bool`s and of `pure` global procedures'
+values. FX-26's checker reads them, prints them, and holds a procedure to
+the specification its type expects; it proves no body (`fixpt verify`
+does), so `specs/wrong-ensures.fx` is accepted.
+- **A parameter named**, `(x T)`: a list of two whose first is no type
+  form's, keyword's, type's or base type's name, as `k-param-name`; KFX's
+  own type heads (`bytevectorof`, `addr`, ...) counted among the type
+  forms, so that `(bytevectorof r)` stays a type.
+- **A specified type** is its procedure's wrapped,
+  `(ty-data "%spec TEXT" (P))`, `TEXT` the specification written plainly
+  (parameters by number, the result `(res)`): the types' walkers see the
+  procedure, and two specified types are alike where their texts are.
+  The wrapper is unwrapped where a procedure is: a call, a lambda checked
+  against it, `proc-type?`, the emitter's types.
+- **Behavioural subtyping** where either is specified: the procedures
+  fitted, then `a` within `b` if `b`'s `requires` entails `a`'s, and
+  with `a`'s `ensures` entails `b`'s. **The prover**: the connectives
+  split into cases (at most 10 deep), relations linear inequalities over
+  the parameters, the result, and an unknown for each product of
+  unknowns and each logic function's value; refuted by C157's
+  Fourier–Motzkin. Sound, not complete, as Fixpt's.
+- **A lambda** whose type's `ensures` says what a test proves
+  (`(implies r P)`, `P` a relation of parameters and literals) refused,
+  as Fixpt's `k-claimed`: a branch on its call would trust what its body
+  is not checked to prove.
+- **KFX**: its restriction pass refuses a `subr` type with clauses or a
+  parameter named (`tests/kfx-stricter/specs.kfx`, `named-params.kfx`).
+- Refused 169 to 143, the same 119 to 139; the specs directory 34 to 8
+  refused (an operator's latent bool, `(bool (then ...))`, `->` types,
+  `assume`), 6 more differing only in abbreviations' names (§30.1).

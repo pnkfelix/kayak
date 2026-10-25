@@ -87,6 +87,37 @@
         (restricted-all (subr kfx (sexps string i64) unit)
           (lambda (es file line) (if (null? es) #u (begin (restricted (car es) file line) (restricted-all (cdr es) file line))))))
 
+      (define param-named? (subr kfx (sexp strings) bool)
+        (lambda (q types)
+          "Whether a procedure type's parameter is named, `(x T)`, as the
+           checker reads one (`param-name-written`)."
+          (tagcase q
+            (lst (ys f l p)
+              (and (i64= (size ys) 2)
+                   (tagcase (car ys)
+                     (sym (n f2 p2)
+                       (not (or (string-member? n logic-type-forms) (string-member? n logic-keywords)
+                                (string-member? n logic-base-names) (string-member? n types))))
+                     (else other #f))))
+            (else other #f))))
+
+      (define-rec
+        (specs-restricted (subr kfx (sexp strings) unit)
+          (lambda (e types)
+            "A procedure type's specification, or its parameters named
+             (C162), FX-26's, which KFX has not yet."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) #u)
+                      ((and (sym-is? (car xs) "subr") (i64> (size xs) 3)
+                            (or (spec-clause? (last xs))
+                                (tagcase (if (head-is? (second xs) "conv") (fourth xs) (third xs))
+                                  (lst (ps f2 l2 p2) (any? (lambda ((q sexp)) (param-named? q types)) ps))
+                                  (else other #f))))
+                       (restriction-refused f l "a procedure type's specification, or its parameters named, FX-26's, which KFX has not yet (C162)"))
+                      (else (begin (map (lambda ((x sexp)) (specs-restricted x types)) xs) #u))))
+              (else other #u)))))
+
       "Names (C61): KFX defines each name once, none a primitive's or
        kayak-rt's, since the generated modules each import every other's names
        and kayak-rt's; and its types' and modules' names are Rust's too, none
@@ -181,4 +212,6 @@
         "Each form, refused if it is not KFX: what the checker noted it has
          not (`kfx-restricted`, C154), the first noted first; names; then
          what each uses."
-        (begin (noted-restricted (reverse fs)) (names-restricted forms) (restricted-all forms "the program" 0))))))
+        (begin (noted-restricted (reverse fs)) (names-restricted forms) (restricted-all forms "the program" 0)
+               (let ((types (concat (type-scopes forms))))
+                 (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) #u)))))))

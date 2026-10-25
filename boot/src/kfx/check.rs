@@ -2299,6 +2299,1138 @@ pub fn parse_size(v: &'static Cv, tvars: Strings, z: &'static Sexp) -> &'static 
     }
 }
 
+// Specifications (C162; Fixpt's `check-specs.fx`, `check-logic.fx`): a
+// procedure type's `(subr E ((x T) ...) R (requires P) (ensures r Q))`,
+// propositions of its `int`s, `nat`s and `bool`s, and of `pure` global
+// procedures' values. FX-26's checker reads them, prints them, and holds a
+// procedure to the one its type expected (behavioural subtyping, by a
+// prover); it proves no body. A specified type is its procedure's, wrapped:
+// `(ty-data "%spec TEXT" (P))`, `TEXT` the specification written plainly,
+// `(spec (NAME ...) RESULT REQUIRES ENSURES)`, each name `%none` where a
+// parameter has none; an integer `(lit k)`, `(p i)` (parameter `i`),
+// `(res)`, `(add a b)`, `(sub a b)`, `(mul a b)`, `(call f a ...)`; a
+// proposition `(true)`, `(false)`, `(rel R a b)` (0 `<`, 1 `<=`, 2 `=`, 3
+// not `=`), `(holds a)`, `(not p)`, `(and p ...)`, `(or p ...)`,
+// `(implies p q)`.
+pub enum Sname {
+    Sname(Str, Str, &'static Ty),
+}
+
+pub fn sname(f0: Str, f1: Str, f2: &'static Ty) -> &'static Sname {
+    kayak_rt::heap_alloc(Sname::Sname(f0, f1, f2))
+}
+
+pub type Snames = List<&'static Sname>;
+
+pub fn logic_type_forms() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
+    })
+}
+
+pub fn logic_keywords() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("proj"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("begin"), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("cond"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("and"), kayak_rt::heap_cons(str_lit("or"), kayak_rt::heap_cons(str_lit("let*"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::heap_cons(str_lit("module-parameters"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("fields"), kayak_rt::heap_cons(str_lit("frozen"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("letrena"), kayak_rt::heap_cons(str_lit("letreap"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("extract"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("tagcase"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("load-module"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::heap_cons(str_lit("=>"), kayak_rt::heap_cons(str_lit("case"), kayak_rt::heap_cons(str_lit("define-convention"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+    })
+}
+
+pub fn logic_base_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("i16"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("datum"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::nil())))))))))))))))))))))
+    })
+}
+
+/// A procedure type's parameter's name, `(x T)`, or none (""): a list of
+/// two whose first is no type form's, keyword's, type's or base type's
+/// name, as FX-26's `k-param-name` has it.
+pub fn param_name_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> Str {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, pos) => {
+            if (i64_eq(size(xs), 2i64) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let n = sym_name(car(xs));
+                if (string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, tvars) || dt_named_p(n, cv_dts(v)) || not(null_p(find_alias(n, cv_aliases(v))))) {
+                    str_lit("")
+                } else {
+                    n
+                }
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn param_type_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> &'static Sexp {
+    if string_eq_p(param_name_written(v, tvars, p), str_lit("")) {
+        p
+    } else {
+        second(items(p))
+    }
+}
+
+pub fn logic_head(x: &'static Sexp) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (not(null_p(xs)) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                sym_name(car(xs))
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn spec_clause_p(x: &'static Sexp) -> bool {
+    (string_eq_p(logic_head(x), str_lit("requires")) || string_eq_p(logic_head(x), str_lit("ensures")))
+}
+
+pub fn clauses_count(mut xs: Sexps, mut n: i64) -> i64 {
+    loop {
+        if (not(null_p(xs)) && spec_clause_p(car(xs))) {
+            (xs, n) = (cdr(xs), i64_plus(n, 1i64));
+            continue;
+        } else {
+            return n;
+        }
+    }
+}
+
+pub fn clauses_ending(xs: Sexps) -> i64 {
+    clauses_count(reverse(xs), 0i64)
+}
+
+pub fn spec_firsts(xs: Sexps, n: i64) -> Sexps {
+    if i64_eq(n, 0i64) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(car(xs), spec_firsts(cdr(xs), i64_minus(n, 1i64)))
+    }
+}
+
+pub fn spec_drop(mut xs: Sexps, mut n: i64) -> Sexps {
+    loop {
+        if i64_eq(n, 0i64) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn logic_nth(mut xs: Sexps, mut i: i64) -> &'static Sexp {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn logic_literal_symbol_p(x: &'static Sexp) -> bool {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            string_member_p(n, kayak_rt::heap_cons(str_lit("#t"), kayak_rt::heap_cons(str_lit("#f"), kayak_rt::heap_cons(str_lit("#u"), kayak_rt::nil()))))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn logic_int_ty_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyInt() => {
+            true
+        }
+        Ty::TyNat() => {
+            true
+        }
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%natof"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn logic_bool_ty_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyBool() => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn sname_find(ns: Snames, n: Str) -> Snames {
+    filter(lambda1s(move |x: &'static Sname| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Sname::Sname(m, atom, t) => {
+                string_eq_p(m, n)
+            }
+        }
+    }), ns)
+}
+
+/// The procedure of a specified type, or of a convention's (C116): its
+/// `ty-proc`, or `t` itself.
+pub fn procedure_within(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if ((has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%native"))) && not(null_p(args))) {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Ty::TyData(d2, args2) => {
+                        if ((string_eq_p(d2, str_lit("%fx")) || string_eq_p(d2, str_lit("%native"))) && not(null_p(args2))) {
+                            car(args2)
+                        } else {
+                            car(args)
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        car(args)
+                    }
+                }
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+/// Of `(f a ...)`, `f`'s type where its innermost binding is a global's
+/// (FX-26's `k-spec-callee?`), or none.
+pub fn logic_callee(v: &'static Cv, xs: Sexps) -> Tys {
+    if (null_p(xs) || logic_literal_symbol_p(car(xs)) || not({
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })) {
+        nil::<&'static Ty>()
+    } else {
+        let b = find_bind(sym_name(car(xs)), cv_binds(v));
+        if null_p(b) {
+            nil::<&'static Ty>()
+        } else {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(n, sc, wher) => {
+                    if string_eq_p(wher, str_lit("global")) {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(vs, t) => {
+                                the::<Tys>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+                            }
+                        }
+                    } else {
+                        nil::<&'static Ty>()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// An integer of a specification: a literal, a name of an `int` or a
+/// `nat`, `(+ a ...)`, `(- a)`, `(- a b ...)`, `(* a ...)`, a logic
+/// function's value.
+pub fn logic_term(v: &'static Cv, names: Snames, x: &'static Sexp) -> Str {
+    let usage = str_lit("an integer: a literal, an `int` or `nat` named, `(+ a …)`, `(- a b …)` or `(* a …)`");
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            string_append(str_lit("(lit "), string_append(i64_to_string(k), str_lit(")")))
+        }
+        Sexp::Sym(n, f, p) => {
+            if logic_literal_symbol_p(x) {
+                match refuse(v, usage) {}
+            } else {
+                let found = sname_find(names, n);
+                if null_p(found) {
+                    match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` names no parameter or result here")))) {}
+                } else if {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Sname::Sname(m, atom, t) => {
+                            logic_int_ty_p(t)
+                        }
+                    }
+                } {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Sname::Sname(m, atom, t) => {
+                            atom
+                        }
+                    }
+                } else {
+                    match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is not an `int`")))) {}
+                }
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            let hd = logic_head(x);
+            if (not(string_member_p(hd, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil()))))) && not(null_p(logic_callee(v, xs)))) {
+                logic_call(v, names, xs, false)
+            } else {
+                let args = map(lambda1s(move |a: &'static Sexp| {
+                    logic_term(v, names, a)
+                }), if null_p(xs) {
+                    nil::<&'static Sexp>()
+                } else {
+                    cdr(xs)
+                });
+                if (string_eq_p(hd, str_lit("+")) && not(null_p(args))) {
+                    logic_folded(str_lit("add"), car(args), cdr(args))
+                } else if (string_eq_p(hd, str_lit("*")) && not(null_p(args))) {
+                    logic_folded(str_lit("mul"), car(args), cdr(args))
+                } else if (string_eq_p(hd, str_lit("-")) && i64_eq(size(args), 1i64)) {
+                    string_append(str_lit("(sub (lit 0) "), string_append(car(args), str_lit(")")))
+                } else if (string_eq_p(hd, str_lit("-")) && i64_gt(size(args), 1i64)) {
+                    logic_folded(str_lit("sub"), car(args), cdr(args))
+                } else {
+                    match refuse(v, usage) {}
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, usage) {}
+        }
+    }
+}
+
+pub fn logic_folded(mut op: Str, mut a: Str, mut xs: Strings) -> Str {
+    loop {
+        if null_p(xs) {
+            return a;
+        } else {
+            (a, xs) = (string_append(str_lit("("), string_append(op, string_append(str_lit(" "), string_append(a, string_append(str_lit(" "), string_append(car(xs), str_lit(")"))))))), cdr(xs));
+            continue;
+        }
+    }
+}
+
+/// `(f a ...)`, a logic function's value at its arguments: `f` a global
+/// procedure, `pure`, of a `bool` result (`want-bool`) or an `int`'s or
+/// `nat`'s; each argument an integer where `f` takes one, else a
+/// parameter or the result, named.
+pub fn logic_call(v: &'static Cv, names: Snames, xs: Sexps, want_bool: bool) -> Str {
+    let fname = sym_name(car(xs));
+    let t = procedure_within(car(logic_callee(v, xs)));
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            if not(null_p(es)) {
+                match refuse(v, string_append(str_lit("`"), string_append(fname, str_lit("` is called in a specification, so must be `pure`")))) {}
+            } else if (want_bool && not(logic_bool_ty_p(r))) {
+                match refuse(v, string_append(str_lit("`"), string_append(fname, str_lit("` gives no `bool`, so is no proposition")))) {}
+            } else if (not(want_bool) && not(logic_int_ty_p(r))) {
+                match refuse(v, string_append(str_lit("`"), string_append(fname, str_lit("` gives no `int` or `nat`, so is no integer")))) {}
+            } else if not(i64_eq(size(ps), size(cdr(xs)))) {
+                match refuse(v, string_append(str_lit("`"), string_append(fname, string_append(str_lit("` takes "), string_append(i64_to_string(size(ps)), string_append(str_lit(" arguments, not "), i64_to_string(size(cdr(xs))))))))) {}
+            } else {
+                string_append(str_lit("(call "), string_append(fname, string_append(logic_args(v, names, cdr(xs), ps, fname), str_lit(")"))))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, string_append(str_lit("`"), string_append(fname, str_lit("` is called in a specification, and is no procedure")))) {}
+        }
+    }
+}
+
+pub fn logic_args(v: &'static Cv, names: Snames, xs: Sexps, ps: Tys, fname: Str) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" "), string_append(if logic_int_ty_p(car(ps)) {
+            logic_term(v, names, car(xs))
+        } else {
+            let found = {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        if logic_literal_symbol_p(car(xs)) {
+                            nil::<&'static Sname>()
+                        } else {
+                            sname_find(names, n)
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sname>()
+                    }
+                }
+            };
+            if null_p(found) {
+                match refuse(v, string_append(str_lit("an argument of `"), string_append(fname, str_lit("` in a specification: a parameter or the result, named")))) {}
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Sname::Sname(m, atom, t) => {
+                        atom
+                    }
+                }
+            }
+        }, logic_args(v, names, cdr(xs), cdr(ps), fname)))
+    }
+}
+
+/// A proposition: `(< a b)`, `(<= a b)`, `(= a b)`, `(> a b)`, `(>= a b)`
+/// of integers; `(not p)`, `(and p ...)`, `(or p ...)`, `(implies p q)`;
+/// `#t`, `#f`; a `bool` named; a logic function's `bool`.
+pub fn logic_prop(v: &'static Cv, names: Snames, x: &'static Sexp) -> Str {
+    let usage = str_lit("a proposition: `(< a b)`, `(<= a b)`, `(= a b)`, `(> a b)`, `(>= a b)`, `(not p)`, `(and p …)`, `(or p …)`, `(implies p q)`, `#t`, `#f`, or a `bool` named");
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_eq_p(n, str_lit("#t")) {
+                str_lit("(true)")
+            } else if string_eq_p(n, str_lit("#f")) {
+                str_lit("(false)")
+            } else if logic_literal_symbol_p(x) {
+                match refuse(v, usage) {}
+            } else {
+                let found = sname_find(names, n);
+                if null_p(found) {
+                    match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` names no parameter or result here")))) {}
+                } else if {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Sname::Sname(m, atom, t) => {
+                            logic_bool_ty_p(t)
+                        }
+                    }
+                } {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Sname::Sname(m, atom, t) => {
+                            string_append(str_lit("(holds "), string_append(atom, str_lit(")")))
+                        }
+                    }
+                } else {
+                    match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is not a `bool`, so not a proposition")))) {}
+                }
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            let hd = logic_head(x);
+            let args = if null_p(xs) {
+                nil::<&'static Sexp>()
+            } else {
+                cdr(xs)
+            };
+            let n = size(args);
+            if string_eq_p(hd, str_lit("<")) {
+                logic_rel(v, names, hd, args, str_lit("0"), false)
+            } else if string_eq_p(hd, str_lit("<=")) {
+                logic_rel(v, names, hd, args, str_lit("1"), false)
+            } else if string_eq_p(hd, str_lit("=")) {
+                logic_rel(v, names, hd, args, str_lit("2"), false)
+            } else if string_eq_p(hd, str_lit(">")) {
+                logic_rel(v, names, hd, args, str_lit("0"), true)
+            } else if string_eq_p(hd, str_lit(">=")) {
+                logic_rel(v, names, hd, args, str_lit("1"), true)
+            } else if string_eq_p(hd, str_lit("not")) {
+                if i64_eq(n, 1i64) {
+                    string_append(str_lit("(not "), string_append(logic_prop(v, names, car(args)), str_lit(")")))
+                } else {
+                    match refuse(v, str_lit("`(not p)`")) {}
+                }
+            } else if string_eq_p(hd, str_lit("and")) {
+                string_append(str_lit("(and"), string_append(logic_props(v, names, args), str_lit(")")))
+            } else if string_eq_p(hd, str_lit("or")) {
+                string_append(str_lit("(or"), string_append(logic_props(v, names, args), str_lit(")")))
+            } else if string_eq_p(hd, str_lit("implies")) {
+                if i64_eq(n, 2i64) {
+                    string_append(str_lit("(implies "), string_append(logic_prop(v, names, car(args)), string_append(str_lit(" "), string_append(logic_prop(v, names, second(args)), str_lit(")")))))
+                } else {
+                    match refuse(v, str_lit("`(implies p q)`")) {}
+                }
+            } else if not(null_p(logic_callee(v, xs))) {
+                string_append(str_lit("(holds "), string_append(logic_call(v, names, xs, true), str_lit(")")))
+            } else {
+                match refuse(v, usage) {}
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, usage) {}
+        }
+    }
+}
+
+pub fn logic_props(v: &'static Cv, names: Snames, xs: Sexps) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" "), string_append(logic_prop(v, names, car(xs)), logic_props(v, names, cdr(xs))))
+    }
+}
+
+pub fn logic_rel(v: &'static Cv, names: Snames, hd: Str, args: Sexps, r: Str, swap: bool) -> Str {
+    if not(i64_eq(size(args), 2i64)) {
+        match refuse(v, string_append(str_lit("`("), string_append(hd, str_lit(" a b)`")))) {}
+    } else {
+        let (x, y) = (logic_term(v, names, car(args)), logic_term(v, names, second(args)));
+        string_append(str_lit("(rel "), string_append(r, string_append(str_lit(" "), string_append(if swap {
+            y
+        } else {
+            x
+        }, string_append(str_lit(" "), string_append(if swap {
+            x
+        } else {
+            y
+        }, str_lit(")")))))))
+    }
+}
+
+/// The parameters named, from `i`, with their types.
+pub fn logic_snames(mut ns: Strings, mut ts: Tys, mut i: i64) -> Snames {
+    loop {
+        if (null_p(ns) || null_p(ts)) {
+            return nil::<&'static Sname>();
+        } else if string_eq_p(car(ns), str_lit("")) {
+            (ns, ts, i) = (cdr(ns), cdr(ts), i64_plus(i, 1i64));
+            continue;
+        } else {
+            return kayak_rt::heap_cons(sname(car(ns), string_append(str_lit("(p "), string_append(i64_to_string(i), str_lit(")"))), car(ts)), logic_snames(cdr(ns), cdr(ts), i64_plus(i, 1i64)));
+        }
+    }
+}
+
+/// The clauses `cs` read, onto those read so far: `requires`, then
+/// `ensures`, each at most once; the specification's text, given the
+/// parameters' names.
+pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static Ty, mut cs: Sexps, mut req: Strings, mut ens: Strings, mut rn: Str) -> Str {
+    loop {
+        if null_p(cs) {
+            return string_append(if null_p(req) {
+                str_lit("(true)")
+            } else {
+                car(req)
+            }, string_append(str_lit(" "), if null_p(ens) {
+                str_lit("(true)")
+            } else {
+                car(ens)
+            }));
+        } else {
+            let c = car(cs);
+            let xs = items(c);
+            let hd = logic_head(c);
+            let usage = str_lit("a specification is `(requires proposition)`, then `(ensures name proposition)`, each at most once");
+            if (string_eq_p(hd, str_lit("requires")) && i64_eq(size(xs), 2i64) && null_p(req) && null_p(ens)) {
+                (cs, req) = (cdr(cs), the::<Strings>(kayak_rt::heap_cons(logic_prop(v, names, second(xs)), kayak_rt::nil())));
+                continue;
+            } else if (string_eq_p(hd, str_lit("ensures")) && i64_eq(size(xs), 3i64) && null_p(ens)) {
+                let r = second(xs);
+                if ({
+                    let tagcase_ = r;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && not(logic_literal_symbol_p(r))) {
+                    let q = logic_prop(v, onto(names, kayak_rt::heap_cons(sname(sym_name(r), str_lit("(res)"), result), kayak_rt::nil())), third(xs));
+                    if string_eq_p(rn, str_lit("")) {
+                        return string_append(sym_name(r), string_append(str_lit(" "), logic_clauses(v, names, result, cdr(cs), req, the::<Strings>(kayak_rt::heap_cons(q, kayak_rt::nil())), sym_name(r))));
+                    } else {
+                        (cs, ens, rn) = (cdr(cs), the::<Strings>(kayak_rt::heap_cons(q, kayak_rt::nil())), sym_name(r));
+                        continue;
+                    }
+                } else {
+                    return match refuse(v, str_lit("the result's name: `(ensures name proposition)`")) {};
+                }
+            } else {
+                return match refuse(v, usage) {};
+            }
+        }
+    }
+}
+
+/// `plain`, a procedure type just read, with the specification its clauses
+/// say of its parameters, named `pnames` ("" for one not named).
+pub fn specified_type(v: &'static Cv, pnames: Strings, plain: &'static Ty, clauses: Sexps) -> &'static Ty {
+    let tagcase_ = procedure_within(plain);
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            let body = logic_clauses(v, logic_snames(pnames, ps, 0i64), r, clauses, nil::<Str>(), nil::<Str>(), str_lit(""));
+            let named = not((has_prefix_p(body, str_lit("(")) || string_eq_p(body, str_lit(""))));
+            let rn = if named {
+                car(text_words(body))
+            } else {
+                str_lit("%none")
+            };
+            let rest = if named {
+                after_prefix(body, string_append(rn, str_lit(" ")))
+            } else {
+                body
+            };
+            ty_data(string_append(str_lit("%spec (spec ("), string_append(words_of(map(lambda1s(move |n: Str| {
+                if string_eq_p(n, str_lit("")) {
+                    str_lit("%none")
+                } else {
+                    n
+                }
+            }), pnames)), string_append(str_lit(") "), string_append(rn, string_append(str_lit(" "), string_append(rest, str_lit(")"))))))), kayak_rt::heap_cons(plain, kayak_rt::nil()))
+        }
+        _ => {
+            let other = tagcase_;
+            plain
+        }
+    }
+}
+
+// The prover (Fixpt's `logic::entails`): whether propositions entail
+// another, by refuting them and its negation: the connectives split into
+// cases, each case's relations linear inequalities (a product of two
+// unknowns, and a logic function's value, an unknown of its own) shown to
+// have no solution by Fourier–Motzkin, a `bool` named a flag. Sound, not
+// complete: past a depth of cases, it shows nothing.
+pub fn spec_parts(d: Str) -> Sexps {
+    items(car(read_all(string_chars(after_prefix(d, str_lit("%spec "))), str_lit("%spec"), 0i64)))
+}
+
+pub fn logic_lin(x: &'static Sexp) -> &'static Lin {
+    let (xs, hd) = (items(x), logic_head(x));
+    if string_eq_p(hd, str_lit("lit")) {
+        lin({
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Num(k, f, p) => {
+                    k
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<i64>(0i64)
+                }
+            }
+        }, nil::<&'static Lterm>())
+    } else if string_eq_p(hd, str_lit("p")) {
+        lin(0i64, kayak_rt::heap_cons(lterm(show_sexp(x), 1i64), kayak_rt::nil()))
+    } else if string_eq_p(hd, str_lit("res")) {
+        lin(0i64, kayak_rt::heap_cons(lterm(str_lit("(res)"), 1i64), kayak_rt::nil()))
+    } else if string_eq_p(hd, str_lit("add")) {
+        lin_add(logic_lin(second(xs)), logic_lin(third(xs)), 1i64)
+    } else if string_eq_p(hd, str_lit("sub")) {
+        lin_add(logic_lin(second(xs)), logic_lin(third(xs)), -1i64)
+    } else if string_eq_p(hd, str_lit("mul")) {
+        let (a, b) = (logic_lin(second(xs)), logic_lin(third(xs)));
+        if null_p(lin_names(a)) {
+            lin_scaled(b, {
+                let tagcase_ = a;
+                match *tagcase_ {
+                    Lin::Lin(c, ts) => {
+                        c
+                    }
+                }
+            })
+        } else if null_p(lin_names(b)) {
+            lin_scaled(a, {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Lin::Lin(c, ts) => {
+                        c
+                    }
+                }
+            })
+        } else {
+            lin(0i64, kayak_rt::heap_cons(lterm(show_sexp(x), 1i64), kayak_rt::nil()))
+        }
+    } else {
+        lin(0i64, kayak_rt::heap_cons(lterm(show_sexp(x), 1i64), kayak_rt::nil()))
+    }
+}
+
+pub enum Ptodo {
+    Ptodo(&'static Sexp, bool),
+}
+
+pub fn ptodo(f0: &'static Sexp, f1: bool) -> &'static Ptodo {
+    kayak_rt::heap_alloc(Ptodo::Ptodo(f0, f1))
+}
+
+pub type Ptodos = List<&'static Ptodo>;
+
+/// Whether `ges` (each `>= 0`) and `nes` (each `/= 0`) have no solution.
+pub fn logic_infeasible_p(ges: Lins, nes: Lins) -> bool {
+    if null_p(nes) {
+        no_solution_p(ges, 64i64)
+    } else {
+        (logic_infeasible_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes)) && logic_infeasible_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes)))
+    }
+}
+
+pub fn logic_splits_p(t: &'static Ptodo) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ptodo::Ptodo(x, yes) => {
+            let hd = logic_head(x);
+            if yes {
+                (string_eq_p(hd, str_lit("or")) || string_eq_p(hd, str_lit("implies")))
+            } else {
+                string_eq_p(hd, str_lit("and"))
+            }
+        }
+    }
+}
+
+pub fn logic_trivial_p(x: &'static Sexp) -> bool {
+    (string_eq_p(logic_head(x), str_lit("true")) || (string_eq_p(logic_head(x), str_lit("and")) && string_eq_p(show_sexp(x), str_lit("(and)"))))
+}
+
+/// Whether the case, `ges`, `nes`, the flags (`+` or `-` and a `bool`'s
+/// atom) and what is still to be taken, `todo` (each proposition held
+/// or not), has no solution: those that split taken last.
+pub fn logic_refuted_p(ges: Lins, nes: Lins, flags: Strings, todo: Ptodos, depth: i64) -> bool {
+    let (plain, split) = (filter(lambda1s(move |t: &'static Ptodo| {
+        not(logic_splits_p(t))
+    }), todo), filter(&logic_splits_p, todo));
+    if not(null_p(plain)) {
+        logic_step(ges, nes, flags, car(plain), onto(cdr(plain), split), depth)
+    } else if null_p(split) {
+        logic_infeasible_p(ges, nes)
+    } else if logic_infeasible_p(ges, nes) {
+        true
+    } else if i64_lt_eq(depth, 0i64) {
+        false
+    } else {
+        let tagcase_ = car(split);
+        match *tagcase_ {
+            Ptodo::Ptodo(x, yes) => {
+                let xs = cdr(items(x));
+                not(any_p(lambda1s(move |w: &'static Ptodo| {
+                    not(logic_refuted_p(ges, nes, flags, kayak_rt::heap_cons(w, cdr(split)), i64_minus(depth, 1i64)))
+                }), if string_eq_p(logic_head(x), str_lit("implies")) {
+                    kayak_rt::heap_cons(ptodo(car(xs), false), kayak_rt::heap_cons(ptodo(second(xs), true), kayak_rt::nil()))
+                } else {
+                    map(lambda1s(move |y: &'static Sexp| {
+                        ptodo(y, yes)
+                    }), xs)
+                }))
+            }
+        }
+    }
+}
+
+pub fn logic_step(ges: Lins, nes: Lins, flags: Strings, t: &'static Ptodo, rest: Ptodos, depth: i64) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ptodo::Ptodo(x, yes) => {
+            let (hd, xs) = (logic_head(x), cdr(items(x)));
+            if string_eq_p(hd, str_lit("true")) {
+                if yes {
+                    logic_refuted_p(ges, nes, flags, rest, depth)
+                } else {
+                    true
+                }
+            } else if string_eq_p(hd, str_lit("false")) {
+                if yes {
+                    true
+                } else {
+                    logic_refuted_p(ges, nes, flags, rest, depth)
+                }
+            } else if string_eq_p(hd, str_lit("not")) {
+                logic_refuted_p(ges, nes, flags, kayak_rt::heap_cons(ptodo(car(xs), not(yes)), rest), depth)
+            } else if string_eq_p(hd, str_lit("and")) {
+                logic_refuted_p(ges, nes, flags, onto(map(lambda1s(move |y: &'static Sexp| {
+                    ptodo(y, true)
+                }), xs), rest), depth)
+            } else if string_eq_p(hd, str_lit("or")) {
+                logic_refuted_p(ges, nes, flags, onto(map(lambda1s(move |y: &'static Sexp| {
+                    ptodo(y, false)
+                }), xs), rest), depth)
+            } else if string_eq_p(hd, str_lit("implies")) {
+                logic_refuted_p(ges, nes, flags, kayak_rt::heap_cons(ptodo(car(xs), true), kayak_rt::heap_cons(ptodo(second(xs), false), rest)), depth)
+            } else if string_eq_p(hd, str_lit("holds")) {
+                let (mine, other) = (string_append(if yes {
+                    str_lit("+")
+                } else {
+                    str_lit("-")
+                }, show_sexp(car(xs))), string_append(if yes {
+                    str_lit("-")
+                } else {
+                    str_lit("+")
+                }, show_sexp(car(xs))));
+                if string_member_p(other, flags) {
+                    true
+                } else {
+                    logic_refuted_p(ges, nes, kayak_rt::heap_cons(mine, flags), rest, depth)
+                }
+            } else if string_eq_p(hd, str_lit("rel")) {
+                let r = {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Num(k, f, p) => {
+                            k
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            the::<i64>(0i64)
+                        }
+                    }
+                };
+                let a = logic_lin(second(xs));
+                let b = logic_lin(third(xs));
+                let b_a = lin_add(b, a, -1i64);
+                let a_b = lin_add(a, b, -1i64);
+                let lt = if yes {
+                    i64_eq(r, 0i64)
+                } else {
+                    i64_eq(r, 1i64)
+                };
+                let le = if yes {
+                    i64_eq(r, 1i64)
+                } else {
+                    i64_eq(r, 0i64)
+                };
+                let eq = if yes {
+                    i64_eq(r, 2i64)
+                } else {
+                    i64_eq(r, 3i64)
+                };
+                let ne = if yes {
+                    i64_eq(r, 3i64)
+                } else {
+                    i64_eq(r, 2i64)
+                };
+                if (yes && lt) {
+                    logic_refuted_p(kayak_rt::heap_cons(lin_add(b_a, lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), nes, flags, rest, depth)
+                } else if (yes && le) {
+                    logic_refuted_p(kayak_rt::heap_cons(b_a, ges), nes, flags, rest, depth)
+                } else if lt {
+                    logic_refuted_p(kayak_rt::heap_cons(lin_add(a_b, lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), nes, flags, rest, depth)
+                } else if le {
+                    logic_refuted_p(kayak_rt::heap_cons(a_b, ges), nes, flags, rest, depth)
+                } else if eq {
+                    logic_refuted_p(kayak_rt::heap_cons(a_b, kayak_rt::heap_cons(b_a, ges)), nes, flags, rest, depth)
+                } else if ne {
+                    logic_refuted_p(ges, kayak_rt::heap_cons(a_b, nes), flags, rest, depth)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+    }
+}
+
+pub fn logic_entails_p(hyps: Sexps, goal: &'static Sexp) -> bool {
+    (logic_trivial_p(goal) || string_member_p(show_sexp(goal), map(&show_sexp, hyps)) || logic_refuted_p(nil::<&'static Lin>(), nil::<&'static Lin>(), nil::<Str>(), kayak_rt::heap_cons(ptodo(goal, false), map(lambda1s(move |h: &'static Sexp| {
+        ptodo(h, true)
+    }), hyps)), 10i64))
+}
+
+/// Whether a procedure specified `a` ("" for none) is one specified `b`
+/// is: it requires no more, and, given `b`'s `requires`, ensures no less.
+pub fn spec_within_p(a: Str, b: Str) -> bool {
+    (string_eq_p(a, b) || {
+        let pa = if string_eq_p(a, str_lit("")) {
+            nil::<&'static Sexp>()
+        } else {
+            spec_parts(a)
+        };
+        let pb = if string_eq_p(b, str_lit("")) {
+            nil::<&'static Sexp>()
+        } else {
+            spec_parts(b)
+        };
+        let truth = lst(kayak_rt::heap_cons(sym(str_lit("true"), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64);
+        let ra = if null_p(pa) {
+            truth
+        } else {
+            fourth(pa)
+        };
+        let ea = if null_p(pa) {
+            truth
+        } else {
+            car(cdr(cdr(cdr(cdr(pa)))))
+        };
+        let rb = if null_p(pb) {
+            truth
+        } else {
+            fourth(pb)
+        };
+        let eb = if null_p(pb) {
+            truth
+        } else {
+            car(cdr(cdr(cdr(cdr(pb)))))
+        };
+        (logic_entails_p(kayak_rt::heap_cons(rb, kayak_rt::nil()), ra) && logic_entails_p(kayak_rt::heap_cons(rb, kayak_rt::heap_cons(ea, kayak_rt::nil())), eb))
+    })
+}
+
+pub fn unspecified(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if has_prefix_p(d, str_lit("%spec ")) {
+                car(args)
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+pub fn spec_of(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if has_prefix_p(d, str_lit("%spec ")) {
+                d
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+/// Whether an `ensures` says what a test proves where its result is true
+/// (`yes`) or false: a conjunct `(implies r p)` (`(implies (not r) p)`),
+/// `p` a relation of parameters and literals (Fixpt's `k-ensures-latent`).
+pub fn claims_of_p(ens: &'static Sexp, yes: bool) -> bool {
+    let (hd, xs) = (logic_head(ens), cdr(items(ens)));
+    if string_eq_p(hd, str_lit("and")) {
+        any_p(lambda1s(move |x: &'static Sexp| {
+            claims_of_p(x, yes)
+        }), xs)
+    } else if string_eq_p(hd, str_lit("implies")) {
+        (string_eq_p(show_sexp(car(xs)), if yes {
+            str_lit("(holds (res))")
+        } else {
+            str_lit("(not (holds (res)))")
+        }) && conjunct_claim_p(second(xs)))
+    } else {
+        false
+    }
+}
+
+pub fn conjunct_claim_p(q: &'static Sexp) -> bool {
+    let (hd, xs) = (logic_head(q), cdr(items(q)));
+    if string_eq_p(hd, str_lit("and")) {
+        any_p(&conjunct_claim_p, xs)
+    } else if string_eq_p(hd, str_lit("rel")) {
+        (logic_plain_term_p(second(xs)) && logic_plain_term_p(third(xs)))
+    } else if string_eq_p(hd, str_lit("not")) {
+        (string_eq_p(logic_head(car(xs)), str_lit("rel")) && string_eq_p(show_sexp(second(items(car(xs)))), str_lit("2")) && logic_plain_term_p(third(items(car(xs)))) && logic_plain_term_p(fourth(items(car(xs)))))
+    } else {
+        false
+    }
+}
+
+pub fn logic_plain_term_p(x: &'static Sexp) -> bool {
+    (string_eq_p(logic_head(x), str_lit("p")) || string_eq_p(logic_head(x), str_lit("lit")))
+}
+
+/// Whether a specification says what a test proves, which a `lambda`, its
+/// body not checked to prove it, may not (Fixpt's `k-claimed`).
+pub fn spec_claims_p(d: Str) -> bool {
+    let ens = car(cdr(cdr(cdr(cdr(spec_parts(d))))));
+    (claims_of_p(ens, true) || claims_of_p(ens, false))
+}
+
+// Shown, as Fixpt's `k-show-spec`: a parameter by its name, else `$i`; the
+// result by its, else `result`.
+pub fn logic_shown(mut names: Sexps, mut rn: Str, mut x: &'static Sexp) -> Str {
+    loop {
+        let (hd, xs) = (logic_head(x), cdr(items(x)));
+        if string_eq_p(hd, str_lit("lit")) {
+            return show_sexp(car(xs));
+        } else if string_eq_p(hd, str_lit("p")) {
+            let i = {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f, p) => {
+                        k
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        the::<i64>(0i64)
+                    }
+                }
+            };
+            let n = if i64_lt(i, size(names)) {
+                show_sexp(logic_nth(names, i))
+            } else {
+                str_lit("%none")
+            };
+            if string_eq_p(n, str_lit("%none")) {
+                return string_append(str_lit("$"), i64_to_string(i));
+            } else {
+                return n;
+            }
+        } else if string_eq_p(hd, str_lit("res")) {
+            if string_eq_p(rn, str_lit("%none")) {
+                return str_lit("result");
+            } else {
+                return rn;
+            }
+        } else if string_eq_p(hd, str_lit("add")) {
+            return logic_op_shown(names, rn, str_lit("+ "), xs);
+        } else if string_eq_p(hd, str_lit("sub")) {
+            return logic_op_shown(names, rn, str_lit("- "), xs);
+        } else if string_eq_p(hd, str_lit("mul")) {
+            return logic_op_shown(names, rn, str_lit("* "), xs);
+        } else if string_eq_p(hd, str_lit("call")) {
+            return string_append(str_lit("("), string_append(show_sexp(car(xs)), string_append(logic_each_shown(names, rn, cdr(xs)), str_lit(")"))));
+        } else if string_eq_p(hd, str_lit("true")) {
+            return str_lit("#t");
+        } else if string_eq_p(hd, str_lit("false")) {
+            return str_lit("#f");
+        } else if string_eq_p(hd, str_lit("rel")) {
+            let r = {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f, p) => {
+                        k
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        the::<i64>(0i64)
+                    }
+                }
+            };
+            let ab = string_append(logic_shown(names, rn, second(xs)), string_append(str_lit(" "), logic_shown(names, rn, third(xs))));
+            if i64_eq(r, 3i64) {
+                return string_append(str_lit("(not (= "), string_append(ab, str_lit("))")));
+            } else {
+                return string_append(str_lit("("), string_append(if i64_eq(r, 0i64) {
+                    str_lit("<")
+                } else if i64_eq(r, 1i64) {
+                    str_lit("<=")
+                } else {
+                    str_lit("=")
+                }, string_append(str_lit(" "), string_append(ab, str_lit(")")))));
+            }
+        } else if string_eq_p(hd, str_lit("holds")) {
+            x = car(xs);
+            continue;
+        } else if string_eq_p(hd, str_lit("not")) {
+            return string_append(str_lit("(not "), string_append(logic_shown(names, rn, car(xs)), str_lit(")")));
+        } else if (string_eq_p(hd, str_lit("and")) || string_eq_p(hd, str_lit("or"))) {
+            return string_append(str_lit("("), string_append(hd, string_append(logic_each_shown(names, rn, xs), str_lit(")"))));
+        } else if string_eq_p(hd, str_lit("implies")) {
+            return string_append(str_lit("(implies "), string_append(logic_shown(names, rn, car(xs)), string_append(str_lit(" "), string_append(logic_shown(names, rn, second(xs)), str_lit(")")))));
+        } else {
+            return show_sexp(x);
+        }
+    }
+}
+
+pub fn logic_op_shown(names: Sexps, rn: Str, op: Str, xs: Sexps) -> Str {
+    string_append(str_lit("("), string_append(op, string_append(logic_shown(names, rn, car(xs)), string_append(str_lit(" "), string_append(logic_shown(names, rn, second(xs)), str_lit(")"))))))
+}
+
+pub fn logic_each_shown(names: Sexps, rn: Str, xs: Sexps) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" "), string_append(logic_shown(names, rn, car(xs)), logic_each_shown(names, rn, cdr(xs))))
+    }
+}
+
+/// A specification's clauses, each after a space, those not `#t`.
+pub fn spec_clauses_shown(d: Str) -> Str {
+    let ps = spec_parts(d);
+    let names = items(second(ps));
+    let rn = show_sexp(third(ps));
+    let req = fourth(ps);
+    let ens = car(cdr(cdr(cdr(cdr(ps)))));
+    string_append(if logic_trivial_p(req) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" (requires "), string_append(logic_shown(names, rn, req), str_lit(")")))
+    }, if logic_trivial_p(ens) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" (ensures "), string_append(if string_eq_p(rn, str_lit("%none")) {
+            str_lit("result")
+        } else {
+            rn
+        }, string_append(str_lit(" "), string_append(logic_shown(names, rn, ens), str_lit(")")))))
+    })
+}
+
+pub fn spec_param_names(d: Str) -> Strings {
+    map(&show_sexp, items(second(spec_parts(d))))
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -2729,6 +3861,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         t = sym(name, str_lit(""), 0i64);
                         continue;
                     }
+                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_gt(size(xs), 4i64) && spec_clause_p(last(xs))) {
+                    // A procedure type with a specification after its result (C162): the
+                    // type without it, read as written, then the clauses against its
+                    // parameters' names.
+                    let k = i64_minus(size(xs), clauses_ending(xs));
+                    let plain = spec_firsts(xs, k);
+                    let params = items(logic_nth(plain, i64_minus(k, 2i64)));
+                    return specified_type(v, map(lambda1s(move |p: &'static Sexp| {
+                        param_name_written(v, tvars, p)
+                    }), params), parse_type(v, tvars, lst(plain, datum_file(t), 0i64, datum_pos(t))), spec_drop(xs, k));
                 } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(second(xs), str_lit("conv"))) {
                     // A procedure of a convention (C116), `(subr (conv C) E (T ...) R)`:
                     // the native one, which made code keeps (Fixpt's TODO §97), only as
@@ -2758,12 +3900,12 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         str_lit("native")
                     };
                     if (string_eq_p(conv, str_lit("native")) || string_eq_p(conv, str_lit("fx"))) {
-                        return ty_data(string_append(str_lit("%"), conv), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_types(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
+                        return ty_data(string_append(str_lit("%"), conv), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_params(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
                     } else {
                         return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
                     }
                 } else if sym_is_p(car(xs), str_lit("subr")) {
-                    return ty_proc(parse_effect(v, tvars, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
+                    return ty_proc(parse_effect(v, tvars, second(xs)), parse_params(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
                 } else if {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
@@ -2794,6 +3936,13 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
 pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     map(lambda1s(move |t: &'static Sexp| {
         parse_type(v, tvars, t)
+    }), ts)
+}
+
+/// A procedure type's parameters, each named or not (C162).
+pub fn parse_params(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
+    map(lambda1s(move |t: &'static Sexp| {
+        parse_type(v, tvars, param_type_written(v, tvars, t))
     }), ts)
 }
 
@@ -3221,6 +4370,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         Ty::TyData(d, args) => {
             if null_p(args) {
                 d
+            } else if has_prefix_p(d, str_lit("%spec ")) {
+                show_specified(s, d, car(args))
             } else if string_eq_p(d, str_lit("%bloblet")) {
                 string_append(str_lit("(bloblet (fields "), string_append(show_tys(s, cdr(args)), string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))))
             } else if string_eq_p(d, str_lit("%blobref")) {
@@ -3324,6 +4475,70 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         Ty::TyMeta(k) => {
             string_append(str_lit("?"), i64_to_string(k))
         }
+    }
+}
+
+/// A specified procedure type (C162): its parameters by their names where
+/// it has clauses, and its clauses after its result.
+pub fn show_specified(s: &'static St, d: Str, t: &'static Ty) -> Str {
+    let clauses = spec_clauses_shown(d);
+    let inner = walk(s, t);
+    let conv = {
+        let tagcase_ = inner;
+        match *tagcase_ {
+            Ty::TyData(c, args) => {
+                if (string_eq_p(c, str_lit("%fx")) || string_eq_p(c, str_lit("%native"))) {
+                    string_append(str_lit("(conv "), string_append(after_prefix(c, str_lit("%")), str_lit(") ")))
+                } else {
+                    str_lit("")
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
+    let tagcase_ = procedure_within(inner);
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            string_append(str_lit("(subr "), string_append(conv, string_append(show_effs(es), string_append(str_lit(" ("), string_append(if string_eq_p(clauses, str_lit("")) {
+                show_tys(s, ps)
+            } else {
+                show_named(s, ps, spec_param_names(d))
+            }, string_append(str_lit(") "), string_append(show_ty(s, r), string_append(clauses, str_lit(")")))))))))
+        }
+        _ => {
+            let other = tagcase_;
+            show_ty(s, t)
+        }
+    }
+}
+
+pub fn show_named(s: &'static St, ps: Tys, names: Strings) -> Str {
+    if null_p(ps) {
+        str_lit("")
+    } else {
+        string_append({
+            let n = if null_p(names) {
+                str_lit("%none")
+            } else {
+                car(names)
+            };
+            if string_eq_p(n, str_lit("%none")) {
+                show_ty(s, car(ps))
+            } else {
+                string_append(str_lit("("), string_append(n, string_append(str_lit(" "), string_append(show_ty(s, car(ps)), str_lit(")")))))
+            }
+        }, if null_p(cdr(ps)) {
+            str_lit("")
+        } else {
+            string_append(str_lit(" "), show_named(s, cdr(ps), if null_p(names) {
+                nil::<Str>()
+            } else {
+                cdr(names)
+            }))
+        })
     }
 }
 
@@ -3913,6 +5128,9 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
             } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
                 // A procedure of a convention (C116), called as any is.
                 car(args)
+            } else if has_prefix_p(d, str_lit("%spec ")) {
+                // A specified procedure (C162), called as any is.
+                procedure_within(t)
             } else {
                 t
             }
@@ -4566,7 +5784,17 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    if (sized_p(a, str_lit("%natof")) && {
+    if (not(string_eq_p(spec_of(a), str_lit(""))) || not(string_eq_p(spec_of(e), str_lit("")))) {
+        // A specified procedure (C162): the procedure within, then behavioural
+        // subtyping, Fixpt's `logic::spec_within`: it requires no more than
+        // the one expected, and ensures no less.
+        let s2 = fits(v, s, unspecified(a), unspecified(e));
+        if spec_within_p(spec_of(a), spec_of(e)) {
+            s2
+        } else {
+            match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected: it requires more, or ensures less, than is expected, as far as the prover can tell")))))) {}
+        }
+    } else if (sized_p(a, str_lit("%natof")) && {
         let tagcase_ = e;
         match *tagcase_ {
             Ty::TyNat() => {
@@ -5741,7 +6969,7 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
             true
         }
         Ty::TyData(d, args) => {
-            string_eq_p(d, str_lit("%fx"))
+            (string_eq_p(d, str_lit("%fx")) || has_prefix_p(d, str_lit("%spec ")))
         }
         _ => {
             let other = tagcase_;

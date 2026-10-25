@@ -2472,7 +2472,7 @@ pub mod expressions {
                         return lst(kayak_rt::heap_cons(sym(str_lit("bloblet"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("fields"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Ty| {
                             ty_sexp(v, s, x)
                         }), cdr(args))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
-                    } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
+                    } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx")) || has_prefix_p(d, str_lit("%spec "))) {
                         t = car(args);
                         continue;
                     } else if string_eq_p(d, str_lit("%blobref")) {
@@ -6942,6 +6942,21 @@ pub mod expressions {
                     if string_eq_p(d, str_lit("%fx")) {
                         expected = walk(s, car(args));
                         continue;
+                    } else if has_prefix_p(d, str_lit("%spec ")) {
+                        // A lambda where a specified procedure is expected (C162): checked as
+                        // the procedure within, its specification not proved, as FX-26's
+                        // checker has it; but one that says what a test proves, which a
+                        // branch on its call would trust, refused (Fixpt's `k-claimed`).
+                        if spec_claims_p(d) {
+                            return match refuse(v, str_lit("what a test proves, a `lambda` is not checked to prove")) {};
+                        } else {
+                            let tagcase_ = check_lambda(v, s, params, forms, walk(s, car(args)));
+                            match *tagcase_ {
+                                Res::Res(t, es, s2) => {
+                                    return res(expected, es, s2);
+                                }
+                            }
+                        }
                     } else if string_eq_p(d, str_lit("%poly")) {
                         // A lambda where a poly type is expected, as FX-26 takes it: as the
                         // plambda of that type's binders, rigid, in scope (C107, C158).

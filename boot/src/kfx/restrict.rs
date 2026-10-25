@@ -171,6 +171,73 @@ pub mod restrictions {
         }
     }
 
+    /// Whether a procedure type's parameter is named, `(x T)`, as the
+    /// checker reads one (`param-name-written`).
+    pub fn param_named_p(q: &'static Sexp, types: Strings) -> bool {
+        let tagcase_ = q;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                (i64_eq(size(ys), 2i64) && {
+                    let tagcase_ = car(ys);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            not((string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, types)))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// A procedure type's specification, or its parameters named
+    /// (C162), FX-26's, which KFX has not yet.
+    pub fn specs_restricted(e: &'static Sexp, types: Strings) -> () {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    ()
+                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_gt(size(xs), 3i64) && (spec_clause_p(last(xs)) || {
+                    let tagcase_ = if head_is_p(second(xs), str_lit("conv")) {
+                        fourth(xs)
+                    } else {
+                        third(xs)
+                    };
+                    match *tagcase_ {
+                        Sexp::Lst(ps, f2, l2, p2) => {
+                            any_p(lambda1s(move |q: &'static Sexp| {
+                                param_named_p(q, types)
+                            }), ps)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })) {
+                    match restriction_refused(f, l, str_lit("a procedure type's specification, or its parameters named, FX-26's, which KFX has not yet (C162)")) {}
+                } else {
+                    map(lambda1s(move |x: &'static Sexp| {
+                        specs_restricted(x, types)
+                    }), xs);
+                    ()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ()
+            }
+        }
+    }
+
     // Names (C61): KFX defines each name once, none a primitive's or
     // kayak-rt's, since the generated modules each import every other's names
     // and kayak-rt's; and its types' and modules' names are Rust's too, none
@@ -340,7 +407,12 @@ pub mod restrictions {
     pub fn restrict(forms: Sexps, fs: Facts) -> () {
         noted_restricted(reverse(fs));
         names_restricted(forms);
-        restricted_all(forms, str_lit("the program"), 0i64)
+        restricted_all(forms, str_lit("the program"), 0i64);
+        let types = concat(type_scopes(forms));
+        map(lambda1s(move |f: &'static Sexp| {
+            specs_restricted(f, types)
+        }), forms);
+        ()
     }
 }
 
