@@ -5025,6 +5025,47 @@ where it differs, so `(conv native)` prints as nothing and
   adapter to native code, its closures being cellular (found by the
   check: `conventions/native-explicit.fx`'s value printed as a cellular
   closure where Fixpt's is native).
+
+## C182. Masking as FX-87's, at Fixpt's forms (2026-10-25)
+
+Fixpt masks an expression's effect at nearly every compound form (its
+`mask`; fx26.md: "Masking applies at every subexpression that combines
+effects, as in FX-87's reference"): an atom on a region that no free
+variable's type names is dropped, unless it allocates or transfers
+control at a region its result's type names. Kayak masked only a
+`letregion`'s, `letrena`'s or `letfreeze`'s region and a few control
+cases; FX-26's checker as Fixpt's needs it all (`run/icells.fx`, a knot
+of I-cells private to a procedure, pure; `native/raw-slots.fx`).
+- **`masked-res`**, on each compound expression synthesized or checked,
+  at the forms Fixpt masks (`masking-form?`): an application, `proj`,
+  `if` and `cond`/`and`/`or`, `let`, `let*`, `begin`, `product`,
+  `extract`, `sum`. Not a `spawn` (its process's effects cross: a
+  first try masked a reply cell's `init`, which Fixpt keeps), nor
+  `letrec`, `tagcase` and the binding forms.
+- **What is seen**: the regions in the types of the names in the
+  expression (`regions-in`, Fixpt's `regions_in`): every name in it, bound
+  inside or not, an over-approximation that only keeps more; a datatype's
+  fields at its arguments; a procedure's latent effect's regions.
+- **Never masked**, kayak's choices toward refusing where unsure: an atom
+  on a frozen region (`acyclic`, `const`), on a region not solved yet,
+  globals', `spin`, `nondet`, I/O, effect variables; and nothing at all
+  where a name's or the value's type could hold storage it does not say:
+  a type not solved yet, a generative or abstract type, a module type or
+  a module's name (`%opaque`). The last found by the check: a module's
+  name had carried no item types, so `prompt-module-goto.kfx`'s `goto`
+  was dropped and KFX accepted it.
+- **Fixpt's F9, found on the way**: with masking, `terminate/cwcc-captures.fx`
+  (refused by Fixpt) was accepted: kayak's `cwcc` rule took a receiver
+  that only calls its continuation as escaping only, where Fixpt also
+  asks that the receiver capture no continuation (a `comefrom` in its
+  effect). Kayak's rule is syntactic: a receiver that names
+  `call-with-composable-continuation` or `call-with-oneshot-continuation`
+  is no escape only, so the call says `spin`.
+- **KFX**: masking is FX-26's and KFX's alike; the full check's corpus,
+  its Rust compared and run, is the same, and kfx accepts 194 of Fixpt's
+  programs, up from 185, each agreeing when run. Stage 0 20.3G cycles to
+  20.6G.
+- Refused 45 to 42, the same 319 to 330; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

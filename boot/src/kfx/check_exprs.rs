@@ -3782,34 +3782,216 @@ pub mod expressions {
                 }
                 Sexp::Lst(xs, src_file, src_line, src_pos) => {
                     let v = near(v, src_file, src_line, src_pos);
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(h, at_file, at_pos) => {
-                            synth_form(v, s, e, h, cdr(xs))
-                        }
-                        _ => {
-                            let head = tagcase_;
-                            let hr = synth(v, s, head);
-                            let tagcase_ = hr;
-                            match *tagcase_ {
-                                Res::Res(ht, hes, hs) => {
-                                    cwcc_masked(v, head, cdr(xs), mark_lifted(v, if head_is_p(head, str_lit("proj")) {
-                                        proj_base(v, head)
-                                    } else {
-                                        str_lit("")
-                                    }, cdr(xs), void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), effs_union(if head_is_p(head, str_lit("proj")) {
-                                        cwcc_spin(proj_base(v, head), cdr(xs))
-                                    } else {
-                                        nil::<Str>()
-                                    }, if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
-                                        nil::<Str>()
-                                    } else {
-                                        kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-                                    })))))
+                    masked_res(v, e, {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(h, at_file, at_pos) => {
+                                synth_form(v, s, e, h, cdr(xs))
+                            }
+                            _ => {
+                                let head = tagcase_;
+                                let hr = synth(v, s, head);
+                                let tagcase_ = hr;
+                                match *tagcase_ {
+                                    Res::Res(ht, hes, hs) => {
+                                        cwcc_masked(v, head, cdr(xs), mark_lifted(v, if head_is_p(head, str_lit("proj")) {
+                                            proj_base(v, head)
+                                        } else {
+                                            str_lit("")
+                                        }, cdr(xs), void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), effs_union(if head_is_p(head, str_lit("proj")) {
+                                            cwcc_spin(proj_base(v, head), cdr(xs))
+                                        } else {
+                                            nil::<Str>()
+                                        }, if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
+                                            nil::<Str>()
+                                        } else {
+                                            kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+                                        })))))
+                                    }
                                 }
                             }
                         }
+                    })
+                }
+            }
+        }
+    }
+
+    /// Compound expression `e`'s result, its effect masked (C182; FX-87's,
+    /// Fixpt's `mask`): an atom on a region no name in `e` has a type that
+    /// mentions, kept only if it allocates, or transfers control, at a
+    /// region its value's type mentions. Globals, frozen data, effect
+    /// variables, a region not solved yet, never masked; nor anything
+    /// where a name's type, or the value's, could hold storage it does not
+    /// say (a type not known yet, a generative or abstract type).
+    pub fn masked_res(v: &'static Cv, e: &'static Sexp, r: &'static Res) -> &'static Res {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let maskable = filter(lambda1s(move |a: Str| {
+                    maskable_atom_p(resolve_atom(s, a))
+                }), es);
+                if (null_p(maskable) || not(masking_form_p(e))) {
+                    r
+                } else {
+                    let seen = concat(map(lambda1s(move |n: Str| {
+                        let found = scope_bind(n, v);
+                        if null_p(found) {
+                            nil::<Str>()
+                        } else {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Bind::Bind(m, sc, w) => {
+                                    if string_eq_p(w, str_lit("module")) {
+                                        the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()))
+                                    } else {
+                                        let tagcase_ = sc;
+                                        match *tagcase_ {
+                                            Scheme::Scheme(tv, u) => {
+                                                regions_in(v, s, u, nil::<Str>())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }), distinct(names_in(e))));
+                    let out = regions_in(v, s, t, nil::<Str>());
+                    if (string_member_p(str_lit("%opaque"), seen) || string_member_p(str_lit("%opaque"), out)) {
+                        r
+                    } else {
+                        let kept = filter(lambda1s(move |a: Str| {
+                            let x = resolve_atom(s, a);
+                            (not(maskable_atom_p(x)) || string_member_p(atom_region(x), seen) || (string_member_p(atom_region(x), out) && string_member_p(atom_kind(x), kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::heap_cons(str_lit("goto:"), kayak_rt::heap_cons(str_lit("comefrom:"), kayak_rt::nil()))))))
+                        }), es);
+                        let dropped = filter(lambda1s(move |a: Str| {
+                            not(string_member_p(a, kept))
+                        }), es);
+                        if null_p(dropped) {
+                            r
+                        } else {
+                            res(t, kept, s)
+                        }
                     }
+                }
+            }
+        }
+    }
+
+    /// Whether Fixpt masks at `e`'s form (its check.rs, infer.rs): an
+    /// application, `proj`, `if` and what it is made of, `let`, `begin`,
+    /// `product`, `extract`, `sum`; not a `spawn`, whose process's effects
+    /// cross, nor `letrec`, `tagcase` and the other binding forms.
+    pub fn masking_form_p(e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(h, f2, p2) => {
+                        (string_member_p(h, kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("cond"), kayak_rt::heap_cons(str_lit("and"), kayak_rt::heap_cons(str_lit("or"), kayak_rt::heap_cons(str_lit("when"), kayak_rt::heap_cons(str_lit("unless"), kayak_rt::heap_cons(str_lit("case"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("let*"), kayak_rt::heap_cons(str_lit("begin"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("extract"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("proj"), kayak_rt::nil()))))))))))))))) || not((keyword_p(h) || string_member_p(h, kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("spawn-monitored"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::heap_cons(str_lit("race"), kayak_rt::heap_cons(str_lit("tagcase"), kayak_rt::heap_cons(str_lit("typecase"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("letregion"), kayak_rt::heap_cons(str_lit("letrena"), kayak_rt::heap_cons(str_lit("letreap"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("quasiquote"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("convention"), kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::nil()))))))))))))))))))))))))))))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        true
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// The regions a value of type `t` may reach (Fixpt's `regions_in`); and
+    /// `%opaque` where `t` could hold what it does not say. `seen`, the
+    /// datatypes looked into.
+    pub fn regions_in(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, mut seen: Strings) -> Strings {
+        loop {
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyMeta(k) => {
+                    return the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()));
+                }
+                Ty::TyVar(n) => {
+                    if has_prefix_p(n, str_lit("'")) {
+                        return the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()));
+                    } else {
+                        return nil::<Str>();
+                    }
+                }
+                Ty::TyRconst(n) => {
+                    return the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()));
+                }
+                Ty::TyList(e, r) => {
+                    return onto(regions_in(v, s, r, seen), regions_in(v, s, e, seen));
+                }
+                Ty::TyRef(e, r) => {
+                    return onto(regions_in(v, s, r, seen), regions_in(v, s, e, seen));
+                }
+                Ty::TyFlat(e, r) => {
+                    return onto(regions_in(v, s, r, seen), regions_in(v, s, e, seen));
+                }
+                Ty::TyShape(p, ls, ts) => {
+                    return concat(map(lambda1s(move |x: &'static Ty| {
+                        regions_in(v, s, x, seen)
+                    }), ts));
+                }
+                Ty::TyProc(es, ps, r) => {
+                    return onto(atoms_regions(s, es), concat(map(lambda1s(move |x: &'static Ty| {
+                        regions_in(v, s, x, seen)
+                    }), kayak_rt::heap_cons(r, ps))));
+                }
+                Ty::TyTag(a, h, es, r) => {
+                    return onto(atoms_regions(s, es), onto(regions_in(v, s, r, seen), onto(regions_in(v, s, a, seen), regions_in(v, s, h, seen))));
+                }
+                Ty::TyData(d, args) => {
+                    if has_prefix_p(d, str_lit("%named ")) {
+                        t = car(args);
+                        continue;
+                    } else if string_eq_p(d, str_lit("%mu")) {
+                        t = car(cdr(args));
+                        continue;
+                    } else if string_eq_p(d, str_lit("%poly")) {
+                        t = last(args);
+                        continue;
+                    } else if (string_eq_p(d, str_lit("%mtype")) || string_eq_p(d, str_lit("%dlambda")) || string_eq_p(d, str_lit("%app")) || has_prefix_p(d, str_lit("%module ")) || has_prefix_p(d, str_lit("%fam "))) {
+                        return the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()));
+                    } else if has_prefix_p(d, str_lit("%")) {
+                        return concat(map(lambda1s(move |x: &'static Ty| {
+                            regions_in(v, s, x, seen)
+                        }), args));
+                    } else if (has_char_in_p(d, '.') || has_char_in_p(d, ' ')) {
+                        // A module's type, its representation not seen.
+                        return the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()));
+                    } else if string_member_p(d, seen) {
+                        return concat(map(lambda1s(move |x: &'static Ty| {
+                            regions_in(v, s, x, seen)
+                        }), args));
+                    } else if (dt_named_p(d, cv_dts(v)) && not(generative_p(v, ty_data(d, args)))) {
+                        // A datatype: its fields' at its arguments.
+                        return onto(concat(map(lambda1s(move |x: &'static Ty| {
+                            regions_in(v, s, x, seen)
+                        }), args)), concat(map(lambda1s(move |x: &'static Variant| {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Variant::Variant(tag, fields) => {
+                                    concat(map(lambda1s(move |f: &'static Ty| {
+                                        regions_in(v, s, f, kayak_rt::heap_cons(d, seen))
+                                    }), fields))
+                                }
+                            }
+                        }), instantiate_variants(family_of(v, d), args, variants_of(v, d)))));
+                    } else if null_p(args) {
+                        return nil::<Str>();
+                    } else {
+                        return the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()));
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return nil::<Str>();
                 }
             }
         }
@@ -4003,9 +4185,21 @@ pub mod expressions {
         }
     }
 
-    /// `e` where an `expected` is wanted; a member boxed for its union (C75).
+    /// `e` where an `expected` is wanted; a member boxed for its union (C75);
+    /// a compound one's effect masked (C182).
     pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
-        let tagcase_ = check_plain(v, s, e, expected);
+        let tagcase_ = {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    masked_res(v, e, check_plain(v, s, e, expected))
+                }
+                _ => {
+                    let other = tagcase_;
+                    check_plain(v, s, e, expected)
+                }
+            }
+        };
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 if (valued_p(s, expected) && not(valued_p(s, t))) {

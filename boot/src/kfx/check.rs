@@ -844,6 +844,15 @@ pub fn atom_region(x: Str) -> Str {
     list_to_string(after_colon(string_to_list(x)))
 }
 
+/// Whether masking may drop effect atom `a`, resolved (C182): one on a
+/// region, not frozen (`acyclic`, `const`), not one not solved yet.
+pub fn maskable_atom_p(a: Str) -> bool {
+    (region_atom_p(a) && {
+        let r = atom_region(a);
+        (not(string_eq_p(r, str_lit(""))) && not(string_eq_p(r, str_lit("acyclic"))) && not(string_eq_p(r, str_lit("const"))) && not(has_prefix_p(r, str_lit("?"))))
+    })
+}
+
 /// Whether atom `a` is one a process may have that is seen outside it:
 /// a send, a fill or an await, I/O, `spin`, `nondet`, reading globals'
 /// bindings or data frozen in the heap, allocating at a region that is
@@ -8539,6 +8548,17 @@ pub fn resolve_atom(s: &'static St, x: Str) -> Str {
     }
 }
 
+pub fn atoms_regions(s: &'static St, es: Strings) -> Strings {
+    concat(map(lambda1s(move |a: Str| {
+        let r = atom_region(resolve_atom(s, a));
+        if string_eq_p(r, str_lit("")) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(r, kayak_rt::nil()))
+        }
+    }), es))
+}
+
 /// `t`, every inference variable in it replaced by its solution.
 pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
     let tagcase_ = walk(s, t);
@@ -10344,7 +10364,7 @@ pub fn escape_only_p(args: Sexps) -> bool {
                         }
                     }
                 };
-                (not(string_eq_p(k, str_lit(""))) && not(sexp_mentions_p(r, str_lit("cwcc"))) && not(any_p(lambda1s(move |b: &'static Sexp| {
+                (not(string_eq_p(k, str_lit(""))) && not(sexp_mentions_p(r, str_lit("cwcc"))) && not(sexp_mentions_p(r, str_lit("call-with-composable-continuation"))) && not(sexp_mentions_p(r, str_lit("call-with-oneshot-continuation"))) && not(any_p(lambda1s(move |b: &'static Sexp| {
                     not(only_called_p(b, k))
                 }), cdr(cdr(items(r))))))
             })

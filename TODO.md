@@ -568,11 +568,9 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   45 of the 433 programs Fixpt accepts still refused (2026-10-25, C181);
-   69 differ; 319 the same. Next among them: FX-87's masking at every
-   subexpression (`run/icells.fx`, `native/raw-slots.fx`; C179);
-   redefinition at another type, re-run and broken (2; C180); `conv`
-   binders (C181). Of flats left: the kind `flat`
+   42 of the 433 programs Fixpt accepts still refused (2026-10-25, C182);
+   61 differ; 330 the same. Next among them: redefinition at another
+   type, re-run and broken (2; C180); `conv` binders (C181). Of flats left: the kind `flat`
    (`flat-kind.fx`), `narrayof` (`narrayof-lengths.fx`). Of modules left: `load-layers.fx` (an effect
    read from an item made before it, in a loaded file); printing, where
    Fixpt names a shared type by the latest abbreviation or description of

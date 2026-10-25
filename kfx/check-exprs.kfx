@@ -1685,6 +1685,7 @@
                       (res t es (narrowing-unboxed v (async-global v s name at-file at-pos) name at-file at-pos t))))))
             (lst (xs src-file src-line src-pos)
               (let ((v (near v src-file src-line src-pos)))
+                (masked-res v e
                 (tagcase (car xs)
                   (sym (h at-file at-pos) (synth-form v s e h (cdr xs)))
                   ;; A procedure computed, not named: `spin` only if its type
@@ -1701,7 +1702,99 @@
                                                               (if (head-is? head "proj") (cwcc-spin (proj-base v head) (cdr xs)) nil)
                                                               (if (or (head-is? head "proj") (head-is? head "lambda") (not (self-applicable? v hs ht)))
                                                                   nil
-                                                                  (list "spin"))))))))))))))))))
+                                                                  (list "spin")))))))))))))))))))
+
+      (masked-res (subr kfx (cv sexp res) res)
+        (lambda (v e r)
+          "Compound expression `e`'s result, its effect masked (C182; FX-87's,
+           Fixpt's `mask`): an atom on a region no name in `e` has a type that
+           mentions, kept only if it allocates, or transfers control, at a
+           region its value's type mentions. Globals, frozen data, effect
+           variables, a region not solved yet, never masked; nor anything
+           where a name's type, or the value's, could hold storage it does not
+           say (a type not known yet, a generative or abstract type)."
+          (tagcase r
+            (res (t es s)
+              (let ((maskable (filter (lambda ((a string)) (maskable-atom? (resolve-atom s a))) es)))
+                (if (or (null? maskable) (not (masking-form? e)))
+                    r
+                    (let* ((seen (concat (map (lambda ((n string))
+                                                (let ((found (scope-bind n v)))
+                                                  (if (null? found) nil
+                                                      (tagcase (car found)
+                                                        (bind (m sc w)
+                                                          (if (string=? w "module")
+                                                              ;; A module's items' types not here: unseen (C182).
+                                                              (the strings (list "%opaque"))
+                                                              (tagcase sc (scheme (tv u) (regions-in v s u nil)))))))))
+                                              (distinct (names-in e)))))
+                           (out (regions-in v s t nil)))
+                      (if (or (string-member? "%opaque" seen) (string-member? "%opaque" out))
+                          r
+                          (let* ((kept (filter (lambda ((a string))
+                                                 (let ((x (resolve-atom s a)))
+                                                   (or (not (maskable-atom? x))
+                                                       (string-member? (atom-region x) seen)
+                                                       (and (string-member? (atom-region x) out)
+                                                            (string-member? (atom-kind x) (list "alloc:" "goto:" "comefrom:"))))))
+                                               es))
+                                 (dropped (filter (lambda ((a string)) (not (string-member? a kept))) es)))
+                            (if (null? dropped)
+                                r
+                                (res t kept s)))))))))))
+
+      (masking-form? (subr kfx (sexp) bool)
+        (lambda (e)
+          "Whether Fixpt masks at `e`'s form (its check.rs, infer.rs): an
+           application, `proj`, `if` and what it is made of, `let`, `begin`,
+           `product`, `extract`, `sum`; not a `spawn`, whose process's effects
+           cross, nor `letrec`, `tagcase` and the other binding forms."
+          (tagcase e
+            (lst (xs f l p)
+              (tagcase (car xs)
+                (sym (h f2 p2)
+                  (or (string-member? h (list "if" "cond" "and" "or" "when" "unless" "case" "let" "let*" "begin" "product" "extract" "sum" "proj"))
+                      (not (or (keyword? h)
+                               (string-member? h (list "spawn" "spawn-monitored" "par" "pselect" "race" "tagcase" "typecase" "letrec" "letregion"
+                                                       "letrena" "letreap" "letfreeze" "with" "module" "prompt" "the" "lambda" "plambda"
+                                                       "rlambda" "vlambda" "quote" "quasiquote" "self" "convention" "make-bloblet" "rmake-bloblet"))))))
+                (else other #t)))
+            (else other #f))))
+
+      (regions-in (subr kfx (cv st ty strings) strings)
+        (lambda (v s t seen)
+          "The regions a value of type `t` may reach (Fixpt's `regions_in`); and
+           `%opaque` where `t` could hold what it does not say. `seen`, the
+           datatypes looked into."
+          (tagcase (walk s t)
+            (ty-meta (k) (the strings (list "%opaque")))
+            (ty-var (n) (if (has-prefix? n "'") (the strings (list n)) nil))
+            (ty-rconst (n) (the strings (list n)))
+            (ty-list (e r) (onto (regions-in v s r seen) (regions-in v s e seen)))
+            (ty-ref (e r) (onto (regions-in v s r seen) (regions-in v s e seen)))
+            (ty-flat (e r) (onto (regions-in v s r seen) (regions-in v s e seen)))
+            (ty-shape (p ls ts) (concat (map (lambda ((x ty)) (regions-in v s x seen)) ts)))
+            (ty-proc (es ps r) (onto (atoms-regions s es) (concat (map (lambda ((x ty)) (regions-in v s x seen)) (cons r ps)))))
+            (ty-tag (a h es r) (onto (atoms-regions s es) (onto (regions-in v s r seen) (onto (regions-in v s a seen) (regions-in v s h seen)))))
+            (ty-data (d args)
+              (cond ((has-prefix? d "%named ") (regions-in v s (car args) seen))
+                    ((string=? d "%mu") (regions-in v s (car (cdr args)) seen))
+                    ((string=? d "%poly") (regions-in v s (last args) seen))
+                    ((or (string=? d "%mtype") (string=? d "%dlambda") (string=? d "%app") (has-prefix? d "%module ") (has-prefix? d "%fam "))
+                     (the strings (list "%opaque")))
+                    ((has-prefix? d "%") (concat (map (lambda ((x ty)) (regions-in v s x seen)) args)))
+                    ((or (has-char-in? d #\.) (has-char-in? d #\space))
+                     "A module's type, its representation not seen."
+                     (the strings (list "%opaque")))
+                    ((string-member? d seen) (concat (map (lambda ((x ty)) (regions-in v s x seen)) args)))
+                    ((and (dt-named? d (cv-dts v)) (not (generative? v (ty-data d args))))
+                     "A datatype: its fields' at its arguments."
+                     (onto (concat (map (lambda ((x ty)) (regions-in v s x seen)) args))
+                           (concat (map (lambda ((x variant)) (tagcase x (variant (tag fields) (concat (map (lambda ((f ty)) (regions-in v s f (cons d seen))) fields)))))
+                                        (instantiate-variants (family-of v d) args (variants-of v d))))))
+                    ((null? args) nil)
+                    (else (the strings (list "%opaque")))))
+            (else other nil))))
 
       (async-global (subr kfx (cv st string string i64) st)
         (lambda (v s name file pos)
@@ -1781,8 +1874,9 @@
 
       (check (subr kfx (cv st sexp ty) res)
         (lambda (v s e expected)
-          "`e` where an `expected` is wanted; a member boxed for its union (C75)."
-          (tagcase (check-plain v s e expected)
+          "`e` where an `expected` is wanted; a member boxed for its union (C75);
+           a compound one's effect masked (C182)."
+          (tagcase (tagcase e (lst (xs f l p) (masked-res v e (check-plain v s e expected))) (else other (check-plain v s e expected)))
             (res (t es s)
               (if (and (valued? s expected) (not (valued? s t)))
                   (res expected es (coerced v s (datum-file e) (datum-pos e) t expected))

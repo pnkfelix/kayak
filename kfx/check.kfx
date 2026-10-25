@@ -414,6 +414,14 @@
 (define atom-region (subr kfx (string) string)
   (lambda (x) (list->string (after-colon (string->list x)))))
 
+(define maskable-atom? (subr kfx (string) bool)
+  (lambda (a)
+    "Whether masking may drop effect atom `a`, resolved (C182): one on a
+     region, not frozen (`acyclic`, `const`), not one not solved yet."
+    (and (region-atom? a)
+         (let ((r (atom-region a)))
+           (and (not (string=? r "")) (not (string=? r "acyclic")) (not (string=? r "const")) (not (has-prefix? r "?")))))))
+
 (define crossing-atom? (subr kfx (strings string) bool)
   (lambda (bound a)
     "Whether atom `a` is one a process may have that is seen outside it:
@@ -3687,6 +3695,10 @@
               x))
         x)))
 
+(define atoms-regions (subr kfx (st strings) strings)
+  (lambda (s es)
+    (concat (map (lambda ((a string)) (let ((r (atom-region (resolve-atom s a)))) (if (string=? r "") nil (the strings (list r))))) es))))
+
 (define-rec
   (zonk (subr kfx (st ty) ty)
     (lambda (s t)
@@ -4380,6 +4392,11 @@
                            (let ((k (tagcase (car ps) (sym (n f p) n) (lst (ys f l p) (if (null? ys) "" (tagcase (car ys) (sym (n f2 p2) n) (else other "")))) (else other ""))))
                              (and (not (string=? k ""))
                                   (not (sexp-mentions? r "cwcc"))
+                                  ;; A continuation captured inside could hold a call of
+                                  ;; `k`, run after `cwcc` has returned (Fixpt's F9: its
+                                  ;; receiver's effect with no `comefrom`; C182).
+                                  (not (sexp-mentions? r "call-with-composable-continuation"))
+                                  (not (sexp-mentions? r "call-with-oneshot-continuation"))
                                   (not (any? (lambda ((b sexp)) (not (only-called? b k))) (cdr (cdr (items r))))))))))
                    (else #f)))))))
 
