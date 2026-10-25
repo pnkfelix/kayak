@@ -11,6 +11,7 @@
 ],
 "code": 1,
 "out": [
+"; not in the native convention yet, so `b` runs as cellular code: `lambda@11` has no register code",
 "b : (bloblet (frozen int (ref int @b)) @b) ! (alloc @b)",
 ""
 ],

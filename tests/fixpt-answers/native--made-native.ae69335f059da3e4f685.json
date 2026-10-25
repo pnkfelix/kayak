@@ -18,6 +18,7 @@
 "plus : (subr pure (int int) int) ! pure",
 "; not in the native convention yet, so `in-place` runs as cellular code: `in-place`: it calls `stay-cellular`",
 "in-place : (subr spin (int) int) ! pure",
+"; not in the native convention yet, so `fns` runs as cellular code: `lambda@11`: it calls `stay-cellular`",
 "fns : (listof (subr pure (int) int) @heap) ! (alloc @heap)",
 "15 : int ! (read (globals add5))",
 "#t : bool ! (maxeff spin (read (globals even)))",
