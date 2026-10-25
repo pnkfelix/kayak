@@ -2861,20 +2861,20 @@ pub fn logic_snames(mut ns: Strings, mut ts: Tys, mut i: i64) -> Snames {
 }
 
 /// The clauses `cs` read, onto those read so far: `requires`, then
-/// `ensures`, each at most once; the specification's text, given the
-/// parameters' names.
-pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static Ty, mut cs: Sexps, mut req: Strings, mut ens: Strings, mut rn: Str) -> Str {
+/// `ensures`, each at most once: the result's name (`%none` if none),
+/// the `requires` and the `ensures` (none if none).
+pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static Ty, mut cs: Sexps, mut req: Strings, mut ens: Strings, mut rn: Str) -> Strings {
     loop {
         if null_p(cs) {
-            return string_append(if null_p(req) {
+            return the::<Strings>(kayak_rt::heap_cons(rn, kayak_rt::heap_cons(if null_p(req) {
                 str_lit("(true)")
             } else {
                 car(req)
-            }, string_append(str_lit(" "), if null_p(ens) {
-                str_lit("(true)")
+            }, kayak_rt::heap_cons(if null_p(ens) {
+                str_lit("")
             } else {
                 car(ens)
-            }));
+            }, kayak_rt::nil()))));
         } else {
             let c = car(cs);
             let xs = items(c);
@@ -2898,12 +2898,8 @@ pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static
                     }
                 } && not(logic_literal_symbol_p(r))) {
                     let q = logic_prop(v, onto(names, kayak_rt::heap_cons(sname(sym_name(r), str_lit("(res)"), result), kayak_rt::nil())), third(xs));
-                    if string_eq_p(rn, str_lit("")) {
-                        return string_append(sym_name(r), string_append(str_lit(" "), logic_clauses(v, names, result, cdr(cs), req, the::<Strings>(kayak_rt::heap_cons(q, kayak_rt::nil())), sym_name(r))));
-                    } else {
-                        (cs, ens, rn) = (cdr(cs), the::<Strings>(kayak_rt::heap_cons(q, kayak_rt::nil())), sym_name(r));
-                        continue;
-                    }
+                    (cs, ens, rn) = (cdr(cs), the::<Strings>(kayak_rt::heap_cons(q, kayak_rt::nil())), sym_name(r));
+                    continue;
                 } else {
                     return match refuse(v, str_lit("the result's name: `(ensures name proposition)`")) {};
                 }
@@ -2914,23 +2910,189 @@ pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static
     }
 }
 
+// What a test proves (C163; Fixpt's `check-proving.fx`): a `bool` result
+// written `(bool (then P ...) (else Q ...))`, propositions of the
+// parameters by number, `(shape i S)`, `(acyclic i)`, `(nat i)`,
+// `(length i j)`, `(< a b)`, `(<= a b)`, `(= a b)`, `(not ...)` of a shape
+// or an `=`, each term a parameter's number, `(length i)` or `(lit k)`: an
+// `ensures` of the result, `(and (implies r (and P ...)) (implies (not r)
+// (and Q ...)))`.
+pub fn latent_shapes() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil()))))))))))))))))
+    })
+}
+
+pub fn latent_param(v: &'static Cv, x: &'static Sexp, n: i64) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            if (i64_gt_eq(k, 0i64) && i64_lt(k, n)) {
+                i64_to_string(k)
+            } else {
+                match refuse(v, string_append(str_lit("a parameter's number, from 0 to "), i64_to_string(i64_minus(n, 1i64)))) {}
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, string_append(str_lit("a parameter's number, from 0 to "), i64_to_string(i64_minus(n, 1i64)))) {}
+        }
+    }
+}
+
+pub fn latent_term(v: &'static Cv, x: &'static Sexp, n: i64) -> Str {
+    let usage = str_lit("a size: a parameter's number, `(length i)`, or `(lit k)`");
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            string_append(str_lit("(p "), string_append(latent_param(v, x, n), str_lit(")")))
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if (i64_eq(size(xs), 2i64) && sym_is_p(car(xs), str_lit("length"))) {
+                string_append(str_lit("(len "), string_append(latent_param(v, second(xs), n), str_lit(")")))
+            } else if (i64_eq(size(xs), 2i64) && sym_is_p(car(xs), str_lit("lit"))) {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        if i64_gt_eq(k, 0i64) {
+                            string_append(str_lit("(lit "), string_append(i64_to_string(k), str_lit(")")))
+                        } else {
+                            match refuse(v, str_lit("a natural")) {}
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, str_lit("a natural")) {}
+                    }
+                }
+            } else {
+                match refuse(v, usage) {}
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, usage) {}
+        }
+    }
+}
+
+pub fn latent_prop_form(v: &'static Cv, form: &'static Sexp, n: i64, negated: bool) -> Str {
+    let usage = str_lit("a proposition: `(shape i shape)`, `(acyclic i)`, `(nat i)`, `(length i j)`, `(< a b)`, `(<= a b)`, `(= a b)`, or `(not …)` of a shape or an `=`");
+    let xs = {
+        let tagcase_ = form;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                ys
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, usage) {}
+            }
+        }
+    };
+    let hd = logic_head(form);
+    let m = i64_minus(size(xs), 1i64);
+    if (string_eq_p(hd, str_lit("shape")) && i64_eq(m, 2i64)) {
+        let shape = {
+            let tagcase_ = third(xs);
+            match *tagcase_ {
+                Sexp::Sym(k, f, p) => {
+                    if string_member_p(k, latent_shapes()) {
+                        k
+                    } else {
+                        str_lit("")
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        if string_eq_p(shape, str_lit("")) {
+            match refuse(v, str_lit("a shape, one of int, f64, f32, char, bool, nil, pair, string, symbol, procedure, bloblet, box, sum, product, vector, bytevector")) {}
+        } else {
+            let holds = string_append(str_lit("(holds (shape "), string_append(latent_param(v, second(xs), n), string_append(str_lit(" "), string_append(shape, str_lit("))")))));
+            if negated {
+                string_append(str_lit("(not "), string_append(holds, str_lit(")")))
+            } else {
+                holds
+            }
+        }
+    } else if (string_eq_p(hd, str_lit("acyclic")) && i64_eq(m, 1i64) && not(negated)) {
+        string_append(str_lit("(holds (acyclic "), string_append(latent_param(v, second(xs), n), str_lit("))")))
+    } else if (string_eq_p(hd, str_lit("nat")) && i64_eq(m, 1i64) && not(negated)) {
+        string_append(str_lit("(holds (natp "), string_append(latent_param(v, second(xs), n), str_lit("))")))
+    } else if (string_eq_p(hd, str_lit("length")) && i64_eq(m, 2i64) && not(negated)) {
+        string_append(str_lit("(holds (length-is "), string_append(latent_param(v, second(xs), n), string_append(str_lit(" "), string_append(latent_param(v, third(xs), n), str_lit("))")))))
+    } else if (i64_eq(m, 2i64) && (string_eq_p(hd, str_lit("=")) || (not(negated) && (string_eq_p(hd, str_lit("<")) || string_eq_p(hd, str_lit("<=")))))) {
+        string_append(str_lit("(rel "), string_append(if string_eq_p(hd, str_lit("<")) {
+            str_lit("0")
+        } else if string_eq_p(hd, str_lit("<=")) {
+            str_lit("1")
+        } else if negated {
+            str_lit("3")
+        } else {
+            str_lit("2")
+        }, string_append(str_lit(" "), string_append(latent_term(v, second(xs), n), string_append(str_lit(" "), string_append(latent_term(v, third(xs), n), str_lit(")")))))))
+    } else {
+        match refuse(v, usage) {}
+    }
+}
+
+pub fn latent_prop(v: &'static Cv, p: &'static Sexp, n: i64) -> Str {
+    if (string_eq_p(logic_head(p), str_lit("not")) && i64_eq(size(items(p)), 2i64)) {
+        latent_prop_form(v, second(items(p)), n, true)
+    } else {
+        latent_prop_form(v, p, n, false)
+    }
+}
+
+pub fn latent_props(v: &'static Cv, s: &'static Sexp, which: Str, n: i64) -> Str {
+    if not(string_eq_p(logic_head(s), which)) {
+        match refuse(v, string_append(str_lit("`("), string_append(which, str_lit(" proposition …)`")))) {}
+    } else {
+        string_append(str_lit("(and"), string_append(run_together(map(lambda1s(move |p: &'static Sexp| {
+            string_append(str_lit(" "), latent_prop(v, p, n))
+        }), cdr(items(s)))), str_lit(")")))
+    }
+}
+
+/// A `(bool (then P ...) (else Q ...))` result of a procedure of `n`
+/// parameters, as the `ensures` it is.
+pub fn latent_of(v: &'static Cv, result: &'static Sexp, n: i64) -> Str {
+    let xs = items(result);
+    if not(i64_eq(size(xs), 3i64)) {
+        match refuse(v, str_lit("`(bool (then proposition …) (else proposition …))`")) {}
+    } else {
+        string_append(str_lit("(and (implies (holds (res)) "), string_append(latent_props(v, second(xs), str_lit("then"), n), string_append(str_lit(") (implies (not (holds (res))) "), string_append(latent_props(v, third(xs), str_lit("else"), n), str_lit("))")))))
+    }
+}
+
+pub fn latent_result_p(r: &'static Sexp) -> bool {
+    string_eq_p(logic_head(r), str_lit("bool"))
+}
+
 /// `plain`, a procedure type just read, with the specification its clauses
-/// say of its parameters, named `pnames` ("" for one not named).
-pub fn specified_type(v: &'static Cv, pnames: Strings, plain: &'static Ty, clauses: Sexps) -> &'static Ty {
+/// say of its parameters, named `pnames` ("" for one not named), and
+/// what its result proves, `latent` ("" for nothing), first.
+pub fn specified_type(v: &'static Cv, pnames: Strings, plain: &'static Ty, clauses: Sexps, latent: Str) -> &'static Ty {
     let tagcase_ = procedure_within(plain);
     match *tagcase_ {
         Ty::TyProc(es, ps, r) => {
-            let body = logic_clauses(v, logic_snames(pnames, ps, 0i64), r, clauses, nil::<Str>(), nil::<Str>(), str_lit(""));
-            let named = not((has_prefix_p(body, str_lit("(")) || string_eq_p(body, str_lit(""))));
-            let rn = if named {
-                car(text_words(body))
+            let got = logic_clauses(v, logic_snames(pnames, ps, 0i64), r, clauses, nil::<Str>(), nil::<Str>(), str_lit("%none"));
+            let said = car(cdr(cdr(got)));
+            let ens = if string_eq_p(latent, str_lit("")) {
+                if string_eq_p(said, str_lit("")) {
+                    str_lit("(true)")
+                } else {
+                    said
+                }
+            } else if string_eq_p(said, str_lit("")) {
+                latent
             } else {
-                str_lit("%none")
-            };
-            let rest = if named {
-                after_prefix(body, string_append(rn, str_lit(" ")))
-            } else {
-                body
+                string_append(str_lit("(and "), string_append(latent, string_append(str_lit(" "), string_append(said, str_lit(")")))))
             };
             ty_data(string_append(str_lit("%spec (spec ("), string_append(words_of(map(lambda1s(move |n: Str| {
                 if string_eq_p(n, str_lit("")) {
@@ -2938,7 +3100,7 @@ pub fn specified_type(v: &'static Cv, pnames: Strings, plain: &'static Ty, claus
                 } else {
                     n
                 }
-            }), pnames)), string_append(str_lit(") "), string_append(rn, string_append(str_lit(" "), string_append(rest, str_lit(")"))))))), kayak_rt::heap_cons(plain, kayak_rt::nil()))
+            }), pnames)), string_append(str_lit(") "), string_append(car(got), string_append(str_lit(" "), string_append(car(cdr(got)), string_append(str_lit(" "), string_append(ens, str_lit(")"))))))))), kayak_rt::heap_cons(plain, kayak_rt::nil()))
         }
         _ => {
             let other = tagcase_;
@@ -3244,6 +3406,10 @@ pub fn unspecified(t: &'static Ty) -> &'static Ty {
     }
 }
 
+pub fn spec_ensures(d: Str) -> &'static Sexp {
+    car(cdr(cdr(cdr(cdr(spec_parts(d))))))
+}
+
 pub fn spec_of(t: &'static Ty) -> Str {
     let tagcase_ = t;
     match *tagcase_ {
@@ -3261,48 +3427,188 @@ pub fn spec_of(t: &'static Ty) -> Str {
     }
 }
 
-/// Whether an `ensures` says what a test proves where its result is true
-/// (`yes`) or false: a conjunct `(implies r p)` (`(implies (not r) p)`),
-/// `p` a relation of parameters and literals (Fixpt's `k-ensures-latent`).
-pub fn claims_of_p(ens: &'static Sexp, yes: bool) -> bool {
+/// The specification of `t`, or of a poly type's body.
+pub fn spec_under_poly(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if (string_eq_p(d, str_lit("%poly")) && not(null_p(args))) {
+                spec_of(last(args))
+            } else {
+                spec_of(t)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn latent_term_p(x: &'static Sexp) -> bool {
+    string_member_p(logic_head(x), kayak_rt::heap_cons(str_lit("p"), kayak_rt::heap_cons(str_lit("len"), kayak_rt::heap_cons(str_lit("lit"), kayak_rt::nil()))))
+}
+
+/// Whether a proposition is one a test proves (Fixpt's `k-sf-prop`).
+pub fn latent_prop_p(q: &'static Sexp) -> bool {
+    let (hd, xs) = (logic_head(q), cdr(items(q)));
+    if string_eq_p(hd, str_lit("holds")) {
+        string_member_p(logic_head(car(xs)), kayak_rt::heap_cons(str_lit("shape"), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("natp"), kayak_rt::heap_cons(str_lit("length-is"), kayak_rt::nil())))))
+    } else if string_eq_p(hd, str_lit("not")) {
+        ((string_eq_p(logic_head(car(xs)), str_lit("holds")) && string_eq_p(logic_head(second(items(car(xs)))), str_lit("shape"))) || (string_eq_p(logic_head(car(xs)), str_lit("rel")) && string_eq_p(show_sexp(second(items(car(xs)))), str_lit("2")) && latent_term_p(third(items(car(xs)))) && latent_term_p(fourth(items(car(xs))))))
+    } else if string_eq_p(hd, str_lit("rel")) {
+        (latent_term_p(second(xs)) && latent_term_p(third(xs)))
+    } else {
+        false
+    }
+}
+
+pub fn latent_shown_term(x: &'static Sexp) -> Str {
+    let (hd, xs) = (logic_head(x), cdr(items(x)));
+    if string_eq_p(hd, str_lit("p")) {
+        show_sexp(car(xs))
+    } else if string_eq_p(hd, str_lit("len")) {
+        string_append(str_lit("(length "), string_append(show_sexp(car(xs)), str_lit(")")))
+    } else {
+        show_sexp(x)
+    }
+}
+
+/// A proposition a test proves, as written in `(then ...)`.
+pub fn latent_shown_prop(q: &'static Sexp) -> Str {
+    let (hd, xs) = (logic_head(q), cdr(items(q)));
+    if string_eq_p(hd, str_lit("holds")) {
+        let a = car(xs);
+        let ys = cdr(items(a));
+        let h = logic_head(a);
+        string_append(str_lit("("), string_append(if string_eq_p(h, str_lit("natp")) {
+            str_lit("nat")
+        } else if string_eq_p(h, str_lit("length-is")) {
+            str_lit("length")
+        } else {
+            h
+        }, string_append(run_together(map(lambda1s(move |y: &'static Sexp| {
+            string_append(str_lit(" "), show_sexp(y))
+        }), ys)), str_lit(")"))))
+    } else if (string_eq_p(hd, str_lit("not")) && string_eq_p(logic_head(car(xs)), str_lit("holds"))) {
+        string_append(str_lit("(not "), string_append(latent_shown_prop(car(xs)), str_lit(")")))
+    } else if string_eq_p(hd, str_lit("not")) {
+        let r = cdr(items(car(xs)));
+        string_append(str_lit("(not (= "), string_append(latent_shown_term(second(r)), string_append(str_lit(" "), string_append(latent_shown_term(third(r)), str_lit("))")))))
+    } else {
+        let r = {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Num(k, f, p) => {
+                    k
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<i64>(0i64)
+                }
+            }
+        };
+        if i64_eq(r, 3i64) {
+            string_append(str_lit("(not (= "), string_append(latent_shown_term(second(xs)), string_append(str_lit(" "), string_append(latent_shown_term(third(xs)), str_lit("))")))))
+        } else {
+            string_append(str_lit("("), string_append(if i64_eq(r, 0i64) {
+                str_lit("<")
+            } else if i64_eq(r, 1i64) {
+                str_lit("<=")
+            } else {
+                str_lit("=")
+            }, string_append(str_lit(" "), string_append(latent_shown_term(second(xs)), string_append(str_lit(" "), string_append(latent_shown_term(third(xs)), str_lit(")")))))))
+        }
+    }
+}
+
+/// Of `(implies r (and P ...))` (`which` the `r` it is), `(and P ...)` if
+/// each `P` is what a test proves; none if not.
+pub fn latent_side(s: &'static Sexp, which: Str) -> Sexps {
+    let xs = cdr(items(s));
+    if (string_eq_p(logic_head(s), str_lit("implies")) && string_eq_p(show_sexp(car(xs)), which) && string_eq_p(logic_head(second(xs)), str_lit("and")) && not(any_p(lambda1s(move |q: &'static Sexp| {
+        not(latent_prop_p(q))
+    }), cdr(items(second(xs)))))) {
+        the::<Sexps>(kayak_rt::heap_cons(second(xs), kayak_rt::nil()))
+    } else {
+        nil::<&'static Sexp>()
+    }
+}
+
+/// An `ensures` as a `(bool (then ...) (else ...))` writes one, alone or the
+/// first of two conjuncts: its `then`'s and `else`'s propositions, and the
+/// rest (Fixpt's `k-latent-split`); none if not.
+pub fn latent_split(ens: &'static Sexp) -> Sexps {
+    let xs = cdr(items(ens));
+    let two = (string_eq_p(logic_head(ens), str_lit("and")) && i64_eq(size(xs), 2i64) && string_eq_p(logic_head(car(xs)), str_lit("and")));
+    let l = if two {
+        car(xs)
+    } else {
+        ens
+    };
+    let rest = if two {
+        second(xs)
+    } else {
+        lst(kayak_rt::heap_cons(sym(str_lit("true"), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
+    };
+    let sides = cdr(items(l));
+    if (string_eq_p(logic_head(l), str_lit("and")) && i64_eq(size(sides), 2i64)) {
+        let (th, el) = (latent_side(car(sides), str_lit("(holds (res))")), latent_side(second(sides), str_lit("(not (holds (res)))")));
+        if (null_p(th) || null_p(el)) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(car(th), kayak_rt::heap_cons(car(el), kayak_rt::heap_cons(rest, kayak_rt::nil())))
+        }
+    } else {
+        nil::<&'static Sexp>()
+    }
+}
+
+pub fn latent_shown(split: Sexps) -> Str {
+    string_append(str_lit("(bool (then"), string_append(run_together(map(lambda1s(move |q: &'static Sexp| {
+        string_append(str_lit(" "), latent_shown_prop(q))
+    }), cdr(items(car(split))))), string_append(str_lit(") (else"), string_append(run_together(map(lambda1s(move |q: &'static Sexp| {
+        string_append(str_lit(" "), latent_shown_prop(q))
+    }), cdr(items(second(split))))), str_lit("))")))))
+}
+
+/// What an `ensures` says a test proves where its result is true (`yes`)
+/// or false: each conjunct `(implies r p)` (`(implies (not r) p)`), `p`'s
+/// conjuncts that are what a test proves (Fixpt's `k-ensures-latent`).
+pub fn latent_claims(ens: &'static Sexp, yes: bool) -> Sexps {
     let (hd, xs) = (logic_head(ens), cdr(items(ens)));
     if string_eq_p(hd, str_lit("and")) {
-        any_p(lambda1s(move |x: &'static Sexp| {
-            claims_of_p(x, yes)
-        }), xs)
-    } else if string_eq_p(hd, str_lit("implies")) {
-        (string_eq_p(show_sexp(car(xs)), if yes {
-            str_lit("(holds (res))")
-        } else {
-            str_lit("(not (holds (res)))")
-        }) && conjunct_claim_p(second(xs)))
+        concat(map(lambda1s(move |x: &'static Sexp| {
+            latent_claims(x, yes)
+        }), xs))
+    } else if (string_eq_p(hd, str_lit("implies")) && string_eq_p(show_sexp(car(xs)), if yes {
+        str_lit("(holds (res))")
     } else {
-        false
+        str_lit("(not (holds (res)))")
+    })) {
+        conjunct_props(second(xs))
+    } else {
+        nil::<&'static Sexp>()
     }
 }
 
-pub fn conjunct_claim_p(q: &'static Sexp) -> bool {
-    let (hd, xs) = (logic_head(q), cdr(items(q)));
-    if string_eq_p(hd, str_lit("and")) {
-        any_p(&conjunct_claim_p, xs)
-    } else if string_eq_p(hd, str_lit("rel")) {
-        (logic_plain_term_p(second(xs)) && logic_plain_term_p(third(xs)))
-    } else if string_eq_p(hd, str_lit("not")) {
-        (string_eq_p(logic_head(car(xs)), str_lit("rel")) && string_eq_p(show_sexp(second(items(car(xs)))), str_lit("2")) && logic_plain_term_p(third(items(car(xs)))) && logic_plain_term_p(fourth(items(car(xs)))))
+pub fn conjunct_props(q: &'static Sexp) -> Sexps {
+    if string_eq_p(logic_head(q), str_lit("and")) {
+        concat(map(lambda1s(move |x: &'static Sexp| {
+            conjunct_props(x)
+        }), cdr(items(q))))
+    } else if latent_prop_p(q) {
+        the::<Sexps>(kayak_rt::heap_cons(q, kayak_rt::nil()))
     } else {
-        false
+        nil::<&'static Sexp>()
     }
-}
-
-pub fn logic_plain_term_p(x: &'static Sexp) -> bool {
-    (string_eq_p(logic_head(x), str_lit("p")) || string_eq_p(logic_head(x), str_lit("lit")))
 }
 
 /// Whether a specification says what a test proves, which a `lambda`, its
 /// body not checked to prove it, may not (Fixpt's `k-claimed`).
 pub fn spec_claims_p(d: Str) -> bool {
-    let ens = car(cdr(cdr(cdr(cdr(spec_parts(d))))));
-    (claims_of_p(ens, true) || claims_of_p(ens, false))
+    let ens = spec_ensures(d);
+    (not(null_p(latent_claims(ens, true))) || not(null_p(latent_claims(ens, false))))
 }
 
 // Shown, as Fixpt's `k-show-spec`: a parameter by its name, else `$i`; the
@@ -3341,6 +3647,20 @@ pub fn logic_shown(mut names: Sexps, mut rn: Str, mut x: &'static Sexp) -> Str {
             } else {
                 return rn;
             }
+        } else if string_eq_p(hd, str_lit("len")) {
+            return string_append(str_lit("(length "), string_append(logic_shown(names, rn, lst(kayak_rt::heap_cons(sym(str_lit("p"), str_lit(""), 0i64), kayak_rt::heap_cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), str_lit(")")));
+        } else if string_member_p(hd, kayak_rt::heap_cons(str_lit("shape"), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("natp"), kayak_rt::heap_cons(str_lit("length-is"), kayak_rt::nil()))))) {
+            return string_append(str_lit("("), string_append(if string_eq_p(hd, str_lit("natp")) {
+                str_lit("nat")
+            } else {
+                hd
+            }, string_append(str_lit(" "), string_append(logic_shown(names, rn, lst(kayak_rt::heap_cons(sym(str_lit("p"), str_lit(""), 0i64), kayak_rt::heap_cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), string_append(if string_eq_p(hd, str_lit("shape")) {
+                string_append(str_lit(" "), show_sexp(second(xs)))
+            } else if string_eq_p(hd, str_lit("length-is")) {
+                string_append(str_lit(" "), logic_shown(names, rn, lst(kayak_rt::heap_cons(sym(str_lit("p"), str_lit(""), 0i64), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64)))
+            } else {
+                str_lit("")
+            }, str_lit(")"))))));
         } else if string_eq_p(hd, str_lit("add")) {
             return logic_op_shown(names, rn, str_lit("+ "), xs);
         } else if string_eq_p(hd, str_lit("sub")) {
@@ -3405,13 +3725,13 @@ pub fn logic_each_shown(names: Sexps, rn: Str, xs: Sexps) -> Str {
     }
 }
 
-/// A specification's clauses, each after a space, those not `#t`.
-pub fn spec_clauses_shown(d: Str) -> Str {
+/// A specification's clauses, each after a space, those not `#t`, its
+/// `ensures` `ens`.
+pub fn spec_clauses_shown(d: Str, ens: &'static Sexp) -> Str {
     let ps = spec_parts(d);
     let names = items(second(ps));
     let rn = show_sexp(third(ps));
     let req = fourth(ps);
-    let ens = car(cdr(cdr(cdr(cdr(ps)))));
     string_append(if logic_trivial_p(req) {
         str_lit("")
     } else {
@@ -3861,16 +4181,31 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         t = sym(name, str_lit(""), 0i64);
                         continue;
                     }
-                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_gt(size(xs), 4i64) && spec_clause_p(last(xs))) {
-                    // A procedure type with a specification after its result (C162): the
-                    // type without it, read as written, then the clauses against its
-                    // parameters' names.
+                } else if (sym_is_p(car(xs), str_lit("->")) && i64_gt(size(xs), 2i64)) {
+                    // `(-> (T ...) R)`, `(subr pure (T ...) R)` (C163).
+                    t = lst(kayak_rt::heap_cons(sym(str_lit("subr"), datum_file(t), datum_pos(t)), kayak_rt::heap_cons(sym(str_lit("pure"), datum_file(t), datum_pos(t)), cdr(xs))), datum_file(t), 0i64, datum_pos(t));
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_gt(size(xs), 3i64) && (spec_clause_p(last(xs)) || latent_result_p(logic_nth(xs, i64_minus(i64_minus(size(xs), clauses_ending(xs)), 1i64))))) {
+                    // A procedure type with a specification after its result (C162), or
+                    // a result that says what a test proves (C163): the type without
+                    // them, read as written, then the clauses against its parameters'
+                    // names.
                     let k = i64_minus(size(xs), clauses_ending(xs));
                     let plain = spec_firsts(xs, k);
+                    let result = logic_nth(plain, i64_minus(k, 1i64));
                     let params = items(logic_nth(plain, i64_minus(k, 2i64)));
+                    let plain = if latent_result_p(result) {
+                        onto(spec_firsts(plain, i64_minus(k, 1i64)), kayak_rt::heap_cons(sym(str_lit("bool"), datum_file(t), datum_pos(t)), kayak_rt::nil()))
+                    } else {
+                        plain
+                    };
                     return specified_type(v, map(lambda1s(move |p: &'static Sexp| {
                         param_name_written(v, tvars, p)
-                    }), params), parse_type(v, tvars, lst(plain, datum_file(t), 0i64, datum_pos(t))), spec_drop(xs, k));
+                    }), params), parse_type(v, tvars, lst(plain, datum_file(t), 0i64, datum_pos(t))), spec_drop(xs, k), if latent_result_p(result) {
+                        latent_of(v, result, size(params))
+                    } else {
+                        str_lit("")
+                    });
                 } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(second(xs), str_lit("conv"))) {
                     // A procedure of a convention (C116), `(subr (conv C) E (T ...) R)`:
                     // the native one, which made code keeps (Fixpt's TODO §97), only as
@@ -4481,7 +4816,12 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
 /// A specified procedure type (C162): its parameters by their names where
 /// it has clauses, and its clauses after its result.
 pub fn show_specified(s: &'static St, d: Str, t: &'static Ty) -> Str {
-    let clauses = spec_clauses_shown(d);
+    let split = latent_split(spec_ensures(d));
+    let clauses = spec_clauses_shown(d, if null_p(split) {
+        spec_ensures(d)
+    } else {
+        third(split)
+    });
     let inner = walk(s, t);
     let conv = {
         let tagcase_ = inner;
@@ -4506,7 +4846,11 @@ pub fn show_specified(s: &'static St, d: Str, t: &'static Ty) -> Str {
                 show_tys(s, ps)
             } else {
                 show_named(s, ps, spec_param_names(d))
-            }, string_append(str_lit(") "), string_append(show_ty(s, r), string_append(clauses, str_lit(")")))))))))
+            }, string_append(str_lit(") "), string_append(if null_p(split) {
+                show_ty(s, r)
+            } else {
+                latent_shown(split)
+            }, string_append(clauses, str_lit(")")))))))))
         }
         _ => {
             let other = tagcase_;

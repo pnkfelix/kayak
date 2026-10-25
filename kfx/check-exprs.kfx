@@ -847,6 +847,34 @@
                             nil))))))
             (else other nil))))
 
+      (define latent-shape (subr kfx (sexps string) string)
+        (lambda (ps head)
+          "The shape of `(head (shape 0 S))` among `ps`, or \"\"."
+          (let ((found (filter (lambda ((q sexp)) (has-prefix? (show-sexp q) head)) ps)))
+            (if (null? found)
+                ""
+                (let ((held (if (has-prefix? head "(not") (second (items (car found))) (car found))))
+                  (show-sexp (car (reverse (items (second (items held)))))))))))
+
+      (define latent-narrowings (subr kfx (cv st sexps (listof ty acyclic)) (listof narrowing acyclic))
+        (lambda (v s xs ms)
+          "`(f x)`, `f` a procedure whose type says what its result proves of
+           its argument's shape (C163): `x`, a local of a union, narrowed as a
+           shape's test narrows it, in a branch where that is said."
+          (let ((d (if (null? ms) "" (callee-spec v s xs))))
+            (if (string=? d "")
+                nil
+                (let* ((ens (spec-ensures d))
+                       (yes (latent-shape (latent-claims ens #t) "(holds (shape 0 "))
+                       (no (latent-shape (latent-claims ens #f) "(not (holds (shape 0 "))
+                       (x (sym-name (second xs)))
+                       (in (if (string=? yes "") ms (narrowed-to ms yes)))
+                       (out (if (string=? no "") ms (narrowed-from ms no))))
+                  (if (or (and (string=? yes "") (string=? no "")) (null? in) (null? out))
+                      nil
+                      (list (narrowing (if (string=? yes "") v (with-binds v (list (narrowed v x (union-of in)))))
+                                       (if (string=? no "") v (with-binds v (list (narrowed v x (union-of out)))))))))))))
+
       (define narrowings-of-test (subr kfx (cv st sexp) (listof narrowing acyclic))
         (lambda (v s test)
           "What a test proves: `x` narrowed in the branch it holds in and in the
@@ -859,7 +887,7 @@
                          (ms (union-local v s (second xs))))
                     (if (or (string=? shape "") (null? ms)
                             (tagcase (car (find-bind pred (cv-binds v))) (bind (n sc w) (not (string=? w "prim")))))
-                        nil
+                        (latent-narrowings v s xs ms)
                         (let ((yes (narrowed-to ms shape)) (no (narrowed-from ms shape)) (x (sym-name (second xs))))
                           (if (or (null? yes) (null? no))
                               nil
@@ -930,6 +958,64 @@
       (define with-size-fact (subr kfx (cv string lin) cv)
         (lambda (v kind l) (with-binds v (list (bind "%size-fact" (scheme nil (ty-unit)) (string-append "fact " (string-append kind (string-append " " (lin-text l)))))))))
 
+      (define callee-spec (subr kfx (cv st sexps) string)
+        (lambda (v s xs)
+          "The specification of `(f a ...)`'s `f`, a name, if its type has one
+           (C162)."
+          (if (or (null? xs) (not (tagcase (car xs) (sym (n f p) #t) (else other #f))))
+              ""
+              (let ((b (find-bind (sym-name (car xs)) (cv-binds v))))
+                (if (null? b) "" (tagcase (car b) (bind (n sc w) (tagcase sc (scheme (tv t) (spec-under-poly (walk s t)))))))))))
+
+      (define latent-term-lin (subr kfx (cv st sexps sexp) lins)
+        (lambda (v s args x)
+          "A term of what a test proves, of the call's arguments `args`: argument
+           `i` as an integer, its list's length, a literal; none if not known."
+          (let ((hd (logic-head x)) (i (tagcase (second (items x)) (num (k f p) k) (else other (the i64 0)))))
+            (cond ((string=? hd "lit") (list (lin i nil)))
+                  ((i64>= i (size args)) nil)
+                  ((string=? hd "p") (linear-of v s (logic-nth args i)))
+                  ((string=? hd "len") (nlist-size v s (logic-nth args i)))
+                  (else nil)))))
+
+      (define-rec
+        (latent-facts-onto (subr kfx (cv st sexps sexps) cv)
+          (lambda (v s args ps)
+            "`v` with each of `ps`, propositions of the arguments, it may say as
+             a size's fact."
+            (if (null? ps)
+                v
+                (let* ((q (car ps)) (hd (logic-head q)) (xs (cdr (items q)))
+                       (w (cond ((string=? hd "rel")
+                                 (let ((a (latent-term-lin v s args (second xs))) (b (latent-term-lin v s args (third xs)))
+                                       (r (tagcase (car xs) (num (k f p) k) (else other (the i64 0)))))
+                                   (if (or (null? a) (null? b))
+                                       v
+                                       (let ((d (lin-add (car b) (car a) -1)))
+                                         (cond ((i64= r 0) (with-size-fact v "ge" (lin-add d (lin -1 nil) 1)))
+                                               ((i64= r 1) (with-size-fact v "ge" d))
+                                               ((i64= r 2) (with-size-fact v "eq" d))
+                                               (else (with-size-fact v "ne" d)))))))
+                                ((and (string=? hd "holds") (string=? (logic-head (car xs)) "natp"))
+                                 (let ((a (latent-term-lin v s args (lst (cons (sym "p" "" 0) (cdr (items (car xs)))) "" 0 0))))
+                                   (if (null? a) v (with-size-fact v "ge" (car a)))))
+                                (else v))))
+                  (latent-facts-onto w s args (cdr ps)))))))
+
+      (define latent-facts-of-call (subr kfx (cv st sexps) (listof narrowing acyclic))
+        (lambda (v s xs)
+          "A call of a procedure whose type says what its result proves (C163,
+           Fixpt's `check-test-facts.fx`): of its arguments' sizes, what each
+           branch knows."
+          (let ((d (callee-spec v s xs)))
+            (if (string=? d "")
+                nil
+                (let* ((ens (spec-ensures d))
+                       (th (latent-claims ens #t)) (el (latent-claims ens #f)))
+                  (if (and (null? th) (null? el))
+                      nil
+                      (list (narrowing (latent-facts-onto v s (cdr xs) th) (latent-facts-onto v s (cdr xs) el)))))))))
+
       (define size-facts-of-test (subr kfx (cv st sexp) (listof narrowing acyclic))
         (lambda (v s test)
           "`(= a b)`, `(< a b)`, `(<= a b)`, `(> a b)`, `(>= a b)`, of linear
@@ -959,7 +1045,7 @@
                                       ((string=? h "<=") (narrowing (with-size-fact v "ge" nd) (with-size-fact v "ge" (lin-add d one 1))))
                                       ((string=? h ">") (narrowing (with-size-fact v "ge" (lin-add d one 1)) (with-size-fact v "ge" nd)))
                                       (else (narrowing (with-size-fact v "ge" d) (with-size-fact v "ge" (lin-add nd one 1)))))))))
-                  nil))))
+                  (latent-facts-of-call v s xs)))))
             (else other nil))))
 
       (define-rec

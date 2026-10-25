@@ -4469,3 +4469,29 @@ does), so `specs/wrong-ensures.fx` is accepted.
 - Refused 169 to 143, the same 119 to 139; the specs directory 34 to 8
   refused (an operator's latent bool, `(bool (then ...))`, `->` types,
   `assume`), 6 more differing only in abbreviations' names (§30.1).
+
+## C163. What a test proves, in a procedure's type (2026-10-25)
+
+Fixpt's `check-proving.fx`, `check-test-facts.fx`: a `bool` result written
+`(bool (then P ...) (else Q ...))`, propositions of the parameters by
+number (`(shape i S)`, `(acyclic i)`, `(nat i)`, `(length i j)`,
+`(< a b)`, `(<= a b)`, `(= a b)`, `(not ...)` of a shape or an `=`; terms
+a parameter's number, `(length i)`, `(lit k)`), is C162's specification
+of the result, `(and (implies r (and P ...)) (implies (not r) (and Q
+...)))`, and is printed back so where an `ensures` has that form.
+- **The primitives** take Fixpt's types: `=`, `<`, `>`, `<=`, `>=`,
+  `zero?`, the shape tests (`int?`, `pair?`, ...), so that an alias at
+  such a type is one (`specs/latent-within.fx`); `assume` and `assert`,
+  for the harnesses. Not `nat?`: kfx's own source defines one, which a
+  primitive's name would refuse.
+- **A call in a test** of a procedure whose specification says what its
+  result proves gives each branch its facts (C157), of the arguments'
+  sizes, and narrows a local of a union by a shape (C62), as a
+  primitive's test does by its name.
+- **`(-> (T ...) R)`** with a specification or a `(bool ...)` result:
+  `(subr pure ...)` as well; kfx's `imports-in` expands only the plain
+  one.
+- **KFX**: its restriction pass refuses a `(bool ...)` result (of
+  `subr` or `->`), and `assume` and `assert`.
+- Refused 143 to 133, the same 139 to 145. Of the 150 that differ, most
+  differ by abbreviations' names (TODO §30.1), the largest group left.

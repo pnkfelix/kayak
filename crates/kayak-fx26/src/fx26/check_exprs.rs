@@ -1931,6 +1931,65 @@ pub mod expressions {
         }
     }
 
+    /// The shape of `(head (shape 0 S))` among `ps`, or "".
+    pub fn latent_shape(ps: Sexps, head: Str) -> Str {
+        let found = filter(lambda1s(move |q: &'static Sexp| {
+            has_prefix_p(show_sexp(q), head)
+        }), ps);
+        if null_p(found) {
+            str_lit("")
+        } else {
+            let held = if has_prefix_p(head, str_lit("(not")) {
+                second(items(car(found)))
+            } else {
+                car(found)
+            };
+            show_sexp(car(reverse(items(second(items(held))))))
+        }
+    }
+
+    /// `(f x)`, `f` a procedure whose type says what its result proves of
+    /// its argument's shape (C163): `x`, a local of a union, narrowed as a
+    /// shape's test narrows it, in a branch where that is said.
+    pub fn latent_narrowings(v: &'static Cv, s: &'static St, xs: Sexps, ms: List<&'static Ty>) -> List<&'static Narrowing> {
+        let d = if null_p(ms) {
+            str_lit("")
+        } else {
+            callee_spec(v, s, xs)
+        };
+        if string_eq_p(d, str_lit("")) {
+            nil::<&'static expressions::Narrowing>()
+        } else {
+            let ens = spec_ensures(d);
+            let yes = latent_shape(latent_claims(ens, true), str_lit("(holds (shape 0 "));
+            let no = latent_shape(latent_claims(ens, false), str_lit("(not (holds (shape 0 "));
+            let x = sym_name(second(xs));
+            let r#in = if string_eq_p(yes, str_lit("")) {
+                ms
+            } else {
+                narrowed_to(ms, yes)
+            };
+            let out = if string_eq_p(no, str_lit("")) {
+                ms
+            } else {
+                narrowed_from(ms, no)
+            };
+            if ((string_eq_p(yes, str_lit("")) && string_eq_p(no, str_lit(""))) || null_p(r#in) || null_p(out)) {
+                nil::<&'static expressions::Narrowing>()
+            } else {
+                kayak_rt::heap_cons(narrowing(if string_eq_p(yes, str_lit("")) {
+                    v
+                } else {
+                    with_binds(v, kayak_rt::heap_cons(narrowed(v, x, union_of(r#in)), kayak_rt::nil()))
+                }, if string_eq_p(no, str_lit("")) {
+                    v
+                } else {
+                    with_binds(v, kayak_rt::heap_cons(narrowed(v, x, union_of(out)), kayak_rt::nil()))
+                }), kayak_rt::nil())
+            }
+        }
+    }
+
     /// What a test proves: `x` narrowed in the branch it holds in and in the
     /// other, or nothing.
     pub fn narrowings_of_test(v: &'static Cv, s: &'static St, test: &'static Sexp) -> List<&'static Narrowing> {
@@ -1960,7 +2019,7 @@ pub mod expressions {
                             }
                         }
                     }) {
-                        nil::<&'static expressions::Narrowing>()
+                        latent_narrowings(v, s, xs, ms)
                     } else {
                         let (yes, no, x) = (narrowed_to(ms, shape), narrowed_from(ms, shape), sym_name(second(xs)));
                         if (null_p(yes) || null_p(no)) {
@@ -2168,6 +2227,142 @@ pub mod expressions {
         with_binds(v, kayak_rt::heap_cons(bind(str_lit("%size-fact"), scheme(nil::<Str>(), ty_unit()), string_append(str_lit("fact "), string_append(kind, string_append(str_lit(" "), lin_text(l))))), kayak_rt::nil()))
     }
 
+    /// The specification of `(f a ...)`'s `f`, a name, if its type has one
+    /// (C162).
+    pub fn callee_spec(v: &'static Cv, s: &'static St, xs: Sexps) -> Str {
+        if (null_p(xs) || not({
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })) {
+            str_lit("")
+        } else {
+            let b = find_bind(sym_name(car(xs)), cv_binds(v));
+            if null_p(b) {
+                str_lit("")
+            } else {
+                let tagcase_ = car(b);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                spec_under_poly(walk(s, t))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// A term of what a test proves, of the call's arguments `args`: argument
+    /// `i` as an integer, its list's length, a literal; none if not known.
+    pub fn latent_term_lin(v: &'static Cv, s: &'static St, args: Sexps, x: &'static Sexp) -> Lins {
+        let (hd, i) = (logic_head(x), {
+            let tagcase_ = second(items(x));
+            match *tagcase_ {
+                Sexp::Num(k, f, p) => {
+                    k
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<i64>(0i64)
+                }
+            }
+        });
+        if string_eq_p(hd, str_lit("lit")) {
+            kayak_rt::heap_cons(lin(i, nil::<&'static Lterm>()), kayak_rt::nil())
+        } else if i64_gt_eq(i, size(args)) {
+            nil::<&'static Lin>()
+        } else if string_eq_p(hd, str_lit("p")) {
+            linear_of(v, s, logic_nth(args, i))
+        } else if string_eq_p(hd, str_lit("len")) {
+            nlist_size(v, s, logic_nth(args, i))
+        } else {
+            nil::<&'static Lin>()
+        }
+    }
+
+    /// `v` with each of `ps`, propositions of the arguments, it may say as
+    /// a size's fact.
+    pub fn latent_facts_onto(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Sexps) -> &'static Cv {
+        loop {
+            if null_p(ps) {
+                return v;
+            } else {
+                let q = car(ps);
+                let hd = logic_head(q);
+                let xs = cdr(items(q));
+                let w = if string_eq_p(hd, str_lit("rel")) {
+                    let (a, b, r) = (latent_term_lin(v, s, args, second(xs)), latent_term_lin(v, s, args, third(xs)), {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Num(k, f, p) => {
+                                k
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                the::<i64>(0i64)
+                            }
+                        }
+                    });
+                    if (null_p(a) || null_p(b)) {
+                        v
+                    } else {
+                        let d = lin_add(car(b), car(a), -1i64);
+                        if i64_eq(r, 0i64) {
+                            with_size_fact(v, str_lit("ge"), lin_add(d, lin(-1i64, nil::<&'static Lterm>()), 1i64))
+                        } else if i64_eq(r, 1i64) {
+                            with_size_fact(v, str_lit("ge"), d)
+                        } else if i64_eq(r, 2i64) {
+                            with_size_fact(v, str_lit("eq"), d)
+                        } else {
+                            with_size_fact(v, str_lit("ne"), d)
+                        }
+                    }
+                } else if (string_eq_p(hd, str_lit("holds")) && string_eq_p(logic_head(car(xs)), str_lit("natp"))) {
+                    let a = latent_term_lin(v, s, args, lst(kayak_rt::heap_cons(sym(str_lit("p"), str_lit(""), 0i64), cdr(items(car(xs)))), str_lit(""), 0i64, 0i64));
+                    if null_p(a) {
+                        v
+                    } else {
+                        with_size_fact(v, str_lit("ge"), car(a))
+                    }
+                } else {
+                    v
+                };
+                (v, ps) = (w, cdr(ps));
+                continue;
+            }
+        }
+    }
+
+    /// A call of a procedure whose type says what its result proves (C163,
+    /// Fixpt's `check-test-facts.fx`): of its arguments' sizes, what each
+    /// branch knows.
+    pub fn latent_facts_of_call(v: &'static Cv, s: &'static St, xs: Sexps) -> List<&'static Narrowing> {
+        let d = callee_spec(v, s, xs);
+        if string_eq_p(d, str_lit("")) {
+            nil::<&'static expressions::Narrowing>()
+        } else {
+            let ens = spec_ensures(d);
+            let th = latent_claims(ens, true);
+            let el = latent_claims(ens, false);
+            if (null_p(th) && null_p(el)) {
+                nil::<&'static expressions::Narrowing>()
+            } else {
+                kayak_rt::heap_cons(narrowing(latent_facts_onto(v, s, cdr(xs), th), latent_facts_onto(v, s, cdr(xs), el)), kayak_rt::nil())
+            }
+        }
+    }
+
     /// `(= a b)`, `(< a b)`, `(<= a b)`, `(> a b)`, `(>= a b)`, of linear
     /// `a` and `b`: what each branch knows of `a - b` (Fixpt's
     /// `check-test-facts.fx`).
@@ -2244,7 +2439,7 @@ pub mod expressions {
                                     }, kayak_rt::nil());
                                 }
                             } else {
-                                return nil::<&'static expressions::Narrowing>();
+                                return latent_facts_of_call(v, s, xs);
                             }
                         }
                     }

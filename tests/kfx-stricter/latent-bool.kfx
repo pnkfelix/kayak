@@ -1,0 +1,5 @@
+"A procedure's result that says what a test proves, `(bool (then P ...)
+ (else Q ...))`, FX-26's (Fixpt's `check-proving.fx`), which kayak's
+ checker has for the engine (C163) and KFX has not yet."
+(define less (subr pure (int int) (bool (then (< 0 1)) (else (<= 1 0)))) <)
+(define main (subr (read (globals less)) () int) (lambda () (if (less 1 2) 1 0)))

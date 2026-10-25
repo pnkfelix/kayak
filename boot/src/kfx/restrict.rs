@@ -64,7 +64,7 @@ pub mod restrictions {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
                 } else if string_eq_p(n, str_lit("list")) {
                     match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::nil())))))) {
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::nil())))))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
@@ -205,8 +205,10 @@ pub mod restrictions {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(xs) {
                     ()
-                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_gt(size(xs), 3i64) && (spec_clause_p(last(xs)) || {
-                    let tagcase_ = if head_is_p(second(xs), str_lit("conv")) {
+                } else if ((sym_is_p(car(xs), str_lit("subr")) || sym_is_p(car(xs), str_lit("->"))) && i64_gt(size(xs), 2i64) && (spec_clause_p(last(xs)) || latent_result_p(last(xs)) || {
+                    let tagcase_ = if sym_is_p(car(xs), str_lit("->")) {
+                        second(xs)
+                    } else if head_is_p(second(xs), str_lit("conv")) {
                         fourth(xs)
                     } else {
                         third(xs)
