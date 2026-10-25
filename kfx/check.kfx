@@ -1820,6 +1820,10 @@
                                   (refuse v (string-append "a type abbreviation that mentions itself, " (string-append s
                                             ": Rust's type aliases cannot; a datatype can"))))
                                  ((head-is? body "moduleof") (ty-data (string-append "%module " s) nil))
+                                 ((tagcase body (lst (ys f2 l2 p2) (and (not (null? ys)) (tagcase (car ys) (sym (h f3 p3) (let ((found (find-alias h (cv-aliases v)))) (and (not (null? found)) (tagcase (car found) (alias (an aps ab) (not (null? aps))))))) (else other #f)))) (else other #f))
+                                  "An abbreviation of a family's application: its name not kept,
+                                   as Fixpt's is not (C165)."
+                                  (parse-type v (cons (string-append "%expanding " s) tvars) body))
                                  (else (named-as v tvars s nil (parse-type v (cons (string-append "%expanding " s) tvars) body)))))))))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
@@ -2089,12 +2093,12 @@
                 (if (string-member? (string-append "%expanding " name) tvars)
                     (refuse v (string-append "a type abbreviation that mentions itself, " (string-append name
                               ": Rust's type aliases cannot; a datatype can")))
-                    (named-as v tvars name (parse-arguments v tvars ps args) (substitute ps (parse-arguments v tvars ps args)
+                    (substitute ps (parse-arguments v tvars ps args)
                                 (parse-type v (cons (string-append "%expanding " name)
                                                     (onto (map (lambda ((p string)) (string-append "%place " p))
                                                                (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) ps)))
                                                           (onto ps (expanding tvars))))
-                                            body))))))))))))
+                                            body)))))))))))
 
 (define family-params (subr kfx (cv sexp) strings)
   (lambda (v head)

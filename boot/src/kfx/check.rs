@@ -3853,6 +3853,41 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                     return match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can")))) {};
                                 } else if head_is_p(body, str_lit("moduleof")) {
                                     return ty_data(string_append(str_lit("%module "), s), nil::<&'static Ty>());
+                                } else if {
+                                    let tagcase_ = body;
+                                    match *tagcase_ {
+                                        Sexp::Lst(ys, f2, l2, p2) => {
+                                            (not(null_p(ys)) && {
+                                                let tagcase_ = car(ys);
+                                                match *tagcase_ {
+                                                    Sexp::Sym(h, f3, p3) => {
+                                                        let found = find_alias(h, cv_aliases(v));
+                                                        (not(null_p(found)) && {
+                                                            let tagcase_ = car(found);
+                                                            match *tagcase_ {
+                                                                Alias::Alias(an, aps, ab) => {
+                                                                    not(null_p(aps))
+                                                                }
+                                                            }
+                                                        })
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        false
+                                                    }
+                                                }
+                                            })
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                } {
+                                    // An abbreviation of a family's application: its name not kept,
+                                    // as Fixpt's is not (C165).
+                                    (tvars, t) = (kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body);
+                                    continue;
                                 } else {
                                     return named_as(v, tvars, s, nil::<&'static Ty>(), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body));
                                 }
@@ -4394,7 +4429,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                     if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
                         match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
                     } else {
-                        named_as(v, tvars, name, parse_arguments(v, tvars, ps, args), substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
+                        substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
                             string_append(str_lit("%place "), p)
                         }), concat(map(lambda1s(move |p: Str| {
                             if has_prefix_p(p, str_lit("'")) {
@@ -4402,7 +4437,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                             } else {
                                 nil::<Str>()
                             }
-                        }), ps))), onto(ps, expanding(tvars)))), body)))
+                        }), ps))), onto(ps, expanding(tvars)))), body))
                     }
                 }
             }

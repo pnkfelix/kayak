@@ -427,11 +427,649 @@ pub fn call_shown(v: &'static Cv, all: Sexps, form: &'static Sexp, shown: Str) -
     }
 }
 
+// A module's line (C165), as Fixpt's: `define m : (moduleof (desc t T) ...
+// (abs t type) ... (val x T) ...) ! E`, its types' descriptions first, then
+// its values, each in the order written, an `include`d module's in its
+// place, a hidden item left out; each type as written, its abbreviations
+// by name. What this does not print (a datatype, an `extend`, an `import`,
+// a type found, `->*`'s, a module type), the line is left out, as before.
+pub enum Qual {
+    Qual(Str, &'static Sexp, bool),
+}
+
+pub fn qual(f0: Str, f1: &'static Sexp, f2: bool) -> &'static Qual {
+    kayak_rt::heap_alloc(Qual::Qual(f0, f1, f2))
+}
+
+pub type Quals = List<&'static Qual>;
+
+/// The module definition of `n` among the program's forms, if one is.
+pub fn module_of(n: Str, all: Sexps) -> Sexps {
+    filter(lambda1s(move |f: &'static Sexp| {
+        (module_def_p(f) && head_is_p(third(items(f)), str_lit("module")) && {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(m, f2, p2) => {
+                    string_eq_p(m, n)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    }), all)
+}
+
+/// Whether `body` applies a family, whose abbreviation Fixpt's types do not
+/// keep by name.
+pub fn family_app_p(v: &'static Cv, body: &'static Sexp) -> bool {
+    let tagcase_ = body;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            (not(null_p(ys)) && not(sym_is_p(car(ys), str_lit("select"))) && {
+                let tagcase_ = car(ys);
+                match *tagcase_ {
+                    Sexp::Sym(h, f2, p2) => {
+                        let found = find_alias(h, cv_aliases(v));
+                        (not(null_p(found)) && {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Alias::Alias(an, aps, ab) => {
+                                    not(null_p(aps))
+                                }
+                            }
+                        })
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// A type written in a module, its types and effects named as the
+/// program names them, or as the printer has them.
+pub fn module_qualified(scope: Quals, t: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let found = filter(lambda1s(move |q: &'static Qual| {
+                let tagcase_ = q;
+                match *tagcase_ {
+                    Qual::Qual(a, b, o) => {
+                        string_eq_p(a, n)
+                    }
+                }
+            }), scope);
+            if null_p(found) {
+                t
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Qual::Qual(a, b, o) => {
+                        b
+                    }
+                }
+            }
+        }
+        Sexp::Lst(xs, file, line, pos) => {
+            if head_is_p(t, str_lit("select")) {
+                t
+            } else {
+                lst(map(lambda1s(move |x: &'static Sexp| {
+                    module_qualified(scope, x)
+                }), xs), file, line, pos)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+/// The types and effects module `m`'s items `fs` name, onto `scope`, the
+/// first found first: a type `m..t`, an effect `m e`; an included
+/// module's, its; an abbreviation of no parameters, of a family's
+/// application, its expansion, else `m..t`, held opaque (`opaque-dts`).
+pub fn module_scope(mut v: &'static Cv, mut all: Sexps, mut m: Str, mut fs: Sexps, mut scope: Quals) -> Quals {
+    loop {
+        if null_p(fs) {
+            return scope;
+        } else {
+            let f = car(fs);
+            let xs = {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Sexp::Lst(ys, l1, l2, l3) => {
+                        ys
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sexp>()
+                    }
+                }
+            };
+            let more = if (head_is_p(f, str_lit("define-type")) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(t, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && family_app_p(v, third(xs))) {
+                the::<Quals>(kayak_rt::heap_cons(qual(sym_name(second(xs)), module_qualified(scope, third(xs)), false), kayak_rt::nil()))
+            } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
+                let t = head_name(v, second(xs));
+                the::<Quals>(kayak_rt::heap_cons(qual(t, sym(string_append(m, string_append(str_lit(".."), t)), str_lit(""), 0i64), (head_is_p(f, str_lit("define-type")) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })), kayak_rt::nil()))
+            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(xs), 3i64)) {
+                let e = sym_name(second(xs));
+                the::<Quals>(kayak_rt::heap_cons(qual(e, sym(string_append(m, string_append(str_lit(" "), e)), str_lit(""), 0i64), false), kayak_rt::nil()))
+            } else if head_is_p(f, str_lit("hide")) {
+                module_scope(v, all, m, cdr(xs), nil::<&'static Qual>())
+            } else if (head_is_p(f, str_lit("include")) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let def = module_of(sym_name(second(xs)), all);
+                if null_p(def) {
+                    nil::<&'static Qual>()
+                } else {
+                    module_scope(v, all, sym_name(second(xs)), module_written(car(def)), nil::<&'static Qual>())
+                }
+            } else {
+                nil::<&'static Qual>()
+            };
+            (fs, scope) = (cdr(fs), onto(more, scope));
+            continue;
+        }
+    }
+}
+
+/// `v` with each `m..t` of `scope` a type of its name alone.
+pub fn opaque_names(v: &'static Cv, scope: Quals) -> &'static Cv {
+    let names = concat(map(lambda1s(move |q: &'static Qual| {
+        let tagcase_ = q;
+        match *tagcase_ {
+            Qual::Qual(a, b, o) => {
+                if o {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                } else {
+                    nil::<Str>()
+                }
+            }
+        }
+    }), scope));
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(bs, onto(map(lambda1s(move |n: Str| {
+                dt(n, nil::<Str>(), nil::<&'static Variant>())
+            }), names), ds), als, es, here, group, file, line, fs, tv, at)
+        }
+    }
+}
+
+/// `cs` with each name's module, `m..`, taken off; `tok` the name being
+/// read, reversed, and `acc` what is done, reversed.
+pub fn dequalified(mut cs: Chars, mut tok: Chars, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return reverse(onto(tok, acc));
+        } else if (char_eq_p(car(cs), '.') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '.')) {
+            (cs, tok) = (cdr(cdr(cs)), nil::<char>());
+            continue;
+        } else if (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '(') || char_eq_p(car(cs), ')')) {
+            (cs, tok, acc) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(car(cs), onto(tok, acc)));
+            continue;
+        } else {
+            (cs, tok) = (cdr(cs), kayak_rt::heap_cons(car(cs), tok));
+            continue;
+        }
+    }
+}
+
+/// Each of a module's items `fs`, as its type says it: its descriptions
+/// (`descs`), or its values; "%none" for one not printed.
+pub fn module_items_shown(v: &'static Cv, all: Sexps, scope: Quals, fs: Sexps, descs: bool) -> Strings {
+    if null_p(fs) {
+        nil::<Str>()
+    } else {
+        onto(module_item_shown(v, all, scope, car(fs), descs), module_items_shown(v, all, scope, cdr(fs), descs))
+    }
+}
+
+pub fn module_item_shown(v: &'static Cv, all: Sexps, scope: Quals, f: &'static Sexp, descs: bool) -> Strings {
+    let (xs, shown) = (items(f), lambda2s(move |t: &'static Sexp, tvars: Strings| {
+        if written_mentions_p(t, kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::nil())))) {
+            str_lit("%none")
+        } else {
+            list_to_string(dequalified(string_chars(show_ty(new_state(), parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(tvars)), module_qualified(scope, t)))), nil::<char>(), nil::<char>()))
+        }
+    }));
+    if head_is_p(f, str_lit("define-type")) {
+        if not(descs) {
+            nil::<Str>()
+        } else {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Sym(t, f2, p2) => {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("(desc "), string_append(t, string_append(str_lit(" "), string_append(shown(third(xs), nil::<Str>()), str_lit(")"))))), kayak_rt::nil()))
+                }
+                Sexp::Lst(hs, f2, l2, p2) => {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("(desc "), string_append(sym_name(car(hs)), string_append(str_lit(" (dlambda "), string_append(show_sexp(lst(cdr(hs), str_lit(""), 0i64, 0i64)), string_append(str_lit(" "), string_append(shown(third(xs), family_params(v, second(xs))), str_lit("))"))))))), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<Strings>(kayak_rt::heap_cons(str_lit("%none"), kayak_rt::nil()))
+                }
+            }
+        }
+    } else if head_is_p(f, str_lit("define-generative")) {
+        if descs {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("(abs "), string_append(head_name(v, second(xs)), str_lit(" type)"))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(xs), 3i64)) {
+        if descs {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("(desc "), string_append(sym_name(second(xs)), string_append(str_lit(" "), string_append(show_effs(parse_effect(v, nil::<Str>(), module_qualified(scope, third(xs)))), str_lit(")"))))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    } else if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_eq(size(xs), 4i64)) {
+        if descs {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("(val "), string_append(sym_name(second(xs)), string_append(str_lit(" "), string_append(poly_wrapped(third(xs), shown(written_body(third(xs)), written_binders(v, third(xs)))), str_lit(")"))))), kayak_rt::nil()))
+        }
+    } else if head_is_p(f, str_lit("define-rec")) {
+        if descs {
+            nil::<Str>()
+        } else {
+            map(lambda1s(move |g: &'static Sexp| {
+                let gs = items(g);
+                if i64_eq(size(gs), 3i64) {
+                    string_append(str_lit("(val "), string_append(sym_name(car(gs)), string_append(str_lit(" "), string_append(poly_wrapped(second(gs), shown(written_body(second(gs)), written_binders(v, second(gs)))), str_lit(")")))))
+                } else {
+                    str_lit("%none")
+                }
+            }), cdr(xs))
+        }
+    } else if head_is_p(f, str_lit("hide")) {
+        nil::<Str>()
+    } else if (head_is_p(f, str_lit("include")) && i64_eq(size(xs), 2i64) && {
+        let tagcase_ = second(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f2, p2) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        let def = module_of(sym_name(second(xs)), all);
+        if null_p(def) {
+            the::<Strings>(kayak_rt::heap_cons(str_lit("%none"), kayak_rt::nil()))
+        } else {
+            let fs = module_written(car(def));
+            module_items_shown(v, all, module_scope(v, all, sym_name(second(xs)), fs, nil::<&'static Qual>()), fs, descs)
+        }
+    } else {
+        the::<Strings>(kayak_rt::heap_cons(str_lit("%none"), kayak_rt::nil()))
+    }
+}
+
+// Base types named (C165): an abbreviation of a base type, `(define-type
+// num int)`, names it wherever Fixpt prints it, the latest one, a module's
+// own for its own items, since Fixpt's types are shared and the latest
+// abbreviation names the type.
+pub enum Brn {
+    Brn(Str, Str),
+}
+
+pub fn brn(f0: Str, f1: Str) -> &'static Brn {
+    kayak_rt::heap_alloc(Brn::Brn(f0, f1))
+}
+
+pub type Brns = List<&'static Brn>;
+
+pub fn base_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("i16"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("datum"), kayak_rt::nil()))))))))))))))))))
+    })
+}
+
+pub fn brn_find(bs: Brns, x: Str) -> Str {
+    let found = filter(lambda1s(move |b: &'static Brn| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Brn::Brn(k, n) => {
+                string_eq_p(k, x)
+            }
+        }
+    }), bs);
+    if null_p(found) {
+        str_lit("")
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Brn::Brn(k, n) => {
+                n
+            }
+        }
+    }
+}
+
+/// Of definitions `fs`, onto `renames` (a base type to its name, the
+/// latest first), given `aliases` (an abbreviation to the base type it
+/// is): each `(define-type t b)`, `b` a base type or an abbreviation of
+/// one.
+pub fn base_renames(mut fs: Sexps, mut aliases: Brns, mut renames: Brns) -> Brns {
+    loop {
+        if null_p(fs) {
+            return renames;
+        } else {
+            let f = car(fs);
+            let xs = {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Sexp::Lst(ys, l1, l2, l3) => {
+                        ys
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sexp>()
+                    }
+                }
+            };
+            let base = if (head_is_p(f, str_lit("define-type")) && i64_eq(size(xs), 3i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(t, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && {
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Sym(b, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let b = sym_name(third(xs));
+                if string_member_p(b, base_names()) {
+                    b
+                } else {
+                    brn_find(aliases, b)
+                }
+            } else {
+                str_lit("")
+            };
+            if string_eq_p(base, str_lit("")) {
+                fs = cdr(fs);
+                continue;
+            } else {
+                (fs, aliases, renames) = (cdr(fs), kayak_rt::heap_cons(brn(sym_name(second(xs)), base), aliases), kayak_rt::heap_cons(brn(base, sym_name(second(xs))), renames));
+                continue;
+            }
+        }
+    }
+}
+
+/// Onto `aliases`, each of `fs`'s abbreviations of a base type.
+pub fn base_aliases(mut fs: Sexps, mut aliases: Brns) -> Brns {
+    loop {
+        if null_p(fs) {
+            return aliases;
+        } else {
+            let f = car(fs);
+            let xs = {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Sexp::Lst(ys, l1, l2, l3) => {
+                        ys
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sexp>()
+                    }
+                }
+            };
+            let base = if (head_is_p(f, str_lit("define-type")) && i64_eq(size(xs), 3i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(t, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && {
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Sym(b, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let b = sym_name(third(xs));
+                if string_member_p(b, base_names()) {
+                    b
+                } else {
+                    brn_find(aliases, b)
+                }
+            } else {
+                str_lit("")
+            };
+            (fs, aliases) = (cdr(fs), if string_eq_p(base, str_lit("")) {
+                aliases
+            } else {
+                kayak_rt::heap_cons(brn(sym_name(second(xs)), base), aliases)
+            });
+            continue;
+        }
+    }
+}
+
+/// A token read, reversed, renamed if it is a base type named.
+pub fn token_renamed(t: Chars, renames: Brns) -> Chars {
+    let n = brn_find(renames, list_to_string(reverse(t)));
+    if string_eq_p(n, str_lit("")) {
+        t
+    } else {
+        reverse(string_chars(n))
+    }
+}
+
+/// `cs` with each token a base type renamed; `tok` the token being read,
+/// reversed, `acc` what is done, reversed.
+pub fn tokens_renamed(mut cs: Chars, mut tok: Chars, mut renames: Brns, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return reverse(onto(token_renamed(tok, renames), acc));
+        } else if (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '(') || char_eq_p(car(cs), ')')) {
+            (cs, tok, acc) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(car(cs), onto(token_renamed(tok, renames), acc)));
+            continue;
+        } else {
+            (cs, tok) = (cdr(cs), kayak_rt::heap_cons(car(cs), tok));
+            continue;
+        }
+    }
+}
+
+pub fn base_renamed(line: Str, renames: Brns) -> Str {
+    if null_p(renames) {
+        line
+    } else {
+        list_to_string(tokens_renamed(string_chars(line), nil::<char>(), renames, nil::<char>()))
+    }
+}
+
+pub fn visible_items(fs: Sexps) -> Sexps {
+    filter(lambda1s(move |f: &'static Sexp| {
+        not(head_is_p(f, str_lit("hide")))
+    }), fs)
+}
+
+/// Each description `parts`, its body named with the module's own
+/// abbreviations of base types before it.
+pub fn descs_renamed(parts: Strings, own: Sexps, aliases: Brns, renames: Brns) -> Strings {
+    if null_p(parts) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(if has_prefix_p(car(parts), str_lit("(desc ")) {
+            base_renamed(car(parts), base_renames(items_before(own, car(cdr(text_words(car(parts))))), aliases, renames))
+        } else {
+            car(parts)
+        }, descs_renamed(cdr(parts), own, aliases, renames))
+    }
+}
+
+pub fn items_before(fs: Sexps, name: Str) -> Sexps {
+    if null_p(fs) {
+        nil::<&'static Sexp>()
+    } else if ((head_is_p(car(fs), str_lit("define-type")) || head_is_p(car(fs), str_lit("define-generative")) || head_is_p(car(fs), str_lit("define-datatype"))) && {
+        let tagcase_ = second(items(car(fs)));
+        match *tagcase_ {
+            Sexp::Sym(t, f, p) => {
+                string_eq_p(t, name)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(car(fs), items_before(cdr(fs), name))
+    }
+}
+
+/// The modules a module's items include, hidden or not: what making it
+/// reads.
+pub fn included_modules(fs: Sexps) -> Strings {
+    concat(map(lambda1s(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("include")) && {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, f2, p2) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
+        } else if head_is_p(f, str_lit("hide")) {
+            included_modules(cdr(items(f)))
+        } else {
+            nil::<Str>()
+        }
+    }), fs))
+}
+
+pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
+    let (m, fs) = (sym_name(second(items(form))), if head_is_p(third(items(form)), str_lit("module")) {
+        module_written(form)
+    } else {
+        nil::<&'static Sexp>()
+    });
+    if (null_p(fs) || has_prefix_p(datum_file(form), str_lit("fx26:"))) {
+        nil::<Str>()
+    } else {
+        let scope = module_scope(v, all, m, fs, nil::<&'static Qual>());
+        let w = opaque_names(v, scope);
+        let top = base_aliases(filter(lambda1s(move |f: &'static Sexp| {
+            not(module_def_p(f))
+        }), all), nil::<&'static Brn>());
+        let own = visible_items(fs);
+        let parts = onto(descs_renamed(module_items_shown(w, all, scope, fs, true), own, top, nil::<&'static Brn>()), map(lambda1s(move |p: Str| {
+            base_renamed(p, base_renames(own, top, nil::<&'static Brn>()))
+        }), module_items_shown(w, all, scope, fs, false)));
+        let included = sorted_strings(included_modules(fs));
+        if any_p(lambda1s(move |p: Str| {
+            string_has_p(p, str_lit("%none"))
+        }), parts) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : (moduleof"), string_append(run_together(map(lambda1s(move |p: Str| {
+                string_append(str_lit(" "), p)
+            }), parts)), string_append(str_lit(") ! "), if null_p(included) {
+                str_lit("pure")
+            } else {
+                string_append(str_lit("(read (globals "), string_append(words_of(included), str_lit("))")))
+            }))))), kayak_rt::nil()))
+        }
+    }
+}
+
 /// What `fixpt check` writes of `form`, checked: `v`, the checker's
 /// environment after it; `all`, the program's forms.
 pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
     if module_def_p(form) {
-        nil::<Str>()
+        module_line(v, all, form)
     } else if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
         let xs = items(form);
         kayak_rt::heap_cons(bound_line(v, binder_name(second(xs)), if i64_eq(size(xs), 4i64) {
@@ -509,7 +1147,12 @@ pub fn check_command(paths: Strings) -> Int {
         }
     };
     let v = with_binds(typed, prim_binds(typed));
-    say(lines_text(lines_checked(v, forms, forms)));
+    let names = base_renames(filter(lambda1s(move |f: &'static Sexp| {
+        not(module_def_p(f))
+    }), forms), nil::<&'static Brn>(), nil::<&'static Brn>());
+    say(lines_text(map(lambda1s(move |l: Str| {
+        base_renamed(l, names)
+    }), lines_checked(v, forms, forms))));
     int_lit(0)
 }
 

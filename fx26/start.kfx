@@ -176,11 +176,271 @@
           shown
           (abbrevs-put shown (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v (car w)))) (written-body (car w)))))))))
 
+"A module's line (C165), as Fixpt's: `define m : (moduleof (desc t T) ...
+ (abs t type) ... (val x T) ...) ! E`, its types' descriptions first, then
+ its values, each in the order written, an `include`d module's in its
+ place, a hidden item left out; each type as written, its abbreviations
+ by name. What this does not print (a datatype, an `extend`, an `import`,
+ a type found, `->*`'s, a module type), the line is left out, as before."
+(define-datatype qual (qual string sexp bool))
+(define-type quals (listof qual acyclic))
+
+(define module-of (subr kfx (string sexps) sexps)
+  (lambda (n all)
+    "The module definition of `n` among the program's forms, if one is."
+    (filter (lambda ((f sexp)) (and (module-def? f) (head-is? (third (items f)) "module")
+                                    (tagcase (second (items f)) (sym (m f2 p2) (string=? m n)) (else other #f))))
+            all)))
+
+(define family-app? (subr kfx (cv sexp) bool)
+  (lambda (v body)
+    "Whether `body` applies a family, whose abbreviation Fixpt's types do not
+     keep by name."
+    (tagcase body
+      (lst (ys f l p)
+        (and (not (null? ys)) (not (sym-is? (car ys) "select"))
+             (tagcase (car ys)
+               (sym (h f2 p2) (let ((found (find-alias h (cv-aliases v)))) (and (not (null? found)) (tagcase (car found) (alias (an aps ab) (not (null? aps)))))))
+               (else other #f))))
+      (else other #f))))
+
+(define-rec
+  (module-qualified (subr kfx (quals sexp) sexp)
+    (lambda (scope t)
+      "A type written in a module, its types and effects named as the
+       program names them, or as the printer has them."
+      (tagcase t
+        (sym (n f p)
+          (let ((found (filter (lambda ((q qual)) (tagcase q (qual (a b o) (string=? a n)))) scope)))
+            (if (null? found) t (tagcase (car found) (qual (a b o) b)))))
+        (lst (xs file line pos)
+          (if (head-is? t "select") t (lst (map (lambda ((x sexp)) (module-qualified scope x)) xs) file line pos)))
+        (else other t)))))
+
+(define-rec
+  (module-scope (subr kfx (cv sexps string sexps quals) quals)
+    (lambda (v all m fs scope)
+      "The types and effects module `m`'s items `fs` name, onto `scope`, the
+       first found first: a type `m..t`, an effect `m e`; an included
+       module's, its; an abbreviation of no parameters, of a family's
+       application, its expansion, else `m..t`, held opaque (`opaque-dts`)."
+      (if (null? fs)
+          scope
+          (let* ((f (car fs)) (xs (tagcase f (lst (ys l1 l2 l3) ys) (else other nil)))
+                 (more (cond ((and (head-is? f "define-type") (tagcase (second xs) (sym (t f2 p2) #t) (else other #f)) (family-app? v (third xs)))
+                              (the quals (list (qual (sym-name (second xs)) (module-qualified scope (third xs)) #f))))
+                             ((or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
+                              (let ((t (head-name v (second xs))))
+                                (the quals (list (qual t (sym (string-append m (string-append ".." t)) "" 0)
+                                                       (and (head-is? f "define-type") (tagcase (second xs) (sym (n f2 p2) #t) (else other #f))))))))
+                             ((and (head-is? f "define-effect") (i64= (size xs) 3))
+                              (let ((e (sym-name (second xs)))) (the quals (list (qual e (sym (string-append m (string-append " " e)) "" 0) #f)))))
+                             ((head-is? f "hide") (module-scope v all m (cdr xs) nil))
+                             ((and (head-is? f "include") (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+                              (let ((def (module-of (sym-name (second xs)) all)))
+                                (if (null? def) nil (module-scope v all (sym-name (second xs)) (module-written (car def)) nil))))
+                             (else nil))))
+            (module-scope v all m (cdr fs) (onto more scope)))))))
+
+(define opaque-names (subr kfx (cv quals) cv)
+  (lambda (v scope)
+    "`v` with each `m..t` of `scope` a type of its name alone."
+    (let ((names (concat (map (lambda ((q qual)) (tagcase q (qual (a b o) (if o (tagcase b (sym (n f p) (the strings (list n))) (else other nil)) nil)))) scope))))
+      (tagcase v
+        (cv (bs ds als es here group file line fs tv at)
+          (cv bs (onto (map (lambda ((n string)) (dt n nil nil)) names) ds) als es here group file line fs tv at))))))
+
+(define-rec
+  (dequalified (subr kfx (chars chars chars) chars)
+    (lambda (cs tok acc)
+      "`cs` with each name's module, `m..`, taken off; `tok` the name being
+       read, reversed, and `acc` what is done, reversed."
+      (cond ((null? cs) (reverse (onto tok acc)))
+            ((and (char=? (car cs) #\.) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\.))
+             (dequalified (cdr (cdr cs)) nil acc))
+            ((or (char=? (car cs) #\space) (char=? (car cs) #\() (char=? (car cs) #\)))
+             (dequalified (cdr cs) nil (cons (car cs) (onto tok acc))))
+            (else (dequalified (cdr cs) (cons (car cs) tok) acc))))))
+
+(define-rec
+  (module-items-shown (subr kfx (cv sexps quals sexps bool) strings)
+    (lambda (v all scope fs descs)
+      "Each of a module's items `fs`, as its type says it: its descriptions
+       (`descs`), or its values; \"%none\" for one not printed."
+      (if (null? fs)
+          nil
+          (onto (module-item-shown v all scope (car fs) descs)
+                (module-items-shown v all scope (cdr fs) descs)))))
+  (module-item-shown (subr kfx (cv sexps quals sexp bool) strings)
+    (lambda (v all scope f descs)
+      (let ((xs (items f))
+            (shown (lambda ((t sexp) (tvars strings))
+                     (if (written-mentions? t (list "%found" "->*" "moduleof"))
+                         "%none"
+                         (list->string (dequalified (string-chars (show-ty (new-state) (parse-type v (cons "%keep-names" (written-tvars tvars)) (module-qualified scope t)))) nil nil))))))
+        (cond ((head-is? f "define-type")
+               (if (not descs)
+                   nil
+                   (tagcase (second xs)
+                     (sym (t f2 p2) (the strings (list (string-append "(desc " (string-append t (string-append " " (string-append (shown (third xs) nil) ")")))))))
+                     (lst (hs f2 l2 p2)
+                       (the strings (list (string-append "(desc " (string-append (sym-name (car hs))
+                         (string-append " (dlambda " (string-append (show-sexp (lst (cdr hs) "" 0 0))
+                           (string-append " " (string-append (shown (third xs) (family-params v (second xs))) "))")))))))))
+                     (else other (the strings (list "%none"))))))
+              ((head-is? f "define-generative")
+               (if descs (the strings (list (string-append "(abs " (string-append (head-name v (second xs)) " type)")))) nil))
+              ((and (head-is? f "define-effect") (i64= (size xs) 3))
+               (if descs
+                   (the strings (list (string-append "(desc " (string-append (sym-name (second xs)) (string-append " " (string-append (show-effs (parse-effect v nil (module-qualified scope (third xs)))) ")"))))))
+                   nil))
+              ((and (or (head-is? f "define") (head-is? f "define*")) (i64= (size xs) 4))
+               (if descs nil (the strings (list (string-append "(val " (string-append (sym-name (second xs)) (string-append " " (string-append (poly-wrapped (third xs) (shown (written-body (third xs)) (written-binders v (third xs)))) ")"))))))))
+              ((head-is? f "define-rec")
+               (if descs
+                   nil
+                   (map (lambda ((g sexp))
+                          (let ((gs (items g)))
+                            (if (i64= (size gs) 3)
+                                (string-append "(val " (string-append (sym-name (car gs)) (string-append " " (string-append (poly-wrapped (second gs) (shown (written-body (second gs)) (written-binders v (second gs)))) ")"))))
+                                "%none")))
+                        (cdr xs))))
+              ((head-is? f "hide") nil)
+              ((and (head-is? f "include") (i64= (size xs) 2) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+               (let ((def (module-of (sym-name (second xs)) all)))
+                 (if (null? def)
+                     (the strings (list "%none"))
+                     (let ((fs (module-written (car def))))
+                       (module-items-shown v all (module-scope v all (sym-name (second xs)) fs nil) fs descs)))))
+              (else (the strings (list "%none"))))))))
+
+"Base types named (C165): an abbreviation of a base type, `(define-type
+ num int)`, names it wherever Fixpt prints it, the latest one, a module's
+ own for its own items, since Fixpt's types are shared and the latest
+ abbreviation names the type."
+(define-datatype brn (brn string string))
+(define-type brns (listof brn acyclic))
+
+(define base-names strings
+  (list "int" "nat" "i64" "u64" "i32" "u32" "i16" "u16" "i8" "u8" "f64" "f32" "bool" "char" "string" "unit" "symbol" "datum"))
+
+(define brn-find (subr kfx (brns string) string)
+  (lambda (bs x)
+    (let ((found (filter (lambda ((b brn)) (tagcase b (brn (k n) (string=? k x)))) bs)))
+      (if (null? found) "" (tagcase (car found) (brn (k n) n))))))
+
+(define-rec
+  (base-renames (subr kfx (sexps brns brns) brns)
+    (lambda (fs aliases renames)
+      "Of definitions `fs`, onto `renames` (a base type to its name, the
+       latest first), given `aliases` (an abbreviation to the base type it
+       is): each `(define-type t b)`, `b` a base type or an abbreviation of
+       one."
+      (if (null? fs)
+          renames
+          (let* ((f (car fs)) (xs (tagcase f (lst (ys l1 l2 l3) ys) (else other nil)))
+                 (base (if (and (head-is? f "define-type") (i64= (size xs) 3)
+                                (tagcase (second xs) (sym (t f2 p2) #t) (else other #f))
+                                (tagcase (third xs) (sym (b f2 p2) #t) (else other #f)))
+                           (let ((b (sym-name (third xs))))
+                             (if (string-member? b base-names) b (brn-find aliases b)))
+                           "")))
+            (if (string=? base "")
+                (base-renames (cdr fs) aliases renames)
+                (base-renames (cdr fs) (cons (brn (sym-name (second xs)) base) aliases) (cons (brn base (sym-name (second xs))) renames))))))))
+
+(define-rec
+  (base-aliases (subr kfx (sexps brns) brns)
+    (lambda (fs aliases)
+      "Onto `aliases`, each of `fs`'s abbreviations of a base type."
+      (if (null? fs)
+          aliases
+          (let* ((f (car fs)) (xs (tagcase f (lst (ys l1 l2 l3) ys) (else other nil)))
+                 (base (if (and (head-is? f "define-type") (i64= (size xs) 3)
+                                (tagcase (second xs) (sym (t f2 p2) #t) (else other #f))
+                                (tagcase (third xs) (sym (b f2 p2) #t) (else other #f)))
+                           (let ((b (sym-name (third xs)))) (if (string-member? b base-names) b (brn-find aliases b)))
+                           "")))
+            (base-aliases (cdr fs) (if (string=? base "") aliases (cons (brn (sym-name (second xs)) base) aliases))))))))
+
+(define token-renamed (subr kfx (chars brns) chars)
+  (lambda (t renames)
+    "A token read, reversed, renamed if it is a base type named."
+    (let ((n (brn-find renames (list->string (reverse t)))))
+      (if (string=? n "") t (reverse (string-chars n))))))
+
+(define-rec
+  (tokens-renamed (subr kfx (chars chars brns chars) chars)
+    (lambda (cs tok renames acc)
+      "`cs` with each token a base type renamed; `tok` the token being read,
+       reversed, `acc` what is done, reversed."
+      (cond ((null? cs) (reverse (onto (token-renamed tok renames) acc)))
+            ((or (char=? (car cs) #\space) (char=? (car cs) #\() (char=? (car cs) #\)))
+             (tokens-renamed (cdr cs) nil renames (cons (car cs) (onto (token-renamed tok renames) acc))))
+            (else (tokens-renamed (cdr cs) (cons (car cs) tok) renames acc))))))
+
+(define base-renamed (subr kfx (string brns) string)
+  (lambda (line renames) (if (null? renames) line (list->string (tokens-renamed (string-chars line) nil renames nil)))))
+
+(define-rec
+  (visible-items (subr kfx (sexps) sexps)
+    (lambda (fs) (filter (lambda ((f sexp)) (not (head-is? f "hide"))) fs))))
+
+(define-rec
+  (descs-renamed (subr kfx (strings sexps brns brns) strings)
+    (lambda (parts own aliases renames)
+      "Each description `parts`, its body named with the module's own
+       abbreviations of base types before it."
+      (if (null? parts)
+          nil
+          (cons (if (has-prefix? (car parts) "(desc ")
+                    (base-renamed (car parts) (base-renames (items-before own (car (cdr (text-words (car parts))))) aliases renames))
+                    (car parts))
+                (descs-renamed (cdr parts) own aliases renames)))))
+  (items-before (subr kfx (sexps string) sexps)
+    (lambda (fs name)
+      (cond ((null? fs) nil)
+            ((and (or (head-is? (car fs) "define-type") (head-is? (car fs) "define-generative") (head-is? (car fs) "define-datatype"))
+                  (tagcase (second (items (car fs))) (sym (t f p) (string=? t name)) (else other #f)))
+             nil)
+            (else (cons (car fs) (items-before (cdr fs) name)))))))
+
+(define-rec
+  (included-modules (subr kfx (sexps) strings)
+    (lambda (fs)
+      "The modules a module's items include, hidden or not: what making it
+       reads."
+      (concat (map (lambda ((f sexp))
+                     (cond ((and (head-is? f "include") (tagcase (second (items f)) (sym (n f2 p2) #t) (else other #f)))
+                            (the strings (list (sym-name (second (items f))))))
+                           ((head-is? f "hide") (included-modules (cdr (items f))))
+                           (else nil)))
+                   fs)))))
+
+(define module-line (subr kfx (cv sexps sexp) strings)
+  (lambda (v all form)
+    (let ((m (sym-name (second (items form))))
+          (fs (if (head-is? (third (items form)) "module") (module-written form) nil)))
+      (if (or (null? fs) (has-prefix? (datum-file form) "fx26:"))
+          nil
+          (let* ((scope (module-scope v all m fs nil))
+                 (w (opaque-names v scope))
+                 (top (base-aliases (filter (lambda ((f sexp)) (not (module-def? f))) all) nil))
+                 (own (visible-items fs))
+                 (parts (onto (descs-renamed (module-items-shown w all scope fs #t) own top nil)
+                              (map (lambda ((p string)) (base-renamed p (base-renames own top nil))) (module-items-shown w all scope fs #f))))
+                 (included (sorted-strings (included-modules fs))))
+            (if (any? (lambda ((p string)) (string-has? p "%none")) parts)
+                nil
+                (the strings (list (string-append "define " (string-append m (string-append " : (moduleof"
+                               (string-append (run-together (map (lambda ((p string)) (string-append " " p)) parts))
+                                 (string-append ") ! " (if (null? included) "pure" (string-append "(read (globals " (string-append (words-of included) "))"))))))))))))))))
+
 (define form-lines (subr kfx (cv sexps sexp) strings)
   (lambda (v all form)
     "What `fixpt check` writes of `form`, checked: `v`, the checker's
      environment after it; `all`, the program's forms."
-    (cond ((module-def? form) nil)
+    (cond ((module-def? form) (module-line v all form))
           ((or (head-is? form "define") (head-is? form "define*"))
            (let ((xs (items form)))
              (list (bound-line v (binder-name (second xs)) (if (i64= (size xs) 4) (third xs) no-form) (value-effect v (binder-name (second xs)) (last xs))))))
@@ -219,7 +479,8 @@
            (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
            (v (with-binds typed (prim-binds typed))))
-      (begin (say (lines-text (lines-checked v forms forms))) 0))))
+      (let ((names (base-renames (filter (lambda ((f sexp)) (not (module-def? f))) forms) nil nil)))
+        (begin (say (lines-text (map (lambda ((l string)) (base-renamed l names)) (lines-checked v forms forms)))) 0)))))
 
 (define main (subr (maxeff running repling) () int)
   (lambda ()

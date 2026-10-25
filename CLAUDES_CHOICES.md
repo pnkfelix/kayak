@@ -4522,3 +4522,31 @@ abbreviation as it reads it, and keeps doing so for checking.
   a fresh region's name and allocation (`@r.1`), effects kayak's
   inference gets less precisely, constructors' lines of recursive
   datatypes.
+
+## C165. Printing as Fixpt prints: modules, and base types named (2026-10-25)
+
+TODO §30.1, after C164.
+- **A module's line**: `kayak-fx26 --check` had printed nothing for
+  `(define m (module ...))`. It prints Fixpt's `define m : (moduleof
+  (desc t T) ... (abs t type) ... (val x T) ...) ! E`: the descriptions
+  first (a type, a family as `(dlambda (params) T)`, an effect), then the
+  values, each in the order written, an included module's in its place,
+  a hidden one left out; `E` the included modules' reads. Each type is
+  the item's written type, read again with names kept (C164), the
+  module's own names resolved by the printer (a parameterless
+  abbreviation an opaque type of its name, one of a family's application
+  expanded, as Fixpt's is), its module prefix (`m..`) taken off. A
+  module of what this does not print (a datatype, an `extend`, a type
+  `->*` finds, a module type, a module from a loaded file) keeps no
+  line, as before: nothing is printed rather than something wrong.
+- **Base types named**: Fixpt's types are shared, and an abbreviation of
+  a base type, `(define-type num int)`, names `int` wherever it is
+  printed, the latest such, even before it (Fixpt prints after checking
+  all); in a module, the module's own, visible, for its values, and
+  those before a description for its body. The printer does likewise,
+  token by token.
+- The same 201 to 222, differing 94 to 73; none newly differs, none
+  changes being accepted. Left among module lines: a module's own
+  effect (values made with `alloc` or `spin`), Fixpt naming a structure
+  by the latest abbreviation of it in a module (`(desc pair point)`
+  names `point` `pair`), datatypes (`mu`), nested and loaded modules.
