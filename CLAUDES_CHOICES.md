@@ -4756,3 +4756,48 @@ types).
 - Refused 93 to 83, the same 270 to 276; K1 still 0. Left of higher
   kinds: recursion through an application (`fix-through-pair.fx`), which
   waits for `mu` (task 3).
+
+## C174. Recursive types: `mu` (2026-10-25)
+
+Fixpt's `docs/research/recursive-subtyping.md`: a type abbreviation may
+mention itself, and `(mu t T)` writes a recursive type with no name;
+equi-recursive, a named type and its `mu` each a subtype of the other.
+FX-26's alone: the restriction pass refuses `(mu t T)` where a type is
+written (a definition's, a `the`'s, a binding's: `mu` may name a
+procedure elsewhere, as `run/int-fast.fx`'s does, which the check
+caught) and a `define-type` whose body reaches itself through others'
+(a Rust type alias cannot; a datatype can), as the checker did before;
+and a comparison that unfolds a `mu` notes `kfx-restricted`.
+- **Representation**: `(ty-data "%mu" (X body))`, `X` a variable `%mu
+  NAME`; an abbreviation's own mention in its expansion is `X`
+  (`%expanding` as before), the expansion wrapped by `mu-wrapped` when it
+  mentions it. A family may mention itself only with its own parameters,
+  in order (`family-growing.fx` refused); after substitution, reduced
+  (C173), so `fix-through-pair.fx`'s `(f (fix2 f))` at the identity is a
+  list.
+- **Grounded**: a recursion under no constructor is refused, "a recursive
+  type must be built from a constructor": alone, in a `poly`'s body, or
+  given to a type function not known, which may be the identity
+  (`type-cycle-of-names.fx`, `polyonly.fx`, `fix-refused.fx`).
+- **Compared** (`fits-shapes`): either side a `mu`, the pair assumed (a
+  fact `%mu-assumed A <= E`), each unfolded once; a pair met again holds
+  (Amadio and Cardelli).
+- **Unfolded where a shape is asked** (`walk-mu`): `extract`, `tagcase`,
+  `sum`, `product`, a `vlambda`'s expected, a bloblet made, read or
+  written. Not in `walk`: recursive walks over types would not end.
+- **Shapes**: a `mu`'s is its body's; a union's member that is the
+  abbreviation's own mention, its body's read again (`mu-member-shape`);
+  a bloblet's, FX-26's `bloblet`, only there (`member-shape`), since a
+  union of a bloblet is no KFX union (`native/bloblet-tree.fx`).
+- **Transmissible**: as its body is, its variable taken as itself
+  (`processes/deadlock.fx`).
+- **Printed** as Fixpt prints: `(mu %k ...)`, `k` the depth of the type it
+  stands for, counted in the constructors around it (`unparse.rs`); the
+  printer renumbers each line (`mu-numbered`, fx26/start.kfx). A `mu` of
+  `(union nil (pairof E X R))` is `(listof E R)`.
+- Refused 83 to 73, the same 276 to 283; K1 0 (one breach on the way,
+  `(define-type a a)`, its `define-type` read without the wrap). Left:
+  `run/well-founded.fx` (a `sum` with no type expected, not `mu`'s);
+  printing where Fixpt names a type by an abbreviation of it
+  (`parametric-rose.fx`, `types-mutual.fx`, `types-in-any-order.fx`); a
+  fresh region's name in an expression's type (`family-knot.fx`).

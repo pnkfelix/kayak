@@ -850,11 +850,11 @@
                        (else
                      (let* ((name (head-name v (second xs)))
                             (params (family-params v (second xs)))
-                            (body (parse-type v (cons "%fun-ok" (cons (string-append "%expanding " name)
+                            (body (mu-wrapped v name (parse-type v (cons "%fun-ok" (cons (string-append "%expanding " name)
                                                       (onto (map (lambda ((p string)) (string-append "%place " p))
                                                                  (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) params)))
                                                             params)))
-                                              (third xs))))
+                                              (third xs)))))
                        v))))
                 ((string=? h "define-datatype")
                  (let ((d (variants-dt v (head-name v (second xs)))))

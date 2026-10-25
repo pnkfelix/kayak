@@ -541,6 +541,67 @@
                                           (string-append " ! " (show-effs (settled-effs s (cons "alloc:@r.1" es))))))
                      (list (string-append (call-shown v all form shown) (string-append " ! " (show-effs (settled-effs s es)))))))))))))
 
+"Recursive types printed as Fixpt prints them (C174; its `unparse.rs`):
+ a `(mu %x ...)`'s variable named by the depth of the type it stands for,
+ counted in the type constructors around it, `%3`. Each line's text read
+ as tokens, parentheses, spaces and words, kept; each frame a list's: `N`
+ a constructor's, `-` another's, `M x k` a mu's."
+(define mu-nodes strings
+  (list "subr" "poly" "productof" "sumof" "listof" "pairof" "union" "moduleof" "ref" "icell" "arrayof" "flatarrayof"
+        "narrayof" "bloblet" "vectorof" "addr" "inbox" "mark-key" "prompt-tag" "composable" "oneshot" "vsubr" "blobref" "nlist"
+        "dlambda" "bytevectorof"))
+
+(define-rec
+  (line-tokens (subr kfx (chars chars strings) strings)
+    (lambda (cs word acc)
+      "`cs` as tokens, reversed onto `acc`; `word`, the one being read, reversed."
+      (cond ((null? cs) (if (null? word) acc (cons (rev->string word) acc)))
+            ((or (char=? (car cs) #\() (char=? (car cs) #\)) (char=? (car cs) #\space))
+             (line-tokens (cdr cs) nil (cons (list->string (list (car cs))) (if (null? word) acc (cons (rev->string word) acc)))))
+            (else (line-tokens (cdr cs) (cons (car cs) word) acc))))))
+
+(define-rec
+  (mu-renamed (subr kfx (string strings) string)
+    (lambda (w frames)
+      (cond ((null? frames) w)
+            ((has-prefix? (car frames) (string-append "M " (string-append w " "))) (after-prefix (car frames) (string-append "M " (string-append w " "))))
+            (else (mu-renamed w (cdr frames))))))
+  (mu-node-count (subr kfx (strings) i64)
+    (lambda (frames) (if (null? frames) 0 (i64+ (if (string=? (car frames) "N") 1 0) (mu-node-count (cdr frames))))))
+  (mu-numbered-tokens (subr kfx (strings strings bool string strings) strings)
+    (lambda (ts frames opened mu acc)
+      "`opened`: the token before was `(`; `mu`, a mu's variable awaited
+       (`?`) or none (``)."
+      (if (null? ts)
+          (reverse acc)
+          (let ((t (car ts)))
+            (cond ((string=? t " ") (mu-numbered-tokens (cdr ts) frames opened mu (cons t acc)))
+                  ((string=? t "(")
+                   (if opened
+                       (mu-numbered-tokens (cdr ts) (cons "-" frames) #t "" (cons t acc))
+                       (mu-numbered-tokens (cdr ts) frames #t "" (cons t acc))))
+                  ((string=? t ")")
+                   (mu-numbered-tokens (cdr ts) (if (or opened (null? frames)) frames (cdr frames)) #f "" (cons t acc)))
+                  (opened
+                   (cond ((string=? t "mu")
+                          (mu-numbered-tokens (cdr ts) (cons "-" frames) #f "?" (cons t acc)))
+                         ((string-member? t mu-nodes) (mu-numbered-tokens (cdr ts) (cons "N" frames) #f "" (cons t acc)))
+                         (else (mu-numbered-tokens (cdr ts) (cons "-" frames) #f "" (cons t acc)))))
+                  ((string=? mu "?")
+                   (let ((k (string-append "%" (i64->string (i64+ (mu-node-count frames) 1)))))
+                     (mu-numbered-tokens (cdr ts) (cons (string-append "M " (string-append t (string-append " " k))) (cdr frames)) #f "" (cons k acc))))
+                  (else (mu-numbered-tokens (cdr ts) frames #f "" (cons (mu-renamed t frames) acc)))))))))
+
+(define-rec
+  (chars-within? (subr kfx (chars chars) bool)
+    (lambda (cs from) (cond ((null? cs) #f) ((chars-start? cs from) #t) (else (chars-within? (cdr cs) from))))))
+
+(define mu-numbered (subr kfx (string) string)
+  (lambda (l)
+    (if (chars-within? (string-chars l) (string-chars "(mu "))
+        (run-together (mu-numbered-tokens (reverse (line-tokens (string-chars l) nil nil)) nil #f "" nil))
+        l)))
+
 (define-rec
   (lines-checked (subr kfx (cv sexps sexps) strings)
     (lambda (v all forms)
@@ -563,7 +624,7 @@
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
            (v (with-binds typed (prim-binds typed))))
       (let ((names (base-renames (filter (lambda ((f sexp)) (not (module-def? f))) forms) nil nil)))
-        (begin (say (lines-text (map (lambda ((l string)) (if (has-prefix? l "%M ") (after-prefix l "%M ") (base-renamed l names))) (lines-checked v forms forms)))) 0)))))
+        (begin (say (lines-text (map (lambda ((l string)) (mu-numbered (if (has-prefix? l "%M ") (after-prefix l "%M ") (base-renamed l names)))) (lines-checked v forms forms)))) 0)))))
 
 (define main (subr (maxeff running repling) () int)
   (lambda ()

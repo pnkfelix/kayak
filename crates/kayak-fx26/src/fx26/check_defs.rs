@@ -1195,7 +1195,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 } else {
                     let name = head_name(v, second(xs));
                     let params = family_params(v, second(xs));
-                    let body = parse_type(v, kayak_rt::heap_cons(str_lit("%fun-ok"), kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
+                    let body = mu_wrapped(v, name, parse_type(v, kayak_rt::heap_cons(str_lit("%fun-ok"), kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
                         string_append(str_lit("%place "), p)
                     }), concat(map(lambda1s(move |p: Str| {
                         if has_prefix_p(p, str_lit("'")) {
@@ -1203,7 +1203,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                         } else {
                             nil::<Str>()
                         }
-                    }), params))), params))), third(xs));
+                    }), params))), params))), third(xs)));
                     v
                 }
             } else if string_eq_p(h, str_lit("define-datatype")) {

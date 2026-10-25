@@ -2774,87 +2774,117 @@ pub fn fixed_width_p(s: Str) -> bool {
 // test tells them apart. A `(ty-data "%union" members)`, flattened, each
 // member once; `false`, the type of `#f` alone, below `bool`, a
 // `(ty-data "false" nil)`. Never Rust's (C57): the restriction pass's.
+/// `shape-of`; and a bloblet's, FX-26's `bloblet`, which only a recursive
+/// type's union has (C174), a union never KFX's.
+pub fn member_shape(t: &'static Ty) -> Str {
+    if {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, r#as) => {
+                string_eq_p(d, str_lit("%bloblet"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        str_lit("bloblet")
+    } else {
+        shape_of(t)
+    }
+}
+
 /// A member's shape at run time, or `` if it has none known.
-pub fn shape_of(t: &'static Ty) -> Str {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Ty::TyI64() => {
-            str_lit("int")
-        }
-        Ty::TyInt() => {
-            str_lit("int")
-        }
-        Ty::TyNat() => {
-            str_lit("int")
-        }
-        Ty::TyF64() => {
-            str_lit("f64")
-        }
-        Ty::TyChar() => {
-            str_lit("char")
-        }
-        Ty::TyBool() => {
-            str_lit("bool")
-        }
-        Ty::TyString() => {
-            str_lit("string")
-        }
-        Ty::TyUnit() => {
-            str_lit("symbol")
-        }
-        Ty::TyList(e, r) => {
-            str_lit("list")
-        }
-        Ty::TyProc(es, ps, r) => {
-            str_lit("procedure")
-        }
-        Ty::TyRef(e, r) => {
-            str_lit("box")
-        }
-        Ty::TyFlat(e, r) => {
-            str_lit("bloblet")
-        }
-        Ty::TyShape(p, ls, ts) => {
-            if p {
-                str_lit("product")
-            } else {
-                str_lit("sum")
+pub fn shape_of(mut t: &'static Ty) -> Str {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyI64() => {
+                return str_lit("int");
             }
-        }
-        Ty::TyData(d, args) => {
-            if (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("u8")) || string_eq_p(d, str_lit("i8"))) {
-                str_lit("int")
-            } else if string_eq_p(d, str_lit("f32")) {
-                str_lit("f32")
-            } else if string_eq_p(d, str_lit("false")) {
-                str_lit("bool")
-            } else if string_eq_p(d, str_lit("nil")) {
-                str_lit("nil")
-            } else if string_eq_p(d, str_lit("%pairof")) {
-                str_lit("pair")
-            } else if string_eq_p(d, str_lit("symbol")) {
-                str_lit("symbol")
-            } else if string_eq_p(d, str_lit("%array")) {
-                str_lit("bloblet")
-            } else if string_eq_p(d, str_lit("%bytes")) {
-                str_lit("bytevector")
-            } else if string_eq_p(d, str_lit("%union")) {
-                str_lit("union")
-            } else if string_eq_p(d, str_lit("datum")) {
-                str_lit("union")
-            } else if string_eq_p(d, str_lit("vector")) {
-                str_lit("vector")
-            } else if (has_prefix_p(d, str_lit("%")) || has_char_in_p(d, '.') || has_char_in_p(d, ' ')) {
-                str_lit("")
-            } else {
-                // A datatype's value (C84): FX-26's shape `sum`. A generative
-                // type is named so too, which a union's parse refuses.
-                str_lit("sum")
+            Ty::TyInt() => {
+                return str_lit("int");
             }
-        }
-        _ => {
-            let other = tagcase_;
-            str_lit("")
+            Ty::TyNat() => {
+                return str_lit("int");
+            }
+            Ty::TyF64() => {
+                return str_lit("f64");
+            }
+            Ty::TyChar() => {
+                return str_lit("char");
+            }
+            Ty::TyBool() => {
+                return str_lit("bool");
+            }
+            Ty::TyString() => {
+                return str_lit("string");
+            }
+            Ty::TyUnit() => {
+                return str_lit("symbol");
+            }
+            Ty::TyList(e, r) => {
+                return str_lit("list");
+            }
+            Ty::TyProc(es, ps, r) => {
+                return str_lit("procedure");
+            }
+            Ty::TyRef(e, r) => {
+                return str_lit("box");
+            }
+            Ty::TyFlat(e, r) => {
+                return str_lit("bloblet");
+            }
+            Ty::TyShape(p, ls, ts) => {
+                if p {
+                    return str_lit("product");
+                } else {
+                    return str_lit("sum");
+                }
+            }
+            Ty::TyData(d, args) => {
+                if (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("u8")) || string_eq_p(d, str_lit("i8"))) {
+                    return str_lit("int");
+                } else if string_eq_p(d, str_lit("f32")) {
+                    return str_lit("f32");
+                } else if string_eq_p(d, str_lit("false")) {
+                    return str_lit("bool");
+                } else if string_eq_p(d, str_lit("nil")) {
+                    return str_lit("nil");
+                } else if string_eq_p(d, str_lit("%pairof")) {
+                    return str_lit("pair");
+                } else if string_eq_p(d, str_lit("symbol")) {
+                    return str_lit("symbol");
+                } else if string_eq_p(d, str_lit("%array")) {
+                    return str_lit("bloblet");
+                } else if string_eq_p(d, str_lit("%bytes")) {
+                    return str_lit("bytevector");
+                } else if string_eq_p(d, str_lit("%union")) {
+                    return str_lit("union");
+                } else if string_eq_p(d, str_lit("datum")) {
+                    return str_lit("union");
+                } else if string_eq_p(d, str_lit("vector")) {
+                    return str_lit("vector");
+                } else if string_eq_p(d, str_lit("%mu")) {
+                    // A recursive type's: its body's (C174).
+                    return member_shape(car(cdr(args)));
+                } else if has_prefix_p(d, str_lit("%named ")) {
+                    // An abbreviation kept for printing (C164): its expansion's.
+                    t = car(args);
+                    continue;
+                } else if (has_prefix_p(d, str_lit("%")) || has_char_in_p(d, '.') || has_char_in_p(d, ' ')) {
+                    return str_lit("");
+                } else {
+                    // A datatype's value (C84): FX-26's shape `sum`. A generative
+                    // type is named so too, which a union's parse refuses.
+                    return str_lit("sum");
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return str_lit("");
+            }
         }
     }
 }
@@ -4947,6 +4977,256 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
     }
 }
 
+// Recursive types (C174; Fixpt's `docs/research/recursive-subtyping.md`):
+// `(ty-data "%mu" (X body))`, `X` a variable `%mu NAME` that `body`
+// mentions where the type is itself; equi-recursive, compared by unfolding
+// with the pairs met assumed (`mu-fits`), unfolded where its shape is asked
+// (`walk-mu`). It must be built from a constructor: a cycle of names, or
+// of `poly`s alone, describes no type.
+pub fn tvar_in_p(mut x: Str, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                return string_eq_p(n, x);
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |a: &'static Ty| {
+                    tvar_in_p(x, a)
+                }), args);
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (tvar_in_p(x, r) || any_p(lambda1s(move |a: &'static Ty| {
+                    tvar_in_p(x, a)
+                }), ps));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |a: &'static Ty| {
+                    tvar_in_p(x, a)
+                }), ts);
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return (tvar_in_p(x, a) || tvar_in_p(x, h));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// Whether `x` is met in `t` under no constructor: alone, in a `poly`'s
+/// body, or given to a type function not known, which may be the
+/// identity (C173; recursion at the base kind only).
+pub fn poly_only_p(mut x: Str, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                return string_eq_p(n, x);
+            }
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%poly")) {
+                    t = last(args);
+                    continue;
+                } else if string_eq_p(d, str_lit("%mu")) {
+                    t = car(cdr(args));
+                    continue;
+                } else if string_eq_p(d, str_lit("%app")) {
+                    return any_p(lambda1s(move |a: &'static Ty| {
+                        tvar_in_p(x, a)
+                    }), cdr(args));
+                } else {
+                    return false;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// Type `u` of the abbreviation `name` (or `(mu name u)`): recursive, a
+/// `%mu`, where it mentions itself.
+pub fn mu_wrapped(v: &'static Cv, name: Str, u: &'static Ty) -> &'static Ty {
+    let x = string_append(str_lit("%mu "), name);
+    if not(tvar_in_p(x, u)) {
+        u
+    } else if poly_only_p(x, u) {
+        match refuse(v, str_lit("a recursive type must be built from a constructor, not only from names or polys: it describes no type")) {}
+    } else {
+        ty_data(str_lit("%mu"), kayak_rt::heap_cons(ty_var(x), kayak_rt::heap_cons(u, kayak_rt::nil())))
+    }
+}
+
+/// Of a recursive type's variable `x` and body `(union nil (pairof E x R))`,
+/// `E` and `R`, `E` not mentioning `x`; none if not.
+pub fn mu_list_of(x: &'static Ty, body: &'static Ty) -> Tys {
+    let tagcase_ = body;
+    match *tagcase_ {
+        Ty::TyData(d, ms) => {
+            if (string_eq_p(d, str_lit("%union")) && i64_eq(size(ms), 2i64) && {
+                let tagcase_ = car(ms);
+                match *tagcase_ {
+                    Ty::TyData(d2, a2) => {
+                        string_eq_p(d2, str_lit("nil"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let tagcase_ = car(cdr(ms));
+                match *tagcase_ {
+                    Ty::TyData(d3, ps) => {
+                        if (string_eq_p(d3, str_lit("%pairof")) && {
+                            let tagcase_ = car(cdr(ps));
+                            match *tagcase_ {
+                                Ty::TyVar(n) => {
+                                    let tagcase_ = x;
+                                    match *tagcase_ {
+                                        Ty::TyVar(m) => {
+                                            string_eq_p(n, m)
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } && {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Ty::TyVar(m) => {
+                                    not(tvar_in_p(m, car(ps)))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }) {
+                            kayak_rt::heap_cons(car(ps), kayak_rt::heap_cons(car(cdr(cdr(ps))), kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Ty>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Ty>()
+                    }
+                }
+            } else {
+                nil::<&'static Ty>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
+}
+
+pub fn mu_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%mu"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// A recursive type unfolded once: its body, its variable itself.
+pub fn unfold_mu(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%mu")) {
+                replace_var({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyVar(n) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }, t, car(cdr(args)))
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+/// A union member's shape; a recursive abbreviation's own mention's, its
+/// body's (C174), read again: its own mentions in it, its variable.
+pub fn mu_member_shape(v: &'static Cv, tvars: Strings, m: &'static Ty) -> Str {
+    let tagcase_ = m;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            if has_prefix_p(n, str_lit("%mu ")) {
+                let name = after_prefix(n, str_lit("%mu "));
+                let found = find_alias(name, cv_aliases(v));
+                if null_p(found) {
+                    str_lit("")
+                } else if string_member_p(string_append(str_lit("%shaping "), name), tvars) {
+                    str_lit("%itself")
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Alias::Alias(an, ps, b) => {
+                            if null_p(ps) {
+                                let u = parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%shaping "), name), tvars), b);
+                                member_shape(u)
+                            } else {
+                                str_lit("")
+                            }
+                        }
+                    }
+                }
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            shape_of(m)
+        }
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -4985,6 +5265,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_void();
                 } else if string_member_p(s, tvars) {
                     return ty_var(s);
+                } else if string_member_p(string_append(str_lit("%muvar "), s), tvars) {
+                    return ty_var(string_append(str_lit("%mu "), s));
                 } else if not(null_p(find_bind(string_append(str_lit("%type "), s), cv_binds(v)))) {
                     // A type a module gives, in a `with` of it or inside it (C170).
                     let tagcase_ = car(find_bind(string_append(str_lit("%type "), s), cv_binds(v)));
@@ -5029,7 +5311,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                 if not(null_p(ps)) {
                                     return match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {};
                                 } else if string_member_p(string_append(str_lit("%expanding "), s), tvars) {
-                                    return match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can")))) {};
+                                    // Its own name, in its expansion: a recursive type (C174), FX-26's
+                                    // equi-recursive `mu`; Rust's type aliases cannot (the restriction
+                                    // pass refuses it for KFX).
+                                    return ty_var(string_append(str_lit("%mu "), s));
                                 } else if (head_is_p(body, str_lit("moduleof")) && trait_moduleof_p(body)) {
                                     return ty_data(string_append(str_lit("%module "), s), nil::<&'static Ty>());
                                 } else if {
@@ -5065,10 +5350,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                 } {
                                     // An abbreviation of a family's application: its name not kept,
                                     // as Fixpt's is not (C165).
-                                    (tvars, t) = (kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body);
-                                    continue;
+                                    return mu_wrapped(v, s, parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body));
                                 } else {
-                                    return named_as(v, tvars, s, nil::<&'static Ty>(), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body));
+                                    return named_as(v, tvars, s, nil::<&'static Ty>(), mu_wrapped(v, s, parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body)));
                                 }
                             }
                         }
@@ -5266,7 +5550,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
                 } else if sym_is_p(car(xs), str_lit("union")) {
                     let members = union_members(parse_types(v, tvars, cdr(xs)));
-                    let shapes = map(&shape_of, members);
+                    let shapes = map(lambda1s(move |m: &'static Ty| {
+                        mu_member_shape(v, tvars, m)
+                    }), members);
                     if i64_lt(size(members), 2i64) {
                         return match refuse(v, string_append(str_lit("a union of fewer than two members: "), show_sexp(t))) {};
                     } else if (string_member_p(str_lit(""), shapes) || any_p(lambda1s(move |m: &'static Ty| {
@@ -5483,6 +5769,21 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // A function applied, `((dlambda ...) d ...)`, `((f d) e)` (C173).
                     let f = parse_fun(v, tvars, car(xs));
                     return fun_applied_checked(v, show_sexp(car(xs)), f, args_of_fun(v, tvars, f, cdr(xs)));
+                } else if (sym_is_p(car(xs), str_lit("mu")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // `(mu t T)`: a recursive type with no name (C174).
+                    let t2 = sym_name(second(xs));
+                    return mu_wrapped(v, t2, parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%muvar "), t2), tvars), third(xs)));
                 } else if sym_is_p(car(xs), str_lit("dlambda")) {
                     if string_member_p(str_lit("%fun-ok"), tvars) {
                         return parse_fun(v, tvars, t);
@@ -6303,9 +6604,24 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                         fun_applied_checked(v, name, parse_fun(v, tvars, sym(name, str_lit(""), 0i64)), args_of_fun(v, tvars, parse_fun(v, tvars, sym(name, str_lit(""), 0i64)), args))
                     } else {
                         if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
-                            match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
+                            if strings_eq_p(map(lambda1s(move |a: &'static Sexp| {
+                                let tagcase_ = a;
+                                match *tagcase_ {
+                                    Sexp::Sym(m, f, p) => {
+                                        m
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        str_lit("?")
+                                    }
+                                }
+                            }), args), map(&bare_binder, ps)) {
+                                ty_var(string_append(str_lit("%mu "), name))
+                            } else {
+                                match refuse(v, string_append(str_lit("a family may mention itself only with the same descriptions, which "), string_append(name, str_lit(" does not")))) {}
+                            }
                         } else {
-                            substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
+                            mu_wrapped(v, name, reduced(substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
                                 string_append(str_lit("%place "), p)
                             }), concat(map(lambda1s(move |p: Str| {
                                 if has_prefix_p(p, str_lit("'")) {
@@ -6313,7 +6629,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                                 } else {
                                     nil::<Str>()
                                 }
-                            }), ps))), onto(ps, expanding(tvars)))), body))
+                            }), ps))), onto(ps, expanding(tvars)))), body))))
                         }
                     }
                 }
@@ -6565,198 +6881,213 @@ pub fn show_size(s: &'static St, t: &'static Ty) -> Str {
     }
 }
 
-pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyI64() => {
-            str_lit("i64")
-        }
-        Ty::TyInt() => {
-            str_lit("int")
-        }
-        Ty::TyNat() => {
-            str_lit("nat")
-        }
-        Ty::TyF64() => {
-            str_lit("f64")
-        }
-        Ty::TyBool() => {
-            str_lit("bool")
-        }
-        Ty::TyChar() => {
-            str_lit("char")
-        }
-        Ty::TyUnit() => {
-            str_lit("unit")
-        }
-        Ty::TyString() => {
-            str_lit("string")
-        }
-        Ty::TyVoid() => {
-            str_lit("void")
-        }
-        Ty::TyList(e, r) => {
-            string_append(str_lit("(listof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
-        }
-        Ty::TyData(d, args) => {
-            if has_prefix_p(d, str_lit("%module ")) {
-                // A module type, by its abbreviation's name (C166).
-                after_prefix(d, str_lit("%module "))
-            } else if (has_prefix_p(d, str_lit("mt@")) && null_p(args)) {
-                // A module type's own abstract type, by its name (C170).
-                after_dots(d)
-            } else if has_prefix_p(d, str_lit("mt@")) {
-                string_append(str_lit("("), string_append(after_dots(d), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
-            } else if has_prefix_p(d, str_lit("%fam ")) {
-                after_prefix(d, str_lit("%fam "))
-            } else if string_eq_p(d, str_lit("%dlambda")) {
-                string_append(str_lit("(dlambda ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
-            } else if string_eq_p(d, str_lit("%effect")) {
-                let tagcase_ = car(args);
-                match *tagcase_ {
-                    Ty::TyProc(es, ps, r) => {
-                        show_effs(es)
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("?")
-                    }
-                }
-            } else if string_eq_p(d, str_lit("%app")) {
-                string_append(str_lit("("), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
-            } else if (has_prefix_p(d, str_lit("$")) && null_p(args)) {
-                // A dependent parameter's type (C170).
-                string_append(str_lit("(select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), str_lit(")")))))
-            } else if null_p(args) {
-                d
-            } else if string_eq_p(d, str_lit("%mtype")) {
-                let its = onto(filter(lambda1s(move |x: &'static Ty| {
-                    not(string_eq_p(mitem_kind(x), str_lit("%val")))
-                }), args), filter(lambda1s(move |x: &'static Ty| {
-                    string_eq_p(mitem_kind(x), str_lit("%val"))
-                }), args));
-                let descs = filter(lambda1s(move |x: &'static Ty| {
-                    string_eq_p(mitem_kind(x), str_lit("%desc"))
-                }), its);
-                string_append(str_lit("(moduleof"), string_append(run_together(map(lambda1s(move |x: &'static Ty| {
-                    string_append(str_lit(" "), desc_named(s, descs, x, show_mitem(s, x)))
-                }), its)), str_lit(")")))
-            } else if has_prefix_p(d, str_lit("%spec ")) {
-                show_specified(s, d, car(args))
-            } else if string_eq_p(d, str_lit("%bloblet")) {
-                string_append(str_lit("(bloblet (fields"), string_append(if null_p(cdr(args)) {
-                    str_lit("")
-                } else {
-                    string_append(str_lit(" "), show_tys(s, cdr(args)))
-                }, string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))))
-            } else if has_prefix_p(d, str_lit("%named ")) {
-                // A type abbreviation, by its name (C164): its expansion first, then
-                // its arguments.
-                if null_p(cdr(args)) {
-                    after_prefix(d, str_lit("%named "))
-                } else {
-                    string_append(str_lit("("), string_append(after_prefix(d, str_lit("%named ")), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
-                }
-            } else if string_eq_p(d, str_lit("%blobref")) {
-                string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%bytes")) {
-                string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%array")) {
-                string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%union")) {
-                string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%pairof")) {
-                string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%mark-key")) {
-                string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%escape-tag")) {
-                string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%nlist")) {
-                string_append(str_lit("(nlist "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), str_lit(")")))))
-            } else if string_eq_p(d, str_lit("%natof")) {
-                string_append(str_lit("(nat "), string_append(show_size(s, car(args)), str_lit(")")))
-            } else if (string_eq_p(d, str_lit("%sz")) || string_eq_p(d, str_lit("%finite"))) {
-                show_size(s, t)
-            } else if string_eq_p(d, str_lit("%poly")) {
-                string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
-            } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
-                string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
-            } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
-                string_append(str_lit("(subr (conv "), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(") "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))))
-            } else if string_eq_p(d, str_lit("%vsubr")) {
-                string_append(str_lit("(vsubr "), string_append({
+pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyI64() => {
+                return str_lit("i64");
+            }
+            Ty::TyInt() => {
+                return str_lit("int");
+            }
+            Ty::TyNat() => {
+                return str_lit("nat");
+            }
+            Ty::TyF64() => {
+                return str_lit("f64");
+            }
+            Ty::TyBool() => {
+                return str_lit("bool");
+            }
+            Ty::TyChar() => {
+                return str_lit("char");
+            }
+            Ty::TyUnit() => {
+                return str_lit("unit");
+            }
+            Ty::TyString() => {
+                return str_lit("string");
+            }
+            Ty::TyVoid() => {
+                return str_lit("void");
+            }
+            Ty::TyList(e, r) => {
+                return string_append(str_lit("(listof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))));
+            }
+            Ty::TyData(d, args) => {
+                if has_prefix_p(d, str_lit("%module ")) {
+                    // A module type, by its abbreviation's name (C166).
+                    return after_prefix(d, str_lit("%module "));
+                } else if (string_eq_p(d, str_lit("%mu")) && not(null_p(mu_list_of(car(args), car(cdr(args)))))) {
+                    // A `nil` or a pair whose tail is the type itself: a list, as written.
+                    let er = mu_list_of(car(args), car(cdr(args)));
+                    t = ty_list(car(er), car(cdr(er)));
+                    continue;
+                } else if string_eq_p(d, str_lit("%mu")) {
+                    return string_append(str_lit("(mu "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), str_lit(")")))));
+                } else if (has_prefix_p(d, str_lit("mt@")) && null_p(args)) {
+                    // A module type's own abstract type, by its name (C170).
+                    return after_dots(d);
+                } else if has_prefix_p(d, str_lit("mt@")) {
+                    return string_append(str_lit("("), string_append(after_dots(d), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))));
+                } else if has_prefix_p(d, str_lit("%fam ")) {
+                    return after_prefix(d, str_lit("%fam "));
+                } else if string_eq_p(d, str_lit("%dlambda")) {
+                    return string_append(str_lit("(dlambda ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))));
+                } else if string_eq_p(d, str_lit("%effect")) {
                     let tagcase_ = car(args);
                     match *tagcase_ {
                         Ty::TyProc(es, ps, r) => {
-                            show_effs(es)
+                            return show_effs(es);
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("?")
+                            return str_lit("?");
                         }
                     }
-                }, string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
-            } else if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
-                string_append(if string_eq_p(d, str_lit("%oneshot")) {
-                    str_lit("(oneshot ")
+                } else if string_eq_p(d, str_lit("%app")) {
+                    return string_append(str_lit("("), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))));
+                } else if (has_prefix_p(d, str_lit("$")) && null_p(args)) {
+                    // A dependent parameter's type (C170).
+                    return string_append(str_lit("(select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), str_lit(")")))));
+                } else if null_p(args) {
+                    return d;
+                } else if string_eq_p(d, str_lit("%mtype")) {
+                    let its = onto(filter(lambda1s(move |x: &'static Ty| {
+                        not(string_eq_p(mitem_kind(x), str_lit("%val")))
+                    }), args), filter(lambda1s(move |x: &'static Ty| {
+                        string_eq_p(mitem_kind(x), str_lit("%val"))
+                    }), args));
+                    let descs = filter(lambda1s(move |x: &'static Ty| {
+                        string_eq_p(mitem_kind(x), str_lit("%desc"))
+                    }), its);
+                    return string_append(str_lit("(moduleof"), string_append(run_together(map(lambda1s(move |x: &'static Ty| {
+                        string_append(str_lit(" "), desc_named(s, descs, x, show_mitem(s, x)))
+                    }), its)), str_lit(")")));
+                } else if has_prefix_p(d, str_lit("%spec ")) {
+                    return show_specified(s, d, car(args));
+                } else if string_eq_p(d, str_lit("%bloblet")) {
+                    return string_append(str_lit("(bloblet (fields"), string_append(if null_p(cdr(args)) {
+                        str_lit("")
+                    } else {
+                        string_append(str_lit(" "), show_tys(s, cdr(args)))
+                    }, string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))));
+                } else if has_prefix_p(d, str_lit("%named ")) {
+                    // A type abbreviation, by its name (C164): its expansion first, then
+                    // its arguments.
+                    if null_p(cdr(args)) {
+                        return after_prefix(d, str_lit("%named "));
+                    } else {
+                        return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%named ")), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))));
+                    }
+                } else if string_eq_p(d, str_lit("%blobref")) {
+                    return string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%bytes")) {
+                    return string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%array")) {
+                    return string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%union")) {
+                    return string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%pairof")) {
+                    return string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%mark-key")) {
+                    return string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%escape-tag")) {
+                    return string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%nlist")) {
+                    return string_append(str_lit("(nlist "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), str_lit(")")))));
+                } else if string_eq_p(d, str_lit("%natof")) {
+                    return string_append(str_lit("(nat "), string_append(show_size(s, car(args)), str_lit(")")));
+                } else if (string_eq_p(d, str_lit("%sz")) || string_eq_p(d, str_lit("%finite"))) {
+                    return show_size(s, t);
+                } else if string_eq_p(d, str_lit("%poly")) {
+                    return string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))));
+                } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
+                    return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))));
+                } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
+                    return string_append(str_lit("(subr (conv "), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(") "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))));
+                } else if string_eq_p(d, str_lit("%vsubr")) {
+                    return string_append(str_lit("(vsubr "), string_append({
+                        let tagcase_ = car(args);
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                show_effs(es)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("?")
+                            }
+                        }
+                    }, string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))));
+                } else if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
+                    return string_append(if string_eq_p(d, str_lit("%oneshot")) {
+                        str_lit("(oneshot ")
+                    } else {
+                        str_lit("(composable ")
+                    }, string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
+                        let tagcase_ = car(cdr(cdr(args)));
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                show_effs(es)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("?")
+                            }
+                        }
+                    }, string_append(str_lit(" "), string_append(show_ty(s, car(cdr(cdr(cdr(args))))), str_lit(")")))))))));
+                } else if string_eq_p(d, str_lit("%flat-array")) {
+                    return string_append(str_lit("(flat-arrayof "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%flat-sum")) {
+                    return string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1s(move |f: &'static Fvar| {
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Fvar::Fvar(l, x) => {
+                                string_append(str_lit(" ("), string_append(l, string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
+                            }
+                        }
+                    }), flat_sum_variants(args))), str_lit(")"))));
+                } else if string_eq_p(d, str_lit("%place")) {
+                    return string_append(str_lit("(place "), string_append(show_tys(s, args), str_lit(")")));
                 } else {
-                    str_lit("(composable ")
-                }, string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
-                    let tagcase_ = car(cdr(cdr(args)));
-                    match *tagcase_ {
-                        Ty::TyProc(es, ps, r) => {
-                            show_effs(es)
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit("?")
-                        }
-                    }
-                }, string_append(str_lit(" "), string_append(show_ty(s, car(cdr(cdr(cdr(args))))), str_lit(")")))))))))
-            } else if string_eq_p(d, str_lit("%flat-array")) {
-                string_append(str_lit("(flat-arrayof "), string_append(show_tys(s, args), str_lit(")")))
-            } else if string_eq_p(d, str_lit("%flat-sum")) {
-                string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1s(move |f: &'static Fvar| {
-                    let tagcase_ = f;
-                    match *tagcase_ {
-                        Fvar::Fvar(l, x) => {
-                            string_append(str_lit(" ("), string_append(l, string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
-                        }
-                    }
-                }), flat_sum_variants(args))), str_lit(")"))))
-            } else if string_eq_p(d, str_lit("%place")) {
-                string_append(str_lit("(place "), string_append(show_tys(s, args), str_lit(")")))
-            } else {
-                string_append(str_lit("("), string_append(d, string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
+                    return string_append(str_lit("("), string_append(d, string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))));
+                }
             }
-        }
-        Ty::TyShape(p, ls, ts) => {
-            string_append(if p {
-                str_lit("(productof")
-            } else {
-                str_lit("(sumof")
-            }, string_append(show_fields(s, ls, ts), str_lit(")")))
-        }
-        Ty::TyFlat(e, r) => {
-            string_append(str_lit("(flatarrayof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
-        }
-        Ty::TyRef(e, r) => {
-            string_append(str_lit("(ref "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
-        }
-        Ty::TyRconst(n) => {
-            n
-        }
-        Ty::TyTag(a, h, d, r) => {
-            string_append(str_lit("(prompt-tag "), string_append(show_ty(s, a), string_append(str_lit(" "), string_append(show_ty(s, h), string_append(str_lit(" "), string_append(show_effs(d), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))))))
-        }
-        Ty::TyProc(es, ps, r) => {
-            string_append(str_lit("(subr "), string_append(show_effs(es), string_append(str_lit(" ("), string_append(show_tys(s, ps), string_append(str_lit(") "), string_append(show_ty(s, r), str_lit(")")))))))
-        }
-        Ty::TyVar(n) => {
-            written_binder(n)
-        }
-        Ty::TyMeta(k) => {
-            string_append(str_lit("?"), i64_to_string(k))
+            Ty::TyShape(p, ls, ts) => {
+                return string_append(if p {
+                    str_lit("(productof")
+                } else {
+                    str_lit("(sumof")
+                }, string_append(show_fields(s, ls, ts), str_lit(")")));
+            }
+            Ty::TyFlat(e, r) => {
+                return string_append(str_lit("(flatarrayof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))));
+            }
+            Ty::TyRef(e, r) => {
+                return string_append(str_lit("(ref "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))));
+            }
+            Ty::TyRconst(n) => {
+                return n;
+            }
+            Ty::TyTag(a, h, d, r) => {
+                return string_append(str_lit("(prompt-tag "), string_append(show_ty(s, a), string_append(str_lit(" "), string_append(show_ty(s, h), string_append(str_lit(" "), string_append(show_effs(d), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))))));
+            }
+            Ty::TyProc(es, ps, r) => {
+                return string_append(str_lit("(subr "), string_append(show_effs(es), string_append(str_lit(" ("), string_append(show_tys(s, ps), string_append(str_lit(") "), string_append(show_ty(s, r), str_lit(")")))))));
+            }
+            Ty::TyVar(n) => {
+                if has_prefix_p(n, str_lit("%mu %")) {
+                    return after_prefix(n, str_lit("%mu "));
+                } else if has_prefix_p(n, str_lit("%mu ")) {
+                    return string_append(str_lit("%"), after_prefix(n, str_lit("%mu ")));
+                } else {
+                    return written_binder(n);
+                }
+            }
+            Ty::TyMeta(k) => {
+                return string_append(str_lit("?"), i64_to_string(k));
+            }
         }
     }
 }
@@ -7006,6 +7337,19 @@ pub fn lookup_meta(mut k: i64, mut subst: Sbs) -> Tys {
                     }
                 }
             }
+        }
+    }
+}
+
+/// `t` walked, and a recursive type unfolded, where its shape is asked (C174).
+pub fn walk_mu(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let w = walk(s, t);
+        if mu_p(w) {
+            t = unfold_mu(w);
+            continue;
+        } else {
+            return w;
         }
     }
 }
@@ -8187,7 +8531,23 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    if (not(string_eq_p(spec_of(a), str_lit(""))) || not(string_eq_p(spec_of(e), str_lit("")))) {
+    if (mu_p(a) || mu_p(e)) {
+        // A recursive type (C174): the pair assumed, then each unfolded once,
+        // so that a cycle met again ends the comparison (Amadio and Cardelli).
+        let key = string_append(str_lit("%mu-assumed "), string_append(show_ty(s, a), string_append(str_lit(" <= "), show_ty(s, e))));
+        if any_p(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(fl, p, w) => {
+                    string_eq_p(w, key)
+                }
+            }
+        }), st_facts(s)) {
+            s
+        } else {
+            fits(v, kfx_restricted(v, note_fact(s, str_lit("%mu"), 0i64, key), str_lit("a recursive type, FX-26's, which KFX has not: write a datatype (C174)")), unfold_mu(a), unfold_mu(e))
+        }
+    } else if (not(string_eq_p(spec_of(a), str_lit(""))) || not(string_eq_p(spec_of(e), str_lit("")))) {
         // A specified procedure (C162): the procedure within, then behavioural
         // subtyping, Fixpt's `logic::spec_within`: it requires no more than
         // the one expected, and ensures no less.
@@ -8385,9 +8745,9 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 mismatch(v, s, a, e)
             }
         }
-    } else if (string_eq_p(shape_of(e), str_lit("union")) && not(string_eq_p(shape_of(a), str_lit("")))) {
+    } else if (string_eq_p(shape_of(e), str_lit("union")) && not(string_eq_p(member_shape(a), str_lit("")))) {
         // A member below its union: the member of its shape (C62).
-        let m = member_of_shape(members_of(e), shape_of(a));
+        let m = member_of_shape(members_of(e), member_shape(a));
         if null_p(m) {
             mismatch(v, s, a, e)
         } else {

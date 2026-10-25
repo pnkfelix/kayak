@@ -1302,6 +1302,136 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
     }
 }
 
+// Recursive types printed as Fixpt prints them (C174; its `unparse.rs`):
+// a `(mu %x ...)`'s variable named by the depth of the type it stands for,
+// counted in the type constructors around it, `%3`. Each line's text read
+// as tokens, parentheses, spaces and words, kept; each frame a list's: `N`
+// a constructor's, `-` another's, `M x k` a mu's.
+pub fn mu_nodes() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("vectorof"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::nil()))))))))))))))))))))))))))
+    })
+}
+
+/// `cs` as tokens, reversed onto `acc`; `word`, the one being read, reversed.
+pub fn line_tokens(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            if null_p(word) {
+                return acc;
+            } else {
+                return kayak_rt::heap_cons(rev_to_string(word), acc);
+            }
+        } else if (char_eq_p(car(cs), '(') || char_eq_p(car(cs), ')') || char_eq_p(car(cs), ' ')) {
+            (cs, word, acc) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(list_to_string(kayak_rt::heap_cons(car(cs), kayak_rt::nil())), if null_p(word) {
+                acc
+            } else {
+                kayak_rt::heap_cons(rev_to_string(word), acc)
+            }));
+            continue;
+        } else {
+            (cs, word) = (cdr(cs), kayak_rt::heap_cons(car(cs), word));
+            continue;
+        }
+    }
+}
+
+pub fn mu_renamed(mut w: Str, mut frames: Strings) -> Str {
+    loop {
+        if null_p(frames) {
+            return w;
+        } else if has_prefix_p(car(frames), string_append(str_lit("M "), string_append(w, str_lit(" ")))) {
+            return after_prefix(car(frames), string_append(str_lit("M "), string_append(w, str_lit(" "))));
+        } else {
+            frames = cdr(frames);
+            continue;
+        }
+    }
+}
+
+pub fn mu_node_count(frames: Strings) -> i64 {
+    if null_p(frames) {
+        0i64
+    } else {
+        i64_plus(if string_eq_p(car(frames), str_lit("N")) {
+            1i64
+        } else {
+            0i64
+        }, mu_node_count(cdr(frames)))
+    }
+}
+
+/// `opened`: the token before was `(`; `mu`, a mu's variable awaited
+/// (`?`) or none (``).
+pub fn mu_numbered_tokens(mut ts: Strings, mut frames: Strings, mut opened: bool, mut mu: Str, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(ts) {
+            return reverse(acc);
+        } else {
+            let t = car(ts);
+            if string_eq_p(t, str_lit(" ")) {
+                (ts, acc) = (cdr(ts), kayak_rt::heap_cons(t, acc));
+                continue;
+            } else if string_eq_p(t, str_lit("(")) {
+                if opened {
+                    (ts, frames, opened, mu, acc) = (cdr(ts), kayak_rt::heap_cons(str_lit("-"), frames), true, str_lit(""), kayak_rt::heap_cons(t, acc));
+                    continue;
+                } else {
+                    (ts, opened, mu, acc) = (cdr(ts), true, str_lit(""), kayak_rt::heap_cons(t, acc));
+                    continue;
+                }
+            } else if string_eq_p(t, str_lit(")")) {
+                (ts, frames, opened, mu, acc) = (cdr(ts), if (opened || null_p(frames)) {
+                    frames
+                } else {
+                    cdr(frames)
+                }, false, str_lit(""), kayak_rt::heap_cons(t, acc));
+                continue;
+            } else if opened {
+                if string_eq_p(t, str_lit("mu")) {
+                    (ts, frames, opened, mu, acc) = (cdr(ts), kayak_rt::heap_cons(str_lit("-"), frames), false, str_lit("?"), kayak_rt::heap_cons(t, acc));
+                    continue;
+                } else if string_member_p(t, mu_nodes()) {
+                    (ts, frames, opened, mu, acc) = (cdr(ts), kayak_rt::heap_cons(str_lit("N"), frames), false, str_lit(""), kayak_rt::heap_cons(t, acc));
+                    continue;
+                } else {
+                    (ts, frames, opened, mu, acc) = (cdr(ts), kayak_rt::heap_cons(str_lit("-"), frames), false, str_lit(""), kayak_rt::heap_cons(t, acc));
+                    continue;
+                }
+            } else if string_eq_p(mu, str_lit("?")) {
+                let k = string_append(str_lit("%"), i64_to_string(i64_plus(mu_node_count(frames), 1i64)));
+                (ts, frames, opened, mu, acc) = (cdr(ts), kayak_rt::heap_cons(string_append(str_lit("M "), string_append(t, string_append(str_lit(" "), k))), cdr(frames)), false, str_lit(""), kayak_rt::heap_cons(k, acc));
+                continue;
+            } else {
+                (ts, opened, mu, acc) = (cdr(ts), false, str_lit(""), kayak_rt::heap_cons(mu_renamed(t, frames), acc));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn chars_within_p(mut cs: Chars, mut from: Chars) -> bool {
+    loop {
+        if null_p(cs) {
+            return false;
+        } else if chars_start_p(cs, from) {
+            return true;
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn mu_numbered(l: Str) -> Str {
+    if chars_within_p(string_chars(l), string_chars(str_lit("(mu "))) {
+        run_together(mu_numbered_tokens(reverse(line_tokens(string_chars(l), nil::<char>(), nil::<Str>())), nil::<Str>(), false, str_lit(""), nil::<Str>()))
+    } else {
+        l
+    }
+}
+
 pub fn lines_checked(v: &'static Cv, all: Sexps, forms: Sexps) -> Strings {
     if null_p(forms) {
         nil::<Str>()
@@ -1349,11 +1479,11 @@ pub fn check_command(paths: Strings) -> Int {
         not(module_def_p(f))
     }), forms), nil::<&'static Brn>(), nil::<&'static Brn>());
     say(lines_text(map(lambda1s(move |l: Str| {
-        if has_prefix_p(l, str_lit("%M ")) {
+        mu_numbered(if has_prefix_p(l, str_lit("%M ")) {
             after_prefix(l, str_lit("%M "))
         } else {
             base_renamed(l, names)
-        }
+        })
     }), lines_checked(v, forms, forms))));
     int_lit(0)
 }

@@ -3178,6 +3178,21 @@ pub mod expressions {
                         // kayak's own (C102): FX-26 lets one cross, but its Rust, kayak-rt's
                         // `Value` or a variadic closure, is not `Send`.
                         return string_append(str_lit("a "), string_append(show_ty(s, t), str_lit(", which KFX's Rust does not share between threads (C102)")));
+                    } else if string_eq_p(d, str_lit("%mu")) {
+                        // A recursive type (C174): as its body is, itself there as it is.
+                        (t, bound) = (car(cdr(args)), kayak_rt::heap_cons({
+                            let tagcase_ = car(args);
+                            match *tagcase_ {
+                                Ty::TyVar(n) => {
+                                    n
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        }, bound));
+                        continue;
                     } else if string_member_p(d, seen) {
                         return str_lit("");
                     } else if (dt_named_p(d, cv_dts(v)) && not(generative_p(v, walk(s, t)))) {
@@ -4204,7 +4219,7 @@ pub mod expressions {
                 Res::Res(t, es, s) => {
                     res(expected, es, {
                         let s = coerced(v, fits(v, s, t, expected), datum_file(e), datum_pos(e), t, expected);
-                        let tagcase_ = walk(s, t);
+                        let tagcase_ = walk_mu(s, t);
                         match *tagcase_ {
                             Ty::TyProc(pes, ps, r) => {
                                 let tagcase_ = walk(s, expected);
@@ -4823,7 +4838,7 @@ pub mod expressions {
                     let tagcase_ = synth(v, s, car(xs));
                     match *tagcase_ {
                         Res::Res(t, es, s) => {
-                            let tagcase_ = walk(s, t);
+                            let tagcase_ = walk_mu(s, t);
                             match *tagcase_ {
                                 Ty::TyData(d, args) => {
                                     let flat = if string_eq_p(d, str_lit("%blobref")) {
@@ -4970,7 +4985,7 @@ pub mod expressions {
         }) {
             // A vlambda where a `vsubr` is expected (C71): checked as the lambda of
             // one list it is, against the procedure of that list.
-            let tagcase_ = walk(s, expected);
+            let tagcase_ = walk_mu(s, expected);
             match *tagcase_ {
                 Ty::TyData(d, args) => {
                     let t = car(cdr(args));
@@ -5312,7 +5327,7 @@ pub mod expressions {
             let tagcase_ = synth(v, s, car(xs));
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    let tagcase_ = walk(s, t);
+                    let tagcase_ = walk_mu(s, t);
                     match *tagcase_ {
                         Ty::TyData(d, args) => {
                             if string_eq_p(d, str_lit("%blobref")) {
@@ -5378,7 +5393,7 @@ pub mod expressions {
         let want = if null_p(expected) {
             nil::<&'static Ty>()
         } else {
-            let tagcase_ = walk(s, car(expected));
+            let tagcase_ = walk_mu(s, car(expected));
             match *tagcase_ {
                 Ty::TyShape(p, ms, us) => {
                     if (p && strings_eq_p(ls, ms)) {
@@ -5475,7 +5490,7 @@ pub mod expressions {
     /// `(sum tag e)`, where a sum with that tag is expected: its type known
     /// whole, which the emitter is told, for Rust's sake.
     pub fn sum_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: &'static Ty) -> &'static Res {
-        let tagcase_ = walk(s, expected);
+        let tagcase_ = walk_mu(s, expected);
         match *tagcase_ {
             Ty::TyShape(p, ls, ts) => {
                 if (not(p) && not(null_p(xs)) && draft_hole_p(car(xs))) {
@@ -6670,7 +6685,7 @@ pub mod expressions {
             let want = if null_p(expected) {
                 ty_unit()
             } else {
-                walk(s, car(expected))
+                walk_mu(s, car(expected))
             };
             let rest = if placed {
                 cdr(xs)
@@ -6726,7 +6741,7 @@ pub mod expressions {
             let tagcase_ = synth(v, s, car(xs));
             match *tagcase_ {
                 Res::Res(b, es0, s) => {
-                    let tagcase_ = walk(s, b);
+                    let tagcase_ = walk_mu(s, b);
                     match *tagcase_ {
                         Ty::TyData(d, args) => {
                             let i = {

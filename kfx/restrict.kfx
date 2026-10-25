@@ -191,6 +191,98 @@
       (define module-own-items (subr kfx (sexp) sexps)
         (lambda (f) (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) (module-written f)))))
 
+      (define-rec
+        (sexp-names (subr kfx (sexp) strings)
+          (lambda (e)
+            "The names a type mentions where a type is: not a `select`'s
+             (another module's), a field's label, a binder, a module type's."
+            (tagcase e
+              (sym (n f p) (the strings (list n)))
+              (lst (xs f l p)
+                (cond ((null? xs) nil)
+                      ((or (head-is? e "select") (head-is? e "quote") (head-is? e "moduleof")) nil)
+                      ((or (head-is? e "productof") (head-is? e "sumof"))
+                       (concat (map (lambda ((g sexp)) (tagcase g (lst (ys f2 l2 p2) (concat (map sexp-names (cdr ys)))) (else other nil))) (cdr xs))))
+                      ((or (head-is? e "poly") (head-is? e "dlambda") (head-is? e "mu")) (sexp-names (last xs)))
+                      (else (concat (map sexp-names xs)))))
+              (else other nil)))))
+
+      (define abbreviations (subr kfx (sexps) sexps)
+        (lambda (forms)
+          "The define-types of `forms`, and of their modules."
+          (concat (map (lambda ((f sexp))
+                         (cond ((and (head-is? f "define-type") (i64= (size (items f)) 3)) (the sexps (list f)))
+                               ((module-def? f) (filter (lambda ((g sexp)) (and (head-is? g "define-type") (i64= (size (items g)) 3))) (module-own-items f)))
+                               (else nil)))
+                       forms))))
+
+      (define abbreviation-name (subr kfx (sexp) string)
+        (lambda (f)
+          (let ((h (second (items f))))
+            (tagcase h (sym (n f2 p2) n) (lst (ys f2 l2 p2) (if (null? ys) "" (tagcase (car ys) (sym (n f3 p3) n) (else other "")))) (else other "")))))
+
+      (define-rec
+        (reaches? (subr kfx (sexps strings strings string) bool)
+          (lambda (abbrevs todo seen target)
+            "Whether, from the names `todo`, an abbreviation's body after
+             another reaches `target`."
+            (cond ((null? todo) #f)
+                  ((string=? (car todo) target) #t)
+                  ((string-member? (car todo) seen) (reaches? abbrevs (cdr todo) seen target))
+                  (else
+                   (let ((found (filter (lambda ((f sexp)) (string=? (abbreviation-name f) (car todo))) abbrevs)))
+                     (reaches? abbrevs (onto (concat (map (lambda ((f sexp)) (sexp-names (third (items f)))) found)) (cdr todo))
+                               (cons (car todo) seen) target)))))))
+
+      (define-rec
+        (mu-in-type (subr kfx (sexp) unit)
+          (lambda (t)
+            "A type as written: refused if it has a `(mu t T)`."
+            (tagcase t
+              (lst (xs f l p)
+                (if (and (i64= (size xs) 3) (sym-is? (car xs) "mu") (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+                    (restriction-refused f l "a recursive type, `mu`, FX-26's, which KFX has not: write a datatype (C174)")
+                    (begin (map mu-in-type xs) #u)))
+              (else other #u))))
+        (mu-written (subr kfx (sexp) unit)
+          (lambda (e)
+            "Each type written in `e` where a form has one (a definition's, a
+             `the`'s, a binding's of `define-rec` or `letrec`): `mu` is a type's
+             word only there, and may name a procedure elsewhere."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) #u)
+                      ((sym-is? (car xs) "quote") #u)
+                      ((and (or (sym-is? (car xs) "define") (sym-is? (car xs) "define*") (sym-is? (car xs) "define-type")) (i64= (size xs) 4))
+                       (begin (mu-in-type (third xs)) (mu-written (fourth xs))))
+                      ((and (sym-is? (car xs) "define-type") (i64= (size xs) 3)) (mu-in-type (third xs)))
+                      ((and (sym-is? (car xs) "the") (i64= (size xs) 3)) (begin (mu-in-type (second xs)) (mu-written (third xs))))
+                      ((or (sym-is? (car xs) "define-rec") (sym-is? (car xs) "letrec"))
+                       (begin
+                         (map (lambda ((b sexp))
+                                (tagcase b
+                                  (lst (ys f2 l2 p2) (if (i64= (size ys) 3) (begin (mu-in-type (second ys)) (mu-written (third ys))) (mu-written b)))
+                                  (else other #u)))
+                              (if (sym-is? (car xs) "letrec") (items (second xs)) (cdr xs)))
+                         (if (sym-is? (car xs) "letrec") (begin (map mu-written (cdr (cdr xs))) #u) #u)))
+                      (else (begin (map mu-written xs) #u))))
+              (else other #u)))))
+
+      (define recursion-restricted (subr kfx (sexps) unit)
+        (lambda (forms)
+          "A type abbreviation that mentions itself, FX-26's recursive type
+           (C174), which a Rust type alias is not; and `(mu t T)`, written."
+          (let ((abbrevs (abbreviations forms)))
+            (begin
+              (map mu-written forms)
+              (map (lambda ((f sexp))
+                     (let ((n (abbreviation-name f)))
+                       (if (and (not (string=? n "")) (reaches? abbrevs (sexp-names (third (items f))) nil n))
+                           (tagcase f (lst (xs f2 l2 p2) (restriction-refused f2 l2 (string-append "a type abbreviation that mentions itself, " (string-append n ": Rust's type aliases cannot; a datatype can")))) (else other #u))
+                           #u)))
+                   abbrevs)
+              #u))))
+
       (define type-refused (subr kfx (sexps string string) void)
         (lambda (forms n message)
           (let ((fs (type-namer forms n)))
@@ -239,7 +331,7 @@
          what each uses."
         (begin (noted-restricted (reverse fs)) (names-restricted forms) (restricted-all forms "the program" 0)
                (let ((types (concat (type-scopes forms))))
-                 (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) (map moduleof-restricted forms)
+                 (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) (map moduleof-restricted forms) (recursion-restricted forms)
                         (map (lambda ((f sexp))
                                (if (and (head-is? f "define") (tagcase (second (items f)) (sym (n f2 p2) (has-prefix? n "%shared:input:")) (else other #f)))
                                    (tagcase f (lst (xs f2 l2 p2) (restriction-refused f2 l2 "a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) (else other #u))

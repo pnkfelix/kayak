@@ -1377,6 +1377,9 @@
                        "kayak's own (C102): FX-26 lets one cross, but its Rust, kayak-rt's
                         `Value` or a variadic closure, is not `Send`."
                        (string-append "a " (string-append (show-ty s t) ", which KFX's Rust does not share between threads (C102)")))
+                      ((string=? d "%mu")
+                       "A recursive type (C174): as its body is, itself there as it is."
+                       (untransmissible v s (car (cdr args)) (cons (tagcase (car args) (ty-var (n) n) (else other "")) bound) seen))
                       ((string-member? d seen) "")
                       ((and (dt-named? d (cv-dts v)) (not (generative? v (walk s t))))
                        "A datatype, FX-26's sum of products: as its fields are."
@@ -1882,7 +1885,7 @@
             (res (t es s)
               (res expected es
                    (let ((s (coerced v (fits v s t expected) (datum-file e) (datum-pos e) t expected)))
-                     (tagcase (walk s t)
+                     (tagcase (walk-mu s t)
                        (ty-proc (pes ps r)
                          (tagcase (walk s expected)
                            (ty-proc (ees eps er)
@@ -2195,7 +2198,7 @@
                      (refuse v "(extract e label)")
                      (tagcase (synth v s (car xs))
                        (res (t es s)
-                         (tagcase (walk s t)
+                         (tagcase (walk-mu s t)
                            (ty-data (d args)
                              (let ((flat (if (string=? d "%blobref") (walk s (car (cdr args))) (ty-unit))))
                                (tagcase flat
@@ -2267,7 +2270,7 @@
                       (tagcase (walk s expected) (ty-data (d args) (string=? d "%vsubr")) (else other #f)))
                  "A vlambda where a `vsubr` is expected (C71): checked as the lambda of
                   one list it is, against the procedure of that list."
-                 (tagcase (walk s expected)
+                 (tagcase (walk-mu s expected)
                    (ty-data (d args)
                      (let* ((t (car (cdr args)))
                             (binder (car xs))
@@ -2408,7 +2411,7 @@
                 (else
                  (tagcase (synth v s (car xs))
                    (res (t es s)
-                     (tagcase (walk s t)
+                     (tagcase (walk-mu s t)
                        (ty-data (d args)
                          (if (string=? d "%blobref")
                              (let ((flat (walk s (car (cdr args))))
@@ -2445,7 +2448,7 @@
           (let* ((fs (map items fields))
                  (ls (map (lambda ((f sexps)) (label-of (car f))) fs))
                  (want (if (null? expected) nil
-                           (tagcase (walk s (car expected))
+                           (tagcase (walk-mu s (car expected))
                              (ty-shape (p ms us) (if (and p (strings=? ls ms)) us nil))
                              (else other nil)))))
             (cond ((any? (lambda ((f sexps)) (or (not (i64= (size f) 2)) (string=? (label-of (car f)) ""))) fs)
@@ -2483,7 +2486,7 @@
         (lambda (v s xs expected)
           "`(sum tag e)`, where a sum with that tag is expected: its type known
            whole, which the emitter is told, for Rust's sake."
-          (tagcase (walk s expected)
+          (tagcase (walk-mu s expected)
             (ty-shape (p ls ts)
               (if (and (not p) (not (null? xs)) (draft-hole? (car xs)))
                   (refuse-named v s (string-append "the hole: a tag, then its value: " (words-joined (tags-wanted s ls ts) ", ")))
@@ -2976,7 +2979,7 @@
             (cond
               ((or (string=? h "make-bloblet") (string=? h "rmake-bloblet"))
                (let* ((placed (string=? h "rmake-bloblet"))
-                      (want (if (null? expected) (ty-unit) (walk s (car expected))))
+                      (want (if (null? expected) (ty-unit) (walk-mu s (car expected))))
                       (rest (if placed (cdr xs) xs)))
                  (tagcase want
                    (ty-data (d args)
@@ -2995,7 +2998,7 @@
                  (args-are (if (string=? h "bloblet-ref") 2 3))
                  (tagcase (synth v s (car xs))
                    (res (b es0 s)
-                     (tagcase (walk s b)
+                     (tagcase (walk-mu s b)
                        (ty-data (d args)
                          (let ((i (tagcase (second xs) (num (k f p) k) (else other (the i64 -1)))))
                            (cond ((not (string=? d "%bloblet")) (refuse v (string-append h " of no bloblet")))

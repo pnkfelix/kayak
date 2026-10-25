@@ -1,0 +1,6 @@
+"FX-26's recursive type abbreviation, an equi-recursive `mu`, which a Rust
+ type alias cannot be: KFX's recursive type is a datatype (C174)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type ilist (sumof (nil unit) (cell (productof (hd int) (tl ilist)))))
+(define main (subr kfx () i64)
+  (lambda () (int->i64 (tagcase (the ilist (sum nil #u)) (nil u 0) (cell c 1)))))

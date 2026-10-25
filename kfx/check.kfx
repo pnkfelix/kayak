@@ -1284,7 +1284,13 @@
  test tells them apart. A `(ty-data \"%union\" members)`, flattened, each
  member once; `false`, the type of `#f` alone, below `bool`, a
  `(ty-data \"false\" nil)`. Never Rust's (C57): the restriction pass's."
-(define shape-of (subr kfx (ty) string)
+(define-rec
+ (member-shape (subr kfx (ty) string)
+  (lambda (t)
+    "`shape-of`; and a bloblet's, FX-26's `bloblet`, which only a recursive
+     type's union has (C174), a union never KFX's."
+    (if (tagcase t (ty-data (d as) (string=? d "%bloblet")) (else other #f)) "bloblet" (shape-of t))))
+ (shape-of (subr kfx (ty) string)
   (lambda (t)
     "A member's shape at run time, or `` if it has none known."
     (tagcase t
@@ -1304,12 +1310,14 @@
               ((string=? d "%union") "union")
               ((string=? d "datum") "union")
               ((string=? d "vector") "vector")
+              ((string=? d "%mu") "A recursive type's: its body's (C174)." (member-shape (car (cdr args))))
+              ((has-prefix? d "%named ") "An abbreviation kept for printing (C164): its expansion's." (shape-of (car args)))
               ((or (has-prefix? d "%") (has-char-in? d #\.) (has-char-in? d #\space)) "")
               (else
                "A datatype's value (C84): FX-26's shape `sum`. A generative
                 type is named so too, which a union's parse refuses."
                "sum")))
-      (else other ""))))
+      (else other "")))))
 
 (define-rec
   (union-members (subr kfx (tys) tys)
@@ -2204,7 +2212,96 @@
             ((or (char=? (car cs) #\space) (char=? (car cs) #\.)) (bare-type-name (cdr cs) nil))
             (else (bare-type-name (cdr cs) (cons (car cs) acc)))))))
 
+"Recursive types (C174; Fixpt's `docs/research/recursive-subtyping.md`):
+ `(ty-data \"%mu\" (X body))`, `X` a variable `%mu NAME` that `body`
+ mentions where the type is itself; equi-recursive, compared by unfolding
+ with the pairs met assumed (`mu-fits`), unfolded where its shape is asked
+ (`walk-mu`). It must be built from a constructor: a cycle of names, or
+ of `poly`s alone, describes no type."
 (define-rec
+  (tvar-in? (subr kfx (string ty) bool)
+    (lambda (x t)
+      (tagcase t
+        (ty-var (n) (string=? n x))
+        (ty-data (d args) (any? (lambda ((a ty)) (tvar-in? x a)) args))
+        (ty-list (e r) (tvar-in? x e))
+        (ty-ref (e r) (tvar-in? x e))
+        (ty-flat (e r) (tvar-in? x e))
+        (ty-proc (es ps r) (or (tvar-in? x r) (any? (lambda ((a ty)) (tvar-in? x a)) ps)))
+        (ty-shape (p ls ts) (any? (lambda ((a ty)) (tvar-in? x a)) ts))
+        (ty-tag (a h es r) (or (tvar-in? x a) (tvar-in? x h)))
+        (else other #f))))
+  (poly-only? (subr kfx (string ty) bool)
+    (lambda (x t)
+      "Whether `x` is met in `t` under no constructor: alone, in a `poly`'s
+       body, or given to a type function not known, which may be the
+       identity (C173; recursion at the base kind only)."
+      (tagcase t
+        (ty-var (n) (string=? n x))
+        (ty-data (d args)
+          (cond ((string=? d "%poly") (poly-only? x (last args)))
+                ((string=? d "%mu") (poly-only? x (car (cdr args))))
+                ((string=? d "%app") (any? (lambda ((a ty)) (tvar-in? x a)) (cdr args)))
+                (else #f)))
+        (else other #f)))))
+
+(define mu-wrapped (subr kfx (cv string ty) ty)
+  (lambda (v name u)
+    "Type `u` of the abbreviation `name` (or `(mu name u)`): recursive, a
+     `%mu`, where it mentions itself."
+    (let ((x (string-append "%mu " name)))
+      (cond ((not (tvar-in? x u)) u)
+            ((poly-only? x u) (refuse v "a recursive type must be built from a constructor, not only from names or polys: it describes no type"))
+            (else (ty-data "%mu" (list (ty-var x) u)))))))
+
+(define mu-list-of (subr kfx (ty ty) tys)
+  (lambda (x body)
+    "Of a recursive type's variable `x` and body `(union nil (pairof E x R))`,
+     `E` and `R`, `E` not mentioning `x`; none if not."
+    (tagcase body
+      (ty-data (d ms)
+        (if (and (string=? d "%union") (i64= (size ms) 2)
+                 (tagcase (car ms) (ty-data (d2 a2) (string=? d2 "nil")) (else other #f)))
+            (tagcase (car (cdr ms))
+              (ty-data (d3 ps)
+                (if (and (string=? d3 "%pairof")
+                         (tagcase (car (cdr ps)) (ty-var (n) (tagcase x (ty-var (m) (string=? n m)) (else other #f))) (else other #f))
+                         (tagcase x (ty-var (m) (not (tvar-in? m (car ps)))) (else other #f)))
+                    (list (car ps) (car (cdr (cdr ps))))
+                    nil))
+              (else other nil))
+            nil))
+      (else other nil))))
+
+(define mu? (subr kfx (ty) bool)
+  (lambda (t) (tagcase t (ty-data (d args) (string=? d "%mu")) (else other #f))))
+
+(define unfold-mu (subr kfx (ty) ty)
+  (lambda (t)
+    "A recursive type unfolded once: its body, its variable itself."
+    (tagcase t
+      (ty-data (d args) (if (string=? d "%mu") (replace-var (tagcase (car args) (ty-var (n) n) (else other "")) t (car (cdr args))) t))
+      (else other t))))
+
+(define-rec
+  (mu-member-shape (subr kfx (cv strings ty) string)
+    (lambda (v tvars m)
+      "A union member's shape; a recursive abbreviation's own mention's, its
+       body's (C174), read again: its own mentions in it, its variable."
+      (tagcase m
+        (ty-var (n)
+          (if (has-prefix? n "%mu ")
+              (let* ((name (after-prefix n "%mu ")) (found (find-alias name (cv-aliases v))))
+                (cond ((null? found) "")
+                      ((string-member? (string-append "%shaping " name) tvars) "%itself")
+                      (else (tagcase (car found)
+                              (alias (an ps b)
+                                (if (null? ps)
+                                    (let ((u (parse-type v (cons (string-append "%shaping " name) tvars) b)))
+                                      (member-shape u))
+                                    ""))))))
+              ""))
+        (else other (shape-of m)))))
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
       "`tvars`: the type variables in scope."
@@ -2226,6 +2323,7 @@
                 ((string=? s "string") (ty-string))
                 ((string=? s "void") (ty-void))
                 ((string-member? s tvars) (ty-var s))
+                ((string-member? (string-append "%muvar " s) tvars) (ty-var (string-append "%mu " s)))
                 ((not (null? (find-bind (string-append "%type " s) (cv-binds v))))
                  "A type a module gives, in a `with` of it or inside it (C170)."
                  (tagcase (car (find-bind (string-append "%type " s) (cv-binds v))) (bind (n sc w) (tagcase sc (scheme (tv u) u)))))
@@ -2249,14 +2347,16 @@
                            (cond ((not (null? ps))
                                   (refuse v (string-append "a type with parameters, given none: " s)))
                                  ((string-member? (string-append "%expanding " s) tvars)
-                                  (refuse v (string-append "a type abbreviation that mentions itself, " (string-append s
-                                            ": Rust's type aliases cannot; a datatype can"))))
+                                  "Its own name, in its expansion: a recursive type (C174), FX-26's
+                                   equi-recursive `mu`; Rust's type aliases cannot (the restriction
+                                   pass refuses it for KFX)."
+                                  (ty-var (string-append "%mu " s)))
                                  ((and (head-is? body "moduleof") (trait-moduleof? body)) (ty-data (string-append "%module " s) nil))
                                  ((tagcase body (lst (ys f2 l2 p2) (and (not (null? ys)) (tagcase (car ys) (sym (h f3 p3) (let ((found (find-alias h (cv-aliases v)))) (and (not (null? found)) (tagcase (car found) (alias (an aps ab) (not (null? aps))))))) (else other #f)))) (else other #f))
                                   "An abbreviation of a family's application: its name not kept,
                                    as Fixpt's is not (C165)."
-                                  (parse-type v (cons (string-append "%expanding " s) tvars) body))
-                                 (else (named-as v tvars s nil (parse-type v (cons (string-append "%expanding " s) tvars) body)))))))))))
+                                  (mu-wrapped v s (parse-type v (cons (string-append "%expanding " s) tvars) body)))
+                                 (else (named-as v tvars s nil (mu-wrapped v s (parse-type v (cons (string-append "%expanding " s) tvars) body))))))))))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
                  (no-knot v (lambda ((x string)) x) (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
@@ -2366,7 +2466,7 @@
                  (ty-data "%pairof" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs)) (parse-region v tvars (fourth xs)))))
                 ((sym-is? (car xs) "union")
                  (let* ((members (union-members (parse-types v tvars (cdr xs))))
-                        (shapes (map shape-of members)))
+                        (shapes (map (lambda ((m ty)) (mu-member-shape v tvars m)) members)))
                    (cond ((i64< (size members) 2) (refuse v (string-append "a union of fewer than two members: " (show-sexp t))))
                          ((or (string-member? "" shapes) (any? (lambda ((m ty)) (generative? v m)) members))
                           (refuse v (string-append "a union's member with no shape known (a type variable, an abstract or generative type, a tag): " (show-sexp t))))
@@ -2437,6 +2537,10 @@
                  "A function applied, `((dlambda ...) d ...)`, `((f d) e)` (C173)."
                  (let ((f (parse-fun v tvars (car xs))))
                    (fun-applied-checked v (show-sexp (car xs)) f (args-of-fun v tvars f (cdr xs)))))
+                ((and (sym-is? (car xs) "mu") (i64= (size xs) 3) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
+                 "`(mu t T)`: a recursive type with no name (C174)."
+                 (let ((t2 (sym-name (second xs))))
+                   (mu-wrapped v t2 (parse-type v (cons (string-append "%muvar " t2) tvars) (third xs)))))
                 ((sym-is? (car xs) "dlambda")
                  (if (string-member? "%fun-ok" tvars)
                      (parse-fun v tvars t)
@@ -2793,14 +2897,18 @@
                     ;; An abbreviation of a function, applied (C173).
                     (fun-applied-checked v name (parse-fun v tvars (sym name "" 0)) (args-of-fun v tvars (parse-fun v tvars (sym name "" 0)) args))
                 (if (string-member? (string-append "%expanding " name) tvars)
-                    (refuse v (string-append "a type abbreviation that mentions itself, " (string-append name
-                              ": Rust's type aliases cannot; a datatype can")))
-                    (substitute ps (parse-arguments v tvars ps args)
+                    (if (strings=? (map (lambda ((a sexp)) (tagcase a (sym (m f p) m) (else other "?"))) args)
+                                   (map bare-binder ps))
+                        ;; The family in itself, given its own parameters: a recursive
+                        ;; type (C174).
+                        (ty-var (string-append "%mu " name))
+                        (refuse v (string-append "a family may mention itself only with the same descriptions, which " (string-append name " does not"))))
+                    (mu-wrapped v name (reduced (substitute ps (parse-arguments v tvars ps args)
                                 (parse-type v (cons (string-append "%expanding " name)
                                                     (onto (map (lambda ((p string)) (string-append "%place " p))
                                                                (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) ps)))
                                                           (onto ps (expanding tvars))))
-                                            body))))))))))))
+                                            body))))))))))))))
 
 (define type-binders-apart (subr kfx (cv strings strings) unit)
   (lambda (v tvars types)
@@ -2949,6 +3057,12 @@
         (ty-list (e r) (string-append "(listof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-data (d args)
           (cond ((has-prefix? d "%module ") "A module type, by its abbreviation's name (C166)." (after-prefix d "%module "))
+                ((and (string=? d "%mu") (not (null? (mu-list-of (car args) (car (cdr args))))))
+                 "A `nil` or a pair whose tail is the type itself: a list, as written."
+                 (let ((er (mu-list-of (car args) (car (cdr args)))))
+                   (show-ty s (ty-list (car er) (car (cdr er))))))
+                ((string=? d "%mu")
+                 (string-append "(mu " (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args))) ")")))))
                 ((and (has-prefix? d "mt@") (null? args)) "A module type's own abstract type, by its name (C170)." (after-dots d))
                 ((has-prefix? d "mt@") (string-append "(" (string-append (after-dots d) (string-append " " (string-append (show-tys s args) ")")))))
                 ((has-prefix? d "%fam ") (after-prefix d "%fam "))
@@ -3014,7 +3128,9 @@
         (ty-proc (es ps r)
           (string-append "(subr " (string-append (show-effs es) (string-append " ("
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
-        (ty-var (n) (written-binder n))
+        (ty-var (n) (cond ((has-prefix? n "%mu %") (after-prefix n "%mu "))
+                          ((has-prefix? n "%mu ") (string-append "%" (after-prefix n "%mu ")))
+                          (else (written-binder n))))
         (ty-meta (k) (string-append "?" (i64->string k))))))
   (desc-named (subr kfx (st tys ty string) string)
     (lambda (s descs x text)
@@ -3093,6 +3209,12 @@
       (cond ((null? subst) nil)
             (else (tagcase (car subst)
                     (sb (j t) (if (i64= j k) (list t) (lookup-meta k (cdr subst))))))))))
+
+(define-rec
+  (walk-mu (subr kfx (st ty) ty)
+    (lambda (s t)
+      "`t` walked, and a recursive type unfolded, where its shape is asked (C174)."
+      (let ((w (walk s t))) (if (mu? w) (walk-mu s (unfold-mu w)) w)))))
 
 (define-rec
   (has-meta? (subr kfx (st ty) bool)
@@ -3582,7 +3704,15 @@
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (cond ((or (not (string=? (spec-of a) "")) (not (string=? (spec-of e) "")))
+      (cond ((or (mu? a) (mu? e))
+             "A recursive type (C174): the pair assumed, then each unfolded once,
+              so that a cycle met again ends the comparison (Amadio and Cardelli)."
+             (let ((key (string-append "%mu-assumed " (string-append (show-ty s a) (string-append " <= " (show-ty s e))))))
+               (if (any? (lambda ((f fact)) (tagcase f (fact (fl p w) (string=? w key)))) (st-facts s))
+                   s
+                   (fits v (kfx-restricted v (note-fact s "%mu" 0 key) "a recursive type, FX-26's, which KFX has not: write a datatype (C174)")
+                         (unfold-mu a) (unfold-mu e)))))
+            ((or (not (string=? (spec-of a) "")) (not (string=? (spec-of e) "")))
              "A specified procedure (C162): the procedure within, then behavioural
               subtyping, Fixpt's `logic::spec_within`: it requires no more than
               the one expected, and ensures no less."
@@ -3639,9 +3769,9 @@
              (tagcase a
                (ty-list (x r) (fits v (fits v s (ty-data "nil" nil) e) (ty-data "%pairof" (list x a r)) e))
                (else other (mismatch v s a e))))
-            ((and (string=? (shape-of e) "union") (not (string=? (shape-of a) "")))
+            ((and (string=? (shape-of e) "union") (not (string=? (member-shape a) "")))
              "A member below its union: the member of its shape (C62)."
-             (let ((m (member-of-shape (members-of e) (shape-of a))))
+             (let ((m (member-of-shape (members-of e) (member-shape a))))
                (if (null? m) (mismatch v s a e) (fits v s a (car m)))))
             ((and (tagcase a (ty-data (d args) (string=? d "false")) (else other #f)) (tagcase e (ty-bool () #t) (else other #f)))
              "`false` below `bool`."

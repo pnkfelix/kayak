@@ -1,0 +1,7 @@
+"FX-26's `(mu t T)`, a recursive type with no name, which KFX has not:
+ write a datatype (C174)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure ((mu t (sumof (nil unit) (cell (productof (hd int) (tl t)))))) int)
+  (lambda (x) 0))
+(define main (subr kfx () i64)
+  (lambda () (int->i64 (f (sum nil #u)))))

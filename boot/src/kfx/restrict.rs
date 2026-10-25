@@ -385,6 +385,234 @@ pub mod restrictions {
         }), module_written(f)))
     }
 
+    /// The names a type mentions where a type is: not a `select`'s
+    /// (another module's), a field's label, a binder, a module type's.
+    pub fn sexp_names(mut e: &'static Sexp) -> Strings {
+        loop {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    return the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()));
+                }
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        return nil::<Str>();
+                    } else if (head_is_p(e, str_lit("select")) || head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("moduleof"))) {
+                        return nil::<Str>();
+                    } else if (head_is_p(e, str_lit("productof")) || head_is_p(e, str_lit("sumof"))) {
+                        return concat(map(lambda1s(move |g: &'static Sexp| {
+                            let tagcase_ = g;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f2, l2, p2) => {
+                                    concat(map(&sexp_names, cdr(ys)))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        }), cdr(xs)));
+                    } else if (head_is_p(e, str_lit("poly")) || head_is_p(e, str_lit("dlambda")) || head_is_p(e, str_lit("mu"))) {
+                        e = last(xs);
+                        continue;
+                    } else {
+                        return concat(map(&sexp_names, xs));
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return nil::<Str>();
+                }
+            }
+        }
+    }
+
+    /// The define-types of `forms`, and of their modules.
+    pub fn abbreviations(forms: Sexps) -> Sexps {
+        concat(map(lambda1s(move |f: &'static Sexp| {
+            if (head_is_p(f, str_lit("define-type")) && i64_eq(size(items(f)), 3i64)) {
+                the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+            } else if module_def_p(f) {
+                filter(lambda1s(move |g: &'static Sexp| {
+                    (head_is_p(g, str_lit("define-type")) && i64_eq(size(items(g)), 3i64))
+                }), module_own_items(f))
+            } else {
+                nil::<&'static Sexp>()
+            }
+        }), forms))
+    }
+
+    pub fn abbreviation_name(f: &'static Sexp) -> Str {
+        let h = second(items(f));
+        let tagcase_ = h;
+        match *tagcase_ {
+            Sexp::Sym(n, f2, p2) => {
+                n
+            }
+            Sexp::Lst(ys, f2, l2, p2) => {
+                if null_p(ys) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = car(ys);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f3, p3) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
+    /// Whether, from the names `todo`, an abbreviation's body after
+    /// another reaches `target`.
+    pub fn reaches_p(mut abbrevs: Sexps, mut todo: Strings, mut seen: Strings, mut target: Str) -> bool {
+        loop {
+            if null_p(todo) {
+                return false;
+            } else if string_eq_p(car(todo), target) {
+                return true;
+            } else if string_member_p(car(todo), seen) {
+                todo = cdr(todo);
+                continue;
+            } else {
+                let found = filter(lambda1s(move |f: &'static Sexp| {
+                    string_eq_p(abbreviation_name(f), car(todo))
+                }), abbrevs);
+                (todo, seen) = (onto(concat(map(lambda1s(move |f: &'static Sexp| {
+                    sexp_names(third(items(f)))
+                }), found)), cdr(todo)), kayak_rt::heap_cons(car(todo), seen));
+                continue;
+            }
+        }
+    }
+
+    /// A type as written: refused if it has a `(mu t T)`.
+    pub fn mu_in_type(t: &'static Sexp) -> () {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("mu")) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    match restriction_refused(f, l, str_lit("a recursive type, `mu`, FX-26's, which KFX has not: write a datatype (C174)")) {}
+                } else {
+                    map(&mu_in_type, xs);
+                    ()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ()
+            }
+        }
+    }
+
+    /// Each type written in `e` where a form has one (a definition's, a
+    /// `the`'s, a binding's of `define-rec` or `letrec`): `mu` is a type's
+    /// word only there, and may name a procedure elsewhere.
+    pub fn mu_written(mut e: &'static Sexp) -> () {
+        loop {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        return ();
+                    } else if sym_is_p(car(xs), str_lit("quote")) {
+                        return ();
+                    } else if ((sym_is_p(car(xs), str_lit("define")) || sym_is_p(car(xs), str_lit("define*")) || sym_is_p(car(xs), str_lit("define-type"))) && i64_eq(size(xs), 4i64)) {
+                        mu_in_type(third(xs));
+                        e = fourth(xs);
+                        continue;
+                    } else if (sym_is_p(car(xs), str_lit("define-type")) && i64_eq(size(xs), 3i64)) {
+                        return mu_in_type(third(xs));
+                    } else if (sym_is_p(car(xs), str_lit("the")) && i64_eq(size(xs), 3i64)) {
+                        mu_in_type(second(xs));
+                        e = third(xs);
+                        continue;
+                    } else if (sym_is_p(car(xs), str_lit("define-rec")) || sym_is_p(car(xs), str_lit("letrec"))) {
+                        map(lambda1s(move |b: &'static Sexp| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f2, l2, p2) => {
+                                    if i64_eq(size(ys), 3i64) {
+                                        mu_in_type(second(ys));
+                                        mu_written(third(ys))
+                                    } else {
+                                        mu_written(b)
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    ()
+                                }
+                            }
+                        }), if sym_is_p(car(xs), str_lit("letrec")) {
+                            items(second(xs))
+                        } else {
+                            cdr(xs)
+                        });
+                        if sym_is_p(car(xs), str_lit("letrec")) {
+                            map(&mu_written, cdr(cdr(xs)));
+                            return ();
+                        } else {
+                            return ();
+                        }
+                    } else {
+                        map(&mu_written, xs);
+                        return ();
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return ();
+                }
+            }
+        }
+    }
+
+    /// A type abbreviation that mentions itself, FX-26's recursive type
+    /// (C174), which a Rust type alias is not; and `(mu t T)`, written.
+    pub fn recursion_restricted(forms: Sexps) -> () {
+        let abbrevs = abbreviations(forms);
+        map(&mu_written, forms);
+        map(lambda1s(move |f: &'static Sexp| {
+            let n = abbreviation_name(f);
+            if (not(string_eq_p(n, str_lit(""))) && reaches_p(abbrevs, sexp_names(third(items(f))), nil::<Str>(), n)) {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Sexp::Lst(xs, f2, l2, p2) => {
+                        match restriction_refused(f2, l2, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(n, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ()
+                    }
+                }
+            } else {
+                ()
+            }
+        }), abbrevs);
+        ()
+    }
+
     pub fn type_refused(forms: Sexps, n: Str, message: Str) -> Void {
         let fs = type_namer(forms, n);
         if null_p(fs) {
@@ -473,6 +701,7 @@ pub mod restrictions {
             specs_restricted(f, types)
         }), forms);
         map(&moduleof_restricted, forms);
+        recursion_restricted(forms);
         map(lambda1s(move |f: &'static Sexp| {
             if (head_is_p(f, str_lit("define")) && {
                 let tagcase_ = second(items(f));
