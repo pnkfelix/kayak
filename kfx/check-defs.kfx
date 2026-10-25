@@ -319,8 +319,8 @@
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
-      (cv (bs ds als es here group file line fs tv at)
-        (cv bs ds als (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv at)))))
+      (cv (bs ds als es here group file line fs tv at ix mk)
+        (cv bs ds als (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv at ix mk)))))
 
 (define-rec
   (selects? (subr kfx (sexp) bool)
@@ -354,7 +354,7 @@
 
 (define at (subr kfx (cv string strings) cv)
   (lambda (v here group)
-    (tagcase v (cv (bs ds als es h g file line fs tv at) (cv bs ds als es here group file line fs tv at)))))
+    (tagcase v (cv (bs ds als es h g file line fs tv at ix mk) (cv bs ds als es here group file line fs tv at ix mk)))))
 
 (define runtime-name? (subr kfx (string) bool)
   (lambda (name)
@@ -380,22 +380,22 @@
      names and kayak-rt's. A module's item may shadow a primitive or a
      global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
      it imports by a glob."
-    (cond ((and (keyword? name) (null? (find-bind "%module" (cv-binds v))))
+    (cond ((and (keyword? name) (null? (scope-bind "%module" v)))
            (refuse v (string-append "a keyword names nothing: " name)))
           (else
-           (let ((found (find-bind name (cv-binds v)))
+           (let ((found (scope-bind name v))
                  ;; A module value's abstract types named for it (C170).
                  (sc (tagcase sc0 (scheme (tv t) (scheme tv (mtype-named name t))))))
              (if (null? found)
-                 (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
+                 (bind name sc (if (null? (scope-bind "%module" v)) "global" "item"))
                  (tagcase (car found)
                    (bind (n sc0 wher)
                      (if (or (string=? (scheme-text sc0) (scheme-text sc))
                              ;; FX-26's program shadows the standard environment (C171);
                              ;; KFX's names none of it (the restriction pass).
                              (string=? wher "prim")
-                             (and (not (null? (find-bind "%module" (cv-binds v)))) (or (string=? wher "prim") (string=? wher "global"))))
-                         (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
+                             (and (not (null? (scope-bind "%module" v))) (or (string=? wher "prim") (string=? wher "global"))))
+                         (bind name sc (if (null? (scope-bind "%module" v)) "global" "item"))
                          (refuse v (string-append name " is defined again, at another type, which would break what uses it")))))))))))
 
 (define conversions (subr kfx (cv sexps) binds)
@@ -423,7 +423,7 @@
 (define with-facts (subr kfx (cv facts) cv)
   (lambda (v more)
     "`v`, with a definition's facts."
-    (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line (onto more fs) tv at)))))
+    (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv bs ds als es here group file line (onto more fs) tv at ix mk)))))
 
 
 (define no-reaching-itself (subr kfx (cv strings scheme) cv)
@@ -471,11 +471,11 @@
                  es)
            (kfx-restricted v s (string-append "a constant whose value has the effect " (string-append (show-effs es)
                      ": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
-          ((and (not (null? (find-bind "%loaded" (cv-binds v))))
+          ((and (not (null? (scope-bind "%loaded" v)))
                 (any? (lambda ((x string)) (not (or (string=? x "@globals") (global-atom? x)))) es))
            "In a file loaded (C88): FX-26 makes it once, for all its loads, so
             making it must be pure but for reading globals."
-           (if (null? (find-bind "%instance" (cv-binds v)))
+           (if (null? (scope-bind "%instance" v))
                (refuse v (string-append "a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "
                                         (string-append (show-effs es) ": make its state in a `lambda` it gives, which each caller applies")))
                ;; A file of module parameters, made for each call in FX-26 (C171).
@@ -1111,7 +1111,7 @@
     (if (and (head-is? e "with") (i64= (size (items e)) 3)
              (tagcase (second (items e)) (sym (n f p) #t) (else other #f))
              (tagcase (third (items e)) (sym (n f p) #t) (else other #f)))
-        (let ((m (find-bind (sym-name (second (items e))) (cv-binds v))))
+        (let ((m (scope-bind (sym-name (second (items e))) v)))
           (if (or (null? m) (not (tagcase (car m) (bind (n sc w) (string=? w "module")))))
               nil
               (let ((y (find-bind (sym-name (third (items e))) (opened-binds (sym-name (second (items e))) (cv-binds v)))))
@@ -1430,8 +1430,8 @@
     (concat (map (lambda ((f sexp))
                    (if (head-is? f "include")
                        (let ((n (name-of v (second (items f)))))
-                         (if (or (null? (find-bind n (cv-binds v)))
-                                 (not (tagcase (car (find-bind n (cv-binds v))) (bind (x sc w) (string=? w "module")))))
+                         (if (or (null? (scope-bind n v))
+                                 (not (tagcase (car (scope-bind n v)) (bind (x sc w) (string=? w "module")))))
                              (refuse v (string-append "KFX includes a module defined at the top level, by its name: " n))
                              (the strings (list n))))
                        nil))
@@ -1591,15 +1591,15 @@
      their binds, types and effects; and the shared loads' modules, whose
      names no program writes."
     (tagcase v
-      (cv (bs ds als es here group file line fs tv at)
+      (cv (bs ds als es here group file line fs tv at ix mk)
         (let* ((of (lambda ((n string))
                      (or (has-prefix? n "made--load--")
                          (any? (lambda ((m string)) (or (string=? n m) (has-prefix? n (string-append m " ")) (has-prefix? n (string-append m "..")))) sees))))
-               (bare (cv (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (of n)))) bs)
+               (bare (cv-reindexed (cv (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (of n)))) bs)
                          (filter (lambda ((d dt)) (tagcase d (dt (n ps vs) (of n)))) ds)
                          (filter (lambda ((a alias)) (tagcase a (alias (n ps b) (of n)))) als)
                          (filter (lambda ((e effdef)) (tagcase e (effdef (n xs) (of n)))) es)
-                         here group file line fs tv at)))
+                         here group file line fs tv at (bempty) nil))))
           (with-binds bare (cons (bind "%loaded" (scheme nil (ty-unit)) "mark")
                                  (onto (if (string-member? "%instance" sees) (the binds (list (bind "%instance" (scheme nil (ty-unit)) "mark"))) nil)
                                        (prim-binds bare)))))))))
@@ -1915,21 +1915,21 @@
                                              (if (repeated? given-values) (first-repeated given-values) (first-repeated all-types))))
                     v))
              (typed (tagcase v
-                      (cv (bs ds als es here group file line fs tv at)
-                        (cv (bind-onto (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes))
+                      (cv (bs ds als es here group file line fs tv at ix mk)
+                        (cv-reindexed (cv (bind-onto (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes))
                                        (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
                             (onto (module-dts v m forms) ds)
                             (onto (module-aliases v m names forms #t)
                                   (onto (concat (map (lambda ((n string)) (excepted-aliases v written n als)) includes)) als))
                             (onto (concat (map (lambda ((n string)) (opened-effdefs n es)) includes)) es)
-                            here group file line fs tv at))))
+                            here group file line fs tv at (bempty) nil)))))
              ;; Its own effects too, in order, before its types are read, which
              ;; may name them (C116: Fixpt's `check-types-types.fx`'s `kstate`).
              (typed (own-effects typed forms))
              (datatypes (module-datatypes typed m forms))
              (typed (tagcase typed
-                      (cv (bs ds als es here group file line fs tv at)
-                        (cv bs (onto datatypes ds) als es here group file line fs tv at))))
+                      (cv (bs ds als es here group file line fs tv at ix mk)
+                        (cv bs (onto datatypes ds) als es here group file line fs tv at ix mk))))
              (conversions (module-conversions typed m forms))
              (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
       (mprep outer v inner m made written loaded forms hidden hidden-types names conversions))))
@@ -1941,8 +1941,8 @@
         (tagcase checked
           (elab (done found)
             (tagcase done
-              (cv (bs ds als es here group file line fs tv at)
-                (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) (items-kept-in v bs))
+              (cv (bs ds als es here group file line fs tv at ix mk)
+                (elab (cv-reindexed (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) (items-kept-in v bs))
                                                 (cv-binds outer)))
                           (if loaded (onto ds (cv-dts outer)) ds)
                           (onto (without-aliases hidden-types m (module-aliases v m names forms #f))
@@ -1955,7 +1955,7 @@
                                                           (opened-effdefs n es)))
                                                    (unhidden-includes v written)))
                                       (cv-effdefs outer)))
-                          here group file line fs tv at)
+                          here group file line fs tv at (bempty) nil))
                       found)))))))))
 
 (define-rec
@@ -2035,11 +2035,11 @@
   (lambda (forms)
     "Every form, in order; the first error stops the compiler. What it gives
      is the types of the definitions written with none."
-    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
+    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
-           (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
+           (named (tagcase start (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (datatype-names start forms nil) als es here group file line fs tv at ix mk))))
+           (typed (tagcase named (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at ix mk))))
            (v (with-binds typed (prim-binds typed))))
       (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))
 

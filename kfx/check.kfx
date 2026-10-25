@@ -74,7 +74,89 @@
  innermost list being checked began (a file, a line; for messages), the
  facts found so far, and the type and region variables in scope (a
  `poly`'s binders, a `letregion`'s region)."
-(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts strings i64))
+"The bindings indexed by name (C176; the Fixpt team's proposal, TODO §35):
+ a persistent AVL tree, each name's bindings innermost first, beside the
+ list, so that a lookup walks no list. The four markers (`%module`,
+ `%loaded`, `%instance`, `%toplambda`) kept apart too, a short list. Each
+ `cv` made with the list grown grows them (`bix-adds`, `marks-adds`); one
+ made with it rebuilt rebuilds them (`cv-reindexed`)."
+(define-datatype bix (bempty) (bnode bix string binds i64 bix))
+
+(define bix-height (subr kfx (bix) i64)
+  (lambda (t) (tagcase t (bempty () 0) (bnode (l k bs h r) h))))
+
+(define bix-node (subr kfx (bix string binds bix) bix)
+  (lambda (l k bs r)
+    (let ((hl (bix-height l)) (hr (bix-height r)))
+      (bnode l k bs (i64+ 1 (if (i64> hl hr) hl hr)) r))))
+
+(define bix-balanced (subr kfx (bix string binds bix) bix)
+  (lambda (l k bs r)
+    "A node of `l`, `k` and `r`, rotated so that its sides' heights differ by
+     one at most, as they did by two at most."
+    (let ((hl (bix-height l)) (hr (bix-height r)))
+      (cond ((i64> hl (i64+ hr 1))
+             (tagcase l
+               (bnode (ll lk lbs lh lr)
+                 (if (i64>= (bix-height ll) (bix-height lr))
+                     (bix-node ll lk lbs (bix-node lr k bs r))
+                     (tagcase lr
+                       (bnode (rl rk rbs rh rr) (bix-node (bix-node ll lk lbs rl) rk rbs (bix-node rr k bs r)))
+                       (bempty () (bix-node l k bs r)))))
+               (bempty () (bix-node l k bs r))))
+            ((i64> hr (i64+ hl 1))
+             (tagcase r
+               (bnode (rl rk rbs rh rr)
+                 (if (i64>= (bix-height rr) (bix-height rl))
+                     (bix-node (bix-node l k bs rl) rk rbs rr)
+                     (tagcase rl
+                       (bnode (ml mk2 mbs mh mr) (bix-node (bix-node l k bs ml) mk2 mbs (bix-node mr rk rbs rr)))
+                       (bempty () (bix-node l k bs r)))))
+               (bempty () (bix-node l k bs r))))
+            (else (bix-node l k bs r))))))
+
+(define-rec
+  (bix-add (subr kfx (bix string bind) bix)
+    (lambda (t n b)
+      "`t` with `b`, named `n`, the innermost binding of its name."
+      (tagcase t
+        (bempty () (bnode (bempty) n (list b) 1 (bempty)))
+        (bnode (l k bs h r)
+          (cond ((string=? n k) (bnode l k (cons b bs) h r))
+                ((string<? n k) (bix-balanced (bix-add l n b) k bs r))
+                (else (bix-balanced l k bs (bix-add r n b))))))))
+  (bix-at (subr kfx (bix string) binds)
+    (lambda (t n)
+      "The bindings of `n`, innermost first."
+      (tagcase t
+        (bempty () nil)
+        (bnode (l k bs h r) (cond ((string=? n k) bs) ((string<? n k) (bix-at l n)) (else (bix-at r n))))))))
+
+(define-rec
+  (bix-adds (subr kfx (bix binds) bix)
+    (lambda (t bs)
+      "`t` with `bs`, each innermost of its name in its turn: the last the
+       innermost, as `bind-onto` makes them."
+      (if (null? bs) t (bix-adds (tagcase (car bs) (bind (n sc w) (bix-add t n (car bs)))) (cdr bs))))))
+
+(define marker? (subr kfx (string) bool)
+  (lambda (n) (string-member? n (list "%module" "%loaded" "%instance" "%toplambda"))))
+
+(define-rec
+  (marks-adds (subr kfx (binds binds) binds)
+    (lambda (mk bs)
+      (cond ((null? bs) mk)
+            ((tagcase (car bs) (bind (n sc w) (marker? n))) (marks-adds (cons (car bs) mk) (cdr bs)))
+            (else (marks-adds mk (cdr bs)))))))
+
+(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts strings i64 bix binds))
+
+(define cv-reindexed (subr kfx (cv) cv)
+  (lambda (v)
+    "`v`, its index and markers made again from its list (C176)."
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv at ix mk)
+        (cv bs ds als es here group file line fs tv at (bix-adds (bempty) (reverse bs)) (marks-adds nil (reverse bs)))))))
 
 "Facts: what the checker found about a place, a file and an offset, for
  the emitter, which knows no types. `int`: the number literal there is an
@@ -112,14 +194,14 @@
             (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
 
 (define cv-where (subr kfx (cv) string)
-  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) here))))
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) here))))
 
 (define refusal-text (subr kfx (cv string) string)
   (lambda (v message)
     "What a refusal says, past `kfx: `: where, the innermost list being
      checked and the definition, then `message`."
     (tagcase v
-      (cv (bs ds als es here group file line fs tv at)
+      (cv (bs ds als es here group file line fs tv at ix mk)
         (string-append (cond ((i64= line 0) "")
                              ;; A REPL's draft, checked as it is typed: where, as an offset
                              ;; into it, so that the REPL can tell whether the error is about
@@ -432,7 +514,7 @@
           (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
 
 (define cv-effdefs (subr kfx (cv) effdefs)
-  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) es))))
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) es))))
 
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
@@ -488,11 +570,11 @@
     "The `io` effects' kinds, a fixed family (C49)."
     (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native"))))
 
-(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) ds))))
-(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) als))))
-(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) bs))))
-(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) group))))
-(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) tv))))
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) als))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) group))))
+(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) tv))))
 
 (define find-bind (subr kfx (string binds) binds)
   (lambda (name bs)
@@ -500,6 +582,17 @@
     (cond ((null? bs) nil)
           (else (tagcase (car bs)
                   (bind (n sc wher) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
+
+(define scope-bind (subr kfx (string cv) binds)
+  (lambda (name v)
+    "The innermost binding of `name` in `v`'s scope, as a list of one, or
+     none, as `find-bind` of its list gives it: by its markers or its index
+     (C176), no list walked."
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv at ix mk)
+        (if (marker? name)
+            (find-bind name mk)
+            (let ((all (bix-at ix name))) (if (null? all) nil (the binds (list (car all))))))))))
 
 "First-class modules (C170; Fixpt's `docs/research/first-class-modules.md`):
  a module's type, `(ty-data \"%mtype\" (item ...))`, each item `%abs t`, a
@@ -514,8 +607,8 @@
 (define with-type-binds (subr kfx (cv binds effdefs) cv)
   (lambda (v tbs eds)
     (tagcase v
-      (cv (bs ds als es here group file line fs tv at)
-        (cv (onto tbs bs) ds als (onto eds es) here group file line fs tv at)))))
+      (cv (bs ds als es here group file line fs tv at ix mk)
+        (cv (onto tbs bs) ds als (onto eds es) here group file line fs tv at (bix-adds ix (reverse tbs)) (marks-adds mk (reverse tbs)))))))
 
 (define mtype? (subr kfx (ty) bool)
   (lambda (t) (tagcase t (ty-data (d args) (string=? d "%mtype")) (else other #f))))
@@ -642,7 +735,7 @@
 (define bound-type (subr kfx (cv string) ty)
   (lambda (v n)
     "The type of the value named `n` in scope, or `unit` if none is."
-    (let ((found (find-bind n (cv-binds v))))
+    (let ((found (scope-bind n v)))
       (if (null? found) (ty-unit) (tagcase (car found) (bind (m sc w) (tagcase sc (scheme (tv t) t))))))))
 
 (define selected-type (subr kfx (cv string ty string) ty)
@@ -964,7 +1057,7 @@
 (define with-tvars (subr kfx (cv strings) cv)
   (lambda (v names)
     "`v`, with the type and region variables `names` in scope."
-    (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line fs (onto names tv) at)))))
+    (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv bs ds als es here group file line fs (onto names tv) at ix mk)))))
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
@@ -1645,7 +1738,7 @@
               (if (or (string-member? n logic-type-forms) (string-member? n logic-keywords)
                       (string-member? n logic-base-names) (string-member? n tvars)
                       (any? (lambda ((t string)) (and (has-prefix? t "^") (string=? (bare-binder t) n))) tvars)
-                      (not (null? (find-bind (string-append "%type " n) (cv-binds v))))
+                      (not (null? (scope-bind (string-append "%type " n) v)))
                       (dt-named? n (cv-dts v)) (not (null? (aliases-named v n))))
                   ""
                   n))
@@ -1740,7 +1833,7 @@
      (FX-26's `k-spec-callee?`), or none."
     (if (or (null? xs) (logic-literal-symbol? (car xs)) (not (tagcase (car xs) (sym (n f p) #t) (else other #f))))
         nil
-        (let ((b (find-bind (sym-name (car xs)) (cv-binds v))))
+        (let ((b (scope-bind (sym-name (car xs)) v)))
           (if (null? b)
               nil
               (tagcase (car b) (bind (n sc wher) (if (string=? wher "global") (tagcase sc (scheme (vs t) (the tys (list t)))) nil))))))))
@@ -2411,9 +2504,9 @@
                 ((string=? s "void") (ty-void))
                 ((string-member? s tvars) (ty-var s))
                 ((string-member? (string-append "%muvar " s) tvars) (ty-var (string-append "%mu " s)))
-                ((not (null? (find-bind (string-append "%type " s) (cv-binds v))))
+                ((not (null? (scope-bind (string-append "%type " s) v)))
                  "A type a module gives, in a `with` of it or inside it (C170)."
-                 (tagcase (car (find-bind (string-append "%type " s) (cv-binds v))) (bind (n sc w) (tagcase sc (scheme (tv u) u)))))
+                 (tagcase (car (scope-bind (string-append "%type " s) v)) (bind (n sc w) (tagcase sc (scheme (tv u) u)))))
                 ((and (string=? s "io-error") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
                  (parse-type v tvars (car (read-all (string-chars io-error-text) "" 1))))
                 ((dt-named? s (cv-dts v))
@@ -3749,7 +3842,7 @@
   (lambda (v s ns)
     "Each of `ns` a size variable, or a local `nat`: `n >= 0`."
     (concat (map (lambda ((n string))
-                   (let ((b (find-bind n (cv-binds v))))
+                   (let ((b (scope-bind n v)))
                      (if (or (has-prefix? n "#") (has-prefix? n "?")
                              (and (not (null? b)) (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))))))
                          (the lins (list (lin 0 (list (lterm n 1)))))
@@ -4301,7 +4394,7 @@
   (lambda (v s sc)
     "`sc`'s instance; in a REPL's draft or entry, its inference variables
      noted as their binders' names, to be said by them (C98)."
-    (if (tagcase v (cv (bs ds als es here group file line fs tv at) (or (string=? file "<draft>") (has-prefix? file "<fx26:"))))
+    (if (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (or (string=? file "<draft>") (has-prefix? file "<fx26:"))))
         (tagcase (instantiate s sc)
           (inst (t s2 regions effects)
             (inst t (binders-noted s2 (tagcase sc (scheme (tvars u) tvars)) (st-next s)) regions effects)))
@@ -4355,16 +4448,16 @@
     "`v`, checking a list that began at `line` of `file`, at offset `pos`."
     (if (i64= line 0)
         v
-        (tagcase v (cv (bs ds als es here group f l fs tv at) (cv bs ds als es here group file line fs tv pos))))))
+        (tagcase v (cv (bs ds als es here group f l fs tv at ix mk) (cv bs ds als es here group file line fs tv pos ix mk))))))
 
 (define cv-facts (subr kfx (cv) facts)
-  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) fs))))
-(define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) file))))
-(define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) at))))
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) fs))))
+(define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) file))))
+(define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) at))))
 (define at-offset (subr kfx (cv i64) cv)
   (lambda (v pos)
     "`v`, its refusals said at offset `pos`, a datum inside the list it checks."
-    (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line fs tv pos)))))
+    (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv bs ds als es here group file line fs tv pos ix mk)))))
 
 (define-rec
   (tys-first (subr kfx ((listof ty acyclic) i64) (listof ty acyclic))
@@ -4387,7 +4480,7 @@
 (define said-in (subr kfx (cv string) cv)
   (lambda (v here)
     "`v`, its refusals said to be in `here`."
-    (tagcase v (cv (bs ds als es h group file line fs tv at) (cv bs ds als es here group file line fs tv at)))))
+    (tagcase v (cv (bs ds als es h group file line fs tv at ix mk) (cv bs ds als es here group file line fs tv at ix mk)))))
 
 (define-rec
   (through-hole (subr kfx (sexps) sexps)
@@ -4457,7 +4550,7 @@
                            (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (remove-bind b more))))) more)))))
           (if (not (null? clash))
               (refuse v (string-append "two names that are one in Rust: " (car clash)))
-              (tagcase v (cv (bs ds als es here group file line fs tv at) (cv (bind-onto more bs) ds als es here group file line fs tv at))))))))
+              (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv (bind-onto more bs) ds als es here group file line fs tv at (bix-adds ix more) (marks-adds mk more)))))))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -4753,7 +4846,7 @@
     (let ((tag-name (tagcase tag (sym (n at-file at-pos) n) (else other ""))))
       (any? (lambda ((n string))
               (and (not (string=? n tag-name))
-                   (let ((found (find-bind n (cv-binds v))))
+                   (let ((found (scope-bind n v)))
                      (and (not (null? found))
                           (tagcase (car found)
                             (bind (b sc wher)

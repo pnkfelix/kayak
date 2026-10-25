@@ -694,7 +694,7 @@ pub mod incremental {
     pub fn forward_of(before: &'static Cv, after: &'static Cv) -> Str {
         let tagcase_ = after;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
                 forward_text(leading(bs, i64_minus(size(bs), size(cv_binds(before)))), leading(es, i64_minus(size(es), size(cv_effdefs(before)))), here, group, tv, concat(map(lambda1s(move |x: &'static Fact| {
                     if interface_fact_p(x) {
                         the::<Facts>(kayak_rt::heap_cons(x, kayak_rt::nil()))
@@ -709,7 +709,7 @@ pub mod incremental {
     pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, file: Str, start: i64) -> &'static Change {
         let tagcase_ = after;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
                 let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
                 let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
                 let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
@@ -746,8 +746,8 @@ pub mod incremental {
         let at = code_number(car(cdr(cdr(cdr(cdr(cdr(rest)))))));
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, h, g, ff, l, fs, t, a) => {
-                redone(cv(onto(new_binds, bs), ds, als, onto(new_effs, es), here, group, f, line, onto(new_facts, fs), tv, at), found, forward_text(new_binds, new_effs, here, group, tv, new_facts))
+            Cv::Cv(bs, ds, als, es, h, g, ff, l, fs, t, a, ix, mk) => {
+                redone(cv(onto(new_binds, bs), ds, als, onto(new_effs, es), here, group, f, line, onto(new_facts, fs), tv, at, bix_adds(ix, reverse(new_binds)), marks_adds(mk, reverse(new_binds))), found, forward_text(new_binds, new_effs, here, group, tv, new_facts))
             }
         }
     }
@@ -756,7 +756,7 @@ pub mod incremental {
     pub fn cv_fingerprint(v: &'static Cv) -> i64 {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
                 fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: &'static Dt| {
                     let tagcase_ = d;
                     match *tagcase_ {
@@ -1199,22 +1199,22 @@ pub mod incremental {
     /// As `check-program` (check-defs.kfx), with memos; the passes before the
     /// forms' run always.
     pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos) -> &'static CheckedMemo {
-        let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
-        let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+        let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+        let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
         let types = type_names_free(start, forms);
         let named = {
             let tagcase_ = start;
             match *tagcase_ {
-                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                    cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                    cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
                 }
             }
         };
         let typed = {
             let tagcase_ = named;
             match *tagcase_ {
-                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                    cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                    cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
                 }
             }
         };

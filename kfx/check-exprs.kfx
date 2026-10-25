@@ -288,7 +288,7 @@
                 s
                 (tagcase (car bs)
                   (bind (n sc w)
-                    (let ((found (find-bind (string-append m (string-append " " n)) (cv-binds v))))
+                    (let ((found (scope-bind (string-append m (string-append " " n)) v)))
                       (if (null? found)
                           (refuse v (string-append m (string-append " gives no value " n)))
                           (tagcase (car found)
@@ -324,7 +324,7 @@
         (lambda (v)
           "Whether the lambda checked is a top-level definition's, as a procedure of
            a module parameter must be (C24)."
-          (let ((found (find-bind "%toplambda" (cv-binds v))))
+          (let ((found (scope-bind "%toplambda" v)))
             (and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "yes")))))))
 
       (define-rec
@@ -454,7 +454,7 @@
         (lambda (v m)
           "`v`, in a `(with m ...)`: `m`'s values, types and effects."
           (tagcase v
-            (cv (bs ds als es here group file line fs tv at)
+            (cv (bs ds als es here group file line fs tv at ix mk)
               (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m als) als)
                   (onto (concat (map (lambda ((d effdef))
                                        (tagcase d (effdef (n atoms)
@@ -463,7 +463,8 @@
                                                         nil))))
                                      es))
                         es)
-                  here group file line fs tv at)))))
+                  here group file line fs tv at
+                  (bix-adds ix (opened-binds m bs)) (marks-adds mk (opened-binds m bs)))))))
 
       (define case-data? (subr kfx (string sexps) bool)
         (lambda (kind xs)
@@ -557,7 +558,7 @@
         (lambda (v s x)
           (tagcase x
             (sym (n f p)
-              (let ((found (find-bind n (cv-binds v))))
+              (let ((found (scope-bind n v)))
                 (if (null? found)
                     nil
                     (tagcase (car found)
@@ -641,7 +642,7 @@
 
       (define with-alias (subr kfx (cv alias) cv)
         (lambda (v a)
-          (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds (cons a als) es here group file line fs tv at)))))
+          (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv bs ds (cons a als) es here group file line fs tv at ix mk)))))
 
       "Uniform values (C75; docs/research/uniform-values.md): a union's value
        is a `Value` in Rust. A member given for its union is boxed there, and a
@@ -706,7 +707,7 @@
              names' types alone, nothing checked; or none."
             (tagcase e
               (sym (n f p)
-                (let ((b (find-bind n (cv-binds v))))
+                (let ((b (scope-bind n v)))
                   (if (null? b)
                       nil
                       (tagcase (car b)
@@ -861,7 +862,7 @@
         (lambda (v s name file pos t)
           "A narrowed local named: unboxed if its own type is a union's, and what
            it is narrowed to is not."
-          (let ((found (find-bind name (cv-binds v))))
+          (let ((found (scope-bind name v)))
             (if (or (null? found) (not (tagcase (car found) (bind (n sc w) (string=? w "narrowed")))))
                 s
                 (let ((origin (bind-origin name (cv-binds v))))
@@ -873,7 +874,7 @@
            narrowed to one (a `typecase`'s later arms)."
           (tagcase x
             (sym (n f p)
-              (let ((found (find-bind n (cv-binds v))))
+              (let ((found (scope-bind n v)))
                 (if (null? found)
                     nil
                     (tagcase (car found)
@@ -925,7 +926,7 @@
                          (shape (tested-shape pred))
                          (ms (union-local v s (second xs))))
                     (if (or (string=? shape "") (null? ms)
-                            (tagcase (car (find-bind pred (cv-binds v))) (bind (n sc w) (not (string=? w "prim")))))
+                            (tagcase (car (scope-bind pred v)) (bind (n sc w) (not (string=? w "prim")))))
                         (latent-narrowings v s xs ms)
                         (let ((yes (narrowed-to ms shape)) (no (narrowed-from ms shape)) (x (sym-name (second xs))))
                           (if (or (null? yes) (null? no))
@@ -960,7 +961,7 @@
       "Sizes' facts (C157): what a comparison of integers shows in each of its
        branches, of the locals it names."
       (define std-prim? (subr kfx (cv string) bool)
-        (lambda (v h) (let ((b (find-bind h (cv-binds v)))) (and (not (null? b)) (prim? (car b))))))
+        (lambda (v h) (let ((b (scope-bind h v))) (and (not (null? b)) (prim? (car b))))))
 
       (define-rec
         (linear-of (subr kfx (cv st sexp) lins)
@@ -970,7 +971,7 @@
             (tagcase e
               (num (k f p) (list (lin k nil)))
               (sym (n f p)
-                (let ((b (find-bind n (cv-binds v))))
+                (let ((b (scope-bind n v)))
                   (if (and (not (null? b))
                            (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (and (null? tv) (sized? (walk s t) "%natof")))))))
                       ;; A `(nat s)`: its size (C158).
@@ -1003,7 +1004,7 @@
            (C162)."
           (if (or (null? xs) (not (tagcase (car xs) (sym (n f p) #t) (else other #f))))
               ""
-              (let ((b (find-bind (sym-name (car xs)) (cv-binds v))))
+              (let ((b (scope-bind (sym-name (car xs)) v)))
                 (if (null? b) "" (tagcase (car b) (bind (n sc w) (tagcase sc (scheme (tv t) (spec-under-poly (walk s t)))))))))))
 
       (define latent-term-lin (subr kfx (cv st sexps sexp) lins)
@@ -1094,7 +1095,7 @@
              or global of one, its `cdr`, a `the` of one; none if not."
             (tagcase e
               (sym (n f p)
-                (let ((b (find-bind n (cv-binds v))))
+                (let ((b (scope-bind n v)))
                   (if (and (not (null? b)) (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (and (null? tv) (sized? (walk s t) "%nlist")))))))
                       (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (list (walk s t))))))
                       nil)))
@@ -1247,7 +1248,7 @@
          is given, or else a type of no representation, for reading the
          moduleof alone; a description, what it describes."
         (tagcase v
-          (cv (bs ds als es here group file line fs tv at)
+          (cv (bs ds als es here group file line fs tv at ix mk)
             (let ((abs (spec-abs spec)))
               (cv bs
                   (onto (map (lambda ((t string)) (dt (string-append (if (string=? m "") "%abstract" m) (string-append ".." t)) nil nil)) abs) ds)
@@ -1257,7 +1258,7 @@
                              abs)
                         (onto (map (lambda ((d sexps)) (alias (sym-name (second d)) nil (third d))) (spec-items spec "desc"))
                               als))
-                  es here group file line fs tv at))))))
+                  es here group file line fs tv at ix mk))))))
 
     (define spec-well-formed (subr kfx (cv sexp) unit)
       (lambda (v spec)
@@ -1440,7 +1441,7 @@
         "Whether every local the expressions `es` name, bound outside them,
          is `Sync` (C102); one bound in them too counts, as `synced-lambda`'s."
         (not (any? (lambda ((n string))
-                     (let ((found (find-bind n (cv-binds v))))
+                     (let ((found (scope-bind n v)))
                        (and (not (null? found))
                             (tagcase (car found)
                               (bind (b sc wher)
@@ -1504,7 +1505,7 @@
             s
             (let* ((own (map (lambda ((p sexp)) (tagcase p (lst (ys f l q) (sym-name (car ys))) (else other (sym-name other)))) params))
                    (unshared (filter (lambda ((n string))
-                                       (let ((found (find-bind n (cv-binds v))))
+                                       (let ((found (scope-bind n v)))
                                          (and (not (null? found)) (not (string-member? n own))
                                               (tagcase (car found)
                                                 (bind (b sc wher)
@@ -1516,7 +1517,7 @@
                           ;; Rust's `Sync`, not FX-26's rule: noted for kfx (C154, C158).
                           (let ((n (car unshared)))
                             (kfx-restricted v s (string-append "a procedure that may be held on another thread, its effect being one a process may have, holds `"
-                                                  (string-append n (string-append "`, a " (string-append (show-ty s (tagcase (car (find-bind n (cv-binds v))) (bind (b sc wher) (tagcase sc (scheme (tv t) t)))))
+                                                  (string-append n (string-append "`, a " (string-append (show-ty s (tagcase (car (scope-bind n v)) (bind (b sc wher) (tagcase sc (scheme (tv t) t)))))
                                                     ", which may not be: KFX's procedures hold only what they may share (C102)")))))))))
               (note-fact s (cv-file v) (cv-pos v) "sync")))))
 
@@ -1569,7 +1570,7 @@
                    (fact (file pos what)
                      (if (and (string=? file "%process") (i64= pos id) (has-prefix? what "held "))
                          (let* ((name (after-prefix what "held "))
-                                (found (find-bind name (cv-binds v))))
+                                (found (scope-bind name v)))
                            (if (null? found)
                                #u
                                (tagcase (car found)
@@ -1706,7 +1707,7 @@
         (lambda (v s name file pos)
           "A global procedure that may suspend, named as a value: an `async fn`,
            given as a closure that boxes its future (C46), noted with its arity."
-          (let ((found (find-bind name (cv-binds v))))
+          (let ((found (scope-bind name v)))
             (if (null? found)
                 s
                 (tagcase (car found)
@@ -1724,7 +1725,7 @@
           (cond ((or (string=? name "#t") (string=? name "#f")) (res (ty-bool) nil s))
                 ((string=? name "#u") (res (ty-unit) nil s))
                 (else
-                 (let ((found (find-bind name (cv-binds v))))
+                 (let ((found (scope-bind name v)))
                    (if (null? found)
                        (refuse (at-offset v at-pos) (string-append "nothing is named " name))
                        (tagcase (car found)
@@ -2219,8 +2220,8 @@
                                  (refuse v (string-append "no field " (string-append (label-of (second xs)) (string-append " in a " (show-ty s t)))))))
                            (else other (refuse v (string-append "an extract from a " (string-append (show-ty s t) ", no product")))))))))
                 ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
-                ((and (string=? h "vlambda") (null? (find-bind h (cv-binds v)))) (vlambda-form v s xs nil))
-                ((and (string=? h "rlambda") (null? (find-bind h (cv-binds v)))) (rlambda-form v s e xs nil))
+                ((and (string=? h "vlambda") (null? (scope-bind h v))) (vlambda-form v s xs nil))
+                ((and (string=? h "rlambda") (null? (scope-bind h v))) (rlambda-form v s e xs nil))
                 ((string=? h "proj") (proj-form v s xs))
                 ((string=? h "list")
                  (if (null? xs)
@@ -2235,7 +2236,7 @@
                          (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))
                 ((control-form? h) (body-form v s h xs nil))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
-                ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs nil))
+                ((and (blob-form? h) (null? (scope-bind h v))) (blob-form v s h xs nil))
                 ((string=? h "and") (bools v s xs #t))
                 ((string=? h "or") (bools v s xs #f))
                 (else (synth-call v s h xs nil)))))
@@ -2245,7 +2246,7 @@
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
                 ((or (string=? h "self") (string=? h "race")) (check-by-synth v s e expected))
-                ((and (string=? h "proj") (null? (find-bind h (cv-binds v)))) (check-by-synth v s e expected))
+                ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
                 ((and (string=? h "list") (std-prim? v "list") (sized? (walk s expected) "%nlist"))
                  "`(list e ...)` where a list of size `s` is wanted: each element, and
                   `s` shown to be how many there are (C158)."
@@ -2260,20 +2261,20 @@
                 ((control-form? h) (body-form v s h xs (list expected)))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs (list expected)))
                 ((and (blob-form? h) (string-member? h (list "make-bloblet" "rmake-bloblet" "blobref-at" "blobref+"))
-                      (null? (find-bind h (cv-binds v))))
+                      (null? (scope-bind h v)))
                  "Those made by the type expected; the rest are synthesized, then
                   compared with it, as any form is (C175: `blobref-offset`'s `int`
                   was taken where an `i64` was expected)."
                  (blob-form v s h xs (list expected)))
-                ((and (blob-form? h) (null? (find-bind h (cv-binds v))))
+                ((and (blob-form? h) (null? (scope-bind h v)))
                  (check-by-synth v s e expected))
                 ((string=? h "prompt") (prompt-form v s xs (list expected)))
                 ((string=? h "%found") (check-by-synth v s e expected))
                 ((string=? h "product") (product-form v s xs (list expected)))
                 ((string=? h "sum") (sum-form v s xs expected))
-                ((and (string=? h "rlambda") (null? (find-bind h (cv-binds v)))) (rlambda-form v s e xs (list expected)))
+                ((and (string=? h "rlambda") (null? (scope-bind h v))) (rlambda-form v s e xs (list expected)))
                 ((and (string=? h "plambda") (poly-type? s expected)) (plambda-form v s xs expected))
-                ((and (string=? h "vlambda") (null? (find-bind h (cv-binds v)))
+                ((and (string=? h "vlambda") (null? (scope-bind h v))
                       (tagcase (walk s expected) (ty-data (d args) (string=? d "%vsubr")) (else other #f)))
                  "A vlambda where a `vsubr` is expected (C71): checked as the lambda of
                   one list it is, against the procedure of that list."
@@ -2374,7 +2375,7 @@
                   module defined at the top level, reading which is reading a
                   global."
                  (let* ((m (tagcase (car xs) (sym (n f p) n) (else other "")))
-                        (found (if (string=? m "") nil (find-bind m (cv-binds v)))))
+                        (found (if (string=? m "") nil (scope-bind m v))))
                    (cond ((or (string=? m "")
                               (and (not (null? found))
                                    (tagcase (car found) (bind (n sc wher) (and (not (string=? wher "module")) (tagcase sc (scheme (tv t) (mtype? (walk s t)))))))))
@@ -2861,7 +2862,7 @@
                         (name (string-append "'" r))
                         (forms (cdr xs))
                         (used (concat (map (lambda ((n string))
-                                             (let ((found (find-bind n (cv-binds v))))
+                                             (let ((found (scope-bind n v)))
                                                (if (null? found)
                                                    nil
                                                    (tagcase (car found)
@@ -2899,7 +2900,7 @@
       (place-of (subr kfx (cv st sexp) ty)
         (lambda (v s e)
           "The region of the place `e` names, given to an allocator."
-          (let ((found (tagcase e (sym (n f p) (find-bind n (cv-binds v))) (else other nil))))
+          (let ((found (tagcase e (sym (n f p) (scope-bind n v)) (else other nil))))
             (if (null? found)
                 (refuse v "an allocator's place is a letrena's name")
                 (tagcase (car found)
@@ -3198,7 +3199,7 @@
                                (if (all-regions? (poly-binders-of args)) s
                                    (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet (C107)")))))))))
            (else
-          (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f p) (let ((b (find-bind n (cv-binds v)))) (if (null? b) (find-bind n (control-binds v)) b))) (else other nil)))))
+          (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f p) (let ((b (scope-bind n v))) (if (null? b) (find-bind n (control-binds v)) b))) (else other nil)))))
             (if (null? found)
                 (refuse v "(proj f arg ...) of a poly procedure named")
                 (tagcase (car found)
@@ -3228,7 +3229,7 @@
                             (begin
                               (bounds-kept v s n (lambda ((x string)) (projected v tvars (cdr xs) (ty-var x))))
                               (res (projected v tvars (cdr xs) t) (naming-effs s n wher t (cv-group v))
-                                   (let ((s (if (null? (tagcase (car xs) (sym (n2 f2 p2) (find-bind n2 (cv-binds v))) (else other nil)))
+                                   (let ((s (if (null? (tagcase (car xs) (sym (n2 f2 p2) (scope-bind n2 v)) (else other nil)))
                                                 ;; A control primitive's, no binding of the program's (C105).
                                                 (note-fact s (cv-file v) (cv-pos v) "control")
                                                 s)))
@@ -3766,8 +3767,8 @@
            form of processes that is a call is the form, whatever the program
            binds its name to, as FX-26 parses it (C101)."
           (let ((found (if (process-call? h)
-                           (find-bind (string-append "%form " h) (cv-binds v))
-                           (find-bind h (cv-binds v)))))
+                           (scope-bind (string-append "%form " h) v)
+                           (scope-bind h v))))
             (cond ((and (or (string=? h "module") (string=? h "%module-value")) (null? found))
                    (module-expr v s args))
                   ((and (string=? h "extend") (null? found) (i64= (size args) 2))
@@ -3808,7 +3809,7 @@
                         (tagcase (car found) (bind (n sc w) (string=? w "prim")))
                         (tagcase (car args)
                           (sym (n f p)
-                            (let ((b (find-bind n (cv-binds v))))
+                            (let ((b (scope-bind n v)))
                               (and (not (null? b))
                                    (tagcase (car b) (bind (n2 sc w) (tagcase sc (scheme (tv t)
                                      (string-member? (shape-of (walk s t)) (list "union" "pair" "nil")))))))))
@@ -3818,7 +3819,7 @@
                             (and (not (null? ys))
                                  (tagcase (car ys)
                                    (sym (n f2 p2)
-                                     (let ((b (find-bind n (cv-binds v))))
+                                     (let ((b (scope-bind n v)))
                                        (and (not (null? b))
                                             (tagcase (car b) (bind (n2 sc w)
                                               (and (not (string=? w "prim"))
@@ -3991,7 +3992,7 @@
           (cond ((head-is? e "proj") (proj-base v (second (items e))))
                 (else (tagcase e
                         (sym (n f p)
-                          (let ((found (find-bind n (cv-binds v))))
+                          (let ((found (scope-bind n v)))
                             (if (and (not (null? found)) (tagcase (car found) (bind (m sc w) (string=? w "prim")))) n "")))
                         (else other ""))))))
 
@@ -4121,7 +4122,7 @@
                             (or (head-is? (car args) "error")
                                 (tagcase (car args)
                                   (sym (n f p)
-                                    (let ((found (find-bind n (cv-binds v))))
+                                    (let ((found (scope-bind n v)))
                                       (and (not (null? found))
                                            (tagcase (car found) (bind (m sc w) (tagcase sc (scheme (tv x) (void? s x))))))))
                                   (else other #f))))
@@ -4151,8 +4152,8 @@
                      (big (text f p) #f)
                      (sym (n f p) (and (not (draft-hole? (car args))) (tagcase (synth v s (car args)) (res (t es s2) (nat? s2 t)))))
                      (lst (xs f l p)
-                       (and (head-is? (car args) "+") (not (null? (find-bind "+" (cv-binds v))))
-                            (tagcase (car (find-bind "+" (cv-binds v))) (bind (n sc w) (string=? w "prim")))
+                       (and (head-is? (car args) "+") (not (null? (scope-bind "+" v)))
+                            (tagcase (car (scope-bind "+" v)) (bind (n sc w) (string=? w "prim")))
                             (nat-args? v s (cdr xs))))
                      (else other #f))
                    (nat-args? v s (cdr args))))))
@@ -4509,8 +4510,8 @@
            its name, read as a global is."
           (let ((name (tagcase arg (sym (n at-file at-pos) n) (else other ""))))
             (if (or (string=? name "")
-                    (null? (find-bind name (cv-binds v)))
-                    (not (tagcase (car (find-bind name (cv-binds v))) (bind (n sc wher) (string=? wher "module")))))
+                    (null? (scope-bind name v))
+                    (not (tagcase (car (scope-bind name v)) (bind (n sc wher) (string=? wher "module")))))
                 (refuse v "KFX's module argument is a module defined at the top level, by its name")
                 (res t (list (string-append "g:" name))
                      (note-fact (conforms v s name (tagcase t (ty-data (d args) (after-prefix d "%module ")) (else other ""))
@@ -4525,7 +4526,7 @@
           (cond ((null? args) (res (ty-unit) nil s))
                 ((eqv-bool? (deferred? (car args) (car ps)) later)
                  (tagcase (cond ((and (not (null? (module-spec v (walk s (car ps)))))
-                                      (tagcase (car args) (sym (n f p) (let ((b (find-bind n (cv-binds v)))) (and (not (null? b)) (tagcase (car b) (bind (m sc w) (string=? w "module")))))) (else other #f)))
+                                      (tagcase (car args) (sym (n f p) (let ((b (scope-bind n v))) (and (not (null? b)) (tagcase (car b) (bind (m sc w) (string=? w "module")))))) (else other #f)))
                                  (module-argument (in-draft v (car args)) s (car args) (walk s (car ps))))
                                 ((and (not (lambda-form? (car args)))
                                       (has-open? s (car ps)))

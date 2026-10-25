@@ -103,7 +103,7 @@
               (tagcase c
                 (wc (v ms cur sc gs nats inv)
                   (if (or (not (null? (bound-of n sc))) (string-member? n ms)) ""
-                      (let ((found (find-bind n (cv-binds v))))
+                      (let ((found (scope-bind n v)))
                         (if (and (not (null? found)) (tagcase (car found) (bind (x t wher) (string=? wher "prim")))) n ""))))))
             (else other ""))))
 

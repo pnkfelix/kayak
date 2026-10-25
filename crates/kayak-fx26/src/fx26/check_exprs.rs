@@ -639,7 +639,7 @@ pub mod expressions {
             let tagcase_ = car(bs);
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    let found = find_bind(string_append(m, string_append(str_lit(" "), n)), cv_binds(v));
+                    let found = scope_bind(string_append(m, string_append(str_lit(" "), n)), v);
                     if null_p(found) {
                         match refuse(v, string_append(m, string_append(str_lit(" gives no value "), n))) {}
                     } else {
@@ -693,7 +693,7 @@ pub mod expressions {
     /// Whether the lambda checked is a top-level definition's, as a procedure of
     /// a module parameter must be (C24).
     pub fn top_lambda_p(v: &'static Cv) -> bool {
-        let found = find_bind(str_lit("%toplambda"), cv_binds(v));
+        let found = scope_bind(str_lit("%toplambda"), v);
         (not(null_p(found)) && {
             let tagcase_ = car(found);
             match *tagcase_ {
@@ -1003,7 +1003,7 @@ pub mod expressions {
     pub fn opened(v: &'static Cv, m: Str) -> &'static Cv {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
                 cv(bind_onto(opened_binds(m, bs), bs), ds, onto(opened_aliases(m, als), als), onto(concat(map(lambda1s(move |d: &'static Effdef| {
                     let tagcase_ = d;
                     match *tagcase_ {
@@ -1015,7 +1015,7 @@ pub mod expressions {
                             }
                         }
                     }
-                }), es)), es), here, group, file, line, fs, tv, at)
+                }), es)), es), here, group, file, line, fs, tv, at, bix_adds(ix, opened_binds(m, bs)), marks_adds(mk, opened_binds(m, bs)))
             }
         }
     }
@@ -1234,7 +1234,7 @@ pub mod expressions {
         let tagcase_ = x;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                let found = find_bind(n, cv_binds(v));
+                let found = scope_bind(n, v);
                 if null_p(found) {
                     nil::<&'static Ty>()
                 } else {
@@ -1465,8 +1465,8 @@ pub mod expressions {
     pub fn with_alias(v: &'static Cv, a: &'static Alias) -> &'static Cv {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, ds, kayak_rt::heap_cons(a, als), es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, ds, kayak_rt::heap_cons(a, als), es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     }
@@ -1577,7 +1577,7 @@ pub mod expressions {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                let b = find_bind(n, cv_binds(v));
+                let b = scope_bind(n, v);
                 if null_p(b) {
                     nil::<&'static Ty>()
                 } else {
@@ -1947,7 +1947,7 @@ pub mod expressions {
     /// A narrowed local named: unboxed if its own type is a union's, and what
     /// it is narrowed to is not.
     pub fn narrowing_unboxed(v: &'static Cv, s: &'static St, name: Str, file: Str, pos: i64, t: &'static Ty) -> &'static St {
-        let found = find_bind(name, cv_binds(v));
+        let found = scope_bind(name, v);
         if (null_p(found) || not({
             let tagcase_ = car(found);
             match *tagcase_ {
@@ -1973,7 +1973,7 @@ pub mod expressions {
         let tagcase_ = x;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                let found = find_bind(n, cv_binds(v));
+                let found = scope_bind(n, v);
                 if null_p(found) {
                     nil::<&'static Ty>()
                 } else {
@@ -2106,7 +2106,7 @@ pub mod expressions {
                     let shape = tested_shape(pred);
                     let ms = union_local(v, s, second(xs));
                     if (string_eq_p(shape, str_lit("")) || null_p(ms) || {
-                        let tagcase_ = car(find_bind(pred, cv_binds(v)));
+                        let tagcase_ = car(scope_bind(pred, v));
                         match *tagcase_ {
                             Bind::Bind(n, sc, w) => {
                                 not(string_eq_p(w, str_lit("prim")))
@@ -2193,7 +2193,7 @@ pub mod expressions {
     // Sizes' facts (C157): what a comparison of integers shows in each of its
     // branches, of the locals it names.
     pub fn std_prim_p(v: &'static Cv, h: Str) -> bool {
-        let b = find_bind(h, cv_binds(v));
+        let b = scope_bind(h, v);
         (not(null_p(b)) && prim_p(car(b)))
     }
 
@@ -2206,7 +2206,7 @@ pub mod expressions {
                 kayak_rt::heap_cons(lin(k, nil::<&'static Lterm>()), kayak_rt::nil())
             }
             Sexp::Sym(n, f, p) => {
-                let b = find_bind(n, cv_binds(v));
+                let b = scope_bind(n, v);
                 if (not(null_p(b)) && {
                     let tagcase_ = car(b);
                     match *tagcase_ {
@@ -2338,7 +2338,7 @@ pub mod expressions {
         })) {
             str_lit("")
         } else {
-            let b = find_bind(sym_name(car(xs)), cv_binds(v));
+            let b = scope_bind(sym_name(car(xs)), v);
             if null_p(b) {
                 str_lit("")
             } else {
@@ -2552,7 +2552,7 @@ pub mod expressions {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                let b = find_bind(n, cv_binds(v));
+                let b = scope_bind(n, v);
                 if (not(null_p(b)) && {
                     let tagcase_ = car(b);
                     match *tagcase_ {
@@ -2900,7 +2900,7 @@ pub mod expressions {
     pub fn module_scope(v: &'static Cv, spec: &'static Sexp, m: Str, actual: Str) -> &'static Cv {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
                 let abs = spec_abs(spec);
                 cv(bs, onto(map(lambda1s(move |t: Str| {
                     dt(string_append(if string_eq_p(m, str_lit("")) {
@@ -2920,7 +2920,7 @@ pub mod expressions {
                     }, str_lit(""), 0i64))
                 }), abs), onto(map(lambda1s(move |d: Sexps| {
                     alias(sym_name(second(d)), nil::<Str>(), third(d))
-                }), spec_items(spec, str_lit("desc"))), als)), es, here, group, file, line, fs, tv, at)
+                }), spec_items(spec, str_lit("desc"))), als)), es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     }
@@ -3322,7 +3322,7 @@ pub mod expressions {
     /// is `Sync` (C102); one bound in them too counts, as `synced-lambda`'s.
     pub fn held_sync_p(v: &'static Cv, s: &'static St, es: Sexps) -> bool {
         not(any_p(lambda1s(move |n: Str| {
-            let found = find_bind(n, cv_binds(v));
+            let found = scope_bind(n, v);
             (not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {
@@ -3468,7 +3468,7 @@ pub mod expressions {
                 }
             }), params);
             let unshared = filter(lambda1s(move |n: Str| {
-                let found = find_bind(n, cv_binds(v));
+                let found = scope_bind(n, v);
                 (not(null_p(found)) && not(string_member_p(n, own)) && {
                     let tagcase_ = car(found);
                     match *tagcase_ {
@@ -3490,7 +3490,7 @@ pub mod expressions {
             } else {
                 let n = car(unshared);
                 kfx_restricted(v, s, string_append(str_lit("a procedure that may be held on another thread, its effect being one a process may have, holds `"), string_append(n, string_append(str_lit("`, a "), string_append(show_ty(s, {
-                    let tagcase_ = car(find_bind(n, cv_binds(v)));
+                    let tagcase_ = car(scope_bind(n, v));
                     match *tagcase_ {
                         Bind::Bind(b, sc, wher) => {
                             let tagcase_ = sc;
@@ -3583,7 +3583,7 @@ pub mod expressions {
                 Fact::Fact(file, pos, what) => {
                     if (string_eq_p(file, str_lit("%process")) && i64_eq(pos, id) && has_prefix_p(what, str_lit("held "))) {
                         let name = after_prefix(what, str_lit("held "));
-                        let found = find_bind(name, cv_binds(v));
+                        let found = scope_bind(name, v);
                         if null_p(found) {
                             ()
                         } else {
@@ -3818,7 +3818,7 @@ pub mod expressions {
     /// A global procedure that may suspend, named as a value: an `async fn`,
     /// given as a closure that boxes its future (C46), noted with its arity.
     pub fn async_global(v: &'static Cv, s: &'static St, name: Str, file: Str, pos: i64) -> &'static St {
-        let found = find_bind(name, cv_binds(v));
+        let found = scope_bind(name, v);
         if null_p(found) {
             s
         } else {
@@ -3859,7 +3859,7 @@ pub mod expressions {
         } else if string_eq_p(name, str_lit("#u")) {
             res(ty_unit(), nil::<Str>(), s)
         } else {
-            let found = find_bind(name, cv_binds(v));
+            let found = scope_bind(name, v);
             if null_p(found) {
                 match refuse(at_offset(v, at_pos), string_append(str_lit("nothing is named "), name)) {}
             } else {
@@ -4878,9 +4878,9 @@ pub mod expressions {
                 }
             } else if string_eq_p(h, str_lit("lambda")) {
                 return synth_lambda(v, s, items(car(xs)), cdr(xs));
-            } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+            } else if (string_eq_p(h, str_lit("vlambda")) && null_p(scope_bind(h, v))) {
                 return vlambda_form(v, s, xs, nil::<&'static Ty>());
-            } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+            } else if (string_eq_p(h, str_lit("rlambda")) && null_p(scope_bind(h, v))) {
                 return rlambda_form(v, s, e, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("proj")) {
                 return proj_form(v, s, xs);
@@ -4910,7 +4910,7 @@ pub mod expressions {
                 return body_form(v, s, h, xs, nil::<&'static Ty>());
             } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
                 return letrena_form(v, s, xs, nil::<&'static Ty>());
-            } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+            } else if (blob_form_p(h) && null_p(scope_bind(h, v))) {
                 return blob_form(v, s, h, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("and")) {
                 return bools(v, s, xs, true);
@@ -4929,7 +4929,7 @@ pub mod expressions {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race"))) {
             check_by_synth(v, s, e, expected)
-        } else if (string_eq_p(h, str_lit("proj")) && null_p(find_bind(h, cv_binds(v)))) {
+        } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("list")) && std_prim_p(v, str_lit("list")) && sized_p(walk(s, expected), str_lit("%nlist"))) {
             // `(list e ...)` where a list of size `s` is wanted: each element, and
@@ -4957,12 +4957,12 @@ pub mod expressions {
             body_form(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
             letrena_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (blob_form_p(h) && string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::nil()))))) && null_p(find_bind(h, cv_binds(v)))) {
+        } else if (blob_form_p(h) && string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::nil()))))) && null_p(scope_bind(h, v))) {
             // Those made by the type expected; the rest are synthesized, then
             // compared with it, as any form is (C175: `blobref-offset`'s `int`
             // was taken where an `i64` was expected).
             blob_form(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+        } else if (blob_form_p(h) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)
         } else if string_eq_p(h, str_lit("prompt")) {
             prompt_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
@@ -4972,11 +4972,11 @@ pub mod expressions {
             product_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("sum")) {
             sum_form(v, s, xs, expected)
-        } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+        } else if (string_eq_p(h, str_lit("rlambda")) && null_p(scope_bind(h, v))) {
             rlambda_form(v, s, e, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if (string_eq_p(h, str_lit("plambda")) && poly_type_p(s, expected)) {
             plambda_form(v, s, xs, expected)
-        } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v))) && {
+        } else if (string_eq_p(h, str_lit("vlambda")) && null_p(scope_bind(h, v)) && {
             let tagcase_ = walk(s, expected);
             match *tagcase_ {
                 Ty::TyData(d, args) => {
@@ -5208,7 +5208,7 @@ pub mod expressions {
             let found = if string_eq_p(m, str_lit("")) {
                 nil::<&'static Bind>()
             } else {
-                find_bind(m, cv_binds(v))
+                scope_bind(m, v)
             };
             if (string_eq_p(m, str_lit("")) || (not(null_p(found)) && {
                 let tagcase_ = car(found);
@@ -6415,7 +6415,7 @@ pub mod expressions {
             let name = string_append(str_lit("'"), r);
             let forms = cdr(xs);
             let used = concat(map(lambda1s(move |n: Str| {
-                let found = find_bind(n, cv_binds(v));
+                let found = scope_bind(n, v);
                 if null_p(found) {
                     nil::<&'static Bind>()
                 } else {
@@ -6506,7 +6506,7 @@ pub mod expressions {
             let tagcase_ = e;
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
-                    find_bind(n, cv_binds(v))
+                    scope_bind(n, v)
                 }
                 _ => {
                     let other = tagcase_;
@@ -7230,7 +7230,7 @@ pub mod expressions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Sexp::Sym(n, f, p) => {
-                            let b = find_bind(n, cv_binds(v));
+                            let b = scope_bind(n, v);
                             if null_p(b) {
                                 find_bind(n, control_binds(v))
                             } else {
@@ -7298,7 +7298,7 @@ pub mod expressions {
                                                     let tagcase_ = car(xs);
                                                     match *tagcase_ {
                                                         Sexp::Sym(n2, f2, p2) => {
-                                                            find_bind(n2, cv_binds(v))
+                                                            scope_bind(n2, v)
                                                         }
                                                         _ => {
                                                             let other = tagcase_;
@@ -8469,9 +8469,9 @@ pub mod expressions {
     pub fn synth_call(mut v: &'static Cv, mut s: &'static St, mut h: Str, mut args: Sexps, mut expected: Tys) -> &'static Res {
         loop {
             let found = if process_call_p(h) {
-                find_bind(string_append(str_lit("%form "), h), cv_binds(v))
+                scope_bind(string_append(str_lit("%form "), h), v)
             } else {
-                find_bind(h, cv_binds(v))
+                scope_bind(h, v)
             };
             if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) && null_p(found)) {
                 return module_expr(v, s, args);
@@ -8570,7 +8570,7 @@ pub mod expressions {
                 let tagcase_ = car(args);
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
-                        let b = find_bind(n, cv_binds(v));
+                        let b = scope_bind(n, v);
                         (not(null_p(b)) && {
                             let tagcase_ = car(b);
                             match *tagcase_ {
@@ -8592,7 +8592,7 @@ pub mod expressions {
                             let tagcase_ = car(ys);
                             match *tagcase_ {
                                 Sexp::Sym(n, f2, p2) => {
-                                    let b = find_bind(n, cv_binds(v));
+                                    let b = scope_bind(n, v);
                                     (not(null_p(b)) && {
                                         let tagcase_ = car(b);
                                         match *tagcase_ {
@@ -8952,7 +8952,7 @@ pub mod expressions {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
-                        let found = find_bind(n, cv_binds(v));
+                        let found = scope_bind(n, v);
                         if (not(null_p(found)) && {
                             let tagcase_ = car(found);
                             match *tagcase_ {
@@ -9229,7 +9229,7 @@ pub mod expressions {
                     let tagcase_ = car(args);
                     match *tagcase_ {
                         Sexp::Sym(n, f, p) => {
-                            let found = find_bind(n, cv_binds(v));
+                            let found = scope_bind(n, v);
                             (not(null_p(found)) && {
                                 let tagcase_ = car(found);
                                 match *tagcase_ {
@@ -9309,8 +9309,8 @@ pub mod expressions {
                     })
                 }
                 Sexp::Lst(xs, f, l, p) => {
-                    (head_is_p(car(args), str_lit("+")) && not(null_p(find_bind(str_lit("+"), cv_binds(v)))) && {
-                        let tagcase_ = car(find_bind(str_lit("+"), cv_binds(v)));
+                    (head_is_p(car(args), str_lit("+")) && not(null_p(scope_bind(str_lit("+"), v))) && {
+                        let tagcase_ = car(scope_bind(str_lit("+"), v));
                         match *tagcase_ {
                             Bind::Bind(n, sc, w) => {
                                 string_eq_p(w, str_lit("prim"))
@@ -10041,8 +10041,8 @@ pub mod expressions {
                 }
             }
         };
-        if (string_eq_p(name, str_lit("")) || null_p(find_bind(name, cv_binds(v))) || not({
-            let tagcase_ = car(find_bind(name, cv_binds(v)));
+        if (string_eq_p(name, str_lit("")) || null_p(scope_bind(name, v)) || not({
+            let tagcase_ = car(scope_bind(name, v));
             match *tagcase_ {
                 Bind::Bind(n, sc, wher) => {
                     string_eq_p(wher, str_lit("module"))
@@ -10077,7 +10077,7 @@ pub mod expressions {
                     let tagcase_ = car(args);
                     match *tagcase_ {
                         Sexp::Sym(n, f, p) => {
-                            let b = find_bind(n, cv_binds(v));
+                            let b = scope_bind(n, v);
                             (not(null_p(b)) && {
                                 let tagcase_ = car(b);
                                 match *tagcase_ {

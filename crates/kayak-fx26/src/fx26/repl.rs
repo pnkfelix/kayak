@@ -14,7 +14,7 @@ use super::*;
 pub fn repl_cv() -> Ref<&'static Cv> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Cv>);
     once(&ONCE, || {
-        kayak_rt::heap_new(cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64))
+        kayak_rt::heap_new(cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>()))
     })
 }
 
@@ -139,7 +139,7 @@ pub fn new_names(mut names: Strings, mut known: Strings) -> Strings {
 }
 
 pub fn repl_start_x() -> () {
-    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
     load_x(nil::<Str>());
     set(repl_cv(), with_binds(empty, prim_binds(empty)))
 }
@@ -149,22 +149,22 @@ pub fn repl_start_x() -> () {
 pub fn checked_form(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, pos) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, pos, ix, mk) => {
             let als2 = declare_types(v, kayak_rt::heap_cons(form, kayak_rt::nil()), als);
-            let v1 = cv(bs, ds, als2, es, here, group, file, line, fs, tv, pos);
+            let v1 = cv(bs, ds, als2, es, here, group, file, line, fs, tv, pos, ix, mk);
             let named = {
                 let tagcase_ = v1;
                 match *tagcase_ {
-                    Cv::Cv(bs1, ds1, a1, e1, h1, g1, f1, l1, fs1, t1, at1) => {
-                        cv(bs1, datatype_names(v1, kayak_rt::heap_cons(form, kayak_rt::nil()), ds1), a1, e1, h1, g1, f1, l1, fs1, t1, at1)
+                    Cv::Cv(bs1, ds1, a1, e1, h1, g1, f1, l1, fs1, t1, at1, ix1, mk1) => {
+                        cv(bs1, datatype_names(v1, kayak_rt::heap_cons(form, kayak_rt::nil()), ds1), a1, e1, h1, g1, f1, l1, fs1, t1, at1, ix1, mk1)
                     }
                 }
             };
             let typed = {
                 let tagcase_ = named;
                 match *tagcase_ {
-                    Cv::Cv(bs2, ds2, a2, e2, h2, g2, f2, l2, fs2, t2, at2) => {
-                        cv(bs2, declare_datatypes(named, kayak_rt::heap_cons(form, kayak_rt::nil()), ds), a2, e2, h2, g2, f2, l2, fs2, t2, at2)
+                    Cv::Cv(bs2, ds2, a2, e2, h2, g2, f2, l2, fs2, t2, at2, ix2, mk2) => {
+                        cv(bs2, declare_datatypes(named, kayak_rt::heap_cons(form, kayak_rt::nil()), ds), a2, e2, h2, g2, f2, l2, fs2, t2, at2, ix2, mk2)
                     }
                 }
             };
@@ -212,7 +212,7 @@ pub fn checked_form(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
 pub fn form_type(v: &'static Cv, form: &'static Sexp) -> Str {
     if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
         let n = binder_name(second(items(form)));
-        let found = find_bind(n, cv_binds(v));
+        let found = scope_bind(n, v);
         if null_p(found) {
             n
         } else {

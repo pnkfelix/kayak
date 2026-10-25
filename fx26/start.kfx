@@ -136,7 +136,7 @@
   (lambda (v n written effect)
     "A definition's line: its name, its type as the checker has it, inside
      its written binders, and the effect of making its value."
-    (let ((found (find-bind n (cv-binds v))))
+    (let ((found (scope-bind n v)))
       (if (null? found)
           (string-append "define " n)
           (tagcase (car found)
@@ -160,7 +160,7 @@
   (lambda (v n e)
     "The effect of evaluating `n`'s value `e`, checked against its type as
      the checker checks a constant's: none for a procedure."
-    (let ((found (find-bind n (cv-binds v))))
+    (let ((found (scope-bind n v)))
       (if (or (null? found) (lambda-form? e))
           "pure"
           (tagcase (car found)
@@ -265,8 +265,8 @@
     "`v` with each `m..t` of `scope` a type of its name alone."
     (let ((names (concat (map (lambda ((q qual)) (tagcase q (qual (a b o) (if o (tagcase b (sym (n f p) (the strings (list n))) (else other nil)) nil)))) scope))))
       (tagcase v
-        (cv (bs ds als es here group file line fs tv at)
-          (cv bs (onto (map (lambda ((n string)) (dt n nil nil)) names) ds) als es here group file line fs tv at))))))
+        (cv (bs ds als es here group file line fs tv at ix mk)
+          (cv bs (onto (map (lambda ((n string)) (dt n nil nil)) names) ds) als es here group file line fs tv at ix mk))))))
 
 (define-rec
   (dequalified (subr kfx (chars chars chars) chars)
@@ -617,11 +617,11 @@
 (define check-command (subr running (strings) int)
   (lambda (paths)
     (let* ((forms (read-files paths))
-           (empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
+           (empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
-           (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
+           (named (tagcase start (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (datatype-names start forms nil) als es here group file line fs tv at ix mk))))
+           (typed (tagcase named (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at ix mk))))
            (v (with-binds typed (prim-binds typed))))
       (let ((names (base-renames (filter (lambda ((f sexp)) (not (module-def? f))) forms) nil nil)))
         (begin (say (lines-text (map (lambda ((l string)) (mu-numbered (if (has-prefix? l "%M ") (after-prefix l "%M ") (base-renamed l names)))) (lines-checked v forms forms)))) 0)))))

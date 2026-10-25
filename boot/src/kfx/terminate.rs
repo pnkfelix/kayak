@@ -212,7 +212,7 @@ pub mod termination {
                         if (not(null_p(bound_of(n, sc))) || string_member_p(n, ms)) {
                             str_lit("")
                         } else {
-                            let found = find_bind(n, cv_binds(v));
+                            let found = scope_bind(n, v);
                             if (not(null_p(found)) && {
                                 let tagcase_ = car(found);
                                 match *tagcase_ {

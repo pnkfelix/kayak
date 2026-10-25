@@ -6,7 +6,7 @@
 
 "What the REPL keeps between forms: the checker's environment, the globals'
  names (an index each, as `lower.kfx` has them), and how many forms."
-(define repl-cv (ref cv @h) (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0)))
+(define repl-cv (ref cv @h) (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil)))
 (define repl-globals (ref strings @h) (new nil))
 (define repl-count (ref i64 @h) (new 0))
 
@@ -71,7 +71,7 @@
 
 (define repl-start! (subr running () unit)
   (lambda ()
-    (let* ((empty (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0)))
+    (let* ((empty (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil)))
       (begin
         (load! nil)
         (set repl-cv (with-binds empty (prim-binds empty)))))))
@@ -81,11 +81,11 @@
     "The checker's environment after `form`, its types and datatypes
      declared first, as `check-program` declares a program's."
     (tagcase v
-      (cv (bs ds als es here group file line fs tv pos)
+      (cv (bs ds als es here group file line fs tv pos ix mk)
         (let* ((als2 (declare-types v (list form) als))
-               (v1 (cv bs ds als2 es here group file line fs tv pos))
-               (named (tagcase v1 (cv (bs1 ds1 a1 e1 h1 g1 f1 l1 fs1 t1 at1) (cv bs1 (datatype-names v1 (list form) ds1) a1 e1 h1 g1 f1 l1 fs1 t1 at1))))
-               (typed (tagcase named (cv (bs2 ds2 a2 e2 h2 g2 f2 l2 fs2 t2 at2) (cv bs2 (declare-datatypes named (list form) ds) a2 e2 h2 g2 f2 l2 fs2 t2 at2)))))
+               (v1 (cv bs ds als2 es here group file line fs tv pos ix mk))
+               (named (tagcase v1 (cv (bs1 ds1 a1 e1 h1 g1 f1 l1 fs1 t1 at1 ix1 mk1) (cv bs1 (datatype-names v1 (list form) ds1) a1 e1 h1 g1 f1 l1 fs1 t1 at1 ix1 mk1))))
+               (typed (tagcase named (cv (bs2 ds2 a2 e2 h2 g2 f2 l2 fs2 t2 at2 ix2 mk2) (cv bs2 (declare-datatypes named (list form) ds) a2 e2 h2 g2 f2 l2 fs2 t2 at2 ix2 mk2)))))
           (cond ((untyped? form)
                  (tagcase form
                    (lst (xs src-file src-line src-pos)
@@ -104,7 +104,7 @@
      definition's name and type."
     (cond ((or (head-is? form "define") (head-is? form "define*"))
            (let* ((n (binder-name (second (items form))))
-                  (found (find-bind n (cv-binds v))))
+                  (found (scope-bind n v)))
              (if (null? found)
                  n
                  (tagcase (car found) (bind (n2 sc w) (tagcase sc (scheme (tvars t) (string-append n (string-append " : " (string-append (show-ty (new-state) t) " ! pure"))))))))))

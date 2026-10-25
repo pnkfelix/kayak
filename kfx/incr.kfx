@@ -354,7 +354,7 @@
            module's whole change, every fact of it written out, is kept by
            no memo, and had cost a warm compile a tenth of its time)."
           (tagcase after
-            (cv (bs ds als es here group f line fs tv at)
+            (cv (bs ds als es here group f line fs tv at ix mk)
               (forward-text (leading bs (i64- (size bs) (size (cv-binds before))))
                             (leading es (i64- (size es) (size (cv-effdefs before))))
                             here group tv
@@ -364,7 +364,7 @@
       (define change-of (subr kfx (cv cv typeds string i64) change)
         (lambda (before after found file start)
           (tagcase after
-            (cv (bs ds als es here group f line fs tv at)
+            (cv (bs ds als es here group f line fs tv at ix mk)
               (let* ((new-binds (leading bs (i64- (size bs) (size (cv-binds before)))))
                      (new-effs (leading es (i64- (size es) (size (cv-effdefs before)))))
                      (new-facts (leading fs (i64- (size fs) (size (cv-facts before))))))
@@ -397,8 +397,9 @@
                  (line (code-number (car (cdr (cdr (cdr (cdr rest)))))))
                  (at (code-number (car (cdr (cdr (cdr (cdr (cdr rest)))))))))
             (tagcase v
-              (cv (bs ds als es h g ff l fs t a)
-                (redone (cv (onto new-binds bs) ds als (onto new-effs es) here group f line (onto new-facts fs) tv at)
+              (cv (bs ds als es h g ff l fs t a ix mk)
+                (redone (cv (onto new-binds bs) ds als (onto new-effs es) here group f line (onto new-facts fs) tv at
+                            (bix-adds ix (reverse new-binds)) (marks-adds mk (reverse new-binds)))
                         found
                         (forward-text new-binds new-effs here group tv new-facts)))))))
 
@@ -407,7 +408,7 @@
       (define cv-fingerprint (subr kfx (cv) i64)
         (lambda (v)
           (tagcase v
-            (cv (bs ds als es here group file line fs tv at)
+            (cv (bs ds als es here group file line fs tv at ix mk)
               (fnv-strings
                 (concat (list (cons "binds" (map bind-code bs))
                               (cons "datatypes" (map (lambda ((d dt))
@@ -639,10 +640,10 @@
       (lambda (forms texts old)
         "As `check-program` (check-defs.kfx), with memos; the passes before the
          forms' run always."
-        (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
-               (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
+        (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
+               (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
                (types (type-names-free start forms))
-               (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
-               (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
+               (named (tagcase start (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (datatype-names start forms nil) als es here group file line fs tv at ix mk))))
+               (typed (tagcase named (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at ix mk))))
                (v (with-binds typed (prim-binds typed))))
           (check-tops-memo v forms texts old (cv-fingerprint v) nil nil))))))

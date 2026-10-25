@@ -212,8 +212,8 @@ pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts 
 pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, als, kayak_rt::heap_cons(effdef(name_of(v, second(xs)), parse_effect(v, nil::<Str>(), third(xs))), es), here, group, file, line, fs, tv, at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, kayak_rt::heap_cons(effdef(name_of(v, second(xs)), parse_effect(v, nil::<Str>(), third(xs))), es), here, group, file, line, fs, tv, at, ix, mk)
         }
     }
 }
@@ -273,8 +273,8 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
 pub fn at(v: &'static Cv, here: Str, group: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, h, g, file, line, fs, tv, at) => {
-            cv(bs, ds, als, es, here, group, file, line, fs, tv, at)
+        Cv::Cv(bs, ds, als, es, h, g, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk)
         }
     }
 }
@@ -304,10 +304,10 @@ pub fn scheme_text(sc: &'static Scheme) -> Str {
 /// global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
 /// it imports by a glob.
 pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind {
-    if (keyword_p(name) && null_p(find_bind(str_lit("%module"), cv_binds(v)))) {
+    if (keyword_p(name) && null_p(scope_bind(str_lit("%module"), v))) {
         match refuse(v, string_append(str_lit("a keyword names nothing: "), name)) {}
     } else {
-        let (found, sc) = (find_bind(name, cv_binds(v)), {
+        let (found, sc) = (scope_bind(name, v), {
             let tagcase_ = sc0;
             match *tagcase_ {
                 Scheme::Scheme(tv, t) => {
@@ -316,7 +316,7 @@ pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind 
             }
         });
         if null_p(found) {
-            bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
+            bind(name, sc, if null_p(scope_bind(str_lit("%module"), v)) {
                 str_lit("global")
             } else {
                 str_lit("item")
@@ -325,8 +325,8 @@ pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind 
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc0, wher) => {
-                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || string_eq_p(wher, str_lit("prim")) || (not(null_p(find_bind(str_lit("%module"), cv_binds(v)))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
-                        bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
+                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || string_eq_p(wher, str_lit("prim")) || (not(null_p(scope_bind(str_lit("%module"), v))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
+                        bind(name, sc, if null_p(scope_bind(str_lit("%module"), v)) {
                             str_lit("global")
                         } else {
                             str_lit("item")
@@ -378,8 +378,8 @@ pub fn new_state() -> &'static St {
 pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, als, es, here, group, file, line, onto(more, fs), tv, at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, es, here, group, file, line, onto(more, fs), tv, at, ix, mk)
         }
     }
 }
@@ -447,12 +447,12 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
     }), es) {
         kfx_restricted(v, s, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
-    } else if (not(null_p(find_bind(str_lit("%loaded"), cv_binds(v)))) && any_p(lambda1s(move |x: Str| {
+    } else if (not(null_p(scope_bind(str_lit("%loaded"), v))) && any_p(lambda1s(move |x: Str| {
         not((string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
     }), es)) {
         // In a file loaded (C88): FX-26 makes it once, for all its loads, so
         // making it must be pure but for reading globals.
-        if null_p(find_bind(str_lit("%instance"), cv_binds(v))) {
+        if null_p(scope_bind(str_lit("%instance"), v)) {
             match refuse(v, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies")))) {}
         } else {
             kfx_restricted(v, s, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies"))))
@@ -1749,7 +1749,7 @@ pub fn reexported(v: &'static Cv, e: &'static Sexp) -> List<&'static Scheme> {
             }
         }
     }) {
-        let m = find_bind(sym_name(second(items(e))), cv_binds(v));
+        let m = scope_bind(sym_name(second(items(e))), v);
         if (null_p(m) || not({
             let tagcase_ = car(m);
             match *tagcase_ {
@@ -2341,8 +2341,8 @@ pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
     concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("include")) {
             let n = name_of(v, second(items(f)));
-            if (null_p(find_bind(n, cv_binds(v))) || not({
-                let tagcase_ = car(find_bind(n, cv_binds(v)));
+            if (null_p(scope_bind(n, v)) || not({
+                let tagcase_ = car(scope_bind(n, v));
                 match *tagcase_ {
                     Bind::Bind(x, sc, w) => {
                         string_eq_p(w, str_lit("module"))
@@ -2697,13 +2697,13 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
 pub fn standard_scope(v: &'static Cv, sees: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             let of = lambda1s(move |n: Str| {
                 (has_prefix_p(n, str_lit("made--load--")) || any_p(lambda1s(move |m: Str| {
                     (string_eq_p(n, m) || has_prefix_p(n, string_append(m, str_lit(" "))) || has_prefix_p(n, string_append(m, str_lit(".."))))
                 }), sees))
             });
-            let bare = cv(filter(lambda1s(move |b: &'static Bind| {
+            let bare = cv_reindexed(cv(filter(lambda1s(move |b: &'static Bind| {
                 let tagcase_ = b;
                 match *tagcase_ {
                     Bind::Bind(n, sc, w) => {
@@ -2731,7 +2731,7 @@ pub fn standard_scope(v: &'static Cv, sees: Strings) -> &'static Cv {
                         of(n)
                     }
                 }
-            }), es), here, group, file, line, fs, tv, at);
+            }), es), here, group, file, line, fs, tv, at, bempty(), nil::<&'static Bind>()));
             with_binds(bare, kayak_rt::heap_cons(bind(str_lit("%loaded"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), onto(if string_member_p(str_lit("%instance"), sees) {
                 the::<Binds>(kayak_rt::heap_cons(bind(str_lit("%instance"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()))
             } else {
@@ -3532,14 +3532,14 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     let typed = {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bind_onto(concat(map(lambda1s(move |n: Str| {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv_reindexed(cv(bind_onto(concat(map(lambda1s(move |n: Str| {
                     binds_of_include(n, include_binds)
                 }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1s(move |n: Str| {
                     excepted_aliases(v, written, n, als)
                 }), includes)), als)), onto(concat(map(lambda1s(move |n: Str| {
                     opened_effdefs(n, es)
-                }), includes)), es), here, group, file, line, fs, tv, at)
+                }), includes)), es), here, group, file, line, fs, tv, at, bempty(), nil::<&'static Bind>()))
             }
         }
     };
@@ -3548,8 +3548,8 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     let typed = {
         let tagcase_ = typed;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, onto(datatypes, ds), als, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, onto(datatypes, ds), als, es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     };
@@ -3567,8 +3567,8 @@ pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab
                 Elab::Elab(done, found) => {
                     let tagcase_ = done;
                     match *tagcase_ {
-                        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                            elab(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1s(move |b: &'static Bind| {
+                        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                            elab(cv_reindexed(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1s(move |b: &'static Bind| {
                                 let tagcase_ = b;
                                 match *tagcase_ {
                                     Bind::Bind(n, sc, w) => {
@@ -3590,7 +3590,7 @@ pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab
                                         }
                                     }
                                 }), opened_effdefs(n, es))
-                            }), unhidden_includes(v, written))), cv_effdefs(outer))), here, group, file, line, fs, tv, at), found)
+                            }), unhidden_includes(v, written))), cv_effdefs(outer))), here, group, file, line, fs, tv, at, bempty(), nil::<&'static Bind>())), found)
                         }
                     }
                 }
@@ -3760,22 +3760,22 @@ pub fn verdict_facts(x: &'static Verdict) -> Facts {
 /// Every form, in order; the first error stops the compiler. What it gives
 /// is the types of the definitions written with none.
 pub fn check_program(forms: Sexps) -> &'static Verdict {
-    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
-    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     };
     let typed = {
         let tagcase_ = named;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     };

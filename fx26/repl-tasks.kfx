@@ -1984,7 +1984,7 @@ an entry naming one that has not ended waits for it.")
           (lambda (f is-live height width path)
             "The session begun: the checker's environment, the history, the
              screen's size; the banner, if live."
-            (let ((empty (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0)))
+            (let ((empty (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil)))
               (begin
                 (set (extract f cv) (with-binds empty (prim-binds empty)))
                 (set (extract f history-path) path)
@@ -2012,7 +2012,7 @@ an entry naming one that has not ended waits for it.")
                      (written (new nil)) (cursor (new 0)) (cursor-row (new 0)) (escape-param (new 0))
                      (history (new nil)) (history-at (new -1)) (stash (new "")) (history-path (new ""))
                      (step-limit (new -1)) (commands (new 0)) (quitting (new #f))
-                     (requests (new nil)) (cv (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0))) (globals (new nil)) (count (new 0))
+                     (requests (new nil)) (cv (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil))) (globals (new nil)) (count (new 0))
                      (input-ended (new #f)) (relay relay)))))
 
       "A key read, as the key's code, or -1 at the input's end (which asks to

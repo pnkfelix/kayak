@@ -4839,6 +4839,46 @@ refused for KFX by the restriction pass or a `kfx-restricted` note.
   (`tests/kfx-refused/blobref-offset-int.kfx`).
 - The cells generator (`--ours`) declines a `tagcase` of a flat sum
   (`blob-tagcase` noted), which it has not; it had met none before.
+
+## C176. An index of the checker's bindings (2026-10-25)
+
+The Fixpt team's proposal (TODO §35): `find-bind` walked all of
+`cv-binds` from the innermost, a chain of dependent loads per element,
+and a lookup that finds nothing walks it all; 12% of stage 0's cycles
+and half its L2 misses on their measure. Both parts, at once:
+- **An index**: `cv` gains `bix`, a persistent AVL tree keyed by name
+  (`string<?`), each name's bindings innermost first. `cv` is passed
+  functionally, so a scope's tree is its own and needs no undo. Where a
+  `cv` is made with its list grown (`with-binds`, `with-type-binds`, a
+  `with`'s opened bindings, the incremental compile's), the tree grows
+  (`bix-adds`, in `bind-onto`'s order); where the list is rebuilt (a
+  loaded file's bare scope, a module's start and end), the tree is
+  rebuilt (`cv-reindexed`, rare).
+- **The markers apart**: `%module`, `%loaded`, `%instance` and
+  `%toplambda` also kept in a short list of their own (`marks-adds`),
+  read for those names; they stay in the list as well, so that what walks
+  it sees what it saw.
+- **`scope-bind name v`** answers as `(find-bind name (cv-binds v))` did;
+  64 of the callers moved (all that passed `cv-binds`). `find-bind` stays
+  for those given another list (a module's opened bindings, the REPL's).
+  Named so because `bound` and `in-scope` are locals' and terminate.kfx's
+  names already.
+- **Shown the same before it was trusted**: built first with every lookup
+  answering from both, the index and the list, and stopping if they
+  differed: the compiler's own fixed point, every program of Fixpt's
+  corpus through the engine, and the full check, with no difference;
+  then the list's walk taken out.
+- **Measured** (this machine, one core, `perf stat`, two runs each, the
+  pinned Fixpt 8f76d65, not the team's ae397dc8): stage 0
+  (`scripts/stage0.py kfx/kfx.unit`) from 102G cycles to 65G (−36%),
+  24.8 s to 15.7 s; L2 misses (`ic_dc_miss_in_l2`) 1.04G to 0.56G;
+  instructions 264G to 160G. More than the team's 12% because this pin
+  predates their self tail calls as loops, so each step of the walk was a
+  call. The same output. The Rust kfx compiling itself (the check's
+  fixpoint line) 3.88 s to 2.82 s, one run each.
+- Not done: names interned to symbols (the team: not needed for the main
+  gain); `mangled-clash`, which `with-binds` runs over the whole list for
+  a name that might clash in Rust, still a walk (rare: `might-clash?`).
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

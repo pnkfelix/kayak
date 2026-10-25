@@ -323,7 +323,7 @@ pub fn own_abstract(n: Str, t: &'static Ty) -> &'static Ty {
 /// A definition's line: its name, its type as the checker has it, inside
 /// its written binders, and the effect of making its value.
 pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -> Str {
-    let found = find_bind(n, cv_binds(v));
+    let found = scope_bind(n, v);
     if null_p(found) {
         string_append(str_lit("define "), n)
     } else {
@@ -358,7 +358,7 @@ pub fn settled_effs(s: &'static St, es: Strings) -> Strings {
 /// The effect of evaluating `n`'s value `e`, checked against its type as
 /// the checker checks a constant's: none for a procedure.
 pub fn value_effect(v: &'static Cv, n: Str, e: &'static Sexp) -> Str {
-    let found = find_bind(n, cv_binds(v));
+    let found = scope_bind(n, v);
     if (null_p(found) || lambda_form_p(e)) {
         str_lit("pure")
     } else {
@@ -665,10 +665,10 @@ pub fn opaque_names(v: &'static Cv, scope: Quals) -> &'static Cv {
     }), scope));
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             cv(bs, onto(map(lambda1s(move |n: Str| {
                 dt(n, nil::<Str>(), nil::<&'static Variant>())
-            }), names), ds), als, es, here, group, file, line, fs, tv, at)
+            }), names), ds), als, es, here, group, file, line, fs, tv, at, ix, mk)
         }
     }
 }
@@ -1455,22 +1455,22 @@ pub fn lines_text(ls: Strings) -> Str {
 
 pub fn check_command(paths: Strings) -> Int {
     let forms = read_files(paths);
-    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
-    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     };
     let typed = {
         let tagcase_ = named;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
             }
         }
     };

@@ -196,12 +196,203 @@ pub type Effdefs = List<&'static Effdef>;
 // innermost list being checked began (a file, a line; for messages), the
 // facts found so far, and the type and region variables in scope (a
 // `poly`'s binders, a `letregion`'s region).
-pub enum Cv {
-    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings, Str, i64, Facts, Strings, i64),
+
+// The bindings indexed by name (C176; the Fixpt team's proposal, TODO §35):
+// a persistent AVL tree, each name's bindings innermost first, beside the
+// list, so that a lookup walks no list. The four markers (`%module`,
+// `%loaded`, `%instance`, `%toplambda`) kept apart too, a short list. Each
+// `cv` made with the list grown grows them (`bix-adds`, `marks-adds`); one
+// made with it rebuilt rebuilds them (`cv-reindexed`).
+pub enum Bix {
+    Bempty(),
+    Bnode(&'static Bix, Str, Binds, i64, &'static Bix),
 }
 
-pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings, f6: Str, f7: i64, f8: Facts, f9: Strings, f10: i64) -> &'static Cv {
-    kayak_rt::heap_alloc(Cv::Cv(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10))
+pub fn bempty() -> &'static Bix {
+    kayak_rt::heap_alloc(Bix::Bempty())
+}
+
+pub fn bnode(f0: &'static Bix, f1: Str, f2: Binds, f3: i64, f4: &'static Bix) -> &'static Bix {
+    kayak_rt::heap_alloc(Bix::Bnode(f0, f1, f2, f3, f4))
+}
+
+pub fn bix_height(t: &'static Bix) -> i64 {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Bix::Bempty() => {
+            0i64
+        }
+        Bix::Bnode(l, k, bs, h, r) => {
+            h
+        }
+    }
+}
+
+pub fn bix_node(l: &'static Bix, k: Str, bs: Binds, r: &'static Bix) -> &'static Bix {
+    let (hl, hr) = (bix_height(l), bix_height(r));
+    bnode(l, k, bs, i64_plus(1i64, if i64_gt(hl, hr) {
+        hl
+    } else {
+        hr
+    }), r)
+}
+
+/// A node of `l`, `k` and `r`, rotated so that its sides' heights differ by
+/// one at most, as they did by two at most.
+pub fn bix_balanced(l: &'static Bix, k: Str, bs: Binds, r: &'static Bix) -> &'static Bix {
+    let (hl, hr) = (bix_height(l), bix_height(r));
+    if i64_gt(hl, i64_plus(hr, 1i64)) {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Bix::Bnode(ll, lk, lbs, lh, lr) => {
+                if i64_gt_eq(bix_height(ll), bix_height(lr)) {
+                    bix_node(ll, lk, lbs, bix_node(lr, k, bs, r))
+                } else {
+                    let tagcase_ = lr;
+                    match *tagcase_ {
+                        Bix::Bnode(rl, rk, rbs, rh, rr) => {
+                            bix_node(bix_node(ll, lk, lbs, rl), rk, rbs, bix_node(rr, k, bs, r))
+                        }
+                        Bix::Bempty() => {
+                            bix_node(l, k, bs, r)
+                        }
+                    }
+                }
+            }
+            Bix::Bempty() => {
+                bix_node(l, k, bs, r)
+            }
+        }
+    } else if i64_gt(hr, i64_plus(hl, 1i64)) {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Bix::Bnode(rl, rk, rbs, rh, rr) => {
+                if i64_gt_eq(bix_height(rr), bix_height(rl)) {
+                    bix_node(bix_node(l, k, bs, rl), rk, rbs, rr)
+                } else {
+                    let tagcase_ = rl;
+                    match *tagcase_ {
+                        Bix::Bnode(ml, mk2, mbs, mh, mr) => {
+                            bix_node(bix_node(l, k, bs, ml), mk2, mbs, bix_node(mr, rk, rbs, rr))
+                        }
+                        Bix::Bempty() => {
+                            bix_node(l, k, bs, r)
+                        }
+                    }
+                }
+            }
+            Bix::Bempty() => {
+                bix_node(l, k, bs, r)
+            }
+        }
+    } else {
+        bix_node(l, k, bs, r)
+    }
+}
+
+/// `t` with `b`, named `n`, the innermost binding of its name.
+pub fn bix_add(t: &'static Bix, n: Str, b: &'static Bind) -> &'static Bix {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Bix::Bempty() => {
+            bnode(bempty(), n, kayak_rt::heap_cons(b, kayak_rt::nil()), 1i64, bempty())
+        }
+        Bix::Bnode(l, k, bs, h, r) => {
+            if string_eq_p(n, k) {
+                bnode(l, k, kayak_rt::heap_cons(b, bs), h, r)
+            } else if string_lt_p(n, k) {
+                bix_balanced(bix_add(l, n, b), k, bs, r)
+            } else {
+                bix_balanced(l, k, bs, bix_add(r, n, b))
+            }
+        }
+    }
+}
+
+/// The bindings of `n`, innermost first.
+pub fn bix_at(mut t: &'static Bix, mut n: Str) -> Binds {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Bix::Bempty() => {
+                return nil::<&'static Bind>();
+            }
+            Bix::Bnode(l, k, bs, h, r) => {
+                if string_eq_p(n, k) {
+                    return bs;
+                } else if string_lt_p(n, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `t` with `bs`, each innermost of its name in its turn: the last the
+/// innermost, as `bind-onto` makes them.
+pub fn bix_adds(mut t: &'static Bix, mut bs: Binds) -> &'static Bix {
+    loop {
+        if null_p(bs) {
+            return t;
+        } else {
+            (t, bs) = ({
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        bix_add(t, n, car(bs))
+                    }
+                }
+            }, cdr(bs));
+            continue;
+        }
+    }
+}
+
+pub fn marker_p(n: Str) -> bool {
+    string_member_p(n, kayak_rt::heap_cons(str_lit("%module"), kayak_rt::heap_cons(str_lit("%loaded"), kayak_rt::heap_cons(str_lit("%instance"), kayak_rt::heap_cons(str_lit("%toplambda"), kayak_rt::nil())))))
+}
+
+pub fn marks_adds(mut mk: Binds, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return mk;
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    marker_p(n)
+                }
+            }
+        } {
+            (mk, bs) = (kayak_rt::heap_cons(car(bs), mk), cdr(bs));
+            continue;
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
+pub enum Cv {
+    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings, Str, i64, Facts, Strings, i64, &'static Bix, Binds),
+}
+
+pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings, f6: Str, f7: i64, f8: Facts, f9: Strings, f10: i64, f11: &'static Bix, f12: Binds) -> &'static Cv {
+    kayak_rt::heap_alloc(Cv::Cv(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12))
+}
+
+/// `v`, its index and markers made again from its list (C176).
+pub fn cv_reindexed(v: &'static Cv) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, at, bix_adds(bempty(), reverse(bs)), marks_adds(nil::<&'static Bind>(), reverse(bs)))
+        }
+    }
 }
 
 // Facts: what the checker found about a place, a file and an offset, for
@@ -288,7 +479,7 @@ pub fn show_sexps(xs: Sexps) -> Str {
 pub fn cv_where(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             here
         }
     }
@@ -299,7 +490,7 @@ pub fn cv_where(v: &'static Cv) -> Str {
 pub fn refusal_text(v: &'static Cv, message: Str) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             string_append(if i64_eq(line, 0i64) {
                 str_lit("")
             } else if string_eq_p(file, str_lit("<draft>")) {
@@ -840,7 +1031,7 @@ pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> String
 pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             es
         }
     }
@@ -924,7 +1115,7 @@ pub fn io_kind_p(k: Str) -> bool {
 pub fn cv_dts(v: &'static Cv) -> Dts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             ds
         }
     }
@@ -933,7 +1124,7 @@ pub fn cv_dts(v: &'static Cv) -> Dts {
 pub fn cv_aliases(v: &'static Cv) -> Aliases {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             als
         }
     }
@@ -942,7 +1133,7 @@ pub fn cv_aliases(v: &'static Cv) -> Aliases {
 pub fn cv_binds(v: &'static Cv) -> Binds {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             bs
         }
     }
@@ -951,7 +1142,7 @@ pub fn cv_binds(v: &'static Cv) -> Binds {
 pub fn cv_group(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             group
         }
     }
@@ -960,7 +1151,7 @@ pub fn cv_group(v: &'static Cv) -> Strings {
 pub fn cv_tvars(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             tv
         }
     }
@@ -987,6 +1178,27 @@ pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
     }
 }
 
+/// The innermost binding of `name` in `v`'s scope, as a list of one, or
+/// none, as `find-bind` of its list gives it: by its markers or its index
+/// (C176), no list walked.
+pub fn scope_bind(name: Str, v: &'static Cv) -> Binds {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            if marker_p(name) {
+                find_bind(name, mk)
+            } else {
+                let all = bix_at(ix, name);
+                if null_p(all) {
+                    nil::<&'static Bind>()
+                } else {
+                    the::<Binds>(kayak_rt::heap_cons(car(all), kayak_rt::nil()))
+                }
+            }
+        }
+    }
+}
+
 // First-class modules (C170; Fixpt's `docs/research/first-class-modules.md`):
 // a module's type, `(ty-data "%mtype" (item ...))`, each item `%abs t`, a
 // description `%desc t` of its type, an effect's `%edesc e` (its atoms a
@@ -1001,8 +1213,8 @@ pub fn type_bind(n: Str, t: &'static Ty) -> &'static Bind {
 pub fn with_type_binds(v: &'static Cv, tbs: Binds, eds: Effdefs) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            cv(onto(tbs, bs), ds, als, onto(eds, es), here, group, file, line, fs, tv, at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv(onto(tbs, bs), ds, als, onto(eds, es), here, group, file, line, fs, tv, at, bix_adds(ix, reverse(tbs)), marks_adds(mk, reverse(tbs)))
         }
     }
 }
@@ -1391,7 +1603,7 @@ pub fn mentions_module_in(mut ts: Tys, mut ps: Strings) -> Str {
 
 /// The type of the value named `n` in scope, or `unit` if none is.
 pub fn bound_type(v: &'static Cv, n: Str) -> &'static Ty {
-    let found = find_bind(n, cv_binds(v));
+    let found = scope_bind(n, v);
     if null_p(found) {
         ty_unit()
     } else {
@@ -2162,8 +2374,8 @@ pub fn poly_written(args: Tys) -> &'static Ty {
 pub fn with_tvars(v: &'static Cv, names: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, als, es, here, group, file, line, fs, onto(names, tv), at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, onto(names, tv), at, ix, mk)
         }
     }
 }
@@ -3661,7 +3873,7 @@ pub fn param_name_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> S
                 let n = sym_name(car(xs));
                 if (string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, tvars) || any_p(lambda1s(move |t: Str| {
                     (has_prefix_p(t, str_lit("^")) && string_eq_p(bare_binder(t), n))
-                }), tvars) || not(null_p(find_bind(string_append(str_lit("%type "), n), cv_binds(v)))) || dt_named_p(n, cv_dts(v)) || not(null_p(aliases_named(v, n)))) {
+                }), tvars) || not(null_p(scope_bind(string_append(str_lit("%type "), n), v))) || dt_named_p(n, cv_dts(v)) || not(null_p(aliases_named(v, n)))) {
                     str_lit("")
                 } else {
                     n
@@ -3960,7 +4172,7 @@ pub fn logic_callee(v: &'static Cv, xs: Sexps) -> Tys {
     })) {
         nil::<&'static Ty>()
     } else {
-        let b = find_bind(sym_name(car(xs)), cv_binds(v));
+        let b = scope_bind(sym_name(car(xs)), v);
         if null_p(b) {
             nil::<&'static Ty>()
         } else {
@@ -5477,9 +5689,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_var(s);
                 } else if string_member_p(string_append(str_lit("%muvar "), s), tvars) {
                     return ty_var(string_append(str_lit("%mu "), s));
-                } else if not(null_p(find_bind(string_append(str_lit("%type "), s), cv_binds(v)))) {
+                } else if not(null_p(scope_bind(string_append(str_lit("%type "), s), v))) {
                     // A type a module gives, in a `with` of it or inside it (C170).
-                    let tagcase_ = car(find_bind(string_append(str_lit("%type "), s), cv_binds(v)));
+                    let tagcase_ = car(scope_bind(string_append(str_lit("%type "), s), v));
                     match *tagcase_ {
                         Bind::Bind(n, sc, w) => {
                             let tagcase_ = sc;
@@ -8604,7 +8816,7 @@ pub fn lin_resolved(s: &'static St, l: &'static Lin) -> &'static Lin {
 /// Each of `ns` a size variable, or a local `nat`: `n >= 0`.
 pub fn nat_bounds(v: &'static Cv, s: &'static St, ns: Strings) -> Lins {
     concat(map(lambda1s(move |n: Str| {
-        let b = find_bind(n, cv_binds(v));
+        let b = scope_bind(n, v);
         if (has_prefix_p(n, str_lit("#")) || has_prefix_p(n, str_lit("?")) || (not(null_p(b)) && {
             let tagcase_ = car(b);
             match *tagcase_ {
@@ -10196,7 +10408,7 @@ pub fn named_instance(v: &'static Cv, s: &'static St, sc: &'static Scheme) -> &'
     if {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
                 (string_eq_p(file, str_lit("<draft>")) || has_prefix_p(file, str_lit("<fx26:")))
             }
         }
@@ -10255,8 +10467,8 @@ pub fn near(v: &'static Cv, file: Str, line: i64, pos: i64) -> &'static Cv {
     } else {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, f, l, fs, tv, at) => {
-                cv(bs, ds, als, es, here, group, file, line, fs, tv, pos)
+            Cv::Cv(bs, ds, als, es, here, group, f, l, fs, tv, at, ix, mk) => {
+                cv(bs, ds, als, es, here, group, file, line, fs, tv, pos, ix, mk)
             }
         }
     }
@@ -10265,7 +10477,7 @@ pub fn near(v: &'static Cv, file: Str, line: i64, pos: i64) -> &'static Cv {
 pub fn cv_facts(v: &'static Cv) -> Facts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             fs
         }
     }
@@ -10274,7 +10486,7 @@ pub fn cv_facts(v: &'static Cv) -> Facts {
 pub fn cv_file(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             file
         }
     }
@@ -10283,7 +10495,7 @@ pub fn cv_file(v: &'static Cv) -> Str {
 pub fn cv_pos(v: &'static Cv) -> i64 {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
             at
         }
     }
@@ -10293,8 +10505,8 @@ pub fn cv_pos(v: &'static Cv) -> i64 {
 pub fn at_offset(v: &'static Cv, pos: i64) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, als, es, here, group, file, line, fs, tv, pos)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, pos, ix, mk)
         }
     }
 }
@@ -10337,8 +10549,8 @@ pub fn draft_hole_p(e: &'static Sexp) -> bool {
 pub fn said_in(v: &'static Cv, here: Str) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, h, group, file, line, fs, tv, at) => {
-            cv(bs, ds, als, es, here, group, file, line, fs, tv, at)
+        Cv::Cv(bs, ds, als, es, h, group, file, line, fs, tv, at, ix, mk) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk)
         }
     }
 }
@@ -10471,8 +10683,8 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
         } else {
             let tagcase_ = v;
             match *tagcase_ {
-                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                    cv(bind_onto(more, bs), ds, als, es, here, group, file, line, fs, tv, at)
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                    cv(bind_onto(more, bs), ds, als, es, here, group, file, line, fs, tv, at, bix_adds(ix, more), marks_adds(mk, more))
                 }
             }
         }
@@ -11124,7 +11336,7 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
     };
     any_p(lambda1s(move |n: Str| {
         (not(string_eq_p(n, tag_name)) && {
-            let found = find_bind(n, cv_binds(v));
+            let found = scope_bind(n, v);
             (not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {

@@ -819,6 +819,10 @@ tier 6's: the control routines (`prompt`, `callcomp`, `abort`, in
 
 ## 35. An index of the checker's bindings (the Fixpt team, 2026-10-25)
 
+**Done** (C176): both parts; stage 0 here 102G cycles to 65G, L2 misses
+1.04G to 0.56G (pinned Fixpt 8f76d65). For the team to measure on their
+snapshot.
+
 Measured on Fixpt ae397dc8, kayak at abecd81, one core: stage 0 (kfx
 compiling itself under `fixpt run`, fx-regs-rsjit-nativecc) is about
 16.7G cycles; `find-bind` (kfx/check.kfx) is 12.2% of them and 52% of
