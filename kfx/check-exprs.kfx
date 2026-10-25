@@ -529,7 +529,7 @@
           "Variants whose fields' types are of the datatype's parameters, at
            `args`."
           (map (lambda ((x variant))
-                 (tagcase x (variant (tag fields) (variant tag (map (lambda ((f ty)) (substitute params args f)) fields)))))
+                 (tagcase x (variant (tag fields) (variant tag (map (lambda ((f ty)) (let ((u (substitute params args f))) (if (has-app? u) (reduced u) u))) fields)))))
                vs)))
 
       (define variants-of (subr kfx (cv string) variants)
@@ -1303,11 +1303,12 @@
           "Whether `t` mentions a type or region variable."
           (tagcase (walk s t)
             (ty-var (n) #t)
+            ;; A function's own binders are bound in it (C173), a poly's in it.
+            (ty-data (d args) (if (or (string=? d "%dlambda") (string=? d "%poly")) #f (any? (lambda ((x ty)) (has-var? s x)) args)))
             (ty-list (e r) (or (has-var? s e) (has-var? s r)))
             (ty-flat (e r) (or (has-var? s e) (has-var? s r)))
             (ty-ref (e r) (or (has-var? s e) (has-var? s r)))
             (ty-tag (a h d r) (or (has-var? s a) (has-var? s h) (has-var? s r)))
-            (ty-data (d args) (any? (lambda ((x ty)) (has-var? s x)) args))
             (ty-shape (p ls ts) (any? (lambda ((x ty)) (has-var? s x)) ts))
             (ty-proc (es ps r) (or (has-var? s r) (any? (lambda ((x ty)) (has-var? s x)) ps)))
             (else other #f)))))
@@ -3148,6 +3149,7 @@
                           (res (poly-instance args (map2 (lambda ((b string) (r sexp))
                                                            (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
                                                                  ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
+                                                                 ((has-prefix? b "^") (fun-of-kind v (cv-tvars v) r (binder-kind b) (written-binder b)))
                                                                  (else (parse-type v (cv-tvars v) r))))
                                                          (poly-binders-of args) (cdr xs)))
                                es
@@ -3171,6 +3173,7 @@
                                 (res (poly-instance args (map2 (lambda ((b string) (r sexp))
                                                                  (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
                                                                        ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
+                                                                       ((has-prefix? b "^") (fun-of-kind v (cv-tvars v) r (binder-kind b) (written-binder b)))
                                                                        (else (parse-type v (cv-tvars v) r))))
                                                                (poly-binders-of args) (cdr xs)))
                                      nil
@@ -3230,11 +3233,14 @@
       (projected (subr kfx (cv strings sexps ty) ty)
         (lambda (v tvars args t)
           (if (null? tvars)
-              t
+              (if (has-app? t) (reduced t) t)
               (projected v (cdr tvars) (cdr args)
                          (replace-var (car tvars)
                                       (cond ((char=? (string-ref-i64 (car tvars) 0) #\') (parse-region v (cv-tvars v) (car args)))
                                             ((char=? (string-ref-i64 (car tvars) 0) #\~) (effect-row (cons "~!" (parse-effect v (cv-tvars v) (car args)))))
+                                            ((char=? (string-ref-i64 (car tvars) 0) #\^)
+                                             "A function where one of arrow kind is bound (C173)."
+                                             (fun-of-kind v (cv-tvars v) (car args) (binder-kind (car tvars)) (written-binder (car tvars))))
                                             (else (parse-type v (cv-tvars v) (car args))))
                                       t)))))
 
@@ -3397,7 +3403,7 @@
                                         (if (null? arg)
                                             (ty-data n nil)
                                             (tagcase (synth v s (car arg))
-                                              (res (a es s2) (mtype-provided v (as-mtype v (walk s2 a)) (after-dots n)))))))
+                                              (res (a es s2) (mtype-provided v (as-mtype v (walk s2 a)) (after-dots n) (ty-unit)))))))
                                     names)
                                t)))))
 
@@ -3590,11 +3596,27 @@
                      (more (lambda ((w cv) (its tys)) (mod-types w s (cdr fs) id export (if export (onto its got) got) es))))
                 (cond ((null? xs) (mod-types v s (cdr fs) id export got es))
                       ((and (string=? hd "define-type") (i64= (size xs) 3) (not (string=? n "")))
-                       (let ((u (parse-type v tv (third xs))))
+                       (let ((u (if (head-is? (third xs) "dlambda") (parse-fun v tv (third xs)) (parse-type v tv (third xs)))))
                          (more (with-type-binds v (list (type-bind n u)) nil) (the tys (list (ty-data (string-append "%desc " n) (list u)))))))
                       ((and (string=? hd "define-type") (i64= (size xs) 3))
-                       (let ((name (tagcase (second xs) (lst (hs hf hl hp) (sym-name (car hs))) (else other (sym-name (second xs))))))
-                         (more (with-alias v (alias name (family-params v (second xs)) (third xs))) nil)))
+                       (let* ((name (tagcase (second xs) (lst (hs hf hl hp) (sym-name (car hs))) (else other (sym-name (second xs)))))
+                              (w (with-alias v (alias name (family-params v (second xs)) (third xs)))))
+                         ;; A family, a function the module describes (C173).
+                         (more w (the tys (list (ty-data (string-append "%desc " name) (list (parse-fun w tv (sym name "" 0)))))))))
+                      ((and (string=? hd "define-generative") (i64= (size xs) 3) (tagcase (second xs) (lst (hs hf hl hp) #t) (else other #f)))
+                       "A generative family in a module value (C173): an abstract type
+                        constructor, its conversions polymorphic in its parameters."
+                       (let* ((name (sym-name (car (items (second xs)))))
+                              (ps (family-params v (second xs)))
+                              (kind (string-append "(=> (" (string-append (words-of (map binder-kind ps)) ") type)")))
+                              (ref (ty-data (string-append "%fam " (string-append id (string-append ".." name))) (list (ty-data kind nil))))
+                              (bs (map (lambda ((q string)) (string-append q (string-append "@g" name))) ps))
+                              (app (ty-data (string-append id (string-append ".." name)) (map (lambda ((q string)) (ty-var q)) bs)))
+                              (r (substitute ps (map (lambda ((q string)) (ty-var q)) bs) (parse-type v (onto ps tv) (third xs)))))
+                         (more (with-binds (with-type-binds v (list (type-bind name ref)) nil)
+                                           (list (local v (string-append "up-" name) (ty-data "%poly" (onto (map (lambda ((q string)) (ty-var q)) bs) (list (ty-proc nil (list r) app)))))
+                                                 (local v (string-append "down-" name) (ty-data "%poly" (onto (map (lambda ((q string)) (ty-var q)) bs) (list (ty-proc nil (list app) r)))))))
+                               (the tys (list (ty-data (string-append "%abs " name) (list ref)))))))
                       ((and (string=? hd "define-generative") (i64= (size xs) 3) (not (string=? n "")))
                        (let ((ref (ty-data (string-append id (string-append ".." n)) nil)) (r (parse-type v tv (third xs))))
                          (more (with-binds (with-type-binds v (list (type-bind n ref)) nil)
@@ -4287,6 +4309,7 @@
                                      (cond ((sym-is? k "region") (string-append "'" n))
                                            ((sym-is? k "size") (string-append "#" n))
                                            ((sym-is? k "type") n)
+                                           ((head-is? k "=>") (binder-named (kind-text v k) n))
                                            (else (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)"))))
                                    (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)")))
                              (items (car xs))))
@@ -4299,7 +4322,14 @@
                    (let ((before (st-next s)))
                      (tagcase (check (with-tvars v names) s (second xs) (poly-instance args (map (lambda ((n string)) (ty-var n)) names)))
                        (res (t es s2)
-                         (if (any? (lambda ((k i64)) (any? (lambda ((n string)) (mentions? s2 (ty-meta k) n)) names)) (i64s-below before))
+                         (if (any? (lambda ((k i64)) (any? (lambda ((n string)) (mentions? s2 (ty-meta k) n)) names))
+                                   ;; What could carry a binder out: the type expected, and the
+                                   ;; locals in scope (C173: another plambda's binder of the
+                                   ;; same name, in a meta of its own, is not this one's).
+                                   (filter (lambda ((k i64)) (i64< k before))
+                                           (onto (metas-of (ty-data "%poly" args))
+                                                 (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (string=? w "local") (tagcase sc (scheme (tv u) (metas-of u))) nil))))
+                                                              (cv-binds v))))))
                              (refuse v "a plambda's region escapes it, in a type found outside it")
                              (res expected es s2))))))))))
 

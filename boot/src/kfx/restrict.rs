@@ -135,6 +135,8 @@ pub mod restrictions {
                     match restriction_refused(f, l, str_lit("sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)")) {}
                 } else if (sym_is_p(car(xs), str_lit("vsubr")) || sym_is_p(car(xs), str_lit("vlambda")) || sym_is_p(car(xs), str_lit("apply"))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
+                } else if (sym_is_p(car(xs), str_lit("=>")) || sym_is_p(car(xs), str_lit("dlambda"))) {
+                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {}
                 } else if sym_is_p(car(xs), str_lit("composable")) {
                     match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
                 } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {

@@ -394,7 +394,7 @@ pub fn chars_before_dots(cs: List<char>) -> List<char> {
 
 /// What precedes the first `..` of `x`.
 pub fn before_dots(x: Str) -> Str {
-    list_to_string(chars_before_dots(string_to_list(x)))
+    list_to_string(chars_before_dots(string_chars(x)))
 }
 
 /// `(kind name `, the first `n` spaces' worth of an item printed.
@@ -476,16 +476,16 @@ pub fn chars_with_replaced(mut cs: List<char>, mut from: List<char>, mut to: Lis
 }
 
 pub fn text_replaced(t: Str, from: Str, to: Str) -> Str {
-    list_to_string(chars_with_replaced(string_to_list(t), string_to_list(from), string_to_list(to), false, nil::<char>()))
+    list_to_string(chars_with_replaced(string_chars(t), string_chars(from), string_chars(to), false, nil::<char>()))
 }
 
 pub fn token_replaced(t: Str, from: Str, to: Str) -> Str {
-    list_to_string(chars_with_replaced(string_to_list(t), string_to_list(from), string_to_list(to), true, nil::<char>()))
+    list_to_string(chars_with_replaced(string_chars(t), string_chars(from), string_chars(to), true, nil::<char>()))
 }
 
 /// What follows the first `..` of `x`.
 pub fn after_dots(x: Str) -> Str {
-    list_to_string(chars_after_dots(string_to_list(x)))
+    list_to_string(chars_after_dots(string_chars(x)))
 }
 
 pub fn char_from_p(s: Str, c: char, i: i64, n: i64) -> bool {
@@ -674,6 +674,86 @@ pub fn crossing_p(es: Strings) -> bool {
     }), es))
 }
 
+// An effect function's application, `(e r ...)` for `e` of kind `(=>
+// (region ...) effect)` (C173): an atom of its own, `~@E|r|...`, as an
+// effect variable's is.
+pub fn bar_split(mut cs: List<char>, mut w: List<char>, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            return reverse(the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc)));
+        } else if char_eq_p(car(cs), '|') {
+            (cs, w, acc) = (cdr(cs), nil::<char>(), the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc)));
+            continue;
+        } else {
+            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
+            continue;
+        }
+    }
+}
+
+/// `~@E|r|...` as `E` and its regions.
+pub fn app_atom_parts(x: Str) -> Strings {
+    bar_split(string_chars(after_prefix(x, str_lit("~@"))), nil::<char>(), nil::<Str>())
+}
+
+pub fn bars_joined(xs: Strings) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        if null_p(cdr(xs)) {
+            car(xs)
+        } else {
+            string_append(car(xs), string_append(str_lit("|"), bars_joined(cdr(xs))))
+        }
+    }
+}
+
+pub fn chars_from_caret(mut cs: List<char>) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if char_eq_p(car(cs), '^') {
+            return cdr(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn chars_to_at(cs: List<char>) -> List<char> {
+    if (null_p(cs) || char_eq_p(car(cs), '@')) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), chars_to_at(cdr(cs)))
+    }
+}
+
+/// A binder's name as written, its mark and where it was written left off
+/// (C173: `^K^f`, `'r@P`).
+pub fn bare_binder(n: Str) -> Str {
+    let cs = string_chars(n);
+    if null_p(cs) {
+        n
+    } else if char_eq_p(car(cs), '^') {
+        list_to_string(chars_to_at(chars_from_caret(cdr(cs))))
+    } else if (char_eq_p(car(cs), '\'') || char_eq_p(car(cs), '#') || char_eq_p(car(cs), '~')) {
+        list_to_string(chars_to_at(cdr(cs)))
+    } else if char_eq_p(car(cs), '@') {
+        n
+    } else {
+        list_to_string(chars_to_at(cs))
+    }
+}
+
+pub fn spaced_before(xs: Strings) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" "), string_append(car(xs), spaced_before(cdr(xs))))
+    }
+}
+
 /// An effect atom as FX-26 writes it; a read of one global is gathered
 /// by `show-effs`.
 pub fn atom_written(x: Str) -> Str {
@@ -695,6 +775,9 @@ pub fn atom_written(x: Str) -> Str {
         string_append(str_lit("(io "), string_append(after_prefix(x, str_lit("io:")), str_lit(")")))
     } else if region_atom_p(x) {
         string_append(str_lit("("), string_append(substring_of(atom_kind(x), i64_minus(string_length_i64(atom_kind(x)), 1i64)), string_append(str_lit(" "), string_append(at(atom_kind(x)), str_lit(")")))))
+    } else if has_prefix_p(x, str_lit("~@")) {
+        let ps = app_atom_parts(x);
+        string_append(str_lit("("), string_append(bare_binder(car(ps)), string_append(spaced_before(map(&bare_binder, cdr(ps))), str_lit(")"))))
     } else if has_prefix_p(x, str_lit("~")) {
         after_prefix(x, str_lit("~"))
     } else {
@@ -1034,6 +1117,43 @@ pub fn data_replaced(from: Strings, to: Tys, t: &'static Ty) -> &'static Ty {
                 } else {
                     ty_nth(to, i)
                 }
+            } else if (has_prefix_p(d, str_lit("%fam ")) && not(i64_lt(string_index(after_prefix(d, str_lit("%fam ")), from, 0i64), 0i64))) {
+                // An abstract constructor's reference (C173), as what replaces its name.
+                let tagcase_ = ty_nth(to, string_index(after_prefix(d, str_lit("%fam ")), from, 0i64));
+                match *tagcase_ {
+                    Ty::TyData(n2, a2) => {
+                        if null_p(a2) {
+                            ty_data(string_append(str_lit("%fam "), n2), args)
+                        } else {
+                            ty_data(n2, a2)
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ty_nth(to, string_index(after_prefix(d, str_lit("%fam ")), from, 0i64))
+                    }
+                }
+            } else if not(i64_lt(string_index(d, from, 0i64), 0i64)) {
+                // A constructor applied (C173): named anew, or what replaces it applied.
+                let (r, r#as) = (ty_nth(to, string_index(d, from, 0i64)), map(lambda1s(move |x: &'static Ty| {
+                    data_replaced(from, to, x)
+                }), args));
+                let tagcase_ = r;
+                match *tagcase_ {
+                    Ty::TyData(n2, a2) => {
+                        if null_p(a2) {
+                            ty_data(n2, r#as)
+                        } else if has_prefix_p(n2, str_lit("%fam ")) {
+                            ty_data(after_prefix(n2, str_lit("%fam ")), r#as)
+                        } else {
+                            ty_data(str_lit("%app"), kayak_rt::heap_cons(r, r#as))
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ty_data(str_lit("%app"), kayak_rt::heap_cons(r, r#as))
+                    }
+                }
             } else {
                 ty_data(d, map(lambda1s(move |x: &'static Ty| {
                     data_replaced(from, to, x)
@@ -1088,6 +1208,12 @@ pub fn data_names_with(mut pre: Str, mut t: &'static Ty) -> Strings {
             Ty::TyData(d, args) => {
                 if (null_p(args) && has_prefix_p(d, pre)) {
                     return the::<Strings>(kayak_rt::heap_cons(d, kayak_rt::nil()));
+                } else if has_prefix_p(d, pre) {
+                    return kayak_rt::heap_cons(d, concat(map(lambda1s(move |x: &'static Ty| {
+                        data_names_with(pre, x)
+                    }), args)));
+                } else if has_prefix_p(d, string_append(str_lit("%fam "), pre)) {
+                    return the::<Strings>(kayak_rt::heap_cons(after_prefix(d, str_lit("%fam ")), kayak_rt::nil()));
                 } else {
                     return concat(map(lambda1s(move |x: &'static Ty| {
                         data_names_with(pre, x)
@@ -1133,6 +1259,14 @@ pub fn data_renamed(from: Strings, to: Strings, t: &'static Ty) -> &'static Ty {
     }), to), t)
 }
 
+pub fn after_prefix_if(x: Str, p: Str) -> Str {
+    if has_prefix_p(x, p) {
+        after_prefix(x, p)
+    } else {
+        x
+    }
+}
+
 pub fn abs_ref(x: &'static Ty) -> &'static Ty {
     let tagcase_ = x;
     match *tagcase_ {
@@ -1165,7 +1299,11 @@ pub fn mtype_named(p: Str, t: &'static Ty) -> &'static Ty {
                         let tagcase_ = car(args);
                         match *tagcase_ {
                             Ty::TyData(r, a2) => {
-                                the::<Strings>(kayak_rt::heap_cons(r, kayak_rt::nil()))
+                                the::<Strings>(kayak_rt::heap_cons(if has_prefix_p(r, str_lit("%fam ")) {
+                                    after_prefix(r, str_lit("%fam "))
+                                } else {
+                                    r
+                                }, kayak_rt::nil()))
                             }
                             _ => {
                                 let other = tagcase_;
@@ -1300,101 +1438,206 @@ pub fn selected_type(v: &'static Cv, p: Str, t: &'static Ty, n: Str) -> &'static
     }
 }
 
-pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(s, at_file, at_pos) => {
-            if string_eq_p(s, str_lit("pure")) {
-                nil::<Str>()
-            } else if string_eq_p(s, str_lit("spin")) {
-                kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-            } else if string_eq_p(s, str_lit("%found")) {
-                match refuse(v, str_lit("`(->* (param ...) result)` is only the type a definition declares (`define`, `define-rec`)")) {}
-            } else if string_eq_p(s, str_lit("nondet")) {
-                // That an answer may differ from run to run (C101): no region, so
-                // never masked, as `spin`.
-                kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil())
-            } else if string_member_p(string_append(str_lit("~"), s), tvars) {
-                // A poly's effect binder (C46): an atom of its own, `~e`.
-                kayak_rt::heap_cons(string_append(str_lit("~"), s), kayak_rt::nil())
-            } else {
-                find_effdef(v, s, cv_effdefs(v))
+pub fn aliases_named(v: &'static Cv, n: Str) -> Aliases {
+    filter(lambda1s(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(m, ps, body) => {
+                string_eq_p(m, n)
             }
         }
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            if sym_is_p(car(xs), str_lit("maxeff")) {
-                parse_effects(v, tvars, cdr(xs))
-            } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && {
-                let tagcase_ = second(xs);
-                match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        true
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
-                    }
-                }
-            } && mtype_p(bound_type(v, sym_name(second(xs))))) {
-                // An effect a module value gives (C170).
-                let found = mtype_find(bound_type(v, sym_name(second(xs))), str_lit("%edesc"), name_of(v, third(xs)));
-                if null_p(found) {
-                    match refuse(v, string_append(sym_name(second(xs)), string_append(str_lit(" gives no effect "), name_of(v, third(xs))))) {}
-                } else {
-                    let tagcase_ = car(found);
-                    match *tagcase_ {
-                        Ty::TyData(d, args) => {
-                            let tagcase_ = car(args);
-                            match *tagcase_ {
-                                Ty::TyProc(es, ps, r) => {
-                                    es
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    nil::<Str>()
-                                }
-                            }
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            nil::<Str>()
-                        }
-                    }
-                }
-            } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64)) {
-                // A module's effect, as the module defined at the top level gives it.
-                find_effdef(v, string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs)))), cv_effdefs(v))
-            } else if (sym_is_p(car(xs), str_lit("io")) && i64_eq(size(xs), 2i64) && io_kind_p({
-                let tagcase_ = second(xs);
-                match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        n
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
-                    }
-                }
-            })) {
-                // An I/O effect (C49), `io:` and its kind: no region, so never masked.
-                kayak_rt::heap_cons(string_append(str_lit("io:"), sym_name(second(xs))), kayak_rt::nil())
-            } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
-                kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil())
-            } else if (sym_is_p(car(xs), str_lit("read")) && head_is_p(second(xs), str_lit("globals"))) {
-                map(lambda1s(move |g: &'static Sexp| {
-                    string_append(str_lit("g:"), name_of(v, g))
-                }), cdr(items(second(xs))))
-            } else if (i64_eq(size(xs), 2i64) && any_p(lambda1s(move |k: Str| {
-                sym_is_p(car(xs), k)
-            }), region_kinds())) {
-                kayak_rt::heap_cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), kayak_rt::nil())
+    }), cv_aliases(v))
+}
+
+/// `e`, each of `names` replaced by the argument in its place.
+pub fn sexp_given(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let i = string_index(n, names, 0i64);
+            if i64_lt(i, 0i64) {
+                e
             } else {
-                match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {}
+                sexp_nth(args, i)
             }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            lst(map(lambda1s(move |x: &'static Sexp| {
+                sexp_given(names, args, x)
+            }), xs), f, l, p)
         }
         _ => {
             let other = tagcase_;
-            match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {}
+            e
+        }
+    }
+}
+
+pub fn sexp_nth(mut xs: Sexps, mut i: i64) -> &'static Sexp {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn parse_effect(mut v: &'static Cv, mut tvars: Strings, mut e: &'static Sexp) -> Strings {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(s, at_file, at_pos) => {
+                if string_eq_p(s, str_lit("pure")) {
+                    return nil::<Str>();
+                } else if string_eq_p(s, str_lit("spin")) {
+                    return kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil());
+                } else if string_eq_p(s, str_lit("%found")) {
+                    return match refuse(v, str_lit("`(->* (param ...) result)` is only the type a definition declares (`define`, `define-rec`)")) {};
+                } else if string_eq_p(s, str_lit("nondet")) {
+                    // That an answer may differ from run to run (C101): no region, so
+                    // never masked, as `spin`.
+                    return kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil());
+                } else if string_member_p(string_append(str_lit("~"), s), tvars) {
+                    // A poly's effect binder (C46): an atom of its own, `~e`.
+                    return kayak_rt::heap_cons(string_append(str_lit("~"), s), kayak_rt::nil());
+                } else {
+                    return find_effdef(v, s, cv_effdefs(v));
+                }
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                if sym_is_p(car(xs), str_lit("maxeff")) {
+                    return parse_effects(v, tvars, cdr(xs));
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && mtype_p(bound_type(v, sym_name(second(xs))))) {
+                    // An effect a module value gives (C170).
+                    let found = mtype_find(bound_type(v, sym_name(second(xs))), str_lit("%edesc"), name_of(v, third(xs)));
+                    if null_p(found) {
+                        return match refuse(v, string_append(sym_name(second(xs)), string_append(str_lit(" gives no effect "), name_of(v, third(xs))))) {};
+                    } else {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Ty::TyData(d, args) => {
+                                let tagcase_ = car(args);
+                                match *tagcase_ {
+                                    Ty::TyProc(es, ps, r) => {
+                                        return es;
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        return nil::<Str>();
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return nil::<Str>();
+                            }
+                        }
+                    }
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64)) {
+                    // A module's effect, as the module defined at the top level gives it.
+                    return find_effdef(v, string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs)))), cv_effdefs(v));
+                } else if (sym_is_p(car(xs), str_lit("io")) && i64_eq(size(xs), 2i64) && io_kind_p({
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                })) {
+                    // An I/O effect (C49), `io:` and its kind: no region, so never masked.
+                    return kayak_rt::heap_cons(string_append(str_lit("io:"), sym_name(second(xs))), kayak_rt::nil());
+                } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
+                    return kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil());
+                } else if (sym_is_p(car(xs), str_lit("read")) && head_is_p(second(xs), str_lit("globals"))) {
+                    return map(lambda1s(move |g: &'static Sexp| {
+                        string_append(str_lit("g:"), name_of(v, g))
+                    }), cdr(items(second(xs))));
+                } else if (i64_eq(size(xs), 2i64) && any_p(lambda1s(move |k: Str| {
+                    sym_is_p(car(xs), k)
+                }), region_kinds())) {
+                    return kayak_rt::heap_cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), kayak_rt::nil());
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            not(null_p(filter(lambda1s(move |t: Str| {
+                                (has_prefix_p(t, str_lit("^")) && string_eq_p(bare_binder(t), n))
+                            }), tvars)))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    // An effect function, a variable, applied (C173): an atom of its own.
+                    let b = car(filter(lambda1s(move |t: Str| {
+                        (has_prefix_p(t, str_lit("^")) && string_eq_p(bare_binder(t), sym_name(car(xs))))
+                    }), tvars));
+                    return kayak_rt::heap_cons(string_append(str_lit("~@"), bars_joined(kayak_rt::heap_cons(b, map(lambda1s(move |r: &'static Sexp| {
+                        region_name(v, tvars, r)
+                    }), cdr(xs))))), kayak_rt::nil());
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            let a = aliases_named(v, n);
+                            (not(null_p(a)) && {
+                                let tagcase_ = car(a);
+                                match *tagcase_ {
+                                    Alias::Alias(m, ps, body) => {
+                                        (null_p(ps) && head_is_p(body, str_lit("dlambda")))
+                                    }
+                                }
+                            })
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    // An abbreviation of an effect function applied (C173): its body, its
+                    // parameters what it is given.
+                    let tagcase_ = car(aliases_named(v, sym_name(car(xs))));
+                    match *tagcase_ {
+                        Alias::Alias(m, ps, body) => {
+                            let bs = map(lambda1s(move |b: &'static Sexp| {
+                                sym_name(car(items(b)))
+                            }), items(second(items(body))));
+                            if not(i64_eq(size(bs), size(cdr(xs)))) {
+                                return match refuse(v, string_append(str_lit("`"), string_append(m, string_append(str_lit("` takes "), string_append(i64_to_string(size(bs)), str_lit(" description(s)")))))) {};
+                            } else {
+                                e = sexp_given(bs, cdr(xs), third(items(body)));
+                                continue;
+                            }
+                        }
+                    }
+                } else {
+                    return match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {};
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {};
+            }
         }
     }
 }
@@ -1410,7 +1653,16 @@ pub fn parse_effects(v: &'static Cv, tvars: Strings, es: Sexps) -> Strings {
 /// Effect atoms on region `from` made atoms on region `to`.
 pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
     map(lambda1s(move |x: Str| {
-        if (region_atom_p(x) && string_eq_p(atom_region(x), from)) {
+        if has_prefix_p(x, str_lit("~@")) {
+            let ps = app_atom_parts(x);
+            string_append(str_lit("~@"), bars_joined(kayak_rt::heap_cons(car(ps), map(lambda1s(move |r: Str| {
+                if string_eq_p(r, from) {
+                    to
+                } else {
+                    r
+                }
+            }), cdr(ps)))))
+        } else if (region_atom_p(x) && string_eq_p(atom_region(x), from)) {
             string_append(atom_kind(x), to)
         } else if (has_prefix_p(from, str_lit("~")) && string_eq_p(x, from)) {
             if has_prefix_p(to, str_lit("~")) {
@@ -1443,6 +1695,36 @@ pub fn effect_row(atoms: Strings) -> &'static Ty {
     ty_proc(atoms, nil::<&'static Ty>(), ty_unit())
 }
 
+pub fn fun_binders(xs: Tys) -> Strings {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Ty::TyVar(n) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }, fun_binders(cdr(xs)))
+    }
+}
+
+pub fn atoms_given(mut bs: Strings, mut rs: Strings, mut atoms: Strings) -> Strings {
+    loop {
+        if (null_p(bs) || null_p(rs)) {
+            return atoms;
+        } else {
+            (bs, rs, atoms) = (cdr(bs), cdr(rs), rename_atoms(atoms, car(bs), car(rs)));
+            continue;
+        }
+    }
+}
+
 /// Effects on region `name`, made effects on the region `m` stands for.
 pub fn rename_region(es: Strings, name: Str, m: &'static Ty) -> Strings {
     let tagcase_ = m;
@@ -1460,6 +1742,44 @@ pub fn rename_region(es: Strings, name: Str, m: &'static Ty) -> Strings {
             // An effect binder given an effect, a row (C46): its atoms in its place.
             if string_member_p(name, es) {
                 effs_union(r#as, remove_atom(name, es))
+            } else {
+                es
+            }
+        }
+        Ty::TyData(d, xs) => {
+            if (string_eq_p(d, str_lit("%dlambda")) && has_prefix_p(name, str_lit("^"))) {
+                concat(map(lambda1s(move |x: Str| {
+                    let ps = if has_prefix_p(x, str_lit("~@")) {
+                        app_atom_parts(x)
+                    } else {
+                        nil::<Str>()
+                    };
+                    if (not(null_p(ps)) && string_eq_p(car(ps), name)) {
+                        atoms_given(fun_binders(xs), cdr(ps), {
+                            let tagcase_ = last(xs);
+                            match *tagcase_ {
+                                Ty::TyData(k, a) => {
+                                    let tagcase_ = car(a);
+                                    match *tagcase_ {
+                                        Ty::TyProc(es2, ps2, r2) => {
+                                            es2
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            nil::<Str>()
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        })
+                    } else {
+                        the::<Strings>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                    }
+                }), es))
             } else {
                 es
             }
@@ -1533,13 +1853,67 @@ pub fn fold_renames(mut names: Strings, mut pos: i64, mut t: &'static Ty) -> &'s
     }
 }
 
+pub fn caret_kind(cs: List<char>) -> List<char> {
+    if (null_p(cs) || char_eq_p(car(cs), '^')) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), caret_kind(cdr(cs)))
+    }
+}
+
+pub fn after_caret(mut cs: List<char>) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if char_eq_p(car(cs), '^') {
+            return cdr(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+/// A binder's kind, from its mark: `'r` a region, `#n` a size, `~e` an
+/// effect, `^K^f` of arrow kind `K` (C173), a type's none.
 pub fn binder_kind(n: Str) -> Str {
     if has_prefix_p(n, str_lit("'")) {
         str_lit("region")
     } else if has_prefix_p(n, str_lit("#")) {
         str_lit("size")
+    } else if has_prefix_p(n, str_lit("~")) {
+        str_lit("effect")
+    } else if has_prefix_p(n, str_lit("^")) {
+        list_to_string(caret_kind(cdr(string_chars(n))))
     } else {
         str_lit("type")
+    }
+}
+
+/// A binder `n` of `kind`, marked as `binder-kind` reads it (C173).
+pub fn binder_named(kind: Str, n: Str) -> Str {
+    if (string_eq_p(kind, str_lit("region")) || string_eq_p(kind, str_lit("place"))) {
+        string_append(str_lit("'"), n)
+    } else if string_eq_p(kind, str_lit("size")) {
+        string_append(str_lit("#"), n)
+    } else if string_eq_p(kind, str_lit("effect")) {
+        string_append(str_lit("~"), n)
+    } else if string_eq_p(kind, str_lit("type")) {
+        n
+    } else {
+        string_append(str_lit("^"), string_append(kind, string_append(str_lit("^"), n)))
+    }
+}
+
+/// The binder of arrow kind named `n` in scope, or "".
+pub fn arrow_binder(tvars: Strings, n: Str) -> Str {
+    let found = filter(lambda1s(move |t: Str| {
+        (has_prefix_p(t, str_lit("^")) && string_eq_p(list_to_string(after_caret(cdr(string_chars(t)))), n))
+    }), tvars);
+    if null_p(found) {
+        str_lit("")
+    } else {
+        car(found)
     }
 }
 
@@ -1587,6 +1961,10 @@ pub fn written_binder(n: Str) -> Str {
         after_prefix(n, str_lit("'"))
     } else if has_prefix_p(n, str_lit("#")) {
         after_prefix(n, str_lit("#"))
+    } else if has_prefix_p(n, str_lit("~")) {
+        after_prefix(n, str_lit("~"))
+    } else if has_prefix_p(n, str_lit("^")) {
+        list_to_string(after_caret(cdr(string_chars(n))))
     } else {
         n
     });
@@ -1628,9 +2006,137 @@ pub fn i64s_below(n: i64) -> List<i64> {
     }
 }
 
-/// A poly type's body, its binders given `regions` (C107).
+// Type functions (C173; Fixpt's `docs/fx26.md`, "Higher kinds"): a
+// `(ty-data "%dlambda" (binder ... body))`, FX-91's `dlambda`, its binders
+// as a poly's are; a family or generative type named, not applied,
+// `%fam NAME`; a variable of arrow kind applied, `(ty-data "%app" (f arg
+// ...))`, equal only to one of the same function to equal arguments. Applied
+// where the function is known: beta.
+pub fn fun_applied(f: &'static Ty, args: Tys) -> &'static Ty {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Ty::TyData(d, xs) => {
+            if string_eq_p(d, str_lit("%dlambda")) {
+                substitute(poly_binders_of(xs), args, poly_body(xs))
+            } else if string_eq_p(d, str_lit("%fam listof")) {
+                ty_list(car(args), car(cdr(args)))
+            } else if string_eq_p(d, str_lit("%fam pairof")) {
+                ty_data(str_lit("%pairof"), args)
+            } else if has_prefix_p(d, str_lit("%fam ")) {
+                ty_data(after_prefix(d, str_lit("%fam ")), args)
+            } else {
+                ty_data(str_lit("%app"), kayak_rt::heap_cons(f, args))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            ty_data(str_lit("%app"), kayak_rt::heap_cons(f, args))
+        }
+    }
+}
+
+/// `t`, each application of a function known reduced (C173).
+pub fn reduced(mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if null_p(args) {
+                    return t;
+                } else if string_eq_p(d, str_lit("%app")) {
+                    let (f, r#as) = (reduced(car(args)), map(&reduced, cdr(args)));
+                    if {
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Ty::TyData(d2, a2) => {
+                                (string_eq_p(d2, str_lit("%dlambda")) || has_prefix_p(d2, str_lit("%fam ")))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        t = fun_applied(f, r#as);
+                        continue;
+                    } else {
+                        return ty_data(str_lit("%app"), kayak_rt::heap_cons(f, r#as));
+                    }
+                } else {
+                    return ty_data(d, map(&reduced, args));
+                }
+            }
+            Ty::TyList(e, r) => {
+                return ty_list(reduced(e), reduced(r));
+            }
+            Ty::TyRef(e, r) => {
+                return ty_ref(reduced(e), reduced(r));
+            }
+            Ty::TyFlat(e, r) => {
+                return ty_flat(reduced(e), reduced(r));
+            }
+            Ty::TyProc(es, ps, r) => {
+                return ty_proc(es, map(&reduced, ps), reduced(r));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return ty_shape(p, ls, map(&reduced, ts));
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return ty_tag(reduced(a), reduced(h), es, reduced(r));
+            }
+            _ => {
+                let other = tagcase_;
+                return t;
+            }
+        }
+    }
+}
+
+pub fn has_app_p(mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                return (string_eq_p(d, str_lit("%app")) || any_p(&has_app_p, args));
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (has_app_p(r) || any_p(&has_app_p, ps));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(&has_app_p, ts);
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return (has_app_p(a) || has_app_p(h));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// A poly type's body, its binders given `regions` (C107); an
+/// application of a function given reduced (C173).
 pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
-    substitute(poly_binders_of(args), regions, poly_body(args))
+    let t = substitute(poly_binders_of(args), regions, poly_body(args));
+    if has_app_p(t) {
+        reduced(t)
+    } else {
+        t
+    }
 }
 
 /// A poly type's binders, as written.
@@ -1647,13 +2153,7 @@ pub fn binders_shown(ns: Strings) -> Str {
 /// A poly type's body, its binders as written, `'r` (C107).
 pub fn poly_written(args: Tys) -> &'static Ty {
     poly_instance(args, map(lambda1s(move |n: Str| {
-        ty_var(if has_prefix_p(n, str_lit("'")) {
-            string_append(str_lit("'"), written_binder(n))
-        } else if has_prefix_p(n, str_lit("#")) {
-            string_append(str_lit("#"), written_binder(n))
-        } else {
-            written_binder(n)
-        })
+        ty_var(binder_named(binder_kind(n), written_binder(n)))
     }), poly_binders_of(args)))
 }
 
@@ -2919,7 +3419,9 @@ pub fn param_name_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> S
                 }
             }) {
                 let n = sym_name(car(xs));
-                if (string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, tvars) || dt_named_p(n, cv_dts(v)) || not(null_p(find_alias(n, cv_aliases(v))))) {
+                if (string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, tvars) || any_p(lambda1s(move |t: Str| {
+                    (has_prefix_p(t, str_lit("^")) && string_eq_p(bare_binder(t), n))
+                }), tvars) || not(null_p(find_bind(string_append(str_lit("%type "), n), cv_binds(v)))) || dt_named_p(n, cv_dts(v)) || not(null_p(aliases_named(v, n)))) {
                     str_lit("")
                 } else {
                     n
@@ -3013,7 +3515,32 @@ pub fn trait_moduleof_p(m: &'static Sexp) -> bool {
                 }
             }
         };
-        not((i64_eq(size(ys), 3i64) && ((sym_is_p(car(ys), str_lit("abs")) && sym_is_p(third(ys), str_lit("type"))) || (sym_is_p(car(ys), str_lit("desc")) && {
+        not((i64_eq(size(ys), 3i64) && ((sym_is_p(car(ys), str_lit("abs")) && sym_is_p(third(ys), str_lit("type")) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                Sexp::Lst(ns, f, l, p) => {
+                    not(any_p(lambda1s(move |z: &'static Sexp| {
+                        let tagcase_ = z;
+                        match *tagcase_ {
+                            Sexp::Sym(m, f2, p2) => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    }), ns))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) || (sym_is_p(car(ys), str_lit("desc")) && {
             let tagcase_ = second(ys);
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
@@ -4405,6 +4932,21 @@ pub fn named_as(v: &'static Cv, tvars: Strings, name: Str, args: Tys, t: &'stati
     }
 }
 
+/// A type's name as its own Rust scope writes it: `m t` and `m..t` are `t`.
+pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
+    loop {
+        if null_p(cs) {
+            return rev_to_string(acc);
+        } else if (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '.')) {
+            (cs, acc) = (cdr(cs), nil::<char>());
+            continue;
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -4690,6 +5232,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                 string_append(str_lit("#"), n)
                             } else if sym_is_p(k, str_lit("type")) {
                                 n
+                            } else if head_is_p(k, str_lit("=>")) {
+                                binder_named(kind_text(v, k), n)
                             } else {
                                 match refuse(v, str_lit("a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")) {}
                             }
@@ -4873,6 +5417,78 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             }), fields));
                         }
                     }
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            not(string_eq_p(arrow_binder(tvars, n), str_lit("")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    // A variable of arrow kind applied (C173): an application, equal only
+                    // to one of it to equal arguments.
+                    let f = arrow_binder(tvars, sym_name(car(xs)));
+                    return fun_applied_checked(v, sym_name(car(xs)), ty_var(f), args_of_fun(v, tvars, ty_var(f), cdr(xs)));
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            let tagcase_ = bound_type(v, string_append(str_lit("%type "), n));
+                            match *tagcase_ {
+                                Ty::TyData(d, a) => {
+                                    (has_prefix_p(d, str_lit("%fam ")) || string_eq_p(d, str_lit("%dlambda")))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    // A constructor a module gives, applied (C173).
+                    let g = bound_type(v, string_append(str_lit("%type "), sym_name(car(xs))));
+                    return fun_applied_checked(v, sym_name(car(xs)), g, args_of_fun(v, tvars, g, cdr(xs)));
+                } else if ({
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && (not(head_is_p(car(xs), str_lit("select"))) || {
+                    let tagcase_ = second(items(car(xs)));
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            mtype_p(as_mtype(v, bound_type(v, n)))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })) {
+                    // A function applied, `((dlambda ...) d ...)`, `((f d) e)` (C173).
+                    let f = parse_fun(v, tvars, car(xs));
+                    return fun_applied_checked(v, show_sexp(car(xs)), f, args_of_fun(v, tvars, f, cdr(xs)));
+                } else if sym_is_p(car(xs), str_lit("dlambda")) {
+                    if string_member_p(str_lit("%fun-ok"), tvars) {
+                        return parse_fun(v, tvars, t);
+                    } else {
+                        return match refuse(v, string_append(str_lit("a description function, where a type is expected: it is applied, "), show_sexp(t))) {};
+                    }
                 } else if head_is_p(car(xs), str_lit("select")) {
                     // A module's family applied (C89): `((select m t) arg ...)`.
                     let s = items(car(xs));
@@ -5017,7 +5633,102 @@ pub fn parse_moduleof(v: &'static Cv, tvars: Strings, its: Sexps, id: Str) -> Ty
         } else {
             str_lit("")
         };
-        if (string_eq_p(hd, str_lit("abs")) && i64_eq(size(ys), 3i64) && sym_is_p(third(ys), str_lit("type"))) {
+        if (string_eq_p(hd, str_lit("abs")) && i64_eq(size(ys), 3i64) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(m, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && head_is_p(third(ys), str_lit("=>"))) {
+            // An abstract type constructor (C173), `(abs f (=> (k ...) type))`.
+            abs_constructor(v, tvars, its, id, sym_name(second(ys)), kind_text(v, third(ys)))
+        } else if (string_eq_p(hd, str_lit("abs")) && i64_eq(size(ys), 3i64) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Lst(ns, f, l, p) => {
+                    (not(null_p(ns)) && {
+                        let tagcase_ = car(ns);
+                        match *tagcase_ {
+                            Sexp::Sym(m, f2, p2) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } && not(null_p(cdr(ns))) && {
+                        let tagcase_ = second(ns);
+                        match *tagcase_ {
+                            Sexp::Lst(zs, f3, l3, p3) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    })
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // `(abs (f (a type) ...) type)`, its parameters named (C173).
+            if not(sym_is_p(third(ys), str_lit("type"))) {
+                match refuse(v, str_lit("an abstract type constructor is `(abs (f (name kind) …) type)`")) {}
+            } else {
+                let ps = family_params(v, second(ys));
+                if any_p(lambda1s(move |b: &'static Sexp| {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(zs, f4, l4, p4) => {
+                            false
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }), cdr(items(second(ys)))) {
+                    match refuse(v, str_lit("an abstract type constructor is `(abs (f (name kind) …) type)`")) {}
+                } else {
+                    abs_constructor(v, tvars, its, id, sym_name(car(items(second(ys)))), string_append(str_lit("(=> ("), string_append(words_of(map(&binder_kind, ps)), str_lit(") type)"))))
+                }
+            }
+        } else if (string_eq_p(hd, str_lit("abs")) && i64_eq(size(ys), 3i64) && sym_is_p(third(ys), str_lit("type")) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(m, f, p) => {
+                    true
+                }
+                Sexp::Lst(ns, f, l, p) => {
+                    not(any_p(lambda1s(move |z: &'static Sexp| {
+                        let tagcase_ = z;
+                        match *tagcase_ {
+                            Sexp::Sym(m2, f2, p2) => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    }), ns))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
             let names = {
                 let tagcase_ = second(ys);
                 match *tagcase_ {
@@ -5052,10 +5763,395 @@ pub fn parse_moduleof(v: &'static Cv, tvars: Strings, its: Sexps, id: Str) -> Ty
     }
 }
 
+pub fn abs_constructor(v: &'static Cv, tvars: Strings, its: Sexps, id: Str, f: Str, kind: Str) -> Tys {
+    let r#ref = ty_data(string_append(str_lit("%fam "), string_append(id, string_append(str_lit(".."), f))), kayak_rt::heap_cons(ty_data(kind, nil::<&'static Ty>()), kayak_rt::nil()));
+    kayak_rt::heap_cons(ty_data(string_append(str_lit("%abs "), f), kayak_rt::heap_cons(r#ref, kayak_rt::nil())), parse_moduleof(with_type_binds(v, kayak_rt::heap_cons(type_bind(f, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), tvars, cdr(its), id))
+}
+
+/// A family's parameters, from its head `(name (p kind) ...)`: a type's
+/// named as written, a region's with `'` first; none for a bare name.
+pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            map(lambda1s(move |b: &'static Sexp| {
+                let b = items(b);
+                if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
+                    // A region within a place, `(r region p)` (C40).
+                    string_append(str_lit("'"), name_of(v, car(b)))
+                } else if not(i64_eq(size(b), 2i64)) {
+                    match refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
+                } else if sym_is_p(second(b), str_lit("type")) {
+                    name_of(v, car(b))
+                } else if sym_is_p(second(b), str_lit("region")) {
+                    string_append(str_lit("'"), name_of(v, car(b)))
+                } else if sym_is_p(second(b), str_lit("place")) {
+                    string_append(str_lit("'"), name_of(v, car(b)))
+                } else if sym_is_p(second(b), str_lit("effect")) {
+                    string_append(str_lit("~"), name_of(v, car(b)))
+                } else if head_is_p(second(b), str_lit("=>")) {
+                    // A function among a family's parameters (C173), invariant.
+                    binder_named(kind_text(v, second(b)), name_of(v, car(b)))
+                } else {
+                    match refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
+                }
+            }), cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     map(lambda1s(move |t: &'static Sexp| {
         parse_type(v, tvars, t)
     }), ts)
+}
+
+/// A kind as written: `type`, `region`, `place`, `effect`, `size`, or an
+/// arrow `(=> (kind ...) kind)` (C173), canonical.
+pub fn kind_text(v: &'static Cv, k: &'static Sexp) -> Str {
+    let usage = str_lit("a kind is `region`, `place`, `effect`, `type`, `data`, `sendable`, `flat`, `size`, `conv` or `(=> (kind …) kind)`");
+    let tagcase_ = k;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_member_p(n, kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::nil())))))) {
+                n
+            } else {
+                match refuse(v, usage) {}
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("=>")) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f2, l2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let (ps, r) = (map(lambda1s(move |x: &'static Sexp| {
+                    kind_text(v, x)
+                }), items(second(xs))), kind_text(v, third(xs)));
+                if (string_eq_p(r, str_lit("effect")) && any_p(lambda1s(move |q: Str| {
+                    not(string_member_p(q, kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::nil()))))))
+                }), ps)) {
+                    match refuse(v, str_lit("a description function to an effect takes regions, places, effects, sizes and conventions")) {}
+                } else if any_p(lambda1s(move |q: Str| {
+                    string_eq_p(q, str_lit("effect"))
+                }), ps) {
+                    match refuse(v, str_lit("a description function given an effect, which kayak's checker has not yet (C173)")) {}
+                } else if not((string_eq_p(r, str_lit("type")) || string_eq_p(r, str_lit("effect")))) {
+                    match refuse(v, str_lit("a description function that gives a type or an effect, which kayak's checker has alone yet (C173)")) {}
+                } else {
+                    string_append(str_lit("(=> ("), string_append(words_of(ps), string_append(str_lit(") "), string_append(r, str_lit(")")))))
+                }
+            } else {
+                match refuse(v, usage) {}
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, usage) {}
+        }
+    }
+}
+
+/// An arrow kind's parameters' kinds.
+pub fn kind_params(k: Str) -> Strings {
+    let xs = items(car(read_all(string_chars(k), str_lit(""), 1i64)));
+    map(&show_sexp, items(second(xs)))
+}
+
+pub fn kind_result(k: Str) -> Str {
+    show_sexp(third(items(car(read_all(string_chars(k), str_lit(""), 1i64)))))
+}
+
+/// A function's kind (C173).
+pub fn fun_kind(v: &'static Cv, f: &'static Ty) -> Str {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            binder_kind(n)
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%dlambda")) {
+                string_append(str_lit("(=> ("), string_append(words_of(map(&binder_kind, poly_binders_of(args))), string_append(str_lit(") "), string_append({
+                    let tagcase_ = poly_body(args);
+                    match *tagcase_ {
+                        Ty::TyData(k, a) => {
+                            if string_eq_p(k, str_lit("%effect")) {
+                                str_lit("effect")
+                            } else if string_eq_p(k, str_lit("%dlambda")) {
+                                fun_kind(v, poly_body(args))
+                            } else {
+                                str_lit("type")
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("type")
+                        }
+                    }
+                }, str_lit(")")))))
+            } else if string_eq_p(d, str_lit("%fam listof")) {
+                str_lit("(=> (type region) type)")
+            } else if string_eq_p(d, str_lit("%fam pairof")) {
+                str_lit("(=> (type type region) type)")
+            } else if (has_prefix_p(d, str_lit("%fam ")) && not(null_p(args))) {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Ty::TyData(kk, a3) => {
+                        kk
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("?")
+                    }
+                }
+            } else if has_prefix_p(d, str_lit("%fam ")) {
+                let found = find_family(after_prefix(d, str_lit("%fam ")), cv_dts(v));
+                if kayak_rt::value::null_p(found) {
+                    str_lit("?")
+                } else {
+                    let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                    match *tagcase_ {
+                        Dt::Dt(n, ps, vs) => {
+                            string_append(str_lit("(=> ("), string_append(words_of(map(&binder_kind, ps)), str_lit(") type)")))
+                        }
+                    }
+                }
+            } else {
+                str_lit("?")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("?")
+        }
+    }
+}
+
+/// A description function (C173): a variable of arrow kind; a `define-type`
+/// with parameters, or of a `dlambda`; a family or generative type with
+/// parameters, or `listof`, `pairof`, named; a `(dlambda ((x k) ...) d)`.
+pub fn parse_fun(mut v: &'static Cv, mut tvars: Strings, mut e: &'static Sexp) -> &'static Ty {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if not(string_eq_p(arrow_binder(tvars, n), str_lit(""))) {
+                    return ty_var(arrow_binder(tvars, n));
+                } else if {
+                    let tagcase_ = bound_type(v, string_append(str_lit("%type "), n));
+                    match *tagcase_ {
+                        Ty::TyData(d, a) => {
+                            (has_prefix_p(d, str_lit("%fam ")) || string_eq_p(d, str_lit("%dlambda")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    return bound_type(v, string_append(str_lit("%type "), n));
+                } else if (string_eq_p(n, str_lit("listof")) || string_eq_p(n, str_lit("pairof"))) {
+                    return ty_data(string_append(str_lit("%fam "), n), nil::<&'static Ty>());
+                } else if not(kayak_rt::value::null_p(find_family(n, cv_dts(v)))) {
+                    let fam = find_family(n, cv_dts(v));
+                    if kayak_rt::value::null_p(fam) {
+                        return ty_unit();
+                    } else {
+                        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(fam);
+                        match *tagcase_ {
+                            Dt::Dt(m, ps, vs) => {
+                                if null_p(ps) {
+                                    return match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is not a description function")))) {};
+                                } else {
+                                    return ty_data(string_append(str_lit("%fam "), n), nil::<&'static Ty>());
+                                }
+                            }
+                        }
+                    }
+                } else if not(null_p(find_alias(n, cv_aliases(v)))) {
+                    let tagcase_ = car(find_alias(n, cv_aliases(v)));
+                    match *tagcase_ {
+                        Alias::Alias(m, ps, body) => {
+                            if not(null_p(ps)) {
+                                let renamed = map(lambda1s(move |q: Str| {
+                                    string_append(q, string_append(str_lit("@d"), n))
+                                }), ps);
+                                let inner = parse_type(v, onto(map(lambda1s(move |q: Str| {
+                                    string_append(str_lit("%place "), q)
+                                }), filter(lambda1s(move |q: Str| {
+                                    has_prefix_p(q, str_lit("'"))
+                                }), ps)), onto(ps, expanding(tvars))), body);
+                                return ty_data(str_lit("%dlambda"), onto(map(lambda1s(move |q: Str| {
+                                    ty_var(q)
+                                }), renamed), kayak_rt::heap_cons(substitute(ps, map(lambda1s(move |q: Str| {
+                                    ty_var(q)
+                                }), renamed), inner), kayak_rt::nil())));
+                            } else if head_is_p(body, str_lit("dlambda")) {
+                                e = body;
+                                continue;
+                            } else {
+                                return match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is not a description function")))) {};
+                            }
+                        }
+                    }
+                } else {
+                    return match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is not a description function")))) {};
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if (sym_is_p(car(xs), str_lit("dlambda")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    let pos = datum_pos(e);
+                    let bs = map(lambda1s(move |b: &'static Sexp| {
+                        let ys = items(b);
+                        if (i64_eq(size(ys), 2i64) && {
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Sexp::Sym(n, f3, p3) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }) {
+                            binder_named(kind_text(v, second(ys)), string_append(sym_name(car(ys)), string_append(str_lit("@d"), i64_to_string(pos))))
+                        } else {
+                            match refuse(v, str_lit("a dlambda's binder is `(name kind)`")) {}
+                        }
+                    }), items(second(xs)));
+                    let plain = map(lambda1s(move |b: &'static Sexp| {
+                        sym_name(car(items(b)))
+                    }), items(second(xs)));
+                    let scope = onto(map2(lambda2s(move |b: Str, n: Str| {
+                        binder_named(binder_kind(b), n)
+                    }), bs, plain), onto(map(lambda1s(move |b: Str| {
+                        string_append(str_lit("%place "), binder_named(binder_kind(b), written_binder(b)))
+                    }), filter(lambda1s(move |b: Str| {
+                        has_prefix_p(b, str_lit("'"))
+                    }), bs)), tvars));
+                    let body = if effect_written_p(v, third(xs)) {
+                        ty_data(str_lit("%effect"), kayak_rt::heap_cons(ty_proc(parse_effect(v, scope, third(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()))
+                    } else if head_is_p(third(xs), str_lit("dlambda")) {
+                        parse_fun(v, scope, third(xs))
+                    } else {
+                        parse_type(v, scope, third(xs))
+                    };
+                    return ty_data(str_lit("%dlambda"), onto(map(lambda1s(move |b: Str| {
+                        ty_var(b)
+                    }), bs), kayak_rt::heap_cons(substitute(map2(lambda2s(move |b: Str, n: Str| {
+                        binder_named(binder_kind(b), n)
+                    }), bs, plain), map(lambda1s(move |b: Str| {
+                        ty_var(b)
+                    }), bs), body), kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64)) {
+                    return parse_type(v, tvars, e);
+                } else {
+                    let h = parse_fun(v, tvars, car(xs));
+                    return fun_applied_checked(v, show_sexp(car(xs)), h, args_of_fun(v, tvars, h, cdr(xs)));
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return match refuse(v, string_append(str_lit("a description function: "), show_sexp(e))) {};
+            }
+        }
+    }
+}
+
+/// A function given where one of `kind` is bound (C173).
+pub fn fun_of_kind(v: &'static Cv, tvars: Strings, e: &'static Sexp, kind: Str, name: Str) -> &'static Ty {
+    let f = parse_fun(v, tvars, e);
+    if string_eq_p(fun_kind(v, f), kind) {
+        f
+    } else {
+        match refuse(v, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is bound as a "), string_append(kind, str_lit(", and the description given is not one")))))) {}
+    }
+}
+
+/// A description given a function: a region, a size, an effect, a
+/// function, or a type, as it reads.
+pub fn parse_arg_of_kind(v: &'static Cv, tvars: Strings, a: &'static Sexp, kind: Str) -> &'static Ty {
+    if (string_eq_p(kind, str_lit("region")) || string_eq_p(kind, str_lit("place"))) {
+        parse_region(v, tvars, a)
+    } else if string_eq_p(kind, str_lit("size")) {
+        parse_size(v, tvars, a)
+    } else {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if (has_prefix_p(n, str_lit("@")) || string_member_p(string_append(str_lit("'"), n), tvars)) {
+                    parse_region(v, tvars, a)
+                } else {
+                    parse_type(v, tvars, a)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                parse_type(v, tvars, a)
+            }
+        }
+    }
+}
+
+/// The descriptions given function `f`, each read as its kind says.
+pub fn args_of_fun(v: &'static Cv, tvars: Strings, f: &'static Ty, args: Sexps) -> Tys {
+    let k = fun_kind(v, f);
+    args_by_kinds(v, tvars, if has_prefix_p(k, str_lit("(=>")) {
+        kind_params(k)
+    } else {
+        nil::<Str>()
+    }, args)
+}
+
+pub fn args_by_kinds(v: &'static Cv, tvars: Strings, ks: Strings, args: Sexps) -> Tys {
+    if null_p(args) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons(if null_p(ks) {
+            parse_arg_of_kind(v, tvars, car(args), str_lit(""))
+        } else if has_prefix_p(car(ks), str_lit("(=>")) {
+            fun_of_kind(v, tvars, car(args), car(ks), show_sexp(car(args)))
+        } else {
+            parse_arg_of_kind(v, tvars, car(args), car(ks))
+        }, args_by_kinds(v, tvars, if null_p(ks) {
+            nil::<Str>()
+        } else {
+            cdr(ks)
+        }, cdr(args)))
+    }
+}
+
+/// Function `f` applied to `args`, as many as its kind says (C173).
+pub fn fun_applied_checked(v: &'static Cv, name: Str, f: &'static Ty, args: Tys) -> &'static Ty {
+    let k = fun_kind(v, f);
+    if (has_prefix_p(k, str_lit("(=>")) && not(i64_eq(size(kind_params(k)), size(args)))) {
+        match refuse(v, string_append(str_lit("`"), string_append(name, string_append(str_lit("` takes "), string_append(i64_to_string(size(kind_params(k))), string_append(str_lit(" description(s), and has "), i64_to_string(size(args)))))))) {}
+    } else {
+        reduced(fun_applied(f, args))
+    }
 }
 
 /// Where a procedure type's parameters after a module parameter named,
@@ -5129,6 +6225,9 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
     } else {
         kayak_rt::heap_cons(if char_eq_p(string_ref_i64(car(params), 0i64), '\'') {
             parse_region(v, tvars, car(args))
+        } else if char_eq_p(string_ref_i64(car(params), 0i64), '^') {
+            // A function where the family takes one (C173), of its kind.
+            fun_of_kind(v, tvars, car(args), binder_kind(car(params)), written_binder(car(params)))
         } else if char_eq_p(string_ref_i64(car(params), 0i64), '~') {
             // An effect argument (C46): a row, its atoms, and `~!`, which
             // says the procedures there are of an effect binder's, and so
@@ -5200,69 +6299,25 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
             let tagcase_ = car(find_alias(name, cv_aliases(v)));
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
-                    if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
-                        match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
+                    if (null_p(ps) && head_is_p(body, str_lit("dlambda"))) {
+                        fun_applied_checked(v, name, parse_fun(v, tvars, sym(name, str_lit(""), 0i64)), args_of_fun(v, tvars, parse_fun(v, tvars, sym(name, str_lit(""), 0i64)), args))
                     } else {
-                        substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
-                            string_append(str_lit("%place "), p)
-                        }), concat(map(lambda1s(move |p: Str| {
-                            if has_prefix_p(p, str_lit("'")) {
-                                the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
-                            } else {
-                                nil::<Str>()
-                            }
-                        }), ps))), onto(ps, expanding(tvars)))), body))
+                        if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
+                            match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
+                        } else {
+                            substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
+                                string_append(str_lit("%place "), p)
+                            }), concat(map(lambda1s(move |p: Str| {
+                                if has_prefix_p(p, str_lit("'")) {
+                                    the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }), ps))), onto(ps, expanding(tvars)))), body))
+                        }
                     }
                 }
             }
-        }
-    }
-}
-
-/// A family's parameters, from its head `(name (p kind) ...)`: a type's
-/// named as written, a region's with `'` first; none for a bare name.
-pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            map(lambda1s(move |b: &'static Sexp| {
-                let b = items(b);
-                if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
-                    // A region within a place, `(r region p)` (C40).
-                    string_append(str_lit("'"), name_of(v, car(b)))
-                } else if not(i64_eq(size(b), 2i64)) {
-                    match refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
-                } else if sym_is_p(second(b), str_lit("type")) {
-                    name_of(v, car(b))
-                } else if sym_is_p(second(b), str_lit("region")) {
-                    string_append(str_lit("'"), name_of(v, car(b)))
-                } else if sym_is_p(second(b), str_lit("place")) {
-                    string_append(str_lit("'"), name_of(v, car(b)))
-                } else if sym_is_p(second(b), str_lit("effect")) {
-                    string_append(str_lit("~"), name_of(v, car(b)))
-                } else {
-                    match refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
-                }
-            }), cdr(xs))
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<Str>()
-        }
-    }
-}
-
-/// A type's name as its own Rust scope writes it: `m t` and `m..t` are `t`.
-pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
-    loop {
-        if null_p(cs) {
-            return rev_to_string(acc);
-        } else if (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '.')) {
-            (cs, acc) = (cdr(cs), nil::<char>());
-            continue;
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
         }
     }
 }
@@ -5276,7 +6331,7 @@ pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () 
     let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1s(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1s(move |n: Str| {
-        if (has_prefix_p(n, str_lit("'")) || has_prefix_p(n, str_lit("~")) || has_prefix_p(n, str_lit("#"))) {
+        if (has_prefix_p(n, str_lit("'")) || has_prefix_p(n, str_lit("~")) || has_prefix_p(n, str_lit("#")) || has_prefix_p(n, str_lit("^"))) {
             nil::<Str>()
         } else {
             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
@@ -5323,6 +6378,9 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 string_append(str_lit("~"), name_of(v, car(b)))
             } else if sym_is_p(second(b), str_lit("size")) {
                 string_append(str_lit("#"), name_of(v, car(b)))
+            } else if head_is_p(second(b), str_lit("=>")) {
+                // A function, of arrow kind (C173).
+                binder_named(kind_text(v, second(b)), name_of(v, car(b)))
             } else {
                 match refuse(v, string_append(str_lit("KFX's poly is over types, effects, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
@@ -5544,9 +6602,28 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             if has_prefix_p(d, str_lit("%module ")) {
                 // A module type, by its abbreviation's name (C166).
                 after_prefix(d, str_lit("%module "))
-            } else if has_prefix_p(d, str_lit("mt@")) {
+            } else if (has_prefix_p(d, str_lit("mt@")) && null_p(args)) {
                 // A module type's own abstract type, by its name (C170).
                 after_dots(d)
+            } else if has_prefix_p(d, str_lit("mt@")) {
+                string_append(str_lit("("), string_append(after_dots(d), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
+            } else if has_prefix_p(d, str_lit("%fam ")) {
+                after_prefix(d, str_lit("%fam "))
+            } else if string_eq_p(d, str_lit("%dlambda")) {
+                string_append(str_lit("(dlambda ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
+            } else if string_eq_p(d, str_lit("%effect")) {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r) => {
+                        show_effs(es)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("?")
+                    }
+                }
+            } else if string_eq_p(d, str_lit("%app")) {
+                string_append(str_lit("("), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
             } else if (has_prefix_p(d, str_lit("$")) && null_p(args)) {
                 // A dependent parameter's type (C170).
                 string_append(str_lit("(select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), str_lit(")")))))
@@ -5722,11 +6799,11 @@ pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut te
 }
 
 pub fn before_body(text: Str) -> Str {
-    list_to_string(item_head(string_to_list(text), 2i64))
+    list_to_string(item_head(string_chars(text), 2i64))
 }
 
 pub fn after_body(text: Str) -> Str {
-    list_to_string(item_rest(string_to_list(text), 2i64))
+    list_to_string(item_rest(string_chars(text), 2i64))
 }
 
 pub fn show_mitem(s: &'static St, x: &'static Ty) -> Str {
@@ -5742,7 +6819,40 @@ pub fn show_mitem(s: &'static St, x: &'static Ty) -> Str {
             }
         }
     });
-    if string_eq_p(k, str_lit("%abs")) {
+    if (string_eq_p(k, str_lit("%abs")) && {
+        let tagcase_ = car(args);
+        match *tagcase_ {
+            Ty::TyData(r, a2) => {
+                (has_prefix_p(r, str_lit("%fam ")) && not(null_p(a2)))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        string_append(str_lit("(abs "), string_append(n, string_append(str_lit(" "), string_append({
+            let tagcase_ = car(args);
+            match *tagcase_ {
+                Ty::TyData(r, a2) => {
+                    let tagcase_ = car(a2);
+                    match *tagcase_ {
+                        Ty::TyData(kk, a3) => {
+                            kk
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("?")
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("?")
+                }
+            }
+        }, str_lit(")")))))
+    } else if string_eq_p(k, str_lit("%abs")) {
         string_append(str_lit("(abs "), string_append(n, str_lit(" type)")))
     } else if string_eq_p(k, str_lit("%edesc")) {
         string_append(str_lit("(desc "), string_append(n, string_append(str_lit(" "), string_append({
@@ -7512,6 +8622,14 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     if (string_eq_p(x, str_lit("%native")) && string_eq_p(y, str_lit("%fx"))) {
                         // A native procedure where one of any convention is (C116).
                         fits(v, s, car(xs), car(ys))
+                    } else if (string_eq_p(x, str_lit("%app")) || string_eq_p(y, str_lit("%app"))) {
+                        app_fits(v, s, a, e)
+                    } else if (string_eq_p(x, str_lit("%dlambda")) && string_eq_p(y, str_lit("%dlambda")) && i64_eq(size(xs), size(ys))) {
+                        // Two functions (C173): the same, their binders named alike.
+                        let b = substitute(poly_binders_of(ys), map(lambda1s(move |n: Str| {
+                            ty_var(n)
+                        }), poly_binders_of(xs)), poly_body(ys));
+                        fits(v, fits(v, s, poly_body(xs), b), b, poly_body(xs))
                     } else if (string_eq_p(x, str_lit("%mtype")) && string_eq_p(y, str_lit("%mtype"))) {
                         mtype_fits(v, kfx_restricted(v, s, str_lit("a module value, FX-26's first-class modules', which KFX has not yet (C170)")), a, e)
                     } else if (string_eq_p(x, str_lit("%mtype")) && has_prefix_p(y, str_lit("%module "))) {
@@ -7672,6 +8790,96 @@ pub fn fits_each(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut e
     }
 }
 
+/// A function's application where another is expected (C173): the same
+/// function to arguments the same (invariant), an unknown function solved
+/// to the other's; against a family or generative type applied, that
+/// type (first-order alone: Jones's, FX-91's).
+pub fn app_fits(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
+    let (ra, re) = (reduced(a), reduced(e));
+    if not((string_eq_p(show_ty(s, ra), show_ty(s, a)) && string_eq_p(show_ty(s, re), show_ty(s, e)))) {
+        fits(v, s, ra, re)
+    } else {
+        let (pa, pe) = (app_parts(a), app_parts(e));
+        if (not(null_p(pa)) && not(null_p(pe)) && i64_eq(size(pa), size(pe))) {
+            args_same(v, fun_same(v, s, a, e, car(pa), car(pe)), cdr(pa), cdr(pe))
+        } else {
+            match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected: a description function cannot be inferred where nothing here says what it is; use proj, or the")))))) {}
+        }
+    }
+}
+
+/// An application's function and arguments: of `%app`, or a family or
+/// generative type applied, `%fam` its function; none else.
+pub fn app_parts(t: &'static Ty) -> Tys {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%app")) {
+                args
+            } else if (has_prefix_p(d, str_lit("%")) || null_p(args)) {
+                nil::<&'static Ty>()
+            } else {
+                kayak_rt::heap_cons(ty_data(string_append(str_lit("%fam "), d), nil::<&'static Ty>()), args)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
+}
+
+pub fn fun_same(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty, f: &'static Ty, g: &'static Ty) -> &'static St {
+    let (wf, wg) = (walk(s, f), walk(s, g));
+    let tagcase_ = wf;
+    match *tagcase_ {
+        Ty::TyMeta(k) => {
+            let tagcase_ = wg;
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    if i64_eq(j, k) {
+                        s
+                    } else {
+                        solve(s, k, wg)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    solve(s, k, wg)
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            let tagcase_ = wg;
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    solve(s, j, wf)
+                }
+                _ => {
+                    let other = tagcase_;
+                    if string_eq_p(show_ty(s, wf), show_ty(s, wg)) {
+                        s
+                    } else {
+                        match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected")))))) {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn args_same(mut v: &'static Cv, mut s: &'static St, mut xs: Tys, mut ys: Tys) -> &'static St {
+    loop {
+        if null_p(xs) {
+            return s;
+        } else {
+            (s, xs, ys) = (fits(v, fits(v, s, car(xs), car(ys)), car(ys), car(xs)), cdr(xs), cdr(ys));
+            continue;
+        }
+    }
+}
+
 /// The module type a `define-type` of a moduleof names (C24), as a module
 /// value's is (C170).
 pub fn module_alias_type(v: &'static Cv, d: Str) -> &'static Ty {
@@ -7699,7 +8907,7 @@ pub fn mtype_fits(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty
         let tagcase_ = abs_ref(x);
         match *tagcase_ {
             Ty::TyData(n, args) => {
-                n
+                after_prefix_if(n, str_lit("%fam "))
             }
             _ => {
                 let other = tagcase_;
@@ -7708,17 +8916,25 @@ pub fn mtype_fits(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty
         }
     }), eabs);
     let tos = map(lambda1s(move |x: &'static Ty| {
-        mtype_provided(v, a, mitem_name(x))
+        mtype_provided(v, a, mitem_name(x), abs_ref(x))
     }), eabs);
-    let e2 = data_replaced(froms, tos, e);
+    let e1 = data_replaced(froms, tos, e);
+    let e2 = if has_app_p(e1) {
+        reduced(e1)
+    } else {
+        e1
+    };
     mitems_fit(v, s, a, filter(lambda1s(move |x: &'static Ty| {
         not(string_eq_p(mitem_kind(x), str_lit("%abs")))
     }), mtype_items(e2)))
 }
 
-pub fn mtype_provided(v: &'static Cv, a: &'static Ty, n: Str) -> &'static Ty {
-    let (ab, de) = (mtype_find(a, str_lit("%abs"), n), mtype_find(a, str_lit("%desc"), n));
-    if not(null_p(ab)) {
+/// What module type `a` gives for abstract type `n` that `want` names: of
+/// the same kind, a constructor of a constructor's (C173).
+pub fn mtype_provided(v: &'static Cv, a: &'static Ty, n: Str, want: &'static Ty) -> &'static Ty {
+    let ab = mtype_find(a, str_lit("%abs"), n);
+    let de = mtype_find(a, str_lit("%desc"), n);
+    let got = if not(null_p(ab)) {
         abs_ref(car(ab))
     } else if not(null_p(de)) {
         let tagcase_ = car(de);
@@ -7731,6 +8947,16 @@ pub fn mtype_provided(v: &'static Cv, a: &'static Ty, n: Str) -> &'static Ty {
                 ty_unit()
             }
         }
+    } else {
+        ty_unit()
+    };
+    let kind = fun_kind(v, want);
+    if ((not(null_p(ab)) || not(null_p(de))) && has_prefix_p(kind, str_lit("(=>")) && not(string_eq_p(fun_kind(v, got), kind))) {
+        match refuse(v, string_append(str_lit("a module whose type constructor "), string_append(n, string_append(str_lit(" is of another kind than "), kind)))) {}
+    } else if not(null_p(ab)) {
+        got
+    } else if not(null_p(de)) {
+        got
     } else {
         match refuse(v, string_append(str_lit("a module that gives no type "), n)) {}
     }

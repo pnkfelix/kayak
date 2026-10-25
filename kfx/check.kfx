@@ -183,7 +183,7 @@
             (else (cons (car cs) (chars-before-dots (cdr cs))))))))
 
 (define before-dots (subr kfx (string) string)
-  (lambda (x) "What precedes the first `..` of `x`." (list->string (chars-before-dots (string->list x)))))
+  (lambda (x) "What precedes the first `..` of `x`." (list->string (chars-before-dots (string-chars x)))))
 
 (define-rec
   (item-head (subr kfx ((listof char acyclic) i64) (listof char acyclic))
@@ -217,13 +217,13 @@
             (else (chars-with-replaced (cdr cs) from to tokens (cons (car cs) acc)))))))
 
 (define text-replaced (subr kfx (string string string) string)
-  (lambda (t from to) (list->string (chars-with-replaced (string->list t) (string->list from) (string->list to) #f nil))))
+  (lambda (t from to) (list->string (chars-with-replaced (string-chars t) (string-chars from) (string-chars to) #f nil))))
 
 (define token-replaced (subr kfx (string string string) string)
-  (lambda (t from to) (list->string (chars-with-replaced (string->list t) (string->list from) (string->list to) #t nil))))
+  (lambda (t from to) (list->string (chars-with-replaced (string-chars t) (string-chars from) (string-chars to) #t nil))))
 
 (define after-dots (subr kfx (string) string)
-  (lambda (x) "What follows the first `..` of `x`." (list->string (chars-after-dots (string->list x)))))
+  (lambda (x) "What follows the first `..` of `x`." (list->string (chars-after-dots (string-chars x)))))
 
 (define-rec
   (char-from? (subr kfx (string char i64 i64) bool)
@@ -355,6 +355,44 @@
      `Send + Sync` (C102)."
     (not (any? (lambda ((a string)) (not (crossing-atom? nil a))) es))))
 
+"An effect function's application, `(e r ...)` for `e` of kind `(=>
+ (region ...) effect)` (C173): an atom of its own, `~@E|r|...`, as an
+ effect variable's is."
+(define-rec
+  (bar-split (subr kfx ((listof char acyclic) (listof char acyclic) strings) strings)
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse (the strings (cons (list->string (reverse w)) acc))))
+            ((char=? (car cs) #\|) (bar-split (cdr cs) nil (the strings (cons (list->string (reverse w)) acc))))
+            (else (bar-split (cdr cs) (cons (car cs) w) acc))))))
+
+(define app-atom-parts (subr kfx (string) strings)
+  (lambda (x) "`~@E|r|...` as `E` and its regions." (bar-split (string-chars (after-prefix x "~@")) nil nil)))
+
+(define-rec
+  (bars-joined (subr kfx (strings) string)
+    (lambda (xs) (if (null? xs) "" (if (null? (cdr xs)) (car xs) (string-append (car xs) (string-append "|" (bars-joined (cdr xs)))))))))
+
+(define-rec
+  (chars-from-caret (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs) (cond ((null? cs) nil) ((char=? (car cs) #\^) (cdr cs)) (else (chars-from-caret (cdr cs))))))
+  (chars-to-at (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs) (if (or (null? cs) (char=? (car cs) #\@)) nil (cons (car cs) (chars-to-at (cdr cs)))))))
+
+(define bare-binder (subr kfx (string) string)
+  (lambda (n)
+    "A binder's name as written, its mark and where it was written left off
+     (C173: `^K^f`, `'r@P`)."
+    (let ((cs (string-chars n)))
+      (cond ((null? cs) n)
+            ((char=? (car cs) #\^) (list->string (chars-to-at (chars-from-caret (cdr cs)))))
+            ((or (char=? (car cs) #\') (char=? (car cs) #\#) (char=? (car cs) #\~)) (list->string (chars-to-at (cdr cs))))
+            ((char=? (car cs) #\@) n)
+            (else (list->string (chars-to-at cs)))))))
+
+(define-rec
+  (spaced-before (subr kfx (strings) string)
+    (lambda (xs) (if (null? xs) "" (string-append " " (string-append (car xs) (spaced-before (cdr xs))))))))
+
 (define-rec
   (atom-written (subr kfx (string) string)
     (lambda (x)
@@ -368,6 +406,9 @@
               ((region-atom? x)
                (string-append "(" (string-append (substring-of (atom-kind x) (i64- (string-length-i64 (atom-kind x)) 1))
                  (string-append " " (string-append (at (atom-kind x)) ")")))))
+              ((has-prefix? x "~@")
+               (let ((ps (app-atom-parts x)))
+                 (string-append "(" (string-append (bare-binder (car ps)) (string-append (spaced-before (map bare-binder (cdr ps))) ")")))))
               ((has-prefix? x "~") (after-prefix x "~"))
               (else x))))))
 
@@ -512,9 +553,22 @@
        type of `to` in its place."
       (tagcase t
         (ty-data (d args)
-          (if (null? args)
-              (let ((i (string-index d from 0))) (if (i64< i 0) t (ty-nth to i)))
-              (ty-data d (map (lambda ((x ty)) (data-replaced from to x)) args))))
+          (cond ((null? args)
+                 (let ((i (string-index d from 0))) (if (i64< i 0) t (ty-nth to i))))
+                ((and (has-prefix? d "%fam ") (not (i64< (string-index (after-prefix d "%fam ") from 0) 0)))
+                 "An abstract constructor's reference (C173), as what replaces its name."
+                 (tagcase (ty-nth to (string-index (after-prefix d "%fam ") from 0))
+                   (ty-data (n2 a2) (if (null? a2) (ty-data (string-append "%fam " n2) args) (ty-data n2 a2)))
+                   (else other (ty-nth to (string-index (after-prefix d "%fam ") from 0)))))
+                ((not (i64< (string-index d from 0) 0))
+                 "A constructor applied (C173): named anew, or what replaces it applied."
+                 (let ((r (ty-nth to (string-index d from 0))) (as (map (lambda ((x ty)) (data-replaced from to x)) args)))
+                   (tagcase r
+                     (ty-data (n2 a2) (cond ((null? a2) (ty-data n2 as))
+                                            ((has-prefix? n2 "%fam ") (ty-data (after-prefix n2 "%fam ") as))
+                                            (else (ty-data "%app" (cons r as)))))
+                     (else other (ty-data "%app" (cons r as))))))
+                (else (ty-data d (map (lambda ((x ty)) (data-replaced from to x)) args)))))
         (ty-list (e r) (ty-list (data-replaced from to e) r))
         (ty-ref (e r) (ty-ref (data-replaced from to e) r))
         (ty-flat (e r) (ty-flat (data-replaced from to e) r))
@@ -530,7 +584,10 @@
     (lambda (pre t)
       "The names of the types of no arguments in `t` that begin `pre`."
       (tagcase t
-        (ty-data (d args) (if (and (null? args) (has-prefix? d pre)) (the strings (list d)) (concat (map (lambda ((x ty)) (data-names-with pre x)) args))))
+        (ty-data (d args) (cond ((and (null? args) (has-prefix? d pre)) (the strings (list d)))
+                                ((has-prefix? d pre) (cons d (concat (map (lambda ((x ty)) (data-names-with pre x)) args))))
+                                ((has-prefix? d (string-append "%fam " pre)) (the strings (list (after-prefix d "%fam "))))
+                                (else (concat (map (lambda ((x ty)) (data-names-with pre x)) args)))))
         (ty-list (e r) (data-names-with pre e))
         (ty-ref (e r) (data-names-with pre e))
         (ty-flat (e r) (data-names-with pre e))
@@ -541,6 +598,9 @@
 
 (define data-renamed (subr kfx (strings strings ty) ty)
   (lambda (from to t) (data-replaced from (map (lambda ((n string)) (ty-data n nil)) to) t)))
+
+(define after-prefix-if (subr kfx (string string) string)
+  (lambda (x p) (if (has-prefix? x p) (after-prefix x p) x)))
 
 (define abs-ref (subr kfx (ty) ty)
   (lambda (x) (tagcase x (ty-data (d args) (if (null? args) x (car args))) (else other x))))
@@ -554,7 +614,7 @@
         t
         (let* ((refs (concat (map (lambda ((x ty))
                                         (if (string=? (mitem-kind x) "%abs")
-                                            (tagcase x (ty-data (d args) (tagcase (car args) (ty-data (r a2) (the strings (list r))) (else other nil))) (else other nil))
+                                            (tagcase x (ty-data (d args) (tagcase (car args) (ty-data (r a2) (the strings (list (if (has-prefix? r "%fam ") (after-prefix r "%fam ") r)))) (else other nil))) (else other nil))
                                             nil))
                                       (mtype-items t)))))
           (if (null? refs) t (data-renamed refs (map (lambda ((r string)) (string-append p (string-append ".." (after-dots r)))) refs) t))))))
@@ -594,6 +654,20 @@
 
 
 
+(define aliases-named (subr kfx (cv string) aliases)
+  (lambda (v n) (filter (lambda ((a alias)) (tagcase a (alias (m ps body) (string=? m n)))) (cv-aliases v))))
+
+(define-rec
+  (sexp-given (subr kfx (strings sexps sexp) sexp)
+    (lambda (names args e)
+      "`e`, each of `names` replaced by the argument in its place."
+      (tagcase e
+        (sym (n f p) (let ((i (string-index n names 0))) (if (i64< i 0) e (sexp-nth args i))))
+        (lst (xs f l p) (lst (map (lambda ((x sexp)) (sexp-given names args x)) xs) f l p))
+        (else other e))))
+  (sexp-nth (subr kfx (sexps i64) sexp)
+    (lambda (xs i) (if (i64= i 0) (car xs) (sexp-nth (cdr xs) (i64- i 1))))))
+
 (define-rec
   (parse-effect (subr kfx (cv strings sexp) strings)
     (lambda (v tvars e)
@@ -631,6 +705,21 @@
                  (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
                 ((and (i64= (size xs) 2) (any? (lambda ((k string)) (sym-is? (car xs) k)) region-kinds))
                  (list (string-append (name-of v (car xs)) (string-append ":" (region-name v tvars (second xs))))))
+                ((tagcase (car xs) (sym (n f p) (not (null? (filter (lambda ((t string)) (and (has-prefix? t "^") (string=? (bare-binder t) n))) tvars)))) (else other #f))
+                 "An effect function, a variable, applied (C173): an atom of its own."
+                 (let ((b (car (filter (lambda ((t string)) (and (has-prefix? t "^") (string=? (bare-binder t) (sym-name (car xs))))) tvars))))
+                   (list (string-append "~@" (bars-joined (cons b (map (lambda ((r sexp)) (region-name v tvars r)) (cdr xs))))))))
+                ((tagcase (car xs)
+                   (sym (n f p) (let ((a (aliases-named v n))) (and (not (null? a)) (tagcase (car a) (alias (m ps body) (and (null? ps) (head-is? body "dlambda")))))))
+                   (else other #f))
+                 "An abbreviation of an effect function applied (C173): its body, its
+                  parameters what it is given."
+                 (tagcase (car (aliases-named v (sym-name (car xs))))
+                   (alias (m ps body)
+                     (let ((bs (map (lambda ((b sexp)) (sym-name (car (items b)))) (items (second (items body))))))
+                       (if (not (i64= (size bs) (size (cdr xs))))
+                           (refuse v (string-append "`" (string-append m (string-append "` takes " (string-append (i64->string (size bs)) " description(s)")))))
+                           (parse-effect v tvars (sexp-given bs (cdr xs) (third (items body)))))))))
                 (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
         (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
   (parse-effects (subr kfx (cv strings sexps) strings)
@@ -641,7 +730,10 @@
   (lambda (es from to)
     "Effect atoms on region `from` made atoms on region `to`."
     (map (lambda ((x string))
-           (cond ((and (region-atom? x) (string=? (atom-region x) from)) (string-append (atom-kind x) to))
+           (cond ((has-prefix? x "~@")
+                  (let ((ps (app-atom-parts x)))
+                    (string-append "~@" (bars-joined (cons (car ps) (map (lambda ((r string)) (if (string=? r from) to r)) (cdr ps)))))))
+                 ((and (region-atom? x) (string=? (atom-region x) from)) (string-append (atom-kind x) to))
                  ((and (has-prefix? from "~") (string=? x from)) (if (has-prefix? to "~") to (string-append "~" to)))
                  (else x)))
          es)))
@@ -659,6 +751,13 @@
      row of its atoms, held as a procedure's latent effect."
     (ty-proc atoms nil (ty-unit))))
 
+(define-rec
+  (fun-binders (subr kfx (tys) strings)
+    (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (tagcase (car xs) (ty-var (n) n) (else other "")) (fun-binders (cdr xs))))))
+  (atoms-given (subr kfx (strings strings strings) strings)
+    (lambda (bs rs atoms)
+      (if (or (null? bs) (null? rs)) atoms (atoms-given (cdr bs) (cdr rs) (rename-atoms atoms (car bs) (car rs)))))))
+
 (define rename-region (subr kfx (strings string ty) strings)
   (lambda (es name m)
     "Effects on region `name`, made effects on the region `m` stands for."
@@ -669,6 +768,17 @@
       (ty-proc (as ps r)
         "An effect binder given an effect, a row (C46): its atoms in its place."
         (if (string-member? name es) (effs-union as (remove-atom name es)) es))
+      (ty-data (d xs)
+        (if (and (string=? d "%dlambda") (has-prefix? name "^"))
+            ;; An effect function given a function (C173): each application of it
+            ;; what that function gives, at the regions it is given.
+            (concat (map (lambda ((x string))
+                           (let ((ps (if (has-prefix? x "~@") (app-atom-parts x) nil)))
+                             (if (and (not (null? ps)) (string=? (car ps) name))
+                                 (atoms-given (fun-binders xs) (cdr ps) (tagcase (last xs) (ty-data (k a) (tagcase (car a) (ty-proc (es2 ps2 r2) es2) (else other nil))) (else other nil)))
+                                 (the strings (list x)))))
+                         es))
+            es))
       (else other es))))
 
 (define meta-name (subr kfx (i64) string)
@@ -701,8 +811,34 @@
           (fold-renames (cdr names) pos
                         (replace-var (car names) (ty-var (string-append (car names) (string-append "@" (i64->string pos)))) t))))))
 
+(define-rec
+  (caret-kind (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs) (if (or (null? cs) (char=? (car cs) #\^)) nil (cons (car cs) (caret-kind (cdr cs))))))
+  (after-caret (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs) (cond ((null? cs) nil) ((char=? (car cs) #\^) (cdr cs)) (else (after-caret (cdr cs)))))))
+
 (define binder-kind (subr kfx (string) string)
-  (lambda (n) (cond ((has-prefix? n "'") "region") ((has-prefix? n "#") "size") (else "type"))))
+  (lambda (n)
+    "A binder's kind, from its mark: `'r` a region, `#n` a size, `~e` an
+     effect, `^K^f` of arrow kind `K` (C173), a type's none."
+    (cond ((has-prefix? n "'") "region") ((has-prefix? n "#") "size") ((has-prefix? n "~") "effect")
+          ((has-prefix? n "^") (list->string (caret-kind (cdr (string-chars n)))))
+          (else "type"))))
+
+(define binder-named (subr kfx (string string) string)
+  (lambda (kind n)
+    "A binder `n` of `kind`, marked as `binder-kind` reads it (C173)."
+    (cond ((or (string=? kind "region") (string=? kind "place")) (string-append "'" n))
+          ((string=? kind "size") (string-append "#" n))
+          ((string=? kind "effect") (string-append "~" n))
+          ((string=? kind "type") n)
+          (else (string-append "^" (string-append kind (string-append "^" n)))))))
+
+(define arrow-binder (subr kfx (strings string) string)
+  (lambda (tvars n)
+    "The binder of arrow kind named `n` in scope, or \"\"."
+    (let ((found (filter (lambda ((t string)) (and (has-prefix? t "^") (string=? (list->string (after-caret (cdr (string-chars t)))) n))) tvars)))
+      (if (null? found) "" (car found)))))
 
 (define all-regions? (subr kfx (strings) bool)
   (lambda (ns) (not (any? (lambda ((n string)) (not (has-prefix? n "'"))) ns))))
@@ -725,7 +861,10 @@
 (define written-binder (subr kfx (string) string)
   (lambda (n)
     "A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`."
-    (let ((cs (string-chars (cond ((has-prefix? n "'") (after-prefix n "'")) ((has-prefix? n "#") (after-prefix n "#")) (else n)))))
+    (let ((cs (string-chars (cond ((has-prefix? n "'") (after-prefix n "'")) ((has-prefix? n "#") (after-prefix n "#"))
+                                  ((has-prefix? n "~") (after-prefix n "~"))
+                                  ((has-prefix? n "^") (list->string (after-caret (cdr (string-chars n)))))
+                                  (else n)))))
       (list->string (taken-before cs #\@)))))
 
 (define substitute-each (subr kfx (strings tys ty) ty)
@@ -747,10 +886,63 @@
   (i64s-below (subr kfx (i64) (listof i64 acyclic))
     (lambda (n) (if (i64<= n 0) nil (cons (i64- n 1) (i64s-below (i64- n 1)))))))
 
+"Type functions (C173; Fixpt's `docs/fx26.md`, \"Higher kinds\"): a
+ `(ty-data \"%dlambda\" (binder ... body))`, FX-91's `dlambda`, its binders
+ as a poly's are; a family or generative type named, not applied,
+ `%fam NAME`; a variable of arrow kind applied, `(ty-data \"%app\" (f arg
+ ...))`, equal only to one of the same function to equal arguments. Applied
+ where the function is known: beta."
+(define fun-applied (subr kfx (ty tys) ty)
+  (lambda (f args)
+    (tagcase f
+      (ty-data (d xs)
+        (cond ((string=? d "%dlambda") (substitute (poly-binders-of xs) args (poly-body xs)))
+              ((string=? d "%fam listof") (ty-list (car args) (car (cdr args))))
+              ((string=? d "%fam pairof") (ty-data "%pairof" args))
+              ((has-prefix? d "%fam ") (ty-data (after-prefix d "%fam ") args))
+              (else (ty-data "%app" (cons f args)))))
+      (else other (ty-data "%app" (cons f args))))))
+
+(define-rec
+  (reduced (subr kfx (ty) ty)
+    (lambda (t)
+      "`t`, each application of a function known reduced (C173)."
+      (tagcase t
+        (ty-data (d args)
+          (cond ((null? args) t)
+                ((string=? d "%app")
+                 (let ((f (reduced (car args))) (as (map reduced (cdr args))))
+                   (if (tagcase f (ty-data (d2 a2) (or (string=? d2 "%dlambda") (has-prefix? d2 "%fam "))) (else other #f))
+                       (reduced (fun-applied f as))
+                       (ty-data "%app" (cons f as)))))
+                (else (ty-data d (map reduced args)))))
+        (ty-list (e r) (ty-list (reduced e) (reduced r)))
+        (ty-ref (e r) (ty-ref (reduced e) (reduced r)))
+        (ty-flat (e r) (ty-flat (reduced e) (reduced r)))
+        (ty-proc (es ps r) (ty-proc es (map reduced ps) (reduced r)))
+        (ty-shape (p ls ts) (ty-shape p ls (map reduced ts)))
+        (ty-tag (a h es r) (ty-tag (reduced a) (reduced h) es (reduced r)))
+        (else other t)))))
+
+(define-rec
+  (has-app? (subr kfx (ty) bool)
+    (lambda (t)
+      (tagcase t
+        (ty-data (d args) (or (string=? d "%app") (any? has-app? args)))
+        (ty-list (e r) (has-app? e))
+        (ty-ref (e r) (has-app? e))
+        (ty-flat (e r) (has-app? e))
+        (ty-proc (es ps r) (or (has-app? r) (any? has-app? ps)))
+        (ty-shape (p ls ts) (any? has-app? ts))
+        (ty-tag (a h es r) (or (has-app? a) (has-app? h)))
+        (else other #f)))))
+
 (define poly-instance (subr kfx (tys tys) ty)
   (lambda (args regions)
-    "A poly type's body, its binders given `regions` (C107)."
-    (substitute (poly-binders-of args) regions (poly-body args))))
+    "A poly type's body, its binders given `regions` (C107); an
+     application of a function given reduced (C173)."
+    (let ((t (substitute (poly-binders-of args) regions (poly-body args))))
+      (if (has-app? t) (reduced t) t))))
 
 (define-rec
   (binders-shown (subr kfx (strings) string)
@@ -763,9 +955,7 @@
 (define poly-written (subr kfx (tys) ty)
   (lambda (args)
     "A poly type's body, its binders as written, `'r` (C107)."
-    (poly-instance args (map (lambda ((n string)) (ty-var (cond ((has-prefix? n "'") (string-append "'" (written-binder n)))
-                                                                 ((has-prefix? n "#") (string-append "#" (written-binder n)))
-                                                                 (else (written-binder n)))))
+    (poly-instance args (map (lambda ((n string)) (ty-var (binder-named (binder-kind n) (written-binder n))))
                              (poly-binders-of args)))))
 
 "Types"
@@ -1359,7 +1549,9 @@
             (let ((n (sym-name (car xs))))
               (if (or (string-member? n logic-type-forms) (string-member? n logic-keywords)
                       (string-member? n logic-base-names) (string-member? n tvars)
-                      (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))
+                      (any? (lambda ((t string)) (and (has-prefix? t "^") (string=? (bare-binder t) n))) tvars)
+                      (not (null? (find-bind (string-append "%type " n) (cv-binds v))))
+                      (dt-named? n (cv-dts v)) (not (null? (aliases-named v n))))
                   ""
                   n))
             ""))
@@ -1392,7 +1584,8 @@
     (not (any? (lambda ((x sexp))
                  (let ((ys (tagcase x (lst (zs f l p) zs) (else other nil))))
                    (not (and (i64= (size ys) 3)
-                             (or (and (sym-is? (car ys) "abs") (sym-is? (third ys) "type"))
+                             (or (and (sym-is? (car ys) "abs") (sym-is? (third ys) "type")
+                                      (tagcase (second ys) (sym (n f p) #t) (lst (ns f l p) (not (any? (lambda ((z sexp)) (tagcase z (sym (m f2 p2) #f) (else other #t))) ns))) (else other #f)))
                                  (and (sym-is? (car ys) "desc") (tagcase (second ys) (sym (n f p) #t) (else other #f))
                                       (not (string-member? (logic-head (third ys)) (list "maxeff" "read" "write" "alloc" "init" "await" "send" "receive" "goto" "comefrom" "io")))
                                       (not (sym-is? (third ys) "pure")))
@@ -2004,6 +2197,14 @@
     (if (string-member? "%keep-names" tvars) (ty-data (string-append "%named " name) (cons t args)) t)))
 
 (define-rec
+  (bare-type-name (subr kfx (chars chars) string)
+    (lambda (cs acc)
+      "A type's name as its own Rust scope writes it: `m t` and `m..t` are `t`."
+      (cond ((null? cs) (rev->string acc))
+            ((or (char=? (car cs) #\space) (char=? (car cs) #\.)) (bare-type-name (cdr cs) nil))
+            (else (bare-type-name (cdr cs) (cons (car cs) acc)))))))
+
+(define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
       "`tvars`: the type variables in scope."
@@ -2136,6 +2337,7 @@
                                             (cond ((sym-is? k "region") (string-append "'" n))
                                                   ((sym-is? k "size") (string-append "#" n))
                                                   ((sym-is? k "type") n)
+                                                  ((head-is? k "=>") (binder-named (kind-text v k) n))
                                                   (else (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)"))))
                                           (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")))
                                     bs))
@@ -2220,6 +2422,25 @@
                        (ty-shape (sym-is? (car xs) "productof")
                                  (map (lambda ((f sexps)) (label-of (car f))) fields)
                                  (map (lambda ((f sexps)) (parse-type v tvars (second f))) fields))))))
+                ((tagcase (car xs) (sym (n f p) (not (string=? (arrow-binder tvars n) ""))) (else other #f))
+                 "A variable of arrow kind applied (C173): an application, equal only
+                  to one of it to equal arguments."
+                 (let ((f (arrow-binder tvars (sym-name (car xs)))))
+                   (fun-applied-checked v (sym-name (car xs)) (ty-var f) (args-of-fun v tvars (ty-var f) (cdr xs)))))
+                ((tagcase (car xs) (sym (n f p) (tagcase (bound-type v (string-append "%type " n)) (ty-data (d a) (or (has-prefix? d "%fam ") (string=? d "%dlambda"))) (else other #f))) (else other #f))
+                 "A constructor a module gives, applied (C173)."
+                 (let ((g (bound-type v (string-append "%type " (sym-name (car xs))))))
+                   (fun-applied-checked v (sym-name (car xs)) g (args-of-fun v tvars g (cdr xs)))))
+                ((and (tagcase (car xs) (lst (ys f l p) #t) (else other #f))
+                      (or (not (head-is? (car xs) "select"))
+                          (tagcase (second (items (car xs))) (sym (n f p) (mtype? (as-mtype v (bound-type v n)))) (else other #f))))
+                 "A function applied, `((dlambda ...) d ...)`, `((f d) e)` (C173)."
+                 (let ((f (parse-fun v tvars (car xs))))
+                   (fun-applied-checked v (show-sexp (car xs)) f (args-of-fun v tvars f (cdr xs)))))
+                ((sym-is? (car xs) "dlambda")
+                 (if (string-member? "%fun-ok" tvars)
+                     (parse-fun v tvars t)
+                     (refuse v (string-append "a description function, where a type is expected: it is applied, " (show-sexp t)))))
                 ((head-is? (car xs) "select")
                  "A module's family applied (C89): `((select m t) arg ...)`."
                  (let ((s (items (car xs))))
@@ -2291,7 +2512,22 @@
           nil
           (let* ((x (car its)) (ys (items x)) (hd (logic-head x))
                  (n (if (and (i64= (size ys) 3) (tagcase (second ys) (sym (m f p) #t) (else other #f))) (sym-name (second ys)) "")))
-            (cond ((and (string=? hd "abs") (i64= (size ys) 3) (sym-is? (third ys) "type"))
+            (cond ((and (string=? hd "abs") (i64= (size ys) 3) (tagcase (second ys) (sym (m f p) #t) (else other #f)) (head-is? (third ys) "=>"))
+                   "An abstract type constructor (C173), `(abs f (=> (k ...) type))`."
+                   (abs-constructor v tvars its id (sym-name (second ys)) (kind-text v (third ys))))
+                  ((and (string=? hd "abs") (i64= (size ys) 3)
+                        (tagcase (second ys) (lst (ns f l p) (and (not (null? ns)) (tagcase (car ns) (sym (m f2 p2) #t) (else other #f))
+                                                                  (not (null? (cdr ns))) (tagcase (second ns) (lst (zs f3 l3 p3) #t) (else other #f))))
+                                 (else other #f)))
+                   "`(abs (f (a type) ...) type)`, its parameters named (C173)."
+                   (if (not (sym-is? (third ys) "type"))
+                       (refuse v "an abstract type constructor is `(abs (f (name kind) …) type)`")
+                       (let ((ps (family-params v (second ys))))
+                         (if (any? (lambda ((b sexp)) (tagcase b (lst (zs f4 l4 p4) #f) (else other #t))) (cdr (items (second ys))))
+                             (refuse v "an abstract type constructor is `(abs (f (name kind) …) type)`")
+                             (abs-constructor v tvars its id (sym-name (car (items (second ys)))) (string-append "(=> (" (string-append (words-of (map binder-kind ps)) ") type)")))))))
+                  ((and (string=? hd "abs") (i64= (size ys) 3) (sym-is? (third ys) "type")
+                        (tagcase (second ys) (sym (m f p) #t) (lst (ns f l p) (not (any? (lambda ((z sexp)) (tagcase z (sym (m2 f2 p2) #f) (else other #t))) ns))) (else other #f)))
                    (let ((names (tagcase (second ys) (sym (m f p) (the strings (list m))) (lst (ns f l p) (map sym-name ns)) (else other nil))))
                      (onto (map (lambda ((m string)) (ty-data (string-append "%abs " m) (list (ty-data (string-append id (string-append ".." m)) nil)))) names)
                            (parse-moduleof (with-type-binds v (map (lambda ((m string)) (type-bind m (ty-data (string-append id (string-append ".." m)) nil))) names) nil)
@@ -2308,8 +2544,173 @@
                    (cons (ty-data (string-append "%val " n) (list (parse-type v tvars (third ys))))
                          (parse-moduleof v tvars (cdr its) id)))
                   (else (refuse v (string-append "a module type's item KFX does not have: " (show-sexp x)))))))))
+  (abs-constructor (subr kfx (cv strings sexps string string string) tys)
+    (lambda (v tvars its id f kind)
+      (let ((ref (ty-data (string-append "%fam " (string-append id (string-append ".." f))) (list (ty-data kind nil)))))
+        (cons (ty-data (string-append "%abs " f) (list ref))
+              (parse-moduleof (with-type-binds v (list (type-bind f ref)) nil) tvars (cdr its) id)))))
+  (family-params (subr kfx (cv sexp) strings)
+  (lambda (v head)
+    "A family's parameters, from its head `(name (p kind) ...)`: a type's
+     named as written, a region's with `'` first; none for a bare name."
+    (tagcase head
+      (lst (xs src-file src-line src-pos)
+        (map (lambda ((b sexp))
+               (let ((b (items b)))
+                 (cond ((and (i64= (size b) 3) (sym-is? (second b) "region") (not (sym-is? (third b) "distinct")))
+                        "A region within a place, `(r region p)` (C40)."
+                        (string-append "'" (name-of v (car b))))
+                       ((not (i64= (size b) 2))
+                        (refuse v (string-append "a variance mark, which KFX does not have (its families are invariant): "
+                                                 (show-sexp (lst b "" 0 0)))))
+                       ((sym-is? (second b) "type") (name-of v (car b)))
+                       ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
+                       ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
+                       ((sym-is? (second b) "effect") (string-append "~" (name-of v (car b))))
+                       ((head-is? (second b) "=>")
+                        "A function among a family's parameters (C173), invariant."
+                        (binder-named (kind-text v (second b)) (name-of v (car b))))
+                       (else (refuse v (string-append "a family over a kind KFX does not have: "
+                                                      (show-sexp (lst b "" 0 0))))))))
+             (cdr xs)))
+      (else other nil))))
+
   (parse-types (subr kfx (cv strings sexps) tys)
     (lambda (v tvars ts) (map (lambda ((t sexp)) (parse-type v tvars t)) ts)))
+  (kind-text (subr kfx (cv sexp) string)
+    (lambda (v k)
+      "A kind as written: `type`, `region`, `place`, `effect`, `size`, or an
+       arrow `(=> (kind ...) kind)` (C173), canonical."
+      (let ((usage "a kind is `region`, `place`, `effect`, `type`, `data`, `sendable`, `flat`, `size`, `conv` or `(=> (kind …) kind)`"))
+        (tagcase k
+          (sym (n f p) (if (string-member? n (list "type" "region" "place" "effect" "size")) n (refuse v usage)))
+          (lst (xs f l p)
+            (if (and (i64= (size xs) 3) (sym-is? (car xs) "=>") (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                (let ((ps (map (lambda ((x sexp)) (kind-text v x)) (items (second xs)))) (r (kind-text v (third xs))))
+                  (cond ((and (string=? r "effect") (any? (lambda ((q string)) (not (string-member? q (list "region" "place" "effect" "size")))) ps))
+                         (refuse v "a description function to an effect takes regions, places, effects, sizes and conventions"))
+                        ((any? (lambda ((q string)) (string=? q "effect")) ps)
+                         (refuse v "a description function given an effect, which kayak's checker has not yet (C173)"))
+                        ((not (or (string=? r "type") (string=? r "effect")))
+                         (refuse v "a description function that gives a type or an effect, which kayak's checker has alone yet (C173)"))
+                        (else (string-append "(=> (" (string-append (words-of ps) (string-append ") " (string-append r ")")))))))
+                (refuse v usage)))
+          (else other (refuse v usage))))))
+  (kind-params (subr kfx (string) strings)
+    (lambda (k)
+      "An arrow kind's parameters' kinds."
+      (let ((xs (items (car (read-all (string-chars k) "" 1)))))
+        (map show-sexp (items (second xs))))))
+  (kind-result (subr kfx (string) string)
+    (lambda (k) (show-sexp (third (items (car (read-all (string-chars k) "" 1)))))))
+  (fun-kind (subr kfx (cv ty) string)
+    (lambda (v f)
+      "A function's kind (C173)."
+      (tagcase f
+        (ty-var (n) (binder-kind n))
+        (ty-data (d args)
+          (cond ((string=? d "%dlambda")
+                 (string-append "(=> (" (string-append (words-of (map binder-kind (poly-binders-of args)))
+                   (string-append ") " (string-append (tagcase (poly-body args) (ty-data (k a) (cond ((string=? k "%effect") "effect") ((string=? k "%dlambda") (fun-kind v (poly-body args))) (else "type"))) (else other "type")) ")")))))
+                ((string=? d "%fam listof") "(=> (type region) type)")
+                ((string=? d "%fam pairof") "(=> (type type region) type)")
+                ((and (has-prefix? d "%fam ") (not (null? args)))
+                 (tagcase (car args) (ty-data (kk a3) kk) (else other "?")))
+                ((has-prefix? d "%fam ")
+                 (let ((found (find-family (after-prefix d "%fam ") (cv-dts v))))
+                   (if (null? found) "?" (tagcase found (dt (n ps vs) (string-append "(=> (" (string-append (words-of (map binder-kind ps)) ") type)")))))))
+                (else "?")))
+        (else other "?"))))
+  (parse-fun (subr kfx (cv strings sexp) ty)
+    (lambda (v tvars e)
+      "A description function (C173): a variable of arrow kind; a `define-type`
+       with parameters, or of a `dlambda`; a family or generative type with
+       parameters, or `listof`, `pairof`, named; a `(dlambda ((x k) ...) d)`."
+      (tagcase e
+        (sym (n f p)
+          (cond ((not (string=? (arrow-binder tvars n) "")) (ty-var (arrow-binder tvars n)))
+                ((tagcase (bound-type v (string-append "%type " n)) (ty-data (d a) (or (has-prefix? d "%fam ") (string=? d "%dlambda"))) (else other #f))
+                 (bound-type v (string-append "%type " n)))
+                ((or (string=? n "listof") (string=? n "pairof")) (ty-data (string-append "%fam " n) nil))
+                ((not (null? (find-family n (cv-dts v))))
+                 (let ((fam (find-family n (cv-dts v))))
+                   (if (null? fam)
+                       (ty-unit)
+                       (tagcase fam (dt (m ps vs) (if (null? ps) (refuse v (string-append "`" (string-append n "` is not a description function"))) (ty-data (string-append "%fam " n) nil)))))))
+                ((not (null? (find-alias n (cv-aliases v))))
+                 (tagcase (car (find-alias n (cv-aliases v)))
+                   (alias (m ps body)
+                     (cond ((not (null? ps))
+                            (let* ((renamed (map (lambda ((q string)) (string-append q (string-append "@d" n))) ps))
+                                   (inner (parse-type v (onto (map (lambda ((q string)) (string-append "%place " q)) (filter (lambda ((q string)) (has-prefix? q "'")) ps))
+                                                             (onto ps (expanding tvars)))
+                                                      body)))
+                              (ty-data "%dlambda" (onto (map (lambda ((q string)) (ty-var q)) renamed) (list (substitute ps (map (lambda ((q string)) (ty-var q)) renamed) inner))))))
+                           ((head-is? body "dlambda") (parse-fun v tvars body))
+                           (else (refuse v (string-append "`" (string-append n "` is not a description function"))))))))
+                (else (refuse v (string-append "`" (string-append n "` is not a description function"))))))
+        (lst (xs f l p)
+          (cond ((and (sym-is? (car xs) "dlambda") (i64= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                 (let* ((pos (datum-pos e))
+                        (bs (map (lambda ((b sexp))
+                                   (let ((ys (items b)))
+                                     (if (and (i64= (size ys) 2) (tagcase (car ys) (sym (n f3 p3) #t) (else other #f)))
+                                         (binder-named (kind-text v (second ys)) (string-append (sym-name (car ys)) (string-append "@d" (i64->string pos))))
+                                         (refuse v "a dlambda's binder is `(name kind)`"))))
+                                 (items (second xs))))
+                        (plain (map (lambda ((b sexp)) (sym-name (car (items b)))) (items (second xs))))
+                        (scope (onto (map2 (lambda ((b string) (n string)) (binder-named (binder-kind b) n)) bs plain)
+                                     (onto (map (lambda ((b string)) (string-append "%place " (binder-named (binder-kind b) (written-binder b)))) (filter (lambda ((b string)) (has-prefix? b "'")) bs))
+                                           tvars)))
+                        (body (cond ((effect-written? v (third xs))
+                                     (ty-data "%effect" (list (ty-proc (parse-effect v scope (third xs)) nil (ty-unit)))))
+                                    ((head-is? (third xs) "dlambda") (parse-fun v scope (third xs)))
+                                    (else (parse-type v scope (third xs))))))
+                   (ty-data "%dlambda" (onto (map (lambda ((b string)) (ty-var b)) bs)
+                                             (list (substitute (map2 (lambda ((b string) (n string)) (binder-named (binder-kind b) n)) bs plain)
+                                                               (map (lambda ((b string)) (ty-var b)) bs)
+                                                               body))))))
+                ((and (sym-is? (car xs) "select") (i64= (size xs) 3)) (parse-type v tvars e))
+                (else
+                 (let ((h (parse-fun v tvars (car xs))))
+                   (fun-applied-checked v (show-sexp (car xs)) h (args-of-fun v tvars h (cdr xs)))))))
+        (else other (refuse v (string-append "a description function: " (show-sexp e)))))))
+  (fun-of-kind (subr kfx (cv strings sexp string string) ty)
+    (lambda (v tvars e kind name)
+      "A function given where one of `kind` is bound (C173)."
+      (let ((f (parse-fun v tvars e)))
+        (if (string=? (fun-kind v f) kind)
+            f
+            (refuse v (string-append "`" (string-append name (string-append "` is bound as a " (string-append kind ", and the description given is not one")))))))))
+  (parse-arg-of-kind (subr kfx (cv strings sexp string) ty)
+    (lambda (v tvars a kind)
+      "A description given a function: a region, a size, an effect, a
+       function, or a type, as it reads."
+      (cond ((or (string=? kind "region") (string=? kind "place")) (parse-region v tvars a))
+            ((string=? kind "size") (parse-size v tvars a))
+            (else (tagcase a
+                    (sym (n f p) (if (or (has-prefix? n "@") (string-member? (string-append "'" n) tvars)) (parse-region v tvars a) (parse-type v tvars a)))
+                    (else other (parse-type v tvars a)))))))
+  (args-of-fun (subr kfx (cv strings ty sexps) tys)
+    (lambda (v tvars f args)
+      "The descriptions given function `f`, each read as its kind says."
+      (let ((k (fun-kind v f)))
+        (args-by-kinds v tvars (if (has-prefix? k "(=>") (kind-params k) nil) args))))
+  (args-by-kinds (subr kfx (cv strings strings sexps) tys)
+    (lambda (v tvars ks args)
+      (if (null? args)
+          nil
+          (cons (cond ((null? ks) (parse-arg-of-kind v tvars (car args) ""))
+                      ((has-prefix? (car ks) "(=>") (fun-of-kind v tvars (car args) (car ks) (show-sexp (car args))))
+                      (else (parse-arg-of-kind v tvars (car args) (car ks))))
+                (args-by-kinds v tvars (if (null? ks) nil (cdr ks)) (cdr args))))))
+  (fun-applied-checked (subr kfx (cv string ty tys) ty)
+    (lambda (v name f args)
+      "Function `f` applied to `args`, as many as its kind says (C173)."
+      (let ((k (fun-kind v f)))
+        (if (and (has-prefix? k "(=>") (not (i64= (size (kind-params k)) (size args))))
+            (refuse v (string-append "`" (string-append name (string-append "` takes " (string-append (i64->string (size (kind-params k))) (string-append " description(s), and has " (i64->string (size args))))))))
+            (reduced (fun-applied f args))))))
   (dep-scope (subr kfx (cv strings sexps i64) cv)
     (lambda (v tvars ps i)
       "Where a procedure type's parameters after a module parameter named,
@@ -2349,6 +2750,9 @@
             ((or (null? params) (null? args)) (refuse v "a type given the wrong number of arguments"))
             (else
              (cons (cond ((char=? (string-ref-i64 (car params) 0) #\') (parse-region v tvars (car args)))
+                         ((char=? (string-ref-i64 (car params) 0) #\^)
+                          "A function where the family takes one (C173), of its kind."
+                          (fun-of-kind v tvars (car args) (binder-kind (car params)) (written-binder (car params))))
                          ((char=? (string-ref-i64 (car params) 0) #\~)
                           "An effect argument (C46): a row, its atoms, and `~!`, which
                            says the procedures there are of an effect binder's, and so
@@ -2385,6 +2789,9 @@
             (tagcase found (dt (n ps vs) (ty-data name (parse-arguments v tvars ps args))))
             (tagcase (car (find-alias name (cv-aliases v)))
               (alias (n ps body)
+                (if (and (null? ps) (head-is? body "dlambda"))
+                    ;; An abbreviation of a function, applied (C173).
+                    (fun-applied-checked v name (parse-fun v tvars (sym name "" 0)) (args-of-fun v tvars (parse-fun v tvars (sym name "" 0)) args))
                 (if (string-member? (string-append "%expanding " name) tvars)
                     (refuse v (string-append "a type abbreviation that mentions itself, " (string-append name
                               ": Rust's type aliases cannot; a datatype can")))
@@ -2393,38 +2800,7 @@
                                                     (onto (map (lambda ((p string)) (string-append "%place " p))
                                                                (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) ps)))
                                                           (onto ps (expanding tvars))))
-                                            body)))))))))))
-
-(define family-params (subr kfx (cv sexp) strings)
-  (lambda (v head)
-    "A family's parameters, from its head `(name (p kind) ...)`: a type's
-     named as written, a region's with `'` first; none for a bare name."
-    (tagcase head
-      (lst (xs src-file src-line src-pos)
-        (map (lambda ((b sexp))
-               (let ((b (items b)))
-                 (cond ((and (i64= (size b) 3) (sym-is? (second b) "region") (not (sym-is? (third b) "distinct")))
-                        "A region within a place, `(r region p)` (C40)."
-                        (string-append "'" (name-of v (car b))))
-                       ((not (i64= (size b) 2))
-                        (refuse v (string-append "a variance mark, which KFX does not have (its families are invariant): "
-                                                 (show-sexp (lst b "" 0 0)))))
-                       ((sym-is? (second b) "type") (name-of v (car b)))
-                       ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
-                       ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
-                       ((sym-is? (second b) "effect") (string-append "~" (name-of v (car b))))
-                       (else (refuse v (string-append "a family over a kind KFX does not have: "
-                                                      (show-sexp (lst b "" 0 0))))))))
-             (cdr xs)))
-      (else other nil))))
-
-(define-rec
-  (bare-type-name (subr kfx (chars chars) string)
-    (lambda (cs acc)
-      "A type's name as its own Rust scope writes it: `m t` and `m..t` are `t`."
-      (cond ((null? cs) (rev->string acc))
-            ((or (char=? (car cs) #\space) (char=? (car cs) #\.)) (bare-type-name (cdr cs) nil))
-            (else (bare-type-name (cdr cs) (cons (car cs) acc)))))))
+                                            body))))))))))))
 
 (define type-binders-apart (subr kfx (cv strings strings) unit)
   (lambda (v tvars types)
@@ -2435,7 +2811,7 @@
      an effect's, with `~`, which Rust does not see (C46)."
     (let ((reserved (rust-type-names))
           (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil))) types))
-          (tvars (concat (map (lambda ((n string)) (if (or (has-prefix? n "'") (has-prefix? n "~") (has-prefix? n "#")) nil (the strings (list n)))) tvars))))
+          (tvars (concat (map (lambda ((n string)) (if (or (has-prefix? n "'") (has-prefix? n "~") (has-prefix? n "#") (has-prefix? n "^")) nil (the strings (list n)))) tvars))))
       (begin
         (map (lambda ((n string))
                (cond ((not (kfx-name? n)) (refuse v (string-append "a type variable's name KFX's names are not (C27): " n)))
@@ -2470,6 +2846,9 @@
                        ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
                        ((sym-is? (second b) "effect") (string-append "~" (name-of v (car b))))
                        ((sym-is? (second b) "size") (string-append "#" (name-of v (car b))))
+                       ((head-is? (second b) "=>")
+                        "A function, of arrow kind (C173)."
+                        (binder-named (kind-text v (second b)) (name-of v (car b))))
                        (else (refuse v (string-append "KFX's poly is over types, effects, regions and places: " (show-sexp (lst b "" 0 0))))))))
              (items (second (items t))))))
           (begin
@@ -2570,7 +2949,13 @@
         (ty-list (e r) (string-append "(listof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-data (d args)
           (cond ((has-prefix? d "%module ") "A module type, by its abbreviation's name (C166)." (after-prefix d "%module "))
-                ((has-prefix? d "mt@") "A module type's own abstract type, by its name (C170)." (after-dots d))
+                ((and (has-prefix? d "mt@") (null? args)) "A module type's own abstract type, by its name (C170)." (after-dots d))
+                ((has-prefix? d "mt@") (string-append "(" (string-append (after-dots d) (string-append " " (string-append (show-tys s args) ")")))))
+                ((has-prefix? d "%fam ") (after-prefix d "%fam "))
+                ((string=? d "%dlambda")
+                 (string-append "(dlambda (" (string-append (binders-shown (poly-binders-of args)) (string-append ") " (string-append (show-ty s (poly-written args)) ")")))))
+                ((string=? d "%effect") (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")))
+                ((string=? d "%app") (string-append "(" (string-append (show-ty s (car args)) (string-append " " (string-append (show-tys s (cdr args)) ")")))))
                 ((and (has-prefix? d "$") (null? args)) "A dependent parameter's type (C170)." (string-append "(select " (string-append (before-dots d) (string-append " " (string-append (after-dots d) ")")))))
                 ((null? args) d)
                 ((string=? d "%mtype")
@@ -2648,13 +3033,15 @@
                               (else text))))
             (desc-named s (cdr descs) x text2)))))
   (before-body (subr kfx (string) string)
-    (lambda (text) (list->string (item-head (string->list text) 2))))
+    (lambda (text) (list->string (item-head (string-chars text) 2))))
   (after-body (subr kfx (string) string)
-    (lambda (text) (list->string (item-rest (string->list text) 2))))
+    (lambda (text) (list->string (item-rest (string-chars text) 2))))
   (show-mitem (subr kfx (st ty) string)
     (lambda (s x)
       (let ((k (mitem-kind x)) (n (mitem-name x)) (args (tagcase x (ty-data (d a) a) (else other nil))))
-        (cond ((string=? k "%abs") (string-append "(abs " (string-append n " type)")))
+        (cond ((and (string=? k "%abs") (tagcase (car args) (ty-data (r a2) (and (has-prefix? r "%fam ") (not (null? a2)))) (else other #f)))
+               (string-append "(abs " (string-append n (string-append " " (string-append (tagcase (car args) (ty-data (r a2) (tagcase (car a2) (ty-data (kk a3) kk) (else other "?"))) (else other "?")) ")")))))
+              ((string=? k "%abs") (string-append "(abs " (string-append n " type)")))
               ((string=? k "%edesc") (string-append "(desc " (string-append n (string-append " " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")) ")")))))
               (else (string-append "(" (string-append (after-prefix k "%") (string-append " " (string-append n (string-append " " (string-append (show-ty s (car args)) ")")))))))))))
   (show-specified (subr kfx (st string ty) string)
@@ -3318,6 +3705,11 @@
               (cond ((and (string=? x "%native") (string=? y "%fx"))
                      "A native procedure where one of any convention is (C116)."
                      (fits v s (car xs) (car ys)))
+                    ((or (string=? x "%app") (string=? y "%app")) (app-fits v s a e))
+                    ((and (string=? x "%dlambda") (string=? y "%dlambda") (i64= (size xs) (size ys)))
+                     "Two functions (C173): the same, their binders named alike."
+                     (let ((b (substitute (poly-binders-of ys) (map (lambda ((n string)) (ty-var n)) (poly-binders-of xs)) (poly-body ys))))
+                       (fits v (fits v s (poly-body xs) b) b (poly-body xs))))
                     ((and (string=? x "%mtype") (string=? y "%mtype")) (mtype-fits v (kfx-restricted v s "a module value, FX-26's first-class modules', which KFX has not yet (C170)") a e))
                     ((and (string=? x "%mtype") (has-prefix? y "%module ")) (mtype-fits v (kfx-restricted v s "a module value, FX-26's first-class modules', which KFX has not yet (C170)") a (module-alias-type v y)))
                     ((and (has-prefix? x "%module ") (string=? y "%mtype")) (mtype-fits v (kfx-restricted v s "a module value, FX-26's first-class modules', which KFX has not yet (C170)") (module-alias-type v x) e))
@@ -3381,6 +3773,45 @@
       (if (null? actuals)
           s
           (fits-each v (fits v s (car actuals) (car expecteds)) (cdr actuals) (cdr expecteds)))))
+  (app-fits (subr kfx (cv st ty ty) st)
+    (lambda (v s a e)
+      "A function's application where another is expected (C173): the same
+       function to arguments the same (invariant), an unknown function solved
+       to the other's; against a family or generative type applied, that
+       type (first-order alone: Jones's, FX-91's)."
+      (let ((ra (reduced a)) (re (reduced e)))
+        (if (not (and (string=? (show-ty s ra) (show-ty s a)) (string=? (show-ty s re) (show-ty s e))))
+            (fits v s ra re)
+            (let ((pa (app-parts a)) (pe (app-parts e)))
+              (cond ((and (not (null? pa)) (not (null? pe)) (i64= (size pa) (size pe)))
+                     (args-same v (fun-same v s a e (car pa) (car pe)) (cdr pa) (cdr pe)))
+                    (else (refuse-named v s (string-append "a " (string-append (show-ty s a) (string-append " is here, where a " (string-append (show-ty s e)
+                                                          " is expected: a description function cannot be inferred where nothing here says what it is; use proj, or the"))))))))))))
+  (app-parts (subr kfx (ty) tys)
+    (lambda (t)
+      "An application's function and arguments: of `%app`, or a family or
+       generative type applied, `%fam` its function; none else."
+      (tagcase t
+        (ty-data (d args)
+          (cond ((string=? d "%app") args)
+                ((or (has-prefix? d "%") (null? args)) nil)
+                (else (cons (ty-data (string-append "%fam " d) nil) args))))
+        (else other nil))))
+  (fun-same (subr kfx (cv st ty ty ty ty) st)
+    (lambda (v s a e f g)
+      (let ((wf (walk s f)) (wg (walk s g)))
+        (tagcase wf
+          (ty-meta (k) (tagcase wg (ty-meta (j) (if (i64= j k) s (solve s k wg))) (else other (solve s k wg))))
+          (else other
+            (tagcase wg
+              (ty-meta (j) (solve s j wf))
+              (else other
+                (if (string=? (show-ty s wf) (show-ty s wg))
+                    s
+                    (refuse-named v s (string-append "a " (string-append (show-ty s a) (string-append " is here, where a " (string-append (show-ty s e) " is expected")))))))))))))
+  (args-same (subr kfx (cv st tys tys) st)
+    (lambda (v s xs ys)
+      (if (null? xs) s (args-same v (fits v (fits v s (car xs) (car ys)) (car ys) (car xs)) (cdr xs) (cdr ys)))))
   (module-alias-type (subr kfx (cv string) ty)
     (lambda (v d)
       "The module type a `define-type` of a moduleof names (C24), as a module
@@ -3393,15 +3824,24 @@
        each abstract type `e` names given by `a`, abstract or described;
        each description the same; each value fitting; `a` may give more."
       (let* ((eabs (filter (lambda ((x ty)) (string=? (mitem-kind x) "%abs")) (mtype-items e)))
-             (froms (map (lambda ((x ty)) (tagcase (abs-ref x) (ty-data (n args) n) (else other ""))) eabs))
-             (tos (map (lambda ((x ty)) (mtype-provided v a (mitem-name x))) eabs))
-             (e2 (data-replaced froms tos e)))
+             (froms (map (lambda ((x ty)) (tagcase (abs-ref x) (ty-data (n args) (after-prefix-if n "%fam ")) (else other ""))) eabs))
+             (tos (map (lambda ((x ty)) (mtype-provided v a (mitem-name x) (abs-ref x))) eabs))
+             (e1 (data-replaced froms tos e))
+             (e2 (if (has-app? e1) (reduced e1) e1)))
         (mitems-fit v s a (filter (lambda ((x ty)) (not (string=? (mitem-kind x) "%abs"))) (mtype-items e2))))))
-  (mtype-provided (subr kfx (cv ty string) ty)
-    (lambda (v a n)
-      (let ((ab (mtype-find a "%abs" n)) (de (mtype-find a "%desc" n)))
-        (cond ((not (null? ab)) (abs-ref (car ab)))
-              ((not (null? de)) (tagcase (car de) (ty-data (d args) (car args)) (else other (ty-unit))))
+  (mtype-provided (subr kfx (cv ty string ty) ty)
+    (lambda (v a n want)
+      "What module type `a` gives for abstract type `n` that `want` names: of
+       the same kind, a constructor of a constructor's (C173)."
+      (let* ((ab (mtype-find a "%abs" n)) (de (mtype-find a "%desc" n))
+             (got (cond ((not (null? ab)) (abs-ref (car ab)))
+                        ((not (null? de)) (tagcase (car de) (ty-data (d args) (car args)) (else other (ty-unit))))
+                        (else (ty-unit))))
+             (kind (fun-kind v want)))
+        (cond ((and (or (not (null? ab)) (not (null? de))) (has-prefix? kind "(=>") (not (string=? (fun-kind v got) kind)))
+               (refuse v (string-append "a module whose type constructor " (string-append n (string-append " is of another kind than " kind)))))
+              ((not (null? ab)) got)
+              ((not (null? de)) got)
               (else (refuse v (string-append "a module that gives no type " n)))))))
   (mitems-fit (subr kfx (cv st ty tys) st)
     (lambda (v s a xs)

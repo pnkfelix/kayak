@@ -118,7 +118,7 @@
   (lambda (v written t)
     "A definition's type as printed: the checker's, each abbreviation its
      written type names by name (C164)."
-    (if (or (tagcase written (lst (xs f l p) (null? xs)) (else other #f)) (written-mentions? written (list "%found" "->*")))
+    (if (or (tagcase written (lst (xs f l p) (null? xs)) (else other #f)) (written-mentions? written (list "%found" "->*" "select" "moduleof" "dlambda")))
         (show-ty (new-state) t)
         (abbrevs-put (show-ty (new-state) t)
                      (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v written))) (written-body written)))))))
@@ -190,7 +190,7 @@
     (let ((w (tagcase form
                (lst (xs f l p) (if (and (not (null? xs)) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f))) (written-of (sym-name (car xs)) all) nil))
                (else other nil))))
-      (if (or (null? w) (written-mentions? (car w) (list "%found" "->*")))
+      (if (or (null? w) (written-mentions? (car w) (list "%found" "->*" "select" "moduleof" "dlambda")))
           shown
           (abbrevs-put shown (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v (car w)))) (written-body (car w)))))))))
 

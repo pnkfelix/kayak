@@ -4703,3 +4703,56 @@ After C165, for C170's module values.
   line, but those its own types shadow; `(define-type t (select m t))`
   names `m..t` `t`.
 - The same 263 to 270, differing 72 to 65.
+
+## C173. Higher kinds (2026-10-25)
+
+Fixpt's `docs/fx26.md`, "Higher kinds" (`docs/research/higher-kinds.md`,
+Path 1 and Path 2): binders, families' parameters, generative types'
+parameters and a module's abstract components of an arrow kind `(=> (k
+...) k)`; FX-91's `dlambda`; effect functions. FX-26's alone: the
+restriction pass refuses `=>` and `dlambda` (C24's traits are over
+types).
+- **Kinds**: `type`, `region`, `place`, `effect`, `size`, or an arrow, read
+  canonically; a binder of an arrow kind is named `^K^f` (its kind in its
+  name, `binder-kind` reads it back; printed `f`). A function to an
+  effect takes regions, places, effects and sizes; a function given an
+  effect, kayak's checker has not yet.
+- **Functions**: a variable of arrow kind; `(ty-data "%dlambda" (binder ...
+  body))`; a family, a generative type or `listof`/`pairof` named, not
+  applied, `%fam NAME`; a `define-type` with parameters, or of a `dlambda`,
+  as a `%dlambda`. **Applied** where known, beta (`fun-applied`, and
+  `reduced` after every substitution of a poly's binders); a variable
+  applied, `(ty-data "%app" (f arg ...))`, equal only to one of the same
+  function to arguments the same. Arity checked against the kind; at a
+  `proj`, the function's kind against the binder's (`kind-mismatch.fx`).
+- **Inference first-order only**: an application against an application
+  finds the function; against a family or generative type applied, that
+  type (`infer-generative.fx`); anything else asks for `proj`
+  (`cannot-infer.fx`). Two `dlambda`s are equal with their binders named
+  alike.
+- **Effect functions**: `(define-type rw (dlambda ((r region)) (maxeff
+  ...)))` applied in an effect is its body at the regions given; a
+  variable of kind `(=> (region) effect)` applied is an atom of its own,
+  `~@E|r`, printed `(e r)`, which instantiating the variable with a
+  function expands.
+- **Modules**: `(abs f (=> (type) type))` and `(abs (f (a type)) type)`,
+  an abstract constructor, `(ty-data "%fam ID..f" (KIND))`, applied
+  `(ID..f a)`, named for the module's binding as an abstract type is
+  (C170); a module value's `define-generative (stack (a type))`, one, its
+  conversions polymorphic; a module type with one kind of constructor
+  takes no module whose constructor is of another (`abs-kind-mismatch.fx`).
+- Fixes found on the way: a `(f a)` among a procedure type's parameters,
+  `f` a function, is no parameter named `f` (C162's rule); the plambda
+  escape rule looks at the metas that could carry a binder out (the type
+  expected, the locals), not every older one, which another plambda's
+  binder of the same name had solved; the printer does not read again a
+  written type with `select`, `moduleof` or `dlambda` (C164).
+- `regen.sh`'s memos went stale three times this round (generation 2 not
+  building): cleared, `rm -rf target/kfx-memos-*`, as C157 found; the
+  cause is not found yet. And Fixpt running the compiler (stage 0) is
+  stricter than kfx about a list's region: `(cons x acc)` where a list is
+  wanted needs `(the strings ...)`, and `string->list` gives a fresh
+  region where `string-chars` gives `acyclic`; kfx took both.
+- Refused 93 to 83, the same 270 to 276; K1 still 0. Left of higher
+  kinds: recursion through an application (`fix-through-pair.fx`), which
+  waits for `mu` (task 3).

@@ -1170,7 +1170,12 @@ pub mod expressions {
             match *tagcase_ {
                 Variant::Variant(tag, fields) => {
                     variant(tag, map(lambda1s(move |f: &'static Ty| {
-                        substitute(params, args, f)
+                        let u = substitute(params, args, f);
+                        if has_app_p(u) {
+                            reduced(u)
+                        } else {
+                            u
+                        }
                     }), fields))
                 }
             }
@@ -3021,6 +3026,15 @@ pub mod expressions {
             Ty::TyVar(n) => {
                 true
             }
+            Ty::TyData(d, args) => {
+                if (string_eq_p(d, str_lit("%dlambda")) || string_eq_p(d, str_lit("%poly"))) {
+                    false
+                } else {
+                    any_p(lambda1s(move |x: &'static Ty| {
+                        has_var_p(s, x)
+                    }), args)
+                }
+            }
             Ty::TyList(e, r) => {
                 (has_var_p(s, e) || has_var_p(s, r))
             }
@@ -3032,11 +3046,6 @@ pub mod expressions {
             }
             Ty::TyTag(a, h, d, r) => {
                 (has_var_p(s, a) || has_var_p(s, h) || has_var_p(s, r))
-            }
-            Ty::TyData(d, args) => {
-                any_p(lambda1s(move |x: &'static Ty| {
-                    has_var_p(s, x)
-                }), args)
             }
             Ty::TyShape(p, ls, ts) => {
                 any_p(lambda1s(move |x: &'static Ty| {
@@ -7107,6 +7116,8 @@ pub mod expressions {
                                         parse_region(v, cv_tvars(v), r)
                                     } else if has_prefix_p(b, str_lit("#")) {
                                         parse_size(v, cv_tvars(v), r)
+                                    } else if has_prefix_p(b, str_lit("^")) {
+                                        fun_of_kind(v, cv_tvars(v), r, binder_kind(b), written_binder(b))
                                     } else {
                                         parse_type(v, cv_tvars(v), r)
                                     }
@@ -7171,6 +7182,8 @@ pub mod expressions {
                                                     parse_region(v, cv_tvars(v), r)
                                                 } else if has_prefix_p(b, str_lit("#")) {
                                                     parse_size(v, cv_tvars(v), r)
+                                                } else if has_prefix_p(b, str_lit("^")) {
+                                                    fun_of_kind(v, cv_tvars(v), r, binder_kind(b), written_binder(b))
                                                 } else {
                                                     parse_type(v, cv_tvars(v), r)
                                                 }
@@ -7293,12 +7306,19 @@ pub mod expressions {
     pub fn projected(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps, mut t: &'static Ty) -> &'static Ty {
         loop {
             if null_p(tvars) {
-                return t;
+                if has_app_p(t) {
+                    return reduced(t);
+                } else {
+                    return t;
+                }
             } else {
                 (tvars, args, t) = (cdr(tvars), cdr(args), replace_var(car(tvars), if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
                     parse_region(v, cv_tvars(v), car(args))
                 } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '~') {
                     effect_row(kayak_rt::heap_cons(str_lit("~!"), parse_effect(v, cv_tvars(v), car(args))))
+                } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '^') {
+                    // A function where one of arrow kind is bound (C173).
+                    fun_of_kind(v, cv_tvars(v), car(args), binder_kind(car(tvars)), written_binder(car(tvars)))
                 } else {
                     parse_type(v, cv_tvars(v), car(args))
                 }, t));
@@ -7591,7 +7611,7 @@ pub mod expressions {
                     let tagcase_ = synth(v, s, car(arg));
                     match *tagcase_ {
                         Res::Res(a, es, s2) => {
-                            mtype_provided(v, as_mtype(v, walk(s2, a)), after_dots(n))
+                            mtype_provided(v, as_mtype(v, walk(s2, a)), after_dots(n), ty_unit())
                         }
                     }
                 }
@@ -8037,7 +8057,11 @@ pub mod expressions {
                     fs = cdr(fs);
                     continue;
                 } else if (string_eq_p(hd, str_lit("define-type")) && i64_eq(size(xs), 3i64) && not(string_eq_p(n, str_lit("")))) {
-                    let u = parse_type(v, tv, third(xs));
+                    let u = if head_is_p(third(xs), str_lit("dlambda")) {
+                        parse_fun(v, tv, third(xs))
+                    } else {
+                        parse_type(v, tv, third(xs))
+                    };
                     return more(with_type_binds(v, kayak_rt::heap_cons(type_bind(n, u), kayak_rt::nil()), nil::<&'static Effdef>()), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%desc "), n), kayak_rt::heap_cons(u, kayak_rt::nil())), kayak_rt::nil())));
                 } else if (string_eq_p(hd, str_lit("define-type")) && i64_eq(size(xs), 3i64)) {
                     let name = {
@@ -8052,7 +8076,40 @@ pub mod expressions {
                             }
                         }
                     };
-                    return more(with_alias(v, alias(name, family_params(v, second(xs)), third(xs))), nil::<&'static Ty>());
+                    let w = with_alias(v, alias(name, family_params(v, second(xs)), third(xs)));
+                    return more(w, the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%desc "), name), kayak_rt::heap_cons(parse_fun(w, tv, sym(name, str_lit(""), 0i64)), kayak_rt::nil())), kayak_rt::nil())));
+                } else if (string_eq_p(hd, str_lit("define-generative")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(hs, hf, hl, hp) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // A generative family in a module value (C173): an abstract type
+                    // constructor, its conversions polymorphic in its parameters.
+                    let name = sym_name(car(items(second(xs))));
+                    let ps = family_params(v, second(xs));
+                    let kind = string_append(str_lit("(=> ("), string_append(words_of(map(&binder_kind, ps)), str_lit(") type)")));
+                    let r#ref = ty_data(string_append(str_lit("%fam "), string_append(id, string_append(str_lit(".."), name))), kayak_rt::heap_cons(ty_data(kind, nil::<&'static Ty>()), kayak_rt::nil()));
+                    let bs = map(lambda1s(move |q: Str| {
+                        string_append(q, string_append(str_lit("@g"), name))
+                    }), ps);
+                    let app = ty_data(string_append(id, string_append(str_lit(".."), name)), map(lambda1s(move |q: Str| {
+                        ty_var(q)
+                    }), bs));
+                    let r = substitute(ps, map(lambda1s(move |q: Str| {
+                        ty_var(q)
+                    }), bs), parse_type(v, onto(ps, tv), third(xs)));
+                    return more(with_binds(with_type_binds(v, kayak_rt::heap_cons(type_bind(name, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), kayak_rt::heap_cons(local(v, string_append(str_lit("up-"), name), ty_data(str_lit("%poly"), onto(map(lambda1s(move |q: Str| {
+                        ty_var(q)
+                    }), bs), kayak_rt::heap_cons(ty_proc(nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), app), kayak_rt::nil())))), kayak_rt::heap_cons(local(v, string_append(str_lit("down-"), name), ty_data(str_lit("%poly"), onto(map(lambda1s(move |q: Str| {
+                        ty_var(q)
+                    }), bs), kayak_rt::heap_cons(ty_proc(nil::<Str>(), kayak_rt::heap_cons(app, kayak_rt::nil()), r), kayak_rt::nil())))), kayak_rt::nil()))), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%abs "), name), kayak_rt::heap_cons(r#ref, kayak_rt::nil())), kayak_rt::nil())));
                 } else if (string_eq_p(hd, str_lit("define-generative")) && i64_eq(size(xs), 3i64) && not(string_eq_p(n, str_lit("")))) {
                     let (r#ref, r) = (ty_data(string_append(id, string_append(str_lit(".."), n)), nil::<&'static Ty>()), parse_type(v, tv, third(xs)));
                     return more(with_binds(with_type_binds(v, kayak_rt::heap_cons(type_bind(n, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), kayak_rt::heap_cons(local(v, string_append(str_lit("up-"), n), ty_proc(nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), r#ref)), kayak_rt::heap_cons(local(v, string_append(str_lit("down-"), n), ty_proc(nil::<Str>(), kayak_rt::heap_cons(r#ref, kayak_rt::nil()), r)), kayak_rt::nil()))), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%abs "), n), kayak_rt::heap_cons(r#ref, kayak_rt::nil())), kayak_rt::nil())));
@@ -9559,6 +9616,8 @@ pub mod expressions {
                     string_append(str_lit("#"), n)
                 } else if sym_is_p(k, str_lit("type")) {
                     n
+                } else if head_is_p(k, str_lit("=>")) {
+                    binder_named(kind_text(v, k), n)
                 } else {
                     match refuse(v, str_lit("a plambda where a poly type is expected binds regions, types and sizes (C107)")) {}
                 }
@@ -9588,7 +9647,25 @@ pub mod expressions {
                         any_p(lambda1s(move |n: Str| {
                             mentions_p(s2, ty_meta(k), n)
                         }), names)
-                    }), i64s_below(before)) {
+                    }), filter(lambda1s(move |k: i64| {
+                        i64_lt(k, before)
+                    }), onto(metas_of(ty_data(str_lit("%poly"), args)), concat(map(lambda1s(move |b: &'static Bind| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                if string_eq_p(w, str_lit("local")) {
+                                    let tagcase_ = sc;
+                                    match *tagcase_ {
+                                        Scheme::Scheme(tv, u) => {
+                                            metas_of(u)
+                                        }
+                                    }
+                                } else {
+                                    nil::<i64>()
+                                }
+                            }
+                        }
+                    }), cv_binds(v)))))) {
                         match refuse(v, str_lit("a plambda's region escapes it, in a type found outside it")) {}
                     } else {
                         res(expected, es, s2)

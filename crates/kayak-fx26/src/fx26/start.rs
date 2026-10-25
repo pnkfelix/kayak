@@ -300,7 +300,7 @@ pub fn written_shown(v: &'static Cv, written: &'static Sexp, t: &'static Ty) -> 
                 false
             }
         }
-    } || written_mentions_p(written, kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::nil())))) {
+    } || written_mentions_p(written, kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::nil()))))))) {
         show_ty(new_state(), t)
     } else {
         abbrevs_put(show_ty(new_state(), t), abbrevs_in(parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(written_binders(v, written))), written_body(written))))
@@ -443,7 +443,7 @@ pub fn call_shown(v: &'static Cv, all: Sexps, form: &'static Sexp, shown: Str) -
             }
         }
     };
-    if (null_p(w) || written_mentions_p(car(w), kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::nil())))) {
+    if (null_p(w) || written_mentions_p(car(w), kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::nil()))))))) {
         shown
     } else {
         abbrevs_put(shown, abbrevs_in(parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(written_binders(v, car(w)))), written_body(car(w)))))

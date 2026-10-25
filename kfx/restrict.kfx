@@ -69,6 +69,8 @@
                        (restriction-refused f l "sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)"))
                       ((or (sym-is? (car xs) "vsubr") (sym-is? (car xs) "vlambda") (sym-is? (car xs) "apply"))
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
+                      ((or (sym-is? (car xs) "=>") (sym-is? (car xs) "dlambda"))
+                       (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)")))
                       ((sym-is? (car xs) "composable")
                        (restriction-refused f l "a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
                       ((and (sym-is? (car xs) "poly") (i64= (size xs) 3) (head-is? (third xs) "poly"))
