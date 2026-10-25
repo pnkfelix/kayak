@@ -70,7 +70,7 @@
           ((head-is? form "define-generative")
            (let ((n (binder-name (second (items form)))))
              (list (bound-line v (string-append "up-" n) no-form "pure") (bound-line v (string-append "down-" n) no-form "pure"))))
-          ((or (head-is? form "define-type") (head-is? form "define-effect"))
+          ((or (head-is? form "define-type") (head-is? form "define-effect") (head-is? form "define-convention"))
            nil)
           (else
            (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))

@@ -4259,3 +4259,27 @@ with an exponent: its digits times ten to its exponent, rounded once,
 where both are exact in an `f64` (digits up to 2^53, ten up to the
 22nd), which is every one Fixpt's programs write; past that, not read
 yet, said so (`1e400`). Refused 209 to 205.
+
+## C156. The checker: `list` as a value, `oneshot`, and other names FX-26 has (2026-10-24)
+
+Of the names Fixpt's programs use that kayak's checker had not, the
+small ones, each at Fixpt's type (`fixpt check` of the name alone):
+- `list` as a value, `(poly ((t type) (r region)) (vsubr (alloc r) t
+  (listof t r)))`; with it, a `vsubr` fitted its element and result
+  first, then its effect, and `apply`'s result fitted to what is expected
+  where it is, so that a region its procedure allocates at is solved
+  before its effect is asked. Made at `acyclic` (an allocation there, of
+  data frozen from its making, which nothing sees) is within any effect.
+- `call-with-oneshot-continuation`, and its continuation's type,
+  `(oneshot T A D R)`, as a composable one's (C60) in every rule.
+- `datum-int?`; `rmake-array`, `(rmake-array p n x)`, as `rcons` and
+  `rnew` are made, at a region within a place.
+- The engine's `--check` writes nothing of a `define-convention`, as
+  Fixpt writes nothing (it had checked it again as an expression).
+kfx's restriction pass refuses each of these, KFX having none of them
+yet (C154). Refused 205 to 192; the same 95 to 100.
+- **Not yet, found on the way**: an untyped definition of a `poly`
+  value, `(define f list)`, which Fixpt generalizes; `cwcc`, whose calls
+  Fixpt checks where they are, with a rule for its termination; the
+  `convention` form and the `cellular` convention; `letfreeze`, with
+  `(const p)` regions.

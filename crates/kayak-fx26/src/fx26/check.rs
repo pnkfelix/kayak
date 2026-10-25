@@ -2117,11 +2117,15 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         return ty_data(str_lit("%union"), members);
                     }
-                } else if (sym_is_p(car(xs), str_lit("composable")) && i64_eq(size(xs), 5i64)) {
+                } else if ((sym_is_p(car(xs), str_lit("composable")) || sym_is_p(car(xs), str_lit("oneshot"))) && i64_eq(size(xs), 5i64)) {
                     // FX-26's composable continuation (C60), `(composable T A D R)`: a
                     // procedure of `T` to `A`, of effect `D` and control on `R`. Its own
                     // type, below that procedure's; never Rust's (the restriction pass).
-                    return ty_data(str_lit("%composable"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, fourth(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))), kayak_rt::nil())))));
+                    return ty_data(if sym_is_p(car(xs), str_lit("oneshot")) {
+                        str_lit("%oneshot")
+                    } else {
+                        str_lit("%composable")
+                    }, kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, fourth(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))), kayak_rt::nil())))));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("moduleof")) {
@@ -2675,8 +2679,12 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                         }
                     }
                 }, string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
-            } else if string_eq_p(d, str_lit("%composable")) {
-                string_append(str_lit("(composable "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
+            } else if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
+                string_append(if string_eq_p(d, str_lit("%oneshot")) {
+                    str_lit("(oneshot ")
+                } else {
+                    str_lit("(composable ")
+                }, string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
                     let tagcase_ = car(cdr(cdr(args)));
                     match *tagcase_ {
                         Ty::TyProc(es, ps, r) => {
@@ -3358,7 +3366,7 @@ pub fn composable_as_proc(s: &'static St, t: &'static Ty) -> &'static Ty {
     let tagcase_ = t;
     match *tagcase_ {
         Ty::TyData(d, args) => {
-            if string_eq_p(d, str_lit("%composable")) {
+            if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
                 let r = region_string(s, car(cdr(cdr(cdr(args)))));
                 ty_proc(effs_union(kayak_rt::heap_cons(string_append(str_lit("goto:"), r), kayak_rt::heap_cons(string_append(str_lit("comefrom:"), r), kayak_rt::nil())), {
                     let tagcase_ = car(cdr(cdr(args)));
@@ -3629,6 +3637,11 @@ pub fn fit_expanded(mut s: &'static St, mut ax: Strings, mut e: Strings, mut es:
         } else {
             let x = resolve_atom(s, car(ax));
             if effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) {
+                ax = cdr(ax);
+                continue;
+            } else if string_eq_p(x, str_lit("alloc:acyclic")) {
+                // Made at `acyclic`, frozen from its making, which nothing sees
+                // (`list`'s `(alloc r)`, `r` acyclic): within any effect (C156).
                 ax = cdr(ax);
                 continue;
             } else if effect_meta_p(x) {
@@ -4063,7 +4076,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         fits(v, s, poly_body(xs), poly_instance(ys, map(lambda1s(move |n: Str| {
                             ty_var(n)
                         }), poly_binders_of(xs))))
-                    } else if string_eq_p(x, str_lit("%composable")) {
+                    } else if (string_eq_p(x, str_lit("%composable")) || string_eq_p(x, str_lit("%oneshot"))) {
                         // Its bound `D` the same both ways, as a tag's (C60).
                         let xd = {
                             let tagcase_ = car(cdr(cdr(xs)));
@@ -4095,13 +4108,17 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         } else {
                             fits(v, fits(v, fits(v, car(two), car(xs), car(ys)), car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(cdr(xs)))), car(cdr(cdr(cdr(ys)))))
                         }
+                    } else if string_eq_p(x, str_lit("%vsubr")) {
+                        // Its element and result first, then its effect, which they may solve
+                        // a region of: `list`'s `(alloc r)`, `r` acyclic, is pure (C156).
+                        fits(v, fits(v, fits(v, s, car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(xs))), car(cdr(cdr(ys)))), car(xs), car(ys))
                     } else {
                         fits_all(v, s, xs, ys)
                     }
                 }
                 Ty::TyProc(ees, eps, er) => {
                     // A composable continuation where a procedure is expected (C60).
-                    if string_eq_p(x, str_lit("%composable")) {
+                    if (string_eq_p(x, str_lit("%composable")) || string_eq_p(x, str_lit("%oneshot"))) {
                         fits(v, s, composable_as_proc(s, a), e)
                     } else {
                         mismatch(v, s, a, e)
@@ -4845,7 +4862,7 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                         }), kids) || any_p(lambda1s(move |k: &'static Ty| {
                             cyclic_walk(v, s, k, true, ts2)
                         }), args));
-                    } else if string_eq_p(d, str_lit("%composable")) {
+                    } else if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
                         return (cyclic_walk(v, s, car(args), true, ts) || any_p(lambda1s(move |k: &'static Ty| {
                             cyclic_walk(v, s, k, crossed, ts)
                         }), cdr(args)));

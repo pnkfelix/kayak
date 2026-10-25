@@ -117,7 +117,7 @@ pub fn form_lines(v: &'static Cv, form: &'static Sexp) -> Strings {
     } else if head_is_p(form, str_lit("define-generative")) {
         let n = binder_name(second(items(form)));
         kayak_rt::heap_cons(bound_line(v, string_append(str_lit("up-"), n), no_form(), str_lit("pure")), kayak_rt::heap_cons(bound_line(v, string_append(str_lit("down-"), n), no_form(), str_lit("pure")), kayak_rt::nil()))
-    } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect"))) {
+    } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect")) || head_is_p(form, str_lit("define-convention"))) {
         nil::<Str>()
     } else {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);

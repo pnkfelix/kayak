@@ -1087,11 +1087,11 @@
                           (refuse v (string-append "a union's member with no shape known (a type variable, an abstract or generative type, a tag): " (show-sexp t))))
                          ((repeated? shapes) (refuse v (string-append "a union of two members of one shape, which no test tells apart: " (show-sexp t))))
                          (else (ty-data "%union" members)))))
-                ((and (sym-is? (car xs) "composable") (i64= (size xs) 5))
+                ((and (or (sym-is? (car xs) "composable") (sym-is? (car xs) "oneshot")) (i64= (size xs) 5))
                  "FX-26's composable continuation (C60), `(composable T A D R)`: a
                   procedure of `T` to `A`, of effect `D` and control on `R`. Its own
                   type, below that procedure's; never Rust's (the restriction pass)."
-                 (ty-data "%composable" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
+                 (ty-data (if (sym-is? (car xs) "oneshot") "%oneshot" "%composable") (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
                                              (ty-proc (parse-effect v tvars (fourth xs)) nil (ty-unit))
                                              (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
                 ((sym-is? (car xs) "prompt-tag")
@@ -1378,8 +1378,8 @@
                 ((string=? d "%vsubr")
                  (string-append "(vsubr " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                    (string-append " " (string-append (show-tys s (cdr args)) ")")))))
-                ((string=? d "%composable")
-                 (string-append "(composable " (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
+                ((or (string=? d "%composable") (string=? d "%oneshot"))
+                 (string-append (if (string=? d "%oneshot") "(oneshot " "(composable ") (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
                    (string-append " " (string-append (tagcase (car (cdr (cdr args))) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                      (string-append " " (string-append (show-ty s (car (cdr (cdr (cdr args))))) ")")))))))))
                 ((string=? d "%flat-array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
@@ -1623,7 +1623,7 @@
        control on its region; any other type, itself."
       (tagcase t
         (ty-data (d args)
-          (if (string=? d "%composable")
+          (if (or (string=? d "%composable") (string=? d "%oneshot"))
               (let ((r (region-string s (car (cdr (cdr (cdr args)))))))
                 (ty-proc (effs-union (list (string-append "goto:" r) (string-append "comefrom:" r))
                                      (tagcase (car (cdr (cdr args))) (ty-proc (es ps x) es) (else other nil)))
@@ -1770,6 +1770,10 @@
           (list s)
           (let ((x (resolve-atom s (car ax))))
             (cond ((effs-within? (list x) es) (fit-expanded s (cdr ax) e es))
+                  ((string=? x "alloc:acyclic")
+                   "Made at `acyclic`, frozen from its making, which nothing sees
+                    (`list`'s `(alloc r)`, `r` acyclic): within any effect (C156)."
+                   (fit-expanded s (cdr ax) e es))
                   ((effect-meta? x)
                    "An effect variable of `a` not solved, that `e` does not hold:
                     nothing more, the least it may be."
@@ -1910,7 +1914,7 @@
                     ((string=? x "%poly")
                      "Two poly types (C107): the one's binders the other's, then their bodies."
                      (fits v s (poly-body xs) (poly-instance ys (map (lambda ((n string)) (ty-var n)) (poly-binders-of xs)))))
-                    ((string=? x "%composable")
+                    ((or (string=? x "%composable") (string=? x "%oneshot"))
                      "Its bound `D` the same both ways, as a tag's (C60)."
                      (let* ((xd (tagcase (car (cdr (cdr xs))) (ty-proc (es ps r) es) (else other nil)))
                             (yd (tagcase (car (cdr (cdr ys))) (ty-proc (es ps r) es) (else other nil)))
@@ -1919,10 +1923,14 @@
                            (mismatch v s a e)
                            (fits v (fits v (fits v (car two) (car xs) (car ys)) (car (cdr xs)) (car (cdr ys)))
                                  (car (cdr (cdr (cdr xs)))) (car (cdr (cdr (cdr ys))))))))
+                    ((string=? x "%vsubr")
+                     "Its element and result first, then its effect, which they may solve
+                      a region of: `list`'s `(alloc r)`, `r` acyclic, is pure (C156)."
+                     (fits v (fits v (fits v s (car (cdr xs)) (car (cdr ys))) (car (cdr (cdr xs))) (car (cdr (cdr ys)))) (car xs) (car ys)))
                     (else (fits-all v s xs ys))))
             (ty-proc (ees eps er)
               "A composable continuation where a procedure is expected (C60)."
-              (if (string=? x "%composable") (fits v s (composable-as-proc s a) e) (mismatch v s a e)))
+              (if (or (string=? x "%composable") (string=? x "%oneshot")) (fits v s (composable-as-proc s a) e) (mismatch v s a e)))
             (else other (mismatch v s a e))))
         (ty-var (x) (tagcase e (ty-var (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-proc (aes aps ar)
@@ -2277,7 +2285,7 @@
                                                  (dt (n ps vs) (concat (map (lambda ((x variant)) (tagcase x (variant (tag fs) fs))) vs)))))))))
                            (or (any? (lambda ((k ty)) (cyclic-walk v s k #f ts2)) kids)
                                (any? (lambda ((k ty)) (cyclic-walk v s k #t ts2)) args))))
-                        ((string=? d "%composable")
+                        ((or (string=? d "%composable") (string=? d "%oneshot"))
                          (or (cyclic-walk v s (car args) #t ts) (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) (cdr args))))
                         (else (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) args)))))
               (else other #f)))))))

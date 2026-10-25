@@ -2478,8 +2478,22 @@
           "`(rcons r x xs)`, `(rnew r v)`: made in the arena of the place `r`, at
            its region (FX-26 allows one within it, which KFX does not write yet).
            What is made is noted, for the arena's type."
-          (cond ((not (i64= (size args) (if (string=? h "rcons") 3 2)))
-                 (refuse v (string-append h (if (string=? h "rcons") " takes a place and two values" " takes a place and a value"))))
+          (cond ((not (i64= (size args) (if (string=? h "rnew") 2 3)))
+                 (refuse v (string-append h (cond ((string=? h "rcons") " takes a place and two values")
+                                                  ((string=? h "rmake-array") " takes a place, a length and a value")
+                                                  (else " takes a place and a value")))))
+                ((string=? h "rmake-array")
+                 "`(rmake-array p n x)`: an array of `n` of `x`, in a region within
+                  place `p` (Fixpt's `(poly ((p place) (r region p)) ...)`)."
+                 (let ((r (place-of v s (car args))))
+                   (tagcase (fresh s)
+                     (res (m es0 s)
+                       (let* ((at (region-within v s r expected))
+                              (made (ty-data "%array" (list m at)))
+                              (s (if (null? expected) s (fits v s made (car expected)))))
+                         (tagcase (call-args v s (cdr args) (list (ty-int) m) nil)
+                           (res (u es s)
+                             (res made (effs-union (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at))) es) s))))))))
                 (else
                  (let ((r (place-of v s (car args))))
                    (tagcase (fresh s)
@@ -2897,7 +2911,10 @@
                                        (res (car (cdr (cdr parts)))
                                             (effs-union (tagcase (car parts) (ty-proc (e ps x) e) (else other nil))
                                                         (effs-union (list (string-append "read:" (region-string s1 r))) (effs-union es0 es1)))
-                                            (fits v s1 el (car (cdr parts)))))
+                                            (let ((s2 (fits v s1 el (car (cdr parts)))))
+                                              "What is expected of it, fitted here, so that a region its
+                                               procedure's effect allocates at is known (C156)."
+                                              (if (null? expected) s2 (fits v s2 (car (cdr (cdr parts))) (car expected))))))
                                      (else other (refuse v "apply of a variadic procedure to no list")))))))
                          (else other (refuse v "apply of no variadic procedure"))))))
                   ((and (or (string=? h "null?") (string=? h "pair?")) (i64= (size args) 1) (not (null? found))
@@ -2978,7 +2995,7 @@
                   ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
                   ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
                   ((and (null? found) (string=? h "escape")) (escape-call v s args))
-                  ((and (null? found) (or (string=? h "rcons") (string=? h "rnew"))) (region-alloc-call v s h args expected))
+                  ((and (null? found) (or (string=? h "rcons") (string=? h "rnew") (string=? h "rmake-array"))) (region-alloc-call v s h args expected))
 
                   ((null? found)
                    (refuse v (string-append "nothing is named " h)))

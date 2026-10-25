@@ -5420,16 +5420,40 @@ pub mod expressions {
     /// its region (FX-26 allows one within it, which KFX does not write yet).
     /// What is made is noted, for the arena's type.
     pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
-        if not(i64_eq(size(args), if string_eq_p(h, str_lit("rcons")) {
-            3i64
-        } else {
+        if not(i64_eq(size(args), if string_eq_p(h, str_lit("rnew")) {
             2i64
+        } else {
+            3i64
         })) {
             match refuse(v, string_append(h, if string_eq_p(h, str_lit("rcons")) {
                 str_lit(" takes a place and two values")
+            } else if string_eq_p(h, str_lit("rmake-array")) {
+                str_lit(" takes a place, a length and a value")
             } else {
                 str_lit(" takes a place and a value")
             })) {}
+        } else if string_eq_p(h, str_lit("rmake-array")) {
+            // `(rmake-array p n x)`: an array of `n` of `x`, in a region within
+            // place `p` (Fixpt's `(poly ((p place) (r region p)) ...)`).
+            let r = place_of(v, s, car(args));
+            let tagcase_ = fresh(s);
+            match *tagcase_ {
+                Res::Res(m, es0, s) => {
+                    let at = region_within(v, s, r, expected);
+                    let made = ty_data(str_lit("%array"), kayak_rt::heap_cons(m, kayak_rt::heap_cons(at, kayak_rt::nil())));
+                    let s = if null_p(expected) {
+                        s
+                    } else {
+                        fits(v, s, made, car(expected))
+                    };
+                    let tagcase_ = call_args(v, s, cdr(args), kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(m, kayak_rt::nil())), nil::<i64>());
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            res(made, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())), es), s)
+                        }
+                    }
+                }
+            }
         } else {
             let r = place_of(v, s, car(args));
             let tagcase_ = fresh(s);
@@ -6343,7 +6367,16 @@ pub mod expressions {
                                                                 nil::<Str>()
                                                             }
                                                         }
-                                                    }, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s1, r)), kayak_rt::nil()), effs_union(es0, es1))), fits(v, s1, el, car(cdr(parts))));
+                                                    }, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s1, r)), kayak_rt::nil()), effs_union(es0, es1))), {
+                                                        let s2 = fits(v, s1, el, car(cdr(parts)));
+                                                        // What is expected of it, fitted here, so that a region its
+                                                        // procedure's effect allocates at is known (C156).
+                                                        if null_p(expected) {
+                                                            s2
+                                                        } else {
+                                                            fits(v, s2, car(cdr(cdr(parts))), car(expected))
+                                                        }
+                                                    });
                                                 }
                                                 _ => {
                                                     let other = tagcase_;
@@ -6552,7 +6585,7 @@ pub mod expressions {
                 return make_tag_call(v, s, args, expected);
             } else if (null_p(found) && string_eq_p(h, str_lit("escape"))) {
                 return escape_call(v, s, args);
-            } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")))) {
+            } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")) || string_eq_p(h, str_lit("rmake-array")))) {
                 return region_alloc_call(v, s, h, args, expected);
             } else if null_p(found) {
                 return match refuse(v, string_append(str_lit("nothing is named "), h)) {};
