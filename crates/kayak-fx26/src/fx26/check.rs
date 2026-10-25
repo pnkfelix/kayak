@@ -2976,6 +2976,67 @@ pub fn as_flat(t: &'static Ty) -> &'static Ty {
     }
 }
 
+// A lemma's binder and what it stands for, where it is used (C185).
+pub enum Lmatch {
+    Lmatch(Str, &'static Ty),
+}
+
+pub fn lmatch(f0: Str, f1: &'static Ty) -> &'static Lmatch {
+    kayak_rt::heap_alloc(Lmatch::Lmatch(f0, f1))
+}
+
+pub fn lemma_name(x: &'static Lmatch) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Lmatch::Lmatch(n, t) => {
+            n
+        }
+    }
+}
+
+pub fn lemma_value(x: &'static Lmatch) -> &'static Ty {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Lmatch::Lmatch(n, t) => {
+            t
+        }
+    }
+}
+
+pub fn lemma_bound(mut n: Str, mut m: List<&'static Lmatch>) -> Tys {
+    loop {
+        if null_p(m) {
+            return nil::<&'static Ty>();
+        } else if string_eq_p(lemma_name(car(m)), n) {
+            return the::<Tys>(kayak_rt::heap_cons(lemma_value(car(m)), kayak_rt::nil()));
+        } else {
+            m = cdr(m);
+            continue;
+        }
+    }
+}
+
+/// The lemmas in scope: each binding `%lemma NAME`.
+pub fn lemmas_of(mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil::<&'static Bind>();
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    has_prefix_p(n, str_lit("%lemma "))
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(bs), lemmas_of(cdr(bs)));
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
 pub enum Layout {
     Layout(i64, i64),
 }
@@ -9072,7 +9133,25 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    if (mu_p(a) || mu_p(e)) {
+    if (generative_p(v, walk(s, a)) && generative_p(v, walk(s, e)) && not(string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e)))) && not(null_p(lemma_for(v, s, walk(s, a), walk(s, e), lemmas_of(cv_binds(v)))))) {
+        // Two generative types a lemma relates (C185; Fixpt's `lemma.rs`): its
+        // hypotheses, instantiated to fit, each shown, assuming what is
+        // being shown (a fact), so that a lemma used in its own hypotheses
+        // ends.
+        let key = string_append(str_lit("%lemma-assumed "), string_append(show_ty(s, zonk(s, a)), string_append(str_lit(" <= "), show_ty(s, zonk(s, e)))));
+        if any_p(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(fl, p, w) => {
+                    string_eq_p(w, key)
+                }
+            }
+        }), st_facts(s)) {
+            s
+        } else {
+            fits_hyps(v, note_fact(s, str_lit("%lemma"), 0i64, key), car(lemma_for(v, s, walk(s, a), walk(s, e), lemmas_of(cv_binds(v)))))
+        }
+    } else if (mu_p(a) || mu_p(e)) {
         // A recursive type (C174): the pair assumed, then each unfolded once,
         // so that a cycle met again ends the comparison (Amadio and Cardelli).
         let key = string_append(str_lit("%mu-assumed "), string_append(show_ty(s, a), string_append(str_lit(" <= "), show_ty(s, e))));
@@ -9755,6 +9834,177 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                 s
             } else {
                 mismatch(v, s, a, e)
+            }
+        }
+    }
+}
+
+pub fn fits_hyps(mut v: &'static Cv, mut s: &'static St, mut hs: Tys) -> &'static St {
+    loop {
+        if (null_p(hs) || null_p(cdr(hs))) {
+            return s;
+        } else {
+            (s, hs) = (fits(v, s, car(hs), car(cdr(hs))), cdr(cdr(hs)));
+            continue;
+        }
+    }
+}
+
+/// The first lemma whose `A` and `B` fit `a` and `e`, its binders
+/// standing for what they meet: its hypotheses so instantiated, in a list
+/// of one; none if none fits.
+pub fn lemma_for(mut v: &'static Cv, mut s: &'static St, mut a: &'static Ty, mut e: &'static Ty, mut ls: Binds) -> List<Tys> {
+    loop {
+        if null_p(ls) {
+            return nil::<List<&'static Ty>>();
+        } else {
+            let tagcase_ = car(ls);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tvars, u) => {
+                            let tagcase_ = u;
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    let m1 = lemma_match(s, tvars, car(ps), a, nil::<&'static Lmatch>());
+                                    if null_p(m1) {
+                                        ls = cdr(ls);
+                                        continue;
+                                    } else {
+                                        let m2 = lemma_match(s, tvars, car(cdr(ps)), e, car(m1));
+                                        if (null_p(m2) || any_p(lambda1s(move |x: Str| {
+                                            null_p(lemma_bound(x, car(m2)))
+                                        }), tvars)) {
+                                            ls = cdr(ls);
+                                            continue;
+                                        } else {
+                                            let (names, vals) = (map(&lemma_name, car(m2)), map(&lemma_value, car(m2)));
+                                            return kayak_rt::heap_cons(map(lambda1s(move |h: &'static Ty| {
+                                                substitute(names, vals, h)
+                                            }), cdr(cdr(ps))), kayak_rt::nil());
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    ls = cdr(ls);
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `t` as `pat` with its binders `tvars` standing for something, added to
+/// `m`; none if not (Fixpt's `match_ty`, by the types' shapes, else
+/// equal).
+pub fn lemma_match(s: &'static St, tvars: Strings, pat: &'static Ty, t: &'static Ty, m: List<&'static Lmatch>) -> List<List<&'static Lmatch>> {
+    let t = walk(s, t);
+    let tagcase_ = pat;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            if string_member_p(n, tvars) {
+                let b = lemma_bound(n, m);
+                if null_p(b) {
+                    kayak_rt::heap_cons(kayak_rt::heap_cons(lmatch(n, t), m), kayak_rt::nil())
+                } else {
+                    if string_eq_p(show_ty(s, zonk(s, car(b))), show_ty(s, zonk(s, t))) {
+                        kayak_rt::heap_cons(m, kayak_rt::nil())
+                    } else {
+                        nil::<List<&'static Lmatch>>()
+                    }
+                }
+            } else {
+                if string_eq_p(show_ty(s, pat), show_ty(s, zonk(s, t))) {
+                    kayak_rt::heap_cons(m, kayak_rt::nil())
+                } else {
+                    nil::<List<&'static Lmatch>>()
+                }
+            }
+        }
+        Ty::TyData(d, xs) => {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyData(d2, ys) => {
+                    if (string_eq_p(d, d2) && i64_eq(size(xs), size(ys))) {
+                        lemma_match_all(s, tvars, xs, ys, m)
+                    } else {
+                        nil::<List<&'static Lmatch>>()
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<List<&'static Lmatch>>()
+                }
+            }
+        }
+        Ty::TyList(x, r) => {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyList(y, q) => {
+                    lemma_match_all(s, tvars, kayak_rt::heap_cons(x, kayak_rt::heap_cons(r, kayak_rt::nil())), kayak_rt::heap_cons(y, kayak_rt::heap_cons(q, kayak_rt::nil())), m)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<List<&'static Lmatch>>()
+                }
+            }
+        }
+        Ty::TyRef(x, r) => {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyRef(y, q) => {
+                    lemma_match_all(s, tvars, kayak_rt::heap_cons(x, kayak_rt::heap_cons(r, kayak_rt::nil())), kayak_rt::heap_cons(y, kayak_rt::heap_cons(q, kayak_rt::nil())), m)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<List<&'static Lmatch>>()
+                }
+            }
+        }
+        Ty::TyShape(p, ls, ts) => {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyShape(q, ms, us) => {
+                    if (((p && q) || (not(p) && not(q))) && strings_eq_p(ls, ms)) {
+                        lemma_match_all(s, tvars, ts, us, m)
+                    } else {
+                        nil::<List<&'static Lmatch>>()
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<List<&'static Lmatch>>()
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            if string_eq_p(show_ty(s, pat), show_ty(s, zonk(s, t))) {
+                kayak_rt::heap_cons(m, kayak_rt::nil())
+            } else {
+                nil::<List<&'static Lmatch>>()
+            }
+        }
+    }
+}
+
+pub fn lemma_match_all(mut s: &'static St, mut tvars: Strings, mut ps: Tys, mut ts: Tys, mut m: List<&'static Lmatch>) -> List<List<&'static Lmatch>> {
+    loop {
+        if (null_p(ps) || null_p(ts)) {
+            return kayak_rt::heap_cons(m, kayak_rt::nil());
+        } else {
+            let m1 = lemma_match(s, tvars, car(ps), car(ts), m);
+            if null_p(m1) {
+                return nil::<List<&'static Lmatch>>();
+            } else {
+                (ps, ts, m) = (cdr(ps), cdr(ts), car(m1));
+                continue;
             }
         }
     }

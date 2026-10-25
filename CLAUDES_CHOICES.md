@@ -5118,6 +5118,40 @@ list's alone, a pair of another tail only where one was expected (C68).
   `--slice 2` (a deadlock reported, Fixpt's run none), then agreed on
   four runs: a race in tier 1's time slicing, noted in TODO §30.
 - Refused 35 to 32, the same 337 to 340; K1 0.
+
+## C185. Lemmas (2026-10-25)
+
+Fixpt's `lemma.rs` and fx26.md, "Lemmas: proofs as erased identity
+coercions": a definition whose type is `(proves (<= A B))`, or `(proves
+(poly (binder ...) (<= A B) (<= X Y) ...))`, proves `A ≤ B` under its
+hypotheses; subtyping then uses it, so an invariant generative type
+widens, a non-regular one (`nest`) too, and one generative type stands
+for another of its shape. FX-26's: KFX refuses `proves` (its Rust's
+types have no subtyping to prove).
+- **Its type** (`proves-type`): `(subr spin ((subr spin (X) Y) ... A) B)`
+  under its `poly`, as Fixpt prints it; checked as any definition of that
+  type (`check-top` wraps `check-top-plain`), then **its proof**, ported
+  from Fixpt's `check_proof`, `rebuild` and `proof_coercion` over kayak's
+  expressions: a guarded structural identity, taking apart only what it
+  was given (a `tagcase` of the place given, each arm rebuilding its own
+  tag, its fields in order), applying a hypothesis or a proof only to
+  what was given at the same place, using itself only under a
+  constructor rebuilt, and given only hypotheses, proofs, or coercions
+  that rebuild. Each refusal says Fixpt's words, `this does not prove
+  ...: why`.
+- **Kept** as a binding `%lemma NAME`, its binders and `(A B X Y ...)`.
+- **Used** (`lemma-for`, `lemma-match`, Fixpt's `lemma_instances` and
+  `match_ty`) at the top of `fits-shapes`: where two generative types
+  meet, not already the same, a lemma whose sides fit them, binders bound
+  as they meet, its hypotheses instantiated and each fitted, the pair
+  assumed meanwhile (a fact). Fixpt tries its own rules first and a lemma
+  where they fail; kayak's `fits` has no try, so it takes the lemma first
+  where one applies: where Fixpt's rules would hold but the lemma's
+  hypotheses not, kayak refuses what Fixpt accepts, never the reverse.
+- All 11 of Fixpt's `lemmas/` programs as Fixpt says: `tree-up`, `cross`,
+  `nest` accepted, printed the same; the eight it refuses refused.
+  Refused 32 to 29, the same 340 to 343; K1 0. Test:
+  `tests/kfx-stricter/lemma.kfx`.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

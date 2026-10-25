@@ -137,6 +137,8 @@ pub mod restrictions {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
                 } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit("finite")) || head_is_p(third(xs), str_lit("+")) || head_is_p(third(xs), str_lit("-")))) {
                     match restriction_refused(f, l, str_lit("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {}
+                } else if (sym_is_p(car(xs), str_lit("proves")) && i64_eq(size(xs), 2i64)) {
+                    match restriction_refused(f, l, str_lit("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {}
                 } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit("i64")))) {
                     match restriction_refused(f, l, str_lit("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {}
                 } else if (sym_is_p(car(xs), str_lit("=>")) || sym_is_p(car(xs), str_lit("dlambda"))) {

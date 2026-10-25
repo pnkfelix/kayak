@@ -1287,10 +1287,12 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         nil::<Str>()
     } else if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
         let xs = items(form);
-        kayak_rt::heap_cons(bound_line(v, binder_name(second(xs)), if i64_eq(size(xs), 4i64) {
-            third(xs)
-        } else {
+        kayak_rt::heap_cons(bound_line(v, binder_name(second(xs)), if not(i64_eq(size(xs), 4i64)) {
             no_form()
+        } else if head_is_p(third(xs), str_lit("proves")) {
+            proves_type(v, third(xs))
+        } else {
+            third(xs)
         }, value_effect(v, binder_name(second(xs)), last(xs))), kayak_rt::nil())
     } else if head_is_p(form, str_lit("define-rec")) {
         map(lambda1s(move |g: &'static Sexp| {

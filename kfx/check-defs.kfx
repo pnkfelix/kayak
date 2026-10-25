@@ -834,7 +834,253 @@
                          (else nil)))
                  forms))))
 
-(define check-top (subr kfx (cv sexp) cv)
+"Lemmas (C185; Fixpt's `lemma.rs`, fx26.md \"Lemmas: proofs as erased
+ identity coercions\"): a definition whose type is `(proves (<= A B))`, or
+ `(proves (poly (binder ...) (<= A B) (<= X Y) ...))`, is a function from
+ a coercion per hypothesis and an `A` to a `B`, of effect `spin`; its body
+ must be a guarded structural identity; and its existence is the proof,
+ which subtyping then uses (`lemma-fits`, check.kfx). FX-26's: KFX's
+ restriction pass refuses `proves`."
+(define proves-parts (subr kfx (cv sexp) sexps)
+  (lambda (v t)
+    "Of `(proves P)`: its binders (a list, maybe empty), `A`, `B`, then each
+     hypothesis's two sides."
+    (let* ((p (if (i64= (size (items t)) 2) (second (items t)) (refuse v "(proves (<= A B))")))
+           (le? (lambda ((x sexp)) (and (head-is? x "<=") (i64= (size (items x)) 3))))
+           (poly (head-is? p "poly"))
+           (main (if poly (if (i64> (size (items p)) 2) (third (items p)) p) p))
+           (hyps (if poly (cdr (cdr (cdr (items p)))) nil)))
+      (if (or (not (le? main)) (any? (lambda ((h sexp)) (not (le? h))) hyps))
+          (refuse v "a lemma's proposition is `(<= A B)`, under a `poly` with its hypotheses `(<= X Y)` after it")
+          (cons (if poly (second (items p)) (lst nil "" 0 0))
+                (cons (second (items main)) (cons (third (items main))
+                      (concat (map (lambda ((h sexp)) (the sexps (list (second (items h)) (third (items h))))) hyps)))))))))
+
+(define-rec
+  (coercion-types (subr kfx (sexps) sexps)
+    (lambda (hs)
+      (if (or (null? hs) (null? (cdr hs))) nil
+          (cons (lst (list (sym "subr" "" 0) (sym "spin" "" 0) (lst (list (car hs)) "" 0 0) (second hs)) "" 0 0)
+                (coercion-types (cdr (cdr hs))))))))
+
+(define proves-type (subr kfx (cv sexp) sexp)
+  (lambda (v t)
+    "A lemma's type as a procedure's: `(subr spin ((subr spin (X) Y) ... A) B)`,
+     under its `poly`."
+    (let* ((ps (proves-parts v t))
+           (f (lst (list (sym "subr" "" 0) (sym "spin" "" 0)
+                         (lst (onto (coercion-types (cdr (cdr (cdr ps)))) (list (second ps))) "" 0 0)
+                         (third ps)) "" 0 0)))
+      (if (null? (items (car ps))) f (lst (list (sym "poly" "" 0) (car ps) f) "" 0 0)))))
+
+(define lemma-scheme (subr kfx (cv sexp) scheme)
+  (lambda (v t)
+    "A lemma as kept, a binding `%lemma NAME`: its binders, and
+     `(ty-proc nil (A B X Y ...) unit)`."
+    (let* ((ps (proves-parts v t))
+           (f (lst (list (sym "subr" "" 0) (sym "pure" "" 0) (lst (cdr ps) "" 0 0) (sym "unit" "" 0)) "" 0 0)))
+      (parse-scheme v (if (null? (items (car ps))) f (lst (list (sym "poly" "" 0) (car ps) f) "" 0 0))))))
+
+(define-datatype proof (proof string strings string))
+
+(define items-or-nil (subr kfx (sexp) sexps)
+  (lambda (e) (tagcase e (lst (xs f l p) xs) (else other nil))))
+
+(define-rec
+  (lemma-stripped (subr kfx (cv sexp) sexp)
+    (lambda (v e)
+      "`e` under `the`s and generative types' conversions, the identity."
+      (cond ((and (head-is? e "the") (i64= (size (items e)) 3)) (lemma-stripped v (third (items e))))
+            ((and (i64= (size (items-or-nil e)) 2) (names-conversion? v (car (items e)))) (lemma-stripped v (second (items e))))
+            (else e))))
+  (names-conversion? (subr kfx (cv sexp) bool)
+    (lambda (v f)
+      (let ((g (operator-of f)))
+        (and (or (has-prefix? g "up-") (has-prefix? g "down-"))
+             (not (null? (conversion-bind g (cv-binds v))))
+             (generative? v (ty-data (if (has-prefix? g "up-") (after-prefix g "up-") (after-prefix g "down-")) nil))))))
+  (operator-of (subr kfx (sexp) string)
+    (lambda (f)
+      (cond ((and (or (head-is? f "proj") (head-is? f "the")) (i64> (size (items f)) 1))
+             (operator-of (if (head-is? f "the") (third (items f)) (second (items f)))))
+            (else (tagcase f (sym (n p2 q) n) (else other ""))))))
+  (place-of (subr kfx (cv sexp) strings)
+    (lambda (v e)
+      "The place `e` names: a variable then the labels extracted, a list; or
+       none, the empty list."
+      (let ((x (lemma-stripped v e)))
+        (tagcase x
+          (sym (n f p) (the strings (list n)))
+          (else other
+            (if (and (head-is? x "extract") (i64= (size (items x)) 3))
+                (let ((inner (place-of v (second (items x)))))
+                  (if (null? inner) nil (onto inner (list (label-of (third (items x)))))))
+                nil)))))))
+
+(define generative-rep (subr kfx (cv ty) ty)
+  (lambda (v t)
+    "`t`, each generative type unfolded to its representation, as far as it
+     goes: its `down-` conversion's result at its arguments."
+    (tagcase t
+      (ty-data (d args)
+        (if (generative? v t)
+            (let ((found (conversion-bind (string-append "down-" d) (cv-binds v))))
+              (if (null? found) t
+                  (tagcase (car found)
+                    (bind (n sc w)
+                      (tagcase sc
+                        (scheme (tvars u)
+                          (tagcase u
+                            (ty-proc (es ps r) (substitute tvars args r))
+                            (else other t))))))))
+            t))
+      (else other t))))
+
+(define-rec
+  (proof-rebuilt (subr kfx (cv sexp strings ty bool proof) unit)
+    (lambda (v e at t guarded p)
+      "That `e` rebuilds, as the identity, what was given at place `at`, of
+       type `t`; `guarded` once something has been rebuilt above it (Fixpt's
+       `rebuild`)."
+      (tagcase p
+        (proof (me hyps want)
+          (let ((no (lambda ((why string)) (refuse v (string-append "this does not prove " (string-append want (string-append ": " why))))))
+                (x (lemma-stripped v e)))
+            (cond
+              ((strings=? (place-of v x) at) #u)
+              ((head-is? x "tagcase")
+               (let* ((xs (cdr (items x)))
+                      (view (generative-rep v t)))
+                 (if (not (strings=? (place-of v (car xs)) at))
+                     (no "a proof takes apart only what was given here")
+                     (tagcase view
+                       (ty-shape (q ls ts)
+                         (if q
+                             (no "what is given here is not a sum")
+                             (begin
+                               (map (lambda ((arm sexp))
+                                      (let* ((ys (items arm)) (tag (label-of (car ys))))
+                                        (if (string=? tag "else")
+                                            (let ((y (sym-name (second ys))))
+                                              (if (or (string=? y me) (string-member? y hyps))
+                                                  (no "a proof may not rebind the names it relies on")
+                                                  (proof-rebuilt v (third ys) (list y) t guarded p)))
+                                            (proof-arm v ys tag ls ts at p))))
+                                    (cdr xs))
+                               #u)))
+                       (else other (no "what is given here is not a sum"))))))
+              ((head-is? x "product")
+               (tagcase (generative-rep v t)
+                 (ty-shape (q ls ts)
+                   (let ((gs (map items (cdr (items x)))))
+                     (if (or (not q) (not (strings=? (map (lambda ((g sexps)) (label-of (car g))) gs) ls)))
+                         (no "a product is rebuilt with its fields, in order")
+                         (begin
+                           (map2 (lambda ((g sexps) (ft ty)) (proof-rebuilt v (second g) (onto at (list (label-of (car g)))) ft #t p)) gs ts)
+                           #u))))
+                 (else other (no "what is given here is not a product"))))
+              ((and (tagcase x (lst (ys f l q) (not (null? ys))) (else other #f)) (not (keyword? (operator-of (car (items x))))))
+               (let* ((f (operator-of (car (items x)))) (args (cdr (items x))))
+                 (cond ((string=? f "") (no "a proof may call only its hypotheses, itself, or another proof"))
+                       ((string-member? f hyps)
+                        (if (and (i64= (size args) 1) (strings=? (place-of v (car args)) at)) #u
+                            (no "a hypothesis applies only to what was given here")))
+                       ((and (not (string=? f me)) (null? (scope-bind (string-append "%lemma " f) v)))
+                        (no "a proof may call only its hypotheses, itself, or another proof"))
+                       ((and (string=? f me) (not guarded)) (no "it uses itself before rebuilding anything, which proves nothing"))
+                       ((null? args) (no "a proof applies to something"))
+                       ((not (strings=? (place-of v (last args)) at)) (no "a proof applies only to what was given here"))
+                       (else (begin (map (lambda ((c sexp)) (proof-coercion v c guarded p)) (but-last-sexps args)) #u)))))
+              (else (no "a proof may only take apart and rebuild what it was given"))))))))
+  (proof-arm (subr kfx (cv sexps string strings tys strings proof) unit)
+    (lambda (v ys tag ls ts at p)
+      (tagcase p
+        (proof (me hyps want)
+          (let* ((no (lambda ((why string)) (refuse v (string-append "this does not prove " (string-append want (string-append ": " why))))))
+                 (binds (tagcase (second ys) (sym (n f q) (the strings (list n))) (lst (zs f l q) (map sym-name zs)) (else other nil)))
+                 (body (lemma-stripped v (third ys))))
+            (cond ((any? (lambda ((n string)) (or (string=? n (car at)) (string=? n me) (string-member? n hyps))) binds)
+                   (no "a proof may not rebind the names it relies on"))
+                  ((not (string-member? tag ls)) (no "an arm for a tag that is not there"))
+                  ((not (and (head-is? body "sum") (i64= (size (items body)) 3) (string=? (label-of (second (items body))) tag)))
+                   (no "each arm rebuilds its own tag"))
+                  (else
+                   (let ((vt (label-type tag ls ts)) (inner (third (items body))))
+                     (tagcase (second ys)
+                       (sym (n f q) (proof-rebuilt v inner (list n) vt #t p))
+                       (else other
+                         (tagcase (generative-rep v vt)
+                           (ty-shape (q2 fls fts)
+                             (let* ((in2 (lemma-stripped v inner)) (gs (if (head-is? in2 "product") (map items (cdr (items in2))) nil)))
+                               (if (or (not q2) (not (head-is? in2 "product")) (not (i64= (size gs) (size fls))) (not (i64= (size binds) (size fls)))
+                                       (not (strings=? (map (lambda ((g sexps)) (label-of (car g))) gs) fls)))
+                                   (no "each arm rebuilds its fields, in order")
+                                   (proof-fields v binds gs fts p))))
+                           (else other2 (no "fields of something that is not a product")))))))))))))
+  (proof-fields (subr kfx (cv strings (listof sexps acyclic) tys proof) unit)
+    (lambda (v xs gs fts p)
+      (if (or (null? xs) (null? gs) (null? fts)) #u
+          (begin (proof-rebuilt v (second (car gs)) (list (car xs)) (car fts) #t p)
+                 (proof-fields v (cdr xs) (cdr gs) (cdr fts) p)))))
+  (proof-coercion (subr kfx (cv sexp bool proof) unit)
+    (lambda (v c guarded p)
+      "A coercion a proof passes to a proof: a hypothesis, a proof, itself
+       (under a constructor), or a lambda of one parameter, its type written,
+       whose body rebuilds it (Fixpt's `proof_coercion`)."
+      (tagcase p
+        (proof (me hyps want)
+          (let ((no (lambda ((why string)) (refuse v (string-append "this does not prove " (string-append want (string-append ": " why))))))
+                (x (lemma-stripped v c)))
+            (tagcase x
+              (sym (n f q)
+                (cond ((string-member? n hyps) #u)
+                      ((string=? n me) (if guarded #u (no "it passes itself on before rebuilding anything")))
+                      ((not (null? (scope-bind (string-append "%lemma " n) v))) #u)
+                      (else (no "a proof is given only hypotheses, proofs, or coercions that rebuild"))))
+              (else other
+                (if (head-is? x "lambda")
+                    (let ((ps (items (second (items x)))))
+                      (if (and (i64= (size ps) 1) (tagcase (car ps) (lst (zs f l q) (i64= (size zs) 2)) (else other #f)))
+                          (let ((n (sym-name (car (items (car ps))))))
+                            (if (or (string=? n me) (string-member? n hyps))
+                                (no "a proof may not rebind the names it relies on")
+                                (proof-rebuilt v (last (items x)) (list n) (parse-type v (cv-tvars v) (second (items (car ps)))) guarded p)))
+                          (no "a coercion given to a proof takes one parameter, with its type written")))
+                    (no "a proof is given only hypotheses, proofs, or coercions that rebuild")))))))))
+  (but-last-sexps (subr kfx (sexps) sexps)
+    (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (but-last-sexps (cdr xs)))))))
+
+(define-rec
+  (but-last-strings (subr kfx (strings) strings)
+    (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (but-last-strings (cdr xs)))))))
+
+(define lemma-proved (subr kfx (cv string sexp sexp) cv)
+  (lambda (v name t defined)
+    "That `defined`, the body of lemma `name` of type `(proves P)`, proves it
+     (Fixpt's `check_proof`); then the lemma kept."
+    (let* ((sc (lemma-scheme v t))
+           (lam (if (head-is? defined "plambda") (third (items defined)) defined))
+           (lam (if (head-is? lam "the") (third (items lam)) lam)))
+      (tagcase sc
+        (scheme (tvars u)
+          (tagcase u
+            (ty-proc (es ps r)
+              (let* ((want (string-append "`" (string-append (show-ty (new-state) (car ps)) (string-append " ≤ " (string-append (show-ty (new-state) (car (cdr ps))) "`")))))
+                     (n (i64-quotient (i64- (size ps) 2) 2)))
+                (if (not (head-is? lam "lambda"))
+                    (refuse v (string-append "a proof of " (string-append want " is a lambda")))
+                    (let ((params (map param-name (items (second (items lam))))))
+                      (cond ((not (i64= (size params) (i64+ n 1)))
+                             (refuse v (string-append "a proof of " (string-append want " takes a coercion for each hypothesis, then what it proves of"))))
+                            ((not (i64= (size (items lam)) 3)) (refuse v (string-append "a proof of " (string-append want " is one expression"))))
+                            (else
+                             (begin
+                               (proof-rebuilt (with-tvars v tvars) (third (items lam)) (list (last params)) (car ps) #f
+                                              (proof name (but-last-strings params) want))
+                               (with-binds v (list (bind (string-append "%lemma " name) sc "lemma"))))))))))
+            (else other (refuse v "a lemma's proposition"))))))))
+
+(define check-top-plain (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see."
     (tagcase form
@@ -915,6 +1161,18 @@
       (else other (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
                     (res (t es s)
                       (with-facts v (with expressions (settle-facts (if (proc-type? s t) (note-fact s (datum-file form) (datum-pos form) "procedure") s))))))))))
+
+(define check-top (subr kfx (cv sexp) cv)
+  (lambda (v form)
+    "One top-level form; a lemma's checked as its procedure's type, then its
+     proof (C185)."
+    (tagcase form
+      (lst (xs f l p)
+        (if (and (i64= (size xs) 4) (or (head-is? form "define") (head-is? form "define*")) (head-is? (third xs) "proves"))
+            (let ((v2 (check-top-plain v (lst (list (car xs) (second xs) (proves-type (near v f l p) (third xs)) (fourth xs)) f l p))))
+              (lemma-proved (near v2 f l p) (name-of v (second xs)) (third xs) (fourth xs)))
+            (check-top-plain v form)))
+      (else other (check-top-plain v form)))))
 
 (define item-names (subr kfx (sexp) strings)
   (lambda (f)

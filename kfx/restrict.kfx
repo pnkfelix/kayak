@@ -73,6 +73,8 @@
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
                       ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (or (sym-is? (third xs) "finite") (head-is? (third xs) "+") (head-is? (third xs) "-")))
                        (restriction-refused f l "a flat array of a length not literal, FX-26's, which KFX has not yet (C175)"))
+                      ((and (sym-is? (car xs) "proves") (i64= (size xs) 2))
+                       (restriction-refused f l "a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)"))
                       ((and (sym-is? (car xs) "flatarrayof") (i64= (size xs) 3) (not (sym-is? (second xs) "i64")))
                        (restriction-refused f l "a flat array of other than i64, FX-26's, which KFX has not yet (C175)"))
                       ((or (sym-is? (car xs) "=>") (sym-is? (car xs) "dlambda"))

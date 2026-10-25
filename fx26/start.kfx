@@ -536,7 +536,12 @@
            nil)
           ((or (head-is? form "define") (head-is? form "define*"))
            (let ((xs (items form)))
-             (list (bound-line v (binder-name (second xs)) (if (i64= (size xs) 4) (third xs) no-form) (value-effect v (binder-name (second xs)) (last xs))))))
+             (list (bound-line v (binder-name (second xs))
+                               (cond ((not (i64= (size xs) 4)) no-form)
+                                     ;; A lemma, as its procedure's type (C185).
+                                     ((head-is? (third xs) "proves") (proves-type v (third xs)))
+                                     (else (third xs)))
+                               (value-effect v (binder-name (second xs)) (last xs))))))
           ((head-is? form "define-rec")
            (map (lambda ((g sexp)) (bound-line v (sym-name (car (items g))) (if (i64= (size (items g)) 3) (second (items g)) no-form) "pure"))
                 (cdr (items form))))

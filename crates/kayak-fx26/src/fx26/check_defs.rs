@@ -1137,8 +1137,539 @@ pub fn star_items(forms: Sexps) -> Strings {
     }), forms))
 }
 
+// Lemmas (C185; Fixpt's `lemma.rs`, fx26.md "Lemmas: proofs as erased
+// identity coercions"): a definition whose type is `(proves (<= A B))`, or
+// `(proves (poly (binder ...) (<= A B) (<= X Y) ...))`, is a function from
+// a coercion per hypothesis and an `A` to a `B`, of effect `spin`; its body
+// must be a guarded structural identity; and its existence is the proof,
+// which subtyping then uses (`lemma-fits`, check.kfx). FX-26's: KFX's
+// restriction pass refuses `proves`.
+/// Of `(proves P)`: its binders (a list, maybe empty), `A`, `B`, then each
+/// hypothesis's two sides.
+pub fn proves_parts(v: &'static Cv, t: &'static Sexp) -> Sexps {
+    let p = if i64_eq(size(items(t)), 2i64) {
+        second(items(t))
+    } else {
+        match refuse(v, str_lit("(proves (<= A B))")) {}
+    };
+    let le_p = lambda1s(move |x: &'static Sexp| {
+        (head_is_p(x, str_lit("<=")) && i64_eq(size(items(x)), 3i64))
+    });
+    let poly = head_is_p(p, str_lit("poly"));
+    let main = if poly {
+        if i64_gt(size(items(p)), 2i64) {
+            third(items(p))
+        } else {
+            p
+        }
+    } else {
+        p
+    };
+    let hyps = if poly {
+        cdr(cdr(cdr(items(p))))
+    } else {
+        nil::<&'static Sexp>()
+    };
+    if (not(le_p(main)) || any_p(lambda1s(move |h: &'static Sexp| {
+        not(le_p(h))
+    }), hyps)) {
+        match refuse(v, str_lit("a lemma's proposition is `(<= A B)`, under a `poly` with its hypotheses `(<= X Y)` after it")) {}
+    } else {
+        kayak_rt::heap_cons(if poly {
+            second(items(p))
+        } else {
+            lst(nil::<&'static Sexp>(), str_lit(""), 0i64, 0i64)
+        }, kayak_rt::heap_cons(second(items(main)), kayak_rt::heap_cons(third(items(main)), concat(map(lambda1s(move |h: &'static Sexp| {
+            the::<Sexps>(kayak_rt::heap_cons(second(items(h)), kayak_rt::heap_cons(third(items(h)), kayak_rt::nil())))
+        }), hyps)))))
+    }
+}
+
+pub fn coercion_types(hs: Sexps) -> Sexps {
+    if (null_p(hs) || null_p(cdr(hs))) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("spin"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(hs), kayak_rt::nil()), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(second(hs), kayak_rt::nil())))), str_lit(""), 0i64, 0i64), coercion_types(cdr(cdr(hs))))
+    }
+}
+
+/// A lemma's type as a procedure's: `(subr spin ((subr spin (X) Y) ... A) B)`,
+/// under its `poly`.
+pub fn proves_type(v: &'static Cv, t: &'static Sexp) -> &'static Sexp {
+    let ps = proves_parts(v, t);
+    let f = lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("spin"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(onto(coercion_types(cdr(cdr(cdr(ps)))), kayak_rt::heap_cons(second(ps), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(third(ps), kayak_rt::nil())))), str_lit(""), 0i64, 0i64);
+    if null_p(items(car(ps))) {
+        f
+    } else {
+        lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(car(ps), kayak_rt::heap_cons(f, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+    }
+}
+
+/// A lemma as kept, a binding `%lemma NAME`: its binders, and
+/// `(ty-proc nil (A B X Y ...) unit)`.
+pub fn lemma_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
+    let ps = proves_parts(v, t);
+    let f = lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("pure"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(cdr(ps), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(sym(str_lit("unit"), str_lit(""), 0i64), kayak_rt::nil())))), str_lit(""), 0i64, 0i64);
+    parse_scheme(v, if null_p(items(car(ps))) {
+        f
+    } else {
+        lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(car(ps), kayak_rt::heap_cons(f, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+    })
+}
+
+pub enum Proof {
+    Proof(Str, Strings, Str),
+}
+
+pub fn proof(f0: Str, f1: Strings, f2: Str) -> &'static Proof {
+    kayak_rt::heap_alloc(Proof::Proof(f0, f1, f2))
+}
+
+pub fn items_or_nil(e: &'static Sexp) -> Sexps {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            xs
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Sexp>()
+        }
+    }
+}
+
+/// `e` under `the`s and generative types' conversions, the identity.
+pub fn lemma_stripped(mut v: &'static Cv, mut e: &'static Sexp) -> &'static Sexp {
+    loop {
+        if (head_is_p(e, str_lit("the")) && i64_eq(size(items(e)), 3i64)) {
+            e = third(items(e));
+            continue;
+        } else if (i64_eq(size(items_or_nil(e)), 2i64) && names_conversion_p(v, car(items(e)))) {
+            e = second(items(e));
+            continue;
+        } else {
+            return e;
+        }
+    }
+}
+
+pub fn names_conversion_p(v: &'static Cv, f: &'static Sexp) -> bool {
+    let g = operator_of(f);
+    ((has_prefix_p(g, str_lit("up-")) || has_prefix_p(g, str_lit("down-"))) && not(null_p(conversion_bind(g, cv_binds(v)))) && generative_p(v, ty_data(if has_prefix_p(g, str_lit("up-")) {
+        after_prefix(g, str_lit("up-"))
+    } else {
+        after_prefix(g, str_lit("down-"))
+    }, nil::<&'static Ty>())))
+}
+
+pub fn operator_of(mut f: &'static Sexp) -> Str {
+    loop {
+        if ((head_is_p(f, str_lit("proj")) || head_is_p(f, str_lit("the"))) && i64_gt(size(items(f)), 1i64)) {
+            f = if head_is_p(f, str_lit("the")) {
+                third(items(f))
+            } else {
+                second(items(f))
+            };
+            continue;
+        } else {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Sexp::Sym(n, p2, q) => {
+                    return n;
+                }
+                _ => {
+                    let other = tagcase_;
+                    return str_lit("");
+                }
+            }
+        }
+    }
+}
+
+/// The place `e` names: a variable then the labels extracted, a list; or
+/// none, the empty list.
+pub fn place_of(v: &'static Cv, e: &'static Sexp) -> Strings {
+    let x = lemma_stripped(v, e);
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+        }
+        _ => {
+            let other = tagcase_;
+            if (head_is_p(x, str_lit("extract")) && i64_eq(size(items(x)), 3i64)) {
+                let inner = place_of(v, second(items(x)));
+                if null_p(inner) {
+                    nil::<Str>()
+                } else {
+                    onto(inner, kayak_rt::heap_cons(label_of(third(items(x))), kayak_rt::nil()))
+                }
+            } else {
+                nil::<Str>()
+            }
+        }
+    }
+}
+
+/// `t`, each generative type unfolded to its representation, as far as it
+/// goes: its `down-` conversion's result at its arguments.
+pub fn generative_rep(v: &'static Cv, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if generative_p(v, t) {
+                let found = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                if null_p(found) {
+                    t
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tvars, u) => {
+                                    let tagcase_ = u;
+                                    match *tagcase_ {
+                                        Ty::TyProc(es, ps, r) => {
+                                            substitute(tvars, args, r)
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            t
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+/// That `e` rebuilds, as the identity, what was given at place `at`, of
+/// type `t`; `guarded` once something has been rebuilt above it (Fixpt's
+/// `rebuild`).
+pub fn proof_rebuilt(v: &'static Cv, e: &'static Sexp, at: Strings, t: &'static Ty, guarded: bool, p: &'static Proof) -> () {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Proof::Proof(me, hyps, want) => {
+            let (no, x) = (lambda1s(move |why: Str| {
+                match refuse(v, string_append(str_lit("this does not prove "), string_append(want, string_append(str_lit(": "), why)))) {}
+            }), lemma_stripped(v, e));
+            if strings_eq_p(place_of(v, x), at) {
+                ()
+            } else if head_is_p(x, str_lit("tagcase")) {
+                let xs = cdr(items(x));
+                let view = generative_rep(v, t);
+                if not(strings_eq_p(place_of(v, car(xs)), at)) {
+                    match no(str_lit("a proof takes apart only what was given here")) {}
+                } else {
+                    let tagcase_ = view;
+                    match *tagcase_ {
+                        Ty::TyShape(q, ls, ts) => {
+                            if q {
+                                match no(str_lit("what is given here is not a sum")) {}
+                            } else {
+                                map(lambda1s(move |arm: &'static Sexp| {
+                                    let ys = items(arm);
+                                    let tag = label_of(car(ys));
+                                    if string_eq_p(tag, str_lit("else")) {
+                                        let y = sym_name(second(ys));
+                                        if (string_eq_p(y, me) || string_member_p(y, hyps)) {
+                                            match no(str_lit("a proof may not rebind the names it relies on")) {}
+                                        } else {
+                                            proof_rebuilt(v, third(ys), kayak_rt::heap_cons(y, kayak_rt::nil()), t, guarded, p)
+                                        }
+                                    } else {
+                                        proof_arm(v, ys, tag, ls, ts, at, p)
+                                    }
+                                }), cdr(xs));
+                                ()
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match no(str_lit("what is given here is not a sum")) {}
+                        }
+                    }
+                }
+            } else if head_is_p(x, str_lit("product")) {
+                let tagcase_ = generative_rep(v, t);
+                match *tagcase_ {
+                    Ty::TyShape(q, ls, ts) => {
+                        let gs = map(&items, cdr(items(x)));
+                        if (not(q) || not(strings_eq_p(map(lambda1s(move |g: Sexps| {
+                            label_of(car(g))
+                        }), gs), ls))) {
+                            match no(str_lit("a product is rebuilt with its fields, in order")) {}
+                        } else {
+                            map2(lambda2s(move |g: Sexps, ft: &'static Ty| {
+                                proof_rebuilt(v, second(g), onto(at, kayak_rt::heap_cons(label_of(car(g)), kayak_rt::nil())), ft, true, p)
+                            }), gs, ts);
+                            ()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match no(str_lit("what is given here is not a product")) {}
+                    }
+                }
+            } else if ({
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, q) => {
+                        not(null_p(ys))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && not(keyword_p(operator_of(car(items(x)))))) {
+                let f = operator_of(car(items(x)));
+                let args = cdr(items(x));
+                if string_eq_p(f, str_lit("")) {
+                    match no(str_lit("a proof may call only its hypotheses, itself, or another proof")) {}
+                } else if string_member_p(f, hyps) {
+                    if (i64_eq(size(args), 1i64) && strings_eq_p(place_of(v, car(args)), at)) {
+                        ()
+                    } else {
+                        match no(str_lit("a hypothesis applies only to what was given here")) {}
+                    }
+                } else if (not(string_eq_p(f, me)) && null_p(scope_bind(string_append(str_lit("%lemma "), f), v))) {
+                    match no(str_lit("a proof may call only its hypotheses, itself, or another proof")) {}
+                } else if (string_eq_p(f, me) && not(guarded)) {
+                    match no(str_lit("it uses itself before rebuilding anything, which proves nothing")) {}
+                } else if null_p(args) {
+                    match no(str_lit("a proof applies to something")) {}
+                } else if not(strings_eq_p(place_of(v, last(args)), at)) {
+                    match no(str_lit("a proof applies only to what was given here")) {}
+                } else {
+                    map(lambda1s(move |c: &'static Sexp| {
+                        proof_coercion(v, c, guarded, p)
+                    }), but_last_sexps(args));
+                    ()
+                }
+            } else {
+                match no(str_lit("a proof may only take apart and rebuild what it was given")) {}
+            }
+        }
+    }
+}
+
+pub fn proof_arm(v: &'static Cv, ys: Sexps, tag: Str, ls: Strings, ts: Tys, at: Strings, p: &'static Proof) -> () {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Proof::Proof(me, hyps, want) => {
+            let no = lambda1s(move |why: Str| {
+                match refuse(v, string_append(str_lit("this does not prove "), string_append(want, string_append(str_lit(": "), why)))) {}
+            });
+            let binds = {
+                let tagcase_ = second(ys);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, q) => {
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                    }
+                    Sexp::Lst(zs, f, l, q) => {
+                        map(&sym_name, zs)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            };
+            let body = lemma_stripped(v, third(ys));
+            if any_p(lambda1s(move |n: Str| {
+                (string_eq_p(n, car(at)) || string_eq_p(n, me) || string_member_p(n, hyps))
+            }), binds) {
+                match no(str_lit("a proof may not rebind the names it relies on")) {}
+            } else if not(string_member_p(tag, ls)) {
+                match no(str_lit("an arm for a tag that is not there")) {}
+            } else if not((head_is_p(body, str_lit("sum")) && i64_eq(size(items(body)), 3i64) && string_eq_p(label_of(second(items(body))), tag))) {
+                match no(str_lit("each arm rebuilds its own tag")) {}
+            } else {
+                let (vt, inner) = (label_type(tag, ls, ts), third(items(body)));
+                let tagcase_ = second(ys);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, q) => {
+                        proof_rebuilt(v, inner, kayak_rt::heap_cons(n, kayak_rt::nil()), vt, true, p)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        let tagcase_ = generative_rep(v, vt);
+                        match *tagcase_ {
+                            Ty::TyShape(q2, fls, fts) => {
+                                let in2 = lemma_stripped(v, inner);
+                                let gs = if head_is_p(in2, str_lit("product")) {
+                                    map(&items, cdr(items(in2)))
+                                } else {
+                                    nil::<List<&'static Sexp>>()
+                                };
+                                if (not(q2) || not(head_is_p(in2, str_lit("product"))) || not(i64_eq(size(gs), size(fls))) || not(i64_eq(size(binds), size(fls))) || not(strings_eq_p(map(lambda1s(move |g: Sexps| {
+                                    label_of(car(g))
+                                }), gs), fls))) {
+                                    match no(str_lit("each arm rebuilds its fields, in order")) {}
+                                } else {
+                                    proof_fields(v, binds, gs, fts, p)
+                                }
+                            }
+                            _ => {
+                                let other2 = tagcase_;
+                                match no(str_lit("fields of something that is not a product")) {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn proof_fields(mut v: &'static Cv, mut xs: Strings, mut gs: List<Sexps>, mut fts: Tys, mut p: &'static Proof) -> () {
+    loop {
+        if (null_p(xs) || null_p(gs) || null_p(fts)) {
+            return ();
+        } else {
+            proof_rebuilt(v, second(car(gs)), kayak_rt::heap_cons(car(xs), kayak_rt::nil()), car(fts), true, p);
+            (xs, gs, fts) = (cdr(xs), cdr(gs), cdr(fts));
+            continue;
+        }
+    }
+}
+
+/// A coercion a proof passes to a proof: a hypothesis, a proof, itself
+/// (under a constructor), or a lambda of one parameter, its type written,
+/// whose body rebuilds it (Fixpt's `proof_coercion`).
+pub fn proof_coercion(v: &'static Cv, c: &'static Sexp, guarded: bool, p: &'static Proof) -> () {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Proof::Proof(me, hyps, want) => {
+            let (no, x) = (lambda1s(move |why: Str| {
+                match refuse(v, string_append(str_lit("this does not prove "), string_append(want, string_append(str_lit(": "), why)))) {}
+            }), lemma_stripped(v, c));
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Sym(n, f, q) => {
+                    if string_member_p(n, hyps) {
+                        ()
+                    } else if string_eq_p(n, me) {
+                        if guarded {
+                            ()
+                        } else {
+                            match no(str_lit("it passes itself on before rebuilding anything")) {}
+                        }
+                    } else if not(null_p(scope_bind(string_append(str_lit("%lemma "), n), v))) {
+                        ()
+                    } else {
+                        match no(str_lit("a proof is given only hypotheses, proofs, or coercions that rebuild")) {}
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    if head_is_p(x, str_lit("lambda")) {
+                        let ps = items(second(items(x)));
+                        if (i64_eq(size(ps), 1i64) && {
+                            let tagcase_ = car(ps);
+                            match *tagcase_ {
+                                Sexp::Lst(zs, f, l, q) => {
+                                    i64_eq(size(zs), 2i64)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }) {
+                            let n = sym_name(car(items(car(ps))));
+                            if (string_eq_p(n, me) || string_member_p(n, hyps)) {
+                                match no(str_lit("a proof may not rebind the names it relies on")) {}
+                            } else {
+                                proof_rebuilt(v, last(items(x)), kayak_rt::heap_cons(n, kayak_rt::nil()), parse_type(v, cv_tvars(v), second(items(car(ps)))), guarded, p)
+                            }
+                        } else {
+                            match no(str_lit("a coercion given to a proof takes one parameter, with its type written")) {}
+                        }
+                    } else {
+                        match no(str_lit("a proof is given only hypotheses, proofs, or coercions that rebuild")) {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn but_last_sexps(xs: Sexps) -> Sexps {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(car(xs), but_last_sexps(cdr(xs)))
+    }
+}
+
+pub fn but_last_strings(xs: Strings) -> Strings {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(car(xs), but_last_strings(cdr(xs)))
+    }
+}
+
+/// That `defined`, the body of lemma `name` of type `(proves P)`, proves it
+/// (Fixpt's `check_proof`); then the lemma kept.
+pub fn lemma_proved(v: &'static Cv, name: Str, t: &'static Sexp, defined: &'static Sexp) -> &'static Cv {
+    let sc = lemma_scheme(v, t);
+    let lam = if head_is_p(defined, str_lit("plambda")) {
+        third(items(defined))
+    } else {
+        defined
+    };
+    let lam = if head_is_p(lam, str_lit("the")) {
+        third(items(lam))
+    } else {
+        lam
+    };
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, u) => {
+            let tagcase_ = u;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    let want = string_append(str_lit("`"), string_append(show_ty(new_state(), car(ps)), string_append(str_lit(" ≤ "), string_append(show_ty(new_state(), car(cdr(ps))), str_lit("`")))));
+                    let n = i64_quotient(i64_minus(size(ps), 2i64), 2i64);
+                    if not(head_is_p(lam, str_lit("lambda"))) {
+                        match refuse(v, string_append(str_lit("a proof of "), string_append(want, str_lit(" is a lambda")))) {}
+                    } else {
+                        let params = map(&param_name, items(second(items(lam))));
+                        if not(i64_eq(size(params), i64_plus(n, 1i64))) {
+                            match refuse(v, string_append(str_lit("a proof of "), string_append(want, str_lit(" takes a coercion for each hypothesis, then what it proves of")))) {}
+                        } else if not(i64_eq(size(items(lam)), 3i64)) {
+                            match refuse(v, string_append(str_lit("a proof of "), string_append(want, str_lit(" is one expression")))) {}
+                        } else {
+                            proof_rebuilt(with_tvars(v, tvars), third(items(lam)), kayak_rt::heap_cons(last(params), kayak_rt::nil()), car(ps), false, proof(name, but_last_strings(params), want));
+                            with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%lemma "), name), sc, str_lit("lemma")), kayak_rt::nil()))
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    match refuse(v, str_lit("a lemma's proposition")) {}
+                }
+            }
+        }
+    }
+}
+
 /// One top-level form, which may add to what the forms after it see.
-pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Str(x, at_file, at_pos) => {
@@ -1316,6 +1847,26 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     }))
                 }
             }
+        }
+    }
+}
+
+/// One top-level form; a lemma's checked as its procedure's type, then its
+/// proof (C185).
+pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (i64_eq(size(xs), 4i64) && (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) && head_is_p(third(xs), str_lit("proves"))) {
+                let v2 = check_top_plain(v, lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(proves_type(near(v, f, l, p), third(xs)), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil())))), f, l, p));
+                lemma_proved(near(v2, f, l, p), name_of(v, second(xs)), third(xs), fourth(xs))
+            } else {
+                check_top_plain(v, form)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            check_top_plain(v, form)
         }
     }
 }

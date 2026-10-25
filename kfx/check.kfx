@@ -1376,6 +1376,21 @@
               t))
         (else other t)))))
 
+"A lemma's binder and what it stands for, where it is used (C185)."
+(define-datatype lmatch (lmatch string ty))
+(define lemma-name (subr kfx (lmatch) string) (lambda (x) (tagcase x (lmatch (n t) n))))
+(define lemma-value (subr kfx (lmatch) ty) (lambda (x) (tagcase x (lmatch (n t) t))))
+(define-rec
+  (lemma-bound (subr kfx (string (listof lmatch acyclic)) tys)
+    (lambda (n m) (cond ((null? m) nil) ((string=? (lemma-name (car m)) n) (the tys (list (lemma-value (car m))))) (else (lemma-bound n (cdr m)))))))
+(define-rec
+  (lemmas-of (subr kfx (binds) binds)
+    (lambda (bs)
+      "The lemmas in scope: each binding `%lemma NAME`."
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (bind (n sc w) (has-prefix? n "%lemma "))) (cons (car bs) (lemmas-of (cdr bs))))
+            (else (lemmas-of (cdr bs)))))))
+
 (define-datatype layout (layout i64 i64))
 
 (define round-up (subr kfx (i64 i64) i64)
@@ -3946,7 +3961,18 @@
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (cond ((or (mu? a) (mu? e))
+      (cond ((and (generative? v (walk s a)) (generative? v (walk s e))
+                  (not (string=? (show-ty s (zonk s a)) (show-ty s (zonk s e))))
+                  (not (null? (lemma-for v s (walk s a) (walk s e) (lemmas-of (cv-binds v))))))
+             "Two generative types a lemma relates (C185; Fixpt's `lemma.rs`): its
+              hypotheses, instantiated to fit, each shown, assuming what is
+              being shown (a fact), so that a lemma used in its own hypotheses
+              ends."
+             (let ((key (string-append "%lemma-assumed " (string-append (show-ty s (zonk s a)) (string-append " <= " (show-ty s (zonk s e)))))))
+               (if (any? (lambda ((f fact)) (tagcase f (fact (fl p w) (string=? w key)))) (st-facts s))
+                   s
+                   (fits-hyps v (note-fact s "%lemma" 0 key) (car (lemma-for v s (walk s a) (walk s e) (lemmas-of (cv-binds v))))))))
+            ((or (mu? a) (mu? e))
              "A recursive type (C174): the pair assumed, then each unfolded once,
               so that a cycle met again ends the comparison (Amadio and Cardelli)."
              (let ((key (string-append "%mu-assumed " (string-append (show-ty s a) (string-append " <= " (show-ty s e))))))
@@ -4176,6 +4202,62 @@
                     (else (mismatch v s a e))))
             (else other (mismatch v s a e))))
         (else other (if (same-base? a e) s (mismatch v s a e))))))
+  (fits-hyps (subr kfx (cv st tys) st)
+    (lambda (v s hs)
+      (if (or (null? hs) (null? (cdr hs))) s (fits-hyps v (fits v s (car hs) (car (cdr hs))) (cdr (cdr hs))))))
+  (lemma-for (subr kfx (cv st ty ty binds) (listof tys acyclic))
+    (lambda (v s a e ls)
+      "The first lemma whose `A` and `B` fit `a` and `e`, its binders
+       standing for what they meet: its hypotheses so instantiated, in a list
+       of one; none if none fits."
+      (if (null? ls)
+          nil
+          (tagcase (car ls)
+            (bind (n sc w)
+              (tagcase sc
+                (scheme (tvars u)
+                  (tagcase u
+                    (ty-proc (es ps r)
+                      (let ((m1 (lemma-match s tvars (car ps) a nil)))
+                        (if (null? m1)
+                            (lemma-for v s a e (cdr ls))
+                            (let ((m2 (lemma-match s tvars (car (cdr ps)) e (car m1))))
+                              (if (or (null? m2) (any? (lambda ((x string)) (null? (lemma-bound x (car m2)))) tvars))
+                                  (lemma-for v s a e (cdr ls))
+                                  (let ((names (map lemma-name (car m2))) (vals (map lemma-value (car m2))))
+                                    (list (map (lambda ((h ty)) (substitute names vals h)) (cdr (cdr ps))))))))))
+                    (else other (lemma-for v s a e (cdr ls)))))))))))
+  (lemma-match (subr kfx (st strings ty ty (listof lmatch acyclic)) (listof (listof lmatch acyclic) acyclic))
+    (lambda (s tvars pat t m)
+      "`t` as `pat` with its binders `tvars` standing for something, added to
+       `m`; none if not (Fixpt's `match_ty`, by the types' shapes, else
+       equal)."
+      (let ((t (walk s t)))
+        (tagcase pat
+          (ty-var (n)
+            (if (string-member? n tvars)
+                (let ((b (lemma-bound n m)))
+                  (if (null? b)
+                      (list (cons (lmatch n t) m))
+                      (if (string=? (show-ty s (zonk s (car b))) (show-ty s (zonk s t))) (list m) nil)))
+                (if (string=? (show-ty s pat) (show-ty s (zonk s t))) (list m) nil)))
+          (ty-data (d xs)
+            (tagcase t
+              (ty-data (d2 ys) (if (and (string=? d d2) (i64= (size xs) (size ys))) (lemma-match-all s tvars xs ys m) nil))
+              (else other nil)))
+          (ty-list (x r) (tagcase t (ty-list (y q) (lemma-match-all s tvars (list x r) (list y q) m)) (else other nil)))
+          (ty-ref (x r) (tagcase t (ty-ref (y q) (lemma-match-all s tvars (list x r) (list y q) m)) (else other nil)))
+          (ty-shape (p ls ts)
+            (tagcase t
+              (ty-shape (q ms us) (if (and (or (and p q) (and (not p) (not q))) (strings=? ls ms)) (lemma-match-all s tvars ts us m) nil))
+              (else other nil)))
+          (else other (if (string=? (show-ty s pat) (show-ty s (zonk s t))) (list m) nil))))))
+  (lemma-match-all (subr kfx (st strings tys tys (listof lmatch acyclic)) (listof (listof lmatch acyclic) acyclic))
+    (lambda (s tvars ps ts m)
+      (if (or (null? ps) (null? ts))
+          (list m)
+          (let ((m1 (lemma-match s tvars (car ps) (car ts) m)))
+            (if (null? m1) nil (lemma-match-all s tvars (cdr ps) (cdr ts) (car m1)))))))
   (fits-each (subr kfx (cv st tys tys) st)
     (lambda (v s actuals expecteds)
       "Fields, or a sum's members: each actual's type standing for the

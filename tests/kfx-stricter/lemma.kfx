@@ -1,0 +1,7 @@
+"FX-26's lemma, a definition whose type `proves` a subtyping, which KFX
+ has not: its Rust's types have no subtyping to prove (C185)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-generative (box (a type)) (productof (v a)))
+(define* box-up (proves (poly ((a type) (b type)) (<= (box a) (box b)) (<= a b)))
+  (lambda (f x) (up-box (product (v (f (extract (down-box x) v)))))))
+(define main (subr kfx () i64) (lambda () 0))
