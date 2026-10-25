@@ -732,7 +732,7 @@
                          ;; At its placeholder for the finding pass, not defined (C179).
                          (named (with-binds v (list (bind name (scheme tvars itself) (if (null? (scope-bind "%module" v)) "global" "item")))))
                          (found (with expressions (lambda-effects (with-tvars (with-tvars named tvars) (place-marks (third xs))) (new-state) (items (second lam)) (cdr (cdr lam)) wide)))
-                         (es (tagcase found (res (u es s) es)))
+                         (es (tagcase found (res (u es s) (map (lambda ((a string)) (resolve-atom s a)) (expand-effs s es)))))
                          (fs (tagcase found (res (u es s) (with expressions (settle-facts s))))))
                     (if (effs-within? es (effs-union (list "@globals") declared))
                         (let* ((sc (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))
@@ -803,7 +803,7 @@
               (tagcase t
                 (ty-proc (declared ps r)
                   (let* ((found (with expressions (lambda-effects (with-tvars (with-tvars v tvars) (place-marks type)) (new-state) (items (second lam)) (cdr (cdr lam)) t)))
-                         (es (tagcase found (res (u es s) es))))
+                         (es (tagcase found (res (u es s) (map (lambda ((a string)) (resolve-atom s a)) (expand-effs s es))))))
                     (if (string-member? (string-append "g:" name) es) (effs-union (list "spin") es) es)))
                 (else other (refuse v "`->*` is a procedure's type")))))))))
 

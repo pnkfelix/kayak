@@ -8946,7 +8946,7 @@ pub fn fit_expanded(mut s: &'static St, mut ax: Strings, mut e: Strings, mut es:
             return kayak_rt::heap_cons(s, kayak_rt::nil());
         } else {
             let x = resolve_atom(s, car(ax));
-            if effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) {
+            if (effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) && (string_member_p(x, es) || not(global_atom_p(x)) || null_p(open_row(es)))) {
                 ax = cdr(ax);
                 continue;
             } else if string_eq_p(x, str_lit("alloc:acyclic")) {
@@ -8954,6 +8954,25 @@ pub fn fit_expanded(mut s: &'static St, mut ax: Strings, mut e: Strings, mut es:
                 // (`list`'s `(alloc r)`, `r` acyclic): within any effect (C156).
                 ax = cdr(ax);
                 continue;
+            } else if (region_atom_p(x) && has_prefix_p(atom_region(x), str_lit("?")) && any_p(lambda1s(move |y: Str| {
+                (string_eq_p(atom_kind(y), atom_kind(x)) && not(has_prefix_p(atom_region(y), str_lit("?"))))
+            }), es)) {
+                // A region of `a` not solved, where `e` has the same kind of atom at
+                // one: solved to it (C192; `native/whole-captures.fx`, a receiver's
+                // `(goto ?)` given where `(goto @k)` is written).
+                let y = car(filter(lambda1s(move |y: Str| {
+                    (string_eq_p(atom_kind(y), atom_kind(x)) && not(has_prefix_p(atom_region(y), str_lit("?"))))
+                }), es));
+                let tagcase_ = region_ty(atom_region(x));
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        return fit_effs(solve(s, k, region_ty(atom_region(y))), cdr(ax), e);
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return nil::<&'static St>();
+                    }
+                }
             } else if effect_meta_p(x) {
                 // An effect variable of `a` not solved, that `e` does not hold:
                 // nothing more, the least it may be.

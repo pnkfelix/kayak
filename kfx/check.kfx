@@ -3890,11 +3890,21 @@
       (if (null? ax)
           (list s)
           (let ((x (resolve-atom s (car ax))))
-            (cond ((effs-within? (list x) es) (fit-expanded s (cdr ax) e es))
+            (cond ((and (effs-within? (list x) es) (or (string-member? x es) (not (global-atom? x)) (null? (open-row es))))
+                   (fit-expanded s (cdr ax) e es))
                   ((string=? x "alloc:acyclic")
                    "Made at `acyclic`, frozen from its making, which nothing sees
                     (`list`'s `(alloc r)`, `r` acyclic): within any effect (C156)."
                    (fit-expanded s (cdr ax) e es))
+                  ((and (region-atom? x) (has-prefix? (atom-region x) "?")
+                        (any? (lambda ((y string)) (and (string=? (atom-kind y) (atom-kind x)) (not (has-prefix? (atom-region y) "?")))) es))
+                   "A region of `a` not solved, where `e` has the same kind of atom at
+                    one: solved to it (C192; `native/whole-captures.fx`, a receiver's
+                    `(goto ?)` given where `(goto @k)` is written)."
+                   (let ((y (car (filter (lambda ((y string)) (and (string=? (atom-kind y) (atom-kind x)) (not (has-prefix? (atom-region y) "?")))) es))))
+                     (tagcase (region-ty (atom-region x))
+                       (ty-meta (k) (fit-effs (solve s k (region-ty (atom-region y))) (cdr ax) e))
+                       (else other nil))))
                   ((effect-meta? x)
                    "An effect variable of `a` not solved, that `e` does not hold:
                     nothing more, the least it may be."

@@ -5298,6 +5298,22 @@ its component's; `spin` if it reads a member's global".
   one, not a `letrec`'s storage no name outside sees), and the effect a
   `->*` or a `define*` finds the same.
 - Refused 19 to 18, the same 353 to 354; K1 0.
+
+## C192. Effects fitted both ways round a `cwcc` (2026-10-25)
+
+`native/whole-captures.fx`: `(cwcc (lambda ((k k-int)) ...))`, its
+receiver's parameter written at `(goto @k)` where `cwcc`'s is `(goto ?r)`.
+- **A region of the given effect not solved** is solved to the expected
+  effect's atom of the same kind (`fit-effs` solved only the expected
+  side's).
+- **An open row keeps a global's read literally**: an effect variable
+  grown to hold a receiver's effect took `(read @globals)` first and then
+  dropped `(read (globals keeper))` as within it; Fixpt keeps both, and a
+  `define*` finds the globals it reads from them (expanded and resolved
+  first, which `check-define*` had not).
+- Left: the fresh region's number in an expression's type (Fixpt's
+  `@r.2`, kayak's printer `@r.1` always).
+- Refused 18 to 17; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

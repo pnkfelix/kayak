@@ -974,7 +974,9 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                             let tagcase_ = found;
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    es
+                                    map(lambda1s(move |a: Str| {
+                                        resolve_atom(s, a)
+                                    }), expand_effs(s, es))
                                 }
                             }
                         };
@@ -1109,7 +1111,9 @@ pub fn found_latent(v: &'static Cv, name: Str, r#type: &'static Sexp, defined: &
                             let tagcase_ = found;
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    es
+                                    map(lambda1s(move |a: Str| {
+                                        resolve_atom(s, a)
+                                    }), expand_effs(s, es))
                                 }
                             }
                         };
