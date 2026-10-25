@@ -493,8 +493,19 @@
           (v (with-binds v (list (bind "%toplambda" (scheme nil (ty-unit)) "yes")))))
       (tagcase sc
         (scheme (tvars t)
-          (tagcase (with expressions (check-lambda (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (items (second lam)) (cdr (cdr lam)) t))
-            (res (u es s) (with-facts v (with expressions (settle-facts s))))))))))
+          ;; A plambda whose body is no lambda, a `proj` of one (Fixpt's
+          ;; `sizes/finite-one-arg.fx`): that expression against the type, the
+          ;; binders in scope (C158).
+          (if (and (head-is? defined "plambda") (tagcase t (ty-data (d a) (string=? d "%poly")) (else other #f)))
+              ;; Of a poly type an abbreviation names (rank 2, C107): the plambda
+              ;; checked against it whole.
+              (tagcase (with expressions (check v (new-state) defined t))
+                (res (u es s) (with-facts v (with expressions (settle-facts s)))))
+          (if (and (head-is? defined "plambda") (not (lambda-form? (third (items defined)))))
+              (tagcase (with expressions (check (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (third (items defined)) t))
+                (res (u es s) (with-facts v (with expressions (settle-facts s)))))
+              (tagcase (with expressions (check-lambda (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (items (second lam)) (cdr (cdr lam)) t))
+                (res (u es s) (with-facts v (with expressions (settle-facts s))))))))))))
 
 (define variants-dt (subr kfx (cv string) dt)
   (lambda (v d)

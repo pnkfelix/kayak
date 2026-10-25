@@ -4318,3 +4318,73 @@ they show it is not negative. Ten of Fixpt's programs were refused at
   where an `acyclic` list was wanted: written `(the strings (list ...))`.
   kayak's own words, its checker refusing less: 187 programs agree (170),
   145 Fixpt's exactly.
+
+## C158. Sizes: `(nat s)`, `(nlist T s)`, size binders (2026-10-25)
+
+The user: "Go ahead with sizes". Fixpt's `docs/research/sizes.md`, as
+kayak's checker can say it:
+- **Types**: a size is `finite` (some size not known), a size variable
+  (a `poly`'s binder of kind `size`, `#n` among a scheme's variables, or
+  an inference variable), or linear in them (`%sz`: a constant, each
+  variable's coefficient, as types so that instantiating and solving see
+  the variables; one variable alone is itself). `(nat s)` is exactly the
+  size `s`, `nat` itself `(nat finite)`; `(nlist T s)` a list of exactly
+  `s` elements, frozen.
+- **Fitting**: `(nat s)` below `nat` and `int`; sizes equal as the facts
+  in scope show (C157), or the one wanted `finite`, an inference
+  variable alone solved, to `finite` too, or one in a sum solved to make
+  the two equal, its size shown not negative (`(nlist t (+ n 1))` where
+  `m >= 1`: `n = m - 1`). A list of a size below `(listof T acyclic)`, a
+  list at `acyclic` below one of size `finite`; `nil` below one of size
+  0; a pair below one of size `s`, its tail of `s - 1`; a pair whose
+  tail is a list of a size, at `acyclic`, as that list (C68).
+- **What is learned and used**: `(null? xs)` of a list of size `n`, `n =
+  0` where it holds and `n >= 1` where not; a `(nat s)`'s value is its
+  size in the facts. A literal, a sum or a difference where a `(nat s)`
+  is wanted, shown to be `s`; `cons` where a list of size `s` is wanted,
+  its tail of `s - 1`; `cdr` of one of size `n`, of `n - 1` where `n >=
+  1` is shown, else `finite`; `length`, a `(nat n)`. Termination: a list
+  of a size's `car` and `cdr` are its parts, as a list at `acyclic`'s.
+- **KFX**: its restriction pass refuses sizes (`tests/kfx-stricter/
+  sizes.kfx`).
+- **Measured**: refused 187 to 182, the same 104 to 109; `nat-basics`,
+  `nlist-basics`, `nlist-listof`, `nlist-pair`, `solved-by-test` print
+  as Fixpt prints them. Not yet: a size binder in a `plambda` or a
+  `proj` (`finite-one-arg`), `poly` types written in a type (C107,
+  `map`, `append`), `confirm-length`, `narrayof`, `const` regions.
+
+## C159. Sizes' binders: poly types of types and sizes, rank 2 (2026-10-25)
+
+Fixpt's `sizes/map.fx`, `append.fx`, `finite-one-arg.fx` write a size
+binder where C107 took regions alone: a `define-type` of a `poly`, a
+`letrec` binding of one, a `proj` of a `letrec`. C107 held to regions
+because KFX's Rust erases them; the engine's checker need not.
+- **A poly type written in a type** binds regions, types and sizes
+  (effects not yet), each named apart by where it is written with its
+  kind's mark (`'r@P`, `t@P`, `#n@P`), printed with its kind. A
+  `plambda` where one is expected, a `lambda` where one is (as the
+  `plambda` of the type's own binders), a `proj` of any expression of
+  one (each argument read by its binder's kind), a call of a value of one
+  (instantiated, each binder a new variable); a top-level `plambda` of a
+  type an abbreviation names checked whole, one whose body is no lambda
+  checked as that expression; a `letrec` binding of one, a `plambda`
+  too, its termination asked of the poly's body.
+- **A binder named again inside**, shadowing, taken where it is no
+  region's (KFX's refusal kept for regions).
+- **`finite` for a size binder** only where it is the size of one
+  argument, itself (Fixpt's rule; `sizes/finite-inside.fx`, which Fixpt
+  refuses, came out accepted until it was kept): noted, `not-finite`, as
+  the scheme is instantiated.
+- **A size solved for in a sum** of more than one variable: the first,
+  whose not being negative is asked once the solution has no variables
+  left (`append`'s `(+ n m)` fitted before its arguments).
+- `(list e ...)` where a list of a size is wanted: each element, and
+  the size shown to be how many.
+- **KFX's**, each noted for kfx's restriction pass (C154), not refused
+  here: a `plambda`, `lambda` or `proj` of a poly type of types or sizes;
+  a procedure that a process may hold holding what Rust's `Sync` is not
+  (C102, a rule of Rust's threads, not FX-26's).
+- **Measured**: refused 182 to 177, the same 109 to 112; of the 336 Fixpt
+  refuses, all refused. `map` and `append` now differ from Fixpt only in
+  printing their abbreviations' names, which kayak's checker expands
+  (§30's printing).

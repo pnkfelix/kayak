@@ -884,17 +884,34 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
     }
 }
 
-/// Each region binder `n` of a poly type written at `pos`, `'n`, named
-/// `'n@pos` (C107).
+/// Each binder `n` of a poly type written at `pos`, its kind's mark first
+/// (`'n` a region's, `#n` a size's, a type's none), named `n@pos` (C107,
+/// C158).
 pub fn fold_renames(mut names: Strings, mut pos: i64, mut t: &'static Ty) -> &'static Ty {
     loop {
         if null_p(names) {
             return t;
         } else {
-            (names, t) = (cdr(names), replace_var(string_append(str_lit("'"), car(names)), ty_var(string_append(str_lit("'"), string_append(car(names), string_append(str_lit("@"), i64_to_string(pos))))), t));
+            (names, t) = (cdr(names), replace_var(car(names), ty_var(string_append(car(names), string_append(str_lit("@"), i64_to_string(pos)))), t));
             continue;
         }
     }
+}
+
+pub fn binder_kind(n: Str) -> Str {
+    if has_prefix_p(n, str_lit("'")) {
+        str_lit("region")
+    } else if has_prefix_p(n, str_lit("#")) {
+        str_lit("size")
+    } else {
+        str_lit("type")
+    }
+}
+
+pub fn all_regions_p(ns: Strings) -> bool {
+    not(any_p(lambda1s(move |n: Str| {
+        not(has_prefix_p(n, str_lit("'")))
+    }), ns))
 }
 
 /// A poly type's binders' names: all its parts but the last, its body.
@@ -929,10 +946,12 @@ pub fn taken_before(cs: Chars, c: char) -> Chars {
     }
 }
 
-/// A poly type's binder as written: `'r@P` is `r`.
+/// A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`.
 pub fn written_binder(n: Str) -> Str {
     let cs = string_chars(if has_prefix_p(n, str_lit("'")) {
         after_prefix(n, str_lit("'"))
+    } else if has_prefix_p(n, str_lit("#")) {
+        after_prefix(n, str_lit("#"))
     } else {
         n
     });
@@ -979,21 +998,27 @@ pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
     substitute(poly_binders_of(args), regions, poly_body(args))
 }
 
-/// A poly type's region binders, as written.
+/// A poly type's binders, as written.
 pub fn binders_shown(ns: Strings) -> Str {
     if null_p(ns) {
         str_lit("")
     } else if null_p(cdr(ns)) {
-        string_append(str_lit("("), string_append(written_binder(car(ns)), str_lit(" region)")))
+        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" "), string_append(binder_kind(car(ns)), str_lit(")")))))
     } else {
-        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" region) "), binders_shown(cdr(ns)))))
+        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" "), string_append(binder_kind(car(ns)), string_append(str_lit(") "), binders_shown(cdr(ns)))))))
     }
 }
 
 /// A poly type's body, its binders as written, `'r` (C107).
 pub fn poly_written(args: Tys) -> &'static Ty {
     poly_instance(args, map(lambda1s(move |n: Str| {
-        ty_var(string_append(str_lit("'"), written_binder(n)))
+        ty_var(if has_prefix_p(n, str_lit("'")) {
+            string_append(str_lit("'"), written_binder(n))
+        } else if has_prefix_p(n, str_lit("#")) {
+            string_append(str_lit("#"), written_binder(n))
+        } else {
+            written_binder(n)
+        })
     }), poly_binders_of(args)))
 }
 
@@ -1853,6 +1878,414 @@ pub fn member_of_shape(mut ts: Tys, mut shape: Str) -> Tys {
     }
 }
 
+// Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
+// a linear expression over local names, a constant and each name's
+// coefficient; a fact that one is `= 0`, `>= 0`, or `/= 0`, learned in a
+// branch of a test, kept in the environment as a binding of no name a
+// program writes, `wher` `fact KIND C N K ...`.
+pub enum Lterm {
+    Lterm(Str, i64),
+}
+
+pub fn lterm(f0: Str, f1: i64) -> &'static Lterm {
+    kayak_rt::heap_alloc(Lterm::Lterm(f0, f1))
+}
+
+pub enum Lin {
+    Lin(i64, List<&'static Lterm>),
+}
+
+pub fn lin(f0: i64, f1: List<&'static Lterm>) -> &'static Lin {
+    kayak_rt::heap_alloc(Lin::Lin(f0, f1))
+}
+
+pub type Lins = List<&'static Lin>;
+
+pub fn lterms_added(ts: List<&'static Lterm>, n: Str, k: i64) -> List<&'static Lterm> {
+    if null_p(ts) {
+        if i64_eq(k, 0i64) {
+            nil::<&'static Lterm>()
+        } else {
+            kayak_rt::heap_cons(lterm(n, k), kayak_rt::nil())
+        }
+    } else if {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Lterm::Lterm(m, j) => {
+                string_eq_p(m, n)
+            }
+        }
+    } {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Lterm::Lterm(m, j) => {
+                if i64_eq(i64_plus(j, k), 0i64) {
+                    cdr(ts)
+                } else {
+                    kayak_rt::heap_cons(lterm(m, i64_plus(j, k)), cdr(ts))
+                }
+            }
+        }
+    } else {
+        kayak_rt::heap_cons(car(ts), lterms_added(cdr(ts), n, k))
+    }
+}
+
+pub fn lin_terms_onto(mut ts: List<&'static Lterm>, mut acc: List<&'static Lterm>, mut k: i64) -> List<&'static Lterm> {
+    loop {
+        if null_p(ts) {
+            return acc;
+        } else {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Lterm::Lterm(n, j) => {
+                    (ts, acc) = (cdr(ts), lterms_added(acc, n, i64_star(j, k)));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `a + k b`.
+pub fn lin_add(a: &'static Lin, b: &'static Lin, k: i64) -> &'static Lin {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(ca, ta) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lin::Lin(cb, tb) => {
+                    lin(i64_plus(ca, i64_star(k, cb)), lin_terms_onto(tb, ta, k))
+                }
+            }
+        }
+    }
+}
+
+pub fn lin_scaled(a: &'static Lin, k: i64) -> &'static Lin {
+    lin_add(lin(0i64, nil::<&'static Lterm>()), a, k)
+}
+
+pub fn lin_coef(a: &'static Lin, n: Str) -> i64 {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            let found = filter(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(m, j) => {
+                        string_eq_p(m, n)
+                    }
+                }
+            }), ts);
+            if null_p(found) {
+                0i64
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Lterm::Lterm(m, j) => {
+                        j
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn lin_names(a: &'static Lin) -> Strings {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            map(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(n, j) => {
+                        n
+                    }
+                }
+            }), ts)
+        }
+    }
+}
+
+pub fn lin_text(a: &'static Lin) -> Str {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            words_of(kayak_rt::heap_cons(i64_to_string(c), concat(map(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(n, j) => {
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(i64_to_string(j), kayak_rt::nil())))
+                    }
+                }
+            }), ts))))
+        }
+    }
+}
+
+pub fn digits_i64_of(mut cs: Chars, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+pub fn string_to_i64(t: Str) -> i64 {
+    let cs = string_chars(t);
+    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
+        i64_minus(0i64, digits_i64_of(cdr(cs), 0i64))
+    } else {
+        digits_i64_of(cs, 0i64)
+    }
+}
+
+pub fn fact_words_from(mut cs: Chars, mut w: Chars, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            return reverse(if null_p(w) {
+                acc
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc))
+            });
+        } else if char_eq_p(car(cs), ' ') {
+            (cs, w, acc) = (cdr(cs), nil::<char>(), if null_p(w) {
+                acc
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc))
+            });
+            continue;
+        } else {
+            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
+            continue;
+        }
+    }
+}
+
+pub fn text_words(t: Str) -> Strings {
+    fact_words_from(string_chars(t), nil::<char>(), nil::<Str>())
+}
+
+pub fn second_word(ws: Strings) -> Str {
+    car(cdr(ws))
+}
+
+pub fn lterms_read(ws: Strings) -> List<&'static Lterm> {
+    if (null_p(ws) || null_p(cdr(ws))) {
+        nil::<&'static Lterm>()
+    } else {
+        kayak_rt::heap_cons(lterm(car(ws), string_to_i64(second_word(ws))), lterms_read(cdr(cdr(ws))))
+    }
+}
+
+pub fn lin_read(ws: Strings) -> &'static Lin {
+    lin(string_to_i64(car(ws)), lterms_read(cdr(ws)))
+}
+
+// Whether inequalities `ls`, each `l >= 0`, have no solution, by
+// Fourier-Motzkin elimination over the rationals: sound for the integers,
+// not complete. Too many, and the answer is that they may have one.
+pub fn no_solution_p(mut ls: Lins, mut budget: i64) -> bool {
+    loop {
+        if i64_gt(size(ls), 400i64) {
+            return false;
+        } else if any_p(lambda1s(move |l: &'static Lin| {
+            let tagcase_ = l;
+            match *tagcase_ {
+                Lin::Lin(c, ts) => {
+                    (null_p(ts) && i64_lt(c, 0i64))
+                }
+            }
+        }), ls) {
+            return true;
+        } else {
+            let open = filter(lambda1s(move |l: &'static Lin| {
+                let tagcase_ = l;
+                match *tagcase_ {
+                    Lin::Lin(c, ts) => {
+                        not(null_p(ts))
+                    }
+                }
+            }), ls);
+            if (null_p(open) || i64_lt_eq(budget, 0i64)) {
+                return false;
+            } else {
+                let x = car(lin_names(car(open)));
+                let pos = filter(lambda1s(move |l: &'static Lin| {
+                    i64_gt(lin_coef(l, x), 0i64)
+                }), open);
+                let neg = filter(lambda1s(move |l: &'static Lin| {
+                    i64_lt(lin_coef(l, x), 0i64)
+                }), open);
+                let rest = filter(lambda1s(move |l: &'static Lin| {
+                    i64_eq(lin_coef(l, x), 0i64)
+                }), open);
+                (ls, budget) = (onto(rest, concat(map(lambda1s(move |p: &'static Lin| {
+                    map(lambda1s(move |q: &'static Lin| {
+                        lin_add(lin_scaled(p, i64_minus(0i64, lin_coef(q, x))), q, lin_coef(p, x))
+                    }), neg)
+                }), pos))), i64_minus(budget, 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+/// Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
+/// `>= 1` and `<= -1`) show `goal >= 0`.
+pub fn lin_shown_p(ges: Lins, nes: Lins, goal: &'static Lin) -> bool {
+    if null_p(nes) {
+        no_solution_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), goal, -1i64), ges), 64i64)
+    } else {
+        (lin_shown_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes), goal) && lin_shown_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes), goal))
+    }
+}
+
+// Sizes in types (C158; Fixpt's `docs/research/sizes.md`): a size is
+// `finite`, the top, some size not known; a size variable, a binder of
+// kind `size` (`#n`) or an inference variable; or a linear one, a constant
+// and each variable's coefficient: `(ty-data "%sz" (k t ...))`, `k` its
+// constant (`%k C`) and each `t` a variable times its coefficient (`%t
+// K`), so that instantiating and solving see the variables. `(nat s)` is
+// `%natof`, `nat` itself `(nat finite)`; `(nlist T s)`, a list of
+// exactly `s` elements, frozen, `%nlist`.
+pub fn size_finite() -> &'static Ty {
+    ty_data(str_lit("%finite"), nil::<&'static Ty>())
+}
+
+pub fn size_term_var(n: Str) -> &'static Ty {
+    if has_prefix_p(n, str_lit("?")) {
+        ty_meta(string_to_i64(after_prefix(n, str_lit("?"))))
+    } else {
+        ty_var(n)
+    }
+}
+
+pub fn size_of_lin(l: &'static Lin) -> &'static Ty {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            if (i64_eq(c, 0i64) && not(null_p(ts)) && null_p(cdr(ts)) && {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Lterm::Lterm(n, k) => {
+                        i64_eq(k, 1i64)
+                    }
+                }
+            }) {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Lterm::Lterm(n, k) => {
+                        size_term_var(n)
+                    }
+                }
+            } else {
+                ty_data(str_lit("%sz"), kayak_rt::heap_cons(ty_data(string_append(str_lit("%k "), i64_to_string(c)), nil::<&'static Ty>()), map(lambda1s(move |t: &'static Lterm| {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Lterm::Lterm(n, k) => {
+                            ty_data(string_append(str_lit("%t "), i64_to_string(k)), kayak_rt::heap_cons(size_term_var(n), kayak_rt::nil()))
+                        }
+                    }
+                }), ts)))
+            }
+        }
+    }
+}
+
+/// A size as written (C158), as a linear expression; none for `finite`: a
+/// literal, `finite`, a size variable, `(+ s ...)`, `(- s k)`.
+pub fn parse_size_lin(v: &'static Cv, tvars: Strings, z: &'static Sexp) -> Lins {
+    let tagcase_ = z;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            if i64_lt(k, 0i64) {
+                match refuse(v, str_lit("a size is never negative")) {}
+            } else {
+                kayak_rt::heap_cons(lin(k, nil::<&'static Lterm>()), kayak_rt::nil())
+            }
+        }
+        Sexp::Sym(n, f, p) => {
+            if string_eq_p(n, str_lit("finite")) {
+                nil::<&'static Lin>()
+            } else if string_member_p(string_append(str_lit("#"), n), tvars) {
+                kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(string_append(str_lit("#"), n), 1i64), kayak_rt::nil())), kayak_rt::nil())
+            } else {
+                match refuse(v, string_append(str_lit("a size: a natural, finite, a size variable, (+ s ...), (- s k): "), n)) {}
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if (sym_is_p(car(xs), str_lit("+")) && not(null_p(cdr(xs)))) {
+                sizes_summed(v, tvars, cdr(xs), lin(0i64, nil::<&'static Lterm>()))
+            } else if (sym_is_p(car(xs), str_lit("-")) && i64_eq(size(xs), 3i64) && {
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let a = parse_size_lin(v, tvars, second(xs));
+                if null_p(a) {
+                    nil::<&'static Lin>()
+                } else {
+                    kayak_rt::heap_cons(lin_add(car(a), lin({
+                        let tagcase_ = third(xs);
+                        match *tagcase_ {
+                            Sexp::Num(k, f2, p2) => {
+                                k
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                0i64
+                            }
+                        }
+                    }, nil::<&'static Lterm>()), -1i64), kayak_rt::nil())
+                }
+            } else {
+                match refuse(v, string_append(str_lit("a size: a natural, finite, a size variable, (+ s ...), (- s k): "), show_sexp(z))) {}
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, str_lit("a size: a natural, finite, a size variable, (+ s ...), (- s k)")) {}
+        }
+    }
+}
+
+pub fn sizes_summed(mut v: &'static Cv, mut tvars: Strings, mut zs: Sexps, mut acc: &'static Lin) -> Lins {
+    loop {
+        if null_p(zs) {
+            return kayak_rt::heap_cons(acc, kayak_rt::nil());
+        } else {
+            let l = parse_size_lin(v, tvars, car(zs));
+            if null_p(l) {
+                return nil::<&'static Lin>();
+            } else {
+                (zs, acc) = (cdr(zs), lin_add(acc, car(l), 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn parse_size(v: &'static Cv, tvars: Strings, z: &'static Sexp) -> &'static Ty {
+    let l = parse_size_lin(v, tvars, z);
+    if null_p(l) {
+        size_finite()
+    } else {
+        size_of_lin(car(l))
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -1939,6 +2372,17 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs))));
+                } else if (sym_is_p(car(xs), str_lit("nlist")) && i64_eq(size(xs), 3i64)) {
+                    // A list of exactly `s` elements, frozen (C158).
+                    return ty_data(str_lit("%nlist"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_size(v, tvars, third(xs)), kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("nat")) && i64_eq(size(xs), 2i64)) {
+                    // `(nat s)`: exactly the size `s` (C158); `(nat finite)` is `nat`.
+                    let z = parse_size_lin(v, tvars, second(xs));
+                    if null_p(z) {
+                        return ty_nat();
+                    } else {
+                        return ty_data(str_lit("%natof"), kayak_rt::heap_cons(size_of_lin(car(z)), kayak_rt::nil()));
+                    }
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                     if sym_is_p(second(xs), str_lit("i64")) {
                         return ty_flat(ty_i64(), parse_mutable_region(v, tvars, third(xs)));
@@ -2056,12 +2500,12 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // its process's alone; `(icell T R)`, a `T` written once.
                     return ty_data(string_append(str_lit("%"), sym_name(car(xs))), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_region(v, tvars, third(xs)), kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64)) {
-                    // A type polymorphic in regions alone, a procedure's parameter's (rank 2,
-                    // C107): `(poly ((r region) ...) T)`, its binders named apart by where
-                    // it is written, `'r@P`, so that none is another's.
+                    // A poly type written in a type (rank 2, C107): `(poly ((r region) ...)
+                    // T)`, of regions, types and sizes (C158), its binders named apart by
+                    // where it is written, `'r@P`, `t@P`, `#n@P`, so that none is another's.
                     let bs = items(second(xs));
                     let names = map(lambda1s(move |b: &'static Sexp| {
-                        if ({
+                        if {
                             let tagcase_ = b;
                             match *tagcase_ {
                                 Sexp::Lst(ys, f, l, p) => {
@@ -2072,19 +2516,26 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                     false
                                 }
                             }
-                        } && sym_is_p(second(items(b)), str_lit("region"))) {
-                            sym_name(car(items(b)))
+                        } {
+                            let (k, n) = (second(items(b)), sym_name(car(items(b))));
+                            if sym_is_p(k, str_lit("region")) {
+                                string_append(str_lit("'"), n)
+                            } else if sym_is_p(k, str_lit("size")) {
+                                string_append(str_lit("#"), n)
+                            } else if sym_is_p(k, str_lit("type")) {
+                                n
+                            } else {
+                                match refuse(v, str_lit("a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")) {}
+                            }
                         } else {
-                            match refuse(v, str_lit("a poly type whose binders are not all regions, which KFX has not yet (C107)")) {}
+                            match refuse(v, str_lit("a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")) {}
                         }
                     }), bs);
                     let pos = datum_pos(t);
-                    let body = parse_type(v, onto(map(lambda1s(move |n: Str| {
-                        string_append(str_lit("'"), n)
-                    }), names), tvars), third(xs));
+                    let body = parse_type(v, onto(names, tvars), third(xs));
                     let renamed = fold_renames(names, pos, body);
                     return ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
-                        ty_var(string_append(str_lit("'"), string_append(n, string_append(str_lit("@"), i64_to_string(pos)))))
+                        ty_var(string_append(n, string_append(str_lit("@"), i64_to_string(pos))))
                     }), names), kayak_rt::heap_cons(renamed, kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("escape-tag")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
@@ -2490,7 +2941,7 @@ pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () 
     let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1s(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1s(move |n: Str| {
-        if (has_prefix_p(n, str_lit("'")) || has_prefix_p(n, str_lit("~"))) {
+        if (has_prefix_p(n, str_lit("'")) || has_prefix_p(n, str_lit("~")) || has_prefix_p(n, str_lit("#"))) {
             nil::<Str>()
         } else {
             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
@@ -2535,6 +2986,8 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 string_append(str_lit("'"), name_of(v, car(b)))
             } else if sym_is_p(second(b), str_lit("effect")) {
                 string_append(str_lit("~"), name_of(v, car(b)))
+            } else if sym_is_p(second(b), str_lit("size")) {
+                string_append(str_lit("#"), name_of(v, car(b)))
             } else {
                 match refuse(v, string_append(str_lit("KFX's poly is over types, effects, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
@@ -2608,6 +3061,117 @@ pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
     parse_scheme_of(v, t, true)
 }
 
+/// Size `t` as a linear expression, its variables named (`#n`, `?k`), an
+/// inference variable solved looked through; none if it is `finite`.
+pub fn size_lin(s: &'static St, t: &'static Ty) -> Lins {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil())
+        }
+        Ty::TyMeta(k) => {
+            kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(string_append(str_lit("?"), i64_to_string(k)), 1i64), kayak_rt::nil())), kayak_rt::nil())
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%sz")) {
+                size_terms_lin(s, cdr(args), lin(string_to_i64(after_prefix({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyData(k, a) => {
+                            k
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("%k 0")
+                        }
+                    }
+                }, str_lit("%k "))), nil::<&'static Lterm>()))
+            } else {
+                nil::<&'static Lin>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Lin>()
+        }
+    }
+}
+
+pub fn size_terms_lin(mut s: &'static St, mut ts: List<&'static Ty>, mut acc: &'static Lin) -> Lins {
+    loop {
+        if null_p(ts) {
+            return kayak_rt::heap_cons(acc, kayak_rt::nil());
+        } else {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    let inner = size_lin(s, car(args));
+                    if null_p(inner) {
+                        return nil::<&'static Lin>();
+                    } else {
+                        (ts, acc) = (cdr(ts), lin_add(acc, car(inner), string_to_i64(after_prefix(d, str_lit("%t ")))));
+                        continue;
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return nil::<&'static Lin>();
+                }
+            }
+        }
+    }
+}
+
+pub fn size_finite_p(s: &'static St, t: &'static Ty) -> bool {
+    null_p(size_lin(s, t))
+}
+
+/// As FX-26 writes a size: `3`, `n`, `(+ n 1)`, `(- n 1)`, `(+ n m)`.
+pub fn size_text(l: &'static Lin) -> Str {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            let vars = concat(map(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(n, k) => {
+                        let x = if has_prefix_p(n, str_lit("#")) {
+                            after_prefix(n, str_lit("#"))
+                        } else {
+                            n
+                        };
+                        if i64_eq(k, 1i64) {
+                            the::<Strings>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                        } else {
+                            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("(* "), string_append(i64_to_string(k), string_append(str_lit(" "), string_append(x, str_lit(")"))))), kayak_rt::nil()))
+                        }
+                    }
+                }
+            }), ts));
+            if null_p(vars) {
+                i64_to_string(c)
+            } else if (null_p(cdr(vars)) && i64_eq(c, 0i64)) {
+                car(vars)
+            } else if i64_lt(c, 0i64) {
+                string_append(str_lit("(- "), string_append(words_of(vars), string_append(str_lit(" "), string_append(i64_to_string(i64_minus(0i64, c)), str_lit(")")))))
+            } else if i64_eq(c, 0i64) {
+                string_append(str_lit("(+ "), string_append(words_of(vars), str_lit(")")))
+            } else {
+                string_append(str_lit("(+ "), string_append(words_of(vars), string_append(str_lit(" "), string_append(i64_to_string(c), str_lit(")")))))
+            }
+        }
+    }
+}
+
+pub fn show_size(s: &'static St, t: &'static Ty) -> Str {
+    let l = size_lin(s, t);
+    if null_p(l) {
+        str_lit("finite")
+    } else {
+        size_text(car(l))
+    }
+}
+
 pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
     let tagcase_ = walk(s, t);
     match *tagcase_ {
@@ -2660,6 +3224,12 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%escape-tag")) {
                 string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%nlist")) {
+                string_append(str_lit("(nlist "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), str_lit(")")))))
+            } else if string_eq_p(d, str_lit("%natof")) {
+                string_append(str_lit("(nat "), string_append(show_size(s, car(args)), str_lit(")")))
+            } else if (string_eq_p(d, str_lit("%sz")) || string_eq_p(d, str_lit("%finite"))) {
+                show_size(s, t)
             } else if string_eq_p(d, str_lit("%poly")) {
                 string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
             } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
@@ -3712,6 +4282,210 @@ pub fn datum_p(t: &'static Ty) -> bool {
     }
 }
 
+// The facts in scope (C157), and whether they show `goal >= 0`: each
+// local `nat` and each size variable not negative.
+pub enum Sfacts {
+    Sfacts(Lins, Lins),
+}
+
+pub fn sfacts(f0: Lins, f1: Lins) -> &'static Sfacts {
+    kayak_rt::heap_alloc(Sfacts::Sfacts(f0, f1))
+}
+
+/// The facts in scope, `>= 0` and `/= 0`: each of a binding of no name a
+/// program writes, unless a name it mentions has been bound again
+/// since (a narrowing names the same value).
+pub fn size_facts_from(mut bs: Binds, mut seen: Strings, mut ges: Lins, mut nes: Lins) -> &'static Sfacts {
+    loop {
+        if null_p(bs) {
+            return sfacts(ges, nes);
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    if (string_eq_p(n, str_lit("%size-fact")) && has_prefix_p(w, str_lit("fact "))) {
+                        let ws = cdr(text_words(w));
+                        let kind = car(ws);
+                        let l = lin_read(cdr(ws));
+                        if any_p(lambda1s(move |m: Str| {
+                            string_member_p(m, seen)
+                        }), lin_names(l)) {
+                            bs = cdr(bs);
+                            continue;
+                        } else if string_eq_p(kind, str_lit("ge")) {
+                            (bs, ges) = (cdr(bs), kayak_rt::heap_cons(l, ges));
+                            continue;
+                        } else if string_eq_p(kind, str_lit("eq")) {
+                            (bs, ges) = (cdr(bs), kayak_rt::heap_cons(l, kayak_rt::heap_cons(lin_scaled(l, -1i64), ges)));
+                            continue;
+                        } else {
+                            (bs, nes) = (cdr(bs), kayak_rt::heap_cons(l, nes));
+                            continue;
+                        }
+                    } else if string_eq_p(w, str_lit("narrowed")) {
+                        bs = cdr(bs);
+                        continue;
+                    } else {
+                        (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `l`, each inference variable in it that is solved replaced by its size.
+pub fn lin_resolved(s: &'static St, l: &'static Lin) -> &'static Lin {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            if null_p(ts) {
+                l
+            } else {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Lterm::Lterm(n, k) => {
+                        let rest = lin_resolved(s, lin(c, cdr(ts)));
+                        if has_prefix_p(n, str_lit("?")) {
+                            let found = size_lin(s, ty_meta(string_to_i64(after_prefix(n, str_lit("?")))));
+                            if (null_p(found) || string_eq_p(lin_text(car(found)), lin_text(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil()))))) {
+                                lin_add(rest, lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), k)
+                            } else {
+                                lin_add(rest, lin_resolved(s, car(found)), k)
+                            }
+                        } else {
+                            lin_add(rest, lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), k)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Each of `ns` a size variable, or a local `nat`: `n >= 0`.
+pub fn nat_bounds(v: &'static Cv, s: &'static St, ns: Strings) -> Lins {
+    concat(map(lambda1s(move |n: Str| {
+        let b = find_bind(n, cv_binds(v));
+        if (has_prefix_p(n, str_lit("#")) || has_prefix_p(n, str_lit("?")) || (not(null_p(b)) && {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(m, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            let tagcase_ = walk(s, t);
+                            match *tagcase_ {
+                                Ty::TyNat() => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })) {
+            the::<Lins>(kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil()))
+        } else {
+            nil::<&'static Lin>()
+        }
+    }), ns))
+}
+
+/// Whether the facts in scope show `goal >= 0`.
+pub fn size_shown_p(v: &'static Cv, s: &'static St, goal0: &'static Lin) -> bool {
+    let tagcase_ = size_facts_from(cv_binds(v), nil::<Str>(), nil::<&'static Lin>(), nil::<&'static Lin>());
+    match *tagcase_ {
+        Sfacts::Sfacts(ges0, nes0) => {
+            let goal = lin_resolved(s, goal0);
+            let ges = map(lambda1s(move |l: &'static Lin| {
+                lin_resolved(s, l)
+            }), ges0);
+            let nes = map(lambda1s(move |l: &'static Lin| {
+                lin_resolved(s, l)
+            }), nes0);
+            let names = concat(map(&lin_names, kayak_rt::heap_cons(goal, onto(ges, nes))));
+            lin_shown_p(onto(nat_bounds(v, s, names), ges), nes, goal)
+        }
+    }
+}
+
+/// The first inference variable of `ts` of coefficient 1 or -1, if any:
+/// one to solve for.
+pub fn lone_meta(ts: List<&'static Lterm>) -> List<&'static Lterm> {
+    let ms = filter(lambda1s(move |t: &'static Lterm| {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Lterm::Lterm(n, k) => {
+                (has_prefix_p(n, str_lit("?")) && (i64_eq(k, 1i64) || i64_eq(k, -1i64)))
+            }
+        }
+    }), ts);
+    if null_p(ms) {
+        nil::<&'static Lterm>()
+    } else {
+        kayak_rt::heap_cons(car(ms), kayak_rt::nil())
+    }
+}
+
+pub fn sized_p(t: &'static Ty, d: Str) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(x, args) => {
+            string_eq_p(x, d)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn sized_elem(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            car(args)
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+pub fn sized_size(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%natof")) {
+                car(args)
+            } else {
+                car(cdr(args))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            size_finite()
+        }
+    }
+}
+
+/// A `%nlist`'s type of one element fewer: `finite`'s is `finite`.
+pub fn sized_less(t: &'static Ty, s: &'static St) -> &'static Ty {
+    let l = size_lin(s, sized_size(t));
+    ty_data(str_lit("%nlist"), kayak_rt::heap_cons(sized_elem(t), kayak_rt::heap_cons(if null_p(l) {
+        size_finite()
+    } else {
+        size_of_lin(lin_add(car(l), lin(-1i64, nil::<&'static Lterm>()), 1i64))
+    }, kayak_rt::nil())))
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
@@ -3779,7 +4553,142 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    if (datum_p(a) && datum_p(e)) {
+    if (sized_p(a, str_lit("%natof")) && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyNat() => {
+                true
+            }
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // `(nat s)` below `nat` and `int` (C158).
+        s
+    } else if (sized_p(a, str_lit("%nlist")) && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                (string_eq_p(d, str_lit("%pairof")) && sized_p(walk(s, car(cdr(args))), str_lit("%nlist")))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A pair whose tail is a list of a size, at `acyclic`, as the list it
+        // is (C68, C158).
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                fits(v, fits(v, fits(v, s, sized_elem(a), car(args)), a, car(cdr(args))), car(cdr(cdr(args))), ty_rconst(str_lit("acyclic")))
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
+    } else if (sized_p(a, str_lit("%nlist")) && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyList(y, r) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A list of a size below a list, at `acyclic` (C158): frozen, it ends.
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyList(y, r) => {
+                fits(v, fits(v, s, sized_elem(a), y), ty_rconst(str_lit("acyclic")), r)
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
+    } else if (sized_p(e, str_lit("%nlist")) && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A list at `acyclic` below a list of a size not known, `finite`: one
+        // that is frozen and ends (C158).
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                if size_finite_p(s, sized_size(e)) {
+                    fits(v, s, a, ty_list(sized_elem(e), ty_rconst(str_lit("acyclic"))))
+                } else {
+                    mismatch(v, s, a, e)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
+    } else if (sized_p(e, str_lit("%nlist")) && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("nil"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // `nil` below a list of a size shown 0 (C158).
+        size_fits(v, s, size_of_lin(lin(0i64, nil::<&'static Lterm>())), sized_size(e), a, e)
+    } else if (sized_p(e, str_lit("%nlist")) && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%pairof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A pair, frozen, below a list of size `s`: its tail of size `s - 1`, `s`
+        // shown not 0 (C158).
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                let z = sized_size(e);
+                if (not(size_finite_p(s, z)) && not(size_shown_p(v, s, lin_add(car(size_lin(s, z)), lin(-1i64, nil::<&'static Lterm>()), 1i64)))) {
+                    mismatch(v, s, a, e)
+                } else {
+                    fits(v, fits(v, fits(v, s, car(args), sized_elem(e)), car(cdr(args)), sized_less(e, s)), car(cdr(cdr(args))), ty_rconst(str_lit("acyclic")))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
+    } else if (datum_p(a) && datum_p(e)) {
         s
     } else if (datum_p(e) && {
         let tagcase_ = a;
@@ -4108,6 +5017,13 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         } else {
                             fits(v, fits(v, fits(v, car(two), car(xs), car(ys)), car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(cdr(xs)))), car(cdr(cdr(cdr(ys)))))
                         }
+                    } else if (string_eq_p(x, str_lit("%nlist")) || string_eq_p(x, str_lit("%natof"))) {
+                        // A size the same, or the one expected `finite` (C158).
+                        if string_eq_p(x, str_lit("%nlist")) {
+                            size_fits(v, fits(v, s, car(xs), car(ys)), car(cdr(xs)), car(cdr(ys)), a, e)
+                        } else {
+                            size_fits(v, s, car(xs), car(ys), a, e)
+                        }
                     } else if string_eq_p(x, str_lit("%vsubr")) {
                         // Its element and result first, then its effect, which they may solve
                         // a region of: `list`'s `(alloc r)`, `r` acyclic, is pure (C156).
@@ -4216,8 +5132,198 @@ pub fn fits_all(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut ex
     }
 }
 
+/// That size `za` may stand for `ze` (C158), in types `a` and `e`: `ze`
+/// `finite`; else the two shown equal by the facts in scope, an
+/// inference variable alone in one solved to make them so, its size
+/// shown not negative.
+pub fn size_fits(v: &'static Cv, s: &'static St, za: &'static Ty, ze: &'static Ty, a: &'static Ty, e: &'static Ty) -> &'static St {
+    let (la, le) = (size_lin(s, za), size_lin(s, ze));
+    if {
+        let tagcase_ = walk(s, ze);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        // A size binder may be instantiated with `finite` too (Fixpt's sizes.md),
+        // unless it sizes more than one argument, or something inside one.
+        let tagcase_ = walk(s, ze);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                if {
+                    let tagcase_ = walk(s, za);
+                    match *tagcase_ {
+                        Ty::TyMeta(j) => {
+                            i64_eq(j, k)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    s
+                } else if (null_p(la) && any_p(lambda1s(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(fl, p, w) => {
+                            (string_eq_p(fl, str_lit("%sizes")) && i64_eq(p, k) && string_eq_p(w, str_lit("not-finite")))
+                        }
+                    }
+                }), st_facts(s))) {
+                    match refuse_named(v, s, str_lit("a size cannot be finite here: it is the size of more than one argument, or of something inside one, and finite would not keep them the same")) {}
+                } else {
+                    solve(s, k, za)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
+    } else if null_p(le) {
+        s
+    } else if {
+        let tagcase_ = walk(s, za);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = walk(s, za);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                solve(s, k, ze)
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
+    } else if null_p(la) {
+        mismatch(v, s, a, e)
+    } else {
+        let d = lin_resolved(s, lin_add(car(la), car(le), -1i64));
+        let m = {
+            let tagcase_ = d;
+            match *tagcase_ {
+                Lin::Lin(c, ts) => {
+                    lone_meta(ts)
+                }
+            }
+        };
+        if null_p(m) {
+            if (size_shown_p(v, s, d) && size_shown_p(v, s, lin_scaled(d, -1i64))) {
+                s
+            } else {
+                mismatch(v, s, a, e)
+            }
+        } else {
+            let tagcase_ = car(m);
+            match *tagcase_ {
+                Lterm::Lterm(n, k) => {
+                    let solved = lin_scaled(lin_add(d, lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), i64_minus(0i64, k)), i64_minus(0i64, k));
+                    if (any_p(lambda1s(move |x: Str| {
+                        has_prefix_p(x, str_lit("?"))
+                    }), lin_names(solved)) || size_shown_p(v, s, solved)) {
+                        solve(s, string_to_i64(after_prefix(n, str_lit("?"))), size_of_lin(solved))
+                    } else {
+                        mismatch(v, s, a, e)
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
     match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected")))))) {}
+}
+
+/// How often type variable `n` is in `t`.
+pub fn var_count(n: Str, t: &'static Ty) -> i64 {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyVar(m) => {
+            if string_eq_p(m, n) {
+                1i64
+            } else {
+                0i64
+            }
+        }
+        Ty::TyList(e, r) => {
+            i64_plus(var_count(n, e), var_count(n, r))
+        }
+        Ty::TyFlat(e, r) => {
+            i64_plus(var_count(n, e), var_count(n, r))
+        }
+        Ty::TyRef(e, r) => {
+            i64_plus(var_count(n, e), var_count(n, r))
+        }
+        Ty::TyData(d, args) => {
+            vars_count(n, args)
+        }
+        Ty::TyTag(a, h, es, r) => {
+            i64_plus(var_count(n, a), i64_plus(var_count(n, h), var_count(n, r)))
+        }
+        Ty::TyProc(es, ps, r) => {
+            i64_plus(vars_count(n, ps), var_count(n, r))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            vars_count(n, ts)
+        }
+        _ => {
+            let other = tagcase_;
+            0i64
+        }
+    }
+}
+
+pub fn vars_count(n: Str, ts: List<&'static Ty>) -> i64 {
+    if null_p(ts) {
+        0i64
+    } else {
+        i64_plus(var_count(n, car(ts)), vars_count(n, cdr(ts)))
+    }
+}
+
+/// Whether size binder `n` of a procedure's type `t` may be instantiated
+/// with `finite`: it is in its parameters once, the size of one of them,
+/// itself (Fixpt's rule: else `finite` would not keep two sizes the same).
+pub fn finite_may_p(n: Str, t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            (i64_eq(vars_count(n, ps), 1i64) && any_p(lambda1s(move |p: &'static Ty| {
+                (sized_p(p, str_lit("%nlist")) && {
+                    let tagcase_ = sized_size(p);
+                    match *tagcase_ {
+                        Ty::TyVar(m) => {
+                            string_eq_p(m, n)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })
+            }), ps))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
 }
 
 // A scheme's instance: each variable an inference variable; those for
@@ -4251,7 +5357,11 @@ pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions:
                 let tagcase_ = m;
                 match *tagcase_ {
                     Ty::TyMeta(k) => {
-                        instantiate_vars(s, cdr(tvars), replace_var(car(tvars), m, t), if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
+                        instantiate_vars(if (has_prefix_p(car(tvars), str_lit("#")) && not(finite_may_p(car(tvars), t))) {
+                            note_fact(s, str_lit("%sizes"), k, str_lit("not-finite"))
+                        } else {
+                            s
+                        }, cdr(tvars), replace_var(car(tvars), m, t), if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
                             kayak_rt::heap_cons(k, regions)
                         } else {
                             regions
@@ -5060,273 +6170,6 @@ pub fn nat_p(s: &'static St, t: &'static Ty) -> bool {
             let other = tagcase_;
             false
         }
-    }
-}
-
-// Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
-// a linear expression over local names, a constant and each name's
-// coefficient; a fact that one is `= 0`, `>= 0`, or `/= 0`, learned in a
-// branch of a test, kept in the environment as a binding of no name a
-// program writes, `wher` `fact KIND C N K ...`.
-pub enum Lterm {
-    Lterm(Str, i64),
-}
-
-pub fn lterm(f0: Str, f1: i64) -> &'static Lterm {
-    kayak_rt::heap_alloc(Lterm::Lterm(f0, f1))
-}
-
-pub enum Lin {
-    Lin(i64, List<&'static Lterm>),
-}
-
-pub fn lin(f0: i64, f1: List<&'static Lterm>) -> &'static Lin {
-    kayak_rt::heap_alloc(Lin::Lin(f0, f1))
-}
-
-pub type Lins = List<&'static Lin>;
-
-pub fn lterms_added(ts: List<&'static Lterm>, n: Str, k: i64) -> List<&'static Lterm> {
-    if null_p(ts) {
-        if i64_eq(k, 0i64) {
-            nil::<&'static Lterm>()
-        } else {
-            kayak_rt::heap_cons(lterm(n, k), kayak_rt::nil())
-        }
-    } else if {
-        let tagcase_ = car(ts);
-        match *tagcase_ {
-            Lterm::Lterm(m, j) => {
-                string_eq_p(m, n)
-            }
-        }
-    } {
-        let tagcase_ = car(ts);
-        match *tagcase_ {
-            Lterm::Lterm(m, j) => {
-                if i64_eq(i64_plus(j, k), 0i64) {
-                    cdr(ts)
-                } else {
-                    kayak_rt::heap_cons(lterm(m, i64_plus(j, k)), cdr(ts))
-                }
-            }
-        }
-    } else {
-        kayak_rt::heap_cons(car(ts), lterms_added(cdr(ts), n, k))
-    }
-}
-
-pub fn lin_terms_onto(mut ts: List<&'static Lterm>, mut acc: List<&'static Lterm>, mut k: i64) -> List<&'static Lterm> {
-    loop {
-        if null_p(ts) {
-            return acc;
-        } else {
-            let tagcase_ = car(ts);
-            match *tagcase_ {
-                Lterm::Lterm(n, j) => {
-                    (ts, acc) = (cdr(ts), lterms_added(acc, n, i64_star(j, k)));
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-/// `a + k b`.
-pub fn lin_add(a: &'static Lin, b: &'static Lin, k: i64) -> &'static Lin {
-    let tagcase_ = a;
-    match *tagcase_ {
-        Lin::Lin(ca, ta) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Lin::Lin(cb, tb) => {
-                    lin(i64_plus(ca, i64_star(k, cb)), lin_terms_onto(tb, ta, k))
-                }
-            }
-        }
-    }
-}
-
-pub fn lin_scaled(a: &'static Lin, k: i64) -> &'static Lin {
-    lin_add(lin(0i64, nil::<&'static Lterm>()), a, k)
-}
-
-pub fn lin_coef(a: &'static Lin, n: Str) -> i64 {
-    let tagcase_ = a;
-    match *tagcase_ {
-        Lin::Lin(c, ts) => {
-            let found = filter(lambda1s(move |t: &'static Lterm| {
-                let tagcase_ = t;
-                match *tagcase_ {
-                    Lterm::Lterm(m, j) => {
-                        string_eq_p(m, n)
-                    }
-                }
-            }), ts);
-            if null_p(found) {
-                0i64
-            } else {
-                let tagcase_ = car(found);
-                match *tagcase_ {
-                    Lterm::Lterm(m, j) => {
-                        j
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn lin_names(a: &'static Lin) -> Strings {
-    let tagcase_ = a;
-    match *tagcase_ {
-        Lin::Lin(c, ts) => {
-            map(lambda1s(move |t: &'static Lterm| {
-                let tagcase_ = t;
-                match *tagcase_ {
-                    Lterm::Lterm(n, j) => {
-                        n
-                    }
-                }
-            }), ts)
-        }
-    }
-}
-
-pub fn lin_text(a: &'static Lin) -> Str {
-    let tagcase_ = a;
-    match *tagcase_ {
-        Lin::Lin(c, ts) => {
-            words_of(kayak_rt::heap_cons(i64_to_string(c), concat(map(lambda1s(move |t: &'static Lterm| {
-                let tagcase_ = t;
-                match *tagcase_ {
-                    Lterm::Lterm(n, j) => {
-                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(i64_to_string(j), kayak_rt::nil())))
-                    }
-                }
-            }), ts))))
-        }
-    }
-}
-
-pub fn digits_i64_of(mut cs: Chars, mut n: i64) -> i64 {
-    loop {
-        if null_p(cs) {
-            return n;
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn string_to_i64(t: Str) -> i64 {
-    let cs = string_chars(t);
-    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
-        i64_minus(0i64, digits_i64_of(cdr(cs), 0i64))
-    } else {
-        digits_i64_of(cs, 0i64)
-    }
-}
-
-pub fn fact_words_from(mut cs: Chars, mut w: Chars, mut acc: Strings) -> Strings {
-    loop {
-        if null_p(cs) {
-            return reverse(if null_p(w) {
-                acc
-            } else {
-                the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc))
-            });
-        } else if char_eq_p(car(cs), ' ') {
-            (cs, w, acc) = (cdr(cs), nil::<char>(), if null_p(w) {
-                acc
-            } else {
-                the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc))
-            });
-            continue;
-        } else {
-            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
-            continue;
-        }
-    }
-}
-
-pub fn text_words(t: Str) -> Strings {
-    fact_words_from(string_chars(t), nil::<char>(), nil::<Str>())
-}
-
-pub fn second_word(ws: Strings) -> Str {
-    car(cdr(ws))
-}
-
-pub fn lterms_read(ws: Strings) -> List<&'static Lterm> {
-    if (null_p(ws) || null_p(cdr(ws))) {
-        nil::<&'static Lterm>()
-    } else {
-        kayak_rt::heap_cons(lterm(car(ws), string_to_i64(second_word(ws))), lterms_read(cdr(cdr(ws))))
-    }
-}
-
-pub fn lin_read(ws: Strings) -> &'static Lin {
-    lin(string_to_i64(car(ws)), lterms_read(cdr(ws)))
-}
-
-// Whether inequalities `ls`, each `l >= 0`, have no solution, by
-// Fourier-Motzkin elimination over the rationals: sound for the integers,
-// not complete. Too many, and the answer is that they may have one.
-pub fn no_solution_p(mut ls: Lins, mut budget: i64) -> bool {
-    loop {
-        if i64_gt(size(ls), 400i64) {
-            return false;
-        } else if any_p(lambda1s(move |l: &'static Lin| {
-            let tagcase_ = l;
-            match *tagcase_ {
-                Lin::Lin(c, ts) => {
-                    (null_p(ts) && i64_lt(c, 0i64))
-                }
-            }
-        }), ls) {
-            return true;
-        } else {
-            let open = filter(lambda1s(move |l: &'static Lin| {
-                let tagcase_ = l;
-                match *tagcase_ {
-                    Lin::Lin(c, ts) => {
-                        not(null_p(ts))
-                    }
-                }
-            }), ls);
-            if (null_p(open) || i64_lt_eq(budget, 0i64)) {
-                return false;
-            } else {
-                let x = car(lin_names(car(open)));
-                let pos = filter(lambda1s(move |l: &'static Lin| {
-                    i64_gt(lin_coef(l, x), 0i64)
-                }), open);
-                let neg = filter(lambda1s(move |l: &'static Lin| {
-                    i64_lt(lin_coef(l, x), 0i64)
-                }), open);
-                let rest = filter(lambda1s(move |l: &'static Lin| {
-                    i64_eq(lin_coef(l, x), 0i64)
-                }), open);
-                (ls, budget) = (onto(rest, concat(map(lambda1s(move |p: &'static Lin| {
-                    map(lambda1s(move |q: &'static Lin| {
-                        lin_add(lin_scaled(p, i64_minus(0i64, lin_coef(q, x))), q, lin_coef(p, x))
-                    }), neg)
-                }), pos))), i64_minus(budget, 1i64));
-                continue;
-            }
-        }
-    }
-}
-
-/// Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
-/// `>= 1` and `<= -1`) show `goal >= 0`.
-pub fn lin_shown_p(ges: Lins, nes: Lins, goal: &'static Lin) -> bool {
-    if null_p(nes) {
-        no_solution_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), goal, -1i64), ges), 64i64)
-    } else {
-        (lin_shown_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes), goal) && lin_shown_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes), goal))
     }
 }
 

@@ -1,0 +1,4 @@
+"A list that says how long it is, `(nlist T s)`: FX-26's sizes (Fixpt's
+ sizes.md), which kayak's checker has for the engine (C158) and KFX has
+ not yet, its Rust having no such type."
+(define three (nlist int 3) (cons 1 (cons 2 (cons 3 nil))))

@@ -520,10 +520,39 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            let tagcase_ = expressions::check_lambda(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
-            match *tagcase_ {
-                Res::Res(u, es, s) => {
-                    with_facts(v, expressions::settle_facts(s))
+            if (head_is_p(defined, str_lit("plambda")) && {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyData(d, a) => {
+                        string_eq_p(d, str_lit("%poly"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let tagcase_ = expressions::check(v, new_state(), defined, t);
+                match *tagcase_ {
+                    Res::Res(u, es, s) => {
+                        with_facts(v, expressions::settle_facts(s))
+                    }
+                }
+            } else {
+                if (head_is_p(defined, str_lit("plambda")) && not(lambda_form_p(third(items(defined))))) {
+                    let tagcase_ = expressions::check(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), third(items(defined)), t);
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            with_facts(v, expressions::settle_facts(s))
+                        }
+                    }
+                } else {
+                    let tagcase_ = expressions::check_lambda(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            with_facts(v, expressions::settle_facts(s))
+                        }
+                    }
                 }
             }
         }

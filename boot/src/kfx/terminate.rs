@@ -380,22 +380,30 @@ pub mod termination {
                                             }
                                             _ => {
                                                 let other = tagcase_;
-                                                let pr = acyclic_pair(car(ty));
-                                                if null_p(pr) {
-                                                    nil::<&'static termination::Tracked>()
+                                                if sized_p(car(ty), str_lit("%nlist")) {
+                                                    the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
+                                                        sized_elem(car(ty))
+                                                    } else {
+                                                        ty_data(str_lit("%nlist"), kayak_rt::heap_cons(sized_elem(car(ty)), kayak_rt::heap_cons(size_finite(), kayak_rt::nil())))
+                                                    }, kayak_rt::nil()))), kayak_rt::nil()))
                                                 } else {
-                                                    let tagcase_ = car(pr);
-                                                    match *tagcase_ {
-                                                        Ty::TyData(d, parts) => {
-                                                            the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
-                                                                car(parts)
-                                                            } else {
-                                                                car(cdr(parts))
-                                                            }, kayak_rt::nil()))), kayak_rt::nil()))
-                                                        }
-                                                        _ => {
-                                                            let other2 = tagcase_;
-                                                            nil::<&'static termination::Tracked>()
+                                                    let pr = acyclic_pair(car(ty));
+                                                    if null_p(pr) {
+                                                        nil::<&'static termination::Tracked>()
+                                                    } else {
+                                                        let tagcase_ = car(pr);
+                                                        match *tagcase_ {
+                                                            Ty::TyData(d, parts) => {
+                                                                the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
+                                                                    car(parts)
+                                                                } else {
+                                                                    car(cdr(parts))
+                                                                }, kayak_rt::nil()))), kayak_rt::nil()))
+                                                            }
+                                                            _ => {
+                                                                let other2 = tagcase_;
+                                                                nil::<&'static termination::Tracked>()
+                                                            }
                                                         }
                                                     }
                                                 }

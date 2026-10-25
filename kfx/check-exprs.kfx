@@ -84,7 +84,7 @@
                        (lst (list (sym "mark-key" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%poly")
                        (lst (list (sym "poly" "" 0)
-                                  (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym "region" "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
+                                  (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym (binder-kind n) "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
                                   (settled-sexp s (poly-written args) #f))
                             "" 0 0))
                       ((string=? d "%escape-tag")
@@ -867,6 +867,28 @@
                   nil))
             (else other nil))))
 
+      (define-rec
+        (poly-fresh-metas (subr kfx (st i64 tys) res)
+          (lambda (s n acc)
+            (if (i64<= n 0)
+                (res (ty-data "%metas" acc) nil s)
+                (tagcase (fresh s) (res (m u s2) (poly-fresh-metas s2 (i64- n 1) (cons m acc))))))))
+
+      (define poly-callee (subr kfx (res) res)
+        (lambda (c)
+          "A callee of a poly type, a `letrec`'s or a parameter's, called as
+           FX-26 calls it: instantiated, each binder a new inference variable
+           (C158)."
+          (tagcase c
+            (res (t es s)
+              (tagcase (walk s t)
+                (ty-data (d args)
+                  (if (string=? d "%poly")
+                      (tagcase (poly-fresh-metas s (size (poly-binders-of args)) nil)
+                        (res (ms u s2) (res (poly-instance args (tagcase ms (ty-data (d2 xs) xs) (else other nil))) es s2)))
+                      c))
+                (else other c))))))
+
       "Sizes' facts (C157): what a comparison of integers shows in each of its
        branches, of the locals it names."
       (define std-prim? (subr kfx (cv string) bool)
@@ -882,12 +904,16 @@
               (sym (n f p)
                 (let ((b (find-bind n (cv-binds v))))
                   (if (and (not (null? b))
+                           (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (and (null? tv) (sized? (walk s t) "%natof")))))))
+                      ;; A `(nat s)`: its size (C158).
+                      (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (size-lin s (sized-size (walk s t)))))))
+                  (if (and (not (null? b))
                            (tagcase (car b)
                              (bind (m sc w)
                                (and (or (string=? w "local") (string=? w "narrowed"))
                                     (tagcase sc (scheme (tv t) (and (null? tv) (tagcase (walk s t) (ty-int () #t) (ty-nat () #t) (else other #f)))))))))
                       (list (lin 0 (list (lterm n 1))))
-                      nil)))
+                      nil))))
               (lst (xs f l p)
                 (if (and (i64= (size xs) 3) (tagcase (car xs) (sym (h f2 p2) (std-prim? v h)) (else other #f)))
                     (let ((h (sym-name (car xs))) (a (linear-of v s (second xs))) (b (linear-of v s (third xs))))
@@ -910,6 +936,12 @@
            `check-test-facts.fx`)."
           (tagcase test
             (lst (xs f l p)
+              (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (h f2 p2) (and (or (string=? h "null?") (string=? h "pair?")) (std-prim? v h))) (else other #f))
+                       (not (null? (nlist-size v s (second xs)))))
+                  ;; `(null? xs)`, `xs` a list of size `n`: `n = 0` where it holds,
+                  ;; `n >= 1` where not (C158).
+                  (let* ((n (car (nlist-size v s (second xs)))) (more (with-size-fact v "ge" (lin-add n (lin -1 nil) 1))) (none (with-size-fact v "eq" n)))
+                    (list (if (sym-is? (car xs) "null?") (narrowing none more) (narrowing more none))))
               (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (h f2 p2) (and (string=? h "zero?") (std-prim? v h))) (else other #f)))
                   ;; `(zero? a)`, as `(= a 0)` (Fixpt's type for it says so).
                   (size-facts-of-test v s (lst (list (sym "=" f p) (second xs) (num 0 f p)) f l p))
@@ -926,47 +958,40 @@
                                       ((string=? h "<=") (narrowing (with-size-fact v "ge" nd) (with-size-fact v "ge" (lin-add d one 1))))
                                       ((string=? h ">") (narrowing (with-size-fact v "ge" (lin-add d one 1)) (with-size-fact v "ge" nd)))
                                       (else (narrowing (with-size-fact v "ge" d) (with-size-fact v "ge" (lin-add nd one 1)))))))))
-                  nil)))
+                  nil))))
             (else other nil))))
 
-      (define-datatype sfacts (sfacts lins lins))
-
       (define-rec
-        (size-facts-from (subr kfx (binds strings lins lins) sfacts)
-          (lambda (bs seen ges nes)
-            "The facts in scope, `>= 0` and `/= 0`: each of a binding of no name a
-             program writes, unless a name it mentions has been bound again
-             since (a narrowing names the same value)."
-            (if (null? bs)
-                (sfacts ges nes)
-                (tagcase (car bs)
-                  (bind (n sc w)
-                    (cond ((and (string=? n "%size-fact") (has-prefix? w "fact "))
-                           (let* ((ws (cdr (text-words w))) (kind (car ws)) (l (lin-read (cdr ws))))
-                             (cond ((any? (lambda ((m string)) (string-member? m seen)) (lin-names l)) (size-facts-from (cdr bs) seen ges nes))
-                                   ((string=? kind "ge") (size-facts-from (cdr bs) seen (cons l ges) nes))
-                                   ((string=? kind "eq") (size-facts-from (cdr bs) seen (cons l (cons (lin-scaled l -1) ges)) nes))
-                                   (else (size-facts-from (cdr bs) seen ges (cons l nes))))))
-                          ((string=? w "narrowed") (size-facts-from (cdr bs) seen ges nes))
-                          (else (size-facts-from (cdr bs) (cons n seen) ges nes)))))))))
+        (nlist-type (subr kfx (cv st sexp) tys)
+          (lambda (v s e)
+            "The type of `e`, if it is a list of a size by its form (C158): a local
+             or global of one, its `cdr`, a `the` of one; none if not."
+            (tagcase e
+              (sym (n f p)
+                (let ((b (find-bind n (cv-binds v))))
+                  (if (and (not (null? b)) (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (and (null? tv) (sized? (walk s t) "%nlist")))))))
+                      (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (list (walk s t))))))
+                      nil)))
+              (lst (xs f l p)
+                (cond ((and (i64= (size xs) 3) (sym-is? (car xs) "the"))
+                       (let ((t (parse-type v (cv-tvars v) (second xs)))) (if (sized? t "%nlist") (list t) nil)))
+                      ((and (i64= (size xs) 2) (sym-is? (car xs) "cdr") (std-prim? v "cdr"))
+                       (let ((inner (nlist-type v s (second xs))))
+                         (if (null? inner) nil (list (cdr-size v s (car inner))))))
+                      (else nil)))
+              (else other nil))))
+        (cdr-size (subr kfx (cv st ty) ty)
+          (lambda (v s t)
+            "A list of size `n`'s `cdr`: of `n - 1`, the facts showing `n >= 1`;
+             else `finite`."
+            (let ((l (size-lin s (sized-size t))))
+              (if (and (not (null? l)) (size-shown? v s (lin-add (car l) (lin -1 nil) 1)))
+                  (sized-less t s)
+                  (ty-data "%nlist" (list (sized-elem t) size-finite)))))))
 
-      (define nat-bounds (subr kfx (cv st strings) lins)
-        (lambda (v s ns)
-          "Each of `ns` a local `nat`: `n >= 0`."
-          (concat (map (lambda ((n string))
-                         (let ((b (find-bind n (cv-binds v))))
-                           (if (and (not (null? b)) (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (nat? s t))))))
-                               (the lins (list (lin 0 (list (lterm n 1)))))
-                               nil)))
-                       ns))))
-
-      (define size-shown? (subr kfx (cv st lin) bool)
-        (lambda (v s goal)
-          "Whether the facts in scope show `goal >= 0`."
-          (tagcase (size-facts-from (cv-binds v) nil nil nil)
-            (sfacts (ges nes)
-              (let ((names (concat (map lin-names (cons goal (onto ges nes))))))
-                (lin-shown? (onto (nat-bounds v s names) ges) nes goal))))))
+      (define nlist-size (subr kfx (cv st sexp) lins)
+        (lambda (v s e)
+          (let ((t (nlist-type v s e))) (if (null? t) nil (let ((l (size-lin s (sized-size (car t))))) l)))))
 
       (define-rec
         (narrowings (subr kfx (cv st sexp) (listof narrowing acyclic))
@@ -1038,7 +1063,7 @@
                     ((string=? d "%mark-key") (lst (list (sym "mark-key" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%poly")
                      (lst (list (sym "poly" "" 0)
-                                (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym "region" "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
+                                (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym (binder-kind n) "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
                                 (ty-sexp v s (poly-written args)))
                           "" 0 0))
                     ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
@@ -1347,24 +1372,23 @@
          taken as held: KFX refuses more than it must, then, never less."
         (if (not (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
             s
-            (let ((own (map (lambda ((p sexp)) (tagcase p (lst (ys f l q) (sym-name (car ys))) (else other (sym-name other)))) params)))
-              (begin
-                (map (lambda ((n string))
-                       (let ((found (find-bind n (cv-binds v))))
-                         (if (or (null? found) (string-member? n own))
-                             #u
-                             (tagcase (car found)
-                               (bind (b sc wher)
-                                 (if (and (or (string=? wher "local") (string=? wher "narrowed") (string=? wher "rec") (string=? wher "ends"))
-                                          (not (sync-type? v s (tagcase sc (scheme (tv t) t)) nil)))
-                                     (begin
-                                       (refuse v (string-append "a procedure that may be held on another thread, its effect being one a process may have, holds `"
-                                                   (string-append n (string-append "`, a " (string-append (show-ty s (tagcase sc (scheme (tv t) t)))
-                                                     ", which may not be: KFX's procedures hold only what they may share (C102)")))))
-                                       #u)
-                                     #u))))))
-                     (distinct (names-in-all forms)))
-                (note-fact s (cv-file v) (cv-pos v) "sync"))))))
+            (let* ((own (map (lambda ((p sexp)) (tagcase p (lst (ys f l q) (sym-name (car ys))) (else other (sym-name other)))) params))
+                   (unshared (filter (lambda ((n string))
+                                       (let ((found (find-bind n (cv-binds v))))
+                                         (and (not (null? found)) (not (string-member? n own))
+                                              (tagcase (car found)
+                                                (bind (b sc wher)
+                                                  (and (or (string=? wher "local") (string=? wher "narrowed") (string=? wher "rec") (string=? wher "ends"))
+                                                       (not (sync-type? v s (tagcase sc (scheme (tv t) t)) nil))))))))
+                                     (distinct (names-in-all forms))))
+                   (s (if (null? unshared)
+                          s
+                          ;; Rust's `Sync`, not FX-26's rule: noted for kfx (C154, C158).
+                          (let ((n (car unshared)))
+                            (kfx-restricted v s (string-append "a procedure that may be held on another thread, its effect being one a process may have, holds `"
+                                                  (string-append n (string-append "`, a " (string-append (show-ty s (tagcase (car (find-bind n (cv-binds v))) (bind (b sc wher) (tagcase sc (scheme (tv t) t)))))
+                                                    ", which may not be: KFX's procedures hold only what they may share (C102)")))))))))
+              (note-fact s (cv-file v) (cv-pos v) "sync")))))
 
     (define-rec
       (binds-from (subr kfx (string binds) binds)
@@ -1646,7 +1670,14 @@
                         (res x nil (note-fact s num-file num-pos "int"))))
                   (ty-meta (m) (res (ty-int) nil (note-fact (solve s m (ty-int)) num-file num-pos "int")))
                   (ty-data (d args)
-                    (cond ((and (string=? d "i32") (not (i64< k -2147483648)) (not (i64> k 2147483647)))
+                    (cond ((string=? d "%natof")
+                           "A natural where `(nat s)` is wanted: `s` shown to be it (C158)."
+                           (let ((z (size-lin s (car args))))
+                             (cond ((i64< k 0) (refuse v (string-append (i64->string k) " is no nat")))
+                                   ((and (not (null? z)) (size-shown? v s (lin-add (car z) (lin k nil) -1)) (size-shown? v s (lin-add (lin k nil) (car z) -1)))
+                                    (res x nil (note-fact s num-file num-pos "int")))
+                                   (else (refuse-named v s (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))))))
+                          ((and (string=? d "i32") (not (i64< k -2147483648)) (not (i64> k 2147483647)))
                            (res x nil (note-fact s num-file num-pos "fixed i32")))
                           ((and (string=? d "u32") (not (i64< k 0)) (not (i64> k 4294967295)))
                            (res x nil (note-fact s num-file num-pos "fixed u32")))
@@ -1679,7 +1710,10 @@
                     (sym (h at-file at-pos) (check-form v s e h (cdr xs) x))
                     (else other (check-by-synth v s e x)))))
               (sym (name at-file at-pos)
-                (cond ((and (string=? name "nil") (string=? (shape-of x) "union")
+                (cond ((and (string=? name "nil") (std-prim? v "nil") (sized? x "%nlist"))
+                       "`nil` where a list of a size is wanted: of size 0 (C158)."
+                       (res x nil (size-fits v s (size-of-lin (lin 0 nil)) (sized-size x) (ty-data "nil" nil) x)))
+                      ((and (string=? name "nil") (string=? (shape-of x) "union")
                             (not (null? (member-of-shape (members-of x) "nil")))
                             (null? (member-of-shape (members-of x) "list")))
                        "`nil` where a union with a `nil` member is wanted (C84): that
@@ -2008,6 +2042,16 @@
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
                 ((or (string=? h "self") (string=? h "race")) (check-by-synth v s e expected))
+                ((and (string=? h "proj") (null? (find-bind h (cv-binds v)))) (check-by-synth v s e expected))
+                ((and (string=? h "list") (std-prim? v "list") (sized? (walk s expected) "%nlist"))
+                 "`(list e ...)` where a list of size `s` is wanted: each element, and
+                  `s` shown to be how many there are (C158)."
+                 (let* ((t (walk s expected)) (z (size-lin s (sized-size t))) (n (size xs)))
+                   (if (and (not (null? z))
+                            (not (and (size-shown? v s (lin-add (car z) (lin n nil) -1)) (size-shown? v s (lin-add (lin n nil) (car z) -1)))))
+                       (refuse-named v s (string-append "a list of " (string-append (i64->string n) (string-append " where a " (string-append (show-ty s t) " is expected")))))
+                       (tagcase (call-args v s xs (map (lambda ((x sexp)) (sized-elem t)) xs) nil)
+                         (res (u es s) (res t es s))))))
                 ((string=? h "par") (par-form v s xs (list expected)))
                 ((string=? h "pselect") (pselect-form v s xs (list expected)))
                 ((control-form? h) (body-form v s h xs (list expected)))
@@ -2032,7 +2076,7 @@
                                               (ty-proc (tagcase (car args) (ty-proc (es ps r) es) (else other nil)) (list (ty-list t (ty-rconst "acyclic"))) (car (cdr (cdr args)))))
                          (res (u es2 s2) (res (walk s expected) es2 s2)))))
                    (else other (refuse v "a vlambda where no variadic procedure is expected"))))
-                ((and (string=? h "lambda") (proc-type? s expected))
+                ((and (string=? h "lambda") (or (proc-type? s expected) (poly-type? s expected)))
                  (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
                 ((and (string=? h "list") (datum? (walk s expected)))
                  "A list where a datum is expected (C77): a list of datums, at
@@ -2452,7 +2496,11 @@
            every one in scope in each lambda and in the body. A group whose every
            run ends is bound as `ends`, its calls no `spin`; else as locals."
           (let* ((ends (with termination (terminates? v (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings)
-                                    (map (lambda ((b sexp)) (parse-type v (cv-tvars v) (second (items b)))) bindings)
+                                    (map (lambda ((b sexp))
+                                           ;; A poly type's procedure, its body (C158).
+                                           (let ((t (parse-type v (cv-tvars v) (second (items b)))))
+                                             (tagcase t (ty-data (d args) (if (string=? d "%poly") (poly-body args) t)) (else other t))))
+                                         bindings)
                                     (map (lambda ((b sexp)) (third (items b))) bindings))))
                  (w (with-binds v (map (lambda ((b sexp))
                                          (let ((ys (items b)))
@@ -2771,8 +2819,29 @@
            projects one; in Rust `f`, whose generics the call finds. A proj of
            a proj (C60): FX-26's nested `poly`s have their binders in the order
            KFX's one has them, so the arguments are run together."
-          (if (and (not (null? xs)) (head-is? (car xs) "proj"))
-              (proj-form v s (onto (cdr (items (car xs))) (cdr xs)))
+          (cond
+           ((and (not (null? xs)) (head-is? (car xs) "proj"))
+              (proj-form v s (onto (cdr (items (car xs))) (cdr xs))))
+           ((and (not (null? xs)) (tagcase (car xs) (lst (ys f l p) #t) (else other #f)))
+            "A proj of an expression of a poly type, a `letrec`'s, as FX-26's
+             programs write it (C158): its body at the arguments given, each by
+             its binder's kind."
+            (tagcase (synth v s (car xs))
+              (res (t es s)
+                (if (not (poly-type? s t))
+                    (refuse v "(proj e arg ...) of an expression of no poly type")
+                    (let ((args (tagcase (walk s t) (ty-data (d args) args) (else other nil))))
+                      (if (not (i64= (size (poly-binders-of args)) (size (cdr xs))))
+                          (refuse v "a proj given the wrong number of arguments")
+                          (res (poly-instance args (map2 (lambda ((b string) (r sexp))
+                                                           (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
+                                                                 ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
+                                                                 (else (parse-type v (cv-tvars v) r))))
+                                                         (poly-binders-of args) (cdr xs)))
+                               es
+                               (if (all-regions? (poly-binders-of args)) s
+                                   (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet (C107)")))))))))
+           (else
           (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f p) (let ((b (find-bind n (cv-binds v)))) (if (null? b) (find-bind n (control-binds v)) b))) (else other nil)))))
             (if (null? found)
                 (refuse v "(proj f arg ...) of a poly procedure named")
@@ -2786,8 +2855,16 @@
                            body at the regions given."
                           (let ((args (tagcase (walk s t) (ty-data (d args) args) (else other nil))))
                             (if (not (i64= (size (poly-binders-of args)) (size (cdr xs))))
-                                (refuse v (string-append "a proj of " (string-append n " given the wrong number of regions")))
-                                (res (poly-instance args (map (lambda ((r sexp)) (parse-region v (cv-tvars v) r)) (cdr xs))) nil s))))
+                                (refuse v (string-append "a proj of " (string-append n " given the wrong number of arguments")))
+                                (res (poly-instance args (map2 (lambda ((b string) (r sexp))
+                                                                 (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
+                                                                       ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
+                                                                       (else (parse-type v (cv-tvars v) r))))
+                                                               (poly-binders-of args) (cdr xs)))
+                                     nil
+                                     (if (all-regions? (poly-binders-of args))
+                                         s
+                                         (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))))))
                          (else
                         (if (not (i64= (size tvars) (size (cdr xs))))
                             (refuse v (string-append "a proj of " (string-append n " given the wrong number of arguments")))
@@ -2803,7 +2880,7 @@
                                        "A global that may suspend, as a value: its future boxed, as a
                                         name's is (`async-global`), at any effect it is given."
                                        (async-global v (proj-needs v s n tvars (cdr xs)) name at-file at-pos))
-                                     (else other (proj-needs v s n tvars (cdr xs)))))))))))))))))))
+                                     (else other (proj-needs v s n tvars (cdr xs))))))))))))))))))))
 
       (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
         (lambda (v s n region-of-binder)
@@ -2879,7 +2956,8 @@
           (if (null? bindings)
               (res (ty-unit) nil s)
               (let ((ys (items (car bindings))))
-                (if (not (or (head-is? (third ys) "lambda") (head-is? (third ys) "rlambda")))
+                (if (not (or (head-is? (third ys) "lambda") (head-is? (third ys) "rlambda")
+                             (and (head-is? (third ys) "plambda") (poly-type? s (parse-type v (cv-tvars v) (second ys))))))
                     (refuse v "a letrec binds only lambdas")
                     (tagcase (check v s (third ys) (parse-type v (cv-tvars v) (second ys)))
                       (res (t es s) (letrec-lambdas v s (cdr bindings)))))))))
@@ -2941,9 +3019,15 @@
             ;; A lambda where a procedure of any convention is expected (C116):
             ;; KFX's own, as any procedure of KFX's is.
             (ty-data (d args)
-              (if (string=? d "%fx")
-                  (check-lambda v s params forms (walk s (car args)))
-                  (refuse v "a lambda where no procedure is expected")))
+              (cond ((string=? d "%fx") (check-lambda v s params forms (walk s (car args))))
+                    ((string=? d "%poly")
+                     "A lambda where a poly type is expected, as FX-26 takes it: as the
+                      plambda of that type's binders, rigid, in scope (C107, C158)."
+                     (let ((names (poly-binders-of args)))
+                       (tagcase (check-lambda (with-tvars v names) (if (all-regions? names) s (kfx-restricted v s "a lambda where a poly type of types or sizes is expected, which KFX has not yet (C107)"))
+                                              params forms (poly-body args))
+                         (res (t es s2) (res expected es s2)))))
+                    (else (refuse v "a lambda where no procedure is expected"))))
             (else other (refuse v "a lambda where no procedure is expected")))))
 
       (lambda-effects (subr kfx (cv st sexps sexps ty) res)
@@ -3100,6 +3184,32 @@
 
                   ((null? found)
                    (refuse v (string-append "nothing is named " h)))
+                  ((and (or (string=? h "+") (string=? h "-")) (prim? (car found)) (i64= (size args) 2) (not (null? expected))
+                        (sized? (walk s (car expected)) "%natof"))
+                   "A sum or a difference where `(nat s)` is wanted: shown to be `s` (C158)."
+                   (let ((a (linear-of v s (car args))) (b (linear-of v s (second args))) (z (size-lin s (sized-size (walk s (car expected))))))
+                     (if (and (not (null? a)) (not (null? b)) (not (null? z))
+                              (let ((d (lin-add (lin-add (car a) (car b) (if (string=? h "+") 1 -1)) (car z) -1)))
+                                (and (size-shown? v s d) (size-shown? v s (lin-scaled d -1)))))
+                         (tagcase (call-args v s args (list (ty-int) (ty-int)) nil)
+                           (res (u es s) (res (walk s (car expected)) es s)))
+                         (refuse-named v s (string-append "a " (string-append h (string-append " here, where a " (string-append (show-ty s (car expected)) " is expected, not shown to be one"))))))))
+                  ((and (string=? h "cons") (prim? (car found)) (i64= (size args) 2) (not (null? expected)) (sized? (walk s (car expected)) "%nlist"))
+                   "`cons` where a list of size `s` is wanted, frozen: its head the
+                    element, its tail of size `s - 1`, `s` shown not 0 (C158)."
+                   (let* ((t (walk s (car expected))) (z (size-lin s (sized-size t))))
+                     (if (and (not (null? z)) (not (size-shown? v s (lin-add (car z) (lin -1 nil) 1))))
+                         (refuse-named v s (string-append "a cons where a " (string-append (show-ty s t) " is expected, its size not shown to be one or more")))
+                         (tagcase (call-args v s args (list (sized-elem t) (sized-less t s)) nil)
+                           (res (u es s) (res t es s))))))
+                  ((and (or (string=? h "cdr") (string=? h "length")) (prim? (car found)) (i64= (size args) 1) (not (null? (nlist-type v s (car args)))))
+                   "A list of size `n`'s `cdr`, of `n - 1` if `n >= 1` is shown, and its
+                    `length`, a `(nat n)` (C158)."
+                   (let ((t (car (nlist-type v s (car args)))))
+                     (tagcase (call-args v s args (list t) nil)
+                       (res (u es s)
+                         (let ((r (if (string=? h "cdr") (cdr-size v s t) (ty-data "%natof" (list (sized-size t))))))
+                           (res (if (and (string=? h "length") (size-finite? s (sized-size t))) (ty-nat) r) es (if (null? expected) s (fits v s r (car expected)))))))))
                   ((and (string=? h "-") (prim? (car found)) (i64= (size args) 2) (not (null? expected)) (nat? s (car expected))
                         (let ((a (linear-of v s (car args))) (b (linear-of v s (second args))))
                           (and (not (null? a)) (not (null? b)) (size-shown? v s (lin-add (car a) (car b) -1)))))
@@ -3496,15 +3606,19 @@
            one in scope already, nor escape into a type found outside it."
           (let* ((args (tagcase (walk s expected) (ty-data (d args) args) (else other nil)))
                  (names (map (lambda ((b sexp))
-                               (if (and (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
-                                        (sym-is? (second (items b)) "region"))
-                                   (string-append "'" (sym-name (car (items b))))
-                                   (refuse v "a plambda where a poly type is expected binds regions alone, in KFX (C107)")))
-                             (items (car xs)))))
+                               (if (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
+                                   (let ((k (second (items b))) (n (sym-name (car (items b)))))
+                                     (cond ((sym-is? k "region") (string-append "'" n))
+                                           ((sym-is? k "size") (string-append "#" n))
+                                           ((sym-is? k "type") n)
+                                           (else (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)"))))
+                                   (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)")))
+                             (items (car xs))))
+                 (s (if (all-regions? names) s (kfx-restricted v s "a plambda of types or sizes where a poly type is expected, which KFX has not yet: its Rust erases regions alone (C107)"))))
             (cond ((not (i64= (size names) (size (poly-binders-of args))))
                    (refuse v "a plambda of as many regions as the poly type expected"))
-                  ((any? (lambda ((n string)) (string-member? n (cv-tvars v))) names)
-                   (refuse v "a plambda's region named as one in scope already, which KFX does not take (C107)"))
+                  ((and (any? (lambda ((n string)) (string-member? n (cv-tvars v))) names) (all-regions? names))
+                   (refuse v "a plambda's binder named as one in scope already, which KFX does not take (C107)"))
                   (else
                    (let ((before (st-next s)))
                      (tagcase (check (with-tvars v names) s (second xs) (poly-instance args (map (lambda ((n string)) (ty-var n)) names)))
@@ -3572,7 +3686,7 @@
            which say what it is, one that cannot abort then lifted (C35). A
            list it makes, found by itself, at a region nothing said is at a
            fresh one, as FX-26's is: not one a later use may choose (C36)."
-          (tagcase callee
+          (tagcase (poly-callee callee)
             (res (t es0 s)
               (let ((args (if (string=? (cv-file v) "<draft>") (through-hole args) args)))
               (tagcase (vsubr-as-proc (composable-as-proc s (walk s t)) (size args))

@@ -168,13 +168,17 @@
                                                             nil))
                                                       (else other nil)))
                                                   (else other
+                                                    (if (sized? (car ty) "%nlist")
+                                                        ;; A list of a size is frozen and ends (C158): its
+                                                        ;; parts are smaller, its `cdr` one of a size too.
+                                                        (the trackeds (list (part p #t (the tys (list (if (string=? op "car") (sized-elem (car ty)) (ty-data "%nlist" (list (sized-elem (car ty)) size-finite))))))))
                                                     (let ((pr (acyclic-pair (car ty))))
                                                       (if (null? pr)
                                                           nil
                                                           (tagcase (car pr)
                                                             (ty-data (d parts)
                                                               (the trackeds (list (part p #t (the tys (list (if (string=? op "car") (car parts) (car (cdr parts)))))))))
-                                                            (else other2 nil))))))))
+                                                            (else other2 nil)))))))))
                                           (else other nil)))
                                       (tracked-of c (second xs)))))
                         ((and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3))

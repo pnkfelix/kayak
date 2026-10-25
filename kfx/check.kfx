@@ -464,14 +464,19 @@
 (define-rec
   (fold-renames (subr kfx (strings i64 ty) ty)
     (lambda (names pos t)
-      "Each region binder `n` of a poly type written at `pos`, `'n`, named
-       `'n@pos` (C107)."
+      "Each binder `n` of a poly type written at `pos`, its kind's mark first
+       (`'n` a region's, `#n` a size's, a type's none), named `n@pos` (C107,
+       C158)."
       (if (null? names)
           t
           (fold-renames (cdr names) pos
-                        (replace-var (string-append "'" (car names))
-                                     (ty-var (string-append "'" (string-append (car names) (string-append "@" (i64->string pos)))))
-                                     t))))))
+                        (replace-var (car names) (ty-var (string-append (car names) (string-append "@" (i64->string pos)))) t))))))
+
+(define binder-kind (subr kfx (string) string)
+  (lambda (n) (cond ((has-prefix? n "'") "region") ((has-prefix? n "#") "size") (else "type"))))
+
+(define all-regions? (subr kfx (strings) bool)
+  (lambda (ns) (not (any? (lambda ((n string)) (not (has-prefix? n "'"))) ns))))
 
 (define-rec
   (poly-binders-of (subr kfx (tys) strings)
@@ -490,8 +495,8 @@
 
 (define written-binder (subr kfx (string) string)
   (lambda (n)
-    "A poly type's binder as written: `'r@P` is `r`."
-    (let ((cs (string-chars (if (has-prefix? n "'") (after-prefix n "'") n))))
+    "A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`."
+    (let ((cs (string-chars (cond ((has-prefix? n "'") (after-prefix n "'")) ((has-prefix? n "#") (after-prefix n "#")) (else n)))))
       (list->string (taken-before cs #\@)))))
 
 (define substitute-each (subr kfx (strings tys ty) ty)
@@ -521,15 +526,18 @@
 (define-rec
   (binders-shown (subr kfx (strings) string)
     (lambda (ns)
-      "A poly type's region binders, as written."
+      "A poly type's binders, as written."
       (cond ((null? ns) "")
-            ((null? (cdr ns)) (string-append "(" (string-append (written-binder (car ns)) " region)")))
-            (else (string-append "(" (string-append (written-binder (car ns)) (string-append " region) " (binders-shown (cdr ns))))))))))
+            ((null? (cdr ns)) (string-append "(" (string-append (written-binder (car ns)) (string-append " " (string-append (binder-kind (car ns)) ")")))))
+            (else (string-append "(" (string-append (written-binder (car ns)) (string-append " " (string-append (binder-kind (car ns)) (string-append ") " (binders-shown (cdr ns))))))))))))
 
 (define poly-written (subr kfx (tys) ty)
   (lambda (args)
     "A poly type's body, its binders as written, `'r` (C107)."
-    (poly-instance args (map (lambda ((n string)) (ty-var (string-append "'" (written-binder n)))) (poly-binders-of args)))))
+    (poly-instance args (map (lambda ((n string)) (ty-var (cond ((has-prefix? n "'") (string-append "'" (written-binder n)))
+                                                                 ((has-prefix? n "#") (string-append "#" (written-binder n)))
+                                                                 (else (written-binder n)))))
+                             (poly-binders-of args)))))
 
 "Types"
 
@@ -939,6 +947,154 @@
             ((string=? (shape-of (car ts)) shape) (list (car ts)))
             (else (member-of-shape (cdr ts) shape))))))
 
+"Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
+ a linear expression over local names, a constant and each name's
+ coefficient; a fact that one is `= 0`, `>= 0`, or `/= 0`, learned in a
+ branch of a test, kept in the environment as a binding of no name a
+ program writes, `wher` `fact KIND C N K ...`."
+(define-datatype lterm (lterm string i64))
+(define-datatype lin (lin i64 (listof lterm acyclic)))
+(define-type lins (listof lin acyclic))
+
+(define-rec
+  (lterms-added (subr kfx ((listof lterm acyclic) string i64) (listof lterm acyclic))
+    (lambda (ts n k)
+      (cond ((null? ts) (if (i64= k 0) nil (list (lterm n k))))
+            ((tagcase (car ts) (lterm (m j) (string=? m n)))
+             (tagcase (car ts) (lterm (m j) (if (i64= (i64+ j k) 0) (cdr ts) (cons (lterm m (i64+ j k)) (cdr ts))))))
+            (else (cons (car ts) (lterms-added (cdr ts) n k)))))))
+
+(define-rec
+  (lin-terms-onto (subr kfx ((listof lterm acyclic) (listof lterm acyclic) i64) (listof lterm acyclic))
+    (lambda (ts acc k)
+      (if (null? ts) acc (tagcase (car ts) (lterm (n j) (lin-terms-onto (cdr ts) (lterms-added acc n (i64* j k)) k)))))))
+
+(define lin-add (subr kfx (lin lin i64) lin)
+  (lambda (a b k)
+    "`a + k b`."
+    (tagcase a (lin (ca ta) (tagcase b (lin (cb tb) (lin (i64+ ca (i64* k cb)) (lin-terms-onto tb ta k))))))))
+
+(define lin-scaled (subr kfx (lin i64) lin) (lambda (a k) (lin-add (lin 0 nil) a k)))
+
+(define lin-coef (subr kfx (lin string) i64)
+  (lambda (a n)
+    (tagcase a (lin (c ts) (let ((found (filter (lambda ((t lterm)) (tagcase t (lterm (m j) (string=? m n)))) ts)))
+                             (if (null? found) 0 (tagcase (car found) (lterm (m j) j))))))))
+
+(define lin-names (subr kfx (lin) strings) (lambda (a) (tagcase a (lin (c ts) (map (lambda ((t lterm)) (tagcase t (lterm (n j) n))) ts)))))
+
+(define lin-text (subr kfx (lin) string)
+  (lambda (a)
+    (tagcase a (lin (c ts) (words-of (cons (i64->string c) (concat (map (lambda ((t lterm)) (tagcase t (lterm (n j) (the strings (list n (i64->string j)))))) ts))))))))
+
+(define-rec
+  (digits-i64-of (subr kfx (chars i64) i64)
+    (lambda (cs n) (if (null? cs) n (digits-i64-of (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+(define string->i64 (subr kfx (string) i64)
+  (lambda (t)
+    (let ((cs (string-chars t)))
+      (if (and (not (null? cs)) (char=? (car cs) #\-)) (i64- 0 (digits-i64-of (cdr cs) 0)) (digits-i64-of cs 0)))))
+
+(define-rec
+  (fact-words-from (subr kfx (chars chars strings) strings)
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
+            ((char=? (car cs) #\space) (fact-words-from (cdr cs) nil (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
+            (else (fact-words-from (cdr cs) (cons (car cs) w) acc))))))
+
+(define text-words (subr kfx (string) strings) (lambda (t) (fact-words-from (string-chars t) nil nil)))
+
+(define second-word (subr kfx (strings) string) (lambda (ws) (car (cdr ws))))
+
+(define-rec
+  (lterms-read (subr kfx (strings) (listof lterm acyclic))
+    (lambda (ws) (if (or (null? ws) (null? (cdr ws))) nil (cons (lterm (car ws) (string->i64 (second-word ws))) (lterms-read (cdr (cdr ws))))))))
+
+(define lin-read (subr kfx (strings) lin)
+  (lambda (ws) (lin (string->i64 (car ws)) (lterms-read (cdr ws)))))
+
+"Whether inequalities `ls`, each `l >= 0`, have no solution, by
+ Fourier-Motzkin elimination over the rationals: sound for the integers,
+ not complete. Too many, and the answer is that they may have one."
+(define-rec
+  (no-solution? (subr kfx (lins i64) bool)
+    (lambda (ls budget)
+      (cond ((i64> (size ls) 400) #f)
+            ((any? (lambda ((l lin)) (tagcase l (lin (c ts) (and (null? ts) (i64< c 0))))) ls) #t)
+            (else
+             (let ((open (filter (lambda ((l lin)) (tagcase l (lin (c ts) (not (null? ts))))) ls)))
+               (if (or (null? open) (i64<= budget 0))
+                   #f
+                   (let* ((x (car (lin-names (car open))))
+                          (pos (filter (lambda ((l lin)) (i64> (lin-coef l x) 0)) open))
+                          (neg (filter (lambda ((l lin)) (i64< (lin-coef l x) 0)) open))
+                          (rest (filter (lambda ((l lin)) (i64= (lin-coef l x) 0)) open)))
+                     (no-solution? (onto rest (concat (map (lambda ((p lin)) (map (lambda ((q lin)) (lin-add (lin-scaled p (i64- 0 (lin-coef q x))) q (lin-coef p x))) neg)) pos)))
+                                   (i64- budget 1))))))))))
+
+(define-rec
+  (lin-shown? (subr kfx (lins lins lin) bool)
+    (lambda (ges nes goal)
+      "Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
+       `>= 1` and `<= -1`) show `goal >= 0`."
+      (if (null? nes)
+          (no-solution? (cons (lin-add (lin -1 nil) goal -1) ges) 64)
+          (and (lin-shown? (cons (lin-add (car nes) (lin -1 nil) 1) ges) (cdr nes) goal)
+               (lin-shown? (cons (lin-add (lin -1 nil) (car nes) -1) ges) (cdr nes) goal))))))
+
+"Sizes in types (C158; Fixpt's `docs/research/sizes.md`): a size is
+ `finite`, the top, some size not known; a size variable, a binder of
+ kind `size` (`#n`) or an inference variable; or a linear one, a constant
+ and each variable's coefficient: `(ty-data \"%sz\" (k t ...))`, `k` its
+ constant (`%k C`) and each `t` a variable times its coefficient (`%t
+ K`), so that instantiating and solving see the variables. `(nat s)` is
+ `%natof`, `nat` itself `(nat finite)`; `(nlist T s)`, a list of
+ exactly `s` elements, frozen, `%nlist`."
+(define size-finite ty (ty-data "%finite" nil))
+
+(define size-term-var (subr kfx (string) ty)
+  (lambda (n) (if (has-prefix? n "?") (ty-meta (string->i64 (after-prefix n "?"))) (ty-var n))))
+
+(define size-of-lin (subr kfx (lin) ty)
+  (lambda (l)
+    (tagcase l
+      (lin (c ts)
+        (if (and (i64= c 0) (not (null? ts)) (null? (cdr ts)) (tagcase (car ts) (lterm (n k) (i64= k 1))))
+            ;; One variable alone: the variable, which may be solved to `finite`.
+            (tagcase (car ts) (lterm (n k) (size-term-var n)))
+        (ty-data "%sz" (cons (ty-data (string-append "%k " (i64->string c)) nil)
+                             (map (lambda ((t lterm)) (tagcase t (lterm (n k) (ty-data (string-append "%t " (i64->string k)) (list (size-term-var n)))))) ts))))))))
+
+(define-rec
+  (parse-size-lin (subr kfx (cv strings sexp) lins)
+    (lambda (v tvars z)
+      "A size as written (C158), as a linear expression; none for `finite`: a
+       literal, `finite`, a size variable, `(+ s ...)`, `(- s k)`."
+      (tagcase z
+        (num (k f p) (if (i64< k 0) (refuse v "a size is never negative") (list (lin k nil))))
+        (sym (n f p)
+          (cond ((string=? n "finite") nil)
+                ((string-member? (string-append "#" n) tvars) (list (lin 0 (list (lterm (string-append "#" n) 1)))))
+                (else (refuse v (string-append "a size: a natural, finite, a size variable, (+ s ...), (- s k): " n)))))
+        (lst (xs f l p)
+          (cond ((and (sym-is? (car xs) "+") (not (null? (cdr xs))))
+                 (sizes-summed v tvars (cdr xs) (lin 0 nil)))
+                ((and (sym-is? (car xs) "-") (i64= (size xs) 3) (tagcase (third xs) (num (k f2 p2) #t) (else other #f)))
+                 (let ((a (parse-size-lin v tvars (second xs))))
+                   (if (null? a) nil (list (lin-add (car a) (lin (tagcase (third xs) (num (k f2 p2) k) (else other 0)) nil) -1)))))
+                (else (refuse v (string-append "a size: a natural, finite, a size variable, (+ s ...), (- s k): " (show-sexp z))))))
+        (else other (refuse v "a size: a natural, finite, a size variable, (+ s ...), (- s k)")))))
+  (sizes-summed (subr kfx (cv strings sexps lin) lins)
+    (lambda (v tvars zs acc)
+      (if (null? zs)
+          (list acc)
+          (let ((l (parse-size-lin v tvars (car zs))))
+            (if (null? l) nil (sizes-summed v tvars (cdr zs) (lin-add acc (car l) 1))))))))
+
+(define parse-size (subr kfx (cv strings sexp) ty)
+  (lambda (v tvars z) (let ((l (parse-size-lin v tvars z))) (if (null? l) size-finite (size-of-lin (car l))))))
+
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
@@ -988,6 +1144,12 @@
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
                  (no-knot v (lambda ((x string)) x) (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
+                ((and (sym-is? (car xs) "nlist") (i64= (size xs) 3))
+                 "A list of exactly `s` elements, frozen (C158)."
+                 (ty-data "%nlist" (list (parse-type v tvars (second xs)) (parse-size v tvars (third xs)))))
+                ((and (sym-is? (car xs) "nat") (i64= (size xs) 2))
+                 "`(nat s)`: exactly the size `s` (C158); `(nat finite)` is `nat`."
+                 (let ((z (parse-size-lin v tvars (second xs)))) (if (null? z) (ty-nat) (ty-data "%natof" (list (size-of-lin (car z)))))))
                 ((sym-is? (car xs) "flatarrayof")
                  (if (sym-is? (second xs) "i64")
                      (ty-flat (ty-i64) (parse-mutable-region v tvars (third xs)))
@@ -1046,20 +1208,23 @@
                   its process's alone; `(icell T R)`, a `T` written once."
                  (ty-data (string-append "%" (sym-name (car xs))) (list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
                 ((and (sym-is? (car xs) "poly") (i64= (size xs) 3))
-                 "A type polymorphic in regions alone, a procedure's parameter's (rank 2,
-                  C107): `(poly ((r region) ...) T)`, its binders named apart by where
-                  it is written, `'r@P`, so that none is another's."
+                 "A poly type written in a type (rank 2, C107): `(poly ((r region) ...)
+                  T)`, of regions, types and sizes (C158), its binders named apart by
+                  where it is written, `'r@P`, `t@P`, `#n@P`, so that none is another's."
                  (let* ((bs (items (second xs)))
                         (names (map (lambda ((b sexp))
-                                      (if (and (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
-                                               (sym-is? (second (items b)) "region"))
-                                          (sym-name (car (items b)))
-                                          (refuse v "a poly type whose binders are not all regions, which KFX has not yet (C107)")))
+                                      (if (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
+                                          (let ((k (second (items b))) (n (sym-name (car (items b)))))
+                                            (cond ((sym-is? k "region") (string-append "'" n))
+                                                  ((sym-is? k "size") (string-append "#" n))
+                                                  ((sym-is? k "type") n)
+                                                  (else (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)"))))
+                                          (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")))
                                     bs))
                         (pos (datum-pos t))
-                        (body (parse-type v (onto (map (lambda ((n string)) (string-append "'" n)) names) tvars) (third xs)))
+                        (body (parse-type v (onto names tvars) (third xs)))
                         (renamed (fold-renames names pos body)))
-                   (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (string-append "'" (string-append n (string-append "@" (i64->string pos)))))) names)
+                   (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (string-append n (string-append "@" (i64->string pos))))) names)
                                           (list renamed)))))
                 ((and (sym-is? (car xs) "escape-tag") (i64= (size xs) 4))
                  "FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
@@ -1265,7 +1430,7 @@
      an effect's, with `~`, which Rust does not see (C46)."
     (let ((reserved (rust-type-names))
           (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil))) types))
-          (tvars (concat (map (lambda ((n string)) (if (or (has-prefix? n "'") (has-prefix? n "~")) nil (the strings (list n)))) tvars))))
+          (tvars (concat (map (lambda ((n string)) (if (or (has-prefix? n "'") (has-prefix? n "~") (has-prefix? n "#")) nil (the strings (list n)))) tvars))))
       (begin
         (map (lambda ((n string))
                (cond ((not (kfx-name? n)) (refuse v (string-append "a type variable's name KFX's names are not (C27): " n)))
@@ -1299,6 +1464,7 @@
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
                        ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
                        ((sym-is? (second b) "effect") (string-append "~" (name-of v (car b))))
+                       ((sym-is? (second b) "size") (string-append "#" (name-of v (car b))))
                        (else (refuse v (string-append "KFX's poly is over types, effects, regions and places: " (show-sexp (lst b "" 0 0))))))))
              (items (second (items t))))))
           (begin
@@ -1344,6 +1510,46 @@
   (lambda (v t) (parse-scheme-of v t #t)))
 
 (define-rec
+  (size-lin (subr kfx (st ty) lins)
+    (lambda (s t)
+      "Size `t` as a linear expression, its variables named (`#n`, `?k`), an
+       inference variable solved looked through; none if it is `finite`."
+      (tagcase (walk s t)
+        (ty-var (n) (list (lin 0 (list (lterm n 1)))))
+        (ty-meta (k) (list (lin 0 (list (lterm (string-append "?" (i64->string k)) 1)))))
+        (ty-data (d args)
+          (if (string=? d "%sz")
+              (size-terms-lin s (cdr args) (lin (string->i64 (after-prefix (tagcase (car args) (ty-data (k a) k) (else other "%k 0")) "%k ")) nil))
+              nil))
+        (else other nil))))
+  (size-terms-lin (subr kfx (st (listof ty acyclic) lin) lins)
+    (lambda (s ts acc)
+      (if (null? ts)
+          (list acc)
+          (tagcase (car ts)
+            (ty-data (d args)
+              (let ((inner (size-lin s (car args))))
+                (if (null? inner) nil (size-terms-lin s (cdr ts) (lin-add acc (car inner) (string->i64 (after-prefix d "%t ")))))))
+            (else other nil)))))
+  (size-finite? (subr kfx (st ty) bool) (lambda (s t) (null? (size-lin s t))))
+  (size-text (subr kfx (lin) string)
+  (lambda (l)
+    "As FX-26 writes a size: `3`, `n`, `(+ n 1)`, `(- n 1)`, `(+ n m)`."
+    (tagcase l
+      (lin (c ts)
+        (let ((vars (concat (map (lambda ((t lterm))
+                                   (tagcase t
+                                     (lterm (n k)
+                                       (let ((x (if (has-prefix? n "#") (after-prefix n "#") n)))
+                                         (if (i64= k 1) (the strings (list x)) (the strings (list (string-append "(* " (string-append (i64->string k) (string-append " " (string-append x ")")))))))))))
+                                 ts))))
+          (cond ((null? vars) (i64->string c))
+                ((and (null? (cdr vars)) (i64= c 0)) (car vars))
+                ((i64< c 0) (string-append "(- " (string-append (words-of vars) (string-append " " (string-append (i64->string (i64- 0 c)) ")")))))
+                ((i64= c 0) (string-append "(+ " (string-append (words-of vars) ")")))
+                (else (string-append "(+ " (string-append (words-of vars) (string-append " " (string-append (i64->string c) ")")))))))))))
+  (show-size (subr kfx (st ty) string)
+  (lambda (s t) (let ((l (size-lin s t))) (if (null? l) "finite" (size-text (car l))))))
   (show-ty (subr kfx (st ty) string)
     (lambda (s t)
       (tagcase (walk s t)
@@ -1368,6 +1574,9 @@
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
+                ((string=? d "%nlist") (string-append "(nlist " (string-append (show-ty s (car args)) (string-append " " (string-append (show-size s (car (cdr args))) ")")))))
+                ((string=? d "%natof") (string-append "(nat " (string-append (show-size s (car args)) ")")))
+                ((or (string=? d "%sz") (string=? d "%finite")) (show-size s t))
                 ((string=? d "%poly")
                  (string-append "(poly (" (string-append (binders-shown (poly-binders-of args))
                    (string-append ") " (string-append (show-ty s (poly-written args)) ")")))))
@@ -1807,6 +2016,88 @@
 (define datum? (subr kfx (ty) bool)
   (lambda (t) (tagcase t (ty-data (d args) (string=? d "datum")) (else other #f))))
 
+"The facts in scope (C157), and whether they show `goal >= 0`: each
+ local `nat` and each size variable not negative."
+(define-datatype sfacts (sfacts lins lins))
+
+(define-rec
+  (size-facts-from (subr kfx (binds strings lins lins) sfacts)
+    (lambda (bs seen ges nes)
+      "The facts in scope, `>= 0` and `/= 0`: each of a binding of no name a
+       program writes, unless a name it mentions has been bound again
+       since (a narrowing names the same value)."
+      (if (null? bs)
+          (sfacts ges nes)
+          (tagcase (car bs)
+            (bind (n sc w)
+              (cond ((and (string=? n "%size-fact") (has-prefix? w "fact "))
+                     (let* ((ws (cdr (text-words w))) (kind (car ws)) (l (lin-read (cdr ws))))
+                       (cond ((any? (lambda ((m string)) (string-member? m seen)) (lin-names l)) (size-facts-from (cdr bs) seen ges nes))
+                             ((string=? kind "ge") (size-facts-from (cdr bs) seen (cons l ges) nes))
+                             ((string=? kind "eq") (size-facts-from (cdr bs) seen (cons l (cons (lin-scaled l -1) ges)) nes))
+                             (else (size-facts-from (cdr bs) seen ges (cons l nes))))))
+                    ((string=? w "narrowed") (size-facts-from (cdr bs) seen ges nes))
+                    (else (size-facts-from (cdr bs) (cons n seen) ges nes)))))))))
+
+(define-rec
+  (lin-resolved (subr kfx (st lin) lin)
+    (lambda (s l)
+      "`l`, each inference variable in it that is solved replaced by its size."
+      (tagcase l
+        (lin (c ts)
+          (if (null? ts)
+              l
+              (tagcase (car ts)
+                (lterm (n k)
+                  (let ((rest (lin-resolved s (lin c (cdr ts)))))
+                    (if (has-prefix? n "?")
+                        (let ((found (size-lin s (ty-meta (string->i64 (after-prefix n "?"))))))
+                          (if (or (null? found) (string=? (lin-text (car found)) (lin-text (lin 0 (list (lterm n 1))))))
+                              (lin-add rest (lin 0 (list (lterm n 1))) k)
+                              (lin-add rest (lin-resolved s (car found)) k)))
+                        (lin-add rest (lin 0 (list (lterm n 1))) k)))))))))))
+
+(define nat-bounds (subr kfx (cv st strings) lins)
+  (lambda (v s ns)
+    "Each of `ns` a size variable, or a local `nat`: `n >= 0`."
+    (concat (map (lambda ((n string))
+                   (let ((b (find-bind n (cv-binds v))))
+                     (if (or (has-prefix? n "#") (has-prefix? n "?")
+                             (and (not (null? b)) (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))))))
+                         (the lins (list (lin 0 (list (lterm n 1)))))
+                         nil)))
+                 ns))))
+
+(define size-shown? (subr kfx (cv st lin) bool)
+  (lambda (v s goal0)
+    "Whether the facts in scope show `goal >= 0`."
+    (tagcase (size-facts-from (cv-binds v) nil nil nil)
+      (sfacts (ges0 nes0)
+        (let* ((goal (lin-resolved s goal0))
+               (ges (map (lambda ((l lin)) (lin-resolved s l)) ges0))
+               (nes (map (lambda ((l lin)) (lin-resolved s l)) nes0))
+               (names (concat (map lin-names (cons goal (onto ges nes))))))
+          (lin-shown? (onto (nat-bounds v s names) ges) nes goal))))))
+
+(define-rec
+  (lone-meta (subr kfx ((listof lterm acyclic)) (listof lterm acyclic))
+    (lambda (ts)
+      "The first inference variable of `ts` of coefficient 1 or -1, if any:
+       one to solve for."
+      (let ((ms (filter (lambda ((t lterm)) (tagcase t (lterm (n k) (and (has-prefix? n "?") (or (i64= k 1) (i64= k -1)))))) ts)))
+        (if (null? ms) nil (list (car ms)))))))
+
+(define sized? (subr kfx (ty string) bool) (lambda (t d) (tagcase t (ty-data (x args) (string=? x d)) (else other #f))))
+(define sized-elem (subr kfx (ty) ty) (lambda (t) (tagcase t (ty-data (d args) (car args)) (else other t))))
+(define sized-size (subr kfx (ty) ty)
+  (lambda (t) (tagcase t (ty-data (d args) (if (string=? d "%natof") (car args) (car (cdr args)))) (else other size-finite))))
+
+(define sized-less (subr kfx (ty st) ty)
+  (lambda (t s)
+    "A `%nlist`'s type of one element fewer: `finite`'s is `finite`."
+    (let ((l (size-lin s (sized-size t))))
+      (ty-data "%nlist" (list (sized-elem t) (if (null? l) size-finite (size-of-lin (lin-add (car l) (lin -1 nil) 1))))))))
+
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -1834,7 +2125,40 @@
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (cond ((and (datum? a) (datum? e)) s)
+      (cond ((and (sized? a "%natof") (tagcase e (ty-nat () #t) (ty-int () #t) (else other #f)))
+             "`(nat s)` below `nat` and `int` (C158)."
+             s)
+            ((and (sized? a "%nlist") (tagcase e (ty-data (d args) (and (string=? d "%pairof") (sized? (walk s (car (cdr args))) "%nlist"))) (else other #f)))
+             "A pair whose tail is a list of a size, at `acyclic`, as the list it
+              is (C68, C158)."
+             (tagcase e (ty-data (d args) (fits v (fits v (fits v s (sized-elem a) (car args)) a (car (cdr args))) (car (cdr (cdr args))) (ty-rconst "acyclic"))) (else other (mismatch v s a e))))
+            ((and (sized? a "%nlist") (tagcase e (ty-list (y r) #t) (else other #f)))
+             "A list of a size below a list, at `acyclic` (C158): frozen, it ends."
+             (tagcase e (ty-list (y r) (fits v (fits v s (sized-elem a) y) (ty-rconst "acyclic") r)) (else other (mismatch v s a e))))
+            ((and (sized? e "%nlist") (tagcase a (ty-list (x r) #t) (else other #f)))
+             "A list at `acyclic` below a list of a size not known, `finite`: one
+              that is frozen and ends (C158)."
+             (tagcase a
+               (ty-list (x r)
+                 (if (size-finite? s (sized-size e))
+                     (fits v s a (ty-list (sized-elem e) (ty-rconst "acyclic")))
+                     (mismatch v s a e)))
+               (else other (mismatch v s a e))))
+            ((and (sized? e "%nlist") (tagcase a (ty-data (d args) (string=? d "nil")) (else other #f)))
+             "`nil` below a list of a size shown 0 (C158)."
+             (size-fits v s (size-of-lin (lin 0 nil)) (sized-size e) a e))
+            ((and (sized? e "%nlist") (tagcase a (ty-data (d args) (string=? d "%pairof")) (else other #f)))
+             "A pair, frozen, below a list of size `s`: its tail of size `s - 1`, `s`
+              shown not 0 (C158)."
+             (tagcase a
+               (ty-data (d args)
+                 (let ((z (sized-size e)))
+                   (if (and (not (size-finite? s z)) (not (size-shown? v s (lin-add (car (size-lin s z)) (lin -1 nil) 1))))
+                       (mismatch v s a e)
+                       (fits v (fits v (fits v s (car args) (sized-elem e)) (car (cdr args)) (sized-less e s))
+                             (car (cdr (cdr args))) (ty-rconst "acyclic")))))
+               (else other (mismatch v s a e))))
+            ((and (datum? a) (datum? e)) s)
             ((and (datum? e) (tagcase a (ty-list (x r) #t) (else other #f)))
              "A list below `datum` (C77): its elements are, at `acyclic`; so a
               list of datums is one, as FX-26 has it, and is given as it is."
@@ -1923,6 +2247,11 @@
                            (mismatch v s a e)
                            (fits v (fits v (fits v (car two) (car xs) (car ys)) (car (cdr xs)) (car (cdr ys)))
                                  (car (cdr (cdr (cdr xs)))) (car (cdr (cdr (cdr ys))))))))
+                    ((or (string=? x "%nlist") (string=? x "%natof"))
+                     "A size the same, or the one expected `finite` (C158)."
+                     (if (string=? x "%nlist")
+                         (size-fits v (fits v s (car xs) (car ys)) (car (cdr xs)) (car (cdr ys)) a e)
+                         (size-fits v s (car xs) (car ys) a e)))
                     ((string=? x "%vsubr")
                      "Its element and result first, then its effect, which they may solve
                       a region of: `list`'s `(alloc r)`, `r` acyclic, is pure (C156)."
@@ -1962,10 +2291,73 @@
       (if (null? actuals)
           s
           (fits-all v (fits v s (car actuals) (car expecteds)) (cdr actuals) (cdr expecteds)))))
+  (size-fits (subr kfx (cv st ty ty ty ty) st)
+    (lambda (v s za ze a e)
+      "That size `za` may stand for `ze` (C158), in types `a` and `e`: `ze`
+       `finite`; else the two shown equal by the facts in scope, an
+       inference variable alone in one solved to make them so, its size
+       shown not negative."
+      (let ((la (size-lin s za)) (le (size-lin s ze)))
+        (cond ((tagcase (walk s ze) (ty-meta (k) #t) (else other #f))
+               "A size binder may be instantiated with `finite` too (Fixpt's sizes.md),
+                unless it sizes more than one argument, or something inside one."
+               (tagcase (walk s ze)
+                 (ty-meta (k)
+                   (cond ((tagcase (walk s za) (ty-meta (j) (i64= j k)) (else other #f)) s)
+                         ((and (null? la) (any? (lambda ((f fact)) (tagcase f (fact (fl p w) (and (string=? fl "%sizes") (i64= p k) (string=? w "not-finite"))))) (st-facts s)))
+                          (refuse-named v s "a size cannot be finite here: it is the size of more than one argument, or of something inside one, and finite would not keep them the same"))
+                         (else (solve s k za))))
+                 (else other s)))
+              ((null? le) s)
+              ((tagcase (walk s za) (ty-meta (k) #t) (else other #f))
+               (tagcase (walk s za) (ty-meta (k) (solve s k ze)) (else other s)))
+              ((null? la) (mismatch v s a e))
+              (else
+               (let* ((d (lin-resolved s (lin-add (car la) (car le) -1)))
+                      (m (tagcase d (lin (c ts) (lone-meta ts)))))
+                 (if (null? m)
+                     (if (and (size-shown? v s d) (size-shown? v s (lin-scaled d -1))) s (mismatch v s a e))
+                     (tagcase (car m)
+                       (lterm (n k)
+                         ;; d = k ?n + rest = 0, so ?n = - rest / k.
+                         (let ((solved (lin-scaled (lin-add d (lin 0 (list (lterm n 1))) (i64- 0 k)) (i64- 0 k))))
+                           ;; Not negative, where the solution is known whole; else
+                           ;; what is fitted later says what its variables are.
+                           (if (or (any? (lambda ((x string)) (has-prefix? x "?")) (lin-names solved)) (size-shown? v s solved))
+                               (solve s (string->i64 (after-prefix n "?")) (size-of-lin solved))
+                               (mismatch v s a e))))))))))))
   (mismatch (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (refuse-named v s (string-append "a " (string-append (show-ty s a)
                 (string-append " is here, where a " (string-append (show-ty s e) " is expected"))))))))
+
+(define-rec
+  (var-count (subr kfx (string ty) i64)
+    (lambda (n t)
+      "How often type variable `n` is in `t`."
+      (tagcase t
+        (ty-var (m) (if (string=? m n) 1 0))
+        (ty-list (e r) (i64+ (var-count n e) (var-count n r)))
+        (ty-flat (e r) (i64+ (var-count n e) (var-count n r)))
+        (ty-ref (e r) (i64+ (var-count n e) (var-count n r)))
+        (ty-data (d args) (vars-count n args))
+        (ty-tag (a h es r) (i64+ (var-count n a) (i64+ (var-count n h) (var-count n r))))
+        (ty-proc (es ps r) (i64+ (vars-count n ps) (var-count n r)))
+        (ty-shape (p ls ts) (vars-count n ts))
+        (else other 0))))
+  (vars-count (subr kfx (string (listof ty acyclic)) i64)
+    (lambda (n ts) (if (null? ts) 0 (i64+ (var-count n (car ts)) (vars-count n (cdr ts)))))))
+
+(define finite-may? (subr kfx (string ty) bool)
+  (lambda (n t)
+    "Whether size binder `n` of a procedure's type `t` may be instantiated
+     with `finite`: it is in its parameters once, the size of one of them,
+     itself (Fixpt's rule: else `finite` would not keep two sizes the same)."
+    (tagcase t
+      (ty-proc (es ps r)
+        (and (i64= (vars-count n ps) 1)
+             (any? (lambda ((p ty)) (and (sized? p "%nlist") (tagcase (sized-size p) (ty-var (m) (string=? m n)) (else other #f)))) ps)))
+      (else other #f))))
 
 "A scheme's instance: each variable an inference variable; those for
  regions are kept, so that a call's effect can name the regions found."
@@ -1986,7 +2378,10 @@
             (res (m es s)
               (tagcase m
                 (ty-meta (k)
-                  (instantiate-vars s (cdr tvars) (replace-var (car tvars) m t)
+                  (instantiate-vars (if (and (has-prefix? (car tvars) "#") (not (finite-may? (car tvars) t)))
+                                        (note-fact s "%sizes" k "not-finite")
+                                        s)
+                                    (cdr tvars) (replace-var (car tvars) m t)
                                     (if (char=? (string-ref-i64 (car tvars) 0) #\') (cons k regions) regions)
                                     (if (char=? (string-ref-i64 (car tvars) 0) #\~) (cons k effects) effects)))
                 (else other (inst t s regions effects)))))))))
@@ -2387,101 +2782,7 @@
 (define nat? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
 
-"Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
- a linear expression over local names, a constant and each name's
- coefficient; a fact that one is `= 0`, `>= 0`, or `/= 0`, learned in a
- branch of a test, kept in the environment as a binding of no name a
- program writes, `wher` `fact KIND C N K ...`."
-(define-datatype lterm (lterm string i64))
-(define-datatype lin (lin i64 (listof lterm acyclic)))
-(define-type lins (listof lin acyclic))
 
-(define-rec
-  (lterms-added (subr kfx ((listof lterm acyclic) string i64) (listof lterm acyclic))
-    (lambda (ts n k)
-      (cond ((null? ts) (if (i64= k 0) nil (list (lterm n k))))
-            ((tagcase (car ts) (lterm (m j) (string=? m n)))
-             (tagcase (car ts) (lterm (m j) (if (i64= (i64+ j k) 0) (cdr ts) (cons (lterm m (i64+ j k)) (cdr ts))))))
-            (else (cons (car ts) (lterms-added (cdr ts) n k)))))))
-
-(define-rec
-  (lin-terms-onto (subr kfx ((listof lterm acyclic) (listof lterm acyclic) i64) (listof lterm acyclic))
-    (lambda (ts acc k)
-      (if (null? ts) acc (tagcase (car ts) (lterm (n j) (lin-terms-onto (cdr ts) (lterms-added acc n (i64* j k)) k)))))))
-
-(define lin-add (subr kfx (lin lin i64) lin)
-  (lambda (a b k)
-    "`a + k b`."
-    (tagcase a (lin (ca ta) (tagcase b (lin (cb tb) (lin (i64+ ca (i64* k cb)) (lin-terms-onto tb ta k))))))))
-
-(define lin-scaled (subr kfx (lin i64) lin) (lambda (a k) (lin-add (lin 0 nil) a k)))
-
-(define lin-coef (subr kfx (lin string) i64)
-  (lambda (a n)
-    (tagcase a (lin (c ts) (let ((found (filter (lambda ((t lterm)) (tagcase t (lterm (m j) (string=? m n)))) ts)))
-                             (if (null? found) 0 (tagcase (car found) (lterm (m j) j))))))))
-
-(define lin-names (subr kfx (lin) strings) (lambda (a) (tagcase a (lin (c ts) (map (lambda ((t lterm)) (tagcase t (lterm (n j) n))) ts)))))
-
-(define lin-text (subr kfx (lin) string)
-  (lambda (a)
-    (tagcase a (lin (c ts) (words-of (cons (i64->string c) (concat (map (lambda ((t lterm)) (tagcase t (lterm (n j) (the strings (list n (i64->string j)))))) ts))))))))
-
-(define-rec
-  (digits-i64-of (subr kfx (chars i64) i64)
-    (lambda (cs n) (if (null? cs) n (digits-i64-of (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
-
-(define string->i64 (subr kfx (string) i64)
-  (lambda (t)
-    (let ((cs (string-chars t)))
-      (if (and (not (null? cs)) (char=? (car cs) #\-)) (i64- 0 (digits-i64-of (cdr cs) 0)) (digits-i64-of cs 0)))))
-
-(define-rec
-  (fact-words-from (subr kfx (chars chars strings) strings)
-    (lambda (cs w acc)
-      (cond ((null? cs) (reverse (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
-            ((char=? (car cs) #\space) (fact-words-from (cdr cs) nil (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
-            (else (fact-words-from (cdr cs) (cons (car cs) w) acc))))))
-
-(define text-words (subr kfx (string) strings) (lambda (t) (fact-words-from (string-chars t) nil nil)))
-
-(define second-word (subr kfx (strings) string) (lambda (ws) (car (cdr ws))))
-
-(define-rec
-  (lterms-read (subr kfx (strings) (listof lterm acyclic))
-    (lambda (ws) (if (or (null? ws) (null? (cdr ws))) nil (cons (lterm (car ws) (string->i64 (second-word ws))) (lterms-read (cdr (cdr ws))))))))
-
-(define lin-read (subr kfx (strings) lin)
-  (lambda (ws) (lin (string->i64 (car ws)) (lterms-read (cdr ws)))))
-
-"Whether inequalities `ls`, each `l >= 0`, have no solution, by
- Fourier-Motzkin elimination over the rationals: sound for the integers,
- not complete. Too many, and the answer is that they may have one."
-(define-rec
-  (no-solution? (subr kfx (lins i64) bool)
-    (lambda (ls budget)
-      (cond ((i64> (size ls) 400) #f)
-            ((any? (lambda ((l lin)) (tagcase l (lin (c ts) (and (null? ts) (i64< c 0))))) ls) #t)
-            (else
-             (let ((open (filter (lambda ((l lin)) (tagcase l (lin (c ts) (not (null? ts))))) ls)))
-               (if (or (null? open) (i64<= budget 0))
-                   #f
-                   (let* ((x (car (lin-names (car open))))
-                          (pos (filter (lambda ((l lin)) (i64> (lin-coef l x) 0)) open))
-                          (neg (filter (lambda ((l lin)) (i64< (lin-coef l x) 0)) open))
-                          (rest (filter (lambda ((l lin)) (i64= (lin-coef l x) 0)) open)))
-                     (no-solution? (onto rest (concat (map (lambda ((p lin)) (map (lambda ((q lin)) (lin-add (lin-scaled p (i64- 0 (lin-coef q x))) q (lin-coef p x))) neg)) pos)))
-                                   (i64- budget 1))))))))))
-
-(define-rec
-  (lin-shown? (subr kfx (lins lins lin) bool)
-    (lambda (ges nes goal)
-      "Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
-       `>= 1` and `<= -1`) show `goal >= 0`."
-      (if (null? nes)
-          (no-solution? (cons (lin-add (lin -1 nil) goal -1) ges) 64)
-          (and (lin-shown? (cons (lin-add (car nes) (lin -1 nil) 1) ges) (cdr nes) goal)
-               (lin-shown? (cons (lin-add (lin -1 nil) (car nes) -1) ges) (cdr nes) goal))))))
 
 (define-rec
   (holds-meta? (subr kfx (ty) bool)

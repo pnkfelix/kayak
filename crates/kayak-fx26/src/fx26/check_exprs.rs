@@ -176,7 +176,7 @@ pub mod expressions {
                     lst(kayak_rt::heap_cons(sym(str_lit("mark-key"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%poly")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(map(lambda1s(move |n: Str| {
-                        lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("region"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                        lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(binder_kind(n), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                     }), poly_binders_of(args)), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(settled_sexp(s, poly_written(args), false), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%escape-tag")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("escape-tag"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(cdr(args))), true), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
@@ -1980,6 +1980,63 @@ pub mod expressions {
         }
     }
 
+    pub fn poly_fresh_metas(mut s: &'static St, mut n: i64, mut acc: Tys) -> &'static Res {
+        loop {
+            if i64_lt_eq(n, 0i64) {
+                return res(ty_data(str_lit("%metas"), acc), nil::<Str>(), s);
+            } else {
+                let tagcase_ = fresh(s);
+                match *tagcase_ {
+                    Res::Res(m, u, s2) => {
+                        (s, n, acc) = (s2, i64_minus(n, 1i64), kayak_rt::heap_cons(m, acc));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    /// A callee of a poly type, a `letrec`'s or a parameter's, called as
+    /// FX-26 calls it: instantiated, each binder a new inference variable
+    /// (C158).
+    pub fn poly_callee(c: &'static Res) -> &'static Res {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = walk(s, t);
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        if string_eq_p(d, str_lit("%poly")) {
+                            let tagcase_ = poly_fresh_metas(s, size(poly_binders_of(args)), nil::<&'static Ty>());
+                            match *tagcase_ {
+                                Res::Res(ms, u, s2) => {
+                                    res(poly_instance(args, {
+                                        let tagcase_ = ms;
+                                        match *tagcase_ {
+                                            Ty::TyData(d2, xs) => {
+                                                xs
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                nil::<&'static Ty>()
+                                            }
+                                        }
+                                    }), es, s2)
+                                }
+                            }
+                        } else {
+                            c
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        c
+                    }
+                }
+            }
+        }
+    }
+
     // Sizes' facts (C157): what a comparison of integers shows in each of its
     // branches, of the locals it names.
     pub fn std_prim_p(v: &'static Cv, h: Str) -> bool {
@@ -2001,34 +2058,60 @@ pub mod expressions {
                     let tagcase_ = car(b);
                     match *tagcase_ {
                         Bind::Bind(m, sc, w) => {
-                            ((string_eq_p(w, str_lit("local")) || string_eq_p(w, str_lit("narrowed"))) && {
-                                let tagcase_ = sc;
-                                match *tagcase_ {
-                                    Scheme::Scheme(tv, t) => {
-                                        (null_p(tv) && {
-                                            let tagcase_ = walk(s, t);
-                                            match *tagcase_ {
-                                                Ty::TyInt() => {
-                                                    true
-                                                }
-                                                Ty::TyNat() => {
-                                                    true
-                                                }
-                                                _ => {
-                                                    let other = tagcase_;
-                                                    false
-                                                }
-                                            }
-                                        })
-                                    }
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    (null_p(tv) && sized_p(walk(s, t), str_lit("%natof")))
                                 }
-                            })
+                            }
                         }
                     }
                 }) {
-                    kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil())
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(m, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    size_lin(s, sized_size(walk(s, t)))
+                                }
+                            }
+                        }
+                    }
                 } else {
-                    nil::<&'static Lin>()
+                    if (not(null_p(b)) && {
+                        let tagcase_ = car(b);
+                        match *tagcase_ {
+                            Bind::Bind(m, sc, w) => {
+                                ((string_eq_p(w, str_lit("local")) || string_eq_p(w, str_lit("narrowed"))) && {
+                                    let tagcase_ = sc;
+                                    match *tagcase_ {
+                                        Scheme::Scheme(tv, t) => {
+                                            (null_p(tv) && {
+                                                let tagcase_ = walk(s, t);
+                                                match *tagcase_ {
+                                                    Ty::TyInt() => {
+                                                        true
+                                                    }
+                                                    Ty::TyNat() => {
+                                                        true
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        false
+                                                    }
+                                                }
+                                            })
+                                        }
+                                    }
+                                })
+                            }
+                        }
+                    }) {
+                        kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil())
+                    } else {
+                        nil::<&'static Lin>()
+                    }
                 }
             }
             Sexp::Lst(xs, f, l, p) => {
@@ -2097,22 +2180,28 @@ pub mod expressions {
                         let tagcase_ = car(xs);
                         match *tagcase_ {
                             Sexp::Sym(h, f2, p2) => {
-                                (string_eq_p(h, str_lit("zero?")) && std_prim_p(v, h))
+                                ((string_eq_p(h, str_lit("null?")) || string_eq_p(h, str_lit("pair?"))) && std_prim_p(v, h))
                             }
                             _ => {
                                 let other = tagcase_;
                                 false
                             }
                         }
-                    }) {
-                        test = lst(kayak_rt::heap_cons(sym(str_lit("="), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(num(0i64, f, p), kayak_rt::nil()))), f, l, p);
-                        continue;
+                    } && not(null_p(nlist_size(v, s, second(xs))))) {
+                        let n = car(nlist_size(v, s, second(xs)));
+                        let more = with_size_fact(v, str_lit("ge"), lin_add(n, lin(-1i64, nil::<&'static Lterm>()), 1i64));
+                        let none = with_size_fact(v, str_lit("eq"), n);
+                        return kayak_rt::heap_cons(if sym_is_p(car(xs), str_lit("null?")) {
+                            narrowing(none, more)
+                        } else {
+                            narrowing(more, none)
+                        }, kayak_rt::nil());
                     } else {
-                        if (i64_eq(size(xs), 3i64) && {
+                        if (i64_eq(size(xs), 2i64) && {
                             let tagcase_ = car(xs);
                             match *tagcase_ {
                                 Sexp::Sym(h, f2, p2) => {
-                                    (string_member_p(h, kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::nil())))))) && std_prim_p(v, h))
+                                    (string_eq_p(h, str_lit("zero?")) && std_prim_p(v, h))
                                 }
                                 _ => {
                                     let other = tagcase_;
@@ -2120,27 +2209,43 @@ pub mod expressions {
                                 }
                             }
                         }) {
-                            let (h, a, b) = (sym_name(car(xs)), linear_of(v, s, second(xs)), linear_of(v, s, third(xs)));
-                            if (null_p(a) || null_p(b)) {
-                                return nil::<&'static expressions::Narrowing>();
-                            } else {
-                                let d = lin_add(car(a), car(b), -1i64);
-                                let nd = lin_scaled(d, -1i64);
-                                let one = lin(-1i64, nil::<&'static Lterm>());
-                                return kayak_rt::heap_cons(if string_eq_p(h, str_lit("=")) {
-                                    narrowing(with_size_fact(v, str_lit("eq"), d), with_size_fact(v, str_lit("ne"), d))
-                                } else if string_eq_p(h, str_lit("<")) {
-                                    narrowing(with_size_fact(v, str_lit("ge"), lin_add(nd, one, 1i64)), with_size_fact(v, str_lit("ge"), d))
-                                } else if string_eq_p(h, str_lit("<=")) {
-                                    narrowing(with_size_fact(v, str_lit("ge"), nd), with_size_fact(v, str_lit("ge"), lin_add(d, one, 1i64)))
-                                } else if string_eq_p(h, str_lit(">")) {
-                                    narrowing(with_size_fact(v, str_lit("ge"), lin_add(d, one, 1i64)), with_size_fact(v, str_lit("ge"), nd))
-                                } else {
-                                    narrowing(with_size_fact(v, str_lit("ge"), d), with_size_fact(v, str_lit("ge"), lin_add(nd, one, 1i64)))
-                                }, kayak_rt::nil());
-                            }
+                            test = lst(kayak_rt::heap_cons(sym(str_lit("="), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(num(0i64, f, p), kayak_rt::nil()))), f, l, p);
+                            continue;
                         } else {
-                            return nil::<&'static expressions::Narrowing>();
+                            if (i64_eq(size(xs), 3i64) && {
+                                let tagcase_ = car(xs);
+                                match *tagcase_ {
+                                    Sexp::Sym(h, f2, p2) => {
+                                        (string_member_p(h, kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::nil())))))) && std_prim_p(v, h))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }) {
+                                let (h, a, b) = (sym_name(car(xs)), linear_of(v, s, second(xs)), linear_of(v, s, third(xs)));
+                                if (null_p(a) || null_p(b)) {
+                                    return nil::<&'static expressions::Narrowing>();
+                                } else {
+                                    let d = lin_add(car(a), car(b), -1i64);
+                                    let nd = lin_scaled(d, -1i64);
+                                    let one = lin(-1i64, nil::<&'static Lterm>());
+                                    return kayak_rt::heap_cons(if string_eq_p(h, str_lit("=")) {
+                                        narrowing(with_size_fact(v, str_lit("eq"), d), with_size_fact(v, str_lit("ne"), d))
+                                    } else if string_eq_p(h, str_lit("<")) {
+                                        narrowing(with_size_fact(v, str_lit("ge"), lin_add(nd, one, 1i64)), with_size_fact(v, str_lit("ge"), d))
+                                    } else if string_eq_p(h, str_lit("<=")) {
+                                        narrowing(with_size_fact(v, str_lit("ge"), nd), with_size_fact(v, str_lit("ge"), lin_add(d, one, 1i64)))
+                                    } else if string_eq_p(h, str_lit(">")) {
+                                        narrowing(with_size_fact(v, str_lit("ge"), lin_add(d, one, 1i64)), with_size_fact(v, str_lit("ge"), nd))
+                                    } else {
+                                        narrowing(with_size_fact(v, str_lit("ge"), d), with_size_fact(v, str_lit("ge"), lin_add(nd, one, 1i64)))
+                                    }, kayak_rt::nil());
+                                }
+                            } else {
+                                return nil::<&'static expressions::Narrowing>();
+                            }
                         }
                     }
                 }
@@ -2152,89 +2257,85 @@ pub mod expressions {
         }
     }
 
-    pub enum Sfacts {
-        Sfacts(Lins, Lins),
-    }
-
-    pub fn sfacts(f0: Lins, f1: Lins) -> &'static Sfacts {
-        kayak_rt::heap_alloc(Sfacts::Sfacts(f0, f1))
-    }
-
-    /// The facts in scope, `>= 0` and `/= 0`: each of a binding of no name a
-    /// program writes, unless a name it mentions has been bound again
-    /// since (a narrowing names the same value).
-    pub fn size_facts_from(mut bs: Binds, mut seen: Strings, mut ges: Lins, mut nes: Lins) -> &'static Sfacts {
-        loop {
-            if null_p(bs) {
-                return sfacts(ges, nes);
-            } else {
-                let tagcase_ = car(bs);
-                match *tagcase_ {
-                    Bind::Bind(n, sc, w) => {
-                        if (string_eq_p(n, str_lit("%size-fact")) && has_prefix_p(w, str_lit("fact "))) {
-                            let ws = cdr(text_words(w));
-                            let kind = car(ws);
-                            let l = lin_read(cdr(ws));
-                            if any_p(lambda1s(move |m: Str| {
-                                string_member_p(m, seen)
-                            }), lin_names(l)) {
-                                bs = cdr(bs);
-                                continue;
-                            } else if string_eq_p(kind, str_lit("ge")) {
-                                (bs, ges) = (cdr(bs), kayak_rt::heap_cons(l, ges));
-                                continue;
-                            } else if string_eq_p(kind, str_lit("eq")) {
-                                (bs, ges) = (cdr(bs), kayak_rt::heap_cons(l, kayak_rt::heap_cons(lin_scaled(l, -1i64), ges)));
-                                continue;
-                            } else {
-                                (bs, nes) = (cdr(bs), kayak_rt::heap_cons(l, nes));
-                                continue;
+    /// The type of `e`, if it is a list of a size by its form (C158): a local
+    /// or global of one, its `cdr`, a `the` of one; none if not.
+    pub fn nlist_type(v: &'static Cv, s: &'static St, e: &'static Sexp) -> Tys {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                let b = find_bind(n, cv_binds(v));
+                if (not(null_p(b)) && {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(m, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    (null_p(tv) && sized_p(walk(s, t), str_lit("%nlist")))
+                                }
                             }
-                        } else if string_eq_p(w, str_lit("narrowed")) {
-                            bs = cdr(bs);
-                            continue;
-                        } else {
-                            (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
-                            continue;
                         }
                     }
+                }) {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(m, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    kayak_rt::heap_cons(walk(s, t), kayak_rt::nil())
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    nil::<&'static Ty>()
                 }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("the"))) {
+                    let t = parse_type(v, cv_tvars(v), second(xs));
+                    if sized_p(t, str_lit("%nlist")) {
+                        kayak_rt::heap_cons(t, kayak_rt::nil())
+                    } else {
+                        nil::<&'static Ty>()
+                    }
+                } else if (i64_eq(size(xs), 2i64) && sym_is_p(car(xs), str_lit("cdr")) && std_prim_p(v, str_lit("cdr"))) {
+                    let inner = nlist_type(v, s, second(xs));
+                    if null_p(inner) {
+                        nil::<&'static Ty>()
+                    } else {
+                        kayak_rt::heap_cons(cdr_size(v, s, car(inner)), kayak_rt::nil())
+                    }
+                } else {
+                    nil::<&'static Ty>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
             }
         }
     }
 
-    /// Each of `ns` a local `nat`: `n >= 0`.
-    pub fn nat_bounds(v: &'static Cv, s: &'static St, ns: Strings) -> Lins {
-        concat(map(lambda1s(move |n: Str| {
-            let b = find_bind(n, cv_binds(v));
-            if (not(null_p(b)) && {
-                let tagcase_ = car(b);
-                match *tagcase_ {
-                    Bind::Bind(m, sc, w) => {
-                        let tagcase_ = sc;
-                        match *tagcase_ {
-                            Scheme::Scheme(tv, t) => {
-                                nat_p(s, t)
-                            }
-                        }
-                    }
-                }
-            }) {
-                the::<Lins>(kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil()))
-            } else {
-                nil::<&'static Lin>()
-            }
-        }), ns))
+    /// A list of size `n`'s `cdr`: of `n - 1`, the facts showing `n >= 1`;
+    /// else `finite`.
+    pub fn cdr_size(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Ty {
+        let l = size_lin(s, sized_size(t));
+        if (not(null_p(l)) && size_shown_p(v, s, lin_add(car(l), lin(-1i64, nil::<&'static Lterm>()), 1i64))) {
+            sized_less(t, s)
+        } else {
+            ty_data(str_lit("%nlist"), kayak_rt::heap_cons(sized_elem(t), kayak_rt::heap_cons(size_finite(), kayak_rt::nil())))
+        }
     }
 
-    /// Whether the facts in scope show `goal >= 0`.
-    pub fn size_shown_p(v: &'static Cv, s: &'static St, goal: &'static Lin) -> bool {
-        let tagcase_ = size_facts_from(cv_binds(v), nil::<Str>(), nil::<&'static Lin>(), nil::<&'static Lin>());
-        match *tagcase_ {
-            Sfacts::Sfacts(ges, nes) => {
-                let names = concat(map(&lin_names, kayak_rt::heap_cons(goal, onto(ges, nes))));
-                lin_shown_p(onto(nat_bounds(v, s, names), ges), nes, goal)
-            }
+    pub fn nlist_size(v: &'static Cv, s: &'static St, e: &'static Sexp) -> Lins {
+        let t = nlist_type(v, s, e);
+        if null_p(t) {
+            nil::<&'static Lin>()
+        } else {
+            let l = size_lin(s, sized_size(car(t)));
+            l
         }
     }
 
@@ -2396,7 +2497,7 @@ pub mod expressions {
                         return lst(kayak_rt::heap_cons(sym(str_lit("mark-key"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
                     } else if string_eq_p(d, str_lit("%poly")) {
                         return lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(map(lambda1s(move |n: Str| {
-                            lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("region"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                            lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(binder_kind(n), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                         }), poly_binders_of(args)), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(ty_sexp(v, s, poly_written(args)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
                     } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                         return lst(kayak_rt::heap_cons(sym(after_prefix(d, str_lit("%")), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
@@ -3058,38 +3159,42 @@ pub mod expressions {
                     }
                 }
             }), params);
-            map(lambda1s(move |n: Str| {
+            let unshared = filter(lambda1s(move |n: Str| {
                 let found = find_bind(n, cv_binds(v));
-                if (null_p(found) || string_member_p(n, own)) {
-                    ()
-                } else {
+                (not(null_p(found)) && not(string_member_p(n, own)) && {
                     let tagcase_ = car(found);
                     match *tagcase_ {
                         Bind::Bind(b, sc, wher) => {
-                            if ((string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("narrowed")) || string_eq_p(wher, str_lit("rec")) || string_eq_p(wher, str_lit("ends"))) && not(sync_type_p(v, s, {
+                            ((string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("narrowed")) || string_eq_p(wher, str_lit("rec")) || string_eq_p(wher, str_lit("ends"))) && not(sync_type_p(v, s, {
                                 let tagcase_ = sc;
                                 match *tagcase_ {
                                     Scheme::Scheme(tv, t) => {
                                         t
                                     }
                                 }
-                            }, nil::<Str>()))) {
-                                match refuse(v, string_append(str_lit("a procedure that may be held on another thread, its effect being one a process may have, holds `"), string_append(n, string_append(str_lit("`, a "), string_append(show_ty(s, {
-                                    let tagcase_ = sc;
-                                    match *tagcase_ {
-                                        Scheme::Scheme(tv, t) => {
-                                            t
-                                        }
-                                    }
-                                }), str_lit(", which may not be: KFX's procedures hold only what they may share (C102)")))))) {};
-                                ()
-                            } else {
-                                ()
+                            }, nil::<Str>())))
+                        }
+                    }
+                })
+            }), distinct(names_in_all(forms)));
+            let s = if null_p(unshared) {
+                s
+            } else {
+                let n = car(unshared);
+                kfx_restricted(v, s, string_append(str_lit("a procedure that may be held on another thread, its effect being one a process may have, holds `"), string_append(n, string_append(str_lit("`, a "), string_append(show_ty(s, {
+                    let tagcase_ = car(find_bind(n, cv_binds(v)));
+                    match *tagcase_ {
+                        Bind::Bind(b, sc, wher) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    t
+                                }
                             }
                         }
                     }
-                }
-            }), distinct(names_in_all(forms)));
+                }), str_lit(", which may not be: KFX's procedures hold only what they may share (C102)"))))))
+            };
             note_fact(s, cv_file(v), cv_pos(v), str_lit("sync"))
         }
     }
@@ -3632,7 +3737,17 @@ pub mod expressions {
                                     res(ty_int(), nil::<Str>(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
                                 }
                                 Ty::TyData(d, args) => {
-                                    if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
+                                    if string_eq_p(d, str_lit("%natof")) {
+                                        // A natural where `(nat s)` is wanted: `s` shown to be it (C158).
+                                        let z = size_lin(s, car(args));
+                                        if i64_lt(k, 0i64) {
+                                            match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat"))) {}
+                                        } else if (not(null_p(z)) && size_shown_p(v, s, lin_add(car(z), lin(k, nil::<&'static Lterm>()), -1i64)) && size_shown_p(v, s, lin_add(lin(k, nil::<&'static Lterm>()), car(z), -1i64))) {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
+                                        } else {
+                                            match refuse_named(v, s, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                        }
+                                    } else if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
                                         res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
                                     } else if (string_eq_p(d, str_lit("u32")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 4294967295i64))) {
                                         res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
@@ -3694,7 +3809,10 @@ pub mod expressions {
                             }
                         }
                         Sexp::Sym(name, at_file, at_pos) => {
-                            if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
+                            if (string_eq_p(name, str_lit("nil")) && std_prim_p(v, str_lit("nil")) && sized_p(x, str_lit("%nlist"))) {
+                                // `nil` where a list of a size is wanted: of size 0 (C158).
+                                res(x, nil::<Str>(), size_fits(v, s, size_of_lin(lin(0i64, nil::<&'static Lterm>())), sized_size(x), ty_data(str_lit("nil"), nil::<&'static Ty>()), x))
+                            } else if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
                                 // `nil` where a union with a `nil` member is wanted (C84): that
                                 // member, as FX-26 has it.
                                 res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
@@ -4378,6 +4496,26 @@ pub mod expressions {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race"))) {
             check_by_synth(v, s, e, expected)
+        } else if (string_eq_p(h, str_lit("proj")) && null_p(find_bind(h, cv_binds(v)))) {
+            check_by_synth(v, s, e, expected)
+        } else if (string_eq_p(h, str_lit("list")) && std_prim_p(v, str_lit("list")) && sized_p(walk(s, expected), str_lit("%nlist"))) {
+            // `(list e ...)` where a list of size `s` is wanted: each element, and
+            // `s` shown to be how many there are (C158).
+            let t = walk(s, expected);
+            let z = size_lin(s, sized_size(t));
+            let n = size(xs);
+            if (not(null_p(z)) && not((size_shown_p(v, s, lin_add(car(z), lin(n, nil::<&'static Lterm>()), -1i64)) && size_shown_p(v, s, lin_add(lin(n, nil::<&'static Lterm>()), car(z), -1i64))))) {
+                match refuse_named(v, s, string_append(str_lit("a list of "), string_append(i64_to_string(n), string_append(str_lit(" where a "), string_append(show_ty(s, t), str_lit(" is expected")))))) {}
+            } else {
+                let tagcase_ = call_args(v, s, xs, map(lambda1s(move |x: &'static Sexp| {
+                    sized_elem(t)
+                }), xs), nil::<i64>());
+                match *tagcase_ {
+                    Res::Res(u, es, s) => {
+                        res(t, es, s)
+                    }
+                }
+            }
         } else if string_eq_p(h, str_lit("par")) {
             par_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("pselect")) {
@@ -4454,7 +4592,7 @@ pub mod expressions {
                     match refuse(v, str_lit("a vlambda where no variadic procedure is expected")) {}
                 }
             }
-        } else if (string_eq_p(h, str_lit("lambda")) && proc_type_p(s, expected)) {
+        } else if (string_eq_p(h, str_lit("lambda")) && (proc_type_p(s, expected) || poly_type_p(s, expected))) {
             check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
         } else if (string_eq_p(h, str_lit("list")) && datum_p(walk(s, expected))) {
             // A list where a datum is expected (C77): a list of datums, at
@@ -5413,7 +5551,21 @@ pub mod expressions {
         let ends = termination::terminates_p(v, map(lambda1s(move |b: &'static Sexp| {
             name_of(v, car(items(b)))
         }), bindings), map(lambda1s(move |b: &'static Sexp| {
-            parse_type(v, cv_tvars(v), second(items(b)))
+            let t = parse_type(v, cv_tvars(v), second(items(b)));
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    if string_eq_p(d, str_lit("%poly")) {
+                        poly_body(args)
+                    } else {
+                        t
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    t
+                }
+            }
         }), bindings), map(lambda1s(move |b: &'static Sexp| {
             third(items(b))
         }), bindings));
@@ -6160,6 +6312,59 @@ pub mod expressions {
             if (not(null_p(xs)) && head_is_p(car(xs), str_lit("proj"))) {
                 xs = onto(cdr(items(car(xs))), cdr(xs));
                 continue;
+            } else if (not(null_p(xs)) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                // A proj of an expression of a poly type, a `letrec`'s, as FX-26's
+                // programs write it (C158): its body at the arguments given, each by
+                // its binder's kind.
+                let tagcase_ = synth(v, s, car(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        if not(poly_type_p(s, t)) {
+                            return match refuse(v, str_lit("(proj e arg ...) of an expression of no poly type")) {};
+                        } else {
+                            let args = {
+                                let tagcase_ = walk(s, t);
+                                match *tagcase_ {
+                                    Ty::TyData(d, args) => {
+                                        args
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<&'static Ty>()
+                                    }
+                                }
+                            };
+                            if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
+                                return match refuse(v, str_lit("a proj given the wrong number of arguments")) {};
+                            } else {
+                                return res(poly_instance(args, map2(lambda2s(move |b: Str, r: &'static Sexp| {
+                                    if has_prefix_p(b, str_lit("'")) {
+                                        parse_region(v, cv_tvars(v), r)
+                                    } else if has_prefix_p(b, str_lit("#")) {
+                                        parse_size(v, cv_tvars(v), r)
+                                    } else {
+                                        parse_type(v, cv_tvars(v), r)
+                                    }
+                                }), poly_binders_of(args), cdr(xs))), es, if all_regions_p(poly_binders_of(args)) {
+                                    s
+                                } else {
+                                    kfx_restricted(v, s, str_lit("a proj of a poly value of types or sizes, which KFX has not yet (C107)"))
+                                });
+                            }
+                        }
+                    }
+                }
             } else {
                 let found = if null_p(xs) {
                     nil::<&'static Bind>()
@@ -6205,11 +6410,21 @@ pub mod expressions {
                                             }
                                         };
                                         if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
-                                            return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of regions")))) {};
+                                            return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
                                         } else {
-                                            return res(poly_instance(args, map(lambda1s(move |r: &'static Sexp| {
-                                                parse_region(v, cv_tvars(v), r)
-                                            }), cdr(xs))), nil::<Str>(), s);
+                                            return res(poly_instance(args, map2(lambda2s(move |b: Str, r: &'static Sexp| {
+                                                if has_prefix_p(b, str_lit("'")) {
+                                                    parse_region(v, cv_tvars(v), r)
+                                                } else if has_prefix_p(b, str_lit("#")) {
+                                                    parse_size(v, cv_tvars(v), r)
+                                                } else {
+                                                    parse_type(v, cv_tvars(v), r)
+                                                }
+                                            }), poly_binders_of(args), cdr(xs))), nil::<Str>(), if all_regions_p(poly_binders_of(args)) {
+                                                s
+                                            } else {
+                                                kfx_restricted(v, s, str_lit("a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))
+                                            });
                                         }
                                     } else {
                                         if not(i64_eq(size(tvars), size(cdr(xs)))) {
@@ -6396,7 +6611,7 @@ pub mod expressions {
             res(ty_unit(), nil::<Str>(), s)
         } else {
             let ys = items(car(bindings));
-            if not((head_is_p(third(ys), str_lit("lambda")) || head_is_p(third(ys), str_lit("rlambda")))) {
+            if not((head_is_p(third(ys), str_lit("lambda")) || head_is_p(third(ys), str_lit("rlambda")) || (head_is_p(third(ys), str_lit("plambda")) && poly_type_p(s, parse_type(v, cv_tvars(v), second(ys)))))) {
                 match refuse(v, str_lit("a letrec binds only lambdas")) {}
             } else {
                 let tagcase_ = check(v, s, third(ys), parse_type(v, cv_tvars(v), second(ys)));
@@ -6503,6 +6718,20 @@ pub mod expressions {
                     if string_eq_p(d, str_lit("%fx")) {
                         expected = walk(s, car(args));
                         continue;
+                    } else if string_eq_p(d, str_lit("%poly")) {
+                        // A lambda where a poly type is expected, as FX-26 takes it: as the
+                        // plambda of that type's binders, rigid, in scope (C107, C158).
+                        let names = poly_binders_of(args);
+                        let tagcase_ = check_lambda(with_tvars(v, names), if all_regions_p(names) {
+                            s
+                        } else {
+                            kfx_restricted(v, s, str_lit("a lambda where a poly type of types or sizes is expected, which KFX has not yet (C107)"))
+                        }, params, forms, poly_body(args));
+                        match *tagcase_ {
+                            Res::Res(t, es, s2) => {
+                                return res(expected, es, s2);
+                            }
+                        }
                     } else {
                         return match refuse(v, str_lit("a lambda where no procedure is expected")) {};
                     }
@@ -6852,6 +7081,64 @@ pub mod expressions {
                 return region_alloc_call(v, s, h, args, expected);
             } else if null_p(found) {
                 return match refuse(v, string_append(str_lit("nothing is named "), h)) {};
+            } else if ((string_eq_p(h, str_lit("+")) || string_eq_p(h, str_lit("-"))) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && sized_p(walk(s, car(expected)), str_lit("%natof"))) {
+                // A sum or a difference where `(nat s)` is wanted: shown to be `s` (C158).
+                let (a, b, z) = (linear_of(v, s, car(args)), linear_of(v, s, second(args)), size_lin(s, sized_size(walk(s, car(expected)))));
+                if (not(null_p(a)) && not(null_p(b)) && not(null_p(z)) && {
+                    let d = lin_add(lin_add(car(a), car(b), if string_eq_p(h, str_lit("+")) {
+                        1i64
+                    } else {
+                        -1i64
+                    }), car(z), -1i64);
+                    (size_shown_p(v, s, d) && size_shown_p(v, s, lin_scaled(d, -1i64)))
+                }) {
+                    let tagcase_ = call_args(v, s, args, kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_int(), kayak_rt::nil())), nil::<i64>());
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            return res(walk(s, car(expected)), es, s);
+                        }
+                    }
+                } else {
+                    return match refuse_named(v, s, string_append(str_lit("a "), string_append(h, string_append(str_lit(" here, where a "), string_append(show_ty(s, car(expected)), str_lit(" is expected, not shown to be one")))))) {};
+                }
+            } else if (string_eq_p(h, str_lit("cons")) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && sized_p(walk(s, car(expected)), str_lit("%nlist"))) {
+                // `cons` where a list of size `s` is wanted, frozen: its head the
+                // element, its tail of size `s - 1`, `s` shown not 0 (C158).
+                let t = walk(s, car(expected));
+                let z = size_lin(s, sized_size(t));
+                if (not(null_p(z)) && not(size_shown_p(v, s, lin_add(car(z), lin(-1i64, nil::<&'static Lterm>()), 1i64)))) {
+                    return match refuse_named(v, s, string_append(str_lit("a cons where a "), string_append(show_ty(s, t), str_lit(" is expected, its size not shown to be one or more")))) {};
+                } else {
+                    let tagcase_ = call_args(v, s, args, kayak_rt::heap_cons(sized_elem(t), kayak_rt::heap_cons(sized_less(t, s), kayak_rt::nil())), nil::<i64>());
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            return res(t, es, s);
+                        }
+                    }
+                }
+            } else if ((string_eq_p(h, str_lit("cdr")) || string_eq_p(h, str_lit("length"))) && prim_p(car(found)) && i64_eq(size(args), 1i64) && not(null_p(nlist_type(v, s, car(args))))) {
+                // A list of size `n`'s `cdr`, of `n - 1` if `n >= 1` is shown, and its
+                // `length`, a `(nat n)` (C158).
+                let t = car(nlist_type(v, s, car(args)));
+                let tagcase_ = call_args(v, s, args, kayak_rt::heap_cons(t, kayak_rt::nil()), nil::<i64>());
+                match *tagcase_ {
+                    Res::Res(u, es, s) => {
+                        let r = if string_eq_p(h, str_lit("cdr")) {
+                            cdr_size(v, s, t)
+                        } else {
+                            ty_data(str_lit("%natof"), kayak_rt::heap_cons(sized_size(t), kayak_rt::nil()))
+                        };
+                        return res(if (string_eq_p(h, str_lit("length")) && size_finite_p(s, sized_size(t))) {
+                            ty_nat()
+                        } else {
+                            r
+                        }, es, if null_p(expected) {
+                            s
+                        } else {
+                            fits(v, s, r, car(expected))
+                        });
+                    }
+                }
             } else if (string_eq_p(h, str_lit("-")) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && nat_p(s, car(expected)) && {
                 let (a, b) = (linear_of(v, s, car(args)), linear_of(v, s, second(args)));
                 (not(null_p(a)) && not(null_p(b)) && size_shown_p(v, s, lin_add(car(a), car(b), -1i64)))
@@ -7667,7 +7954,7 @@ pub mod expressions {
             }
         };
         let names = map(lambda1s(move |b: &'static Sexp| {
-            if ({
+            if {
                 let tagcase_ = b;
                 match *tagcase_ {
                     Sexp::Lst(ys, f, l, p) => {
@@ -7678,18 +7965,32 @@ pub mod expressions {
                         false
                     }
                 }
-            } && sym_is_p(second(items(b)), str_lit("region"))) {
-                string_append(str_lit("'"), sym_name(car(items(b))))
+            } {
+                let (k, n) = (second(items(b)), sym_name(car(items(b))));
+                if sym_is_p(k, str_lit("region")) {
+                    string_append(str_lit("'"), n)
+                } else if sym_is_p(k, str_lit("size")) {
+                    string_append(str_lit("#"), n)
+                } else if sym_is_p(k, str_lit("type")) {
+                    n
+                } else {
+                    match refuse(v, str_lit("a plambda where a poly type is expected binds regions, types and sizes (C107)")) {}
+                }
             } else {
-                match refuse(v, str_lit("a plambda where a poly type is expected binds regions alone, in KFX (C107)")) {}
+                match refuse(v, str_lit("a plambda where a poly type is expected binds regions, types and sizes (C107)")) {}
             }
         }), items(car(xs)));
+        let s = if all_regions_p(names) {
+            s
+        } else {
+            kfx_restricted(v, s, str_lit("a plambda of types or sizes where a poly type is expected, which KFX has not yet: its Rust erases regions alone (C107)"))
+        };
         if not(i64_eq(size(names), size(poly_binders_of(args)))) {
             match refuse(v, str_lit("a plambda of as many regions as the poly type expected")) {}
-        } else if any_p(lambda1s(move |n: Str| {
+        } else if (any_p(lambda1s(move |n: Str| {
             string_member_p(n, cv_tvars(v))
-        }), names) {
-            match refuse(v, str_lit("a plambda's region named as one in scope already, which KFX does not take (C107)")) {}
+        }), names) && all_regions_p(names)) {
+            match refuse(v, str_lit("a plambda's binder named as one in scope already, which KFX does not take (C107)")) {}
         } else {
             let before = st_next(s);
             let tagcase_ = check(with_tvars(v, names), s, second(xs), poly_instance(args, map(lambda1s(move |n: Str| {
@@ -7817,7 +8118,7 @@ pub mod expressions {
     /// list it makes, found by itself, at a region nothing said is at a
     /// fresh one, as FX-26's is: not one a later use may choose (C36).
     pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
-        let tagcase_ = callee;
+        let tagcase_ = poly_callee(callee);
         match *tagcase_ {
             Res::Res(t, es0, s) => {
                 let args = if string_eq_p(cv_file(v), str_lit("<draft>")) {

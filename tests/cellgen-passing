@@ -156,6 +156,7 @@ run/operand-order.fx
 run/reap.fx
 run/redefinition.fx
 run/reexport-inlined.fx
+run/region-closures.fx
 run/region-escapes.fx
 run/regions.fx
 run/shift-counts.fx
@@ -165,11 +166,16 @@ run/tail-marks.fx
 run/two-regions-one-place.fx
 run/unrolled-lists.fx
 run/versions.fx
+sizes/append.fx
 sizes/chained-facts.fx
+sizes/finite-one-arg.fx
 sizes/fixed-width-64-literals.fx
 sizes/length-of-a-list.fx
+sizes/nat-basics.fx
 sizes/nat-count-down.fx
 sizes/nat-join.fx
+sizes/nlist-basics.fx
+sizes/solved-by-test.fx
 sizes/zero-counts-down.fx
 terminate/datums.fx
 terminate/invariant-bound.fx
