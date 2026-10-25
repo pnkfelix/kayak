@@ -675,7 +675,8 @@
                 (ty-proc (declared ps r)
                   (let* ((wide (ty-proc (effs-union (list "@globals") declared) ps r))
                          (itself (ty-proc (effs-union (list (string-append "g:" name)) declared) ps r))
-                         (named (with-binds v (list (global v name (scheme tvars itself)))))
+                         ;; At its placeholder for the finding pass, not defined (C179).
+                         (named (with-binds v (list (bind name (scheme tvars itself) (if (null? (scope-bind "%module" v)) "global" "item")))))
                          (found (with expressions (lambda-effects (with-tvars (with-tvars named tvars) (place-marks (third xs))) (new-state) (items (second lam)) (cdr (cdr lam)) wide)))
                          (es (tagcase found (res (u es s) es)))
                          (fs (tagcase found (res (u es s) (with expressions (settle-facts s))))))
@@ -759,7 +760,10 @@
     (let* ((name (name-of v (second xs)))
            (itself (effect-put (third xs) (effect-sexp (list (string-append "g:" name)))))
            (sc (parse-scheme v itself))
-           (named (with-binds (at v name (if (ends-alone? v name sc (fourth xs)) nil (list name))) (list (global v name sc)))))
+           ;; Bound at its placeholder for the one pass, not defined: no
+           ;; redefinition's rule (C179; a `->*` defined again at its type).
+           (named (with-binds (at v name (if (ends-alone? v name sc (fourth xs)) nil (list name)))
+                              (list (bind name sc (if (null? (scope-bind "%module" v)) "global" "item"))))))
       (list (car xs) (second xs) (effect-put (third xs) (effect-sexp (found-latent named name (third xs) (fourth xs)))) (fourth xs)))))
 
 (define poly-type? (subr kfx (sexp) bool) (lambda (t) (head-is? t "poly")))
@@ -807,7 +811,8 @@
                         bindings))
            (ends (with termination (terminates? v names (map (lambda ((b sexp)) (tagcase (parse-scheme v (second (items b))) (scheme (tvars t) t))) placed)
                               (map (lambda ((b sexp)) (third (items b))) bindings))))
-           (named (with-binds v (map (lambda ((b sexp)) (let ((ys (items b))) (global v (name-of v (car ys)) (parse-scheme v (second ys))))) placed)))
+           ;; Each at its placeholder for the one pass, not defined (C179).
+           (named (with-binds v (map (lambda ((b sexp)) (let ((ys (items b))) (bind (name-of v (car ys)) (parse-scheme v (second ys)) (if (null? (scope-bind "%module" v)) "global" "item")))) placed)))
            (own (map (lambda ((b sexp))
                        (let ((ys (items b)))
                          (if (arrow-star? (second ys))

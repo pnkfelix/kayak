@@ -571,7 +571,8 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    51 of the 433 programs Fixpt accepts still refused (2026-10-25, C179);
    70 differ; 312 the same. Next among them: FX-87's masking at every
    subexpression (`run/icells.fx`, `native/raw-slots.fx`; C179);
-   redefinition at another type (4); conventions (about 5). Of flats left: the kind `flat`
+   redefinition at another type, re-run and broken (2; C180); conventions
+   (about 5). Of flats left: the kind `flat`
    (`flat-kind.fx`), `narrayof` (`narrayof-lengths.fx`). Of modules left: `load-layers.fx` (an effect
    read from an item made before it, in a loaded file); printing, where
    Fixpt names a shared type by the latest abbreviation or description of

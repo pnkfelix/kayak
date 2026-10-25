@@ -4969,6 +4969,26 @@ was four rules:
   fresh regions where printed. A change to the effect system as a whole:
   TODO §30.
 - Refused 60 to 51, the same 299 to 312; K1 0.
+
+## C180. A placeholder binding is no redefinition (2026-10-25)
+
+Of the four programs refused as "defined again, at another type": two
+were not. Where an effect is found (`->*`'s `found-define`, a group's
+`found-rec`, `check-define*`), the name is bound for one pass at a
+placeholder type, reading itself or `pure`; that binding went through
+`global`, whose redefinition rule compared the placeholder with the
+earlier definition's type and refused. Now bound plainly for that pass;
+the definition itself still meets the rule (`native/redefined.fx`,
+`native/raw-args-across-forms.fx`).
+- **Left**: Fixpt's redefinition at another type (fx26.md, 2026-09-28):
+  every earlier definition using the name, and their users, checked
+  again in order, each that checks defined again (and printed so), each
+  that does not *broken*, an error only at a later use
+  (`redefine/rerun-chain.fx`, `redefine/knot-spin.fx`). Kayak's checker
+  refuses at the first fault, with no try, and its engine would have to
+  run them again: a change of its own (TODO §30). Until then kayak
+  refuses at the redefinition, as before.
+- Refused 51 to 49; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

@@ -818,7 +818,11 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                     Ty::TyProc(declared, ps, r) => {
                         let wide = ty_proc(effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), declared), ps, r);
                         let itself = ty_proc(effs_union(kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), declared), ps, r);
-                        let named = with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(tvars, itself)), kayak_rt::nil()));
+                        let named = with_binds(v, kayak_rt::heap_cons(bind(name, scheme(tvars, itself), if null_p(scope_bind(str_lit("%module"), v)) {
+                            str_lit("global")
+                        } else {
+                            str_lit("item")
+                        }), kayak_rt::nil()));
                         let found = expressions::lambda_effects(with_tvars(with_tvars(named, tvars), place_marks(third(xs))), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
                         let es = {
                             let tagcase_ = found;
@@ -989,7 +993,11 @@ pub fn found_define(v: &'static Cv, xs: Sexps) -> Sexps {
         nil::<Str>()
     } else {
         kayak_rt::heap_cons(name, kayak_rt::nil())
-    }), kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
+    }), kayak_rt::heap_cons(bind(name, sc, if null_p(scope_bind(str_lit("%module"), v)) {
+        str_lit("global")
+    } else {
+        str_lit("item")
+    }), kayak_rt::nil()));
     kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(effect_put(third(xs), effect_sexp(found_latent(named, name, third(xs), fourth(xs)))), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil()))))
 }
 
@@ -1074,7 +1082,11 @@ pub fn found_rec(v: &'static Cv, bindings: Sexps) -> Sexps {
     }), bindings));
     let named = with_binds(v, map(lambda1s(move |b: &'static Sexp| {
         let ys = items(b);
-        global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
+        bind(name_of(v, car(ys)), parse_scheme(v, second(ys)), if null_p(scope_bind(str_lit("%module"), v)) {
+            str_lit("global")
+        } else {
+            str_lit("item")
+        })
     }), placed));
     let own = map(lambda1s(move |b: &'static Sexp| {
         let ys = items(b);
