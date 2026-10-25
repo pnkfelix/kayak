@@ -4123,17 +4123,48 @@ pub fn sname_find(ns: Snames, n: Str) -> Snames {
     }), ns)
 }
 
+/// A procedure type of a convention written (C116, C181): `native`, the
+/// program's in FX-26's checker now and printed so, kept apart for KFX's
+/// `native-procedure`; `cellular`; `fx`, any.
+pub fn conv_wrapper_p(d: Str) -> bool {
+    (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%cellular")))
+}
+
+/// A procedure type's convention (C181): `native` for the program's, or
+/// one written; `` if `t` is no procedure.
+pub fn convention_of(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            str_lit("native")
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%native")) {
+                str_lit("native")
+            } else if conv_wrapper_p(d) {
+                after_prefix(d, str_lit("%"))
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
 /// The procedure of a specified type, or of a convention's (C116): its
 /// `ty-proc`, or `t` itself.
 pub fn procedure_within(t: &'static Ty) -> &'static Ty {
     let tagcase_ = t;
     match *tagcase_ {
         Ty::TyData(d, args) => {
-            if ((has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%native"))) && not(null_p(args))) {
+            if ((has_prefix_p(d, str_lit("%spec ")) || conv_wrapper_p(d)) && not(null_p(args))) {
                 let tagcase_ = car(args);
                 match *tagcase_ {
                     Ty::TyData(d2, args2) => {
-                        if ((string_eq_p(d2, str_lit("%fx")) || string_eq_p(d2, str_lit("%native"))) && not(null_p(args2))) {
+                        if (conv_wrapper_p(d2) && not(null_p(args2))) {
                             car(args2)
                         } else {
                             car(args)
@@ -6325,7 +6356,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         str_lit("native")
                     };
-                    if (string_eq_p(conv, str_lit("native")) || string_eq_p(conv, str_lit("fx"))) {
+                    if (string_eq_p(conv, str_lit("native")) || string_eq_p(conv, str_lit("fx")) || string_eq_p(conv, str_lit("cellular"))) {
                         return ty_data(string_append(str_lit("%"), conv), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_params(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
                     } else {
                         return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
@@ -7456,7 +7487,12 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))));
                 } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                     return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))));
-                } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
+                } else if string_eq_p(d, str_lit("%native")) {
+                    // The program's convention, as Fixpt's checker has it now (C181):
+                    // printed as it is left out.
+                    t = car(args);
+                    continue;
+                } else if (string_eq_p(d, str_lit("%cellular")) || string_eq_p(d, str_lit("%fx"))) {
                     return string_append(str_lit("(subr (conv "), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(") "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))));
                 } else if string_eq_p(d, str_lit("%vsubr")) {
                     return string_append(str_lit("(vsubr "), string_append({
@@ -7688,7 +7724,7 @@ pub fn show_specified(s: &'static St, d: Str, t: &'static Ty) -> Str {
         let tagcase_ = inner;
         match *tagcase_ {
             Ty::TyData(c, args) => {
-                if (string_eq_p(c, str_lit("%fx")) || string_eq_p(c, str_lit("%native"))) {
+                if (string_eq_p(c, str_lit("%fx")) || string_eq_p(c, str_lit("%cellular"))) {
                     string_append(str_lit("(conv "), string_append(after_prefix(c, str_lit("%")), str_lit(") ")))
                 } else {
                     str_lit("")
@@ -8343,7 +8379,7 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
                         }
                     }
                 }, repeat_ty(car(cdr(args)), n), car(cdr(cdr(args))))
-            } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
+            } else if conv_wrapper_p(d) {
                 // A procedure of a convention (C116), called as any is.
                 car(args)
             } else if has_prefix_p(d, str_lit("%spec ")) {
@@ -9450,8 +9486,8 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyData(y, ys) => {
-                    if (string_eq_p(x, str_lit("%native")) && string_eq_p(y, str_lit("%fx"))) {
-                        // A native procedure where one of any convention is (C116).
+                    if (conv_wrapper_p(x) && string_eq_p(y, str_lit("%fx"))) {
+                        // A procedure of a convention where one of any is (C116): free.
                         fits(v, s, car(xs), car(ys))
                     } else if (string_eq_p(x, str_lit("%app")) || string_eq_p(y, str_lit("%app"))) {
                         app_fits(v, s, a, e)
@@ -9567,9 +9603,13 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     }
                 }
                 Ty::TyProc(ees, eps, er) => {
-                    // A composable continuation where a procedure is expected (C60).
                     if (string_eq_p(x, str_lit("%composable")) || string_eq_p(x, str_lit("%oneshot"))) {
+                        // A composable continuation where a procedure is expected (C60).
                         fits(v, s, composable_as_proc(s, a), e)
+                    } else if string_eq_p(x, str_lit("%native")) {
+                        // A native procedure where the program's is: the same convention in
+                        // FX-26's checker now (C181); KFX's `native-procedure` apart.
+                        fits(v, kfx_restricted(v, s, str_lit("a native procedure where KFX's own is expected (C116, C181)")), car(xs), e)
                     } else {
                         mismatch(v, s, a, e)
                     }
@@ -9620,6 +9660,10 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                 Ty::TyData(d, args) => {
                     if string_eq_p(d, str_lit("%fx")) {
                         fits(v, s, a, car(args))
+                    } else if string_eq_p(d, str_lit("%native")) {
+                        // The program's procedure where a native one is: the same convention
+                        // in FX-26's checker now (C181); KFX's `native-procedure` apart.
+                        fits(v, kfx_restricted(v, s, str_lit("a procedure of KFX's own where a native one is expected (C116, C181)")), a, car(args))
                     } else {
                         mismatch(v, s, a, e)
                     }
@@ -9925,7 +9969,7 @@ pub fn forgettable_p(s: &'static St, r: &'static Ty, t: &'static Ty) -> bool {
             }), ts))
         }
         Ty::TyData(d, args) => {
-            (not((string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%native")) || has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%vsubr")) || string_eq_p(d, str_lit("%poly")) || string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot")))) && not(any_p(lambda1s(move |x: &'static Ty| {
+            (not((conv_wrapper_p(d) || has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%vsubr")) || string_eq_p(d, str_lit("%poly")) || string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot")))) && not(any_p(lambda1s(move |x: &'static Ty| {
                 not(forgettable_p(s, r, x))
             }), args)))
         }

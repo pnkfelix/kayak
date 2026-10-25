@@ -1,0 +1,6 @@
+"FX-26's `cellular` convention, a procedure the inner interpreter runs,
+ which KFX has not (C181)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define inc (subr (conv cellular) pure (i64) i64) (lambda (x) (i64+ x 1)))
+(define main (subr kfx () i64)
+  (lambda () (inc 1)))

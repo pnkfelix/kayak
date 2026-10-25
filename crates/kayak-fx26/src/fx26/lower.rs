@@ -696,6 +696,9 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
     loop {
         if string_eq_p(h, str_lit("the")) {
             return lower(second(xs), sc, gs);
+        } else if (string_eq_p(h, str_lit("convention")) && i64_eq(size(xs), 2i64)) {
+            // `(convention C e)`: `e`, the engine's procedures one convention (C181).
+            return lower(second(xs), sc, gs);
         } else if string_eq_p(h, str_lit("quote")) {
             return lower_quoted(car(xs), sc, gs);
         } else if string_eq_p(h, str_lit("quasiquote")) {

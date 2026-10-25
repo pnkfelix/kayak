@@ -2761,7 +2761,7 @@ pub mod expressions {
                         return lst(kayak_rt::heap_cons(sym(str_lit("bloblet"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("fields"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Ty| {
                             ty_sexp(v, s, x)
                         }), cdr(args))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
-                    } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx")) || has_prefix_p(d, str_lit("%spec "))) {
+                    } else if (conv_wrapper_p(d) || has_prefix_p(d, str_lit("%spec "))) {
                         t = car(args);
                         continue;
                     } else if string_eq_p(d, str_lit("%blobref")) {
@@ -4195,6 +4195,35 @@ pub mod expressions {
         }
     }
 
+    /// A procedure of one convention given where one of another is, but
+    /// `fx` (which takes any, free): converted, as FX-26's checker inserts a
+    /// conversion where a value is given, an adapter, or from `fx` a test
+    /// of its kind; never inside data (C181; `fx-not-cellular.fx`). KFX has
+    /// none.
+    pub fn converted(v: &'static Cv, r: &'static Res, expected: &'static Ty) -> &'static Res {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let a = walk(s, t);
+                let e = walk(s, expected);
+                let ca = convention_of(a);
+                let ce = convention_of(e);
+                if (string_eq_p(ca, str_lit("")) || string_eq_p(ce, str_lit("")) || string_eq_p(ca, ce) || string_eq_p(ce, str_lit("fx"))) {
+                    r
+                } else {
+                    res({
+                        let p = procedure_within(a);
+                        if string_eq_p(ce, str_lit("native")) {
+                            p
+                        } else {
+                            ty_data(string_append(str_lit("%"), ce), kayak_rt::heap_cons(p, kayak_rt::nil()))
+                        }
+                    }, es, kfx_restricted(v, s, string_append(str_lit("a procedure of the convention "), string_append(ca, string_append(str_lit(" where "), string_append(ce, str_lit(" is expected, a conversion, FX-26's, which KFX has not (C181)")))))))
+                }
+            }
+        }
+    }
+
     /// An expression found, then fitted to what is expected: a procedure
     /// that cannot abort where one that may is expected is lifted, its Rust
     /// type returning no `Result` (`lift N` at it, `N` its arity, wherever
@@ -4214,7 +4243,7 @@ pub mod expressions {
                 }
             })) {}
         } else {
-            let tagcase_ = synth(v, s, e);
+            let tagcase_ = converted(v, synth(v, s, e), expected);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     res(expected, es, {
@@ -4698,6 +4727,36 @@ pub mod expressions {
                 return spawn_monitored_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("self")) {
                 return self_form(v, s, xs);
+            } else if (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)) && i64_eq(size(xs), 2i64) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        string_member_p(n, kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("fx"), kayak_rt::nil()))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                // `(convention C e)` (C181; Fixpt's native-conventions.md): procedure
+                // `e` converted to convention `C`, explicitly; KFX has none.
+                let tagcase_ = synth(v, s, second(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let p = procedure_within(walk(s, t));
+                        let tagcase_ = p;
+                        match *tagcase_ {
+                            Ty::TyProc(pes, ps, r) => {
+                                return res(ty_data(string_append(str_lit("%"), sym_name(car(xs))), kayak_rt::heap_cons(p, kayak_rt::nil())), es, kfx_restricted(v, s, str_lit("`(convention C e)`, FX-26's, which KFX has not (C181)")));
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return match refuse(v, str_lit("`(convention C e)` of a procedure")) {};
+                            }
+                        }
+                    }
+                }
             } else if string_eq_p(h, str_lit("race")) {
                 // FX-26's `race`, a form wherever it heads a list: refused, not a
                 // call of what a program names `race` (C108).
@@ -4927,7 +4986,7 @@ pub mod expressions {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("spawn-monitored")) {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race"))) {
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)
@@ -7672,6 +7731,16 @@ pub mod expressions {
                     if string_eq_p(d, str_lit("%fx")) {
                         expected0 = walk(s, car(args));
                         continue;
+                    } else if (string_eq_p(d, str_lit("%cellular")) || string_eq_p(d, str_lit("%native"))) {
+                        // A lambda where a procedure of a convention written is expected
+                        // (C181): checked as one of the program's, made in that convention,
+                        // as FX-26 compiles it; KFX's lambdas are its own (C116).
+                        let tagcase_ = check_lambda(v, kfx_restricted(v, s, string_append(str_lit("a lambda of the convention "), string_append(after_prefix(d, str_lit("%")), str_lit(", FX-26's, which KFX's lambdas are not (C116, C181)")))), params, forms, walk(s, car(args)));
+                        match *tagcase_ {
+                            Res::Res(t, es, s2) => {
+                                return res(expected, es, s2);
+                            }
+                        }
                     } else if has_prefix_p(d, str_lit("%spec ")) {
                         // A lambda where a specified procedure is expected (C162): checked as
                         // the procedure within, its specification not proved, as FX-26's

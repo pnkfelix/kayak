@@ -1,0 +1,6 @@
+"FX-26's `(convention C e)`, a procedure converted to another calling
+ convention, which KFX has not: its procedures are Rust's (C181)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define inc (subr pure (i64) i64) (lambda (x) (i64+ x 1)))
+(define main (subr kfx () i64)
+  (lambda () ((convention fx inc) 1)))

@@ -336,6 +336,9 @@
   (lower-form (subr kfx (string sexps sexp scope strings) ir)
     (lambda (h xs e sc gs)
       (cond ((string=? h "the") (lower (second xs) sc gs))
+            ((and (string=? h "convention") (i64= (size xs) 2))
+             "`(convention C e)`: `e`, the engine's procedures one convention (C181)."
+             (lower (second xs) sc gs))
             ((string=? h "quote") (lower-quoted (car xs) sc gs))
             ((string=? h "quasiquote") (lower-quasi (car xs) 1 sc gs))
             ((or (string=? h "plambda") (string=? h "proj")) (if (string=? h "proj") (lower (car xs) sc gs) (lower (second xs) sc gs)))

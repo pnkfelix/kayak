@@ -2506,6 +2506,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         parse_and(cdr(xs), a)
     } else if string_eq_p(h, str_lit("or")) {
         parse_or(cdr(xs), a)
+    } else if (string_eq_p(h, str_lit("convention")) && sym_is_p(second(xs), str_lit("native"))) {
+        // A conversion to native code, an adapter Fixpt makes (C181): not the
+        // generator's, whose closures are cellular.
+        match cg_fail(str_lit("not yet: a conversion to native code")) {};
+        x_var(str_lit("%none"), a)
     } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("convention"))) {
         parse_x(car(cdr(cdr(xs))))
     } else if string_eq_p(h, str_lit("plambda")) {

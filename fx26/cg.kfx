@@ -470,6 +470,10 @@
             ((string=? h "cond") (parse-cond (cdr xs) a))
             ((string=? h "and") (parse-and (cdr xs) a))
             ((string=? h "or") (parse-or (cdr xs) a))
+            ((and (string=? h "convention") (sym-is? (second xs) "native"))
+             "A conversion to native code, an adapter Fixpt makes (C181): not the
+              generator's, whose closures are cellular."
+             (begin (cg-fail "not yet: a conversion to native code") (x-var "%none" a)))
             ((or (string=? h "the") (string=? h "convention")) (parse-x (car (cdr (cdr xs)))))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
             ((string=? h "proj") (parse-x (second xs)))

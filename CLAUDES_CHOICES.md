@@ -4989,6 +4989,42 @@ the definition itself still meets the rule (`native/redefined.fx`,
   run them again: a change of its own (TODO §30). Until then kayak
   refuses at the redefinition, as before.
 - Refused 51 to 49; K1 0.
+
+## C181. Calling conventions as Fixpt's checker has them (2026-10-25)
+
+Fixpt's `docs/research/native-conventions.md`: a procedure type's
+convention, `cellular`, `native` or `fx` (either), written
+`(subr (conv C) ...)` or left out. Under `fixpt check` now, the
+program's convention is `native`: a type prints its convention only
+where it differs, so `(conv native)` prints as nothing and
+`(conv cellular)` is written out. Kayak kept `native` apart (C116, KFX's
+`native-procedure`, a Rust fn), and had no `cellular`.
+- **The representation kept**: `%native` and `%fx` wrappers as before,
+  and `%cellular` new (`conv-wrapper?`); `%native` printed as the
+  program's, unwritten. A native procedure where the program's is, or
+  the reverse, fits (the same convention to FX-26's checker), noted
+  `kfx-restricted` (KFX's `native-procedure` stays apart).
+- **Subsumption**: any convention into `fx`, free, as before.
+- **Conversions**: a procedure of one convention given where one of
+  another is expected (but `fx`) is converted, as Fixpt's checker
+  inserts an adapter, or from `fx` a test of the value's kind: only
+  where a value is given (an argument, a binding, a checked result:
+  `converted`, before `check-by-synth`'s fit), never inside data
+  (`fx-not-cellular.fx`, which a first try at doing it in `fits`
+  accepted: a K1 breach, found by the comparison). KFX has none.
+- **`(convention C e)`**: `e`'s procedure at `C`; the engine lowers it to
+  `e` (its procedures are one convention); KFX refuses it. A `lambda`
+  where a `cellular` or `native` procedure is expected is checked as the
+  program's and given that convention (KFX's lambdas are its own).
+- **Left**: `conv`-kind binders (`(poly ((c conv)) ...)`,
+  `conventions/poly.fx`); `native/adapters.fx` needs `cons` as a value at
+  Fixpt's type, a `pairof`.
+- Refused 49 to 45, the same 314 to 319; K1 0. Tests:
+  `tests/kfx-stricter/convention-form.kfx`, `convention-cellular.kfx`.
+- The cells generator (`--ours`) declines `(convention native e)`, an
+  adapter to native code, its closures being cellular (found by the
+  check: `conventions/native-explicit.fx`'s value printed as a cellular
+  closure where Fixpt's is native).
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its
