@@ -742,13 +742,186 @@ pub mod restrictions {
                     } else {
                         nil::<Str>()
                     }
+                } else if sym_is_p(car(xs), str_lit("define-rec")) {
+                    concat(map(bound, cdr(xs)))
+                } else if (sym_is_p(car(xs), str_lit("tagcase")) || sym_is_p(car(xs), str_lit("typecase"))) {
+                    concat(map(lambda1s(move |arm: &'static Sexp| {
+                        let tagcase_ = arm;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                if i64_gt(size(ys), 1i64) {
+                                    let tagcase_ = second(ys);
+                                    match *tagcase_ {
+                                        Sexp::Sym(n, f3, p3) => {
+                                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                        }
+                                        Sexp::Lst(zs, f3, l3, p3) => {
+                                            concat(map(bound, zs))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            nil::<Str>()
+                                        }
+                                    }
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    }), if i64_gt(size(xs), 2i64) {
+                        cdr(cdr(xs))
+                    } else {
+                        nil::<&'static Sexp>()
+                    }))
                 } else {
                     nil::<Str>()
                 };
-                if any_p(&kfx_reserved_p, names) {
-                    match restriction_refused(f, l, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(filter(&kfx_reserved_p, names)))) {}
+                let wrong = lambda1s(move |n: Str| {
+                    (not(has_prefix_p(n, str_lit("%"))) && not(has_prefix_p(n, str_lit("made--"))) && not(string_eq_p(n, str_lit("_"))) && (kfx_reserved_p(n) || not(kfx_name_p(n))))
+                });
+                if any_p(wrong, names) {
+                    match restriction_refused(f, l, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(filter(wrong, names)))) {}
                 } else {
                     map(&reserved_bound, xs);
+                    ()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ()
+            }
+        }
+    }
+
+    /// Each type defined, as `FILE|NAME`, in `forms` and their modules.
+    pub fn file_types(forms: Sexps) -> Strings {
+        concat(map(lambda1s(move |g: &'static Sexp| {
+            let tagcase_ = g;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if ((head_is_p(g, str_lit("define-type")) || head_is_p(g, str_lit("define-datatype")) || head_is_p(g, str_lit("define-generative"))) && i64_gt(size(xs), 1i64)) {
+                        let n = {
+                            let tagcase_ = second(xs);
+                            match *tagcase_ {
+                                Sexp::Sym(m, f2, p2) => {
+                                    m
+                                }
+                                Sexp::Lst(ys, f2, l2, p2) => {
+                                    if null_p(ys) {
+                                        str_lit("")
+                                    } else {
+                                        let tagcase_ = car(ys);
+                                        match *tagcase_ {
+                                            Sexp::Sym(m, f3, p3) => {
+                                                m
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                str_lit("")
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        };
+                        the::<Strings>(kayak_rt::heap_cons(string_append(f, string_append(str_lit("|"), n)), kayak_rt::nil()))
+                    } else if module_def_p(g) {
+                        file_types(module_own_items(g))
+                    } else {
+                        nil::<Str>()
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        }), forms))
+    }
+
+    pub fn after_file(t: Str) -> Str {
+        list_to_string(after_bar(string_chars(t)))
+    }
+
+    pub fn after_bar(mut cs: List<char>) -> List<char> {
+        loop {
+            if null_p(cs) {
+                return nil::<char>();
+            } else if char_eq_p(car(cs), '|') {
+                return cdr(cs);
+            } else {
+                cs = cdr(cs);
+                continue;
+            }
+        }
+    }
+
+    /// Type variables, a `poly`'s, a `plambda`'s or a family's, each a Rust
+    /// type parameter of its name camel-cased (C27, C189; the checker's
+    /// once, FX-26 having no such rule): a KFX name, none a type the Rust
+    /// names, none a type the program has, no two alike.
+    pub fn binders_restricted(types: Strings, e: &'static Sexp) -> () {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let binders = if null_p(xs) {
+                    nil::<&'static Sexp>()
+                } else if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt(size(xs), 1i64)) {
+                    items_of(second(xs))
+                } else if ((sym_is_p(car(xs), str_lit("define-type")) || sym_is_p(car(xs), str_lit("define-generative")) || sym_is_p(car(xs), str_lit("define-datatype"))) && i64_gt(size(xs), 1i64)) {
+                    cdr_items_of(second(xs))
+                } else {
+                    nil::<&'static Sexp>()
+                };
+                let names = concat(map(lambda1s(move |b: &'static Sexp| {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            if (i64_gt(size(ys), 1i64) && sym_is_p(second(ys), str_lit("type"))) {
+                                let tagcase_ = car(ys);
+                                match *tagcase_ {
+                                    Sexp::Sym(n, f3, p3) => {
+                                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<Str>()
+                                    }
+                                }
+                            } else {
+                                nil::<Str>()
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }), binders));
+                let theirs = map(lambda1s(move |t: Str| {
+                    camel(bare_type_name(string_chars(t), nil::<char>()))
+                }), map(&after_file, filter(lambda1s(move |t: Str| {
+                    has_prefix_p(t, string_append(f, str_lit("|")))
+                }), types)));
+                let bad = filter(lambda1s(move |n: Str| {
+                    (not(kfx_name_p(n)) || string_member_p(camel(n), rust_type_names()) || string_member_p(camel(n), theirs))
+                }), names);
+                if not(null_p(bad)) {
+                    match restriction_refused(f, l, string_append(str_lit("a type variable named as KFX's Rust cannot have it (C27): "), car(bad))) {}
+                } else if repeated_p(map(&camel, names)) {
+                    match restriction_refused(f, l, str_lit("two type variables named alike in Rust (camel-cased, as `a` and `a-`)")) {}
+                } else {
+                    map(lambda1s(move |x: &'static Sexp| {
+                        binders_restricted(types, x)
+                    }), xs);
                     ()
                 }
             }
@@ -874,6 +1047,9 @@ pub mod restrictions {
         }), forms);
         map(&moduleof_restricted, forms);
         recursion_restricted(forms);
+        map(lambda1s(move |f: &'static Sexp| {
+            binders_restricted(file_types(forms), f)
+        }), forms);
         map(lambda1s(move |f: &'static Sexp| {
             if (head_is_p(f, str_lit("define")) && {
                 let tagcase_ = second(items(f));

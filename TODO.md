@@ -568,8 +568,8 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   21 of the 433 programs Fixpt accepts still refused (2026-10-25, C188);
-   61 differ; 351 the same.
+   20 of the 433 programs Fixpt accepts still refused (2026-10-25, C189);
+   61 differ; 352 the same.
    The user (2026-10-25), on C183: Fixpt taking fixed-width integers as
    `int`s was probably a mistake, an ABI matter (an `i64` boxed where an
    `int` is wanted); perhaps `(raw i32)` apart from `i32`. Kayak follows

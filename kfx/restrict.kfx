@@ -307,11 +307,74 @@
                                      (if (i64> (size xs) 1) (tagcase (second xs) (lst (bs f2 l2 p2) (concat (map bound bs))) (else other nil)) nil))
                                     ((or (sym-is? (car xs) "define") (sym-is? (car xs) "define*"))
                                      (if (i64> (size xs) 1) (bound (second xs)) nil))
-                                    (else nil))))
-                  (if (any? kfx-reserved? names)
+                                    ((sym-is? (car xs) "define-rec") (concat (map bound (cdr xs))))
+                                    ((or (sym-is? (car xs) "tagcase") (sym-is? (car xs) "typecase"))
+                                     (concat (map (lambda ((arm sexp)) (tagcase arm
+                                                                         (lst (ys f2 l2 p2) (if (i64> (size ys) 1)
+                                                                                                (tagcase (second ys) (sym (n f3 p3) (the strings (list n)))
+                                                                                                  (lst (zs f3 l3 p3) (concat (map bound zs))) (else other nil))
+                                                                                                nil))
+                                                                         (else other nil)))
+                                                  (if (i64> (size xs) 2) (cdr (cdr xs)) nil))))
+                                    (else nil)))
+                       (wrong (lambda ((n string)) (and (not (has-prefix? n "%")) (not (has-prefix? n "made--")) (not (string=? n "_")) (or (kfx-reserved? n) (not (kfx-name? n)))))))
+                  (if (any? wrong names)
                       (restriction-refused f l (string-append "a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "
-                                                              (car (filter kfx-reserved? names))))
+                                                              (car (filter wrong names))))
                       (begin (map reserved-bound xs) #u))))
+              (else other #u)))))
+
+      (define-rec
+        (file-types (subr kfx (sexps) strings)
+          (lambda (forms)
+            "Each type defined, as `FILE|NAME`, in `forms` and their modules."
+            (concat (map (lambda ((g sexp))
+                           (tagcase g
+                             (lst (xs f l p)
+                               (cond ((and (or (head-is? g "define-type") (head-is? g "define-datatype") (head-is? g "define-generative")) (i64> (size xs) 1))
+                                      (let ((n (tagcase (second xs) (sym (m f2 p2) m) (lst (ys f2 l2 p2) (if (null? ys) "" (tagcase (car ys) (sym (m f3 p3) m) (else other "")))) (else other ""))))
+                                        (the strings (list (string-append f (string-append "|" n))))))
+                                     ((module-def? g) (file-types (module-own-items g)))
+                                     (else nil)))
+                             (else other nil)))
+                         forms)))))
+
+      (define after-file (subr kfx (string) string)
+        (lambda (t) (list->string (after-bar (string-chars t)))))
+
+      (define-rec
+        (after-bar (subr kfx ((listof char acyclic)) (listof char acyclic))
+          (lambda (cs) (cond ((null? cs) nil) ((char=? (car cs) #\|) (cdr cs)) (else (after-bar (cdr cs)))))))
+
+      (define-rec
+        (binders-restricted (subr kfx (strings sexp) unit)
+          (lambda (types e)
+            "Type variables, a `poly`'s, a `plambda`'s or a family's, each a Rust
+             type parameter of its name camel-cased (C27, C189; the checker's
+             once, FX-26 having no such rule): a KFX name, none a type the Rust
+             names, none a type the program has, no two alike."
+            (tagcase e
+              (lst (xs f l p)
+                (let* ((binders (cond ((null? xs) nil)
+                                      ((and (or (sym-is? (car xs) "poly") (sym-is? (car xs) "plambda")) (i64> (size xs) 1)) (items-of (second xs)))
+                                      ((and (or (sym-is? (car xs) "define-type") (sym-is? (car xs) "define-generative") (sym-is? (car xs) "define-datatype")) (i64> (size xs) 1))
+                                       (cdr-items-of (second xs)))
+                                      (else nil)))
+                       (names (concat (map (lambda ((b sexp)) (tagcase b
+                                                                (lst (ys f2 l2 p2) (if (and (i64> (size ys) 1) (sym-is? (second ys) "type"))
+                                                                                       (tagcase (car ys) (sym (n f3 p3) (the strings (list n))) (else other nil))
+                                                                                       nil))
+                                                                (else other nil)))
+                                           binders)))
+                       (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil)))
+                                    ;; The types of the binder's own file: its Rust scope's (C189).
+                                    (map after-file (filter (lambda ((t string)) (has-prefix? t (string-append f "|"))) types))))
+                       (bad (filter (lambda ((n string)) (or (not (kfx-name? n)) (string-member? (camel n) (rust-type-names)) (string-member? (camel n) theirs))) names)))
+                  (cond ((not (null? bad))
+                         (restriction-refused f l (string-append "a type variable named as KFX's Rust cannot have it (C27): " (car bad))))
+                        ((repeated? (map camel names))
+                         (restriction-refused f l "two type variables named alike in Rust (camel-cased, as `a` and `a-`)"))
+                        (else (begin (map (lambda ((x sexp)) (binders-restricted types x)) xs) #u)))))
               (else other #u)))))
 
       (define recursion-restricted (subr kfx (sexps) unit)
@@ -379,6 +442,7 @@
         (begin (noted-restricted (reverse fs)) (names-restricted forms) (restricted-all forms "the program" 0)
                (let ((types (concat (type-scopes forms))))
                  (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) (map moduleof-restricted forms) (recursion-restricted forms)
+                        (map (lambda ((f sexp)) (binders-restricted (file-types forms) f)) forms)
                         (map (lambda ((f sexp))
                                (if (and (head-is? f "define") (tagcase (second (items f)) (sym (n f2 p2) (has-prefix? n "%shared:input:")) (else other #f)))
                                    (tagcase f (lst (xs f2 l2 p2) (restriction-refused f2 l2 "a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) (else other #u))

@@ -3216,6 +3216,12 @@
 
 (define type-binders-apart (subr kfx (cv strings strings) unit)
   (lambda (v tvars types)
+    "Now the restriction pass's (C189: `binders-restricted`), KFX's naming of
+     Rust's type parameters, not FX-26's: nothing here."
+    #u))
+
+(define type-binders-apart-kfx (subr kfx (cv strings strings) unit)
+  (lambda (v tvars types)
     "Type variables, a poly's or a family's, each a Rust type parameter of
      its name camel-cased: each a KFX name (C27), none named as a type the
      Rust names, as another of them, or as a type `types` has, which it
@@ -4791,7 +4797,9 @@
      a `_` (`i64_plus`, `tagcase_`), so none is ever hidden."
     (if (any? (lambda ((b bind))
                 (tagcase b (bind (n sc w) (and (not (has-prefix? n "%")) (not (has-char-in? n #\space)) (not (string=? w "prim"))
-                                               (not (kfx-name? n)) (not (kfx-reserved? n))))))
+                                               ;; KFX's names (C27) are the restriction pass's now (C189):
+                                               ;; FX-26's are any.
+                                               #f))))
               more)
         (refuse v (string-append "a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "
                                  (car (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (kfx-name? n) nil (the strings (list n)))))) more)))))
@@ -4834,7 +4842,7 @@
   (lambda (s t)
     "A procedure's type: KFX's own, or one of any convention (C116), which a
      lambda is checked against as its procedure."
-    (tagcase (walk s t) (ty-proc (es ps r) #t) (ty-data (d args) (or (string=? d "%fx") (has-prefix? d "%spec "))) (else other #f))))
+    (tagcase (walk-mu s t) (ty-proc (es ps r) #t) (ty-data (d args) (or (conv-wrapper? d) (has-prefix? d "%spec "))) (else other #f))))
 
 (define naming-effs (subr kfx (st string string ty strings) strings)
   (lambda (s name wher t group)
@@ -4918,7 +4926,14 @@
               (ty-flat (e r) (cyclic-walk v s e crossed ts))
               (ty-shape (p ls fs) (any? (lambda ((f ty)) (cyclic-walk v s f crossed ts)) fs))
               (ty-tag (a h d r) (or (cyclic-walk v s a crossed ts) (cyclic-walk v s h crossed ts)))
+              (ty-var (n)
+                "A recursive type's own mention (C174): met again, as a datatype's
+                 name is (C189; Fixpt's F17 through `mu`)."
+                (and (has-prefix? n "%mu ") (on-trail? n ts) (or crossed (crossed-since? n ts))))
               (ty-data (d args)
+                (if (string=? d "%mu")
+                    (let ((n (tagcase (car args) (ty-var (m) m) (else other ""))))
+                      (cyclic-walk v s (car (cdr args)) crossed (the trails (cons (trail n crossed) ts))))
                 (let ((named (or (string=? d "datum") (dt-named? d (cv-dts v)))))
                   (cond ((and named (on-trail? d ts)) (or crossed (crossed-since? d ts)))
                         (named
@@ -4936,7 +4951,7 @@
                                (any? (lambda ((k ty)) (cyclic-walk v s k #t ts2)) args))))
                         ((or (string=? d "%composable") (string=? d "%oneshot"))
                          (or (cyclic-walk v s (car args) #t ts) (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) (cdr args))))
-                        (else (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) args)))))
+                        (else (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) args))))))
               (else other #f)))))))
 
 (define self-applicable? (subr kfx (cv st ty) bool)

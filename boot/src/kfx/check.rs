@@ -7328,12 +7328,18 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
     }
 }
 
+/// Now the restriction pass's (C189: `binders-restricted`), KFX's naming of
+/// Rust's type parameters, not FX-26's: nothing here.
+pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
+    ()
+}
+
 /// Type variables, a poly's or a family's, each a Rust type parameter of
 /// its name camel-cased: each a KFX name (C27), none named as a type the
 /// Rust names, as another of them, or as a type `types` has, which it
 /// would hide in Rust and not in FX-26. A region's, with `'`, is none, nor
 /// an effect's, with `~`, which Rust does not see (C46).
-pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
+pub fn type_binders_apart_kfx(v: &'static Cv, tvars: Strings, types: Strings) -> () {
     let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1s(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1s(move |n: Str| {
@@ -11241,7 +11247,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
-                (not(has_prefix_p(n, str_lit("%"))) && not(has_char_in_p(n, ' ')) && not(string_eq_p(w, str_lit("prim"))) && not(kfx_name_p(n)) && not(kfx_reserved_p(n)))
+                (not(has_prefix_p(n, str_lit("%"))) && not(has_char_in_p(n, ' ')) && not(string_eq_p(w, str_lit("prim"))) && false)
             }
         }
     }), more) {
@@ -11339,13 +11345,13 @@ pub fn with_effs(r: &'static Res, es: Strings) -> &'static Res {
 /// A procedure's type: KFX's own, or one of any convention (C116), which a
 /// lambda is checked against as its procedure.
 pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
+    let tagcase_ = walk_mu(s, t);
     match *tagcase_ {
         Ty::TyProc(es, ps, r) => {
             true
         }
         Ty::TyData(d, args) => {
-            (string_eq_p(d, str_lit("%fx")) || has_prefix_p(d, str_lit("%spec ")))
+            (conv_wrapper_p(d) || has_prefix_p(d, str_lit("%spec ")))
         }
         _ => {
             let other = tagcase_;
@@ -11555,48 +11561,70 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                 Ty::TyTag(a, h, d, r) => {
                     return (cyclic_walk(v, s, a, crossed, ts) || cyclic_walk(v, s, h, crossed, ts));
                 }
+                Ty::TyVar(n) => {
+                    // A recursive type's own mention (C174): met again, as a datatype's
+                    // name is (C189; Fixpt's F17 through `mu`).
+                    return (has_prefix_p(n, str_lit("%mu ")) && on_trail_p(n, ts) && (crossed || crossed_since_p(n, ts)));
+                }
                 Ty::TyData(d, args) => {
-                    let named = (string_eq_p(d, str_lit("datum")) || dt_named_p(d, cv_dts(v)));
-                    if (named && on_trail_p(d, ts)) {
-                        return (crossed || crossed_since_p(d, ts));
-                    } else if named {
-                        // Its fields; what it was given, cautiously, as if taken as a
-                        // parameter, as FX-26 has it.
-                        let (ts2, kids) = (the::<Trails>(kayak_rt::heap_cons(trail(d, crossed), ts)), if string_eq_p(d, str_lit("datum")) {
-                            datum_members()
-                        } else {
-                            let found = find_family(d, cv_dts(v));
-                            if kayak_rt::value::null_p(found) {
-                                nil::<&'static Ty>()
-                            } else {
-                                let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
-                                match *tagcase_ {
-                                    Dt::Dt(n, ps, vs) => {
-                                        concat(map(lambda1s(move |x: &'static Variant| {
-                                            let tagcase_ = x;
-                                            match *tagcase_ {
-                                                Variant::Variant(tag, fs) => {
-                                                    fs
-                                                }
-                                            }
-                                        }), vs))
-                                    }
+                    if string_eq_p(d, str_lit("%mu")) {
+                        let n = {
+                            let tagcase_ = car(args);
+                            match *tagcase_ {
+                                Ty::TyVar(m) => {
+                                    m
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
                                 }
                             }
-                        });
-                        return (any_p(lambda1s(move |k: &'static Ty| {
-                            cyclic_walk(v, s, k, false, ts2)
-                        }), kids) || any_p(lambda1s(move |k: &'static Ty| {
-                            cyclic_walk(v, s, k, true, ts2)
-                        }), args));
-                    } else if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
-                        return (cyclic_walk(v, s, car(args), true, ts) || any_p(lambda1s(move |k: &'static Ty| {
-                            cyclic_walk(v, s, k, crossed, ts)
-                        }), cdr(args)));
+                        };
+                        (t, ts) = (car(cdr(args)), the::<Trails>(kayak_rt::heap_cons(trail(n, crossed), ts)));
+                        continue;
                     } else {
-                        return any_p(lambda1s(move |k: &'static Ty| {
-                            cyclic_walk(v, s, k, crossed, ts)
-                        }), args);
+                        let named = (string_eq_p(d, str_lit("datum")) || dt_named_p(d, cv_dts(v)));
+                        if (named && on_trail_p(d, ts)) {
+                            return (crossed || crossed_since_p(d, ts));
+                        } else if named {
+                            // Its fields; what it was given, cautiously, as if taken as a
+                            // parameter, as FX-26 has it.
+                            let (ts2, kids) = (the::<Trails>(kayak_rt::heap_cons(trail(d, crossed), ts)), if string_eq_p(d, str_lit("datum")) {
+                                datum_members()
+                            } else {
+                                let found = find_family(d, cv_dts(v));
+                                if kayak_rt::value::null_p(found) {
+                                    nil::<&'static Ty>()
+                                } else {
+                                    let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                                    match *tagcase_ {
+                                        Dt::Dt(n, ps, vs) => {
+                                            concat(map(lambda1s(move |x: &'static Variant| {
+                                                let tagcase_ = x;
+                                                match *tagcase_ {
+                                                    Variant::Variant(tag, fs) => {
+                                                        fs
+                                                    }
+                                                }
+                                            }), vs))
+                                        }
+                                    }
+                                }
+                            });
+                            return (any_p(lambda1s(move |k: &'static Ty| {
+                                cyclic_walk(v, s, k, false, ts2)
+                            }), kids) || any_p(lambda1s(move |k: &'static Ty| {
+                                cyclic_walk(v, s, k, true, ts2)
+                            }), args));
+                        } else if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot"))) {
+                            return (cyclic_walk(v, s, car(args), true, ts) || any_p(lambda1s(move |k: &'static Ty| {
+                                cyclic_walk(v, s, k, crossed, ts)
+                            }), cdr(args)));
+                        } else {
+                            return any_p(lambda1s(move |k: &'static Ty| {
+                                cyclic_walk(v, s, k, crossed, ts)
+                            }), args);
+                        }
                     }
                 }
                 _ => {

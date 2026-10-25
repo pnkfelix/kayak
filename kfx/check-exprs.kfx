@@ -365,6 +365,36 @@
               (ty-data (d args) (concat (map (lambda ((x ty)) (procs-within s x)) args)))
               (else other nil)))))
 
+      (define-rec
+        (projected-name (subr kfx (sexp) string)
+          (lambda (e)
+            "The name a chain of `proj`s instantiates, or none."
+            (cond ((and (head-is? e "proj") (i64> (size (items e)) 1)) (projected-name (second (items e))))
+                  (else (tagcase e (sym (n f p) n) (else other "")))))))
+
+      (define poly-takes-procedure? (subr kfx (cv st string) bool)
+        (lambda (v s n)
+          "Whether the poly named `n` (a global's scheme, or a local of a `poly`
+           type) takes a procedure over one of its type variables: given a
+           cyclic type, it may apply one to itself (Fixpt's F17; C189). Not
+           known, it may."
+          (let ((found (scope-bind n v)))
+            (if (null? found)
+                #t
+                (tagcase (car found)
+                  (bind (m sc w)
+                    (tagcase sc
+                      (scheme (tvars t)
+                        (let* ((t2 (walk s t))
+                               (binders (if (null? tvars)
+                                            (tagcase t2 (ty-data (d args) (if (string=? d "%poly") (poly-binders-of args) nil)) (else other nil))
+                                            tvars))
+                               (body (if (null? tvars) (tagcase t2 (ty-data (d args) (if (string=? d "%poly") (poly-body args) t2)) (else other t2)) t2))
+                               (types (filter (lambda ((b string)) (not (or (has-prefix? b "'") (has-prefix? b "~") (has-prefix? b "#")))) binders)))
+                          (tagcase (walk s body)
+                            (ty-proc (es ps r) (any? (lambda ((p ty)) (any? (lambda ((q ty)) (mentions-tvar? q types)) (procs-within s p))) ps))
+                            (else other #t)))))))))))
+
       (define poly-self-application (subr kfx (cv scheme ty res) res)
         (lambda (v sc inst r)
           "A call of a `poly` procedure one of whose parameters is a procedure over
@@ -1700,7 +1730,8 @@
                           (void-call v #f #f (synth-call-of v s hr (cdr xs) nil nil
                                                             (effs-union
                                                               (if (head-is? head "proj") (cwcc-spin (proj-base v head) (cdr xs)) nil)
-                                                              (if (or (head-is? head "proj") (head-is? head "lambda") (not (self-applicable? v hs ht)))
+                                                              (if (or (and (head-is? head "proj") (or (std-prim? v (proj-base v head)) (not (poly-takes-procedure? v hs (projected-name head)))))
+                                                                      (head-is? head "lambda") (not (self-applicable? v hs ht)))
                                                                   nil
                                                                   (list "spin")))))))))))))))))))
 
@@ -2431,7 +2462,7 @@
                          (res (u es2 s2) (res (walk s expected) es2 s2)))))
                    (else other (refuse v "a vlambda where no variadic procedure is expected"))))
                 ((and (string=? h "lambda") (or (proc-type? s expected) (poly-type? s expected)))
-                 (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
+                 (check-lambda v s (items (car xs)) (cdr xs) (walk-mu s expected)))
                 ((and (string=? h "list") (datum? (walk s expected)))
                  "A list where a datum is expected (C77): a list of datums, at
                   `acyclic`, given as it is."

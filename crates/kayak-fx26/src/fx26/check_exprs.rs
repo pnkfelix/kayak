@@ -811,6 +811,103 @@ pub mod expressions {
         }
     }
 
+    /// The name a chain of `proj`s instantiates, or none.
+    pub fn projected_name(mut e: &'static Sexp) -> Str {
+        loop {
+            if (head_is_p(e, str_lit("proj")) && i64_gt(size(items(e)), 1i64)) {
+                e = second(items(e));
+                continue;
+            } else {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        return n;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return str_lit("");
+                    }
+                }
+            }
+        }
+    }
+
+    /// Whether the poly named `n` (a global's scheme, or a local of a `poly`
+    /// type) takes a procedure over one of its type variables: given a
+    /// cyclic type, it may apply one to itself (Fixpt's F17; C189). Not
+    /// known, it may.
+    pub fn poly_takes_procedure_p(v: &'static Cv, s: &'static St, n: Str) -> bool {
+        let found = scope_bind(n, v);
+        if null_p(found) {
+            true
+        } else {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(m, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tvars, t) => {
+                            let t2 = walk(s, t);
+                            let binders = if null_p(tvars) {
+                                let tagcase_ = t2;
+                                match *tagcase_ {
+                                    Ty::TyData(d, args) => {
+                                        if string_eq_p(d, str_lit("%poly")) {
+                                            poly_binders_of(args)
+                                        } else {
+                                            nil::<Str>()
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<Str>()
+                                    }
+                                }
+                            } else {
+                                tvars
+                            };
+                            let body = if null_p(tvars) {
+                                let tagcase_ = t2;
+                                match *tagcase_ {
+                                    Ty::TyData(d, args) => {
+                                        if string_eq_p(d, str_lit("%poly")) {
+                                            poly_body(args)
+                                        } else {
+                                            t2
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        t2
+                                    }
+                                }
+                            } else {
+                                t2
+                            };
+                            let types = filter(lambda1s(move |b: Str| {
+                                not((has_prefix_p(b, str_lit("'")) || has_prefix_p(b, str_lit("~")) || has_prefix_p(b, str_lit("#"))))
+                            }), binders);
+                            let tagcase_ = walk(s, body);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    any_p(lambda1s(move |p: &'static Ty| {
+                                        any_p(lambda1s(move |q: &'static Ty| {
+                                            mentions_tvar_p(q, types)
+                                        }), procs_within(s, p))
+                                    }), ps)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// A call of a `poly` procedure one of whose parameters is a procedure over
     /// a type variable: given a type that may hold a procedure, it may apply a
     /// procedure to itself, a loop with no recursive call, and so says `spin`,
@@ -3802,7 +3899,7 @@ pub mod expressions {
                                             cwcc_spin(proj_base(v, head), cdr(xs))
                                         } else {
                                             nil::<Str>()
-                                        }, if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
+                                        }, if ((head_is_p(head, str_lit("proj")) && (std_prim_p(v, proj_base(v, head)) || not(poly_takes_procedure_p(v, hs, projected_name(head))))) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
                                             nil::<Str>()
                                         } else {
                                             kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
@@ -5323,7 +5420,7 @@ pub mod expressions {
                 }
             }
         } else if (string_eq_p(h, str_lit("lambda")) && (proc_type_p(s, expected) || poly_type_p(s, expected))) {
-            check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
+            check_lambda(v, s, items(car(xs)), cdr(xs), walk_mu(s, expected))
         } else if (string_eq_p(h, str_lit("list")) && datum_p(walk(s, expected))) {
             // A list where a datum is expected (C77): a list of datums, at
             // `acyclic`, given as it is.

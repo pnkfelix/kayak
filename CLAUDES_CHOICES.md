@@ -5238,6 +5238,32 @@ Standard operations and names FX-26 has that kayak's checker had not:
   An effect printed has each atom once, two resolving to one where a
   region was solved after (`atoms-once`).
 - Refused 23 to 21, the same 349 to 351; K1 0.
+
+## C189. F17 through `mu` and `proj`; KFX's names to the restriction pass (2026-10-25)
+
+- **A lambda against a recursive type**: `proc-type?` and the `lambda`
+  check see through a `mu` (C174), and a written convention (C181).
+- **Fixpt's F17 through `mu`**: a type that holds itself through a
+  parameter makes a call through it able to loop with no recursion;
+  `cyclic-walk` met datatypes' names again, now a `mu`'s variable too.
+- **And through `proj`**: a call of `(proj p T ...)` had never said `spin`;
+  now it does where `p` is not a standard operation, takes a procedure
+  over one of its type variables (`poly-takes-procedure?`, as the named
+  call's `poly-self-application`), and its instance is cyclic. An identity
+  at a cyclic type stays pure. (`terminate/poly-self-application.fx`, a
+  K1 breach the `mu` lambda opened, refused again; its `-spin` sibling
+  accepted.)
+- **KFX's names (C27) are the restriction pass's**: the checker took
+  every name it binds through KFX's rules (lower case, `-` ..., none that
+  hides a type in Rust), refusing FX-26 programs (`app-s-at-T`, a type
+  variable `t` beside a type `T`). Now FX-26's names are any; the
+  restriction pass refuses for KFX a name bound (a definition's, a
+  `define-rec`'s, a `let`'s, a `lambda`'s, a `tagcase` arm's) that is no
+  KFX name or one kayak-rt writes, and a type variable named as no Rust
+  type parameter can be (`binders-restricted`, its types those of its
+  own file: a loaded module's binder `c` had met the loading program's
+  type, which the full check found).
+- Refused 21 to 20, the same 351 to 352; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its
