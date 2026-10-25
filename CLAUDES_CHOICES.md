@@ -4388,3 +4388,19 @@ because KFX's Rust erases them; the engine's checker need not.
   refuses, all refused. `map` and `append` now differ from Fixpt only in
   printing their abbreviations' names, which kayak's checker expands
   (§30's printing).
+
+## C160. `confirm-nat`, `confirm-length`, `acyclic`; a list of `nat`s (2026-10-25)
+
+Fixpt's forms that test at run time and say, in their body, what the
+test showed (`sizes.md`'s `confirm`): `(confirm-nat e (x body) else)`,
+`x` a `nat` there; `(acyclic e (x body) else)`, a list at `acyclic`;
+`(confirm-length e n (x body) else)`, a list of size `n`, a literal or a
+value whose size the facts know (a `length`, C158), else `finite`. Each
+`e` data, a list no one may write still (`datum/acyclic-not-data.fx`,
+which Fixpt refuses, came out accepted until it was asked); each
+checked as an `if`'s branches, the body's `x` bound. kfx's restriction
+pass refuses them, KFX having none.
+- **A list of `nat`s**: C157's checker refused one, "FX-26 types each
+  its own `(nat v)`", which is so of literals, an `int` each; a call's
+  or a name's `nat` is a `nat`, and Fixpt finds `(listof nat r)`.
+- Refused 177 to 174; the same 112 to 114.

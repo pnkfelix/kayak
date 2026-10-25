@@ -77,6 +77,8 @@ pub mod restrictions {
                     ()
                 } else if sym_is_p(car(xs), str_lit("list")) {
                     restricted_all(cdr(xs), f, l)
+                } else if (sym_is_p(car(xs), str_lit("confirm-nat")) || sym_is_p(car(xs), str_lit("confirm-length")) || (sym_is_p(car(xs), str_lit("acyclic")) && i64_eq(size(xs), 4i64))) {
+                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's, which KFX has not yet (C159)"))) {}
                 } else if (sym_is_p(car(xs), str_lit("nlist")) || (sym_is_p(car(xs), str_lit("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit("poly")) && not(null_p(cdr(xs))) && {
                     let tagcase_ = second(xs);
                     match *tagcase_ {

@@ -376,7 +376,8 @@
         (lambda (h)
           (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase") (string=? h "typecase")
               (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec")
-              (string=? h "letregion") (string=? h "with"))))
+              (string=? h "letregion") (string=? h "with")
+              (string=? h "confirm-nat") (string=? h "confirm-length") (string=? h "acyclic"))))
 
       (define-rec
         (metas-of (subr kfx (ty) i64s)
@@ -2026,10 +2027,8 @@
                        (res (t es0 s)
                          "Its first element's type, a `nat`'s an `int`: FX-26's is that
                           element's own `(nat v)`, which no other `nat` is."
-                         (if (and (tagcase (walk s t) (ty-nat () #t) (else other #f)) (not (null? (cdr xs))))
-                             (refuse v "a list of nats: FX-26 types each its own (nat v), so no two share a list")
-                         (let ((t (tagcase (walk s t) (ty-nat () (ty-int)) (else other t))))
-                           (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))))
+                         ;; A `nat` element's list is of `nat`s, as Fixpt finds it (C159).
+                         (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))
                 ((control-form? h) (body-form v s h xs nil))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
                 ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs nil))
@@ -2134,6 +2133,8 @@
                  (refuse v (string-append "a (" (string-append h " ...) not of the form FX-26 has"))))
                 ((and (null? expected) (pairs-mixed? h xs))
                  (refuse v (string-append "the branches are a pair `cons` makes, a (pairof ...), and what is not one: FX-26 joins no (pairof ...) with a (listof ...); write the type, (the (listof ...) (" (string-append h " ...))"))))
+                ((or (string=? h "confirm-nat") (string=? h "confirm-length") (string=? h "acyclic"))
+                 (confirm-form v s h xs expected))
                 ((string=? h "if")
                  (let ((ns (narrowings v s (car xs))))
                    (tagcase (check v s (car xs) (ty-bool))
@@ -2303,6 +2304,44 @@
                     (else other (if (null? given) (refuse v "a vlambda's elements' type: write it, (vlambda (xs T) ...)") (car given))))))
           (tagcase (body (with-binds v (list (local v name (ty-list t (ty-rconst "acyclic"))))) s (cdr xs) nil)
             (res (r es s2) (res (ty-data "%vsubr" (list (ty-proc es nil (ty-unit)) t r)) nil s2))))))
+
+      (confirm-form (subr kfx (cv st string sexps tys) res)
+        (lambda (v s h xs expected)
+          "`(confirm-nat e (x body) else)`, `(acyclic e (x body) else)`,
+           `(confirm-length e n (x body) else)` (Fixpt's sizes.md, C158): `x`
+           in the body `e` confirmed, a `nat`, a list at `acyclic`, a list of
+           size `n` (a literal, or a value whose size the facts know); the
+           `else` where it is not."
+          (let ((parts (if (string=? h "confirm-length") (the i64 4) (the i64 3))))
+            (if (or (not (i64= (size xs) parts))
+                    (not (tagcase (if (string=? h "confirm-length") (third xs) (second xs)) (lst (ys f l p) (and (i64= (size ys) 2) (tagcase (car ys) (sym (n f2 p2) #t) (else other #f)))) (else other #f))))
+                (refuse v (string-append "(" (string-append h (if (string=? h "confirm-length") " e n (x body) else)" " e (x body) else)"))))
+                (let* ((arm (items (if (string=? h "confirm-length") (third xs) (second xs))))
+                       (x (sym-name (car arm)))
+                       (els (if (string=? h "confirm-length") (fourth xs) (third xs))))
+                  (tagcase (synth v s (car xs))
+                    (res (t es0 s)
+                      (let* ((w (walk s t))
+                             (elem (tagcase w (ty-list (e r) (the tys (list e))) (else other (if (sized? w "%nlist") (the tys (list (sized-elem w))) nil)))))
+                        (cond
+                          ((string=? h "confirm-nat")
+                           (let ((s (fits v s t (ty-int))))
+                             (tagcase (narrowed-arms (with-binds v (list (local v x (ty-nat)))) v s (second arm) els expected)
+                               (res (u es s) (res u (effs-union es0 es) s)))))
+                          ((null? elem) (refuse v (string-append h (string-append " of no list: " (show-ty s t)))))
+                          ((not (or (sized? w "%nlist") (tagcase w (ty-list (e r) (tagcase (walk s r) (ty-rconst (n) (string=? n "acyclic")) (else other #f))) (else other #f))))
+                           ;; Data alone, a list no one may write still (Fixpt's rule).
+                           (refuse v (string-append "a " (string-append (show-ty s t) " is not data: a list that may still be written"))))
+                          ((string=? h "acyclic")
+                           (tagcase (narrowed-arms (with-binds v (list (local v x (ty-list (car elem) (ty-rconst "acyclic"))))) v s (second arm) els expected)
+                             (res (u es s) (res u (effs-union es0 es) s))))
+                          (else
+                           (tagcase (check v s (second xs) (ty-int))
+                             (res (u1 es1 s)
+                               (let* ((n (tagcase (second xs) (num (k f p) (if (i64< k 0) nil (the lins (list (lin k nil))))) (else other (linear-of v s (second xs)))))
+                                      (z (if (null? n) size-finite (size-of-lin (car n)))))
+                                 (tagcase (narrowed-arms (with-binds v (list (local v x (ty-data "%nlist" (the tys (list (car elem) z)))))) v s (second arm) els expected)
+                                   (res (u es s) (res u (effs-union es0 (effs-union es1 es)) s))))))))))))))))
 
       (narrowed-arms (subr kfx (cv cv st sexp sexp tys) res)
         (lambda (yes no s a b expected)

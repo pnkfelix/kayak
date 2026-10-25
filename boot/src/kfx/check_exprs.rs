@@ -820,7 +820,7 @@ pub mod expressions {
     }
 
     pub fn control_form_p(h: Str) -> bool {
-        (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
+        (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")) || string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic")))
     }
 
     /// The inference variables in `t` as it stands, solved or not.
@@ -4442,34 +4442,7 @@ pub mod expressions {
                         Res::Res(t, es0, s) => {
                             // Its first element's type, a `nat`'s an `int`: FX-26's is that
                             // element's own `(nat v)`, which no other `nat` is.
-                            if ({
-                                let tagcase_ = walk(s, t);
-                                match *tagcase_ {
-                                    Ty::TyNat() => {
-                                        true
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        false
-                                    }
-                                }
-                            } && not(null_p(cdr(xs)))) {
-                                return match refuse(v, str_lit("a list of nats: FX-26 types each its own (nat v), so no two share a list")) {};
-                            } else {
-                                let t = {
-                                    let tagcase_ = walk(s, t);
-                                    match *tagcase_ {
-                                        Ty::TyNat() => {
-                                            ty_int()
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            t
-                                        }
-                                    }
-                                };
-                                return with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0);
-                            }
+                            return with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0);
                         }
                     }
                 }
@@ -4706,6 +4679,8 @@ pub mod expressions {
             match refuse(v, string_append(str_lit("a ("), string_append(h, str_lit(" ...) not of the form FX-26 has")))) {}
         } else if (null_p(expected) && pairs_mixed_p(h, xs)) {
             match refuse(v, string_append(str_lit("the branches are a pair `cons` makes, a (pairof ...), and what is not one: FX-26 joins no (pairof ...) with a (listof ...); write the type, (the (listof ...) ("), string_append(h, str_lit(" ...))")))) {}
+        } else if (string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic"))) {
+            confirm_form(v, s, h, xs, expected)
         } else if string_eq_p(h, str_lit("if")) {
             let ns = narrowings(v, s, car(xs));
             let tagcase_ = check(v, s, car(xs), ty_bool());
@@ -5098,6 +5073,159 @@ pub mod expressions {
         match *tagcase_ {
             Res::Res(r, es, s2) => {
                 res(ty_data(str_lit("%vsubr"), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(t, kayak_rt::heap_cons(r, kayak_rt::nil())))), nil::<Str>(), s2)
+            }
+        }
+    }
+
+    /// `(confirm-nat e (x body) else)`, `(acyclic e (x body) else)`,
+    /// `(confirm-length e n (x body) else)` (Fixpt's sizes.md, C158): `x`
+    /// in the body `e` confirmed, a `nat`, a list at `acyclic`, a list of
+    /// size `n` (a literal, or a value whose size the facts know); the
+    /// `else` where it is not.
+    pub fn confirm_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
+        let parts = if string_eq_p(h, str_lit("confirm-length")) {
+            the::<i64>(4i64)
+        } else {
+            the::<i64>(3i64)
+        };
+        if (not(i64_eq(size(xs), parts)) || not({
+            let tagcase_ = if string_eq_p(h, str_lit("confirm-length")) {
+                third(xs)
+            } else {
+                second(xs)
+            };
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    (i64_eq(size(ys), 2i64) && {
+                        let tagcase_ = car(ys);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    })
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })) {
+            match refuse(v, string_append(str_lit("("), string_append(h, if string_eq_p(h, str_lit("confirm-length")) {
+                str_lit(" e n (x body) else)")
+            } else {
+                str_lit(" e (x body) else)")
+            }))) {}
+        } else {
+            let arm = items(if string_eq_p(h, str_lit("confirm-length")) {
+                third(xs)
+            } else {
+                second(xs)
+            });
+            let x = sym_name(car(arm));
+            let els = if string_eq_p(h, str_lit("confirm-length")) {
+                fourth(xs)
+            } else {
+                third(xs)
+            };
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(t, es0, s) => {
+                    let w = walk(s, t);
+                    let elem = {
+                        let tagcase_ = w;
+                        match *tagcase_ {
+                            Ty::TyList(e, r) => {
+                                the::<Tys>(kayak_rt::heap_cons(e, kayak_rt::nil()))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                if sized_p(w, str_lit("%nlist")) {
+                                    the::<Tys>(kayak_rt::heap_cons(sized_elem(w), kayak_rt::nil()))
+                                } else {
+                                    nil::<&'static Ty>()
+                                }
+                            }
+                        }
+                    };
+                    if string_eq_p(h, str_lit("confirm-nat")) {
+                        let s = fits(v, s, t, ty_int());
+                        let tagcase_ = narrowed_arms(with_binds(v, kayak_rt::heap_cons(local(v, x, ty_nat()), kayak_rt::nil())), v, s, second(arm), els, expected);
+                        match *tagcase_ {
+                            Res::Res(u, es, s) => {
+                                res(u, effs_union(es0, es), s)
+                            }
+                        }
+                    } else if null_p(elem) {
+                        match refuse(v, string_append(h, string_append(str_lit(" of no list: "), show_ty(s, t)))) {}
+                    } else if not((sized_p(w, str_lit("%nlist")) || {
+                        let tagcase_ = w;
+                        match *tagcase_ {
+                            Ty::TyList(e, r) => {
+                                let tagcase_ = walk(s, r);
+                                match *tagcase_ {
+                                    Ty::TyRconst(n) => {
+                                        string_eq_p(n, str_lit("acyclic"))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    })) {
+                        match refuse(v, string_append(str_lit("a "), string_append(show_ty(s, t), str_lit(" is not data: a list that may still be written")))) {}
+                    } else if string_eq_p(h, str_lit("acyclic")) {
+                        let tagcase_ = narrowed_arms(with_binds(v, kayak_rt::heap_cons(local(v, x, ty_list(car(elem), ty_rconst(str_lit("acyclic")))), kayak_rt::nil())), v, s, second(arm), els, expected);
+                        match *tagcase_ {
+                            Res::Res(u, es, s) => {
+                                res(u, effs_union(es0, es), s)
+                            }
+                        }
+                    } else {
+                        let tagcase_ = check(v, s, second(xs), ty_int());
+                        match *tagcase_ {
+                            Res::Res(u1, es1, s) => {
+                                let n = {
+                                    let tagcase_ = second(xs);
+                                    match *tagcase_ {
+                                        Sexp::Num(k, f, p) => {
+                                            if i64_lt(k, 0i64) {
+                                                nil::<&'static Lin>()
+                                            } else {
+                                                the::<Lins>(kayak_rt::heap_cons(lin(k, nil::<&'static Lterm>()), kayak_rt::nil()))
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            linear_of(v, s, second(xs))
+                                        }
+                                    }
+                                };
+                                let z = if null_p(n) {
+                                    size_finite()
+                                } else {
+                                    size_of_lin(car(n))
+                                };
+                                let tagcase_ = narrowed_arms(with_binds(v, kayak_rt::heap_cons(local(v, x, ty_data(str_lit("%nlist"), the::<Tys>(kayak_rt::heap_cons(car(elem), kayak_rt::heap_cons(z, kayak_rt::nil()))))), kayak_rt::nil())), v, s, second(arm), els, expected);
+                                match *tagcase_ {
+                                    Res::Res(u, es, s) => {
+                                        res(u, effs_union(es0, effs_union(es1, es)), s)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
