@@ -147,6 +147,22 @@
 
 (define no-form sexp (lst nil "" 0 0))
 
+(define-rec
+  (chars-ahead-of (subr kfx (chars chars) chars)
+    (lambda (cs pat) (if (or (null? cs) (chars-start? cs pat)) nil (cons (car cs) (chars-ahead-of (cdr cs) pat))))))
+
+(define generative-line (subr kfx (cv string sexp) string)
+  (lambda (v n w)
+    "A generative type's conversion's line: its type inside its family's
+     binders `w`, if any."
+    (let ((line (bound-line v n no-form "pure")))
+      (if (head-is? w "poly")
+          (let* ((at (string-append "define " (string-append n " : ")))
+                 (rest (after-prefix line at))
+                 (ty (list->string (chars-ahead-of (string-chars rest) (string-chars " ! ")))))
+            (string-append at (string-append (poly-wrapped w ty) (after-prefix rest ty))))
+          line))))
+
 (define settled-effs (subr kfx (st strings) strings)
   (lambda (s es)
     "An effect as printed (C166): its regions as solved; an allocation at
@@ -527,8 +543,13 @@
           ((head-is? form "define-datatype")
            (map (lambda ((g sexp)) (bound-line v (sym-name (car (items g))) no-form "pure")) (cdr (cdr (items form)))))
           ((head-is? form "define-generative")
-           (let ((n (binder-name (second (items form)))))
-             (list (bound-line v (string-append "up-" n) no-form "pure") (bound-line v (string-append "down-" n) no-form "pure"))))
+           "Its conversions; a family's in a `poly` of its parameters, as written
+            (C179: Fixpt prints `(poly ((a type)) (subr pure (...) (tree a)))`)."
+           (let* ((n (binder-name (second (items form))))
+                  (w (tagcase (second (items form))
+                       (lst (xs f l p) (lst (list (sym "poly" "" 0) (lst (cdr xs) "" 0 0) no-form) "" 0 0))
+                       (else other no-form))))
+             (list (generative-line v (string-append "up-" n) w) (generative-line v (string-append "down-" n) w))))
           ((or (head-is? form "define-type") (head-is? form "define-effect") (head-is? form "define-convention"))
            nil)
           (else

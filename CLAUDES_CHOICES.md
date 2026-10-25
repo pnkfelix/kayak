@@ -4933,6 +4933,42 @@ changed. Stage 0 here, one core, two runs: 21.7G cycles to 20.3G
 output. The checkers' comparison at this pin: of 433 programs Fixpt
 accepts, 299 the same (C177's `char-in?` counted), 74 differ, 60
 refused; K1 0.
+
+## C179. Globals found in a local letrec; termination as Fixpt's (2026-10-25)
+
+The largest cluster of programs kayak's checker refused that Fixpt
+accepts (TODO §30, 11 of 60), "a lambda whose effect ... is not within",
+was four rules:
+- **A local `letrec`'s procedures need not name the globals they read**
+  (Fixpt's fx26.md, 2026-09-30): each member checked as though its type
+  read any global, the globals its body reads not within its type put
+  in it, and again until the group's calls of each other add none
+  (`letrec-found`). Where the written types suffice, they are kept, so a
+  group that checked before checks the same. (`globals/letrec-reads-found`,
+  `processes/self`, `exchange`, `pselect-stop`, `monitors/worker-fails`.)
+- **A group whose members call none of each other ends**: the size-change
+  criterion (`ends?`) asked for at least one path; with none there is no
+  run to go on, as Fixpt has it. A non-recursive `letrec` had cost its
+  caller a `spin` (`run/loops.fx`'s `hidden`).
+- **An array's length is fixed**: an upper bound of `(array-length a)`,
+  `a` bound outside the group, as `string-length`'s, as Fixpt's
+  terminate.rs (`sizes/array-walk.fx`).
+- **A generative type's conversions are the identity** to the
+  size-change check: `(down-tree t)` tracks as `t`, its type not known, so
+  that a `tagcase` still proves parts and a `car` not (Fixpt's
+  `Tracked::Part` with `ty: None`; `generative/tree-walk`,
+  `run/generative`). And a family's conversions print in a `poly` of its
+  parameters, as Fixpt prints them (four `generative/` programs now the
+  same).
+- **Left, one rule of Fixpt's**: FX-87's masking at every subexpression,
+  an effect on a region no free variable's type nor the result's names
+  erased. `run/icells.fx` (a knot of I-cells at `@p` inside `parity`) and
+  `native/raw-slots.fx` (`(car (the (listof int @heap) (cons b nil)))`
+  pure in Fixpt: its `cons` at a fresh region, and that masked) need it;
+  kayak masks a `letregion`'s, `letrena`'s and `letfreeze`'s region, and
+  fresh regions where printed. A change to the effect system as a whole:
+  TODO §30.
+- Refused 60 to 51, the same 299 to 312; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

@@ -6255,18 +6255,84 @@ pub mod expressions {
         }), bindings), map(lambda1s(move |b: &'static Sexp| {
             third(items(b))
         }), bindings));
-        let w = with_binds(v, map(lambda1s(move |b: &'static Sexp| {
-            let ys = items(b);
-            bind(name_of(v, car(ys)), scheme(nil::<Str>(), parse_type(v, cv_tvars(v), second(ys))), if ends {
+        let types = letrec_found(v, s, bindings, map(lambda1s(move |b: &'static Sexp| {
+            parse_type(v, cv_tvars(v), second(items(b)))
+        }), bindings), if ends {
+            str_lit("ends")
+        } else {
+            str_lit("rec")
+        });
+        let w = with_binds(v, map2(lambda2s(move |b: &'static Sexp, t: &'static Ty| {
+            bind(name_of(v, car(items(b))), scheme(nil::<Str>(), t), if ends {
                 str_lit("ends")
             } else {
                 str_lit("rec")
             })
-        }), bindings));
-        let tagcase_ = letrec_lambdas(w, s, bindings);
+        }), bindings, types));
+        let tagcase_ = letrec_lambdas(w, s, bindings, types);
         match *tagcase_ {
             Res::Res(u, es, s) => {
                 body(w, s, forms, expected)
+            }
+        }
+    }
+
+    /// A local `letrec`'s types, the globals its procedures read found (C179;
+    /// Fixpt's fx26.md, 2026-09-30): each lambda checked as though its type
+    /// read any global, the globals its body reads not within its type put
+    /// in it, and again until the group's calls of each other add none. A
+    /// group that checks at its types written keeps them.
+    pub fn letrec_found(mut v: &'static Cv, mut s: &'static St, mut bindings: Sexps, mut types: Tys, mut wher: Str) -> Tys {
+        loop {
+            let w = with_binds(v, map2(lambda2s(move |b: &'static Sexp, t: &'static Ty| {
+                bind(name_of(v, car(items(b))), scheme(nil::<Str>(), t), wher)
+            }), bindings, types));
+            let more = map2(lambda2s(move |b: &'static Sexp, t: &'static Ty| {
+                let ys = items(b);
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r) => {
+                        if head_is_p(third(ys), str_lit("lambda")) {
+                            let lam = items(third(ys));
+                            let found = {
+                                let tagcase_ = lambda_effects(w, s, items(second(lam)), cdr(cdr(lam)), ty_proc(effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), es), ps, r));
+                                match *tagcase_ {
+                                    Res::Res(u, fs, s2) => {
+                                        fs
+                                    }
+                                }
+                            };
+                            filter(lambda1s(move |a: Str| {
+                                ((string_eq_p(a, str_lit("@globals")) || global_atom_p(a)) && not(effs_within_p(kayak_rt::heap_cons(a, kayak_rt::nil()), es)))
+                            }), found)
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            }), bindings, types);
+            if not(any_p(lambda1s(move |m: Strings| {
+                not(null_p(m))
+            }), more)) {
+                return types;
+            } else {
+                types = map2(lambda2s(move |t: &'static Ty, m: Strings| {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            ty_proc(effs_union(m, es), ps, r)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            t
+                        }
+                    }
+                }), types, more);
+                continue;
             }
         }
     }
@@ -7476,18 +7542,18 @@ pub mod expressions {
         }
     }
 
-    pub fn letrec_lambdas(v: &'static Cv, s: &'static St, bindings: Sexps) -> &'static Res {
+    pub fn letrec_lambdas(v: &'static Cv, s: &'static St, bindings: Sexps, types: Tys) -> &'static Res {
         if null_p(bindings) {
             res(ty_unit(), nil::<Str>(), s)
         } else {
             let ys = items(car(bindings));
-            if not((head_is_p(third(ys), str_lit("lambda")) || head_is_p(third(ys), str_lit("rlambda")) || (head_is_p(third(ys), str_lit("plambda")) && poly_type_p(s, parse_type(v, cv_tvars(v), second(ys)))))) {
+            if not((head_is_p(third(ys), str_lit("lambda")) || head_is_p(third(ys), str_lit("rlambda")) || (head_is_p(third(ys), str_lit("plambda")) && poly_type_p(s, car(types))))) {
                 match refuse(v, str_lit("a letrec binds only lambdas")) {}
             } else {
-                let tagcase_ = check(v, s, third(ys), parse_type(v, cv_tvars(v), second(ys)));
+                let tagcase_ = check(v, s, third(ys), car(types));
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        letrec_lambdas(v, s, cdr(bindings))
+                        letrec_lambdas(v, s, cdr(bindings), cdr(types))
                     }
                 }
             }

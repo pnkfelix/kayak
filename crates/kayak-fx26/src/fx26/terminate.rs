@@ -201,6 +201,30 @@ pub mod termination {
         }
     }
 
+    /// Whether `e` names a generative type's `up-` or `down-` conversion: no
+    /// local or member hides it, and the type is generative.
+    pub fn conversion_p(c: &'static Wc, e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                let tagcase_ = c;
+                match *tagcase_ {
+                    Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+                        (null_p(bound_of(n, sc)) && not(string_member_p(n, ms)) && (has_prefix_p(n, str_lit("up-")) || has_prefix_p(n, str_lit("down-"))) && not(null_p(conversion_bind(n, cv_binds(v)))) && generative_p(v, ty_data(if has_prefix_p(n, str_lit("up-")) {
+                            after_prefix(n, str_lit("up-"))
+                        } else {
+                            after_prefix(n, str_lit("down-"))
+                        }, nil::<&'static Ty>())))
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
     /// The primitive `e` names, if it names one: no local hides it.
     pub fn std_op(c: &'static Wc, e: &'static Sexp) -> Str {
         let tagcase_ = e;
@@ -348,6 +372,22 @@ pub mod termination {
                     if sym_is_p(car(xs), str_lit("the")) {
                         e = third(xs);
                         continue;
+                    } else if (i64_eq(size(xs), 2i64) && conversion_p(c, car(xs))) {
+                        // A generative type's conversion, the identity (C179; Fixpt's
+                        // terminate.rs): what is known of its argument, its type
+                        // not, so that a `tagcase` still proves parts and a `car` not.
+                        return map(lambda1s(move |t: &'static Tracked| {
+                            let tagcase_ = t;
+                            match *tagcase_ {
+                                Tracked::Part(p, strict, ty) => {
+                                    part(p, strict, nil::<&'static Ty>())
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    t
+                                }
+                            }
+                        }), tracked_of(c, second(xs)));
                     } else if ((string_eq_p(op, str_lit("car")) || string_eq_p(op, str_lit("cdr"))) && i64_eq(size(xs), 2i64)) {
                         return concat(map(lambda1s(move |t: &'static Tracked| {
                             let tagcase_ = t;
@@ -446,7 +486,8 @@ pub mod termination {
 
     /// Whether `e` is the same at every call of the group: a literal, a name
     /// bound outside it, a parameter passed on unchanged, or a string's
-    /// length, or the sum or difference of such.
+    /// or an array's length (C179, as Fixpt's terminate.rs), or the sum or
+    /// difference of such.
     pub fn fixed_p(mut c: &'static Wc, mut e: &'static Sexp) -> bool {
         loop {
             let tagcase_ = c;
@@ -488,7 +529,7 @@ pub mod termination {
                             if sym_is_p(car(xs), str_lit("the")) {
                                 e = third(xs);
                                 continue;
-                            } else if ((string_eq_p(op, str_lit("string-length")) && i64_eq(size(xs), 2i64)) || ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64))) {
+                            } else if (((string_eq_p(op, str_lit("string-length")) || string_eq_p(op, str_lit("array-length"))) && i64_eq(size(xs), 2i64)) || ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64))) {
                                 return not(any_p(lambda1s(move |a: &'static Sexp| {
                                     not(fixed_p(c, a))
                                 }), cdr(xs)));
@@ -1347,10 +1388,11 @@ pub mod termination {
     }
 
     /// The size-change criterion: every graph from a member to itself that is
-    /// its own composition has a slot strictly smaller.
+    /// its own composition has a slot strictly smaller. A group whose members
+    /// call none of each other ends too, as Fixpt has it (C179).
     pub fn ends_p(calls: Scalls) -> bool {
         let all = paths(calls, calls, calls);
-        (not(null_p(all)) && not(any_p(lambda1s(move |x: &'static Scall| {
+        not(any_p(lambda1s(move |x: &'static Scall| {
             let tagcase_ = x;
             match *tagcase_ {
                 Scall::Scall(f, g, a) => {
@@ -1364,7 +1406,7 @@ pub mod termination {
                     }), a)))
                 }
             }
-        }), all)))
+        }), all))
     }
 
     pub fn rec_members_of(names: Strings, types: Tys, lambdas: Sexps) -> RecMembers {

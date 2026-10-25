@@ -2784,13 +2784,39 @@
                                              (tagcase t (ty-data (d args) (if (string=? d "%poly") (poly-body args) t)) (else other t))))
                                          bindings)
                                     (map (lambda ((b sexp)) (third (items b))) bindings))))
-                 (w (with-binds v (map (lambda ((b sexp))
-                                         (let ((ys (items b)))
-                                           (bind (name-of v (car ys)) (scheme nil (parse-type v (cv-tvars v) (second ys)))
-                                                 (if ends "ends" "rec"))))
-                                       bindings))))
-            (tagcase (letrec-lambdas w s bindings)
+                 (types (letrec-found v s bindings (map (lambda ((b sexp)) (parse-type v (cv-tvars v) (second (items b)))) bindings)
+                                      (if ends "ends" "rec")))
+                 (w (with-binds v (map2 (lambda ((b sexp) (t ty))
+                                         (bind (name-of v (car (items b))) (scheme nil t) (if ends "ends" "rec")))
+                                       bindings types))))
+            (tagcase (letrec-lambdas w s bindings types)
               (res (u es s) (body w s forms expected))))))
+
+      (letrec-found (subr kfx (cv st sexps tys string) tys)
+        (lambda (v s bindings types wher)
+          "A local `letrec`'s types, the globals its procedures read found (C179;
+           Fixpt's fx26.md, 2026-09-30): each lambda checked as though its type
+           read any global, the globals its body reads not within its type put
+           in it, and again until the group's calls of each other add none. A
+           group that checks at its types written keeps them."
+          (let* ((w (with-binds v (map2 (lambda ((b sexp) (t ty)) (bind (name-of v (car (items b))) (scheme nil t) wher)) bindings types)))
+                 (more (map2 (lambda ((b sexp) (t ty))
+                              (let ((ys (items b)))
+                                (tagcase t
+                                  (ty-proc (es ps r)
+                                    (if (head-is? (third ys) "lambda")
+                                        (let* ((lam (items (third ys)))
+                                               (found (tagcase (lambda-effects w s (items (second lam)) (cdr (cdr lam)) (ty-proc (effs-union (list "@globals") es) ps r))
+                                                        (res (u fs s2) fs))))
+                                          (filter (lambda ((a string)) (and (or (string=? a "@globals") (global-atom? a)) (not (effs-within? (list a) es)))) found))
+                                        nil))
+                                  (else other nil))))
+                            bindings types)))
+            (if (not (any? (lambda ((m strings)) (not (null? m))) more))
+                types
+                (letrec-found v s bindings
+                              (map2 (lambda ((t ty) (m strings)) (tagcase t (ty-proc (es ps r) (ty-proc (effs-union m es) ps r)) (else other t))) types more)
+                              wher)))))
 
       (letregion-form (subr kfx (cv st string sexps tys) res)
         (lambda (v s r forms expected)
@@ -3313,16 +3339,16 @@
                                    (else other (res t es s))))))
                   (res (t es s) (res t (effs-union (list (string-append "alloc:" (region-string s r))) es) s)))))))
 
-      (letrec-lambdas (subr kfx (cv st sexps) res)
-        (lambda (v s bindings)
+      (letrec-lambdas (subr kfx (cv st sexps tys) res)
+        (lambda (v s bindings types)
           (if (null? bindings)
               (res (ty-unit) nil s)
               (let ((ys (items (car bindings))))
                 (if (not (or (head-is? (third ys) "lambda") (head-is? (third ys) "rlambda")
-                             (and (head-is? (third ys) "plambda") (poly-type? s (parse-type v (cv-tvars v) (second ys))))))
+                             (and (head-is? (third ys) "plambda") (poly-type? s (car types)))))
                     (refuse v "a letrec binds only lambdas")
-                    (tagcase (check v s (third ys) (parse-type v (cv-tvars v) (second ys)))
-                      (res (t es s) (letrec-lambdas v s (cdr bindings)))))))))
+                    (tagcase (check v s (third ys) (car types))
+                      (res (t es s) (letrec-lambdas v s (cdr bindings) (cdr types)))))))))
 
       (synth-lambda (subr kfx (cv st sexps sexps) res)
         (lambda (v s params forms)

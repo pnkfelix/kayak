@@ -95,6 +95,20 @@
           "The member `n` names here, unless something on the way down hid it; or -1."
           (tagcase c (wc (v ms cur sc gs nats inv) (if (null? (bound-of n sc)) (index-of n ms 0) -1)))))
 
+      (define conversion? (subr kfx (wc sexp) bool)
+        (lambda (c e)
+          "Whether `e` names a generative type's `up-` or `down-` conversion: no
+           local or member hides it, and the type is generative."
+          (tagcase e
+            (sym (n at-file at-pos)
+              (tagcase c
+                (wc (v ms cur sc gs nats inv)
+                  (and (null? (bound-of n sc)) (not (string-member? n ms))
+                       (or (has-prefix? n "up-") (has-prefix? n "down-"))
+                       (not (null? (conversion-bind n (cv-binds v))))
+                       (generative? v (ty-data (if (has-prefix? n "up-") (after-prefix n "up-") (after-prefix n "down-")) nil))))))
+            (else other #f))))
+
       (define std-op (subr kfx (wc sexp) string)
         (lambda (c e)
           "The primitive `e` names, if it names one: no local hides it."
@@ -154,6 +168,12 @@
               (lst (xs src-file src-line src-pos)
                 (let ((op (std-op c (car xs))))
                   (cond ((sym-is? (car xs) "the") (tracked-of c (third xs)))
+                        ((and (i64= (size xs) 2) (conversion? c (car xs)))
+                         "A generative type's conversion, the identity (C179; Fixpt's
+                          terminate.rs): what is known of its argument, its type
+                          not, so that a `tagcase` still proves parts and a `car` not."
+                         (map (lambda ((t tracked)) (tagcase t (part (p strict ty) (part p strict nil)) (else other t)))
+                              (tracked-of c (second xs))))
                         ((and (or (string=? op "car") (string=? op "cdr")) (i64= (size xs) 2))
                          (concat (map (lambda ((t tracked))
                                         (tagcase t
@@ -198,7 +218,8 @@
           (lambda (c e)
             "Whether `e` is the same at every call of the group: a literal, a name
              bound outside it, a parameter passed on unchanged, or a string's
-             length, or the sum or difference of such."
+             or an array's length (C179, as Fixpt's terminate.rs), or the sum or
+             difference of such."
             (tagcase c
               (wc (v ms cur sc gs nats inv)
                 (tagcase e
@@ -215,7 +236,7 @@
                   (lst (xs src-file src-line src-pos)
                     (let ((op (std-op c (car xs))))
                       (cond ((sym-is? (car xs) "the") (fixed? c (third xs)))
-                            ((or (and (string=? op "string-length") (i64= (size xs) 2))
+                            ((or (and (or (string=? op "string-length") (string=? op "array-length")) (i64= (size xs) 2))
                                  (and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3)))
                              (not (any? (lambda ((a sexp)) (not (fixed? c a))) (cdr xs))))
                             (else #f))))
@@ -628,15 +649,15 @@
       (define ends? (subr kfx (scalls) bool)
         (lambda (calls)
           "The size-change criterion: every graph from a member to itself that is
-           its own composition has a slot strictly smaller."
+           its own composition has a slot strictly smaller. A group whose members
+           call none of each other ends too, as Fixpt has it (C179)."
           (let ((all (paths calls calls calls)))
-            (and (not (null? all))
-                 (not (any? (lambda ((x scall))
+            (not (any? (lambda ((x scall))
                               (tagcase x
                                 (scall (f g a)
                                   (and (i64= f g) (edges=? (compose a a) a)
                                        (not (any? (lambda ((e edge)) (tagcase e (edge (p q s) (and (i64= p q) s)))) a))))))
-                            all))))))
+                            all)))))
 
       (define-rec
         (rec-members-of (subr kfx (strings tys sexps) rec-members)

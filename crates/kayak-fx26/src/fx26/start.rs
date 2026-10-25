@@ -345,6 +345,28 @@ pub fn no_form() -> &'static Sexp {
     lst(nil::<&'static Sexp>(), str_lit(""), 0i64, 0i64)
 }
 
+pub fn chars_ahead_of(cs: Chars, pat: Chars) -> Chars {
+    if (null_p(cs) || chars_start_p(cs, pat)) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), chars_ahead_of(cdr(cs), pat))
+    }
+}
+
+/// A generative type's conversion's line: its type inside its family's
+/// binders `w`, if any.
+pub fn generative_line(v: &'static Cv, n: Str, w: &'static Sexp) -> Str {
+    let line = bound_line(v, n, no_form(), str_lit("pure"));
+    if head_is_p(w, str_lit("poly")) {
+        let at = string_append(str_lit("define "), string_append(n, str_lit(" : ")));
+        let rest = after_prefix(line, at);
+        let ty = list_to_string(chars_ahead_of(string_chars(rest), string_chars(str_lit(" ! "))));
+        string_append(at, string_append(poly_wrapped(w, ty), after_prefix(rest, ty)))
+    } else {
+        line
+    }
+}
+
 /// An effect as printed (C166): its regions as solved; an allocation at
 /// `acyclic`, or at a region still unsolved, nothing, as Fixpt's.
 pub fn settled_effs(s: &'static St, es: Strings) -> Strings {
@@ -1283,8 +1305,22 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
             bound_line(v, sym_name(car(items(g))), no_form(), str_lit("pure"))
         }), cdr(cdr(items(form))))
     } else if head_is_p(form, str_lit("define-generative")) {
+        // Its conversions; a family's in a `poly` of its parameters, as written
+        // (C179: Fixpt prints `(poly ((a type)) (subr pure (...) (tree a)))`).
         let n = binder_name(second(items(form)));
-        kayak_rt::heap_cons(bound_line(v, string_append(str_lit("up-"), n), no_form(), str_lit("pure")), kayak_rt::heap_cons(bound_line(v, string_append(str_lit("down-"), n), no_form(), str_lit("pure")), kayak_rt::nil()))
+        let w = {
+            let tagcase_ = second(items(form));
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(cdr(xs), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(no_form(), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                }
+                _ => {
+                    let other = tagcase_;
+                    no_form()
+                }
+            }
+        };
+        kayak_rt::heap_cons(generative_line(v, string_append(str_lit("up-"), n), w), kayak_rt::heap_cons(generative_line(v, string_append(str_lit("down-"), n), w), kayak_rt::nil()))
     } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect")) || head_is_p(form, str_lit("define-convention"))) {
         nil::<Str>()
     } else {
