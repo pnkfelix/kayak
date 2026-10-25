@@ -448,7 +448,7 @@
     (cond ((any? (lambda ((x string))
                    (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x) (has-prefix? x "alloc:"))))
                  es)
-           (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
+           (kfx-restricted v s (string-append "a constant whose value has the effect " (string-append (show-effs es)
                      ": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
           ((and (not (null? (find-bind "%loaded" (cv-binds v))))
                 (any? (lambda ((x string)) (not (or (string=? x "@globals") (global-atom? x)))) es))

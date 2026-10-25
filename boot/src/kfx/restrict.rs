@@ -98,6 +98,13 @@ pub mod restrictions {
                     restricted_all(xs, f, l)
                 }
             }
+            Sexp::Real(t, f, p) => {
+                if written_out_real_p(t) {
+                    ()
+                } else {
+                    match restriction_refused(file, line, string_append(str_lit("a number with an exponent, or its point first, which KFX reads not: write it out, "), t)) {}
+                }
+            }
             _ => {
                 let other = tagcase_;
                 ()
@@ -242,6 +249,31 @@ pub mod restrictions {
         ()
     }
 
+    pub fn noted_restricted(mut fs: Facts) -> () {
+        loop {
+            if null_p(fs) {
+                return ();
+            } else if {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(f, p, what) => {
+                        (string_eq_p(f, str_lit("%kfx")) && has_prefix_p(what, str_lit("kfx-refuses ")))
+                    }
+                }
+            } {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(f, p, what) => {
+                        return error(string_append(str_lit("kfx: "), after_prefix(what, str_lit("kfx-refuses "))));
+                    }
+                }
+            } else {
+                fs = cdr(fs);
+                continue;
+            }
+        }
+    }
+
     pub fn names_restricted(forms: Sexps) -> () {
         let prims = primitive_names();
         names_once(defined_names(forms), nil::<Str>(), prims);
@@ -255,8 +287,11 @@ pub mod restrictions {
         types_named(forms)
     }
 
-    /// Each form, refused if it is not KFX: names, then what each uses.
-    pub fn restrict(forms: Sexps) -> () {
+    /// Each form, refused if it is not KFX: what the checker noted it has
+    /// not (`kfx-restricted`, C154), the first noted first; names; then
+    /// what each uses.
+    pub fn restrict(forms: Sexps, fs: Facts) -> () {
+        noted_restricted(reverse(fs));
         names_restricted(forms);
         restricted_all(forms, str_lit("the program"), 0i64)
     }

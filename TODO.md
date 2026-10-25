@@ -556,6 +556,11 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    by name, `poly` as written, module types (and `--check` writing
    module definitions).
 2. The restriction pass split off the checker (`front-end.md` stage 2).
+   **Begun** (C154): `kfx-restricted` notes, kfx's `restrict` refuses;
+   moved so far: a constant's effects (C154), reals written past KFX's
+   way (C155). 205 of the 428 programs Fixpt accepts still refused
+   (2026-10-24), the most for sizes (`nat`, `nlist`, about 18) and
+   specs (named parameters, `requires`, about 30).
 3. FX-26's subsystems: modules, sizes, processes, higher kinds, bloblets,
    recursive types, unions; each a note first.
 4. Refusals' messages and places compared, for what both refuse.

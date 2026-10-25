@@ -12,7 +12,7 @@
 (define restrict-checked (subr kfx (verdict sexps) verdict)
   (lambda (checked forms)
     "A program checked, then KFX's restrictions (restrict.kfx, C60)."
-    (begin (with restrictions (restrict forms)) checked)))
+    (begin (with restrictions (restrict forms (verdict-facts checked))) checked)))
 
 (define compile-named (subr kfx (string string fileds) string)
   (lambda (file src loaded)
@@ -119,7 +119,7 @@
   (lambda (ss old)
     (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
            (texts (concat (map source-texts ss))))
-      (tagcase (let ((c (with incremental (check-program-memo forms texts old)))) (begin (with restrictions (restrict forms)) c))
+      (tagcase (let ((c (with incremental (check-program-memo forms texts old)))) (begin (with restrictions (restrict forms (tagcase c (checked-memo (done found checks) (cv-facts done))))) c))
         (checked-memo (done found checks)
           (let ((c (with emitter (collect forms (ctx nil nil nil nil found (cv-facts done) (fidx-of (cv-facts done)) nil nil nil)))))
             (tagcase (memo-modules c (cv-facts done) (with incremental (ctx-fingerprint c)) old ss nil checks)

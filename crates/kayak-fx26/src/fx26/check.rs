@@ -294,21 +294,27 @@ pub fn cv_where(v: &'static Cv) -> Str {
     }
 }
 
-/// An error, said where: the innermost list being checked, and the
-/// definition.
-pub fn refuse(v: &'static Cv, message: Str) -> Void {
+/// What a refusal says, past `kfx: `: where, the innermost list being
+/// checked and the definition, then `message`.
+pub fn refusal_text(v: &'static Cv, message: Str) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            error(string_append(str_lit("kfx: "), string_append(if i64_eq(line, 0i64) {
+            string_append(if i64_eq(line, 0i64) {
                 str_lit("")
             } else if string_eq_p(file, str_lit("<draft>")) {
                 string_append(str_lit("<draft>@"), string_append(i64_to_string(at), str_lit(": ")))
             } else {
                 string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), str_lit(": "))))
-            }, string_append(str_lit("in "), string_append(here, string_append(str_lit(": "), message))))))
+            }, string_append(str_lit("in "), string_append(here, string_append(str_lit(": "), message))))
         }
     }
+}
+
+/// An error, said where: the innermost list being checked, and the
+/// definition.
+pub fn refuse(v: &'static Cv, message: Str) -> Void {
+    error(string_append(str_lit("kfx: "), refusal_text(v, message)))
 }
 
 /// A name, where one is expected: refused, saying where, if `e` is none.
@@ -2853,6 +2859,14 @@ pub fn note_fact(s: &'static St, file: Str, pos: i64, what: Str) -> &'static St 
             st(subst, next, kayak_rt::heap_cons(fact(file, pos, what), fs))
         }
     }
+}
+
+/// What FX-26 has and KFX has not, for Rust (front-end.md stage 2, C154):
+/// not refused here but noted, a fact of the file `%kfx`, for kfx's
+/// restriction pass to refuse (restrict.kfx), where and as the checker
+/// would have; the engine, which runs no such pass, checks on.
+pub fn kfx_restricted(v: &'static Cv, s: &'static St, message: Str) -> &'static St {
+    note_fact(s, str_lit("%kfx"), 0i64, string_append(str_lit("kfx-refuses "), refusal_text(v, message)))
 }
 
 pub fn st_facts(s: &'static St) -> Facts {

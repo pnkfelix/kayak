@@ -333,6 +333,74 @@ pub fn fits_i64_p(cs: Chars) -> bool {
     }
 }
 
+// Reals as FX-26 reads them past KFX's own (C155): its point first, `.5`,
+// or an exponent, `1e-3`, as Rust's `f64` syntax has them. kfx's
+// restriction pass refuses both, KFX writing a real as it is written.
+pub fn all_digits_p(cs: Chars) -> bool {
+    (null_p(cs) || (char_numeric_p(car(cs)) && all_digits_p(cdr(cs))))
+}
+
+pub fn point_first_real_p(cs: Chars) -> bool {
+    let body = if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
+        cdr(cs)
+    } else {
+        cs
+    };
+    (not(null_p(body)) && char_eq_p(car(body), '.') && not(null_p(cdr(body))) && all_digits_p(cdr(body)))
+}
+
+/// A real's mantissa, before its `e`.
+pub fn before_exponent(cs: Chars) -> Chars {
+    if (null_p(cs) || char_eq_p(car(cs), 'e') || char_eq_p(car(cs), 'E')) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), before_exponent(cdr(cs)))
+    }
+}
+
+/// A real's exponent, after its `e`; none if it has none.
+pub fn after_exponent(mut cs: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if (char_eq_p(car(cs), 'e') || char_eq_p(car(cs), 'E')) {
+            return cdr(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+/// `[-]M e [+-]D`, `M` digits with at most one point among them, `D`
+/// digits.
+pub fn exponent_real_p(cs: Chars) -> bool {
+    let body = if char_eq_p(car(cs), '-') {
+        cdr(cs)
+    } else {
+        cs
+    };
+    let m = before_exponent(body);
+    let x = after_exponent(body);
+    let ds = if (not(null_p(x)) && (char_eq_p(car(x), '+') || char_eq_p(car(x), '-'))) {
+        cdr(x)
+    } else {
+        x
+    };
+    (not(null_p(ds)) && all_digits_p(ds) && not(null_p(filter(lambda1s(move |c: char| {
+        char_numeric_p(c)
+    }), m))) && i64_lt_eq(point_count(m, 0i64), 1i64) && all_digits_p(filter(lambda1s(move |c: char| {
+        not(char_eq_p(c, '.'))
+    }), m)))
+}
+
+/// Whether a real is written as KFX writes one: neither its point first nor
+/// with an exponent.
+pub fn written_out_real_p(t: Str) -> bool {
+    let cs = string_chars(t);
+    not((point_first_real_p(cs) || has_char_p(cs, 'e') || has_char_p(cs, 'E')))
+}
+
 /// Whether every character of `cs` is one of `allowed`'s.
 pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
     not(any_p(lambda1s(move |c: char| {
@@ -396,6 +464,8 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
                 }
             }
         }
+    } else if point_first_real_p(cs) {
+        real(s, file, pos)
     } else if not(numeric_p(cs)) {
         sym(s, file, pos)
     } else if not(only_of_p(if char_eq_p(car(cs), '-') {
@@ -407,7 +477,11 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
         // FX-26 reads it.
         sym(s, file, pos)
     } else if (has_char_p(cs, 'e') || has_char_p(cs, 'E')) {
-        match read_error(file, line, string_append(str_lit("a number with an exponent, which KFX reads not: write it out, "), s)) {}
+        if exponent_real_p(cs) {
+            real(s, file, pos)
+        } else {
+            match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
+        }
     } else if has_char_p(cs, '.') {
         if (real_token_p(cs) && only_of_p(if char_eq_p(car(cs), '-') {
             cdr(cs)

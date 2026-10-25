@@ -160,10 +160,45 @@
             ((char=? (car cs) #\.) (real-parts (cdr cs) n scale #t))
             (else (real-parts (cdr cs) (+ (* n 10) (i64->int (i64- (char->i64 (car cs)) 48))) (if after (* scale 10) scale) after))))))
 
+(define-rec
+  (mantissa-int (subr kfx ((listof char acyclic) int i64) int)
+    (lambda (cs n d)
+      "A mantissa's digits as an integer (its point dropped)."
+      (cond ((null? cs) n)
+            ((char=? (car cs) #\.) (mantissa-int (cdr cs) n d))
+            (else (mantissa-int (cdr cs) (+ (* n 10) (i64->int (i64- (char->i64 (car cs)) 48))) d))))))
+
+(define-rec
+  (after-point (subr kfx ((listof char acyclic) i64 bool) i64)
+    (lambda (cs n seen) (cond ((null? cs) n) ((char=? (car cs) #\.) (after-point (cdr cs) n #t)) (else (after-point (cdr cs) (if seen (i64+ n 1) n) seen))))))
+
+(define-rec
+  (ten-to (subr kfx (i64) int) (lambda (k) (if (i64<= k 0) 1 (* 10 (ten-to (i64- k 1)))))))
+
+(define exponent-value (subr kfx ((listof char acyclic)) i64)
+  (lambda (x)
+    (cond ((char=? (car x) #\-) (i64- 0 (int->i64 (digits-int (cdr x) 0))))
+          ((char=? (car x) #\+) (int->i64 (digits-int (cdr x) 0)))
+          (else (int->i64 (digits-int x 0))))))
+
+"A real with an exponent (C155): its mantissa's digits `n` times ten to
+ `e`, rounded once, as reading it is, where both are exact in an `f64`
+ (`n` up to 2^53, ten up to the 22nd); else not read yet."
+(define scaled-real (subr kfx (string (listof char acyclic)) f64)
+  (lambda (text body)
+    (let* ((m (before-exponent body))
+           (n (mantissa-int m 0 0))
+           (e (i64- (exponent-value (after-exponent body)) (after-point m 0 #f))))
+      (cond ((or (> n 9007199254740992) (i64> e 22) (i64< e -22))
+             (error (string-append "the engine: a real it reads not exactly yet: " text)))
+            ((i64>= e 0) (f64* (int->f64 n) (int->f64 (ten-to e))))
+            (else (f64/ (int->f64 n) (int->f64 (ten-to (i64- 0 e)))))))))
+
 (define real-value (subr kfx (string) f64)
   (lambda (text)
-    (let ((cs (string-chars text)))
-      (if (char=? (car cs) #\-) (f64-neg (real-parts (cdr cs) 0 1 #f)) (real-parts cs 0 1 #f)))))
+    (let* ((cs (string-chars text)) (neg (char=? (car cs) #\-)) (body (if neg (cdr cs) cs))
+           (v (if (or (has-char? body #\e) (has-char? body #\E)) (scaled-real text body) (real-parts body 0 1 #f))))
+      (if neg (f64-neg v) v))))
 
 "The globals a program defines, in order: each definition's name, and a
  datatype's constructors."

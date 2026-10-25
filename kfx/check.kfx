@@ -114,20 +114,25 @@
 (define cv-where (subr kfx (cv) string)
   (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) here))))
 
+(define refusal-text (subr kfx (cv string) string)
+  (lambda (v message)
+    "What a refusal says, past `kfx: `: where, the innermost list being
+     checked and the definition, then `message`."
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv at)
+        (string-append (cond ((i64= line 0) "")
+                             ;; A REPL's draft, checked as it is typed: where, as an offset
+                             ;; into it, so that the REPL can tell whether the error is about
+                             ;; what has been finished (live-repl.kfx, C96).
+                             ((string=? file "<draft>") (string-append "<draft>@" (string-append (i64->string at) ": ")))
+                             (else (string-append file (string-append ":" (string-append (i64->string line) ": ")))))
+          (string-append "in " (string-append here (string-append ": " message))))))))
+
 (define refuse (subr kfx (cv string) void)
   (lambda (v message)
     "An error, said where: the innermost list being checked, and the
      definition."
-    (tagcase v
-      (cv (bs ds als es here group file line fs tv at)
-        (error (string-append "kfx: "
-                 (string-append (cond ((i64= line 0) "")
-                                      ;; A REPL's draft, checked as it is typed: where, as an offset
-                                      ;; into it, so that the REPL can tell whether the error is about
-                                      ;; what has been finished (live-repl.kfx, C96).
-                                      ((string=? file "<draft>") (string-append "<draft>@" (string-append (i64->string at) ": ")))
-                                      (else (string-append file (string-append ":" (string-append (i64->string line) ": ")))))
-                   (string-append "in " (string-append here (string-append ": " message))))))))))
+    (error (string-append "kfx: " (refusal-text v message)))))
 
 (define name-of (subr kfx (cv sexp) string)
   (lambda (v e)
@@ -1447,6 +1452,14 @@
 (define note-fact (subr kfx (st string i64 string) st)
   (lambda (s file pos what)
     (tagcase s (st (subst next fs) (st subst next (cons (fact file pos what) fs))))))
+
+(define kfx-restricted (subr kfx (cv st string) st)
+  (lambda (v s message)
+    "What FX-26 has and KFX has not, for Rust (front-end.md stage 2, C154):
+     not refused here but noted, a fact of the file `%kfx`, for kfx's
+     restriction pass to refuse (restrict.kfx), where and as the checker
+     would have; the engine, which runs no such pass, checks on."
+    (note-fact s "%kfx" 0 (string-append "kfx-refuses " (refusal-text v message)))))
 
 (define st-facts (subr kfx (st) facts)
   (lambda (s) (tagcase s (st (subst next fs) fs))))

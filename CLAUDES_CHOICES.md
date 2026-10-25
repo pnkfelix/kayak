@@ -4225,3 +4225,37 @@ not made yet (C133).
   stopping at its `typecase`. Its words are now Fixpt's; tier 1 has no
   `%fx26-intern-datum` yet (TODO §31), so it runs Fixpt's listing as
   little as ours. 170 programs agree (165), 138 Fixpt's words exactly.
+
+## C154. KFX's restrictions noted by the checker, refused by kfx alone (2026-10-24)
+
+The user: "go after the §30 checker work". Of the 428 programs Fixpt
+accepts, kayak's checker refused 228. The plan's step 2
+(`docs/research/fx26-checker.md`): KFX's own refusals, of what FX-26 has
+and Rust cannot say, out of the checker, into the restriction pass that
+kfx runs after it and the engine does not, so that the engine's checker
+is FX-26's.
+- **How**: where the checker would refuse for KFX alone it now calls
+  `kfx-restricted`, which notes the message `refuse` would have said, a
+  fact of the file `%kfx`, and checks on. kfx's `restrict` takes the
+  facts too and refuses at the first noted, where and as before
+  (`tests/kfx-stricter` still refused by kfx, each saying where).
+- **First moved**: a constant whose value has an effect past reading
+  globals and allocating (26 programs): KFX makes a constant at its first
+  use, FX-26 where it is defined. Not moved, being FX-26's own: a loaded
+  file's value made impure (`modules/load-stateful.fx`, which Fixpt
+  refuses too, came out accepted when it was tried).
+- **Measured** (`compare-checkers.py`): refused 228 to 209, the same 84
+  to 92; of the 336 Fixpt refuses, kayak still refuses all.
+
+## C155. Reals with their point first or an exponent, as FX-26 reads them (2026-10-24)
+
+Fixpt's reader takes a base-10 token with a point or an exponent as an
+`f64` by Rust's syntax (`fixpt-read`'s `parse_real`): `.5`, `-.25`,
+`1e-3`, `2.5e3`, `1E6`. kayak's reader took neither, `.5` a name and
+`1e-3` refused. Now both are reals (`point-first-real?`,
+`exponent-real?`), and kfx's restriction pass refuses them (C154), KFX
+writing a real into Rust as it is written. The engine's value of one
+with an exponent: its digits times ten to its exponent, rounded once,
+where both are exact in an `f64` (digits up to 2^53, ten up to the
+22nd), which is every one Fixpt's programs write; past that, not read
+yet, said so (`1e400`). Refused 209 to 205.

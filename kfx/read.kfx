@@ -163,6 +163,50 @@
             ((i64> n 19) #f)
             (else (digits-at-most? ds (string-chars (if negative "9223372036854775808" "9223372036854775807"))))))))
 
+"Reals as FX-26 reads them past KFX's own (C155): its point first, `.5`,
+ or an exponent, `1e-3`, as Rust's `f64` syntax has them. kfx's
+ restriction pass refuses both, KFX writing a real as it is written."
+(define-rec
+  (all-digits? (subr kfx (chars) bool)
+    (lambda (cs) (or (null? cs) (and (char-numeric? (car cs)) (all-digits? (cdr cs)))))))
+
+(define point-first-real? (subr kfx (chars) bool)
+  (lambda (cs)
+    (let ((body (if (and (not (null? cs)) (char=? (car cs) #\-)) (cdr cs) cs)))
+      (and (not (null? body)) (char=? (car body) #\.) (not (null? (cdr body))) (all-digits? (cdr body))))))
+
+(define-rec
+  (before-exponent (subr kfx (chars) chars)
+    (lambda (cs)
+      "A real's mantissa, before its `e`."
+      (if (or (null? cs) (char=? (car cs) #\e) (char=? (car cs) #\E)) nil (cons (car cs) (before-exponent (cdr cs)))))))
+
+(define-rec
+  (after-exponent (subr kfx (chars) chars)
+    (lambda (cs)
+      "A real's exponent, after its `e`; none if it has none."
+      (cond ((null? cs) nil) ((or (char=? (car cs) #\e) (char=? (car cs) #\E)) (cdr cs)) (else (after-exponent (cdr cs)))))))
+
+(define exponent-real? (subr kfx (chars) bool)
+  (lambda (cs)
+    "`[-]M e [+-]D`, `M` digits with at most one point among them, `D`
+     digits."
+    (let* ((body (if (char=? (car cs) #\-) (cdr cs) cs))
+           (m (before-exponent body))
+           (x (after-exponent body))
+           (ds (if (and (not (null? x)) (or (char=? (car x) #\+) (char=? (car x) #\-))) (cdr x) x)))
+      (and (not (null? ds)) (all-digits? ds)
+           (not (null? (filter (lambda ((c char)) (char-numeric? c)) m)))
+           (i64<= (point-count m 0) 1)
+           (all-digits? (filter (lambda ((c char)) (not (char=? c #\.))) m))))))
+
+(define written-out-real? (subr kfx (string) bool)
+  (lambda (t)
+    "Whether a real is written as KFX writes one: neither its point first nor
+     with an exponent."
+    (let ((cs (string-chars t)))
+      (not (or (point-first-real? cs) (has-char? cs #\e) (has-char? cs #\E))))))
+
 (define only-of? (subr kfx (chars string) bool)
   (lambda (cs allowed)
     "Whether every character of `cs` is one of `allowed`'s."
@@ -200,13 +244,14 @@
                          (if (i64= n -9223372036854775808)
                              (read-error file line "a hex literal past an i64, which KFX reads not yet")
                              (num (i64- 0 n) file pos)))))))
+            ((point-first-real? cs) (real s file pos))
             ((not (numeric? cs)) (sym s file pos))
             ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789.eE+-"))
              "Not a number, though a digit begins it (`1x`, `0x10`): a name, as
               FX-26 reads it."
              (sym s file pos))
             ((or (has-char? cs #\e) (has-char? cs #\E))
-             (read-error file line (string-append "a number with an exponent, which KFX reads not: write it out, " s)))
+             (if (exponent-real? cs) (real s file pos) (read-error file line (string-append "no number KFX reads: " s))))
             ((has-char? cs #\.)
              (if (and (real-token? cs) (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789."))
                  (if (i64> (size (digits-after-zeros (before-point (if (char=? (car cs) #\-) (cdr cs) cs)))) 21)

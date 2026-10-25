@@ -340,12 +340,90 @@ pub fn real_parts(mut cs: List<char>, mut n: Int, mut scale: Int, mut after: boo
     }
 }
 
+/// A mantissa's digits as an integer (its point dropped).
+pub fn mantissa_int(mut cs: List<char>, mut n: Int, mut d: i64) -> Int {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else if char_eq_p(car(cs), '.') {
+            cs = cdr(cs);
+            continue;
+        } else {
+            (cs, n) = (cdr(cs), _plus(_star(n, int_lit(10)), i64_to_int(i64_minus(char_to_i64(car(cs)), 48i64))));
+            continue;
+        }
+    }
+}
+
+pub fn after_point(mut cs: List<char>, mut n: i64, mut seen: bool) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else if char_eq_p(car(cs), '.') {
+            (cs, seen) = (cdr(cs), true);
+            continue;
+        } else {
+            (cs, n) = (cdr(cs), if seen {
+                i64_plus(n, 1i64)
+            } else {
+                n
+            });
+            continue;
+        }
+    }
+}
+
+pub fn ten_to(k: i64) -> Int {
+    if i64_lt_eq(k, 0i64) {
+        int_lit(1)
+    } else {
+        _star(int_lit(10), ten_to(i64_minus(k, 1i64)))
+    }
+}
+
+pub fn exponent_value(x: List<char>) -> i64 {
+    if char_eq_p(car(x), '-') {
+        i64_minus(0i64, int_to_i64(digits_int(cdr(x), int_lit(0))))
+    } else if char_eq_p(car(x), '+') {
+        int_to_i64(digits_int(cdr(x), int_lit(0)))
+    } else {
+        int_to_i64(digits_int(x, int_lit(0)))
+    }
+}
+
+// A real with an exponent (C155): its mantissa's digits `n` times ten to
+// `e`, rounded once, as reading it is, where both are exact in an `f64`
+// (`n` up to 2^53, ten up to the 22nd); else not read yet.
+pub fn scaled_real(text: Str, body: List<char>) -> f64 {
+    let m = before_exponent(body);
+    let n = mantissa_int(m, int_lit(0), 0i64);
+    let e = i64_minus(exponent_value(after_exponent(body)), after_point(m, 0i64, false));
+    if (_gt(n, int_lit(9007199254740992)) || i64_gt(e, 22i64) || i64_lt(e, -22i64)) {
+        error(string_append(str_lit("the engine: a real it reads not exactly yet: "), text))
+    } else if i64_gt_eq(e, 0i64) {
+        f64_star(int_to_f64(n), int_to_f64(ten_to(e)))
+    } else {
+        f64_slash(int_to_f64(n), int_to_f64(ten_to(i64_minus(0i64, e))))
+    }
+}
+
 pub fn real_value(text: Str) -> f64 {
     let cs = string_chars(text);
-    if char_eq_p(car(cs), '-') {
-        f64_neg(real_parts(cdr(cs), int_lit(0), int_lit(1), false))
+    let neg = char_eq_p(car(cs), '-');
+    let body = if neg {
+        cdr(cs)
     } else {
-        real_parts(cs, int_lit(0), int_lit(1), false)
+        cs
+    };
+    let v = if (has_char_p(body, 'e') || has_char_p(body, 'E')) {
+        scaled_real(text, body)
+    } else {
+        real_parts(body, int_lit(0), int_lit(1), false)
+    };
+    if neg {
+        f64_neg(v)
+    } else {
+        v
     }
 }
 

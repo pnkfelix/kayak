@@ -439,7 +439,7 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
     if any_p(lambda1s(move |x: Str| {
         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
     }), es) {
-        match refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate")))) {}
+        kfx_restricted(v, s, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
     } else if (not(null_p(find_bind(str_lit("%loaded"), cv_binds(v)))) && any_p(lambda1s(move |x: Str| {
         not((string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
     }), es)) {

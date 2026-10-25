@@ -31,7 +31,7 @@ pub type Outputs = List<&'static Output>;
 
 /// A program checked, then KFX's restrictions (restrict.kfx, C60).
 pub fn restrict_checked(checked: &'static Verdict, forms: Sexps) -> &'static Verdict {
-    restrictions::restrict(forms);
+    restrictions::restrict(forms, verdict_facts(checked));
     checked
 }
 
@@ -184,7 +184,14 @@ pub fn compile_units_memo(ss: Sources, old: Memos) -> &'static Compiled {
     let texts = concat(map(&source_texts, ss));
     let tagcase_ = {
         let c = incremental::check_program_memo(forms, texts, old);
-        restrictions::restrict(forms);
+        restrictions::restrict(forms, {
+            let tagcase_ = c;
+            match *tagcase_ {
+                CheckedMemo::CheckedMemo(done, found, checks) => {
+                    cv_facts(done)
+                }
+            }
+        });
         c
     };
     match *tagcase_ {
