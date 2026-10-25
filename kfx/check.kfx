@@ -185,6 +185,43 @@
 (define before-dots (subr kfx (string) string)
   (lambda (x) "What precedes the first `..` of `x`." (list->string (chars-before-dots (string->list x)))))
 
+(define-rec
+  (item-head (subr kfx ((listof char acyclic) i64) (listof char acyclic))
+    (lambda (cs n)
+      "`(kind name `, the first `n` spaces' worth of an item printed."
+      (cond ((null? cs) nil)
+            ((char=? (car cs) #\space) (if (i64<= n 1) (list (car cs)) (cons (car cs) (item-head (cdr cs) (i64- n 1)))))
+            (else (cons (car cs) (item-head (cdr cs) n))))))
+  (item-rest (subr kfx ((listof char acyclic) i64) (listof char acyclic))
+    (lambda (cs n)
+      (cond ((null? cs) nil)
+            ((char=? (car cs) #\space) (if (i64<= n 1) (cdr cs) (item-rest (cdr cs) (i64- n 1))))
+            (else (item-rest (cdr cs) n))))))
+
+(define-rec
+  (chars-start-with? (subr kfx ((listof char acyclic) (listof char acyclic)) bool)
+    (lambda (cs p) (cond ((null? p) #t) ((null? cs) #f) ((char=? (car cs) (car p)) (chars-start-with? (cdr cs) (cdr p))) (else #f))))
+  (chars-drop (subr kfx ((listof char acyclic) i64) (listof char acyclic))
+    (lambda (cs n) (if (or (null? cs) (i64<= n 0)) cs (chars-drop (cdr cs) (i64- n 1)))))
+  (chars-with-replaced (subr kfx ((listof char acyclic) (listof char acyclic) (listof char acyclic) bool (listof char acyclic)) (listof char acyclic))
+    (lambda (cs from to tokens acc)
+      "`cs` with each `from` replaced by `to` (where `tokens`, only a whole
+       token), onto `acc` reversed."
+      (cond ((null? cs) (reverse acc))
+            ((and (chars-start-with? cs from)
+                  (or (not tokens)
+                      (and (or (null? acc) (char=? (car acc) #\space) (char=? (car acc) #\())
+                           (let ((after (chars-drop cs (size from))))
+                             (or (null? after) (char=? (car after) #\space) (char=? (car after) #\)))))))
+             (chars-with-replaced (chars-drop cs (size from)) from to tokens (onto (reverse to) acc)))
+            (else (chars-with-replaced (cdr cs) from to tokens (cons (car cs) acc)))))))
+
+(define text-replaced (subr kfx (string string string) string)
+  (lambda (t from to) (list->string (chars-with-replaced (string->list t) (string->list from) (string->list to) #f nil))))
+
+(define token-replaced (subr kfx (string string string) string)
+  (lambda (t from to) (list->string (chars-with-replaced (string->list t) (string->list from) (string->list to) #t nil))))
+
 (define after-dots (subr kfx (string) string)
   (lambda (x) "What follows the first `..` of `x`." (list->string (chars-after-dots (string->list x)))))
 
@@ -2537,11 +2574,12 @@
                 ((and (has-prefix? d "$") (null? args)) "A dependent parameter's type (C170)." (string-append "(select " (string-append (before-dots d) (string-append " " (string-append (after-dots d) ")")))))
                 ((null? args) d)
                 ((string=? d "%mtype")
-                 (string-append "(moduleof"
-                   (string-append (run-together (map (lambda ((x ty)) (string-append " " (show-mitem s x)))
-                                                     (onto (filter (lambda ((x ty)) (not (string=? (mitem-kind x) "%val"))) args)
-                                                           (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) args))))
-                                  ")")))
+                 (let* ((its (onto (filter (lambda ((x ty)) (not (string=? (mitem-kind x) "%val"))) args)
+                                   (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) args)))
+                        (descs (filter (lambda ((x ty)) (string=? (mitem-kind x) "%desc")) its)))
+                   (string-append "(moduleof"
+                     (string-append (run-together (map (lambda ((x ty)) (string-append " " (desc-named s descs x (show-mitem s x)))) its))
+                                    ")"))))
                 ((has-prefix? d "%spec ") (show-specified s d (car args)))
                 ((string=? d "%bloblet")
                  (string-append "(bloblet (fields" (string-append (if (null? (cdr args)) "" (string-append " " (show-tys s (cdr args)))) (string-append ") " (string-append (show-ty s (car args)) ")")))))
@@ -2593,6 +2631,26 @@
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
         (ty-var (n) (written-binder n))
         (ty-meta (k) (string-append "?" (i64->string k))))))
+  (desc-named (subr kfx (st tys ty string) string)
+    (lambda (s descs x text)
+      "An item of a module type as printed: a type one of its descriptions
+       describes by that description's name, as Fixpt's shared types are
+       named (C172); a description's own body as it is."
+      (if (null? descs)
+          text
+          (let* ((d (car descs)) (n (mitem-name d))
+                 (body (show-ty s (tagcase d (ty-data (k a) (car a)) (else other (ty-unit)))))
+                 (text2 (cond ((and (string=? (mitem-kind x) "%desc") (string=? (mitem-name x) n)) text)
+                              ((has-prefix? body "(")
+                               (string-append (before-body text) (text-replaced (after-body text) body n)))
+                              ((string-member? body (list "int" "nat" "bool" "char" "string" "unit" "f64" "i64" "symbol"))
+                               (string-append (before-body text) (token-replaced (after-body text) body n)))
+                              (else text))))
+            (desc-named s (cdr descs) x text2)))))
+  (before-body (subr kfx (string) string)
+    (lambda (text) (list->string (item-head (string->list text) 2))))
+  (after-body (subr kfx (string) string)
+    (lambda (text) (list->string (item-rest (string->list text) 2))))
   (show-mitem (subr kfx (st ty) string)
     (lambda (s x)
       (let ((k (mitem-kind x)) (n (mitem-name x)) (args (tagcase x (ty-data (d a) a) (else other nil))))

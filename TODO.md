@@ -565,9 +565,14 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    of types and sizes, rank 2 (C159), the confirm forms (C160); `const`
    regions and `letfreeze` (C161); specifications (C162); what a test
    proves (C163); a bloblet's width (C167); `cwcc` (C168); `race`
-   (C169); first-class modules (C170, C171). 93 of the 428 programs
-   Fixpt accepts still refused (2026-10-25); 72 differ (1, above); 263
-   the same.
+   (C169); first-class modules (C170, C171, C172). 93 of the 428
+   programs Fixpt accepts still refused (2026-10-25); 65 differ (1,
+   above); 270 the same. Of modules left: `load-layers.fx` (an effect
+   read from an item made before it, in a loaded file); printing, where
+   Fixpt names a shared type by the latest abbreviation or description of
+   it (`include-types.fx`), a module's own making's effect, a family's
+   description `(dlambda ...)`, loads' names `%shared:PATH` (Fixpt's
+   absolute).
    Left: `nat?` (kfx defines its own), `certify-nat`; sizes' rest
    (`narrayof`, fixed widths); `(const p)` into a place
    not the heap; then `poly` over other kinds, `const` regions with

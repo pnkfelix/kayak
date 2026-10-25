@@ -397,6 +397,92 @@ pub fn before_dots(x: Str) -> Str {
     list_to_string(chars_before_dots(string_to_list(x)))
 }
 
+/// `(kind name `, the first `n` spaces' worth of an item printed.
+pub fn item_head(cs: List<char>, n: i64) -> List<char> {
+    if null_p(cs) {
+        nil::<char>()
+    } else if char_eq_p(car(cs), ' ') {
+        if i64_lt_eq(n, 1i64) {
+            kayak_rt::heap_cons(car(cs), kayak_rt::nil())
+        } else {
+            kayak_rt::heap_cons(car(cs), item_head(cdr(cs), i64_minus(n, 1i64)))
+        }
+    } else {
+        kayak_rt::heap_cons(car(cs), item_head(cdr(cs), n))
+    }
+}
+
+pub fn item_rest(mut cs: List<char>, mut n: i64) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if char_eq_p(car(cs), ' ') {
+            if i64_lt_eq(n, 1i64) {
+                return cdr(cs);
+            } else {
+                (cs, n) = (cdr(cs), i64_minus(n, 1i64));
+                continue;
+            }
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn chars_start_with_p(mut cs: List<char>, mut p: List<char>) -> bool {
+    loop {
+        if null_p(p) {
+            return true;
+        } else if null_p(cs) {
+            return false;
+        } else if char_eq_p(car(cs), car(p)) {
+            (cs, p) = (cdr(cs), cdr(p));
+            continue;
+        } else {
+            return false;
+        }
+    }
+}
+
+pub fn chars_drop(mut cs: List<char>, mut n: i64) -> List<char> {
+    loop {
+        if (null_p(cs) || i64_lt_eq(n, 0i64)) {
+            return cs;
+        } else {
+            (cs, n) = (cdr(cs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// `cs` with each `from` replaced by `to` (where `tokens`, only a whole
+/// token), onto `acc` reversed.
+pub fn chars_with_replaced(mut cs: List<char>, mut from: List<char>, mut to: List<char>, mut tokens: bool, mut acc: List<char>) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return reverse(acc);
+        } else if (chars_start_with_p(cs, from) && (not(tokens) || ((null_p(acc) || char_eq_p(car(acc), ' ') || char_eq_p(car(acc), '(')) && {
+            let after = chars_drop(cs, size(from));
+            (null_p(after) || char_eq_p(car(after), ' ') || char_eq_p(car(after), ')'))
+        }))) {
+            (cs, acc) = (chars_drop(cs, size(from)), onto(reverse(to), acc));
+            continue;
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn text_replaced(t: Str, from: Str, to: Str) -> Str {
+    list_to_string(chars_with_replaced(string_to_list(t), string_to_list(from), string_to_list(to), false, nil::<char>()))
+}
+
+pub fn token_replaced(t: Str, from: Str, to: Str) -> Str {
+    list_to_string(chars_with_replaced(string_to_list(t), string_to_list(from), string_to_list(to), true, nil::<char>()))
+}
+
 /// What follows the first `..` of `x`.
 pub fn after_dots(x: Str) -> Str {
     list_to_string(chars_after_dots(string_to_list(x)))
@@ -5467,13 +5553,17 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             } else if null_p(args) {
                 d
             } else if string_eq_p(d, str_lit("%mtype")) {
-                string_append(str_lit("(moduleof"), string_append(run_together(map(lambda1s(move |x: &'static Ty| {
-                    string_append(str_lit(" "), show_mitem(s, x))
-                }), onto(filter(lambda1s(move |x: &'static Ty| {
+                let its = onto(filter(lambda1s(move |x: &'static Ty| {
                     not(string_eq_p(mitem_kind(x), str_lit("%val")))
                 }), args), filter(lambda1s(move |x: &'static Ty| {
                     string_eq_p(mitem_kind(x), str_lit("%val"))
-                }), args)))), str_lit(")")))
+                }), args));
+                let descs = filter(lambda1s(move |x: &'static Ty| {
+                    string_eq_p(mitem_kind(x), str_lit("%desc"))
+                }), its);
+                string_append(str_lit("(moduleof"), string_append(run_together(map(lambda1s(move |x: &'static Ty| {
+                    string_append(str_lit(" "), desc_named(s, descs, x, show_mitem(s, x)))
+                }), its)), str_lit(")")))
             } else if has_prefix_p(d, str_lit("%spec ")) {
                 show_specified(s, d, car(args))
             } else if string_eq_p(d, str_lit("%bloblet")) {
@@ -5592,6 +5682,51 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             string_append(str_lit("?"), i64_to_string(k))
         }
     }
+}
+
+/// An item of a module type as printed: a type one of its descriptions
+/// describes by that description's name, as Fixpt's shared types are
+/// named (C172); a description's own body as it is.
+pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut text: Str) -> Str {
+    loop {
+        if null_p(descs) {
+            return text;
+        } else {
+            let d = car(descs);
+            let n = mitem_name(d);
+            let body = show_ty(s, {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Ty::TyData(k, a) => {
+                        car(a)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ty_unit()
+                    }
+                }
+            });
+            let text2 = if (string_eq_p(mitem_kind(x), str_lit("%desc")) && string_eq_p(mitem_name(x), n)) {
+                text
+            } else if has_prefix_p(body, str_lit("(")) {
+                string_append(before_body(text), text_replaced(after_body(text), body, n))
+            } else if string_member_p(body, kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::nil())))))))))) {
+                string_append(before_body(text), token_replaced(after_body(text), body, n))
+            } else {
+                text
+            };
+            (descs, text) = (cdr(descs), text2);
+            continue;
+        }
+    }
+}
+
+pub fn before_body(text: Str) -> Str {
+    list_to_string(item_head(string_to_list(text), 2i64))
+}
+
+pub fn after_body(text: Str) -> Str {
+    list_to_string(item_rest(string_to_list(text), 2i64))
 }
 
 pub fn show_mitem(s: &'static St, x: &'static Ty) -> Str {

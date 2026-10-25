@@ -4684,3 +4684,22 @@ After C170.
 - Refused 103 to 93, the same 260 to 263. Left of modules: `load-layers.fx`
   (a module's effect read from an item made before it, which the module
   mechanism of KFX reads first), `types-mutual.fx` (`mu`); and printing.
+
+## C172. Printing modules as Fixpt prints them (2026-10-25)
+
+After C165, for C170's module values.
+- A module value's line shows its own abstract types as its own, `t`, not
+  `m..t` as the checker names them for the binding; a loaded file's, which
+  only it names, the same.
+- In a printed module type, a type one of its descriptions describes is
+  printed by that description's name (Fixpt's types are shared, and named
+  where described): `(val circle (subr pure (int) shape))`.
+- A module defined at the top level whose items the written-type printer
+  (C165) cannot print (a datatype, a load, an `extend`) is printed from the
+  checker's type of it as a value, each datatype a description of its sum.
+- A module in a module is a value of its items' type; hidden modules kfx's
+  reader made (`made--`) are printed neither as lines nor in effects.
+- Base types named (C165) by the abbreviations outside a module, in its
+  line, but those its own types shadow; `(define-type t (select m t))`
+  names `m..t` `t`.
+- The same 263 to 270, differing 72 to 65.

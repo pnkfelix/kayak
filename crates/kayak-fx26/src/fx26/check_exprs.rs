@@ -3842,7 +3842,33 @@ pub mod expressions {
                 let tagcase_ = car(found);
                 match *tagcase_ {
                     Bind::Bind(n, sc, wher) => {
-                        if string_eq_p(wher, str_lit("unmade")) {
+                        if (not(string_eq_p(wher, str_lit("local"))) && not(string_eq_p(wher, str_lit("module"))) && {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    let tagcase_ = t;
+                                    match *tagcase_ {
+                                        Ty::TyUnit() => {
+                                            true
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }
+                            }
+                        } && any_p(lambda1s(move |b: &'static Bind| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Bind::Bind(m, sc2, w2) => {
+                                    has_prefix_p(m, string_append(name, str_lit(" ")))
+                                }
+                            }
+                        }), cv_binds(v))) {
+                            // A module in a module (C88), as a value (C172): of its items' type.
+                            res(module_type_of(v, name), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name)))
+                        } else if string_eq_p(wher, str_lit("unmade")) {
                             match refuse(v, string_append(str_lit("`"), string_append(name, str_lit("` here is the module's own item, made after this, not the one bound outside it")))) {}
                         } else if string_eq_p(wher, str_lit("module")) {
                             // A module defined at the top level, as a value (C170): of the
@@ -7666,7 +7692,7 @@ pub mod expressions {
     /// types described; its effects; its values.
     pub fn module_type_of(v: &'static Cv, m: Str) -> &'static Ty {
         let pre = string_append(m, str_lit(" "));
-        let types = the::<Aliases>(reverse(filter(lambda1s(move |a: &'static Alias| {
+        let types = the::<Aliases>(onto(nil::<&'static Alias>(), filter(lambda1s(move |a: &'static Alias| {
             let tagcase_ = a;
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
@@ -7674,7 +7700,7 @@ pub mod expressions {
                 }
             }
         }), cv_aliases(v))));
-        let effs = the::<Effdefs>(reverse(filter(lambda1s(move |d: &'static Effdef| {
+        let effs = the::<Effdefs>(onto(nil::<&'static Effdef>(), filter(lambda1s(move |d: &'static Effdef| {
             let tagcase_ = d;
             match *tagcase_ {
                 Effdef::Effdef(n, atoms) => {
@@ -7682,11 +7708,11 @@ pub mod expressions {
                 }
             }
         }), cv_effdefs(v))));
-        let vals = the::<Binds>(reverse(filter(lambda1s(move |b: &'static Bind| {
+        let vals = the::<Binds>(onto(nil::<&'static Bind>(), filter(lambda1s(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    (has_prefix_p(n, pre) && not(has_prefix_p(after_prefix(n, pre), str_lit("%"))))
+                    (has_prefix_p(n, pre) && not(has_prefix_p(after_prefix(n, pre), str_lit("%"))) && not(has_char_in_p(after_prefix(n, pre), ' ')))
                 }
             }
         }), cv_binds(v))));
@@ -7695,19 +7721,19 @@ pub mod expressions {
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
                     let t = after_prefix(n, pre);
-                    if ({
+                    if {
                         let tagcase_ = body;
                         match *tagcase_ {
                             Sexp::Sym(b, f, p) => {
-                                string_eq_p(b, string_append(m, string_append(str_lit(".."), t)))
+                                ((string_eq_p(b, string_append(m, string_append(str_lit(".."), t))) || has_prefix_p(b, str_lit("made--load--"))) && dt_named_p(b, cv_dts(v)))
                             }
                             _ => {
                                 let other = tagcase_;
                                 false
                             }
                         }
-                    } && dt_named_p(string_append(m, string_append(str_lit(".."), t)), cv_dts(v))) {
-                        ty_data(string_append(str_lit("%abs "), t), kayak_rt::heap_cons(ty_data(string_append(m, string_append(str_lit(".."), t)), nil::<&'static Ty>()), kayak_rt::nil()))
+                    } {
+                        ty_data(string_append(str_lit("%abs "), t), kayak_rt::heap_cons(ty_data(sym_name(body), nil::<&'static Ty>()), kayak_rt::nil()))
                     } else {
                         ty_data(string_append(str_lit("%desc "), t), kayak_rt::heap_cons(parse_type(v, nil::<Str>(), body), kayak_rt::nil()))
                     }
@@ -7724,7 +7750,32 @@ pub mod expressions {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    ty_data(string_append(str_lit("%val "), after_prefix(n, pre)), kayak_rt::heap_cons({
+                    ty_data(string_append(str_lit("%val "), after_prefix(n, pre)), kayak_rt::heap_cons(if ({
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                let tagcase_ = t;
+                                match *tagcase_ {
+                                    Ty::TyUnit() => {
+                                        true
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }
+                        }
+                    } && any_p(lambda1s(move |c: &'static Bind| {
+                        let tagcase_ = c;
+                        match *tagcase_ {
+                            Bind::Bind(m, sc2, w2) => {
+                                has_prefix_p(m, string_append(n, str_lit(" ")))
+                            }
+                        }
+                    }), cv_binds(v))) {
+                        module_type_of(v, n)
+                    } else {
                         let tagcase_ = sc;
                         match *tagcase_ {
                             Scheme::Scheme(tv, t) => {

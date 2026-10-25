@@ -307,6 +307,19 @@ pub fn written_shown(v: &'static Cv, written: &'static Sexp, t: &'static Ty) -> 
     }
 }
 
+/// A module value's type, as printed (C172): its abstract types named for
+/// its binding, `n..t`, its own again, shown `t`, as Fixpt prints them.
+pub fn own_abstract(n: Str, t: &'static Ty) -> &'static Ty {
+    if mtype_p(t) {
+        let mine = onto(data_names_with(string_append(n, str_lit("..")), t), data_names_with(str_lit("made--load--"), t));
+        data_renamed(mine, map(lambda1s(move |r: Str| {
+            string_append(str_lit("mt@0.."), after_dots(r))
+        }), mine), t)
+    } else {
+        t
+    }
+}
+
 /// A definition's line: its name, its type as the checker has it, inside
 /// its written binders, and the effect of making its value.
 pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -> Str {
@@ -320,7 +333,7 @@ pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -
                 let tagcase_ = sc;
                 match *tagcase_ {
                     Scheme::Scheme(tvars, t) => {
-                        string_append(str_lit("define "), string_append(n, string_append(str_lit(" : "), string_append(poly_wrapped(written, written_shown(v, written, t)), string_append(str_lit(" ! "), effect)))))
+                        string_append(str_lit("define "), string_append(n, string_append(str_lit(" : "), string_append(poly_wrapped(written, written_shown(v, written, own_abstract(n, t))), string_append(str_lit(" ! "), effect)))))
                     }
                 }
             }
@@ -865,6 +878,21 @@ pub fn base_renames(mut fs: Sexps, mut aliases: Brns, mut renames: Brns) -> Brns
                 } else {
                     brn_find(aliases, b)
                 }
+            } else if (head_is_p(f, str_lit("define-type")) && i64_eq(size(xs), 3i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(t, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && head_is_p(third(xs), str_lit("select")) && i64_eq(size(items(third(xs))), 3i64)) {
+                // A module's type, `m..t`, named as the abbreviation of it names
+                // it (C172).
+                string_append(show_sexp(second(items(third(xs)))), string_append(str_lit(".."), show_sexp(third(items(third(xs))))))
             } else {
                 str_lit("")
             };
@@ -1040,31 +1068,158 @@ pub fn included_modules(fs: Sexps) -> Strings {
     }), fs))
 }
 
+pub fn field_labels(i: i64, ts: Tys) -> Strings {
+    if null_p(ts) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(i64_to_string(i), field_labels(i64_plus(i, 1i64), cdr(ts)))
+    }
+}
+
+/// A module's type as Fixpt prints it (C172): a datatype of its own a
+/// description of its sum, `(productof (1 T) ...)` each variant's fields;
+/// its abstract types its own, unqualified.
+pub fn module_shown(v: &'static Cv, m: Str, t: &'static Ty) -> &'static Ty {
+    let sums = concat(map(lambda1s(move |x: &'static Ty| {
+        if string_eq_p(mitem_kind(x), str_lit("%abs")) {
+            let found = filter(lambda1s(move |d: &'static Dt| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Dt::Dt(n, ps, vs) => {
+                        (string_eq_p(n, string_append(m, string_append(str_lit(".."), mitem_name(x)))) && null_p(ps) && not(null_p(vs)))
+                    }
+                }
+            }), cv_dts(v));
+            if null_p(found) {
+                nil::<&'static Ty>()
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Dt::Dt(n, ps, vs) => {
+                        the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%desc "), mitem_name(x)), kayak_rt::heap_cons(ty_shape(false, map(lambda1s(move |w: &'static Variant| {
+                            let tagcase_ = w;
+                            match *tagcase_ {
+                                Variant::Variant(tag, fs) => {
+                                    tag
+                                }
+                            }
+                        }), vs), map(lambda1s(move |w: &'static Variant| {
+                            let tagcase_ = w;
+                            match *tagcase_ {
+                                Variant::Variant(tag, fs) => {
+                                    ty_shape(true, field_labels(1i64, fs), fs)
+                                }
+                            }
+                        }), vs)), kayak_rt::nil())), kayak_rt::nil()))
+                    }
+                }
+            }
+        } else {
+            nil::<&'static Ty>()
+        }
+    }), mtype_items(t)));
+    let froms = map(lambda1s(move |d: &'static Ty| {
+        string_append(m, string_append(str_lit(".."), mitem_name(d)))
+    }), sums);
+    let tos = map(lambda1s(move |d: &'static Ty| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Ty::TyData(k, a) => {
+                car(a)
+            }
+            _ => {
+                let other = tagcase_;
+                ty_unit()
+            }
+        }
+    }), sums);
+    let items2 = map(lambda1s(move |x: &'static Ty| {
+        let mine = filter(lambda1s(move |d: &'static Ty| {
+            string_eq_p(mitem_name(d), mitem_name(x))
+        }), sums);
+        if (string_eq_p(mitem_kind(x), str_lit("%abs")) && not(null_p(mine))) {
+            car(mine)
+        } else {
+            data_replaced(froms, tos, x)
+        }
+    }), mtype_items(t));
+    own_abstract(m, ty_data(str_lit("%mtype"), items2))
+}
+
+/// The type names a module's items define, hidden or not.
+pub fn module_names_given(fs: Sexps) -> Strings {
+    concat(map(lambda1s(move |f: &'static Sexp| {
+        if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) && i64_gt(size(items(f)), 2i64)) {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, f2, p2) => {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                }
+                Sexp::Lst(ys, f2, l2, p2) => {
+                    the::<Strings>(kayak_rt::heap_cons(sym_name(car(ys)), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        } else if head_is_p(f, str_lit("hide")) {
+            module_names_given(cdr(items(f)))
+        } else {
+            nil::<Str>()
+        }
+    }), fs))
+}
+
 pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
     let (m, fs) = (sym_name(second(items(form))), if head_is_p(third(items(form)), str_lit("module")) {
         module_written(form)
     } else {
         nil::<&'static Sexp>()
     });
-    if (null_p(fs) || has_prefix_p(datum_file(form), str_lit("fx26:"))) {
+    if null_p(fs) {
         nil::<Str>()
     } else {
-        let scope = module_scope(v, all, m, fs, nil::<&'static Qual>());
+        let scope = if has_prefix_p(datum_file(form), str_lit("fx26:")) {
+            nil::<&'static Qual>()
+        } else {
+            module_scope(v, all, m, fs, nil::<&'static Qual>())
+        };
         let w = opaque_names(v, scope);
         let top = base_aliases(filter(lambda1s(move |f: &'static Sexp| {
             not(module_def_p(f))
         }), all), nil::<&'static Brn>());
         let own = visible_items(fs);
-        let parts = onto(descs_renamed(module_items_shown(w, all, scope, fs, true), own, top, nil::<&'static Brn>()), map(lambda1s(move |p: Str| {
-            base_renamed(p, base_renames(own, top, nil::<&'static Brn>()))
-        }), module_items_shown(w, all, scope, fs, false)));
-        let included = sorted_strings(included_modules(fs));
+        let outer = filter(lambda1s(move |b: &'static Brn| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Brn::Brn(k, n) => {
+                    not(string_member_p(n, module_names_given(fs)))
+                }
+            }
+        }), base_renames(filter(lambda1s(move |f: &'static Sexp| {
+            not(module_def_p(f))
+        }), all), nil::<&'static Brn>(), nil::<&'static Brn>()));
+        let parts = if has_prefix_p(datum_file(form), str_lit("fx26:")) {
+            the::<Strings>(kayak_rt::heap_cons(str_lit("%none"), kayak_rt::nil()))
+        } else {
+            onto(descs_renamed(module_items_shown(w, all, scope, fs, true), own, top, outer), map(lambda1s(move |p: Str| {
+                base_renamed(p, base_renames(own, top, outer))
+            }), module_items_shown(w, all, scope, fs, false)))
+        };
+        let included = sorted_strings(filter(lambda1s(move |n: Str| {
+            not(has_prefix_p(n, str_lit("made--")))
+        }), included_modules(fs)));
         if any_p(lambda1s(move |p: Str| {
             string_has_p(p, str_lit("%none"))
         }), parts) {
-            nil::<Str>()
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : "), string_append(base_renamed(show_ty(new_state(), module_shown(v, m, expressions::module_type_of(v, m))), outer), string_append(str_lit(" ! "), if null_p(included) {
+                str_lit("pure")
+            } else {
+                string_append(str_lit("(read (globals "), string_append(words_of(included), str_lit("))")))
+            }))))), kayak_rt::nil()))
         } else {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : (moduleof"), string_append(run_together(map(lambda1s(move |p: Str| {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%M define "), string_append(m, string_append(str_lit(" : (moduleof"), string_append(run_together(map(lambda1s(move |p: Str| {
                 string_append(str_lit(" "), p)
             }), parts)), string_append(str_lit(") ! "), if null_p(included) {
                 str_lit("pure")
@@ -1078,7 +1233,21 @@ pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
 /// What `fixpt check` writes of `form`, checked: `v`, the checker's
 /// environment after it; `all`, the program's forms.
 pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
-    if module_def_p(form) {
+    if ((head_is_p(form, str_lit("define")) || module_def_p(form)) && i64_gt(size(items(form)), 2i64) && {
+        let tagcase_ = second(items(form));
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                has_prefix_p(n, str_lit("made--"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A module kfx's reader made (C88, C90), Fixpt's of no name: no line (C172).
+        nil::<Str>()
+    } else if module_def_p(form) {
         module_line(v, all, form)
     } else if (head_is_p(form, str_lit("define")) && {
         let tagcase_ = second(items(form));
@@ -1180,7 +1349,11 @@ pub fn check_command(paths: Strings) -> Int {
         not(module_def_p(f))
     }), forms), nil::<&'static Brn>(), nil::<&'static Brn>());
     say(lines_text(map(lambda1s(move |l: Str| {
-        base_renamed(l, names)
+        if has_prefix_p(l, str_lit("%M ")) {
+            after_prefix(l, str_lit("%M "))
+        } else {
+            base_renamed(l, names)
+        }
     }), lines_checked(v, forms, forms))));
     int_lit(0)
 }

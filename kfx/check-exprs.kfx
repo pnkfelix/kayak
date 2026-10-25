@@ -1725,7 +1725,11 @@
                        (refuse (at-offset v at-pos) (string-append "nothing is named " name))
                        (tagcase (car found)
                          (bind (n sc wher)
-                           (cond ((string=? wher "unmade")
+                           (cond ((and (not (string=? wher "local")) (not (string=? wher "module")) (tagcase sc (scheme (tv t) (tagcase t (ty-unit () #t) (else other #f))))
+                                       (any? (lambda ((b bind)) (tagcase b (bind (m sc2 w2) (has-prefix? m (string-append name " "))))) (cv-binds v)))
+                                  "A module in a module (C88), as a value (C172): of its items' type."
+                                  (res (module-type-of v name) nil (kfx-restricted v s (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))))
+                                 ((string=? wher "unmade")
                                   (refuse v (string-append "`" (string-append name "` here is the module's own item, made after this, not the one bound outside it"))))
                                  ((string=? wher "module")
                                   "A module defined at the top level, as a value (C170): of the
@@ -3453,22 +3457,34 @@
            its generative types and datatypes abstract, `m..t`; its other
            types described; its effects; its values."
           (let* ((pre (string-append m " "))
-                 (types (the aliases (reverse (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps))))) (cv-aliases v)))))
-                 (effs (the effdefs (reverse (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (has-prefix? n pre)))) (cv-effdefs v)))))
-                 (vals (the binds (reverse (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%")))))) (cv-binds v))))))
+                 (types (the aliases (onto nil (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps))))) (cv-aliases v)))))
+                 (effs (the effdefs (onto nil (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (has-prefix? n pre)))) (cv-effdefs v)))))
+                 (vals (the binds (onto nil (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%"))
+                                                                                                         (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-binds v))))))
             (ty-data "%mtype" (newest-items (reverse (the tys
               (onto (map (lambda ((a alias))
                            (tagcase a
                              (alias (n ps body)
                                (let ((t (after-prefix n pre)))
-                                 (if (and (tagcase body (sym (b f p) (string=? b (string-append m (string-append ".." t)))) (else other #f))
-                                          (dt-named? (string-append m (string-append ".." t)) (cv-dts v)))
-                                     (ty-data (string-append "%abs " t) (list (ty-data (string-append m (string-append ".." t)) nil)))
+                                 (if (tagcase body (sym (b f p) (and (or (string=? b (string-append m (string-append ".." t))) (has-prefix? b "made--load--"))
+                                                                     (dt-named? b (cv-dts v))))
+                                              (else other #f))
+                                     ;; Its own abstract type, or a loaded file's, which only it
+                                     ;; names (C172).
+                                     (ty-data (string-append "%abs " t) (list (ty-data (sym-name body) nil)))
                                      (ty-data (string-append "%desc " t) (list (parse-type v nil body))))))))
                          types)
                     (onto (map (lambda ((d effdef)) (tagcase d (effdef (n atoms) (ty-data (string-append "%edesc " (after-prefix n pre)) (list (ty-proc atoms nil (ty-unit)))))))
                                effs)
-                          (map (lambda ((b bind)) (tagcase b (bind (n sc w) (ty-data (string-append "%val " (after-prefix n pre)) (list (tagcase sc (scheme (tv t) t)))))))
+                          (map (lambda ((b bind))
+                                 (tagcase b
+                                   (bind (n sc w)
+                                     (ty-data (string-append "%val " (after-prefix n pre))
+                                              (list (if (and (tagcase sc (scheme (tv t) (tagcase t (ty-unit () #t) (else other #f))))
+                                                             (any? (lambda ((c bind)) (tagcase c (bind (m sc2 w2) (has-prefix? m (string-append n " "))))) (cv-binds v)))
+                                                        ;; A module in the module (C88).
+                                                        (module-type-of v n)
+                                                        (tagcase sc (scheme (tv t) t))))))))
                                vals))))) nil)))))
 
       (newest-items (subr kfx (tys strings) tys)
