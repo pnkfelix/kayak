@@ -24,6 +24,105 @@
           (string-append "(poly " (string-append (show-sexp (second (items w))) (string-append " " (string-append (poly-wrapped (third (items w)) body) ")"))))
           body))))
 
+(define-rec
+  (written-body (subr kfx (sexp) sexp)
+    (lambda (w) (if (and (head-is? w "poly") (i64= (size (items w)) 3)) (written-body (third (items w))) w)))
+  (written-binders (subr kfx (cv sexp) strings)
+    (lambda (v w)
+      (if (and (head-is? w "poly") (i64= (size (items w)) 3))
+          (onto (poly-binders v w #f) (written-binders v (third (items w))))
+          nil)))
+  (written-mentions? (subr kfx (sexp strings) bool)
+    (lambda (e names)
+      (tagcase e
+        (sym (n f p) (string-member? n names))
+        (lst (xs f l p) (any? (lambda ((x sexp)) (written-mentions? x names)) xs))
+        (else other #f)))))
+
+"Abbreviations by name (C164): a definition's type is the checker's,
+ printed, each abbreviation its written type names put back where the
+ abbreviation's expansion is printed (one of a parenthesized type only)."
+(define-datatype abbrev (abbrev string string))
+(define-type abbrevs (listof abbrev acyclic))
+
+(define-rec
+  (unnamed (subr kfx (ty) ty)
+    (lambda (t)
+      "`t`, each abbreviation kept by name (`named-as`) its expansion."
+      (tagcase t
+        (ty-data (d args)
+          (if (has-prefix? d "%named ") (unnamed (car args)) (ty-data d (map unnamed args))))
+        (ty-list (e r) (ty-list (unnamed e) (unnamed r)))
+        (ty-ref (e r) (ty-ref (unnamed e) (unnamed r)))
+        (ty-flat (e r) (ty-flat (unnamed e) (unnamed r)))
+        (ty-proc (es ps r) (ty-proc es (map unnamed ps) (unnamed r)))
+        (ty-shape (p ls ts) (ty-shape p ls (map unnamed ts)))
+        (ty-tag (a h es r) (ty-tag (unnamed a) (unnamed h) es (unnamed r)))
+        (else other t))))
+  (abbrevs-in (subr kfx (ty) abbrevs)
+    (lambda (t)
+      (tagcase t
+        (ty-data (d args)
+          (if (has-prefix? d "%named ")
+              (let ((name (if (null? (cdr args)) (after-prefix d "%named ")
+                              (string-append "(" (string-append (after-prefix d "%named ") (string-append " " (string-append (show-tys (new-state) (map unnamed (cdr args))) ")"))))))
+                    (expansion (show-ty (new-state) (unnamed (car args)))))
+                (if (has-prefix? expansion "(") (the abbrevs (list (abbrev expansion name))) nil))
+              (concat (map abbrevs-in args))))
+        (ty-list (e r) (abbrevs-in e))
+        (ty-ref (e r) (abbrevs-in e))
+        (ty-flat (e r) (abbrevs-in e))
+        (ty-proc (es ps r) (onto (concat (map abbrevs-in ps)) (abbrevs-in r)))
+        (ty-shape (p ls ts) (concat (map abbrevs-in ts)))
+        (ty-tag (a h es r) (onto (abbrevs-in a) (abbrevs-in h)))
+        (else other nil)))))
+
+(define-rec
+  (chars-replaced (subr kfx (chars chars chars chars) chars)
+    (lambda (cs from to acc)
+      "`cs` with each `from` replaced by `to`, onto `acc` reversed."
+      (cond ((null? cs) (reverse acc))
+            ((chars-start? cs from) (chars-replaced (chars-after cs from) from to (onto (reverse to) acc)))
+            (else (chars-replaced (cdr cs) from to (cons (car cs) acc))))))
+  (chars-start? (subr kfx (chars chars) bool)
+    (lambda (cs p) (cond ((null? p) #t) ((null? cs) #f) ((char=? (car cs) (car p)) (chars-start? (cdr cs) (cdr p))) (else #f))))
+  (chars-after (subr kfx (chars chars) chars)
+    (lambda (cs p) (if (null? p) cs (chars-after (cdr cs) (cdr p))))))
+
+(define-rec
+  (abbrevs-put (subr kfx (string abbrevs) string)
+    (lambda (shown as)
+      "`shown` with each abbreviation's name for its expansion, the longest
+       expansions first."
+      (if (null? as)
+          shown
+          (let* ((longest (longest-abbrev (cdr as) (car as)))
+                 (rest (filter (lambda ((a abbrev)) (not (tagcase a (abbrev (e n) (tagcase longest (abbrev (e2 n2) (string=? e e2))))))) as)))
+            (tagcase longest
+              (abbrev (e n)
+                (abbrevs-put (list->string (chars-replaced (string-chars shown) (string-chars e) (string-chars n) nil)) rest)))))))
+  (longest-abbrev (subr kfx (abbrevs abbrev) abbrev)
+    (lambda (as best)
+      (cond ((null? as) best)
+            ((tagcase (car as) (abbrev (e n) (tagcase best (abbrev (e2 n2) (i64> (string-length-i64 e) (string-length-i64 e2))))))
+             (longest-abbrev (cdr as) (car as)))
+            (else (longest-abbrev (cdr as) best))))))
+
+(define written-tvars (subr kfx (strings) strings)
+  (lambda (bs)
+    "Binders in scope as the checker has them, a region's as a place's too
+     (C34)."
+    (onto bs (concat (map (lambda ((b string)) (if (has-prefix? b "'") (the strings (list (string-append "%place " b))) nil)) bs)))))
+
+(define written-shown (subr kfx (cv sexp ty) string)
+  (lambda (v written t)
+    "A definition's type as printed: the checker's, each abbreviation its
+     written type names by name (C164)."
+    (if (or (tagcase written (lst (xs f l p) (null? xs)) (else other #f)) (written-mentions? written (list "%found" "->*")))
+        (show-ty (new-state) t)
+        (abbrevs-put (show-ty (new-state) t)
+                     (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v written))) (written-body written)))))))
+
 (define bound-line (subr kfx (cv string sexp string) string)
   (lambda (v n written effect)
     "A definition's line: its name, its type as the checker has it, inside
@@ -35,7 +134,7 @@
             (bind (n2 sc w)
               (tagcase sc
                 (scheme (tvars t)
-                  (string-append "define " (string-append n (string-append " : " (string-append (poly-wrapped written (show-ty (new-state) t)) (string-append " ! " effect)))))))))))))
+                  (string-append "define " (string-append n (string-append " : " (string-append (poly-wrapped written (written-shown v written t)) (string-append " ! " effect)))))))))))))
 
 (define no-form sexp (lst nil "" 0 0))
 
@@ -54,10 +153,33 @@
                       (tagcase (with expressions (check (at v "a definition's value" nil) (new-state) e t)) (res (u es s) (show-effs es)))
                       "pure")))))))))
 
-(define form-lines (subr kfx (cv sexp) strings)
-  (lambda (v form)
+(define-rec
+  (written-of (subr kfx (string sexps) sexps)
+    (lambda (n forms)
+      "The type written for global `n` among the program's `forms`, if one is."
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64= (size (items f)) 4)
+                        (tagcase (second (items f)) (sym (m f2 p2) (string=? m n)) (else other #f)))
+                   (the sexps (list (third (items f)))))
+                  (else (written-of n (cdr forms)))))))))
+
+(define call-shown (subr kfx (cv sexps sexp string) string)
+  (lambda (v all form shown)
+    "An expression's type as printed: a call's, each abbreviation its
+     callee's written type names by name (C164), as Fixpt's types keep them."
+    (let ((w (tagcase form
+               (lst (xs f l p) (if (and (not (null? xs)) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f))) (written-of (sym-name (car xs)) all) nil))
+               (else other nil))))
+      (if (or (null? w) (written-mentions? (car w) (list "%found" "->*")))
+          shown
+          (abbrevs-put shown (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v (car w)))) (written-body (car w)))))))))
+
+(define form-lines (subr kfx (cv sexps sexp) strings)
+  (lambda (v all form)
     "What `fixpt check` writes of `form`, checked: `v`, the checker's
-     environment after it."
+     environment after it; `all`, the program's forms."
     (cond ((module-def? form) nil)
           ((or (head-is? form "define") (head-is? form "define*"))
            (let ((xs (items form)))
@@ -74,15 +196,15 @@
            nil)
           (else
            (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
-             (res (t es s) (list (string-append (show-ty s t) (string-append " ! " (show-effs es))))))))))
+             (res (t es s) (list (string-append (call-shown v all form (show-ty s t)) (string-append " ! " (show-effs es))))))))))
 
 (define-rec
-  (lines-checked (subr kfx (cv sexps) strings)
-    (lambda (v forms)
+  (lines-checked (subr kfx (cv sexps sexps) strings)
+    (lambda (v all forms)
       (if (null? forms)
           nil
           (tagcase (check-tops v (list (car forms)) nil)
-            (elab (v2 found) (onto (form-lines v2 (car forms)) (lines-checked v2 (cdr forms)))))))))
+            (elab (v2 found) (onto (form-lines v2 all (car forms)) (lines-checked v2 all (cdr forms)))))))))
 
 (define-rec
   (lines-text (subr kfx (strings) string)
@@ -97,7 +219,7 @@
            (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
            (v (with-binds typed (prim-binds typed))))
-      (begin (say (lines-text (lines-checked v forms))) 0))))
+      (begin (say (lines-text (lines-checked v forms forms))) 0))))
 
 (define main (subr (maxeff running repling) () int)
   (lambda ()

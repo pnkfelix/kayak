@@ -553,8 +553,9 @@ The measure (C114): `scripts/compare-checkers.py`; the plan,
 `docs/research/fx26-checker.md`. That day, of 357 programs Fixpt
 accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
 1. Printing as Fixpt prints, in `show-ty`: effects sorted, abbreviations
-   by name, `poly` as written, module types (and `--check` writing
-   module definitions).
+   by name (**done**, C164, as written), `poly` as written, module types
+   (and `--check` writing module definitions: 61 programs), a fresh
+   region's name (`@r.1`).
 2. The restriction pass split off the checker (`front-end.md` stage 2).
    **Begun** (C154): `kfx-restricted` notes, kfx's `restrict` refuses;
    moved so far: a constant's effects (C154), reals written past KFX's
@@ -563,7 +564,7 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    of types and sizes, rank 2 (C159), the confirm forms (C160); `const`
    regions and `letfreeze` (C161); specifications (C162); what a test
    proves (C163). 133 of the 428 programs Fixpt accepts still refused
-   (2026-10-25); 150 differ, most by abbreviations' names (1, above).
+   (2026-10-25); 94 differ (1, above); 201 the same.
    Left: `nat?` (kfx defines its own), `certify-nat`; sizes' rest
    (`narrayof`, fixed widths); `(const p)` into a place
    not the heap; then `poly` over other kinds, `const` regions with

@@ -1505,7 +1505,7 @@ pub fn flat_p(t: &'static Ty) -> bool {
             true
         }
         Ty::TyData(d, args) => {
-            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))) || string_eq_p(d, str_lit("%flat-sum")))
+            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))) || (has_prefix_p(d, str_lit("%named ")) && flat_p(car(args))) || string_eq_p(d, str_lit("%flat-sum")))
         }
         Ty::TyShape(p, ls, ts) => {
             (p && not(null_p(ts)) && not(any_p(lambda1s(move |x: &'static Ty| {
@@ -3751,6 +3751,36 @@ pub fn spec_param_names(d: Str) -> Strings {
     map(&show_sexp, items(second(spec_parts(d))))
 }
 
+pub fn unnamed_top(mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if has_prefix_p(d, str_lit("%named ")) {
+                    t = car(args);
+                    continue;
+                } else {
+                    return t;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return t;
+            }
+        }
+    }
+}
+
+/// Type abbreviation `name`'s expansion `t`; read for printing (the
+/// marker `%keep-names` among `tvars`, C164), kept by its name.
+pub fn named_as(v: &'static Cv, tvars: Strings, name: Str, args: Tys, t: &'static Ty) -> &'static Ty {
+    if string_member_p(str_lit("%keep-names"), tvars) {
+        ty_data(string_append(str_lit("%named "), name), kayak_rt::heap_cons(t, args))
+    } else {
+        t
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -3824,8 +3854,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                 } else if head_is_p(body, str_lit("moduleof")) {
                                     return ty_data(string_append(str_lit("%module "), s), nil::<&'static Ty>());
                                 } else {
-                                    (tvars, t) = (kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body);
-                                    continue;
+                                    return named_as(v, tvars, s, nil::<&'static Ty>(), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), s), tvars), body));
                                 }
                             }
                         }
@@ -3903,7 +3932,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     if not(i64_eq(size(xs), 3i64)) {
                         return match refuse(v, str_lit("(blobref B F)")) {};
                     } else {
-                        let (b, f) = (parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)));
+                        let (b, f, b_as, f_as) = (unnamed_top(parse_type(v, tvars, second(xs))), unnamed_top(parse_type(v, tvars, third(xs))), parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)));
                         if not({
                             let tagcase_ = b;
                             match *tagcase_ {
@@ -3920,7 +3949,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         } else if not(flat_p(f)) {
                             return match refuse(v, string_append(str_lit("a blobref's flat is a scalar, or a product or array of them (KFX has no f32 yet): "), show_sexp(t))) {};
                         } else {
-                            return ty_data(str_lit("%blobref"), kayak_rt::heap_cons(b, kayak_rt::heap_cons(f, kayak_rt::nil())));
+                            return ty_data(str_lit("%blobref"), kayak_rt::heap_cons(b_as, kayak_rt::heap_cons(f_as, kayak_rt::nil())));
                         }
                     }
                 } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
@@ -3944,7 +3973,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     let tagcase_ = third(xs);
                     match *tagcase_ {
                         Sexp::Num(k, f, p) => {
-                            let e = parse_type(v, tvars, second(xs));
+                            let e = unnamed_top(parse_type(v, tvars, second(xs)));
                             if (i64_lt(k, 0i64) || i64_gt(k, 268435454i64)) {
                                 // Below FX-26's length that means "to the end of the suffix".
                                 return match refuse(v, str_lit("a flat array's literal length is 0 to 268435454")) {};
@@ -4365,7 +4394,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                     if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
                         match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
                     } else {
-                        substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
+                        named_as(v, tvars, name, parse_arguments(v, tvars, ps, args), substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
                             string_append(str_lit("%place "), p)
                         }), concat(map(lambda1s(move |p: Str| {
                             if has_prefix_p(p, str_lit("'")) {
@@ -4373,7 +4402,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                             } else {
                                 nil::<Str>()
                             }
-                        }), ps))), onto(ps, expanding(tvars)))), body))
+                        }), ps))), onto(ps, expanding(tvars)))), body)))
                     }
                 }
             }
@@ -4708,7 +4737,19 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             } else if has_prefix_p(d, str_lit("%spec ")) {
                 show_specified(s, d, car(args))
             } else if string_eq_p(d, str_lit("%bloblet")) {
-                string_append(str_lit("(bloblet (fields "), string_append(show_tys(s, cdr(args)), string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))))
+                string_append(str_lit("(bloblet (fields"), string_append(if null_p(cdr(args)) {
+                    str_lit("")
+                } else {
+                    string_append(str_lit(" "), show_tys(s, cdr(args)))
+                }, string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))))
+            } else if has_prefix_p(d, str_lit("%named ")) {
+                // A type abbreviation, by its name (C164): its expansion first, then
+                // its arguments.
+                if null_p(cdr(args)) {
+                    after_prefix(d, str_lit("%named "))
+                } else {
+                    string_append(str_lit("("), string_append(after_prefix(d, str_lit("%named ")), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
+                }
             } else if string_eq_p(d, str_lit("%blobref")) {
                 string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%bytes")) {
@@ -4766,7 +4807,7 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                     }
                 }, string_append(str_lit(" "), string_append(show_ty(s, car(cdr(cdr(cdr(args))))), str_lit(")")))))))))
             } else if string_eq_p(d, str_lit("%flat-array")) {
-                string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
+                string_append(str_lit("(flat-arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-sum")) {
                 string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1s(move |f: &'static Fvar| {
                     let tagcase_ = f;
@@ -4805,7 +4846,7 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             string_append(str_lit("(subr "), string_append(show_effs(es), string_append(str_lit(" ("), string_append(show_tys(s, ps), string_append(str_lit(") "), string_append(show_ty(s, r), str_lit(")")))))))
         }
         Ty::TyVar(n) => {
-            n
+            written_binder(n)
         }
         Ty::TyMeta(k) => {
             string_append(str_lit("?"), i64_to_string(k))
@@ -6879,6 +6920,48 @@ pub fn vars_count(n: Str, ts: List<&'static Ty>) -> i64 {
         0i64
     } else {
         i64_plus(var_count(n, car(ts)), vars_count(n, cdr(ts)))
+    }
+}
+
+/// Whether `t` has a region variable (named with a `'` first), past its
+/// latent effects: a letrena's, a place's, a region binder's (C42).
+pub fn region_var_in_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyVar(m) => {
+            has_prefix_p(m, str_lit("'"))
+        }
+        Ty::TyList(e, r) => {
+            (region_var_in_p(s, e) || region_var_in_p(s, r))
+        }
+        Ty::TyFlat(e, r) => {
+            (region_var_in_p(s, e) || region_var_in_p(s, r))
+        }
+        Ty::TyRef(e, r) => {
+            (region_var_in_p(s, e) || region_var_in_p(s, r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(lambda1s(move |x: &'static Ty| {
+                region_var_in_p(s, x)
+            }), args)
+        }
+        Ty::TyTag(a, h, es, r) => {
+            (region_var_in_p(s, a) || (region_var_in_p(s, h) || region_var_in_p(s, r)))
+        }
+        Ty::TyProc(es, ps, r) => {
+            (any_p(lambda1s(move |x: &'static Ty| {
+                region_var_in_p(s, x)
+            }), ps) || region_var_in_p(s, r))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(lambda1s(move |x: &'static Ty| {
+                region_var_in_p(s, x)
+            }), ts)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
     }
 }
 

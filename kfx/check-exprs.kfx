@@ -3472,7 +3472,7 @@
           (tagcase r
             (res (t es s)
               (if (and (or (string=? wher "global") (string=? wher "item") (string=? wher "rec"))
-                       (any? (lambda ((k i64)) (string-has? (show-ty s (ty-meta k)) "'")) metas))
+                       (any? (lambda ((k i64)) (region-var-in? s (ty-meta k))) metas))
                   (refuse v (string-append "a call of " (string-append h " at a type over a region with a lifetime, where its Rust type parameter is 'static (C42)")))
                   r)))))
 

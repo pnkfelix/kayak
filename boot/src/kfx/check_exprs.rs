@@ -7774,7 +7774,7 @@ pub mod expressions {
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 if ((string_eq_p(wher, str_lit("global")) || string_eq_p(wher, str_lit("item")) || string_eq_p(wher, str_lit("rec"))) && any_p(lambda1s(move |k: i64| {
-                    string_has_p(show_ty(s, ty_meta(k)), str_lit("'"))
+                    region_var_in_p(s, ty_meta(k))
                 }), metas)) {
                     match refuse(v, string_append(str_lit("a call of "), string_append(h, str_lit(" at a type over a region with a lifetime, where its Rust type parameter is 'static (C42)")))) {}
                 } else {

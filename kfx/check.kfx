@@ -802,6 +802,7 @@
         (ty-data (d args)
           (or (and (null? args) (or (string=? d "i32") (string=? d "u32") (string=? d "u64") (string=? d "f32")))
               (and (string=? d "%flat-array") (flat? (car args)))
+              (and (has-prefix? d "%named ") (flat? (car args)))
               (string=? d "%flat-sum")))
         (ty-shape (p ls ts) (and p (not (null? ts)) (not (any? (lambda ((x ty)) (not (flat? x))) ts))))
         (else other #f)))))
@@ -1765,6 +1766,16 @@
   (lambda (d) (map show-sexp (items (second (spec-parts d))))))
 
 (define-rec
+  (unnamed-top (subr kfx (ty) ty)
+    (lambda (t) (tagcase t (ty-data (d args) (if (has-prefix? d "%named ") (unnamed-top (car args)) t)) (else other t)))))
+
+(define named-as (subr kfx (cv strings string tys ty) ty)
+  (lambda (v tvars name args t)
+    "Type abbreviation `name`'s expansion `t`; read for printing (the
+     marker `%keep-names` among `tvars`, C164), kept by its name."
+    (if (string-member? "%keep-names" tvars) (ty-data (string-append "%named " name) (cons t args)) t)))
+
+(define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
       "`tvars`: the type variables in scope."
@@ -1809,7 +1820,7 @@
                                   (refuse v (string-append "a type abbreviation that mentions itself, " (string-append s
                                             ": Rust's type aliases cannot; a datatype can"))))
                                  ((head-is? body "moduleof") (ty-data (string-append "%module " s) nil))
-                                 (else (parse-type v (cons (string-append "%expanding " s) tvars) body))))))))))
+                                 (else (named-as v tvars s nil (parse-type v (cons (string-append "%expanding " s) tvars) body)))))))))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
                  (no-knot v (lambda ((x string)) x) (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
@@ -1850,12 +1861,15 @@
                 ((sym-is? (car xs) "blobref")
                  (if (not (i64= (size xs) 3))
                      (refuse v "(blobref B F)")
-                     (let ((b (parse-type v tvars (second xs)))
-                           (f (parse-type v tvars (third xs))))
+                     (let ((b (unnamed-top (parse-type v tvars (second xs))))
+                           (f (unnamed-top (parse-type v tvars (third xs))))
+                           ;; As written, an abbreviation by its name (C164).
+                           (b-as (parse-type v tvars (second xs)))
+                           (f-as (parse-type v tvars (third xs))))
                        (cond ((not (tagcase b (ty-data (d args) (string=? d "%bloblet")) (else other #f)))
                               (refuse v (string-append "a blobref's owner is a bloblet: " (show-sexp t))))
                              ((not (flat? f)) (refuse v (string-append "a blobref's flat is a scalar, or a product or array of them (KFX has no f32 yet): " (show-sexp t))))
-                             (else (ty-data "%blobref" (list b f)))))))
+                             (else (ty-data "%blobref" (list b-as f-as)))))))
                 ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                  "An array of values (C56), `(arrayof T R)`, at a region: kayak-rt's
                   `Array<T>`, a row of cells."
@@ -1863,7 +1877,7 @@
                 ((sym-is? (car xs) "arrayof")
                  (tagcase (third xs)
                    (num (k f p)
-                     (let ((e (parse-type v tvars (second xs))))
+                     (let ((e (unnamed-top (parse-type v tvars (second xs)))))
                        (cond ((or (i64< k 0) (i64> k 268435454))
                               "Below FX-26's length that means \"to the end of the suffix\"."
                               (refuse v "a flat array's literal length is 0 to 268435454"))
@@ -2075,12 +2089,12 @@
                 (if (string-member? (string-append "%expanding " name) tvars)
                     (refuse v (string-append "a type abbreviation that mentions itself, " (string-append name
                               ": Rust's type aliases cannot; a datatype can")))
-                    (substitute ps (parse-arguments v tvars ps args)
+                    (named-as v tvars name (parse-arguments v tvars ps args) (substitute ps (parse-arguments v tvars ps args)
                                 (parse-type v (cons (string-append "%expanding " name)
                                                     (onto (map (lambda ((p string)) (string-append "%place " p))
                                                                (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) ps)))
                                                           (onto ps (expanding tvars))))
-                                            body)))))))))))
+                                            body))))))))))))
 
 (define family-params (subr kfx (cv sexp) strings)
   (lambda (v head)
@@ -2259,7 +2273,11 @@
           (cond ((null? args) d)
                 ((has-prefix? d "%spec ") (show-specified s d (car args)))
                 ((string=? d "%bloblet")
-                 (string-append "(bloblet (fields " (string-append (show-tys s (cdr args)) (string-append ") " (string-append (show-ty s (car args)) ")")))))
+                 (string-append "(bloblet (fields" (string-append (if (null? (cdr args)) "" (string-append " " (show-tys s (cdr args)))) (string-append ") " (string-append (show-ty s (car args)) ")")))))
+                ((has-prefix? d "%named ")
+                 "A type abbreviation, by its name (C164): its expansion first, then
+                  its arguments."
+                 (if (null? (cdr args)) (after-prefix d "%named ") (string-append "(" (string-append (after-prefix d "%named ") (string-append " " (string-append (show-tys s (cdr args)) ")"))))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
@@ -2284,7 +2302,7 @@
                  (string-append (if (string=? d "%oneshot") "(oneshot " "(composable ") (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
                    (string-append " " (string-append (tagcase (car (cdr (cdr args))) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                      (string-append " " (string-append (show-ty s (car (cdr (cdr (cdr args))))) ")")))))))))
-                ((string=? d "%flat-array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
+                ((string=? d "%flat-array") (string-append "(flat-arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%flat-sum")
                  (string-append "(sumof " (string-append (show-ty s (car args))
                    (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append l (string-append " " (string-append (show-ty s x) ")")))))))
@@ -2302,7 +2320,7 @@
         (ty-proc (es ps r)
           (string-append "(subr " (string-append (show-effs es) (string-append " ("
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
-        (ty-var (n) n)
+        (ty-var (n) (written-binder n))
         (ty-meta (k) (string-append "?" (i64->string k))))))
   (show-specified (subr kfx (st string ty) string)
     (lambda (s d t)
@@ -3078,6 +3096,22 @@
         (else other 0))))
   (vars-count (subr kfx (string (listof ty acyclic)) i64)
     (lambda (n ts) (if (null? ts) 0 (i64+ (var-count n (car ts)) (vars-count n (cdr ts)))))))
+
+(define-rec
+  (region-var-in? (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether `t` has a region variable (named with a `'` first), past its
+       latent effects: a letrena's, a place's, a region binder's (C42)."
+      (tagcase (walk s t)
+        (ty-var (m) (has-prefix? m "'"))
+        (ty-list (e r) (or (region-var-in? s e) (region-var-in? s r)))
+        (ty-flat (e r) (or (region-var-in? s e) (region-var-in? s r)))
+        (ty-ref (e r) (or (region-var-in? s e) (region-var-in? s r)))
+        (ty-data (d args) (any? (lambda ((x ty)) (region-var-in? s x)) args))
+        (ty-tag (a h es r) (or (region-var-in? s a) (or (region-var-in? s h) (region-var-in? s r))))
+        (ty-proc (es ps r) (or (any? (lambda ((x ty)) (region-var-in? s x)) ps) (region-var-in? s r)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (region-var-in? s x)) ts))
+        (else other #f)))))
 
 (define finite-may? (subr kfx (string ty) bool)
   (lambda (n t)

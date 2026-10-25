@@ -4495,3 +4495,30 @@ of the result, `(and (implies r (and P ...)) (implies (not r) (and Q
   `subr` or `->`), and `assume` and `assert`.
 - Refused 143 to 133, the same 139 to 145. Of the 150 that differ, most
   differ by abbreviations' names (TODO §30.1), the largest group left.
+
+## C164. Printing as Fixpt prints: abbreviations by name (2026-10-25)
+
+TODO §30.1. Fixpt's types keep the abbreviations they were written with,
+so `fixpt check` prints `(subr pure (ints) bool)` where kayak printed
+`(subr pure ((listof int acyclic)) bool)`. kayak's checker expands an
+abbreviation as it reads it, and keeps doing so for checking.
+- **For printing** (`kayak-fx26 --check`, `fx26/start.kfx`) a
+  definition's written type is read again, the marker `%keep-names`
+  among the type variables, each abbreviation then kept by name,
+  `(ty-data "%named N" (expansion arg ...))` (`named-as`); the checker's
+  own type is printed, and each such abbreviation's expansion in it, a
+  parenthesized type, replaced by its name, the longest first. The
+  checker's type, not the written one, so that what it adds (a global's
+  reads in a latent effect) is printed. An expression's line, a call,
+  takes the names of its callee's written type.
+- Where the reader inspects what it read (a blobref's owner and flat, a
+  flat array's element, `flat?`), it looks through the name.
+- **Also**: a region binder printed without its `'` (`(listof int r)`);
+  `(fields)` for no fields; a flat array as `(flat-arrayof T n)`. C42's
+  rule had looked for a `'` in a printed type; it tests the type now
+  (`region-var-in?`).
+- The same 145 to 201, differing 150 to 94; no program newly differs,
+  none changes being accepted. Left of what differs: module types (61),
+  a fresh region's name and allocation (`@r.1`), effects kayak's
+  inference gets less precisely, constructors' lines of recursive
+  datatypes.

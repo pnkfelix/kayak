@@ -35,6 +35,278 @@ pub fn poly_wrapped(w: &'static Sexp, body: Str) -> Str {
     }
 }
 
+pub fn written_body(mut w: &'static Sexp) -> &'static Sexp {
+    loop {
+        if (head_is_p(w, str_lit("poly")) && i64_eq(size(items(w)), 3i64)) {
+            w = third(items(w));
+            continue;
+        } else {
+            return w;
+        }
+    }
+}
+
+pub fn written_binders(v: &'static Cv, w: &'static Sexp) -> Strings {
+    if (head_is_p(w, str_lit("poly")) && i64_eq(size(items(w)), 3i64)) {
+        onto(poly_binders(v, w, false), written_binders(v, third(items(w))))
+    } else {
+        nil::<Str>()
+    }
+}
+
+pub fn written_mentions_p(e: &'static Sexp, names: Strings) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            string_member_p(n, names)
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            any_p(lambda1s(move |x: &'static Sexp| {
+                written_mentions_p(x, names)
+            }), xs)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+// Abbreviations by name (C164): a definition's type is the checker's,
+// printed, each abbreviation its written type names put back where the
+// abbreviation's expansion is printed (one of a parenthesized type only).
+pub enum Abbrev {
+    Abbrev(Str, Str),
+}
+
+pub fn abbrev(f0: Str, f1: Str) -> &'static Abbrev {
+    kayak_rt::heap_alloc(Abbrev::Abbrev(f0, f1))
+}
+
+pub type Abbrevs = List<&'static Abbrev>;
+
+/// `t`, each abbreviation kept by name (`named-as`) its expansion.
+pub fn unnamed(mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if has_prefix_p(d, str_lit("%named ")) {
+                    t = car(args);
+                    continue;
+                } else {
+                    return ty_data(d, map(&unnamed, args));
+                }
+            }
+            Ty::TyList(e, r) => {
+                return ty_list(unnamed(e), unnamed(r));
+            }
+            Ty::TyRef(e, r) => {
+                return ty_ref(unnamed(e), unnamed(r));
+            }
+            Ty::TyFlat(e, r) => {
+                return ty_flat(unnamed(e), unnamed(r));
+            }
+            Ty::TyProc(es, ps, r) => {
+                return ty_proc(es, map(&unnamed, ps), unnamed(r));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return ty_shape(p, ls, map(&unnamed, ts));
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return ty_tag(unnamed(a), unnamed(h), es, unnamed(r));
+            }
+            _ => {
+                let other = tagcase_;
+                return t;
+            }
+        }
+    }
+}
+
+pub fn abbrevs_in(mut t: &'static Ty) -> Abbrevs {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if has_prefix_p(d, str_lit("%named ")) {
+                    let (name, expansion) = (if null_p(cdr(args)) {
+                        after_prefix(d, str_lit("%named "))
+                    } else {
+                        string_append(str_lit("("), string_append(after_prefix(d, str_lit("%named ")), string_append(str_lit(" "), string_append(show_tys(new_state(), map(&unnamed, cdr(args))), str_lit(")")))))
+                    }, show_ty(new_state(), unnamed(car(args))));
+                    if has_prefix_p(expansion, str_lit("(")) {
+                        return the::<Abbrevs>(kayak_rt::heap_cons(abbrev(expansion, name), kayak_rt::nil()));
+                    } else {
+                        return nil::<&'static Abbrev>();
+                    }
+                } else {
+                    return concat(map(&abbrevs_in, args));
+                }
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                return onto(concat(map(&abbrevs_in, ps)), abbrevs_in(r));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return concat(map(&abbrevs_in, ts));
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return onto(abbrevs_in(a), abbrevs_in(h));
+            }
+            _ => {
+                let other = tagcase_;
+                return nil::<&'static Abbrev>();
+            }
+        }
+    }
+}
+
+/// `cs` with each `from` replaced by `to`, onto `acc` reversed.
+pub fn chars_replaced(mut cs: Chars, mut from: Chars, mut to: Chars, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return reverse(acc);
+        } else if chars_start_p(cs, from) {
+            (cs, acc) = (chars_after(cs, from), onto(reverse(to), acc));
+            continue;
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn chars_start_p(mut cs: Chars, mut p: Chars) -> bool {
+    loop {
+        if null_p(p) {
+            return true;
+        } else if null_p(cs) {
+            return false;
+        } else if char_eq_p(car(cs), car(p)) {
+            (cs, p) = (cdr(cs), cdr(p));
+            continue;
+        } else {
+            return false;
+        }
+    }
+}
+
+pub fn chars_after(mut cs: Chars, mut p: Chars) -> Chars {
+    loop {
+        if null_p(p) {
+            return cs;
+        } else {
+            (cs, p) = (cdr(cs), cdr(p));
+            continue;
+        }
+    }
+}
+
+/// `shown` with each abbreviation's name for its expansion, the longest
+/// expansions first.
+pub fn abbrevs_put(mut shown: Str, mut r#as: Abbrevs) -> Str {
+    loop {
+        if null_p(r#as) {
+            return shown;
+        } else {
+            let longest = longest_abbrev(cdr(r#as), car(r#as));
+            let rest = filter(lambda1s(move |a: &'static Abbrev| {
+                not({
+                    let tagcase_ = a;
+                    match *tagcase_ {
+                        Abbrev::Abbrev(e, n) => {
+                            let tagcase_ = longest;
+                            match *tagcase_ {
+                                Abbrev::Abbrev(e2, n2) => {
+                                    string_eq_p(e, e2)
+                                }
+                            }
+                        }
+                    }
+                })
+            }), r#as);
+            let tagcase_ = longest;
+            match *tagcase_ {
+                Abbrev::Abbrev(e, n) => {
+                    (shown, r#as) = (list_to_string(chars_replaced(string_chars(shown), string_chars(e), string_chars(n), nil::<char>())), rest);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn longest_abbrev(mut r#as: Abbrevs, mut best: &'static Abbrev) -> &'static Abbrev {
+    loop {
+        if null_p(r#as) {
+            return best;
+        } else if {
+            let tagcase_ = car(r#as);
+            match *tagcase_ {
+                Abbrev::Abbrev(e, n) => {
+                    let tagcase_ = best;
+                    match *tagcase_ {
+                        Abbrev::Abbrev(e2, n2) => {
+                            i64_gt(string_length_i64(e), string_length_i64(e2))
+                        }
+                    }
+                }
+            }
+        } {
+            (r#as, best) = (cdr(r#as), car(r#as));
+            continue;
+        } else {
+            r#as = cdr(r#as);
+            continue;
+        }
+    }
+}
+
+/// Binders in scope as the checker has them, a region's as a place's too
+/// (C34).
+pub fn written_tvars(bs: Strings) -> Strings {
+    onto(bs, concat(map(lambda1s(move |b: Str| {
+        if has_prefix_p(b, str_lit("'")) {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%place "), b), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), bs)))
+}
+
+/// A definition's type as printed: the checker's, each abbreviation its
+/// written type names by name (C164).
+pub fn written_shown(v: &'static Cv, written: &'static Sexp, t: &'static Ty) -> Str {
+    if ({
+        let tagcase_ = written;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                null_p(xs)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } || written_mentions_p(written, kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::nil())))) {
+        show_ty(new_state(), t)
+    } else {
+        abbrevs_put(show_ty(new_state(), t), abbrevs_in(parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(written_binders(v, written))), written_body(written))))
+    }
+}
+
 /// A definition's line: its name, its type as the checker has it, inside
 /// its written binders, and the effect of making its value.
 pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -> Str {
@@ -48,7 +320,7 @@ pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -
                 let tagcase_ = sc;
                 match *tagcase_ {
                     Scheme::Scheme(tvars, t) => {
-                        string_append(str_lit("define "), string_append(n, string_append(str_lit(" : "), string_append(poly_wrapped(written, show_ty(new_state(), t)), string_append(str_lit(" ! "), effect)))))
+                        string_append(str_lit("define "), string_append(n, string_append(str_lit(" : "), string_append(poly_wrapped(written, written_shown(v, written, t)), string_append(str_lit(" ! "), effect)))))
                     }
                 }
             }
@@ -90,9 +362,74 @@ pub fn value_effect(v: &'static Cv, n: Str, e: &'static Sexp) -> Str {
     }
 }
 
+/// The type written for global `n` among the program's `forms`, if one is.
+pub fn written_of(mut n: Str, mut forms: Sexps) -> Sexps {
+    loop {
+        if null_p(forms) {
+            return nil::<&'static Sexp>();
+        } else {
+            let f = car(forms);
+            if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_eq(size(items(f)), 4i64) && {
+                let tagcase_ = second(items(f));
+                match *tagcase_ {
+                    Sexp::Sym(m, f2, p2) => {
+                        string_eq_p(m, n)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                return the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()));
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+}
+
+/// An expression's type as printed: a call's, each abbreviation its
+/// callee's written type names by name (C164), as Fixpt's types keep them.
+pub fn call_shown(v: &'static Cv, all: Sexps, form: &'static Sexp, shown: Str) -> Str {
+    let w = {
+        let tagcase_ = form;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (not(null_p(xs)) && {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    written_of(sym_name(car(xs)), all)
+                } else {
+                    nil::<&'static Sexp>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    };
+    if (null_p(w) || written_mentions_p(car(w), kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::nil())))) {
+        shown
+    } else {
+        abbrevs_put(shown, abbrevs_in(parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(written_binders(v, car(w)))), written_body(car(w)))))
+    }
+}
+
 /// What `fixpt check` writes of `form`, checked: `v`, the checker's
-/// environment after it.
-pub fn form_lines(v: &'static Cv, form: &'static Sexp) -> Strings {
+/// environment after it; `all`, the program's forms.
+pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
     if module_def_p(form) {
         nil::<Str>()
     } else if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
@@ -123,20 +460,20 @@ pub fn form_lines(v: &'static Cv, form: &'static Sexp) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                kayak_rt::heap_cons(string_append(show_ty(s, t), string_append(str_lit(" ! "), show_effs(es))), kayak_rt::nil())
+                kayak_rt::heap_cons(string_append(call_shown(v, all, form, show_ty(s, t)), string_append(str_lit(" ! "), show_effs(es))), kayak_rt::nil())
             }
         }
     }
 }
 
-pub fn lines_checked(v: &'static Cv, forms: Sexps) -> Strings {
+pub fn lines_checked(v: &'static Cv, all: Sexps, forms: Sexps) -> Strings {
     if null_p(forms) {
         nil::<Str>()
     } else {
         let tagcase_ = check_tops(v, kayak_rt::heap_cons(car(forms), kayak_rt::nil()), nil::<&'static Typed>());
         match *tagcase_ {
             Elab::Elab(v2, found) => {
-                onto(form_lines(v2, car(forms)), lines_checked(v2, cdr(forms)))
+                onto(form_lines(v2, all, car(forms)), lines_checked(v2, all, cdr(forms)))
             }
         }
     }
@@ -172,7 +509,7 @@ pub fn check_command(paths: Strings) -> Int {
         }
     };
     let v = with_binds(typed, prim_binds(typed));
-    say(lines_text(lines_checked(v, forms)));
+    say(lines_text(lines_checked(v, forms, forms)));
     int_lit(0)
 }
 
