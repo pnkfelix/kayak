@@ -2961,20 +2961,72 @@
           "`(letrec ((f T lambda) ...) body ...)`: each procedure's type written,
            every one in scope in each lambda and in the body. A group whose every
            run ends is bound as `ends`, its calls no `spin`; else as locals."
-          (let* ((ends (with termination (terminates? v (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings)
-                                    (map (lambda ((b sexp))
+          (let* ((placed (map (lambda ((b sexp)) (parse-type v (cv-tvars v) (star-placeholder (second (items b))))) bindings))
+                 (ends (with termination (terminates? v (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings)
+                                    (map (lambda ((t ty))
                                            ;; A poly type's procedure, its body (C158).
-                                           (let ((t (parse-type v (cv-tvars v) (second (items b)))))
-                                             (tagcase t (ty-data (d args) (if (string=? d "%poly") (poly-body args) t)) (else other t))))
-                                         bindings)
+                                           (tagcase t (ty-data (d args) (if (string=? d "%poly") (poly-body args) t)) (else other t)))
+                                         placed)
                                     (map (lambda ((b sexp)) (third (items b))) bindings))))
-                 (types (letrec-found v s bindings (map (lambda ((b sexp)) (parse-type v (cv-tvars v) (second (items b)))) bindings)
-                                      (if ends "ends" "rec")))
+                 (types (letrec-found v s bindings (letrec-stars v s bindings placed ends) (if ends "ends" "rec")))
                  (w (with-binds v (map2 (lambda ((b sexp) (t ty))
                                          (bind (name-of v (car (items b))) (scheme nil t) (if ends "ends" "rec")))
                                        bindings types))))
             (tagcase (letrec-lambdas w s bindings types)
               (res (u es s) (body w s forms expected))))))
+
+      (star-placeholder (subr kfx (sexp) sexp)
+        (lambda (t)
+          "A `->*` type, `(subr %found (T ...) R)`, at `pure`, for the pass that
+           finds its effect (C191)."
+          (if (star-type? t)
+              (tagcase t (lst (xs f l p) (lst (list (car xs) (sym "pure" f p) (third xs) (fourth xs)) f l p)) (else other t))
+              t)))
+
+      (star-type? (subr kfx (sexp) bool)
+        (lambda (t)
+          (and (head-is? t "subr") (i64= (size (items t)) 4) (sym-is? (second (items t)) "%found"))))
+
+      (letrec-stars (subr kfx (cv st sexps tys bool) tys)
+        (lambda (v s bindings placed ends)
+          "A local `letrec`'s `->*` members' types (C191; Fixpt's fx26.md:
+           \"in a group components callees first, each member told those
+           found, taking its component's; `spin` if ... may not end\"): each
+           one's own effect found from its lambda, the group at its types
+           written and the `->*` ones at `pure`; then the effects of every
+           member it reaches by calls, itself among them, and `spin` where the
+           group may not end and it reaches a member that calls itself round."
+          (if (not (any? (lambda ((b sexp)) (star-type? (second (items b)))) bindings))
+              placed
+              (let* ((names (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings))
+                     (w (with-binds v (map2 (lambda ((n string) (t ty)) (bind n (scheme nil t) (if ends "ends" "rec"))) names placed)))
+                     (own (map2 (lambda ((b sexp) (t ty))
+                                  (tagcase t
+                                    (ty-proc (es ps r)
+                                      (if (and (star-type? (second (items b))) (head-is? (third (items b)) "lambda"))
+                                          (let ((lam (items (third (items b)))))
+                                            (tagcase (lambda-effects w s (items (second lam)) (cdr (cdr lam)) t) (res (u fs s2) fs)))
+                                          es))
+                                    (else other nil)))
+                                bindings placed))
+                     (calls (map (lambda ((b sexp)) (called-of names (third (items b)))) bindings))
+                     (cyclic (filter (lambda ((n string)) (string-member? n (reach-from names calls (calls-of names calls n) nil))) names)))
+                (map2 (lambda ((b sexp) (t ty))
+                        (if (not (star-type? (second (items b))))
+                            t
+                            (tagcase t
+                              (ty-proc (es ps r)
+                                (let* ((reached (reach-from names calls (list (name-of v (car (items b)))) nil))
+                                       (all (effs-of-reached names own reached)))
+                                  (ty-proc (if (and (not ends) (any? (lambda ((n string)) (string-member? n cyclic)) reached)) (effs-union (list "spin") all) all)
+                                           ps r)))
+                              (else other t))))
+                      bindings placed)))))
+
+      (effs-of-reached (subr kfx (strings (listof strings acyclic) strings) strings)
+        (lambda (names own reached)
+          (if (or (null? names) (null? own)) nil
+              (effs-union (if (string-member? (car names) reached) (car own) nil) (effs-of-reached (cdr names) (cdr own) reached)))))
 
       (letrec-found (subr kfx (cv st sexps tys string) tys)
         (lambda (v s bindings types wher)
@@ -3604,8 +3656,11 @@
                                 s)))
                     (if #f
                         (refuse v "")
-                    (tagcase (body (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (bind-params v params eps)))
-                                   s forms (list er))
+                    (tagcase (let ((inner (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (bind-params v params eps)))))
+                               ;; The body as a whole masked, as Fixpt masks a lambda's
+                               ;; (C191): a `letrec`'s storage no name outside sees.
+                               (masked-res inner (lst (cons (sym "begin" "" 0) forms) "" 0 0)
+                                           (body inner s forms (list er))))
                       (res (r es s)
                         (if (not (null? (fit-effs s es ees)))
                             (let* ((s (car (fit-effs s es ees)))
@@ -3654,8 +3709,10 @@
             (ty-proc (ees eps er)
               (if (not (i64= (size params) (size eps)))
                   (refuse v "a lambda of the wrong number of parameters")
-                  (body (with-binds v (bind-params v params eps))
-                        (check-written-params v s params eps) forms (list er))))
+                  (let ((inner (with-binds v (bind-params v params eps))))
+                    ;; Masked as a lambda's body is (C191).
+                    (masked-res inner (lst (cons (sym "begin" "" 0) forms) "" 0 0)
+                                (body inner (check-written-params v s params eps) forms (list er))))))
             (else other (refuse v "a lambda where no procedure is expected")))))
 
       (module-param-bound (subr kfx (cv sexp ty) cv)

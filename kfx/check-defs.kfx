@@ -847,15 +847,42 @@
                   (else other (car bs)))
                 (found-members (cdr bs) (cdr es) shared names))))))
 
+(define-rec
+  (reached-effects (subr kfx (strings (listof strings acyclic) sexps strings) strings)
+    (lambda (names own bindings reached)
+      "The effects of the members `reached`, each its own (but a `poly`'s,
+       which say its binders)."
+      (if (or (null? names) (null? own) (null? bindings)) nil
+          (effs-union (if (and (string-member? (car names) reached) (not (poly-type? (second (items (car bindings)))))) (car own) nil)
+                      (reached-effects (cdr names) (cdr own) (cdr bindings) reached))))))
+
+(define-rec
+  (found-each (subr kfx (sexps (listof strings acyclic) strings) sexps)
+    (lambda (bs es names)
+      "Each `->*` member at the effects of the members it reaches by calls,
+       itself among them (C191; Fixpt's components, callees first), `spin`
+       if that reads a member's global."
+      (if (or (null? bs) (null? es))
+          nil
+          (cons (tagcase (car bs)
+                  (lst (ys f l p)
+                    (if (not (arrow-star? (second ys)))
+                        (car bs)
+                        (let ((all (if (any? (lambda ((n string)) (string-member? (string-append "g:" n) (car es))) names) (effs-union (list "spin") (car es)) (car es))))
+                          (lst (list (car ys) (effect-put (second ys) (effect-sexp all)) (third ys)) f l p))))
+                  (else other (car bs)))
+                (found-each (cdr bs) (cdr es) names))))))
+
 (define found-rec (subr kfx (cv sexps) sexps)
   (lambda (v bindings)
     "A `define-rec` with `->*` members, each one's effect found (Fixpt's
      `arrow_star_group`): first in one pass, every `->*` member standing
      for nothing (`pure`), the rest at their types; then each with the
-     effects of the others (but a `poly` one's, which say its own binders),
-     and `spin` if that reads a member's global. Fixpt takes the group's
-     components, callees first; KFX takes the group as one, so each member
-     is given what any finds: no less than Fixpt's, never more accepted."
+     effects of the members it reaches by calls, itself among them (but a
+     `poly` one's, which say its own binders), as Fixpt's components,
+     callees first (C191; once each the group's, more than Fixpt's:
+     `bidirectional/arrow-star-groups.fx`), and `spin` if that reads a
+     member's global."
     (let* ((names (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings))
            (placed (map (lambda ((b sexp))
                           (let ((ys (items b)))
@@ -873,8 +900,12 @@
                              (found-latent (at named (name-of v (car ys)) (if ends nil names)) (name-of v (car ys)) (second ys) (third ys))
                              (tagcase (parse-scheme v (second ys)) (scheme (tvars t) (tagcase t (ty-proc (es ps r) es) (else other nil)))))))
                      bindings))
-           (shared (shared-effects bindings own)))
-      (found-members bindings own shared names))))
+           (calls (map (lambda ((b sexp)) (called-of names (third (items b)))) bindings))
+           (reached (map (lambda ((n string)) (reach-from names calls (list n) nil)) names))
+           (each (map (lambda ((r strings)) (reached-effects names own bindings r)) reached)))
+      (found-each bindings each names))))
+
+
 
 (define star-items (subr kfx (sexps) strings)
   (lambda (forms)

@@ -4844,6 +4844,30 @@
      lambda is checked against as its procedure."
     (tagcase (walk-mu s t) (ty-proc (es ps r) #t) (ty-data (d args) (or (conv-wrapper? d) (has-prefix? d "%spec "))) (else other #f))))
 
+"Which members of a group call which (C191): calls by name, as Fixpt's
+ components are found."
+(define-rec
+  (called-of (subr kfx (strings sexp) strings)
+    (lambda (names e)
+      "The members of `names` called in `e`, each named as a call's operator."
+      (tagcase e
+        (lst (xs f l p)
+          (if (null? xs) nil
+              (onto (tagcase (car xs) (sym (n f2 p2) (if (string-member? n names) (the strings (list n)) nil)) (else other nil))
+                    (concat (map (lambda ((x sexp)) (called-of names x)) xs)))))
+        (else other nil))))
+  (reach-from (subr kfx (strings (listof strings acyclic) strings strings) strings)
+    (lambda (names calls todo seen)
+      "The members reached from `todo` by calls, each once."
+      (cond ((null? todo) seen)
+            ((string-member? (car todo) seen) (reach-from names calls (cdr todo) seen))
+            (else (reach-from names calls (onto (calls-of names calls (car todo)) (cdr todo)) (cons (car todo) seen))))))
+  (calls-of (subr kfx (strings (listof strings acyclic) string) strings)
+    (lambda (names calls n)
+      (cond ((or (null? names) (null? calls)) nil)
+            ((string=? (car names) n) (car calls))
+            (else (calls-of (cdr names) (cdr calls) n))))))
+
 (define naming-effs (subr kfx (st string string ty strings) strings)
   (lambda (s name wher t group)
     "What naming a name does: a global is read; a member of the group being

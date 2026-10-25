@@ -5278,6 +5278,26 @@ Standard operations and names FX-26 has that kayak's checker had not:
   that may not end named as a value; Fixpt does not (making a `letrec`'s
   value makes lambdas, pure), its type saying `spin` for whoever calls it.
 - Refused 20 to 19, the same 352 to 353; K1 0.
+
+## C191. `->*` groups by what each calls; `->*` in a `letrec` (2026-10-25)
+
+Fixpt's fx26.md on `->*`: "in a group (`letrec`, `define-rec`, a module's
+lambdas) components callees first, each member told those found, taking
+its component's; `spin` if it reads a member's global".
+- **`define-rec`** (`found-rec`): each member's effect found alone, then
+  the effects of every member it reaches by calls (`called-of`,
+  `reach-from`), itself among them. Kayak had given each the whole
+  group's (C125's "no less than Fixpt's"), more than Fixpt's: a member
+  that names another without calling it took its effect
+  (`bidirectional/arrow-star-groups.fx`'s `noisy`).
+- **A local `letrec`** may declare `->*` too, refused till now: its
+  members found likewise (`letrec-stars`), `spin` where the group may not
+  end and a member reaches one that calls itself round; then C179's
+  globals found.
+- **A lambda's body masked as a whole** (C182 masked its forms one by
+  one, not a `letrec`'s storage no name outside sees), and the effect a
+  `->*` or a `define*` finds the same.
+- Refused 19 to 18, the same 353 to 354; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

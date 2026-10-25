@@ -1197,13 +1197,61 @@ pub fn found_members(bs: Sexps, es: List<Strings>, shared: Strings, names: Strin
     }
 }
 
+/// The effects of the members `reached`, each its own (but a `poly`'s,
+/// which say its binders).
+pub fn reached_effects(names: Strings, own: List<Strings>, bindings: Sexps, reached: Strings) -> Strings {
+    if (null_p(names) || null_p(own) || null_p(bindings)) {
+        nil::<Str>()
+    } else {
+        effs_union(if (string_member_p(car(names), reached) && not(poly_type_p(second(items(car(bindings)))))) {
+            car(own)
+        } else {
+            nil::<Str>()
+        }, reached_effects(cdr(names), cdr(own), cdr(bindings), reached))
+    }
+}
+
+/// Each `->*` member at the effects of the members it reaches by calls,
+/// itself among them (C191; Fixpt's components, callees first), `spin`
+/// if that reads a member's global.
+pub fn found_each(bs: Sexps, es: List<Strings>, names: Strings) -> Sexps {
+    if (null_p(bs) || null_p(es)) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    if not(arrow_star_p(second(ys))) {
+                        car(bs)
+                    } else {
+                        let all = if any_p(lambda1s(move |n: Str| {
+                            string_member_p(string_append(str_lit("g:"), n), car(es))
+                        }), names) {
+                            effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), car(es))
+                        } else {
+                            car(es)
+                        };
+                        lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(effect_put(second(ys), effect_sexp(all)), kayak_rt::heap_cons(third(ys), kayak_rt::nil()))), f, l, p)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    car(bs)
+                }
+            }
+        }, found_each(cdr(bs), cdr(es), names))
+    }
+}
+
 /// A `define-rec` with `->*` members, each one's effect found (Fixpt's
 /// `arrow_star_group`): first in one pass, every `->*` member standing
 /// for nothing (`pure`), the rest at their types; then each with the
-/// effects of the others (but a `poly` one's, which say its own binders),
-/// and `spin` if that reads a member's global. Fixpt takes the group's
-/// components, callees first; KFX takes the group as one, so each member
-/// is given what any finds: no less than Fixpt's, never more accepted.
+/// effects of the members it reaches by calls, itself among them (but a
+/// `poly` one's, which say its own binders), as Fixpt's components,
+/// callees first (C191; once each the group's, more than Fixpt's:
+/// `bidirectional/arrow-star-groups.fx`), and `spin` if that reads a
+/// member's global.
 pub fn found_rec(v: &'static Cv, bindings: Sexps) -> Sexps {
     let names = map(lambda1s(move |b: &'static Sexp| {
         name_of(v, car(items(b)))
@@ -1260,8 +1308,16 @@ pub fn found_rec(v: &'static Cv, bindings: Sexps) -> Sexps {
             }
         }
     }), bindings);
-    let shared = shared_effects(bindings, own);
-    found_members(bindings, own, shared, names)
+    let calls = map(lambda1s(move |b: &'static Sexp| {
+        called_of(names, third(items(b)))
+    }), bindings);
+    let reached = map(lambda1s(move |n: Str| {
+        reach_from(names, calls, kayak_rt::heap_cons(n, kayak_rt::nil()), nil::<Str>())
+    }), names);
+    let each = map(lambda1s(move |r: Strings| {
+        reached_effects(names, own, bindings, r)
+    }), reached);
+    found_each(bindings, each, names)
 }
 
 /// The names of a module's items whose type is `->*`'s.

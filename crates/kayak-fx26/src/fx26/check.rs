@@ -11360,6 +11360,71 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
+// Which members of a group call which (C191): calls by name, as Fixpt's
+// components are found.
+/// The members of `names` called in `e`, each named as a call's operator.
+pub fn called_of(names: Strings, e: &'static Sexp) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if null_p(xs) {
+                nil::<Str>()
+            } else {
+                onto({
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            if string_member_p(n, names) {
+                                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }, concat(map(lambda1s(move |x: &'static Sexp| {
+                    called_of(names, x)
+                }), xs)))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
+/// The members reached from `todo` by calls, each once.
+pub fn reach_from(mut names: Strings, mut calls: List<Strings>, mut todo: Strings, mut seen: Strings) -> Strings {
+    loop {
+        if null_p(todo) {
+            return seen;
+        } else if string_member_p(car(todo), seen) {
+            todo = cdr(todo);
+            continue;
+        } else {
+            (todo, seen) = (onto(calls_of(names, calls, car(todo)), cdr(todo)), kayak_rt::heap_cons(car(todo), seen));
+            continue;
+        }
+    }
+}
+
+pub fn calls_of(mut names: Strings, mut calls: List<Strings>, mut n: Str) -> Strings {
+    loop {
+        if (null_p(names) || null_p(calls)) {
+            return nil::<Str>();
+        } else if string_eq_p(car(names), n) {
+            return car(calls);
+        } else {
+            (names, calls) = (cdr(names), cdr(calls));
+            continue;
+        }
+    }
+}
+
 /// What naming a name does: a global is read; a member of the group being
 /// defined, named as a value, may be called by whoever is given it, and so
 /// loop: `spin`, as FX-26 has it. A global defined before cannot be, since

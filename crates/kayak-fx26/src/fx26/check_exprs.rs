@@ -6662,10 +6662,12 @@ pub mod expressions {
     /// every one in scope in each lambda and in the body. A group whose every
     /// run ends is bound as `ends`, its calls no `spin`; else as locals.
     pub fn letrec_form(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys) -> &'static Res {
+        let placed = map(lambda1s(move |b: &'static Sexp| {
+            parse_type(v, cv_tvars(v), star_placeholder(second(items(b))))
+        }), bindings);
         let ends = termination::terminates_p(v, map(lambda1s(move |b: &'static Sexp| {
             name_of(v, car(items(b)))
-        }), bindings), map(lambda1s(move |b: &'static Sexp| {
-            let t = parse_type(v, cv_tvars(v), second(items(b)));
+        }), bindings), map(lambda1s(move |t: &'static Ty| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ty::TyData(d, args) => {
@@ -6680,12 +6682,10 @@ pub mod expressions {
                     t
                 }
             }
-        }), bindings), map(lambda1s(move |b: &'static Sexp| {
+        }), placed), map(lambda1s(move |b: &'static Sexp| {
             third(items(b))
         }), bindings));
-        let types = letrec_found(v, s, bindings, map(lambda1s(move |b: &'static Sexp| {
-            parse_type(v, cv_tvars(v), second(items(b)))
-        }), bindings), if ends {
+        let types = letrec_found(v, s, bindings, letrec_stars(v, s, bindings, placed, ends), if ends {
             str_lit("ends")
         } else {
             str_lit("rec")
@@ -6702,6 +6702,119 @@ pub mod expressions {
             Res::Res(u, es, s) => {
                 body(w, s, forms, expected)
             }
+        }
+    }
+
+    /// A `->*` type, `(subr %found (T ...) R)`, at `pure`, for the pass that
+    /// finds its effect (C191).
+    pub fn star_placeholder(t: &'static Sexp) -> &'static Sexp {
+        if star_type_p(t) {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(str_lit("pure"), f, p), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil())))), f, l, p)
+                }
+                _ => {
+                    let other = tagcase_;
+                    t
+                }
+            }
+        } else {
+            t
+        }
+    }
+
+    pub fn star_type_p(t: &'static Sexp) -> bool {
+        (head_is_p(t, str_lit("subr")) && i64_eq(size(items(t)), 4i64) && sym_is_p(second(items(t)), str_lit("%found")))
+    }
+
+    /// A local `letrec`'s `->*` members' types (C191; Fixpt's fx26.md:
+    /// "in a group components callees first, each member told those
+    /// found, taking its component's; `spin` if ... may not end"): each
+    /// one's own effect found from its lambda, the group at its types
+    /// written and the `->*` ones at `pure`; then the effects of every
+    /// member it reaches by calls, itself among them, and `spin` where the
+    /// group may not end and it reaches a member that calls itself round.
+    pub fn letrec_stars(v: &'static Cv, s: &'static St, bindings: Sexps, placed: Tys, ends: bool) -> Tys {
+        if not(any_p(lambda1s(move |b: &'static Sexp| {
+            star_type_p(second(items(b)))
+        }), bindings)) {
+            placed
+        } else {
+            let names = map(lambda1s(move |b: &'static Sexp| {
+                name_of(v, car(items(b)))
+            }), bindings);
+            let w = with_binds(v, map2(lambda2s(move |n: Str, t: &'static Ty| {
+                bind(n, scheme(nil::<Str>(), t), if ends {
+                    str_lit("ends")
+                } else {
+                    str_lit("rec")
+                })
+            }), names, placed));
+            let own = map2(lambda2s(move |b: &'static Sexp, t: &'static Ty| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r) => {
+                        if (star_type_p(second(items(b))) && head_is_p(third(items(b)), str_lit("lambda"))) {
+                            let lam = items(third(items(b)));
+                            let tagcase_ = lambda_effects(w, s, items(second(lam)), cdr(cdr(lam)), t);
+                            match *tagcase_ {
+                                Res::Res(u, fs, s2) => {
+                                    fs
+                                }
+                            }
+                        } else {
+                            es
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            }), bindings, placed);
+            let calls = map(lambda1s(move |b: &'static Sexp| {
+                called_of(names, third(items(b)))
+            }), bindings);
+            let cyclic = filter(lambda1s(move |n: Str| {
+                string_member_p(n, reach_from(names, calls, calls_of(names, calls, n), nil::<Str>()))
+            }), names);
+            map2(lambda2s(move |b: &'static Sexp, t: &'static Ty| {
+                if not(star_type_p(second(items(b)))) {
+                    t
+                } else {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            let reached = reach_from(names, calls, kayak_rt::heap_cons(name_of(v, car(items(b))), kayak_rt::nil()), nil::<Str>());
+                            let all = effs_of_reached(names, own, reached);
+                            ty_proc(if (not(ends) && any_p(lambda1s(move |n: Str| {
+                                string_member_p(n, cyclic)
+                            }), reached)) {
+                                effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), all)
+                            } else {
+                                all
+                            }, ps, r)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            t
+                        }
+                    }
+                }
+            }), bindings, placed)
+        }
+    }
+
+    pub fn effs_of_reached(names: Strings, own: List<Strings>, reached: Strings) -> Strings {
+        if (null_p(names) || null_p(own)) {
+            nil::<Str>()
+        } else {
+            effs_union(if string_member_p(car(names), reached) {
+                car(own)
+            } else {
+                nil::<Str>()
+            }, effs_of_reached(cdr(names), cdr(own), reached))
         }
     }
 
@@ -8096,7 +8209,10 @@ pub mod expressions {
                         if false {
                             return match refuse(v, str_lit("")) {};
                         } else {
-                            let tagcase_ = body(with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), bind_params(v, params, eps))), s, forms, kayak_rt::heap_cons(er, kayak_rt::nil()));
+                            let tagcase_ = {
+                                let inner = with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), bind_params(v, params, eps)));
+                                masked_res(inner, lst(kayak_rt::heap_cons(sym(str_lit("begin"), str_lit(""), 0i64), forms), str_lit(""), 0i64, 0i64), body(inner, s, forms, kayak_rt::heap_cons(er, kayak_rt::nil())))
+                            };
                             match *tagcase_ {
                                 Res::Res(r, es, s) => {
                                     if not(null_p(fit_effs(s, es, ees))) {
@@ -8183,7 +8299,8 @@ pub mod expressions {
                 if not(i64_eq(size(params), size(eps))) {
                     match refuse(v, str_lit("a lambda of the wrong number of parameters")) {}
                 } else {
-                    body(with_binds(v, bind_params(v, params, eps)), check_written_params(v, s, params, eps), forms, kayak_rt::heap_cons(er, kayak_rt::nil()))
+                    let inner = with_binds(v, bind_params(v, params, eps));
+                    masked_res(inner, lst(kayak_rt::heap_cons(sym(str_lit("begin"), str_lit(""), 0i64), forms), str_lit(""), 0i64, 0i64), body(inner, check_written_params(v, s, params, eps), forms, kayak_rt::heap_cons(er, kayak_rt::nil())))
                 }
             }
             _ => {
