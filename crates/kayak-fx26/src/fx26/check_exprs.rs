@@ -5083,7 +5083,19 @@ pub mod expressions {
             } else if string_eq_p(h, str_lit("product")) {
                 return product_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("sum")) {
-                return match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {};
+                // A sum with nothing expected: a sum of its one tag (Fixpt's `(sumof
+                // (tag T))`, below any with that tag; C183); KFX's Rust enum is said by
+                // its type, which must be written.
+                if not(i64_eq(size(xs), 2i64)) {
+                    return match refuse(v, str_lit("(sum tag e)")) {};
+                } else {
+                    let tagcase_ = synth(v, s, second(xs));
+                    match *tagcase_ {
+                        Res::Res(t, es, s) => {
+                            return res(ty_shape(false, kayak_rt::heap_cons(label_of(car(xs)), kayak_rt::nil()), kayak_rt::heap_cons(t, kayak_rt::nil())), es, kfx_restricted(v, s, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...)) (C183)")));
+                        }
+                    }
+                }
             } else if string_eq_p(h, str_lit("extract")) {
                 if not(i64_eq(size(xs), 2i64)) {
                     return match refuse(v, str_lit("(extract e label)")) {};
@@ -6350,7 +6362,46 @@ pub mod expressions {
                 let tag = name_of(v, car(arm));
                 if string_eq_p(tag, str_lit("else")) {
                     if null_p(cdr(tagged)) {
-                        body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), whole), kayak_rt::nil())), s, cdr(cdr(arm)), expected)
+                        let sum_whole = {
+                            let tagcase_ = walk(s, whole);
+                            match *tagcase_ {
+                                Ty::TyShape(p, ls, ts) => {
+                                    (not(p) && i64_lt(size(vs), size(ls)) && not(null_p(vs)))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        };
+                        let seen = if sum_whole {
+                            ty_shape(false, map(lambda1s(move |x: &'static Variant| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Variant::Variant(tag, fields) => {
+                                        tag
+                                    }
+                                }
+                            }), vs), map(lambda1s(move |x: &'static Variant| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Variant::Variant(tag, fields) => {
+                                        if null_p(fields) {
+                                            ty_unit()
+                                        } else {
+                                            car(fields)
+                                        }
+                                    }
+                                }
+                            }), vs))
+                        } else {
+                            whole
+                        };
+                        body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), seen), kayak_rt::nil())), if (sum_whole && string_member_p(name_of(v, second(arm)), names_in_all(cdr(cdr(arm))))) {
+                            kfx_restricted(v, s, str_lit("a tagcase's else of a sum, named, narrowed to the tags not named, FX-26's, which KFX's Rust enums have not (C183)"))
+                        } else {
+                            s
+                        }, cdr(cdr(arm)), expected)
                     } else {
                         match refuse(v, str_lit("a tagcase's else is its last arm")) {}
                     }

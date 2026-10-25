@@ -5066,6 +5066,33 @@ of I-cells private to a procedure, pure; `native/raw-slots.fx`).
   programs, up from 185, each agreeing when run. Stage 0 20.3G cycles to
   20.6G.
 - Refused 45 to 42, the same 319 to 330; K1 0.
+
+## C183. Fixed widths below `int`; sums by width (2026-10-25)
+
+Subtyping FX-26 has that kayak's checker had not, each refused for KFX
+(a `kfx-restricted` note) where its Rust has no such thing:
+- **A fixed-width integer is an `int`** (Fixpt's fx26.md, "Fixed-width
+  integers", 2026-10-08, 2026-10-11): `i8`, `u8`, `i32`, `u32`, `i64`,
+  `u64` wherever an `int` is wanted. (`sizes/fixed-width-literals`,
+  `native/i64-as-int`, `bytevector-sum`, `run/bytevectors`.)
+- **Sums by width**: a sum below one of more tags, each of its tags'
+  types below the other's (`recursive/constcov`); and `(sum tag e)` with
+  nothing expected is `(sumof (tag T))`, as Fixpt's table has it
+  (`run/well-founded`), where kayak had asked for its type.
+- **Variance as Fixpt's**: probing Fixpt, references, arrays, I-cells,
+  lists, pairs, addresses and products are covariant, parameters
+  contravariant, as kayak's `fits` has them; a generative type's
+  parameters invariant (`generative/invariant.fx`,
+  `lemmas/without.fx`: two K1 breaches width subtyping had opened, now
+  each argument fitted both ways).
+- **A sum's `else` sees the tags not named** (`bloblet/else-narrows`):
+  its name bound to the sum of the variants left. KFX refuses it only
+  where the name is used: its own `lib/runner.kfx` names one it does not
+  use (the self-compile found it).
+- Refused 42 to 35, the same 330 to 337; K1 0. Left among sums and
+  pairs: `cons` of a tail that is no list, a general pair, as Fixpt's
+  `cons` is (`width-infer`, `run/recursion`, `bidirectional/bounds`,
+  `native/adapters`); paths narrowed by a test (`unions/paths-narrow`).
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

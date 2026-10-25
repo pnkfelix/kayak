@@ -1461,6 +1461,14 @@
  member once; `false`, the type of `#f` alone, below `bool`, a
  `(ty-data \"false\" nil)`. Never Rust's (C57): the restriction pass's."
 (define-rec
+  (label-type (subr kfx (string strings tys) ty)
+    (lambda (l ls ts)
+      "The type of label `l` among `ls`, `ts`."
+      (cond ((or (null? ls) (null? ts)) (ty-unit))
+            ((string=? (car ls) l) (car ts))
+            (else (label-type l (cdr ls) (cdr ts)))))))
+
+(define-rec
  (member-shape (subr kfx (ty) string)
   (lambda (t)
     "`shape-of`; and a bloblet's, FX-26's `bloblet`, which only a recursive
@@ -4010,6 +4018,11 @@
             ((and (tagcase a (ty-data (d args) (string=? d "false")) (else other #f)) (tagcase e (ty-bool () #t) (else other #f)))
              "`false` below `bool`."
              s)
+            ((and (tagcase e (ty-int () #t) (else other #f))
+                  (tagcase a (ty-i64 () #t) (ty-data (d args) (and (null? args) (string-member? d (list "i8" "u8" "i32" "u32" "u64")))) (else other #f)))
+             "A fixed-width integer below `int`, the integer it stands for (Fixpt's
+              fx26.md, 2026-10-08, 2026-10-11; C183); KFX's Rust keeps them apart."
+             (kfx-restricted v s (string-append "a " (string-append (show-ty s a) " where an int is expected, FX-26's, which KFX's Rust does not convert (C183)"))))
             ((and (tagcase a (ty-data (d args) (string=? d "nil")) (else other #f)) (tagcase e (ty-list (x r) #t) (else other #f)))
              "`nil` below a list (C68)."
              s)
@@ -4042,9 +4055,14 @@
         (ty-shape (p ls ts)
           (tagcase e
             (ty-shape (q ms us)
-              (if (and (if p q (not q)) (strings=? ls ms) (i64= (size ts) (size us)))
-                  (fits-each v s ts us)
-                  (mismatch v s a e)))
+              (cond ((and (if p q (not q)) (strings=? ls ms) (i64= (size ts) (size us)))
+                     (fits-each v s ts us))
+                    ((and (not p) (not q) (not (any? (lambda ((l string)) (not (string-member? l ms))) ls)))
+                     "A sum below one of more tags, each of its own there (Fixpt's width
+                      subtyping, fx26.md; C183); KFX's Rust enums are one each."
+                     (fits-each v (kfx-restricted v s (string-append "a " (string-append (show-ty s a) (string-append " where a " (string-append (show-ty s e) " is expected, FX-26's width subtyping, which KFX's Rust enums have not (C183)")))))
+                                ts (map (lambda ((l string)) (label-type l ms us)) ls)))
+                    (else (mismatch v s a e))))
             (else other (mismatch v s a e))))
         (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-rconst (x)
@@ -4120,6 +4138,10 @@
                      "Its element and result first, then its effect, which they may solve
                       a region of: `list`'s `(alloc r)`, `r` acyclic, is pure (C156)."
                      (fits v (fits v (fits v s (car (cdr xs)) (car (cdr ys))) (car (cdr (cdr xs))) (car (cdr (cdr ys)))) (car xs) (car ys)))
+                    ((and (string=? x y) (generative? v a))
+                     "A generative type's parameters are invariant, as Fixpt's
+                      (`generative/invariant.fx`; C183): each argument both ways."
+                     (fits-all v (fits-all v s xs ys) ys xs))
                     (else (fits-all v s xs ys))))
             (ty-proc (ees eps er)
               (cond ((or (string=? x "%composable") (string=? x "%oneshot"))

@@ -3175,6 +3175,20 @@ pub fn fixed_width_p(s: Str) -> bool {
 // test tells them apart. A `(ty-data "%union" members)`, flattened, each
 // member once; `false`, the type of `#f` alone, below `bool`, a
 // `(ty-data "false" nil)`. Never Rust's (C57): the restriction pass's.
+/// The type of label `l` among `ls`, `ts`.
+pub fn label_type(mut l: Str, mut ls: Strings, mut ts: Tys) -> &'static Ty {
+    loop {
+        if (null_p(ls) || null_p(ts)) {
+            return ty_unit();
+        } else if string_eq_p(car(ls), l) {
+            return car(ts);
+        } else {
+            (ls, ts) = (cdr(ls), cdr(ts));
+            continue;
+        }
+    }
+}
+
 /// `shape-of`; and a bloblet's, FX-26's `bloblet`, which only a recursive
 /// type's union has (C174), a union never KFX's.
 pub fn member_shape(t: &'static Ty) -> Str {
@@ -9306,6 +9320,35 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
         // `false` below `bool`.
         s
     } else if ({
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyI64() => {
+                true
+            }
+            Ty::TyData(d, args) => {
+                (null_p(args) && string_member_p(d, kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::nil())))))))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A fixed-width integer below `int`, the integer it stands for (Fixpt's
+        // fx26.md, 2026-10-08, 2026-10-11; C183); KFX's Rust keeps them apart.
+        kfx_restricted(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), str_lit(" where an int is expected, FX-26's, which KFX's Rust does not convert (C183)"))))
+    } else if ({
         let tagcase_ = a;
         match *tagcase_ {
             Ty::TyData(d, args) => {
@@ -9445,6 +9488,14 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         not(q)
                     } && strings_eq_p(ls, ms) && i64_eq(size(ts), size(us))) {
                         fits_each(v, s, ts, us)
+                    } else if (not(p) && not(q) && not(any_p(lambda1s(move |l: Str| {
+                        not(string_member_p(l, ms))
+                    }), ls))) {
+                        // A sum below one of more tags, each of its own there (Fixpt's width
+                        // subtyping, fx26.md; C183); KFX's Rust enums are one each.
+                        fits_each(v, kfx_restricted(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" where a "), string_append(show_ty(s, e), str_lit(" is expected, FX-26's width subtyping, which KFX's Rust enums have not (C183)")))))), ts, map(lambda1s(move |l: Str| {
+                            label_type(l, ms, us)
+                        }), ls))
                     } else {
                         mismatch(v, s, a, e)
                     }
@@ -9618,6 +9669,10 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         // Its element and result first, then its effect, which they may solve
                         // a region of: `list`'s `(alloc r)`, `r` acyclic, is pure (C156).
                         fits(v, fits(v, fits(v, s, car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(xs))), car(cdr(cdr(ys)))), car(xs), car(ys))
+                    } else if (string_eq_p(x, y) && generative_p(v, a)) {
+                        // A generative type's parameters are invariant, as Fixpt's
+                        // (`generative/invariant.fx`; C183): each argument both ways.
+                        fits_all(v, fits_all(v, s, xs, ys), ys, xs)
                     } else {
                         fits_all(v, s, xs, ys)
                     }

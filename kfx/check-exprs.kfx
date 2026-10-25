@@ -2315,7 +2315,16 @@
                                             (res want es (fits v s t want))))))
                          (else (tagcase (synth v s x) (res (t es s) (res t es (freshened s t))))))))
                 ((string=? h "product") (product-form v s xs nil))
-                ((string=? h "sum") (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))
+                ((string=? h "sum")
+                 "A sum with nothing expected: a sum of its one tag (Fixpt's `(sumof
+                  (tag T))`, below any with that tag; C183); KFX's Rust enum is said by
+                  its type, which must be written."
+                 (if (not (i64= (size xs) 2))
+                     (refuse v "(sum tag e)")
+                     (tagcase (synth v s (second xs))
+                       (res (t es s)
+                         (res (ty-shape #f (list (label-of (car xs))) (list t)) es
+                              (kfx-restricted v s "a sum whose type is not known here: write it, (the (sumof ...) (sum ...)) (C183)"))))))
                 ((string=? h "extract")
                  (if (not (i64= (size xs) 2))
                      (refuse v "(extract e label)")
@@ -2827,8 +2836,18 @@
                      (tag (name-of v (car arm))))
                 (if (string=? tag "else")
                     (if (null? (cdr tagged))
-                        (body (with-binds v (list (local v (name-of v (second arm)) whole)))
-                              s (cdr (cdr arm)) expected)
+                        (let* ((sum-whole (tagcase (walk s whole) (ty-shape (p ls ts) (and (not p) (i64< (size vs) (size ls)) (not (null? vs)))) (else other #f)))
+                               (seen (if sum-whole
+                                         ;; A sum's `else` sees only the tags not named
+                                         ;; (Fixpt's fx26.md; C183); KFX's enum is one.
+                                         (ty-shape #f (map (lambda ((x variant)) (tagcase x (variant (tag fields) tag))) vs)
+                                                   (map (lambda ((x variant)) (tagcase x (variant (tag fields) (if (null? fields) (ty-unit) (car fields))))) vs))
+                                         whole)))
+                          (body (with-binds v (list (local v (name-of v (second arm)) seen)))
+                                (if (and sum-whole (string-member? (name-of v (second arm)) (names-in-all (cdr (cdr arm)))))
+                                    (kfx-restricted v s "a tagcase's else of a sum, named, narrowed to the tags not named, FX-26's, which KFX's Rust enums have not (C183)")
+                                    s)
+                                (cdr (cdr arm)) expected))
                         (refuse v "a tagcase's else is its last arm"))
                     (let* ((fields (variant-fields v (show-ty s whole) tag vs))
                            (listed (and (i64> (size arm) 1) (tagcase (second arm) (lst (xs f l p) #t) (else other #f))))
