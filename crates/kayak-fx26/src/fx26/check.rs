@@ -11363,12 +11363,11 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
 /// What naming a name does: a global is read; a member of the group being
 /// defined, named as a value, may be called by whoever is given it, and so
 /// loop: `spin`, as FX-26 has it. A global defined before cannot be, since
-/// nothing it reaches is defined after it (KFX defines each name once); a
-/// `letrec` member that may not end can.
+/// nothing it reaches is defined after it (KFX defines each name once). A
+/// `letrec` member named is nothing more: a call of it says `spin` where
+/// it may not end, its type saying so (C190; Fixpt's, `native/made-native.fx`).
 pub fn naming_effs(s: &'static St, name: Str, wher: Str, t: &'static Ty, group: Strings) -> Strings {
-    if string_eq_p(wher, str_lit("rec")) {
-        kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-    } else if not(string_eq_p(wher, str_lit("global"))) {
+    if not(string_eq_p(wher, str_lit("global"))) {
         nil::<Str>()
     } else if (proc_type_p(s, t) && string_member_p(name, group)) {
         kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()))

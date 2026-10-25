@@ -5264,6 +5264,20 @@ Standard operations and names FX-26 has that kayak's checker had not:
   own file: a loaded module's binder `c` had met the loading program's
   type, which the full check found).
 - Refused 21 to 20, the same 351 to 352; K1 0.
+
+## C190. A lambda typed by the result expected; naming a `letrec` member (2026-10-25)
+
+- **`(stay-cellular (lambda (x) ...))` where a procedure is expected**: a
+  call fits a procedure expected after its arguments (C35, so that one
+  that cannot abort is lifted); but where its result is a type not known
+  yet that is also the type of a parameter given a `lambda` whose
+  parameters' types are not written (`lambda-given-result?`), it fits
+  first, so that the lambda has a type, as Fixpt's bounds give it
+  (`native/made-native.fx`).
+- **Naming a `letrec` member is no `spin`**: kayak said `spin` for a member
+  that may not end named as a value; Fixpt does not (making a `letrec`'s
+  value makes lambdas, pure), its type saying `spin` for whoever calls it.
+- Refused 20 to 19, the same 352 to 353; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

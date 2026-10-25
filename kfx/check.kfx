@@ -4849,10 +4849,10 @@
     "What naming a name does: a global is read; a member of the group being
      defined, named as a value, may be called by whoever is given it, and so
      loop: `spin`, as FX-26 has it. A global defined before cannot be, since
-     nothing it reaches is defined after it (KFX defines each name once); a
-     `letrec` member that may not end can."
-    (cond ((string=? wher "rec") (list "spin"))
-          ((not (string=? wher "global")) nil)
+     nothing it reaches is defined after it (KFX defines each name once). A
+     `letrec` member named is nothing more: a call of it says `spin` where
+     it may not end, its type saying so (C190; Fixpt's, `native/made-native.fx`)."
+    (cond ((not (string=? wher "global")) nil)
           ((and (proc-type? s t) (string-member? name group)) (list "spin" (string-append "g:" name)))
           (else (list (string-append "g:" name))))))
 

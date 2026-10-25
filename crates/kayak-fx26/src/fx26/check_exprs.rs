@@ -10757,7 +10757,7 @@ pub mod expressions {
                             }))) {}
                         } else {
                             let tagcase_ = {
-                                let s1 = if (null_p(expected) || proc_type_p(s, car(expected)) || bound_after_p(s, r, car(expected))) {
+                                let s1 = if (null_p(expected) || (proc_type_p(s, car(expected)) && not(lambda_given_result_p(s, r, ps, args))) || bound_after_p(s, r, car(expected))) {
                                     s
                                 } else {
                                     fits(v, s, r, car(expected))
@@ -10773,7 +10773,7 @@ pub mod expressions {
                                     let s = if null_p(expected) {
                                         freshened(s0, r)
                                     } else {
-                                        if (proc_type_p(s0, car(expected)) || bound_after_p(s, r, car(expected))) {
+                                        if ((proc_type_p(s0, car(expected)) && not(lambda_given_result_p(s, r, ps, args))) || bound_after_p(s, r, car(expected))) {
                                             fits(v, s0, r, car(expected))
                                         } else {
                                             s0
@@ -10801,6 +10801,61 @@ pub mod expressions {
                         match refuse(v, string_append(str_lit("a call of a "), string_append(show_ty(s, t), str_lit(", no procedure")))) {}
                     }
                 }
+            }
+        }
+    }
+
+    /// Whether a call's result is a type not known yet that is also the type
+    /// of a parameter given a `lambda` whose parameters' types are not
+    /// written (`(stay-cellular (lambda (x) ...))`): the procedure expected
+    /// is then fitted first, so that the lambda has a type (C190; Fixpt's
+    /// bounds, `native/made-native.fx`).
+    pub fn lambda_given_result_p(s: &'static St, r: &'static Ty, ps: Tys, args: Sexps) -> bool {
+        let tagcase_ = walk(s, r);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                any_p(lambda1s(move |pa: &'static Ty| {
+                    true
+                }), filter(lambda1s(move |pa: &'static Ty| {
+                    let tagcase_ = walk(s, pa);
+                    match *tagcase_ {
+                        Ty::TyMeta(j) => {
+                            i64_eq(j, k)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }), lambda_params_of(ps, args)))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    pub fn lambda_params_of(mut ps: Tys, mut args: Sexps) -> Tys {
+        loop {
+            if (null_p(ps) || null_p(args)) {
+                return nil::<&'static Ty>();
+            } else if (head_is_p(car(args), str_lit("lambda")) && i64_gt(size(items(car(args))), 1i64) && any_p(lambda1s(move |q: &'static Sexp| {
+                let tagcase_ = q;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }), items(second(items(car(args)))))) {
+                return kayak_rt::heap_cons(car(ps), lambda_params_of(cdr(ps), cdr(args)));
+            } else {
+                (ps, args) = (cdr(ps), cdr(args));
+                continue;
             }
         }
     }

@@ -4823,12 +4823,15 @@
                         ((i64> (size args) (size ps))
                          (refuse v (string-append "the hole: nothing, the call has its " (string-append (i64->string (size ps)) (if (i64= (size ps) 1) " argument" " arguments")))))
                         (else
-                      (tagcase (let ((s1 (if (or (null? expected) (proc-type? s (car expected)) (bound-after? s r (car expected))) s (fits v s r (car expected)))))
+                      (tagcase (let ((s1 (if (or (null? expected)
+                                                 (and (proc-type? s (car expected)) (not (lambda-given-result? s r ps args)))
+                                                 (bound-after? s r (car expected)))
+                                             s (fits v s r (car expected)))))
                                  (call-args v s1 args (if (i64= (size ps) (size args)) ps (tys-first ps (size args))) (fixed-by s s1 (concat (map metas-of ps)))))
                         (res (u es1 s0)
                          (let ((s (if (null? expected)
                                       (freshened s0 r)
-                                      (if (or (proc-type? s0 (car expected)) (bound-after? s r (car expected))) (fits v s0 r (car expected)) s0))))
+                                      (if (or (and (proc-type? s0 (car expected)) (not (lambda-given-result? s r ps args))) (bound-after? s r (car expected))) (fits v s0 r (car expected)) s0))))
                           (tagcase (name-regions v s latent regions)
                             (res (u named s)
                               (if (any? (lambda ((x string)) (let ((y (resolve-atom s x))) (or (string=? y "write:acyclic") (string=? y "write:const")))) named)
@@ -4837,6 +4840,28 @@
                               (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))
                                    (lift-noted v (noted-call v s named) r expected)))))))))))
                 (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure"))))))))))
+
+      (lambda-given-result? (subr kfx (st ty tys sexps) bool)
+        (lambda (s r ps args)
+          "Whether a call's result is a type not known yet that is also the type
+           of a parameter given a `lambda` whose parameters' types are not
+           written (`(stay-cellular (lambda (x) ...))`): the procedure expected
+           is then fitted first, so that the lambda has a type (C190; Fixpt's
+           bounds, `native/made-native.fx`)."
+          (tagcase (walk s r)
+            (ty-meta (k)
+              (any? (lambda ((pa ty)) #t)
+                    (filter (lambda ((pa ty)) (tagcase (walk s pa) (ty-meta (j) (i64= j k)) (else other #f)))
+                            (lambda-params-of ps args))))
+            (else other #f))))
+
+      (lambda-params-of (subr kfx (tys sexps) tys)
+        (lambda (ps args)
+          (cond ((or (null? ps) (null? args)) nil)
+                ((and (head-is? (car args) "lambda") (i64> (size (items (car args))) 1)
+                      (any? (lambda ((q sexp)) (tagcase q (sym (n f p) #t) (else other #f))) (items (second (items (car args))))))
+                 (cons (car ps) (lambda-params-of (cdr ps) (cdr args))))
+                (else (lambda-params-of (cdr ps) (cdr args))))))
 
       (bound-after? (subr kfx (st ty ty) bool)
         (lambda (s r e)
