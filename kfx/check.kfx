@@ -2387,6 +2387,102 @@
 (define nat? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
 
+"Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
+ a linear expression over local names, a constant and each name's
+ coefficient; a fact that one is `= 0`, `>= 0`, or `/= 0`, learned in a
+ branch of a test, kept in the environment as a binding of no name a
+ program writes, `wher` `fact KIND C N K ...`."
+(define-datatype lterm (lterm string i64))
+(define-datatype lin (lin i64 (listof lterm acyclic)))
+(define-type lins (listof lin acyclic))
+
+(define-rec
+  (lterms-added (subr kfx ((listof lterm acyclic) string i64) (listof lterm acyclic))
+    (lambda (ts n k)
+      (cond ((null? ts) (if (i64= k 0) nil (list (lterm n k))))
+            ((tagcase (car ts) (lterm (m j) (string=? m n)))
+             (tagcase (car ts) (lterm (m j) (if (i64= (i64+ j k) 0) (cdr ts) (cons (lterm m (i64+ j k)) (cdr ts))))))
+            (else (cons (car ts) (lterms-added (cdr ts) n k)))))))
+
+(define-rec
+  (lin-terms-onto (subr kfx ((listof lterm acyclic) (listof lterm acyclic) i64) (listof lterm acyclic))
+    (lambda (ts acc k)
+      (if (null? ts) acc (tagcase (car ts) (lterm (n j) (lin-terms-onto (cdr ts) (lterms-added acc n (i64* j k)) k)))))))
+
+(define lin-add (subr kfx (lin lin i64) lin)
+  (lambda (a b k)
+    "`a + k b`."
+    (tagcase a (lin (ca ta) (tagcase b (lin (cb tb) (lin (i64+ ca (i64* k cb)) (lin-terms-onto tb ta k))))))))
+
+(define lin-scaled (subr kfx (lin i64) lin) (lambda (a k) (lin-add (lin 0 nil) a k)))
+
+(define lin-coef (subr kfx (lin string) i64)
+  (lambda (a n)
+    (tagcase a (lin (c ts) (let ((found (filter (lambda ((t lterm)) (tagcase t (lterm (m j) (string=? m n)))) ts)))
+                             (if (null? found) 0 (tagcase (car found) (lterm (m j) j))))))))
+
+(define lin-names (subr kfx (lin) strings) (lambda (a) (tagcase a (lin (c ts) (map (lambda ((t lterm)) (tagcase t (lterm (n j) n))) ts)))))
+
+(define lin-text (subr kfx (lin) string)
+  (lambda (a)
+    (tagcase a (lin (c ts) (words-of (cons (i64->string c) (concat (map (lambda ((t lterm)) (tagcase t (lterm (n j) (the strings (list n (i64->string j)))))) ts))))))))
+
+(define-rec
+  (digits-i64-of (subr kfx (chars i64) i64)
+    (lambda (cs n) (if (null? cs) n (digits-i64-of (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+(define string->i64 (subr kfx (string) i64)
+  (lambda (t)
+    (let ((cs (string-chars t)))
+      (if (and (not (null? cs)) (char=? (car cs) #\-)) (i64- 0 (digits-i64-of (cdr cs) 0)) (digits-i64-of cs 0)))))
+
+(define-rec
+  (fact-words-from (subr kfx (chars chars strings) strings)
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
+            ((char=? (car cs) #\space) (fact-words-from (cdr cs) nil (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
+            (else (fact-words-from (cdr cs) (cons (car cs) w) acc))))))
+
+(define text-words (subr kfx (string) strings) (lambda (t) (fact-words-from (string-chars t) nil nil)))
+
+(define second-word (subr kfx (strings) string) (lambda (ws) (car (cdr ws))))
+
+(define-rec
+  (lterms-read (subr kfx (strings) (listof lterm acyclic))
+    (lambda (ws) (if (or (null? ws) (null? (cdr ws))) nil (cons (lterm (car ws) (string->i64 (second-word ws))) (lterms-read (cdr (cdr ws))))))))
+
+(define lin-read (subr kfx (strings) lin)
+  (lambda (ws) (lin (string->i64 (car ws)) (lterms-read (cdr ws)))))
+
+"Whether inequalities `ls`, each `l >= 0`, have no solution, by
+ Fourier-Motzkin elimination over the rationals: sound for the integers,
+ not complete. Too many, and the answer is that they may have one."
+(define-rec
+  (no-solution? (subr kfx (lins i64) bool)
+    (lambda (ls budget)
+      (cond ((i64> (size ls) 400) #f)
+            ((any? (lambda ((l lin)) (tagcase l (lin (c ts) (and (null? ts) (i64< c 0))))) ls) #t)
+            (else
+             (let ((open (filter (lambda ((l lin)) (tagcase l (lin (c ts) (not (null? ts))))) ls)))
+               (if (or (null? open) (i64<= budget 0))
+                   #f
+                   (let* ((x (car (lin-names (car open))))
+                          (pos (filter (lambda ((l lin)) (i64> (lin-coef l x) 0)) open))
+                          (neg (filter (lambda ((l lin)) (i64< (lin-coef l x) 0)) open))
+                          (rest (filter (lambda ((l lin)) (i64= (lin-coef l x) 0)) open)))
+                     (no-solution? (onto rest (concat (map (lambda ((p lin)) (map (lambda ((q lin)) (lin-add (lin-scaled p (i64- 0 (lin-coef q x))) q (lin-coef p x))) neg)) pos)))
+                                   (i64- budget 1))))))))))
+
+(define-rec
+  (lin-shown? (subr kfx (lins lins lin) bool)
+    (lambda (ges nes goal)
+      "Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
+       `>= 1` and `<= -1`) show `goal >= 0`."
+      (if (null? nes)
+          (no-solution? (cons (lin-add (lin -1 nil) goal -1) ges) 64)
+          (and (lin-shown? (cons (lin-add (car nes) (lin -1 nil) 1) ges) (cdr nes) goal)
+               (lin-shown? (cons (lin-add (lin -1 nil) (car nes) -1) ges) (cdr nes) goal))))))
+
 (define-rec
   (holds-meta? (subr kfx (ty) bool)
     (lambda (t)

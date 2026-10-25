@@ -4283,3 +4283,38 @@ yet (C154). Refused 205 to 192; the same 95 to 100.
   Fixpt checks where they are, with a rule for its termination; the
   `convention` form and the `cellular` convention; `letfreeze`, with
   `(const p)` regions.
+
+## C157. Sizes, first: what a test shows of integers, and a `nat` difference (2026-10-25)
+
+The first of FX-26's sizes (Fixpt's `docs/research/sizes.md`, N5b and
+N5c; `sizes.rs`, `check-test-facts.fx`, `check-logic.fx`): the facts a
+comparison shows in each branch, and a difference that is a `nat` where
+they show it is not negative. Ten of Fixpt's programs were refused at
+`(- n 1)` where a `nat` is expected.
+- **Facts**: a linear expression of locals of type `int` or `nat`
+  (literals, such locals, `+`, `-`, a literal times one), and that one
+  is `= 0`, `>= 0` or `/= 0`. `(= a b)`, `(< a b)`, `(<= a b)`, `(> a b)`,
+  `(>= a b)` and `(zero? a)` give one to each branch, through `not`,
+  `and` and `or` as a union's narrowing does (C68), whose machinery
+  carries them: a narrowing's environment, the fact a binding of no
+  name a program writes. A fact holds while no name it mentions has
+  been bound again.
+- **Deciding** whether the facts in scope, and each `nat` local's
+  `n >= 0`, show `e >= 0`: by Fourier-Motzkin elimination over the
+  rationals, sound for the integers, not complete (that `e <= -1` has no
+  solution); a `/= 0` fact split into `>= 1` and `<= -1`, both to show it.
+- **`(- a b)`** where a `nat` is expected, the facts showing `a - b >= 0`,
+  is a `nat`. Only where one is expected, so that what is found
+  elsewhere is printed as Fixpt prints it.
+- **Measured**: refused 192 to 187, the same 100 to 104; of the 336 Fixpt
+  refuses, all still refused.
+- **Noticed**: `regen.sh` failed once at its second generation, its
+  first's memos (C54) written by the same compiler before a change to
+  `check-exprs.kfx`'s module; with them deleted, the fixed point came at
+  once. Not chased further here: `incremental.py` compares memos' compiles
+  with fresh ones in the check.
+- **And**: Fixpt running the compiler (stage 0) refused a `(list ...)` in
+  a `map`'s lambda that kfx accepts, Fixpt finding it at a fresh region
+  where an `acyclic` list was wanted: written `(the strings (list ...))`.
+  kayak's own words, its checker refusing less: 187 programs agree (170),
+  145 Fixpt's exactly.

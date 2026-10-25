@@ -5063,6 +5063,273 @@ pub fn nat_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
+// Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
+// a linear expression over local names, a constant and each name's
+// coefficient; a fact that one is `= 0`, `>= 0`, or `/= 0`, learned in a
+// branch of a test, kept in the environment as a binding of no name a
+// program writes, `wher` `fact KIND C N K ...`.
+pub enum Lterm {
+    Lterm(Str, i64),
+}
+
+pub fn lterm(f0: Str, f1: i64) -> &'static Lterm {
+    kayak_rt::heap_alloc(Lterm::Lterm(f0, f1))
+}
+
+pub enum Lin {
+    Lin(i64, List<&'static Lterm>),
+}
+
+pub fn lin(f0: i64, f1: List<&'static Lterm>) -> &'static Lin {
+    kayak_rt::heap_alloc(Lin::Lin(f0, f1))
+}
+
+pub type Lins = List<&'static Lin>;
+
+pub fn lterms_added(ts: List<&'static Lterm>, n: Str, k: i64) -> List<&'static Lterm> {
+    if null_p(ts) {
+        if i64_eq(k, 0i64) {
+            nil::<&'static Lterm>()
+        } else {
+            kayak_rt::heap_cons(lterm(n, k), kayak_rt::nil())
+        }
+    } else if {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Lterm::Lterm(m, j) => {
+                string_eq_p(m, n)
+            }
+        }
+    } {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Lterm::Lterm(m, j) => {
+                if i64_eq(i64_plus(j, k), 0i64) {
+                    cdr(ts)
+                } else {
+                    kayak_rt::heap_cons(lterm(m, i64_plus(j, k)), cdr(ts))
+                }
+            }
+        }
+    } else {
+        kayak_rt::heap_cons(car(ts), lterms_added(cdr(ts), n, k))
+    }
+}
+
+pub fn lin_terms_onto(mut ts: List<&'static Lterm>, mut acc: List<&'static Lterm>, mut k: i64) -> List<&'static Lterm> {
+    loop {
+        if null_p(ts) {
+            return acc;
+        } else {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Lterm::Lterm(n, j) => {
+                    (ts, acc) = (cdr(ts), lterms_added(acc, n, i64_star(j, k)));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `a + k b`.
+pub fn lin_add(a: &'static Lin, b: &'static Lin, k: i64) -> &'static Lin {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(ca, ta) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lin::Lin(cb, tb) => {
+                    lin(i64_plus(ca, i64_star(k, cb)), lin_terms_onto(tb, ta, k))
+                }
+            }
+        }
+    }
+}
+
+pub fn lin_scaled(a: &'static Lin, k: i64) -> &'static Lin {
+    lin_add(lin(0i64, nil::<&'static Lterm>()), a, k)
+}
+
+pub fn lin_coef(a: &'static Lin, n: Str) -> i64 {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            let found = filter(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(m, j) => {
+                        string_eq_p(m, n)
+                    }
+                }
+            }), ts);
+            if null_p(found) {
+                0i64
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Lterm::Lterm(m, j) => {
+                        j
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn lin_names(a: &'static Lin) -> Strings {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            map(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(n, j) => {
+                        n
+                    }
+                }
+            }), ts)
+        }
+    }
+}
+
+pub fn lin_text(a: &'static Lin) -> Str {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lin::Lin(c, ts) => {
+            words_of(kayak_rt::heap_cons(i64_to_string(c), concat(map(lambda1s(move |t: &'static Lterm| {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Lterm::Lterm(n, j) => {
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(i64_to_string(j), kayak_rt::nil())))
+                    }
+                }
+            }), ts))))
+        }
+    }
+}
+
+pub fn digits_i64_of(mut cs: Chars, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+pub fn string_to_i64(t: Str) -> i64 {
+    let cs = string_chars(t);
+    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
+        i64_minus(0i64, digits_i64_of(cdr(cs), 0i64))
+    } else {
+        digits_i64_of(cs, 0i64)
+    }
+}
+
+pub fn fact_words_from(mut cs: Chars, mut w: Chars, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            return reverse(if null_p(w) {
+                acc
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc))
+            });
+        } else if char_eq_p(car(cs), ' ') {
+            (cs, w, acc) = (cdr(cs), nil::<char>(), if null_p(w) {
+                acc
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(w)), acc))
+            });
+            continue;
+        } else {
+            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
+            continue;
+        }
+    }
+}
+
+pub fn text_words(t: Str) -> Strings {
+    fact_words_from(string_chars(t), nil::<char>(), nil::<Str>())
+}
+
+pub fn second_word(ws: Strings) -> Str {
+    car(cdr(ws))
+}
+
+pub fn lterms_read(ws: Strings) -> List<&'static Lterm> {
+    if (null_p(ws) || null_p(cdr(ws))) {
+        nil::<&'static Lterm>()
+    } else {
+        kayak_rt::heap_cons(lterm(car(ws), string_to_i64(second_word(ws))), lterms_read(cdr(cdr(ws))))
+    }
+}
+
+pub fn lin_read(ws: Strings) -> &'static Lin {
+    lin(string_to_i64(car(ws)), lterms_read(cdr(ws)))
+}
+
+// Whether inequalities `ls`, each `l >= 0`, have no solution, by
+// Fourier-Motzkin elimination over the rationals: sound for the integers,
+// not complete. Too many, and the answer is that they may have one.
+pub fn no_solution_p(mut ls: Lins, mut budget: i64) -> bool {
+    loop {
+        if i64_gt(size(ls), 400i64) {
+            return false;
+        } else if any_p(lambda1s(move |l: &'static Lin| {
+            let tagcase_ = l;
+            match *tagcase_ {
+                Lin::Lin(c, ts) => {
+                    (null_p(ts) && i64_lt(c, 0i64))
+                }
+            }
+        }), ls) {
+            return true;
+        } else {
+            let open = filter(lambda1s(move |l: &'static Lin| {
+                let tagcase_ = l;
+                match *tagcase_ {
+                    Lin::Lin(c, ts) => {
+                        not(null_p(ts))
+                    }
+                }
+            }), ls);
+            if (null_p(open) || i64_lt_eq(budget, 0i64)) {
+                return false;
+            } else {
+                let x = car(lin_names(car(open)));
+                let pos = filter(lambda1s(move |l: &'static Lin| {
+                    i64_gt(lin_coef(l, x), 0i64)
+                }), open);
+                let neg = filter(lambda1s(move |l: &'static Lin| {
+                    i64_lt(lin_coef(l, x), 0i64)
+                }), open);
+                let rest = filter(lambda1s(move |l: &'static Lin| {
+                    i64_eq(lin_coef(l, x), 0i64)
+                }), open);
+                (ls, budget) = (onto(rest, concat(map(lambda1s(move |p: &'static Lin| {
+                    map(lambda1s(move |q: &'static Lin| {
+                        lin_add(lin_scaled(p, i64_minus(0i64, lin_coef(q, x))), q, lin_coef(p, x))
+                    }), neg)
+                }), pos))), i64_minus(budget, 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+/// Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
+/// `>= 1` and `<= -1`) show `goal >= 0`.
+pub fn lin_shown_p(ges: Lins, nes: Lins, goal: &'static Lin) -> bool {
+    if null_p(nes) {
+        no_solution_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), goal, -1i64), ges), 64i64)
+    } else {
+        (lin_shown_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes), goal) && lin_shown_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes), goal))
+    }
+}
+
 /// Whether `t`, as written (no variable solved looked through), has an
 /// inference variable in it.
 pub fn holds_meta_p(t: &'static Ty) -> bool {

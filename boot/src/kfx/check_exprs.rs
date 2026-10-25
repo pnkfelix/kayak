@@ -1980,6 +1980,264 @@ pub mod expressions {
         }
     }
 
+    // Sizes' facts (C157): what a comparison of integers shows in each of its
+    // branches, of the locals it names.
+    pub fn std_prim_p(v: &'static Cv, h: Str) -> bool {
+        let b = find_bind(h, cv_binds(v));
+        (not(null_p(b)) && prim_p(car(b)))
+    }
+
+    /// `e` as a linear expression of its locals of type `int` or `nat`: a
+    /// literal, such a local, `(+ a b)`, `(- a b)`, `(* k a)`; none if not.
+    pub fn linear_of(v: &'static Cv, s: &'static St, e: &'static Sexp) -> Lins {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Num(k, f, p) => {
+                kayak_rt::heap_cons(lin(k, nil::<&'static Lterm>()), kayak_rt::nil())
+            }
+            Sexp::Sym(n, f, p) => {
+                let b = find_bind(n, cv_binds(v));
+                if (not(null_p(b)) && {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(m, sc, w) => {
+                            ((string_eq_p(w, str_lit("local")) || string_eq_p(w, str_lit("narrowed"))) && {
+                                let tagcase_ = sc;
+                                match *tagcase_ {
+                                    Scheme::Scheme(tv, t) => {
+                                        (null_p(tv) && {
+                                            let tagcase_ = walk(s, t);
+                                            match *tagcase_ {
+                                                Ty::TyInt() => {
+                                                    true
+                                                }
+                                                Ty::TyNat() => {
+                                                    true
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    false
+                                                }
+                                            }
+                                        })
+                                    }
+                                }
+                            })
+                        }
+                    }
+                }) {
+                    kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil())
+                } else {
+                    nil::<&'static Lin>()
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(h, f2, p2) => {
+                            std_prim_p(v, h)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    let (h, a, b) = (sym_name(car(xs)), linear_of(v, s, second(xs)), linear_of(v, s, third(xs)));
+                    if (null_p(a) || null_p(b)) {
+                        nil::<&'static Lin>()
+                    } else if string_eq_p(h, str_lit("+")) {
+                        kayak_rt::heap_cons(lin_add(car(a), car(b), 1i64), kayak_rt::nil())
+                    } else if string_eq_p(h, str_lit("-")) {
+                        kayak_rt::heap_cons(lin_add(car(a), car(b), -1i64), kayak_rt::nil())
+                    } else if (string_eq_p(h, str_lit("*")) && {
+                        let tagcase_ = car(a);
+                        match *tagcase_ {
+                            Lin::Lin(c, ts) => {
+                                null_p(ts)
+                            }
+                        }
+                    }) {
+                        kayak_rt::heap_cons(lin_scaled(car(b), {
+                            let tagcase_ = car(a);
+                            match *tagcase_ {
+                                Lin::Lin(c, ts) => {
+                                    c
+                                }
+                            }
+                        }), kayak_rt::nil())
+                    } else {
+                        nil::<&'static Lin>()
+                    }
+                } else {
+                    nil::<&'static Lin>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Lin>()
+            }
+        }
+    }
+
+    pub fn with_size_fact(v: &'static Cv, kind: Str, l: &'static Lin) -> &'static Cv {
+        with_binds(v, kayak_rt::heap_cons(bind(str_lit("%size-fact"), scheme(nil::<Str>(), ty_unit()), string_append(str_lit("fact "), string_append(kind, string_append(str_lit(" "), lin_text(l))))), kayak_rt::nil()))
+    }
+
+    /// `(= a b)`, `(< a b)`, `(<= a b)`, `(> a b)`, `(>= a b)`, of linear
+    /// `a` and `b`: what each branch knows of `a - b` (Fixpt's
+    /// `check-test-facts.fx`).
+    pub fn size_facts_of_test(mut v: &'static Cv, mut s: &'static St, mut test: &'static Sexp) -> List<&'static Narrowing> {
+        loop {
+            let tagcase_ = test;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if (i64_eq(size(xs), 2i64) && {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(h, f2, p2) => {
+                                (string_eq_p(h, str_lit("zero?")) && std_prim_p(v, h))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        test = lst(kayak_rt::heap_cons(sym(str_lit("="), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(num(0i64, f, p), kayak_rt::nil()))), f, l, p);
+                        continue;
+                    } else {
+                        if (i64_eq(size(xs), 3i64) && {
+                            let tagcase_ = car(xs);
+                            match *tagcase_ {
+                                Sexp::Sym(h, f2, p2) => {
+                                    (string_member_p(h, kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::nil())))))) && std_prim_p(v, h))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }) {
+                            let (h, a, b) = (sym_name(car(xs)), linear_of(v, s, second(xs)), linear_of(v, s, third(xs)));
+                            if (null_p(a) || null_p(b)) {
+                                return nil::<&'static expressions::Narrowing>();
+                            } else {
+                                let d = lin_add(car(a), car(b), -1i64);
+                                let nd = lin_scaled(d, -1i64);
+                                let one = lin(-1i64, nil::<&'static Lterm>());
+                                return kayak_rt::heap_cons(if string_eq_p(h, str_lit("=")) {
+                                    narrowing(with_size_fact(v, str_lit("eq"), d), with_size_fact(v, str_lit("ne"), d))
+                                } else if string_eq_p(h, str_lit("<")) {
+                                    narrowing(with_size_fact(v, str_lit("ge"), lin_add(nd, one, 1i64)), with_size_fact(v, str_lit("ge"), d))
+                                } else if string_eq_p(h, str_lit("<=")) {
+                                    narrowing(with_size_fact(v, str_lit("ge"), nd), with_size_fact(v, str_lit("ge"), lin_add(d, one, 1i64)))
+                                } else if string_eq_p(h, str_lit(">")) {
+                                    narrowing(with_size_fact(v, str_lit("ge"), lin_add(d, one, 1i64)), with_size_fact(v, str_lit("ge"), nd))
+                                } else {
+                                    narrowing(with_size_fact(v, str_lit("ge"), d), with_size_fact(v, str_lit("ge"), lin_add(nd, one, 1i64)))
+                                }, kayak_rt::nil());
+                            }
+                        } else {
+                            return nil::<&'static expressions::Narrowing>();
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return nil::<&'static expressions::Narrowing>();
+                }
+            }
+        }
+    }
+
+    pub enum Sfacts {
+        Sfacts(Lins, Lins),
+    }
+
+    pub fn sfacts(f0: Lins, f1: Lins) -> &'static Sfacts {
+        kayak_rt::heap_alloc(Sfacts::Sfacts(f0, f1))
+    }
+
+    /// The facts in scope, `>= 0` and `/= 0`: each of a binding of no name a
+    /// program writes, unless a name it mentions has been bound again
+    /// since (a narrowing names the same value).
+    pub fn size_facts_from(mut bs: Binds, mut seen: Strings, mut ges: Lins, mut nes: Lins) -> &'static Sfacts {
+        loop {
+            if null_p(bs) {
+                return sfacts(ges, nes);
+            } else {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        if (string_eq_p(n, str_lit("%size-fact")) && has_prefix_p(w, str_lit("fact "))) {
+                            let ws = cdr(text_words(w));
+                            let kind = car(ws);
+                            let l = lin_read(cdr(ws));
+                            if any_p(lambda1s(move |m: Str| {
+                                string_member_p(m, seen)
+                            }), lin_names(l)) {
+                                bs = cdr(bs);
+                                continue;
+                            } else if string_eq_p(kind, str_lit("ge")) {
+                                (bs, ges) = (cdr(bs), kayak_rt::heap_cons(l, ges));
+                                continue;
+                            } else if string_eq_p(kind, str_lit("eq")) {
+                                (bs, ges) = (cdr(bs), kayak_rt::heap_cons(l, kayak_rt::heap_cons(lin_scaled(l, -1i64), ges)));
+                                continue;
+                            } else {
+                                (bs, nes) = (cdr(bs), kayak_rt::heap_cons(l, nes));
+                                continue;
+                            }
+                        } else if string_eq_p(w, str_lit("narrowed")) {
+                            bs = cdr(bs);
+                            continue;
+                        } else {
+                            (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Each of `ns` a local `nat`: `n >= 0`.
+    pub fn nat_bounds(v: &'static Cv, s: &'static St, ns: Strings) -> Lins {
+        concat(map(lambda1s(move |n: Str| {
+            let b = find_bind(n, cv_binds(v));
+            if (not(null_p(b)) && {
+                let tagcase_ = car(b);
+                match *tagcase_ {
+                    Bind::Bind(m, sc, w) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                nat_p(s, t)
+                            }
+                        }
+                    }
+                }
+            }) {
+                the::<Lins>(kayak_rt::heap_cons(lin(0i64, kayak_rt::heap_cons(lterm(n, 1i64), kayak_rt::nil())), kayak_rt::nil()))
+            } else {
+                nil::<&'static Lin>()
+            }
+        }), ns))
+    }
+
+    /// Whether the facts in scope show `goal >= 0`.
+    pub fn size_shown_p(v: &'static Cv, s: &'static St, goal: &'static Lin) -> bool {
+        let tagcase_ = size_facts_from(cv_binds(v), nil::<Str>(), nil::<&'static Lin>(), nil::<&'static Lin>());
+        match *tagcase_ {
+            Sfacts::Sfacts(ges, nes) => {
+                let names = concat(map(&lin_names, kayak_rt::heap_cons(goal, onto(ges, nes))));
+                lin_shown_p(onto(nat_bounds(v, s, names), ges), nes, goal)
+            }
+        }
+    }
+
     /// What a test proves, through `not`, `and` and `or` too (C68): `(not t)`
     /// swaps `t`'s; `(and a b)` holds where `b` holds in where `a` does;
     /// `(or a b)` fails where `b` fails in where `a` does.
@@ -2047,7 +2305,12 @@ pub mod expressions {
                 nil::<&'static expressions::Narrowing>()
             }
         } else {
-            narrowings_of_test(v, s, test)
+            let ns = narrowings_of_test(v, s, test);
+            if null_p(ns) {
+                size_facts_of_test(v, s, test)
+            } else {
+                ns
+            }
         }
     }
 
@@ -6589,6 +6852,18 @@ pub mod expressions {
                 return region_alloc_call(v, s, h, args, expected);
             } else if null_p(found) {
                 return match refuse(v, string_append(str_lit("nothing is named "), h)) {};
+            } else if (string_eq_p(h, str_lit("-")) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && nat_p(s, car(expected)) && {
+                let (a, b) = (linear_of(v, s, car(args)), linear_of(v, s, second(args)));
+                (not(null_p(a)) && not(null_p(b)) && size_shown_p(v, s, lin_add(car(a), car(b), -1i64)))
+            }) {
+                // A difference where a `nat` is expected, which the facts in scope
+                // show is not negative (C157).
+                let tagcase_ = call_args(v, s, args, kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_int(), kayak_rt::nil())), nil::<i64>());
+                match *tagcase_ {
+                    Res::Res(u, es, s) => {
+                        return res(ty_nat(), es, s);
+                    }
+                }
             } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {
                 let tagcase_ = call_args(v, s, args, kayak_rt::heap_cons(ty_nat(), kayak_rt::heap_cons(ty_nat(), kayak_rt::nil())), nil::<i64>());
                 match *tagcase_ {

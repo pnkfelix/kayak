@@ -867,6 +867,107 @@
                   nil))
             (else other nil))))
 
+      "Sizes' facts (C157): what a comparison of integers shows in each of its
+       branches, of the locals it names."
+      (define std-prim? (subr kfx (cv string) bool)
+        (lambda (v h) (let ((b (find-bind h (cv-binds v)))) (and (not (null? b)) (prim? (car b))))))
+
+      (define-rec
+        (linear-of (subr kfx (cv st sexp) lins)
+          (lambda (v s e)
+            "`e` as a linear expression of its locals of type `int` or `nat`: a
+             literal, such a local, `(+ a b)`, `(- a b)`, `(* k a)`; none if not."
+            (tagcase e
+              (num (k f p) (list (lin k nil)))
+              (sym (n f p)
+                (let ((b (find-bind n (cv-binds v))))
+                  (if (and (not (null? b))
+                           (tagcase (car b)
+                             (bind (m sc w)
+                               (and (or (string=? w "local") (string=? w "narrowed"))
+                                    (tagcase sc (scheme (tv t) (and (null? tv) (tagcase (walk s t) (ty-int () #t) (ty-nat () #t) (else other #f)))))))))
+                      (list (lin 0 (list (lterm n 1))))
+                      nil)))
+              (lst (xs f l p)
+                (if (and (i64= (size xs) 3) (tagcase (car xs) (sym (h f2 p2) (std-prim? v h)) (else other #f)))
+                    (let ((h (sym-name (car xs))) (a (linear-of v s (second xs))) (b (linear-of v s (third xs))))
+                      (cond ((or (null? a) (null? b)) nil)
+                            ((string=? h "+") (list (lin-add (car a) (car b) 1)))
+                            ((string=? h "-") (list (lin-add (car a) (car b) -1)))
+                            ((and (string=? h "*") (tagcase (car a) (lin (c ts) (null? ts))))
+                             (list (lin-scaled (car b) (tagcase (car a) (lin (c ts) c)))))
+                            (else nil)))
+                    nil))
+              (else other nil)))))
+
+      (define with-size-fact (subr kfx (cv string lin) cv)
+        (lambda (v kind l) (with-binds v (list (bind "%size-fact" (scheme nil (ty-unit)) (string-append "fact " (string-append kind (string-append " " (lin-text l)))))))))
+
+      (define size-facts-of-test (subr kfx (cv st sexp) (listof narrowing acyclic))
+        (lambda (v s test)
+          "`(= a b)`, `(< a b)`, `(<= a b)`, `(> a b)`, `(>= a b)`, of linear
+           `a` and `b`: what each branch knows of `a - b` (Fixpt's
+           `check-test-facts.fx`)."
+          (tagcase test
+            (lst (xs f l p)
+              (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (h f2 p2) (and (string=? h "zero?") (std-prim? v h))) (else other #f)))
+                  ;; `(zero? a)`, as `(= a 0)` (Fixpt's type for it says so).
+                  (size-facts-of-test v s (lst (list (sym "=" f p) (second xs) (num 0 f p)) f l p))
+              (if (and (i64= (size xs) 3)
+                       (tagcase (car xs) (sym (h f2 p2) (and (string-member? h (list "=" "<" "<=" ">" ">=")) (std-prim? v h))) (else other #f)))
+                  (let ((h (sym-name (car xs))) (a (linear-of v s (second xs))) (b (linear-of v s (third xs))))
+                    (if (or (null? a) (null? b))
+                        nil
+                        (let* ((d (lin-add (car a) (car b) -1))
+                               (nd (lin-scaled d -1))
+                               (one (lin -1 nil)))
+                          (list (cond ((string=? h "=") (narrowing (with-size-fact v "eq" d) (with-size-fact v "ne" d)))
+                                      ((string=? h "<") (narrowing (with-size-fact v "ge" (lin-add nd one 1)) (with-size-fact v "ge" d)))
+                                      ((string=? h "<=") (narrowing (with-size-fact v "ge" nd) (with-size-fact v "ge" (lin-add d one 1))))
+                                      ((string=? h ">") (narrowing (with-size-fact v "ge" (lin-add d one 1)) (with-size-fact v "ge" nd)))
+                                      (else (narrowing (with-size-fact v "ge" d) (with-size-fact v "ge" (lin-add nd one 1)))))))))
+                  nil)))
+            (else other nil))))
+
+      (define-datatype sfacts (sfacts lins lins))
+
+      (define-rec
+        (size-facts-from (subr kfx (binds strings lins lins) sfacts)
+          (lambda (bs seen ges nes)
+            "The facts in scope, `>= 0` and `/= 0`: each of a binding of no name a
+             program writes, unless a name it mentions has been bound again
+             since (a narrowing names the same value)."
+            (if (null? bs)
+                (sfacts ges nes)
+                (tagcase (car bs)
+                  (bind (n sc w)
+                    (cond ((and (string=? n "%size-fact") (has-prefix? w "fact "))
+                           (let* ((ws (cdr (text-words w))) (kind (car ws)) (l (lin-read (cdr ws))))
+                             (cond ((any? (lambda ((m string)) (string-member? m seen)) (lin-names l)) (size-facts-from (cdr bs) seen ges nes))
+                                   ((string=? kind "ge") (size-facts-from (cdr bs) seen (cons l ges) nes))
+                                   ((string=? kind "eq") (size-facts-from (cdr bs) seen (cons l (cons (lin-scaled l -1) ges)) nes))
+                                   (else (size-facts-from (cdr bs) seen ges (cons l nes))))))
+                          ((string=? w "narrowed") (size-facts-from (cdr bs) seen ges nes))
+                          (else (size-facts-from (cdr bs) (cons n seen) ges nes)))))))))
+
+      (define nat-bounds (subr kfx (cv st strings) lins)
+        (lambda (v s ns)
+          "Each of `ns` a local `nat`: `n >= 0`."
+          (concat (map (lambda ((n string))
+                         (let ((b (find-bind n (cv-binds v))))
+                           (if (and (not (null? b)) (tagcase (car b) (bind (m sc w) (tagcase sc (scheme (tv t) (nat? s t))))))
+                               (the lins (list (lin 0 (list (lterm n 1)))))
+                               nil)))
+                       ns))))
+
+      (define size-shown? (subr kfx (cv st lin) bool)
+        (lambda (v s goal)
+          "Whether the facts in scope show `goal >= 0`."
+          (tagcase (size-facts-from (cv-binds v) nil nil nil)
+            (sfacts (ges nes)
+              (let ((names (concat (map lin-names (cons goal (onto ges nes))))))
+                (lin-shown? (onto (nat-bounds v s names) ges) nes goal))))))
+
       (define-rec
         (narrowings (subr kfx (cv st sexp) (listof narrowing acyclic))
           (lambda (v s test)
@@ -890,7 +991,7 @@
                        (cond ((not (null? then)) (tagcase (car then) (narrowing (yes no) (list (narrowing v no)))))
                              ((not (null? first)) (list (narrowing v after)))
                              (else nil)))))
-                  (else (narrowings-of-test v s test))))))
+                  (else (let ((ns (narrowings-of-test v s test))) (if (null? ns) (size-facts-of-test v s test) ns)))))))
 
       "The control primitives KFX types by rules of its own (`abort-call`,
        `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
@@ -2999,6 +3100,13 @@
 
                   ((null? found)
                    (refuse v (string-append "nothing is named " h)))
+                  ((and (string=? h "-") (prim? (car found)) (i64= (size args) 2) (not (null? expected)) (nat? s (car expected))
+                        (let ((a (linear-of v s (car args))) (b (linear-of v s (second args))))
+                          (and (not (null? a)) (not (null? b)) (size-shown? v s (lin-add (car a) (car b) -1)))))
+                   "A difference where a `nat` is expected, which the facts in scope
+                    show is not negative (C157)."
+                   (tagcase (call-args v s args (list (ty-int) (ty-int)) nil)
+                     (res (u es s) (res (ty-nat) es s))))
                   ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
                    (tagcase (call-args v s args (list (ty-nat) (ty-nat)) nil)
                      (res (u es s)

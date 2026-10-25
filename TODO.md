@@ -558,8 +558,9 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
 2. The restriction pass split off the checker (`front-end.md` stage 2).
    **Begun** (C154): `kfx-restricted` notes, kfx's `restrict` refuses;
    moved so far: a constant's effects (C154), reals written past KFX's
-   way (C155); FX-26's names the checker had not (C156). 192 of the 428
-   programs Fixpt accepts still refused (2026-10-24), the most for sizes
+   way (C155); FX-26's names the checker had not (C156); sizes begun,
+   facts from tests and a `nat` difference (C157). 187 of the 428
+   programs Fixpt accepts still refused (2026-10-25), the most for sizes
    (`nat`, `nlist`, about 18) and specs (named parameters, `requires`,
    about 30); then `poly` over other kinds, `const` regions with
    `letfreeze`, termination, conventions, `cwcc`.
