@@ -39,7 +39,7 @@
         (lambda (h)
           (string-member? h (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-byte" "bloblet-set-byte!"
                                   "bloblet-bytes" "blobref-at" "blobref+" "blobref-owner" "blobref-offset" "blobref-get"
-                                  "blobref-set!" "blobref-index" "blobref-variant!"))))
+                                  "blobref-set!" "blobref-index" "blobref-variant!" "blobref-length"))))
 
       (define-rec
         (list-ref-i64 (subr kfx (tys i64) ty)
@@ -1746,7 +1746,7 @@
                                                                      (kfx-restricted v s (string-append "a module parameter, or a procedure of one, a Rust generic fn, named as a value: " name))
                                                                      s)
                                                                  name found (process-marks (cv-tvars v))) sc)
-                                 (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
+                                 (inst (t s regions effects) (res (lengths-named name t) (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
       (quasi-items (subr kfx (cv st sexps i64) res)
         (lambda (v s ds depth)
@@ -2259,7 +2259,14 @@
                 ((string=? h "pselect") (pselect-form v s xs (list expected)))
                 ((control-form? h) (body-form v s h xs (list expected)))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs (list expected)))
-                ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs (list expected)))
+                ((and (blob-form? h) (string-member? h (list "make-bloblet" "rmake-bloblet" "blobref-at" "blobref+"))
+                      (null? (find-bind h (cv-binds v))))
+                 "Those made by the type expected; the rest are synthesized, then
+                  compared with it, as any form is (C175: `blobref-offset`'s `int`
+                  was taken where an `i64` was expected)."
+                 (blob-form v s h xs (list expected)))
+                ((and (blob-form? h) (null? (find-bind h (cv-binds v))))
+                 (check-by-synth v s e expected))
                 ((string=? h "prompt") (prompt-form v s xs (list expected)))
                 ((string=? h "%found") (check-by-synth v s e expected))
                 ((string=? h "product") (product-form v s xs (list expected)))
@@ -2420,9 +2427,10 @@
                                  (ty-data (d2 a2)
                                    (if (not (string=? d2 "%flat-sum"))
                                        (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
-                                       (with-effs (flat-tag-arms v (note-fact s (cv-file v) (cv-pos v)
+                                       (with-effs (flat-tag-arms v (note-fact (if (unkeyed? a2) (kfx-restricted v s "a flat sum with no key, FX-26's, its tag an index of the owner's fields, which KFX has not yet (C175)") s)
+                                                                              (cv-file v) (cv-pos v)
                                                                               (string-append "blob-tagcase " (string-append (i64->string (key-width (car a2)))
-                                                                                (string-append " " (i64->string (variant-offset a2))))))
+                                                                                (string-append " " (string-append (i64->string (variant-offset a2)) (if (unkeyed? a2) " fields" ""))))))
                                                                  t owner (flat-sum-variants a2) (cdr xs) expected)
                                                   (effs-union (list (string-append "read:" (region-string s (tagcase owner (ty-data (d3 a3) (car a3)) (else other (ty-unit)))))) es))))
                                  (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum"))))))
@@ -2671,7 +2679,7 @@
                            (body (with-binds v (list (local v (name-of v (second arm)) whole))) s (cdr (cdr arm)) expected)
                            (refuse v "a tagcase's else is its last arm")))
                       (else
-                       (let* ((lab (tagcase (car arm) (num (k f p) (i64->string k)) (else other "")))
+                       (let* ((lab (tagcase (car arm) (num (k f p) (i64->string k)) (sym (n f p) n) (else other "")))
                               (found (concat (map (lambda ((f fvar)) (tagcase f (fvar (l x) (if (string=? l lab) (the tys (list x)) nil)))) vs))))
                          (if (null? found)
                              (refuse v (string-append "a flat sum's arm is named by one of its labels not taken yet, a number: " (show-sexp (car arm))))
@@ -3033,8 +3041,14 @@
                  (args-are 2)
                  (tagcase (if (null? expected) (ty-unit) (walk s (car expected)))
                    (ty-data (d args)
-                     (if (not (string=? d "%blobref"))
-                         (refuse v "a blobref made where none is expected")
+                     (cond
+                       ((not (string=? d "%blobref"))
+                         (refuse v "a blobref made where none is expected"))
+                       ((length-named? (walk s (car (cdr args))))
+                        "Its length named where it is bound, not claimed (C175;
+                         `flat-unsized-new.fx`)."
+                        (refuse v "a new blobref's array of a length not literal is of length `finite`"))
+                       (else
                          (tagcase (check v s (car xs) (car args))
                            (res (b es0 s)
                              (tagcase (check v s (second xs) (ty-int))
@@ -3043,7 +3057,7 @@
                                       (blob-noted v
                                         (blob-noted v (note-types s (cv-file v) (cv-pos v) "blob-at" args)
                                                     (tagcase (second xs) (num (k f p) (if (i64= k 0) "blob-zero" "")) (else other "")))
-                                        (string-append "blob-size " (tagcase (flat-layout (walk s (car (cdr args)))) (layout (size al) (i64->string size))))))))))))
+                                        (string-append "blob-size " (tagcase (flat-layout (walk s (car (cdr args)))) (layout (size al) (i64->string size)))))))))))))
                    (else other (refuse v "which flat a new blobref points to is said by the type it is checked against: (the (blobref B F) (blobref-at b off))")))))
               ((string=? h "blobref+")
                (begin
@@ -3068,7 +3082,7 @@
               (else
                "blobref-owner, -offset, -get, -set!, -index: of a blobref."
                (begin
-                 (args-are (cond ((or (string=? h "blobref-owner") (string=? h "blobref-offset") (string=? h "blobref-get")) 1) (else 2)))
+                 (args-are (cond ((or (string=? h "blobref-owner") (string=? h "blobref-offset") (string=? h "blobref-get") (string=? h "blobref-length")) 1) (else 2)))
                  (tagcase (synth v s (car xs))
                    (res (r es0 s)
                      (tagcase (walk s r)
@@ -3093,22 +3107,47 @@
                                                    (note-fact s (cv-file v) (cv-pos v)
                                                      (string-append "blob-element "
                                                        (string-append (tagcase (flat-layout (car a3)) (layout (size al) (i64->string size)))
-                                                         (string-append " " (tagcase (car (cdr a3)) (ty-rconst (n) n) (else other "0")))))))))))
+                                                         (string-append " " (flat-length-code (car (cdr a3))))))))))))
                                     (else other (refuse v "blobref-index of a blobref to no flat array"))))
+                                 ((string=? h "blobref-length")
+                                  "A flat array's length (C175; Fixpt's N5c): a `(nat n)` of its
+                                   length `n`, `nat` if it is `finite`."
+                                  (tagcase flat
+                                    (ty-data (d3 a3)
+                                      (if (not (string=? d3 "%flat-array"))
+                                          (refuse v "blobref-length of a blobref to no flat array")
+                                          (let ((n (walk s (flat-length (car (cdr a3))))))
+                                            (res (if (tagcase n (ty-data (d4 a4) (string=? d4 "%finite")) (else other #f)) (ty-nat) (ty-data "%natof" (list n)))
+                                                 es0
+                                                 (note-fact (kfx-restricted v s "blobref-length, FX-26's, which KFX has not yet (C175)") (cv-file v) (cv-pos v)
+                                                   (string-append "blob-element "
+                                                     (string-append (tagcase (flat-layout (car a3)) (layout (size al) (i64->string size)))
+                                                       (string-append " " (flat-length-code (car (cdr a3)))))))))))
+                                    (else other (refuse v "blobref-length of a blobref to no flat array"))))
                                  ((string=? h "blobref-variant!")
                                   (tagcase flat
                                     (ty-data (d3 a3)
-                                      (let* ((lab (tagcase (second xs) (num (k f p) (i64->string k)) (else other "")))
+                                      (let* ((lab (tagcase (second xs)
+                                                    (num (k f p) (if (and (string=? d3 "%flat-sum") (not (unkeyed? a3))) (i64->string k) ""))
+                                                    (lst (qs f p l2)
+                                                      (if (and (string=? d3 "%flat-sum") (unkeyed? a3) (i64= (size qs) 2) (sym-is? (car qs) "quote"))
+                                                          (tagcase (second qs) (sym (n f2 p2) n) (else other ""))
+                                                          ""))
+                                                    (else other "")))
+                                             (s (if (and (string=? d3 "%flat-sum") (unkeyed? a3))
+                                                    (kfx-restricted v s "a flat sum with no key, FX-26's, its tag an index of the owner's fields, which KFX has not yet (C175)")
+                                                    s))
                                              (found (concat (map (lambda ((f fvar)) (tagcase f (fvar (l x) (if (string=? l lab) (the tys (list x)) nil))))
                                                                  (if (string=? d3 "%flat-sum") (flat-sum-variants a3) nil)))))
                                         (cond ((not (string=? d3 "%flat-sum")) (refuse v "blobref-variant! of a blobref to no flat sum"))
-                                              ((null? found) (refuse v "a variant is named by a literal, one of the flat sum's labels"))
+                                              ((null? found) (refuse v "a variant is named by a literal: `'label`, or a number where the sum has a key"))
                                               (else
                                                (res (ty-data "%blobref" (list owner (car found)))
                                                     (effs-union (list (string-append "read:" (region-string s region)) (string-append "write:" (region-string s region))) es0)
                                                     (note-fact s (cv-file v) (cv-pos v)
                                                                (string-append "blob-variant " (string-append (i64->string (key-width (car a3)))
-                                                                 (string-append " " (string-append lab (string-append " " (i64->string (variant-offset a3)))))))))))))
+                                                                 (string-append " " (string-append lab (string-append " " (string-append (i64->string (variant-offset a3))
+                                                                   (if (unkeyed? a3) " fields" "")))))))))))))
                                     (else other (refuse v "blobref-variant! of a blobref to no flat sum"))))
                                  ((string=? (scalar-name flat) "")
                                   (refuse v (string-append "only a scalar's bytes are read or written: " (show-ty s flat))))
@@ -3244,6 +3283,7 @@
                                             ((char=? (string-ref-i64 (car tvars) 0) #\^)
                                              "A function where one of arrow kind is bound (C173)."
                                              (fun-of-kind v (cv-tvars v) (car args) (binder-kind (car tvars)) (written-binder (car tvars))))
+                                            ((char=? (string-ref-i64 (car tvars) 0) #\#) "A size (C158)." (parse-size v (cv-tvars v) (car args)))
                                             (else (parse-type v (cv-tvars v) (car args))))
                                       t)))))
 

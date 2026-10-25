@@ -1169,7 +1169,13 @@
   (lambda (key) (cond ((string=? key "u8") 256) ((string=? key "u16") 65536) (else 4294967296))))
 
 (define key-width (subr kfx (ty) i64)
-  (lambda (k) (tagcase k (ty-rconst (n) (cond ((string=? n "u8") 1) ((string=? n "u16") 2) (else 4))) (else other 4))))
+  (lambda (k) (tagcase k (ty-rconst (n) (cond ((or (string=? n "u8") (string=? n "%fields")) 1) ((string=? n "u16") 2) (else 4))) (else other 4))))
+
+(define unkeyed? (subr kfx (tys) bool)
+  (lambda (args)
+    "Whether a flat sum's tag indexes its owner's fields, which hold its
+     labels (C175): no key written."
+    (tagcase (car args) (ty-rconst (n) (string=? n "%fields")) (else other #f))))
 
 (define-datatype fvar (fvar string ty))
 (define-type fvars (listof fvar acyclic))
@@ -1197,8 +1203,77 @@
               (and (string=? d "%flat-array") (flat? (car args)))
               (and (has-prefix? d "%named ") (flat? (car args)))
               (string=? d "%flat-sum")))
-        (ty-shape (p ls ts) (and p (not (null? ts)) (not (any? (lambda ((x ty)) (not (flat? x))) ts))))
-        (else other #f)))))
+        (ty-shape (p ls ts) (and p (not (null? ts)) (not (any? (lambda ((x ty)) (not (flat? x))) ts))
+                                 ;; Only its last part of a length not known (C175).
+                                 (not (any? unsized? (but-last ts)))))
+        (else other #f))))
+  (unsized? (subr kfx (ty) bool)
+    (lambda (t)
+      "A flat that runs to the end of its owner's suffix (C175): an array of a
+       length not literal, or a product whose last part is."
+      (tagcase t
+        (ty-data (d args)
+          (cond ((string=? d "%flat-array") (tagcase (car (cdr args)) (ty-rconst (k) #f) (else other #t)))
+                ((has-prefix? d "%named ") (unsized? (car args)))
+                (else #f)))
+        (ty-shape (p ls ts) (and p (not (null? ts)) (unsized? (last ts))))
+        (else other #f))))
+  (length-named? (subr kfx (ty) bool)
+    (lambda (t)
+      "An unsized flat whose length is not `finite`: a size variable's (C175)."
+      (tagcase t
+        (ty-data (d args)
+          (cond ((string=? d "%flat-array")
+                 (tagcase (car (cdr args)) (ty-rconst (k) #f) (ty-data (d2 a2) (not (string=? d2 "%finite"))) (else other #t)))
+                ((has-prefix? d "%named ") (length-named? (car args)))
+                (else #f)))
+        (ty-shape (p ls ts) (and p (not (null? ts)) (length-named? (last ts))))
+        (else other #f))))
+  (lengths-named (subr kfx (string ty) ty)
+    (lambda (name t)
+      "A variable's type where its name is used: a flat array's length
+       `finite` named for it, `#%len NAME` (C175; Fixpt's TODO §77, the
+       length named where it is bound), so that two arrays' lengths are not
+       taken for one; within a blobref, at its top."
+      (tagcase t
+        (ty-data (d args)
+          (cond ((string=? d "%flat-array")
+                 (if (tagcase (car (cdr args)) (ty-data (d2 a2) (string=? d2 "%finite")) (else other #f))
+                     (ty-data d (list (car args) (ty-var (string-append "#%len " name))))
+                     t))
+                ((string=? d "%blobref") (ty-data d (list (car args) (lengths-named name (car (cdr args))))))
+                (else t)))
+        (ty-shape (p ls ts)
+          (if (and p (not (null? ts)) (unsized? (last ts)))
+              (ty-shape p ls (onto (but-last ts) (list (lengths-named name (last ts)))))
+              t))
+        (else other t))))
+  (but-last (subr kfx (tys) tys)
+    (lambda (ts) (if (or (null? ts) (null? (cdr ts))) nil (cons (car ts) (but-last (cdr ts)))))))
+
+(define-rec
+  (labelled (subr kfx (strings tys) tys)
+    (lambda (ls ts)
+      (if (or (null? ls) (null? ts)) nil
+          (cons (ty-rconst (car ls)) (cons (car ts) (labelled (cdr ls) (cdr ts))))))))
+
+(define-rec
+  (as-flat (subr kfx (ty) ty)
+    (lambda (t)
+      "`t` where a flat is (C175): a sum of flats there, FX-26's flat sum with
+       no key, its tag a byte indexing the owner's fields, which hold its
+       labels; within a product, an array or an abbreviation kept, so too."
+      (tagcase t
+        (ty-shape (p ls ts)
+          (let ((us (map as-flat ts)))
+            (if (or p (null? us) (any? (lambda ((x ty)) (or (not (flat? x)) (unsized? x))) us))
+                (ty-shape p ls us)
+                (ty-data "%flat-sum" (cons (ty-rconst "%fields") (labelled ls us))))))
+        (ty-data (d args)
+          (if (or (has-prefix? d "%named ") (string=? d "%flat-array"))
+              (ty-data d (cons (as-flat (car args)) (cdr args)))
+              t))
+        (else other t)))))
 
 (define-datatype layout (layout i64 i64))
 
@@ -1482,6 +1557,18 @@
         (ty-data "%sz" (cons (ty-data (string-append "%k " (i64->string c)) nil)
                              (map (lambda ((t lterm)) (tagcase t (lterm (n k) (ty-data (string-append "%t " (i64->string k)) (list (size-term-var n)))))) ts))))))))
 
+(define flat-length (subr kfx (ty) ty)
+  (lambda (n)
+    "A flat array's length as a size (C175): a literal's kept as written,
+     `ty-rconst`, for KFX's emitter."
+    (tagcase n (ty-rconst (k) (size-of-lin (lin (string->i64 k) nil))) (else other n))))
+
+(define flat-length-code (subr kfx (ty) string)
+  (lambda (n)
+    "A flat array's length as the compilers are told it: a literal, or
+     Fixpt's `FLAT_TO_THE_END`, to the end of the suffix (C175)."
+    (tagcase n (ty-rconst (k) k) (else other "268435455"))))
+
 (define-rec
   (parse-size-lin (subr kfx (cv strings sexp) lins)
     (lambda (v tvars z)
@@ -1533,7 +1620,7 @@
         "nat" "nlist" "oneshot" "pairof" "place" "poly" "productof" "prompt-tag" "proves" "ref" "select" "subr"
         "sumof" "bool" "union" "->" "->*"
         ;; And those of KFX's types that FX-26 names as types of its base.
-        "addr" "blobref" "bytevectorof" "escape-tag" "flatarrayof" "inbox" "vsubr"))
+        "addr" "blobref" "bytevectorof" "escape-tag" "flatarrayof" "flatlayout" "inbox" "vsubr"))
 (define logic-keywords strings
   (list "lambda" "plambda" "proj" "if" "letrec" "let" "begin" "define" "define*" "define-type"
         "define-generative" "void" "pure" "maxeff" "read" "write" "alloc" "goto" "comefrom" "region" "effect"
@@ -2366,10 +2453,14 @@
                 ((and (sym-is? (car xs) "nat") (i64= (size xs) 2))
                  "`(nat s)`: exactly the size `s` (C158); `(nat finite)` is `nat`."
                  (let ((z (parse-size-lin v tvars (second xs)))) (if (null? z) (ty-nat) (ty-data "%natof" (list (size-of-lin (car z)))))))
-                ((sym-is? (car xs) "flatarrayof")
-                 (if (sym-is? (second xs) "i64")
-                     (ty-flat (ty-i64) (parse-mutable-region v tvars (third xs)))
-                     (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
+                ((and (sym-is? (car xs) "flatarrayof") (i64= (size xs) 3))
+                 "A flat array (Q6; Fixpt's generative `flatarrayof`, C175), of any
+                  type: its layout, made by one, says how its elements are kept.
+                  KFX's are of `i64` (the restriction pass)."
+                 (ty-flat (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs))))
+                ((and (sym-is? (car xs) "flatlayout") (i64= (size xs) 2))
+                 "A flat array's layout (C175): `(i64-flat)` and the others make one."
+                 (ty-data "%flatlayout" (list (parse-type v tvars (second xs)))))
                 ((sym-is? (car xs) "bytevectorof")
                  "FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
                   in place."
@@ -2398,14 +2489,25 @@
                  (if (not (i64= (size xs) 3))
                      (refuse v "(blobref B F)")
                      (let ((b (unnamed-top (parse-type v tvars (second xs))))
-                           (f (unnamed-top (parse-type v tvars (third xs))))
+                           (f (as-flat (unnamed-top (parse-type v tvars (third xs)))))
                            ;; As written, an abbreviation by its name (C164).
                            (b-as (parse-type v tvars (second xs)))
-                           (f-as (parse-type v tvars (third xs))))
+                           (f-as (as-flat (parse-type v tvars (third xs)))))
                        (cond ((not (tagcase b (ty-data (d args) (string=? d "%bloblet")) (else other #f)))
                               (refuse v (string-append "a blobref's owner is a bloblet: " (show-sexp t))))
                              ((not (flat? f)) (refuse v (string-append "a blobref's flat is a scalar, or a product or array of them (KFX has no f32 yet): " (show-sexp t))))
                              (else (ty-data "%blobref" (list b-as f-as)))))))
+                ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3)
+                      (tagcase (third xs)
+                        (sym (n f p) (or (string=? n "finite") (string-member? (string-append "#" n) tvars)))
+                        (lst (ys f p l2) (or (head-is? (third xs) "+") (head-is? (third xs) "-")))
+                        (else other #f)))
+                 "A flat array of a length not literal (C175; Fixpt's TODO §77): a size,
+                  `finite` or a size variable; it runs to the end of its owner's
+                  suffix. FX-26's: the restriction pass refuses it for KFX."
+                 (if (let ((e (as-flat (unnamed-top (parse-type v tvars (second xs)))))) (and (flat? e) (not (unsized? e))))
+                     (ty-data "%flat-array" (list (as-flat (parse-type v tvars (second xs))) (parse-size v tvars (third xs))))
+                     (refuse v (string-append "a flat array is of a flat: " (show-sexp t)))))
                 ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                  "An array of values (C56), `(arrayof T R)`, at a region: kayak-rt's
                   `Array<T>`, a row of cells."
@@ -2413,12 +2515,13 @@
                 ((sym-is? (car xs) "arrayof")
                  (tagcase (third xs)
                    (num (k f p)
-                     (let ((e (unnamed-top (parse-type v tvars (second xs)))))
+                     (let ((e (as-flat (unnamed-top (parse-type v tvars (second xs))))))
                        (cond ((or (i64< k 0) (i64> k 268435454))
                               "Below FX-26's length that means \"to the end of the suffix\"."
                               (refuse v "a flat array's literal length is 0 to 268435454"))
-                             ((flat? e)
-                              (ty-data "%flat-array" (list e (ty-rconst (i64->string k)))))
+                             ((and (flat? e) (not (unsized? e)))
+                              "Its element as written, an abbreviation by its name (C164)."
+                              (ty-data "%flat-array" (list (as-flat (parse-type v tvars (second xs))) (ty-rconst (i64->string k)))))
                              (else (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t)))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                 ((and (or (sym-is? (car xs) "addr") (sym-is? (car xs) "inbox") (sym-is? (car xs) "icell")) (i64= (size xs) 3))
@@ -3110,7 +3213,13 @@
                  (string-append (if (string=? d "%oneshot") "(oneshot " "(composable ") (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
                    (string-append " " (string-append (tagcase (car (cdr (cdr args))) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                      (string-append " " (string-append (show-ty s (car (cdr (cdr (cdr args))))) ")")))))))))
-                ((string=? d "%flat-array") (string-append "(flat-arrayof " (string-append (show-tys s args) ")")))
+                ((string=? d "%flat-array")
+                 (string-append "(flat-arrayof " (string-append (show-ty s (car args))
+                   (string-append " " (string-append (tagcase (car (cdr args)) (ty-rconst (k) k) (else other (show-size s (car (cdr args))))) ")")))))
+                ((and (string=? d "%flat-sum") (unkeyed? args))
+                 (string-append "(sumof" (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append l (string-append " " (string-append (show-ty s x) ")")))))))
+                                                                          (flat-sum-variants args)))
+                                                        ")")))
                 ((string=? d "%flat-sum")
                  (string-append "(sumof " (string-append (show-ty s (car args))
                    (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append l (string-append " " (string-append (show-ty s x) ")")))))))
@@ -3865,6 +3974,16 @@
                            (mismatch v s a e)
                            (fits v (fits v (fits v (car two) (car xs) (car ys)) (car (cdr xs)) (car (cdr ys)))
                                  (car (cdr (cdr (cdr xs)))) (car (cdr (cdr (cdr ys))))))))
+                    ((string=? x "%flat-array")
+                     "Its flat the same, its length a size the same or the one expected
+                      `finite` (C175)."
+                     (let ((an (walk s (flat-length (car (cdr xs))))) (en (walk s (flat-length (car (cdr ys))))))
+                       "`finite` only where the one given is: a literal's length is no
+                        array's that runs to the end (`flat-literal-not-to-end.fx`)."
+                       (if (and (tagcase en (ty-data (d4 a4) (string=? d4 "%finite")) (else other #f))
+                                (tagcase (car (cdr xs)) (ty-rconst (k) #t) (else other #f)))
+                           (mismatch v s a e)
+                           (size-fits v (fits v s (car xs) (car ys)) an en a e))))
                     ((or (string=? x "%nlist") (string=? x "%natof"))
                      "A size the same, or the one expected `finite` (C158)."
                      (if (string=? x "%nlist")
@@ -4214,7 +4333,7 @@
         (string=? name "bloblet-byte") (string=? name "bloblet-set-byte!") (string=? name "bloblet-bytes") (string=? name "rmake-bloblet")
         (string=? name "dlambda") (string=? name "=>") (string=? name "blobref-at") (string=? name "blobref+")
         (string=? name "blobref-owner") (string=? name "blobref-offset") (string=? name "blobref-get") (string=? name "blobref-set!")
-        (string=? name "blobref-index") (string=? name "blobref-variant!"))))
+        (string=? name "blobref-index") (string=? name "blobref-variant!") (string=? name "blobref-length"))))
 
 (define process-call? (subr kfx (string) bool)
   (lambda (h)

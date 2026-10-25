@@ -64,7 +64,7 @@ pub mod restrictions {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
                 } else if string_eq_p(n, str_lit("list")) {
                     match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::nil())))))))) {
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-ref"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::heap_cons(str_lit("flatarray-length"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::nil()))))))))))))))))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
@@ -135,6 +135,10 @@ pub mod restrictions {
                     match restriction_refused(f, l, str_lit("sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)")) {}
                 } else if (sym_is_p(car(xs), str_lit("vsubr")) || sym_is_p(car(xs), str_lit("vlambda")) || sym_is_p(car(xs), str_lit("apply"))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
+                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit("finite")) || head_is_p(third(xs), str_lit("+")) || head_is_p(third(xs), str_lit("-")))) {
+                    match restriction_refused(f, l, str_lit("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {}
+                } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit("i64")))) {
+                    match restriction_refused(f, l, str_lit("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {}
                 } else if (sym_is_p(car(xs), str_lit("=>")) || sym_is_p(car(xs), str_lit("dlambda"))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {}
                 } else if sym_is_p(car(xs), str_lit("composable")) {

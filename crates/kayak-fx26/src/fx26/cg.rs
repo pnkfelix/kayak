@@ -2211,7 +2211,7 @@ pub fn typecase_predicate(s: Str) -> Str {
 }
 
 pub fn bloblet_form_p(h: Str) -> bool {
-    string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil())))))))))))))))))
+    string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil()))))))))))))))))))
 }
 
 // The scalar flat's layout code (`fixpt_heap::layout::FLAT_*`), or -1.
@@ -2265,7 +2265,7 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
         }
     } else if (string_eq_p(op, str_lit("blobref-get")) || string_eq_p(op, str_lit("blobref-set!"))) {
         flat_code(at(str_lit("blob-scalar ")))
-    } else if string_eq_p(op, str_lit("blobref-index")) {
+    } else if (string_eq_p(op, str_lit("blobref-index")) || string_eq_p(op, str_lit("blobref-length"))) {
         let ns = words_i64(at(str_lit("blob-element ")));
         if null_p(ns) {
             -1i64
@@ -2277,7 +2277,11 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
         if null_p(ws) {
             -1i64
         } else {
-            i64_plus(i64_plus(digits_i64(string_chars(car(ws)), 0i64), 8i64), i64_star(256i64, digits_i64(string_chars(car(cdr(cdr(ws)))), 0i64)))
+            i64_plus(i64_plus(digits_i64(string_chars(car(ws)), 0i64), if i64_gt(size(ws), 3i64) {
+                0i64
+            } else {
+                8i64
+            }), i64_star(256i64, digits_i64(string_chars(car(cdr(cdr(ws)))), 0i64)))
         }
     } else {
         -1i64
@@ -2526,6 +2530,10 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         parse_bloblet(h, cdr(xs), f, a)
     } else if string_eq_p(h, str_lit("sum")) {
         x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a)
+    } else if (string_eq_p(h, str_lit("tagcase")) && not(string_eq_p(fact_text(get(cg_facts()), f, a, str_lit("blob-tagcase ")), str_lit("")))) {
+        // A tagcase of a flat sum (C33, C175): not yet the generator's.
+        match cg_fail(str_lit("not yet: a tagcase of a flat sum")) {};
+        x_var(str_lit("%none"), a)
     } else if string_eq_p(h, str_lit("tagcase")) {
         x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), a)
     } else if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value")) || string_eq_p(h, str_lit("extend"))) && module_fact_p(a, str_lit("module-value"))) {
@@ -5346,6 +5354,10 @@ pub fn c_bloblet(op: Str, i: i64, xs: Cxs, e: Cenv, depth: i64, c: Code) -> () {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i);
         c_prim(c, str_lit("%fx26-suffix-ref-get"), 2i64)
+    } else if string_eq_p(op, str_lit("blobref-length")) {
+        c_exp(car(xs), e, depth, c, false);
+        c_int(c, i);
+        c_prim(c, str_lit("%fx26-suffix-ref-length"), 2i64)
     } else if string_eq_p(op, str_lit("blobref-index")) {
         c_exps(xs, e, depth, c);
         c_int(c, i);

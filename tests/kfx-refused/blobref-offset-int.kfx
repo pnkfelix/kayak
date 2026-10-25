@@ -1,0 +1,8 @@
+"A blobref's offset, an `int`, where an `i64` is expected: refused, as
+ Fixpt refuses it; a blobref's reading forms are compared with what is
+ expected, as any form is (C175)."
+(define-effect kfx (maxeff (read @globals) (alloc @heap) spin))
+(define-type blob (bloblet (fields) @heap))
+(define main (subr kfx () i64)
+  (lambda ()
+    (blobref-offset (the (blobref blob i64) (blobref-at (the blob (make-bloblet 16)) 0)))))

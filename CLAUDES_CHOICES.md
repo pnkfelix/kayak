@@ -4801,3 +4801,45 @@ and a comparison that unfolds a `mu` notes `kfx-restricted`.
   printing where Fixpt names a type by an abbreviation of it
   (`parametric-rose.fx`, `types-mutual.fx`, `types-in-any-order.fx`); a
   fresh region's name in an expression's type (`family-knot.fx`).
+
+## C175. General flat arrays (2026-10-25)
+
+Fixpt's flats (Q6, its TODO §77) past KFX-0's: FX-26's alone, each
+refused for KFX by the restriction pass or a `kfx-restricted` note.
+- **`(flatarrayof T R)` of any `T`** (Fixpt's generative `flatarrayof`),
+  `ty-flat` as before; `(flatlayout T)`, `%flatlayout`; the primitives
+  `make-flatarray`, `flatarray-ref`, `flatarray-set!`, `flatarray-length`
+  and the layouts `i32-flat` ... `f64-flat`, at Fixpt's types. KFX: its
+  `-i64` prelude's alone (the names and a non-`i64` element refused).
+  Found on the way: `(flatlayout t)` among a procedure type's parameters
+  read as a parameter named `flatlayout` (C162's rule): a type's word
+  now, as `flatarrayof` was.
+- **Flat sums with no key**, `(sumof (a F) (b G))` where a flat is: its
+  tag a byte indexing the owner's fields, which hold the labels
+  (`%flat-sum` keyed `%fields`, `as-flat`); `blobref-variant!` of
+  `'label`, `tagcase` arms by label; Fixpt's operand code `w + 8·numeric
+  + 256·p` to the engine (`fields` in the fact: no 8). A variant may not
+  be unsized.
+- **Arrays to the end of the suffix**: `(arrayof F n)`, `n` `finite`, a
+  size variable or a sum of sizes; `blobref-length`, a `(nat n)`
+  (`nat` for `finite`); the compilers told `FLAT_TO_THE_END`. Only a
+  product's last part may be unsized, no array's element; a new
+  blobref's length is `finite`, not a variable's. Fixpt names a `finite`
+  length where its blobref is bound: here, where the variable is used,
+  `#%len NAME` (`lengths-named`), so that a procedure polymorphic in the
+  length is given it, and two arrays' lengths are not one; a literal's
+  length is no `finite`'s (`flat-literal-not-to-end.fx`). A `proj`'s
+  size argument read as a size.
+- **A K1 hole found by a test**: in checking mode the blobref and
+  bloblet forms that read (`blobref-offset`, `-get`, `-index`, ...) gave
+  their own type and were never compared with the one expected, so an
+  `int` was taken for an `i64`, in KFX too. Now only the forms the
+  expected type makes (`make-bloblet`, `rmake-bloblet`, `blobref-at`,
+  `blobref+`) take it; the rest are synthesized and compared
+  (`tests/kfx-refused/blobref-offset-int.kfx`).
+- The cells generator (`--ours`) declines a `tagcase` of a flat sum
+  (`blob-tagcase` noted), which it has not; it had met none before.
+- Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
+  each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
+  (`narrayof-lengths.fx`); printing a blobref's owner by its
+  abbreviation's name in an expression's type.

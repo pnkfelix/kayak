@@ -1,0 +1,5 @@
+"FX-26's flat array of any element, made by a layout, which KFX has not
+ yet: its flat arrays are of i64 (C175)."
+(define-effect kfx (maxeff (read @globals) (alloc @heap) spin))
+(define main (subr kfx () i64)
+  (lambda () (let ((a (the (flatarrayof f64 @heap) (make-flatarray (f64-flat) 2 0.5)))) (int->i64 (flatarray-length a)))))

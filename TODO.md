@@ -566,9 +566,11 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    regions and `letfreeze` (C161); specifications (C162); what a test
    proves (C163); a bloblet's width (C167); `cwcc` (C168); `race`
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
-   recursive types, `mu` (C174).
-   73 of the 428 programs Fixpt accepts still refused (2026-10-25); 72
-   differ (1, above); 283 the same. Of modules left: `load-layers.fx` (an effect
+   recursive types, `mu` (C174); flat arrays of any flat, flat sums with
+   no key, arrays to the end of the suffix (C175).
+   60 of the 428 programs Fixpt accepts still refused (2026-10-25); 74
+   differ (1, above); 294 the same. Of flats left: the kind `flat`
+   (`flat-kind.fx`), `narrayof` (`narrayof-lengths.fx`). Of modules left: `load-layers.fx` (an effect
    read from an item made before it, in a loaded file); printing, where
    Fixpt names a shared type by the latest abbreviation or description of
    it (`include-types.fx`), a module's own making's effect, a family's
@@ -814,3 +816,32 @@ tier 6's: the control routines (`prompt`, `callcomp`, `abort`, in
   `floats`, and `made-code`/`made-flat` say whether made code ran
   natively. If FX-26 is to say what `f64-tan` gives, as a reference
   must, that is for its definition (§9 of PLAN).
+
+## 35. An index of the checker's bindings (the Fixpt team, 2026-10-25)
+
+Measured on Fixpt ae397dc8, kayak at abecd81, one core: stage 0 (kfx
+compiling itself under `fixpt run`, fx-regs-rsjit-nativecc) is about
+16.7G cycles; `find-bind` (kfx/check.kfx) is 12.2% of them and 52% of
+the run's L2 data misses (140M of 268M); 10.5% at C143. What is left is
+the walk: `cv-binds` from the innermost, `string=?` on each, a chain of
+dependent loads per element, and a miss walks it all. 63 calls at
+78c0bc2 (check-exprs 40, check-defs 13, check 9, terminate 1). The worst
+are lookups that find nothing: the markers `%module`, `%loaded`,
+`%toplambda`, `%instance`, the `%type NAME` lookups since C143, and the
+form-head checks (whether `vlambda`, `rlambda`, a blob form's name is
+bound), asked of every such form.
+1. **The markers as state**: whether a module, a load, a top-level
+   lambda is being checked, and the instance context, as fields of `cv`
+   (or one field of flags) set where their bindings are pushed now; each
+   lookup a field read. The smaller change, most of the full-length misses.
+2. **`cv-binds` indexed by name** beside the list: a persistent balanced
+   tree keyed by the name (as `fidx` is for facts, C143), each name to its
+   bindings innermost first; adding a binding conses and inserts;
+   `find-bind` a tree lookup giving the same answer. `cv` is passed
+   functionally, so scoping needs no undo. Callers that walk or filter
+   the list (`conversion-bind`, `opened-binds`, check-defs' filters over
+   `bs`) keep it until moved over, one at a time. Interned names would
+   be cheaper again; not needed for the main gain.
+Expected: most of `find-bind`'s 12% and about half of the L2 misses.
+Fixpt will measure what lands, on a new pinned snapshot.
+

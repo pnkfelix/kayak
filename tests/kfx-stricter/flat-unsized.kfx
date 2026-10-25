@@ -1,0 +1,8 @@
+"FX-26's flat array of a length not literal, to the end of its owner's
+ suffix, which KFX has not yet (C175)."
+(define-effect kfx (maxeff (read @globals) (alloc @heap) spin))
+(define-type blob (bloblet (fields) @heap))
+(define main (subr kfx () i64)
+  (lambda ()
+    (let ((s (the (blobref blob (arrayof f64 finite)) (blobref-at (the blob (make-bloblet 40)) 0))))
+      (int->i64 (blobref-offset s)))))

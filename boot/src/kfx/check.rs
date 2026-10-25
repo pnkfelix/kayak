@@ -2502,7 +2502,7 @@ pub fn key_width(k: &'static Ty) -> i64 {
     let tagcase_ = k;
     match *tagcase_ {
         Ty::TyRconst(n) => {
-            if string_eq_p(n, str_lit("u8")) {
+            if (string_eq_p(n, str_lit("u8")) || string_eq_p(n, str_lit("%fields"))) {
                 1i64
             } else if string_eq_p(n, str_lit("u16")) {
                 2i64
@@ -2513,6 +2513,21 @@ pub fn key_width(k: &'static Ty) -> i64 {
         _ => {
             let other = tagcase_;
             4i64
+        }
+    }
+}
+
+/// Whether a flat sum's tag indexes its owner's fields, which hold its
+/// labels (C175): no key written.
+pub fn unkeyed_p(args: Tys) -> bool {
+    let tagcase_ = car(args);
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            string_eq_p(n, str_lit("%fields"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -2566,11 +2581,176 @@ pub fn flat_p(t: &'static Ty) -> bool {
         Ty::TyShape(p, ls, ts) => {
             (p && not(null_p(ts)) && not(any_p(lambda1s(move |x: &'static Ty| {
                 not(flat_p(x))
-            }), ts)))
+            }), ts)) && not(any_p(&unsized_p, but_last(ts))))
         }
         _ => {
             let other = tagcase_;
             false
+        }
+    }
+}
+
+/// A flat that runs to the end of its owner's suffix (C175): an array of a
+/// length not literal, or a product whose last part is.
+pub fn unsized_p(mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%flat-array")) {
+                    let tagcase_ = car(cdr(args));
+                    match *tagcase_ {
+                        Ty::TyRconst(k) => {
+                            return false;
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return true;
+                        }
+                    }
+                } else if has_prefix_p(d, str_lit("%named ")) {
+                    t = car(args);
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return (p && not(null_p(ts)) && unsized_p(last(ts)));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// An unsized flat whose length is not `finite`: a size variable's (C175).
+pub fn length_named_p(mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%flat-array")) {
+                    let tagcase_ = car(cdr(args));
+                    match *tagcase_ {
+                        Ty::TyRconst(k) => {
+                            return false;
+                        }
+                        Ty::TyData(d2, a2) => {
+                            return not(string_eq_p(d2, str_lit("%finite")));
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return true;
+                        }
+                    }
+                } else if has_prefix_p(d, str_lit("%named ")) {
+                    t = car(args);
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return (p && not(null_p(ts)) && length_named_p(last(ts)));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// A variable's type where its name is used: a flat array's length
+/// `finite` named for it, `#%len NAME` (C175; Fixpt's TODO §77, the
+/// length named where it is bound), so that two arrays' lengths are not
+/// taken for one; within a blobref, at its top.
+pub fn lengths_named(name: Str, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%flat-array")) {
+                if {
+                    let tagcase_ = car(cdr(args));
+                    match *tagcase_ {
+                        Ty::TyData(d2, a2) => {
+                            string_eq_p(d2, str_lit("%finite"))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    ty_data(d, kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(ty_var(string_append(str_lit("#%len "), name)), kayak_rt::nil())))
+                } else {
+                    t
+                }
+            } else if string_eq_p(d, str_lit("%blobref")) {
+                ty_data(d, kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(lengths_named(name, car(cdr(args))), kayak_rt::nil())))
+            } else {
+                t
+            }
+        }
+        Ty::TyShape(p, ls, ts) => {
+            if (p && not(null_p(ts)) && unsized_p(last(ts))) {
+                ty_shape(p, ls, onto(but_last(ts), kayak_rt::heap_cons(lengths_named(name, last(ts)), kayak_rt::nil())))
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+pub fn but_last(ts: Tys) -> Tys {
+    if (null_p(ts) || null_p(cdr(ts))) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons(car(ts), but_last(cdr(ts)))
+    }
+}
+
+pub fn labelled(ls: Strings, ts: Tys) -> Tys {
+    if (null_p(ls) || null_p(ts)) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons(ty_rconst(car(ls)), kayak_rt::heap_cons(car(ts), labelled(cdr(ls), cdr(ts))))
+    }
+}
+
+/// `t` where a flat is (C175): a sum of flats there, FX-26's flat sum with
+/// no key, its tag a byte indexing the owner's fields, which hold its
+/// labels; within a product, an array or an abbreviation kept, so too.
+pub fn as_flat(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            let us = map(&as_flat, ts);
+            if (p || null_p(us) || any_p(lambda1s(move |x: &'static Ty| {
+                (not(flat_p(x)) || unsized_p(x))
+            }), us)) {
+                ty_shape(p, ls, us)
+            } else {
+                ty_data(str_lit("%flat-sum"), kayak_rt::heap_cons(ty_rconst(str_lit("%fields")), labelled(ls, us)))
+            }
+        }
+        Ty::TyData(d, args) => {
+            if (has_prefix_p(d, str_lit("%named ")) || string_eq_p(d, str_lit("%flat-array"))) {
+                ty_data(d, kayak_rt::heap_cons(as_flat(car(args)), cdr(args)))
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
         }
     }
 }
@@ -3296,6 +3476,36 @@ pub fn size_of_lin(l: &'static Lin) -> &'static Ty {
     }
 }
 
+/// A flat array's length as a size (C175): a literal's kept as written,
+/// `ty-rconst`, for KFX's emitter.
+pub fn flat_length(n: &'static Ty) -> &'static Ty {
+    let tagcase_ = n;
+    match *tagcase_ {
+        Ty::TyRconst(k) => {
+            size_of_lin(lin(string_to_i64(k), nil::<&'static Lterm>()))
+        }
+        _ => {
+            let other = tagcase_;
+            n
+        }
+    }
+}
+
+/// A flat array's length as the compilers are told it: a literal, or
+/// Fixpt's `FLAT_TO_THE_END`, to the end of the suffix (C175).
+pub fn flat_length_code(n: &'static Ty) -> Str {
+    let tagcase_ = n;
+    match *tagcase_ {
+        Ty::TyRconst(k) => {
+            k
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("268435455")
+        }
+    }
+}
+
 /// A size as written (C158), as a linear expression; none for `finite`: a
 /// literal, `finite`, a size variable, `(+ s ...)`, `(- s k)`.
 pub fn parse_size_lin(v: &'static Cv, tvars: Strings, z: &'static Sexp) -> Lins {
@@ -3411,7 +3621,7 @@ pub type Snames = List<&'static Sname>;
 pub fn logic_type_forms() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::nil())))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -5375,12 +5585,14 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         return ty_data(str_lit("%natof"), kayak_rt::heap_cons(size_of_lin(car(z)), kayak_rt::nil()));
                     }
-                } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
-                    if sym_is_p(second(xs), str_lit("i64")) {
-                        return ty_flat(ty_i64(), parse_mutable_region(v, tvars, third(xs)));
-                    } else {
-                        return match refuse(v, string_append(str_lit("KFX-0's flat arrays are of i64: "), show_sexp(t))) {};
-                    }
+                } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64)) {
+                    // A flat array (Q6; Fixpt's generative `flatarrayof`, C175), of any
+                    // type: its layout, made by one, says how its elements are kept.
+                    // KFX's are of `i64` (the restriction pass).
+                    return ty_flat(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs)));
+                } else if (sym_is_p(car(xs), str_lit("flatlayout")) && i64_eq(size(xs), 2i64)) {
+                    // A flat array's layout (C175): `(i64-flat)` and the others make one.
+                    return ty_data(str_lit("%flatlayout"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::nil()));
                 } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                     // FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
                     // in place.
@@ -5430,7 +5642,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     if not(i64_eq(size(xs), 3i64)) {
                         return match refuse(v, str_lit("(blobref B F)")) {};
                     } else {
-                        let (b, f, b_as, f_as) = (unnamed_top(parse_type(v, tvars, second(xs))), unnamed_top(parse_type(v, tvars, third(xs))), parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)));
+                        let (b, f, b_as, f_as) = (unnamed_top(parse_type(v, tvars, second(xs))), as_flat(unnamed_top(parse_type(v, tvars, third(xs)))), parse_type(v, tvars, second(xs)), as_flat(parse_type(v, tvars, third(xs))));
                         if not({
                             let tagcase_ = b;
                             match *tagcase_ {
@@ -5453,6 +5665,32 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
                     let tagcase_ = third(xs);
                     match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            (string_eq_p(n, str_lit("finite")) || string_member_p(string_append(str_lit("#"), n), tvars))
+                        }
+                        Sexp::Lst(ys, f, p, l2) => {
+                            (head_is_p(third(xs), str_lit("+")) || head_is_p(third(xs), str_lit("-")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // A flat array of a length not literal (C175; Fixpt's TODO §77): a size,
+                    // `finite` or a size variable; it runs to the end of its owner's
+                    // suffix. FX-26's: the restriction pass refuses it for KFX.
+                    if {
+                        let e = as_flat(unnamed_top(parse_type(v, tvars, second(xs))));
+                        (flat_p(e) && not(unsized_p(e)))
+                    } {
+                        return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(as_flat(parse_type(v, tvars, second(xs))), kayak_rt::heap_cons(parse_size(v, tvars, third(xs)), kayak_rt::nil())));
+                    } else {
+                        return match refuse(v, string_append(str_lit("a flat array is of a flat: "), show_sexp(t))) {};
+                    }
+                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
                         Sexp::Num(k, f, p) => {
                             false
                         }
@@ -5471,12 +5709,13 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     let tagcase_ = third(xs);
                     match *tagcase_ {
                         Sexp::Num(k, f, p) => {
-                            let e = unnamed_top(parse_type(v, tvars, second(xs)));
+                            let e = as_flat(unnamed_top(parse_type(v, tvars, second(xs))));
                             if (i64_lt(k, 0i64) || i64_gt(k, 268435454i64)) {
                                 // Below FX-26's length that means "to the end of the suffix".
                                 return match refuse(v, str_lit("a flat array's literal length is 0 to 268435454")) {};
-                            } else if flat_p(e) {
-                                return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(ty_rconst(i64_to_string(k)), kayak_rt::nil())));
+                            } else if (flat_p(e) && not(unsized_p(e))) {
+                                // Its element as written, an abbreviation by its name (C164).
+                                return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(as_flat(parse_type(v, tvars, second(xs))), kayak_rt::heap_cons(ty_rconst(i64_to_string(k)), kayak_rt::nil())));
                             } else {
                                 return match refuse(v, string_append(str_lit("a flat array is of a flat, its length a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                             }
@@ -7038,7 +7277,27 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                         }
                     }, string_append(str_lit(" "), string_append(show_ty(s, car(cdr(cdr(cdr(args))))), str_lit(")")))))))));
                 } else if string_eq_p(d, str_lit("%flat-array")) {
-                    return string_append(str_lit("(flat-arrayof "), string_append(show_tys(s, args), str_lit(")")));
+                    return string_append(str_lit("(flat-arrayof "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append({
+                        let tagcase_ = car(cdr(args));
+                        match *tagcase_ {
+                            Ty::TyRconst(k) => {
+                                k
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                show_size(s, car(cdr(args)))
+                            }
+                        }
+                    }, str_lit(")")))));
+                } else if (string_eq_p(d, str_lit("%flat-sum")) && unkeyed_p(args)) {
+                    return string_append(str_lit("(sumof"), string_append(run_together(map(lambda1s(move |f: &'static Fvar| {
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Fvar::Fvar(l, x) => {
+                                string_append(str_lit(" ("), string_append(l, string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
+                            }
+                        }
+                    }), flat_sum_variants(args))), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%flat-sum")) {
                     return string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1s(move |f: &'static Fvar| {
                         let tagcase_ = f;
@@ -9047,6 +9306,39 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         } else {
                             fits(v, fits(v, fits(v, car(two), car(xs), car(ys)), car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(cdr(xs)))), car(cdr(cdr(cdr(ys)))))
                         }
+                    } else if string_eq_p(x, str_lit("%flat-array")) {
+                        // Its flat the same, its length a size the same or the one expected
+                        // `finite` (C175).
+                        let (an, en) = (walk(s, flat_length(car(cdr(xs)))), walk(s, flat_length(car(cdr(ys)))));
+                        // `finite` only where the one given is: a literal's length is no
+                        // array's that runs to the end (`flat-literal-not-to-end.fx`).
+                        if ({
+                            let tagcase_ = en;
+                            match *tagcase_ {
+                                Ty::TyData(d4, a4) => {
+                                    string_eq_p(d4, str_lit("%finite"))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } && {
+                            let tagcase_ = car(cdr(xs));
+                            match *tagcase_ {
+                                Ty::TyRconst(k) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }) {
+                            mismatch(v, s, a, e)
+                        } else {
+                            size_fits(v, fits(v, s, car(xs), car(ys)), an, en, a, e)
+                        }
                     } else if (string_eq_p(x, str_lit("%nlist")) || string_eq_p(x, str_lit("%natof"))) {
                         // A size the same, or the one expected `finite` (C158).
                         if string_eq_p(x, str_lit("%nlist")) {
@@ -9930,7 +10222,7 @@ pub fn named_instance(v: &'static Cv, s: &'static St, sc: &'static Scheme) -> &'
 // The names in scope
 /// FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS).
 pub fn keyword_p(name: Str) -> bool {
-    (string_eq_p(name, str_lit("lambda")) || string_eq_p(name, str_lit("plambda")) || string_eq_p(name, str_lit("proj")) || string_eq_p(name, str_lit("if")) || string_eq_p(name, str_lit("letrec")) || string_eq_p(name, str_lit("let")) || string_eq_p(name, str_lit("begin")) || string_eq_p(name, str_lit("define")) || string_eq_p(name, str_lit("define*")) || string_eq_p(name, str_lit("define-type")) || string_eq_p(name, str_lit("define-generative")) || string_eq_p(name, str_lit("subr")) || string_eq_p(name, str_lit("poly")) || string_eq_p(name, str_lit("ref")) || string_eq_p(name, str_lit("pairof")) || string_eq_p(name, str_lit("dletrec")) || string_eq_p(name, str_lit("void")) || string_eq_p(name, str_lit("pure")) || string_eq_p(name, str_lit("maxeff")) || string_eq_p(name, str_lit("read")) || string_eq_p(name, str_lit("write")) || string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("goto")) || string_eq_p(name, str_lit("comefrom")) || string_eq_p(name, str_lit("region")) || string_eq_p(name, str_lit("effect")) || string_eq_p(name, str_lit("type")) || string_eq_p(name, str_lit("prompt")) || string_eq_p(name, str_lit("prompt-tag")) || string_eq_p(name, str_lit("composable")) || string_eq_p(name, str_lit("mark-key")) || string_eq_p(name, str_lit("listof")) || string_eq_p(name, str_lit("cond")) || string_eq_p(name, str_lit("case")) || string_eq_p(name, str_lit("else")) || string_eq_p(name, str_lit("and")) || string_eq_p(name, str_lit("or")) || string_eq_p(name, str_lit("let*")) || string_eq_p(name, str_lit("define-effect")) || string_eq_p(name, str_lit("module-parameters")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("bloblet")) || string_eq_p(name, str_lit("fields")) || string_eq_p(name, str_lit("frozen")) || string_eq_p(name, str_lit("arrayof")) || string_eq_p(name, str_lit("icell")) || string_eq_p(name, str_lit("await")) || string_eq_p(name, str_lit("define-rec")) || string_eq_p(name, str_lit("letrena")) || string_eq_p(name, str_lit("letreap")) || string_eq_p(name, str_lit("rlambda")) || string_eq_p(name, str_lit("quote")) || string_eq_p(name, str_lit("productof")) || string_eq_p(name, str_lit("sumof")) || string_eq_p(name, str_lit("product")) || string_eq_p(name, str_lit("extract")) || string_eq_p(name, str_lit("sum")) || string_eq_p(name, str_lit("tagcase")) || string_eq_p(name, str_lit("module")) || string_eq_p(name, str_lit("moduleof")) || string_eq_p(name, str_lit("with")) || string_eq_p(name, str_lit("select")) || string_eq_p(name, str_lit("load-module")) || string_eq_p(name, str_lit("define-datatype")) || string_eq_p(name, str_lit("make-bloblet")) || string_eq_p(name, str_lit("bloblet-ref")) || string_eq_p(name, str_lit("bloblet-set!")) || string_eq_p(name, str_lit("bloblet-freeze")) || string_eq_p(name, str_lit("bloblet-byte")) || string_eq_p(name, str_lit("bloblet-set-byte!")) || string_eq_p(name, str_lit("bloblet-bytes")) || string_eq_p(name, str_lit("rmake-bloblet")) || string_eq_p(name, str_lit("dlambda")) || string_eq_p(name, str_lit("=>")) || string_eq_p(name, str_lit("blobref-at")) || string_eq_p(name, str_lit("blobref+")) || string_eq_p(name, str_lit("blobref-owner")) || string_eq_p(name, str_lit("blobref-offset")) || string_eq_p(name, str_lit("blobref-get")) || string_eq_p(name, str_lit("blobref-set!")) || string_eq_p(name, str_lit("blobref-index")) || string_eq_p(name, str_lit("blobref-variant!")))
+    (string_eq_p(name, str_lit("lambda")) || string_eq_p(name, str_lit("plambda")) || string_eq_p(name, str_lit("proj")) || string_eq_p(name, str_lit("if")) || string_eq_p(name, str_lit("letrec")) || string_eq_p(name, str_lit("let")) || string_eq_p(name, str_lit("begin")) || string_eq_p(name, str_lit("define")) || string_eq_p(name, str_lit("define*")) || string_eq_p(name, str_lit("define-type")) || string_eq_p(name, str_lit("define-generative")) || string_eq_p(name, str_lit("subr")) || string_eq_p(name, str_lit("poly")) || string_eq_p(name, str_lit("ref")) || string_eq_p(name, str_lit("pairof")) || string_eq_p(name, str_lit("dletrec")) || string_eq_p(name, str_lit("void")) || string_eq_p(name, str_lit("pure")) || string_eq_p(name, str_lit("maxeff")) || string_eq_p(name, str_lit("read")) || string_eq_p(name, str_lit("write")) || string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("goto")) || string_eq_p(name, str_lit("comefrom")) || string_eq_p(name, str_lit("region")) || string_eq_p(name, str_lit("effect")) || string_eq_p(name, str_lit("type")) || string_eq_p(name, str_lit("prompt")) || string_eq_p(name, str_lit("prompt-tag")) || string_eq_p(name, str_lit("composable")) || string_eq_p(name, str_lit("mark-key")) || string_eq_p(name, str_lit("listof")) || string_eq_p(name, str_lit("cond")) || string_eq_p(name, str_lit("case")) || string_eq_p(name, str_lit("else")) || string_eq_p(name, str_lit("and")) || string_eq_p(name, str_lit("or")) || string_eq_p(name, str_lit("let*")) || string_eq_p(name, str_lit("define-effect")) || string_eq_p(name, str_lit("module-parameters")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("bloblet")) || string_eq_p(name, str_lit("fields")) || string_eq_p(name, str_lit("frozen")) || string_eq_p(name, str_lit("arrayof")) || string_eq_p(name, str_lit("icell")) || string_eq_p(name, str_lit("await")) || string_eq_p(name, str_lit("define-rec")) || string_eq_p(name, str_lit("letrena")) || string_eq_p(name, str_lit("letreap")) || string_eq_p(name, str_lit("rlambda")) || string_eq_p(name, str_lit("quote")) || string_eq_p(name, str_lit("productof")) || string_eq_p(name, str_lit("sumof")) || string_eq_p(name, str_lit("product")) || string_eq_p(name, str_lit("extract")) || string_eq_p(name, str_lit("sum")) || string_eq_p(name, str_lit("tagcase")) || string_eq_p(name, str_lit("module")) || string_eq_p(name, str_lit("moduleof")) || string_eq_p(name, str_lit("with")) || string_eq_p(name, str_lit("select")) || string_eq_p(name, str_lit("load-module")) || string_eq_p(name, str_lit("define-datatype")) || string_eq_p(name, str_lit("make-bloblet")) || string_eq_p(name, str_lit("bloblet-ref")) || string_eq_p(name, str_lit("bloblet-set!")) || string_eq_p(name, str_lit("bloblet-freeze")) || string_eq_p(name, str_lit("bloblet-byte")) || string_eq_p(name, str_lit("bloblet-set-byte!")) || string_eq_p(name, str_lit("bloblet-bytes")) || string_eq_p(name, str_lit("rmake-bloblet")) || string_eq_p(name, str_lit("dlambda")) || string_eq_p(name, str_lit("=>")) || string_eq_p(name, str_lit("blobref-at")) || string_eq_p(name, str_lit("blobref+")) || string_eq_p(name, str_lit("blobref-owner")) || string_eq_p(name, str_lit("blobref-offset")) || string_eq_p(name, str_lit("blobref-get")) || string_eq_p(name, str_lit("blobref-set!")) || string_eq_p(name, str_lit("blobref-index")) || string_eq_p(name, str_lit("blobref-variant!")) || string_eq_p(name, str_lit("blobref-length")))
 }
 
 /// FX-26's forms of processes that are calls (C101): typed as procedures

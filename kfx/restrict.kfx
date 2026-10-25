@@ -44,7 +44,9 @@
                        (restriction-refused file line (string-append n ", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)")))
                       ((string=? n "list")
                        (restriction-refused file line "list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)"))
-                      ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "letfreeze" "assume" "assert"))
+                      ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "letfreeze" "assume" "assert"
+                                              "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
+                                              "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat"))
                        (restriction-refused file line (string-append n ", FX-26's, which KFX has not yet (C156)")))
                       ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
                        (restriction-refused file line (string-append n ", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy")))
@@ -69,6 +71,10 @@
                        (restriction-refused f l "sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)"))
                       ((or (sym-is? (car xs) "vsubr") (sym-is? (car xs) "vlambda") (sym-is? (car xs) "apply"))
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
+                      ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (or (sym-is? (third xs) "finite") (head-is? (third xs) "+") (head-is? (third xs) "-")))
+                       (restriction-refused f l "a flat array of a length not literal, FX-26's, which KFX has not yet (C175)"))
+                      ((and (sym-is? (car xs) "flatarrayof") (i64= (size xs) 3) (not (sym-is? (second xs) "i64")))
+                       (restriction-refused f l "a flat array of other than i64, FX-26's, which KFX has not yet (C175)"))
                       ((or (sym-is? (car xs) "=>") (sym-is? (car xs) "dlambda"))
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)")))
                       ((sym-is? (car xs) "composable")

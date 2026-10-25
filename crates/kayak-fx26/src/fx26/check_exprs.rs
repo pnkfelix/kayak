@@ -92,7 +92,7 @@ pub mod expressions {
     }
 
     pub fn blob_form_p(h: Str) -> bool {
-        string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil()))))))))))))))))
+        string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil())))))))))))))))))
     }
 
     pub fn list_ref_i64(mut ts: Tys, mut i: i64) -> &'static Ty {
@@ -3931,7 +3931,7 @@ pub mod expressions {
                             }, name, found, process_marks(cv_tvars(v))), sc);
                             match *tagcase_ {
                                 Inst::Inst(t, s, regions, effects) => {
-                                    res(t, naming_effs(s, name, wher, t, cv_group(v)), s)
+                                    res(lengths_named(name, t), naming_effs(s, name, wher, t, cv_group(v)), s)
                                 }
                             }
                         }
@@ -4957,8 +4957,13 @@ pub mod expressions {
             body_form(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
             letrena_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+        } else if (blob_form_p(h) && string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::nil()))))) && null_p(find_bind(h, cv_binds(v)))) {
+            // Those made by the type expected; the rest are synthesized, then
+            // compared with it, as any form is (C175: `blobref-offset`'s `int`
+            // was taken where an `i64` was expected).
             blob_form(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
+        } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+            check_by_synth(v, s, e, expected)
         } else if string_eq_p(h, str_lit("prompt")) {
             prompt_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("%found")) {
@@ -5338,7 +5343,15 @@ pub mod expressions {
                                         if not(string_eq_p(d2, str_lit("%flat-sum"))) {
                                             match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
                                         } else {
-                                            with_effs(flat_tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-tagcase "), string_append(i64_to_string(key_width(car(a2))), string_append(str_lit(" "), i64_to_string(variant_offset(a2)))))), t, owner, flat_sum_variants(a2), cdr(xs), expected), effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, {
+                                            with_effs(flat_tag_arms(v, note_fact(if unkeyed_p(a2) {
+                                                kfx_restricted(v, s, str_lit("a flat sum with no key, FX-26's, its tag an index of the owner's fields, which KFX has not yet (C175)"))
+                                            } else {
+                                                s
+                                            }, cv_file(v), cv_pos(v), string_append(str_lit("blob-tagcase "), string_append(i64_to_string(key_width(car(a2))), string_append(str_lit(" "), string_append(i64_to_string(variant_offset(a2)), if unkeyed_p(a2) {
+                                                str_lit(" fields")
+                                            } else {
+                                                str_lit("")
+                                            }))))), t, owner, flat_sum_variants(a2), cdr(xs), expected), effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, {
                                                 let tagcase_ = owner;
                                                 match *tagcase_ {
                                                     Ty::TyData(d3, a3) => {
@@ -6001,6 +6014,9 @@ pub mod expressions {
                     match *tagcase_ {
                         Sexp::Num(k, f, p) => {
                             i64_to_string(k)
+                        }
+                        Sexp::Sym(n, f, p) => {
+                            n
                         }
                         _ => {
                             let other = tagcase_;
@@ -6833,6 +6849,10 @@ pub mod expressions {
                 Ty::TyData(d, args) => {
                     if not(string_eq_p(d, str_lit("%blobref"))) {
                         match refuse(v, str_lit("a blobref made where none is expected")) {}
+                    } else if length_named_p(walk(s, car(cdr(args)))) {
+                        // Its length named where it is bound, not claimed (C175;
+                        // `flat-unsized-new.fx`).
+                        match refuse(v, str_lit("a new blobref's array of a length not literal is of length `finite`")) {}
                     } else {
                         let tagcase_ = check(v, s, car(xs), car(args));
                         match *tagcase_ {
@@ -6926,7 +6946,7 @@ pub mod expressions {
             }
         } else {
             // blobref-owner, -offset, -get, -set!, -index: of a blobref.
-            args_are(if (string_eq_p(h, str_lit("blobref-owner")) || string_eq_p(h, str_lit("blobref-offset")) || string_eq_p(h, str_lit("blobref-get"))) {
+            args_are(if (string_eq_p(h, str_lit("blobref-owner")) || string_eq_p(h, str_lit("blobref-offset")) || string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-length"))) {
                 1i64
             } else {
                 2i64
@@ -6976,18 +6996,7 @@ pub mod expressions {
                                                                     i64_to_string(size)
                                                                 }
                                                             }
-                                                        }, string_append(str_lit(" "), {
-                                                            let tagcase_ = car(cdr(a3));
-                                                            match *tagcase_ {
-                                                                Ty::TyRconst(n) => {
-                                                                    n
-                                                                }
-                                                                _ => {
-                                                                    let other = tagcase_;
-                                                                    str_lit("0")
-                                                                }
-                                                            }
-                                                        })))))
+                                                        }, string_append(str_lit(" "), flat_length_code(car(cdr(a3))))))))
                                                     }
                                                 }
                                             }
@@ -6995,6 +7004,46 @@ pub mod expressions {
                                         _ => {
                                             let other = tagcase_;
                                             match refuse(v, str_lit("blobref-index of a blobref to no flat array")) {}
+                                        }
+                                    }
+                                } else if string_eq_p(h, str_lit("blobref-length")) {
+                                    // A flat array's length (C175; Fixpt's N5c): a `(nat n)` of its
+                                    // length `n`, `nat` if it is `finite`.
+                                    let tagcase_ = flat;
+                                    match *tagcase_ {
+                                        Ty::TyData(d3, a3) => {
+                                            if not(string_eq_p(d3, str_lit("%flat-array"))) {
+                                                match refuse(v, str_lit("blobref-length of a blobref to no flat array")) {}
+                                            } else {
+                                                let n = walk(s, flat_length(car(cdr(a3))));
+                                                res(if {
+                                                    let tagcase_ = n;
+                                                    match *tagcase_ {
+                                                        Ty::TyData(d4, a4) => {
+                                                            string_eq_p(d4, str_lit("%finite"))
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            false
+                                                        }
+                                                    }
+                                                } {
+                                                    ty_nat()
+                                                } else {
+                                                    ty_data(str_lit("%natof"), kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                                }, es0, note_fact(kfx_restricted(v, s, str_lit("blobref-length, FX-26's, which KFX has not yet (C175)")), cv_file(v), cv_pos(v), string_append(str_lit("blob-element "), string_append({
+                                                    let tagcase_ = flat_layout(car(a3));
+                                                    match *tagcase_ {
+                                                        Layout::Layout(size, al) => {
+                                                            i64_to_string(size)
+                                                        }
+                                                    }
+                                                }, string_append(str_lit(" "), flat_length_code(car(cdr(a3))))))))
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            match refuse(v, str_lit("blobref-length of a blobref to no flat array")) {}
                                         }
                                     }
                                 } else if string_eq_p(h, str_lit("blobref-variant!")) {
@@ -7005,13 +7054,38 @@ pub mod expressions {
                                                 let tagcase_ = second(xs);
                                                 match *tagcase_ {
                                                     Sexp::Num(k, f, p) => {
-                                                        i64_to_string(k)
+                                                        if (string_eq_p(d3, str_lit("%flat-sum")) && not(unkeyed_p(a3))) {
+                                                            i64_to_string(k)
+                                                        } else {
+                                                            str_lit("")
+                                                        }
+                                                    }
+                                                    Sexp::Lst(qs, f, p, l2) => {
+                                                        if (string_eq_p(d3, str_lit("%flat-sum")) && unkeyed_p(a3) && i64_eq(size(qs), 2i64) && sym_is_p(car(qs), str_lit("quote"))) {
+                                                            let tagcase_ = second(qs);
+                                                            match *tagcase_ {
+                                                                Sexp::Sym(n, f2, p2) => {
+                                                                    n
+                                                                }
+                                                                _ => {
+                                                                    let other = tagcase_;
+                                                                    str_lit("")
+                                                                }
+                                                            }
+                                                        } else {
+                                                            str_lit("")
+                                                        }
                                                     }
                                                     _ => {
                                                         let other = tagcase_;
                                                         str_lit("")
                                                     }
                                                 }
+                                            };
+                                            let s = if (string_eq_p(d3, str_lit("%flat-sum")) && unkeyed_p(a3)) {
+                                                kfx_restricted(v, s, str_lit("a flat sum with no key, FX-26's, its tag an index of the owner's fields, which KFX has not yet (C175)"))
+                                            } else {
+                                                s
                                             };
                                             let found = concat(map(lambda1s(move |f: &'static Fvar| {
                                                 let tagcase_ = f;
@@ -7032,9 +7106,13 @@ pub mod expressions {
                                             if not(string_eq_p(d3, str_lit("%flat-sum"))) {
                                                 match refuse(v, str_lit("blobref-variant! of a blobref to no flat sum")) {}
                                             } else if null_p(found) {
-                                                match refuse(v, str_lit("a variant is named by a literal, one of the flat sum's labels")) {}
+                                                match refuse(v, str_lit("a variant is named by a literal: `'label`, or a number where the sum has a key")) {}
                                             } else {
-                                                res(ty_data(str_lit("%blobref"), kayak_rt::heap_cons(owner, kayak_rt::heap_cons(car(found), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, region)), kayak_rt::heap_cons(string_append(str_lit("write:"), region_string(s, region)), kayak_rt::nil())), es0), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-variant "), string_append(i64_to_string(key_width(car(a3))), string_append(str_lit(" "), string_append(lab, string_append(str_lit(" "), i64_to_string(variant_offset(a3)))))))))
+                                                res(ty_data(str_lit("%blobref"), kayak_rt::heap_cons(owner, kayak_rt::heap_cons(car(found), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, region)), kayak_rt::heap_cons(string_append(str_lit("write:"), region_string(s, region)), kayak_rt::nil())), es0), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-variant "), string_append(i64_to_string(key_width(car(a3))), string_append(str_lit(" "), string_append(lab, string_append(str_lit(" "), string_append(i64_to_string(variant_offset(a3)), if unkeyed_p(a3) {
+                                                    str_lit(" fields")
+                                                } else {
+                                                    str_lit("")
+                                                }))))))))
                                             }
                                         }
                                         _ => {
@@ -7334,6 +7412,9 @@ pub mod expressions {
                 } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '^') {
                     // A function where one of arrow kind is bound (C173).
                     fun_of_kind(v, cv_tvars(v), car(args), binder_kind(car(tvars)), written_binder(car(tvars)))
+                } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '#') {
+                    // A size (C158).
+                    parse_size(v, cv_tvars(v), car(args))
                 } else {
                     parse_type(v, cv_tvars(v), car(args))
                 }, t));
