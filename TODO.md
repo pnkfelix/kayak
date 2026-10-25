@@ -556,7 +556,7 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    by name (**done**, C164, as written; C165, base types by the latest),
    `poly` as written, module types (**done** for most, C165: datatypes,
    nested and loaded modules, a module's own effect left), a fresh
-   region's name (`@r.1`).
+   region's name (**done**, C166).
 2. The restriction pass split off the checker (`front-end.md` stage 2).
    **Begun** (C154): `kfx-restricted` notes, kfx's `restrict` refuses;
    moved so far: a constant's effects (C154), reals written past KFX's
@@ -565,7 +565,7 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    of types and sizes, rank 2 (C159), the confirm forms (C160); `const`
    regions and `letfreeze` (C161); specifications (C162); what a test
    proves (C163). 133 of the 428 programs Fixpt accepts still refused
-   (2026-10-25); 73 differ (1, above); 222 the same.
+   (2026-10-25); 56 differ (1, above); 239 the same.
    Left: `nat?` (kfx defines its own), `certify-nat`; sizes' rest
    (`narrayof`, fixed widths); `(const p)` into a place
    not the heap; then `poly` over other kinds, `const` regions with

@@ -138,6 +138,13 @@
 
 (define no-form sexp (lst nil "" 0 0))
 
+(define settled-effs (subr kfx (st strings) strings)
+  (lambda (s es)
+    "An effect as printed (C166): its regions as solved; an allocation at
+     `acyclic`, or at a region still unsolved, nothing, as Fixpt's."
+    (filter (lambda ((a string)) (not (or (string=? a "alloc:acyclic") (has-prefix? a "alloc:?"))))
+            (map (lambda ((a string)) (resolve-atom s a)) es))))
+
 (define value-effect (subr kfx (cv string sexp) string)
   (lambda (v n e)
     "The effect of evaluating `n`'s value `e`, checked against its type as
@@ -150,7 +157,7 @@
               (tagcase sc
                 (scheme (tvars t)
                   (if (null? tvars)
-                      (tagcase (with expressions (check (at v "a definition's value" nil) (new-state) e t)) (res (u es s) (show-effs es)))
+                      (tagcase (with expressions (check (at v "a definition's value" nil) (new-state) e t)) (res (u es s) (show-effs (settled-effs s es))))
                       "pure")))))))))
 
 (define-rec
@@ -456,7 +463,13 @@
            nil)
           (else
            (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
-             (res (t es s) (list (string-append (call-shown v all form (show-ty s t)) (string-append " ! " (show-effs es))))))))))
+             (res (t es s)
+               (let ((shown (show-ty s t)))
+                 (if (string-has? shown "%fresh")
+                     ;; A list made at a fresh region (C36), as Fixpt names one, and makes it.
+                     (list (string-append (call-shown v all form (list->string (chars-replaced (string-chars shown) (string-chars "%fresh") (string-chars "@r.1") nil)))
+                                          (string-append " ! " (show-effs (settled-effs s (cons "alloc:@r.1" es))))))
+                     (list (string-append (call-shown v all form shown) (string-append " ! " (show-effs (settled-effs s es)))))))))))))
 
 (define-rec
   (lines-checked (subr kfx (cv sexps sexps) strings)

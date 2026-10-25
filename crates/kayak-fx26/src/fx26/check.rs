@@ -4767,7 +4767,10 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             string_append(str_lit("(listof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
         }
         Ty::TyData(d, args) => {
-            if null_p(args) {
+            if has_prefix_p(d, str_lit("%module ")) {
+                // A module type, by its abbreviation's name (C166).
+                after_prefix(d, str_lit("%module "))
+            } else if null_p(args) {
                 d
             } else if has_prefix_p(d, str_lit("%spec ")) {
                 show_specified(s, d, car(args))

@@ -332,6 +332,16 @@ pub fn no_form() -> &'static Sexp {
     lst(nil::<&'static Sexp>(), str_lit(""), 0i64, 0i64)
 }
 
+/// An effect as printed (C166): its regions as solved; an allocation at
+/// `acyclic`, or at a region still unsolved, nothing, as Fixpt's.
+pub fn settled_effs(s: &'static St, es: Strings) -> Strings {
+    filter(lambda1s(move |a: Str| {
+        not((string_eq_p(a, str_lit("alloc:acyclic")) || has_prefix_p(a, str_lit("alloc:?"))))
+    }), map(lambda1s(move |a: Str| {
+        resolve_atom(s, a)
+    }), es))
+}
+
 /// The effect of evaluating `n`'s value `e`, checked against its type as
 /// the checker checks a constant's: none for a procedure.
 pub fn value_effect(v: &'static Cv, n: Str, e: &'static Sexp) -> Str {
@@ -349,7 +359,7 @@ pub fn value_effect(v: &'static Cv, n: Str, e: &'static Sexp) -> Str {
                             let tagcase_ = expressions::check(at(v, str_lit("a definition's value"), nil::<Str>()), new_state(), e, t);
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    show_effs(es)
+                                    show_effs(settled_effs(s, es))
                                 }
                             }
                         } else {
@@ -1098,7 +1108,12 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                kayak_rt::heap_cons(string_append(call_shown(v, all, form, show_ty(s, t)), string_append(str_lit(" ! "), show_effs(es))), kayak_rt::nil())
+                let shown = show_ty(s, t);
+                if string_has_p(shown, str_lit("%fresh")) {
+                    kayak_rt::heap_cons(string_append(call_shown(v, all, form, list_to_string(chars_replaced(string_chars(shown), string_chars(str_lit("%fresh")), string_chars(str_lit("@r.1")), nil::<char>()))), string_append(str_lit(" ! "), show_effs(settled_effs(s, kayak_rt::heap_cons(str_lit("alloc:@r.1"), es))))), kayak_rt::nil())
+                } else {
+                    kayak_rt::heap_cons(string_append(call_shown(v, all, form, shown), string_append(str_lit(" ! "), show_effs(settled_effs(s, es)))), kayak_rt::nil())
+                }
             }
         }
     }

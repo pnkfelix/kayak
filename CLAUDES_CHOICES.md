@@ -4550,3 +4550,16 @@ TODO §30.1, after C164.
   effect (values made with `alloc` or `spin`), Fixpt naming a structure
   by the latest abbreviation of it in a module (`(desc pair point)`
   names `point` `pair`), datatypes (`mu`), nested and loaded modules.
+
+## C166. Printing as Fixpt prints: module types' names, fresh regions, settled effects (2026-10-25)
+
+TODO §30.1, after C165.
+- A module type, `(define-type pairs (moduleof ...))`, is printed by its
+  name (it had been `%module pairs`).
+- An expression's list at a fresh region (C36) is printed at `@r.1`, its
+  effect allocating there, as Fixpt names and makes one.
+- A definition's effect, and an expression's, printed with their regions
+  as solved (`resolve-atom`), an allocation at `acyclic` or at a region
+  never solved left out: Fixpt's `(define ys (listof int acyclic) ...)`
+  makes its list purely.
+- The same 222 to 239, differing 73 to 56; none newly differs.
