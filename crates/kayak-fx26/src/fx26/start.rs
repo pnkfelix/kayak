@@ -367,14 +367,28 @@ pub fn generative_line(v: &'static Cv, n: Str, w: &'static Sexp) -> Str {
     }
 }
 
+/// Each atom once: two may resolve to one, a region solved after (C188).
+pub fn atoms_once(mut es: Strings, mut seen: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil::<Str>();
+        } else if string_member_p(car(es), seen) {
+            es = cdr(es);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(car(es), atoms_once(cdr(es), kayak_rt::heap_cons(car(es), seen)));
+        }
+    }
+}
+
 /// An effect as printed (C166): its regions as solved; an allocation at
 /// `acyclic`, or at a region still unsolved, nothing, as Fixpt's.
 pub fn settled_effs(s: &'static St, es: Strings) -> Strings {
     filter(lambda1s(move |a: Str| {
         not((string_eq_p(a, str_lit("alloc:acyclic")) || has_prefix_p(a, str_lit("alloc:?")) || string_eq_p(a, str_lit("goto:acyclic")) || string_eq_p(a, str_lit("comefrom:acyclic"))))
-    }), map(lambda1s(move |a: Str| {
+    }), atoms_once(map(lambda1s(move |a: Str| {
         resolve_atom(s, a)
-    }), es))
+    }), es), nil::<Str>()))
 }
 
 /// The effect of evaluating `n`'s value `e`, checked against its type as
@@ -1311,7 +1325,7 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         // (C179: Fixpt prints `(poly ((a type)) (subr pure (...) (tree a)))`).
         let n = binder_name(second(items(form)));
         let w = {
-            let tagcase_ = second(items(form));
+            let tagcase_ = unmarked(second(items(form)));
             match *tagcase_ {
                 Sexp::Lst(xs, f, l, p) => {
                     lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(cdr(xs), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(no_form(), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)

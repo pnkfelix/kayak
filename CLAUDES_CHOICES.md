@@ -5202,6 +5202,42 @@ Standard operations and names FX-26 has that kayak's checker had not:
   `--slice 2` (a deadlock reported); not reproduced in 200 runs alone nor
   100 with every core busy. TODO §30.
 - Refused 26 to 23, the same 346 to 349; K1 0.
+
+## C188. Variance as Fixpt's; variance marks; variadic `append` (2026-10-25)
+
+- **A correction to C183**: its note that references, arrays, I-cells,
+  addresses and pairs are covariant came from a probe that never ran
+  (Fixpt stops at a file's first error, and each probe's first error was
+  elsewhere). Probed again, one file to each, two definitions declaring
+  what they read: Fixpt is invariant in what storage that can be written
+  holds (a `ref`, an array, an I-cell, an address, a bloblet's fields, a
+  mark key, a pair or a list at a region not frozen), covariant in frozen
+  lists, products and a procedure's result, contravariant in its
+  parameters. Kayak's `fits` had been covariant in the first, a K1 hole
+  width subtyping (C183) and `nat ≤ int` opened: now each argument both
+  ways (`frozen-region?` tells a pair's). A blobref's owner stays
+  covariant, as Fixpt's (`bloblet/blobref-width.fx`).
+- **Bounds from both sides, for a union**: a call's result, a type not
+  known yet, where a union is expected, is fitted after the arguments
+  (`bound-after?`), as a procedure's already was: solved first to the
+  union, an invariant argument (an array of `int`) would not fit
+  (`bidirectional/bounds.fx`, which the invariance above had refused).
+- **Variance marks** on a generative type's parameters, `(t type +)`,
+  `(t type -)` (Fixpt's fx26.md, "Generative types"): its
+  representation must bear the mark out (`polarities`, each occurrence's,
+  from `+` at its top: `bad-variance.fx`, a covariant one in a `ref`,
+  refused); kept, `%variance NAME`, and the parameter so compared
+  (`fits-variant`); printed unmarked, as Fixpt's. A mark on a
+  `define-type` or `define-datatype` head refused, as Fixpt's ("a
+  parameter is `(name kind)`"); KFX refuses marks.
+- **A generative type is no constructor where its representation is its
+  parameter**: a recursion through it is unguarded (`unguarded?`;
+  `generative/unguarded-cycle.fx`, a K1 breach the marks had opened).
+- **`append` and `string-append` of any count**, and as values, at
+  Fixpt's `vsubr` types (`native/variadic-standard.fx`); KFX's are of two.
+  An effect printed has each atom once, two resolving to one where a
+  region was solved after (`atoms-once`).
+- Refused 23 to 21, the same 349 to 351; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

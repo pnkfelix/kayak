@@ -400,17 +400,70 @@
                          (bind name sc (if (null? (scope-bind "%module" v)) "global" "item"))
                          (refuse v (string-append name " is defined again, at another type, which would break what uses it")))))))))))
 
+(define-rec
+  (polarities (subr kfx (cv ty string string) strings)
+    (lambda (v t x pol)
+      "The polarities at which type variable `x` is met in `t`, `pol` where
+       `t` stands (`+`, `-`, `=` invariant): storage that can be written
+       holds it invariantly, a procedure's parameters flip it, as Fixpt's
+       variance (C188)."
+      (let ((inv (lambda ((u ty)) (polarities v u x "=")))
+            (flip (if (string=? pol "+") "-" (if (string=? pol "-") "+" "="))))
+        (tagcase t
+          (ty-var (n) (if (string=? n x) (the strings (list pol)) nil))
+          (ty-list (e r) (if (frozen-region? (st nil 0 nil) r) (polarities v e x pol) (inv e)))
+          (ty-ref (e r) (inv e))
+          (ty-flat (e r) (inv e))
+          (ty-shape (p ls ts) (concat (map (lambda ((u ty)) (polarities v u x pol)) ts)))
+          (ty-proc (es ps r) (onto (polarities v r x pol) (concat (map (lambda ((u ty)) (polarities v u x flip)) ps))))
+          (ty-data (d args)
+            (cond ((string=? d "%union") (concat (map (lambda ((u ty)) (polarities v u x pol)) args)))
+                  ((and (string=? d "%pairof") (frozen-region? (st nil 0 nil) (car (cdr (cdr args)))))
+                   (onto (polarities v (car args) x pol) (polarities v (car (cdr args)) x pol)))
+                  (else (concat (map inv args)))))
+          (else other nil))))))
+
+(define variance-of (subr kfx (sexp) strings)
+  (lambda (head)
+    "A `define-generative`'s marks, a parameter's `+`, `-`, or `=` unmarked."
+    (tagcase head
+      (lst (xs f l p) (map (lambda ((b sexp)) (let ((ys (items b))) (if (i64= (size ys) 3) (sym-name (third ys)) "="))) (cdr xs)))
+      (else other nil))))
+
+(define unmarked (subr kfx (sexp) sexp)
+  (lambda (head)
+    "A `define-generative`'s head, its parameters' marks left off."
+    (tagcase head
+      (lst (xs f l p)
+        (lst (cons (car xs) (map (lambda ((b sexp)) (tagcase b (lst (ys f2 l2 p2) (if (i64= (size ys) 3) (lst (list (car ys) (second ys)) f2 l2 p2) b)) (else other b))) (cdr xs))) f l p))
+      (else other head))))
+
 (define conversions (subr kfx (cv sexps) binds)
   (lambda (v xs)
     "A `define-generative`'s conversions, `up-t` from what it is made of and
      `down-t` back: a new type, distinct from its representation, as
-     FX-26's top-level generative type is (not abstract: anyone may convert)."
+     FX-26's top-level generative type is (not abstract: anyone may convert).
+     A parameter marked `+` or `-` (C188; Fixpt's variance) its
+     representation must bear out; its marks kept, `%variance NAME`, for
+     subtyping."
     (let* ((name (head-name v (second xs)))
-           (params (family-params v (second xs)))
+           (marks (variance-of (second xs)))
+           (params (family-params v (unmarked (second xs))))
            (made (ty-data name (map (lambda ((p string)) (ty-var p)) params)))
            (repr (parse-type (with-tvars v params) params (third xs))))
-      (list (bind (string-append "up-" name) (scheme params (ty-proc nil (list repr) made)) "global")
-            (bind (string-append "down-" name) (scheme params (ty-proc nil (list made) repr)) "global")))))
+      (begin
+        (map2 (lambda ((p string) (m string))
+                (cond ((not (string-member? m (list "+" "-" "="))) (refuse v (string-append "a variance mark is `+` or `-`: " m)))
+                      ((and (not (string=? m "=")) (any? (lambda ((q string)) (not (string=? q m))) (polarities v repr p "+")))
+                       (refuse v (string-append "`" (string-append p (string-append "` is declared " (string-append (if (string=? m "+") "covariant" "contravariant")
+                                 ", and its representation does not bear that out"))))))
+                      (else #u)))
+              params marks)
+        (onto (list (bind (string-append "up-" name) (scheme params (ty-proc nil (list repr) made)) "global")
+                    (bind (string-append "down-" name) (scheme params (ty-proc nil (list made) repr)) "global"))
+              (if (any? (lambda ((m string)) (not (string=? m "="))) marks)
+                  (the binds (list (bind (string-append "%variance " name) (scheme nil (ty-data "%variance" (map (lambda ((m string)) (ty-rconst m)) marks))) "global")))
+                  nil))))))
 
 (define defined-once (subr kfx (cv binds) cv)
   (lambda (v bs)
@@ -1169,10 +1222,13 @@
      proof (C185)."
     (tagcase form
       (lst (xs f l p)
+        (if (and (or (head-is? form "define-type") (head-is? form "define-datatype")) (i64> (size xs) 1)
+                 (any? (lambda ((m string)) (not (string=? m "="))) (variance-of (second xs))))
+            (refuse (near v f l p) "a parameter is `(name kind)`: only a generative type's is marked")
         (if (and (i64= (size xs) 4) (or (head-is? form "define") (head-is? form "define*")) (head-is? (third xs) "proves"))
             (let ((v2 (check-top-plain v (lst (list (car xs) (second xs) (proves-type (near v f l p) (third xs)) (fourth xs)) f l p))))
               (lemma-proved (near v2 f l p) (name-of v (second xs)) (third xs) (fourth xs)))
-            (check-top-plain v form)))
+            (check-top-plain v form))))
       (else other (check-top-plain v form)))))
 
 (define item-names (subr kfx (sexp) strings)

@@ -2480,13 +2480,46 @@
                 (else #f)))
         (else other #f)))))
 
+(define-rec
+  (index-of-string (subr kfx (string strings i64) i64)
+    (lambda (x xs i) (cond ((null? xs) -1) ((string=? (car xs) x) i) (else (index-of-string x (cdr xs) (i64+ i 1)))))))
+
+(define-rec
+  (list-nth (subr kfx (tys i64) ty)
+    (lambda (xs i) (if (i64= i 0) (car xs) (list-nth (cdr xs) (i64- i 1))))))
+
+(define-rec
+  (unguarded? (subr kfx (cv string ty) bool)
+    (lambda (v x t)
+      "`poly-only?`, and through a generative type whose representation is
+       one of its parameters, what is given there (Fixpt's
+       `generative/unguarded-cycle.fx`; C188): no constructor between."
+      (or (poly-only? x t)
+          (tagcase t
+            (ty-data (d args)
+              (let ((found (conversion-bind (string-append "down-" d) (cv-binds v))))
+                (if (null? found)
+                    #f
+                    (tagcase (car found)
+                      (bind (n sc w)
+                        (tagcase sc
+                          (scheme (tvars u)
+                            (tagcase u
+                              (ty-proc (es ps r)
+                                (tagcase r
+                                  (ty-var (p) (let ((i (index-of-string p tvars 0)))
+                                                (and (i64>= i 0) (i64< i (size args)) (unguarded? v x (list-nth args i)))))
+                                  (else other #f)))
+                              (else other #f)))))))))
+            (else other #f))))))
+
 (define mu-wrapped (subr kfx (cv string ty) ty)
   (lambda (v name u)
     "Type `u` of the abbreviation `name` (or `(mu name u)`): recursive, a
      `%mu`, where it mentions itself."
     (let ((x (string-append "%mu " name)))
       (cond ((not (tvar-in? x u)) u)
-            ((poly-only? x u) (refuse v "a recursive type must be built from a constructor, not only from names or polys: it describes no type"))
+            ((unguarded? v x u) (refuse v "a recursive type must be built from a constructor, not only from names or polys: it describes no type"))
             (else (ty-data "%mu" (list (ty-var x) u)))))))
 
 (define mu-list-of (subr kfx (ty ty) tys)
@@ -2923,6 +2956,11 @@
                  (cond ((and (i64= (size b) 3) (sym-is? (second b) "region") (not (sym-is? (third b) "distinct")))
                         "A region within a place, `(r region p)` (C40)."
                         (string-append "'" (name-of v (car b))))
+                       ((and (i64= (size b) 3) (sym-is? (second b) "type") (or (sym-is? (third b) "+") (sym-is? (third b) "-")))
+                        "A generative type's parameter marked covariant or contravariant
+                         (C188; `conversions` checks the mark and keeps it); a family's
+                         is refused where it is defined."
+                        (name-of v (car b)))
                        ((not (i64= (size b) 2))
                         (refuse v (string-append "a variance mark, which KFX does not have (its families are invariant): "
                                                  (show-sexp (lst b "" 0 0)))))
@@ -3497,6 +3535,9 @@
     (lambda (s t)
       "`t` walked, and a recursive type unfolded, where its shape is asked (C174)."
       (let ((w (walk s t))) (if (mu? w) (walk-mu s (unfold-mu w)) w)))))
+
+(define frozen-region? (subr kfx (st ty) bool)
+  (lambda (s r) (tagcase (walk s r) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (else other #f))))
 
 (define-rec
   (has-meta? (subr kfx (st ty) bool)
@@ -4106,7 +4147,7 @@
                     (fits v s x y)
                     (fits v (fits v s x y) y x))))
             (else other (mismatch v s a e))))
-        (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
+        (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v (fits v s x y) y x) xr yr)) (else other (mismatch v s a e))))
         (ty-shape (p ls ts)
           (tagcase e
             (ty-shape (q ms us)
@@ -4119,7 +4160,7 @@
                                 ts (map (lambda ((l string)) (label-type l ms us)) ls)))
                     (else (mismatch v s a e))))
             (else other (mismatch v s a e))))
-        (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
+        (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v (fits v s x y) y x) xr yr)) (else other (mismatch v s a e))))
         (ty-rconst (x)
           (tagcase e
             (ty-rconst (y)
@@ -4195,7 +4236,16 @@
                      (fits v (fits v (fits v s (car (cdr xs)) (car (cdr ys))) (car (cdr (cdr xs))) (car (cdr (cdr ys)))) (car xs) (car ys)))
                     ((and (string=? x y) (generative? v a))
                      "A generative type's parameters are invariant, as Fixpt's
-                      (`generative/invariant.fx`; C183): each argument both ways."
+                      (`generative/invariant.fx`; C183): each argument both ways;
+                      but one marked `+` or `-` (C188), one way."
+                     (fits-variant v s xs ys (variance-marks v x)))
+                    ((and (string=? x y)
+                          (or (string-member? x (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key"))
+                              (and (string=? x "%pairof") (not (frozen-region? s (car (cdr (cdr xs))))))))
+                     "Storage that can be written is invariant in what it holds, as
+                      Fixpt's (C188, probing it: a reference, an array, an I-cell, an
+                      address, a bloblet, a mark key, a pair at a region that is not
+                      frozen); each argument both ways."
                      (fits-all v (fits-all v s xs ys) ys xs))
                     (else (fits-all v s xs ys))))
             (ty-proc (ees eps er)
@@ -4231,6 +4281,21 @@
                     (else (mismatch v s a e))))
             (else other (mismatch v s a e))))
         (else other (if (same-base? a e) s (mismatch v s a e))))))
+  (fits-variant (subr kfx (cv st tys tys strings) st)
+    (lambda (v s xs ys ms)
+      (if (or (null? xs) (null? ys))
+          s
+          (let ((m (if (null? ms) "=" (car ms))))
+            (fits-variant v (cond ((string=? m "+") (fits v s (car xs) (car ys)))
+                                  ((string=? m "-") (fits v s (car ys) (car xs)))
+                                  (else (fits v (fits v s (car xs) (car ys)) (car ys) (car xs))))
+                          (cdr xs) (cdr ys) (if (null? ms) nil (cdr ms)))))))
+  (variance-marks (subr kfx (cv string) strings)
+    (lambda (v d)
+      (let ((found (scope-bind (string-append "%variance " d) v)))
+        (if (null? found) nil
+            (tagcase (car found)
+              (bind (n sc w) (tagcase sc (scheme (tv t) (tagcase t (ty-data (x args) (map (lambda ((a ty)) (tagcase a (ty-rconst (m) m) (else other "="))) args)) (else other nil))))))))))
   (fits-hyps (subr kfx (cv st tys) st)
     (lambda (v s hs)
       (if (or (null? hs) (null? (cdr hs))) s (fits-hyps v (fits v s (car hs) (car (cdr hs))) (cdr (cdr hs))))))

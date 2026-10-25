@@ -163,6 +163,14 @@
             (string-append at (string-append (poly-wrapped w ty) (after-prefix rest ty))))
           line))))
 
+(define-rec
+  (atoms-once (subr kfx (strings strings) strings)
+    (lambda (es seen)
+      "Each atom once: two may resolve to one, a region solved after (C188)."
+      (cond ((null? es) nil)
+            ((string-member? (car es) seen) (atoms-once (cdr es) seen))
+            (else (cons (car es) (atoms-once (cdr es) (cons (car es) seen))))))))
+
 (define settled-effs (subr kfx (st strings) strings)
   (lambda (s es)
     "An effect as printed (C166): its regions as solved; an allocation at
@@ -170,7 +178,9 @@
     (filter (lambda ((a string)) (not (or (string=? a "alloc:acyclic") (has-prefix? a "alloc:?")
                                           ;; Control at a region nothing names (C168): a fresh one, masked.
                                           (string=? a "goto:acyclic") (string=? a "comefrom:acyclic"))))
-            (map (lambda ((a string)) (resolve-atom s a)) es))))
+            (atoms-once (map (lambda ((a string)) (resolve-atom s a)) es) nil))))
+
+
 
 (define value-effect (subr kfx (cv string sexp) string)
   (lambda (v n e)
@@ -551,7 +561,7 @@
            "Its conversions; a family's in a `poly` of its parameters, as written
             (C179: Fixpt prints `(poly ((a type)) (subr pure (...) (tree a)))`)."
            (let* ((n (binder-name (second (items form))))
-                  (w (tagcase (second (items form))
+                  (w (tagcase (unmarked (second (items form)))
                        (lst (xs f l p) (lst (list (sym "poly" "" 0) (lst (cdr xs) "" 0 0) no-form) "" 0 0))
                        (else other no-form))))
              (list (generative-line v (string-append "up-" n) w) (generative-line v (string-append "down-" n) w))))

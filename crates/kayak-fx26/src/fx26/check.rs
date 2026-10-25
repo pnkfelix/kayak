@@ -5609,13 +5609,89 @@ pub fn poly_only_p(mut x: Str, mut t: &'static Ty) -> bool {
     }
 }
 
+pub fn index_of_string(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
+    loop {
+        if null_p(xs) {
+            return -1i64;
+        } else if string_eq_p(car(xs), x) {
+            return i;
+        } else {
+            (xs, i) = (cdr(xs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn list_nth(mut xs: Tys, mut i: i64) -> &'static Ty {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// `poly-only?`, and through a generative type whose representation is
+/// one of its parameters, what is given there (Fixpt's
+/// `generative/unguarded-cycle.fx`; C188): no constructor between.
+pub fn unguarded_p(v: &'static Cv, x: Str, t: &'static Ty) -> bool {
+    (poly_only_p(x, t) || {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                let found = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                if null_p(found) {
+                    false
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tvars, u) => {
+                                    let tagcase_ = u;
+                                    match *tagcase_ {
+                                        Ty::TyProc(es, ps, r) => {
+                                            let tagcase_ = r;
+                                            match *tagcase_ {
+                                                Ty::TyVar(p) => {
+                                                    let i = index_of_string(p, tvars, 0i64);
+                                                    (i64_gt_eq(i, 0i64) && i64_lt(i, size(args)) && unguarded_p(v, x, list_nth(args, i)))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    false
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })
+}
+
 /// Type `u` of the abbreviation `name` (or `(mu name u)`): recursive, a
 /// `%mu`, where it mentions itself.
 pub fn mu_wrapped(v: &'static Cv, name: Str, u: &'static Ty) -> &'static Ty {
     let x = string_append(str_lit("%mu "), name);
     if not(tvar_in_p(x, u)) {
         u
-    } else if poly_only_p(x, u) {
+    } else if unguarded_p(v, x, u) {
         match refuse(v, str_lit("a recursive type must be built from a constructor, not only from names or polys: it describes no type")) {}
     } else {
         ty_data(str_lit("%mu"), kayak_rt::heap_cons(ty_var(x), kayak_rt::heap_cons(u, kayak_rt::nil())))
@@ -6667,6 +6743,11 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
                 if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
                     // A region within a place, `(r region p)` (C40).
                     string_append(str_lit("'"), name_of(v, car(b)))
+                } else if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("type")) && (sym_is_p(third(b), str_lit("+")) || sym_is_p(third(b), str_lit("-")))) {
+                    // A generative type's parameter marked covariant or contravariant
+                    // (C188; `conversions` checks the mark and keeps it); a family's
+                    // is refused where it is defined.
+                    name_of(v, car(b))
                 } else if not(i64_eq(size(b), 2i64)) {
                     match refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
                 } else if sym_is_p(second(b), str_lit("type")) {
@@ -8001,6 +8082,19 @@ pub fn walk_mu(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
             continue;
         } else {
             return w;
+        }
+    }
+}
+
+pub fn frozen_region_p(s: &'static St, r: &'static Ty) -> bool {
+    let tagcase_ = walk(s, r);
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -9609,7 +9703,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyFlat(y, yr) => {
-                    fits(v, fits(v, s, x, y), xr, yr)
+                    fits(v, fits(v, fits(v, s, x, y), y, x), xr, yr)
                 }
                 _ => {
                     let other = tagcase_;
@@ -9649,7 +9743,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyRef(y, yr) => {
-                    fits(v, fits(v, s, x, y), xr, yr)
+                    fits(v, fits(v, fits(v, s, x, y), y, x), xr, yr)
                 }
                 _ => {
                     let other = tagcase_;
@@ -9810,7 +9904,14 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         fits(v, fits(v, fits(v, s, car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(xs))), car(cdr(cdr(ys)))), car(xs), car(ys))
                     } else if (string_eq_p(x, y) && generative_p(v, a)) {
                         // A generative type's parameters are invariant, as Fixpt's
-                        // (`generative/invariant.fx`; C183): each argument both ways.
+                        // (`generative/invariant.fx`; C183): each argument both ways;
+                        // but one marked `+` or `-` (C188), one way.
+                        fits_variant(v, s, xs, ys, variance_marks(v, x))
+                    } else if (string_eq_p(x, y) && (string_member_p(x, kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::nil()))))))) || (string_eq_p(x, str_lit("%pairof")) && not(frozen_region_p(s, car(cdr(cdr(xs)))))))) {
+                        // Storage that can be written is invariant in what it holds, as
+                        // Fixpt's (C188, probing it: a reference, an array, an I-cell, an
+                        // address, a bloblet, a mark key, a pair at a region that is not
+                        // frozen); each argument both ways.
                         fits_all(v, fits_all(v, s, xs, ys), ys, xs)
                     } else {
                         fits_all(v, s, xs, ys)
@@ -9894,6 +9995,71 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                 s
             } else {
                 mismatch(v, s, a, e)
+            }
+        }
+    }
+}
+
+pub fn fits_variant(mut v: &'static Cv, mut s: &'static St, mut xs: Tys, mut ys: Tys, mut ms: Strings) -> &'static St {
+    loop {
+        if (null_p(xs) || null_p(ys)) {
+            return s;
+        } else {
+            let m = if null_p(ms) {
+                str_lit("=")
+            } else {
+                car(ms)
+            };
+            (s, xs, ys, ms) = (if string_eq_p(m, str_lit("+")) {
+                fits(v, s, car(xs), car(ys))
+            } else if string_eq_p(m, str_lit("-")) {
+                fits(v, s, car(ys), car(xs))
+            } else {
+                fits(v, fits(v, s, car(xs), car(ys)), car(ys), car(xs))
+            }, cdr(xs), cdr(ys), if null_p(ms) {
+                nil::<Str>()
+            } else {
+                cdr(ms)
+            });
+            continue;
+        }
+    }
+}
+
+pub fn variance_marks(v: &'static Cv, d: Str) -> Strings {
+    let found = scope_bind(string_append(str_lit("%variance "), d), v);
+    if null_p(found) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tv, t) => {
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Ty::TyData(x, args) => {
+                                map(lambda1s(move |a: &'static Ty| {
+                                    let tagcase_ = a;
+                                    match *tagcase_ {
+                                        Ty::TyRconst(m) => {
+                                            m
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            str_lit("=")
+                                        }
+                                    }
+                                }), args)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    }
+                }
             }
         }
     }

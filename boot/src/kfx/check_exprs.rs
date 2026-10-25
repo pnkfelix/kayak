@@ -4040,6 +4040,14 @@ pub mod expressions {
             res(ty_bool(), nil::<Str>(), s)
         } else if string_eq_p(name, str_lit("#u")) {
             res(ty_unit(), nil::<Str>(), s)
+        } else if ((string_eq_p(name, str_lit("append")) || string_eq_p(name, str_lit("string-append"))) && std_prim_p(v, name)) {
+            // As a value, Fixpt's `vsubr` (C188); FX-26's.
+            let tagcase_ = variadic_standard(s, name);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    res(t, nil::<Str>(), kfx_restricted(v, s, string_append(name, str_lit(" as a value, FX-26's variadic one, which KFX has not (C188)"))))
+                }
+            }
         } else if (string_eq_p(name, str_lit("certify-nat")) && std_prim_p(v, name)) {
             // Named only to call it (C187; Fixpt's F16): bound to another name,
             // its call would escape the rule.
@@ -9272,6 +9280,47 @@ pub mod expressions {
                         });
                     }
                 }
+            } else if ((string_eq_p(h, str_lit("append")) || string_eq_p(h, str_lit("string-append"))) && prim_p(car(found)) && not(i64_eq(size(args), 2i64))) {
+                // `append` and `string-append` of any count, as Fixpt's `vsubr`s
+                // (C188; `native/variadic-standard`): each argument a list (a
+                // string), the result one; FX-26's, as KFX's are of two.
+                let tagcase_ = variadic_standard(s, h);
+                match *tagcase_ {
+                    Res::Res(vt, es0, s0) => {
+                        let tagcase_ = vt;
+                        match *tagcase_ {
+                            Ty::TyData(d, parts) => {
+                                let tagcase_ = call_args(v, if null_p(expected) {
+                                    s0
+                                } else {
+                                    fits(v, s0, car(cdr(cdr(parts))), car(expected))
+                                }, args, map(lambda1s(move |a: &'static Sexp| {
+                                    car(cdr(parts))
+                                }), args), nil::<i64>());
+                                match *tagcase_ {
+                                    Res::Res(u, es, s) => {
+                                        return res(car(cdr(cdr(parts))), effs_union({
+                                            let tagcase_ = car(parts);
+                                            match *tagcase_ {
+                                                Ty::TyProc(pes, pps, pr) => {
+                                                    pes
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    nil::<Str>()
+                                                }
+                                            }
+                                        }, es), kfx_restricted(v, s, string_append(h, str_lit(" of other than two, FX-26's variadic one, which KFX has not (C188)"))));
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return match refuse(v, str_lit("a variadic standard operation")) {};
+                            }
+                        }
+                    }
+                }
             } else if (string_eq_p(h, str_lit("certify-nat")) && prim_p(car(found))) {
                 // `(certify-nat e)` only where the facts in scope show `e` no less
                 // than 0, as a `nat?` that held has just said (C187; Fixpt's
@@ -9352,6 +9401,27 @@ pub mod expressions {
                                     nil::<Str>()
                                 })))))))))))));
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Fixpt's type of `append`, `(vsubr (maxeff (read r) (alloc r)) (listof
+    /// t r) (listof t r))`, or of `string-append`, `(vsubr pure string
+    /// string)`, instantiated (C188).
+    pub fn variadic_standard(s: &'static St, h: Str) -> &'static Res {
+        if string_eq_p(h, str_lit("string-append")) {
+            res(ty_data(str_lit("%vsubr"), kayak_rt::heap_cons(ty_proc(nil::<Str>(), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_string(), kayak_rt::nil())))), nil::<Str>(), s)
+        } else {
+            let tagcase_ = fresh(s);
+            match *tagcase_ {
+                Res::Res(t, es1, s1) => {
+                    let tagcase_ = fresh(s1);
+                    match *tagcase_ {
+                        Res::Res(r, es2, s2) => {
+                            res(ty_data(str_lit("%vsubr"), kayak_rt::heap_cons(ty_proc(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s2, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s2, r)), kayak_rt::nil())), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(ty_list(t, r), kayak_rt::heap_cons(ty_list(t, r), kayak_rt::nil())))), nil::<Str>(), s2)
                         }
                     }
                 }
@@ -10590,7 +10660,7 @@ pub mod expressions {
                             }))) {}
                         } else {
                             let tagcase_ = {
-                                let s1 = if (null_p(expected) || proc_type_p(s, car(expected))) {
+                                let s1 = if (null_p(expected) || proc_type_p(s, car(expected)) || bound_after_p(s, r, car(expected))) {
                                     s
                                 } else {
                                     fits(v, s, r, car(expected))
@@ -10606,7 +10676,7 @@ pub mod expressions {
                                     let s = if null_p(expected) {
                                         freshened(s0, r)
                                     } else {
-                                        if proc_type_p(s0, car(expected)) {
+                                        if (proc_type_p(s0, car(expected)) || bound_after_p(s, r, car(expected))) {
                                             fits(v, s0, r, car(expected))
                                         } else {
                                             s0
@@ -10636,6 +10706,37 @@ pub mod expressions {
                 }
             }
         }
+    }
+
+    /// Whether a call's result, a type not known yet, is bounded above by a
+    /// union expected, so fitted after the arguments, which say what it is
+    /// (C188; Fixpt's bounds from both sides, `bidirectional/bounds.fx`):
+    /// solved first to the union, an invariant argument (an array of an
+    /// `int`) would not fit.
+    pub fn bound_after_p(s: &'static St, r: &'static Ty, e: &'static Ty) -> bool {
+        ({
+            let tagcase_ = walk(s, r);
+            match *tagcase_ {
+                Ty::TyMeta(k) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && {
+            let tagcase_ = walk(s, e);
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    string_eq_p(d, str_lit("%union"))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
     }
 
     /// A lambda of effect `es`: one that may abort returns a `Result`, and

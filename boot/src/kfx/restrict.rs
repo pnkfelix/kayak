@@ -200,6 +200,19 @@ pub mod restrictions {
                     }), binders)
                 } {
                     match restriction_refused(f, l, str_lit("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {}
+                } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |b: &'static Sexp| {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            i64_eq(size(ys), 3i64)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }), cdr_items_of(second(xs)))) {
+                    match restriction_refused(f, l, str_lit("a variance mark, FX-26's, which KFX does not have (its families are invariant; C188)")) {}
                 } else if (sym_is_p(car(xs), str_lit("proves")) && i64_eq(size(xs), 2i64)) {
                     match restriction_refused(f, l, str_lit("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {}
                 } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit("i64")))) {

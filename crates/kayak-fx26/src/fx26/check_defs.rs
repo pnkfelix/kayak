@@ -340,17 +340,163 @@ pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind 
     }
 }
 
+/// The polarities at which type variable `x` is met in `t`, `pol` where
+/// `t` stands (`+`, `-`, `=` invariant): storage that can be written
+/// holds it invariantly, a procedure's parameters flip it, as Fixpt's
+/// variance (C188).
+pub fn polarities(mut v: &'static Cv, mut t: &'static Ty, mut x: Str, mut pol: Str) -> Strings {
+    loop {
+        let (inv, flip) = (lambda1s(move |u: &'static Ty| {
+            polarities(v, u, x, str_lit("="))
+        }), if string_eq_p(pol, str_lit("+")) {
+            str_lit("-")
+        } else {
+            if string_eq_p(pol, str_lit("-")) {
+                str_lit("+")
+            } else {
+                str_lit("=")
+            }
+        });
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                if string_eq_p(n, x) {
+                    return the::<Strings>(kayak_rt::heap_cons(pol, kayak_rt::nil()));
+                } else {
+                    return nil::<Str>();
+                }
+            }
+            Ty::TyList(e, r) => {
+                if frozen_region_p(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), r) {
+                    t = e;
+                    continue;
+                } else {
+                    return inv(e);
+                }
+            }
+            Ty::TyRef(e, r) => {
+                return inv(e);
+            }
+            Ty::TyFlat(e, r) => {
+                return inv(e);
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return concat(map(lambda1s(move |u: &'static Ty| {
+                    polarities(v, u, x, pol)
+                }), ts));
+            }
+            Ty::TyProc(es, ps, r) => {
+                return onto(polarities(v, r, x, pol), concat(map(lambda1s(move |u: &'static Ty| {
+                    polarities(v, u, x, flip)
+                }), ps)));
+            }
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%union")) {
+                    return concat(map(lambda1s(move |u: &'static Ty| {
+                        polarities(v, u, x, pol)
+                    }), args));
+                } else if (string_eq_p(d, str_lit("%pairof")) && frozen_region_p(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), car(cdr(cdr(args))))) {
+                    return onto(polarities(v, car(args), x, pol), polarities(v, car(cdr(args)), x, pol));
+                } else {
+                    return concat(map(inv, args));
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return nil::<Str>();
+            }
+        }
+    }
+}
+
+/// A `define-generative`'s marks, a parameter's `+`, `-`, or `=` unmarked.
+pub fn variance_of(head: &'static Sexp) -> Strings {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            map(lambda1s(move |b: &'static Sexp| {
+                let ys = items(b);
+                if i64_eq(size(ys), 3i64) {
+                    sym_name(third(ys))
+                } else {
+                    str_lit("=")
+                }
+            }), cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
+/// A `define-generative`'s head, its parameters' marks left off.
+pub fn unmarked(head: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |b: &'static Sexp| {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f2, l2, p2) => {
+                        if i64_eq(size(ys), 3i64) {
+                            lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), kayak_rt::nil())), f2, l2, p2)
+                        } else {
+                            b
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        b
+                    }
+                }
+            }), cdr(xs))), f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            head
+        }
+    }
+}
+
 /// A `define-generative`'s conversions, `up-t` from what it is made of and
 /// `down-t` back: a new type, distinct from its representation, as
 /// FX-26's top-level generative type is (not abstract: anyone may convert).
+/// A parameter marked `+` or `-` (C188; Fixpt's variance) its
+/// representation must bear out; its marks kept, `%variance NAME`, for
+/// subtyping.
 pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
     let name = head_name(v, second(xs));
-    let params = family_params(v, second(xs));
+    let marks = variance_of(second(xs));
+    let params = family_params(v, unmarked(second(xs)));
     let made = ty_data(name, map(lambda1s(move |p: Str| {
         ty_var(p)
     }), params));
     let repr = parse_type(with_tvars(v, params), params, third(xs));
-    kayak_rt::heap_cons(bind(string_append(str_lit("up-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), str_lit("global")), kayak_rt::heap_cons(bind(string_append(str_lit("down-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("global")), kayak_rt::nil()))
+    map2(lambda2s(move |p: Str, m: Str| {
+        if not(string_member_p(m, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("="), kayak_rt::nil()))))) {
+            match refuse(v, string_append(str_lit("a variance mark is `+` or `-`: "), m)) {}
+        } else if (not(string_eq_p(m, str_lit("="))) && any_p(lambda1s(move |q: Str| {
+            not(string_eq_p(q, m))
+        }), polarities(v, repr, p, str_lit("+")))) {
+            match refuse(v, string_append(str_lit("`"), string_append(p, string_append(str_lit("` is declared "), string_append(if string_eq_p(m, str_lit("+")) {
+                str_lit("covariant")
+            } else {
+                str_lit("contravariant")
+            }, str_lit(", and its representation does not bear that out")))))) {}
+        } else {
+            ()
+        }
+    }), params, marks);
+    onto(kayak_rt::heap_cons(bind(string_append(str_lit("up-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), str_lit("global")), kayak_rt::heap_cons(bind(string_append(str_lit("down-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("global")), kayak_rt::nil())), if any_p(lambda1s(move |m: Str| {
+        not(string_eq_p(m, str_lit("=")))
+    }), marks) {
+        the::<Binds>(kayak_rt::heap_cons(bind(string_append(str_lit("%variance "), name), scheme(nil::<Str>(), ty_data(str_lit("%variance"), map(lambda1s(move |m: Str| {
+            ty_rconst(m)
+        }), marks))), str_lit("global")), kayak_rt::nil()))
+    } else {
+        nil::<&'static Bind>()
+    })
 }
 
 /// `v` with each of `bs`, each refused if its name is taken (`global`).
@@ -1857,11 +2003,17 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if (i64_eq(size(xs), 4i64) && (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) && head_is_p(third(xs), str_lit("proves"))) {
-                let v2 = check_top_plain(v, lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(proves_type(near(v, f, l, p), third(xs)), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil())))), f, l, p));
-                lemma_proved(near(v2, f, l, p), name_of(v, second(xs)), third(xs), fourth(xs))
+            if ((head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-datatype"))) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |m: Str| {
+                not(string_eq_p(m, str_lit("=")))
+            }), variance_of(second(xs)))) {
+                match refuse(near(v, f, l, p), str_lit("a parameter is `(name kind)`: only a generative type's is marked")) {}
             } else {
-                check_top_plain(v, form)
+                if (i64_eq(size(xs), 4i64) && (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) && head_is_p(third(xs), str_lit("proves"))) {
+                    let v2 = check_top_plain(v, lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(proves_type(near(v, f, l, p), third(xs)), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil())))), f, l, p));
+                    lemma_proved(near(v2, f, l, p), name_of(v, second(xs)), third(xs), fourth(xs))
+                } else {
+                    check_top_plain(v, form)
+                }
             }
         }
         _ => {
