@@ -2988,6 +2988,15 @@
               (cond ((and (string=? x "%native") (string=? y "%fx"))
                      "A native procedure where one of any convention is (C116)."
                      (fits v s (car xs) (car ys)))
+                    ((and (string=? x "%bloblet") (string=? y "%bloblet") (i64> (size xs) (size ys)))
+                     "A bloblet of more fields where one of fewer is wanted (C167; Fixpt's
+                      `TODO.md` §77): its fields count from the suffix, so each keeps its
+                      offset; the region and those wanted the same. Not KFX's, whose
+                      bloblet's Rust type is its fields'."
+                     (if (any? (lambda ((f ty)) (not (forgettable? s (car xs) f))) (fields-after (cdr xs) (i64- (size ys) 1)))
+                         (mismatch v s a e)
+                         (kfx-restricted v (fits-all v s (fields-first xs (size ys)) ys)
+                                         "a bloblet of more fields where one of fewer is expected, FX-26's width, which KFX has not yet (C167)")))
                     ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
                     ((string=? x "%poly")
                      "Two poly types (C107): the one's binders the other's, then their bodies."
@@ -3039,6 +3048,37 @@
       (if (null? actuals)
           s
           (fits-each v (fits v s (car actuals) (car expecteds)) (cdr actuals) (cdr expecteds)))))
+  (fields-after (subr kfx (tys i64) tys)
+    (lambda (ts n) (if (or (null? ts) (i64<= n 0)) ts (fields-after (cdr ts) (i64- n 1)))))
+  (forgettable? (subr kfx (st ty ty) bool)
+    (lambda (s r t)
+      "Whether a bloblet at region `r` may forget a field of type `t` (Fixpt's
+       `bloblet/width-*.fx`): no procedure, no type variable, and no region
+       but `r`'s own, `acyclic` and `const`, so that the wider type says all
+       the storage it holds and no knot."
+      (tagcase (walk s t)
+        (ty-var (n) (and (has-prefix? n "'") (same-region? s r t)))
+        (ty-meta (k) #f)
+        (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const") (same-region? s r t)))
+        (ty-proc (es ps rt) #f)
+        (ty-list (x xr) (and (forgettable? s r x) (forgettable? s r xr)))
+        (ty-ref (x xr) (and (forgettable? s r x) (same-region? s r xr)))
+        (ty-flat (x xr) (and (forgettable? s r x) (same-region? s r xr)))
+        (ty-shape (p ls ts) (not (any? (lambda ((x ty)) (not (forgettable? s r x))) ts)))
+        (ty-data (d args)
+          (and (not (or (string=? d "%fx") (string=? d "%native") (has-prefix? d "%spec ") (string=? d "%vsubr") (string=? d "%poly")
+                        (string=? d "%composable") (string=? d "%oneshot")))
+               (not (any? (lambda ((x ty)) (not (forgettable? s r x))) args))))
+        (ty-tag (x h es rr) #f)
+        (else other #t))))
+  (same-region? (subr kfx (st ty ty) bool)
+    (lambda (s a b)
+      (tagcase (walk s a)
+        (ty-rconst (n) (tagcase (walk s b) (ty-rconst (m) (string=? n m)) (else other #f)))
+        (ty-var (n) (tagcase (walk s b) (ty-var (m) (string=? n m)) (else other #f)))
+        (else other #f))))
+  (fields-first (subr kfx (tys i64) tys)
+    (lambda (ts n) (if (or (null? ts) (i64<= n 0)) nil (cons (car ts) (fields-first (cdr ts) (i64- n 1))))))
   (fits-all (subr kfx (cv st tys tys) st)
     (lambda (v s actuals expecteds)
       "Parameters: each expected parameter's type stands for the actual's."

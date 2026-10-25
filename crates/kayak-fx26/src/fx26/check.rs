@@ -6642,6 +6642,18 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     if (string_eq_p(x, str_lit("%native")) && string_eq_p(y, str_lit("%fx"))) {
                         // A native procedure where one of any convention is (C116).
                         fits(v, s, car(xs), car(ys))
+                    } else if (string_eq_p(x, str_lit("%bloblet")) && string_eq_p(y, str_lit("%bloblet")) && i64_gt(size(xs), size(ys))) {
+                        // A bloblet of more fields where one of fewer is wanted (C167; Fixpt's
+                        // `TODO.md` §77): its fields count from the suffix, so each keeps its
+                        // offset; the region and those wanted the same. Not KFX's, whose
+                        // bloblet's Rust type is its fields'.
+                        if any_p(lambda1s(move |f: &'static Ty| {
+                            not(forgettable_p(s, car(xs), f))
+                        }), fields_after(cdr(xs), i64_minus(size(ys), 1i64))) {
+                            mismatch(v, s, a, e)
+                        } else {
+                            kfx_restricted(v, fits_all(v, s, fields_first(xs, size(ys)), ys), str_lit("a bloblet of more fields where one of fewer is expected, FX-26's width, which KFX has not yet (C167)"))
+                        }
                     } else if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
                         mismatch(v, s, a, e)
                     } else if string_eq_p(x, str_lit("%poly")) {
@@ -6781,6 +6793,107 @@ pub fn fits_each(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut e
             (s, actuals, expecteds) = (fits(v, s, car(actuals), car(expecteds)), cdr(actuals), cdr(expecteds));
             continue;
         }
+    }
+}
+
+pub fn fields_after(mut ts: Tys, mut n: i64) -> Tys {
+    loop {
+        if (null_p(ts) || i64_lt_eq(n, 0i64)) {
+            return ts;
+        } else {
+            (ts, n) = (cdr(ts), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// Whether a bloblet at region `r` may forget a field of type `t` (Fixpt's
+/// `bloblet/width-*.fx`): no procedure, no type variable, and no region
+/// but `r`'s own, `acyclic` and `const`, so that the wider type says all
+/// the storage it holds and no knot.
+pub fn forgettable_p(s: &'static St, r: &'static Ty, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            (has_prefix_p(n, str_lit("'")) && same_region_p(s, r, t))
+        }
+        Ty::TyMeta(k) => {
+            false
+        }
+        Ty::TyRconst(n) => {
+            (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")) || same_region_p(s, r, t))
+        }
+        Ty::TyProc(es, ps, rt) => {
+            false
+        }
+        Ty::TyList(x, xr) => {
+            (forgettable_p(s, r, x) && forgettable_p(s, r, xr))
+        }
+        Ty::TyRef(x, xr) => {
+            (forgettable_p(s, r, x) && same_region_p(s, r, xr))
+        }
+        Ty::TyFlat(x, xr) => {
+            (forgettable_p(s, r, x) && same_region_p(s, r, xr))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            not(any_p(lambda1s(move |x: &'static Ty| {
+                not(forgettable_p(s, r, x))
+            }), ts))
+        }
+        Ty::TyData(d, args) => {
+            (not((string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%native")) || has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%vsubr")) || string_eq_p(d, str_lit("%poly")) || string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot")))) && not(any_p(lambda1s(move |x: &'static Ty| {
+                not(forgettable_p(s, r, x))
+            }), args)))
+        }
+        Ty::TyTag(x, h, es, rr) => {
+            false
+        }
+        _ => {
+            let other = tagcase_;
+            true
+        }
+    }
+}
+
+pub fn same_region_p(s: &'static St, a: &'static Ty, b: &'static Ty) -> bool {
+    let tagcase_ = walk(s, a);
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            let tagcase_ = walk(s, b);
+            match *tagcase_ {
+                Ty::TyRconst(m) => {
+                    string_eq_p(n, m)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyVar(n) => {
+            let tagcase_ = walk(s, b);
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    string_eq_p(n, m)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn fields_first(ts: Tys, n: i64) -> Tys {
+    if (null_p(ts) || i64_lt_eq(n, 0i64)) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons(car(ts), fields_first(cdr(ts), i64_minus(n, 1i64)))
     }
 }
 

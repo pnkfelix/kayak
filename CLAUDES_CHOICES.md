@@ -4563,3 +4563,18 @@ TODO §30.1, after C165.
   never solved left out: Fixpt's `(define ys (listof int acyclic) ...)`
   makes its list purely.
 - The same 222 to 239, differing 73 to 56; none newly differs.
+
+## C167. A bloblet's width (2026-10-25)
+
+Fixpt's `TODO.md` §77 (`bloblet/width*.fx`): a bloblet of more fields is
+taken where one of fewer is wanted, its fields counting from the suffix
+so that each keeps its offset; the region and the fields wanted the
+same. What may be forgotten is what the wider type need not say: no
+procedure (a knot through the store), no type variable (one could be a
+procedure), and no region but the bloblet's own, `acyclic` and `const`
+(storage the narrower type would not mention, `width-escape.fx`,
+`width-exact-region.fx`). Without that rule the first try accepted four
+programs Fixpt refuses (K1), each its own case of it.
+- **KFX**: refused (`kfx-restricted`): a bloblet's Rust type is its
+  fields' (`tests/kfx-stricter/bloblet-width.kfx`).
+- Refused 133 to 131, the same 239 to 241.
