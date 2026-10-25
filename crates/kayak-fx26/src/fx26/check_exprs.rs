@@ -820,7 +820,7 @@ pub mod expressions {
     }
 
     pub fn control_form_p(h: Str) -> bool {
-        (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")) || string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic")))
+        (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")) || string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic")) || string_eq_p(h, str_lit("letfreeze")))
     }
 
     /// The inference variables in `t` as it stands, solved or not.
@@ -4721,6 +4721,8 @@ pub mod expressions {
             letrec_form(v, s, items(car(xs)), cdr(xs), expected)
         } else if string_eq_p(h, str_lit("letregion")) {
             letregion_form(v, s, name_of(v, car(xs)), cdr(xs), expected)
+        } else if string_eq_p(h, str_lit("letfreeze")) {
+            letfreeze_form(v, s, xs, expected)
         } else if string_eq_p(h, str_lit("with")) {
             // `(with m body ...)`: `m`'s values and types in scope in the body,
             // shadowing what is outside, locals too, as FX-26 has it; `m` a
@@ -5169,7 +5171,7 @@ pub mod expressions {
                                 let tagcase_ = walk(s, r);
                                 match *tagcase_ {
                                     Ty::TyRconst(n) => {
-                                        string_eq_p(n, str_lit("acyclic"))
+                                        (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")))
                                     }
                                     _ => {
                                         let other = tagcase_;
@@ -5730,6 +5732,100 @@ pub mod expressions {
                     } else {
                         res(t, masked(es, name), s)
                     }
+                }
+            }
+        }
+    }
+
+    /// `(letfreeze r body ...)`, `(letfreeze (r heap) body ...)` (Fixpt's
+    /// places-and-regions.md, C161): a region `r` for the body, whose data
+    /// it builds and may write; the value leaves with `r` frozen, `acyclic`
+    /// if the body never wrote `r`, else `const`; what the body does to `r`
+    /// masked.
+    pub fn letfreeze_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
+        let r = {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    n
+                }
+                Sexp::Lst(ys, f, l, p) => {
+                    if (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("heap"))) {
+                        sym_name(car(ys))
+                    } else {
+                        match refuse(v, str_lit("a letfreeze into a place but the heap, which KFX has not yet")) {}
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    match refuse(v, str_lit("(letfreeze r body ...)")) {}
+                }
+            }
+        };
+        let name = string_append(str_lit("'"), r);
+        if string_member_p(name, cv_tvars(v)) {
+            match refuse(v, string_append(str_lit("a letfreeze of a region named already: "), r)) {}
+        } else {
+            let tagcase_ = body(with_tvars(v, kayak_rt::heap_cons(name, kayak_rt::nil())), s, cdr(xs), nil::<&'static Ty>());
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let wrote = any_p(lambda1s(move |x: Str| {
+                        (string_eq_p(x, string_append(str_lit("write:"), name)) || string_eq_p(x, string_append(str_lit("init:"), name)))
+                    }), es);
+                    let frozen = replace_var(name, ty_rconst(if wrote {
+                        str_lit("const")
+                    } else {
+                        str_lit("acyclic")
+                    }), zonk(s, t));
+                    if writes_region_p(s, zonk(s, t), name) {
+                        match refuse(v, string_append(str_lit("the value of `letfreeze "), string_append(r, string_append(str_lit("` could still write its region's data: its type is "), show_ty(s, t))))) {}
+                    } else {
+                        let tagcase_ = found_then_fitted(v, res(frozen, nil::<Str>(), s), expected);
+                        match *tagcase_ {
+                            Res::Res(u, es2, s2) => {
+                                res(u, masked(es, name), s2)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Whether a procedure in `t` writes region `r` (its latent effect).
+    pub fn writes_region_p(mut s: &'static St, mut t: &'static Ty, mut r: Str) -> bool {
+        loop {
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyProc(es, ps, x) => {
+                    return (any_p(lambda1s(move |a: Str| {
+                        let y = resolve_atom(s, a);
+                        (string_eq_p(y, string_append(str_lit("write:"), r)) || string_eq_p(y, string_append(str_lit("init:"), r)))
+                    }), es) || writes_region_p(s, x, r) || any_p(lambda1s(move |p: &'static Ty| {
+                        writes_region_p(s, p, r)
+                    }), ps));
+                }
+                Ty::TyList(e, g) => {
+                    t = e;
+                    continue;
+                }
+                Ty::TyRef(e, g) => {
+                    t = e;
+                    continue;
+                }
+                Ty::TyData(d, args) => {
+                    return any_p(lambda1s(move |a: &'static Ty| {
+                        writes_region_p(s, a, r)
+                    }), args);
+                }
+                Ty::TyShape(p, ls, ts) => {
+                    return any_p(lambda1s(move |a: &'static Ty| {
+                        writes_region_p(s, a, r)
+                    }), ts);
+                }
+                _ => {
+                    let other = tagcase_;
+                    return false;
                 }
             }
         }
@@ -8292,7 +8388,14 @@ pub mod expressions {
                                     let tagcase_ = name_regions(v, s, latent, regions);
                                     match *tagcase_ {
                                         Res::Res(u, named, s) => {
-                                            res(r, effs_union(close_effs(s, named), effs_union(more, effs_union(es0, es1))), lift_noted(v, noted_call(v, s, named), r, expected))
+                                            if any_p(lambda1s(move |x: Str| {
+                                                let y = resolve_atom(s, x);
+                                                (string_eq_p(y, str_lit("write:acyclic")) || string_eq_p(y, str_lit("write:const")))
+                                            }), named) {
+                                                match refuse(v, str_lit("this writes frozen data, whose region is const")) {}
+                                            } else {
+                                                res(r, effs_union(close_effs(s, named), effs_union(more, effs_union(es0, es1))), lift_noted(v, noted_call(v, s, named), r, expected))
+                                            }
                                         }
                                     }
                                 }

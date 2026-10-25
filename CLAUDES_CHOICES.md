@@ -4404,3 +4404,33 @@ pass refuses them, KFX having none.
   its own `(nat v)`", which is so of literals, an `int` each; a call's
   or a name's `nat` is a `nat`, and Fixpt finds `(listof nat r)`.
 - Refused 177 to 174; the same 112 to 114.
+
+## C161. `const` regions and `letfreeze` (2026-10-25)
+
+Fixpt's `docs/research/acyclic-regions.md` and `places-and-regions.md`:
+data frozen into a place, `(const p)`, which nothing may write any more,
+and may be cyclic, having been written before; `(acyclic p)` the same
+and never written; `acyclic` below `const`. kayak's checker had
+`acyclic` alone.
+- **`const`**, and `(const heap)`, `(acyclic heap)` (another place: not
+  yet): a region constant. Reading it is pure; mutable data may not be
+  at it; a list at it is covariant, as at `acyclic`; `acyclic`, and a
+  fresh list's region, below it. `acyclic` and `confirm-length` (C160)
+  take a list at `const` as data.
+- **`(letfreeze r body ...)`**, `(letfreeze (r heap) body ...)`: a
+  region for the body, masked; the value leaves with `r` frozen, at
+  `acyclic` if the body never wrote or initialized `r`, else at `const`;
+  refused if its type keeps a procedure that writes `r`
+  (`regions/freeze-a-writer.fx`).
+- **A call that writes frozen data** refused, its latent effect at
+  `acyclic` or `const` (`regions/write-frozen.fx`): kayak's checker had
+  taken writes at `acyclic` as nothing, sure that no data that may be
+  written is there, which a poly writer's instance (`set-car!`) is not.
+  Both programs Fixpt refuses came out accepted until they were.
+- **KFX**: its restriction pass refuses `letfreeze` and a `const` region
+  in a type or an effect (a name `const` it takes, as
+  `tests/kfx/rust-keywords.kfx` has one).
+- Refused 174 to 169, the same 114 to 119.
+- **Noticed**: kfx crashes (`car: nil`, `item-value`) on a `define-rec`
+  member that is no `(name type value)` (a `define-rec` written inside
+  another), rather than refusing it.

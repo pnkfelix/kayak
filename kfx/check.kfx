@@ -217,7 +217,7 @@
   (lambda (x)
     "An effect on `acyclic`: making and reading frozen data are pure, in
      FX-26; writing it is refused where its type is read."
-    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic")
+    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic") (string=? x "read:const")
         (string=? x "read:%fresh") (string=? x "alloc:%fresh"))))
 
 (define effs-union (subr kfx (strings strings) strings)
@@ -285,7 +285,7 @@
     (or (string=? a "spin") (string=? a "nondet") (string=? a "@globals") (string=? a "~!")
         (global-atom? a) (has-prefix? a "io:")
         (has-prefix? a "send:") (has-prefix? a "init:") (has-prefix? a "await:")
-        (string=? a "read:acyclic") (string=? a "read:%fresh")
+        (string=? a "read:acyclic") (string=? a "read:%fresh") (string=? a "read:const")
         (string-member? a bound)
         (and (has-prefix? a "alloc:")
              (let ((r (after-prefix a "alloc:"))) (or (has-prefix? r "@") (string=? r "acyclic") (string=? r "%fresh"))))
@@ -339,11 +339,24 @@
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
     "A region's name: a constant, `@a`, or a poly's region binder, `'r`."
-    (let ((s (tagcase r (sym (n at-file at-pos) n) (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
+    (let ((s (tagcase r
+               (sym (n at-file at-pos) n)
+               ;; `(const heap)` and `(acyclic heap)` are `const` and `acyclic`
+               ;; (C161); frozen into another place, not yet.
+               (lst (xs f l p)
+                 (if (and (i64= (size xs) 2) (or (sym-is? (car xs) "const") (sym-is? (car xs) "acyclic")) (sym-is? (second xs) "heap"))
+                     (sym-name (car xs))
+                     (refuse v (string-append "a region KFX does not have: " (show-sexp r)))))
+               (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
       (cond ((string=? s "@globals")
              (refuse v "globals are a region only in effects: (read @globals), (read (globals g))"))
             ((char=? (string-ref-i64 s 0) #\@) s)
             ((string=? s "acyclic") s)
+            ((string=? s "const")
+             "Data frozen into the heap, which nothing may write any more; it may
+              have been written before, so may be cyclic (Fixpt's
+              acyclic-regions.md; C161)."
+             s)
             ((string-member? (string-append "'" s) tvars) (string-append "'" s))
             ((and (char=? (string-ref-i64 s 0) #\') (string-member? s tvars)) s)
             (else (refuse v (string-append "a region KFX-0 does not have: " s)))))))
@@ -355,8 +368,9 @@
 
 (define parse-mutable-region (subr kfx (cv strings sexp) ty)
   (lambda (v tvars r)
-    "The region of data that may be written: not `acyclic`, which is frozen."
-    (if (sym-is? r "acyclic")
+    "The region of data that may be written: not `acyclic` nor `const`, which
+     are frozen."
+    (if (or (sym-is? r "acyclic") (sym-is? r "const"))
         (refuse v "mutable data at acyclic, which is frozen and never written")
         (parse-region v tvars r))))
 
@@ -2204,7 +2218,7 @@
                below the one expected (C78); at a region that may be
                written, the same, as FX-26 has it."
               (let ((s (fits v s xr yr)))
-                (if (tagcase (walk s yr) (ty-rconst (n) (string=? n "acyclic")) (else other #f))
+                (if (tagcase (walk s yr) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (else other #f))
                     (fits v s x y)
                     (fits v (fits v s x y) y x))))
             (else other (mismatch v s a e))))
@@ -2217,7 +2231,12 @@
                   (mismatch v s a e)))
             (else other (mismatch v s a e))))
         (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
-        (ty-rconst (x) (tagcase e (ty-rconst (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
+        (ty-rconst (x)
+          (tagcase e
+            (ty-rconst (y)
+              ;; `acyclic`, and a fresh one's data, below `const` (C161).
+              (if (or (string=? x y) (and (string=? y "const") (or (string=? x "acyclic") (string=? x "%fresh")))) s (mismatch v s a e)))
+            (else other (mismatch v s a e))))
         (ty-tag (xa xh xd xr)
           (tagcase e
             (ty-tag (ya yh yd yr)

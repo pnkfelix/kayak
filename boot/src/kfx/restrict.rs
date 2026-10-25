@@ -64,7 +64,7 @@ pub mod restrictions {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
                 } else if string_eq_p(n, str_lit("list")) {
                     match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::nil()))))) {
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::nil())))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
@@ -77,6 +77,21 @@ pub mod restrictions {
                     ()
                 } else if sym_is_p(car(xs), str_lit("list")) {
                     restricted_all(cdr(xs), f, l)
+                } else if ({
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(h, f2, p2) => {
+                            string_member_p(h, kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::nil())))))))))))))))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && any_p(lambda1s(move |a: &'static Sexp| {
+                    (sym_is_p(a, str_lit("const")) || head_is_p(a, str_lit("const")))
+                }), cdr(xs))) {
+                    match restriction_refused(f, l, str_lit("a const region, FX-26's data frozen, which KFX has not yet (C161)")) {}
                 } else if (sym_is_p(car(xs), str_lit("confirm-nat")) || sym_is_p(car(xs), str_lit("confirm-length")) || (sym_is_p(car(xs), str_lit("acyclic")) && i64_eq(size(xs), 4i64))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's, which KFX has not yet (C159)"))) {}
                 } else if (sym_is_p(car(xs), str_lit("nlist")) || (sym_is_p(car(xs), str_lit("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit("poly")) && not(null_p(cdr(xs))) && {

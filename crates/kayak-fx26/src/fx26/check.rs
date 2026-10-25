@@ -443,7 +443,7 @@ pub fn suspends_p(es: Strings) -> bool {
 /// An effect on `acyclic`: making and reading frozen data are pure, in
 /// FX-26; writing it is refused where its type is read.
 pub fn frozen_atom_p(x: Str) -> bool {
-    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")) || string_eq_p(x, str_lit("read:%fresh")) || string_eq_p(x, str_lit("alloc:%fresh")))
+    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")) || string_eq_p(x, str_lit("read:const")) || string_eq_p(x, str_lit("read:%fresh")) || string_eq_p(x, str_lit("alloc:%fresh")))
 }
 
 pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
@@ -540,7 +540,7 @@ pub fn atom_region(x: Str) -> Str {
 /// no place (a constant, or the heap); or anything on a binder in
 /// `bound`, which a caller gives (`crossing_atom`).
 pub fn crossing_atom_p(bound: Strings, a: Str) -> bool {
-    (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet")) || string_eq_p(a, str_lit("@globals")) || string_eq_p(a, str_lit("~!")) || global_atom_p(a) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("await:")) || string_eq_p(a, str_lit("read:acyclic")) || string_eq_p(a, str_lit("read:%fresh")) || string_member_p(a, bound) || (has_prefix_p(a, str_lit("alloc:")) && {
+    (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet")) || string_eq_p(a, str_lit("@globals")) || string_eq_p(a, str_lit("~!")) || global_atom_p(a) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("await:")) || string_eq_p(a, str_lit("read:acyclic")) || string_eq_p(a, str_lit("read:%fresh")) || string_eq_p(a, str_lit("read:const")) || string_member_p(a, bound) || (has_prefix_p(a, str_lit("alloc:")) && {
         let r = after_prefix(a, str_lit("alloc:"));
         (has_prefix_p(r, str_lit("@")) || string_eq_p(r, str_lit("acyclic")) || string_eq_p(r, str_lit("%fresh")))
     }) || (region_atom_p(a) && string_member_p(atom_region(a), bound)))
@@ -652,6 +652,13 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
             Sexp::Sym(n, at_file, at_pos) => {
                 n
             }
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 2i64) && (sym_is_p(car(xs), str_lit("const")) || sym_is_p(car(xs), str_lit("acyclic"))) && sym_is_p(second(xs), str_lit("heap"))) {
+                    sym_name(car(xs))
+                } else {
+                    match refuse(v, string_append(str_lit("a region KFX does not have: "), show_sexp(r))) {}
+                }
+            }
             _ => {
                 let other = tagcase_;
                 match refuse(v, string_append(str_lit("a region KFX does not have: "), show_sexp(other))) {}
@@ -663,6 +670,11 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
     } else if char_eq_p(string_ref_i64(s, 0i64), '@') {
         s
     } else if string_eq_p(s, str_lit("acyclic")) {
+        s
+    } else if string_eq_p(s, str_lit("const")) {
+        // Data frozen into the heap, which nothing may write any more; it may
+        // have been written before, so may be cyclic (Fixpt's
+        // acyclic-regions.md; C161).
         s
     } else if string_member_p(string_append(str_lit("'"), s), tvars) {
         string_append(str_lit("'"), s)
@@ -682,9 +694,10 @@ pub fn parse_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'stati
     }
 }
 
-/// The region of data that may be written: not `acyclic`, which is frozen.
+/// The region of data that may be written: not `acyclic` nor `const`, which
+/// are frozen.
 pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
-    if sym_is_p(r, str_lit("acyclic")) {
+    if (sym_is_p(r, str_lit("acyclic")) || sym_is_p(r, str_lit("const"))) {
         match refuse(v, str_lit("mutable data at acyclic, which is frozen and never written")) {}
     } else {
         parse_region(v, tvars, r)
@@ -4873,7 +4886,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         let tagcase_ = walk(s, yr);
                         match *tagcase_ {
                             Ty::TyRconst(n) => {
-                                string_eq_p(n, str_lit("acyclic"))
+                                (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")))
                             }
                             _ => {
                                 let other = tagcase_;
@@ -4940,7 +4953,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyRconst(y) => {
-                    if string_eq_p(x, y) {
+                    if (string_eq_p(x, y) || (string_eq_p(y, str_lit("const")) && (string_eq_p(x, str_lit("acyclic")) || string_eq_p(x, str_lit("%fresh"))))) {
                         s
                     } else {
                         mismatch(v, s, a, e)

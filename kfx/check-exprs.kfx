@@ -377,7 +377,7 @@
           (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase") (string=? h "typecase")
               (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec")
               (string=? h "letregion") (string=? h "with")
-              (string=? h "confirm-nat") (string=? h "confirm-length") (string=? h "acyclic"))))
+              (string=? h "confirm-nat") (string=? h "confirm-length") (string=? h "acyclic") (string=? h "letfreeze"))))
 
       (define-rec
         (metas-of (subr kfx (ty) i64s)
@@ -2156,6 +2156,7 @@
                  (let-values v s (items (car xs)) (cdr xs) expected nil #t))
                 ((string=? h "letrec") (letrec-form v s (items (car xs)) (cdr xs) expected))
                 ((string=? h "letregion") (letregion-form v s (name-of v (car xs)) (cdr xs) expected))
+                ((string=? h "letfreeze") (letfreeze-form v s xs expected))
                 ((string=? h "with")
                  "`(with m body ...)`: `m`'s values and types in scope in the body,
                   shadowing what is outside, locals too, as FX-26 has it; `m` a
@@ -2329,7 +2330,7 @@
                              (tagcase (narrowed-arms (with-binds v (list (local v x (ty-nat)))) v s (second arm) els expected)
                                (res (u es s) (res u (effs-union es0 es) s)))))
                           ((null? elem) (refuse v (string-append h (string-append " of no list: " (show-ty s t)))))
-                          ((not (or (sized? w "%nlist") (tagcase w (ty-list (e r) (tagcase (walk s r) (ty-rconst (n) (string=? n "acyclic")) (else other #f))) (else other #f))))
+                          ((not (or (sized? w "%nlist") (tagcase w (ty-list (e r) (tagcase (walk s r) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (else other #f))) (else other #f))))
                            ;; Data alone, a list no one may write still (Fixpt's rule).
                            (refuse v (string-append "a " (string-append (show-ty s t) " is not data: a list that may still be written"))))
                           ((string=? h "acyclic")
@@ -2563,6 +2564,43 @@
                     (if (mentions? s t name)
                         (refuse v (string-append "a letregion whose value's type mentions its region " r))
                         (res t (masked es name) s))))))))
+
+      (letfreeze-form (subr kfx (cv st sexps tys) res)
+        (lambda (v s xs expected)
+          "`(letfreeze r body ...)`, `(letfreeze (r heap) body ...)` (Fixpt's
+           places-and-regions.md, C161): a region `r` for the body, whose data
+           it builds and may write; the value leaves with `r` frozen, `acyclic`
+           if the body never wrote `r`, else `const`; what the body does to `r`
+           masked."
+          (let ((r (tagcase (car xs)
+                     (sym (n f p) n)
+                     (lst (ys f l p) (if (and (i64= (size ys) 2) (sym-is? (second ys) "heap")) (sym-name (car ys))
+                                         (refuse v "a letfreeze into a place but the heap, which KFX has not yet")))
+                     (else other (refuse v "(letfreeze r body ...)")))))
+            (let ((name (string-append "'" r)))
+              (if (string-member? name (cv-tvars v))
+                  (refuse v (string-append "a letfreeze of a region named already: " r))
+                  (tagcase (body (with-tvars v (list name)) s (cdr xs) nil)
+                    (res (t es s)
+                      (let* ((wrote (any? (lambda ((x string)) (or (string=? x (string-append "write:" name)) (string=? x (string-append "init:" name)))) es))
+                             (frozen (replace-var name (ty-rconst (if wrote "const" "acyclic")) (zonk s t))))
+                        (if (writes-region? s (zonk s t) name)
+                            (refuse v (string-append "the value of `letfreeze " (string-append r (string-append "` could still write its region's data: its type is " (show-ty s t)))))
+                        (tagcase (found-then-fitted v (res frozen nil s) expected)
+                          (res (u es2 s2) (res u (masked es name) s2))))))))))))
+
+      (writes-region? (subr kfx (st ty string) bool)
+          (lambda (s t r)
+            "Whether a procedure in `t` writes region `r` (its latent effect)."
+            (tagcase (walk s t)
+              (ty-proc (es ps x)
+                (or (any? (lambda ((a string)) (let ((y (resolve-atom s a))) (or (string=? y (string-append "write:" r)) (string=? y (string-append "init:" r))))) es)
+                    (writes-region? s x r) (any? (lambda ((p ty)) (writes-region? s p r)) ps)))
+              (ty-list (e g) (writes-region? s e r))
+              (ty-ref (e g) (writes-region? s e r))
+              (ty-data (d args) (any? (lambda ((a ty)) (writes-region? s a r)) args))
+              (ty-shape (p ls ts) (any? (lambda ((a ty)) (writes-region? s a r)) ts))
+              (else other #f))))
 
       (letrena-form (subr kfx (cv st sexps tys) res)
         (lambda (v s xs expected)
@@ -3746,8 +3784,11 @@
                                       (if (proc-type? s0 (car expected)) (fits v s0 r (car expected)) s0))))
                           (tagcase (name-regions v s latent regions)
                             (res (u named s)
+                              (if (any? (lambda ((x string)) (let ((y (resolve-atom s x))) (or (string=? y "write:acyclic") (string=? y "write:const")))) named)
+                                  ;; A procedure that writes, at frozen data (C161): Fixpt's rule.
+                                  (refuse v "this writes frozen data, whose region is const")
                               (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))
-                                   (lift-noted v (noted-call v s named) r expected))))))))))
+                                   (lift-noted v (noted-call v s named) r expected)))))))))))
                 (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure"))))))))))
 
       (noted-lambda (subr kfx (cv st strings) st)
