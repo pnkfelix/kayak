@@ -1,0 +1,7 @@
+"`cons` as a value making a pair, at FX-26's type `(subr (alloc r) (t1 t2)
+ (pairof t1 t2 r))`: KFX's `cons` makes lists (C197)."
+(define-effect kfx (maxeff (read @globals) (alloc @heap) (read @heap) spin))
+(define app2 (subr (alloc @heap) ((subr (alloc @heap) (int string) (pairof int string @heap)) int) (pairof int string @heap))
+  (lambda (k x) (k x "s")))
+(define main (subr kfx () i64)
+  (lambda () (int->i64 (car (app2 cons 7)))))

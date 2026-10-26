@@ -1,0 +1,5 @@
+"A bloblet whose type nothing says, its fields' types found and its region
+ a new one, FX-26's: KFX's are made under a `the` (C198)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define main (subr kfx () i64)
+  (lambda () (let ((b (make-bloblet 0 1 2))) (int->i64 (bloblet-ref b 1)))))

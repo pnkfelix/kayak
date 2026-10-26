@@ -1350,7 +1350,7 @@ pub mod expressions {
                             match *tagcase_ {
                                 Scheme::Scheme(tv, t) => {
                                     if string_eq_p(shape_of(walk(s, t)), str_lit("pair")) {
-                                        kayak_rt::heap_cons(walk(s, t), kayak_rt::nil())
+                                        kayak_rt::heap_cons(walk_mu(s, t), kayak_rt::nil())
                                     } else {
                                         nil::<&'static Ty>()
                                     }
@@ -8313,6 +8313,25 @@ pub mod expressions {
         }
     }
 
+    /// Fixpt's type of pair operation `n` at region `r`, types `a` and `b`
+    /// (its standard.rs), as text; "" if `n` is none.
+    pub fn pair_op_text(n: Str, r: Str, a: Str, b: Str) -> Str {
+        let p = string_append(str_lit("(pairof "), string_append(a, string_append(str_lit(" "), string_append(b, string_append(str_lit(" "), string_append(r, str_lit(")")))))));
+        if string_eq_p(n, str_lit("cons")) {
+            string_append(str_lit("(subr (alloc "), string_append(r, string_append(str_lit(") ("), string_append(a, string_append(str_lit(" "), string_append(b, string_append(str_lit(") "), string_append(p, str_lit(")")))))))))
+        } else if string_eq_p(n, str_lit("car")) {
+            string_append(str_lit("(subr (read "), string_append(r, string_append(str_lit(") ((union nil "), string_append(p, string_append(str_lit(")) "), string_append(a, str_lit(")")))))))
+        } else if string_eq_p(n, str_lit("cdr")) {
+            string_append(str_lit("(subr (read "), string_append(r, string_append(str_lit(") ((union nil "), string_append(p, string_append(str_lit(")) "), string_append(b, str_lit(")")))))))
+        } else if string_eq_p(n, str_lit("set-car!")) {
+            string_append(str_lit("(subr (write "), string_append(r, string_append(str_lit(") ((union nil "), string_append(p, string_append(str_lit(") "), string_append(a, str_lit(") unit)")))))))
+        } else if string_eq_p(n, str_lit("set-cdr!")) {
+            string_append(str_lit("(subr (write "), string_append(r, string_append(str_lit(") ((union nil "), string_append(p, string_append(str_lit(") "), string_append(b, str_lit(") unit)")))))))
+        } else {
+            str_lit("")
+        }
+    }
+
     /// `(proj f a ...)`: the poly procedure `f` at the arguments given for
     /// its binders in order, types and regions (places too), as FX-26
     /// projects one; in Rust `f`, whose generics the call finds. A proj of
@@ -8455,6 +8474,14 @@ pub mod expressions {
                                                 kfx_restricted(v, s, str_lit("a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))
                                             });
                                         }
+                                    } else if (string_eq_p(wher, str_lit("prim")) && i64_eq(size(cdr(xs)), 3i64) && not(string_eq_p(pair_op_text(n, str_lit("R"), str_lit("A"), str_lit("B")), str_lit("")))) {
+                                        // A pair's operation at a region and two types (C200): Fixpt's
+                                        // `(poly ((r region)) (poly ((t1 type) (t2 type)) ...))`, its
+                                        // pair's tail any type; KFX's are lists'.
+                                        let w = lambda1s(move |x: &'static Sexp| {
+                                            show_sexp(x)
+                                        });
+                                        return res(parse_type(v, cv_tvars(v), car(read_all(string_chars(pair_op_text(n, w(second(xs)), w(third(xs)), w(fourth(xs)))), str_lit(""), 1i64))), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a proj of "), string_append(n, str_lit(" at a region and two types, FX-26's pairs, which KFX's lists are not (C200)")))));
                                     } else {
                                         if not(i64_eq(size(tvars), size(cdr(xs)))) {
                                             return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
@@ -11405,7 +11432,7 @@ pub mod expressions {
                 } else {
                     args
                 };
-                let tagcase_ = vsubr_as_proc(composable_as_proc(s, dep_substituted(v, s, walk(s, t), args)), size(args));
+                let tagcase_ = vsubr_as_proc(composable_as_proc(s, dep_substituted(v, s, walk_mu(s, t), args)), size(args));
                 match *tagcase_ {
                     Ty::TyProc(latent, ps, r) => {
                         if (not(i64_eq(size(ps), size(args))) && not(any_p(&draft_hole_p, args))) {

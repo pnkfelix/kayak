@@ -1,0 +1,8 @@
+"A pair's operation at a region and two types, FX-26's `(proj (proj cons
+ @p) t1 t2)`, a pair whose tail is any type: KFX's `cons` and `car` are
+ lists' (C200)."
+(define-effect kfx (maxeff (read @globals) (alloc @p) (read @p) spin))
+(define main (subr kfx () i64)
+  (lambda ()
+    (let ((x ((proj (proj cons @p) int string) 1 "a")))
+      (int->i64 ((proj (proj car @p) int string) x)))))

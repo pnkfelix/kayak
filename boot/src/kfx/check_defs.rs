@@ -35,7 +35,18 @@ pub fn table_binds(v: &'static Cv, table: Str, file: Str, wher: Str) -> Binds {
     }), read_all(string_chars(table), file, 1i64))
 }
 
-pub fn prim_binds(v: &'static Cv) -> Binds {
+/// The standard bindings, their types read in the standard scope, as
+/// Fixpt's are: none of the program's names (C200; a type `p` of its own
+/// would make `assert`'s parameter `(p bool)` an application of it).
+pub fn prim_binds(v0: &'static Cv) -> Binds {
+    let v = {
+        let tagcase_ = v0;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), here, group, file, line, fs, tv, at, bempty(), nil::<&'static Bind>())
+            }
+        }
+    };
     onto(table_binds(v, primitives(), str_lit("kayak-rt's primitives"), str_lit("prim")), onto(map(lambda1s(move |b: &'static Bind| {
         let tagcase_ = b;
         match *tagcase_ {

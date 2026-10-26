@@ -1,0 +1,5 @@
+"`(with #%fx n)`, FX-26's standard `n` whatever shadows it: KFX shadows no
+ standard name (C199)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define main (subr kfx () i64)
+  (lambda () (int->i64 ((with #%fx +) 1 2))))

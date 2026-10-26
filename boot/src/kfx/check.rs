@@ -5816,6 +5816,63 @@ pub fn unfold_mu(t: &'static Ty) -> &'static Ty {
     }
 }
 
+// `(dletrec ((x T) ...) body)` (C200): types defined in terms of each
+// other, as `mu`s (C174): each name, where it is not bound already, the
+// `(mu %dl-x T)` of its definition, the names inside it so made in turn;
+// named apart, so that no abbreviation of the program's of the same name
+// is taken for it.
+pub fn dletrec_binding(mut bs: Sexps, mut n: Str) -> Sexps {
+    loop {
+        if null_p(bs) {
+            return nil::<&'static Sexp>();
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    (i64_eq(size(ys), 2i64) && sym_is_p(car(ys), n))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(second(items(car(bs))), kayak_rt::nil());
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
+pub fn dletrec_unfolded(bs: Sexps, n: Str, bound: Strings) -> &'static Sexp {
+    lst(kayak_rt::heap_cons(sym(str_lit("mu"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(string_append(str_lit("%dl-"), n), str_lit(""), 0i64), kayak_rt::heap_cons(dletrec_in(bs, car(dletrec_binding(bs, n)), kayak_rt::heap_cons(n, bound)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+}
+
+pub fn dletrec_in(bs: Sexps, t: &'static Sexp, bound: Strings) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_member_p(n, bound) {
+                sym(string_append(str_lit("%dl-"), n), f, p)
+            } else if not(null_p(dletrec_binding(bs, n))) {
+                dletrec_unfolded(bs, n, bound)
+            } else {
+                t
+            }
+        }
+        Sexp::Lst(ys, f, l, p) => {
+            lst(map(lambda1s(move |y: &'static Sexp| {
+                dletrec_in(bs, y, bound)
+            }), ys), f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
 /// A union member's shape; a recursive abbreviation's own mention's, its
 /// body's (C174), read again: its own mentions in it, its variable.
 pub fn mu_member_shape(v: &'static Cv, tvars: Strings, m: &'static Ty) -> Str {
@@ -6442,6 +6499,45 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // A function applied, `((dlambda ...) d ...)`, `((f d) e)` (C173).
                     let f = parse_fun(v, tvars, car(xs));
                     return fun_applied_checked(v, show_sexp(car(xs)), f, args_of_fun(v, tvars, f, cdr(xs)));
+                } else if (sym_is_p(car(xs), str_lit("dletrec")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(bs, f2, l2, p2) => {
+                            not(any_p(lambda1s(move |b: &'static Sexp| {
+                                not({
+                                    let tagcase_ = b;
+                                    match *tagcase_ {
+                                        Sexp::Lst(ys, f3, l3, p3) => {
+                                            (i64_eq(size(ys), 2i64) && {
+                                                let tagcase_ = car(ys);
+                                                match *tagcase_ {
+                                                    Sexp::Sym(n, f4, p4) => {
+                                                        true
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        false
+                                                    }
+                                                }
+                                            })
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                })
+                            }), bs))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // `(dletrec ((x T) ...) body)` (C200): as `mu`s.
+                    t = dletrec_in(items(second(xs)), third(xs), nil::<Str>());
+                    continue;
                 } else if (sym_is_p(car(xs), str_lit("mu")) && i64_eq(size(xs), 3i64) && {
                     let tagcase_ = second(xs);
                     match *tagcase_ {

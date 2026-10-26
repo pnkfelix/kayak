@@ -5474,3 +5474,34 @@ is and whatever names it there (a local `+`, say), called or as a value.
   scope (`lower-name n nil nil`): the primitive itself. `standard-refs.fx`
   answers `123456`, as on Fixpt.
 - The checkers' comparison: refused 13 to 12, the same 358 to 359; K1 0.
+
+## C200. `dletrec`; the standard types in the standard scope; pairs at two types (2026-10-25)
+
+`pldi89/c7.fx`, accepted by Fixpt, took four changes; now the same as
+Fixpt's, its types as printed too.
+- **`(dletrec ((x T) ...) body)`**, types defined in terms of each other,
+  read as `mu`s (C174): each name, where no enclosing one binds it, the
+  `(mu %dl-x T)` of its definition, the names inside made so in turn
+  (`dletrec-in`). Named apart (`%dl-`), so that no abbreviation of the
+  program's of the same name is taken for one.
+- **The standard bindings' types read in the standard scope**
+  (`prim-binds`), as Fixpt's are: they were read with the program's
+  types declared, so a program's `(define-type p ...)` made `assert`'s
+  named parameter `(p bool)` an application of `p` and every program
+  with such a type was refused ("a type given the wrong number of
+  arguments").
+- **`(proj (proj car @p) t1 t2)`**: FX-26's pair operations, `cons`,
+  `car`, `cdr`, `set-car!`, `set-cdr!`, are poly in a region, then in two
+  types, a pair's head and tail; kayak's take one, a list's element. A
+  `proj` of one at three arguments is Fixpt's type at them
+  (`pair-op-text`, from its standard.rs); KFX refuses it.
+- **A call of a value of a `mu` type**: unfolded (`walk-mu`) to find its
+  procedure.
+- And a crash found probing: `(car x)`, `x` a local of a `mu` type of a
+  pair, ended the checker on `car` of nothing (`local-pair` gave the `mu`
+  unfolded nowhere); now unfolded. Unfolding `pair-expected` too changed
+  `recursive/family-knot.fx`'s printing, so it stays as it was.
+- `tests/kfx-stricter/`: `pair-proj`, `fx-module` (C199), `cons-value`
+  (C197), `bloblet-untyped` (C198), each accepted by Fixpt and refused by
+  KFX.
+- The checkers' comparison: refused 12 to 11, the same 359 to 360; K1 0.

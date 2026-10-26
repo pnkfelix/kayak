@@ -234,11 +234,15 @@
          (read-all (string-chars table) file 1))))
 
 (define prim-binds (subr kfx (cv) binds)
-  (lambda (v)
+  (lambda (v0)
+    "The standard bindings, their types read in the standard scope, as
+     Fixpt's are: none of the program's names (C200; a type `p` of its own
+     would make `assert`'s parameter `(p bool)` an application of it)."
+    (let ((v (tagcase v0 (cv (bs ds als es here group file line fs tv at ix mk) (cv nil nil nil nil here group file line fs tv at (bempty) nil)))))
     (onto (table-binds v primitives "kayak-rt's primitives" "prim")
           (onto (map (lambda ((b bind)) (tagcase b (bind (n sc w) (bind (string-append "%form " n) sc w))))
                      (table-binds v process-forms "FX-26's processes" "prim"))
-                (table-binds v prelude "kfx/prelude.fx" "global")))))
+                (table-binds v prelude "kfx/prelude.fx" "global"))))))
 
 (define head-name (subr kfx (cv sexp) string)
   (lambda (v head)

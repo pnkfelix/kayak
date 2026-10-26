@@ -2553,6 +2553,31 @@
       (ty-data (d args) (if (string=? d "%mu") (replace-var (tagcase (car args) (ty-var (n) n) (else other "")) t (car (cdr args))) t))
       (else other t))))
 
+"`(dletrec ((x T) ...) body)` (C200): types defined in terms of each
+ other, as `mu`s (C174): each name, where it is not bound already, the
+ `(mu %dl-x T)` of its definition, the names inside it so made in turn;
+ named apart, so that no abbreviation of the program's of the same name
+ is taken for it."
+(define-rec
+  (dletrec-binding (subr kfx (sexps string) sexps)
+    (lambda (bs n)
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (lst (ys f l p) (and (i64= (size ys) 2) (sym-is? (car ys) n))) (else other #f))
+             (list (second (items (car bs)))))
+            (else (dletrec-binding (cdr bs) n)))))
+  (dletrec-unfolded (subr kfx (sexps string strings) sexp)
+    (lambda (bs n bound)
+      (lst (list (sym "mu" "" 0) (sym (string-append "%dl-" n) "" 0) (dletrec-in bs (car (dletrec-binding bs n)) (cons n bound))) "" 0 0)))
+  (dletrec-in (subr kfx (sexps sexp strings) sexp)
+    (lambda (bs t bound)
+      (tagcase t
+        (sym (n f p)
+          (cond ((string-member? n bound) (sym (string-append "%dl-" n) f p))
+                ((not (null? (dletrec-binding bs n))) (dletrec-unfolded bs n bound))
+                (else t)))
+        (lst (ys f l p) (lst (map (lambda ((y sexp)) (dletrec-in bs y bound)) ys) f l p))
+        (else other t)))))
+
 (define-rec
   (mu-member-shape (subr kfx (cv strings ty) string)
     (lambda (v tvars m)
@@ -2840,6 +2865,10 @@
                  "A function applied, `((dlambda ...) d ...)`, `((f d) e)` (C173)."
                  (let ((f (parse-fun v tvars (car xs))))
                    (fun-applied-checked v (show-sexp (car xs)) f (args-of-fun v tvars f (cdr xs)))))
+                ((and (sym-is? (car xs) "dletrec") (i64= (size xs) 3)
+                      (tagcase (second xs) (lst (bs f2 l2 p2) (not (any? (lambda ((b sexp)) (not (tagcase b (lst (ys f3 l3 p3) (and (i64= (size ys) 2) (tagcase (car ys) (sym (n f4 p4) #t) (else other #f)))) (else other #f)))) bs))) (else other #f)))
+                 "`(dletrec ((x T) ...) body)` (C200): as `mu`s."
+                 (parse-type v tvars (dletrec-in (items (second xs)) (third xs) nil)))
                 ((and (sym-is? (car xs) "mu") (i64= (size xs) 3) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
                  "`(mu t T)`: a recursive type with no name (C174)."
                  (let ((t2 (sym-name (second xs))))

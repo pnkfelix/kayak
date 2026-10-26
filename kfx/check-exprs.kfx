@@ -603,7 +603,7 @@
                     nil
                     (tagcase (car found)
                       (bind (n2 sc w)
-                        (tagcase sc (scheme (tv t) (if (string=? (shape-of (walk s t)) "pair") (list (walk s t)) nil))))))))
+                        (tagcase sc (scheme (tv t) (if (string=? (shape-of (walk s t)) "pair") (list (walk-mu s t)) nil))))))))
             (else other nil))))
 
       (define pair-expected (subr kfx (st ty) tys)
@@ -3703,6 +3703,18 @@
                                            (note-fact s (cv-file v) (cv-pos v) (string-append "blob-scalar " (scalar-name flat)))))))))))
                        (else other (refuse v (string-append h " of no blobref"))))))))))))
 
+      (pair-op-text (subr kfx (string string string string) string)
+        (lambda (n r a b)
+          "Fixpt's type of pair operation `n` at region `r`, types `a` and `b`
+           (its standard.rs), as text; \"\" if `n` is none."
+          (let ((p (string-append "(pairof " (string-append a (string-append " " (string-append b (string-append " " (string-append r ")"))))))))
+            (cond ((string=? n "cons") (string-append "(subr (alloc " (string-append r (string-append ") (" (string-append a (string-append " " (string-append b (string-append ") " (string-append p ")")))))))))
+                  ((string=? n "car") (string-append "(subr (read " (string-append r (string-append ") ((union nil " (string-append p (string-append ")) " (string-append a ")")))))))
+                  ((string=? n "cdr") (string-append "(subr (read " (string-append r (string-append ") ((union nil " (string-append p (string-append ")) " (string-append b ")")))))))
+                  ((string=? n "set-car!") (string-append "(subr (write " (string-append r (string-append ") ((union nil " (string-append p (string-append ") " (string-append a ") unit)")))))))
+                  ((string=? n "set-cdr!") (string-append "(subr (write " (string-append r (string-append ") ((union nil " (string-append p (string-append ") " (string-append b ") unit)")))))))
+                  (else "")))))
+
       (proj-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
           "`(proj f a ...)`: the poly procedure `f` at the arguments given for
@@ -3764,6 +3776,14 @@
                                      (if (all-regions? (poly-binders-of args))
                                          s
                                          (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))))))
+                         ((and (string=? wher "prim") (i64= (size (cdr xs)) 3) (not (string=? (pair-op-text n "R" "A" "B") "")))
+                          "A pair's operation at a region and two types (C200): Fixpt's
+                           `(poly ((r region)) (poly ((t1 type) (t2 type)) ...))`, its
+                           pair's tail any type; KFX's are lists'."
+                          (let ((w (lambda ((x sexp)) (show-sexp x))))
+                            (res (parse-type v (cv-tvars v) (car (read-all (string-chars (pair-op-text n (w (second xs)) (w (third xs)) (w (fourth xs)))) "" 1)))
+                                 nil
+                                 (kfx-restricted v s (string-append "a proj of " (string-append n " at a region and two types, FX-26's pairs, which KFX's lists are not (C200)"))))))
                          (else
                         (if (not (i64= (size tvars) (size (cdr xs))))
                             (refuse v (string-append "a proj of " (string-append n " given the wrong number of arguments")))
@@ -5137,7 +5157,7 @@
           (tagcase (poly-callee callee)
             (res (t es0 s)
               (let ((args (if (string=? (cv-file v) "<draft>") (through-hole args) args)))
-              (tagcase (vsubr-as-proc (composable-as-proc s (dep-substituted v s (walk s t) args)) (size args))
+              (tagcase (vsubr-as-proc (composable-as-proc s (dep-substituted v s (walk-mu s t) args)) (size args))
                 (ty-proc (latent ps r)
                   (cond ((and (not (i64= (size ps) (size args))) (not (any? draft-hole? args)))
                          (refuse v (string-append "a call of the wrong number of arguments: "
