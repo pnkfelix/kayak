@@ -191,6 +191,10 @@
 "The checker's facts, for the program being compiled."
 (define cg-facts (ref facts @g) (new nil))
 
+"Of those, the conversions (C230; `conversion-noted`), looked for at every
+ expression: none, in most programs."
+(define cg-convert-facts (ref facts @g) (new nil))
+
 "Of those, what a module's place is told (C144): a module parameter's type,
  at each `with` of it (`with-spec`), and at each module given for one
  (`module-arg`), its values' names in order. Few, so asked of often."
@@ -641,6 +645,23 @@
 (define-rec
   (parse-x (subr gen (sexp) cx)
     (lambda (e)
+      "`e`, converted where the checker found it converted (C230)."
+      (let ((x (parse-x-as-is e)))
+        (if (null? (get cg-convert-facts))
+            x
+            (converted-x (fact-text (get cg-convert-facts) (datum-file e) (datum-pos e) "convert ") x (datum-pos e))))))
+
+  (converted-x (subr gen (string cx i64) cx)
+    (lambda (k x a)
+      "`x` given to `%fx26-convert` with `k`, what Fixpt's compiler gives it
+       (`exp_unnoted`): an adapter, if `x` is of the other convention. As
+       it is, if `k` is empty."
+      (if (string=? k "")
+          x
+          (x-app (x-var "%fx26-convert" a) (list x (x-int (i64->int (digits-i64 (string-chars k) 0)) a)) a))))
+
+  (parse-x-as-is (subr gen (sexp) cx)
+    (lambda (e)
       (tagcase e
         (num (k f p) (big-literal (i64->int k) p))
         (big (text f p) (big-literal (big-int text) p))
@@ -678,11 +699,11 @@
             ((string=? h "cond") (parse-cond (cdr xs) a))
             ((string=? h "and") (parse-and (cdr xs) a))
             ((string=? h "or") (parse-or (cdr xs) a))
-            ((and (string=? h "convention") (sym-is? (second xs) "native"))
-             "A conversion to native code, an adapter Fixpt makes (C181): not the
-              generator's, whose closures are cellular."
-             (begin (cg-fail "not yet: a conversion to native code") (x-var "%none" a)))
-            ((or (string=? h "the") (string=? h "convention")) (parse-x (car (cdr (cdr xs)))))
+            ((string=? h "convention")
+             "A conversion written (C230): as Fixpt's, `%fx26-convert` where the
+              procedure is of another convention, an adapter."
+             (converted-x (fact-text (get cg-convert-facts) f a "convention ") (parse-x (car (cdr (cdr xs)))) a))
+            ((string=? h "the") (parse-x (car (cdr (cdr xs)))))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
             ((member-of? h process-heads)
              "A form of processes, a call of the scheduler's (C219), as Fixpt's
@@ -1780,6 +1801,8 @@
           ((string-member? name (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref" "list->vector"
                                       "substring" "string=?" "string->symbol" "symbol->string"))
            (c-prim c name n))
+          ;; A conversion (C230, `converted-x`): Fixpt's primitive itself.
+          ((string=? name "%fx26-convert") (c-prim c name n))
           ((std-eq-name? name) (c-op c "eq"))
           (else
            (let ((p (std-primitive name)))
@@ -2432,6 +2455,8 @@
     (let ((c (the code (new nil))))
       (begin
         (set cg-facts fs)
+        (set cg-convert-facts
+             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "convert ") (has-prefix? what "convention "))))) fs))
         (set cg-fx-calls nil)
         (set cg-module-facts
              (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (has-prefix? what "module-had ") (has-prefix? what "module-made ") (string=? what "module-value") (string=? what "with-value"))))) fs))

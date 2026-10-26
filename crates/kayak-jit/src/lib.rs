@@ -639,7 +639,10 @@ pub enum Trap {
 /// `kayak:call-native/1`, for a runtime of KFX whose values are Fixpt's
 /// words, as tier 1's): at `m`, a flat array's first element, the closure,
 /// the entry's address, then `n` arguments (at most eight, from `m[2]`);
-/// `m[10]` to `m[13]` the host heap and its cards' range (above); the
+/// `m[10]` to `m[13]` the host heap and its cards' range (above); `m[14]`
+/// and `m[15]`, if `m[14]` is not 0, the caller's code area as the state
+/// says one, its lowest reference and the distance from a reference to
+/// where its code runs, for the call (C230); the
 /// answer put in the first, the host heap's next free address in `m[10]`;
 /// for a trap said otherwise (7), what it said, a string in the host heap,
 /// in the first. 0, or why not: a trap's kind (1 to 5), 6 a routine the
@@ -667,7 +670,18 @@ pub fn call_mailbox(m: usize, n: usize) -> i64 {
             s[state::CARDS / 8].set((table as u64).wrapping_sub((lo >> CARD_SHIFT) as u64))
         });
     }
+    let area_was = STATE.with(|s| (s[state::CODE_LO / 8].get(), s[state::DELTA / 8].get()));
+    if at(14) != 0 {
+        STATE.with(|s| {
+            s[state::CODE_LO / 8].set(at(14));
+            s[state::DELTA / 8].set(at(15));
+        });
+    }
     let answer = std::panic::catch_unwind(|| call(at(0), at(1) as usize, &args));
+    STATE.with(|s| {
+        s[state::CODE_LO / 8].set(area_was.0);
+        s[state::DELTA / 8].set(area_was.1);
+    });
     // What a trap said, as a string of the host's heap, for it to say too.
     if host && let Ok(Err(Trap::Failed(said))) = &answer {
         sys::put(m, string(said));

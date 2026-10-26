@@ -1888,6 +1888,15 @@ pub fn cg_facts() -> Ref<Facts> {
     })
 }
 
+// Of those, the conversions (C230; `conversion-noted`), looked for at every
+// expression: none, in most programs.
+pub fn cg_convert_facts() -> Ref<Facts> {
+    kayak_rt::kept_constant!(ONCE: Ref<Facts>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Fact>())
+    })
+}
+
 // Of those, what a module's place is told (C144): a module parameter's type,
 // at each `with` of it (`with-spec`), and at each module given for one
 // (`module-arg`), its values' names in order. Few, so asked of often.
@@ -2918,7 +2927,28 @@ pub fn q_items_free_p(items: Sexps, depth: i64, inner: i64) -> bool {
     }) && q_free_p(car(items), depth) && q_items_free_p(cdr(items), inner, inner)))
 }
 
+/// `e`, converted where the checker found it converted (C230).
 pub fn parse_x(e: &'static Sexp) -> &'static Cx {
+    let x = parse_x_as_is(e);
+    if null_p(get(cg_convert_facts())) {
+        x
+    } else {
+        converted_x(fact_text(get(cg_convert_facts()), datum_file(e), datum_pos(e), str_lit("convert ")), x, datum_pos(e))
+    }
+}
+
+/// `x` given to `%fx26-convert` with `k`, what Fixpt's compiler gives it
+/// (`exp_unnoted`): an adapter, if `x` is of the other convention. As
+/// it is, if `k` is empty.
+pub fn converted_x(k: Str, x: &'static Cx, a: i64) -> &'static Cx {
+    if string_eq_p(k, str_lit("")) {
+        x
+    } else {
+        x_app(x_var(str_lit("%fx26-convert"), a), kayak_rt::heap_cons(x, kayak_rt::heap_cons(x_int(i64_to_int(digits_i64(string_chars(k), 0i64)), a), kayak_rt::nil())), a)
+    }
+}
+
+pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Num(k, f, p) => {
@@ -3007,12 +3037,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         parse_and(cdr(xs), a)
     } else if string_eq_p(h, str_lit("or")) {
         parse_or(cdr(xs), a)
-    } else if (string_eq_p(h, str_lit("convention")) && sym_is_p(second(xs), str_lit("native"))) {
-        // A conversion to native code, an adapter Fixpt makes (C181): not the
-        // generator's, whose closures are cellular.
-        match cg_fail(str_lit("not yet: a conversion to native code")) {};
-        x_var(str_lit("%none"), a)
-    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("convention"))) {
+    } else if string_eq_p(h, str_lit("convention")) {
+        // A conversion written (C230): as Fixpt's, `%fx26-convert` where the
+        // procedure is of another convention, an adapter.
+        converted_x(fact_text(get(cg_convert_facts()), f, a, str_lit("convention ")), parse_x(car(cdr(cdr(xs)))), a)
+    } else if string_eq_p(h, str_lit("the")) {
         parse_x(car(cdr(cdr(xs))))
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
@@ -5439,6 +5468,8 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
         c_op(c, str_lit("int-sub"))
     } else if string_member_p(name, kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("list->vector"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil())))))))))))) {
         c_prim(c, name, n)
+    } else if string_eq_p(name, str_lit("%fx26-convert")) {
+        c_prim(c, name, n)
     } else if std_eq_name_p(name) {
         c_op(c, str_lit("eq"))
     } else {
@@ -6683,6 +6714,14 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
     set(cg_facts(), fs);
+    set(cg_convert_facts(), filter(lambda1s(move |x: &'static Fact| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Fact::Fact(f, p, what) => {
+                (has_prefix_p(what, str_lit("convert ")) || has_prefix_p(what, str_lit("convention ")))
+            }
+        }
+    }), fs));
     set(cg_fx_calls(), nil::<i64>());
     set(cg_module_facts(), filter(lambda1s(move |x: &'static Fact| {
         let tagcase_ = x;

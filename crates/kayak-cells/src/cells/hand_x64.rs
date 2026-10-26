@@ -3310,18 +3310,27 @@ pub fn address_code_x() -> &'static Sum_12made_address_10no_address<AddressCode,
 /// The code area (C226), where native code runs: its reservation's pages
 /// from the first whole one, as many whole pages as fit, given an execute
 /// view by kayak-rt (`code:exec-view/1`); none, and so no code a program
-/// makes, where it gives none.
-pub fn code_area_made_x(p: AddressCode) -> () {
+/// makes, where it gives none. Above both spaces, whose ends are below
+/// `above` (C230): native code calls what a closure holds as code if it
+/// is at least the area's lowest, as Fixpt's code area is its heap's top.
+/// `first`, reserved before the spaces, is there where reservations come
+/// from the top down (Linux); else one reserved after them, where they
+/// come from the bottom up (macOS); else, none.
+pub fn code_area_made_x(p: AddressCode, first: FlatArray<i64>, above: i64) -> () {
     if not((_pctsyscall_available_coloncode_view() && _pctsyscall_available_colonpage_words())) {
         ()
     } else {
-        let c = the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64));
+        let c = if i64_gt_eq(int_to_i64(p(first)), above) {
+            first
+        } else {
+            the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64))
+        };
         let at = int_to_i64(p(c));
         let page = int_to_i64(page_words());
         let lo = i64_remainder(i64_minus(page, i64_remainder(i64_shr(at, int_lit(3)), page)), page);
         let n = i64_star(page, i64_quotient(i64_minus(code_capacity(), lo), page));
         let d = int_to_i64(code_view(c, i64_to_int(lo), i64_to_int(n)));
-        if i64_eq(d, -1i64) {
+        if (i64_lt(at, above) || i64_eq(d, -1i64)) {
             ()
         } else {
             set(code(), c);
@@ -3346,13 +3355,19 @@ pub fn heap_addressed_x() -> bool {
         let tagcase_ = address_code_x();
         match *tagcase_ {
             Sum_12made_address_10no_address::MadeAddress(p) => {
-                let (m, o) = (the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64)));
+                let first = the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64));
+                let m = the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64));
+                let o = the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64));
                 set(mem(), m);
                 set(other(), o);
                 set(vbase(), int_to_i64(p(m)));
                 set(to_vbase(), int_to_i64(p(o)));
                 set(addressed(), true);
-                code_area_made_x(p);
+                code_area_made_x(p, first, i64_plus(if i64_gt(get(vbase()), get(to_vbase())) {
+                    get(vbase())
+                } else {
+                    get(to_vbase())
+                }, i64_star(8i64, heap_capacity())));
                 true
             }
             Sum_12made_address_10no_address::NoAddress(why) => {

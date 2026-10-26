@@ -47,6 +47,7 @@ control/oneshot-called.fx
 control/private-mark.fx
 conventions/basics.fx
 conventions/from-fx.fx
+conventions/native-explicit.fx
 conventions/poly.fx
 datum/acyclic.fx
 datum/confirm-length.fx
@@ -78,6 +79,8 @@ higher-kinds/infer-generative.fx
 higher-kinds/okasaki-stack.fx
 higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
+kayak/conventions/both-ways.fx
+kayak/made-code-x86_64/adapter-called.fx
 kayak/made-code-x86_64/code-freed.fx
 kayak/made-code-x86_64/kept-across-collections.fx
 made-code-x86_64/allocated.fx

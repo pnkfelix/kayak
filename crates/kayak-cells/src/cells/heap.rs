@@ -259,6 +259,19 @@ pub fn code_fit_at() -> Ref<i64> {
     })
 }
 
+// The native adapter's code (C230, prims.kfx's `adapter-code!`), made once
+// into the code area and kept there by every collection (`collect-begin!`);
+// 0 until it is made. Fixpt's `native_adapter_code`: the closure called
+// made its free value 0, which is called as native code calls what is not
+// native code, by the convention's `foreign`, in a tail call, the count as
+// its caller passed it.
+pub fn adapter_code() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
 pub fn code_set_x(j: i64, w: i64) -> () {
     flatarray_set_i64_x(get(code()), j, w)
 }
@@ -1066,7 +1079,12 @@ pub fn collect_begin_x() -> () {
         ()
     };
     set(to_top(), 8i64);
-    named_forwarded_x(0i64)
+    named_forwarded_x(0i64);
+    if i64_eq(get(adapter_code()), 0i64) {
+        ()
+    } else {
+        code_marked_x(get(adapter_code()))
+    }
 }
 
 /// Everything the roots reach, copied; the spaces swapped; the space grown,

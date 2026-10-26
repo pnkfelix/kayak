@@ -695,7 +695,7 @@ pub fn spend_x(k: i64) -> bool {
 pub fn native_box() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(14i64, 0i64))
+        kayak_rt::heap_new(make_flatarray_i64(16i64, 0i64))
     })
 }
 
@@ -764,6 +764,8 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
         flatarray_set_i64_x(r#box, 11i64, heap_ref(heap_capacity(), 0i64));
         flatarray_set_i64_x(r#box, 12i64, cards_low());
         flatarray_set_i64_x(r#box, 13i64, cards_high());
+        flatarray_set_i64_x(r#box, 14i64, i64_plus(get(code_vbase()), i64_star(8i64, get(code_lo()))));
+        flatarray_set_i64_x(r#box, 15i64, i64_minus(get(code_distance()), t_bloblet()));
         let status = int_to_i64(call_native(r#box, i64_to_int(count)));
         pop_x(n);
         top_from_x(flatarray_ref_i64(r#box, 10i64));
@@ -807,53 +809,58 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
 
 /// Call the closure on top with the `count` values below it, which become
 /// its frame; in tail position, its frame slid down over this one.
-pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
-    if i64_lt(get(dsp()), i64_plus(get(fp()), i64_plus(count, 1i64))) {
-        underflow_trap_x(n);
-        next()
-    } else {
-        let c = pop_x(n);
-        if is_kind_p(c, k_continuation()) {
-            if not(i64_eq(count, 1i64)) {
-                trap_x(string_append(str_lit("a continuation takes one value, and was given "), i64_to_string(count)));
-                next()
-            } else {
-                let v = pop_x(n);
-                check_limits_x();
-                if spend_x(c) {
-                    reinstate_x(c, v, tail)
-                } else {
-                    ()
-                };
-                next()
-            }
-        } else if is_kind_p(c, k_native_closure()) {
-            native_called_x(n, c, count, tail)
-        } else if not(closure_p(c)) {
-            type_trap_x(n);
-            next()
+pub fn call_x(mut n: i64, mut count: i64, mut tail: bool) -> i64 {
+    loop {
+        if i64_lt(get(dsp()), i64_plus(get(fp()), i64_plus(count, 1i64))) {
+            underflow_trap_x(n);
+            return next();
         } else {
-            check_limits_x();
-            if tail {
-                let from = i64_minus(get(dsp()), count);
-                slid_x(from, get(fp()));
-                set(dsp(), i64_plus(get(fp()), count))
-            } else {
-                push_return_x();
-                set(fp(), i64_minus(get(dsp()), count))
-            };
-            set(cur(), slot_of(c, f_word()));
-            set(kk(), f_cell0());
-            set(clo(), c);
-            {
-                let rw = slot_of(get(cur()), f_twin());
-                if (not(i64_eq(rw, v_false())) && i64_eq(fix(count), slot_of(rw, i64_plus(f_cell0(), 1i64)))) {
-                    adapted_x(rw, 0i64, count)
+            let c = pop_x(n);
+            if is_kind_p(c, k_continuation()) {
+                if not(i64_eq(count, 1i64)) {
+                    trap_x(string_append(str_lit("a continuation takes one value, and was given "), i64_to_string(count)));
+                    return next();
                 } else {
-                    ()
+                    let v = pop_x(n);
+                    check_limits_x();
+                    if spend_x(c) {
+                        reinstate_x(c, v, tail)
+                    } else {
+                        ()
+                    };
+                    return next();
                 }
-            };
-            next()
+            } else if (is_kind_p(c, k_native_closure()) && adapter_p(c)) {
+                push_x(slot_of(c, f_free0()));
+                continue;
+            } else if is_kind_p(c, k_native_closure()) {
+                return native_called_x(n, c, count, tail);
+            } else if not(closure_p(c)) {
+                type_trap_x(n);
+                return next();
+            } else {
+                check_limits_x();
+                if tail {
+                    let from = i64_minus(get(dsp()), count);
+                    slid_x(from, get(fp()));
+                    set(dsp(), i64_plus(get(fp()), count))
+                } else {
+                    push_return_x();
+                    set(fp(), i64_minus(get(dsp()), count))
+                };
+                set(cur(), slot_of(c, f_word()));
+                set(kk(), f_cell0());
+                set(clo(), c);
+                {
+                    let rw = slot_of(get(cur()), f_twin());
+                    if (not(i64_eq(rw, v_false())) && i64_eq(fix(count), slot_of(rw, i64_plus(f_cell0(), 1i64)))) {
+                        adapted_x(rw, 0i64, count)
+                    } else {
+                        ()
+                    }
+                };
+                return next();
+            }
         }
     }
 }

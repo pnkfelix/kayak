@@ -1509,21 +1509,28 @@
                (begin (set address-made (list p)) (sum made-address p))))
             (else (sum no-address (string-append "no native code for " target)))))))
 
-(define code-area-made! (->* (address-code) unit)
-  (lambda (p)
+(define code-area-made! (->* (address-code (flatarrayof i64 @c) i64) unit)
+  (lambda (p first above)
     "The code area (C226), where native code runs: its reservation's pages
      from the first whole one, as many whole pages as fit, given an execute
      view by kayak-rt (`code:exec-view/1`); none, and so no code a program
-     makes, where it gives none."
+     makes, where it gives none. Above both spaces, whose ends are below
+     `above` (C230): native code calls what a closure holds as code if it
+     is at least the area's lowest, as Fixpt's code area is its heap's top.
+     `first`, reserved before the spaces, is there where reservations come
+     from the top down (Linux); else one reserved after them, where they
+     come from the bottom up (macOS); else, none."
     (if (not (and (syscall-available? code-view) (syscall-available? page-words)))
         #u
-        (let* ((c (the (flatarrayof i64 @c) (make-flatarray-i64 code-capacity 0)))
+        (let* ((c (if (i64>= (int->i64 (p first)) above)
+                      first
+                      (the (flatarrayof i64 @c) (make-flatarray-i64 code-capacity 0))))
                (at (int->i64 (p c)))
                (page (int->i64 (page-words)))
                (lo (i64-remainder (i64- page (i64-remainder (i64-shr at 3) page)) page))
                (n (i64* page (i64-quotient (i64- code-capacity lo) page)))
                (d (int->i64 (code-view c (i64->int lo) (i64->int n)))))
-          (if (i64= d -1)
+          (if (or (i64< at above) (i64= d -1))
               #u
               (begin
                 (set code c) (set code-vbase at) (set code-lo lo) (set code-top lo) (set code-hi (i64+ lo n))
@@ -1539,13 +1546,15 @@
         #f
         (tagcase (address-code!)
           (made-address p
-            (let ((m (the (flatarrayof i64 @c) (make-flatarray-i64 heap-capacity 0)))
-                  (o (the (flatarrayof i64 @c) (make-flatarray-i64 heap-capacity 0))))
+            (let* ((first (the (flatarrayof i64 @c) (make-flatarray-i64 code-capacity 0)))
+                   (m (the (flatarrayof i64 @c) (make-flatarray-i64 heap-capacity 0)))
+                   (o (the (flatarrayof i64 @c) (make-flatarray-i64 heap-capacity 0))))
               (begin
                 (set mem m) (set other o)
                 (set vbase (int->i64 (p m))) (set to-vbase (int->i64 (p o)))
                 (set addressed #t)
-                (code-area-made! p)
+                (code-area-made! p first
+                                 (i64+ (if (i64> (get vbase) (get to-vbase)) (get vbase) (get to-vbase)) (i64* 8 heap-capacity)))
                 #t)))
           (no-address why #f)))))
 

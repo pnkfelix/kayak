@@ -1703,6 +1703,65 @@ pub fn sealed_copy_x(v: i64) -> i64 {
     }
 }
 
+/// The adapter's code, made if it is not yet: a field 3 below the
+/// reference by 28 bytes (`slot-of`, a bloblet's tag 4); `foreign` the
+/// state's at 288. Where no native code runs, none: tier 1 calls an
+/// adapter's procedure itself (`call!`), and nothing else calls one.
+pub fn adapter_code_x() -> i64 {
+    if not(get(code_on())) {
+        v_false()
+    } else if not(i64_eq(get(adapter_code()), 0i64)) {
+        get(adapter_code())
+    } else {
+        let x64 = string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target x86_64)"));
+        let b = make_bloblet_x(k_bloblet(), 0i64, if x64 {
+            11i64
+        } else {
+            12i64
+        }, true, false);
+        if x64 {
+            word_set_x(address(b), 2353129988793535304i64);
+            word_set_x(i64_plus(address(b), 1i64), 1i64)
+        } else {
+            word_set_x(address(b), -486227058660327094i64);
+            word_set_x(i64_plus(address(b), 1i64), 3592356352i64)
+        };
+        set(adapter_code(), sealed_copy_x(b));
+        get(adapter_code())
+    }
+}
+
+/// An adapter of `f` to the native convention: a native closure over it
+/// of the adapter's code (Fixpt's `native_closure`), three fields with
+/// the trailer.
+pub fn native_adapter_x(f: i64) -> i64 {
+    let c = make_bloblet_x(k_native_closure(), 2i64, 0i64, true, true);
+    slot_set_x(c, f_word(), adapter_code_x());
+    slot_set_x(c, f_free0(), f);
+    c
+}
+
+/// Whether native closure `c` is an adapter, by its code (Fixpt's
+/// `Heap::adapted`).
+pub fn adapter_p(c: i64) -> bool {
+    let w = slot_of(c, f_word());
+    (i64_eq(w, v_false()) || i64_eq(w, get(adapter_code())))
+}
+
+/// An adapter of `f` to the cellular convention, of `n` arguments: a
+/// closure over it whose word calls it, its free value 0, in a tail call
+/// (Fixpt's `cellular_adapter`).
+pub fn cellular_adapter_x(f: i64, n: i64) -> i64 {
+    let (w, c) = (make_word_x(str_lit("adapter"), 4i64, r_docol()), make_bloblet_x(k_closure(), 2i64, 0i64, true, false));
+    slot_set_x(w, f_cell0(), fix(r_free()));
+    slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
+    slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_tailcall()));
+    slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(n));
+    slot_set_x(c, f_word(), w);
+    slot_set_x(c, f_free0(), f);
+    c
+}
+
 // Tier 1's syscalls (C224): each host name's type in canonical form, ""
 // for none; Fixpt's three, as its runtime gives them, for now: no view of a
 // flat array yet (-1), so nothing to flush.
@@ -3963,9 +4022,14 @@ pub fn prim_apply_x(p: i64) -> i64 {
     } else if i64_eq(op, o_address_identity()) {
         fix(0i64)
     } else if i64_eq(op, o_convert()) {
+        // A procedure already of the convention itself; one of the other, an
+        // adapter (C230; Fixpt's `%fx26-convert`, `adapt`); anything else
+        // itself.
         let (native, cellular, is_native) = (i64_eq(i64_and(fix_val(b), 3i64), 2i64), (is_kind_p(a, k_closure()) || is_kind_p(a, k_continuation())), is_kind_p(a, k_native_closure()));
-        if ((native && cellular) || (not(native) && is_native)) {
-            prim_failed(p, str_lit("of a procedure of the other convention"))
+        if (native && cellular) {
+            native_adapter_x(a)
+        } else if (not(native) && is_native) {
+            cellular_adapter_x(a, i64_shr(fix_val(b), int_lit(2)))
         } else {
             a
         }

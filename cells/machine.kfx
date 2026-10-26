@@ -360,7 +360,7 @@
  mailbox; its answer the value, as a primitive's, or, in tail position,
  the frame's. Code a program makes calls none of the convention's routines
  here yet: one that does fails, as a trap of its own."
-(define native-box (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 14 0)))
+(define native-box (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 16 0)))
 
 (define lesser (subr kfx (i64 i64) i64) (lambda (a b) (if (i64< a b) a b)))
 (define greater (subr kfx (i64 i64) i64) (lambda (a b) (if (i64> a b) a b)))
@@ -403,6 +403,11 @@
             (flatarray-set-i64! box 11 (heap-ref heap-capacity 0))
             (flatarray-set-i64! box 12 (cards-low))
             (flatarray-set-i64! box 13 (cards-high))
+            ;; Tier 1's code area as the convention's state says one (C230):
+            ;; its lowest reference, and the distance from a reference to
+            ;; where its code runs, so that native code calls code there.
+            (flatarray-set-i64! box 14 (i64+ (get code-vbase) (i64* 8 (get code-lo))))
+            (flatarray-set-i64! box 15 (i64- (get code-distance) t-bloblet))
             (let ((status (int->i64 (call-native box (i64->int count)))))
               (begin
                (pop! n)
@@ -441,6 +446,9 @@
                  (begin (trap! (string-append "a continuation takes one value, and was given " (i64->string count))) next)
                  (let ((v (pop! n)))
                    (begin (check-limits!) (if (spend! c) (reinstate! c v tail) #u) next))))
+            ;; An adapter's procedure called here as it is (C230), not by
+            ;; native code that calls back.
+            ((and (is-kind? c k-native-closure) (adapter? c)) (begin (push! (slot-of c f-free0)) (call! n count tail)))
             ((is-kind? c k-native-closure) (native-called! n c count tail))
             ((not (closure? c))
               (begin (type-trap! n) next))

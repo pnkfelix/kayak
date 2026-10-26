@@ -3736,6 +3736,36 @@
   (lambda (s file pos what)
     (tagcase s (st (subst next fs ks) (st subst next (cons (fact file pos what) fs) ks)))))
 
+(define run-convention (subr kfx (ty) string)
+  (lambda (t)
+    "A procedure type's convention as Fixpt's checker has it for the
+     cellular machine, kayak's compiler's target (C230): the program's, a
+     `subr` that names none, `cellular` (Fixpt's `k-conv-default`); one
+     written; `` for a binder's, or no procedure."
+    (tagcase t
+      (ty-proc (es ps r) "cellular")
+      (ty-data (d args)
+        (cond ((string=? d "%native") "native") ((string=? d "%cellular") "cellular") ((string=? d "%fx") "fx") (else "")))
+      (else other ""))))
+
+(define conversion-noted (subr kfx (st sexp string ty string) st)
+  (lambda (s x prefix a to)
+    "Where Fixpt's checker converts procedure `x`, of type `a`, to
+     convention `to` at run time (`k-convert-at`: to `cellular` or `native`,
+     from another), the fact `prefix` and what `%fx26-convert` is given for
+     it, its arity times 4 plus 1 for `cellular`, 2 for `native`: for kayak's
+     compiler to cells, which converts there as Fixpt's does (C230). The
+     checker's own types are as they were (C181)."
+    (let ((from (run-convention a)))
+      (if (and (or (string=? to "native") (string=? to "cellular")) (not (string=? from ""))
+               (not (string=? from to)) (not (string=? (datum-file x) "")))
+          (tagcase (procedure-within a)
+            (ty-proc (es ps r)
+              (note-fact s (datum-file x) (datum-pos x)
+                         (string-append prefix (i64->string (i64+ (i64* 4 (size ps)) (if (string=? to "native") 2 1))))))
+            (else other s))
+          s))))
+
 (define kfx-restricted (subr kfx (cv st string) st)
   (lambda (v s message)
     "What FX-26 has and KFX has not, for Rust (front-end.md stage 2, C154):

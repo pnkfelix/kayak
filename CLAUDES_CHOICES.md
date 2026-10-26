@@ -6400,3 +6400,59 @@ freed. Both as Fixpt's machine does them.
   million, not three: tier 1 counts its interpreted callback's
   instructions against the default limit (twenty million), and three
   million pairs pass it where Fixpt's machine does not.
+
+## C230. Adapters between calling conventions (2026-10-26)
+
+The user: "go ahead and do that work" (adapters; my "conversion to native
+code" was a loose name for them, and is not used again). `%fx26-convert`
+as Fixpt's (`prim.rs`, `fixpt-native`'s `adapt`): a procedure already of
+the convention asked for itself; one of the other, an adapter; anything
+else itself.
+- **Tier 1's adapters** (`cells/prims.kfx`): to the native convention, a
+  native closure of three fields with the trailer, its code the
+  adapter's, its free value the procedure (Fixpt's `native_closure`);
+  the adapter's code made once into the code area (`mov rbx, [rbx-28];
+  jmp [r15+288]` on x86_64, `ldur x10, [x10, #-28]; ldr x16, [x24,
+  #288]; br x16` on arm64, Fixpt's `native_adapter_code`), marked by
+  every collection as a root. To the cellular convention, a closure over
+  the procedure whose word, made for it, calls its free value 0 in a tail
+  call (Fixpt's `cellular_adapter`). Tier 1's own call of an adapter
+  calls its procedure (Fixpt's `Heap::adapted`): so where no native code
+  runs (`--indexes`), an adapter is made all the same, its code `#f`.
+- **The code area as native code sees it.** Made code calls what a
+  closure holds as code natively if it is at least the state's
+  `code-lo`, plus the state's distance; else by `foreign`. kayak-jit's
+  state had its own code area's, not tier 1's: a native closure of tier
+  1's code area went by `foreign`, the adapter itself then given to tier
+  1. The mailbox now gives both for the call (`m[14]`, `m[15]`),
+  kayak-jit putting its own back after. And tier 1's code area must be
+  above its two spaces, as Fixpt's is its heap's top, or a cellular
+  closure's word would be taken for native code: tier 1 reserves a code
+  area first (top down, Linux) and uses it if it is above both, else one
+  reserved after them (bottom up, macOS; not run), else none. Checked
+  once, when the spaces are reserved; the call's own test is the
+  convention's one compare.
+- **Kayak's compiler to cells** (`fx26/cg.kfx`): the checker notes, where
+  Fixpt's converts at run time (`k-convert-at`), `convert K` at a value
+  given where a procedure of another convention is expected, and
+  `convention K` at a `(convention C e)`; `K` the arity times 4, plus 1
+  for `cellular`, 2 for `native`. The program's convention, a `subr` that
+  names none, counts as `cellular` there, as Fixpt's checker has it for
+  the cellular machine (`k-conv-default`); the checker's own types are as
+  they were (C181). The compiler gives the expression to `%fx26-convert`
+  with `K`, as Fixpt's `exp_unnoted`. A call of a procedure of `fx`, which
+  may be of either convention, is noted `call-fx` too: a call that looks
+  at its callee's kind, not the typed `tcall`.
+- **Tests**: Fixpt's `conventions/native-explicit.fx` now runs on tier 1
+  (Fixpt's words and kayak's); kayak's `conventions/both-ways.fx` (Fixpt's
+  `native/adapters.fx` but for its procedure defined twice, which tier 1's
+  reader of listings refuses, and Fixpt's two compilers list apart) and
+  `made-code-x86_64/adapter-called.fx` (made code calling an adapter
+  natively, across collections).
+- **The user, on the check**: the bloblet layout is meant to let it go:
+  every code bloblet, a cellular word too, carrying in its suffix a stub
+  of machine code that dispatches, so that native code calls any
+  closure's code with no test. The check is the convention's (Fixpt's
+  `declared-conventions.md`, `closures`), compiled into code a program
+  makes: a change for Fixpt first, to be written up for its team.
+

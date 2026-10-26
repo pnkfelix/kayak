@@ -2257,18 +2257,20 @@
                       (else (check-by-synth v s e x))))
               (else other (check-by-synth v s e x)))))))))
 
-      (converted (subr kfx (cv res ty) res)
-        (lambda (v r expected)
+      (converted (subr kfx (cv res ty sexp) res)
+        (lambda (v r expected x)
           "A procedure of one convention given where one of another is, but
            `fx` (which takes any, free): converted, as FX-26's checker inserts a
            conversion where a value is given, an adapter, or from `fx` a test
            of its kind; never inside data (C181; `fx-not-cellular.fx`). KFX has
-           none."
+           none. Where Fixpt's converts at run time, the fact for kayak's
+           compiler to cells (C230, `conversion-noted`)."
           (tagcase r
-            (res (t es s)
-              (let* ((a (walk s t)) (e (walk s expected)) (ca (convention-of a)) (ce (convention-of e)))
+            (res (t es s0)
+              (let* ((a (walk s0 t)) (e (walk s0 expected)) (ca (convention-of a)) (ce (convention-of e))
+                     (s (conversion-noted s0 x "convert " a (run-convention e))))
                 (if (or (string=? ca "") (string=? ce "") (string=? ca ce) (string=? ce "fx"))
-                    r
+                    (res t es s)
                     (res (let ((p (procedure-within a))) (if (string=? ce "native") p (ty-data (string-append "%" ce) (list p))))
                          es
                          (kfx-restricted v s (string-append "a procedure of the convention " (string-append ca (string-append " where " (string-append ce " is expected, a conversion, FX-26's, which KFX has not (C181)"))))))))))))
@@ -2281,7 +2283,7 @@
            it stands: an argument, a list's element, a branch, a field)."
           (if (draft-hole? e)
               (refuse-named v s (string-append "the hole: " (tagcase (walk s expected) (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s expected)))))))
-          (tagcase (converted v (synth v s e) expected)
+          (tagcase (converted v (synth v s e) expected e)
             (res (t es s0)
               (let ((s (if (and (mtype? (walk s0 expected)) (mtype? (walk s0 t)) (not (string=? (datum-file e) "")))
                            ;; The value's own order, as it was found, for the
@@ -2548,8 +2550,9 @@
                  "`(convention C e)` (C181; Fixpt's native-conventions.md): procedure
                   `e` converted to convention `C`, explicitly; KFX has none."
                  (tagcase (synth v s (second xs))
-                   (res (t es s)
-                     (let ((p (procedure-within (walk s t))))
+                   (res (t es s0)
+                     (let* ((p (procedure-within (walk s0 t)))
+                            (s (conversion-noted s0 e "convention " (walk s0 t) (sym-name (car xs)))))
                        (tagcase p
                          (ty-proc (pes ps r)
                            (res (ty-data (string-append "%" (sym-name (car xs))) (list p)) es
@@ -5409,8 +5412,9 @@
            not a typed one (fx26/cg.kfx)."
           (tagcase (walk s t)
             ;; And a procedure of the native convention, written (C226): Fixpt's
-            ;; typed call is only of the cellular one (`c-call-in`).
-            (ty-data (d args) (if (or (string=? d "%composable") (string=? d "%native")) (note-fact s (cv-file v) (cv-pos v) "call-fx") s))
+            ;; typed call is only of the cellular one (`c-call-in`). And of
+            ;; `fx`, which may be either (C230).
+            (ty-data (d args) (if (or (string=? d "%composable") (string=? d "%native") (string=? d "%fx")) (note-fact s (cv-file v) (cv-pos v) "call-fx") s))
             (else other s))))
 
       (lambda-given-result? (subr kfx (st ty tys sexps) bool)

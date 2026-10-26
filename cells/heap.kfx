@@ -98,6 +98,13 @@
 (define-datatype cblock (cblock i64 i64))
 (define code-free (ref (listof cblock @c) @c) (new nil))
 (define code-fit-at (ref i64 @c) (new -1))
+"The native adapter's code (C230, prims.kfx's `adapter-code!`), made once
+ into the code area and kept there by every collection (`collect-begin!`);
+ 0 until it is made. Fixpt's `native_adapter_code`: the closure called
+ made its free value 0, which is called as native code calls what is not
+ native code, by the convention's `foreign`, in a tail call, the count as
+ its caller passed it."
+(define adapter-code (ref i64 @c) (new 0))
 (define code-set! (subr cm (i64 i64) unit) (lambda (j w) (flatarray-set-i64! (get code) j w)))
 
 (define word-at (subr cm (i64) i64)
@@ -550,7 +557,9 @@
           (set other (the (flatarrayof i64 @c) (make-flatarray-i64 (flatarray-length-i64 (get mem)) 0)))
           #u)
       (set to-top 8)
-      (named-forwarded! 0))))
+      (named-forwarded! 0)
+      ;; The native adapter's code, which adapters made later share (C230).
+      (if (i64= (get adapter-code) 0) #u (code-marked! (get adapter-code))))))
 
 (define collect-end! (subr cm () unit)
   (lambda ()

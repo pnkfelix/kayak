@@ -8500,6 +8500,62 @@ pub fn note_fact(s: &'static St, file: Str, pos: i64, what: Str) -> &'static St 
     }
 }
 
+/// A procedure type's convention as Fixpt's checker has it for the
+/// cellular machine, kayak's compiler's target (C230): the program's, a
+/// `subr` that names none, `cellular` (Fixpt's `k-conv-default`); one
+/// written; `` for a binder's, or no procedure.
+pub fn run_convention(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            str_lit("cellular")
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%native")) {
+                str_lit("native")
+            } else if string_eq_p(d, str_lit("%cellular")) {
+                str_lit("cellular")
+            } else if string_eq_p(d, str_lit("%fx")) {
+                str_lit("fx")
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+/// Where Fixpt's checker converts procedure `x`, of type `a`, to
+/// convention `to` at run time (`k-convert-at`: to `cellular` or `native`,
+/// from another), the fact `prefix` and what `%fx26-convert` is given for
+/// it, its arity times 4 plus 1 for `cellular`, 2 for `native`: for kayak's
+/// compiler to cells, which converts there as Fixpt's does (C230). The
+/// checker's own types are as they were (C181).
+pub fn conversion_noted(s: &'static St, x: &'static Sexp, prefix: Str, a: &'static Ty, to: Str) -> &'static St {
+    let from = run_convention(a);
+    if ((string_eq_p(to, str_lit("native")) || string_eq_p(to, str_lit("cellular"))) && not(string_eq_p(from, str_lit(""))) && not(string_eq_p(from, to)) && not(string_eq_p(datum_file(x), str_lit("")))) {
+        let tagcase_ = procedure_within(a);
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                note_fact(s, datum_file(x), datum_pos(x), string_append(prefix, i64_to_string(i64_plus(i64_star(4i64, size(ps)), if string_eq_p(to, str_lit("native")) {
+                    2i64
+                } else {
+                    1i64
+                }))))
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
+    } else {
+        s
+    }
+}
+
 /// What FX-26 has and KFX has not, for Rust (front-end.md stage 2, C154):
 /// not refused here but noted, a fact of the file `%kfx`, for kfx's
 /// restriction pass to refuse (restrict.kfx), where and as the checker

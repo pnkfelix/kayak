@@ -713,6 +713,52 @@
             (code-flush (get code) (i64->int (i64+ (i64+ at 1) f)) (i64->int (if (i64= nw 0) (the i64 1) nw)))
             (i64-or (i64+ (get code-vbase) (i64* 8 (i64+ (i64+ at 1) f))) t-bloblet))))))
 
+(define adapter-code! (subr cm () i64)
+  (lambda ()
+    "The adapter's code, made if it is not yet: a field 3 below the
+     reference by 28 bytes (`slot-of`, a bloblet's tag 4); `foreign` the
+     state's at 288. Where no native code runs, none: tier 1 calls an
+     adapter's procedure itself (`call!`), and nothing else calls one."
+    (cond ((not (get code-on)) v-false)
+          ((not (i64= (get adapter-code) 0)) (get adapter-code))
+          (else
+           (let* ((x64 (string=? (car (the (listof string @heap) (native-convention))) "(target x86_64)"))
+                  (b (make-bloblet! k-bloblet 0 (if x64 11 12) #t #f)))
+             (begin
+               (if x64
+                   ;; mov rbx, [rbx-28] (48 8b 5b e4); jmp [r15+288] (41 ff a7 20 01 00 00)
+                   (begin (word-set! (address b) 2353129988793535304) (word-set! (i64+ (address b) 1) 1))
+                   ;; ldur x10, [x10, #-28] (f85e414a); ldr x16, [x24, #288] (f9409310);
+                   ;; br x16 (d61f0200)
+                   (begin (word-set! (address b) -486227058660327094) (word-set! (i64+ (address b) 1) 3592356352)))
+               (set adapter-code (sealed-copy! b))
+               (get adapter-code)))))))
+
+(define native-adapter! (subr cm (i64) i64)
+  (lambda (f)
+    "An adapter of `f` to the native convention: a native closure over it
+     of the adapter's code (Fixpt's `native_closure`), three fields with
+     the trailer."
+    (let ((c (make-bloblet! k-native-closure 2 0 #t #t)))
+      (begin (slot-set! c f-word (adapter-code!)) (slot-set! c f-free0 f) c))))
+
+(define adapter? (subr cm (i64) bool)
+  (lambda (c)
+    "Whether native closure `c` is an adapter, by its code (Fixpt's
+     `Heap::adapted`)."
+    (let ((w (slot-of c f-word))) (or (i64= w v-false) (i64= w (get adapter-code))))))
+
+(define cellular-adapter! (subr cm (i64 i64) i64)
+  (lambda (f n)
+    "An adapter of `f` to the cellular convention, of `n` arguments: a
+     closure over it whose word calls it, its free value 0, in a tail call
+     (Fixpt's `cellular_adapter`)."
+    (let ((w (make-word! "adapter" 4 r-docol)) (c (make-bloblet! k-closure 2 0 #t #f)))
+      (begin
+        (slot-set! w f-cell0 (fix r-free)) (slot-set! w (i64+ f-cell0 1) (fix 0))
+        (slot-set! w (i64+ f-cell0 2) (fix r-tailcall)) (slot-set! w (i64+ f-cell0 3) (fix n))
+        (slot-set! c f-word w) (slot-set! c f-free0 f) c))))
+
 "Tier 1's syscalls (C224): each host name's type in canonical form, \"\"
  for none; Fixpt's three, as its runtime gives them, for now: no view of a
  flat array yet (-1), so nothing to flush."
@@ -1774,10 +1820,13 @@
         ((i64= op o-sleep-until) (if (fixed-in? 4 a) (begin (sleep-until (int->i64 (int-of a))) v-unit) (expected! "an i64")))
         ((i64= op o-address-identity) (fix 0))
         ((i64= op o-convert)
+         "A procedure already of the convention itself; one of the other, an
+          adapter (C230; Fixpt's `%fx26-convert`, `adapt`); anything else
+          itself."
          (let ((native (i64= (i64-and (fix-val b) 3) 2))
                (cellular (or (is-kind? a k-closure) (is-kind? a k-continuation)))
                (is-native (is-kind? a k-native-closure)))
-           (if (or (and native cellular) (and (not native) is-native))
-               (prim-failed p "of a procedure of the other convention")
-               a)))
+           (cond ((and native cellular) (native-adapter! a))
+                 ((and (not native) is-native) (cellular-adapter! a (i64-shr (fix-val b) 2)))
+                 (else a))))
         (else (prim-failed p "unknown"))))))

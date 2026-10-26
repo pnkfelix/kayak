@@ -5014,17 +5014,19 @@ pub mod expressions {
     /// `fx` (which takes any, free): converted, as FX-26's checker inserts a
     /// conversion where a value is given, an adapter, or from `fx` a test
     /// of its kind; never inside data (C181; `fx-not-cellular.fx`). KFX has
-    /// none.
-    pub fn converted(v: &'static Cv, r: &'static Res, expected: &'static Ty) -> &'static Res {
+    /// none. Where Fixpt's converts at run time, the fact for kayak's
+    /// compiler to cells (C230, `conversion-noted`).
+    pub fn converted(v: &'static Cv, r: &'static Res, expected: &'static Ty, x: &'static Sexp) -> &'static Res {
         let tagcase_ = r;
         match *tagcase_ {
-            Res::Res(t, es, s) => {
-                let a = walk(s, t);
-                let e = walk(s, expected);
+            Res::Res(t, es, s0) => {
+                let a = walk(s0, t);
+                let e = walk(s0, expected);
                 let ca = convention_of(a);
                 let ce = convention_of(e);
+                let s = conversion_noted(s0, x, str_lit("convert "), a, run_convention(e));
                 if (string_eq_p(ca, str_lit("")) || string_eq_p(ce, str_lit("")) || string_eq_p(ca, ce) || string_eq_p(ce, str_lit("fx"))) {
-                    r
+                    res(t, es, s)
                 } else {
                     res({
                         let p = procedure_within(a);
@@ -5058,7 +5060,7 @@ pub mod expressions {
                 }
             })) {}
         } else {
-            let tagcase_ = converted(v, synth(v, s, e), expected);
+            let tagcase_ = converted(v, synth(v, s, e), expected, e);
             match *tagcase_ {
                 Res::Res(t, es, s0) => {
                     let s = if (mtype_p(walk(s0, expected)) && mtype_p(walk(s0, t)) && not(string_eq_p(datum_file(e), str_lit("")))) {
@@ -5563,8 +5565,9 @@ pub mod expressions {
                 // `e` converted to convention `C`, explicitly; KFX has none.
                 let tagcase_ = synth(v, s, second(xs));
                 match *tagcase_ {
-                    Res::Res(t, es, s) => {
-                        let p = procedure_within(walk(s, t));
+                    Res::Res(t, es, s0) => {
+                        let p = procedure_within(walk(s0, t));
+                        let s = conversion_noted(s0, e, str_lit("convention "), walk(s0, t), sym_name(car(xs)));
                         let tagcase_ = p;
                         match *tagcase_ {
                             Ty::TyProc(pes, ps, r) => {
@@ -12001,7 +12004,7 @@ pub mod expressions {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
             Ty::TyData(d, args) => {
-                if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%native"))) {
+                if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
                     note_fact(s, cv_file(v), cv_pos(v), str_lit("call-fx"))
                 } else {
                     s

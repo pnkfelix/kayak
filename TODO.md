@@ -662,14 +662,30 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    eqtables, `native-convention` on the engine; eqtables, `assume`,
    `assert`, `list->string`, `string->symbol` on tier 1; left on tier 1,
    `%fx26-intern-datum` (Fixpt's weak table). Kayak's compiler to cells
-   (C221): all but a conversion to native code; words not Fixpt's exactly
+   (C221), adapters too (C230); words not Fixpt's exactly
    in `bloblet/flat-inlined`, `native/flat-keyed`, `native/variadic`,
    `run/variadic`, `run/case-tree`. Code a program makes, on tier 1
    (C226, by syscalls, C225): a code area, `seal-code`, native closures
    called; the convention's routines on tier 1's heap (C227); callbacks
    on every tier (C228); collections under native frames, by their stack
-   maps, and code no longer reached freed (C229). Next: eqtables, `%fx26-intern-datum`, I/O (the
-   standard input waited for, too); native code's primitives with tier 2;
+   maps, and code no longer reached freed (C229); adapters between the
+   conventions (C230). **Before building further on them: review with the
+   user kayak's departures from Fixpt's object model and intended design**
+   (the user, 2026-10-26: "I'm sure some are totally reasonable, but I'd
+   like to have better awareness of them regardless"). A note first, each
+   departure what kayak does, what Fixpt does or means to, and why:
+   tier 1's code area a reservation of its own, not a range of its heap
+   (C226; `native.md` decision 3), and so the address order checked
+   (C230); the convention's routines' objects in a host heap (C227); the
+   machine's registers kept across a callback on the return stack, the
+   frames' values on the data stack (C228, C229); and any other place the
+   implementation was taken over the intent. Then the suffix stub note
+   for Fixpt's team, out of the same review.
+   Next (the user's order): weak eqtables and
+   `%fx26-intern-datum`; the standard input (waited for, too), by kayak-rt
+   syscalls; a note for Fixpt's team: code bloblets dispatching by a stub
+   in their suffix, so that native calls need no `code-lo` test (C230);
+   native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A
    ported (`compile*.fx`, each marked `fixpt-source:`), its words
