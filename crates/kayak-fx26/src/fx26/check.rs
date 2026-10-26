@@ -846,12 +846,37 @@ pub fn atom_region(x: Str) -> Str {
     list_to_string(after_colon(string_to_list(x)))
 }
 
+// Data frozen into a place (C206; Fixpt's places-and-regions.md): the
+// region `(acyclic p)`, `(const p)`, its name `(acyclic 'p)`; a region of
+// the place `p`, ended with it, but never written.
+pub fn frozen_place_p(r: Str) -> bool {
+    (has_prefix_p(r, str_lit("(acyclic ")) || has_prefix_p(r, str_lit("(const ")))
+}
+
+/// The place a frozen region's name is of: `'p` of `(acyclic 'p)`.
+pub fn frozen_place_of(r: Str) -> Str {
+    let inner = if has_prefix_p(r, str_lit("(acyclic ")) {
+        after_prefix(r, str_lit("(acyclic "))
+    } else {
+        after_prefix(r, str_lit("(const "))
+    };
+    substring_of(inner, i64_minus(string_length_i64(inner), 1i64))
+}
+
+pub fn frozen_place_kind(r: Str) -> Str {
+    if has_prefix_p(r, str_lit("(acyclic ")) {
+        str_lit("acyclic")
+    } else {
+        str_lit("const")
+    }
+}
+
 /// Whether masking may drop effect atom `a`, resolved (C182): one on a
 /// region, not frozen (`acyclic`, `const`), not one not solved yet.
 pub fn maskable_atom_p(a: Str) -> bool {
     (region_atom_p(a) && {
         let r = atom_region(a);
-        (not(string_eq_p(r, str_lit(""))) && not(string_eq_p(r, str_lit("acyclic"))) && not(string_eq_p(r, str_lit("const"))) && not(has_prefix_p(r, str_lit("?"))))
+        (not(string_eq_p(r, str_lit(""))) && not(string_eq_p(r, str_lit("acyclic"))) && not(string_eq_p(r, str_lit("const"))) && not(has_prefix_p(r, str_lit("?"))) && not(frozen_place_p(r)))
     })
 }
 
@@ -963,6 +988,13 @@ pub fn atom_written(x: Str) -> Str {
         let r = after_prefix(x, p);
         if has_prefix_p(r, str_lit("'")) {
             after_prefix(r, str_lit("'"))
+        } else if frozen_place_p(r) {
+            let q = frozen_place_of(r);
+            string_append(str_lit("("), string_append(frozen_place_kind(r), string_append(str_lit(" "), string_append(if has_prefix_p(q, str_lit("'")) {
+                after_prefix(q, str_lit("'"))
+            } else {
+                q
+            }, str_lit(")")))))
         } else {
             r
         }
@@ -1059,6 +1091,9 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
             Sexp::Lst(xs, f, l, p) => {
                 if (i64_eq(size(xs), 2i64) && (sym_is_p(car(xs), str_lit("const")) || sym_is_p(car(xs), str_lit("acyclic"))) && sym_is_p(second(xs), str_lit("heap"))) {
                     sym_name(car(xs))
+                } else if (i64_eq(size(xs), 2i64) && (sym_is_p(car(xs), str_lit("const")) || sym_is_p(car(xs), str_lit("acyclic")))) {
+                    // Frozen into a place (C206): `(acyclic 'p)`.
+                    string_append(str_lit("("), string_append(sym_name(car(xs)), string_append(str_lit(" "), string_append(region_name(v, tvars, second(xs)), str_lit(")")))))
                 } else {
                     match refuse(v, string_append(str_lit("a region KFX does not have: "), show_sexp(r))) {}
                 }
@@ -1069,7 +1104,9 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
             }
         }
     };
-    if string_eq_p(s, str_lit("@globals")) {
+    if frozen_place_p(s) {
+        s
+    } else if string_eq_p(s, str_lit("@globals")) {
         match refuse(v, str_lit("globals are a region only in effects: (read @globals), (read (globals g))")) {}
     } else if char_eq_p(string_ref_i64(s, 0i64), '@') {
         s
@@ -1095,7 +1132,10 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
 
 pub fn parse_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
     let name = region_name(v, tvars, r);
-    if char_eq_p(string_ref_i64(name, 0i64), '\'') {
+    if frozen_place_p(name) {
+        // Frozen into a place (C206): `%frozen`, its kind and the place.
+        ty_data(str_lit("%frozen"), kayak_rt::heap_cons(ty_rconst(frozen_place_kind(name)), kayak_rt::heap_cons(parse_region(v, tvars, second(items(r))), kayak_rt::nil())))
+    } else if char_eq_p(string_ref_i64(name, 0i64), '\'') {
         ty_var(name)
     } else {
         ty_rconst(name)
@@ -1105,7 +1145,7 @@ pub fn parse_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'stati
 /// The region of data that may be written: not `acyclic` nor `const`, which
 /// are frozen.
 pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
-    if (sym_is_p(r, str_lit("acyclic")) || sym_is_p(r, str_lit("const"))) {
+    if (sym_is_p(r, str_lit("acyclic")) || sym_is_p(r, str_lit("const")) || head_is_p(r, str_lit("acyclic")) || head_is_p(r, str_lit("const"))) {
         match refuse(v, str_lit("mutable data at acyclic, which is frozen and never written")) {}
     } else {
         parse_region(v, tvars, r)
@@ -1887,6 +1927,8 @@ pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
             }), cdr(ps)))))
         } else if (region_atom_p(x) && string_eq_p(atom_region(x), from)) {
             string_append(atom_kind(x), to)
+        } else if (region_atom_p(x) && frozen_place_p(atom_region(x)) && string_eq_p(frozen_place_of(atom_region(x)), from)) {
+            string_append(atom_kind(x), string_append(str_lit("("), string_append(frozen_place_kind(atom_region(x)), string_append(str_lit(" "), string_append(to, str_lit(")"))))))
         } else if (has_prefix_p(from, str_lit("~")) && string_eq_p(x, from)) {
             if has_prefix_p(to, str_lit("~")) {
                 to
@@ -2595,6 +2637,13 @@ pub fn region_name_of(r: &'static Ty) -> Str {
         }
         Ty::TyMeta(k) => {
             meta_name(k)
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%frozen")) {
+                string_append(str_lit("("), string_append(region_name_of(car(args)), string_append(str_lit(" "), string_append(region_name_of(car(cdr(args))), str_lit(")")))))
+            } else {
+                str_lit("?")
+            }
         }
         _ => {
             let other = tagcase_;
@@ -7947,6 +7996,9 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     continue;
                 } else if (string_eq_p(d, str_lit("%cellular")) || string_eq_p(d, str_lit("%fx"))) {
                     return string_append(str_lit("(subr (conv "), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(") "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))));
+                } else if string_eq_p(d, str_lit("%frozen")) {
+                    // Data frozen into a place (C206): `(acyclic p)`.
+                    return string_append(str_lit("("), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), str_lit(")")))));
                 } else if string_eq_p(d, str_lit("%convof")) {
                     // A procedure of a convention a binder stands for (C205): as written;
                     // of `native`, as the program's.
@@ -8346,6 +8398,9 @@ pub fn frozen_region_p(s: &'static St, r: &'static Ty) -> bool {
     match *tagcase_ {
         Ty::TyRconst(n) => {
             (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")))
+        }
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%frozen"))
         }
         _ => {
             let other = tagcase_;
@@ -8925,6 +8980,13 @@ pub fn region_string(s: &'static St, r: &'static Ty) -> Str {
         }
         Ty::TyMeta(k) => {
             meta_name(k)
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%frozen")) {
+                string_append(str_lit("("), string_append(region_string(s, car(args)), string_append(str_lit(" "), string_append(region_string(s, car(cdr(args))), str_lit(")")))))
+            } else {
+                str_lit("?")
+            }
         }
         _ => {
             let other = tagcase_;
@@ -10100,18 +10162,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     // below the one expected (C78); at a region that may be
                     // written, the same, as FX-26 has it.
                     let s = fits(v, s, xr, yr);
-                    if {
-                        let tagcase_ = walk(s, yr);
-                        match *tagcase_ {
-                            Ty::TyRconst(n) => {
-                                (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")))
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    } {
+                    if frozen_region_p(s, yr) {
                         fits(v, s, x, y)
                     } else {
                         fits(v, fits(v, s, x, y), y, x)
@@ -12375,7 +12426,7 @@ pub fn masked(mut es: Strings, mut r: Str) -> Strings {
     loop {
         if null_p(es) {
             return nil::<Str>();
-        } else if (region_atom_p(car(es)) && string_eq_p(atom_region(car(es)), r)) {
+        } else if (region_atom_p(car(es)) && (string_eq_p(atom_region(car(es)), r) || (frozen_place_p(atom_region(car(es))) && string_eq_p(frozen_place_of(atom_region(car(es))), r)))) {
             es = cdr(es);
             continue;
         } else {

@@ -7428,10 +7428,21 @@ pub mod expressions {
                     n
                 }
                 Sexp::Lst(ys, f, l, p) => {
-                    if (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("heap"))) {
+                    if (i64_eq(size(ys), 2i64) && {
+                        let tagcase_ = car(ys);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
                         sym_name(car(ys))
                     } else {
-                        match refuse(v, str_lit("a letfreeze into a place but the heap, which KFX has not yet")) {}
+                        match refuse(v, str_lit("(letfreeze (r place) body ...)")) {}
                     }
                 }
                 _ => {
@@ -7440,21 +7451,54 @@ pub mod expressions {
                 }
             }
         };
+        let place = {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    if sym_is_p(second(ys), str_lit("heap")) {
+                        nil::<&'static Ty>()
+                    } else {
+                        the::<Tys>(kayak_rt::heap_cons(place_of(v, s, second(ys)), kayak_rt::nil()))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        };
+        let s = if null_p(place) {
+            s
+        } else {
+            kfx_restricted(v, s, str_lit("a letfreeze into a place but the heap, FX-26's, which KFX has not yet (C206)"))
+        };
         let name = string_append(str_lit("'"), r);
         if string_member_p(name, cv_tvars(v)) {
             match refuse(v, string_append(str_lit("a letfreeze of a region named already: "), r)) {}
         } else {
-            let tagcase_ = body(with_tvars(v, kayak_rt::heap_cons(name, kayak_rt::nil())), s, cdr(xs), nil::<&'static Ty>());
+            let tagcase_ = body(with_tvars(v, if null_p(place) {
+                the::<Strings>(kayak_rt::heap_cons(name, kayak_rt::nil()))
+            } else {
+                kayak_rt::heap_cons(name, kayak_rt::heap_cons(string_append(str_lit("%within "), string_append(name, string_append(str_lit(" "), region_string(s, car(place))))), kayak_rt::nil()))
+            }), s, cdr(xs), nil::<&'static Ty>());
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     let wrote = any_p(lambda1s(move |x: Str| {
                         (string_eq_p(x, string_append(str_lit("write:"), name)) || string_eq_p(x, string_append(str_lit("init:"), name)))
                     }), es);
-                    let frozen = replace_var(name, ty_rconst(if wrote {
-                        str_lit("const")
+                    let frozen = replace_var(name, if null_p(place) {
+                        ty_rconst(if wrote {
+                            str_lit("const")
+                        } else {
+                            str_lit("acyclic")
+                        })
                     } else {
-                        str_lit("acyclic")
-                    }), zonk(s, t));
+                        ty_data(str_lit("%frozen"), kayak_rt::heap_cons(ty_rconst(if wrote {
+                            str_lit("const")
+                        } else {
+                            str_lit("acyclic")
+                        }), kayak_rt::heap_cons(car(place), kayak_rt::nil())))
+                    }, zonk(s, t));
                     if writes_region_p(s, zonk(s, t), name) {
                         match refuse(v, string_append(str_lit("the value of `letfreeze "), string_append(r, string_append(str_lit("` could still write its region's data: its type is "), show_ty(s, t))))) {}
                     } else {
@@ -7703,7 +7747,9 @@ pub mod expressions {
         let tagcase_ = said;
         match *tagcase_ {
             Ty::TyVar(n) => {
-                if (string_member_p(string_append(str_lit("%within "), string_append(n, string_append(str_lit(" "), p))), cv_tvars(v)) || bound_before_p(n, string_append(str_lit("%place "), p), cv_tvars(v))) {
+                if (string_member_p(string_append(str_lit("%within "), string_append(n, string_append(str_lit(" "), p))), cv_tvars(v)) || (bound_before_p(n, string_append(str_lit("%place "), p), cv_tvars(v)) && not(any_p(lambda1s(move |t: Str| {
+                    has_prefix_p(t, string_append(str_lit("%within "), string_append(n, str_lit(" "))))
+                }), cv_tvars(v))))) {
                     said
                 } else {
                     place
@@ -11689,7 +11735,7 @@ pub mod expressions {
                                         Res::Res(u, named, s) => {
                                             if any_p(lambda1s(move |x: Str| {
                                                 let y = resolve_atom(s, x);
-                                                (string_eq_p(y, str_lit("write:acyclic")) || string_eq_p(y, str_lit("write:const")))
+                                                (string_eq_p(y, str_lit("write:acyclic")) || string_eq_p(y, str_lit("write:const")) || ((has_prefix_p(y, str_lit("write:")) || has_prefix_p(y, str_lit("init:"))) && frozen_place_p(atom_region(y))))
                                             }), named) {
                                                 match refuse(v, str_lit("this writes frozen data, whose region is const")) {}
                                             } else {

@@ -23,6 +23,35 @@ pub fn index_of(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
 // The termination check is a module (C91): its helpers hidden, the check
 // itself, `terminates?`, what it gives; the rest of the compiler writes
 // `(with termination (terminates? ...))`.
+/// Whether data at `r` is acyclic: `acyclic`, or frozen into a place so
+/// (C206, `(acyclic p)`).
+pub fn acyclic_region_p(r: &'static Ty) -> bool {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            string_eq_p(n, str_lit("acyclic"))
+        }
+        Ty::TyData(d, args) => {
+            (string_eq_p(d, str_lit("%frozen")) && {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Ty::TyRconst(n) => {
+                        string_eq_p(n, str_lit("acyclic"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 pub mod termination {
     use super::*;
 
@@ -331,16 +360,7 @@ pub mod termination {
             let tagcase_ = car(ps);
             match *tagcase_ {
                 Ty::TyData(d, parts) => {
-                    let tagcase_ = car(cdr(cdr(parts)));
-                    match *tagcase_ {
-                        Ty::TyRconst(rn) => {
-                            string_eq_p(rn, str_lit("acyclic"))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
+                    acyclic_region_p(car(cdr(cdr(parts))))
                 }
                 _ => {
                     let other = tagcase_;
@@ -399,23 +419,14 @@ pub mod termination {
                                         let tagcase_ = car(ty);
                                         match *tagcase_ {
                                             Ty::TyList(el, r) => {
-                                                let tagcase_ = r;
-                                                match *tagcase_ {
-                                                    Ty::TyRconst(rn) => {
-                                                        if string_eq_p(rn, str_lit("acyclic")) {
-                                                            the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
-                                                                el
-                                                            } else {
-                                                                car(ty)
-                                                            }, kayak_rt::nil()))), kayak_rt::nil()))
-                                                        } else {
-                                                            nil::<&'static termination::Tracked>()
-                                                        }
-                                                    }
-                                                    _ => {
-                                                        let other = tagcase_;
-                                                        nil::<&'static termination::Tracked>()
-                                                    }
+                                                if acyclic_region_p(r) {
+                                                    the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
+                                                        el
+                                                    } else {
+                                                        car(ty)
+                                                    }, kayak_rt::nil()))), kayak_rt::nil()))
+                                                } else {
+                                                    nil::<&'static termination::Tracked>()
                                                 }
                                             }
                                             _ => {

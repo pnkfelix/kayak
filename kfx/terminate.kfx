@@ -11,6 +11,15 @@
 "The termination check is a module (C91): its helpers hidden, the check
  itself, `terminates?`, what it gives; the rest of the compiler writes
  `(with termination (terminates? ...))`."
+(define acyclic-region? (subr kfx (ty) bool)
+  (lambda (r)
+    "Whether data at `r` is acyclic: `acyclic`, or frozen into a place so
+     (C206, `(acyclic p)`)."
+    (tagcase r
+      (ty-rconst (n) (string=? n "acyclic"))
+      (ty-data (d args) (and (string=? d "%frozen") (tagcase (car args) (ty-rconst (n) (string=? n "acyclic")) (else other #f))))
+      (else other #f))))
+
 (define termination
   (module
     (hide
@@ -154,7 +163,7 @@
                       (else other nil))))
             (if (and (not (null? ps))
                      (tagcase (car ps)
-                       (ty-data (d parts) (tagcase (car (cdr (cdr parts))) (ty-rconst (rn) (string=? rn "acyclic")) (else other #f)))
+                       (ty-data (d parts) (acyclic-region? (car (cdr (cdr parts)))))
                        (else other #f)))
                 ps
                 nil))))
@@ -181,12 +190,9 @@
                                             (if (null? ty) nil
                                                 (tagcase (car ty)
                                                   (ty-list (el r)
-                                                    (tagcase r
-                                                      (ty-rconst (rn)
-                                                        (if (string=? rn "acyclic")
-                                                            (the trackeds (list (part p #t (the tys (list (if (string=? op "car") el (car ty)))))))
-                                                            nil))
-                                                      (else other nil)))
+                                                    (if (acyclic-region? r)
+                                                        (the trackeds (list (part p #t (the tys (list (if (string=? op "car") el (car ty)))))))
+                                                        nil))
                                                   (else other
                                                     (if (sized? (car ty) "%nlist")
                                                         ;; A list of a size is frozen and ends (C158): its

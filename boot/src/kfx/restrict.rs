@@ -149,7 +149,7 @@ pub mod restrictions {
                         }
                     }
                 } && any_p(lambda1s(move |a: &'static Sexp| {
-                    (head_is_p(a, str_lit("const")) && not(sym_is_p(second(items(a)), str_lit("heap"))))
+                    ((head_is_p(a, str_lit("const")) || head_is_p(a, str_lit("acyclic"))) && not(sym_is_p(second(items(a)), str_lit("heap"))))
                 }), cdr(xs))) {
                     match restriction_refused(f, l, str_lit("data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)")) {}
                 } else if ({

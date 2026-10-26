@@ -3326,18 +3326,30 @@
            it builds and may write; the value leaves with `r` frozen, `acyclic`
            if the body never wrote `r`, else `const`; what the body does to `r`
            masked."
-          (let ((r (tagcase (car xs)
-                     (sym (n f p) n)
-                     (lst (ys f l p) (if (and (i64= (size ys) 2) (sym-is? (second ys) "heap")) (sym-name (car ys))
-                                         (refuse v "a letfreeze into a place but the heap, which KFX has not yet")))
-                     (else other (refuse v "(letfreeze r body ...)")))))
+          (let* ((r (tagcase (car xs)
+                      (sym (n f p) n)
+                      (lst (ys f l p) (if (and (i64= (size ys) 2) (tagcase (car ys) (sym (n f2 p2) #t) (else other #f))) (sym-name (car ys))
+                                          (refuse v "(letfreeze (r place) body ...)")))
+                      (else other (refuse v "(letfreeze r body ...)"))))
+                 ;; Into a place but the heap (C206): `r` a region within it,
+                 ;; frozen into it, `(acyclic p)` or `(const p)`.
+                 (place (tagcase (car xs)
+                          (lst (ys f l p) (if (sym-is? (second ys) "heap") nil (the tys (list (place-of v s (second ys))))))
+                          (else other nil)))
+                 (s (if (null? place) s (kfx-restricted v s "a letfreeze into a place but the heap, FX-26's, which KFX has not yet (C206)"))))
             (let ((name (string-append "'" r)))
               (if (string-member? name (cv-tvars v))
                   (refuse v (string-append "a letfreeze of a region named already: " r))
-                  (tagcase (body (with-tvars v (list name)) s (cdr xs) nil)
+                  (tagcase (body (with-tvars v (if (null? place)
+                                                   (the strings (list name))
+                                                   (list name (string-append "%within " (string-append name (string-append " " (region-string s (car place))))))))
+                                 s (cdr xs) nil)
                     (res (t es s)
                       (let* ((wrote (any? (lambda ((x string)) (or (string=? x (string-append "write:" name)) (string=? x (string-append "init:" name)))) es))
-                             (frozen (replace-var name (ty-rconst (if wrote "const" "acyclic")) (zonk s t))))
+                             (frozen (replace-var name (if (null? place)
+                                                           (ty-rconst (if wrote "const" "acyclic"))
+                                                           (ty-data "%frozen" (list (ty-rconst (if wrote "const" "acyclic")) (car place))))
+                                                  (zonk s t))))
                         (if (writes-region? s (zonk s t) name)
                             (refuse v (string-append "the value of `letfreeze " (string-append r (string-append "` could still write its region's data: its type is " (show-ty s t)))))
                         (tagcase (found-then-fitted v (res frozen nil s) expected)
@@ -3439,7 +3451,9 @@
             (tagcase said
               (ty-var (n)
                 (if (or (string-member? (string-append "%within " (string-append n (string-append " " p))) (cv-tvars v))
-                        (bound-before? n (string-append "%place " p) (cv-tvars v)))
+                        (and (bound-before? n (string-append "%place " p) (cv-tvars v))
+                             ;; Not one a `letfreeze` put within another place (C206).
+                             (not (any? (lambda ((t string)) (has-prefix? t (string-append "%within " (string-append n " ")))) (cv-tvars v)))))
                     said
                     place))
               (else other place)))))
@@ -5287,7 +5301,7 @@
                                       (if (or (and (proc-type? s0 (car expected)) (not (lambda-given-result? s r ps args))) (bound-after? s r (car expected))) (fits v s0 r (car expected)) s0))))
                           (tagcase (name-regions v s latent regions)
                             (res (u named s)
-                              (if (any? (lambda ((x string)) (let ((y (resolve-atom s x))) (or (string=? y "write:acyclic") (string=? y "write:const")))) named)
+                              (if (any? (lambda ((x string)) (let ((y (resolve-atom s x))) (or (string=? y "write:acyclic") (string=? y "write:const") (and (or (has-prefix? y "write:") (has-prefix? y "init:")) (frozen-place? (atom-region y)))))) named)
                                   ;; A procedure that writes, at frozen data (C161): Fixpt's rule.
                                   (refuse v "this writes frozen data, whose region is const")
                               (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))

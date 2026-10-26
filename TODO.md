@@ -568,18 +568,16 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   5 of the 433 programs Fixpt accepts still refused (2026-10-25, C205);
-   64 differ; 364 the same. What each needs (looked at 2026-10-25):
+   3 of the 433 programs Fixpt accepts still refused (2026-10-25, C206);
+   64 differ; 366 the same. What each needs (looked at 2026-10-25):
    - Redefinition at another type: **done** under `--check` (C202); the
      REPL and the engine's run still refuse it.
    - `modules/load-layers.fx`: **accepted** (C203); its printing differs.
    - `regions/distinct-swap.fx`: **accepted** (C204).
    - `conventions/poly.fx`: **accepted** (C205); converting between a
      binder's convention and another, not yet.
-   - `run/acyclic-in-a-place.fx`, `run/letfreeze-into-place.fx`: frozen
-     regions of a place, `(acyclic p)`, `(const p)`, as regions that
-     substitution reaches (kayak's frozen regions are the constants
-     `acyclic`, `const`); then `letfreeze` into a place.
+   - `run/acyclic-in-a-place.fx`, `run/letfreeze-into-place.fx`:
+     **accepted** (C206).
    - `sizes/narrayof-lengths.fx`: `(narrayof T n R)`, an array's length in
      its type, kept by `the`, `array-length` a `(nat n)`.
    - `made-code/leaves.fx`, `made-code-x86_64/leaves.fx`: `seal-code` of a

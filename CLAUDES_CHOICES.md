@@ -5635,3 +5635,33 @@ projected. Now the same as Fixpt's, printing too.
   conventions). K1 kept. KFX's restriction pass refuses the binder
   (`tests/kfx-stricter/conv-binder.kfx`).
 - The checkers' comparison: refused 6 to 5, the same 363 to 364; K1 0.
+
+## C206. Data frozen into a place (2026-10-25; Fixpt's places-and-regions.md)
+
+`run/acyclic-in-a-place.fx`, `run/letfreeze-into-place.fx`: `(letfreeze
+(r a) ...)` in an arena `a`, its value at `(acyclic a)` or `(const a)`,
+walked by a procedure poly in the place, `(listof int (acyclic p))`, with
+no `spin`. Both the same as Fixpt's now, printing too; Fixpt's refusals
+(`freeze-into-shorter`, `acyclic-walk-escapes`, `frozen-outlives-place`,
+`frozen-read-effect`) still refused.
+- **The region** `(acyclic p)`, `(const p)` of a place `p`: `%frozen`,
+  its kind and the place's region, so substitution reaches the place; in
+  effects, `read:(acyclic 'p)`, renamed with the place (`rename-atoms`),
+  written `(read (acyclic p))`. Frozen (`frozen-region?`), so covariant
+  where a frozen pair is; never masked but by its place's end (`masked`
+  of the place masks it; `maskable-atom?` not); a read of it an effect,
+  as Fixpt's (F2).
+- **`(letfreeze (r p) ...)`**: `r` a region within `p` (`%within`), so
+  data `rcons` makes in another place is refused (`region-within`: a
+  region a `letfreeze` put within one place is within no other); the
+  value's `r` made `(acyclic p)` if the body never wrote it, else `(const
+  p)`; KFX refuses it (`kfx-restricted`), and its restriction pass any
+  type of a frozen place.
+- **Termination**: a list at `(acyclic p)` ends, as one at `acyclic`
+  (`acyclic-region?`, terminate.kfx).
+- **Writes**: a call writing a frozen place's data refused, as one
+  writing `const`'s (found probing: `set-car!` of it was accepted).
+- Probes the same as Fixpt's: that write; a list of the place where one
+  frozen in it is wanted; a walk of a `const` place's list, or of the same
+  list, needing `spin`.
+- The checkers' comparison: refused 5 to 3, the same 364 to 366; K1 0.

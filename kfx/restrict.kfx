@@ -67,7 +67,7 @@
                       ((and (sym-is? (car xs) "bloblet") (any? (lambda ((a sexp)) (head-is? a "frozen")) (cdr xs)))
                        (restriction-refused f l "a frozen bloblet, FX-26's, which KFX has not yet (C201)"))
                       ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
-                            (any? (lambda ((a sexp)) (and (head-is? a "const") (not (sym-is? (second (items a)) "heap")))) (cdr xs)))
+                            (any? (lambda ((a sexp)) (and (or (head-is? a "const") (head-is? a "acyclic")) (not (sym-is? (second (items a)) "heap")))) (cdr xs)))
                        (restriction-refused f l "data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)"))
                       ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
                             (any? (lambda ((a sexp)) (sym-is? a "heap")) (cdr xs)))

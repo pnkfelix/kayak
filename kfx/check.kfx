@@ -416,13 +416,29 @@
 (define atom-region (subr kfx (string) string)
   (lambda (x) (list->string (after-colon (string->list x)))))
 
+"Data frozen into a place (C206; Fixpt's places-and-regions.md): the
+ region `(acyclic p)`, `(const p)`, its name `(acyclic 'p)`; a region of
+ the place `p`, ended with it, but never written."
+(define frozen-place? (subr kfx (string) bool)
+  (lambda (r) (or (has-prefix? r "(acyclic ") (has-prefix? r "(const "))))
+
+(define frozen-place-of (subr kfx (string) string)
+  (lambda (r)
+    "The place a frozen region's name is of: `'p` of `(acyclic 'p)`."
+    (let ((inner (if (has-prefix? r "(acyclic ") (after-prefix r "(acyclic ") (after-prefix r "(const "))))
+      (substring-of inner (i64- (string-length-i64 inner) 1)))))
+
+(define frozen-place-kind (subr kfx (string) string)
+  (lambda (r) (if (has-prefix? r "(acyclic ") "acyclic" "const")))
+
 (define maskable-atom? (subr kfx (string) bool)
   (lambda (a)
     "Whether masking may drop effect atom `a`, resolved (C182): one on a
      region, not frozen (`acyclic`, `const`), not one not solved yet."
     (and (region-atom? a)
          (let ((r (atom-region a)))
-           (and (not (string=? r "")) (not (string=? r "acyclic")) (not (string=? r "const")) (not (has-prefix? r "?")))))))
+           (and (not (string=? r "")) (not (string=? r "acyclic")) (not (string=? r "const")) (not (has-prefix? r "?"))
+                (not (frozen-place? r)))))))
 
 (define crossing-atom? (subr kfx (strings string) bool)
   (lambda (bound a)
@@ -490,7 +506,13 @@
     (lambda (x)
       "An effect atom as FX-26 writes it; a read of one global is gathered
        by `show-effs`."
-      (let ((at (lambda ((p string)) (let ((r (after-prefix x p))) (if (has-prefix? r "'") (after-prefix r "'") r)))))
+      (let ((at (lambda ((p string))
+                  (let ((r (after-prefix x p)))
+                    (cond ((has-prefix? r "'") (after-prefix r "'"))
+                          ((frozen-place? r)
+                           (let ((q (frozen-place-of r)))
+                             (string-append "(" (string-append (frozen-place-kind r) (string-append " " (string-append (if (has-prefix? q "'") (after-prefix q "'") q) ")"))))))
+                          (else r))))))
         (cond ((string=? x "spin") "spin")
               ((string=? x "nondet") "nondet")
               ((string=? x "@globals") "(read @globals)")
@@ -534,11 +556,15 @@
                ;; `(const heap)` and `(acyclic heap)` are `const` and `acyclic`
                ;; (C161); frozen into another place, not yet.
                (lst (xs f l p)
-                 (if (and (i64= (size xs) 2) (or (sym-is? (car xs) "const") (sym-is? (car xs) "acyclic")) (sym-is? (second xs) "heap"))
-                     (sym-name (car xs))
-                     (refuse v (string-append "a region KFX does not have: " (show-sexp r)))))
+                 (cond ((and (i64= (size xs) 2) (or (sym-is? (car xs) "const") (sym-is? (car xs) "acyclic")) (sym-is? (second xs) "heap"))
+                        (sym-name (car xs)))
+                       ((and (i64= (size xs) 2) (or (sym-is? (car xs) "const") (sym-is? (car xs) "acyclic")))
+                        "Frozen into a place (C206): `(acyclic 'p)`."
+                        (string-append "(" (string-append (sym-name (car xs)) (string-append " " (string-append (region-name v tvars (second xs)) ")")))))
+                       (else (refuse v (string-append "a region KFX does not have: " (show-sexp r))))))
                (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
-      (cond ((string=? s "@globals")
+      (cond ((frozen-place? s) s)
+            ((string=? s "@globals")
              (refuse v "globals are a region only in effects: (read @globals), (read (globals g))"))
             ((char=? (string-ref-i64 s 0) #\@) s)
             ((string=? s "acyclic") s)
@@ -558,13 +584,17 @@
 (define parse-region (subr kfx (cv strings sexp) ty)
   (lambda (v tvars r)
     (let ((name (region-name v tvars r)))
-      (if (char=? (string-ref-i64 name 0) #\') (ty-var name) (ty-rconst name)))))
+      (cond ((frozen-place? name)
+             "Frozen into a place (C206): `%frozen`, its kind and the place."
+             (ty-data "%frozen" (list (ty-rconst (frozen-place-kind name)) (parse-region v tvars (second (items r))))))
+            ((char=? (string-ref-i64 name 0) #\') (ty-var name))
+            (else (ty-rconst name))))))
 
 (define parse-mutable-region (subr kfx (cv strings sexp) ty)
   (lambda (v tvars r)
     "The region of data that may be written: not `acyclic` nor `const`, which
      are frozen."
-    (if (or (sym-is? r "acyclic") (sym-is? r "const"))
+    (if (or (sym-is? r "acyclic") (sym-is? r "const") (head-is? r "acyclic") (head-is? r "const"))
         (refuse v "mutable data at acyclic, which is frozen and never written")
         (parse-region v tvars r))))
 
@@ -837,6 +867,9 @@
                   (let ((ps (app-atom-parts x)))
                     (string-append "~@" (bars-joined (cons (car ps) (map (lambda ((r string)) (if (string=? r from) to r)) (cdr ps)))))))
                  ((and (region-atom? x) (string=? (atom-region x) from)) (string-append (atom-kind x) to))
+                 ((and (region-atom? x) (frozen-place? (atom-region x)) (string=? (frozen-place-of (atom-region x)) from))
+                  ;; A place given, its frozen data's too (C206).
+                  (string-append (atom-kind x) (string-append "(" (string-append (frozen-place-kind (atom-region x)) (string-append " " (string-append to ")"))))))
                  ((and (has-prefix? from "~") (string=? x from)) (if (has-prefix? to "~") to (string-append "~" to)))
                  (else x)))
          es)))
@@ -1203,8 +1236,16 @@
  takes as kept everywhere, more cautious than FX-26. `res` resolves an
  effect's inference variables."
 
-(define region-name-of (subr kfx (ty) string)
-  (lambda (r) (tagcase r (ty-var (n) n) (ty-rconst (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
+(define-rec
+  (region-name-of (subr kfx (ty) string)
+    (lambda (r)
+      (tagcase r
+        (ty-var (n) n) (ty-rconst (n) n) (ty-meta (k) (meta-name k))
+        (ty-data (d args)
+          (if (string=? d "%frozen")
+              (string-append "(" (string-append (region-name-of (car args)) (string-append " " (string-append (region-name-of (car (cdr args))) ")"))))
+              "?"))
+        (else other "?")))))
 
 (define reads-kept (subr kfx (strings strings bool) strings)
   (lambda (atoms kept every)
@@ -3521,6 +3562,9 @@
                  (show-ty s (car args)))
                 ((or (string=? d "%cellular") (string=? d "%fx"))
                  (string-append "(subr (conv " (string-append (after-prefix d "%") (string-append ") " (after-prefix (show-ty s (car args)) "(subr ")))))
+                ((string=? d "%frozen")
+                 "Data frozen into a place (C206): `(acyclic p)`."
+                 (string-append "(" (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args))) ")")))))
                 ((string=? d "%convof")
                  "A procedure of a convention a binder stands for (C205): as written;
                   of `native`, as the program's."
@@ -3648,7 +3692,7 @@
       (let ((w (walk s t))) (if (mu? w) (walk-mu s (unfold-mu w)) w)))))
 
 (define frozen-region? (subr kfx (st ty) bool)
-  (lambda (s r) (tagcase (walk s r) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (else other #f))))
+  (lambda (s r) (tagcase (walk s r) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (ty-data (d args) (string=? d "%frozen")) (else other #f))))
 
 (define-rec
   (has-meta? (subr kfx (st ty) bool)
@@ -3841,9 +3885,17 @@
               (else t)))
       (else other t))))
 
-(define region-string (subr kfx (st ty) string)
-  (lambda (s r)
-    (tagcase (walk s r) (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
+(define-rec
+  (region-string (subr kfx (st ty) string)
+    (lambda (s r)
+      (tagcase (walk s r)
+        (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k))
+        (ty-data (d args)
+          (if (string=? d "%frozen")
+              ;; Frozen into a place (C206): `(acyclic 'p)`.
+              (string-append "(" (string-append (region-string s (car args)) (string-append " " (string-append (region-string s (car (cdr args))) ")"))))
+              "?"))
+        (else other "?")))))
 
 (define-rec
   (composable-as-proc (subr kfx (st ty) ty)
@@ -4318,7 +4370,7 @@
                below the one expected (C78); at a region that may be
                written, the same, as FX-26 has it."
               (let ((s (fits v s xr yr)))
-                (if (tagcase (walk s yr) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (else other #f))
+                (if (frozen-region? s yr)
                     (fits v s x y)
                     (fits v (fits v s x y) y x))))
             (else other (mismatch v s a e))))
@@ -5238,7 +5290,9 @@
   (lambda (es r)
     "Effects, those on region `r` removed."
     (cond ((null? es) nil)
-          ((and (region-atom? (car es)) (string=? (atom-region (car es)) r))
+          ((and (region-atom? (car es)) (or (string=? (atom-region (car es)) r)
+                                            ;; Its frozen data's too (C206).
+                                            (and (frozen-place? (atom-region (car es))) (string=? (frozen-place-of (atom-region (car es))) r))))
            (masked (cdr es) r))
           (else (cons (car es) (masked (cdr es) r))))))
 
