@@ -525,6 +525,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         real_word_x(f64_atan2(word_real(a), word_real(b)))
     } else if i64_eq(op, 185i64) {
         real_word_x(f64_expt(word_real(a), word_real(b)))
+    } else if i64_eq(op, 186i64) {
+        bool_word(has_char_in_p(word_string(b), word_char(a)))
     } else {
         failed_with_x(str_lit("the engine: a primitive of no number"));
         0i64

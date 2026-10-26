@@ -241,7 +241,7 @@ pub fn engine_main() -> Int {
     } else {
         let forms = read_files(paths);
         let checked = check_program(forms);
-        let gs = onto(global_names(forms), module_entries(forms));
+        let gs = onto(global_names(forms), onto(module_entries(forms), with_entries(verdict_facts(checked))));
         load_x(gs);
         let ns = number_tops_x(lower_tops(forms, gs));
         failure_raised_x();

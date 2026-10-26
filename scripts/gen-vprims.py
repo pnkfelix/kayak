@@ -37,6 +37,7 @@ spec["string<=?"]=B("(i64<= (string-compare-w a b 0) 0)"); spec["string>=?"]=B("
 spec["string-compare"]="(fixnum (string-compare-w a b 0))"
 spec["string-search"]="(fixnum (string-search-w a b (fixnum-value c)))"
 spec["string-downcase"]="(string-word! (string-downcase (word-string a)))"
+spec["char-in?"]="(bool-word (has-char-in? (word-string b) (word-char a)))"
 spec["string-length"]="(fixnum (string-length-w a))"; spec["string-length-i64"]=spec["string-length"]
 spec["string-ref"]="(string-ref-w a (fixnum-value b))"; spec["string-ref-i64"]=spec["string-ref"]
 spec["substring"]="(substring-w! a (fixnum-value b) (fixnum-value c))"

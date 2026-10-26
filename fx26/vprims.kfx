@@ -253,4 +253,5 @@
         ((i64= op 183) (real-word! (f64-atan (word-real a))))
         ((i64= op 184) (real-word! (f64-atan2 (word-real a) (word-real b))))
         ((i64= op 185) (real-word! (f64-expt (word-real a) (word-real b))))
+        ((i64= op 186) (bool-word (has-char-in? (word-string b) (word-char a))))
         (else (begin (failed-with! "the engine: a primitive of no number") 0))))))

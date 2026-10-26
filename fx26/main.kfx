@@ -159,7 +159,7 @@ and where the time went.
         (else
           (let* ((forms (read-files paths))
                  (checked (check-program forms))
-                 (gs (onto (global-names forms) (module-entries forms))))
+                 (gs (onto (global-names forms) (onto (module-entries forms) (with-entries (verdict-facts checked))))))
             (begin
               (load! gs)
               (let ((ns (number-tops! (lower-tops forms gs))))

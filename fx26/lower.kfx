@@ -11,6 +11,53 @@
 (define binder-name (subr kfx (sexp) string)
   (lambda (p) (tagcase p (sym (n f x) n) (lst (xs f l x) (sym-name (car xs))) (else other ""))))
 
+(define read-one (subr kfx (string) sexp)
+  (lambda (text) (car (read-all (string-chars text) "" 1))))
+
+(define sx (subr kfx (sexps) sexp) (lambda (xs) (lst xs "" 0 0)))
+(define sy (subr kfx (string) sexp) (lambda (n) (sym n "" 0)))
+
+(define guarded-bind (subr kfx (string sexp sexp sexp sexp) sexp)
+  (lambda (t e test arm els)
+    "`(let ((t e)) (if test (let ((x t)) body) els))`, `arm` `(x body)`: the
+     confirming forms as Fixpt's parser makes them (C214)."
+    (sx (list (sy "let") (sx (list (sx (list (sy t) e))))
+              (sx (list (sy "if") test
+                        (sx (list (sy "let") (sx (list (sx (list (car (items arm)) (sy t))))) (second (items arm))))
+                        els))))))
+
+(define-rec
+  (fresh-from (subr kfx (string strings i64) string)
+    (lambda (base taken i)
+      (let ((n (if (i64= i 0) base (string-append base (i64->string i)))))
+        (if (string-member? n taken) (fresh-from base taken (i64+ i 1)) n)))))
+
+(define fresh-for (subr kfx (string sexp) string)
+  (lambda (base e)
+    "An expansion's own variable, named for what its form `e` does not
+     mention (C214; Fixpt's `fresh_name`): `base`, else `base1`, ..."
+    (fresh-from base (names-in e) 0)))
+
+(define standard-written (subr kfx (string) string)
+  (lambda (n)
+    "A standard name the engine has as FX-26 written (C214), not a
+     primitive: \"\" if none."
+    (cond ((string=? n "assert") "(lambda ((p bool)) (if p #u (error \"assertion failed\")))")
+          ((string=? n "assume") "(lambda ((p bool)) (if p #u (error \"assumption not met\")))")
+          ((string=? n "nat?") "(lambda ((n int)) (>= n 0))")
+          ((string=? n "datum-int?") "(lambda ((d datum)) (int? d))")
+          ((string=? n "list") "(vlambda xs xs)")
+          ((string=? n "native-code?") "(lambda () #f)")
+          ((string=? n "native-convention") "(lambda () (cons \"(target none)\" nil))")
+          ((or (string=? n "certify-nat") (string=? n "certify-acyclic")) "(lambda ((x int)) x)")
+          ((string=? n "acyclic?")
+           "No cycle through its pairs: none met again on the way down to it."
+           "(lambda ((d datum)) (letrec ((on-path (lambda ((x datum) (path datum)) (if (null? path) #f (if (eq? x (car path)) #t (on-path x (cdr path)))))) (walk (lambda ((x datum) (path datum)) (if (pair? x) (if (on-path x path) #f (if (walk (car x) (cons x path)) (walk (cdr x) (cons x path)) #f)) #t)))) (walk d nil)))")
+          ((string=? n "symbol-name-hash")
+           "Fixpt's (`symbol_hash_of`): FNV-1a of the name's UTF-8, wrapped to a fixnum of 61 bits."
+           "(lambda ((sym symbol)) (let ((b (string->utf8 (symbol->string sym)))) (letrec ((go (lambda ((i int) (h i64)) (if (>= i (bytevector-length b)) (i64->int (i64-shr (i64-shl (i64-and h (int->i64 9223372036854775807)) 3) 3)) (go (+ i 1) (i64* (i64-xor h (int->i64 (bytevector-u8-ref b i))) (int->i64 1099511628211))))))) (go 0 (int->i64 -3750763034362895579)))))")
+          (else ""))))
+
 (define shape-test (subr kfx (string) string)
   (lambda (shape)
     "A shape's test, as `typecase` names the shape."
@@ -80,6 +127,16 @@
             (else (exports-of m (cdr gs)))))))
 
 (define-rec
+  (with-at (subr kfx (string strings) strings)
+    (lambda (key gs)
+      "What a `with` at `key`, `FILE:POS`, opens, as the checker found it of
+       a module value or parameter (`%with-at`, its `with-spec`; C213)."
+      (cond ((null? gs) nil)
+            ((has-prefix? (car gs) (string-append "%with-at " (string-append key " ")))
+             (cdr (cdr (spaced-words (car gs)))))
+            (else (with-at key (cdr gs)))))))
+
+(define-rec
   (any-module (subr kfx (strings) strings)
     (lambda (gs)
       (cond ((null? gs) nil)
@@ -99,6 +156,21 @@
                         (map sym-name (cdr (items (car ex))))))))
       (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) all)))))
 
+(define instance-module? (subr kfx (sexp) bool)
+  (lambda (e)
+    "Whether `e` is the module a load of a file of parameters made (C213:
+     `(module (%loaded path %instance ...) ...)`): one made again for each
+     instance, as Fixpt makes one each time its maker is called."
+    (and (head-is? e "module") (i64>= (size (items e)) 2) (head-is? (second (items e)) "%loaded")
+         (any? (lambda ((x sexp)) (sym-is? x "%instance")) (items (second (items e)))))))
+
+(define-rec
+  (instances-of (subr kfx (strings) strings)
+    (lambda (gs)
+      (cond ((null? gs) nil)
+            ((has-prefix? (car gs) "%instance-module ") (cons (after-prefix (car gs) "%instance-module ") (instances-of (cdr gs))))
+            (else (instances-of (cdr gs)))))))
+
 (define-rec
   (module-item-names (subr kfx (sexps strings bool) strings)
     (lambda (its gs exported)
@@ -112,7 +184,11 @@
                         ((head-is? f "define-datatype") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative")
                          (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
-                        ((head-is? f "include") (include-exports f gs))
+                        ((head-is? f "include")
+                         ;; An instance's module made first, then its values (C213).
+                         (if (and (not exported) (string-member? (sym-name (second (items f))) (instances-of gs)))
+                             (cons (string-append "%inst " (sym-name (second (items f)))) (include-exports f gs))
+                             (include-exports f gs)))
                         ((head-is? f "hide") (if exported nil (module-item-names (cdr (items f)) gs #f)))
                         (else nil))
                   (module-item-names (cdr its) gs exported)))))))
@@ -234,10 +310,13 @@
             (if (module-def? f)
                 (let* ((inner (module-words (unhidden (module-written f)) gs))
                        (gs2 (onto inner gs))
-                       (w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (module-written f) gs2 #t))))))
+                       (w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (module-written f) gs2 #t)))))
+                       (ws (the strings (if (instance-module? (last (items f)))
+                                            (the strings (list w (string-append "%instance-module " (binder-name (second (items f))))))
+                                            (the strings (list w))))))
                   "A module's modules too (C88), whose names a `with` of one
                    inside it opens."
-                  (onto inner (cons w (module-words (cdr forms) (cons w gs2)))))
+                  (onto inner (onto ws (module-words (cdr forms) (onto ws gs2)))))
                 (module-words (cdr forms) gs))))))
   (moduleof-names (subr kfx (sexps) strings)
     (lambda (forms)
@@ -297,6 +376,7 @@
               ((i64>= (position-of n gs 0) 0) (i-global (position-of n gs 0) n))
               ((or (string=? n "nil") (string=? n "no-pair")) (i-lit (v-nil)))
               ((i64>= (prim-arity (prim-alias n)) 0) (i-lit (v-prim (prim-alias n) (prim-arity (prim-alias n)))))
+              ((not (string=? (standard-written n) "")) (lower (read-one (standard-written n)) nil nil))
               (else (begin (error (string-append "the engine: nothing is named " n)) (i-lit (v-unit))))))))
 
   (lower-quoted (subr kfx (sexp scope strings) ir)
@@ -367,8 +447,26 @@
                (i-letrec (map (lambda ((b sexp)) (named (binder-name (car (items b))) (lower (last (items b)) inner gs))) bs) (lower-body (cdr xs) inner gs))))
             ((string=? h "cond") (lower-cond xs sc gs))
             ((string=? h "case")
-             (let ((inner (cons (the strings (list "%case-key")) sc)))
+             (let ((inner (cons (the strings (list (fresh-for "%case-key" e))) sc)))
                (i-let (list (lower (car xs) sc gs)) (lower-case (cdr xs) inner gs))))
+            ((string=? h "letfreeze")
+             "Its region, run as the heap's (C214): frozen data is data all the same."
+             (i-let (list (i-lit (v-unit))) (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
+            ((and (string=? h "acyclic") (i64= (size xs) 3))
+             "`(acyclic e (x body) else)` (C214): `body`, `x` the value, if no cycle
+              runs through it, else `else`; its variable named apart."
+             (let ((t (fresh-for "%acyclic-value" e)))
+               (lower (guarded-bind t (car xs) (sx (list (sy "acyclic?") (sy t))) (second xs) (third xs)) sc gs)))
+            ((and (string=? h "confirm-nat") (i64= (size xs) 3))
+             "`(confirm-nat e (n body) else)` (C214): `body`, `n` the value, if it is
+              no less than 0, else `else`, as Fixpt's parser makes it."
+             (let ((t (fresh-for "%nat-value" e)))
+               (lower (guarded-bind t (car xs) (sx (list (sy ">=") (sy t) (num 0 "" 0))) (second xs) (third xs)) sc gs)))
+            ((and (string=? h "confirm-length") (i64= (size xs) 4))
+             "`(confirm-length e k (x body) else)` (C214): `body`, `x` the list, if it
+              has `k` elements, else `else`."
+             (let ((t (fresh-for "%confirm-value" e)))
+               (lower (guarded-bind t (car xs) (sx (list (sy "=") (sx (list (sy "length") (sy t))) (second xs))) (third xs) (fourth xs)) sc gs)))
             ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap"))
              "A region, run as the heap: its name bound, to unit, as a place may be
               given (`rcons`, `rnew`), where the engine drops it."
@@ -380,7 +478,8 @@
             ((string=? h "with")
              (let* ((m (car xs))
                     (statics (tagcase m (sym (n f p) (exports-of n gs)) (else other nil)))
-                    (names (if (null? statics) (any-module gs) statics)))
+                    (found (if (null? statics) (with-at (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e)))) gs) nil))
+                    (names (the strings (cond ((not (null? statics)) (the strings statics)) ((not (null? found)) (the strings found)) (else (any-module gs))))))
                (i-let (list (lower m sc gs)) (lower-body (cdr xs) (cons (cons "%with" names) sc) gs))))
             ((string=? h "select") (error "the engine: a select as a value"))
             ((or (string=? h "module") (string=? h "%module-value")) (lower-module xs sc gs))
@@ -431,7 +530,11 @@
                         ((head-is? f "define-generative") (list (i-lit (v-prim "%identity" 1)) (i-lit (v-prim "%identity" 1))))
                         ((head-is? f "include")
                          (let ((m (sym-name (second (items f)))))
-                           (map (lambda ((n string)) (i-extract n (lower-name m sc gs))) (include-exports f gs))))
+                           (if (string-member? m (instances-of gs))
+                               ;; A new instance (C213): its maker called, its values taken.
+                               (cons (named (string-append "%inst " m) (i-call (lower-name m sc gs) nil))
+                                     (map (lambda ((n string)) (i-extract n (lower-name (string-append "%inst " m) sc gs))) (include-exports f gs)))
+                               (map (lambda ((n string)) (i-extract n (lower-name m sc gs))) (include-exports f gs)))))
                         ((head-is? f "hide") (module-values (cdr (items f)) sc gs))
                         (else nil))
                   (module-values (cdr its) sc gs))))))
@@ -515,7 +618,12 @@
             (onto (cond ((tagcase f (str (s fl p) #t) (else other #f)) (list (top-expr (i-lit (v-string (tagcase f (str (s fl p) s) (else other "")))))))
                         ((head-is? f "define")
                          (let ((xs (items f)))
-                           (list (top-define (i-define (position-of (binder-name (second xs)) gs 0) (named (binder-name (second xs)) (lower (last xs) nil gs)))))))
+                           (list (top-define (i-define (position-of (binder-name (second xs)) gs 0)
+                                                       (named (binder-name (second xs))
+                                                              (if (instance-module? (last xs))
+                                                                  ;; Its maker (C213).
+                                                                  (lower (lst (list (sym "lambda" "" 0) (lst nil "" 0 0) (last xs)) "" 0 0) nil gs)
+                                                                  (lower (last xs) nil gs))))))))
                         ((head-is? f "define*")
                          (let ((xs (items f)))
                            (list (top-define (i-define (position-of (binder-name (second xs)) gs 0) (named (binder-name (second xs)) (lower (last xs) nil gs)))))))
@@ -534,10 +642,23 @@
                          (let ((n (binder-name (second (items f)))))
                            (list (top-define (i-define (position-of (string-append "up-" n) gs 0) (i-lit (v-prim "%identity" 1))))
                                  (top-define (i-define (position-of (string-append "down-" n) gs 0) (i-lit (v-prim "%identity" 1)))))))
-                        ((or (head-is? f "define-type") (head-is? f "define-effect"))
+                        ((or (head-is? f "define-type") (head-is? f "define-effect") (head-is? f "define-convention"))
                          (list (top-none)))
                         (else (list (top-expr (lower f nil gs)))))
                   (lower-tops (cdr forms) gs)))))))
+
+(define with-entries (subr kfx (facts) strings)
+  (lambda (fs)
+    "Each `with` of a module value or parameter, what it opens, as the
+     checker noted it (`with-spec`): `%with-at FILE:POS x ...`, a slot never
+     used (C213)."
+    (concat (map (lambda ((f fact))
+                   (tagcase f
+                     (fact (file pos what)
+                       (if (has-prefix? what "with-spec ")
+                           (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec "))))))))
+                           nil))))
+                 fs))))
 
 (define module-entries (subr kfx (sexps) strings)
   (lambda (forms)

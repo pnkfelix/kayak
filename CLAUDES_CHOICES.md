@@ -5853,3 +5853,51 @@ The user: "Go" (TODO §34, step 5's next: "the rest of `prim` and
   `--compiled` way now, tier 6 under `--direct`): the 338 programs agree,
   and the 85 of `--ours`. A product past a fixnum is given back and agrees
   (`native/i64-as-int.fx`).
+
+## C213. The engine: `with` of a module value; an instance per maker's call (2026-10-26)
+
+The user (2026-10-26): finish the engine. Of the programs its checker
+accepts, it ran 2 fewer than 106 short of all; the first kind: names a
+`with` opens not found.
+- **A `with` of a module value or parameter** (a local, an item, a
+  module's module): the engine's lowering knew the names a top-level
+  module gives (`%exports`), not a value's. The checker notes them at the
+  `with` (`with-spec`, C170); the engine's main path now passes them to
+  the lowering among the globals' names (`%with-at FILE:POS x ...`, a
+  slot never used, as `%exports` is). The REPL's paths do not yet.
+- **An instance per call of a file of parameters' maker**: a load with
+  parameters is spliced once, its module shared by every load of the same
+  arguments (fine for checking); at run time Fixpt makes a module each
+  time the maker is called (`modules/load-parameters.fx`: two makes, two
+  counts). The engine now defines such a module (`%instance` among its
+  `%loaded`) as its maker, and each `include` of it calls the maker once,
+  its values taken from that instance (`%inst m`, an item of its own).
+- The engine on Fixpt's programs beyond KFX: agree 141 to 154, not run
+  87 to 74; differ 1 (`native/crossing-overflow.fx`, as before).
+
+## C214. The engine: what a parser makes of a form, a few standard names (2026-10-26)
+
+Programs the engine could not run for a name or a form it lacked.
+- **Forms lowered as Fixpt's parser makes them**: `(letfreeze r ...)` as a
+  `letregion` (frozen data is data all the same); `(confirm-nat e (n
+  body) else)`, `(confirm-length e k (x body) else)`, `(acyclic e (x
+  body) else)`, each a `let` of the value and an `if` of its test
+  (`guarded-bind`). Each expansion's variable, and `case`'s key, named for
+  what its form does not mention, as Fixpt's `fresh_name` names it
+  (`fresh-for`; `sizes/fresh-temporaries.fx`, whose program binds the
+  first choices around the forms).
+- **Standard names written in FX-26** (`standard-written`), lowered where
+  no primitive has the name: `assert`, `assume` (failing as Fixpt's do),
+  `nat?`, `datum-int?`, `certify-nat`, `certify-acyclic`, `acyclic?` (no
+  pair met again on the way down to it), `list` as a value (a `vlambda`),
+  `native-code?` (false: the engine runs no native code), and
+  `symbol-name-hash` as Fixpt's heap computes it (FNV-1a of the name's
+  UTF-8, wrapped to a fixnum of 61 bits).
+- **`define-convention`** defines nothing the engine runs.
+- **`char-in?`** had a number in `table.kfx` and no case in `vprims.kfx`
+  (a failure, "a primitive of no number"): added. `vprims.kfx` has been
+  edited by hand since `gen-vprims.py` made it (failures said beneath
+  primitives, C110), so it is not made again; the script now knows
+  `char-in?` too.
+- With C213: the engine on Fixpt's programs beyond KFX agrees on 171
+  (from 141), runs not yet 57 (from 87); differs on 1, as before.
