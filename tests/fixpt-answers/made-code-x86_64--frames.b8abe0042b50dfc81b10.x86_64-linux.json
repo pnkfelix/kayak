@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frames.fx"
+],
+"code": 0,
+"out": [
+"define build-code : (subr (alloc @heap) () (listof int @heap)) ! pure",
+"define put-all : (subr (maxeff (read (globals put-all)) (read @heap) (write @heap) spin) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"define build : (subr (maxeff (alloc @heap) (io native) (read (globals build-code put-all)) (read @globals) (read @heap) (write @heap) spin) () builder) ! pure",
+"define total : (subr (maxeff (read (globals total)) (read @heap) spin) ((listof int @heap) int) int) ! pure",
+"define deep : (subr (maxeff (alloc @heap) (read (globals deep)) (read @globals) (read @heap) spin) (builder int) int) ! pure",
+"int ! (maxeff (alloc @heap) (io native) (read (globals build build-code put-all)) (read @globals) (read @heap) (write @heap) spin)",
+"int ! (maxeff (alloc @heap) (io native) (read (globals build build-code deep put-all)) (read @globals) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

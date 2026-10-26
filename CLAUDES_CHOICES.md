@@ -6014,7 +6014,10 @@ The forms of processes (`spawn`, `spawn-monitored`, `par`, `race`,
   depends on: at `--slice 2`, `par` and the rest hung. Now the words are
   Fixpt's, and every program of processes, monitors, preemption and
   schedules that tier 1 can run agrees, plain and at `--slice 2`
-  (`pselect-key` needs `read-byte`, not yet tier 1's).
+  (`pselect-key` needs `read-byte`, not yet tier 1's). (Rebased onto the
+  arm64 work, 2026-10-26: C209 had made `proj` its own node, `x-proj`, to
+  the same end, from macOS; its node is kept, this one's `x-begin`
+  wrapper dropped.)
 - **The engine's scheduler** (`fx26/vsched.kfx`, new): `cells/sched.kfx`
   ported onto the engine's heap, its state among the engine's constants;
   I-cells (`ob-icell`) and mailboxes (`ob-mailbox`), the messages
