@@ -5901,3 +5901,35 @@ Programs the engine could not run for a name or a form it lacked.
   `char-in?` too.
 - With C213: the engine on Fixpt's programs beyond KFX agrees on 171
   (from 141), runs not yet 57 (from 87); differs on 1, as before.
+
+## C215. The engine: bloblets and blobrefs (2026-10-26)
+
+The engine had no bloblet (the checker and KFX have had them since C31;
+the engine, begun for the core and the REPL, C58, never took them on).
+- **A bloblet**: an object of its own kind (`ob-bloblet`, scanned), its
+  bytes, an `ob-bytes` (a byte a word, as a bytevector's), then its
+  fields. `make-bloblet`, `rmake-bloblet` (the place, the heap here) a
+  form, its fields any number; `bloblet-ref`, `-set!`, `-byte`,
+  `-set-byte!`, `-bytes`, `-freeze`; `array?` true of one, `typecase`'s
+  `bloblet` shape.
+- **A blobref**, as kayak-rt's `BlobRef`: an object (`ob-blobref`) of
+  its owner and its offset; made (`blobref-at`, `blobref+`) only where
+  its flat lies whole in the owner's bytes, as FX-26 checks it; each
+  scalar read and written little-endian (`i64`, `u64`, `f64` by its bits,
+  `i32`, `u32`, `u8`, `i8`); `blobref-index` range-checked; a flat
+  array's length to the end of the suffix as many as are left; a flat
+  product's field by `extract`; a keyed flat sum's tag read and written
+  as its number (`blobref-variant!`, `tagcase`), an unkeyed one's the
+  index of the owner's field holding the label. Each operation's layout
+  is the checker's fact there (`blob-size`, `blob-scalar`,
+  `blob-element`, `blob-variant`, `blob-offset`, `blob-tagcase`, as the
+  KFX emitter reads them), given the lowering as `with-spec` is (C213,
+  `%fact FILE:POS ...`), and lowered to primitives of literal layouts.
+- **Not yet**: `f32`, which the engine has no value of (a blobref's
+  `f32` fails, saying so).
+- **A bug of KFX's found**: a local `lambda` capturing a list of the
+  engine's IR (whose nodes hold `Cell`s) was emitted as a closure
+  `Send + Sync`, which rustc refused; worked around (the arguments given
+  at each use), and in TODO §31 to fix.
+- The engine on Fixpt's programs kfx accepts: agree 177 to 184 (not run
+  19 to 12); beyond KFX, 171 to 182 (not run 57 to 46).

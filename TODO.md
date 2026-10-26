@@ -748,6 +748,12 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
   of tier 1, not taken: every release build of the check would be under
   it (C143).
 
+- KFX bug (C215): a local `lambda` whose captures include a list of data
+  holding `Cell`s (the engine's IR) is emitted `Send + Sync`
+  (`lambda3s`), which rustc refuses; the checker's crossing analysis of a
+  closure should look at its captures' types. Worked around in
+  `fx26/lower.kfx`.
+
 ## 32. `wcell`, `tword`, `wglobal` out of FX-26 (the user, 2026-10-16; C120)
 
 Fixpt's grammar has them as base types beside `int` and `string`, and its

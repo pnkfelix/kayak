@@ -34,6 +34,10 @@
 (define ob-ctor i64 12)
 "`datum`'s vector (C77): its elements, words, as an array's."
 (define ob-vector i64 13)
+"A bloblet (C215): its bytes, an `ob-bytes`, then its fields."
+(define ob-bloblet i64 14)
+"A blobref (C215): its owner, a bloblet, then its offset, a fixnum."
+(define ob-blobref i64 15)
 "Kinds from here on hold raw words, not values: not scanned."
 (define ob-raw i64 32)
 (define ob-string i64 32)

@@ -178,7 +178,11 @@
         "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of"
         "vector?" "datum-list->vector"
         "f64-exp" "f64-log" "f64-sin" "f64-cos" "f64-tan" "f64-asin" "f64-acos" "f64-atan" "f64-atan2" "f64-expt"
-        "char-in?"))
+        "char-in?"
+        "%make-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-byte" "bloblet-set-byte!" "bloblet-bytes" "bloblet-freeze"
+        "%blobref-at" "%blobref+" "blobref-owner" "blobref-offset" "%blobref-get" "%blobref-set!" "%blobref-field"
+        "%blobref-index" "%blobref-length" "%blobref-tag" "%blobref-variant!"
+        "%blobref-variant-named!" "%blobref-label"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

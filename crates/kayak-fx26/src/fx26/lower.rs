@@ -252,6 +252,99 @@ pub fn with_at(mut key: Str, mut gs: Strings) -> Strings {
     }
 }
 
+/// The words after `what` of the checker's fact at `key`, `FILE:POS`, if
+/// one is (`%fact`, C215).
+pub fn fact_at(mut key: Str, mut what: Str, mut gs: Strings) -> Strings {
+    loop {
+        if null_p(gs) {
+            return nil::<Str>();
+        } else if has_prefix_p(car(gs), string_append(str_lit("%fact "), string_append(key, string_append(str_lit(" "), what)))) {
+            return spaced_words(after_prefix(car(gs), string_append(str_lit("%fact "), string_append(key, string_append(str_lit(" "), what)))));
+        } else {
+            gs = cdr(gs);
+            continue;
+        }
+    }
+}
+
+pub fn key_of(e: &'static Sexp) -> Str {
+    string_append(datum_file(e), string_append(str_lit(":"), i64_to_string(datum_pos(e))))
+}
+
+pub fn lit_int(w: Str) -> &'static Ir {
+    i_lit(v_int(i64_to_int(string_to_i64(w))))
+}
+
+pub fn second_ir(xs: Irs) -> &'static Ir {
+    car(cdr(xs))
+}
+
+pub fn member_of_p(x: Str, xs: Strings) -> bool {
+    string_member_p(x, xs)
+}
+
+/// A flat sum's arms as `if`s on its tag `key` (C215; kayak-rt's
+/// `put-flat-tagcase`): each its variant, `off` bytes in; `else`'s the
+/// blobref itself; no arm, a failure, as FX-26's.
+pub fn flat_arms(arms: Sexps, t: Str, key: Str, off: Str) -> &'static Sexp {
+    if null_p(arms) {
+        sx(kayak_rt::heap_cons(sy(str_lit("error")), kayak_rt::heap_cons(str(str_lit("tagcase: no arm for this flat sum's tag"), str_lit(""), 0i64), kayak_rt::nil())))
+    } else {
+        let arm = items(car(arms));
+        if sym_is_p(car(arm), str_lit("else")) {
+            sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(second(arm), kayak_rt::heap_cons(sy(t), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("begin")), cdr(cdr(arm)))), kayak_rt::nil()))))
+        } else {
+            sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(if {
+                let tagcase_ = car(arm);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                sx(kayak_rt::heap_cons(sy(str_lit("symbol=?")), kayak_rt::heap_cons(sy(key), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("quote")), kayak_rt::heap_cons(car(arm), kayak_rt::nil()))), kayak_rt::nil()))))
+            } else {
+                sx(kayak_rt::heap_cons(sy(str_lit("=")), kayak_rt::heap_cons(sy(key), kayak_rt::heap_cons(car(arm), kayak_rt::nil()))))
+            }, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(second(arm), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%blobref-field")), kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(num(string_to_i64(off), str_lit(""), 0i64), kayak_rt::nil())))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("begin")), cdr(cdr(arm)))), kayak_rt::nil())))), kayak_rt::heap_cons(flat_arms(cdr(arms), t, key, off), kayak_rt::nil())))))
+        }
+    }
+}
+
+/// `(tagcase r arm ...)` of a blobref to a keyed flat sum (C215): its tag
+/// read once, of the key's width, then the arms.
+pub fn flat_tagcase(e: &'static Sexp, xs: Sexps, found: Strings) -> &'static Sexp {
+    let (t, key) = (fresh_for(str_lit("%flat-value"), e), fresh_for(str_lit("%flat-tag"), e));
+    sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(car(xs), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(key), kayak_rt::heap_cons(if i64_eq(size(found), 3i64) {
+        sx(kayak_rt::heap_cons(sy(str_lit("%blobref-label")), kayak_rt::heap_cons(sy(t), kayak_rt::nil())))
+    } else {
+        sx(kayak_rt::heap_cons(sy(str_lit("%blobref-tag")), kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(num(string_to_i64(car(found)), str_lit(""), 0i64), kayak_rt::nil()))))
+    }, kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(flat_arms(cdr(xs), t, key, second_word(found)), kayak_rt::nil())))), kayak_rt::nil()))))
+}
+
+pub fn scalar_code(n: Str) -> Str {
+    if string_eq_p(n, str_lit("i64")) {
+        str_lit("0")
+    } else if string_eq_p(n, str_lit("u64")) {
+        str_lit("1")
+    } else if string_eq_p(n, str_lit("f64")) {
+        str_lit("2")
+    } else if string_eq_p(n, str_lit("i32")) {
+        str_lit("3")
+    } else if string_eq_p(n, str_lit("u32")) {
+        str_lit("4")
+    } else if string_eq_p(n, str_lit("f32")) {
+        str_lit("5")
+    } else if string_eq_p(n, str_lit("u8")) {
+        str_lit("6")
+    } else {
+        str_lit("7")
+    }
+}
+
 pub fn any_module(mut gs: Strings) -> Strings {
     loop {
         if null_p(gs) {
@@ -865,6 +958,61 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("case")) {
             let inner = kayak_rt::heap_cons(the::<Strings>(kayak_rt::heap_cons(fresh_for(str_lit("%case-key"), e), kayak_rt::nil())), sc);
             return i_let(kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::nil()), lower_case(cdr(xs), inner, gs));
+        } else if member_of_p(h, kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil())))))))) {
+            // A blobref's operation (C215), its layout the checker's facts here.
+            let k = key_of(e);
+            let args = lower_all(xs, sc, gs);
+            let sz = fact_at(k, str_lit("blob-size "), gs);
+            let elem = fact_at(k, str_lit("blob-element "), gs);
+            let scalar = fact_at(k, str_lit("blob-scalar "), gs);
+            let variant = fact_at(k, str_lit("blob-variant "), gs);
+            let p = lambda3s(move |name: Str, n: i64, more: Irs| {
+                i_call(i_lit(v_prim(name, n)), more)
+            });
+            if string_eq_p(h, str_lit("blobref-at")) {
+                return p(str_lit("%blobref-at"), 3i64, onto(args, kayak_rt::heap_cons(lit_int(if null_p(sz) {
+                    str_lit("0")
+                } else {
+                    car(sz)
+                }), kayak_rt::nil())));
+            } else if string_eq_p(h, str_lit("blobref+")) {
+                return p(str_lit("%blobref+"), 3i64, onto(args, kayak_rt::heap_cons(lit_int(if null_p(sz) {
+                    str_lit("0")
+                } else {
+                    car(sz)
+                }), kayak_rt::nil())));
+            } else if string_eq_p(h, str_lit("blobref-get")) {
+                return p(str_lit("%blobref-get"), 2i64, onto(args, kayak_rt::heap_cons(lit_int(scalar_code(if null_p(scalar) {
+                    str_lit("")
+                } else {
+                    car(scalar)
+                })), kayak_rt::nil())));
+            } else if string_eq_p(h, str_lit("blobref-set!")) {
+                return i_call(i_lit(v_prim(str_lit("%blobref-set!"), 3i64)), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(lit_int(scalar_code(if null_p(scalar) {
+                    str_lit("")
+                } else {
+                    car(scalar)
+                })), kayak_rt::heap_cons(second_ir(args), kayak_rt::nil()))));
+            } else if (string_eq_p(h, str_lit("blobref-index")) && i64_eq(size(elem), 2i64)) {
+                return p(str_lit("%blobref-index"), 4i64, onto(args, kayak_rt::heap_cons(lit_int(car(elem)), kayak_rt::heap_cons(lit_int(second_word(elem)), kayak_rt::nil()))));
+            } else if (string_eq_p(h, str_lit("blobref-length")) && i64_eq(size(elem), 2i64)) {
+                return p(str_lit("%blobref-length"), 3i64, onto(args, kayak_rt::heap_cons(lit_int(car(elem)), kayak_rt::heap_cons(lit_int(second_word(elem)), kayak_rt::nil()))));
+            } else if (string_eq_p(h, str_lit("blobref-variant!")) && i64_eq(size(variant), 4i64)) {
+                return i_call(i_lit(v_prim(str_lit("%blobref-variant-named!"), 3i64)), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(i_lit(v_symbol(string_to_symbol(second_word(variant)))), kayak_rt::heap_cons(lit_int(car(cdr(cdr(variant)))), kayak_rt::nil()))));
+            } else if (string_eq_p(h, str_lit("blobref-variant!")) && i64_eq(size(variant), 3i64)) {
+                return i_call(i_lit(v_prim(str_lit("%blobref-variant!"), 4i64)), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(lit_int(car(variant)), kayak_rt::heap_cons(lit_int(second_word(variant)), kayak_rt::heap_cons(lit_int(car(cdr(cdr(variant)))), kayak_rt::nil())))));
+            } else {
+                error(string_append(str_lit("the engine: a blobref's operation it has not yet: "), h));
+                return i_lit(v_unit());
+            }
+        } else if (string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) {
+            // A bloblet (C215): its bytes' count, then its fields; `rmake-bloblet`'s
+            // place, the heap here, left off.
+            return i_call(i_lit(v_prim(str_lit("%make-bloblet"), 1i64)), lower_all(if string_eq_p(h, str_lit("rmake-bloblet")) {
+                cdr(xs)
+            } else {
+                xs
+            }, sc, gs));
         } else if string_eq_p(h, str_lit("letfreeze")) {
             // Its region, run as the heap's (C214): frozen data is data all the same.
             return i_let(kayak_rt::heap_cons(i_lit(v_unit()), kayak_rt::nil()), lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(xs)), kayak_rt::nil()), sc), gs));
@@ -956,8 +1104,13 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             }), xs), map(lambda1s(move |f: &'static Sexp| {
                 lower(second(items(f)), sc, gs)
             }), xs));
+        } else if (string_eq_p(h, str_lit("extract")) && not(null_p(fact_at(key_of(e), str_lit("blob-offset "), gs)))) {
+            // A flat product's field, of a blobref (C215): a blobref to it.
+            return i_call(i_lit(v_prim(str_lit("%blobref-field"), 2i64)), kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::heap_cons(lit_int(car(fact_at(key_of(e), str_lit("blob-offset "), gs))), kayak_rt::nil())));
         } else if string_eq_p(h, str_lit("extract")) {
             return i_extract(label_of(second(xs)), lower(car(xs), sc, gs));
+        } else if (string_eq_p(h, str_lit("tagcase")) && not(null_p(fact_at(key_of(e), str_lit("blob-tagcase "), gs)))) {
+            return lower(flat_tagcase(e, xs, fact_at(key_of(e), str_lit("blob-tagcase "), gs)), sc, gs);
         } else if string_eq_p(h, str_lit("tagcase")) {
             return lower_tagcase(xs, sc, gs);
         } else if string_eq_p(h, str_lit("typecase")) {
@@ -1235,6 +1388,10 @@ pub fn with_entries(fs: Facts) -> Strings {
             Fact::Fact(file, pos, what) => {
                 if has_prefix_p(what, str_lit("with-spec ")) {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%with-at "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), after_prefix(what, str_lit("with-spec "))))))), kayak_rt::nil()))
+                } else if any_p(lambda1s(move |k: Str| {
+                    has_prefix_p(what, k)
+                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::nil()))))))) {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%fact "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), what))))), kayak_rt::nil()))
                 } else {
                     nil::<Str>()
                 }

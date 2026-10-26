@@ -134,6 +134,22 @@ pub fn prim_arity(n: Str) -> i64 {
         3i64
     } else if string_eq_p(n, str_lit("rnew")) {
         2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%make-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::nil())))))) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%blobref-get"), kayak_rt::heap_cons(str_lit("%blobref-field"), kayak_rt::heap_cons(str_lit("%blobref-tag"), kayak_rt::nil())))) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%blobref-at"), kayak_rt::heap_cons(str_lit("%blobref+"), kayak_rt::heap_cons(str_lit("%blobref-set!"), kayak_rt::heap_cons(str_lit("%blobref-length"), kayak_rt::nil()))))) {
+        3i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%blobref-index"), kayak_rt::heap_cons(str_lit("%blobref-variant!"), kayak_rt::nil()))) {
+        4i64
+    } else if string_eq_p(n, str_lit("%blobref-variant-named!")) {
+        3i64
+    } else if string_eq_p(n, str_lit("%blobref-label")) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::nil()))) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::nil()))) {
+        3i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i64-shl"), kayak_rt::heap_cons(str_lit("i64-shr"), kayak_rt::heap_cons(str_lit("write-file"), kayak_rt::nil())))) {
         2i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("read-file"), kayak_rt::heap_cons(str_lit("list-dir"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::nil()))))))) {

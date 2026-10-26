@@ -137,6 +137,60 @@
             (else (with-at key (cdr gs)))))))
 
 (define-rec
+  (fact-at (subr kfx (string string strings) strings)
+    (lambda (key what gs)
+      "The words after `what` of the checker's fact at `key`, `FILE:POS`, if
+       one is (`%fact`, C215)."
+      (cond ((null? gs) nil)
+            ((has-prefix? (car gs) (string-append "%fact " (string-append key (string-append " " what))))
+             (spaced-words (after-prefix (car gs) (string-append "%fact " (string-append key (string-append " " what))))))
+            (else (fact-at key what (cdr gs)))))))
+
+(define key-of (subr kfx (sexp) string)
+  (lambda (e) (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e))))))
+
+(define lit-int (subr kfx (string) ir) (lambda (w) (i-lit (v-int (i64->int (string->i64 w))))))
+
+(define second-ir (subr kfx (irs) ir) (lambda (xs) (car (cdr xs))))
+
+(define member-of? (subr kfx (string strings) bool) (lambda (x xs) (string-member? x xs)))
+
+(define-rec
+  (flat-arms (subr kfx (sexps string string string) sexp)
+    (lambda (arms t key off)
+      "A flat sum's arms as `if`s on its tag `key` (C215; kayak-rt's
+       `put-flat-tagcase`): each its variant, `off` bytes in; `else`'s the
+       blobref itself; no arm, a failure, as FX-26's."
+      (if (null? arms)
+          (sx (list (sy "error") (str "tagcase: no arm for this flat sum's tag" "" 0)))
+          (let ((arm (items (car arms))))
+            (if (sym-is? (car arm) "else")
+                (sx (list (sy "let") (sx (list (sx (list (second arm) (sy t))))) (sx (cons (sy "begin") (cdr (cdr arm))))))
+                (sx (list (sy "if") (if (tagcase (car arm) (sym (n f p) #t) (else other #f))
+                                        ;; No key: a label, a symbol (C215).
+                                        (sx (list (sy "symbol=?") (sy key) (sx (list (sy "quote") (car arm)))))
+                                        (sx (list (sy "=") (sy key) (car arm))))
+                          (sx (list (sy "let") (sx (list (sx (list (second arm) (sx (list (sy "%blobref-field") (sy t) (num (string->i64 off) "" 0)))))))
+                                    (sx (cons (sy "begin") (cdr (cdr arm))))))
+                          (flat-arms (cdr arms) t key off)))))))))
+
+(define flat-tagcase (subr kfx (sexp sexps strings) sexp)
+  (lambda (e xs found)
+    "`(tagcase r arm ...)` of a blobref to a keyed flat sum (C215): its tag
+     read once, of the key's width, then the arms."
+    (let ((t (fresh-for "%flat-value" e)) (key (fresh-for "%flat-tag" e)))
+      (sx (list (sy "let") (sx (list (sx (list (sy t) (car xs)))))
+                (sx (list (sy "let") (sx (list (sx (list (sy key) (if (i64= (size found) 3)
+                                                                         (sx (list (sy "%blobref-label") (sy t)))
+                                                                         (sx (list (sy "%blobref-tag") (sy t) (num (string->i64 (car found)) "" 0))))))))
+                          (flat-arms (cdr xs) t key (second-word found)))))))))
+
+(define scalar-code (subr kfx (string) string)
+  (lambda (n)
+    (cond ((string=? n "i64") "0") ((string=? n "u64") "1") ((string=? n "f64") "2") ((string=? n "i32") "3")
+          ((string=? n "u32") "4") ((string=? n "f32") "5") ((string=? n "u8") "6") (else "7"))))
+
+(define-rec
   (any-module (subr kfx (strings) strings)
     (lambda (gs)
       (cond ((null? gs) nil)
@@ -449,6 +503,36 @@
             ((string=? h "case")
              (let ((inner (cons (the strings (list (fresh-for "%case-key" e))) sc)))
                (i-let (list (lower (car xs) sc gs)) (lower-case (cdr xs) inner gs))))
+            ((member-of? h (list "blobref-at" "blobref+" "blobref-get" "blobref-set!" "blobref-index" "blobref-length" "blobref-variant!"))
+             "A blobref's operation (C215), its layout the checker's facts here."
+             (let* ((k (key-of e))
+                    (args (lower-all xs sc gs))
+                    (sz (fact-at k "blob-size " gs))
+                    (elem (fact-at k "blob-element " gs))
+                    (scalar (fact-at k "blob-scalar " gs))
+                    (variant (fact-at k "blob-variant " gs))
+                    (p (lambda ((name string) (n i64) (more irs)) (i-call (i-lit (v-prim name n)) more))))
+               (cond ((string=? h "blobref-at") (p "%blobref-at" 3 (onto args (list (lit-int (if (null? sz) "0" (car sz)))))))
+                     ((string=? h "blobref+") (p "%blobref+" 3 (onto args (list (lit-int (if (null? sz) "0" (car sz)))))))
+                     ((string=? h "blobref-get") (p "%blobref-get" 2 (onto args (list (lit-int (scalar-code (if (null? scalar) "" (car scalar))))))))
+                     ((string=? h "blobref-set!")
+                      (i-call (i-lit (v-prim "%blobref-set!" 3)) (list (car args) (lit-int (scalar-code (if (null? scalar) "" (car scalar)))) (second-ir args))))
+                     ((and (string=? h "blobref-index") (i64= (size elem) 2))
+                      (p "%blobref-index" 4 (onto args (list (lit-int (car elem)) (lit-int (second-word elem))))))
+                     ((and (string=? h "blobref-length") (i64= (size elem) 2))
+                      (p "%blobref-length" 3 (onto args (list (lit-int (car elem)) (lit-int (second-word elem))))))
+                     ((and (string=? h "blobref-variant!") (i64= (size variant) 4))
+                      ;; No key: the label a symbol (C215).
+                      (i-call (i-lit (v-prim "%blobref-variant-named!" 3))
+                              (list (car args) (i-lit (v-symbol (string->symbol (second-word variant)))) (lit-int (car (cdr (cdr variant)))))))
+                     ((and (string=? h "blobref-variant!") (i64= (size variant) 3))
+                      (i-call (i-lit (v-prim "%blobref-variant!" 4))
+                              (list (car args) (lit-int (car variant)) (lit-int (second-word variant)) (lit-int (car (cdr (cdr variant)))))))
+                     (else (begin (error (string-append "the engine: a blobref's operation it has not yet: " h)) (i-lit (v-unit)))))))
+            ((or (string=? h "make-bloblet") (string=? h "rmake-bloblet"))
+             "A bloblet (C215): its bytes' count, then its fields; `rmake-bloblet`'s
+              place, the heap here, left off."
+             (i-call (i-lit (v-prim "%make-bloblet" 1)) (lower-all (if (string=? h "rmake-bloblet") (cdr xs) xs) sc gs)))
             ((string=? h "letfreeze")
              "Its region, run as the heap's (C214): frozen data is data all the same."
              (i-let (list (i-lit (v-unit))) (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
@@ -500,7 +584,12 @@
             ((string=? h "product")
              (i-product (map (lambda ((f sexp)) (label-of (car (items f)))) xs)
                         (map (lambda ((f sexp)) (lower (second (items f)) sc gs)) xs)))
+            ((and (string=? h "extract") (not (null? (fact-at (key-of e) "blob-offset " gs))))
+             "A flat product's field, of a blobref (C215): a blobref to it."
+             (i-call (i-lit (v-prim "%blobref-field" 2)) (list (lower (car xs) sc gs) (lit-int (car (fact-at (key-of e) "blob-offset " gs))))))
             ((string=? h "extract") (i-extract (label-of (second xs)) (lower (car xs) sc gs)))
+            ((and (string=? h "tagcase") (not (null? (fact-at (key-of e) "blob-tagcase " gs))))
+             (lower (flat-tagcase e xs (fact-at (key-of e) "blob-tagcase " gs)) sc gs))
             ((string=? h "tagcase") (lower-tagcase xs sc gs))
             ((string=? h "typecase") (lower-typecase (car xs) (cdr xs) sc gs))
             ((string=? h "prompt") (i-prompt (lower (car xs) sc gs) (lower (third xs) sc gs) (lower (second xs) sc gs)))
@@ -655,9 +744,12 @@
     (concat (map (lambda ((f fact))
                    (tagcase f
                      (fact (file pos what)
-                       (if (has-prefix? what "with-spec ")
-                           (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec "))))))))
-                           nil))))
+                       (cond ((has-prefix? what "with-spec ")
+                              (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec ")))))))))
+                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase "))
+                              ;; A flat's layout where it is read (C215).
+                              (the strings (list (string-append "%fact " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " what))))))))
+                             (else nil)))))
                  fs))))
 
 (define module-entries (subr kfx (sexps) strings)

@@ -101,6 +101,16 @@ pub fn ob_vector() -> i64 {
     13i64
 }
 
+// A bloblet (C215): its bytes, an `ob-bytes`, then its fields.
+pub fn ob_bloblet() -> i64 {
+    14i64
+}
+
+// A blobref (C215): its owner, a bloblet, then its offset, a fixnum.
+pub fn ob_blobref() -> i64 {
+    15i64
+}
+
 // Kinds from here on hold raw words, not values: not scanned.
 pub fn ob_raw() -> i64 {
     32i64
