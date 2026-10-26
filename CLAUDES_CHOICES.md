@@ -6214,3 +6214,74 @@ call-outs, so `native/mixed.fx` gives 42 on its default machine too).
 - Next (C225): kayak-rt's syscalls for KFX, so that tier 1, a runtime of
   KFX, asks for an executable view of its heap's range by
   `code:exec-view/1`, and makes code as Fixpt's heap does.
+
+## C225. Syscalls in KFX, by kayak-rt (2026-10-26)
+
+The user: go ahead with tier 1's code area on syscalls. First the
+syscalls themselves for a runtime written in KFX:
+- **kayak-jit** (where `unsafe` lives, `native.md` decision 4):
+  `exec_view` (Fixpt's `exec.rs`: a range of a reservation `zeroed_cells`
+  made, whole pages, never viewed before, replaced by shared pages, zero,
+  and mapped again read+execute; `map_space`, the code area's own, now
+  made of the same `exec_alias`), `flush_written`, `page_bytes`, and
+  `call_mailbox` (below); a test that the two views share their pages.
+- **kayak-rt's table** (`syscall.rs`, as Fixpt's `fixpt_runtime::
+  syscall`): `code:exec-view/1`, `code:page-words/1`, `code:flush/1`, at
+  their canonical types; `syscall_require`, `syscall_available` and
+  `syscall0` to `syscall6`, generic over `Native` (a `u64` now crosses
+  too; a bytevector not yet).
+- **KFX**: a manifest's line `--syscalls` says its program is a
+  runtime's own (`runtime-unit?`, `compile-units-as`, the memo path too),
+  which may declare syscalls; KFX's checker no longer refuses them. The
+  emitter writes a declaration as two `fn`s of its declared type (which
+  must be written out as a `subr`): `%syscall-available:NAME` (`:` now
+  mangled), a constant, and `NAME`, calling `kayak_rt::syscallN`. KFX's
+  constants run where used, so a required syscall's check runs at its
+  first use, not when the program starts.
+- **Used**: the engine and tier 1 ask kayak-rt for the page's words
+  (`code:page-words/1`), in place of guessing it from the native
+  convention's target (C224); both units say `--syscalls`, their effects
+  hold `(io sys)`.
+
+## C226. Tier 1's code area: code a program makes, run natively (2026-10-26)
+
+Then what the syscalls were for (`native.md`, decision 3; Fixpt's
+"collected code area"):
+- **The code area**: a reservation of its own (`code`, 4M words,
+  committed as touched), its whole pages given an execute view by
+  `code:exec-view/1` when the heap is made addressed; else none, and
+  `native-code?` is `#f` (with `--indexes`). Not one reservation with
+  both semispaces, as Fixpt's `mem` is (C225's plan): that would have
+  moved every space's indexing; a code bloblet's index is instead any
+  value's, from `vbase`, and `word-at`/`word-set!` read an index outside
+  the heap's reservation from the code area, one comparison. Native code
+  reads values as addresses (C139), so the native tiers need nothing.
+- **The collector** leaves a code bloblet where it is (`forward-object!`)
+  and forwards every code bloblet's fields in place, as roots, at each
+  collection (`code-forwarded!`); none is freed yet (Fixpt's marks and
+  sweeps the area).
+- **`seal-code`, `native-procedure`, `native-code?`** as Fixpt's
+  runtime has them: the copy's header, fields, trailer and suffix, its
+  suffix frozen and flushed (`code:flush/1`); a native closure over it;
+  `#t` where the area was made. **`call!`** calls a native closure as
+  Fixpt's machines do: its code entered at its read+execute address by
+  kayak-rt's `kayak:call-native/1`, its arguments and answer words in a
+  mailbox (KFX's `int` crossing would not carry any word), a trap of
+  native code tier 1's own; given back to tier 1 from tiers 2 to 6.
+- **The checker** notes a call of a procedure of the native convention,
+  written, `call-fx` (as a composable continuation's, C209), so that
+  kayak's compiler makes it a `call`, not a typed `tcall`, as Fixpt's
+  `c-call-in` does.
+- `made-code-x86_64/leaves.fx`, `declared.fx` and `typed-calls.fx` give
+  Fixpt's answers on tier 1, every way, on Fixpt's words and kayak's.
+  Not yet: the convention's routines on tier 1's heap (`foreign`, `cons`,
+  `bloblet`, `poll`, `closure`): kayak-jit's allocate in its own space and
+  call Rust procedures, not tier 1's; native code that calls one fails as
+  a trap tier 1 has not yet (`frames`, `generated`, `linked`,
+  `allocated`). And a conversion to native code (`convention`).
+  An object native code gives back that is in neither tier 1's heap nor
+  its code area (made by kayak-jit's `bloblet` routine, in kayak-jit's own
+  space) is refused as such a trap too (`tier1-word?`), not read.
+- Measured: kayak's own words, 386 agree, 0 differ (282 Fixpt's words
+  exactly; were 381 and 277); Fixpt's, 386 agree; 4 need what tier 1 has
+  not yet (the routines).

@@ -485,6 +485,111 @@ pub mod writing {
         put(string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lives), types), str_lit(", ")), str_lit(">"))), acc)
     }
 
+    /// `cs` inside a Rust string literal: `\` and `"` escaped.
+    pub fn put_rust_chars(mut cs: Chars, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if (char_eq_p(car(cs), '\\') || char_eq_p(car(cs), '"')) {
+                (cs, acc) = (cdr(cs), put(char_to_string(car(cs)), put(str_lit("\\"), acc)));
+                continue;
+            } else {
+                (cs, acc) = (cdr(cs), put(char_to_string(car(cs)), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn put_str_lit(s: Str, acc: Chars) -> Chars {
+        put(str_lit("\")"), put_rust_chars(string_chars(s), put(str_lit("str_lit(\""), acc)))
+    }
+
+    /// `x1: T1, x2: T2, …`.
+    pub fn put_syscall_params(mut c: &'static Ctx, mut ps: Sexps, mut i: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(ps) {
+                return acc;
+            } else {
+                (ps, i, acc) = (cdr(ps), i64_plus(i, 1i64), put_type(c, car(ps), put(string_append(if i64_eq(i, 1i64) {
+                    str_lit("x")
+                } else {
+                    str_lit(", x")
+                }, string_append(i64_to_string(i), str_lit(": "))), acc)));
+                continue;
+            }
+        }
+    }
+
+    pub fn put_syscall_args(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if i64_gt(i, n) {
+                return acc;
+            } else {
+                (i, acc) = (i64_plus(i, 1i64), put(string_append(str_lit(", x"), i64_to_string(i)), acc));
+                continue;
+            }
+        }
+    }
+
+    /// A syscall's declaration (C225): the two definitions it is, written
+    /// out: `%syscall-available:NAME`, whether kayak-rt has it (for a
+    /// required one, `syscall_require`'s check first, so that a use of
+    /// either checks it, KFX's constants running where used); and
+    /// `NAME`, a `fn` of the declared type calling `syscallN`, which
+    /// checks a required one first too.
+    pub fn put_syscall(c: &'static Ctx, form: &'static Sexp, xs: Sexps, acc: Chars) -> Chars {
+        let name = sym_name(second(xs));
+        let host = {
+            let tagcase_ = third(xs);
+            match *tagcase_ {
+                Sexp::Str(h, f, p) => {
+                    h
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        let required = head_is_p(form, str_lit("define-syscall"));
+        let found = split_words(fact_said(c, form, str_lit("syscall ")));
+        let text = words_of(cdr(found));
+        let label = string_append(str_lit("syscall "), string_append(name, string_append(str_lit(" (\""), string_append(host, str_lit("\")")))));
+        let t = fourth(xs);
+        let sub = if head_is_p(t, str_lit("poly")) {
+            third(items(t))
+        } else {
+            t
+        };
+        let parts = if (head_is_p(sub, str_lit("subr")) && i64_eq(size(items(sub)), 4i64)) {
+            items(sub)
+        } else {
+            error(string_append(str_lit("kfx: a syscall's type is written out, a `subr` (C225): "), name))
+        };
+        let params = items(third(parts));
+        let avail = mangle(string_append(str_lit("%syscall-available:"), name));
+        let acc = put(string_append(str_lit("pub fn "), string_append(avail, str_lit("() -> bool {\n    "))), acc);
+        let acc = if required {
+            put(str_lit(");\n    true\n}\n\n"), put_str_lit(text, put(str_lit(", "), put_str_lit(host, put(str_lit(", "), put_str_lit(label, put(str_lit("kayak_rt::syscall_require("), acc)))))))
+        } else {
+            put(str_lit(")\n}\n\n"), put_str_lit(text, put(str_lit(", "), put_str_lit(host, put(str_lit("kayak_rt::syscall_available("), acc)))))
+        };
+        let acc = put(string_append(str_lit("pub fn "), string_append(mangle(name), str_lit("("))), acc);
+        let acc = put_syscall_params(c, params, 1i64, acc);
+        let acc = put(str_lit(") -> "), acc);
+        let acc = put_type(c, fourth(parts), acc);
+        let acc = put(str_lit(" {\n    "), acc);
+        let acc = if required {
+            put(str_lit("();\n    "), put(avail, acc))
+        } else {
+            acc
+        };
+        let acc = put(string_append(str_lit("kayak_rt::syscall"), string_append(i64_to_string(size(params)), str_lit("("))), acc);
+        let acc = put_str_lit(text, put(str_lit(", "), put_str_lit(host, put(str_lit(", "), put_str_lit(label, acc)))));
+        let acc = put_syscall_args(1i64, size(params), acc);
+        put(str_lit(")\n}\n\n"), acc)
+    }
+
     /// A definition, a `fn`: a procedure's of its parameters; a constant's of
     /// none, run at each use, or, if it allocates, made at its first use and
     /// kept (C21).
@@ -1169,6 +1274,8 @@ pub mod writing {
         };
         if (string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention"))) {
             acc
+        } else if (string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) {
+            put_syscall(c, form, xs, acc)
         } else if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%use"))) {
             let n = sym_name(second(xs));
             let its = module_items(c, n);

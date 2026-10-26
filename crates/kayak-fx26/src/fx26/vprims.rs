@@ -497,15 +497,21 @@ pub fn engine_syscall_type(host: Str) -> Str {
     }
 }
 
-// The words in one page of the machine this runs on: 2048 on arm64 (macOS's
-// 16 KiB pages), else 512, by the native convention's target (KFX has no way
-// to ask the system yet; a syscall of kayak-rt's, later).
+// The words in one page of the machine this runs on, as kayak-rt says,
+// asked as the engine's own syscall (C225).
+
+pub fn _pctsyscall_available_colonhost_page_words() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall host-page-words (\"code:page-words/1\")"), str_lit("code:page-words/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn host_page_words() -> Int {
+    _pctsyscall_available_colonhost_page_words();
+    kayak_rt::syscall0(str_lit("syscall host-page-words (\"code:page-words/1\")"), str_lit("code:page-words/1"), str_lit("(subr (io sys) () int)"))
+}
+
 pub fn engine_page_words() -> i64 {
-    if string_eq_p(car(the::<Strings>(native_convention())), str_lit("(target arm64)")) {
-        2048i64
-    } else {
-        512i64
-    }
+    int_to_i64(host_page_words())
 }
 
 pub fn apply_op(op: i64, args: i64) -> i64 {

@@ -194,6 +194,8 @@
 (define o-syscall-require i64 182)
 (define o-syscall-available i64 183)
 (define o-syscall i64 184)
+(define o-seal-code i64 185)
+(define o-native-procedure i64 186)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -279,7 +281,8 @@
          (pdef "%fx26-assume" 1 1 o-assume) (pdef "list->string" 1 1 o-list-string)
          (pdef "%fx26-assert" 1 1 o-assert) (pdef "string->symbol" 1 1 o-string-symbol)
          (pdef "%fx26-syscall-require" 3 3 o-syscall-require) (pdef "%fx26-syscall-available?" 2 2 o-syscall-available)
-         (pdef "%fx26-syscall" 3 9 o-syscall) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
+         (pdef "%fx26-syscall" 3 9 o-syscall)
+         (pdef "%fx26-seal-code" 1 1 o-seal-code) (pdef "%fx26-native-procedure" 1 1 o-native-procedure) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
          (pdef "%region-make-array" 3 3 o-region-make-array) (pdef "%region-make-bloblet" 2 -1 o-region-make-bloblet)
          (pdef "%region-closure" 2 -1 o-region-closure) (pdef "%fx26-vlambda" 1 1 o-vlambda) (pdef "%fx26-make-icell" 0 0 o-make-icell)
          (pdef "%region-make-icell" 1 1 o-region-make-icell) (pdef "%fx26-icell-get" 1 1 o-icell-get)
@@ -692,6 +695,25 @@
   (strings-list! (subr cm ((listof string @c)) i64)
     (lambda (ss) (if (null? ss) v-null (let ((s (make-string! (car ss)))) (cons! s (strings-list! (cdr ss))))))))
 
+"`seal-code`'s copy (C226; Fixpt's `seal_code_copy`): a bloblet's header,
+ fields, trailer and suffix, in the code area, its suffix frozen and its
+ instructions made seen; its fields as the bloblet's were."
+(define-rec
+  (code-copied! (subr cm (i64 i64 i64) unit)
+    (lambda (from to n) (if (i64<= n 0) #u (begin (code-set! to (word-at from)) (code-copied! (i64+ from 1) (i64+ to 1) (i64- n 1)))))))
+(define sealed-copy! (subr cm (i64) i64)
+  (lambda (v)
+    (let* ((h (header-index v)) (f (fields-of v)) (nw (i64-quotient (i64+ (bytes-of v) 7) 8))
+           (size (i64+ (i64+ 1 f) nw)) (at (get code-top)))
+      (if (i64> (i64+ at size) (get code-hi))
+          (fail! "seal-code: the code area is full")
+          (begin
+            (code-set! at (i64-or (word-at h) (i64-shl 1 (with lay header-suffix-frozen-lo))))
+            (code-copied! (i64+ h 1) (i64+ at 1) (i64+ f nw))
+            (set code-top (i64+ at size))
+            (code-flush (get code) (i64->int (i64+ (i64+ at 1) f)) (i64->int (if (i64= nw 0) (the i64 1) nw)))
+            (i64-or (i64+ (get code-vbase) (i64* 8 (i64+ (i64+ at 1) f))) t-bloblet))))))
+
 "Tier 1's syscalls (C224): each host name's type in canonical form, \"\"
  for none; Fixpt's three, as its runtime gives them, for now: no view of a
  flat array yet (-1), so nothing to flush."
@@ -704,10 +726,10 @@
            "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
           (else ""))))
 
-"The words in one page: 2048 on arm64 (macOS's 16 KiB pages), else 512, by
- the native convention's target, until kayak-rt gives it."
-(define tier1-page-words (subr (maxeff (read @globals) spin) () i64)
-  (lambda () (if (string=? (car (the strings (native-convention))) "(target arm64)") 2048 512)))
+"The words in one page of this machine, as kayak-rt says (C225)."
+(define-syscall page-words "code:page-words/1" (subr (io sys) () int))
+(define tier1-page-words (subr (maxeff (read @globals) (io sys)) () i64)
+  (lambda () (int->i64 (page-words))))
 
 "`list->string`'s (C220): whether a proper list's elements are all
  characters; their text."
@@ -1534,7 +1556,19 @@
                ((i64>= (proper-length a) fields-max) (prim-failed p "of a large header"))
                (else (let ((x (make-bloblet! k-bloblet (proper-length a) 0 #t #f))) (begin (fields-of-list! x 2 a) x)))))
         ((i64= op o-stay-cellular) a)
-        ((i64= op o-native-code) v-false)
+        ;; Code a program makes (C226; Fixpt's TODO §97): where the code area
+        ;; was made, as on Fixpt's machines.
+        ((i64= op o-native-code) (boolean (get code-on)))
+        ((i64= op o-seal-code)
+         (cond ((not (plain? a)) (expected! "a bloblet the program made"))
+               ((not (get code-on)) (fail! "seal-code: this machine runs no native code a program makes"))
+               ((i64> (fields-of a) fields-max) (fail! "seal-code: too many fields for code"))
+               (else (sealed-copy! a))))
+        ((i64= op o-native-procedure)
+         (cond ((not (get code-on)) (fail! "native-procedure: this machine runs no native code"))
+               ((not (and (in-code? a) (is-kind? a k-bloblet) (suffix-frozen? a)))
+                (fail! "native-procedure: not code that `seal-code` gave"))
+               (else (let ((c (make-bloblet! k-native-closure 1 0 #t #f))) (begin (slot-set! c f-word a) c)))))
         ((i64= op o-make-eqtable) (eqtable-made!))
         ((i64= op o-assume) (if (i64= a v-false) (fail! "assumption not met") v-unit))
         ((i64= op o-assert) (if (i64= a v-false) (fail! "assertion failed") v-unit))

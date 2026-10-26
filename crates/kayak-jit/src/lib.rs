@@ -152,6 +152,9 @@ pub fn native_code() -> bool {
 pub fn zeroed_cells(prefix: &[i64], n: usize) -> Option<&'static [Cell<i64>]> {
     let words = prefix.len().checked_add(n)?;
     let at = sys::reserve(words.checked_mul(8)?)?;
+    if let Ok(mut r) = RESERVED.lock() {
+        r.push((at, words * 8));
+    }
     // SAFETY: a fresh private mapping of `words` words, zero and never
     // unmapped, so `'static`; `Cell<i64>` has `i64`'s layout.
     let all: &'static [Cell<i64>] =
@@ -160,6 +163,67 @@ pub fn zeroed_cells(prefix: &[i64], n: usize) -> Option<&'static [Cell<i64>]> {
         c.set(w);
     }
     Some(all)
+}
+
+/// The reservations `zeroed_cells` made, each its start and bytes, and the
+/// ranges of them given an execute view: so that `exec_view` makes one only
+/// of memory reserved here, page by page, once.
+static RESERVED: std::sync::Mutex<Vec<(usize, usize)>> = std::sync::Mutex::new(Vec::new());
+static VIEWED: std::sync::Mutex<Vec<(usize, usize, usize)>> = std::sync::Mutex::new(Vec::new());
+
+/// The bytes of one page of this machine.
+pub fn page_bytes() -> usize {
+    sys::page_bytes()
+}
+
+/// A read+execute view of the `bytes` bytes at `at`, which must be whole
+/// pages of a reservation `zeroed_cells` made, none of them viewed before:
+/// those pages replaced by shared ones, zero as they were (so nothing should
+/// have been written there), and mapped a second time, read+execute
+/// (Fixpt's `exec_view`; the syscall `code:exec-view/1`). Its address, or
+/// None where that cannot be.
+pub fn exec_view(at: usize, bytes: usize) -> Option<usize> {
+    let page = page_bytes();
+    if bytes == 0 || !at.is_multiple_of(page) || !bytes.is_multiple_of(page) {
+        return None;
+    }
+    let end = at.checked_add(bytes)?;
+    let inside = RESERVED
+        .lock()
+        .ok()?
+        .iter()
+        .any(|&(s, n)| s <= at && end <= s + n);
+    let mut viewed = VIEWED.lock().ok()?;
+    if !inside || viewed.iter().any(|&(s, n, _)| at < s + n && s < end) {
+        return None;
+    }
+    let rx = sys::exec_alias(at, bytes)?;
+    viewed.push((at, bytes, rx));
+    Some(rx)
+}
+
+/// After instructions are written in a view `exec_view` made, at `rx..rx +
+/// len` (its addresses): make the instruction cache see them.
+pub fn flush_view(rx: usize, len: usize) {
+    sys::flush(rx, len)
+}
+
+/// The same, given the range by its read+write addresses, `at..at + len`,
+/// which must lie in one view `exec_view` made: whether it did.
+pub fn flush_written(at: usize, len: usize) -> bool {
+    let Ok(viewed) = VIEWED.lock() else {
+        return false;
+    };
+    match viewed
+        .iter()
+        .find(|&&(s, n, _)| s <= at && at.saturating_add(len) <= s + n)
+    {
+        Some(&(s, _, rx)) => {
+            sys::flush(rx + (at - s), len);
+            true
+        }
+        None => false,
+    }
 }
 
 // ---------------------------------------------------------------- the area
@@ -538,6 +602,29 @@ pub enum Trap {
     Failed(String),
 }
 
+/// A call of native code with its words in a mailbox (the syscall
+/// `kayak:call-native/1`, for a runtime of KFX whose values are Fixpt's
+/// words, as tier 1's): at `m`, a flat array's first element, the closure,
+/// the entry's address, then `n` arguments (at most eight); the answer put
+/// in the first. 0, or why not: a trap's kind (1 to 5), 6 a routine the
+/// caller's runtime is not given yet, 7 a trap said otherwise.
+pub fn call_mailbox(m: usize, n: usize) -> i64 {
+    let at = |i: usize| sys::get(m + 8 * i);
+    let args: Vec<u64> = (0..n.min(8)).map(|i| at(2 + i)).collect();
+    // A routine's Rust that panics (`foreign`, given a procedure of the
+    // caller's runtime, not kayak-rt's) is resumed past native code: here it
+    // is the routine's want, 6.
+    match std::panic::catch_unwind(|| call(at(0), at(1) as usize, &args)) {
+        Ok(Ok(w)) => {
+            sys::put(m, w);
+            0
+        }
+        Ok(Err(Trap::Kind(k))) => k.min(5) as i64,
+        Ok(Err(Trap::Routine(_))) | Err(_) => 6,
+        Ok(Err(Trap::Failed(_))) => 7,
+    }
+}
+
 /// The trap kind of a stack overflow (`(trap (kinds (2 stack-overflow)))`).
 pub const STACK_OVERFLOW: u64 = 2;
 /// Fuel given at each `poll`.
@@ -728,6 +815,7 @@ mod sys {
         fn munmap(addr: *mut u8, len: usize) -> i32;
         fn sys_icache_invalidate(start: *mut u8, len: usize);
         fn mach_task_self() -> Port;
+        fn sysconf(name: i32) -> i64;
         fn mach_vm_remap(
             target: Port,
             target_addr: *mut u64,
@@ -793,12 +881,27 @@ mod sys {
     /// area's two addresses.
     pub(super) fn map_space(code: usize, data: usize) -> Option<(usize, usize)> {
         let base = reserve(code + data)?;
-        // SAFETY: the first `code` bytes of the reservation just made,
-        // which nothing refers to, replaced, zero as they were.
+        match exec_alias(base, code) {
+            Some(rx) => Some((base, rx)),
+            None => {
+                // SAFETY: unmapping the reservation just made, which nothing holds.
+                unsafe { munmap(base as *mut u8, code + data) };
+                None
+            }
+        }
+    }
+
+    /// The `bytes` bytes at `at`, page-aligned, of a reservation nothing
+    /// has written there, replaced by a shared anonymous mapping, zero as
+    /// they were; and a second view of the same pages, read+execute, made
+    /// by `mach_vm_remap`: its address (as Fixpt's `exec_view`).
+    pub(super) fn exec_alias(at: usize, bytes: usize) -> Option<usize> {
+        // SAFETY: the caller's pages, which nothing has written, replaced,
+        // zero as they were.
         let rw = unsafe {
             mmap(
-                base as *mut u8,
-                code,
+                at as *mut u8,
+                bytes,
                 PROT_READ | PROT_WRITE,
                 MAP_FIXED | MAP_SHARED | MAP_ANON,
                 -1,
@@ -816,7 +919,7 @@ mod sys {
             mach_vm_remap(
                 mach_task_self(),
                 &mut rx,
-                code as u64,
+                bytes as u64,
                 0,
                 VM_FLAGS_ANYWHERE,
                 mach_task_self(),
@@ -827,18 +930,21 @@ mod sys {
                 VM_INHERIT_SHARE,
             )
         };
-        // SAFETY: `rx` is the view just made, `code` long.
-        if kr != 0 || unsafe { mprotect(rx as *mut u8, code, PROT_READ | PROT_EXEC) } != 0 {
-            // SAFETY: unmapping what was mapped above, which nothing holds.
-            unsafe {
-                if kr == 0 {
-                    munmap(rx as *mut u8, code);
-                }
-                munmap(base as *mut u8, code + data);
+        // SAFETY: `rx` is the view just made, `bytes` long.
+        if kr != 0 || unsafe { mprotect(rx as *mut u8, bytes, PROT_READ | PROT_EXEC) } != 0 {
+            if kr == 0 {
+                // SAFETY: unmapping the view made above, which nothing holds.
+                unsafe { munmap(rx as *mut u8, bytes) };
             }
             return None;
         }
-        Some((rw as usize, rx as usize))
+        Some(rx as usize)
+    }
+
+    /// The bytes of one page.
+    pub(super) fn page_bytes() -> usize {
+        // SAFETY: asks the system; `_SC_PAGESIZE` is 29 on macOS.
+        unsafe { sysconf(29) as usize }
     }
 
     pub(super) use super::memory::{get, get_byte, put};
@@ -1033,6 +1139,7 @@ mod sys {
     unsafe extern "C" {
         fn mmap(addr: *mut u8, len: usize, prot: i32, flags: i32, fd: i32, off: i64) -> *mut u8;
         fn mremap(old: *mut u8, old_len: usize, new_len: usize, flags: i32, ...) -> *mut u8;
+        fn sysconf(name: i32) -> i64;
         fn mprotect(addr: *mut u8, len: usize, prot: i32) -> i32;
         fn munmap(addr: *mut u8, len: usize) -> i32;
         fn pthread_self() -> usize;
@@ -1091,12 +1198,27 @@ mod sys {
     /// (as Fixpt's `fixpt-memmgmt` makes its own).
     pub(super) fn map_space(code: usize, data: usize) -> Option<(usize, usize)> {
         let base = reserve(code + data)?;
-        // SAFETY: the first `code` bytes of the reservation just made,
-        // which nothing refers to, replaced, zero as they were.
+        match exec_alias(base, code) {
+            Some(rx) => Some((base, rx)),
+            None => {
+                // SAFETY: unmapping the reservation just made, which nothing holds.
+                unsafe { munmap(base as *mut u8, code + data) };
+                None
+            }
+        }
+    }
+
+    /// The `bytes` bytes at `at`, page-aligned, of a reservation nothing
+    /// has written there, replaced by a shared anonymous mapping, zero as
+    /// they were; and a second view of the same pages, read+execute, made
+    /// by `mremap` of size 0: its address (as Fixpt's `exec_view`).
+    pub(super) fn exec_alias(at: usize, bytes: usize) -> Option<usize> {
+        // SAFETY: the caller's pages, which nothing has written, replaced,
+        // zero as they were.
         let rw = unsafe {
             mmap(
-                base as *mut u8,
-                code,
+                at as *mut u8,
+                bytes,
                 PROT_READ | PROT_WRITE,
                 MAP_FIXED | MAP_SHARED | MAP_ANON,
                 -1,
@@ -1108,19 +1230,22 @@ mod sys {
         }
         // SAFETY: a second mapping of the shared one just made, where the
         // kernel chooses; then that one made read+execute.
-        let rx = unsafe { mremap(rw, 0, code, MREMAP_MAYMOVE) };
-        // SAFETY: `rx` is the view just made, `code` long.
-        if rx as isize == -1 || unsafe { mprotect(rx, code, PROT_READ | PROT_EXEC) } != 0 {
-            // SAFETY: unmapping what was mapped above, which nothing holds.
-            unsafe {
-                if rx as isize != -1 {
-                    munmap(rx, code);
-                }
-                munmap(base as *mut u8, code + data);
+        let rx = unsafe { mremap(rw, 0, bytes, MREMAP_MAYMOVE) };
+        // SAFETY: `rx` is the view just made, `bytes` long.
+        if rx as isize == -1 || unsafe { mprotect(rx, bytes, PROT_READ | PROT_EXEC) } != 0 {
+            if rx as isize != -1 {
+                // SAFETY: unmapping the view made above, which nothing holds.
+                unsafe { munmap(rx, bytes) };
             }
             return None;
         }
-        Some((rw as usize, rx as usize))
+        Some(rx as usize)
+    }
+
+    /// The bytes of one page.
+    pub(super) fn page_bytes() -> usize {
+        // SAFETY: asks the system; `_SC_PAGESIZE` is 30 on Linux.
+        unsafe { sysconf(30) as usize }
     }
 
     /// x86_64's instruction fetch sees what was written to the same pages
@@ -1331,6 +1456,12 @@ mod sys {
     pub(super) fn reserve(_: usize) -> Option<usize> {
         None
     }
+    pub(super) fn exec_alias(_: usize, _: usize) -> Option<usize> {
+        None
+    }
+    pub(super) fn page_bytes() -> usize {
+        4096
+    }
     pub(super) fn get_byte(_: usize) -> u8 {
         panic!("native code: none on this machine")
     }
@@ -1349,5 +1480,36 @@ mod sys {
     }
     pub(super) fn enter(_: usize, _: usize, _: u64, _: &[u64; 8], _: usize) -> u64 {
         panic!("native code: none on this machine")
+    }
+}
+
+#[cfg(test)]
+mod exec_view_tests {
+    /// The two views are the same pages: a word written through the
+    /// reservation is read through the execute view (Fixpt's
+    /// `the_views_share_their_pages`). Nothing runs, so on any machine that
+    /// makes views; and a range viewed once, or not reserved here, is not
+    /// viewed again.
+    #[test]
+    fn the_views_share_their_pages() {
+        let page = super::page_bytes();
+        let words = 4 * page / 8;
+        let Some(cells) = super::zeroed_cells(&[], words) else {
+            return;
+        };
+        let base = cells.as_ptr() as usize;
+        let Some(rx) = super::exec_view(base + page, 2 * page) else {
+            return;
+        };
+        let at = page / 8 + 5;
+        cells[at].set(0xfeed_f00d);
+        // SAFETY: an aligned word inside the view, which is readable.
+        let seen = unsafe { ((rx + 40) as *const u64).read_volatile() };
+        assert_eq!(seen, 0xfeed_f00d);
+        super::flush_view(rx + 40, 8);
+        assert!(super::exec_view(base + page, page).is_none());
+        assert!(super::exec_view(base + 1, page).is_none());
+        let other = [0u64; 1024];
+        assert!(super::exec_view(other.as_ptr() as usize & !(page - 1), page).is_none());
     }
 }

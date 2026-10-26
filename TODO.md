@@ -664,7 +664,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    `%fx26-intern-datum` (Fixpt's weak table). Kayak's compiler to cells
    (C221): all but a conversion to native code; words not Fixpt's exactly
    in `bloblet/flat-inlined`, `native/flat-keyed`, `native/variadic`,
-   `run/variadic`, `run/case-tree`. Next: eqtables, `%fx26-intern-datum`, I/O (the
+   `run/variadic`, `run/case-tree`. Code a program makes, on tier 1
+   (C226, by syscalls, C225): a code area, `seal-code`, native closures
+   called; left, the convention's routines on tier 1's own heap
+   (`foreign`, `cons`, `bloblet`, `poll`, `closure`), and its code freed
+   when no longer reached. Next: eqtables, `%fx26-intern-datum`, I/O (the
    standard input waited for, too); native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A

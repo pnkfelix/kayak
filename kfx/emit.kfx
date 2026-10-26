@@ -388,6 +388,9 @@
                                 (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods))))
                     ((head-is? form "define-generative")
                      (ctx ds ts ks ls xs fs fx (note-family (second (items form)) #f ms) es mods))
+                    ((or (head-is? form "define-syscall") (head-is? form "define-optional-syscall"))
+                     "A syscall's `%syscall-available:NAME`, a constant (C225)."
+                     (ctx ds ts (cons (string-append "%syscall-available:" (sym-name (second (items form)))) ks) ls xs fs fx ms es mods))
                     ((head-is? form "define-effect")
                      (ctx ds ts ks ls xs fs fx ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
                     ((module-def? form)

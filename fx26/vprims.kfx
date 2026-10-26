@@ -279,11 +279,11 @@
            "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
           (else ""))))
 
-"The words in one page of the machine this runs on: 2048 on arm64 (macOS's
- 16 KiB pages), else 512, by the native convention's target (KFX has no way
- to ask the system yet; a syscall of kayak-rt's, later)."
-(define engine-page-words (subr (maxeff (read @globals) spin) () i64)
-  (lambda () (if (string=? (car (the strings (native-convention))) "(target arm64)") 2048 512)))
+"The words in one page of the machine this runs on, as kayak-rt says,
+ asked as the engine's own syscall (C225)."
+(define-syscall host-page-words "code:page-words/1" (subr (io sys) () int))
+(define engine-page-words (subr (maxeff (read @globals) (io sys)) () i64)
+  (lambda () (int->i64 (host-page-words))))
 
 (define apply-op (subr vm (i64 i64) i64)
   (lambda (op args)

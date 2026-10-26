@@ -49,6 +49,9 @@ pub fn mangle_char(c: char) -> Str {
         '%' => {
             str_lit("_pct")
         }
+        ':' => {
+            str_lit("_colon")
+        }
         _ => {
             char_to_string(c)
         }
@@ -114,6 +117,9 @@ pub fn mangled_char_length(c: char) -> i64 {
         }
         '%' => {
             4i64
+        }
+        ':' => {
+            6i64
         }
         _ => {
             1i64

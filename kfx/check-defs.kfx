@@ -1336,8 +1336,7 @@
                     (text (syscall-canonical v sc))
                     (n (tagcase sc (scheme (tvars t) (tagcase t (ty-proc (es ps r) (size ps)) (else other (the i64 0)))))))
                (with-facts (with-binds v (list (global v name sc) (global v (string-append "%syscall-available:" name) (scheme nil (ty-bool)))))
-                           (list (fact src-file src-pos (string-append "syscall " (string-append (i64->string n) (string-append " " text))))
-                                 (fact "%kfx" 0 (string-append "kfx-refuses " (refusal-text v "a syscall, which KFX has not yet (C224)")))))))))))
+                           (list (fact src-file src-pos (string-append "syscall " (string-append (i64->string n) (string-append " " text))))))))))))
 
 (define check-top-plain (subr kfx (cv sexp) cv)
   (lambda (v form)

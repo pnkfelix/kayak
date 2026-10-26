@@ -6,7 +6,7 @@
 (define-effect hp (maxeff (read @globals) spin (read @h) (write @h)))
 
 (define-effect vm (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
-                          (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit)))
+                          (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit) (io sys)))
 
 
 "Integers: a fixnum if it fits, else a bignum, its sign and 32-bit limbs,

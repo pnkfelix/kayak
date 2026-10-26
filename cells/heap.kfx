@@ -66,8 +66,52 @@
       (let ((at (get top)))
         (begin (set top (i64+ at n)) (zeroed! (get mem) at (i64+ at n)) at)))))
 
-(define word-at (subr cm (i64) i64) (lambda (i) (flatarray-ref-i64 (get mem) i)))
-(define word-set! (subr cm (i64 i64) unit) (lambda (i w) (flatarray-set-i64! (get mem) i w)))
+"The code area (C226; Fixpt's, `docs/object-model.md`, \"A collected
+ code area\"): code bloblets, which never move, in a reservation of its
+ own (`code`), whose range from `code-lo` to `code-hi` has a second view,
+ read+execute, `code-distance` bytes on (the syscall `code:exec-view/1`).
+ A code bloblet's index is as any value's, from `vbase`, so that the
+ machine's accessors read it as they read the heap: an index outside the
+ heap's reservation is the code area's. The collector leaves its objects
+ where they are and forwards their fields in place; none is freed yet.
+ Only where values are addresses (`addressed`) and the view was made."
+(define code (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define code-on (ref bool @c) (new #f))
+(define code-vbase (ref i64 @c) (new 0))
+(define code-lo (ref i64 @c) (new 0))
+(define code-top (ref i64 @c) (new 0))
+(define code-hi (ref i64 @c) (new 0))
+(define code-distance (ref i64 @c) (new 0))
+"Words reserved for code: committed only as they are touched."
+(define code-capacity i64 4194304)
+
+(define code-offset (subr cm () i64)
+  (lambda () "A code index's distance from the heap's." (i64-shr (i64- (get code-vbase) (get vbase)) 3)))
+(define in-code? (subr cm (i64) bool)
+  (lambda (w) (and (get code-on) (i64>= w (get code-vbase)) (i64< w (i64+ (get code-vbase) (i64* 8 (get code-hi)))))))
+(define code-at (subr cm (i64) i64) (lambda (j) (flatarray-ref-i64 (get code) j)))
+(define code-set! (subr cm (i64 i64) unit) (lambda (j w) (flatarray-set-i64! (get code) j w)))
+
+(define word-at (subr cm (i64) i64)
+  (lambda (i)
+    (if (and (get code-on) (or (i64< i 0) (i64>= i heap-capacity)))
+        (code-at (i64- i (code-offset)))
+        (flatarray-ref-i64 (get mem) i))))
+(define word-set! (subr cm (i64 i64) unit)
+  (lambda (i w)
+    (if (and (get code-on) (or (i64< i 0) (i64>= i heap-capacity)))
+        (code-set! (i64- i (code-offset)) w)
+        (flatarray-set-i64! (get mem) i w))))
+
+"The syscalls tier 1 asks kayak-rt for (C226): a range's execute view, its
+ instructions made seen, and a call of native code with its words in a
+ mailbox."
+(define-optional-syscall code-view "code:exec-view/1"
+  (poly ((r region)) (subr (maxeff (io sys) (write r)) ((flatarrayof i64 r) int int) int)))
+(define-optional-syscall code-flush "code:flush/1"
+  (poly ((r region)) (subr (maxeff (io sys) (read r)) ((flatarrayof i64 r) int int) unit)))
+(define-optional-syscall call-native "kayak:call-native/1"
+  (poly ((r region)) (subr (maxeff (io sys) (read r) (write r)) ((flatarrayof i64 r) int) int)))
 
 
 "Values."
@@ -337,8 +381,10 @@
 (define forward-object! (subr cm (i64) i64)
   (lambda (w)
     "The word for `w`, a pair or bloblet, after the collection: its
-     object's copy, copied first if need be; itself, if it is no pointer."
+     object's copy, copied first if need be; itself, if it is no pointer,
+     or a code bloblet (which never moves)."
     (cond
+      ((in-code? w) w)
       ((is-pair? w)
        (let* ((o (address w)) (first (word-at o)))
          (if (i64= (tag-of first) t-forward)
@@ -402,6 +448,20 @@
           (let ((m (get named-values)))
             (begin (flatarray-set-i64! m i (forward! (flatarray-ref-i64 m i))) (named-forwarded! (i64+ i 1))))))))
 
+(define-rec
+  (code-fields-forwarded! (subr cm (i64 i64) unit)
+    (lambda (j end) (if (i64> j end) #u (begin (code-set! j (forward! (code-at j))) (code-fields-forwarded! (i64+ j 1) end)))))
+  (code-forwarded! (subr cm (i64) unit)
+    (lambda (j)
+      "Each code bloblet's fields from index `j` on, forwarded in place: what
+       they hold lives, and they stay."
+      (if (or (not (get code-on)) (i64>= j (get code-top)))
+          #u
+          (let ((head (code-at j)))
+            (begin
+              (code-fields-forwarded! (i64+ j 1) (i64+ j (bits head (with lay header-fields-lo) (with lay header-fields-width))))
+              (code-forwarded! (i64+ j (words-of head)))))))))
+
 (define collect-begin! (subr cm () unit)
   (lambda ()
     "The other space made ready, as big as this one: the roots are then
@@ -411,7 +471,8 @@
           (set other (the (flatarrayof i64 @c) (make-flatarray-i64 (flatarray-length-i64 (get mem)) 0)))
           #u)
       (set to-top 8)
-      (named-forwarded! 0))))
+      (named-forwarded! 0)
+      (code-forwarded! (get code-lo)))))
 
 (define collect-end! (subr cm () unit)
   (lambda ()

@@ -146,7 +146,7 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
             return Ok(nil::<&'static Source>());
         } else {
             let line = line_trimmed(car(lines));
-            if (string_eq_p(line, str_lit("")) || has_prefix_p(line, str_lit(";"))) {
+            if (string_eq_p(line, str_lit("")) || has_prefix_p(line, str_lit(";")) || string_eq_p(line, str_lit("--syscalls"))) {
                 lines = cdr(lines);
                 continue;
             } else {
@@ -209,6 +209,12 @@ pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind>
     Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(string_chars(text), file, 1i64), directory_of(file)), nil::<&'static Filed>())).await?)
 }
 
+// Whether a manifest says its program is a runtime's own, which may
+// declare syscalls (C225): a line `--syscalls`, as Fixpt's flag.
+pub fn runtime_unit_p(text: Str) -> bool {
+    string_member_p(str_lit("--syscalls"), map(&line_trimmed, lines_from(string_chars(text), nil::<char>())))
+}
+
 pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
     if i64_eq(size(r#as), 1i64) {
         let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;
@@ -221,7 +227,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
     } else if i64_eq(size(r#as), 2i64) {
         let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(r#as)), lines_from(string_chars(text), nil::<char>()))).await?;
-        kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units(program))).await?;
+        kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units_as(program, runtime_unit_p(text)))).await?;
         Ok(int_lit(0))
     } else if (i64_eq(size(r#as), 4i64) && string_eq_p(car(r#as), str_lit("--cache"))) {
         let cache = car(cdr(r#as));
@@ -240,7 +246,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
                 }
             }
         };
-        let tagcase_ = compile_units_memo(program, old);
+        let tagcase_ = compile_units_memo(program, old, runtime_unit_p(text));
         match *tagcase_ {
             Compiled::Compiled(outs, made) => {
                 kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(cdr(r#as)))), outs)).await?;

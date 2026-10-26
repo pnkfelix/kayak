@@ -91,7 +91,7 @@
       (if (null? lines)
           nil
           (let ((line (line-trimmed (car lines))))
-            (if (or (string=? line "") (has-prefix? line ";"))
+            (if (or (string=? line "") (has-prefix? line ";") (string=? line "--syscalls"))
                 (sources-of rt dir (cdr lines))
                 (let* ((path (path-joined dir line))
                        (text (read-text rt path)))
@@ -128,6 +128,11 @@
   (lambda (rt file text)
     (loads-read rt (load-paths-all (read-all (string-chars text) file 1) (directory-of file)) nil)))
 
+"Whether a manifest says its program is a runtime's own, which may
+ declare syscalls (C225): a line `--syscalls`, as Fixpt's flag."
+(define runtime-unit? (subr kfx (string) bool)
+  (lambda (text) (string-member? "--syscalls" (map line-trimmed (lines-from (string-chars text) nil)))))
+
 (define compile-with (subr driver (drt strings) int)
   (lambda (rt as)
     (cond ((i64= (size as) 1)
@@ -137,7 +142,7 @@
           ((i64= (size as) 2)
            (let* ((text (read-text rt (car as)))
                   (program (sources-of rt (directory-of (car as)) (lines-from (string-chars text) nil))))
-             (begin (write-outputs rt (car (cdr as)) (compile-units program)) 0)))
+             (begin (write-outputs rt (car (cdr as)) (compile-units-as program (runtime-unit? text))) 0)))
           ((and (i64= (size as) 4) (string=? (car as) "--cache"))
            (let* ((cache (car (cdr as)))
                   (unit (car (cdr (cdr as))))
@@ -146,7 +151,7 @@
                   (old (tagcase ((proj perform! int world @io) rt (sum read-file cache))
                          (text t (with incremental (memos-of-text t)))
                          (else other nil))))
-             (tagcase (compile-units-memo program old)
+             (tagcase (compile-units-memo program old (runtime-unit? text))
                (compiled (outs made)
                  (begin (write-outputs rt (car (cdr (cdr (cdr as)))) outs)
                         (write-text rt cache (with incremental (memos-text made)))

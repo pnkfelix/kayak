@@ -3307,6 +3307,34 @@ pub fn address_code_x() -> &'static Sum_12made_address_10no_address<AddressCode,
     }
 }
 
+/// The code area (C226), where native code runs: its reservation's pages
+/// from the first whole one, as many whole pages as fit, given an execute
+/// view by kayak-rt (`code:exec-view/1`); none, and so no code a program
+/// makes, where it gives none.
+pub fn code_area_made_x(p: AddressCode) -> () {
+    if not((_pctsyscall_available_coloncode_view() && _pctsyscall_available_colonpage_words())) {
+        ()
+    } else {
+        let c = the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64));
+        let at = int_to_i64(p(c));
+        let page = int_to_i64(page_words());
+        let lo = i64_remainder(i64_minus(page, i64_remainder(i64_shr(at, int_lit(3)), page)), page);
+        let n = i64_star(page, i64_quotient(i64_minus(code_capacity(), lo), page));
+        let d = int_to_i64(code_view(c, i64_to_int(lo), i64_to_int(n)));
+        if i64_eq(d, -1i64) {
+            ()
+        } else {
+            set(code(), c);
+            set(code_vbase(), at);
+            set(code_lo(), lo);
+            set(code_top(), lo);
+            set(code_hi(), i64_plus(lo, n));
+            set(code_distance(), d);
+            set(code_on(), true)
+        }
+    }
+}
+
 /// Values made addresses from now on (C139), before any is made: both
 /// spaces reserved whole, their addresses the values' bases. Whether
 /// they could be; else values stay indices.
@@ -3323,6 +3351,7 @@ pub fn heap_addressed_x() -> bool {
                 set(vbase(), int_to_i64(p(m)));
                 set(to_vbase(), int_to_i64(p(o)));
                 set(addressed(), true);
+                code_area_made_x(p);
                 true
             }
             Sum_12made_address_10no_address::NoAddress(why) => {

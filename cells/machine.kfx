@@ -354,6 +354,53 @@
             ((i64= s shots-once) (begin (slot-set! k cont-shots (fix shots-spent)) #t))
             (else #t)))))
 
+"A native closure's call (C226), as Fixpt's machines make one
+ (`call_native`): its code entered at its read+execute address with the
+ values below it, by kayak-rt (`kayak:call-native/1`), their words in a
+ mailbox; its answer the value, as a primitive's, or, in tail position,
+ the frame's. Code a program makes calls none of the convention's routines
+ here yet: one that does fails, as a trap of its own."
+(define native-box (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 10 0)))
+(define-rec
+  (native-args! (subr cm (i64 i64) unit)
+    (lambda (n i) (if (i64< i 0) #u (begin (flatarray-set-i64! (get native-box) (i64+ 2 i) (pop! n)) (native-args! n (i64- i 1)))))))
+(define tier1-word? (subr cm (i64) bool)
+  (lambda (w)
+    "Whether `w` is no pointer, or one into tier 1's heap or code area."
+    (or (not (or (is-pair? w) (is-bloblet? w)))
+        (in-code? w)
+        (let ((i (address w))) (and (i64>= i 0) (i64< i heap-capacity))))))
+
+(define native-called! (subr cm (i64 i64 i64 bool) i64)
+  (lambda (n c count tail)
+    (if (i64> count 8)
+        (begin (trap! "native code: more than eight arguments, which kayak does not pass yet") next)
+        (let ((b (slot-of c f-word)) (box (get native-box)))
+          (begin
+            (native-args! n (i64- count 1))
+            (flatarray-set-i64! box 0 c)
+            (flatarray-set-i64! box 1 (i64+ (i64- b t-bloblet) (get code-distance)))
+            (let ((status (int->i64 (call-native box (i64->int count)))))
+              (cond ((and (i64= status 0) (not (tier1-word? (flatarray-ref-i64 box 0))))
+                     "An object made elsewhere, by kayak-jit's routines in their own
+                      space: none of tier 1's heap, so not yet tier 1's to keep."
+                     (begin (trap! "native code: gave an object it made by a routine tier 1 does not give yet (C122)") next))
+                    ((i64= status 0)
+                     (let ((v (flatarray-ref-i64 box 0)))
+                       (if tail
+                           (begin (set dsp (get fp)) (push! v) exit-flow)
+                           (begin (push! v) next))))
+                    (else
+                     (begin
+                       (trap! (cond ((i64= status 1) "evaluation step limit exceeded")
+                                    ((i64= status 2) "stack overflow")
+                                    ((i64= status 3) "a primitive failed")
+                                    ((i64= status 4) "car or cdr of a non-pair")
+                                    ((i64= status 5) "division by zero")
+                                    ((i64= status 6) "native code: a routine of the convention's, which tier 1 does not give yet (C122)")
+                                    (else "native code failed")))
+                       next)))))))))
+
 (define call! (subr cm (i64 i64 bool) i64)
   (lambda (n count tail)
     "Call the closure on top with the `count` values below it, which become
@@ -367,6 +414,7 @@
                  (begin (trap! (string-append "a continuation takes one value, and was given " (i64->string count))) next)
                  (let ((v (pop! n)))
                    (begin (check-limits!) (if (spend! c) (reinstate! c v tail) #u) next))))
+            ((is-kind? c k-native-closure) (native-called! n c count tail))
             ((not (closure? c))
               (begin (type-trap! n) next))
             (else

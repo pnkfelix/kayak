@@ -5408,7 +5408,9 @@
            cellular generator makes it a call that looks at its callee's kind,
            not a typed one (fx26/cg.kfx)."
           (tagcase (walk s t)
-            (ty-data (d args) (if (string=? d "%composable") (note-fact s (cv-file v) (cv-pos v) "call-fx") s))
+            ;; And a procedure of the native convention, written (C226): Fixpt's
+            ;; typed call is only of the cellular one (`c-call-in`).
+            (ty-data (d args) (if (or (string=? d "%composable") (string=? d "%native")) (note-fact s (cv-file v) (cv-pos v) "call-fx") s))
             (else other s))))
 
       (lambda-given-result? (subr kfx (st ty tys sexps) bool)

@@ -25,6 +25,7 @@ pub mod process;
 mod show;
 mod stats;
 pub mod suspend;
+mod syscall;
 mod text;
 pub mod value;
 mod world;
@@ -48,6 +49,7 @@ pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
+pub use syscall::*;
 pub use text::*;
 pub use value::{
     array_p, bool_p, bytevector_p, char_p, datum_list_to_vector, f32_p, f64_p, int_p, pair_p,

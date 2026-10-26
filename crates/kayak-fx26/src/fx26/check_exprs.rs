@@ -12001,7 +12001,7 @@ pub mod expressions {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
             Ty::TyData(d, args) => {
-                if string_eq_p(d, str_lit("%composable")) {
+                if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%native"))) {
                     note_fact(s, cv_file(v), cv_pos(v), str_lit("call-fx"))
                 } else {
                     s

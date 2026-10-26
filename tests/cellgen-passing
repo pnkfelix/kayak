@@ -78,6 +78,11 @@ higher-kinds/infer-generative.fx
 higher-kinds/okasaki-stack.fx
 higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
+made-code-x86_64/declared.fx
+made-code-x86_64/leaves.fx
+made-code-x86_64/typed-calls.fx
+made-code/leaves.fx
+made-code/typed-calls.fx
 module-files/answer.fx
 module-files/maker.fx
 module-files/two-exps.fx

@@ -686,6 +686,85 @@ pub fn spend_x(k: i64) -> bool {
     }
 }
 
+// A native closure's call (C226), as Fixpt's machines make one
+// (`call_native`): its code entered at its read+execute address with the
+// values below it, by kayak-rt (`kayak:call-native/1`), their words in a
+// mailbox; its answer the value, as a primitive's, or, in tail position,
+// the frame's. Code a program makes calls none of the convention's routines
+// here yet: one that does fails, as a trap of its own.
+pub fn native_box() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(10i64, 0i64))
+    })
+}
+
+pub fn native_args_x(mut n: i64, mut i: i64) -> () {
+    loop {
+        if i64_lt(i, 0i64) {
+            return ();
+        } else {
+            flatarray_set_i64_x(get(native_box()), i64_plus(2i64, i), pop_x(n));
+            i = i64_minus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Whether `w` is no pointer, or one into tier 1's heap or code area.
+pub fn tier1_word_p(w: i64) -> bool {
+    (not((is_pair_p(w) || is_bloblet_p(w))) || in_code_p(w) || {
+        let i = address(w);
+        (i64_gt_eq(i, 0i64) && i64_lt(i, heap_capacity()))
+    })
+}
+
+pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
+    if i64_gt(count, 8i64) {
+        trap_x(str_lit("native code: more than eight arguments, which kayak does not pass yet"));
+        next()
+    } else {
+        let (b, r#box) = (slot_of(c, f_word()), get(native_box()));
+        native_args_x(n, i64_minus(count, 1i64));
+        flatarray_set_i64_x(r#box, 0i64, c);
+        flatarray_set_i64_x(r#box, 1i64, i64_plus(i64_minus(b, t_bloblet()), get(code_distance())));
+        let status = int_to_i64(call_native(r#box, i64_to_int(count)));
+        if (i64_eq(status, 0i64) && not(tier1_word_p(flatarray_ref_i64(r#box, 0i64)))) {
+            // An object made elsewhere, by kayak-jit's routines in their own
+            // space: none of tier 1's heap, so not yet tier 1's to keep.
+            trap_x(str_lit("native code: gave an object it made by a routine tier 1 does not give yet (C122)"));
+            next()
+        } else if i64_eq(status, 0i64) {
+            let v = flatarray_ref_i64(r#box, 0i64);
+            if tail {
+                set(dsp(), get(fp()));
+                push_x(v);
+                exit_flow()
+            } else {
+                push_x(v);
+                next()
+            }
+        } else {
+            trap_x(if i64_eq(status, 1i64) {
+                str_lit("evaluation step limit exceeded")
+            } else if i64_eq(status, 2i64) {
+                str_lit("stack overflow")
+            } else if i64_eq(status, 3i64) {
+                str_lit("a primitive failed")
+            } else if i64_eq(status, 4i64) {
+                str_lit("car or cdr of a non-pair")
+            } else if i64_eq(status, 5i64) {
+                str_lit("division by zero")
+            } else if i64_eq(status, 6i64) {
+                str_lit("native code: a routine of the convention's, which tier 1 does not give yet (C122)")
+            } else {
+                str_lit("native code failed")
+            });
+            next()
+        }
+    }
+}
+
 /// Call the closure on top with the `count` values below it, which become
 /// its frame; in tail position, its frame slid down over this one.
 pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
@@ -708,6 +787,8 @@ pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
                 };
                 next()
             }
+        } else if is_kind_p(c, k_native_closure()) {
+            native_called_x(n, c, count, tail)
         } else if not(closure_p(c)) {
             type_trap_x(n);
             next()

@@ -804,6 +804,9 @@ pub mod emitter {
                     }, kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
                 } else if head_is_p(form, str_lit("define-generative")) {
                     ctx(ds, ts, ks, ls, xs, fs, fx, note_family(second(items(form)), false, ms), es, mods)
+                } else if (head_is_p(form, str_lit("define-syscall")) || head_is_p(form, str_lit("define-optional-syscall"))) {
+                    // A syscall's `%syscall-available:NAME`, a constant (C225).
+                    ctx(ds, ts, kayak_rt::heap_cons(string_append(str_lit("%syscall-available:"), sym_name(second(items(form)))), ks), ls, xs, fs, fx, ms, es, mods)
                 } else if head_is_p(form, str_lit("define-effect")) {
                     ctx(ds, ts, ks, ls, xs, fs, fx, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
                 } else if module_def_p(form) {

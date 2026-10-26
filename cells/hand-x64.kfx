@@ -1509,6 +1509,26 @@
                (begin (set address-made (list p)) (sum made-address p))))
             (else (sum no-address (string-append "no native code for " target)))))))
 
+(define code-area-made! (->* (address-code) unit)
+  (lambda (p)
+    "The code area (C226), where native code runs: its reservation's pages
+     from the first whole one, as many whole pages as fit, given an execute
+     view by kayak-rt (`code:exec-view/1`); none, and so no code a program
+     makes, where it gives none."
+    (if (not (and (syscall-available? code-view) (syscall-available? page-words)))
+        #u
+        (let* ((c (the (flatarrayof i64 @c) (make-flatarray-i64 code-capacity 0)))
+               (at (int->i64 (p c)))
+               (page (int->i64 (page-words)))
+               (lo (i64-remainder (i64- page (i64-remainder (i64-shr at 3) page)) page))
+               (n (i64* page (i64-quotient (i64- code-capacity lo) page)))
+               (d (int->i64 (code-view c (i64->int lo) (i64->int n)))))
+          (if (i64= d -1)
+              #u
+              (begin
+                (set code c) (set code-vbase at) (set code-lo lo) (set code-top lo) (set code-hi (i64+ lo n))
+                (set code-distance d) (set code-on #t)))))))
+
 (define heap-addressed! (->* () bool)
   (lambda ()
     "Values made addresses from now on (C139), before any is made: both
@@ -1524,6 +1544,7 @@
                 (set mem m) (set other o)
                 (set vbase (int->i64 (p m))) (set to-vbase (int->i64 (p o)))
                 (set addressed #t)
+                (code-area-made! p)
                 #t)))
           (no-address why #f)))))
 

@@ -1,5 +1,7 @@
 ; The engine (docs/research/engine.md, C58): the compiler's reader and
 ; checker, then the engine's own files.
+; A runtime's own program: it declares syscalls (C225).
+--syscalls
 ../kfx/base.kfx
 ../kfx/read.kfx
 ../kfx/names.kfx

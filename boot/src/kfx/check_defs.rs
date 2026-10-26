@@ -2214,7 +2214,7 @@ pub fn check_syscall(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64) -> 
                 }
             }
         };
-        with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, sc), kayak_rt::heap_cons(global(v, string_append(str_lit("%syscall-available:"), name), scheme(nil::<Str>(), ty_bool())), kayak_rt::nil()))), kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("syscall "), string_append(i64_to_string(n), string_append(str_lit(" "), text)))), kayak_rt::heap_cons(fact(str_lit("%kfx"), 0i64, string_append(str_lit("kfx-refuses "), refusal_text(v, str_lit("a syscall, which KFX has not yet (C224)")))), kayak_rt::nil())))
+        with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, sc), kayak_rt::heap_cons(global(v, string_append(str_lit("%syscall-available:"), name), scheme(nil::<Str>(), ty_bool())), kayak_rt::nil()))), kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("syscall "), string_append(i64_to_string(n), string_append(str_lit(" "), text)))), kayak_rt::nil()))
     }
 }
 

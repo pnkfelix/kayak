@@ -57,6 +57,23 @@ impl Native for i64 {
     }
 }
 
+impl Native for u64 {
+    fn word(self) -> u64 {
+        match i64::try_from(self) {
+            Ok(n) => fixnum(n),
+            Err(_) => fail(
+                "native code: an integer past a fixnum, which kayak cannot yet give native code",
+            ),
+        }
+    }
+    fn of_word(w: u64) -> Self {
+        match u64::try_from(of_fixnum(w)) {
+            Ok(n) => n,
+            Err(_) => fail("native code: gave a negative integer where a u64 was wanted"),
+        }
+    }
+}
+
 impl Native for bool {
     fn word(self) -> u64 {
         if self {

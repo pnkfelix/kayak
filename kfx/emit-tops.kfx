@@ -254,6 +254,64 @@
           (let ((types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (string-append (camel (sym-name (car (items b)))) ": Copy + 'static"))) nil)) binders))))
             (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lives) types) ", ") ">")) acc))))
 
+      (define-rec
+        (put-rust-chars (subr kfx (chars chars) chars)
+          (lambda (cs acc)
+            "`cs` inside a Rust string literal: `\\` and `\"` escaped."
+            (cond ((null? cs) acc)
+                  ((or (char=? (car cs) #\\) (char=? (car cs) #\")) (put-rust-chars (cdr cs) (put (char->string (car cs)) (put "\\" acc))))
+                  (else (put-rust-chars (cdr cs) (put (char->string (car cs)) acc)))))))
+
+      (define put-str-lit (subr kfx (string chars) chars)
+        (lambda (s acc) (put "\")" (put-rust-chars (string-chars s) (put "str_lit(\"" acc)))))
+
+      (define-rec
+        (put-syscall-params (subr kfx (ctx sexps i64 chars) chars)
+          (lambda (c ps i acc)
+            "`x1: T1, x2: T2, …`."
+            (if (null? ps)
+                acc
+                (put-syscall-params c (cdr ps) (i64+ i 1)
+                                    (put-type c (car ps) (put (string-append (if (i64= i 1) "x" ", x") (string-append (i64->string i) ": ")) acc))))))
+        (put-syscall-args (subr kfx (i64 i64 chars) chars)
+          (lambda (i n acc) (if (i64> i n) acc (put-syscall-args (i64+ i 1) n (put (string-append ", x" (i64->string i)) acc))))))
+
+      (define put-syscall (subr kfx (ctx sexp sexps chars) chars)
+        (lambda (c form xs acc)
+          "A syscall's declaration (C225): the two definitions it is, written
+           out: `%syscall-available:NAME`, whether kayak-rt has it (for a
+           required one, `syscall_require`'s check first, so that a use of
+           either checks it, KFX's constants running where used); and
+           `NAME`, a `fn` of the declared type calling `syscallN`, which
+           checks a required one first too."
+          (let* ((name (sym-name (second xs)))
+                 (host (tagcase (third xs) (str (h f p) h) (else other "")))
+                 (required (head-is? form "define-syscall"))
+                 (found (split-words (fact-said c form "syscall ")))
+                 (text (words-of (cdr found)))
+                 (label (string-append "syscall " (string-append name (string-append " (\"" (string-append host "\")")))))
+                 (t (fourth xs))
+                 (sub (if (head-is? t "poly") (third (items t)) t))
+                 (parts (if (and (head-is? sub "subr") (i64= (size (items sub)) 4))
+                            (items sub)
+                            (error (string-append "kfx: a syscall's type is written out, a `subr` (C225): " name))))
+                 (params (items (third parts)))
+                 (avail (mangle (string-append "%syscall-available:" name)))
+                 (acc (put (string-append "pub fn " (string-append avail "() -> bool {\n    ")) acc))
+                 (acc (if required
+                          (put ");\n    true\n}\n\n" (put-str-lit text (put ", " (put-str-lit host (put ", " (put-str-lit label (put "kayak_rt::syscall_require(" acc)))))))
+                          (put ")\n}\n\n" (put-str-lit text (put ", " (put-str-lit host (put "kayak_rt::syscall_available(" acc)))))))
+                 (acc (put (string-append "pub fn " (string-append (mangle name) "(")) acc))
+                 (acc (put-syscall-params c params 1 acc))
+                 (acc (put ") -> " acc))
+                 (acc (put-type c (fourth parts) acc))
+                 (acc (put " {\n    " acc))
+                 (acc (if required (put "();\n    " (put avail acc)) acc))
+                 (acc (put (string-append "kayak_rt::syscall" (string-append (i64->string (size params)) "(")) acc))
+                 (acc (put-str-lit text (put ", " (put-str-lit host (put ", " (put-str-lit label acc))))))
+                 (acc (put-syscall-args 1 (size params) acc)))
+            (put ")\n}\n\n" acc))))
+
       (define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
         (lambda (c name typ defined acc)
           "A definition, a `fn`: a procedure's of its parameters; a constant's of
@@ -688,6 +746,7 @@
           (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
                  (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
             (cond ((or (string=? h "define-effect") (string=? h "define-convention")) acc)
+                  ((or (string=? h "define-syscall") (string=? h "define-optional-syscall")) (put-syscall c form xs acc))
                   ((or (string=? h "include") (string=? h "%use"))
                    (let* ((n (sym-name (second xs)))
                           (its (module-items c n))

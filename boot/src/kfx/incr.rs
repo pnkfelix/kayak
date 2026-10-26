@@ -1196,11 +1196,16 @@ pub mod incremental {
         memo_lines(string_chars(s), nil::<char>(), 0i64, false, nil::<&'static Memo>())
     }
 
-    /// As `check-program` (check-defs.kfx), with memos; the passes before the
-    /// forms' run always.
-    pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos) -> &'static CheckedMemo {
+    /// As `check-program-as` (check-defs.kfx), with memos; the passes before
+    /// the forms' run always.
+    pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos, runtime: bool) -> &'static CheckedMemo {
         let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
-        let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+        let declared = declare_types(empty, forms, nil::<&'static Alias>());
+        let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), if runtime {
+            kayak_rt::heap_cons(alias(str_lit("%syscalls"), nil::<Str>(), sym(str_lit("#t"), str_lit(""), 0i64)), declared)
+        } else {
+            declared
+        }, nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
         let types = type_names_free(start, forms);
         let named = {
             let tagcase_ = start;

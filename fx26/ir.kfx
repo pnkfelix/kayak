@@ -5,7 +5,7 @@
 "The engine's effect: its heap, and the world, which an FX-26 program's
  I/O is (C49)."
 (define-effect eng (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
-                           (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit)))
+                           (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit) (io sys)))
 
 "A run's failure (C110): `error`, a trap (`car` of nil, an index out of
  range), or what the engine cannot do. The engine says one here, not by

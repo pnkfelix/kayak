@@ -144,12 +144,128 @@ pub fn alloc_x(n: i64) -> i64 {
     at
 }
 
+// The code area (C226; Fixpt's, `docs/object-model.md`, "A collected
+// code area"): code bloblets, which never move, in a reservation of its
+// own (`code`), whose range from `code-lo` to `code-hi` has a second view,
+// read+execute, `code-distance` bytes on (the syscall `code:exec-view/1`).
+// A code bloblet's index is as any value's, from `vbase`, so that the
+// machine's accessors read it as they read the heap: an index outside the
+// heap's reservation is the code area's. The collector leaves its objects
+// where they are and forwards their fields in place; none is freed yet.
+// Only where values are addresses (`addressed`) and the view was made.
+pub fn code() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn code_on() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn code_vbase() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn code_lo() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn code_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn code_hi() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn code_distance() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+// Words reserved for code: committed only as they are touched.
+pub fn code_capacity() -> i64 {
+    4194304i64
+}
+
+/// A code index's distance from the heap's.
+pub fn code_offset() -> i64 {
+    i64_shr(i64_minus(get(code_vbase()), get(vbase())), int_lit(3))
+}
+
+pub fn in_code_p(w: i64) -> bool {
+    (get(code_on()) && i64_gt_eq(w, get(code_vbase())) && i64_lt(w, i64_plus(get(code_vbase()), i64_star(8i64, get(code_hi())))))
+}
+
+pub fn code_at(j: i64) -> i64 {
+    flatarray_ref_i64(get(code()), j)
+}
+
+pub fn code_set_x(j: i64, w: i64) -> () {
+    flatarray_set_i64_x(get(code()), j, w)
+}
+
 pub fn word_at(i: i64) -> i64 {
-    flatarray_ref_i64(get(mem()), i)
+    if (get(code_on()) && (i64_lt(i, 0i64) || i64_gt_eq(i, heap_capacity()))) {
+        code_at(i64_minus(i, code_offset()))
+    } else {
+        flatarray_ref_i64(get(mem()), i)
+    }
 }
 
 pub fn word_set_x(i: i64, w: i64) -> () {
-    flatarray_set_i64_x(get(mem()), i, w)
+    if (get(code_on()) && (i64_lt(i, 0i64) || i64_gt_eq(i, heap_capacity()))) {
+        code_set_x(i64_minus(i, code_offset()), w)
+    } else {
+        flatarray_set_i64_x(get(mem()), i, w)
+    }
+}
+
+// The syscalls tier 1 asks kayak-rt for (C226): a range's execute view, its
+// instructions made seen, and a call of native code with its words in a
+// mailbox.
+
+pub fn _pctsyscall_available_coloncode_view() -> bool {
+    kayak_rt::syscall_available(str_lit("code:exec-view/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"))
+}
+
+pub fn code_view(x1: FlatArray<i64>, x2: Int, x3: Int) -> Int {
+    kayak_rt::syscall3(str_lit("syscall code-view (\"code:exec-view/1\")"), str_lit("code:exec-view/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_coloncode_flush() -> bool {
+    kayak_rt::syscall_available(str_lit("code:flush/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"))
+}
+
+pub fn code_flush(x1: FlatArray<i64>, x2: Int, x3: Int) -> () {
+    kayak_rt::syscall3(str_lit("syscall code-flush (\"code:flush/1\")"), str_lit("code:flush/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_coloncall_native() -> bool {
+    kayak_rt::syscall_available(str_lit("kayak:call-native/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"))
+}
+
+pub fn call_native(x1: FlatArray<i64>, x2: Int) -> Int {
+    kayak_rt::syscall2(str_lit("syscall call-native (\"kayak:call-native/1\")"), str_lit("kayak:call-native/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"), x1, x2)
 }
 
 // Values.
@@ -643,9 +759,12 @@ pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
 }
 
 /// The word for `w`, a pair or bloblet, after the collection: its
-/// object's copy, copied first if need be; itself, if it is no pointer.
+/// object's copy, copied first if need be; itself, if it is no pointer,
+/// or a code bloblet (which never moves).
 pub fn forward_object_x(w: i64) -> i64 {
-    if is_pair_p(w) {
+    if in_code_p(w) {
+        w
+    } else if is_pair_p(w) {
         let o = address(w);
         let first = word_at(o);
         if i64_eq(tag_of(first), t_forward()) {
@@ -748,6 +867,33 @@ pub fn named_forwarded_x(mut i: i64) -> () {
     }
 }
 
+pub fn code_fields_forwarded_x(mut j: i64, mut end: i64) -> () {
+    loop {
+        if i64_gt(j, end) {
+            return ();
+        } else {
+            code_set_x(j, forward_x(code_at(j)));
+            j = i64_plus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Each code bloblet's fields from index `j` on, forwarded in place: what
+/// they hold lives, and they stay.
+pub fn code_forwarded_x(mut j: i64) -> () {
+    loop {
+        if (not(get(code_on())) || i64_gt_eq(j, get(code_top()))) {
+            return ();
+        } else {
+            let head = code_at(j);
+            code_fields_forwarded_x(i64_plus(j, 1i64), i64_plus(j, bits(head, lay::header_fields_lo(), lay::header_fields_width())));
+            j = i64_plus(j, words_of(head));
+            continue;
+        }
+    }
+}
+
 /// The other space made ready, as big as this one: the roots are then
 /// forwarded (`forward!`), then `collect-end!`.
 pub fn collect_begin_x() -> () {
@@ -757,7 +903,8 @@ pub fn collect_begin_x() -> () {
         ()
     };
     set(to_top(), 8i64);
-    named_forwarded_x(0i64)
+    named_forwarded_x(0i64);
+    code_forwarded_x(get(code_lo()))
 }
 
 /// Everything the roots reach, copied; the spaces swapped; the space grown,
