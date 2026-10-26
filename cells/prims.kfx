@@ -704,13 +704,12 @@
 (define sealed-copy! (subr cm (i64) i64)
   (lambda (v)
     (let* ((h (header-index v)) (f (fields-of v)) (nw (i64-quotient (i64+ (bytes-of v) 7) 8))
-           (size (i64+ (i64+ 1 f) nw)) (at (get code-top)))
-      (if (i64> (i64+ at size) (get code-hi))
+           (size (i64+ (i64+ 1 f) nw)) (at (code-alloc! size)))
+      (if (i64< at 0)
           (fail! "seal-code: the code area is full")
           (begin
             (code-set! at (i64-or (word-at h) (i64-shl 1 (with lay header-suffix-frozen-lo))))
             (code-copied! (i64+ h 1) (i64+ at 1) (i64+ f nw))
-            (set code-top (i64+ at size))
             (code-flush (get code) (i64->int (i64+ (i64+ at 1) f)) (i64->int (if (i64= nw 0) (the i64 1) nw)))
             (i64-or (i64+ (get code-vbase) (i64* 8 (i64+ (i64+ at 1) f))) t-bloblet))))))
 

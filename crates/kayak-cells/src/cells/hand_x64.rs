@@ -3329,6 +3329,7 @@ pub fn code_area_made_x(p: AddressCode) -> () {
             set(code_lo(), lo);
             set(code_top(), lo);
             set(code_hi(), i64_plus(lo, n));
+            set(code_marks(), the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64)));
             set(code_distance(), d);
             set(code_on(), true)
         }

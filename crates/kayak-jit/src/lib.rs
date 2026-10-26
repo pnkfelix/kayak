@@ -571,10 +571,12 @@ thread_local! {
 }
 
 /// A procedure of the host runtime's that native code calls (`foreign`
-/// given a closure not kayak-rt's): the closure, its arguments and the
-/// host heap's next free address; its answer, or that it failed (the host
-/// keeps why), and the next free address after it.
-pub type HostForeign = fn(u64, &[u64], usize) -> (Result<u64, ()>, usize);
+/// given a closure not kayak-rt's): the closure, its arguments, the values
+/// the native frames hold (to keep where its collector finds them, and
+/// give back moved, C229), and the host heap's next free address; its
+/// answer, or that it failed (the host keeps why), and the host heap's
+/// next free address and end after it (a collection moves them).
+pub type HostForeign = fn(u64, &[u64], &mut [u64], usize) -> (Result<u64, ()>, usize, usize);
 static HOST_FOREIGN: std::sync::OnceLock<HostForeign> = std::sync::OnceLock::new();
 
 /// The host runtime's procedure calls, given once by its binary (tier 1's,
@@ -761,7 +763,7 @@ pub fn call(closure: u64, entry: usize, args: &[u64]) -> Result<u64, Trap> {
     )),
     allow(dead_code)
 )]
-extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
+extern "C" fn foreign(state: usize, closure: u64, count: u64, caller_fp: usize) -> u64 {
     let s = |off: usize| sys::get(state + off);
     // A closure of the host runtime's (its code no number of ours): its own
     // procedure call, which allocates in the host heap from where native
@@ -772,8 +774,17 @@ extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
         let args: Vec<u64> = (0..count.min(8) as usize)
             .map(|i| s(state::ARGS + 8 * i))
             .collect();
-        let (answer, next) = f(closure, &args, next);
-        HOST.set(Some((next, end)));
+        // What the native frames hold, from the caller's out to the
+        // trampoline's: the host keeps them while it runs, where its
+        // collector moves them, and gives them back (Fixpt's `call_foreign`).
+        let slots = traced_slots(caller_fp, s(state::RUST_SP) as usize);
+        let mut held: Vec<u64> = slots.iter().map(|&at| sys::get(at)).collect();
+        let (answer, next, end2) = f(closure, &args, &mut held, next);
+        for (&at, &w) in slots.iter().zip(&held) {
+            sys::put(at, w);
+        }
+        let _ = end;
+        HOST.set(Some((next, end2)));
         return match answer {
             Ok(w) => w,
             Err(()) => {
@@ -811,6 +822,68 @@ extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
             0
         }
     }
+}
+
+/// Where a frame's map is, from its frame pointer; its values from the
+/// word after; a stub's frame is no more than `STUB_FRAME` bytes, and
+/// has none (the convention's `frames`: `(map fp 16 (live-slots-below 48)
+/// (fields-above 48 …) (all-live negative)) (values-from fp 24) (stub 32)`).
+const FRAME_MAP: usize = 16;
+const MAP_BITS: u32 = 48;
+const STUB_FRAME: usize = 32;
+/// The trampoline's frame pointer, from its Rust stack pointer (`rust-sp`):
+/// x86_64's pushes six words after its frame pointer; arm64's none.
+#[cfg(target_arch = "x86_64")]
+const ENTER_FP: usize = 48;
+#[cfg(not(target_arch = "x86_64"))]
+const ENTER_FP: usize = 0;
+
+/// The addresses of the words the native frames from `fp` out hold as
+/// values (Fixpt's `frames_from` and `traced`): each frame from the word
+/// below its link to the next one's, the outermost's to where the
+/// trampoline entered (`rust_sp`); of a procedure's frame, the values its
+/// map says, or all of them for a map too wide (negative); of a control
+/// frame (its third word no fixnum), the four from there.
+fn traced_slots(mut fp: usize, rust_sp: usize) -> Vec<usize> {
+    let enter = rust_sp + ENTER_FP;
+    let mut out = Vec::new();
+    while fp != 0 && fp >= 8 && fp < enter {
+        let lo = fp - 8;
+        let caller = sys::get(fp) as usize;
+        let hi = if caller == enter {
+            rust_sp
+        } else {
+            caller.saturating_sub(8)
+        };
+        if hi > lo + STUB_FRAME {
+            let head = sys::get(fp + FRAME_MAP);
+            if head & layout::TAG_MASK != layout::TAG_FIXNUM {
+                out.extend((0..4).map(|k| fp + FRAME_MAP + 8 * k));
+            } else {
+                let m = (head as i64) >> layout::FIXNUM_SHIFT;
+                let (fields, mask) = if m < 0 {
+                    ((-m) as usize, u64::MAX)
+                } else {
+                    (
+                        (m as u64 >> MAP_BITS) as usize,
+                        ((m as u64) & ((1 << MAP_BITS) - 1)) << 1 | 1,
+                    )
+                };
+                let values = fields.saturating_sub(3);
+                out.extend(
+                    (0..values)
+                        .filter(|&k| k + 1 >= 64 || mask & (1 << (k + 1)) != 0)
+                        .map(|k| fp + FRAME_MAP + 8 + 8 * k),
+                );
+            }
+        }
+        fp = if caller == enter || caller <= fp {
+            0
+        } else {
+            caller
+        };
+    }
+    out
 }
 
 /// The trap kind of a routine's refusal (`(3 a-primitive-failed)`).
@@ -1207,6 +1280,7 @@ mod sys {
         "mov x0, x24",
         "mov x1, x10",
         "mov x2, x9",
+        "ldr x3, [x29]",
         "bl {foreign}",
         "ldr x28, [x24, #24]",
         "ldr x16, [x24, #32]",
@@ -1521,6 +1595,7 @@ mod sys {
         "mov rdi, r15",
         "mov rsi, rbx",
         "mov rdx, r10",
+        "mov rcx, [rbp]",
         "call {foreign}",
         "mov rsp, rbp",
         "pop rbp",

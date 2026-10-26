@@ -1688,13 +1688,12 @@ pub fn sealed_copy_x(v: i64) -> i64 {
     let f = fields_of(v);
     let nw = i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64);
     let size = i64_plus(i64_plus(1i64, f), nw);
-    let at = get(code_top());
-    if i64_gt(i64_plus(at, size), get(code_hi())) {
+    let at = code_alloc_x(size);
+    if i64_lt(at, 0i64) {
         fail_x(str_lit("seal-code: the code area is full"))
     } else {
         code_set_x(at, i64_or(word_at(h), i64_shl(1i64, lay::header_suffix_frozen_lo())));
         code_copied_x(i64_plus(h, 1i64), i64_plus(at, 1i64), i64_plus(f, nw));
-        set(code_top(), i64_plus(at, size));
         code_flush(get(code()), i64_to_int(i64_plus(i64_plus(at, 1i64), f)), i64_to_int(if i64_eq(nw, 0i64) {
             the::<i64>(1i64)
         } else {

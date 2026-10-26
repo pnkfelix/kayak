@@ -666,10 +666,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    in `bloblet/flat-inlined`, `native/flat-keyed`, `native/variadic`,
    `run/variadic`, `run/case-tree`. Code a program makes, on tier 1
    (C226, by syscalls, C225): a code area, `seal-code`, native closures
-   called; the convention's routines on tier 1's heap (C227). Left: a
-   collection while native frames are live (their stack maps read, as
-   Fixpt's does), and code freed when no longer reached. (Callbacks run
-   on every tier: C228.) Next: eqtables, `%fx26-intern-datum`, I/O (the
+   called; the convention's routines on tier 1's heap (C227); callbacks
+   on every tier (C228); collections under native frames, by their stack
+   maps, and code no longer reached freed (C229). Next: eqtables, `%fx26-intern-datum`, I/O (the
    standard input waited for, too); native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A

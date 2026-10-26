@@ -55,6 +55,22 @@ def binary():
     return r.stdout.strip() if r.returncode == 0 else None
 
 
+# Kayak's own FX-26 programs (C229), answered by Fixpt as its own are: for
+# what Fixpt's corpus does not exercise of kayak's machines.
+KAYAK_PROGRAMS = os.path.join(ROOT, "tests", "fx26-kayak")
+
+
+def kayak_programs():
+    """Kayak's own programs: each as kayak/DIR/NAME.fx, and its path."""
+    out = []
+    for d, _, fs in os.walk(KAYAK_PROGRAMS):
+        for f in fs:
+            if f.endswith(".fx"):
+                p = os.path.join(d, f)
+                out.append(("kayak/" + os.path.relpath(p, KAYAK_PROGRAMS), p))
+    return sorted(out)
+
+
 def programs():
     """Fixpt's programs kept: each as DIR/NAME.fx, and its path."""
     out = []

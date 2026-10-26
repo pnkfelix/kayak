@@ -220,6 +220,45 @@ pub fn code_at(j: i64) -> i64 {
     flatarray_ref_i64(get(code()), j)
 }
 
+// A collection's marks of the code bloblets it reaches, by their headers'
+// indices (C229), apart from the headers native code reads; those marked
+// and not yet traced; the free blocks, each its index and its words.
+pub fn code_marks() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn code_gray() -> Ref<List<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<i64>())
+    })
+}
+
+pub enum Cblock {
+    Cblock(i64, i64),
+}
+
+pub fn cblock(f0: i64, f1: i64) -> &'static Cblock {
+    kayak_rt::heap_alloc(Cblock::Cblock(f0, f1))
+}
+
+pub fn code_free() -> Ref<List<&'static Cblock>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cblock>())
+    })
+}
+
+pub fn code_fit_at() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
 pub fn code_set_x(j: i64, w: i64) -> () {
     flatarray_set_i64_x(get(code()), j, w)
 }
@@ -758,11 +797,29 @@ pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
     }
 }
 
+/// Code bloblet `w` marked, to be traced, if it was not.
+pub fn code_marked_x(w: i64) -> () {
+    let p = i64_shr(i64_minus(w, get(code_vbase())), int_lit(3));
+    let t = code_at(i64_minus(p, 1i64));
+    let h = if i64_eq(tag_of(t), t_trailer()) {
+        i64_minus(i64_minus(p, 1i64), i64_shr(t, int_lit(3)))
+    } else {
+        i64_minus(p, 1i64)
+    };
+    if i64_eq(flatarray_ref_i64(get(code_marks()), h), 0i64) {
+        flatarray_set_i64_x(get(code_marks()), h, 1i64);
+        set(code_gray(), kayak_rt::heap_cons(h, get(code_gray())))
+    } else {
+        ()
+    }
+}
+
 /// The word for `w`, a pair or bloblet, after the collection: its
 /// object's copy, copied first if need be; itself, if it is no pointer,
 /// or a code bloblet (which never moves).
 pub fn forward_object_x(w: i64) -> i64 {
     if in_code_p(w) {
+        code_marked_x(w);
         w
     } else if is_pair_p(w) {
         let o = address(w);
@@ -879,18 +936,124 @@ pub fn code_fields_forwarded_x(mut j: i64, mut end: i64) -> () {
     }
 }
 
-/// Each code bloblet's fields from index `j` on, forwarded in place: what
-/// they hold lives, and they stay.
-pub fn code_forwarded_x(mut j: i64) -> () {
+/// Each code bloblet marked and not yet traced: its fields forwarded in
+/// place, which may mark more.
+pub fn gray_traced_x() -> () {
     loop {
-        if (not(get(code_on())) || i64_gt_eq(j, get(code_top()))) {
+        let g = get(code_gray());
+        if null_p(g) {
             return ();
         } else {
-            let head = code_at(j);
-            code_fields_forwarded_x(i64_plus(j, 1i64), i64_plus(j, bits(head, lay::header_fields_lo(), lay::header_fields_width())));
-            j = i64_plus(j, words_of(head));
+            let h = car(g);
+            let head = code_at(h);
+            set(code_gray(), cdr(g));
+            code_fields_forwarded_x(i64_plus(h, 1i64), i64_plus(h, bits(head, lay::header_fields_lo(), lay::header_fields_width())));
             continue;
         }
+    }
+}
+
+/// Cheney's scan from `i`, then the code marked meanwhile traced, until
+/// neither leaves anything: what the code reaches is copied, and what
+/// the copies reach of the code marked (Fixpt's `mark_code` within its
+/// copying collection).
+pub fn traced_all_x(mut i: i64) -> () {
+    loop {
+        scanned_x(i);
+        let t = get(to_top());
+        if null_p(get(code_gray())) {
+            return ();
+        } else {
+            gray_traced_x();
+            i = t;
+            continue;
+        }
+    }
+}
+
+// A free block of the code area, `n` words at `j`: a raw bloblet's header,
+// all suffix, as Fixpt's `put_free` writes one.
+pub fn code_free_block_x(j: i64, n: i64) -> () {
+    code_set_x(j, header_word(k_bloblet(), 0i64, i64_star(8i64, i64_minus(n, 1i64)), false, false))
+}
+
+/// From `j` on, each code bloblet not marked freed, its mark cleared if
+/// it was; adjacent free blocks one (`run`, `len` words: the one being
+/// made, 0 if none); a free run at the end the area's top again; the
+/// free list `frees` made anew (Fixpt's sweep of its code area).
+pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'static Cblock>) -> () {
+    loop {
+        if i64_gt_eq(j, get(code_top())) {
+            if i64_gt(len, 0i64) {
+                set(code_top(), run)
+            } else {
+                ()
+            };
+            return set(code_free(), frees);
+        } else {
+            let n = words_of(code_at(j));
+            if i64_eq(flatarray_ref_i64(get(code_marks()), j), 0i64) {
+                if i64_gt(len, 0i64) {
+                    (j, len) = (i64_plus(j, n), i64_plus(len, n));
+                    continue;
+                } else {
+                    (j, run, len) = (i64_plus(j, n), j, n);
+                    continue;
+                }
+            } else {
+                flatarray_set_i64_x(get(code_marks()), j, 0i64);
+                if i64_gt(len, 0i64) {
+                    code_free_block_x(run, len);
+                    (j, run, len, frees) = (i64_plus(j, n), 0i64, 0i64, kayak_rt::heap_cons(cblock(run, len), frees));
+                    continue;
+                } else {
+                    (j, run, len) = (i64_plus(j, n), 0i64, 0i64);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// The free list, the first block of `n` words or more taken
+/// (`code-fit-at`), what is left of it free.
+pub fn code_fit_x(bs: List<&'static Cblock>, n: i64) -> List<&'static Cblock> {
+    if null_p(bs) {
+        nil::<&'static Cblock>()
+    } else {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Cblock::Cblock(j, m) => {
+                if i64_gt_eq(get(code_fit_at()), 0i64) {
+                    bs
+                } else if i64_eq(m, n) {
+                    set(code_fit_at(), j);
+                    cdr(bs)
+                } else if i64_gt(m, n) {
+                    set(code_fit_at(), j);
+                    code_free_block_x(i64_plus(j, n), i64_minus(m, n));
+                    kayak_rt::heap_cons(cblock(i64_plus(j, n), i64_minus(m, n)), cdr(bs))
+                } else {
+                    kayak_rt::heap_cons(car(bs), code_fit_x(cdr(bs), n))
+                }
+            }
+        }
+    }
+}
+
+/// `n` words of the code area: the first free block that fits, else past
+/// its top; -1 if it is full.
+pub fn code_alloc_x(n: i64) -> i64 {
+    set(code_fit_at(), -1i64);
+    set(code_free(), code_fit_x(get(code_free()), n));
+    if i64_gt_eq(get(code_fit_at()), 0i64) {
+        get(code_fit_at())
+    } else if i64_gt(i64_plus(get(code_top()), n), get(code_hi())) {
+        -1i64
+    } else {
+        let at = get(code_top());
+        set(code_top(), i64_plus(at, n));
+        at
     }
 }
 
@@ -903,14 +1066,18 @@ pub fn collect_begin_x() -> () {
         ()
     };
     set(to_top(), 8i64);
-    named_forwarded_x(0i64);
-    code_forwarded_x(get(code_lo()))
+    named_forwarded_x(0i64)
 }
 
 /// Everything the roots reach, copied; the spaces swapped; the space grown,
 /// both, if what lives fills more than half.
 pub fn collect_end_x() -> () {
-    scanned_x(8i64);
+    traced_all_x(8i64);
+    if get(code_on()) {
+        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<&'static Cblock>())
+    } else {
+        ()
+    };
     let old = get(mem());
     set(mem(), get(other()));
     set(other(), old);

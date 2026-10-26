@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"code-freed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"here : bool ! pure",
+"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"adder : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals put-all))) () adds) ! pure",
+"many : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder many put-all))) (int int) int) ! pure",
+"kept : (listof adds @heap) ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder here put-all)))",
+"200030042 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder here kept many put-all)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@f03cabe27105621d69eaef329d9657ead5f78ecf"
+]
+}
+]
+}

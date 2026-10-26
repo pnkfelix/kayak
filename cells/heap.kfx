@@ -90,6 +90,14 @@
 (define in-code? (subr cm (i64) bool)
   (lambda (w) (and (get code-on) (i64>= w (get code-vbase)) (i64< w (i64+ (get code-vbase) (i64* 8 (get code-hi)))))))
 (define code-at (subr cm (i64) i64) (lambda (j) (flatarray-ref-i64 (get code) j)))
+"A collection's marks of the code bloblets it reaches, by their headers'
+ indices (C229), apart from the headers native code reads; those marked
+ and not yet traced; the free blocks, each its index and its words."
+(define code-marks (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define code-gray (ref (listof i64 @c) @c) (new nil))
+(define-datatype cblock (cblock i64 i64))
+(define code-free (ref (listof cblock @c) @c) (new nil))
+(define code-fit-at (ref i64 @c) (new -1))
 (define code-set! (subr cm (i64 i64) unit) (lambda (j w) (flatarray-set-i64! (get code) j w)))
 
 (define word-at (subr cm (i64) i64)
@@ -378,13 +386,22 @@
     (lambda (from at n)
       (if (i64<= n 0) #u (begin (to-set! at (word-at from)) (copied-words! (i64+ from 1) (i64+ at 1) (i64- n 1)))))))
 
+(define code-marked! (subr cm (i64) unit)
+  (lambda (w)
+    "Code bloblet `w` marked, to be traced, if it was not."
+    (let* ((p (i64-shr (i64- w (get code-vbase)) 3)) (t (code-at (i64- p 1)))
+           (h (if (i64= (tag-of t) t-trailer) (i64- (i64- p 1) (i64-shr t 3)) (i64- p 1))))
+      (if (i64= (flatarray-ref-i64 (get code-marks) h) 0)
+          (begin (flatarray-set-i64! (get code-marks) h 1) (set code-gray (cons h (get code-gray))))
+          #u))))
+
 (define forward-object! (subr cm (i64) i64)
   (lambda (w)
     "The word for `w`, a pair or bloblet, after the collection: its
      object's copy, copied first if need be; itself, if it is no pointer,
      or a code bloblet (which never moves)."
     (cond
-      ((in-code? w) w)
+      ((in-code? w) (begin (code-marked! w) w))
       ((is-pair? w)
        (let* ((o (address w)) (first (word-at o)))
          (if (i64= (tag-of first) t-forward)
@@ -451,16 +468,78 @@
 (define-rec
   (code-fields-forwarded! (subr cm (i64 i64) unit)
     (lambda (j end) (if (i64> j end) #u (begin (code-set! j (forward! (code-at j))) (code-fields-forwarded! (i64+ j 1) end)))))
-  (code-forwarded! (subr cm (i64) unit)
-    (lambda (j)
-      "Each code bloblet's fields from index `j` on, forwarded in place: what
-       they hold lives, and they stay."
-      (if (or (not (get code-on)) (i64>= j (get code-top)))
-          #u
-          (let ((head (code-at j)))
-            (begin
-              (code-fields-forwarded! (i64+ j 1) (i64+ j (bits head (with lay header-fields-lo) (with lay header-fields-width))))
-              (code-forwarded! (i64+ j (words-of head)))))))))
+  (gray-traced! (subr cm () unit)
+    (lambda ()
+      "Each code bloblet marked and not yet traced: its fields forwarded in
+       place, which may mark more."
+      (let ((g (get code-gray)))
+        (if (null? g)
+            #u
+            (let* ((h (car g)) (head (code-at h)))
+              (begin
+                (set code-gray (cdr g))
+                (code-fields-forwarded! (i64+ h 1) (i64+ h (bits head (with lay header-fields-lo) (with lay header-fields-width))))
+                (gray-traced!))))))))
+
+(define-rec
+  (traced-all! (subr cm (i64) unit)
+    (lambda (i)
+      "Cheney's scan from `i`, then the code marked meanwhile traced, until
+       neither leaves anything: what the code reaches is copied, and what
+       the copies reach of the code marked (Fixpt's `mark_code` within its
+       copying collection)."
+      (begin
+        (scanned! i)
+        (let ((t (get to-top)))
+          (if (null? (get code-gray)) #u (begin (gray-traced!) (traced-all! t))))))))
+
+"A free block of the code area, `n` words at `j`: a raw bloblet's header,
+ all suffix, as Fixpt's `put_free` writes one."
+(define code-free-block! (subr cm (i64 i64) unit)
+  (lambda (j n) (code-set! j (header-word k-bloblet 0 (i64* 8 (i64- n 1)) #f #f))))
+
+(define-rec
+  (code-swept! (subr cm (i64 i64 i64 (listof cblock @c)) unit)
+    (lambda (j run len frees)
+      "From `j` on, each code bloblet not marked freed, its mark cleared if
+       it was; adjacent free blocks one (`run`, `len` words: the one being
+       made, 0 if none); a free run at the end the area's top again; the
+       free list `frees` made anew (Fixpt's sweep of its code area)."
+      (if (i64>= j (get code-top))
+          (begin (if (i64> len 0) (set code-top run) #u) (set code-free frees))
+          (let ((n (words-of (code-at j))))
+            (if (i64= (flatarray-ref-i64 (get code-marks) j) 0)
+                (if (i64> len 0) (code-swept! (i64+ j n) run (i64+ len n) frees) (code-swept! (i64+ j n) j n frees))
+                (begin
+                  (flatarray-set-i64! (get code-marks) j 0)
+                  (if (i64> len 0)
+                      (begin (code-free-block! run len) (code-swept! (i64+ j n) 0 0 (cons (cblock run len) frees)))
+                      (code-swept! (i64+ j n) 0 0 frees)))))))))
+
+(define-rec
+  (code-fit! (subr cm ((listof cblock @c) i64) (listof cblock @c))
+    (lambda (bs n)
+      "The free list, the first block of `n` words or more taken
+       (`code-fit-at`), what is left of it free."
+      (if (null? bs)
+          nil
+          (tagcase (car bs)
+            (cblock (j m)
+              (cond ((i64>= (get code-fit-at) 0) bs)
+                    ((i64= m n) (begin (set code-fit-at j) (cdr bs)))
+                    ((i64> m n) (begin (set code-fit-at j) (code-free-block! (i64+ j n) (i64- m n)) (cons (cblock (i64+ j n) (i64- m n)) (cdr bs))))
+                    (else (cons (car bs) (code-fit! (cdr bs) n))))))))))
+
+(define code-alloc! (subr cm (i64) i64)
+  (lambda (n)
+    "`n` words of the code area: the first free block that fits, else past
+     its top; -1 if it is full."
+    (begin
+      (set code-fit-at -1)
+      (set code-free (code-fit! (get code-free) n))
+      (cond ((i64>= (get code-fit-at) 0) (get code-fit-at))
+            ((i64> (i64+ (get code-top) n) (get code-hi)) -1)
+            (else (let ((at (get code-top))) (begin (set code-top (i64+ at n)) at)))))))
 
 (define collect-begin! (subr cm () unit)
   (lambda ()
@@ -471,15 +550,15 @@
           (set other (the (flatarrayof i64 @c) (make-flatarray-i64 (flatarray-length-i64 (get mem)) 0)))
           #u)
       (set to-top 8)
-      (named-forwarded! 0)
-      (code-forwarded! (get code-lo)))))
+      (named-forwarded! 0))))
 
 (define collect-end! (subr cm () unit)
   (lambda ()
     "Everything the roots reach, copied; the spaces swapped; the space grown,
      both, if what lives fills more than half."
     (begin
-      (scanned! 8)
+      (traced-all! 8)
+      (if (get code-on) (code-swept! (get code-lo) 0 0 nil) #u)
       (let ((old (get mem)))
         (begin
           (set mem (get other))

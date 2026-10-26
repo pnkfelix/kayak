@@ -1527,6 +1527,7 @@
               #u
               (begin
                 (set code c) (set code-vbase at) (set code-lo lo) (set code-top lo) (set code-hi (i64+ lo n))
+                (set code-marks (the (flatarrayof i64 @c) (make-flatarray-i64 code-capacity 0)))
                 (set code-distance d) (set code-on #t)))))))
 
 (define heap-addressed! (->* () bool)

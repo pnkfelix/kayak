@@ -180,15 +180,9 @@
       (collect-end!)
       (if (get gc-stress) (stress-waited!) #u))))
 
-"How many native calls are under way: while any is, nothing collects, so
- that what native frames hold stays where it is (C227); the heap grows."
-(define native-depth (ref i64 @c) (new 0))
-
 (define safepoint! (subr cm () unit)
   (lambda ()
-    (cond ((i64> (get native-depth) 0)
-           (if (i64> (i64* 4 (get top)) (i64* 3 (get limit))) (room! (get limit)) #u))
-          ((i64> (i64* 4 (get top)) (i64* 3 (get limit))) (collect!))
+    (cond ((i64> (i64* 4 (get top)) (i64* 3 (get limit))) (collect!))
           ((not (get gc-stress)) #u)
           ((i64> (get stress-wait) 0) (set stress-wait (i64- (get stress-wait) 1)))
           (else (collect!)))))
@@ -398,6 +392,9 @@
         (let ((b (slot-of c f-word)) (box (get native-box)))
           (begin
             (native-args! n (i64- count 1))
+            ;; The closure kept while its code runs (C229), where a collection
+            ;; finds it and so its code: the frames keep theirs too.
+            (push! c)
             (flatarray-set-i64! box 0 c)
             (flatarray-set-i64! box 1 (i64+ (i64- b t-bloblet) (get code-distance)))
             ;; The heap, from its top to its reservation's end, for the
@@ -406,10 +403,9 @@
             (flatarray-set-i64! box 11 (heap-ref heap-capacity 0))
             (flatarray-set-i64! box 12 (cards-low))
             (flatarray-set-i64! box 13 (cards-high))
-            (set native-depth (i64+ (get native-depth) 1))
             (let ((status (int->i64 (call-native box (i64->int count)))))
               (begin
-               (set native-depth (i64- (get native-depth) 1))
+               (pop! n)
                (top-from! (flatarray-ref-i64 box 10))
               (cond ((and (i64= status 0) (not (tier1-word? (flatarray-ref-i64 box 0))))
                      "An object made elsewhere, by kayak-jit's routines in their own
@@ -1110,26 +1106,35 @@
             ((i64= (get dsp) 0) (ran-failed "the word left nothing"))
             (else (ran-answer (ds-at (i64- (get dsp) 1))))))))
 
-"A procedure of tier 1's that native code calls (C227, C228; Fixpt's
- machines' `foreign`, for a closure no native one): `box` its closure, its
- count of arguments, them, and the heap's next free address, as kayak-jit
- gives them (`kayak-cells`' `main.rs`). Called as `call!` calls one, its
- return entry a word of one cell, `halt`, which every tier gives tier 1
- and tier 1 stops at: so the run, on whatever tier runs, ends where the
- procedure returns, whatever is under it (the native code's caller's
- frames). The machine's registers and stacks as they were after; nothing
- collected meanwhile. 0 and its answer in `box[0]`, or 1, the trap kept;
- the next free address in `box[10]`."
+"A procedure of tier 1's that native code calls (C227, C228, C229;
+ Fixpt's machines' `foreign` and `call_foreign`, for a closure no native
+ one): `box` its closure, its count of arguments, them, the heap's next
+ free address, and how many values the native frames hold, `held` them,
+ as kayak-jit gives them (`kayak-cells`' `main.rs`). Called as `call!`
+ calls one, its return entry a word of one cell, `halt`, which every tier
+ gives tier 1 and tier 1 stops at: so the run, on whatever tier runs,
+ ends where the procedure returns. Whatever collects meanwhile moves what
+ the machine's registers were (kept in a return entry under it) and what
+ the native frames hold (kept on the data stack under it), and both are
+ given back as moved. 0 and its answer in `box[0]`, or 1, the trap kept;
+ the next free address in `box[10]`, the heap's end in `box[11]`."
 (define-rec
   (callback-args! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
-    (lambda (box i n) (if (i64>= i n) #u (begin (push! (flatarray-ref-i64 box (i64+ 2 i))) (callback-args! box (i64+ i 1) n))))))
+    (lambda (box i n) (if (i64>= i n) #u (begin (push! (flatarray-ref-i64 box (i64+ 2 i))) (callback-args! box (i64+ i 1) n)))))
+  (held-pushed! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
+    (lambda (held i n) (if (i64>= i n) #u (begin (push! (flatarray-ref-i64 held i)) (held-pushed! held (i64+ i 1) n)))))
+  (held-taken! (subr cm ((flatarrayof i64 @c) i64 i64 i64) unit)
+    (lambda (held at i n)
+      (if (i64>= i n) #u (begin (flatarray-set-i64! held i (ds-at (i64+ at i))) (held-taken! held at (i64+ i 1) n))))))
 
-(define native-callback (subr cm ((flatarrayof i64 @c)) i64)
-  (lambda (box)
-    (let* ((c (flatarray-ref-i64 box 0)) (count (flatarray-ref-i64 box 1))
-           (cur0 (get cur)) (kk0 (get kk)) (fp0 (get fp)) (clo0 (get clo)) (dsp0 (get dsp)) (rsp0 (get rsp)))
+(define native-callback (subr cm ((flatarrayof i64 @c) (flatarrayof i64 @c)) i64)
+  (lambda (box held)
+    (let* ((c (flatarray-ref-i64 box 0)) (count (flatarray-ref-i64 box 1)) (nheld (flatarray-ref-i64 box 12))
+           (dsp0 (get dsp)) (rsp0 (get rsp)))
       (begin
         (top-from! (flatarray-ref-i64 box 10))
+        (push-return!)
+        (held-pushed! held 0 nheld)
         (if (not (closure? c))
             (trap! "native code: called no procedure tier 1 runs (C122)")
             (let ((back (make-word! "%callback-return" 1 0)))
@@ -1143,10 +1148,14 @@
                 (if (get hand-on)
                     (tagcase (hand-code!) (made m (hand-run! m 0)) (failed why (trap! why)))
                     (run! 0)))))
-        (let* ((ok (and (not (trapped?)) (i64> (get dsp) dsp0)))
+        (let* ((ok (and (not (trapped?)) (i64> (get dsp) (i64+ dsp0 nheld))))
                (v (if ok (ds-at (i64- (get dsp) 1)) (the i64 0))))
           (begin
-            (set cur cur0) (set kk kk0) (set fp fp0) (set clo clo0) (set dsp dsp0) (set rsp rsp0)
+            (held-taken! held dsp0 0 nheld)
+            (set dsp dsp0)
+            (set rsp (i64+ rsp0 4))
+            (pop-return!)
             (flatarray-set-i64! box 0 v)
             (flatarray-set-i64! box 10 (heap-ref (get top) 0))
+            (flatarray-set-i64! box 11 (heap-ref heap-capacity 0))
             (if ok (the i64 0) (the i64 1))))))))

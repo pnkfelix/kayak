@@ -78,6 +78,8 @@ higher-kinds/infer-generative.fx
 higher-kinds/okasaki-stack.fx
 higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
+kayak/made-code-x86_64/code-freed.fx
+kayak/made-code-x86_64/kept-across-collections.fx
 made-code-x86_64/allocated.fx
 made-code-x86_64/declared.fx
 made-code-x86_64/frames.fx

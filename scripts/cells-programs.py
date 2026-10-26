@@ -321,7 +321,7 @@ def main():
     if OURS and run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT).returncode != 0:
         sys.exit("cells-programs: kayak-fx26 does not build")
     binary = fixptcache.binary()
-    ps = fixptcache.programs()
+    ps = fixptcache.programs() + fixptcache.kayak_programs()
     ran = ways_run(cells, ps, fixptcache.parallel(lambda p: one(binary, cells, p[0], p[1]), ps))
     by = {}
     wrong = []

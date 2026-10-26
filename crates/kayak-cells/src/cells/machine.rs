@@ -381,23 +381,8 @@ pub fn collect_x() -> () {
     }
 }
 
-// How many native calls are under way: while any is, nothing collects, so
-// that what native frames hold stays where it is (C227); the heap grows.
-pub fn native_depth() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
-    })
-}
-
 pub fn safepoint_x() -> () {
-    if i64_gt(get(native_depth()), 0i64) {
-        if i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit()))) {
-            room_x(get(limit()))
-        } else {
-            ()
-        }
-    } else if i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit()))) {
+    if i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit()))) {
         collect_x()
     } else if not(get(gc_stress())) {
         ()
@@ -772,15 +757,15 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
     } else {
         let (b, r#box) = (slot_of(c, f_word()), get(native_box()));
         native_args_x(n, i64_minus(count, 1i64));
+        push_x(c);
         flatarray_set_i64_x(r#box, 0i64, c);
         flatarray_set_i64_x(r#box, 1i64, i64_plus(i64_minus(b, t_bloblet()), get(code_distance())));
         flatarray_set_i64_x(r#box, 10i64, heap_ref(get(top()), 0i64));
         flatarray_set_i64_x(r#box, 11i64, heap_ref(heap_capacity(), 0i64));
         flatarray_set_i64_x(r#box, 12i64, cards_low());
         flatarray_set_i64_x(r#box, 13i64, cards_high());
-        set(native_depth(), i64_plus(get(native_depth()), 1i64));
         let status = int_to_i64(call_native(r#box, i64_to_int(count)));
-        set(native_depth(), i64_minus(get(native_depth()), 1i64));
+        pop_x(n);
         top_from_x(flatarray_ref_i64(r#box, 10i64));
         if (i64_eq(status, 0i64) && not(tier1_word_p(flatarray_ref_i64(r#box, 0i64)))) {
             // An object made elsewhere, by kayak-jit's routines in their own
@@ -2114,16 +2099,18 @@ pub fn run_word_x(w: i64, steps: i64) -> &'static Ran {
     }
 }
 
-// A procedure of tier 1's that native code calls (C227, C228; Fixpt's
-// machines' `foreign`, for a closure no native one): `box` its closure, its
-// count of arguments, them, and the heap's next free address, as kayak-jit
-// gives them (`kayak-cells`' `main.rs`). Called as `call!` calls one, its
-// return entry a word of one cell, `halt`, which every tier gives tier 1
-// and tier 1 stops at: so the run, on whatever tier runs, ends where the
-// procedure returns, whatever is under it (the native code's caller's
-// frames). The machine's registers and stacks as they were after; nothing
-// collected meanwhile. 0 and its answer in `box[0]`, or 1, the trap kept;
-// the next free address in `box[10]`.
+// A procedure of tier 1's that native code calls (C227, C228, C229;
+// Fixpt's machines' `foreign` and `call_foreign`, for a closure no native
+// one): `box` its closure, its count of arguments, them, the heap's next
+// free address, and how many values the native frames hold, `held` them,
+// as kayak-jit gives them (`kayak-cells`' `main.rs`). Called as `call!`
+// calls one, its return entry a word of one cell, `halt`, which every tier
+// gives tier 1 and tier 1 stops at: so the run, on whatever tier runs,
+// ends where the procedure returns. Whatever collects meanwhile moves what
+// the machine's registers were (kept in a return entry under it) and what
+// the native frames hold (kept on the data stack under it), and both are
+// given back as moved. 0 and its answer in `box[0]`, or 1, the trap kept;
+// the next free address in `box[10]`, the heap's end in `box[11]`.
 pub fn callback_args_x(mut r#box: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
@@ -2136,16 +2123,39 @@ pub fn callback_args_x(mut r#box: FlatArray<i64>, mut i: i64, mut n: i64) -> () 
     }
 }
 
-pub fn native_callback(r#box: FlatArray<i64>) -> i64 {
+pub fn held_pushed_x(mut held: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            push_x(flatarray_ref_i64(held, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn held_taken_x(mut held: FlatArray<i64>, mut at: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(held, i, ds_at(i64_plus(at, i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
     let c = flatarray_ref_i64(r#box, 0i64);
     let count = flatarray_ref_i64(r#box, 1i64);
-    let cur0 = get(cur());
-    let kk0 = get(kk());
-    let fp0 = get(fp());
-    let clo0 = get(clo());
+    let nheld = flatarray_ref_i64(r#box, 12i64);
     let dsp0 = get(dsp());
     let rsp0 = get(rsp());
     top_from_x(flatarray_ref_i64(r#box, 10i64));
+    push_return_x();
+    held_pushed_x(held, 0i64, nheld);
     if not(closure_p(c)) {
         trap_x(str_lit("native code: called no procedure tier 1 runs (C122)"))
     } else {
@@ -2173,20 +2183,19 @@ pub fn native_callback(r#box: FlatArray<i64>) -> i64 {
             run_x(0i64)
         }
     };
-    let ok = (not(trapped_p()) && i64_gt(get(dsp()), dsp0));
+    let ok = (not(trapped_p()) && i64_gt(get(dsp()), i64_plus(dsp0, nheld)));
     let v = if ok {
         ds_at(i64_minus(get(dsp()), 1i64))
     } else {
         the::<i64>(0i64)
     };
-    set(cur(), cur0);
-    set(kk(), kk0);
-    set(fp(), fp0);
-    set(clo(), clo0);
+    held_taken_x(held, dsp0, 0i64, nheld);
     set(dsp(), dsp0);
-    set(rsp(), rsp0);
+    set(rsp(), i64_plus(rsp0, 4i64));
+    pop_return_x();
     flatarray_set_i64_x(r#box, 0i64, v);
     flatarray_set_i64_x(r#box, 10i64, heap_ref(get(top()), 0i64));
+    flatarray_set_i64_x(r#box, 11i64, heap_ref(heap_capacity(), 0i64));
     if ok {
         the::<i64>(0i64)
     } else {

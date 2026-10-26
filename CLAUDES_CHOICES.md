@@ -6307,7 +6307,8 @@ own, of Fixpt's layout too. So a host heap for a call:
 - **No collection while native frames are live** (`native-depth`): what
   they hold stays where it is, and the heap grows instead; Fixpt's machine
   collects there, by the frames' stack maps (`frames.fx`'s point), which
-  kayak's tier 1 does not read yet. The answers are the same.
+  kayak's tier 1 does not read yet. The answers are the same. (C229: it
+  collects there now, by the stack maps.)
 - **A trap said otherwise** comes back with what it said, a string made
   in the host heap (`allocated.fx`'s refused size).
 - **The callback runs by the interpreter**, the native tiers off while it
@@ -6345,3 +6346,57 @@ cause, found first:
 - **Re-entrancy stated as a test** (kayak-jit's `calls_nest_through_
   foreign`): native code calls Rust by `foreign`, which calls native code,
   which calls Rust again, three deep, each returning to its caller.
+
+## C229. Collections under native frames, and code freed (2026-10-26)
+
+The user: "Now work on the GC issues you noted", the two C227 and C228
+left: no collection while native frames are live, and code made never
+freed. Both as Fixpt's machine does them.
+- **The native frames' values, kept by tier 1 across a callback.** The
+  `foreign` stub gives kayak-jit's `foreign` the caller's frame pointer;
+  `traced_slots` walks the frames from there to the trampoline's
+  (`rust_sp`, plus the trampoline's own 48 bytes on x86_64), by the
+  convention's `frames`: each frame's map at fp+16, its live mask below
+  bit 48 (negative: all live), its values from fp+24, a stub's frame
+  (32 bytes) none: Fixpt's `frames_from` and `traced`. The values go to
+  the host's callback (`HostForeign` now takes them, and gives them
+  back), which `native-callback` keeps on tier 1's data stack, below the
+  callback's own work, where a collection finds and moves them; written
+  back into the frames before native code runs again. The outer machine's
+  registers are kept on the return stack, as before. So the deferral of
+  C227 is gone: `safepoint!` collects whenever it would.
+- **The called closure kept while its code runs.** `native-called!`
+  pushes it on the data stack for the call: its code, reached through it,
+  is then marked by any collection meanwhile (a frame keeps its own code
+  bloblet in a value slot, `keeps-its-code`, for the same reason).
+- **The code area marked and swept**, Fixpt's `mark_code` within its
+  copying collection: a reference into the code area, met by
+  `forward-object!`, marks the bloblet (its header found through its
+  trailer, when the reference is to its suffix) in `code-marks`, one word
+  per word of the area, and puts it on a gray list; the collection's end
+  scans the copies (Cheney), then traces the gray bloblets' fields in
+  place (`gray-traced!`, which may mark more and copy more), and again,
+  until neither leaves anything. C226's code roots, every code bloblet's
+  fields forwarded at the start, are gone: code nothing reaches keeps
+  nothing alive.
+- **Then the sweep** (`code-swept!`): each bloblet not marked made free,
+  adjacent free blocks one, a free run at the end the area's top again,
+  each free block written as a raw bloblet all suffix (Fixpt's
+  `put_free`), so the area stays a walkable run of objects; the marks
+  cleared. `seal-code` takes the first free block that fits
+  (`code-alloc!`), what it leaves written free again, else the top.
+- **Tests, kayak's own** (`tests/fx26-kayak/`, answered by Fixpt as its
+  corpus is, `fixptcache.kayak_programs`):
+  `made-code-x86_64/kept-across-collections.fx` (a made procedure's frame
+  holding a pair across a callback of a million pairs' churn, some sixty
+  collections: the pair moved, its frame's slot put back) and
+  `made-code-x86_64/code-freed.fx` (twenty thousand adders of 4096 bytes
+  made, called and dropped, the area holding some eight thousand; one
+  kept from the first and called last). Fixpt gives both the same.
+  Seen, by a trap put in for the purpose and taken out: the first's
+  callback collects (200 times at three million pairs), its one held
+  value moved. The second cannot fit without the sweep by arithmetic
+  (513 words each); it was not run without it. The first's churn is a
+  million, not three: tier 1 counts its interpreted callback's
+  instructions against the default limit (twenty million), and three
+  million pairs pass it where Fixpt's machine does not.
