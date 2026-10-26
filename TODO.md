@@ -661,7 +661,7 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    `read-byte`, on both. Then (C220) `cwcc`, `f32`, flat arrays,
    eqtables, `native-convention` on the engine; eqtables, `assume`,
    `assert`, `list->string`, `string->symbol` on tier 1; left on tier 1,
-   `%fx26-intern-datum` (Fixpt's weak table). Kayak's compiler to cells
+   `%fx26-intern-datum` (Fixpt's weak table; done, C231). Kayak's compiler to cells
    (C221), adapters too (C230); words not Fixpt's exactly
    in `bloblet/flat-inlined`, `native/flat-keyed`, `native/variadic`,
    `run/variadic`, `run/case-tree`. Code a program makes, on tier 1
@@ -679,10 +679,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    (C230); the convention's routines' objects in a host heap (C227); the
    machine's registers kept across a callback on the return stack, the
    frames' values on the data stack (C228, C229); and any other place the
-   implementation was taken over the intent. Then the suffix stub note
-   for Fixpt's team, out of the same review.
-   Next (the user's order): weak eqtables and
-   `%fx26-intern-datum`; the standard input (waited for, too), by kayak-rt
+   implementation was taken over the intent. The note is written:
+   `docs/research/departures.md` (C231); the review is next. Then the
+   suffix stub note for Fixpt's team, out of the same review.
+   Weak pairs and `%fx26-intern-datum` on tier 1 (C231). Next (the
+   user's order): the standard input (waited for, too), by kayak-rt
    syscalls; a note for Fixpt's team: code bloblets dispatching by a stub
    in their suffix, so that native calls need no `code-lo` test (C230);
    native code's primitives with tier 2;

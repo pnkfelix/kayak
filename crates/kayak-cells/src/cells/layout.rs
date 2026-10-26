@@ -842,6 +842,10 @@ pub fn k_eqtable() -> i64 {
     int_to_i64(lay::kind_eqtable())
 }
 
+pub fn k_weak_pair() -> i64 {
+    int_to_i64(lay::kind_weak_pair())
+}
+
 // A word's fields, a closure's, a global cell's.
 pub fn f_entry() -> i64 {
     int_to_i64(lay::word_entry())

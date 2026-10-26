@@ -196,6 +196,7 @@
 (define o-syscall i64 184)
 (define o-seal-code i64 185)
 (define o-native-procedure i64 186)
+(define o-intern-datum i64 187)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -306,7 +307,7 @@
          (pdef "%fx26-string->utf8" 1 1 o-string-utf8) (pdef "%fx26-utf8->string" 1 1 o-utf8-string)
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
-         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert)
+         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
          (pdef "%fx26-sched" 3 3 o-sched) (pdef "%fx26-icell-put!" 2 2 o-icell-put) (pdef "%fx26-preempt-done" 0 0 o-preempt-done)
          (pdef "%fx26-clock" 0 0 o-clock) (pdef "%fx26-sleep-until" 1 1 o-sleep-until) (pdef "%fx26-address-identity" 0 0 o-address-identity)
          (pdef "%fx26-char-in?" 2 2 o-char-in))
@@ -856,6 +857,132 @@
           (begin
             (if (i64= (slot-of first 2) key) (slot-set! bs b (slot-of first 4)) (chain-without! first key))
             (slot-set! t 3 (fix (i64- (i64-shr (slot-of t 3) 3) 1))))))))
+
+"Quoted data interned (C231; Fixpt's `heap/intern.rs`, `TODO.md` §51):
+ data nothing writes and no cycle runs through made the one object equal
+ to them, so that equal quotes are `eq?`. Hash-consing, bottom up: a pair
+ found by its interned car and cdr, a string, float or vector by its
+ contents (a vector's elements interned). The table (`interned`, a root)
+ a vector of the count of collections when it was last hashed (2), its
+ count (3) and its buckets (4), chains of weak pairs (heap.kfx), so that
+ what only the table holds is collected; rehashed after a collection, as
+ a pair's hash is its parts' addresses."
+(define intern-mix (subr kfx (i64 i64) i64)
+  (lambda (h x) (let ((z (i64* (i64-xor h x) 1099511628211))) (i64-xor z (i64-shr z 29)))))
+(define intern-bucket (subr kfx (i64 i64) i64)
+  (lambda (h n) (i64+ 2 (i64-remainder (i64-and h 1152921504606846975) n))))
+(define str-words (subr cm (i64) i64)
+  (lambda (v) "A string's suffix words: its length's, then its code points." (i64+ 1 (i64-quotient (i64+ (str-length v) 1) 2))))
+(define-rec
+  (words-hash (subr cm (i64 i64 i64 i64) i64)
+    (lambda (p i n h) (if (i64>= i n) h (words-hash p (i64+ i 1) n (intern-mix h (word-at (i64+ p i)))))))
+  (elements-hash (subr cm (i64 i64 i64 i64) i64)
+    (lambda (v i n h) (if (i64>= i n) h (elements-hash v (i64+ i 1) n (intern-mix h (obj-ref v i))))))
+  (words-same? (subr cm (i64 i64 i64 i64) bool)
+    (lambda (p q i n) (or (i64>= i n) (and (i64= (word-at (i64+ p i)) (word-at (i64+ q i))) (words-same? p q (i64+ i 1) n)))))
+  (elements-same? (subr cm (i64 i64 i64 i64) bool)
+    (lambda (a b i n) (or (i64>= i n) (and (i64= (obj-ref a i) (obj-ref b i)) (elements-same? a b (i64+ i 1) n))))))
+(define datum-hash (subr cm (i64) i64)
+  (lambda (o)
+    "An interned object's hash: of a pair's parts, a string's words, a
+     float's bits, a vector's elements (Fixpt's `datum_hash`)."
+    (cond ((is-pair? o) (intern-mix (intern-mix 1 (pair-car o)) (pair-cdr o)))
+          ((is-kind? o k-string) (words-hash (address o) 0 (str-words o) 2))
+          ((is-kind? o k-flonum) (intern-mix 3 (word-at (address o))))
+          ((is-kind? o k-vector) (elements-hash o 0 (eq-size o) 4))
+          (else 0))))
+(define datum-same? (subr cm (i64 i64) bool)
+  (lambda (o c)
+    "Whether interned `o` and candidate `c` are equal: the same parts, both
+     interned, characters or bits (Fixpt's `datum_same`)."
+    (cond ((or (is-pair? o) (is-pair? c))
+           (and (is-pair? o) (is-pair? c) (i64= (pair-car o) (pair-car c)) (i64= (pair-cdr o) (pair-cdr c))))
+          ((and (is-kind? o k-string) (is-kind? c k-string))
+           (and (i64= (str-length o) (str-length c)) (words-same? (address o) (address c) 0 (str-words o))))
+          ((and (is-kind? o k-flonum) (is-kind? c k-flonum)) (i64= (word-at (address o)) (word-at (address c))))
+          ((and (is-kind? o k-vector) (is-kind? c k-vector))
+           (and (i64= (eq-size o) (eq-size c)) (elements-same? o c 0 (eq-size o))))
+          (else #f))))
+(define-rec
+  (interned-chain! (subr cm (i64 i64) unit)
+    (lambda (e bs)
+      "Entries from `e` on, those alive linked into `bs`, the dead dropped."
+      (if (i64= e v-false)
+          #u
+          (let ((next (slot-of e 2)) (o (slot-of e 3)))
+            (begin
+              (if (i64= o weak-dead)
+                  #u
+                  (let ((b (intern-bucket (datum-hash o) (eq-size bs))))
+                    (begin (slot-set! e 2 (slot-of bs b)) (slot-set! bs b e))))
+              (interned-chain! next bs))))))
+  (interned-buckets! (subr cm (i64 i64 i64) unit)
+    (lambda (old i bs)
+      (if (i64>= i (eq-size old)) #u (begin (interned-chain! (slot-of old (i64+ i 2)) bs) (interned-buckets! old (i64+ i 1) bs)))))
+  (chain-length (subr cm (i64 i64) i64)
+    (lambda (e n) (if (i64= e v-false) n (chain-length (slot-of e 2) (i64+ n 1)))))
+  (buckets-length (subr cm (i64 i64 i64) i64)
+    (lambda (bs i n) (if (i64>= i (eq-size bs)) n (buckets-length bs (i64+ i 1) (chain-length (slot-of bs (i64+ i 2)) n))))))
+(define interned-relinked! (subr cm (i64 i64) unit)
+  (lambda (t n)
+    "Every entry of table `t` still alive linked into `n` new buckets by its
+     hash now, the dead dropped; stamped and counted (`interned_relink`)."
+    (let ((bs (eq-vector! n)))
+      (begin
+        (interned-buckets! (slot-of t 4) 0 bs)
+        (slot-set! t 4 bs)
+        (slot-set! t 3 (fix (buckets-length bs 0 0)))
+        (slot-set! t 2 (fix (get collections)))))))
+(define intern-table! (subr cm () i64)
+  (lambda ()
+    "The table, made if there is none, hashed as its entries' parts' places
+     are now."
+    (begin
+      (if (i64= (get interned) v-false)
+          (let ((bs (eq-vector! 64)) (t (eq-vector! 3)))
+            (begin (slot-set! t 2 (fix (get collections))) (slot-set! t 3 (fix 0)) (slot-set! t 4 bs) (set interned t)))
+          (let ((t (get interned)))
+            (if (i64= (slot-of t 2) (fix (get collections))) #u (interned-relinked! t (eq-size (slot-of t 4))))))
+      (get interned))))
+(define-rec
+  (chain-interned (subr cm (i64 i64) i64)
+    (lambda (e c)
+      (cond ((i64= e v-false) (the i64 -1))
+            ((and (not (i64= (slot-of e 3) weak-dead)) (datum-same? (slot-of e 3) c)) (slot-of e 3))
+            (else (chain-interned (slot-of e 2) c)))))
+  (vector-interned! (subr cm (i64 i64 i64 bool) bool)
+    (lambda (v w i same)
+      "`v`'s elements from `i` interned into `w`: whether each was already."
+      (if (i64>= i (eq-size v))
+          same
+          (let ((x (intern-datum! (obj-ref v i))))
+            (begin (obj-set! w i x) (vector-interned! v w (i64+ i 1) (and same (i64= x (obj-ref v i)))))))))
+  (intern-datum! (subr cm (i64) i64)
+    (lambda (v)
+      "`v` made the one object equal to it: the interned one if there is
+       one, else `v` itself (or, of a pair or vector whose parts were not
+       interned, a copy over the interned parts), interned from now on.
+       Nothing collects here: allocation never does."
+      (let ((c (cond ((is-pair? v)
+                      (let* ((a (pair-car v)) (d (pair-cdr v)) (ia (intern-datum! a)) (id (intern-datum! d)))
+                        (if (and (i64= ia a) (i64= id d)) v (cons! ia id))))
+                     ((or (is-kind? v k-string) (is-kind? v k-flonum)) v)
+                     ((is-kind? v k-vector)
+                      (let ((w (make-bloblet! k-vector (eq-size v) 0 #t #f)))
+                        (if (vector-interned! v w 0 #t) v w)))
+                     (else (the i64 -1)))))
+        (if (i64= c -1)
+            v
+            (let* ((t (intern-table!)) (bs (slot-of t 4)) (b (intern-bucket (datum-hash c) (eq-size bs)))
+                   (found (chain-interned (slot-of bs b) c)))
+              (if (not (i64= found -1))
+                  found
+                  (let ((e (make-bloblet! k-weak-pair 2 0 #t #f)) (n (i64+ (fix-val (slot-of t 3)) 1)))
+                    (begin
+                      (slot-set! e 3 c) (slot-set! e 2 (slot-of bs b)) (slot-set! bs b e)
+                      (slot-set! t 3 (fix n))
+                      (if (i64> n (i64* 2 (eq-size bs))) (interned-relinked! t (i64* 4 (eq-size bs))) #u)
+                      c)))))))))
 
 (define fixed-op! (subr cm (i64 i64) i64)
   (lambda (w s)
@@ -1819,6 +1946,7 @@
         ((i64= op o-clock) (int-value! (i64->int (clock))))
         ((i64= op o-sleep-until) (if (fixed-in? 4 a) (begin (sleep-until (int->i64 (int-of a))) v-unit) (expected! "an i64")))
         ((i64= op o-address-identity) (fix 0))
+        ((i64= op o-intern-datum) (intern-datum! a))
         ((i64= op o-convert)
          "A procedure already of the convention itself; one of the other, an
           adapter (C230; Fixpt's `%fx26-convert`, `adapt`); anything else

@@ -374,6 +374,20 @@
 (define collections (ref i64 @c) (new 0))
 (define words-copied (ref i64 @c) (new 0))
 
+"Weak pairs (C231; Fixpt's `make_weak_pair`, `update_weak_pairs`): a
+ bloblet of kind `weak-pair`, two fields and the trailer (by which tier 1
+ finds a header), its car field 3 (the first a scan meets), its cdr
+ field 2. A collection does not trace the
+ car: it notes the pair, and when everything else is traced makes the car
+ its object's copy, or, if nothing else kept the object, `WEAK_DEAD` (the
+ fixnum -1). Those this collection noted, by their copies' headers."
+(define weak-seen (ref (listof i64 @c) @c) (new nil))
+(define weak-dead i64 -8)
+"The table of interned data (prims.kfx's `intern-datum!`), a root; #f
+ until there is one."
+(define interned (ref i64 @c) (new v-false))
+
+
 (define to-at (subr cm (i64) i64) (lambda (i) (flatarray-ref-i64 (get other) i)))
 (define to-ref (subr cm (i64 i64) i64)
   (lambda (i tag) "The value of index `i` of the other space, with `tag`." (i64-or (i64+ (i64-shl i 3) (get to-vbase)) tag)))
@@ -460,8 +474,42 @@
           (let ((w (to-at i)))
             (if (i64= (tag-of w) t-header)
                 (let ((f (bits w (with lay header-fields-lo) (with lay header-fields-width))))
-                  (begin (fields-forwarded! (i64+ i 1) (i64+ i f)) (scanned! (i64+ i (words-of w)))))
+                  (if (i64= (bits w (with lay header-kind-lo) (with lay header-kind-width)) k-weak-pair)
+                      ;; A weak pair's car, its first field, not traced (C231):
+                      ;; noted, to be moved on or cleared (`weak-moved!`).
+                      (begin (set weak-seen (cons i (get weak-seen)))
+                             (fields-forwarded! (i64+ i 2) (i64+ i f)) (scanned! (i64+ i (words-of w))))
+                      (begin (fields-forwarded! (i64+ i 1) (i64+ i f)) (scanned! (i64+ i (words-of w))))))
                 (begin (fields-forwarded! i (i64+ i 1)) (scanned! (i64+ i 2)))))))))
+
+(define weak-after (subr cm (i64) i64)
+  (lambda (w)
+    "What weak reference `w` is after the copying, before the spaces are
+     swapped: its object's copy, `weak-dead` if it has none, or itself if it
+     is no pointer or a code bloblet (which never moves). Fixpt's
+     `weak_moved`."
+    (cond
+      ((is-sref? w)
+       (let ((o (weak-after (sref-owner w))))
+         (if (i64= o weak-dead) o (make-sref (to-address o) (sref-offset w)))))
+      ((in-code? w) w)
+      ((is-pair? w)
+       (let ((first (word-at (address w))))
+         (if (i64= (tag-of first) t-forward) (to-ref (i64-shr first 3) t-pair) weak-dead)))
+      ((is-bloblet? w)
+       (let* ((p (address w)) (before (word-at (i64- p 1))))
+         (if (i64= (tag-of before) t-forward)
+             (to-ref (i64+ (i64-shr before 3) 1) t-bloblet)
+             (let* ((h (if (i64= (tag-of before) t-trailer) (i64- (i64- p 1) (i64-shr before 3)) (i64- p 1)))
+                    (head (word-at h)))
+               (if (i64= (tag-of head) t-forward) (to-ref (i64+ (i64-shr head 3) (i64- p h)) t-bloblet) weak-dead)))))
+      (else w))))
+
+(define-rec
+  (weak-moved! (subr cm ((listof i64 @c)) unit)
+    (lambda (hs)
+      "Each noted weak pair's car moved on, or cleared."
+      (if (null? hs) #u (begin (to-set! (i64+ (car hs) 1) (weak-after (to-at (i64+ (car hs) 1)))) (weak-moved! (cdr hs)))))))
 
 (define-rec
   (named-forwarded! (subr cm (i64) unit)
@@ -558,6 +606,7 @@
           #u)
       (set to-top 8)
       (named-forwarded! 0)
+      (set interned (forward! (get interned)))
       ;; The native adapter's code, which adapters made later share (C230).
       (if (i64= (get adapter-code) 0) #u (code-marked! (get adapter-code))))))
 
@@ -567,6 +616,8 @@
      both, if what lives fills more than half."
     (begin
       (traced-all! 8)
+      (weak-moved! (get weak-seen))
+      (set weak-seen nil)
       (if (get code-on) (code-swept! (get code-lo) 0 0 nil) #u)
       (let ((old (get mem)))
         (begin

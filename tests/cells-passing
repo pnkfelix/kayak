@@ -53,7 +53,9 @@ datum/acyclic.fx
 datum/confirm-length.fx
 datum/data-kind.fx
 datum/quasiquote.fx
+datum/quote-identity.fx
 datum/quote-shadowed.fx
+datum/quote.fx
 datum/type-tests.fx
 datum/union.fx
 diverge/cyclic-list-string.fx
@@ -80,6 +82,7 @@ higher-kinds/okasaki-stack.fx
 higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
 kayak/conventions/both-ways.fx
+kayak/datum/interned-across-collections.fx
 kayak/made-code-x86_64/adapter-called.fx
 kayak/made-code-x86_64/code-freed.fx
 kayak/made-code-x86_64/kept-across-collections.fx

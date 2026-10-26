@@ -1,0 +1,155 @@
+# Where kayak's runtime departs from Fixpt's
+
+Status: for review with the user (`TODO.md`, C230: "I'm sure some are
+totally reasonable, but I'd like to have better awareness of them
+regardless"). Each item: what kayak does, what Fixpt does or means to, the
+reason kayak gave, and whether a program can tell. Gathered from all of
+`CLAUDES_CHOICES.md`, `native.md` and `fixpt-tiers.md` against Fixpt's
+`docs/object-model.md` and `docs/research/declared-conventions.md`, at
+C231; the first item checked in the code. Out of scope: where kayak's
+checker accepts or refuses differently, and KFX's own Rust object model
+(listed last, as a question).
+
+## Observable: a program can tell
+
+### 1. Made code's `poll` never stops it (C116)
+- **Kayak**: kayak-jit's `poll` refills the fuel from the reserve and
+  returns (`kayak_jit_poll`, `crates/kayak-jit/src/lib.rs`): no step limit,
+  no preemption, no collection. `overflow` ends the call with a
+  stack-overflow trap.
+- **Fixpt**: `common_poll` gives the next slice, traps when the budget is
+  spent, preempts when the scheduler wants; `overflow` flushes the stack
+  cache into the heap and goes on.
+- **Why**: a first version, not returned to; for `overflow`, kayak's native
+  stack is the thread's, with no cache to flush.
+- **So**: a loop in made code is never stopped or preempted; very deep
+  made-code recursion traps where Fixpt's goes on.
+
+### 2. Steps counted one way on every tier (C125, C128, C130, C138, C229)
+- **Kayak**: every tier spends tier 1's one count: a step a cell, a step a
+  register instruction (tier 6 a block's at once, the same total); the
+  limit is the whole program's, tier 1 running the listing's one `program`
+  word; a callback from made code counts too.
+- **Fixpt**: the register tiers poll at entries and back edges only; the
+  limit is per top-level form.
+- **Why**: limits and preemption at the same points on every tier, as
+  Fixpt's `rsinterp` has them.
+- **So**: where a step limit fails and where tasks interleave can differ
+  from Fixpt's native machine (C125: `process-fails.fx`,
+  `allocating-short.fx`); C229's test had to shrink its churn.
+
+### 3. The engine is not Fixpt's evaluator (C64, C134, C219, C220)
+- **Kayak**: a CEK machine over its own heap; frames never written,
+  continuations copied when resumed; it never recurses on the Rust stack;
+  its scheduler shares messages rather than copying them.
+- **So**: `native/crossing-overflow.fx` runs on it where Fixpt fails;
+  `eq?` on a message sent may differ (not checked).
+
+## Internal: memory, speed, code bytes
+
+### 4. Tier 1's code area is its own reservation (C226, C229, C230)
+- **Kayak**: a reservation apart from the two spaces, an execute view by
+  `code:exec-view/1`; a word's index past the heap's read from it. Marked
+  and swept as Fixpt's (C229). It must lie above both spaces, for the
+  convention's `code-lo` test (C230): reserved first (top-down, Linux),
+  else after (bottom-up, macOS, not run), else no code area.
+- **Fixpt**: one reservation: the spaces, the arenas, the reaps, the code
+  area at the top (object-model.md, "A collected code area"). `native.md`
+  decision 3 said kayak would do so too.
+- **Why**: two-space copying swaps `mem` at each collection, so a range of
+  it does not stay; one reservation "would have moved every space's
+  indexing".
+- **So**: none, but `native-code?` is `#f` where no area fits.
+- **The user's proposal**: a dispatch stub in every code bloblet's suffix,
+  so native calls need no `code-lo` test at all; for Fixpt first.
+
+### 5. Collection under made code: values copied out and back (C227–C229)
+- **Kayak**: a callback through `foreign` runs `native-callback`: the
+  machine's registers kept on tier 1's return stack, the live native
+  frames' values (found by their stack maps, `traced_slots`) on its data
+  stack, where a collection moves them, written back before native code
+  resumes; the called closure kept as a root.
+- **Fixpt**: its collector traces the native frames in place, or flushes
+  them into the heap.
+- **Why**: tier 1's collector knows nothing outside its own spaces.
+
+### 6. The convention's routines: Rust, on a heap handed over per call (C226, C227, C230)
+- **Kayak**: tier 1 calls made code through `kayak:call-native/1`, words in
+  a mailbox; kayak-jit's Rust `cons` and `bloblet` bump tier 1's top,
+  handed over and back (`m[10..11]`); the card range and the code area
+  swapped in per call (`m[12..15]`); `foreign` alone reaches KFX.
+- **Fixpt**: callouts from its state, on its one heap.
+- **Also against kayak's own plan**: C116 and `native.md` decision 6 meant
+  the routines to be KFX procedures reached through fields.
+
+### 7. The collector is Cheney's, without a barrier that is read (C122, C212, C227)
+- **Kayak**: Coopt's baseline: two spaces, no nursery, collecting only at
+  safepoints; no write barrier in tier 1; made code's card marks never
+  read.
+- **Fixpt**: generational, a nursery of 2^20 words, a card-marking barrier
+  after every store on every machine.
+- **Why**: Coopt's steps to be ported one by one; not yet.
+
+### 8. Regions and reaps in the one heap (C122, C124, C125)
+- **Kayak**: `%region-enter`, `%reap-enter`, `%region-new` count;
+  `%region-exit` frees nothing; `%region-cons` is `cons`.
+- **Fixpt**: arenas and reaps areas, freed at exit; a prompt's height
+  counts regions live.
+
+### 9. Tier 6's frames are kayak's (C138, C147, C210–C212)
+- **Kayak**: register code as native procedures by `call`/`ret`; slots on
+  tier 1's data stack, a small record per call on the machine stack; no
+  stack maps; anything tier 5 would hand back leaves tier 6, its records
+  written out as return entries.
+- **Fixpt**: native frames as bloblets with stack maps on a native stack,
+  flushed into the heap before a collection; its tier 6 allocates and
+  calls out.
+- **Why**: Fixpt's tier 6 files assume its heap and `DState`, and tier 1,
+  an interpreter in KFX, must be returned to.
+
+### 10. Register code's registers on x86_64 (C137, C139, C140)
+- **Kayak**: `REG1` `rdi`, `REG2` `r14`, `REG3` `r10`, `REG4`–`REG8` in the
+  state; the link popped into the state at entry. `--fixpt-calls` gives
+  Fixpt's (`rdi`, `rsi`, `r8`, the link on the stack). arm64 as Fixpt's.
+- **Why**: the routines' scratch registers; `r10` once the heap's base.
+
+### 11. Tiers 2–5 run on tier 1's state (C126, C128, C129, C131, C136)
+- **Kayak**: tier 1's heap, stacks (growing up) and registers, KFX flat
+  arrays; a cell without a routine handed back to tier 1; tier 4 compiles
+  `hand.kfx`'s routines, not Fixpt's `native.fx`; `prim` numbers kayak's.
+- **Fixpt**: its own state, stacks growing down, Rust callouts.
+- **Why**: one routine at a time, always agreeing with tier 1.
+
+### 12. The native tiers' code is never freed (C126, C128, C141)
+- **Kayak**: the hand machine and every compiled word in one bloblet of
+  kayak-jit's area, made at start, kept.
+- **Fixpt**: a code space collected by copying, words kept by weak
+  references.
+
+### 13. Values are addresses, each space its own reservation (C139)
+- **Kayak**: addresses by default, as Fixpt's; `--indexes` kept (no native
+  code there); each space 2^28 words reserved apart; arm64 keeps a base
+  register (`x19`, 0).
+- **Fixpt**: addresses, one reservation.
+
+### 14. Tier 1's runtime frees nothing (C3, C43, C142, C148–C151)
+- kayak-rt, which KFX compiles to, never frees; hot-path leaks were taken
+  out by hand.
+
+### 15. Interned data's weak pairs carry a trailer (C231)
+- **Kayak**: tier 1 finds a bloblet's header through its trailer when it
+  has fields, so its weak pair has one: the car field 3, the cdr field 2.
+- **Fixpt**: two fields, the car 2, the cdr 1.
+
+## A question rather than a departure: KFX's own object model
+KFX compiles to Rust over kayak-rt (C3, C30, C43, C45, C102, C116): values
+in leaked typed arenas, `letrena` a Rust arena, composable continuations
+Rust futures resumed once, processes OS threads with shared messages,
+values crossing into made code copied. A different object model by
+design, partly observable (thread order, copies at the native boundary);
+whether it counts as an FX-26 runtime's is for the review.
+
+## Missing, not different
+Tier 3 (stencils); the standard input's readiness waited for, and the
+scheduler's seed (C125); tier 1 without Fixpt's cross-machine stack
+checks (C134).

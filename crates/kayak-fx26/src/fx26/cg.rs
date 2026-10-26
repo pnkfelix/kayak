@@ -4274,6 +4274,7 @@ pub enum Lit {
     LSym(Str),
     LPair(&'static Lit, &'static Lit),
     LWord(Str),
+    LQuoted(i64),
 }
 
 pub fn l_int(f0: Int) -> &'static Lit {
@@ -4314,6 +4315,10 @@ pub fn l_pair(f0: &'static Lit, f1: &'static Lit) -> &'static Lit {
 
 pub fn l_word(f0: Str) -> &'static Lit {
     kayak_rt::heap_alloc(Lit::LWord(f0))
+}
+
+pub fn l_quoted(f0: i64) -> &'static Lit {
+    kayak_rt::heap_alloc(Lit::LQuoted(f0))
 }
 
 // An instruction's operand: a number, a literal, a word (by its name), a
@@ -4563,6 +4568,42 @@ pub fn lit_escaped(s: Str, quote: char) -> Str {
     }), string_chars(s))))
 }
 
+// A quoted datum made now and interned (C231; Fixpt's `c-quote-now`,
+// `wcell-interned`): its pairs hash-consed bottom up, so that equal quotes
+// are one object, a tail shared where it is equal, as Fixpt's compiler
+// interns them as it makes them. Each pair a node, by its number; written
+// in a word's lines as a mark (`q-open`, its number, `q-close`), which the
+// listing's writing makes the pair in full, labelled where it is reached
+// more than once (`labelled-listing`), as Fixpt's `literal.rs` writes.
+pub fn q_open() -> Str {
+    static ONCE: std::sync::OnceLock<Str> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        list_to_string(kayak_rt::heap_cons(i64_to_char(1i64), kayak_rt::nil()))
+    })
+}
+
+pub fn q_close() -> Str {
+    static ONCE: std::sync::OnceLock<Str> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        list_to_string(kayak_rt::heap_cons(i64_to_char(2i64), kayak_rt::nil()))
+    })
+}
+
+pub enum Qnode {
+    Qnode(i64, &'static Lit, &'static Lit),
+}
+
+pub fn qnode(f0: i64, f1: &'static Lit, f2: &'static Lit) -> &'static Qnode {
+    kayak_rt::heap_alloc(Qnode::Qnode(f0, f1, f2))
+}
+
+pub fn cg_qnodes() -> Ref<List<&'static Qnode>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qnode>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Qnode>())
+    })
+}
+
 pub fn lit_text(l: &'static Lit) -> Str {
     let tagcase_ = l;
     match *tagcase_ {
@@ -4599,6 +4640,9 @@ pub fn lit_text(l: &'static Lit) -> Str {
         }
         Lit::LWord(w) => {
             string_append(str_lit("word "), shown_name(w))
+        }
+        Lit::LQuoted(n) => {
+            string_append(q_open(), string_append(i64_to_string(n), q_close()))
         }
     }
 }
@@ -5636,6 +5680,149 @@ pub fn c_quoted_cell(x: &'static Cx) -> List<&'static Lit> {
     }
 }
 
+/// Two literals of a quote made now the same: equal atoms, or the same node.
+pub fn lit_same_p(a: &'static Lit, b: &'static Lit) -> bool {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Lit::LInt(n) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LInt(m) => {
+                    _eq(n, m)
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        Lit::LBool(v) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LBool(w) => {
+                    if v {
+                        w
+                    } else {
+                        not(w)
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        Lit::LChar(ch) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LChar(c2) => {
+                    char_eq_p(ch, c2)
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        Lit::LSym(x) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LSym(y2) => {
+                    string_eq_p(x, y2)
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        Lit::LNil() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LNil() => {
+                    true
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        Lit::LUnit() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LUnit() => {
+                    true
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        Lit::LQuoted(n) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Lit::LQuoted(m) => {
+                    i64_eq(n, m)
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn qnode_found(mut ns: List<&'static Qnode>, mut a: &'static Lit, mut d: &'static Lit) -> i64 {
+    loop {
+        if null_p(ns) {
+            return -1i64;
+        } else {
+            let tagcase_ = car(ns);
+            match *tagcase_ {
+                Qnode::Qnode(k, x, y) => {
+                    if (lit_same_p(x, a) && lit_same_p(y, d)) {
+                        return k;
+                    } else {
+                        ns = cdr(ns);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Quote `l`'s pairs interned, bottom up: each the node of its car and
+/// cdr, made if there is none.
+pub fn quoted_interned(l: &'static Lit) -> &'static Lit {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lit::LPair(a, d) => {
+            let ia = quoted_interned(a);
+            let id = quoted_interned(d);
+            let k = qnode_found(get(cg_qnodes()), ia, id);
+            if i64_gt_eq(k, 0i64) {
+                l_quoted(k)
+            } else {
+                let n = size(get(cg_qnodes()));
+                set(cg_qnodes(), kayak_rt::heap_cons(qnode(n, ia, id), get(cg_qnodes())));
+                l_quoted(n)
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            l
+        }
+    }
+}
+
 // What a lambda's word captures, as patches for `letrec` siblings: for each
 // sibling it captured before the sibling was made, its free value's index
 // and the slot the sibling will be in.
@@ -6449,7 +6636,7 @@ pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool
                 str_lit("tcall")
             }, o_int(n))
         } else if (string_eq_p(standard, str_lit("%quote")) && i64_eq(size(args), 1i64) && not(null_p(c_quoted_cell(car(args))))) {
-            c_lit(c, car(c_quoted_cell(car(args))));
+            c_lit(c, quoted_interned(car(c_quoted_cell(car(args)))));
             c_done(c, tail)
         } else if string_eq_p(standard, str_lit("%quote")) {
             c_exp(car(args), e, depth, c, false);
@@ -6714,6 +6901,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
     set(cg_facts(), fs);
+    set(cg_qnodes(), nil::<&'static Qnode>());
     set(cg_convert_facts(), filter(lambda1s(move |x: &'static Fact| {
         let tagcase_ = x;
         match *tagcase_ {
@@ -6811,7 +6999,218 @@ pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
     }
 }
 
+// The listing's quoted nodes written (`quoted-interned`): Fixpt's
+// `literal.rs`, an object reached more than once labelled `#N=` where it
+// is first written and named `#N#` after, numbered as written, across the
+// listing. First each node's reaches counted, in the order written, its
+// parts only at its first; then the marks replaced.
+pub enum Qseen {
+    Qseen(i64, i64),
+}
+
+pub fn qseen(f0: i64, f1: i64) -> &'static Qseen {
+    kayak_rt::heap_alloc(Qseen::Qseen(f0, f1))
+}
+
+pub fn cg_qreached() -> Ref<List<&'static Qseen>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Qseen>())
+    })
+}
+
+pub fn cg_qlabels() -> Ref<List<&'static Qseen>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Qseen>())
+    })
+}
+
+pub fn cg_qnext() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn qseen_of(mut ss: List<&'static Qseen>, mut n: i64) -> i64 {
+    loop {
+        if null_p(ss) {
+            return 0i64;
+        } else {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Qseen::Qseen(k, v) => {
+                    if i64_eq(k, n) {
+                        return v;
+                    } else {
+                        ss = cdr(ss);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn qnode_parts(mut ns: List<&'static Qnode>, mut n: i64) -> List<&'static Lit> {
+    loop {
+        if null_p(ns) {
+            return nil::<&'static Lit>();
+        } else {
+            let tagcase_ = car(ns);
+            match *tagcase_ {
+                Qnode::Qnode(k, a, d) => {
+                    if i64_eq(k, n) {
+                        return kayak_rt::heap_cons(a, kayak_rt::heap_cons(d, kayak_rt::nil()));
+                    } else {
+                        ns = cdr(ns);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn q_reached_x(mut l: &'static Lit) -> () {
+    loop {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Lit::LQuoted(n) => {
+                let c = qseen_of(get(cg_qreached()), n);
+                set(cg_qreached(), kayak_rt::heap_cons(qseen(n, i64_plus(c, 1i64)), get(cg_qreached())));
+                if i64_eq(c, 0i64) {
+                    let ps = qnode_parts(get(cg_qnodes()), n);
+                    q_reached_x(car(ps));
+                    l = car(cdr(ps));
+                    continue;
+                } else {
+                    return ();
+                }
+            }
+            _ => {
+                let y = tagcase_;
+                return ();
+            }
+        }
+    }
+}
+
+pub fn q_written_x(l: &'static Lit) -> Str {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lit::LQuoted(n) => {
+            let (ps, k) = (qnode_parts(get(cg_qnodes()), n), qseen_of(get(cg_qlabels()), n));
+            if i64_gt(k, 0i64) {
+                string_append(str_lit("#"), string_append(i64_to_string(i64_minus(k, 1i64)), str_lit("#")))
+            } else if i64_gt(qseen_of(get(cg_qreached()), n), 1i64) {
+                let m = get(cg_qnext());
+                set(cg_qnext(), i64_plus(m, 1i64));
+                set(cg_qlabels(), kayak_rt::heap_cons(qseen(n, i64_plus(m, 1i64)), get(cg_qlabels())));
+                string_append(str_lit("#"), string_append(i64_to_string(m), string_append(str_lit("="), q_pair_text(ps))))
+            } else {
+                q_pair_text(ps)
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            lit_text(l)
+        }
+    }
+}
+
+pub fn q_pair_text(ps: List<&'static Lit>) -> Str {
+    string_append(str_lit("("), string_append(q_written_x(car(ps)), string_append(str_lit(" . "), string_append(q_written_x(car(cdr(ps))), str_lit(")")))))
+}
+
+/// The marks' numbers in `cs`, in order.
+pub fn q_marks(mut cs: Chars, mut acc: List<i64>) -> List<i64> {
+    loop {
+        if null_p(cs) {
+            return reverse(acc);
+        } else if char_eq_p(car(cs), i64_to_char(1i64)) {
+            return q_mark_number(cdr(cs), 0i64, acc);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn q_mark_number(mut cs: Chars, mut n: i64, mut acc: List<i64>) -> List<i64> {
+    loop {
+        if char_eq_p(car(cs), i64_to_char(2i64)) {
+            return q_marks(cdr(cs), kayak_rt::heap_cons(n, acc));
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+pub fn strings_joined(mut ss: Strings, mut acc: Str) -> Str {
+    loop {
+        if null_p(ss) {
+            return acc;
+        } else {
+            (ss, acc) = (cdr(ss), string_append(acc, car(ss)));
+            continue;
+        }
+    }
+}
+
+pub fn q_all_reached_x(mut ns: List<i64>) -> () {
+    loop {
+        if null_p(ns) {
+            return ();
+        } else {
+            q_reached_x(l_quoted(car(ns)));
+            ns = cdr(ns);
+            continue;
+        }
+    }
+}
+
+/// `cs` with each mark written, `run` the plain characters not yet put.
+pub fn q_replaced(mut cs: Chars, mut run: Chars, mut acc: Strings) -> Str {
+    loop {
+        if null_p(cs) {
+            return strings_joined(reverse(kayak_rt::heap_cons(list_to_string(reverse(run)), acc)), str_lit(""));
+        } else if char_eq_p(car(cs), i64_to_char(1i64)) {
+            return q_replaced_mark(cdr(cs), 0i64, kayak_rt::heap_cons(list_to_string(reverse(run)), acc));
+        } else {
+            (cs, run) = (cdr(cs), kayak_rt::heap_cons(car(cs), run));
+            continue;
+        }
+    }
+}
+
+pub fn q_replaced_mark(mut cs: Chars, mut n: i64, mut acc: Strings) -> Str {
+    loop {
+        if char_eq_p(car(cs), i64_to_char(2i64)) {
+            return q_replaced(cdr(cs), nil::<char>(), kayak_rt::heap_cons(q_written_x(l_quoted(n)), acc));
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+pub fn labelled_listing(text: Str) -> Str {
+    if null_p(get(cg_qnodes())) {
+        text
+    } else {
+        let cs = string_chars(text);
+        set(cg_qreached(), nil::<&'static Qseen>());
+        set(cg_qlabels(), nil::<&'static Qseen>());
+        set(cg_qnext(), 0i64);
+        q_all_reached_x(q_marks(cs, nil::<i64>()));
+        q_replaced(cs, nil::<char>(), nil::<Str>())
+    }
+}
+
 pub fn cells_listing() -> Str {
-    listing_from(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), str_lit(""))
+    labelled_listing(listing_from(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), str_lit("")))
 }
 

@@ -1317,7 +1317,8 @@
   (l-f64 int)
   (l-sym string)
   (l-pair lit lit)
-  (l-word string))
+  (l-word string)
+  (l-quoted i64))
 
 "An instruction's operand: a number, a literal, a word (by its name), a
  global (by its name), a runtime primitive (by its name)."
@@ -1426,6 +1427,18 @@
                            (list ch))))
                    (string-chars s))))))
 
+"A quoted datum made now and interned (C231; Fixpt's `c-quote-now`,
+ `wcell-interned`): its pairs hash-consed bottom up, so that equal quotes
+ are one object, a tail shared where it is equal, as Fixpt's compiler
+ interns them as it makes them. Each pair a node, by its number; written
+ in a word's lines as a mark (`q-open`, its number, `q-close`), which the
+ listing's writing makes the pair in full, labelled where it is reached
+ more than once (`labelled-listing`), as Fixpt's `literal.rs` writes."
+(define q-open string (list->string (list (i64->char 1))))
+(define q-close string (list->string (list (i64->char 2))))
+(define-datatype qnode (qnode i64 lit lit))
+(define cg-qnodes (ref (listof qnode acyclic) @g) (new nil))
+
 (define-rec
   (lit-text (subr kfx (lit) string)
     (lambda (l)
@@ -1439,7 +1452,8 @@
         (l-f64 (b) (string-append "#f64x" (hex-bits b 16 nil)))
         (l-sym (s) (string-append "|" (string-append (lit-escaped s #\|) "|")))
         (l-pair (a d) (string-append "(" (string-append (lit-text a) (string-append " . " (string-append (lit-text d) ")")))))
-        (l-word (w) (string-append "word " (shown-name w)))))))
+        (l-word (w) (string-append "word " (shown-name w)))
+        (l-quoted (n) (string-append q-open (string-append (i64->string n) q-close)))))))
 
 (define item-size (subr kfx (item) i64)
   (lambda (i) (tagcase i (it-ins (r os) (i64+ 1 (size os))) (it-label (n) 0) (it-branch (n) 2) (it-zbranch (n) 2))))
@@ -1875,6 +1889,40 @@
                 (if (or (null? h) (null? t)) nil (list (l-pair (car h) (car t)))))
               nil))
         (else y nil)))))
+
+(define-rec
+  (lit-same? (subr kfx (lit lit) bool)
+    (lambda (a b)
+      "Two literals of a quote made now the same: equal atoms, or the same node."
+      (tagcase a
+        (l-int (n) (tagcase b (l-int (m) (= n m)) (else y #f)))
+        (l-bool (v) (tagcase b (l-bool (w) (if v w (not w))) (else y #f)))
+        (l-char (ch) (tagcase b (l-char (c2) (char=? ch c2)) (else y #f)))
+        (l-sym (x) (tagcase b (l-sym (y2) (string=? x y2)) (else y #f)))
+        (l-nil () (tagcase b (l-nil () #t) (else y #f)))
+        (l-unit () (tagcase b (l-unit () #t) (else y #f)))
+        (l-quoted (n) (tagcase b (l-quoted (m) (i64= n m)) (else y #f)))
+        (else y #f))))
+  (qnode-found (subr kfx ((listof qnode acyclic) lit lit) i64)
+    (lambda (ns a d)
+      (if (null? ns)
+          -1
+          (tagcase (car ns)
+            (qnode (k x y) (if (and (lit-same? x a) (lit-same? y d)) k (qnode-found (cdr ns) a d))))))))
+
+(define-rec
+  (quoted-interned (subr gen (lit) lit)
+    (lambda (l)
+      "Quote `l`'s pairs interned, bottom up: each the node of its car and
+       cdr, made if there is none."
+      (tagcase l
+        (l-pair (a d)
+          (let* ((ia (quoted-interned a)) (id (quoted-interned d)) (k (qnode-found (get cg-qnodes) ia id)))
+            (if (i64>= k 0)
+                (l-quoted k)
+                (let ((n (size (get cg-qnodes))))
+                  (begin (set cg-qnodes (cons (qnode n ia id) (get cg-qnodes))) (l-quoted n))))))
+        (else y l)))))
 
 ;;; --------------------------------------------------------- expressions
 ;;; `depth` is how many values are on the frame above its start, so the
@@ -2320,7 +2368,7 @@
                                            (else "tcall"))
                                    (o-int n)))))
                   ((and (string=? standard "%quote") (i64= (size args) 1) (not (null? (c-quoted-cell (car args)))))
-                   (begin (c-lit c (car (c-quoted-cell (car args)))) (c-done c tail)))
+                   (begin (c-lit c (quoted-interned (car (c-quoted-cell (car args))))) (c-done c tail)))
                   ;; Else built as written, then interned (TODO §51).
                   ((string=? standard "%quote")
                    (begin (c-exp (car args) e depth c #f) (c-prim c "%fx26-intern-datum" 1) (c-done c tail)))
@@ -2455,6 +2503,7 @@
     (let ((c (the code (new nil))))
       (begin
         (set cg-facts fs)
+        (set cg-qnodes nil)
         (set cg-convert-facts
              (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "convert ") (has-prefix? what "convention "))))) fs))
         (set cg-fx-calls nil)
@@ -2495,4 +2544,85 @@
                            (listing-from (onto (reverse named) (cdr todo)) (cons name seen)
                                          (string-append out (string-append "\nword " (string-append (shown-name name) (string-append " (" (string-append (i64->string (cells-of xs 0)) (string-append " cells, cellular):\n" text))))))))))))))))))
 
-(define cells-listing (subr gen () string) (lambda () (listing-from (list "program") nil "")))
+"The listing's quoted nodes written (`quoted-interned`): Fixpt's
+ `literal.rs`, an object reached more than once labelled `#N=` where it
+ is first written and named `#N#` after, numbered as written, across the
+ listing. First each node's reaches counted, in the order written, its
+ parts only at its first; then the marks replaced."
+(define-datatype qseen (qseen i64 i64))
+(define cg-qreached (ref (listof qseen acyclic) @g) (new nil))
+(define cg-qlabels (ref (listof qseen acyclic) @g) (new nil))
+(define cg-qnext (ref i64 @g) (new 0))
+(define-rec
+  (qseen-of (subr kfx ((listof qseen acyclic) i64) i64)
+    (lambda (ss n) (if (null? ss) 0 (tagcase (car ss) (qseen (k v) (if (i64= k n) v (qseen-of (cdr ss) n)))))))
+  (qnode-parts (subr kfx ((listof qnode acyclic) i64) (listof lit acyclic))
+    (lambda (ns n) (if (null? ns) nil (tagcase (car ns) (qnode (k a d) (if (i64= k n) (list a d) (qnode-parts (cdr ns) n))))))))
+(define-rec
+  (q-reached! (subr gen (lit) unit)
+    (lambda (l)
+      (tagcase l
+        (l-quoted (n)
+          (let ((c (qseen-of (get cg-qreached) n)))
+            (begin
+              (set cg-qreached (cons (qseen n (i64+ c 1)) (get cg-qreached)))
+              (if (i64= c 0)
+                  (let ((ps (qnode-parts (get cg-qnodes) n))) (begin (q-reached! (car ps)) (q-reached! (car (cdr ps)))))
+                  #u))))
+        (else y #u))))
+  (q-written! (subr gen (lit) string)
+    (lambda (l)
+      (tagcase l
+        (l-quoted (n)
+          (let ((ps (qnode-parts (get cg-qnodes) n)) (k (qseen-of (get cg-qlabels) n)))
+            (cond ((i64> k 0) (string-append "#" (string-append (i64->string (i64- k 1)) "#")))
+                  ((i64> (qseen-of (get cg-qreached) n) 1)
+                   (let ((m (get cg-qnext)))
+                     (begin
+                       (set cg-qnext (i64+ m 1))
+                       (set cg-qlabels (cons (qseen n (i64+ m 1)) (get cg-qlabels)))
+                       (string-append "#" (string-append (i64->string m) (string-append "=" (q-pair-text ps)))))))
+                  (else (q-pair-text ps)))))
+        (else y (lit-text l)))))
+  (q-pair-text (subr gen ((listof lit acyclic)) string)
+    (lambda (ps) (string-append "(" (string-append (q-written! (car ps)) (string-append " . " (string-append (q-written! (car (cdr ps))) ")")))))))
+(define-rec
+  (q-marks (subr kfx (chars (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (cs acc)
+      "The marks' numbers in `cs`, in order."
+      (cond ((null? cs) (reverse acc))
+            ((char=? (car cs) (i64->char 1)) (q-mark-number (cdr cs) 0 acc))
+            (else (q-marks (cdr cs) acc)))))
+  (q-mark-number (subr kfx (chars i64 (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (cs n acc)
+      (if (char=? (car cs) (i64->char 2))
+          (q-marks (cdr cs) (cons n acc))
+          (q-mark-number (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) acc)))))
+(define-rec
+  (strings-joined (subr kfx (strings string) string)
+    (lambda (ss acc) (if (null? ss) acc (strings-joined (cdr ss) (string-append acc (car ss))))))
+  (q-all-reached! (subr gen ((listof i64 acyclic)) unit)
+    (lambda (ns) (if (null? ns) #u (begin (q-reached! (l-quoted (car ns))) (q-all-reached! (cdr ns)))))))
+(define-rec
+  (q-replaced (subr gen (chars chars strings) string)
+    (lambda (cs run acc)
+      "`cs` with each mark written, `run` the plain characters not yet put."
+      (cond ((null? cs) (strings-joined (reverse (cons (list->string (reverse run)) acc)) ""))
+            ((char=? (car cs) (i64->char 1)) (q-replaced-mark (cdr cs) 0 (cons (list->string (reverse run)) acc)))
+            (else (q-replaced (cdr cs) (cons (car cs) run) acc)))))
+  (q-replaced-mark (subr gen (chars i64 strings) string)
+    (lambda (cs n acc)
+      (if (char=? (car cs) (i64->char 2))
+          (q-replaced (cdr cs) nil (cons (q-written! (l-quoted n)) acc))
+          (q-replaced-mark (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) acc)))))
+(define labelled-listing (subr gen (string) string)
+  (lambda (text)
+    (if (null? (get cg-qnodes))
+        text
+        (let ((cs (string-chars text)))
+          (begin
+            (set cg-qreached nil) (set cg-qlabels nil) (set cg-qnext 0)
+            (q-all-reached! (q-marks cs nil))
+            (q-replaced cs nil nil))))))
+
+(define cells-listing (subr gen () string) (lambda () (labelled-listing (listing-from (list "program") nil ""))))

@@ -1,0 +1,32 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"interned-across-collections.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"f : (subr pure () datum) ! pure",
+"g : (subr pure () datum) ! pure",
+"h : (subr pure () datum) ! pure",
+"churn : (subr (maxeff (alloc @heap) spin (read (globals churn))) (int (listof int @heap)) int) ! pure",
+"bit : (subr pure (bool int) int) ! pure",
+"f0 : datum ! (read (globals f))",
+"g0 : datum ! (read (globals g))",
+"h0 : datum ! (read (globals h))",
+"z : int ! (maxeff (alloc @heap) spin (read (globals churn)))",
+"63 : int ! (read (globals bit f f0 g g0 h h0))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@f03cabe27105621d69eaef329d9657ead5f78ecf"
+]
+}
+]
+}

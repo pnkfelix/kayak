@@ -769,6 +769,33 @@ pub fn words_copied() -> Ref<i64> {
     })
 }
 
+// Weak pairs (C231; Fixpt's `make_weak_pair`, `update_weak_pairs`): a
+// bloblet of kind `weak-pair`, two fields and the trailer (by which tier 1
+// finds a header), its car field 3 (the first a scan meets), its cdr
+// field 2. A collection does not trace the
+// car: it notes the pair, and when everything else is traced makes the car
+// its object's copy, or, if nothing else kept the object, `WEAK_DEAD` (the
+// fixnum -1). Those this collection noted, by their copies' headers.
+pub fn weak_seen() -> Ref<List<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<i64>())
+    })
+}
+
+pub fn weak_dead() -> i64 {
+    -8i64
+}
+
+// The table of interned data (prims.kfx's `intern-datum!`), a root; #f
+// until there is one.
+pub fn interned() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(v_false())
+    })
+}
+
 pub fn to_at(i: i64) -> i64 {
     flatarray_ref_i64(get(other()), i)
 }
@@ -911,14 +938,78 @@ pub fn scanned_x(mut i: i64) -> () {
             let w = to_at(i);
             if i64_eq(tag_of(w), t_header()) {
                 let f = bits(w, lay::header_fields_lo(), lay::header_fields_width());
-                fields_forwarded_x(i64_plus(i, 1i64), i64_plus(i, f));
-                i = i64_plus(i, words_of(w));
-                continue;
+                if i64_eq(bits(w, lay::header_kind_lo(), lay::header_kind_width()), k_weak_pair()) {
+                    set(weak_seen(), kayak_rt::heap_cons(i, get(weak_seen())));
+                    fields_forwarded_x(i64_plus(i, 2i64), i64_plus(i, f));
+                    i = i64_plus(i, words_of(w));
+                    continue;
+                } else {
+                    fields_forwarded_x(i64_plus(i, 1i64), i64_plus(i, f));
+                    i = i64_plus(i, words_of(w));
+                    continue;
+                }
             } else {
                 fields_forwarded_x(i, i64_plus(i, 1i64));
                 i = i64_plus(i, 2i64);
                 continue;
             }
+        }
+    }
+}
+
+/// What weak reference `w` is after the copying, before the spaces are
+/// swapped: its object's copy, `weak-dead` if it has none, or itself if it
+/// is no pointer or a code bloblet (which never moves). Fixpt's
+/// `weak_moved`.
+pub fn weak_after(w: i64) -> i64 {
+    if is_sref_p(w) {
+        let o = weak_after(sref_owner(w));
+        if i64_eq(o, weak_dead()) {
+            o
+        } else {
+            make_sref(to_address(o), sref_offset(w))
+        }
+    } else if in_code_p(w) {
+        w
+    } else if is_pair_p(w) {
+        let first = word_at(address(w));
+        if i64_eq(tag_of(first), t_forward()) {
+            to_ref(i64_shr(first, int_lit(3)), t_pair())
+        } else {
+            weak_dead()
+        }
+    } else if is_bloblet_p(w) {
+        let p = address(w);
+        let before = word_at(i64_minus(p, 1i64));
+        if i64_eq(tag_of(before), t_forward()) {
+            to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
+        } else {
+            let h = if i64_eq(tag_of(before), t_trailer()) {
+                i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
+            } else {
+                i64_minus(p, 1i64)
+            };
+            let head = word_at(h);
+            if i64_eq(tag_of(head), t_forward()) {
+                to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
+            } else {
+                weak_dead()
+            }
+        }
+    } else {
+        w
+    }
+}
+
+/// Each noted weak pair's car moved on, or cleared.
+pub fn weak_moved_x(mut hs: List<i64>) -> () {
+    loop {
+        if null_p(hs) {
+            return ();
+        } else {
+            to_set_x(i64_plus(car(hs), 1i64), weak_after(to_at(i64_plus(car(hs), 1i64))));
+            hs = cdr(hs);
+            continue;
         }
     }
 }
@@ -1080,6 +1171,7 @@ pub fn collect_begin_x() -> () {
     };
     set(to_top(), 8i64);
     named_forwarded_x(0i64);
+    set(interned(), forward_x(get(interned())));
     if i64_eq(get(adapter_code()), 0i64) {
         ()
     } else {
@@ -1091,6 +1183,8 @@ pub fn collect_begin_x() -> () {
 /// both, if what lives fills more than half.
 pub fn collect_end_x() -> () {
     traced_all_x(8i64);
+    weak_moved_x(get(weak_seen()));
+    set(weak_seen(), nil::<i64>());
     if get(code_on()) {
         code_swept_x(get(code_lo()), 0i64, 0i64, nil::<&'static Cblock>())
     } else {

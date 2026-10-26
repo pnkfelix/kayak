@@ -6456,3 +6456,47 @@ else itself.
   `declared-conventions.md`, `closures`), compiled into code a program
   makes: a change for Fixpt first, to be written up for its team.
 
+## C231. Weak pairs, and quoted data interned on tier 1 (2026-10-26)
+
+The user: "add weak hashtable support (and I guess %fx26-intern-datum to
+boot)". Fixpt has no weak table a program makes: its weak table is the
+one behind `%fx26-intern-datum` (`heap/intern.rs`, `TODO.md` §51;
+`docs/research/weak-references.md`: "interning needs only weak pairs"),
+which every quote that is not all literals calls. So this is that.
+- **Weak pairs in tier 1's collector** (`cells/heap.kfx`): a bloblet of
+  kind `weak-pair`; the scan skips its car, the first field it meets, and
+  notes the pair; when everything else is traced, each noted car is made
+  its object's copy, or `WEAK_DEAD` (fixnum -1) if nothing else kept it
+  (`weak-after`, Fixpt's `weak_moved`), before the code area's sweep.
+  Tier 1 finds a bloblet's header through its trailer when it has fields,
+  so its weak pair has one (car field 3, cdr 2; Fixpt's has none, car 2,
+  cdr 1): without it, first written so, the pair was copied as garbage
+  and never noted, found by a trap put in and taken out.
+- **The table** (`cells/prims.kfx`, `intern-datum!`), Fixpt's port: a
+  vector of the collections' count when last hashed, the count, and
+  buckets of weak-pair chains, a root of the collector's (`interned`);
+  hash-consing bottom up (a pair by its interned parts, a string, float
+  or vector by its contents, a vector's elements interned); rehashed after
+  a collection, the dead dropped; grown at twice the buckets.
+- **Kayak's compiler to cells** made a quote of all literals at compile
+  time, as Fixpt's does, but each anew: `(eq? '(1 2) '(1 2))` was `#f`.
+  Fixpt's interns it as it makes it (`c-quote-now`, `wcell-interned`), so
+  equal quotes, and equal tails, are one object, written labelled
+  (`#0=` … `#0#`). Now the same: the pairs hash-consed into nodes
+  (`quoted-interned`), written as marks in a word's lines, which the
+  listing's writing replaces (`labelled-listing`): each node's reaches
+  counted in the order written, its parts at its first only, then written,
+  labelled where reached more than once, numbered as written (Fixpt's
+  `literal.rs`).
+- **Tests**: Fixpt's `datum/quote-identity.fx` (outside the corpus, its
+  two compilers listing apart) gives 7 on tier 1 every way, on Fixpt's
+  first listing and kayak's; kayak's words are Fixpt's but for Fixpt's
+  labels on two strings each written once. Kayak's
+  `datum/interned-across-collections.fx`: strings, vectors and all-literal
+  quotes one object across many collections, 63 everywhere.
+- **The departures note** (`docs/research/departures.md`), for the review
+  the user asked for (C230): fifteen places kayak's runtime departs from
+  Fixpt's, those a program can tell first; gathered by a research pass
+  over every entry, its most surprising claim checked in the code (made
+  code's `poll` never stops it).
+
