@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-ast-eval",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"declared.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/made-code/declared.fx:32:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus (state delta)) (field-k-before-code 8))",
+""
+]
+}

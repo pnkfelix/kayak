@@ -125,7 +125,7 @@ def items(form):
 def head_of(form):
     xs = items(form)
     head = xs[0] if xs else ""
-    if head in ("define-effect", "define-type"):
+    if head in ("define-effect", "define-type", "define-convention"):
         return (head, 0)
     if head == "define-rec":
         return (head, len(xs) - 1)
@@ -162,9 +162,28 @@ def prefetch(binary, paths):
         VALUES[path] = v
 
 
-def fixpt_values_run(binary, path, text):
+EVALUATOR = {}
+
+
+def evaluator_values(binary, path, text):
+    """Fixpt's evaluator's values (`fx-ast-eval`), for a program that asks
+    `native-code?` (C222): the engine, as that evaluator, runs no code a
+    program makes, where Fixpt's default machine does, and such a program
+    answers by what runs it. Its values are the engine's to agree with."""
+    if path not in EVALUATOR:
+        EVALUATOR[path] = fixpt_values_run(binary, path, text, ["--fx26-machine", "fx-ast-eval"])
+    return EVALUATOR[path]
+
+
+def engine_expected(binary, path, text):
+    """What the engine's values are compared with: Fixpt's, or its
+    evaluator's for a program that asks `native-code?`."""
+    return evaluator_values(binary, path, text) if "(native-code?)" in text else fixpt_values(binary, path, text)
+
+
+def fixpt_values_run(binary, path, text, machine=None):
     try:
-        r = fixptcache.run(binary, ["--dialect", "fx26"] + fixptcache.ANSWERING + ["--step-limit", "none", "eval", path], [path], timeout=LIMIT)
+        r = fixptcache.run(binary, ["--dialect", "fx26"] + (machine or fixptcache.ANSWERING) + ["--step-limit", "none", "eval", path], [path], timeout=LIMIT)
     except subprocess.TimeoutExpired:
         return None, "Fixpt runs past %ds" % LIMIT
     if r.returncode != 0:
@@ -207,7 +226,7 @@ def engine_runs(accepted, fixpt, listing, bless):
     for name, rel, path in accepted:
         with open(path) as g:
             text = g.read()
-        expected, why = fixpt_values(fixpt, path, text)
+        expected, why = engine_expected(fixpt, path, text)
         r = ran[path]
         if r is None:
             cannot.append((rel, "runs past %ds" % LIMIT))
@@ -264,7 +283,7 @@ def beyond_runs(refused, fixpt, listing):
     for _, rel, path in refused:
         with open(path) as g:
             text = g.read()
-        expected, why = fixpt_values(fixpt, path, text)
+        expected, why = engine_expected(fixpt, path, text)
         if expected is None and not why.startswith("REFUSED: ! evaluation failed"):
             continue
         r = ran[path]

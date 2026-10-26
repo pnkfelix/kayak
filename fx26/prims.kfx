@@ -96,6 +96,7 @@
           ((string=? n "call-with-oneshot-continuation") 2)
           ((string=? n "cwcc") 1)
           ((string=? n "native-convention") 0)
+          ((string-member? n (list "seal-code" "native-procedure")) 1)
           ((string-member? n (list "make-eqtable" "eqtable-count")) 1)
           ((string-member? n (list "eqtable-has?" "eqtable-delete!")) 2)
           ((string-member? n (list "eqtable-ref" "eqtable-set!")) 3)

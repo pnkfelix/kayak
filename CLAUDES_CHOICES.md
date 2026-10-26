@@ -6118,3 +6118,27 @@ native code, each as Fixpt's compiler or parser has it:
   exactly), 1 not yet compiled (a conversion to native code); beyond KFX,
   the engine 223 agree (were 221), 2 differ (as C220), 2 its checker
   refuses (`redefine/`, the REPL's), 6 not run (made code).
+
+## C222. Made code on the engine: none, as Fixpt's evaluator (2026-10-26)
+
+The user: "Native code tiers". First the engine's side of the made-code
+programs (`made-code*/`, Fixpt's §97): the engine, as Fixpt's own
+evaluator (`fx-ast-eval`), runs no code a program makes. `native-code?`
+is `#f` (as before), and `seal-code` and `native-procedure` are now named,
+failing with Fixpt's messages if called (233, 234). Fixpt's programs ask
+`native-code?` and answer alike either way but for that line, so:
+- **`run-fixpt-programs.py` compares the engine with Fixpt's evaluator**
+  (`--fx26-machine fx-ast-eval`) on a program that asks `(native-code?)`,
+  else with Fixpt's default machine as before (`engine_expected`). The
+  Rust of KFX programs is compared as before.
+- `define-convention` prints no line (`head_of`): the values of
+  `made-code-x86_64/declared.fx` were read one line off.
+- Measured: beyond KFX, the engine 229 agree, 2 differ (as C220), 2 its
+  checker refuses, 0 not run.
+
+Tier 1's side, surveyed, not begun: it calls no native closure
+(`call!`), its accessors read `mem` alone, and its collector knows no
+object outside `mem`; `native.md`'s decision 3 puts code bloblets in a
+non-moving code area of the heap, mapped twice, as Fixpt's
+(`exec_view` of `mem`'s code range). KFX has no way to give part of a
+flat array an executable view: an extension, Fixpt's first.

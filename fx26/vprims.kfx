@@ -468,6 +468,10 @@
         ((i64= op 227) (begin (eq-set! a b c) w-unit))
         ((i64= op 228) (begin (eq-delete! a b) w-unit))
         ((and (i64>= op 229) (i64<= op 232)) (fixnum 0))
+        ;; The engine, as Fixpt's evaluator, runs no code a program makes
+        ;; (C222): `native-code?` is `#f`, and these fail as Fixpt's do.
+        ((i64= op 233) (refused-op! "seal-code: this machine runs no native code a program makes"))
+        ((i64= op 234) (refused-op! "native-procedure: this machine runs no native code"))
         ((i64= op 216) (fixnum 4)) ((i64= op 217) (fixnum 4)) ((i64= op 218) (fixnum 8))
         ((i64= op 219) (fixnum 8)) ((i64= op 220) (fixnum 4)) ((i64= op 221) (fixnum 8))
         ((i64>= op f32-base) (f32-op-word (i64- op f32-base) a b))

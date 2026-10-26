@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-ast-eval",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"typed-calls.fx"
+],
+"code": 0,
+"out": [
+"here : bool ! pure",
+"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"adder : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals put-all))) () (subr pure (int int) int)) ! pure",
+"via : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder put-all))) () int) ! pure",
+"via2 : (subr pure ((subr pure (int int) int)) int) ! pure",
+"via3 : (subr pure ((subr pure (int int) int)) int) ! pure",
+"42 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder here put-all via)))",
+"42 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder here put-all via2)))",
+"42 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder here put-all via3)))",
+""
+],
+"err": [
+""
+]
+}

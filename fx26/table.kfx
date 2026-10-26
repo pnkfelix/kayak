@@ -188,7 +188,8 @@
         "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat"
         "native-convention"
         "make-eqtable" "eqtable-ref" "eqtable-has?" "eqtable-count" "eqtable-set!" "eqtable-delete!"
-        "pair-identity" "ref-identity" "array-identity" "icell-identity"))
+        "pair-identity" "ref-identity" "array-identity" "icell-identity"
+        "seal-code" "native-procedure"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

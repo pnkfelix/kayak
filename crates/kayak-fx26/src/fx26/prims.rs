@@ -156,6 +156,8 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_eq_p(n, str_lit("native-convention")) {
         0i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("seal-code"), kayak_rt::heap_cons(str_lit("native-procedure"), kayak_rt::nil()))) {
+        1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-eqtable"), kayak_rt::heap_cons(str_lit("eqtable-count"), kayak_rt::nil()))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eqtable-has?"), kayak_rt::heap_cons(str_lit("eqtable-delete!"), kayak_rt::nil()))) {

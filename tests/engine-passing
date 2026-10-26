@@ -39,6 +39,15 @@ lists
 loaded-bloblet-family
 loaded-family
 loaded-select
+made-allocated-x86_64
+made-code
+made-declared-x86_64
+made-encoded
+made-flat
+made-frames-x86_64
+made-generated-x86_64
+made-linked-x86_64
+made-typed-calls
 module-aborting-val
 module-letrec
 module-params

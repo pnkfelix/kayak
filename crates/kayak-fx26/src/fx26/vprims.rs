@@ -917,6 +917,10 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         w_unit()
     } else if (i64_gt_eq(op, 229i64) && i64_lt_eq(op, 232i64)) {
         fixnum(0i64)
+    } else if i64_eq(op, 233i64) {
+        refused_op_x(str_lit("seal-code: this machine runs no native code a program makes"))
+    } else if i64_eq(op, 234i64) {
+        refused_op_x(str_lit("native-procedure: this machine runs no native code"))
     } else if i64_eq(op, 216i64) {
         fixnum(4i64)
     } else if i64_eq(op, 217i64) {

@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-ast-eval",
+"--step-limit",
+"none",
+"eval",
+"leaves.fx"
+],
+"code": 0,
+"out": [
+"here : bool ! pure",
+"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"adder : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals put-all))) () (subr (conv native) pure (int int) int)) ! pure",
+"holder : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals put-all))) ((pairof int int @heap)) held) ! pure",
+"churn : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals churn))) (int (listof int @heap)) int) ! pure",
+"#f : bool ! pure",
+"42 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals adder here put-all)))",
+"41 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals churn here holder put-all)))",
+""
+],
+"err": [
+""
+]
+}
