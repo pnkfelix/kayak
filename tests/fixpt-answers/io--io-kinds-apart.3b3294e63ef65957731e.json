@@ -9,6 +9,12 @@
 "eval",
 "io-kinds-apart.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 ""
@@ -17,5 +23,7 @@
 "fixpt: <programs>/io/io-kinds-apart.fx:4:3: `say` is declared a (subr (io stdout) (string) unit): a (subr (io stdout) (string) unit) is expected here, and this is a (subr (io stderr) (string) unit)",
 "  beyond what is expected, it has (io stderr)",
 ""
+]
+}
 ]
 }

@@ -11,6 +11,11 @@
 "eval",
 "generated.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
+],
 "code": 1,
 "out": [
 ""
@@ -18,5 +23,7 @@
 "err": [
 "fixpt: <programs>/made-code/generated.fx:35:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus (state delta)) (field-k-before-code 8))",
 ""
+]
+}
 ]
 }

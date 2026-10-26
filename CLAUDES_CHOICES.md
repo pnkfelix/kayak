@@ -6145,3 +6145,35 @@ object outside `mem`; `native.md`'s decision 3 puts code bloblets in a
 non-moving code area of the heap, mapped twice, as Fixpt's
 (`exec_view` of `mem`'s code range). KFX has no way to give part of a
 flat array an executable view: an extension, Fixpt's first.
+
+## C223. Fixpt's answers kept with the machines and pins that gave them (2026-10-26)
+
+The rebase onto the arm64 work (C209-C212) showed the gap: the shared
+answers in tests/fixpt-answers/ were the home machine's (arm64 macOS),
+stamped once for all by `REV`; another machine kept its own only where
+they differed, stamped by `REV.PLATFORM`, and trusted the shared ones
+whenever its own stamp was the pin. When macOS rewrote shared answers
+(the x86_64 made-code programs, which arm64's Fixpt refuses), Linux,
+its stamp the pin's, read arm64's refusals. The user: key each answer by
+the machine and pin, "a multi-key per entry format to easily allow for
+sharing".
+- **One file per question** (NAME.HASH.json, HASH of the arguments and
+  texts as before), holding each distinct answer with the keys that gave
+  it, `PLATFORM@PIN`, sorted, one to a line. An answer counts only for its
+  keys; another key is asked of Fixpt (with a clone at the pin) and added
+  to the answer it gave, or a new answer kept. No stamps, no machine's own
+  files.
+- **Pruning** (`fx26-tests.py --prune`): a machine drops its own keys
+  that nothing asked for, and its keys at other pins; an answer no key
+  holds goes, and a question with none. Another machine's keys are its own.
+- **Without a clone**, what is kept stands in: this machine's at another
+  pin, else one kept before keys were, else any.
+- **Converted once** (a script, run here and removed): the shared answers
+  `unknown@8f76d65` (their stamp; which machine gave each was not kept,
+  some Linux's), Linux's own `x86_64-linux@b9dae98`; and a shared answer
+  Linux's last full check used with none of its own beside it, Linux's
+  too, that check having asked Fixpt every question again (C222's refresh).
+  Of 3001 questions, 2978 are Linux's at the pin; 23 only `unknown`
+  (arm64's corpus); 30 have answers that differ by machine. The home
+  machine's prune drops the `unknown` keys, after its own full check has
+  added its keys.

@@ -5,6 +5,11 @@
 "eval",
 "declared.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
+],
 "code": 0,
 "out": [
 "put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
@@ -15,5 +20,20 @@
 ],
 "err": [
 ""
+]
+},
+{
+"by": [
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/made-code/declared.fx:32:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus (state delta)) (field-k-before-code 8))",
+""
+]
+}
 ]
 }

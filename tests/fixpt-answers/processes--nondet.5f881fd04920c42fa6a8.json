@@ -5,6 +5,12 @@
 "check",
 "nondet.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/processes/nondet.fx:5:3: `start` is declared a (subr (maxeff (alloc @w) (read @globals)) () (addr int @w)): a (subr (maxeff (alloc @w) (read @globals)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
@@ -14,5 +20,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

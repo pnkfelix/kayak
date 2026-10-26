@@ -5,6 +5,11 @@
 "check",
 "frames.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
+],
 "code": 0,
 "out": [
 "define build-code : (subr (alloc @heap) () (listof int @heap)) ! pure",
@@ -19,5 +24,21 @@
 ],
 "err": [
 ""
+]
+},
+{
+"by": [
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
+"code": 1,
+"out": [
+"! <programs>/made-code/frames.fx:33:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus (state delta)) (field-k-before-code 8))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}
 ]
 }

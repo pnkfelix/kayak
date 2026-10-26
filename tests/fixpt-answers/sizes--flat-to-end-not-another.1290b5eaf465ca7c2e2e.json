@@ -5,6 +5,12 @@
 "eval",
 "flat-to-end-not-another.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "f : (poly ((n size)) (subr pure ((blobref blob (flat-arrayof i64 n)) (blobref blob (flat-arrayof i64 n))) (nat n))) ! pure",
@@ -13,5 +19,7 @@
 "err": [
 "fixpt: <programs>/sizes/flat-to-end-not-another.fx:10:17: the size `n` cannot be `finite` here: `n` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
 ""
+]
+}
 ]
 }

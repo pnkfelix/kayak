@@ -5,6 +5,12 @@
 "check",
 "overlap.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/unions/overlap.fx:3:16: a union's members must differ in shape at run time: a (subr pure (int) int) and a (subr pure (bool) int) do not",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

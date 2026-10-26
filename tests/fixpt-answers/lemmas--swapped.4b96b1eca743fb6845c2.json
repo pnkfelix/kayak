@@ -9,6 +9,12 @@
 "eval",
 "swapped.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
@@ -19,5 +25,7 @@
 "fixpt: <programs>/lemmas/swapped.fx:4:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff spin (read (globals bad down-tree up-tree))) ((subr spin (a) b) (tree a)) (tree b))",
 "  beyond what is expected, it has (read (globals bad down-tree up-tree))",
 ""
+]
+}
 ]
 }

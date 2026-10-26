@@ -5,6 +5,12 @@
 "eval",
 "on-fail-type.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "collector : (addr report @p) ! (maxeff (alloc @p) nondet)",
@@ -13,5 +19,7 @@
 "err": [
 "fixpt: <programs>/monitors/on-fail-type.fx:6:3: `w` is declared a (addr int @w): a monitor's `on-failure` makes the watcher's message of a failure's, a (subr pure (string) report), and this is a (subr pure (string) int)",
 ""
+]
+}
 ]
 }

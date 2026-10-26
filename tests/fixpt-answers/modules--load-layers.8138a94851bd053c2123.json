@@ -9,6 +9,12 @@
 "eval",
 "load-layers.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 0,
 "out": [
 "top : (moduleof (desc cell (ref int @q)) (desc own (maxeff (read @q) (write @q))) (val p (moduleof (desc own (maxeff (read @q) (write @q))) (val rd (moduleof (desc own (maxeff (read @q) (write @q))) (desc cell (ref int @q)) (val c cell) (val bump (subr (maxeff (read @q) (write @q)) () int)))) (val bump (subr (maxeff (read @q) (write @q)) () int)) (val twice (subr (maxeff (read @q) (write @q)) () int)))) (val rd (moduleof (desc own (maxeff (read @q) (write @q))) (desc cell (ref int @q)) (val c cell) (val bump (subr (maxeff (read @q) (write @q)) () int)))) (val bump (subr (maxeff (read @q) (write @q)) () int)) (val twice (subr (maxeff (read @q) (write @q)) () int)) (val thrice (subr (maxeff (read @q) (write @q)) () int)) (val peek (subr (read @q) (cell) int))) ! (maxeff (alloc @q) (read (globals %shared:<programs>/modules/../module-files/layer1.fx %shared:<programs>/modules/../module-files/layer2.fx %shared:<programs>/modules/../module-files/layer3.fx)))",
@@ -22,5 +28,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

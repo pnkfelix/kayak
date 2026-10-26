@@ -5,6 +5,12 @@
 "eval",
 "datatype-family.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 0,
 "out": [
 "trees : (moduleof (desc tree (dlambda ((t type)) (sumof (leaf (productof)) (node (productof (1 t)))))) (val leaf (poly ((t type)) (subr pure () (sumof (leaf (productof)) (node (productof (1 t))))))) (val node (poly ((t type)) (subr pure (t) (sumof (leaf (productof)) (node (productof (1 t))))))) (val size (poly ((t type)) (subr pure ((sumof (leaf (productof)) (node (productof (1 t))))) int)))) ! pure",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

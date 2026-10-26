@@ -9,6 +9,12 @@
 "eval",
 "types-mutual.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 0,
 "out": [
 "m : (moduleof (desc a (mu %2 (sumof (stop (productof)) (more (productof (1 (sumof (end (productof)) (again (productof (1 %2)))))))))) (desc b (sumof (end (productof)) (again (productof (1 a))))) (val x a)) ! pure",
@@ -17,5 +23,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

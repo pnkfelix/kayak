@@ -5,6 +5,12 @@
 "check",
 "invariant.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/generative/invariant.fx:4:42: `b` is declared a (box (sumof (a int) (b bool))): a (box (sumof (a int) (b bool))) is expected here, and this is a (box (sumof (a int)))",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

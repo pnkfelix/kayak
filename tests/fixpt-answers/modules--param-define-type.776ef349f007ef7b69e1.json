@@ -5,6 +5,12 @@
 "check",
 "param-define-type.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 0,
 "out": [
 "define m : (moduleof (desc pair2 (dlambda ((a type)) (productof (1 a) (2 a)))) (val x (productof (1 int) (2 int)))) ! pure",
@@ -14,5 +20,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

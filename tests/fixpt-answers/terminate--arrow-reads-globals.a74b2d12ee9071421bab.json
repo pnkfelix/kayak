@@ -5,6 +5,12 @@
 "check",
 "arrow-reads-globals.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/terminate/arrow-reads-globals.fx:4:29: `inc2` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (read (globals inc)) (int) int)",
@@ -14,5 +20,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

@@ -5,6 +5,12 @@
 "check",
 "abs-kind.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/modules/abs-kind.fx:4:35: an abstract component is a `type`, or a type constructor `(=> (kind …) type)`, for now",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

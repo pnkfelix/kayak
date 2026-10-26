@@ -9,6 +9,12 @@
 "eval",
 "include-abstract-escape.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "counter : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
@@ -17,5 +23,7 @@
 "err": [
 "fixpt: <programs>/modules/include-abstract-escape.fx:10:11: this is a (moduleof (desc t c..t) (val zero c..t) (val next (subr pure (c..t) c..t)) (val value (subr pure (c..t) int))), and `c..t` is a module's abstract type, not known outside the scope where the module is named",
 ""
+]
+}
 ]
 }

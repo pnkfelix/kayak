@@ -5,6 +5,12 @@
 "eval",
 "knot-through-two-regions.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "rr : (ref (listof (subr (read @s) () int) @r) @r) ! (alloc @r)",
@@ -14,5 +20,7 @@
 "err": [
 "fixpt: <programs>/regions/knot-through-two-regions.fx:6:15: argument 1 is a (subr (maxeff (read @s) (read @r) (read (globals ss))) () int), where a (subr (read @s) () int) is expected",
 ""
+]
+}
 ]
 }

@@ -5,6 +5,12 @@
 "check",
 "subtype-requires-more.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/specs/subtype-requires-more.fx:9:6: argument 1 is a (subr pure ((x int)) int (requires (< 0 x)) (ensures r (< x r))), where a (subr pure ((x int)) int (requires (< -5 x)) (ensures r (< x r))) is expected",
@@ -14,5 +20,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

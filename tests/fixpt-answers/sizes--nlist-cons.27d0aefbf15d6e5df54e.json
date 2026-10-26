@@ -5,6 +5,12 @@
 "eval",
 "nlist-cons.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "xs : (nlist int 2) ! pure",
@@ -14,5 +20,7 @@
 "err": [
 "fixpt: <programs>/sizes/nlist-cons.fx:5:34: a (nlist int 3) is expected here, and this is a (nlist int 2)",
 ""
+]
+}
 ]
 }

@@ -9,6 +9,12 @@
 "eval",
 "self-through-app.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 ""
@@ -17,5 +23,7 @@
 "fixpt: <programs>/higher-kinds/self-through-app.fx:6:35: a (subr pure ((mu %2 (subr pure ((f %2)) int)) (f (mu %3 (subr pure ((f %3)) int)))) int) is expected here, and this is a (subr spin ((mu %2 (subr pure ((f %2)) int)) (f (mu %3 (subr pure ((f %3)) int)))) int)",
 "  beyond what is expected, it has spin",
 ""
+]
+}
 ]
 }

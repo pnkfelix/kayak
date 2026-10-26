@@ -9,6 +9,12 @@
 "eval",
 "region-escape.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "up-stack : (poly ((t type) (r region)) (subr pure ((listof t r)) (stack t r))) ! pure",
@@ -18,5 +24,7 @@
 "err": [
 "fixpt: <programs>/generative/region-escape.fx:4:14: the value of `letregion l` would outlive its region: its type is (stack int l)",
 ""
+]
+}
 ]
 }

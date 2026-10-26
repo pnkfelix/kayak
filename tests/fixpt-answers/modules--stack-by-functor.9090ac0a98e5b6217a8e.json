@@ -9,6 +9,12 @@
 "eval",
 "stack-by-functor.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 0,
 "out": [
 "make-stack : (subr pure (elt-sig) (moduleof (abs stack type) (val empty stack) (val is-empty (subr (read @heap) (stack) bool)) (val push (subr (alloc @heap) ((select $1 t) stack) stack)) (val top (subr (read @heap) (stack) (select $1 t))) (val pop (subr (read @heap) (stack) stack)))) ! pure",
@@ -19,5 +25,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

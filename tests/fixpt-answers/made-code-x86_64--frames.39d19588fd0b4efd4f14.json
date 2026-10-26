@@ -5,6 +5,11 @@
 "eval",
 "frames.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
+],
 "code": 1,
 "out": [
 ""
@@ -12,5 +17,26 @@
 "err": [
 "fixpt: <programs>/made-code-x86_64/frames.fx:37:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus x26) (field-k-before-code 8))",
 ""
+]
+},
+{
+"by": [
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
+"code": 0,
+"out": [
+"build-code : (subr (alloc @heap) () (listof int @heap)) ! pure",
+"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"build : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals build-code put-all))) () builder) ! pure",
+"total : (subr (maxeff (read @heap) spin (read (globals total))) ((listof int @heap) int) int) ! pure",
+"deep : (subr (maxeff (read @heap) (read @globals) (alloc @heap) spin (read (globals deep))) (builder int) int) ! pure",
+"500000500000 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals build build-code put-all)))",
+"165055 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals build build-code deep put-all)))",
+""
+],
+"err": [
+""
+]
+}
 ]
 }

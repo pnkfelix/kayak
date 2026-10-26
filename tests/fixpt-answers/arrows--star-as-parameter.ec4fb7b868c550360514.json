@@ -5,6 +5,12 @@
 "check",
 "star-as-parameter.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/arrows/star-as-parameter.fx:3:17: `(->* (param …) result)` is only the type a definition declares (`define`, `define-rec`, `letrec`), its effect found from its `lambda`: here, write `->` or `subr`",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

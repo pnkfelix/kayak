@@ -9,6 +9,12 @@
 "eval",
 "include-abstract-apart.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "make : (subr pure (int) (moduleof (abs t type) (val z t) (val get (subr pure (t) int)))) ! pure",
@@ -19,5 +25,7 @@
 "err": [
 "fixpt: <programs>/modules/include-abstract-apart.fx:12:14: argument 1 is a b..t, where a a..t is expected",
 ""
+]
+}
 ]
 }

@@ -5,6 +5,12 @@
 "check",
 "fixed-width-literal-too-big.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/sizes/fixed-width-literal-too-big.fx:2:17: `big` is declared a u32: 4294967296 is not a u32: its range is 0 to 4294967295",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

@@ -5,6 +5,12 @@
 "check",
 "counter.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "! <programs>/module-files/counter.fx:6:31: `inc` is declared a (subr pure (t) t): a (subr pure (t) t) is expected here, and this is a (subr (read (globals down-t up-t)) (t) t)",
@@ -14,5 +20,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

@@ -5,6 +5,12 @@
 "eval",
 "arrow-star-module.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 0,
 "out": [
 "counter : (moduleof (val cell (ref int @h)) (val inc (subr pure (int) int)) (val bump (subr (maxeff (read @h) (write @h)) () int)) (val ev? (subr pure (nat) bool)) (val od? (subr pure (nat) bool)) (val on (subr spin (int) int)) (val twice (poly ((t type)) (subr pure ((subr pure (t) t) t) t))) (val user (subr (maxeff (read @h) (write @h)) () int))) ! (alloc @h)",
@@ -13,5 +19,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

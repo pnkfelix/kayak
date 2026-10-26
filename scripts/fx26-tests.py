@@ -68,7 +68,7 @@ def main():
         return
     if args == ["--prune"]:
         dropped = fixptcache.prune()
-        print("fx26-tests: Fixpt's answers are the pin's; %d no longer asked for, dropped" % dropped)
+        print("fx26-tests: this machine's answers are the pin's; %d questions no longer asked for, dropped" % dropped)
         return
     if args not in ([], ["--check"]):
         sys.exit(__doc__)

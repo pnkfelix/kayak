@@ -1,22 +1,28 @@
 """What Fixpt says of a file, asked once (C132): what it says depends on the
 Fixpt pinned (FIXPT_REV), the arguments and the files' texts alone.
 
-Two stores. tests/fixpt-answers/ is kayak's, in git: each answer a scripts
-asked for, under a hash of the arguments and the texts (not the pin), as
-Fixpt at tests/fixpt-answers/REV gave it, so that the checks need no Fixpt
-to run: Fixpt's programs are kept in tests/fx26/programs/
-(scripts/fx26-tests.py), and these are their answers. Under it,
-target/fixpt-cache/ keeps every run of every pin (the feedback loop's time,
-2026-10-12), so that going back to an old pin costs nothing.
+Two stores. tests/fixpt-answers/ is kayak's, in git, so that the checks
+need no Fixpt to run (Fixpt's programs are kept in tests/fx26/programs/,
+scripts/fx26-tests.py): a file for each question a script asked, NAME.HASH.json,
+HASH of the arguments and the texts (not the pin, not the machine), and in
+it each distinct answer Fixpt gave, with the machines and pins that gave it
+(`by`, each `PLATFORM@PIN`, C223): most questions are answered alike
+everywhere, one answer with several keys; where machines differ (libm's
+last bit, code a program makes run or not), an answer each. Under it,
+target/fixpt-cache/ keeps every run of every pin on this machine (the
+feedback loop's time, 2026-10-12), so that asking again costs nothing.
 
-An answer kept is used as it is, unless there is a clone at the pin and the
-answers are another pin's: then Fixpt is asked again, and the answer kept
-rewritten where it differs (git says which). The answers are arm64 macOS's
-(HOME_PLATFORM), stamped REV; another machine's, where Fixpt answers
-otherwise there, are NAME.HASH.PLATFORM.json beside them, and its stamp
-REV.PLATFORM (C134). Each answer asked for is noted
-(target/fixpt-answers-used/), so that after a full check `fx26-tests.py
---prune` drops those no longer asked for and stamps the pin.
+An answer is this machine's at the pin only if its key says so: then it is
+used as it is; else, with a clone at the pin, Fixpt is asked, and this
+machine's key added to the answer it gave, or a new answer kept (git says
+which). With no clone, what is kept stands in: this machine's at another
+pin, else one kept before keys were, else any. Each question asked is
+noted (target/fixpt-answers-used/), so that after a full check
+`fx26-tests.py --prune` drops this machine's keys that nothing asked for,
+and its keys at other pins: an answer no machine holds is dropped, and a
+file with none. Another machine's keys are its own to drop. Keys
+`unknown@PIN` are the answers kept before keys were (C223), the home
+machine's (HOME_PLATFORM) as its stamp said: its prune drops them.
 
 A program that reads the world (the clock, files) is not to be run through
 this. Imported by the scripts that run Fixpt, with the scripts' directory
@@ -38,7 +44,6 @@ CACHE = os.path.join(ROOT, "target", "fixpt-cache")
 ANSWERS = os.path.join(ROOT, "tests", "fixpt-answers")
 USED = os.path.join(ROOT, "target", "fixpt-answers-used")
 REV = open(os.path.join(ROOT, "FIXPT_REV")).read().strip()
-STAMP = os.path.join(ANSWERS, "REV")
 # Fixpt's FX-26 test programs, kept (scripts/fx26-tests.py).
 PROGRAMS = os.path.join(ROOT, "tests", "fx26", "programs")
 
@@ -108,32 +113,23 @@ class Ran:
 _lock = threading.Lock()
 _used = set()
 _kept = None
-_mine = None
-HOME = PLATFORM == HOME_PLATFORM
-# This machine's stamp: whose its answers are (C134).
-MY_STAMP = STAMP if HOME else STAMP + "." + PLATFORM
 KEY = re.compile(r"[0-9a-f]{20}")
-
-
-def _stamp():
-    return open(MY_STAMP).read().strip() if os.path.exists(MY_STAMP) else None
+# This machine at the pin, as an answer's `by` names it.
+ME = "%s@%s" % (PLATFORM, REV)
 
 
 def _index():
-    """The answers kept, by hash: each file is NAME.HASH.json, NAME only
-    to be read by people; this machine's own NAME.HASH.PLATFORM.json in
-    `_mine`. Other machines' own are not read."""
-    global _kept, _mine
+    """The questions kept, by hash: each file NAME.HASH.json, NAME only to
+    be read by people."""
+    global _kept
     if _kept is None:
-        _kept, _mine = {}, {}
+        _kept = {}
         if os.path.isdir(ANSWERS):
             for f in os.listdir(ANSWERS):
                 if f.endswith(".json"):
                     parts = f[:-len(".json")].split(".")
                     if KEY.fullmatch(parts[-1]):
                         _kept[parts[-1]] = os.path.join(ANSWERS, f)
-                    elif len(parts) > 2 and KEY.fullmatch(parts[-2]) and parts[-1] == PLATFORM:
-                        _mine[parts[-2]] = os.path.join(ANSWERS, f)
     return _kept
 
 
@@ -172,19 +168,24 @@ def _placeless(text):
     return text
 
 
-def _read(path):
-    """An answer kept; a run that took too long is kept as one, and read
-    back as it ended, by raising."""
+def _load(path):
+    """A question kept: `{"args": …, "answers": [{"by": [KEY …], "code",
+    "out", "err"} …]}`, as written (placeless)."""
     with open(path) as g:
-        d = json.loads(g.read().replace(THERE, PROGRAMS).replace(HERE, ROOT))
-    if d["code"] == "timeout":
-        raise subprocess.TimeoutExpired(d["args"], d["out"][0])
-    return Ran(d["code"], "\n".join(d["out"]), "\n".join(d["err"]))
+        return json.load(g)
 
 
-def _write(path, args, ran):
-    d = {"args": args, "code": ran.returncode, "out": ran.stdout.split("\n"), "err": ran.stderr.split("\n")}
-    text = _placeless(json.dumps(d, indent=0, ensure_ascii=False)) + "\n"
+def _store(path, d):
+    """A question written, each answer's keys sorted, one to a line; a
+    question no machine holds an answer to, removed."""
+    d["answers"] = [a for a in d["answers"] if a["by"]]
+    if not d["answers"]:
+        if os.path.exists(path):
+            os.remove(path)
+        return
+    for a in d["answers"]:
+        a["by"] = sorted(set(a["by"]))
+    text = json.dumps(d, indent=0, ensure_ascii=False) + "\n"
     if os.path.exists(path) and open(path).read() == text:
         return
     os.makedirs(ANSWERS, exist_ok=True)
@@ -192,6 +193,35 @@ def _write(path, args, ran):
     with open(tmp, "w") as g:
         g.write(text)
     os.replace(tmp, path)
+
+
+def _answer(ran):
+    """A run as an answer is kept: placeless, its lines apart."""
+    return {"code": ran.returncode, "out": _placeless(ran.stdout).split("\n"), "err": _placeless(ran.stderr).split("\n")}
+
+
+def _ran(args, a):
+    """An answer kept, as a run; a run that took too long is kept as one,
+    and read back as it ended, by raising."""
+    def here(lines):
+        return "\n".join(lines).replace(THERE, PROGRAMS).replace(HERE, ROOT)
+    if a["code"] == "timeout":
+        raise subprocess.TimeoutExpired(args, a["out"][0])
+    return Ran(a["code"], here(a["out"]), here(a["err"]))
+
+
+def _same(a, b):
+    return a["code"] == b["code"] and a["out"] == b["out"] and a["err"] == b["err"]
+
+
+def _standing_in(answers):
+    """With no clone: this machine's answer at another pin, else one kept
+    before keys were, else any."""
+    for prefix in (PLATFORM + "@", "unknown@"):
+        for a in answers:
+            if any(k.startswith(prefix) for k in a["by"]):
+                return a
+    return answers[0] if answers else None
 
 
 def _asked(binary, args, old, timeout):
@@ -238,13 +268,17 @@ def run(binary, args, files, timeout=None, name=None, keep=True):
             raise Unanswered("fixptcache: Fixpt asked with no clone at the pin")
         ran = _asked(binary, args, old, timeout)
         return ran
+    shown = [os.path.basename(a) if a in files else a for a in args]
     with _lock:
         _used.add(key)
-        shared = _index().get(key)
-        kept = _mine.get(key, shared)
-    if kept is not None and (binary is None or _stamp() == REV):
-        return _read(kept)
-    shown = [os.path.basename(a) if a in files else a for a in args]
+        path = _index().get(key)
+        kept = _load(path) if path else None
+    if kept is not None:
+        mine = [a for a in kept["answers"] if ME in a["by"]]
+        if mine:
+            return _ran(args, mine[0])
+        if binary is None and _standing_in(kept["answers"]) is not None:
+            return _ran(args, _standing_in(kept["answers"]))
     if binary is None:
         raise Unanswered("fixptcache: no answer of Fixpt's kept for %s (a clone at the pin makes it)" % " ".join(shown))
     try:
@@ -254,44 +288,45 @@ def run(binary, args, files, timeout=None, name=None, keep=True):
     if name is None and files and os.path.abspath(files[0]).startswith(PROGRAMS + os.sep):
         name = os.path.splitext(os.path.relpath(os.path.abspath(files[0]), PROGRAMS))[0].replace(os.sep, "--")
     stem = name or (os.path.splitext(os.path.basename(files[0]))[0] if files else "run")
-    path = shared or os.path.join(ANSWERS, "%s.%s.json" % (stem, key))
-    if HOME or shared is None:
-        _write(path, shown, ran)
-        with _lock:
-            _index()[key] = path
-        return _read(path)
-    # Another machine: its own answer only where the shared one is not it.
-    mine = os.path.join(ANSWERS, "%s.%s.%s.json" % (stem, key, PLATFORM))
-    _write(mine, shown, ran)
-    same = open(mine).read() == open(shared).read()
+    new = _answer(ran)
     with _lock:
+        path = _index().get(key) or os.path.join(ANSWERS, "%s.%s.json" % (stem, key))
+        d = _load(path) if os.path.exists(path) else {"args": shown, "answers": []}
+        # This machine's key moves to the answer it gave now.
+        for a in d["answers"]:
+            a["by"] = [k for k in a["by"] if k != ME]
+        same = [a for a in d["answers"] if _same(a, new)]
         if same:
-            os.remove(mine)
-            _mine.pop(key, None)
+            same[0]["by"].append(ME)
         else:
-            _mine[key] = mine
-    return _read(shared if same else mine)
+            new["by"] = [ME]
+            d["answers"].append(new)
+        _store(path, d)
+        _index()[key] = path
+    return _ran(args, new)
 
 
 def prune():
-    """Drop the answers kept that nothing asked for since `reset_used`,
-    and stamp the rest as the pin's: how many were dropped. On another
-    machine than HOME_PLATFORM, only its own answers are dropped, and
-    only its stamp written: the shared ones are home's to say (C134)."""
+    """This machine's keys that nothing asked for since `reset_used`
+    dropped, and its keys at other pins, and, on the home machine, every
+    `unknown@` key; an
+    answer no machine holds is dropped then, and a question with none:
+    how many questions were. Another machine's keys are its own to drop."""
     used = set()
     if os.path.isdir(USED):
         for f in os.listdir(USED):
             with open(os.path.join(USED, f)) as g:
                 used.update(line.strip() for line in g if line.strip())
     dropped = 0
-    _index()
-    for key, path in list((_kept if HOME else {}).items()) + list(_mine.items()):
-        if key not in used:
-            os.remove(path)
+    for key, path in list(_index().items()):
+        d = _load(path)
+        for a in d["answers"]:
+            a["by"] = [k for k in a["by"]
+                       if not ((k.startswith("unknown@") and PLATFORM == HOME_PLATFORM)
+                               or (k.startswith(PLATFORM + "@") and (k != ME or key not in used)))]
+        _store(path, d)
+        if not os.path.exists(path):
             dropped += 1
-    os.makedirs(ANSWERS, exist_ok=True)
-    with open(MY_STAMP, "w") as g:
-        g.write(REV + "\n")
     return dropped
 
 

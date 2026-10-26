@@ -7,6 +7,12 @@
 "eval",
 "stage0.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "\"prelude.fx: what KFX has that FX-26's standard environment has only at\\n `int`. KFX has no `int` (PLAN.md, section 2): it writes `i64`, whose\\n arithmetic wraps in FX-26 as in Rust.\\n\\n This file is FX-26, not KFX: it is where `int` meets `i64`. Fixpt reads\\n it before a KFX program (stage 0). The transpiler never sees it: each\\n name here is a function of kayak-rt, by the same mangling, and this file\\n is that function's meaning.\" : string ! pure",
@@ -28,5 +34,7 @@
 "err": [
 "fixpt: <tmp>/stage0.fx:65:15: `x` is declared a i64: 9223372036854775808 is not a i64: its range is -9223372036854775808 to 9223372036854775807",
 ""
+]
+}
 ]
 }

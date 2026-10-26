@@ -9,6 +9,12 @@
 "eval",
 "sendable-ref.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "pass : (poly ((m sendable)) (subr pure (m) m)) ! pure",
@@ -17,5 +23,7 @@
 "err": [
 "fixpt: <programs>/processes/sendable-ref.fx:4:2: `m` is bound as sendable, and a (ref int @c) is not: a reference at @c, which can be written",
 ""
+]
+}
 ]
 }

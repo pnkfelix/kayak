@@ -11,6 +11,11 @@
 "eval",
 "declared.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
+],
 "code": 0,
 "out": [
 "put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
@@ -21,5 +26,7 @@
 ],
 "err": [
 ""
+]
+}
 ]
 }

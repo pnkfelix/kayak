@@ -5,6 +5,12 @@
 "eval",
 "par-interfere.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "xs : (arrayof int @x) ! (alloc @x)",
@@ -13,5 +19,7 @@
 "err": [
 "fixpt: <programs>/processes/par-interfere.fx:5:1: `par`'s branches interfere: one has (write @x) and another (read @x), so the answer could depend on which runs first",
 ""
+]
+}
 ]
 }

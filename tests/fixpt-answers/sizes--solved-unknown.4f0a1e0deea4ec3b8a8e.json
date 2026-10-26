@@ -5,6 +5,12 @@
 "eval",
 "solved-unknown.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "head : (poly ((t type) (n size)) (subr pure ((nlist t (+ n 1))) t)) ! pure",
@@ -13,5 +19,7 @@
 "err": [
 "fixpt: <programs>/sizes/solved-unknown.fx:6:36: the size `n` would be (- m 1), which is not known here to be no less than 0: an argument may be shorter than this procedure's type needs",
 ""
+]
+}
 ]
 }

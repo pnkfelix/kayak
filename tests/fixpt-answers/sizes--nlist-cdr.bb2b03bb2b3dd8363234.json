@@ -5,6 +5,12 @@
 "eval",
 "nlist-cdr.fx"
 ],
+"answers": [
+{
+"by": [
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
+"x86_64-linux@b9dae986a33d72f391c41c0d3ca074d2a098840b"
+],
 "code": 1,
 "out": [
 "three : (nlist int 3) ! pure",
@@ -13,5 +19,7 @@
 "err": [
 "fixpt: <programs>/sizes/nlist-cdr.fx:4:29: `wrong` is declared a (nlist int 3): a (nlist int 3) is expected here, and this is a (nlist int 2)",
 ""
+]
+}
 ]
 }
