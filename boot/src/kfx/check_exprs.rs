@@ -4599,6 +4599,20 @@ pub mod expressions {
                         }), cv_binds(v))) {
                             // A module in a module (C88), as a value (C172): of its items' type.
                             res(module_type_of(v, name), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name)))
+                        } else if {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    any_p(lambda1s(move |b: Str| {
+                                        has_prefix_p(b, str_lit("%distinct "))
+                                    }), tv)
+                                }
+                            }
+                        } {
+                            // A poly with a `distinct` binder named, not called nor projected
+                            // (C204): its instance's regions would be given where no check
+                            // sees them. Stricter than FX-26's.
+                            match refuse(at_offset(v, at_pos), string_append(str_lit("`"), string_append(name, str_lit("`, a poly whose binder is distinct, named but not called nor projected, which kayak's checker does not take yet (C204)")))) {}
                         } else if string_eq_p(wher, str_lit("broken")) {
                             // A global broken by a redefinition of what it used (C202).
                             match refuse(at_offset(v, at_pos), string_append(str_lit("`"), string_append(name, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {}
@@ -7388,7 +7402,7 @@ pub mod expressions {
         if string_member_p(name, cv_tvars(v)) {
             match refuse(v, string_append(str_lit("a letregion of a region named already: "), r)) {}
         } else {
-            let tagcase_ = found_then_fitted(v, body(with_tvars(v, kayak_rt::heap_cons(name, kayak_rt::nil())), s, forms, nil::<&'static Ty>()), expected);
+            let tagcase_ = found_then_fitted(v, body(with_tvars(v, kayak_rt::heap_cons(name, kayak_rt::heap_cons(string_append(str_lit("%distinct "), name), kayak_rt::nil()))), s, forms, nil::<&'static Ty>()), expected);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     if mentions_p(s, t, name) {
@@ -8316,6 +8330,78 @@ pub mod expressions {
         }
     }
 
+    /// Lucassen's rule (C204; Fixpt's `check_distinct`, region-anti-aliasing.md,
+    /// (C)): each `distinct` binder among `binders` (marked `%distinct 'r`
+    /// after them, or named `'r@P%d`), given its region of `given`, given one
+    /// apart from each other binder's, and from each region `body` names but
+    /// the binders. Two regions are apart if they differ and one is distinct
+    /// (a `distinct` binder in scope, a `letregion`'s), or both are constants.
+    /// A region not solved yet is passed over, as Fixpt's is.
+    pub fn distinct_held(v: &'static Cv, s: &'static St, binders: Strings, given: Tys, body: &'static Ty) -> () {
+        let bs = filter(lambda1s(move |b: Str| {
+            not(has_prefix_p(b, str_lit("%")))
+        }), binders);
+        let marks = filter(lambda1s(move |b: Str| {
+            has_prefix_p(b, str_lit("%distinct "))
+        }), binders);
+        let dset = concat(map(lambda1s(move |t: Str| {
+            if has_prefix_p(t, str_lit("%distinct ")) {
+                the::<Strings>(kayak_rt::heap_cons(after_prefix(t, str_lit("%distinct ")), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), cv_tvars(v)));
+        let dist_p = lambda1s(move |x: Str| {
+            (string_member_p(x, dset) || has_suffix_p(x, str_lit("%d")))
+        });
+        let const_p = lambda1s(move |x: Str| {
+            (has_prefix_p(x, str_lit("@")) || string_eq_p(x, str_lit("acyclic")) || string_eq_p(x, str_lit("const")))
+        });
+        let apart_p = lambda2s(move |p: Str, q: Str| {
+            (not(string_eq_p(p, q)) && (dist_p(p) || dist_p(q) || (const_p(p) && const_p(q))))
+        });
+        let named = map(lambda1s(move |r: &'static Ty| {
+            region_string(s, r)
+        }), given);
+        let mentioned = filter(lambda1s(move |r: Str| {
+            (not(string_member_p(r, bs)) && not(has_prefix_p(r, str_lit("?"))) && not(string_eq_p(r, str_lit("@globals"))))
+        }), regions_in(v, s, body, nil::<Str>()));
+        distinct_each(v, bs, named, bs, named, marks, mentioned, apart_p)
+    }
+
+    /// Each binder of `bs`, given its region of `named` (the binders and
+    /// regions of the call all of `all-bs`, `all-named`), checked.
+    pub fn distinct_each(mut v: &'static Cv, mut bs: Strings, mut named: Strings, mut all_bs: Strings, mut all_named: Strings, mut marks: Strings, mut mentioned: Strings, mut apart_p: &'static (dyn Fn(Str, Str) -> bool + Send + Sync)) -> () {
+        loop {
+            if (null_p(bs) || null_p(named)) {
+                return ();
+            } else {
+                if (has_prefix_p(car(bs), str_lit("'")) && (string_member_p(string_append(str_lit("%distinct "), car(bs)), marks) || has_suffix_p(car(bs), str_lit("%d"))) && not(has_prefix_p(car(named), str_lit("?")))) {
+                    let p = car(named);
+                    let others = concat(map2(lambda2s(move |b: Str, q: Str| {
+                        if (has_prefix_p(b, str_lit("'")) && not(string_eq_p(b, car(bs))) && not(has_prefix_p(q, str_lit("?")))) {
+                            the::<Strings>(kayak_rt::heap_cons(q, kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), all_bs, all_named));
+                    let bad = filter(lambda1s(move |q: Str| {
+                        not(apart_p(p, q))
+                    }), onto(others, mentioned));
+                    if null_p(bad) {
+                        ()
+                    } else {
+                        match refuse(v, string_append(str_lit("a distinct region binder, "), string_append(written_binder(car(bs)), string_append(str_lit(", given "), string_append(p, string_append(str_lit(", which may be "), string_append(car(bad), str_lit(", another binder's or one its type names (Fixpt's region-anti-aliasing.md, (C); C204)")))))))) {}
+                    }
+                } else {
+                    ()
+                };
+                (bs, named) = (cdr(bs), cdr(named));
+                continue;
+            }
+        }
+    }
+
     /// Fixpt's type of pair operation `n` at region `r`, types `a` and `b`
     /// (its standard.rs), as text; "" if `n` is none.
     pub fn pair_op_text(n: Str, r: Str, a: Str, b: Str) -> Str {
@@ -8395,6 +8481,17 @@ pub mod expressions {
                             if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
                                 return match refuse(v, str_lit("a proj given the wrong number of arguments")) {};
                             } else {
+                                distinct_held(v, s, poly_binders_of(args), map2(lambda2s(move |b: Str, r: &'static Sexp| {
+                                    if has_prefix_p(b, str_lit("'")) {
+                                        parse_region(v, cv_tvars(v), r)
+                                    } else if has_prefix_p(b, str_lit("#")) {
+                                        parse_size(v, cv_tvars(v), r)
+                                    } else if has_prefix_p(b, str_lit("^")) {
+                                        fun_of_kind(v, cv_tvars(v), r, binder_kind(b), written_binder(b))
+                                    } else {
+                                        parse_type(v, cv_tvars(v), r)
+                                    }
+                                }), poly_binders_of(args), cdr(xs)), poly_body(args));
                                 return res(poly_instance(args, map2(lambda2s(move |b: Str, r: &'static Sexp| {
                                     if has_prefix_p(b, str_lit("'")) {
                                         parse_region(v, cv_tvars(v), r)
@@ -8464,6 +8561,17 @@ pub mod expressions {
                                             if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
                                                 return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
                                             } else {
+                                                distinct_held(v, s, poly_binders_of(args), map2(lambda2s(move |b: Str, r: &'static Sexp| {
+                                                    if has_prefix_p(b, str_lit("'")) {
+                                                        parse_region(v, cv_tvars(v), r)
+                                                    } else if has_prefix_p(b, str_lit("#")) {
+                                                        parse_size(v, cv_tvars(v), r)
+                                                    } else if has_prefix_p(b, str_lit("^")) {
+                                                        fun_of_kind(v, cv_tvars(v), r, binder_kind(b), written_binder(b))
+                                                    } else {
+                                                        parse_type(v, cv_tvars(v), r)
+                                                    }
+                                                }), poly_binders_of(args), cdr(xs)), poly_body(args));
                                                 return res(poly_instance(args, map2(lambda2s(move |b: Str, r: &'static Sexp| {
                                                     if has_prefix_p(b, str_lit("'")) {
                                                         parse_region(v, cv_tvars(v), r)
@@ -8489,13 +8597,34 @@ pub mod expressions {
                                             });
                                             return res(parse_type(v, cv_tvars(v), car(read_all(string_chars(pair_op_text(n, w(second(xs)), w(third(xs)), w(fourth(xs)))), str_lit(""), 1i64))), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a proj of "), string_append(n, str_lit(" at a region and two types, FX-26's pairs, which KFX's lists are not (C200)")))));
                                         } else {
-                                            if not(i64_eq(size(tvars), size(cdr(xs)))) {
+                                            if not(i64_eq(size(filter(lambda1s(move |b: Str| {
+                                                not(has_prefix_p(b, str_lit("%")))
+                                            }), tvars)), size(cdr(xs)))) {
                                                 return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
                                             } else {
                                                 bounds_kept(v, s, n, lambda1s(move |x: Str| {
-                                                    projected(v, tvars, cdr(xs), ty_var(x))
+                                                    projected(v, filter(lambda1s(move |b: Str| {
+                                                        not(has_prefix_p(b, str_lit("%")))
+                                                    }), tvars), cdr(xs), ty_var(x))
                                                 }));
-                                                return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
+                                                if any_p(lambda1s(move |b: Str| {
+                                                    has_prefix_p(b, str_lit("%distinct "))
+                                                }), tvars) {
+                                                    distinct_held(v, s, tvars, map2(lambda2s(move |b: Str, a: &'static Sexp| {
+                                                        if has_prefix_p(b, str_lit("'")) {
+                                                            parse_region(v, cv_tvars(v), a)
+                                                        } else {
+                                                            ty_unit()
+                                                        }
+                                                    }), filter(lambda1s(move |b: Str| {
+                                                        not(has_prefix_p(b, str_lit("%")))
+                                                    }), tvars), cdr(xs)), t)
+                                                } else {
+                                                    ()
+                                                };
+                                                return res(projected(v, filter(lambda1s(move |b: Str| {
+                                                    not(has_prefix_p(b, str_lit("%")))
+                                                }), tvars), cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
                                                     let s = if null_p({
                                                         let tagcase_ = car(xs);
                                                         match *tagcase_ {
@@ -9034,7 +9163,7 @@ pub mod expressions {
             let tagcase_ = a;
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
-                    (has_prefix_p(n, pre) && null_p(ps))
+                    (has_prefix_p(n, pre) && null_p(ps) && not(has_char_in_p(after_prefix(n, pre), ' ')))
                 }
             }
         }), cv_aliases(v))));
@@ -9042,7 +9171,7 @@ pub mod expressions {
             let tagcase_ = d;
             match *tagcase_ {
                 Effdef::Effdef(n, atoms) => {
-                    has_prefix_p(n, pre)
+                    (has_prefix_p(n, pre) && not(has_char_in_p(after_prefix(n, pre), ' ')))
                 }
             }
         }), cv_effdefs(v))));
@@ -10587,10 +10716,27 @@ pub mod expressions {
                 match *tagcase_ {
                     Scheme::Scheme(tvars, u) => {
                         kinds_each(v, s, tvars, from);
+                        if any_p(lambda1s(move |b: Str| {
+                            has_prefix_p(b, str_lit("%distinct "))
+                        }), tvars) {
+                            distinct_held(v, s, tvars, counted_metas(from, size(filter(lambda1s(move |b: Str| {
+                                not(has_prefix_p(b, str_lit("%")))
+                            }), tvars))), u)
+                        } else {
+                            ()
+                        };
                         r
                     }
                 }
             }
+        }
+    }
+
+    pub fn counted_metas(from: i64, n: i64) -> Tys {
+        if i64_lt_eq(n, 0i64) {
+            nil::<&'static Ty>()
+        } else {
+            kayak_rt::heap_cons(ty_meta(from), counted_metas(i64_plus(from, 1i64), i64_minus(n, 1i64)))
         }
     }
 
@@ -11256,8 +11402,15 @@ pub mod expressions {
                 }
             }
         };
+        let marks = concat(map(lambda1s(move |b: &'static Sexp| {
+            if distinct_binder_p(b) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%distinct '"), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), items(car(xs))));
         let names = map(lambda1s(move |b: &'static Sexp| {
-            if {
+            if (distinct_binder_p(b) || {
                 let tagcase_ = b;
                 match *tagcase_ {
                     Sexp::Lst(ys, f, l, p) => {
@@ -11268,7 +11421,7 @@ pub mod expressions {
                         false
                     }
                 }
-            } {
+            }) {
                 let (k, n) = (second(items(b)), sym_name(car(items(b))));
                 if sym_is_p(k, str_lit("region")) {
                     string_append(str_lit("'"), n)
@@ -11298,7 +11451,7 @@ pub mod expressions {
             match refuse(v, str_lit("a plambda's binder named as one in scope already, which KFX does not take (C107)")) {}
         } else {
             let before = st_next(s);
-            let tagcase_ = check(with_tvars(v, names), s, second(xs), poly_instance(args, map(lambda1s(move |n: Str| {
+            let tagcase_ = check(with_tvars(v, onto(marks, names)), s, second(xs), poly_instance(args, map(lambda1s(move |n: Str| {
                 ty_var(n)
             }), names)));
             match *tagcase_ {
@@ -11429,6 +11582,47 @@ pub mod expressions {
         }
     }
 
+    /// `synth-call-of-plain`; a callee of a poly type with a `distinct`
+    /// binder, its binders given regions apart (C204): its instance's
+    /// variables, from the next, the last binder's first (`poly-callee`).
+    pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
+        let tagcase_ = callee;
+        match *tagcase_ {
+            Res::Res(t0, e0, s0) => {
+                let args0 = {
+                    let tagcase_ = walk(s0, t0);
+                    match *tagcase_ {
+                        Ty::TyData(d, a) => {
+                            if string_eq_p(d, str_lit("%poly")) {
+                                a
+                            } else {
+                                nil::<&'static Ty>()
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<&'static Ty>()
+                        }
+                    }
+                };
+                if not(any_p(lambda1s(move |b: Str| {
+                    has_suffix_p(b, str_lit("%d"))
+                }), poly_binders_of(args0))) {
+                    synth_call_of_plain(v, s, callee, args, regions, expected, more)
+                } else {
+                    let (from, n) = (st_next(s0), size(poly_binders_of(args0)));
+                    let tagcase_ = synth_call_of_plain(v, s, callee, args, regions, expected, more);
+                    match *tagcase_ {
+                        Res::Res(t, es, s2) => {
+                            distinct_held(v, s2, poly_binders_of(args0), reverse(counted_metas(from, n)), poly_body(args0));
+                            res(t, es, s2)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// A call of the procedure `callee` is: its result fitted to the type
     /// `expected`, if one is, then its arguments checked against its
     /// parameters, in order (a `list` given for a parameter whose type is an
@@ -11440,7 +11634,7 @@ pub mod expressions {
     /// which say what it is, one that cannot abort then lifted (C35). A
     /// list it makes, found by itself, at a region nothing said is at a
     /// fresh one, as FX-26's is: not one a later use may choose (C36).
-    pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
+    pub fn synth_call_of_plain(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
         let tagcase_ = poly_callee(callee);
         match *tagcase_ {
             Res::Res(t, es0, s) => {

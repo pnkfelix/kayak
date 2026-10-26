@@ -57,6 +57,8 @@
               (lst (xs f l p)
                 (cond ((null? xs) #u)
                       ((sym-is? (car xs) "list") (restricted-all (cdr xs) f l))
+                      ((and (i64= (size xs) 3) (sym-is? (second xs) "region") (sym-is? (third xs) "distinct"))
+                       (restriction-refused f l "a distinct region binder, FX-26's, which KFX has not yet (C204)"))
                       ((and (sym-is? (car xs) "bloblet") (any? (lambda ((a sexp)) (head-is? a "frozen")) (cdr xs)))
                        (restriction-refused f l "a frozen bloblet, FX-26's, which KFX has not yet (C201)"))
                       ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))

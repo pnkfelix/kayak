@@ -5550,3 +5550,65 @@ broken, and a use of it after is refused.
 - Probes, refused by both: a broken global given as a value, called
   through a user also broken, used by a later definition.
 - The checkers' comparison: refused 10 to 8, the same 361 to 363; K1 0.
+
+## C203. Types and effects a module selects from a value it makes (2026-10-25)
+
+`modules/load-layers.fx`: three layers of module files, each loading the
+one below as an instance, `(define rd ((proj (load-module ...) s)))`, and
+selecting its type and effect, `(define-type cell (select rd cell))`,
+`(define-effect own (select rd own))`. Now accepted; its printing differs
+(the order of a module's items, `cell` by its name, the loads' effect,
+kinds of difference §30 has already).
+- **Order**: a module's items are checked types first, then values
+  (`module-order`); an item selecting from a value the module makes
+  (`selected-value`) is checked after that value's group instead
+  (`selected-after`), in the order kept for memos too.
+- **The module's prep** reads its effects for KFX's rule on aborting;
+  one selected from a name not bound yet is read where it stands.
+- **Outside**: such a type's abbreviation, `m..t`, is `(select r t m)`,
+  read as `r` inside `m`, `m r` outside; the printer's module scope names
+  the module's values so too (`%val x`).
+- **Reach**: `(with r x)`, `r` a module value the module makes: any name
+  inside may be `r`'s, so none counts as reaching an item (else `(define
+  bump (with rd bump))` reached itself).
+- **Nested modules' types and effects given on**: a module gives its
+  modules' `n t`, `n e` on as `m n t`, `m n e` (`nested-aliases`,
+  `nested-effdefs`), as their values already were; a module's own type
+  (`module-type-of`) leaves them out, its modules' types saying them.
+- Probes the same as Fixpt's: a module's type and effect selected from
+  a module value it binds; its type printed.
+- The checkers' comparison: refused 8 to 7, differs 62 to 63; K1 0.
+
+## C204. `distinct` region binders (2026-10-25; Fixpt's region-anti-aliasing.md, (C))
+
+`regions/distinct-swap.fx`: `(poly ((r1 region distinct) (r2 region))
+...)`, Lucassen's rule (MIT/LCS/TR-408 §3.6.3): a `distinct` binder is
+given a region apart from every other binder's and from every region the
+type names besides its binders. Accepted now, and Fixpt's four refusals
+(`distinct-mentioned`, `-not-loose`, `-one-region`, `-passes-on`) refused.
+- **Marks**: in a scheme (a global's own `poly`), `%distinct 'r` after
+  its binders, making no inference variable and counting for no `proj`;
+  in a poly type (rank 2, as an abbreviation names one), the binder named
+  `'r@P%d`, printed `(r region distinct)`; a `plambda`'s, a `letregion`'s
+  region, `%distinct 'r` among the scope's type variables.
+- **The check** (`distinct-held`): two regions are apart if they differ
+  and one is distinct (a binder so marked in scope, a `letregion`'s), or
+  both are constants; one not solved yet passed over, as Fixpt's is. Made
+  after a call of a global whose scheme has the mark (in `kinds-held`,
+  its variables known by position), after a call of a value of a poly
+  type with one (`synth-call-of`, around `synth-call-of-plain`), and at a
+  `proj` of either.
+- **Subtyping**: a poly whose binder is `distinct` is no poly whose
+  binder at that place is not (`fits`).
+- **Stricter**: a global whose scheme has a `distinct` binder named but
+  neither called nor projected is refused (its instance's regions would
+  be given where no check sees them).
+- **KFX**: its restriction pass refuses a `distinct` binder
+  (`tests/kfx-stricter/distinct-region.kfx`), as it did by the checker's
+  refusal before.
+- Probes the same as Fixpt's: a proj at `@heap` the type names; a tight
+  poly given where a loose one is wanted; called through a local, and
+  through a parameter, given one region twice; given two letregions'.
+- The checkers' comparison: refused 7 to 6, differs 63 to 64 (its
+  effects, as without `distinct`, keep a letregion's region masking would
+  drop); K1 0.

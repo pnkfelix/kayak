@@ -107,6 +107,8 @@ pub mod restrictions {
                     ()
                 } else if sym_is_p(car(xs), str_lit("list")) {
                     restricted_all(cdr(xs), f, l)
+                } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("region")) && sym_is_p(third(xs), str_lit("distinct"))) {
+                    match restriction_refused(f, l, str_lit("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {}
                 } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: &'static Sexp| {
                     head_is_p(a, str_lit("frozen"))
                 }), cdr(xs))) {

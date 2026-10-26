@@ -1547,6 +1547,20 @@
             (tagcase d (dt (n ps vs) (any? (lambda ((x variant)) (tagcase x (variant (t fs) (string=? t tag)))) vs))))
           ds)))
 
+(define selects-own-value? (subr kfx (sexps sexp) bool)
+  (lambda (forms f)
+    "Whether item `f`, a type's or an effect's, is `(select r t)` of `r` a
+     value a `define` among `forms` makes (C203; `selected-value`)."
+    (and (or (head-is? f "define-type") (head-is? f "define-effect")) (i64= (size (items f)) 3)
+         (head-is? (third (items f)) "select") (i64= (size (items (third (items f)))) 3)
+         (tagcase (second (items (third (items f))))
+           (sym (r a b)
+             (any? (lambda ((g sexp)) (and (or (head-is? g "define") (head-is? g "define*")) (i64>= (size (items g)) 3)
+                                          (tagcase (second (items g)) (sym (n c d) (string=? n r)) (else other #f))
+                                          (not (head-is? (last (items g)) "module"))))
+                   forms))
+           (else other #f)))))
+
 (define-rec
   (module-types (subr kfx (cv sexps) strings)
     (lambda (v forms)
@@ -1568,6 +1582,10 @@
                     abort too, as Fixpt's checker's `checks` does."
                    (module-types (with-effdef v (items f)) (cdr forms)))
                   ((and (head-is? f "define-effect") (i64= (size (items f)) 3)
+                        ;; Not one selected from a value the module makes (C203),
+                        ;; not bound yet: read where it stands.
+                        (not (and (head-is? (third (items f)) "select") (i64= (size (items (third (items f)))) 3)
+                                  (tagcase (second (items (third (items f)))) (sym (r a b) (null? (scope-bind r v))) (else other #f))))
                         (escapes? (parse-effect v nil (third (items f)))))
                    (refuse v "a module's effect that may abort, which KFX's modules do not have yet"))
                   ((head-is? f "hide")
@@ -1607,7 +1625,11 @@
                                                                (map (lambda ((p string)) (sym (if (has-prefix? p "'") (after-prefix p "'") p) "" 0)) ps))
                                                          "" 0 0)))))
                      (if (head-is? f "define-type")
-                         (the aliases (list named (alias q ps (qualify-type m names (third xs)))))
+                         (the aliases (list named (alias q ps (if (not (selects-own-value? forms f))
+                                                                  (qualify-type m names (third xs))
+                                                                  ;; Of a value the module makes (C203): that
+                                                                  ;; value, `r` inside, `m r` outside.
+                                                                  (lst (onto (items (third xs)) (list (sym m "" 0))) "" 0 0)))))
                          (the aliases (list named)))))))
           forms))))
 
@@ -1962,10 +1984,16 @@
                                                                 (module-written g))))
                                              nil))
                                        forms)))
-                     (given (if (or (not (null? own)) (any? (lambda ((g sexp)) (and (module-def? g) (string=? (sym-name (second (items g))) m))) forms))
-                                own
-                                (filter (lambda ((n string)) (not (null? (find-bind (string-append m (string-append " " n)) bs))))
-                                        (nset-names names))))
+                     (given (cond ((or (not (null? own)) (any? (lambda ((g sexp)) (and (module-def? g) (string=? (sym-name (second (items g))) m))) forms))
+                                   own)
+                                  ((any? (lambda ((g sexp)) (and (not (module-def? g)) (not (null? (item-value g))) (string-member? m (item-names g)))) forms)
+                                   ;; A module value this module makes (C203: a loaded file's
+                                   ;; instance, `load-layers.fx`): what it gives is known only
+                                   ;; once it is checked, so any name may be its.
+                                   (nset-names names))
+                                  (else
+                                   (filter (lambda ((n string)) (not (null? (find-bind (string-append m (string-append " " n)) bs))))
+                                           (nset-names names)))))
                      (inner (if (null? given) names (nset-without names given))))
                 (onto (if (in-nset? m names) (the strings (list m)) nil)
                       (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (cdr (cdr xs))))))
@@ -2204,10 +2232,33 @@
   (lambda (forms) (least-position forms -1)))
 (define-datatype ordered (ordered sexps string))
 
+(define selected-value (subr kfx (sexps sexp) strings)
+  (lambda (forms f)
+    "The value item among `forms` that item `f`, a type's or an effect's,
+     selects from, `(select r t)` of `r` a value the module makes (C203:
+     `load-layers.fx`, a loaded file's instance); or none."
+    (if (and (or (head-is? f "define-type") (head-is? f "define-effect")) (i64= (size (items f)) 3)
+             (head-is? (third (items f)) "select") (i64= (size (items (third (items f)))) 3)
+             (tagcase (second (items (third (items f)))) (sym (n a b) #t) (else other #f)))
+        (let ((r (sym-name (second (items (third (items f)))))))
+          (if (any? (lambda ((g sexp)) (and (not (null? (item-value g))) (not (module-def? g)) (string-member? r (item-value-names g)))) forms)
+              (the strings (list r))
+              nil))
+        nil)))
+
 (define first-checked (subr kfx (sexps) sexps)
   (lambda (forms)
-    "A module's types and modules, as written, checked before its values."
-    (concat (map (lambda ((f sexp)) (if (or (null? (item-value f)) (module-def? f)) (the sexps (list f)) nil)) forms))))
+    "A module's types and modules, as written, checked before its values;
+     but a type or an effect selected from a value it makes, after that
+     value (`selected-after`)."
+    (concat (map (lambda ((f sexp)) (if (and (or (null? (item-value f)) (module-def? f)) (null? (selected-value forms f))) (the sexps (list f)) nil)) forms))))
+
+(define selected-after (subr kfx (sexps sexps) sexps)
+  (lambda (forms members)
+    "The items among `forms` that select a type or an effect from a value
+     `members` define, as written (C203)."
+    (let ((names (concat (map item-value-names members))))
+      (filter (lambda ((f sexp)) (let ((r (selected-value forms f))) (and (not (null? r)) (string-member? (car r) names)))) forms))))
 
 (define module-order-coded (subr kfx (cv sexps) ordered)
   (lambda (v forms)
@@ -2221,7 +2272,10 @@
            (groups (begin
                      (made-before v its t)
                      (components values its (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (reached (car ns) (reach (list (car ns)) t nil #f))))) its)))))
-      (ordered (onto (first-checked forms) (concat (map (lambda ((g mitems)) (as-group v g)) groups)))
+      (ordered (onto (first-checked forms)
+                     (concat (map (lambda ((g mitems))
+                                    (onto (as-group v g) (selected-after forms (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) f))) g))))
+                                  groups)))
                (words-of (map (lambda ((g mitems))
                                 (string-append (if (alone? g) "(s " "(r ")
                                                (string-append (words-of (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (i64->string (i64- (datum-pos f) (first-position forms)))))) g)) ")")))
@@ -2243,7 +2297,7 @@
     (onto (first-checked forms)
           (concat (map (lambda ((g sexp))
                          (let ((members (concat (map (lambda ((p sexp)) (form-at (tagcase p (num (k f q) (i64+ k (first-position forms))) (else other -1)) forms)) (cdr (items g))))))
-                           (if (head-is? g "s") members (rec-of members))))
+                           (onto (if (head-is? g "s") members (rec-of members)) (selected-after forms members))))
                        (read-all (string-chars code) "" 1))))))
 
 "A module checked (C91): its scope made (`module-prep`), its items checked
@@ -2324,6 +2378,38 @@
              (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
       (mprep outer v inner m made written loaded forms hidden hidden-types names conversions))))
 
+(define nested-modules (subr kfx (sexps) strings)
+  (lambda (forms)
+    (concat (map (lambda ((f sexp)) (if (module-def? f) (tagcase (second (items f)) (sym (n a b) (the strings (list n))) (else other nil)) nil)) forms))))
+
+(define nested-aliases (subr kfx (string sexps aliases) aliases)
+  (lambda (m forms als)
+    "The types module `m`'s modules give, `n t`, given on as `m n t`, as
+     their values are (C203: a loaded file's instance re-exported,
+     `load-layers.fx`)."
+    (concat (map (lambda ((n string))
+                   (concat (map (lambda ((a alias))
+                                  (tagcase a
+                                    (alias (k ps body)
+                                      (if (has-prefix? k (string-append n " "))
+                                          (the aliases (list (alias (string-append m (string-append " " k)) ps body)))
+                                          nil))))
+                                als)))
+                 (nested-modules forms)))))
+
+(define nested-effdefs (subr kfx (string sexps effdefs) effdefs)
+  (lambda (m forms es)
+    "The effects module `m`'s modules give, `n e`, given on as `m n e`."
+    (concat (map (lambda ((n string))
+                   (concat (map (lambda ((d effdef))
+                                  (tagcase d
+                                    (effdef (k atoms)
+                                      (if (has-prefix? k (string-append n " "))
+                                          (the effdefs (list (effdef (string-append m (string-append " " k)) atoms)))
+                                          nil))))
+                                es)))
+                 (nested-modules forms)))))
+
 (define module-finish (subr kfx (mprep elab) elab)
   (lambda (p checked)
     (tagcase p
@@ -2338,8 +2424,8 @@
                           (onto (without-aliases hidden-types m (module-aliases v m names forms #f))
                                    (onto (concat (map (lambda ((n string)) (renamed-aliases n m (excepted-aliases v written n als)))
                                                       (unhidden-includes v written)))
-                                         (cv-aliases outer)))
-                          (onto (module-effects m forms es)
+                                         (onto (nested-aliases m forms als) (cv-aliases outer))))
+                          (onto (onto (module-effects m forms es) (nested-effdefs m forms es))
                                 (onto (concat (map (lambda ((n string))
                                                      (map (lambda ((d effdef)) (tagcase d (effdef (k atoms) (effdef (string-append m (string-append " " k)) atoms))))
                                                           (opened-effdefs n es)))

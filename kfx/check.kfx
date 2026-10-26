@@ -903,6 +903,20 @@
                    (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
         (else other t)))))
 
+(define distinct-binder? (subr kfx (sexp) bool)
+  (lambda (b)
+    "A binder `(r region distinct)` (C204; Fixpt's region-anti-aliasing.md,
+     (C)): given a region no other of its poly's binders is given, nor any
+     region its type names besides them."
+    (tagcase b
+      (lst (ys f l p) (and (i64= (size ys) 3) (sym-is? (second ys) "region") (sym-is? (third ys) "distinct")
+                           (tagcase (car ys) (sym (n f2 p2) #t) (else other #f))))
+      (else other #f))))
+
+(define has-suffix? (subr kfx (string string) bool)
+  (lambda (x suffix)
+    (has-prefix? (list->string (reverse (string->list x))) (list->string (reverse (string->list suffix))))))
+
 (define-rec
   (fold-renames (subr kfx (strings i64 ty) ty)
     (lambda (names pos t)
@@ -1047,13 +1061,16 @@
     (let ((t (substitute (poly-binders-of args) regions (poly-body args))))
       (if (has-app? t) (reduced t) t))))
 
+(define binder-kind-shown (subr kfx (string) string)
+  (lambda (n) (if (and (has-prefix? n "'") (has-suffix? n "%d")) "region distinct" (binder-kind n))))
+
 (define-rec
   (binders-shown (subr kfx (strings) string)
     (lambda (ns)
       "A poly type's binders, as written."
       (cond ((null? ns) "")
-            ((null? (cdr ns)) (string-append "(" (string-append (written-binder (car ns)) (string-append " " (string-append (binder-kind (car ns)) ")")))))
-            (else (string-append "(" (string-append (written-binder (car ns)) (string-append " " (string-append (binder-kind (car ns)) (string-append ") " (binders-shown (cdr ns))))))))))))
+            ((null? (cdr ns)) (string-append "(" (string-append (written-binder (car ns)) (string-append " " (string-append (binder-kind-shown (car ns)) ")")))))
+            (else (string-append "(" (string-append (written-binder (car ns)) (string-append " " (string-append (binder-kind-shown (car ns)) (string-append ") " (binders-shown (cdr ns))))))))))))
 
 (define poly-written (subr kfx (tys) ty)
   (lambda (args)
@@ -2764,6 +2781,9 @@
                   T)`, of regions, types and sizes (C158), its binders named apart by
                   where it is written, `'r@P`, `t@P`, `#n@P`, so that none is another's."
                  (let* ((bs (items (second xs)))
+                        ;; `(r region distinct)` (C204): a region binder, named `'r@P%d`.
+                        (distinct (concat (map (lambda ((b sexp)) (if (distinct-binder? b) (the strings (list (string-append "'" (sym-name (car (items b)))))) nil)) bs)))
+                        (bs (map (lambda ((b sexp)) (if (distinct-binder? b) (lst (list (car (items b)) (second (items b))) "" 0 0) b)) bs))
                         (names (map (lambda ((b sexp))
                                       (if (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
                                           (let ((k (second (items b))) (n (sym-name (car (items b)))))
@@ -2775,9 +2795,12 @@
                                           (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")))
                                     bs))
                         (pos (datum-pos t))
-                        (body (parse-type v (onto names tvars) (third xs)))
-                        (renamed (fold-renames names pos body)))
-                   (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (string-append n (string-append "@" (i64->string pos))))) names)
+                        (body (parse-type v (onto (map (lambda ((n string)) (string-append "%distinct " n)) distinct) (onto names tvars)) (third xs)))
+                        (at-pos (lambda ((n string)) (string-append n (string-append "@" (string-append (i64->string pos) (if (string-member? n distinct) "%d" ""))))))
+                        (renamed (substitute (map (lambda ((n string)) (string-append n (string-append "@" (i64->string pos)))) distinct)
+                                             (map (lambda ((n string)) (ty-var (at-pos n))) distinct)
+                                             (fold-renames names pos body))))
+                   (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (at-pos n))) names)
                                           (list renamed)))))
                 ((and (sym-is? (car xs) "escape-tag") (i64= (size xs) 4))
                  "FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
@@ -2895,6 +2918,16 @@
                                     (bound-type v (sym-name (second xs)))
                                     (mtype-named (sym-name (second xs)) (as-mtype v (bound-type v (sym-name (second xs))))))
                                 (name-of v (third xs))))
+                ((and (sym-is? (car xs) "select") (i64= (size xs) 4))
+                 "`(select r t m)`: a type module `m` selects from a value it makes,
+                  `r` (C203): `r` where it is bound, inside `m`; else `m r`."
+                 (let ((r (if (mtype? (as-mtype v (bound-type v (sym-name (second xs)))))
+                              (sym-name (second xs))
+                              (string-append (sym-name (fourth xs)) (string-append " " (sym-name (second xs)))))))
+                   (if (not (mtype? (as-mtype v (bound-type v r))))
+                       (refuse v (string-append "no module value gives a type " (show-sexp t)))
+                       (selected-type v r (if (mtype? (bound-type v r)) (bound-type v r) (mtype-named r (as-mtype v (bound-type v r))))
+                                      (name-of v (third xs))))))
                 ((sym-is? (car xs) "select")
                  (let ((name (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs))))))
                    (if (null? (find-alias name (cv-aliases v)))
@@ -3294,12 +3327,16 @@
      regions, whose names begin with `'`; the program's `own`, held apart
      from its types (a primitive's not)."
     (if (head-is? t "poly")
-        (let ((tvars
+        (let* ((tvars
         (map (lambda ((b sexp))
                (let ((b (items b)))
                  (cond ((and (i64= (size b) 3) (sym-is? (second b) "region") (not (sym-is? (third b) "distinct")))
                         "A region within a place, `(r region p)` (C40): its data may be
                          made in the place, which it will not outlive."
+                        (string-append "'" (name-of v (car b))))
+                       ((and (i64= (size b) 3) (sym-is? (second b) "region") (sym-is? (third b) "distinct"))
+                        "A `distinct` region (C204): a region binder, `%distinct 'r` after
+                         the binders saying so."
                         (string-append "'" (name-of v (car b))))
                        ((not (i64= (size b) 2))
                         (refuse v (string-append "a binder KFX-0 does not have (distinct regions are to come): "
@@ -3319,7 +3356,9 @@
                          it is instantiated (`kind-holds`)."
                         (binder-named (sym-name (second b)) (name-of v (car b))))
                        (else (refuse v (string-append "KFX's poly is over types, effects, regions and places: " (show-sexp (lst b "" 0 0))))))))
-             (items (second (items t))))))
+             (items (second (items t)))))
+              (tvars (onto tvars (concat (map (lambda ((b sexp)) (if (distinct-binder? b) (the strings (list (string-append "%distinct '" (sym-name (car (items b)))))) nil))
+                                              (items (second (items t))))))))
           (begin
             (if own (type-binders-apart v tvars (onto (map (lambda ((d dt)) (tagcase d (dt (n ps vs) n))) (cv-dts v))
                                               (map (lambda ((a alias)) (tagcase a (alias (n ps body) n))) (cv-aliases v))))
@@ -4272,6 +4311,13 @@
                          (kfx-restricted v (fits-all v s (fields-first xs (size ys)) ys)
                                          "a bloblet of more fields where one of fewer is expected, FX-26's width, which KFX has not yet (C167)")))
                     ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
+                    ((and (string=? x "%poly")
+                          (any? (lambda ((p bool)) p)
+                                (map2 (lambda ((a string) (b string)) (and (has-suffix? a "%d") (not (has-suffix? b "%d"))))
+                                      (poly-binders-of xs) (poly-binders-of ys))))
+                     "A poly whose binder is `distinct` is no poly whose binder is not:
+                      its callers promise less (C204; `distinct-not-loose.fx`)."
+                     (mismatch v s a e))
                     ((string=? x "%poly")
                      "Two poly types (C107): the one's binders the other's, then their bodies."
                      (fits v s (poly-body xs) (poly-instance ys (map (lambda ((n string)) (ty-var n)) (poly-binders-of xs)))))
@@ -4694,7 +4740,8 @@
     (lambda (s tvars t regions effects)
       "Each binder an inference variable; a region's and an effect's (C46)
        kept apart from a type's."
-      (if (null? tvars)
+      (if (or (null? tvars) (has-prefix? (car tvars) "%"))
+          ;; A binder's mark (`%distinct 'r`, C204), after the binders: no variable.
           (inst t s regions effects)
           (tagcase (fresh s)
             (res (m es s)

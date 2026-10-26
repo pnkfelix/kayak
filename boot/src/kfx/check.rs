@@ -2062,6 +2062,37 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
     }
 }
 
+/// A binder `(r region distinct)` (C204; Fixpt's region-anti-aliasing.md,
+/// (C)): given a region no other of its poly's binders is given, nor any
+/// region its type names besides them.
+pub fn distinct_binder_p(b: &'static Sexp) -> bool {
+    let tagcase_ = b;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            (i64_eq(size(ys), 3i64) && sym_is_p(second(ys), str_lit("region")) && sym_is_p(third(ys), str_lit("distinct")) && {
+                let tagcase_ = car(ys);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn has_suffix_p(x: Str, suffix: Str) -> bool {
+    has_prefix_p(list_to_string(reverse(string_to_list(x))), list_to_string(reverse(string_to_list(suffix))))
+}
+
 /// Each binder `n` of a poly type written at `pos`, its kind's mark first
 /// (`'n` a region's, `#n` a size's, a type's none), named `n@pos` (C107,
 /// C158).
@@ -2362,14 +2393,22 @@ pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
     }
 }
 
+pub fn binder_kind_shown(n: Str) -> Str {
+    if (has_prefix_p(n, str_lit("'")) && has_suffix_p(n, str_lit("%d"))) {
+        str_lit("region distinct")
+    } else {
+        binder_kind(n)
+    }
+}
+
 /// A poly type's binders, as written.
 pub fn binders_shown(ns: Strings) -> Str {
     if null_p(ns) {
         str_lit("")
     } else if null_p(cdr(ns)) {
-        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" "), string_append(binder_kind(car(ns)), str_lit(")")))))
+        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" "), string_append(binder_kind_shown(car(ns)), str_lit(")")))))
     } else {
-        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" "), string_append(binder_kind(car(ns)), string_append(str_lit(") "), binders_shown(cdr(ns)))))))
+        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" "), string_append(binder_kind_shown(car(ns)), string_append(str_lit(") "), binders_shown(cdr(ns)))))))
     }
 }
 
@@ -6231,6 +6270,20 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // T)`, of regions, types and sizes (C158), its binders named apart by
                     // where it is written, `'r@P`, `t@P`, `#n@P`, so that none is another's.
                     let bs = items(second(xs));
+                    let distinct = concat(map(lambda1s(move |b: &'static Sexp| {
+                        if distinct_binder_p(b) {
+                            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("'"), sym_name(car(items(b)))), kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), bs));
+                    let bs = map(lambda1s(move |b: &'static Sexp| {
+                        if distinct_binder_p(b) {
+                            lst(kayak_rt::heap_cons(car(items(b)), kayak_rt::heap_cons(second(items(b)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                        } else {
+                            b
+                        }
+                    }), bs);
                     let names = map(lambda1s(move |b: &'static Sexp| {
                         if {
                             let tagcase_ = b;
@@ -6261,10 +6314,23 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }), bs);
                     let pos = datum_pos(t);
-                    let body = parse_type(v, onto(names, tvars), third(xs));
-                    let renamed = fold_renames(names, pos, body);
+                    let body = parse_type(v, onto(map(lambda1s(move |n: Str| {
+                        string_append(str_lit("%distinct "), n)
+                    }), distinct), onto(names, tvars)), third(xs));
+                    let at_pos = lambda1s(move |n: Str| {
+                        string_append(n, string_append(str_lit("@"), string_append(i64_to_string(pos), if string_member_p(n, distinct) {
+                            str_lit("%d")
+                        } else {
+                            str_lit("")
+                        })))
+                    });
+                    let renamed = substitute(map(lambda1s(move |n: Str| {
+                        string_append(n, string_append(str_lit("@"), i64_to_string(pos)))
+                    }), distinct), map(lambda1s(move |n: Str| {
+                        ty_var(at_pos(n))
+                    }), distinct), fold_renames(names, pos, body));
                     return ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
-                        ty_var(string_append(n, string_append(str_lit("@"), i64_to_string(pos))))
+                        ty_var(at_pos(n))
                     }), names), kayak_rt::heap_cons(renamed, kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("escape-tag")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
@@ -6587,6 +6653,23 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         mtype_named(sym_name(second(xs)), as_mtype(v, bound_type(v, sym_name(second(xs)))))
                     }, name_of(v, third(xs)));
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 4i64)) {
+                    // `(select r t m)`: a type module `m` selects from a value it makes,
+                    // `r` (C203): `r` where it is bound, inside `m`; else `m r`.
+                    let r = if mtype_p(as_mtype(v, bound_type(v, sym_name(second(xs))))) {
+                        sym_name(second(xs))
+                    } else {
+                        string_append(sym_name(fourth(xs)), string_append(str_lit(" "), sym_name(second(xs))))
+                    };
+                    if not(mtype_p(as_mtype(v, bound_type(v, r)))) {
+                        return match refuse(v, string_append(str_lit("no module value gives a type "), show_sexp(t))) {};
+                    } else {
+                        return selected_type(v, r, if mtype_p(bound_type(v, r)) {
+                            bound_type(v, r)
+                        } else {
+                            mtype_named(r, as_mtype(v, bound_type(v, r)))
+                        }, name_of(v, third(xs)));
+                    }
                 } else if sym_is_p(car(xs), str_lit("select")) {
                     let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
                     if null_p(find_alias(name, cv_aliases(v))) {
@@ -7489,6 +7572,10 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 // A region within a place, `(r region p)` (C40): its data may be
                 // made in the place, which it will not outlive.
                 string_append(str_lit("'"), name_of(v, car(b)))
+            } else if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && sym_is_p(third(b), str_lit("distinct"))) {
+                // A `distinct` region (C204): a region binder, `%distinct 'r` after
+                // the binders saying so.
+                string_append(str_lit("'"), name_of(v, car(b)))
             } else if not(i64_eq(size(b), 2i64)) {
                 match refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             } else if sym_is_p(second(b), str_lit("type")) {
@@ -7525,6 +7612,13 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 match refuse(v, string_append(str_lit("KFX's poly is over types, effects, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
         }), items(second(items(t))));
+        let tvars = onto(tvars, concat(map(lambda1s(move |b: &'static Sexp| {
+            if distinct_binder_p(b) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%distinct '"), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), items(second(items(t))))));
         if own {
             type_binders_apart(v, tvars, onto(map(lambda1s(move |d: &'static Dt| {
                 let tagcase_ = d;
@@ -9985,6 +10079,14 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         }
                     } else if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
                         mismatch(v, s, a, e)
+                    } else if (string_eq_p(x, str_lit("%poly")) && any_p(lambda1s(move |p: bool| {
+                        p
+                    }), map2(lambda2s(move |a: Str, b: Str| {
+                        (has_suffix_p(a, str_lit("%d")) && not(has_suffix_p(b, str_lit("%d"))))
+                    }), poly_binders_of(xs), poly_binders_of(ys)))) {
+                        // A poly whose binder is `distinct` is no poly whose binder is not:
+                        // its callers promise less (C204; `distinct-not-loose.fx`).
+                        mismatch(v, s, a, e)
                     } else if string_eq_p(x, str_lit("%poly")) {
                         // Two poly types (C107): the one's binders the other's, then their bodies.
                         fits(v, s, poly_body(xs), poly_instance(ys, map(lambda1s(move |n: Str| {
@@ -11128,7 +11230,7 @@ pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
 /// Each binder an inference variable; a region's and an effect's (C46)
 /// kept apart from a type's.
 pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions: List<i64>, effects: List<i64>) -> &'static Inst {
-    if null_p(tvars) {
+    if (null_p(tvars) || has_prefix_p(car(tvars), str_lit("%"))) {
         inst(t, s, regions, effects)
     } else {
         let tagcase_ = fresh(s);

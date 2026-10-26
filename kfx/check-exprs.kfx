@@ -2070,6 +2070,11 @@
                                        (any? (lambda ((b bind)) (tagcase b (bind (m sc2 w2) (has-prefix? m (string-append name " "))))) (cv-binds v)))
                                   "A module in a module (C88), as a value (C172): of its items' type."
                                   (res (module-type-of v name) nil (kfx-restricted v s (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))))
+                                 ((tagcase sc (scheme (tv t) (any? (lambda ((b string)) (has-prefix? b "%distinct ")) tv)))
+                                  "A poly with a `distinct` binder named, not called nor projected
+                                   (C204): its instance's regions would be given where no check
+                                   sees them. Stricter than FX-26's."
+                                  (refuse (at-offset v at-pos) (string-append "`" (string-append name "`, a poly whose binder is distinct, named but not called nor projected, which kayak's checker does not take yet (C204)"))))
                                  ((string=? wher "broken")
                                   "A global broken by a redefinition of what it used (C202)."
                                   (refuse (at-offset v at-pos) (string-append "`" (string-append name "` is broken: since what it used was defined again, at another type, it does not check"))))
@@ -3306,7 +3311,9 @@
           (let ((name (string-append "'" r)))
             (if (string-member? name (cv-tvars v))
                 (refuse v (string-append "a letregion of a region named already: " r))
-                (tagcase (found-then-fitted v (body (with-tvars v (list name)) s forms nil) expected)
+                ;; Its region distinct from any other (C204: a `distinct` binder may
+                ;; be given it).
+                (tagcase (found-then-fitted v (body (with-tvars v (list name (string-append "%distinct " name))) s forms nil) expected)
                   (res (t es s)
                     (if (mentions? s t name)
                         (refuse v (string-append "a letregion whose value's type mentions its region " r))
@@ -3706,6 +3713,51 @@
                                            (note-fact s (cv-file v) (cv-pos v) (string-append "blob-scalar " (scalar-name flat)))))))))))
                        (else other (refuse v (string-append h " of no blobref"))))))))))))
 
+      (distinct-held (subr kfx (cv st strings tys ty) unit)
+        (lambda (v s binders given body)
+          "Lucassen's rule (C204; Fixpt's `check_distinct`, region-anti-aliasing.md,
+           (C)): each `distinct` binder among `binders` (marked `%distinct 'r`
+           after them, or named `'r@P%d`), given its region of `given`, given one
+           apart from each other binder's, and from each region `body` names but
+           the binders. Two regions are apart if they differ and one is distinct
+           (a `distinct` binder in scope, a `letregion`'s), or both are constants.
+           A region not solved yet is passed over, as Fixpt's is."
+          (let* ((bs (filter (lambda ((b string)) (not (has-prefix? b "%"))) binders))
+                 (marks (filter (lambda ((b string)) (has-prefix? b "%distinct ")) binders))
+                 (dset (concat (map (lambda ((t string)) (if (has-prefix? t "%distinct ") (the strings (list (after-prefix t "%distinct "))) nil)) (cv-tvars v))))
+                 (dist? (lambda ((x string)) (or (string-member? x dset) (has-suffix? x "%d"))))
+                 (const? (lambda ((x string)) (or (has-prefix? x "@") (string=? x "acyclic") (string=? x "const"))))
+                 (apart? (lambda ((p string) (q string)) (and (not (string=? p q)) (or (dist? p) (dist? q) (and (const? p) (const? q))))))
+                 (named (map (lambda ((r ty)) (region-string s r)) given))
+                 (mentioned (filter (lambda ((r string)) (and (not (string-member? r bs)) (not (has-prefix? r "?")) (not (string=? r "@globals"))))
+                                    (regions-in v s body nil))))
+            (distinct-each v bs named bs named marks mentioned apart?))))
+
+      (distinct-each (subr kfx (cv strings strings strings strings strings strings (subr kfx (string string) bool)) unit)
+        (lambda (v bs named all-bs all-named marks mentioned apart?)
+          "Each binder of `bs`, given its region of `named` (the binders and
+           regions of the call all of `all-bs`, `all-named`), checked."
+          (if (or (null? bs) (null? named))
+              #u
+              (begin
+                (if (and (has-prefix? (car bs) "'")
+                         (or (string-member? (string-append "%distinct " (car bs)) marks) (has-suffix? (car bs) "%d"))
+                         (not (has-prefix? (car named) "?")))
+                    (let* ((p (car named))
+                           (others (concat (map2 (lambda ((b string) (q string))
+                                                   (if (and (has-prefix? b "'") (not (string=? b (car bs))) (not (has-prefix? q "?")))
+                                                       (the strings (list q))
+                                                       nil))
+                                                 all-bs all-named)))
+                           (bad (filter (lambda ((q string)) (not (apart? p q))) (onto others mentioned))))
+                      (if (null? bad)
+                          #u
+                          (refuse v (string-append "a distinct region binder, " (string-append (written-binder (car bs))
+                                    (string-append ", given " (string-append p (string-append ", which may be " (string-append (car bad)
+                                    ", another binder's or one its type names (Fixpt's region-anti-aliasing.md, (C); C204)")))))))))
+                    #u)
+                (distinct-each v (cdr bs) (cdr named) all-bs all-named marks mentioned apart?)))))
+
       (pair-op-text (subr kfx (string string string string) string)
         (lambda (n r a b)
           "Fixpt's type of pair operation `n` at region `r`, types `a` and `b`
@@ -3745,7 +3797,12 @@
                     (let ((args (tagcase (walk s t) (ty-data (d args) args) (else other nil))))
                       (if (not (i64= (size (poly-binders-of args)) (size (cdr xs))))
                           (refuse v "a proj given the wrong number of arguments")
-                          (res (poly-instance args (map2 (lambda ((b string) (r sexp))
+                          (begin (distinct-held v s (poly-binders-of args) (map2 (lambda ((b string) (r sexp))
+                                                           (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
+                                                                 ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
+                                                                 ((has-prefix? b "^") (fun-of-kind v (cv-tvars v) r (binder-kind b) (written-binder b)))
+                                                                 (else (parse-type v (cv-tvars v) r))))
+                                                         (poly-binders-of args) (cdr xs)) (poly-body args)) (res (poly-instance args (map2 (lambda ((b string) (r sexp))
                                                            (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
                                                                  ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
                                                                  ((has-prefix? b "^") (fun-of-kind v (cv-tvars v) r (binder-kind b) (written-binder b)))
@@ -3753,7 +3810,7 @@
                                                          (poly-binders-of args) (cdr xs)))
                                es
                                (if (all-regions? (poly-binders-of args)) s
-                                   (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet (C107)")))))))))
+                                   (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet (C107)"))))))))))
            (else
           (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f p) (let ((b (scope-bind n v))) (if (null? b) (find-bind n (control-binds v)) b))) (else other nil)))))
             (if (null? found)
@@ -3771,7 +3828,12 @@
                           (let ((args (tagcase (walk s t) (ty-data (d args) args) (else other nil))))
                             (if (not (i64= (size (poly-binders-of args)) (size (cdr xs))))
                                 (refuse v (string-append "a proj of " (string-append n " given the wrong number of arguments")))
-                                (res (poly-instance args (map2 (lambda ((b string) (r sexp))
+                                (begin (distinct-held v s (poly-binders-of args) (map2 (lambda ((b string) (r sexp))
+                                                                 (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
+                                                                       ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
+                                                                       ((has-prefix? b "^") (fun-of-kind v (cv-tvars v) r (binder-kind b) (written-binder b)))
+                                                                       (else (parse-type v (cv-tvars v) r))))
+                                                               (poly-binders-of args) (cdr xs)) (poly-body args)) (res (poly-instance args (map2 (lambda ((b string) (r sexp))
                                                                  (cond ((has-prefix? b "'") (parse-region v (cv-tvars v) r))
                                                                        ((has-prefix? b "#") (parse-size v (cv-tvars v) r))
                                                                        ((has-prefix? b "^") (fun-of-kind v (cv-tvars v) r (binder-kind b) (written-binder b)))
@@ -3780,7 +3842,7 @@
                                      nil
                                      (if (all-regions? (poly-binders-of args))
                                          s
-                                         (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))))))
+                                         (kfx-restricted v s "a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)")))))))
                          ((and (string=? wher "prim") (i64= (size (cdr xs)) 3) (not (string=? (pair-op-text n "R" "A" "B") "")))
                           "A pair's operation at a region and two types (C200): Fixpt's
                            `(poly ((r region)) (poly ((t1 type) (t2 type)) ...))`, its
@@ -3790,11 +3852,17 @@
                                  nil
                                  (kfx-restricted v s (string-append "a proj of " (string-append n " at a region and two types, FX-26's pairs, which KFX's lists are not (C200)"))))))
                          (else
-                        (if (not (i64= (size tvars) (size (cdr xs))))
+                        (if (not (i64= (size (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars)) (size (cdr xs))))
                             (refuse v (string-append "a proj of " (string-append n " given the wrong number of arguments")))
                             (begin
-                              (bounds-kept v s n (lambda ((x string)) (projected v tvars (cdr xs) (ty-var x))))
-                              (res (projected v tvars (cdr xs) t) (naming-effs s n wher t (cv-group v))
+                              (bounds-kept v s n (lambda ((x string)) (projected v (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs) (ty-var x))))
+                              ;; Its `distinct` binders given regions apart (C204).
+                              (if (any? (lambda ((b string)) (has-prefix? b "%distinct ")) tvars)
+                                  (distinct-held v s tvars (map2 (lambda ((b string) (a sexp)) (if (has-prefix? b "'") (parse-region v (cv-tvars v) a) (ty-unit)))
+                                                                 (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs))
+                                                 t)
+                                  #u)
+                              (res (projected v (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs) t) (naming-effs s n wher t (cv-group v))
                                    (let ((s (if (null? (tagcase (car xs) (sym (n2 f2 p2) (scope-bind n2 v)) (else other nil)))
                                                 ;; A control primitive's, no binding of the program's (C105).
                                                 (note-fact s (cv-file v) (cv-pos v) "control")
@@ -4089,8 +4157,10 @@
            its generative types and datatypes abstract, `m..t`; its other
            types described; its effects; its values."
           (let* ((pre (string-append m " "))
-                 (types (the aliases (onto nil (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps))))) (cv-aliases v)))))
-                 (effs (the effdefs (onto nil (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (has-prefix? n pre)))) (cv-effdefs v)))))
+                 ;; Its own, not its modules' given on (`m n t`, C203), which their
+                 ;; own types say.
+                 (types (the aliases (onto nil (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-aliases v)))))
+                 (effs (the effdefs (onto nil (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (and (has-prefix? n pre) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-effdefs v)))))
                  (vals (the binds (onto nil (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%"))
                                                                                                          (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-binds v))))))
             (ty-data "%mtype" (newest-items (reverse (the tys
@@ -4769,7 +4839,15 @@
                 (scheme (tvars u)
                   (begin
                     (kinds-each v s tvars from)
+                    ;; Its `distinct` binders given regions apart (C204).
+                    (if (any? (lambda ((b string)) (has-prefix? b "%distinct ")) tvars)
+                        (distinct-held v s tvars (counted-metas from (size (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars))) u)
+                        #u)
                     r)))))))
+
+      (counted-metas (subr kfx (i64 i64) tys)
+        (lambda (from n)
+          (if (i64<= n 0) nil (cons (ty-meta from) (counted-metas (i64+ from 1) (i64- n 1))))))
 
       (kinds-each (subr kfx (cv st strings i64) unit)
         (lambda (v s tvars k)
@@ -5073,8 +5151,9 @@
            binders the plambda's regions, rigid, in scope; none may be named as
            one in scope already, nor escape into a type found outside it."
           (let* ((args (tagcase (walk s expected) (ty-data (d args) args) (else other nil)))
+                 (marks (concat (map (lambda ((b sexp)) (if (distinct-binder? b) (the strings (list (string-append "%distinct '" (sym-name (car (items b)))))) nil)) (items (car xs)))))
                  (names (map (lambda ((b sexp))
-                               (if (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
+                               (if (or (distinct-binder? b) (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f)))
                                    (let ((k (second (items b))) (n (sym-name (car (items b)))))
                                      (cond ((sym-is? k "region") (string-append "'" n))
                                            ((sym-is? k "size") (string-append "#" n))
@@ -5090,7 +5169,7 @@
                    (refuse v "a plambda's binder named as one in scope already, which KFX does not take (C107)"))
                   (else
                    (let ((before (st-next s)))
-                     (tagcase (check (with-tvars v names) s (second xs) (poly-instance args (map (lambda ((n string)) (ty-var n)) names)))
+                     (tagcase (check (with-tvars v (onto marks names)) s (second xs) (poly-instance args (map (lambda ((n string)) (ty-var n)) names)))
                        (res (t es s2)
                          (if (any? (lambda ((k i64)) (any? (lambda ((n string)) (mentions? s2 (ty-meta k) n)) names))
                                    ;; What could carry a binder out: the type expected, and the
@@ -5150,6 +5229,23 @@
                     (res a es (tagcase e (lst (xs f l p) (noted-lambda (near v f l p) s es)) (else other s)))))))))
 
       (synth-call-of (subr kfx (cv st res sexps (listof i64 acyclic) tys strings) res)
+        (lambda (v s callee args regions expected more)
+          "`synth-call-of-plain`; a callee of a poly type with a `distinct`
+           binder, its binders given regions apart (C204): its instance's
+           variables, from the next, the last binder's first (`poly-callee`)."
+          (tagcase callee
+            (res (t0 e0 s0)
+              (let ((args0 (tagcase (walk s0 t0) (ty-data (d a) (if (string=? d "%poly") a nil)) (else other nil))))
+                (if (not (any? (lambda ((b string)) (has-suffix? b "%d")) (poly-binders-of args0)))
+                    (synth-call-of-plain v s callee args regions expected more)
+                    (let ((from (st-next s0)) (n (size (poly-binders-of args0))))
+                      (tagcase (synth-call-of-plain v s callee args regions expected more)
+                        (res (t es s2)
+                          (begin
+                            (distinct-held v s2 (poly-binders-of args0) (reverse (counted-metas from n)) (poly-body args0))
+                            (res t es s2)))))))))))
+
+      (synth-call-of-plain (subr kfx (cv st res sexps (listof i64 acyclic) tys strings) res)
         (lambda (v s callee args regions expected more)
           "A call of the procedure `callee` is: its result fitted to the type
            `expected`, if one is, then its arguments checked against its

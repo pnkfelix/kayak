@@ -258,7 +258,15 @@
           (let ((found (filter (lambda ((q qual)) (tagcase q (qual (a b o) (string=? a n)))) scope)))
             (if (null? found) t (tagcase (car found) (qual (a b o) b)))))
         (lst (xs file line pos)
-          (if (head-is? t "select") t (lst (map (lambda ((x sexp)) (module-qualified scope x)) xs) file line pos)))
+          (if (head-is? t "select")
+              ;; Of a value the module makes, that value as named outside (C203).
+              (let ((found (if (i64= (size xs) 3)
+                               (tagcase (second xs)
+                                 (sym (n f p) (filter (lambda ((q qual)) (tagcase q (qual (a b o) (string=? a (string-append "%val " n))))) scope))
+                                 (else other nil))
+                               nil)))
+                (if (null? found) t (lst (list (car xs) (tagcase (car found) (qual (a b o) b)) (third xs)) file line pos)))
+              (lst (map (lambda ((x sexp)) (module-qualified scope x)) xs) file line pos)))
         (else other t)))))
 
 (define-rec
@@ -279,6 +287,11 @@
                                                        (and (head-is? f "define-type") (tagcase (second xs) (sym (n f2 p2) #t) (else other #f))))))))
                              ((and (head-is? f "define-effect") (i64= (size xs) 3))
                               (let ((e (sym-name (second xs)))) (the quals (list (qual e (sym (string-append m (string-append " " e)) "" 0) #f)))))
+                             ((and (or (head-is? f "define") (head-is? f "define*")) (i64>= (size xs) 3)
+                                   (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+                              ;; A value, as a type or an effect selected from it names it,
+                              ;; `m x` (C203).
+                              (let ((x (sym-name (second xs)))) (the quals (list (qual (string-append "%val " x) (sym (string-append m (string-append " " x)) "" 0) #f)))))
                              ((head-is? f "hide") (module-scope v all m (cdr xs) nil))
                              ((and (head-is? f "include") (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
                               (let ((def (module-of (sym-name (second xs)) all)))

@@ -2661,6 +2661,36 @@ pub fn tag_taken_p(tag: Str, ds: Dts) -> bool {
     }), ds)
 }
 
+/// Whether item `f`, a type's or an effect's, is `(select r t)` of `r` a
+/// value a `define` among `forms` makes (C203; `selected-value`).
+pub fn selects_own_value_p(forms: Sexps, f: &'static Sexp) -> bool {
+    ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect"))) && i64_eq(size(items(f)), 3i64) && head_is_p(third(items(f)), str_lit("select")) && i64_eq(size(items(third(items(f)))), 3i64) && {
+        let tagcase_ = second(items(third(items(f))));
+        match *tagcase_ {
+            Sexp::Sym(r, a, b) => {
+                any_p(lambda1s(move |g: &'static Sexp| {
+                    ((head_is_p(g, str_lit("define")) || head_is_p(g, str_lit("define*"))) && i64_gt_eq(size(items(g)), 3i64) && {
+                        let tagcase_ = second(items(g));
+                        match *tagcase_ {
+                            Sexp::Sym(n, c, d) => {
+                                string_eq_p(n, r)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } && not(head_is_p(last(items(g)), str_lit("module"))))
+                }), forms)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })
+}
+
 /// A module's types' names, each refused if the program has a type of
 /// that name; and the items KFX's modules do not have, refused.
 pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
@@ -2685,7 +2715,18 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                 // abort too, as Fixpt's checker's `checks` does.
                 (v, forms) = (with_effdef(v, items(f)), cdr(forms));
                 continue;
-            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil::<Str>(), third(items(f))))) {
+            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && not((head_is_p(third(items(f)), str_lit("select")) && i64_eq(size(items(third(items(f)))), 3i64) && {
+                let tagcase_ = second(items(third(items(f))));
+                match *tagcase_ {
+                    Sexp::Sym(r, a, b) => {
+                        null_p(scope_bind(r, v))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })) && escapes_p(parse_effect(v, nil::<Str>(), third(items(f))))) {
                 return match refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet")) {};
             } else if head_is_p(f, str_lit("hide")) {
                 return match refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f))))) {};
@@ -2754,7 +2795,11 @@ pub fn module_aliases(v: &'static Cv, m: Str, names: Strings, forms: Sexps, insi
                 }), ps)), str_lit(""), 0i64, 0i64)
             });
             if head_is_p(f, str_lit("define-type")) {
-                the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::heap_cons(alias(q, ps, qualify_type(m, names, third(xs))), kayak_rt::nil())))
+                the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::heap_cons(alias(q, ps, if not(selects_own_value_p(forms, f)) {
+                    qualify_type(m, names, third(xs))
+                } else {
+                    lst(onto(items(third(xs)), kayak_rt::heap_cons(sym(m, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                }), kayak_rt::nil())))
             } else {
                 the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::nil()))
             }
@@ -3480,6 +3525,10 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                     (module_def_p(g) && string_eq_p(sym_name(second(items(g))), m))
                 }), forms)) {
                     own
+                } else if any_p(lambda1s(move |g: &'static Sexp| {
+                    (not(module_def_p(g)) && not(null_p(item_value(g))) && string_member_p(m, item_names(g)))
+                }), forms) {
+                    nset_names(names)
                 } else {
                     filter(lambda1s(move |n: Str| {
                         not(null_p(find_bind(string_append(m, string_append(str_lit(" "), n)), bs)))
@@ -4083,15 +4132,56 @@ pub fn ordered(f0: Sexps, f1: Str) -> &'static Ordered {
     kayak_rt::heap_alloc(Ordered::Ordered(f0, f1))
 }
 
-/// A module's types and modules, as written, checked before its values.
+/// The value item among `forms` that item `f`, a type's or an effect's,
+/// selects from, `(select r t)` of `r` a value the module makes (C203:
+/// `load-layers.fx`, a loaded file's instance); or none.
+pub fn selected_value(forms: Sexps, f: &'static Sexp) -> Strings {
+    if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect"))) && i64_eq(size(items(f)), 3i64) && head_is_p(third(items(f)), str_lit("select")) && i64_eq(size(items(third(items(f)))), 3i64) && {
+        let tagcase_ = second(items(third(items(f))));
+        match *tagcase_ {
+            Sexp::Sym(n, a, b) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        let r = sym_name(second(items(third(items(f)))));
+        if any_p(lambda1s(move |g: &'static Sexp| {
+            (not(null_p(item_value(g))) && not(module_def_p(g)) && string_member_p(r, item_value_names(g)))
+        }), forms) {
+            the::<Strings>(kayak_rt::heap_cons(r, kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    } else {
+        nil::<Str>()
+    }
+}
+
+/// A module's types and modules, as written, checked before its values;
+/// but a type or an effect selected from a value it makes, after that
+/// value (`selected-after`).
 pub fn first_checked(forms: Sexps) -> Sexps {
     concat(map(lambda1s(move |f: &'static Sexp| {
-        if (null_p(item_value(f)) || module_def_p(f)) {
+        if ((null_p(item_value(f)) || module_def_p(f)) && null_p(selected_value(forms, f))) {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         } else {
             nil::<&'static Sexp>()
         }
     }), forms))
+}
+
+/// The items among `forms` that select a type or an effect from a value
+/// `members` define, as written (C203).
+pub fn selected_after(forms: Sexps, members: Sexps) -> Sexps {
+    let names = concat(map(&item_value_names, members));
+    filter(lambda1s(move |f: &'static Sexp| {
+        let r = selected_value(forms, f);
+        (not(null_p(r)) && string_member_p(car(r), names))
+    }), forms)
 }
 
 /// A module's items in the order KFX checks them: its types and modules
@@ -4125,7 +4215,14 @@ pub fn module_order_coded(v: &'static Cv, forms: Sexps) -> &'static Ordered {
         }), its))
     };
     ordered(onto(first_checked(forms), concat(map(lambda1s(move |g: Mitems| {
-        as_group(v, g)
+        onto(as_group(v, g), selected_after(forms, map(lambda1s(move |it: &'static Mitem| {
+            let tagcase_ = it;
+            match *tagcase_ {
+                Mitem::Mitem(f, ns, rs, l) => {
+                    f
+                }
+            }
+        }), g)))
     }), groups))), words_of(map(lambda1s(move |g: Mitems| {
         string_append(if alone_p(g) {
             str_lit("(s ")
@@ -4181,11 +4278,11 @@ pub fn order_from_code(forms: Sexps, code: Str) -> Sexps {
                 }
             }, forms)
         }), cdr(items(g))));
-        if head_is_p(g, str_lit("s")) {
+        onto(if head_is_p(g, str_lit("s")) {
             members
         } else {
             rec_of(members)
-        }
+        }, selected_after(forms, members))
     }), read_all(string_chars(code), str_lit(""), 1i64))))
 }
 
@@ -4380,6 +4477,63 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions)
 }
 
+pub fn nested_modules(forms: Sexps) -> Strings {
+    concat(map(lambda1s(move |f: &'static Sexp| {
+        if module_def_p(f) {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, a, b) => {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        } else {
+            nil::<Str>()
+        }
+    }), forms))
+}
+
+/// The types module `m`'s modules give, `n t`, given on as `m n t`, as
+/// their values are (C203: a loaded file's instance re-exported,
+/// `load-layers.fx`).
+pub fn nested_aliases(m: Str, forms: Sexps, als: Aliases) -> Aliases {
+    concat(map(lambda1s(move |n: Str| {
+        concat(map(lambda1s(move |a: &'static Alias| {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Alias::Alias(k, ps, body) => {
+                    if has_prefix_p(k, string_append(n, str_lit(" "))) {
+                        the::<Aliases>(kayak_rt::heap_cons(alias(string_append(m, string_append(str_lit(" "), k)), ps, body), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Alias>()
+                    }
+                }
+            }
+        }), als))
+    }), nested_modules(forms)))
+}
+
+/// The effects module `m`'s modules give, `n e`, given on as `m n e`.
+pub fn nested_effdefs(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
+    concat(map(lambda1s(move |n: Str| {
+        concat(map(lambda1s(move |d: &'static Effdef| {
+            let tagcase_ = d;
+            match *tagcase_ {
+                Effdef::Effdef(k, atoms) => {
+                    if has_prefix_p(k, string_append(n, str_lit(" "))) {
+                        the::<Effdefs>(kayak_rt::heap_cons(effdef(string_append(m, string_append(str_lit(" "), k)), atoms), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Effdef>()
+                    }
+                }
+            }
+        }), es))
+    }), nested_modules(forms)))
+}
+
 pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab {
     let tagcase_ = p;
     match *tagcase_ {
@@ -4403,7 +4557,7 @@ pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab
                                 ds
                             }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1s(move |n: Str| {
                                 renamed_aliases(n, m, excepted_aliases(v, written, n, als))
-                            }), unhidden_includes(v, written))), cv_aliases(outer))), onto(module_effects(m, forms, es), onto(concat(map(lambda1s(move |n: Str| {
+                            }), unhidden_includes(v, written))), onto(nested_aliases(m, forms, als), cv_aliases(outer)))), onto(onto(module_effects(m, forms, es), nested_effdefs(m, forms, es)), onto(concat(map(lambda1s(move |n: Str| {
                                 map(lambda1s(move |d: &'static Effdef| {
                                     let tagcase_ = d;
                                     match *tagcase_ {

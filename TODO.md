@@ -568,21 +568,12 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   8 of the 433 programs Fixpt accepts still refused (2026-10-25, C202);
-   62 differ; 363 the same. What each needs (looked at 2026-10-25):
+   6 of the 433 programs Fixpt accepts still refused (2026-10-25, C204);
+   64 differ; 363 the same. What each needs (looked at 2026-10-25):
    - Redefinition at another type: **done** under `--check` (C202); the
      REPL and the engine's run still refuse it.
-   - `modules/load-layers.fx`: inside a module, `(define-type t (select r
-     t))` and `(define-effect e (select r e))` of `r`, a module value the
-     module made before them, are read by the module's prep before `r` is
-     bound (`module-aliases`, `own-effects`); to be read in item order.
-     Smallest case: `(define n (module (define r m) (define-type t2
-     (select r t))))`.
-   - `regions/distinct-swap.fx`: `(r region distinct)` binders: the mark
-     kept in poly types and plambdas, printed; a tight poly no loose one
-     (`distinct-not-loose.fx`); at each instantiation, inferred ones too,
-     Lucassen's check (Fixpt's `check_distinct`, `regions_distinct`),
-     letregion's regions distinct; four refusals to keep.
+   - `modules/load-layers.fx`: **accepted** (C203); its printing differs.
+   - `regions/distinct-swap.fx`: **accepted** (C204).
    - `conventions/poly.fx`: `(c conv)` binders, `(subr (conv c) ...)`, a
      convention solved by what is given, or projected.
    - `run/acyclic-in-a-place.fx`, `run/letfreeze-into-place.fx`: frozen

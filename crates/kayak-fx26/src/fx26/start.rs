@@ -581,7 +581,39 @@ pub fn module_qualified(scope: Quals, t: &'static Sexp) -> &'static Sexp {
         }
         Sexp::Lst(xs, file, line, pos) => {
             if head_is_p(t, str_lit("select")) {
-                t
+                let found = if i64_eq(size(xs), 3i64) {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            filter(lambda1s(move |q: &'static Qual| {
+                                let tagcase_ = q;
+                                match *tagcase_ {
+                                    Qual::Qual(a, b, o) => {
+                                        string_eq_p(a, string_append(str_lit("%val "), n))
+                                    }
+                                }
+                            }), scope)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<&'static Qual>()
+                        }
+                    }
+                } else {
+                    nil::<&'static Qual>()
+                };
+                if null_p(found) {
+                    t
+                } else {
+                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons({
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Qual::Qual(a, b, o) => {
+                                b
+                            }
+                        }
+                    }, kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), file, line, pos)
+                }
             } else {
                 lst(map(lambda1s(move |x: &'static Sexp| {
                     module_qualified(scope, x)
@@ -647,6 +679,20 @@ pub fn module_scope(mut v: &'static Cv, mut all: Sexps, mut m: Str, mut fs: Sexp
             } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(xs), 3i64)) {
                 let e = sym_name(second(xs));
                 the::<Quals>(kayak_rt::heap_cons(qual(e, sym(string_append(m, string_append(str_lit(" "), e)), str_lit(""), 0i64), false), kayak_rt::nil()))
+            } else if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt_eq(size(xs), 3i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let x = sym_name(second(xs));
+                the::<Quals>(kayak_rt::heap_cons(qual(string_append(str_lit("%val "), x), sym(string_append(m, string_append(str_lit(" "), x)), str_lit(""), 0i64), false), kayak_rt::nil()))
             } else if head_is_p(f, str_lit("hide")) {
                 module_scope(v, all, m, cdr(xs), nil::<&'static Qual>())
             } else if (head_is_p(f, str_lit("include")) && {
