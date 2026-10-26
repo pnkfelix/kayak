@@ -810,15 +810,17 @@ the link there too). Left:
 ~~5. Tier 6~~ (begun, C138: register code as native procedures, which
 leave for tier 5 rather than give back; `--direct`; on arm64 too, C210,
 measured on macOS). Next, by what keeps words out or makes them leave:
-allocation as tier 5 allocates (done on x86_64, C147: where it would
-collect, tier 6 leaves first; arm64's next). Looked at
-2026-10-24, not taken: making the runtime primitives register code
+~~allocation as tier 5 allocates~~ (C147 on x86_64, C211 on arm64:
+`cellular cons 2`, `prim %region-cons 3`, `lambda` of a closure; where it
+would collect, tier 6 leaves first). Looked at 2026-10-24, on x86_64, not
+taken: making the runtime primitives register code
 calls most (`%fx26-sched`, `%make-box`, `%make-frozen`, `setfield`) in
 place. Every hot word of the benchmarks and of `preempt/allocating.fx`
 is tier 6's already; what those primitives keep out is the scheduler's
 library and words run once a spawn, a send or a preemption. Left of
 tier 6's: the control routines (`prompt`, `callcomp`, `abort`, in
-`captures`).
+`captures`); on arm64, the rest of `prim` and `cellular`, by how often
+they keep a word out.
 - Noticed on the way (C210): x86_64's tables never send a block's first
   to its way in to tier 6, as C138 says they do: `yregister-compiled!`
   writes them after `h-6-on` is reset, so `t6-to` gives tier 5's label.

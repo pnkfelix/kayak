@@ -1469,3 +1469,12 @@ where tier 5 would give back. The 338 programs agree under it.
 What decides which words and their blocks is shared by both machines now.
 The 338 programs agree under it, and the 85 of kayak's own words.
 `helpers` −72%, `loop` −69%, `tak` −37%, `fib` −33% against tier 5.
+
+## §34: tier 6 allocates, on arm64 (2026-10-24, C211)
+
+Tier 6 now allocates what tier 5 allocates itself (`cons`,
+`%region-cons`, closures), leaving for tier 5 when a collection is due,
+and its frames keep tier 5's links, so that once left they return by
+them. The 338 programs agree under it. Against tier 5: `lists` −34%
+(from −21%), `closures` −11% (from −14%: leaving at each of its 750
+collections, 1000 calls deep, costs about what it saves).

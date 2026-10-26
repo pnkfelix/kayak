@@ -890,7 +890,8 @@
  their tier 6 code, its ways out and its ways in. Each machine emits its
  own code from these (hand-x64.kfx's `y6-…`, this file's `t6-…`)."
 (define hand-direct (ref bool @c) (new #f))
-"Where tier 6 was gone into: the link tier 5's code had then."
+"Where tier 6 was gone into: the link tier 5's code had then
+ (hand-x64.kfx's; arm64 keeps it in the bottom record, C210)."
 (define st-t6link int 33)
 (define words-direct (ref int @c) (new 0))
 (define l-materialize (ref int @c) (new 0))
@@ -899,8 +900,9 @@
   (lambda (op a b c allocs)
     "Whether tier 6 has register operation `op`, of operands `a`, `b`, `c`;
      with `allocs`, the allocations tier 5 makes itself, at the heap's top,
-     too (C147): where tier 5 would give back to collect first, tier 6
-     leaves, so the collector never sees a record."
+     too (C147, C211): where tier 5 would give back to collect first, tier
+     6 leaves, its records written as return entries, so the collector
+     never sees one."
     (cond ((i64= op ro-cellular) (and allocs (i64= a r-cons) (i64= b 2)))
           ((i64= op ro-prim) (and allocs (i64= (prim-op a) o-region-cons) (i64= b 3)))
           ((i64= op ro-lambda) (and allocs (i64<= b register-regs) (i64= c r-closure)))
@@ -1020,12 +1022,25 @@
 
 "Tier 6 on arm64 (C210), as hand-x64.kfx's (C138) but for what arm64
  changes: a call is a `bl` (or `blr`), the callee's link in `x30`, which
- the caller keeps in its record, `(x30 nx fp clo cur -)` from the machine
- stack's top, 48 bytes (`sp` kept 16-aligned), and takes back after; so a
- return is a `ret`, which the processor predicts. The bottom record is
- `(1 1)`, 16 bytes. The registers are tier 5's, all in machine registers
- already, so a way in or out moves none. An instruction's place in `x12`
- is made only by those that read an operand there."
+ the caller keeps in its record, `(x30 nx fp clo cur link)` from the
+ machine stack's top, 48 bytes (`sp` kept 16-aligned), and takes back
+ after; so a return is a `ret`, which the processor predicts. `link` is
+ tier 5's: where tier 5's code of the same call returns to, which the
+ callee's `save` keeps in its frame as tier 5's would, so that once tier 6
+ is left its frames return by their links, not the stack's way. The
+ bottom record is `(1 1 - - - link)`, the link tier 5's code had where it
+ went in. The registers are tier 5's, all in machine registers already,
+ so a way in or out moves none. An instruction's place in `x12` is made
+ only by those that read an operand there."
+"By instruction, the label of tier 5's code just past its call, where
+ its callee returns to by its link (C210)."
+(define h-6-after (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define after-call! (->* (i64) unit)
+  (lambda (i)
+    "Tier 5's point past instruction `i`'s call, labelled for tier 6."
+    (if (get h-6-on)
+        (let ((l (label!))) (begin (bind! l) (flatarray-set-i64! (get h-6-after) i (int->i64 l))))
+        #u)))
 (define subsi! (->* (int int int) unit) (lambda (d n i) (e! ((with a64 arm-subs-imm) d n i))))
 
 (define reads-operands? (->* (i64) bool)
@@ -1035,24 +1050,25 @@
     (or (i64= op ro-const) (i64= op ro-global) (i64= op ro-setglbl) (i64= op ro-op2imm) (i64= op ro-global-guard)
         (i64= op ro-lambda))))
 
-(define t6-called! (->* (int int int i64) unit)
-  (lambda (l r new-cur nx)
+(define t6-called! (->* (int int int i64 int) unit)
+  (lambda (l r new-cur nx after)
     "A call of tier 6 code at label `l`, or if it is -1 at the address in
      `r`, `cur` then `new-cur` (a register, or -1 for this one), the
      closure in `x0` (none for `invokeself`): the caller's record pushed,
-     its place on the return stack kept, and after it, popped."
+     with tier 5's point past the same call, `after`; its place on the
+     return stack kept; and after it, popped."
     (begin
       (limits!) (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
       (movz! x13 (* 8 (i64->int (i64+ f-cell0 nx)))) (sub! x13 31 x13)
-      (stp-pre! 30 x13 31 -48) (stp! x-fp x-clo 31 16) (str! x-cur 31 32)
+      (stp-pre! 30 x13 31 -48) (stp! x-fp x-clo 31 16) (adr! x16 after) (stp! x-cur x16 31 32)
       (addi! x-rsp x-rsp 32)
       (if (< new-cur 0) #u (begin (mov! x-clo 0) (mov! x-cur new-cur)))
       (if (< l 0) (blr! r) (bl! l))
       (ldp! x-fp x-clo 31 16) (ldr! x-cur 31 32) (ldp-post! 30 x13 31 48)
       (subi! x-rsp x-rsp 32))))
 
-(define t6-invoked! (->* (bool int i64) unit)
-  (lambda (tail n nx)
+(define t6-invoked! (->* (bool int i64 int) unit)
+  (lambda (tail n nx after)
     "`invoke n` (or `tailinvoke`) of the closure in `x0`, if its word's
      twin has tier 6 code of `n` arguments; else out, to tier 5."
     (begin
@@ -1071,7 +1087,7 @@
       (add! x17 x13 x17)
       (if tail
           (begin (limits!) (mov! x-clo 0) (mov! x-cur x10) (br! x17))
-          (t6-called! -1 x17 x10 nx)))))
+          (t6-called! -1 x17 x10 nx after)))))
 
 (define t6-returned! (->* () unit)
   (lambda ()
@@ -1102,9 +1118,9 @@
   (lambda (l)
     "Tier 6 left, for tier 5's code at `x16`: each record, from the
      innermost, written in the place it kept on the return stack, as the
-     entry it stands for; all popped, the bottom record too; the link
-     tier 5's caller gave, if the code left is that call's, else none."
-    (let ((loop (label!)) (done (label!)) (inner (label!)) (out (label!)))
+     entry it stands for; all popped, the bottom record too; the link the
+     innermost's, tier 5's, from the record on top."
+    (let ((loop (label!)) (done (label!)))
       (begin
         (bind! l)
         (addi! x11 31 0) (mov! x14 x-rsp)
@@ -1117,10 +1133,7 @@
         (ldr! x13 x11 24) (str! x13 x14 24)
         (addi! x11 x11 48) (b! loop)
         (bind! done)
-        (addi! x15 31 0) (cmp! x11 x15) (bc! c-ne inner)
-        (ldr! 30 x-st (at-st st-t6link)) (b! out)
-        (bind! inner) (mov! 30 31)
-        (bind! out) (addi! 31 x11 16)
+        (ldr! 30 31 40) (addi! 31 x11 48)
         (br! x16)))))
 
 (define reg-body! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
@@ -1162,9 +1175,8 @@
                    (let ((loop (label!)))
                      (begin (sub-const! x15 x16 8) (bind! loop) (str-post! x13 x-dsp 8) (cmp! x-dsp x15) (bc! c-lo loop))))
                ;; The link (C131): 8-aligned, a fixnum to the collector;
-               ;; tier 6's none, its frames returning the stack's way once
-               ;; left.
-               (str-post! (if (get h-6) 31 30) x-dsp 8)
+               ;; tier 6's, tier 5's, from its caller's record (C210).
+               (if (get h-6) (begin (ldr! x13 31 40) (str-post! x13 x-dsp 8)) (str-post! 30 x-dsp 8))
                (set h-link m))))
           ((i64= op ro-pop)
            (begin (sub-const! x16 x-dsp (* 8 (+ (i64->int (o 0)) 1))) (cmp! x16 x-dsb) (give-if! c-lo) (mov! x-dsp x16)))
@@ -1210,8 +1222,8 @@
                (addi! x14 x13 (+ 3 n)) (str! x14 x-st (at-st st-top))
                (sub! x14 x11 x-mem) (addi! 0 x14 4))))
           ((and (get h-6) (or (i64= op ro-invoke) (i64= op ro-tailinvoke)))
-           (t6-invoked! (i64= op ro-tailinvoke) (i64->int (o 0)) nx))
-          ((and (get h-6) (i64= op ro-invokeself)) (t6-called! (+ base 2) -1 -1 nx))
+           (t6-invoked! (i64= op ro-tailinvoke) (i64->int (o 0)) nx (i64->int (flatarray-ref-i64 (get h-6-after) i))))
+          ((and (get h-6) (i64= op ro-invokeself)) (t6-called! (+ base 2) -1 -1 nx (i64->int (flatarray-ref-i64 (get h-6-after) i))))
           ((and (get h-6) (i64= op ro-return)) (t6-returned!))
           ((or (i64= op ro-invoke) (i64= op ro-tailinvoke))
            (let ((tail (i64= op ro-tailinvoke)) (stack-code (label!)) (stack-way (label!)) (n (i64->int (o 0))))
@@ -1229,7 +1241,7 @@
                (entry-address! x10 stack-way)
                (if tail
                    (br! x16)
-                   (begin (align-odd!) (blr! x16) (link-reloaded! (get h-link)) (b! (+ base (i64->int nx)))))
+                   (begin (align-odd!) (blr! x16) (after-call! i) (link-reloaded! (get h-link)) (b! (+ base (i64->int nx)))))
                (bind! stack-way)
                (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (+ (i64->int f-cell0) 2))))
                (resume!)
@@ -1249,7 +1261,7 @@
           ((i64= op ro-invokeself)
            (begin
              (limits!) (return-pushed! (i64+ f-cell0 nx))
-             (align-odd!) (bl! (t6-to base 2)) (link-reloaded! (get h-link))))
+             (align-odd!) (bl! (t6-to base 2)) (after-call! i) (link-reloaded! (get h-link))))
           ((i64= op ro-return)
            (let ((stack-way (label!)))
              (begin
@@ -1318,16 +1330,15 @@
   (t6-ways-in! (->* (i64 i64) unit)
     (lambda (i n)
       "For each block's first from `i`, its way in to tier 6 from tier 5,
-       or from the tables: the link tier 5's code had kept, the bottom
-       record pushed, on at it."
+       or from the tables: the bottom record pushed, with the link tier
+       5's code had; on at it."
       (if (i64> i n)
           #u
           (begin
             (if (and (i64>= i 2) (i64< i n) (i64= (flatarray-ref-i64 (get h-6-lead) i) 1))
                 (begin
                   (bind! (+ (get h-6-ins) (i64->int i)))
-                  (str! 30 x-st (at-st st-t6link))
-                  (movz! x13 1) (stp-pre! x13 x13 31 -16)
+                  (movz! x13 1) (stp-pre! x13 x13 31 -48) (str! 30 31 40)
                   (b! (+ (get h-6-base) (i64->int i))))
                 #u)
             (t6-ways-in! (i64+ i 1) n))))))
@@ -1401,14 +1412,13 @@
            (base (get hand-labels)) (rbase (+ base (+ n-cells 1)))
            (give (+ rbase (+ n-cells 1))) (give-pre (+ give 1)) (rgive (+ give 2))
            (machine-give (get l-give)) (machine-give-pre (get l-give-pre))
-           ;; Allocations not yet on arm64 (C147's are x86_64's).
-           (direct (and (get hand-direct) (direct-able? rw 0 n #f))))
+           (direct (and (get hand-direct) (direct-able? rw 0 n #t))))
       (begin
         (set hand-labels (+ rgive 1))
         (if direct (set words-direct (+ (get words-direct) 1)) #u)
         (set h-link -1)
         (set l-give give) (set l-give-pre give-pre)
-        (if direct (t6-prepared! rw n) #u)
+        (if direct (begin (t6-prepared! rw n) (set h-6-after (make-flatarray-i64 (i64+ n 1) 0))) #u)
         (reg-instructions! rw 0 n base starts resumes)
         (bind! (+ base n-cells)) (b! give)
         (resumes-emitted! 0 n base rbase rgive resumes)

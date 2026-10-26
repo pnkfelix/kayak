@@ -5777,3 +5777,43 @@ that push a bottom record. What arm64 changes:
 - **Noticed**: x86_64's tables never send a block's first to tier 6,
   written after `h-6-on` is reset (TODO §34); not changed here, where
   x86_64 cannot run.
+
+## C211. Tier 6 allocates, as tier 5 does; its frames keep tier 5's links (2026-10-24)
+
+The user: "Do allocation" (TODO §34, step 5's next: "allocation (`cons`,
+`lambda`, `prim`) by the heap's top as tier 5 allocates, which a
+collection may not follow while records live").
+- **Nothing new to allocate with**: tier 5's own allocations (`cellular
+  cons 2`, `prim %region-cons 3`, `lambda` of a closure, C130) already
+  bump the heap's top in the machine, and give back where tier 1 would
+  collect first or grow the heap. In tier 6 that giving back is leaving
+  (C138), which writes every record as its return entry before tier 5
+  gives back; so a collection never sees a record, and these three are
+  admitted (`direct-op?`'s `allocs`). The other forms of `prim`,
+  `cellular` and `lambda` tier 5 gives back at once: a word with one
+  would leave at it every time, so it stays out.
+- **As x86_64's**: hand-x64.kfx's tier 6 has taken the same three since
+  C147, by the shared `direct-able?`'s `allocs` (C210); arm64's now passes
+  it too.
+- **Tier 6's frames keep tier 5's links**: a frame saved in tier 6 kept
+  0 for its link (C138, C210), so once left every return in it went the
+  stack's way. With allocation, a word leaves when a collection is due,
+  however deep it is (`closures`: 750 collections, 1000 calls deep). Now
+  each call's record carries tier 5's point past the same call (labelled
+  as tier 5 is compiled, `after-call!`), which the callee's `save` keeps
+  in its frame, as tier 5's would; leaving gives the innermost that link,
+  from the record on top. The bottom record carries the link tier 5's
+  code had where it went in, so arm64 no longer needs `st-t6link`. It did
+  not change the timings here; it makes leaving cheaper wherever it is.
+- **Measured** as in C210 (an Apple M5 Max, the median of 25 runs less
+  that of the run stopped at its first step), tier 6 against tier 5:
+  `helpers` −71%, `loop` −69%, `lists` −34% (from −21%), `tak` −34%,
+  `fib` −32%, `closures` −11% (from −14%), `captures` the same. Against
+  C210's tier 6 directly: `lists` −16%, `closures` +3.5%, the rest the
+  same. `closures`' 7 register words are all tier 6's now (from 2), so
+  it does not leave for want of a callee's tier 6 code; what it loses is
+  writing about 500 records as entries at each collection, which tier 5
+  wrote as it went. Accepted: in exchange for the calls between.
+- **Checked**: `cells-programs.py` (`--regs --direct`, under
+  `--gc-stress`, where every allocation leaves, and at a slice of 3):
+  the 338 programs agree, and the 85 of `--ours`.

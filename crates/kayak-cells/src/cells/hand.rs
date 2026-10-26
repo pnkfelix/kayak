@@ -2266,7 +2266,8 @@ pub fn hand_direct() -> Ref<bool> {
     })
 }
 
-// Where tier 6 was gone into: the link tier 5's code had then.
+// Where tier 6 was gone into: the link tier 5's code had then
+// (hand-x64.kfx's; arm64 keeps it in the bottom record, C210).
 pub fn st_t6link() -> Int {
     int_lit(33)
 }
@@ -2287,8 +2288,9 @@ pub fn l_materialize() -> Ref<Int> {
 
 /// Whether tier 6 has register operation `op`, of operands `a`, `b`, `c`;
 /// with `allocs`, the allocations tier 5 makes itself, at the heap's top,
-/// too (C147): where tier 5 would give back to collect first, tier 6
-/// leaves, so the collector never sees a record.
+/// too (C147, C211): where tier 5 would give back to collect first, tier
+/// 6 leaves, its records written as return entries, so the collector
+/// never sees one.
 pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool) -> bool {
     if i64_eq(op, ro_cellular()) {
         (allocs && i64_eq(a, r_cons()) && i64_eq(b, 2i64))
@@ -2513,12 +2515,37 @@ pub fn t6_prepared_x(rw: i64, n: i64) -> () {
 
 // Tier 6 on arm64 (C210), as hand-x64.kfx's (C138) but for what arm64
 // changes: a call is a `bl` (or `blr`), the callee's link in `x30`, which
-// the caller keeps in its record, `(x30 nx fp clo cur -)` from the machine
-// stack's top, 48 bytes (`sp` kept 16-aligned), and takes back after; so a
-// return is a `ret`, which the processor predicts. The bottom record is
-// `(1 1)`, 16 bytes. The registers are tier 5's, all in machine registers
-// already, so a way in or out moves none. An instruction's place in `x12`
-// is made only by those that read an operand there.
+// the caller keeps in its record, `(x30 nx fp clo cur link)` from the
+// machine stack's top, 48 bytes (`sp` kept 16-aligned), and takes back
+// after; so a return is a `ret`, which the processor predicts. `link` is
+// tier 5's: where tier 5's code of the same call returns to, which the
+// callee's `save` keeps in its frame as tier 5's would, so that once tier 6
+// is left its frames return by their links, not the stack's way. The
+// bottom record is `(1 1 - - - link)`, the link tier 5's code had where it
+// went in. The registers are tier 5's, all in machine registers already,
+// so a way in or out moves none. An instruction's place in `x12` is made
+// only by those that read an operand there.
+
+// By instruction, the label of tier 5's code just past its call, where
+// its callee returns to by its link (C210).
+pub fn h_6_after() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+/// Tier 5's point past instruction `i`'s call, labelled for tier 6.
+pub fn after_call_x(i: i64) -> () {
+    if get(h_6_on()) {
+        let l = label_x();
+        bind_x(l);
+        flatarray_set_i64_x(get(h_6_after()), i, int_to_i64(l))
+    } else {
+        ()
+    }
+}
+
 pub fn subsi_x(d: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_subs_imm)(d, n, i))
 }
@@ -2532,8 +2559,9 @@ pub fn reads_operands_p(op: i64) -> bool {
 /// A call of tier 6 code at label `l`, or if it is -1 at the address in
 /// `r`, `cur` then `new-cur` (a register, or -1 for this one), the
 /// closure in `x0` (none for `invokeself`): the caller's record pushed,
-/// its place on the return stack kept, and after it, popped.
-pub fn t6_called_x(l: Int, r: Int, new_cur: Int, nx: i64) -> () {
+/// with tier 5's point past the same call, `after`; its place on the
+/// return stack kept; and after it, popped.
+pub fn t6_called_x(l: Int, r: Int, new_cur: Int, nx: i64, after: Int) -> () {
     limits_x();
     ldr_x(x16(), x_st(), at_st(st_rs_end()));
     cmp_x(x_rsp(), x16());
@@ -2542,7 +2570,8 @@ pub fn t6_called_x(l: Int, r: Int, new_cur: Int, nx: i64) -> () {
     sub_x(x13(), int_lit(31), x13());
     stp_pre_x(int_lit(30), x13(), int_lit(31), int_lit(-48));
     stp_x(x_fp(), x_clo(), int_lit(31), int_lit(16));
-    str_x(x_cur(), int_lit(31), int_lit(32));
+    adr_x(x16(), after);
+    stp_x(x_cur(), x16(), int_lit(31), int_lit(32));
     addi_x(x_rsp(), x_rsp(), int_lit(32));
     if _lt(new_cur, int_lit(0)) {
         ()
@@ -2563,7 +2592,7 @@ pub fn t6_called_x(l: Int, r: Int, new_cur: Int, nx: i64) -> () {
 
 /// `invoke n` (or `tailinvoke`) of the closure in `x0`, if its word's
 /// twin has tier 6 code of `n` arguments; else out, to tier 5.
-pub fn t6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
+pub fn t6_invoked_x(tail: bool, n: Int, nx: i64, after: Int) -> () {
     closure_in_x(int_lit(0));
     ldur_x(x13(), x11(), at_field(f_word()));
     add_x(x14(), x_mem(), x13());
@@ -2594,7 +2623,7 @@ pub fn t6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
         mov_x(x_cur(), x10());
         br_x(x17())
     } else {
-        t6_called_x(int_lit(-1), x17(), x10(), nx)
+        t6_called_x(int_lit(-1), x17(), x10(), nx, after)
     }
 }
 
@@ -2636,10 +2665,10 @@ pub fn t6_exits_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut at: Fl
 
 /// Tier 6 left, for tier 5's code at `x16`: each record, from the
 /// innermost, written in the place it kept on the return stack, as the
-/// entry it stands for; all popped, the bottom record too; the link
-/// tier 5's caller gave, if the code left is that call's, else none.
+/// entry it stands for; all popped, the bottom record too; the link the
+/// innermost's, tier 5's, from the record on top.
 pub fn materialize_x(l: Int) -> () {
-    let (r#loop, done, inner, out) = (label_x(), label_x(), label_x(), label_x());
+    let (r#loop, done) = (label_x(), label_x());
     bind_x(l);
     addi_x(x11(), int_lit(31), int_lit(0));
     mov_x(x14(), x_rsp());
@@ -2660,15 +2689,8 @@ pub fn materialize_x(l: Int) -> () {
     addi_x(x11(), x11(), int_lit(48));
     b_x(r#loop);
     bind_x(done);
-    addi_x(x15(), int_lit(31), int_lit(0));
-    cmp_x(x11(), x15());
-    bc_x(c_ne(), inner);
-    ldr_x(int_lit(30), x_st(), at_st(st_t6link()));
-    b_x(out);
-    bind_x(inner);
-    mov_x(int_lit(30), int_lit(31));
-    bind_x(out);
-    addi_x(int_lit(31), x11(), int_lit(16));
+    ldr_x(int_lit(30), int_lit(31), int_lit(40));
+    addi_x(int_lit(31), x11(), int_lit(48));
     br_x(x16())
 }
 
@@ -2738,11 +2760,12 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
             cmp_x(x_dsp(), x15());
             bc_x(c_lo(), r#loop)
         };
-        str_post_x(if get(h_6()) {
-            int_lit(31)
+        if get(h_6()) {
+            ldr_x(x13(), int_lit(31), int_lit(40));
+            str_post_x(x13(), x_dsp(), int_lit(8))
         } else {
-            int_lit(30)
-        }, x_dsp(), int_lit(8));
+            str_post_x(int_lit(30), x_dsp(), int_lit(8))
+        };
         set(h_link(), m)
     } else if i64_eq(op, ro_pop()) {
         sub_const_x(x16(), x_dsp(), _star(int_lit(8), _plus(i64_to_int(o(int_lit(0))), int_lit(1))));
@@ -2829,9 +2852,9 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         sub_x(x14(), x11(), x_mem());
         addi_x(int_lit(0), x14(), int_lit(4))
     } else if (get(h_6()) && (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()))) {
-        t6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o(int_lit(0))), nx)
+        t6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o(int_lit(0))), nx, i64_to_int(flatarray_ref_i64(get(h_6_after()), i)))
     } else if (get(h_6()) && i64_eq(op, ro_invokeself())) {
-        t6_called_x(_plus(base, int_lit(2)), int_lit(-1), int_lit(-1), nx)
+        t6_called_x(_plus(base, int_lit(2)), int_lit(-1), int_lit(-1), nx, i64_to_int(flatarray_ref_i64(get(h_6_after()), i)))
     } else if (get(h_6()) && i64_eq(op, ro_return())) {
         t6_returned_x()
     } else if (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke())) {
@@ -2860,6 +2883,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         } else {
             align_odd_x();
             blr_x(x16());
+            after_call_x(i);
             link_reloaded_x(get(h_link()));
             b_x(_plus(base, i64_to_int(nx)))
         };
@@ -2895,6 +2919,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         return_pushed_x(i64_plus(f_cell0(), nx));
         align_odd_x();
         bl_x(t6_to(base, 2i64));
+        after_call_x(i);
         link_reloaded_x(get(h_link()))
     } else if i64_eq(op, ro_return()) {
         let stack_way = label_x();
@@ -2989,8 +3014,8 @@ pub fn t6_instructions_x(mut rw: i64, mut i: i64, mut n: i64, mut none: FlatArra
 }
 
 /// For each block's first from `i`, its way in to tier 6 from tier 5,
-/// or from the tables: the link tier 5's code had kept, the bottom
-/// record pushed, on at it.
+/// or from the tables: the bottom record pushed, with the link tier
+/// 5's code had; on at it.
 pub fn t6_ways_in_x(mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt(i, n) {
@@ -2998,9 +3023,9 @@ pub fn t6_ways_in_x(mut i: i64, mut n: i64) -> () {
         } else {
             if (i64_gt_eq(i, 2i64) && i64_lt(i, n) && i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64)) {
                 bind_x(_plus(get(h_6_ins()), i64_to_int(i)));
-                str_x(int_lit(30), x_st(), at_st(st_t6link()));
                 movz_x(x13(), int_lit(1));
-                stp_pre_x(x13(), x13(), int_lit(31), int_lit(-16));
+                stp_pre_x(x13(), x13(), int_lit(31), int_lit(-48));
+                str_x(int_lit(30), int_lit(31), int_lit(40));
                 b_x(_plus(get(h_6_base()), i64_to_int(i)))
             } else {
                 ()
@@ -3101,7 +3126,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     let rgive = _plus(give, int_lit(2));
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
-    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, false));
+    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, true));
     set(hand_labels(), _plus(rgive, int_lit(1)));
     if direct {
         set(words_direct(), _plus(get(words_direct()), int_lit(1)))
@@ -3112,7 +3137,8 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     set(l_give(), give);
     set(l_give_pre(), give_pre);
     if direct {
-        t6_prepared_x(rw, n)
+        t6_prepared_x(rw, n);
+        set(h_6_after(), make_flatarray_i64(i64_plus(n, 1i64), 0i64))
     } else {
         ()
     };
