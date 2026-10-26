@@ -2355,6 +2355,46 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
 
 // A generative type's conversions, `up-t` and `down-t`, each `(lambda (x)
 // x)` where the form is, as Fixpt's parser's `identity-at` makes them.
+/// A generative type's name: its own, or a family's head, `(t (a type +))`
+/// (C217).
+pub fn generative_name(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            sym_name(car(ys))
+        }
+        _ => {
+            let other = tagcase_;
+            sym_name(e)
+        }
+    }
+}
+
+/// `(confirm-nat x (n body) else)`, `(acyclic x (n body) else)`,
+/// `(confirm-length x k (n body) else)` as Fixpt's parser makes them (C217):
+/// the value bound once, to a variable named for what the form does not
+/// mention; tested; the name bound to it certified.
+pub fn confirmed(e: &'static Sexp, base: Str, test: Str, cert: Str, with_k: bool) -> &'static Sexp {
+    let xs = cdr(items(e));
+    let t = fresh_for(base, e);
+    let k = if with_k {
+        the::<Sexps>(kayak_rt::heap_cons(second(xs), kayak_rt::nil()))
+    } else {
+        nil::<&'static Sexp>()
+    };
+    let arm = items(if with_k {
+        third(xs)
+    } else {
+        second(xs)
+    });
+    let els = if with_k {
+        fourth(xs)
+    } else {
+        third(xs)
+    };
+    sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(car(xs), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(test), kayak_rt::heap_cons(sy(t), k))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(arm), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(cert), kayak_rt::heap_cons(sy(t), k))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(arm), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
+}
+
 pub fn generative_conversions(t: Str, a: i64) -> List<&'static Ctop> {
     kayak_rt::heap_cons(t_define(string_append(str_lit("up-"), t), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::heap_cons(t_define(string_append(str_lit("down-"), t), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::nil()))
 }
@@ -2580,6 +2620,12 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         parse_x(car(cdr(cdr(xs))))
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
+    } else if (string_eq_p(h, str_lit("acyclic")) && i64_eq(size(xs), 4i64)) {
+        parse_x(confirmed(e, str_lit("%acyclic-value"), str_lit("acyclic?"), str_lit("certify-acyclic"), false))
+    } else if (string_eq_p(h, str_lit("confirm-nat")) && i64_eq(size(xs), 4i64)) {
+        parse_x(confirmed(e, str_lit("%nat-value"), str_lit("nat?"), str_lit("certify-nat"), false))
+    } else if (string_eq_p(h, str_lit("confirm-length")) && i64_eq(size(xs), 5i64)) {
+        parse_x(confirmed(e, str_lit("%confirm-value"), str_lit("length-is?"), str_lit("certify-length"), true))
     } else if string_eq_p(h, str_lit("proj")) {
         x_proj(parse_x(second(xs)), a)
     } else if string_eq_p(h, str_lit("quote")) {
@@ -3184,7 +3230,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
                     cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
-        }), generative_conversions(sym_name(second(items(e))), datum_pos(e)))
+        }), generative_conversions(generative_name(second(items(e))), datum_pos(e)))
     } else if string_eq_p(h, str_lit("define-datatype")) {
         map(lambda1s(move |t: &'static Ctop| {
             let tagcase_ = t;
@@ -3531,7 +3577,7 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     } else if string_eq_p(h, str_lit("define-datatype")) {
         dt_constructors(cdr(cdr(items(e))), datum_pos(e))
     } else if string_eq_p(h, str_lit("define-generative")) {
-        generative_conversions(sym_name(second(items(e))), datum_pos(e))
+        generative_conversions(generative_name(second(items(e))), datum_pos(e))
     } else if string_eq_p(h, str_lit("import")) {
         imports(e)
     } else if string_eq_p(h, str_lit("include")) {
@@ -4641,7 +4687,7 @@ pub fn std_primitive(n: Str) -> Str {
 pub fn c_arity(n: Str) -> i64 {
     if string_member_p(n, kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())))) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::nil())))))))))))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("f32?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::nil())))) {
         3i64

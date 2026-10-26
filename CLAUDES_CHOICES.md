@@ -5963,3 +5963,17 @@ Module values first (the engine has them, C213).
   to test; not hidden since.
 - Kayak's own words on Fixpt's programs: agree 292 to 310, differ 0;
   not compiled 83 to 65.
+
+## C217. Kayak's compiler to cells: the confirming forms, generative families, shapes' tests as values (2026-10-26)
+
+As the engine has them (C214):
+- `(acyclic x (n body) else)`, `(confirm-nat ...)`, `(confirm-length x k
+  ...)` made as Fixpt's parser makes them (`confirmed`): the value bound
+  once to a variable named for what the form does not mention, tested by
+  the standard `acyclic?`, `nat?`, `length-is?`, the name bound to it
+  certified (`certify-acyclic`, `-nat`, `-length`), as Fixpt's words are.
+- A generative family, `(define-generative (box (t type +)) ...)`, its
+  conversions named for its head (`generative-name`).
+- The shapes' tests (`int?`, `string?`, ...) of one argument as values.
+- Kayak's own words on Fixpt's programs: agree 310 to 326, differ 0;
+  not compiled 65 to 49.
