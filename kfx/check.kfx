@@ -2721,6 +2721,11 @@
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
                  (no-knot v (lambda ((x string)) x) (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
+                ((and (sym-is? (car xs) "narrayof") (i64= (size xs) 4))
+                 "An array of exactly `n` elements (C207; Fixpt's TODO §77, N5c): an
+                  array of values whose length its type says."
+                 (no-knot v (lambda ((x string)) x)
+                          (ty-data "%narray" (list (parse-type v tvars (second xs)) (parse-size v tvars (third xs)) (parse-mutable-region v tvars (fourth xs))))))
                 ((and (sym-is? (car xs) "nlist") (i64= (size xs) 3))
                  "A list of exactly `s` elements, frozen (C158)."
                  (ty-data "%nlist" (list (parse-type v tvars (second xs)) (parse-size v tvars (third xs)))))
@@ -3549,6 +3554,9 @@
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
                 ((string=? d "%nlist") (string-append "(nlist " (string-append (show-ty s (car args)) (string-append " " (string-append (show-size s (car (cdr args))) ")")))))
+                ((string=? d "%narray")
+                 (string-append "(narrayof " (string-append (show-ty s (car args)) (string-append " " (string-append (show-size s (car (cdr args)))
+                   (string-append " " (string-append (show-ty s (car (cdr (cdr args)))) ")")))))))
                 ((string=? d "%natof") (string-append "(nat " (string-append (show-size s (car args)) ")")))
                 ((or (string=? d "%sz") (string=? d "%finite")) (show-size s t))
                 ((string=? d "%poly")
@@ -4178,6 +4186,11 @@
 (define sized-size (subr kfx (ty) ty)
   (lambda (t) (tagcase t (ty-data (d args) (if (string=? d "%natof") (car args) (car (cdr args)))) (else other size-finite))))
 
+(define narray-array (subr kfx (ty) ty)
+  (lambda (t)
+    "An array of a length's array type (C207)."
+    (tagcase t (ty-data (d args) (ty-data "%array" (list (car args) (car (cdr (cdr args)))))) (else other t))))
+
 (define sized-less (subr kfx (ty st) ty)
   (lambda (t s)
     "A `%nlist`'s type of one element fewer: `finite`'s is `finite`."
@@ -4286,6 +4299,16 @@
                    s2
                    (refuse-named v s (string-append "a " (string-append (show-ty s a) (string-append " is here, where a " (string-append (show-ty s e)
                      " is expected: it requires more, or ensures less, than is expected, as far as the prover can tell"))))))))
+            ((and (sized? a "%narray") (sized? e "%narray"))
+             "Two arrays of lengths (C207): the arrays, then the lengths, the same
+              or the one expected `finite`."
+             (size-fits v (fits v s (narray-array a) (narray-array e)) (sized-size a) (sized-size e) a e))
+            ((sized? a "%narray")
+             "An array of a length where an array is (C207)."
+             (fits v s (narray-array a) e))
+            ((and (sized? e "%narray") (tagcase a (ty-data (d args) (string=? d "%array")) (else other #f)))
+             "An array where one of a length not known, `finite`, is (C207)."
+             (if (size-finite? s (sized-size e)) (fits v s a (narray-array e)) (mismatch v s a e)))
             ((and (sized? a "%natof") (tagcase e (ty-nat () #t) (ty-int () #t) (else other #f)))
              "`(nat s)` below `nat` and `int` (C158)."
              s)

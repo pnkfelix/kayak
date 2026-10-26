@@ -5665,3 +5665,21 @@ no `spin`. Both the same as Fixpt's now, printing too; Fixpt's refusals
   frozen in it is wanted; a walk of a `const` place's list, or of the same
   list, needing `spin`.
 - The checkers' comparison: refused 5 to 3, the same 364 to 366; K1 0.
+
+## C207. Arrays of a length, `narrayof` (2026-10-25; Fixpt's TODO §77, N5c)
+
+`sizes/narrayof-lengths.fx`: `(narrayof T n R)`, an array whose length
+its type says. The same as Fixpt's now, printing too.
+- **The type**: `%narray` (element, size, region); below its array, and
+  an array below one of a length `finite`; two of lengths, the lengths
+  the same or the one expected `finite` (`size-fits`, as `nlist`'s).
+- **Made**: `(make-array n x)`, `n` a literal, where one is wanted, of
+  length `n`; `(the (arrayof T R) e)` where one is wanted keeps the
+  length, as Fixpt's does. Else `make-array` is an array as before, so
+  nothing of KFX's changes; KFX refuses the type (the restriction pass,
+  `tests/kfx-stricter/narrayof.kfx`) and the making (`kfx-restricted`).
+- **`array-length`** of one: `(nat n)`, fitted to what is wanted (a probe
+  found it was not at first: `(define y (nat 4) (array-length five))`).
+- Probes the same as Fixpt's: a length other than the one wanted, made,
+  through `the`, asked of `array-length`; an array where one of a length is.
+- The checkers' comparison: refused 3 to 2, the same 366 to 367; K1 0.

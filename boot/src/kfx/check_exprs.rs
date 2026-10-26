@@ -5803,6 +5803,96 @@ pub mod expressions {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)
+        } else if (string_eq_p(h, str_lit("the")) && i64_eq(size(xs), 2i64) && sized_p(walk(s, expected), str_lit("%narray")) && {
+            let tagcase_ = parse_type(v, cv_tvars(v), car(xs));
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    string_eq_p(d, str_lit("%array"))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // `(the (arrayof T R) e)` where an array of a length is wanted (C207):
+            // `e` checked against that, as FX-26 keeps the length.
+            let tagcase_ = check(v, s, second(xs), parse_type(v, cv_tvars(v), car(xs)));
+            match *tagcase_ {
+                Res::Res(t0, es0, s0) => {
+                    let tagcase_ = check(v, s, second(xs), expected);
+                    match *tagcase_ {
+                        Res::Res(t, es, s2) => {
+                            res(expected, es, s2)
+                        }
+                    }
+                }
+            }
+        } else if (string_eq_p(h, str_lit("make-array")) && std_prim_p(v, str_lit("make-array")) && i64_eq(size(xs), 2i64) && sized_p(walk(s, expected), str_lit("%narray")) && {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Num(k, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // `(make-array n x)` where an array of a length is wanted (C207): `n`
+            // a literal, that length.
+            let t = walk(s, expected);
+            let tagcase_ = check(v, s, second(xs), sized_elem(t));
+            match *tagcase_ {
+                Res::Res(u, es, s) => {
+                    res(t, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, car(cdr(cdr({
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Ty::TyData(d, a) => {
+                                a
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Ty>()
+                            }
+                        }
+                    }))))), kayak_rt::nil()), es), kfx_restricted(v, size_fits(v, s, size_of_lin(lin({
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Num(k, f, p) => {
+                                k
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                0i64
+                            }
+                        }
+                    }, nil::<&'static Lterm>())), sized_size(t), ty_data(str_lit("%narray"), kayak_rt::heap_cons(sized_elem(t), kayak_rt::heap_cons(size_of_lin(lin({
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Num(k, f, p) => {
+                                k
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                0i64
+                            }
+                        }
+                    }, nil::<&'static Lterm>())), kayak_rt::heap_cons(car(cdr(cdr({
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Ty::TyData(d, a) => {
+                                a
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Ty>()
+                            }
+                        }
+                    }))), kayak_rt::nil())))), t), str_lit("an array of a length, FX-26's narrayof, which KFX has not (C207)")))
+                }
+            }
         } else if (string_eq_p(h, str_lit("list")) && std_prim_p(v, str_lit("list")) && sized_p(walk(s, expected), str_lit("%nlist"))) {
             // `(list e ...)` where a list of size `s` is wanted: each element, and
             // `s` shown to be how many there are (C158).
@@ -10331,6 +10421,31 @@ pub mod expressions {
                 match *tagcase_ {
                     Res::Res(u, es, s) => {
                         return res(ty_nat(), es, s);
+                    }
+                }
+            } else if (string_eq_p(h, str_lit("array-length")) && prim_p(car(found)) && i64_eq(size(args), 1i64) && sized_p(walk(s, {
+                let tagcase_ = synth(v, s, car(args));
+                match *tagcase_ {
+                    Res::Res(t, es, s2) => {
+                        t
+                    }
+                }
+            }), str_lit("%narray"))) {
+                // An array of a length's length (C207): `(nat n)`.
+                let tagcase_ = synth(v, s, car(args));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let n = sized_size(walk(s, t));
+                        let rt = if size_finite_p(s, n) {
+                            ty_nat()
+                        } else {
+                            ty_data(str_lit("%natof"), kayak_rt::heap_cons(n, kayak_rt::nil()))
+                        };
+                        return res(rt, es, if null_p(expected) {
+                            s
+                        } else {
+                            fits(v, s, rt, car(expected))
+                        });
                     }
                 }
             } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {

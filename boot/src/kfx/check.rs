@@ -6145,6 +6145,12 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs))));
+                } else if (sym_is_p(car(xs), str_lit("narrayof")) && i64_eq(size(xs), 4i64)) {
+                    // An array of exactly `n` elements (C207; Fixpt's TODO §77, N5c): an
+                    // array of values whose length its type says.
+                    return no_knot(v, lambda1s(move |x: Str| {
+                        x
+                    }), ty_data(str_lit("%narray"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_size(v, tvars, third(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, fourth(xs)), kayak_rt::nil())))));
                 } else if (sym_is_p(car(xs), str_lit("nlist")) && i64_eq(size(xs), 3i64)) {
                     // A list of exactly `s` elements, frozen (C158).
                     return ty_data(str_lit("%nlist"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_size(v, tvars, third(xs)), kayak_rt::nil())));
@@ -7981,6 +7987,8 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%nlist")) {
                     return string_append(str_lit("(nlist "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), str_lit(")")))));
+                } else if string_eq_p(d, str_lit("%narray")) {
+                    return string_append(str_lit("(narrayof "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(cdr(args)))), str_lit(")")))))));
                 } else if string_eq_p(d, str_lit("%natof")) {
                     return string_append(str_lit("(nat "), string_append(show_size(s, car(args)), str_lit(")")));
                 } else if (string_eq_p(d, str_lit("%sz")) || string_eq_p(d, str_lit("%finite"))) {
@@ -9571,6 +9579,20 @@ pub fn sized_size(t: &'static Ty) -> &'static Ty {
     }
 }
 
+/// An array of a length's array type (C207).
+pub fn narray_array(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            ty_data(str_lit("%array"), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(cdr(args))), kayak_rt::nil())))
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
 /// A `%nlist`'s type of one element fewer: `finite`'s is `finite`.
 pub fn sized_less(t: &'static Ty, s: &'static St) -> &'static Ty {
     let l = size_lin(s, sized_size(t));
@@ -9816,6 +9838,31 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
             s2
         } else {
             match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected: it requires more, or ensures less, than is expected, as far as the prover can tell")))))) {}
+        }
+    } else if (sized_p(a, str_lit("%narray")) && sized_p(e, str_lit("%narray"))) {
+        // Two arrays of lengths (C207): the arrays, then the lengths, the same
+        // or the one expected `finite`.
+        size_fits(v, fits(v, s, narray_array(a), narray_array(e)), sized_size(a), sized_size(e), a, e)
+    } else if sized_p(a, str_lit("%narray")) {
+        // An array of a length where an array is (C207).
+        fits(v, s, narray_array(a), e)
+    } else if (sized_p(e, str_lit("%narray")) && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%array"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // An array where one of a length not known, `finite`, is (C207).
+        if size_finite_p(s, sized_size(e)) {
+            fits(v, s, a, narray_array(e))
+        } else {
+            mismatch(v, s, a, e)
         }
     } else if (sized_p(a, str_lit("%natof")) && {
         let tagcase_ = e;

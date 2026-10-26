@@ -2655,6 +2655,25 @@
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
                 ((or (string=? h "self") (string=? h "race") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
                 ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
+                ((and (string=? h "the") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
+                      (tagcase (parse-type v (cv-tvars v) (car xs)) (ty-data (d args) (string=? d "%array")) (else other #f)))
+                 "`(the (arrayof T R) e)` where an array of a length is wanted (C207):
+                  `e` checked against that, as FX-26 keeps the length."
+                 (tagcase (check v s (second xs) (parse-type v (cv-tvars v) (car xs)))
+                   (res (t0 es0 s0)
+                     (tagcase (check v s (second xs) expected) (res (t es s2) (res expected es s2))))))
+                ((and (string=? h "make-array") (std-prim? v "make-array") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
+                      (tagcase (car xs) (num (k f p) #t) (else other #f)))
+                 "`(make-array n x)` where an array of a length is wanted (C207): `n`
+                  a literal, that length."
+                 (let ((t (walk s expected)))
+                   (tagcase (check v s (second xs) (sized-elem t))
+                     (res (u es s)
+                       (res t (effs-union (list (string-append "alloc:" (region-string s (car (cdr (cdr (tagcase t (ty-data (d a) a) (else other nil)))))))) es)
+                            (kfx-restricted v (size-fits v s (size-of-lin (lin (tagcase (car xs) (num (k f p) k) (else other 0)) nil)) (sized-size t)
+                                                       (ty-data "%narray" (list (sized-elem t) (size-of-lin (lin (tagcase (car xs) (num (k f p) k) (else other 0)) nil)) (car (cdr (cdr (tagcase t (ty-data (d a) a) (else other nil)))))))
+                                                       t)
+                                            "an array of a length, FX-26's narrayof, which KFX has not (C207)"))))))
                 ((and (string=? h "list") (std-prim? v "list") (sized? (walk s expected) "%nlist"))
                  "`(list e ...)` where a list of size `s` is wanted: each element, and
                   `s` shown to be how many there are (C158)."
@@ -4633,6 +4652,14 @@
                     show is not negative (C157)."
                    (tagcase (call-args v s args (list (ty-int) (ty-int)) nil)
                      (res (u es s) (res (ty-nat) es s))))
+                  ((and (string=? h "array-length") (prim? (car found)) (i64= (size args) 1)
+                        (sized? (walk s (tagcase (synth v s (car args)) (res (t es s2) t))) "%narray"))
+                   "An array of a length's length (C207): `(nat n)`."
+                   (tagcase (synth v s (car args))
+                     (res (t es s)
+                       (let* ((n (sized-size (walk s t)))
+                              (rt (if (size-finite? s n) (ty-nat) (ty-data "%natof" (list n)))))
+                         (res rt es (if (null? expected) s (fits v s rt (car expected))))))))
                   ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
                    (tagcase (call-args v s args (list (ty-nat) (ty-nat)) nil)
                      (res (u es s)

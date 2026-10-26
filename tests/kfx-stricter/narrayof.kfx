@@ -1,0 +1,5 @@
+"An array whose length its type says, `(narrayof T n R)`, FX-26's: KFX's
+ arrays say no length (C207)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define five (narrayof int 5 @heap) (make-array 5 0))
+(define main (subr kfx () i64) (lambda () 0))
