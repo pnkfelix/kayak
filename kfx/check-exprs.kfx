@@ -2070,6 +2070,9 @@
                                        (any? (lambda ((b bind)) (tagcase b (bind (m sc2 w2) (has-prefix? m (string-append name " "))))) (cv-binds v)))
                                   "A module in a module (C88), as a value (C172): of its items' type."
                                   (res (module-type-of v name) nil (kfx-restricted v s (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))))
+                                 ((string=? wher "broken")
+                                  "A global broken by a redefinition of what it used (C202)."
+                                  (refuse (at-offset v at-pos) (string-append "`" (string-append name "` is broken: since what it used was defined again, at another type, it does not check"))))
                                  ((string=? wher "unmade")
                                   (refuse v (string-append "`" (string-append name "` here is the module's own item, made after this, not the one bound outside it"))))
                                  ((string=? wher "module")
@@ -3757,6 +3760,8 @@
                 (refuse v "(proj f arg ...) of a poly procedure named")
                 (tagcase (car found)
                   (bind (n sc wher)
+                    (if (string=? wher "broken")
+                        (refuse v (string-append "`" (string-append n "` is broken: since what it used was defined again, at another type, it does not check")))
                     (tagcase sc
                       (scheme (tvars t)
                         (cond
@@ -3799,7 +3804,7 @@
                                        "A global that may suspend, as a value: its future boxed, as a
                                         name's is (`async-global`), at any effect it is given."
                                        (async-global v (proj-needs v s n tvars (cdr xs)) name at-file at-pos))
-                                     (else other (proj-needs v s n tvars (cdr xs))))))))))))))))))))
+                                     (else other (proj-needs v s n tvars (cdr xs)))))))))))))))))))))
 
       (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
         (lambda (v s n region-of-binder)
@@ -4346,7 +4351,10 @@
           (let ((found (if (process-call? h)
                            (scope-bind (string-append "%form " h) v)
                            (scope-bind h v))))
-            (cond ((and (or (string=? h "module") (string=? h "%module-value")) (null? found))
+            (cond ((and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "broken"))))
+                   "A call of a global broken by a redefinition (C202)."
+                   (refuse v (string-append "`" (string-append h "` is broken: since what it used was defined again, at another type, it does not check"))))
+                  ((and (or (string=? h "module") (string=? h "%module-value")) (null? found))
                    (module-expr v s args))
                   ((and (string=? h "extend") (null? found) (i64= (size args) 2))
                    (module-extend v s args))

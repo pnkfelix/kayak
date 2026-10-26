@@ -967,6 +967,7 @@ pub mod tasks {
         TypeOf(&'static Cv, Str),
         Try(&'static Cv, Strings, Str, bool),
         HoleItems(Str),
+        Recheck(&'static Cv, &'static Sexp),
     }
 
     pub fn check_entry(f0: &'static Cv, f1: Strings, f2: i64, f3: Str, f4: Str) -> &'static Job {
@@ -985,6 +986,10 @@ pub mod tasks {
         kayak_rt::heap_alloc(Job::HoleItems(f0))
     }
 
+    pub fn recheck(f0: &'static Cv, f1: &'static Sexp) -> &'static Job {
+        kayak_rt::heap_alloc(Job::Recheck(f0, f1))
+    }
+
     pub enum Done {
         EntryDone(&'static Cv, Strings, Str, Str, bool, List<i64>),
         ShownDone(Str),
@@ -992,6 +997,7 @@ pub mod tasks {
         TriedExpression(Str, Strings, List<i64>),
         TriedDefinitions(Str),
         ItemsDone(i64, Str),
+        Rechecked(&'static Cv),
         RefusedDone(Str),
     }
 
@@ -1017,6 +1023,10 @@ pub mod tasks {
 
     pub fn items_done(f0: i64, f1: Str) -> &'static Done {
         kayak_rt::heap_alloc(Done::ItemsDone(f0, f1))
+    }
+
+    pub fn rechecked(f0: &'static Cv) -> &'static Done {
+        kayak_rt::heap_alloc(Done::Rechecked(f0))
     }
 
     pub fn refused_done(f0: Str) -> &'static Done {
@@ -1159,6 +1169,14 @@ pub mod tasks {
                     tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)))
                 } else {
                     tried_definitions(words_lines(definition_lines(v2, forms)))
+                }
+            }
+            Job::Recheck(v, form) => {
+                let tagcase_ = check_tops(v, kayak_rt::heap_cons(form, kayak_rt::nil()), nil::<&'static Typed>());
+                match *tagcase_ {
+                    Elab::Elab(v2, found) => {
+                        rechecked(v2)
+                    }
                 }
             }
             Job::HoleItems(text) => {
@@ -3564,6 +3582,21 @@ pub mod tasks {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // A definition checked again by a worker (C202): the environment after
+    // it, or none if it is refused.
+    pub fn recheck_of(v: &'static Cv, form: &'static Sexp) -> List<&'static Cv> {
+        let tagcase_ = worked(recheck(v, form));
+        match *tagcase_ {
+            Done::Rechecked(v2) => {
+                the::<List<&'static Cv>>(kayak_rt::heap_cons(v2, kayak_rt::nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Cv>()
             }
         }
     }

@@ -372,7 +372,7 @@ pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind 
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc0, wher) => {
-                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || narrower_effect_p(sc, sc0) || string_eq_p(wher, str_lit("prim")) || (not(null_p(scope_bind(str_lit("%module"), v))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
+                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || narrower_effect_p(sc, sc0) || string_eq_p(wher, str_lit("broken")) || (not(null_p(scope_bind(str_lit("%reruns"), v))) && null_p(scope_bind(str_lit("%module"), v))) || string_eq_p(wher, str_lit("prim")) || (not(null_p(scope_bind(str_lit("%module"), v))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
                         bind(name, sc, if null_p(scope_bind(str_lit("%module"), v)) {
                             str_lit("global")
                         } else {

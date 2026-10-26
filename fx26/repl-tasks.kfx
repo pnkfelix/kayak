@@ -493,7 +493,8 @@ an entry naming one that has not ended waits for it.")
         (check-entry cv strings i64 string string)
         (type-of cv string)
         (try cv strings string bool)
-        (hole-items string))
+        (hole-items string)
+        (recheck cv sexp))
 
       (define-datatype done
         (entry-done cv strings string string bool (listof i64 acyclic))
@@ -502,6 +503,7 @@ an entry naming one that has not ended waits for it.")
         (tried-expression string strings (listof i64 acyclic))
         (tried-definitions string)
         (items-done i64 string)
+        (rechecked cv)
         (refused-done string))
 
       (define result-bound (subr kfx (cv sexp string) cv)
@@ -579,6 +581,10 @@ an entry naming one that has not ended waits for it.")
                          (lower-tops (list (car forms)) gs)
                          (tried-expression (form-type v (car forms)) (expression-effects v (car forms)) (named-results (car forms)))))
                       (else (tried-definitions (words-lines (definition-lines v2 forms)))))))
+            (recheck (v form)
+              ;; A definition checked again, after one it uses was defined again
+              ;; (C202): the environment after it.
+              (tagcase (check-tops v (list form) nil) (elab (v2 found) (rechecked v2))))
             (hole-items (text)
               ;; The innermost open list's items so far, read: how many, and its
               ;; operator, if a name.
@@ -2111,6 +2117,14 @@ an entry naming one that has not ended waits for it.")
 
 )
 
+
+    "A definition checked again by a worker (C202): the environment after
+     it, or none if it is refused."
+    (define recheck-of (subr (maxeff working (read @globals)) (cv sexp) (listof cv acyclic))
+      (lambda (v form)
+        (tagcase (worked (recheck v form))
+          (rechecked (v2) (the (listof cv acyclic) (list v2)))
+          (else other nil))))
 
     (define repl! (subr repling (string) int)
       (lambda (history)

@@ -427,6 +427,10 @@
                    (bind (n sc0 wher)
                      (if (or (string=? (scheme-text sc0) (scheme-text sc))
                              (narrower-effect? sc sc0)
+                             ;; Where a driver checks again what uses it (C202:
+                             ;; `--check`, Fixpt's `top_defining`), or it is broken.
+                             (string=? wher "broken")
+                             (and (not (null? (scope-bind "%reruns" v))) (null? (scope-bind "%module" v)))
                              ;; FX-26's program shadows the standard environment (C171);
                              ;; KFX's names none of it (the restriction pass).
                              (string=? wher "prim")

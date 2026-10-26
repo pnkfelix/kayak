@@ -5518,3 +5518,35 @@ restriction pass refuses the type (`tests/kfx-stricter/frozen-bloblet.kfx`).
 Probes, refused by both: a frozen bloblet of a wider sum where a narrower
 is wanted; a bloblet of fields written, either way.
 - The checkers' comparison: refused 11 to 10, the same 360 to 361; K1 0.
+
+## C202. Redefinition at another type, under `--check` (2026-10-25)
+
+`redefine/rerun-chain.fx`, `redefine/knot-spin.fx`: Fixpt's
+`top_defining` (fx26.md, "Redefinition"). A global defined again at a
+type its uses may not take (not its own, nor its own but for a narrower
+effect, C197) has each earlier definition that uses it, and each that
+uses those, oldest first, checked again: each that checks is defined
+again, and `fixpt check` writes its lines again; each that does not is
+broken, and a use of it after is refused.
+- **Where**: kayak's refusals end the process (`error`), and the checker
+  is of effect `kfx`, which makes no process; so the checking again is
+  the `--check` driver's (`fx26/start.kfx`, `lines-redefining`): each
+  definition so far kept (its names and form, a later one of the same
+  name replacing it), and each one checked again by a worker, as the
+  REPL checks (`recheck-of`, exported from `tasks`; the job `recheck`),
+  its refusal a value.
+- **The checker**: `global` lets a name be defined again at another type
+  where the driver marks the scope (`%reruns`), or where the old one is
+  broken; a broken global (`where` `broken`) is refused where it is
+  named, called, or projected.
+- **Users**: the definitions whose forms name a name redefined (or one
+  of a user's), by `names-in`: more than Fixpt's free names where a local
+  is named alike, so a definition may be checked again that Fixpt's is
+  not (its lines then written twice); none found so yet.
+- **Not yet**: the REPL and the engine's run, which still refuse a
+  definition again at another type (so the engine never runs a program
+  whose definitions it would have to run again); KFX, whose restriction
+  pass refuses any definition again.
+- Probes, refused by both: a broken global given as a value, called
+  through a user also broken, used by a later definition.
+- The checkers' comparison: refused 10 to 8, the same 361 to 363; K1 0.

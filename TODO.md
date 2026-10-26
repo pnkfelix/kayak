@@ -568,13 +568,10 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   10 of the 433 programs Fixpt accepts still refused (2026-10-25, C201);
-   62 differ; 361 the same. What each of the 10 needs (looked at
-   2026-10-25):
-   - `redefine/rerun-chain.fx`, `redefine/knot-spin.fx`: a definition
-     again at another type re-checks the definitions that use it, in
-     order, each defined again or broken (Fixpt's `top_defining`), and
-     `--check` prints each again; the engine then runs them again too.
+   8 of the 433 programs Fixpt accepts still refused (2026-10-25, C202);
+   62 differ; 363 the same. What each needs (looked at 2026-10-25):
+   - Redefinition at another type: **done** under `--check` (C202); the
+     REPL and the engine's run still refuse it.
    - `modules/load-layers.fx`: inside a module, `(define-type t (select r
      t))` and `(define-effect e (select r e))` of `r`, a module value the
      module made before them, are read by the module's prep before `r` is

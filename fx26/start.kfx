@@ -646,11 +646,94 @@
           (tagcase (check-tops v (list (car forms)) nil)
             (elab (v2 found) (onto (form-lines v2 all (car forms)) (lines-checked v2 all (cdr forms)))))))))
 
+"Redefinition, as Fixpt's `top_defining` has it (C202; fx26.md,
+ \"Redefinition\"): a global defined again at a type its uses may not take
+ (not its own, nor its own but for a narrower effect) has each earlier
+ definition that uses it, and each that uses those, oldest first, checked
+ again: each that checks is defined again, its lines written again; each
+ that does not is broken, a use of it after refused. A check is a
+ worker's (the REPL's `worked`), whose refusal comes back as a value."
+(define-datatype defn (defn strings sexp))
+(define-type defns (listof defn acyclic))
+(define-datatype rerun-out (rerun-out cv strings))
+
+(define defn-names (subr kfx (defn) strings) (lambda (d) (tagcase d (defn (ns f) ns))))
+
+(define defined-names-of (subr kfx (sexp) strings)
+  (lambda (f)
+    "The globals a top-level form defines: a `define`'s, a `define*`'s, a
+     `define-rec`'s."
+    (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64>= (size (items f)) 3)
+                (not (module-def? f)))
+           (list (binder-name (second (items f)))))
+          ((head-is? f "define-rec") (map (lambda ((g sexp)) (binder-name (car (items g)))) (cdr (items f))))
+          (else nil))))
+
+(define rerun-needed? (subr kfx (cv cv strings) bool)
+  (lambda (old new names)
+    "Whether a global of `names`, defined before, is now at a type its uses
+     may not take."
+    (any? (lambda ((n string))
+            (let ((a (scope-bind n old)) (b (scope-bind n new)))
+              (and (not (null? a)) (not (null? b))
+                   (tagcase (car a)
+                     (bind (n1 sa wa)
+                       (and (or (string=? wa "global") (string=? wa "broken"))
+                            (tagcase (car b)
+                              (bind (n2 sb wb)
+                                (not (or (string=? (scheme-text sa) (scheme-text sb)) (narrower-effect? sb sa)))))))))))
+          names)))
+
+(define-rec
+  (users-of (subr kfx (defns strings) defns)
+    (lambda (ds used)
+      "The definitions among `ds` that use a name of `used`, and those that
+       use theirs, oldest first."
+      (cond ((null? ds) nil)
+            ((tagcase (car ds) (defn (ns f) (any? (lambda ((n string)) (string-member? n used)) (names-in f))))
+             (cons (car ds) (users-of (cdr ds) (onto (defn-names (car ds)) used))))
+            (else (users-of (cdr ds) used))))))
+
+(define broken-binds (subr kfx (cv strings) binds)
+  (lambda (v names)
+    (concat (map (lambda ((n string))
+                   (let ((b (scope-bind n v)))
+                     (if (null? b) nil (tagcase (car b) (bind (m sc w) (the binds (list (bind n sc "broken"))))))))
+                 names))))
+
+(define-rec
+  (rerun (subr (maxeff kfx working (read @globals)) (cv sexps defns strings) rerun-out)
+    (lambda (v all us lines)
+      (if (null? us)
+          (rerun-out v lines)
+          (tagcase (car us)
+            (defn (ns form)
+              (let ((got ((with tasks recheck-of) v form)))
+                (if (null? got)
+                    (rerun (with-binds v (broken-binds v ns)) all (cdr us) lines)
+                    (rerun (car got) all (cdr us) (onto lines (form-lines (car got) all form)))))))))))
+
+(define-rec
+  (lines-redefining (subr (maxeff kfx working (read @globals)) (cv sexps sexps defns) strings)
+    (lambda (v all forms ds)
+      "`lines-checked`, under redefinition: `ds`, the definitions so far."
+      (if (null? forms)
+          nil
+          (let ((f (car forms)) (names (defined-names-of (car forms))))
+            (tagcase (check-tops v (list f) nil)
+              (elab (v2 found)
+                (let* ((kept (filter (lambda ((d defn)) (not (any? (lambda ((n string)) (string-member? n names)) (defn-names d)))) ds))
+                       (r (if (rerun-needed? v v2 names) (rerun v2 all (users-of kept names) nil) (rerun-out v2 nil))))
+                  (tagcase r
+                    (rerun-out (v3 more)
+                      (onto (onto (form-lines v2 all f) more)
+                            (lines-redefining v3 all (cdr forms) (if (null? names) kept (onto kept (list (defn names f))))))))))))))))
+
 (define-rec
   (lines-text (subr kfx (strings) string)
     (lambda (ls) (if (null? ls) "" (string-append (car ls) (string-append "\n" (lines-text (cdr ls))))))))
 
-(define check-command (subr running (strings) int)
+(define check-command (subr (maxeff running working) (strings) int)
   (lambda (paths)
     (let* ((forms (read-files paths))
            (empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
@@ -658,9 +741,9 @@
            (types (type-names-free start forms))
            (named (tagcase start (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (datatype-names start forms nil) als es here group file line fs tv at ix mk))))
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at ix mk))))
-           (v (with-binds typed (prim-binds typed))))
+           (v (with-binds typed (cons (bind "%reruns" (scheme nil (ty-unit)) "mark") (prim-binds typed)))))
       (let ((names (base-renames (filter (lambda ((f sexp)) (not (module-def? f))) forms) nil nil)))
-        (begin (say (lines-text (map (lambda ((l string)) (mu-numbered (if (has-prefix? l "%M ") (after-prefix l "%M ") (base-renamed l names)))) (lines-checked v forms forms)))) 0)))))
+        (begin (say (lines-text (map (lambda ((l string)) (mu-numbered (if (has-prefix? l "%M ") (after-prefix l "%M ") (base-renamed l names)))) (lines-redefining v forms forms nil)))) 0)))))
 
 (define main (subr (maxeff running repling) () int)
   (lambda ()

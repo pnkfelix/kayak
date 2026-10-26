@@ -4599,6 +4599,9 @@ pub mod expressions {
                         }), cv_binds(v))) {
                             // A module in a module (C88), as a value (C172): of its items' type.
                             res(module_type_of(v, name), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name)))
+                        } else if string_eq_p(wher, str_lit("broken")) {
+                            // A global broken by a redefinition of what it used (C202).
+                            match refuse(at_offset(v, at_pos), string_append(str_lit("`"), string_append(name, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {}
                         } else if string_eq_p(wher, str_lit("unmade")) {
                             match refuse(v, string_append(str_lit("`"), string_append(name, str_lit("` here is the module's own item, made after this, not the one bound outside it")))) {}
                         } else if string_eq_p(wher, str_lit("module")) {
@@ -8437,88 +8440,92 @@ pub mod expressions {
                     let tagcase_ = car(found);
                     match *tagcase_ {
                         Bind::Bind(n, sc, wher) => {
-                            let tagcase_ = sc;
-                            match *tagcase_ {
-                                Scheme::Scheme(tvars, t) => {
-                                    if (null_p(tvars) && poly_type_p(s, t)) {
-                                        // A value of a poly type, a parameter's (rank 2, C107): its
-                                        // body at the regions given.
-                                        let args = {
-                                            let tagcase_ = walk(s, t);
-                                            match *tagcase_ {
-                                                Ty::TyData(d, args) => {
-                                                    args
-                                                }
-                                                _ => {
-                                                    let other = tagcase_;
-                                                    nil::<&'static Ty>()
-                                                }
-                                            }
-                                        };
-                                        if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
-                                            return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
-                                        } else {
-                                            return res(poly_instance(args, map2(lambda2s(move |b: Str, r: &'static Sexp| {
-                                                if has_prefix_p(b, str_lit("'")) {
-                                                    parse_region(v, cv_tvars(v), r)
-                                                } else if has_prefix_p(b, str_lit("#")) {
-                                                    parse_size(v, cv_tvars(v), r)
-                                                } else if has_prefix_p(b, str_lit("^")) {
-                                                    fun_of_kind(v, cv_tvars(v), r, binder_kind(b), written_binder(b))
-                                                } else {
-                                                    parse_type(v, cv_tvars(v), r)
-                                                }
-                                            }), poly_binders_of(args), cdr(xs))), nil::<Str>(), if all_regions_p(poly_binders_of(args)) {
-                                                s
-                                            } else {
-                                                kfx_restricted(v, s, str_lit("a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))
-                                            });
-                                        }
-                                    } else if (string_eq_p(wher, str_lit("prim")) && i64_eq(size(cdr(xs)), 3i64) && not(string_eq_p(pair_op_text(n, str_lit("R"), str_lit("A"), str_lit("B")), str_lit("")))) {
-                                        // A pair's operation at a region and two types (C200): Fixpt's
-                                        // `(poly ((r region)) (poly ((t1 type) (t2 type)) ...))`, its
-                                        // pair's tail any type; KFX's are lists'.
-                                        let w = lambda1s(move |x: &'static Sexp| {
-                                            show_sexp(x)
-                                        });
-                                        return res(parse_type(v, cv_tvars(v), car(read_all(string_chars(pair_op_text(n, w(second(xs)), w(third(xs)), w(fourth(xs)))), str_lit(""), 1i64))), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a proj of "), string_append(n, str_lit(" at a region and two types, FX-26's pairs, which KFX's lists are not (C200)")))));
-                                    } else {
-                                        if not(i64_eq(size(tvars), size(cdr(xs)))) {
-                                            return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
-                                        } else {
-                                            bounds_kept(v, s, n, lambda1s(move |x: Str| {
-                                                projected(v, tvars, cdr(xs), ty_var(x))
-                                            }));
-                                            return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
-                                                let s = if null_p({
-                                                    let tagcase_ = car(xs);
-                                                    match *tagcase_ {
-                                                        Sexp::Sym(n2, f2, p2) => {
-                                                            scope_bind(n2, v)
-                                                        }
-                                                        _ => {
-                                                            let other = tagcase_;
-                                                            nil::<&'static Bind>()
-                                                        }
-                                                    }
-                                                }) {
-                                                    note_fact(s, cv_file(v), cv_pos(v), str_lit("control"))
-                                                } else {
-                                                    s
-                                                };
-                                                let tagcase_ = car(xs);
+                            if string_eq_p(wher, str_lit("broken")) {
+                                return match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {};
+                            } else {
+                                let tagcase_ = sc;
+                                match *tagcase_ {
+                                    Scheme::Scheme(tvars, t) => {
+                                        if (null_p(tvars) && poly_type_p(s, t)) {
+                                            // A value of a poly type, a parameter's (rank 2, C107): its
+                                            // body at the regions given.
+                                            let args = {
+                                                let tagcase_ = walk(s, t);
                                                 match *tagcase_ {
-                                                    Sexp::Sym(name, at_file, at_pos) => {
-                                                        // A global that may suspend, as a value: its future boxed, as a
-                                                        // name's is (`async-global`), at any effect it is given.
-                                                        async_global(v, proj_needs(v, s, n, tvars, cdr(xs)), name, at_file, at_pos)
+                                                    Ty::TyData(d, args) => {
+                                                        args
                                                     }
                                                     _ => {
                                                         let other = tagcase_;
-                                                        proj_needs(v, s, n, tvars, cdr(xs))
+                                                        nil::<&'static Ty>()
                                                     }
                                                 }
+                                            };
+                                            if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
+                                                return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
+                                            } else {
+                                                return res(poly_instance(args, map2(lambda2s(move |b: Str, r: &'static Sexp| {
+                                                    if has_prefix_p(b, str_lit("'")) {
+                                                        parse_region(v, cv_tvars(v), r)
+                                                    } else if has_prefix_p(b, str_lit("#")) {
+                                                        parse_size(v, cv_tvars(v), r)
+                                                    } else if has_prefix_p(b, str_lit("^")) {
+                                                        fun_of_kind(v, cv_tvars(v), r, binder_kind(b), written_binder(b))
+                                                    } else {
+                                                        parse_type(v, cv_tvars(v), r)
+                                                    }
+                                                }), poly_binders_of(args), cdr(xs))), nil::<Str>(), if all_regions_p(poly_binders_of(args)) {
+                                                    s
+                                                } else {
+                                                    kfx_restricted(v, s, str_lit("a proj of a poly value of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))
+                                                });
+                                            }
+                                        } else if (string_eq_p(wher, str_lit("prim")) && i64_eq(size(cdr(xs)), 3i64) && not(string_eq_p(pair_op_text(n, str_lit("R"), str_lit("A"), str_lit("B")), str_lit("")))) {
+                                            // A pair's operation at a region and two types (C200): Fixpt's
+                                            // `(poly ((r region)) (poly ((t1 type) (t2 type)) ...))`, its
+                                            // pair's tail any type; KFX's are lists'.
+                                            let w = lambda1s(move |x: &'static Sexp| {
+                                                show_sexp(x)
                                             });
+                                            return res(parse_type(v, cv_tvars(v), car(read_all(string_chars(pair_op_text(n, w(second(xs)), w(third(xs)), w(fourth(xs)))), str_lit(""), 1i64))), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a proj of "), string_append(n, str_lit(" at a region and two types, FX-26's pairs, which KFX's lists are not (C200)")))));
+                                        } else {
+                                            if not(i64_eq(size(tvars), size(cdr(xs)))) {
+                                                return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
+                                            } else {
+                                                bounds_kept(v, s, n, lambda1s(move |x: Str| {
+                                                    projected(v, tvars, cdr(xs), ty_var(x))
+                                                }));
+                                                return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
+                                                    let s = if null_p({
+                                                        let tagcase_ = car(xs);
+                                                        match *tagcase_ {
+                                                            Sexp::Sym(n2, f2, p2) => {
+                                                                scope_bind(n2, v)
+                                                            }
+                                                            _ => {
+                                                                let other = tagcase_;
+                                                                nil::<&'static Bind>()
+                                                            }
+                                                        }
+                                                    }) {
+                                                        note_fact(s, cv_file(v), cv_pos(v), str_lit("control"))
+                                                    } else {
+                                                        s
+                                                    };
+                                                    let tagcase_ = car(xs);
+                                                    match *tagcase_ {
+                                                        Sexp::Sym(name, at_file, at_pos) => {
+                                                            // A global that may suspend, as a value: its future boxed, as a
+                                                            // name's is (`async-global`), at any effect it is given.
+                                                            async_global(v, proj_needs(v, s, n, tvars, cdr(xs)), name, at_file, at_pos)
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            proj_needs(v, s, n, tvars, cdr(xs))
+                                                        }
+                                                    }
+                                                });
+                                            }
                                         }
                                     }
                                 }
@@ -9688,7 +9695,17 @@ pub mod expressions {
             } else {
                 scope_bind(h, v)
             };
-            if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) && null_p(found)) {
+            if (not(null_p(found)) && {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        string_eq_p(w, str_lit("broken"))
+                    }
+                }
+            }) {
+                // A call of a global broken by a redefinition (C202).
+                return match refuse(v, string_append(str_lit("`"), string_append(h, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {};
+            } else if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) && null_p(found)) {
                 return module_expr(v, s, args);
             } else if (string_eq_p(h, str_lit("extend")) && null_p(found) && i64_eq(size(args), 2i64)) {
                 return module_extend(v, s, args);

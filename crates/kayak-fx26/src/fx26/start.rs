@@ -1497,6 +1497,173 @@ pub fn lines_checked(v: &'static Cv, all: Sexps, forms: Sexps) -> Strings {
     }
 }
 
+// Redefinition, as Fixpt's `top_defining` has it (C202; fx26.md,
+// "Redefinition"): a global defined again at a type its uses may not take
+// (not its own, nor its own but for a narrower effect) has each earlier
+// definition that uses it, and each that uses those, oldest first, checked
+// again: each that checks is defined again, its lines written again; each
+// that does not is broken, a use of it after refused. A check is a
+// worker's (the REPL's `worked`), whose refusal comes back as a value.
+pub enum Defn {
+    Defn(Strings, &'static Sexp),
+}
+
+pub fn defn(f0: Strings, f1: &'static Sexp) -> &'static Defn {
+    kayak_rt::heap_alloc(Defn::Defn(f0, f1))
+}
+
+pub type Defns = List<&'static Defn>;
+
+pub enum RerunOut {
+    RerunOut(&'static Cv, Strings),
+}
+
+pub fn rerun_out(f0: &'static Cv, f1: Strings) -> &'static RerunOut {
+    kayak_rt::heap_alloc(RerunOut::RerunOut(f0, f1))
+}
+
+pub fn defn_names(d: &'static Defn) -> Strings {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Defn::Defn(ns, f) => {
+            ns
+        }
+    }
+}
+
+/// The globals a top-level form defines: a `define`'s, a `define*`'s, a
+/// `define-rec`'s.
+pub fn defined_names_of(f: &'static Sexp) -> Strings {
+    if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt_eq(size(items(f)), 3i64) && not(module_def_p(f))) {
+        kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
+    } else if head_is_p(f, str_lit("define-rec")) {
+        map(lambda1s(move |g: &'static Sexp| {
+            binder_name(car(items(g)))
+        }), cdr(items(f)))
+    } else {
+        nil::<Str>()
+    }
+}
+
+/// Whether a global of `names`, defined before, is now at a type its uses
+/// may not take.
+pub fn rerun_needed_p(old: &'static Cv, new: &'static Cv, names: Strings) -> bool {
+    any_p(lambda1s(move |n: Str| {
+        let (a, b) = (scope_bind(n, old), scope_bind(n, new));
+        (not(null_p(a)) && not(null_p(b)) && {
+            let tagcase_ = car(a);
+            match *tagcase_ {
+                Bind::Bind(n1, sa, wa) => {
+                    ((string_eq_p(wa, str_lit("global")) || string_eq_p(wa, str_lit("broken"))) && {
+                        let tagcase_ = car(b);
+                        match *tagcase_ {
+                            Bind::Bind(n2, sb, wb) => {
+                                not((string_eq_p(scheme_text(sa), scheme_text(sb)) || narrower_effect_p(sb, sa)))
+                            }
+                        }
+                    })
+                }
+            }
+        })
+    }), names)
+}
+
+/// The definitions among `ds` that use a name of `used`, and those that
+/// use theirs, oldest first.
+pub fn users_of(mut ds: Defns, mut used: Strings) -> Defns {
+    loop {
+        if null_p(ds) {
+            return nil::<&'static Defn>();
+        } else if {
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Defn::Defn(ns, f) => {
+                    any_p(lambda1s(move |n: Str| {
+                        string_member_p(n, used)
+                    }), names_in(f))
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(ds), users_of(cdr(ds), onto(defn_names(car(ds)), used)));
+        } else {
+            ds = cdr(ds);
+            continue;
+        }
+    }
+}
+
+pub fn broken_binds(v: &'static Cv, names: Strings) -> Binds {
+    concat(map(lambda1s(move |n: Str| {
+        let b = scope_bind(n, v);
+        if null_p(b) {
+            nil::<&'static Bind>()
+        } else {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(m, sc, w) => {
+                    the::<Binds>(kayak_rt::heap_cons(bind(n, sc, str_lit("broken")), kayak_rt::nil()))
+                }
+            }
+        }
+    }), names))
+}
+
+pub fn rerun(mut v: &'static Cv, mut all: Sexps, mut us: Defns, mut lines: Strings) -> &'static RerunOut {
+    loop {
+        if null_p(us) {
+            return rerun_out(v, lines);
+        } else {
+            let tagcase_ = car(us);
+            match *tagcase_ {
+                Defn::Defn(ns, form) => {
+                    let got = (&tasks::recheck_of)(v, form);
+                    if null_p(got) {
+                        (v, us) = (with_binds(v, broken_binds(v, ns)), cdr(us));
+                        continue;
+                    } else {
+                        (v, us, lines) = (car(got), cdr(us), onto(lines, form_lines(car(got), all, form)));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `lines-checked`, under redefinition: `ds`, the definitions so far.
+pub fn lines_redefining(v: &'static Cv, all: Sexps, forms: Sexps, ds: Defns) -> Strings {
+    if null_p(forms) {
+        nil::<Str>()
+    } else {
+        let (f, names) = (car(forms), defined_names_of(car(forms)));
+        let tagcase_ = check_tops(v, kayak_rt::heap_cons(f, kayak_rt::nil()), nil::<&'static Typed>());
+        match *tagcase_ {
+            Elab::Elab(v2, found) => {
+                let kept = filter(lambda1s(move |d: &'static Defn| {
+                    not(any_p(lambda1s(move |n: Str| {
+                        string_member_p(n, names)
+                    }), defn_names(d)))
+                }), ds);
+                let r = if rerun_needed_p(v, v2, names) {
+                    rerun(v2, all, users_of(kept, names), nil::<Str>())
+                } else {
+                    rerun_out(v2, nil::<Str>())
+                };
+                let tagcase_ = r;
+                match *tagcase_ {
+                    RerunOut::RerunOut(v3, more) => {
+                        onto(onto(form_lines(v2, all, f), more), lines_redefining(v3, all, cdr(forms), if null_p(names) {
+                            kept
+                        } else {
+                            onto(kept, kayak_rt::heap_cons(defn(names, f), kayak_rt::nil()))
+                        }))
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn lines_text(ls: Strings) -> Str {
     if null_p(ls) {
         str_lit("")
@@ -1526,7 +1693,7 @@ pub fn check_command(paths: Strings) -> Int {
             }
         }
     };
-    let v = with_binds(typed, prim_binds(typed));
+    let v = with_binds(typed, kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), prim_binds(typed)));
     let names = base_renames(filter(lambda1s(move |f: &'static Sexp| {
         not(module_def_p(f))
     }), forms), nil::<&'static Brn>(), nil::<&'static Brn>());
@@ -1536,7 +1703,7 @@ pub fn check_command(paths: Strings) -> Int {
         } else {
             base_renamed(l, names)
         })
-    }), lines_checked(v, forms, forms))));
+    }), lines_redefining(v, forms, forms, nil::<&'static Defn>()))));
     int_lit(0)
 }
 
