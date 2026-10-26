@@ -8741,6 +8741,10 @@ pub mod expressions {
                     parse_region(v, cv_tvars(v), car(args))
                 } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '~') {
                     effect_row(kayak_rt::heap_cons(str_lit("~!"), parse_effect(v, cv_tvars(v), car(args))))
+                } else if string_eq_p(binder_kind(car(tvars)), str_lit("conv")) {
+                    // A convention where a convention binder is bound (C205): `native`,
+                    // `cellular`, `fx`, or one in scope.
+                    convention_given(v, car(args))
                 } else if string_member_p(binder_kind(car(tvars)), kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))) {
                     // A type where a binder of a kind is bound (C186): checked.
                     let t = parse_type(v, cv_tvars(v), car(args));
@@ -11429,6 +11433,8 @@ pub mod expressions {
                     string_append(str_lit("#"), n)
                 } else if sym_is_p(k, str_lit("type")) {
                     n
+                } else if sym_is_p(k, str_lit("conv")) {
+                    binder_named(str_lit("conv"), n)
                 } else if head_is_p(k, str_lit("=>")) {
                     binder_named(kind_text(v, k), n)
                 } else {

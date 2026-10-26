@@ -107,6 +107,30 @@ pub mod restrictions {
                     ()
                 } else if sym_is_p(car(xs), str_lit("list")) {
                     restricted_all(cdr(xs), f, l)
+                } else if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt_eq(size(xs), 2i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(bs, f2, l2, p2) => {
+                            any_p(lambda1s(move |b: &'static Sexp| {
+                                let tagcase_ = b;
+                                match *tagcase_ {
+                                    Sexp::Lst(ys, f3, l3, p3) => {
+                                        (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("conv")))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }), bs)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    match restriction_refused(f, l, str_lit("a convention binder, FX-26's, which KFX has not (C205)")) {}
                 } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("region")) && sym_is_p(third(xs), str_lit("distinct"))) {
                     match restriction_refused(f, l, str_lit("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {}
                 } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: &'static Sexp| {

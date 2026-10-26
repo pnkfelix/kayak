@@ -6304,6 +6304,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                 string_append(str_lit("#"), n)
                             } else if sym_is_p(k, str_lit("type")) {
                                 n
+                            } else if sym_is_p(k, str_lit("conv")) {
+                                binder_named(str_lit("conv"), n)
                             } else if head_is_p(k, str_lit("=>")) {
                                 binder_named(kind_text(v, k), n)
                             } else {
@@ -6731,10 +6733,15 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         str_lit("native")
                     };
-                    if (string_eq_p(conv, str_lit("native")) || string_eq_p(conv, str_lit("fx")) || string_eq_p(conv, str_lit("cellular"))) {
-                        return ty_data(string_append(str_lit("%"), conv), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_params(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
+                    let binder = arrow_binder(tvars, named);
+                    if (not(string_eq_p(binder, str_lit(""))) && string_eq_p(binder_kind(binder), str_lit("conv"))) {
+                        return ty_data(str_lit("%convof"), kayak_rt::heap_cons(ty_var(binder), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_params(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil())));
                     } else {
-                        return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
+                        if (string_eq_p(conv, str_lit("native")) || string_eq_p(conv, str_lit("fx")) || string_eq_p(conv, str_lit("cellular"))) {
+                            return ty_data(string_append(str_lit("%"), conv), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_params(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
+                        } else {
+                            return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
+                        }
                     }
                 } else if sym_is_p(car(xs), str_lit("subr")) {
                     let w = dep_scope(v, tvars, items(third(xs)), 1i64);
@@ -7591,6 +7598,10 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
             } else if head_is_p(second(b), str_lit("=>")) {
                 // A function, of arrow kind (C173).
                 binder_named(kind_text(v, second(b)), name_of(v, car(b)))
+            } else if sym_is_p(second(b), str_lit("conv")) {
+                // A convention binder (C205; Fixpt's conventions/poly.fx): `^conv^c`,
+                // for `(subr (conv c) ...)`.
+                binder_named(str_lit("conv"), name_of(v, car(b)))
             } else if {
                 let tagcase_ = second(b);
                 match *tagcase_ {
@@ -7936,6 +7947,33 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     continue;
                 } else if (string_eq_p(d, str_lit("%cellular")) || string_eq_p(d, str_lit("%fx"))) {
                     return string_append(str_lit("(subr (conv "), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(") "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))));
+                } else if string_eq_p(d, str_lit("%convof")) {
+                    // A procedure of a convention a binder stands for (C205): as written;
+                    // of `native`, as the program's.
+                    let c = {
+                        let tagcase_ = walk(s, car(args));
+                        match *tagcase_ {
+                            Ty::TyVar(n) => {
+                                written_binder(n)
+                            }
+                            Ty::TyMeta(k) => {
+                                meta_name(k)
+                            }
+                            Ty::TyRconst(n) => {
+                                n
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("?")
+                            }
+                        }
+                    };
+                    if string_eq_p(c, str_lit("native")) {
+                        t = car(cdr(args));
+                        continue;
+                    } else {
+                        return string_append(str_lit("(subr (conv "), string_append(c, string_append(str_lit(") "), after_prefix(show_ty(s, car(cdr(args))), str_lit("(subr ")))));
+                    }
                 } else if string_eq_p(d, str_lit("%vsubr")) {
                     return string_append(str_lit("(vsubr "), string_append({
                         let tagcase_ = car(args);
@@ -8859,6 +8897,9 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
             } else if conv_wrapper_p(d) {
                 // A procedure of a convention (C116), called as any is.
                 car(args)
+            } else if string_eq_p(d, str_lit("%convof")) {
+                // A procedure of a convention a binder stands for (C205), called as any is.
+                car(cdr(args))
             } else if has_prefix_p(d, str_lit("%spec ")) {
                 // A specified procedure (C162), called as any is.
                 procedure_within(t)
@@ -9478,66 +9519,191 @@ pub fn sized_less(t: &'static Ty, s: &'static St) -> &'static Ty {
     }, kayak_rt::nil())))
 }
 
+// Procedures of a convention a binder stands for (C205; Fixpt's
+// conventions/poly.fx): `(ty-data "%convof" (c p))`, `c` the binder
+// (`^conv^c`), an inference variable, or a convention given, `native`,
+// `cellular`, `fx` (constants).
+pub fn convof_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%convof"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// The convention a `%convof` is of, if given: its name; else "".
+pub fn convention_written(s: &'static St, t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%convof")) {
+                let tagcase_ = walk(s, car(args));
+                match *tagcase_ {
+                    Ty::TyRconst(n) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+/// A `%convof` whose convention is given, as that convention's procedure
+/// type: `native`, the program's; `cellular`, `fx`, their wrappers.
+pub fn conv_settled(s: &'static St, t: &'static Ty) -> &'static Ty {
+    let n = convention_written(s, t);
+    if string_eq_p(n, str_lit("")) {
+        t
+    } else if string_eq_p(n, str_lit("native")) {
+        car(cdr({
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    args
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        }))
+    } else {
+        ty_data(string_append(str_lit("%"), n), kayak_rt::heap_cons(car(cdr({
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    args
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        })), kayak_rt::nil()))
+    }
+}
+
+/// A procedure type's convention, as a type to solve, and its procedure;
+/// none if `t` is none.
+pub fn convention_ty(s: &'static St, t: &'static Ty) -> Tys {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            kayak_rt::heap_cons(ty_rconst(str_lit("native")), kayak_rt::heap_cons(t, kayak_rt::nil()))
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%convof")) {
+                kayak_rt::heap_cons(walk(s, car(args)), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::nil()))
+            } else if conv_wrapper_p(d) {
+                kayak_rt::heap_cons(ty_rconst(after_prefix(d, str_lit("%"))), kayak_rt::heap_cons(car(args), kayak_rt::nil()))
+            } else {
+                nil::<&'static Ty>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
+}
+
+/// A convention given for a binder (C205): `native`, `cellular`, `fx`.
+pub fn convention_given(v: &'static Cv, a: &'static Sexp) -> &'static Ty {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_member_p(n, kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("fx"), kayak_rt::nil())))) {
+                ty_rconst(n)
+            } else {
+                match refuse(v, string_append(str_lit("a convention binder takes a convention, not "), n)) {}
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, string_append(str_lit("a convention binder takes a convention, not "), show_sexp(a))) {}
+        }
+    }
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
 /// may be within the one expected.
 pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'static Ty) -> &'static St {
-    let (a, e) = (walk(s, actual), walk(s, expected));
-    let tagcase_ = a;
-    match *tagcase_ {
-        Ty::TyVoid() => {
-            s
-        }
-        Ty::TyMeta(k) => {
-            let tagcase_ = e;
-            match *tagcase_ {
-                Ty::TyMeta(j) => {
-                    if i64_eq(j, k) {
-                        s
-                    } else {
-                        solve(s, k, e)
+    let (a, e) = (conv_settled(s, walk(s, actual)), conv_settled(s, walk(s, expected)));
+    if (convof_p(a) || convof_p(e)) {
+        conv_fit(v, s, a, e)
+    } else {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyVoid() => {
+                s
+            }
+            Ty::TyMeta(k) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyMeta(j) => {
+                        if i64_eq(j, k) {
+                            s
+                        } else {
+                            solve(s, k, e)
+                        }
                     }
-                }
-                _ => {
-                    let other = tagcase_;
-                    if occurs_p(s, k, e) {
-                        mismatch(v, s, a, e)
-                    } else {
-                        solve(s, k, e)
+                    _ => {
+                        let other = tagcase_;
+                        if occurs_p(s, k, e) {
+                            mismatch(v, s, a, e)
+                        } else {
+                            solve(s, k, e)
+                        }
                     }
                 }
             }
-        }
-        _ => {
-            let other = tagcase_;
-            let tagcase_ = e;
-            match *tagcase_ {
-                Ty::TyMeta(j) => {
-                    if occurs_p(s, j, a) {
-                        mismatch(v, s, a, e)
-                    } else if {
-                        let tagcase_ = a;
-                        match *tagcase_ {
-                            Ty::TyNat() => {
-                                true
+            _ => {
+                let other = tagcase_;
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyMeta(j) => {
+                        if occurs_p(s, j, a) {
+                            mismatch(v, s, a, e)
+                        } else if {
+                            let tagcase_ = a;
+                            match *tagcase_ {
+                                Ty::TyNat() => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
                             }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
+                        } {
+                            // A `nat` met by an inference variable makes it an `int`: FX-26's
+                            // is the variable's own `(nat v)`, which no other `nat` is.
+                            solve(s, j, ty_int())
+                        } else {
+                            solve(s, j, a)
                         }
-                    } {
-                        // A `nat` met by an inference variable makes it an `int`: FX-26's
-                        // is the variable's own `(nat v)`, which no other `nat` is.
-                        solve(s, j, ty_int())
-                    } else {
-                        solve(s, j, a)
                     }
-                }
-                _ => {
-                    let other = tagcase_;
-                    fits_shapes(v, s, a, e)
+                    _ => {
+                        let other = tagcase_;
+                        fits_shapes(v, s, a, e)
+                    }
                 }
             }
         }
@@ -10263,6 +10429,152 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                 mismatch(v, s, a, e)
             }
         }
+    }
+}
+
+/// A procedure where one of a convention a binder stands for is, or the
+/// other way (C205): the conventions the same, an inference variable
+/// solved; one where `fx`'s is, free, as any is (C116).
+pub fn conv_fit(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
+    let (ca, ce) = (convention_ty(s, a), convention_ty(s, e));
+    if (null_p(ca) || null_p(ce)) {
+        mismatch(v, s, a, e)
+    } else if {
+        let tagcase_ = car(ce);
+        match *tagcase_ {
+            Ty::TyRconst(n) => {
+                string_eq_p(n, str_lit("fx"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        fits(v, s, car(cdr(ca)), car(cdr(ce)))
+    } else {
+        let (x, y) = (walk(s, car(ca)), walk(s, car(ce)));
+        fits(v, if {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyMeta(k) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            fits(v, s, x, y)
+        } else if {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Ty::TyMeta(k) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            fits(v, s, y, x)
+        } else if ({
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && string_eq_p({
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    m
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }, {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    m
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        })) {
+            s
+        } else if ({
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyRconst(m) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Ty::TyRconst(m) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && string_eq_p({
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyRconst(m) => {
+                    m
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }, {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Ty::TyRconst(m) => {
+                    m
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        })) {
+            s
+        } else {
+            mismatch(v, s, a, e)
+        }, car(cdr(ca)), car(cdr(ce)))
     }
 }
 

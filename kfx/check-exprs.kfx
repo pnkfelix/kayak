@@ -3915,6 +3915,10 @@
                          (replace-var (car tvars)
                                       (cond ((char=? (string-ref-i64 (car tvars) 0) #\') (parse-region v (cv-tvars v) (car args)))
                                             ((char=? (string-ref-i64 (car tvars) 0) #\~) (effect-row (cons "~!" (parse-effect v (cv-tvars v) (car args)))))
+                                            ((string=? (binder-kind (car tvars)) "conv")
+                                             "A convention where a convention binder is bound (C205): `native`,
+                                              `cellular`, `fx`, or one in scope."
+                                             (convention-given v (car args)))
                                             ((string-member? (binder-kind (car tvars)) (list "data" "sendable" "flat"))
                                              "A type where a binder of a kind is bound (C186): checked."
                                              (let ((t (parse-type v (cv-tvars v) (car args))))
@@ -5158,6 +5162,7 @@
                                      (cond ((sym-is? k "region") (string-append "'" n))
                                            ((sym-is? k "size") (string-append "#" n))
                                            ((sym-is? k "type") n)
+                                           ((sym-is? k "conv") (binder-named "conv" n))
                                            ((head-is? k "=>") (binder-named (kind-text v k) n))
                                            (else (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)"))))
                                    (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)")))

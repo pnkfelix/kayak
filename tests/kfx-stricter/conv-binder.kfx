@@ -1,0 +1,6 @@
+"A poly over a convention, `(c conv)`, FX-26's: KFX's procedures are of
+ its own convention (C205)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define app (poly ((c conv)) (subr pure ((subr (conv c) pure (int) int) int) int))
+  (plambda ((c conv)) (lambda (f x) (f x))))
+(define main (subr kfx () i64) (lambda () 0))

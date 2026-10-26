@@ -5612,3 +5612,26 @@ type names besides its binders. Accepted now, and Fixpt's four refusals
 - The checkers' comparison: refused 7 to 6, differs 63 to 64 (its
   effects, as without `distinct`, keep a letregion's region masking would
   drop); K1 0.
+
+## C205. Convention binders (2026-10-25)
+
+`conventions/poly.fx`: `(poly ((c conv) (e effect)) (subr e ((subr (conv
+c) e (int) int) int) int))`, the binder solved by what is given, or
+projected. Now the same as Fixpt's, printing too.
+- **The binder** `(c conv)`, in a scheme, a poly type, a `plambda`:
+  `^conv^c`, of kind `conv` (C173's marks), an inference variable where
+  instantiated, a convention where projected (`native`, `cellular`,
+  `fx`; anything else refused, `poly-wrong-kind.fx`).
+- **`(subr (conv c) ...)`**, `c` a binder: `%convof` (the convention, the
+  procedure); one whose convention is given reads as that convention's
+  type (`conv-settled`: `native` the program's, `cellular` and `fx`
+  their wrappers), printed so; called as its procedure.
+- **Fitting** (`conv-fit`): two procedures of one convention, an inference
+  variable solved to the other's (the program's procedure is `native`);
+  any where `fx`'s is, free (C116); a binder only itself.
+- **Stricter**: where Fixpt converts a procedure of one convention given
+  for another of a binder's (an adapter), kayak refuses (probes: a
+  binder's procedure where the program's is wanted; a binder given two
+  conventions). K1 kept. KFX's restriction pass refuses the binder
+  (`tests/kfx-stricter/conv-binder.kfx`).
+- The checkers' comparison: refused 6 to 5, the same 363 to 364; K1 0.

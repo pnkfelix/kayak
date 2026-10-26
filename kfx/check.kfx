@@ -2790,6 +2790,7 @@
                                             (cond ((sym-is? k "region") (string-append "'" n))
                                                   ((sym-is? k "size") (string-append "#" n))
                                                   ((sym-is? k "type") n)
+                                                  ((sym-is? k "conv") (binder-named "conv" n))
                                                   ((head-is? k "=>") (binder-named (kind-text v k) n))
                                                   (else (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)"))))
                                           (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")))
@@ -2962,13 +2963,20 @@
                   `native`."
                  (let* ((named (if (i64= (size (items (second xs))) 2) (tagcase (second (items (second xs))) (sym (n f p) n) (else other "")) ""))
                         (declared (find-alias (string-append "%conv " named) (cv-aliases v)))
-                        (conv (if (null? declared) named "native")))
+                        (conv (if (null? declared) named "native"))
+                        (binder (arrow-binder tvars named)))
+                   (if (and (not (string=? binder "")) (string=? (binder-kind binder) "conv"))
+                       ;; Of a convention a binder stands for (C205): `%convof`.
+                       (ty-data "%convof" (list (ty-var binder)
+                                                (ty-proc (parse-effect v tvars (third xs))
+                                                         (parse-params v tvars (items (fourth xs)))
+                                                         (parse-type v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
                    (if (or (string=? conv "native") (string=? conv "fx") (string=? conv "cellular"))
                        (ty-data (string-append "%" conv)
                                 (list (ty-proc (parse-effect v tvars (third xs))
                                                (parse-params v tvars (items (fourth xs)))
                                                (parse-type v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
-                       (refuse v (string-append "a convention KFX does not have: " (show-sexp (second xs)))))))
+                       (refuse v (string-append "a convention KFX does not have: " (show-sexp (second xs))))))))
                 ((sym-is? (car xs) "subr")
                  (let ((w (dep-scope v tvars (items (third xs)) 1)))
                    (ty-proc (parse-effect v tvars (second xs))
@@ -3349,6 +3357,10 @@
                        ((head-is? (second b) "=>")
                         "A function, of arrow kind (C173)."
                         (binder-named (kind-text v (second b)) (name-of v (car b))))
+                       ((sym-is? (second b) "conv")
+                        "A convention binder (C205; Fixpt's conventions/poly.fx): `^conv^c`,
+                         for `(subr (conv c) ...)`."
+                        (binder-named "conv" (name-of v (car b))))
                        ((tagcase (second b) (sym (k f p) (string-member? k (list "data" "sendable" "flat"))) (else other #f))
                         "A type binder of a kind that says what it takes (C186; Fixpt's
                          `data`, `sendable`, `flat`): marked `^K^t`, as an arrow kind's
@@ -3509,6 +3521,13 @@
                  (show-ty s (car args)))
                 ((or (string=? d "%cellular") (string=? d "%fx"))
                  (string-append "(subr (conv " (string-append (after-prefix d "%") (string-append ") " (after-prefix (show-ty s (car args)) "(subr ")))))
+                ((string=? d "%convof")
+                 "A procedure of a convention a binder stands for (C205): as written;
+                  of `native`, as the program's."
+                 (let ((c (tagcase (walk s (car args)) (ty-var (n) (written-binder n)) (ty-meta (k) (meta-name k)) (ty-rconst (n) n) (else other "?"))))
+                   (if (string=? c "native")
+                       (show-ty s (car (cdr args)))
+                       (string-append "(subr (conv " (string-append c (string-append ") " (after-prefix (show-ty s (car (cdr args))) "(subr ")))))))
                 ((string=? d "%vsubr")
                  (string-append "(vsubr " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                    (string-append " " (string-append (show-tys s (cdr args)) ")")))))
@@ -3817,6 +3836,7 @@
         (cond ((string=? d "%vsubr")
                (ty-proc (tagcase (car args) (ty-proc (es ps r) es) (else other nil)) (repeat-ty (car (cdr args)) n) (car (cdr (cdr args)))))
               ((conv-wrapper? d) "A procedure of a convention (C116), called as any is." (car args))
+              ((string=? d "%convof") "A procedure of a convention a binder stands for (C205), called as any is." (car (cdr args)))
               ((has-prefix? d "%spec ") "A specified procedure (C162), called as any is." (procedure-within t))
               (else t)))
       (else other t))))
@@ -4112,6 +4132,51 @@
     (let ((l (size-lin s (sized-size t))))
       (ty-data "%nlist" (list (sized-elem t) (if (null? l) size-finite (size-of-lin (lin-add (car l) (lin -1 nil) 1))))))))
 
+"Procedures of a convention a binder stands for (C205; Fixpt's
+ conventions/poly.fx): `(ty-data \"%convof\" (c p))`, `c` the binder
+ (`^conv^c`), an inference variable, or a convention given, `native`,
+ `cellular`, `fx` (constants)."
+(define convof? (subr kfx (ty) bool)
+  (lambda (t) (tagcase t (ty-data (d args) (string=? d "%convof")) (else other #f))))
+
+(define convention-written (subr kfx (st ty) string)
+  (lambda (s t)
+    "The convention a `%convof` is of, if given: its name; else \"\"."
+    (tagcase t
+      (ty-data (d args)
+        (if (string=? d "%convof")
+            (tagcase (walk s (car args)) (ty-rconst (n) n) (else other ""))
+            ""))
+      (else other ""))))
+
+(define conv-settled (subr kfx (st ty) ty)
+  (lambda (s t)
+    "A `%convof` whose convention is given, as that convention's procedure
+     type: `native`, the program's; `cellular`, `fx`, their wrappers."
+    (let ((n (convention-written s t)))
+      (cond ((string=? n "") t)
+            ((string=? n "native") (car (cdr (tagcase t (ty-data (d args) args) (else other nil)))))
+            (else (ty-data (string-append "%" n) (list (car (cdr (tagcase t (ty-data (d args) args) (else other nil)))))))))))
+
+(define convention-ty (subr kfx (st ty) tys)
+  (lambda (s t)
+    "A procedure type's convention, as a type to solve, and its procedure;
+     none if `t` is none."
+    (tagcase t
+      (ty-proc (es ps r) (list (ty-rconst "native") t))
+      (ty-data (d args)
+        (cond ((string=? d "%convof") (list (walk s (car args)) (car (cdr args))))
+              ((conv-wrapper? d) (list (ty-rconst (after-prefix d "%")) (car args)))
+              (else nil)))
+      (else other nil))))
+
+(define convention-given (subr kfx (cv sexp) ty)
+  (lambda (v a)
+    "A convention given for a binder (C205): `native`, `cellular`, `fx`."
+    (tagcase a
+      (sym (n f p) (if (string-member? n (list "native" "cellular" "fx")) (ty-rconst n) (refuse v (string-append "a convention binder takes a convention, not " n))))
+      (else other (refuse v (string-append "a convention binder takes a convention, not " (show-sexp a)))))))
+
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -4119,7 +4184,9 @@
        the same, inference variables solved to make them so, but for
        `void`, which fits anything, and a procedure, whose latent effect
        may be within the one expected."
-      (let ((a (walk s actual)) (e (walk s expected)))
+      (let ((a (conv-settled s (walk s actual))) (e (conv-settled s (walk s expected))))
+        (if (or (convof? a) (convof? e))
+            (conv-fit v s a e)
         (tagcase a
           (ty-void () s)
           (ty-meta (k)
@@ -4136,7 +4203,7 @@
                         is the variable's own `(nat v)`, which no other `nat` is."
                        (solve s j (ty-int)))
                       (else (solve s j a))))
-              (else other (fits-shapes v s a e))))))))
+              (else other (fits-shapes v s a e)))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (cond ((and (generative? v (walk s a)) (generative? v (walk s e))
@@ -4396,6 +4463,28 @@
                     (else (mismatch v s a e))))
             (else other (mismatch v s a e))))
         (else other (if (same-base? a e) s (mismatch v s a e))))))
+  (conv-fit (subr kfx (cv st ty ty) st)
+    (lambda (v s a e)
+      "A procedure where one of a convention a binder stands for is, or the
+       other way (C205): the conventions the same, an inference variable
+       solved; one where `fx`'s is, free, as any is (C116)."
+      (let ((ca (convention-ty s a)) (ce (convention-ty s e)))
+        (cond ((or (null? ca) (null? ce)) (mismatch v s a e))
+              ((tagcase (car ce) (ty-rconst (n) (string=? n "fx")) (else other #f))
+               (fits v s (car (cdr ca)) (car (cdr ce))))
+              (else
+               (let ((x (walk s (car ca))) (y (walk s (car ce))))
+                 (fits v (cond ((tagcase x (ty-meta (k) #t) (else other #f)) (fits v s x y))
+                               ((tagcase y (ty-meta (k) #t) (else other #f)) (fits v s y x))
+                               ((and (tagcase x (ty-var (m) #t) (else other #f)) (tagcase y (ty-var (m) #t) (else other #f))
+                                     (string=? (tagcase x (ty-var (m) m) (else other "")) (tagcase y (ty-var (m) m) (else other ""))))
+                                s)
+                               ((and (tagcase x (ty-rconst (m) #t) (else other #f)) (tagcase y (ty-rconst (m) #t) (else other #f))
+                                     (string=? (tagcase x (ty-rconst (m) m) (else other "")) (tagcase y (ty-rconst (m) m) (else other ""))))
+                                s)
+                               (else (mismatch v s a e)))
+                       (car (cdr ca)) (car (cdr ce)))))))))
+
   (fits-variant (subr kfx (cv st tys tys strings) st)
     (lambda (v s xs ys ms)
       (if (or (null? xs) (null? ys))
