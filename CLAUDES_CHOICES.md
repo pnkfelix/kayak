@@ -5505,3 +5505,16 @@ Fixpt's, its types as printed too.
   (C197), `bloblet-untyped` (C198), each accepted by Fixpt and refused by
   KFX.
 - The checkers' comparison: refused 12 to 11, the same 359 to 360; K1 0.
+
+## C201. Frozen bloblets' type (2026-10-25)
+
+`recursive/frozenblob.fx`: `(bloblet (frozen T ...) R)`, a bloblet whose
+fields no one writes, covariant in them, as a frozen pair is. Kayak's
+checker refused the type. Now `%fbloblet` (region, then fields), printed
+as written, of no invariant kind, so fitted field by field one way; a
+recursive one through `mu` as any type. Nothing yet reads one
+(`bloblet-ref` asks a `%bloblet`): stricter than Fixpt, K1 kept. KFX's
+restriction pass refuses the type (`tests/kfx-stricter/frozen-bloblet.kfx`).
+Probes, refused by both: a frozen bloblet of a wider sum where a narrower
+is wanted; a bloblet of fields written, either way.
+- The checkers' comparison: refused 11 to 10, the same 360 to 361; K1 0.

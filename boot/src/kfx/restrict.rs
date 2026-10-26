@@ -107,6 +107,10 @@ pub mod restrictions {
                     ()
                 } else if sym_is_p(car(xs), str_lit("list")) {
                     restricted_all(cdr(xs), f, l)
+                } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: &'static Sexp| {
+                    head_is_p(a, str_lit("frozen"))
+                }), cdr(xs))) {
+                    match restriction_refused(f, l, str_lit("a frozen bloblet, FX-26's, which KFX has not yet (C201)")) {}
                 } else if ({
                     let tagcase_ = car(xs);
                     match *tagcase_ {

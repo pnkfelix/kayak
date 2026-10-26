@@ -2696,7 +2696,12 @@
                   at `R`, so none a procedure that reads `R` unless it says `spin`,
                   FX-26's rule (`no-knot`); a type variable's instance checked where
                   it is made, as a ref's is (C119)."
-                 (cond ((or (not (i64= (size xs) 3)) (not (head-is? (second xs) "fields")))
+                 (cond ((and (i64= (size xs) 3) (head-is? (second xs) "frozen"))
+                        "`(bloblet (frozen T ...) R)` (C201): fields no one writes, so
+                         covariant, as a frozen pair is; FX-26's (KFX's restriction pass
+                         refuses it)."
+                        (ty-data "%fbloblet" (cons (parse-region v tvars (third xs)) (parse-types v tvars (cdr (items (second xs)))))))
+                       ((or (not (i64= (size xs) 3)) (not (head-is? (second xs) "fields")))
                         (refuse v (string-append "a bloblet type KFX does not have yet (its fields frozen, or not of the form (bloblet (fields T ...) R)): " (show-sexp t))))
                        (else
                         (no-knot v (lambda ((x string)) x)
@@ -3436,6 +3441,8 @@
                      (string-append (run-together (map (lambda ((x ty)) (string-append " " (desc-named s descs x (show-mitem s x)))) its))
                                     ")"))))
                 ((has-prefix? d "%spec ") (show-specified s d (car args)))
+                ((string=? d "%fbloblet")
+                 (string-append "(bloblet (frozen" (string-append (if (null? (cdr args)) "" (string-append " " (show-tys s (cdr args)))) (string-append ") " (string-append (show-ty s (car args)) ")")))))
                 ((string=? d "%bloblet")
                  (string-append "(bloblet (fields" (string-append (if (null? (cdr args)) "" (string-append " " (show-tys s (cdr args)))) (string-append ") " (string-append (show-ty s (car args)) ")")))))
                 ((has-prefix? d "%named ")

@@ -1,0 +1,6 @@
+"A frozen bloblet's type, `(bloblet (frozen T ...) R)`, covariant in its
+ fields, FX-26's: KFX has not yet (C201)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type n1 (sumof (a int)))
+(define f (subr pure ((bloblet (frozen n1) @r)) int) (lambda (x) 0))
+(define main (subr kfx () i64) (lambda () 0))

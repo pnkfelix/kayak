@@ -6114,7 +6114,12 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // at `R`, so none a procedure that reads `R` unless it says `spin`,
                     // FX-26's rule (`no-knot`); a type variable's instance checked where
                     // it is made, as a ref's is (C119).
-                    if (not(i64_eq(size(xs), 3i64)) || not(head_is_p(second(xs), str_lit("fields")))) {
+                    if (i64_eq(size(xs), 3i64) && head_is_p(second(xs), str_lit("frozen"))) {
+                        // `(bloblet (frozen T ...) R)` (C201): fields no one writes, so
+                        // covariant, as a frozen pair is; FX-26's (KFX's restriction pass
+                        // refuses it).
+                        return ty_data(str_lit("%fbloblet"), kayak_rt::heap_cons(parse_region(v, tvars, third(xs)), parse_types(v, tvars, cdr(items(second(xs))))));
+                    } else if (not(i64_eq(size(xs), 3i64)) || not(head_is_p(second(xs), str_lit("fields")))) {
                         return match refuse(v, string_append(str_lit("a bloblet type KFX does not have yet (its fields frozen, or not of the form (bloblet (fields T ...) R)): "), show_sexp(t))) {};
                     } else {
                         return no_knot(v, lambda1s(move |x: Str| {
@@ -7786,6 +7791,12 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     }), its)), str_lit(")")));
                 } else if has_prefix_p(d, str_lit("%spec ")) {
                     return show_specified(s, d, car(args));
+                } else if string_eq_p(d, str_lit("%fbloblet")) {
+                    return string_append(str_lit("(bloblet (frozen"), string_append(if null_p(cdr(args)) {
+                        str_lit("")
+                    } else {
+                        string_append(str_lit(" "), show_tys(s, cdr(args)))
+                    }, string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))));
                 } else if string_eq_p(d, str_lit("%bloblet")) {
                     return string_append(str_lit("(bloblet (fields"), string_append(if null_p(cdr(args)) {
                         str_lit("")
