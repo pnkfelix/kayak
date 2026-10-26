@@ -4728,8 +4728,16 @@ pub mod expressions {
     }
 
     /// `e` where an `expected` is wanted; a member boxed for its union (C75);
-    /// a compound one's effect masked (C182).
-    pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
+    /// a compound one's effect masked (C182); a module value where a
+    /// module's type is, the values that type names noted, in its order
+    /// (`module-arg`, C216: Fixpt's `k-reshape-at`), for the generator
+    /// to reshape it.
+    pub fn check(v: &'static Cv, s0: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
+        let s = if (mtype_p(walk(s0, expected)) && not(string_eq_p(datum_file(e), str_lit("")))) {
+            note_fact(s0, datum_file(e), datum_pos(e), string_append(str_lit("module-arg "), words_of(mtype_value_names(walk(s0, expected)))))
+        } else {
+            s0
+        };
         let tagcase_ = {
             let tagcase_ = e;
             match *tagcase_ {
@@ -4747,7 +4755,8 @@ pub mod expressions {
             }
         };
         match *tagcase_ {
-            Res::Res(t, es, s) => {
+            Res::Res(t, es, s1) => {
+                let s = s1;
                 if (valued_p(s, expected) && not(valued_p(s, t))) {
                     res(expected, es, coerced(v, s, datum_file(e), datum_pos(e), t, expected))
                 } else {
@@ -5046,7 +5055,12 @@ pub mod expressions {
         } else {
             let tagcase_ = converted(v, synth(v, s, e), expected);
             match *tagcase_ {
-                Res::Res(t, es, s) => {
+                Res::Res(t, es, s0) => {
+                    let s = if (mtype_p(walk(s0, expected)) && mtype_p(walk(s0, t)) && not(string_eq_p(datum_file(e), str_lit("")))) {
+                        note_fact(s0, datum_file(e), datum_pos(e), string_append(str_lit("module-had "), words_of(mtype_value_names(walk(s0, t)))))
+                    } else {
+                        s0
+                    };
                     res(expected, es, {
                         let s = coerced(v, fits(v, s, t, expected), datum_file(e), datum_pos(e), t, expected);
                         let tagcase_ = walk_mu(s, t);
@@ -9494,7 +9508,7 @@ pub mod expressions {
                                     ()
                                 }
                             }), kept);
-                            res(ty_data(str_lit("%mtype"), onto(kept, bs)), effs_union(es0, es1), note_fact(kfx_restricted(v, s, str_lit("an extend made as a value, FX-26's first-class modules', which KFX has not yet (C170)")), cv_file(v), cv_pos(v), str_lit("module-value")))
+                            res(ty_data(str_lit("%mtype"), onto(kept, bs)), effs_union(es0, es1), note_fact(note_fact(kfx_restricted(v, s, str_lit("an extend made as a value, FX-26's first-class modules', which KFX has not yet (C170)")), cv_file(v), cv_pos(v), str_lit("module-value")), cv_file(v), cv_pos(v), string_append(str_lit("module-made "), words_of(mtype_value_names(ty_data(str_lit("%mtype"), onto(kept, bs)))))))
                         }
                     }
                 }
@@ -9551,7 +9565,7 @@ pub mod expressions {
                                     match refuse(v, string_append(str_lit("`"), string_append(mitem_name(x), string_append(str_lit("`'s type mentions `"), string_append(m, str_lit("`, which is not known outside the module")))))) {}
                                 }
                             }), its2);
-                            res(ty_data(str_lit("%mtype"), its2), es2, s2)
+                            res(ty_data(str_lit("%mtype"), its2), es2, note_fact(s2, cv_file(v), cv_pos(v), string_append(str_lit("module-made "), words_of(vals))))
                         }
                     }
                 }

@@ -4452,9 +4452,9 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                cv_reindexed(cv(bind_onto(concat(map(lambda1s(move |n: Str| {
+                cv_reindexed(cv(bind_onto(reverse(concat(map(lambda1s(move |n: Str| {
                     binds_of_include(n, include_binds)
-                }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1s(move |n: Str| {
+                }), includes))), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1s(move |n: Str| {
                     excepted_aliases(v, written, n, als)
                 }), includes)), als)), onto(concat(map(lambda1s(move |n: Str| {
                     opened_effdefs(n, es)

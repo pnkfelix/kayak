@@ -2124,9 +2124,15 @@
             (else other (res (ty-unit) nil s)))))
 
       (check (subr kfx (cv st sexp ty) res)
-        (lambda (v s e expected)
+        (lambda (v s0 e expected)
           "`e` where an `expected` is wanted; a member boxed for its union (C75);
-           a compound one's effect masked (C182)."
+           a compound one's effect masked (C182); a module value where a
+           module's type is, the values that type names noted, in its order
+           (`module-arg`, C216: Fixpt's `k-reshape-at`), for the generator
+           to reshape it."
+          (let ((s (if (and (mtype? (walk s0 expected)) (not (string=? (datum-file e) "")))
+                       (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-arg " (words-of (mtype-value-names (walk s0 expected)))))
+                       s0)))
           (tagcase (tagcase e
                      (lst (xs f l p)
                        ;; A path a fact narrows, found so (C196).
@@ -2134,10 +2140,11 @@
                            (check-by-synth v s e expected)
                            (path-settled v e (masked-res v e (check-plain v s e expected)))))
                      (else other (check-plain v s e expected)))
-            (res (t es s)
+            (res (t es s1)
+              (let ((s s1))
               (if (and (valued? s expected) (not (valued? s t)))
                   (res expected es (coerced v s (datum-file e) (datum-pos e) t expected))
-                  (res t es (coerced v s (datum-file e) (datum-pos e) t expected)))))))
+                  (res t es (coerced v s (datum-file e) (datum-pos e) t expected)))))))))
 
       (check-plain (subr kfx (cv st sexp ty) res)
         (lambda (v s e expected)
@@ -2270,7 +2277,12 @@
           (if (draft-hole? e)
               (refuse-named v s (string-append "the hole: " (tagcase (walk s expected) (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s expected)))))))
           (tagcase (converted v (synth v s e) expected)
-            (res (t es s)
+            (res (t es s0)
+              (let ((s (if (and (mtype? (walk s0 expected)) (mtype? (walk s0 t)) (not (string=? (datum-file e) "")))
+                           ;; The value's own order, as it was found, for the
+                           ;; generator to reshape it (C216).
+                           (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-had " (words-of (mtype-value-names (walk s0 t)))))
+                           s0)))
               (res expected es
                    (let ((s (coerced v (fits v s t expected) (datum-file e) (datum-pos e) t expected)))
                      (tagcase (walk-mu s t)
@@ -2283,7 +2295,7 @@
                                     (note-fact s (datum-file e) (datum-pos e) (string-append "lift " (i64->string (size ps)))))
                                    (else s)))
                            (else other s)))
-                       (else other s)))))))))
+                       (else other s))))))))))
 
       (body (subr kfx (cv st sexps tys) res)
         (lambda (v s es expected)
@@ -4268,8 +4280,10 @@
                                kept)
                         (res (ty-data "%mtype" (onto kept bs))
                              (effs-union es0 es1)
-                             (note-fact (kfx-restricted v s "an extend made as a value, FX-26's first-class modules', which KFX has not yet (C170)")
-                                        (cv-file v) (cv-pos v) "module-value")))))))))))
+                             (note-fact (note-fact (kfx-restricted v s "an extend made as a value, FX-26's first-class modules', which KFX has not yet (C170)")
+                                                   (cv-file v) (cv-pos v) "module-value")
+                                        ;; Its values in its type's order, as the generator lays them (C216).
+                                        (cv-file v) (cv-pos v) (string-append "module-made " (words-of (mtype-value-names (ty-data "%mtype" (onto kept bs))))))))))))))))
 
       (module-expr (subr kfx (cv st sexps) res)
         (lambda (v s its)
@@ -4300,7 +4314,9 @@
                                             #u
                                             (refuse v (string-append "`" (string-append (mitem-name x) (string-append "`'s type mentions `" (string-append m "`, which is not known outside the module"))))))))
                                     its2)
-                               (res (ty-data "%mtype" its2) es2 s2))))))))))))
+                               (res (ty-data "%mtype" its2) es2
+                                    ;; Its values in its type's order, as the generator lays them (C216).
+                                    (note-fact s2 (cv-file v) (cv-pos v) (string-append "module-made " (words-of vals)))))))))))))))
 
       (repeated-names (subr kfx (strings) strings)
         (lambda (ns)

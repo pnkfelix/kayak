@@ -5933,3 +5933,33 @@ the engine, begun for the core and the REPL, C58, never took them on).
   at each use), and in TODO §31 to fix.
 - The engine on Fixpt's programs kfx accepts: agree 177 to 184 (not run
   19 to 12); beyond KFX, 171 to 182 (not run 57 to 46).
+
+## C216. Kayak's compiler to cells: module values (2026-10-26)
+
+The user (2026-10-26): grow the CEK engine and the ladder together, feature
+by feature, as Fixpt grew; the ladder's gap is kayak's own compiler to
+cells (`fx26/cg.kfx`, C133), which declined what Fixpt's listings give.
+Module values first (the engine has them, C213).
+- **Declined no more**: a module made as a value, and a `with` of one
+  (C170); the `with` by the checker's `with-spec`, each name at its place
+  in the module's type.
+- **So each module value is laid out in its type's order**, as Fixpt's
+  are (`k-reshape-at`): a module made where a module's type is wanted is
+  reshaped to it (`module-arg`, now noted wherever a module is checked
+  against a module type, not only for a module parameter, C24); one made
+  where none is, to its own type (`module-made`, noted by `module` and
+  `extend`); an argument, by the layout the generator knows it has, else
+  the order of the type the checker found for it (`module-had`, noted in
+  `check-by-synth`, which knows it: `check` gives back the type wanted).
+- **A load of a file of parameters**, a module made again where it is
+  included (`instance-load?`, as the modules made in place are, C90): an
+  instance each time its maker is called, as in the engine (C213).
+- **The checker's order of an included module's values was reversed**
+  (they came newest first, and `bind-onto` reversed them again): the
+  type of a module that includes one listed its values backwards, which
+  `with` of it at a place by the type then read wrong
+  (`modules/load-layers.fx`). Now in order.
+- Lesson: `eng.sh`'s output hidden, a failed build left the old binary
+  to test; not hidden since.
+- Kayak's own words on Fixpt's programs: agree 292 to 310, differ 0;
+  not compiled 83 to 65.

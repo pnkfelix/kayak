@@ -1940,6 +1940,16 @@ pub fn made_module(mut ms: List<&'static Cmade>, mut n: Str) -> Cxs {
 
 // Whether `n` is a module made in place (C90), not a file's (`made--load--`)
 // nor an input's.
+/// Whether `e` is the module a load of a file of parameters made, `(module
+/// (%loaded path %instance ...) ...)` (C216): made again where it is
+/// included, an instance each time, as Fixpt makes one each time its
+/// maker is called (`modules/load-parameters.fx`).
+pub fn instance_load_p(e: &'static Sexp) -> bool {
+    (head_is_p(e, str_lit("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit("%loaded")) && any_p(lambda1s(move |x: &'static Sexp| {
+        sym_is_p(x, str_lit("%instance"))
+    }), items(second(items(e)))))
+}
+
 pub fn made_here_name_p(n: Str) -> bool {
     (has_prefix_p(n, str_lit("made--")) && not(has_prefix_p(n, str_lit("made--load--"))) && not(has_prefix_p(n, str_lit("made--input--"))))
 }
@@ -2497,7 +2507,7 @@ pub fn parse_x(e: &'static Sexp) -> &'static Cx {
                 x_bool(false, p)
             } else if string_eq_p(n, str_lit("#u")) {
                 x_unit(p)
-            } else if (made_here_name_p(n) && not(null_p(made_module(get(cg_made()), n)))) {
+            } else if not(null_p(made_module(get(cg_made()), n))) {
                 car(made_module(get(cg_made()), n))
             } else {
                 x_var(n, p)
@@ -2596,15 +2606,10 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_var(str_lit("%none"), a)
     } else if string_eq_p(h, str_lit("tagcase")) {
         x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), a)
-    } else if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value")) || string_eq_p(h, str_lit("extend"))) && module_fact_p(a, str_lit("module-value"))) {
-        // A module made as a value where the checker's first-class modules
-        // have it (C170): not yet the generator's.
-        match cg_fail(str_lit("not yet: a module made as a value (C170)")) {};
-        x_var(str_lit("%none"), a)
     } else if string_eq_p(h, str_lit("module")) {
-        parse_module(cdr(xs), a)
+        module_narrowed(parse_module(cdr(xs), a), f, a)
     } else if string_eq_p(h, str_lit("extend")) {
-        parse_extend(second(xs), third(xs), a)
+        module_narrowed(parse_extend(second(xs), third(xs), a), f, a)
     } else if string_eq_p(h, str_lit("with")) {
         parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a)
     } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
@@ -2784,7 +2789,16 @@ pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            let (want, have) = (fact_text(get(cg_module_facts()), f, p, str_lit("module-arg ")), layout_in(get(cg_layouts()), n));
+            let (want, have) = (fact_text(get(cg_module_facts()), f, p, str_lit("module-arg ")), {
+                let (had, laid) = (fact_text(get(cg_module_facts()), f, p, str_lit("module-had ")), layout_in(get(cg_layouts()), n));
+                the::<List<Strings>>(if not(null_p(laid)) {
+                    the::<List<Strings>>(laid)
+                } else if string_eq_p(had, str_lit("")) {
+                    the::<List<Strings>>(nil::<List<Str>>())
+                } else {
+                    the::<List<Strings>>(kayak_rt::heap_cons(split_words(had), kayak_rt::nil()))
+                })
+            });
             if (string_eq_p(want, str_lit("")) || null_p(have)) {
                 parse_x(e)
             } else if string_eq_p(want, put_sep_words(car(have))) {
@@ -2797,7 +2811,21 @@ pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
         }
         _ => {
             let other = tagcase_;
-            parse_x(e)
+            let want = fact_text(get(cg_module_facts()), datum_file(e), datum_pos(e), str_lit("module-arg "));
+            let x = parse_x(e);
+            let had = fact_text(get(cg_module_facts()), datum_file(e), datum_pos(e), str_lit("module-had "));
+            let have = if string_eq_p(had, str_lit("")) {
+                get(cg_module_type())
+            } else {
+                split_words(had)
+            };
+            if (string_eq_p(want, str_lit("")) || string_eq_p(want, put_sep_words(have)) || head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("extend"))) {
+                x
+            } else {
+                x_reshape(x, map(lambda1s(move |w: Str| {
+                    kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil())
+                }), split_words(want)), datum_pos(e))
+            }
         }
     }
 }
@@ -2829,10 +2857,7 @@ pub fn parse_with(m: &'static Sexp, body: &'static Cx, f: Str, a: i64) -> &'stat
             }
         }
     });
-    if module_fact_p(a, str_lit("with-value")) {
-        match cg_fail(str_lit("not yet: a with of a module value (C170)")) {};
-        body
-    } else if not(string_eq_p(spec, str_lit(""))) {
+    if not(string_eq_p(spec, str_lit(""))) {
         with_layout(m, split_words(spec), body, a)
     } else if not(null_p(known)) {
         with_layout(m, car(known), body, a)
@@ -2876,7 +2901,12 @@ pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
         match *tagcase_ {
             Cinc::Cinc(m, h, p) => {
                 set(cg_module_type(), included_layout(m));
-                x_var(m, p)
+                let made = made_module(get(cg_made()), m);
+                if null_p(made) {
+                    x_var(m, p)
+                } else {
+                    car(made)
+                }
             }
         }
     } else if null_p(incs) {
@@ -2911,6 +2941,28 @@ pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
         }), shown), map(lambda1s(move |n: Str| {
             kayak_rt::heap_cons(index_in(n, mine, 0i64), kayak_rt::nil())
         }), given)), a)
+    }
+}
+
+/// A module made where a module's type is wanted, of the values that type
+/// names, in its order (the checker's `module-arg` there, C216; Fixpt's
+/// `k-reshape-at`): made, then reshaped, unless it is so already.
+pub fn module_narrowed(x: &'static Cx, f: Str, a: i64) -> &'static Cx {
+    let (want, have) = ({
+        let arg = fact_text(get(cg_module_facts()), f, a, str_lit("module-arg "));
+        if string_eq_p(arg, str_lit("")) {
+            fact_text(get(cg_module_facts()), f, a, str_lit("module-made "))
+        } else {
+            arg
+        }
+    }, get(cg_module_type()));
+    if (string_eq_p(want, str_lit("")) || string_eq_p(want, put_sep_words(have))) {
+        x
+    } else {
+        set(cg_module_type(), split_words(want));
+        x_reshape(x, map(lambda1s(move |w: Str| {
+            kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil())
+        }), split_words(want)), a)
     }
 }
 
@@ -3462,7 +3514,11 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
             third(xs)
         });
         note_layout_x(n, x);
-        if (made_here_name_p(n) && module_made_p(x)) {
+        if ((made_here_name_p(n) || instance_load_p(if typed {
+            fourth(xs)
+        } else {
+            third(xs)
+        })) && module_made_p(x)) {
             set(cg_made(), kayak_rt::heap_cons(cmade(n, x), get(cg_made())));
             nil::<&'static Ctop>()
         } else {
@@ -5880,7 +5936,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")) || string_eq_p(what, str_lit("module-value")) || string_eq_p(what, str_lit("with-value")))
+                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")) || has_prefix_p(what, str_lit("module-had ")) || has_prefix_p(what, str_lit("module-made ")) || string_eq_p(what, str_lit("module-value")) || string_eq_p(what, str_lit("with-value")))
             }
         }
     }), fs));

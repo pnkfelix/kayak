@@ -219,6 +219,15 @@
 
 "Whether `n` is a module made in place (C90), not a file's (`made--load--`)
  nor an input's."
+(define instance-load? (subr kfx (sexp) bool)
+  (lambda (e)
+    "Whether `e` is the module a load of a file of parameters made, `(module
+     (%loaded path %instance ...) ...)` (C216): made again where it is
+     included, an instance each time, as Fixpt makes one each time its
+     maker is called (`modules/load-parameters.fx`)."
+    (and (head-is? e "module") (i64>= (size (items e)) 2) (head-is? (second (items e)) "%loaded")
+         (any? (lambda ((x sexp)) (sym-is? x "%instance")) (items (second (items e)))))))
+
 (define made-here-name? (subr kfx (string) bool)
   (lambda (n) (and (has-prefix? n "made--") (not (has-prefix? n "made--load--")) (not (has-prefix? n "made--input--")))))
 (define cg-layouts (ref (listof clayout acyclic) @g) (new nil))
@@ -462,7 +471,7 @@
                 ((string=? n "#f") (x-bool #f p))
                 ((string=? n "#u") (x-unit p))
                 ;; A module made in place (C90), made where it is named.
-                ((and (made-here-name? n) (not (null? (made-module (get cg-made) n)))) (car (made-module (get cg-made) n)))
+                ((not (null? (made-module (get cg-made) n))) (car (made-module (get cg-made) n)))
                 (else (x-var n p))))
         (lst (xs f l p)
           (if (null? xs)
@@ -512,12 +521,8 @@
              (begin (cg-fail "not yet: a tagcase of a flat sum") (x-var "%none" a)))
             ((string=? h "tagcase")
              (x-tagcase (parse-x (second xs)) (parse-arms (cdr (cdr xs))) (parse-else (cdr (cdr xs))) a))
-            ((and (or (string=? h "module") (string=? h "%module-value") (string=? h "extend")) (module-fact? a "module-value"))
-             "A module made as a value where the checker's first-class modules
-              have it (C170): not yet the generator's."
-             (begin (cg-fail "not yet: a module made as a value (C170)") (x-var "%none" a)))
-            ((string=? h "module") (parse-module (cdr xs) a))
-            ((string=? h "extend") (parse-extend (second xs) (third xs) a))
+            ((string=? h "module") (module-narrowed (parse-module (cdr xs) a) f a))
+            ((string=? h "extend") (module-narrowed (parse-extend (second xs) (third xs) a) f a))
             ((string=? h "with") (parse-with (second xs) (parse-body (cdr (cdr xs)) a) f a))
             ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "letfreeze"))
              ;; What it makes besides the region: nothing, an arena, a reap,
@@ -617,11 +622,27 @@
        `k-reshapes`), unless it is so already."
       (tagcase e
         (sym (n f p)
-          (let ((want (fact-text (get cg-module-facts) f p "module-arg ")) (have (layout-in (get cg-layouts) n)))
+          (let ((want (fact-text (get cg-module-facts) f p "module-arg "))
+                (have (let ((had (fact-text (get cg-module-facts) f p "module-had ")) (laid (layout-in (get cg-layouts) n)))
+                        ;; The layout it was made with, if known; else its type's order (C216).
+                        (the (listof strings acyclic)
+                             (cond ((not (null? laid)) (the (listof strings acyclic) laid))
+                                   ((string=? had "") (the (listof strings acyclic) nil))
+                                   (else (the (listof strings acyclic) (list (split-words had)))))))))
             (cond ((or (string=? want "") (null? have)) (parse-x e))
                   ((string=? want (put-sep-words (car have))) (parse-x e))
                   (else (x-reshape (parse-x e) (map (lambda ((w string)) (list (index-in w (car have) 0))) (split-words want)) p)))))
-        (else other (parse-x e)))))
+        (else other
+          ;; An expression's module, of the layout it was made with (C216).
+          (let* ((want (fact-text (get cg-module-facts) (datum-file e) (datum-pos e) "module-arg "))
+                 (x (parse-x e))
+                 (had (fact-text (get cg-module-facts) (datum-file e) (datum-pos e) "module-had "))
+                 (have (if (string=? had "") (get cg-module-type) (split-words had))))
+            (if (or (string=? want "") (string=? want (put-sep-words have))
+                    ;; One made here is made of the type wanted (`module-narrowed`).
+                    (head-is? e "module") (head-is? e "extend"))
+                x
+                (x-reshape x (map (lambda ((w string)) (list (index-in w have 0))) (split-words want)) (datum-pos e))))))))
 
   (module-fact? (subr gen (i64 string) bool)
     (lambda (a what)
@@ -634,8 +655,7 @@
        a module whose items were read."
       (let ((spec (fact-text (get cg-module-facts) f a "with-spec "))
             (known (tagcase m (sym (n f2 p2) (layout-in (get cg-layouts) n)) (else other nil))))
-        (cond ((module-fact? a "with-value") (begin (cg-fail "not yet: a with of a module value (C170)") body))
-              ((not (string=? spec "")) (with-layout m (split-words spec) body a))
+        (cond ((not (string=? spec "")) (with-layout m (split-words spec) body a))
               ((not (null? known)) (with-layout m (car known) body a))
               (else (begin (cg-fail "not yet: a with of a module not named") body))))))
 
@@ -662,7 +682,9 @@
             ;; A load (kfx's reader's): the module its file is, shared.
             ((and (null? own) (i64= (size incs) 1) (i64= (size forms) 1)
                   (tagcase (car incs) (cinc (m h p) (has-prefix? m "made--load--"))))
-             (tagcase (car incs) (cinc (m h p) (begin (set cg-module-type (included-layout m)) (x-var m p)))))
+             (tagcase (car incs) (cinc (m h p) (begin (set cg-module-type (included-layout m))
+                                                     ;; A load of parameters' instance, made again here (C216).
+                                                     (let ((made (made-module (get cg-made) m))) (if (null? made) (x-var m p) (car made)))))))
             ((null? incs)
               (begin (set cg-module-type given)
                      (if (string=? (put-sep-words own-names) (put-sep-words given))
@@ -683,6 +705,20 @@
                                   (onto (map (lambda ((n string)) (list 0 (index-in n inc-type 0))) shown)
                                         (map (lambda ((n string)) (list (index-in n mine 0))) given))
                                   a)))))))))
+
+  (module-narrowed (subr gen (cx string i64) cx)
+    (lambda (x f a)
+      "A module made where a module's type is wanted, of the values that type
+       names, in its order (the checker's `module-arg` there, C216; Fixpt's
+       `k-reshape-at`): made, then reshaped, unless it is so already."
+      (let ((want (let ((arg (fact-text (get cg-module-facts) f a "module-arg ")))
+                    ;; Else the order of its own type, the checker's (C216).
+                    (if (string=? arg "") (fact-text (get cg-module-facts) f a "module-made ") arg)))
+            (have (get cg-module-type)))
+        (if (or (string=? want "") (string=? want (put-sep-words have)))
+            x
+            (begin (set cg-module-type (split-words want))
+                   (x-reshape x (map (lambda ((w string)) (list (index-in w have 0))) (split-words want)) a))))))
 
   (parse-extend (subr gen (sexp sexp i64) cx)
     (lambda (e0 e1 a)
@@ -912,7 +948,7 @@
              (let* ((xs (items e)) (typed (not (i64= (size xs) 3))) (n (sym-name (second xs)))
                     (x (parse-x (if typed (fourth xs) (third xs)))))
                (begin (note-layout! n x)
-                      (if (and (made-here-name? n) (module-made? x))
+                      (if (and (or (made-here-name? n) (instance-load? (if typed (fourth xs) (third xs)))) (module-made? x))
                           (begin (set cg-made (cons (cmade n x) (get cg-made))) nil)
                           (list (t-define n typed x))))))
             ((string=? h "define-rec") (list (t-define-rec (parse-typed-binds (cdr (items e))))))
@@ -2033,7 +2069,7 @@
         (set cg-facts fs)
         (set cg-fx-calls nil)
         (set cg-module-facts
-             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (string=? what "module-value") (string=? what "with-value"))))) fs))
+             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (has-prefix? what "module-had ") (has-prefix? what "module-made ") (string=? what "module-value") (string=? what "with-value"))))) fs))
         (set cg-layouts nil)
         (set cg-made nil)
         (set cg-words nil)

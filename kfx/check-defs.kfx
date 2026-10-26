@@ -2360,7 +2360,9 @@
                     v))
              (typed (tagcase v
                       (cv (bs ds als es here group file line fs tv at ix mk)
-                        (cv-reindexed (cv (bind-onto (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes))
+                        ;; An included module's values in its order (C216: they came
+                        ;; newest first, and `bind-onto` reverses them once more).
+                        (cv-reindexed (cv (bind-onto (reverse (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes)))
                                        (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
                             (onto (module-dts v m forms) ds)
                             (onto (module-aliases v m names forms #t)
