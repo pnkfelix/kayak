@@ -5725,3 +5725,55 @@ The next round of C133's generator (its prompts are C146's).
   `c-standard-name` decides (`bench/captures.fx`).
 - **Results**, on arm64 macOS at its answers of 4caffc2: 284 programs
   agree, as before, 228 of them Fixpt's words exactly (from 218).
+
+## C210. Tier 6 on arm64: C138's, by `bl` and `ret` (2026-10-24)
+
+The user: "Take item 1" (TODO §34, step 5: tier 6, "the same on arm64,
+measured on macOS"). hand.kfx now compiles register words a second time
+as native procedures under `--direct`, as hand-x64.kfx does (C138): the
+same words (those that never allocate), the same blocks, fuel spent a
+block at a time, records of the calls on the machine stack, leaving for
+tier 5 where tier 5 would give back (`materialize!`), entered by ways in
+that push a bottom record. What arm64 changes:
+- **Calls by `bl`/`blr`, returns by `ret`**: the callee's link is in
+  `x30`, as everywhere in this machine; the caller keeps its own `x30` in
+  its record and takes it back after, so a tier 6 `return` is a `ret` to
+  the `bl` that called it, which the processor predicts (as C137 made
+  x86_64's tier 5, and TODO's step on arm64's tier 5 would).
+- **The record**: `(x30 nx fp clo cur -)` from the machine stack's top,
+  48 bytes, for `sp` must stay 16-aligned where it is a base; the bottom
+  record `(1 1)`, 16 bytes. Materializing reads `nx fp clo cur` as on
+  x86_64, from the innermost; the code left gets the link the way in
+  kept (`st-t6link`) if it is the outermost's, else none.
+- **No registers moved**: register code's registers are `x0`…`x8` all
+  along (C130), so a way in or out moves none, where x86_64's moves
+  `RESULT`, `REG1`, `REG2` through the state.
+- **An operand's place made only where read**: tier 5 makes each
+  instruction's place in `x12` (it gives back by it); tier 6 never gives
+  back, so only the instructions that read an operand from the word
+  (`const`, `global`, `setglbl`, `op2imm`, `global-guard`) make it. Kept
+  read from the word rather than made immediates: a collection moves the
+  values cells hold.
+- **Found by the tables**: arm64's tier 5 finds a callee's entry for a
+  call by its table (instruction 2's entry, `entry-address!`), so the
+  table's entries for each block's first are its ways in, and a call
+  from tier 5, or a return or entry the stack's way, goes into tier 6.
+  Field 1 of the table is the tier 6 code, or 0, which a tier 6 `invoke`
+  reads, as x86_64's.
+- **Shared**: which words (`direct-able?`), their blocks (`t6-leaders!`,
+  `t6-blocks!`), their labels (`t6-prepared!`) and where a branch goes
+  (`t6-to`) moved from hand-x64.kfx to hand.kfx, for both, renamed from
+  `y-…`; hand-x64.kfx's code is otherwise as it was. `direct-able?`
+  takes whether allocations are tier 6's, which x86_64 passes (C147's)
+  and arm64 not yet. `--fixpt-calls` stays x86_64's (C140).
+- **Measured** on an Apple M5 Max, wall time, the median of 25 runs
+  less that of the same run stopped at its first step, tier 6 against
+  tier 5: `helpers` −72%, `loop` −69%, `tak` −37%, `fib` −33%, `lists`
+  −21%, `closures` −14%, `captures` the same (its continuation is
+  aborted 20 calls deep, as in C137).
+- **Checked**: `cells-programs.py` runs `--regs --direct`, under
+  `--gc-stress`, and at a slice of 3, on arm64 macOS too: the 338
+  programs agree, and the 85 of `--ours`.
+- **Noticed**: x86_64's tables never send a block's first to tier 6,
+  written after `h-6-on` is reset (TODO §34); not changed here, where
+  x86_64 cannot run.

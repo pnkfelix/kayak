@@ -6,13 +6,13 @@ use super::*;
 // main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
 // [--hand|--compiled|--direct] [--regs] [--fixpt-calls] [--indexes]
 // [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
-// C140, C142): the words of a listing Fixpt's compiler wrote, its
+// C140, C142, C210): the words of a listing Fixpt's compiler wrote, its
 // `program` run, at most N instructions (Fixpt's FX-26 default,
 // 20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
 // 65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
 // the words compiled (tier 4) if `--compiled`, with their register code
 // where they have it if `--regs`, and register code as native procedures
-// too (tier 6, x86_64) if `--direct`, register code calling as Fixpt's
+// too (tier 6) if `--direct`, register code calling as Fixpt's
 // does (x86_64) if `--fixpt-calls`, its values tagged addresses where
 // native code runs, else, or with `--indexes`, indices into the heap, its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
@@ -60,7 +60,7 @@ pub fn default_steps() -> i64 {
 }
 
 pub fn usage() -> Str {
-    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6,\n                       x86_64; implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --indexes            values as indices into the heap, not tagged\n                       addresses where native code runs\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
+    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6;\n                       implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --indexes            values as indices into the heap, not tagged\n                       addresses where native code runs\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
 }
 
 /// Option `name`'s number, `none` the most there is; else `otherwise`.

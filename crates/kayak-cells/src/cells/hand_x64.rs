@@ -2421,231 +2421,12 @@ pub fn ygive_stubs_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut giv
 // tier 5 would give back to collect first, tier 6 leaves, so the collector
 // never sees a record. Entered by a call from tier 5 (its entry for a call
 // diverted to `adapter`), over a bottom record, `(1 1)`, that says so.
-pub fn hand_direct() -> Ref<bool> {
-    kayak_rt::kept_constant!(ONCE: Ref<bool>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(false)
-    })
-}
-
-pub fn st_t6link() -> Int {
-    int_lit(33)
-}
-
-pub fn l_materialize() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(0))
-    })
-}
-
+// Which words, their blocks and their labels are hand.kfx's, shared.
 pub fn l_materialize_pushed() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
         kayak_rt::heap_new(int_lit(0))
     })
-}
-
-/// Whether tier 6 has register operation `op`, of operands `a`, `b`, `c`:
-/// of those that allocate, those tier 5 makes at the heap's top (C147).
-pub fn y_direct_op_p(op: i64, a: i64, b: i64, c: i64) -> bool {
-    if (i64_eq(op, ro_op2()) || i64_eq(op, ro_op2imm())) {
-        (i64_eq(a, r_eq()) || i64_eq(a, r_int_add()) || i64_eq(a, r_add()) || i64_eq(a, r_int_sub()) || i64_eq(a, r_sub()) || i64_eq(a, r_int_less()) || i64_eq(a, r_less()) || i64_eq(a, r_int_eq()))
-    } else if i64_eq(op, ro_op1()) {
-        (i64_eq(a, r_car()) || i64_eq(a, r_cdr()) || i64_eq(a, r_pair_car()) || i64_eq(a, r_pair_cdr()))
-    } else if i64_eq(op, ro_cellular()) {
-        (i64_eq(a, r_cons()) && i64_eq(b, 2i64))
-    } else if i64_eq(op, ro_prim()) {
-        (i64_eq(prim_op(a), o_region_cons()) && i64_eq(b, 3i64))
-    } else if i64_eq(op, ro_lambda()) {
-        (i64_lt_eq(b, register_regs()) && i64_eq(c, r_closure()))
-    } else {
-        (i64_eq(op, ro_args()) || i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_setglbl()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_setreg()) || i64_eq(op, ro_movereg()) || i64_eq(op, ro_lexical()) || i64_eq(op, ro_save()) || i64_eq(op, ro_pop()) || i64_eq(op, ro_stack()) || i64_eq(op, ro_load()) || i64_eq(op, ro_setstk()) || i64_eq(op, ro_store()) || i64_eq(op, ro_field()) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return()) || i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht()) || i64_eq(op, ro_global_guard()))
-    }
-}
-
-/// Whether every instruction of `rw` from `i`, of `n` cells, is tier 6's.
-pub fn y_direct_able_p(rw: i64, i: i64, n: i64) -> bool {
-    if i64_gt_eq(i, n) {
-        true
-    } else {
-        let kk = i64_plus(f_cell0(), i);
-        let op = fix_val(slot_of(rw, kk));
-        let ops = rop_operands(op);
-        let a = if i64_gt_eq(ops, 1i64) {
-            fix_val(slot_of(rw, i64_plus(kk, 1i64)))
-        } else {
-            the::<i64>(0i64)
-        };
-        let b = if i64_gt_eq(ops, 2i64) {
-            fix_val(slot_of(rw, i64_plus(kk, 2i64)))
-        } else {
-            the::<i64>(0i64)
-        };
-        let c = if i64_gt_eq(ops, 3i64) {
-            fix_val(slot_of(rw, i64_plus(kk, 3i64)))
-        } else {
-            the::<i64>(0i64)
-        };
-        (y_direct_op_p(op, a, b, c) && y_direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n))
-    }
-}
-
-// Compiling a word for tier 6: whether, its instructions' labels, their
-// ways out, its tier 5 code's labels, and its blocks.
-pub fn h_6() -> Ref<bool> {
-    kayak_rt::kept_constant!(ONCE: Ref<bool>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(false)
-    })
-}
-
-pub fn h_6_base() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(0))
-    })
-}
-
-pub fn h_6_exits() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(0))
-    })
-}
-
-pub fn h_6_tier5() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(0))
-    })
-}
-
-pub fn h_6_adapter() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(-1))
-    })
-}
-
-// While a word with tier 6 code is compiled: each block's first's way in
-// to it, and where in its block each instruction is.
-pub fn h_6_on() -> Ref<bool> {
-    kayak_rt::kept_constant!(ONCE: Ref<bool>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(false)
-    })
-}
-
-pub fn h_6_ins() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(0))
-    })
-}
-
-pub fn h_6_at() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
-    })
-}
-
-pub fn h_6_of() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
-    })
-}
-
-/// Where register instruction `i` of `rw` may branch to, or -1.
-pub fn y_branch_target(rw: i64, i: i64) -> i64 {
-    let kk = i64_plus(f_cell0(), i);
-    let op = fix_val(slot_of(rw, kk));
-    if (i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht())) {
-        i64_plus(i, i64_plus(2i64, fix_val(slot_of(rw, i64_plus(kk, 1i64)))))
-    } else if i64_eq(op, ro_global_guard()) {
-        i64_plus(i, i64_plus(4i64, fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
-    } else {
-        -1i64
-    }
-}
-
-/// Which instructions from `i` begin a block, 1 in `lead`: a branch's
-/// target, what follows a branch, a call or a return.
-pub fn y6_leaders_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64>) -> () {
-    loop {
-        if i64_gt_eq(i, n) {
-            return ();
-        } else {
-            let kk = i64_plus(f_cell0(), i);
-            let op = fix_val(slot_of(rw, kk));
-            let nx = i64_plus(i, i64_plus(1i64, rop_operands(op)));
-            let t = y_branch_target(rw, i);
-            if (i64_gt_eq(t, 0i64) && i64_lt_eq(t, n)) {
-                flatarray_set_i64_x(lead, t, 1i64)
-            } else {
-                ()
-            };
-            if (i64_gt_eq(t, 0i64) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return())) {
-                flatarray_set_i64_x(lead, nx, 1i64)
-            } else {
-                ()
-            };
-            i = nx;
-            continue;
-        }
-    }
-}
-
-/// For each instruction from `i`, the block it is in begun at `l`: its
-/// place in it in `at`, the block's first in `of`; each block's length
-/// in `len`, by its first.
-pub fn y6_blocks_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64>, mut l: i64, mut at: FlatArray<i64>, mut of: FlatArray<i64>, mut len: FlatArray<i64>) -> () {
-    loop {
-        if i64_gt_eq(i, n) {
-            return ();
-        } else {
-            let nx = i64_plus(i, i64_plus(1i64, rop_operands(fix_val(slot_of(rw, i64_plus(f_cell0(), i))))));
-            let b = if i64_eq(flatarray_ref_i64(lead, i), 1i64) {
-                i
-            } else {
-                l
-            };
-            flatarray_set_i64_x(at, i, flatarray_ref_i64(len, b));
-            flatarray_set_i64_x(of, i, b);
-            flatarray_set_i64_x(len, b, i64_plus(flatarray_ref_i64(len, b), 1i64));
-            (i, l) = (nx, b);
-            continue;
-        }
-    }
-}
-
-// A block's fuel, spent at its start: given back by its first's way out
-// if there is not as much.
-pub fn h_6_lead() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
-    })
-}
-
-pub fn h_6_len() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
-    })
-}
-
-/// The label instruction `t` is branched to at, its code's at `base`:
-/// for tier 5's code of a word with tier 6 code, a block's first's way
-/// in to tier 6, so that a loop left goes back in.
-pub fn y_to(base: Int, t: i64) -> Int {
-    if (not(get(h_6())) && get(h_6_on()) && i64_eq(flatarray_ref_i64(get(h_6_lead()), t), 1i64)) {
-        _plus(get(h_6_ins()), i64_to_int(t))
-    } else {
-        _plus(base, i64_to_int(t))
-    }
 }
 
 /// A call of tier 6 code at label `l`, or if it is -1 at the address in
@@ -2810,7 +2591,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
     });
     let nx = i64_plus(i, i64_plus(1i64, rop_operands(op)));
     let to = lambda2(move |ops: Int, off: i64| {
-        y_to(base, i64_plus(i, i64_plus(int_to_i64(_plus(ops, int_lit(1))), off)))
+        t6_to(base, i64_plus(i, i64_plus(int_to_i64(_plus(ops, int_lit(1))), off)))
     });
     if (i64_eq(op, ro_args()) || i64_eq(op, ro_vargs())) {
         ()
@@ -3173,7 +2954,7 @@ pub fn yresumes_emitted_x(mut i: i64, mut n: i64, mut base: Int, mut rbase: Int,
 
 /// A half of a register word's table: from field `k`, the code of each
 /// instruction `marks` marks, else the way to give back; if `six`, a
-/// block's first's way in to tier 6 (`y-to`); before `save`, with
+/// block's first's way in to tier 6 (`t6-to`); before `save`, with
 /// `--fixpt-calls`, its way in from `stubs` (-1 for none), which
 /// pushes a link of none first.
 pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut marks: FlatArray<i64>, mut six: bool, mut stubs: Int) -> () {
@@ -3186,7 +2967,7 @@ pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut m
                     _plus(stubs, i64_to_int(i64_minus(k, f_cell0())))
                 } else {
                     if six {
-                        y_to(base, i64_minus(k, f_cell0()))
+                        t6_to(base, i64_minus(k, f_cell0()))
                     } else {
                         _plus(base, i64_to_int(i64_minus(k, f_cell0())))
                     }
@@ -3211,7 +2992,7 @@ pub fn ylink_stubs_x(mut i: i64, mut n: i64, mut base: Int, mut starts: FlatArra
                 ybind_x(_plus(stubs, i64_to_int(i)));
                 yno_link_pushed_x();
                 yb_x(if six {
-                    y_to(base, i)
+                    t6_to(base, i)
                 } else {
                     _plus(base, i64_to_int(i))
                 })
@@ -3222,13 +3003,6 @@ pub fn ylink_stubs_x(mut i: i64, mut n: i64, mut base: Int, mut starts: FlatArra
             continue;
         }
     }
-}
-
-pub fn words_direct() -> Ref<Int> {
-    kayak_rt::kept_constant!(ONCE: Ref<Int>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(int_lit(0))
-    })
 }
 
 /// For each block's first from `i`, its way in to tier 6 from tier 5,
@@ -3258,27 +3032,6 @@ pub fn y6_ways_in_x(mut i: i64, mut n: i64) -> () {
             continue;
         }
     }
-}
-
-/// Register word `rw`'s tier 6 labels and blocks, before its tier 5
-/// code, whose branches and tables go to them.
-pub fn y6_prepared_x(rw: i64, n: i64) -> () {
-    let (lead, at, of, len, n_cells) = (the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), i64_to_int(n));
-    set(h_6_base(), get(hand_labels()));
-    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
-    set(h_6_exits(), get(hand_labels()));
-    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
-    set(h_6_ins(), get(hand_labels()));
-    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
-    flatarray_set_i64_x(lead, 2i64, 1i64);
-    y6_leaders_x(rw, 0i64, n, lead);
-    y6_blocks_x(rw, 2i64, n, lead, 2i64, at, of, len);
-    set(h_6_lead(), lead);
-    set(h_6_at(), at);
-    set(h_6_of(), of);
-    set(h_6_len(), len);
-    set(h_6_adapter(), _plus(get(h_6_ins()), int_lit(2)));
-    set(h_6_on(), true)
 }
 
 /// Register word `rw`'s tier 6 code, its tier 5 code at labels from
@@ -3314,7 +3067,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     let rgive = _plus(way_in, int_lit(2));
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
-    let direct = (get(hand_direct()) && y_direct_able_p(rw, 0i64, n));
+    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, true));
     set(hand_labels(), _plus(rgive, int_lit(1)));
     if direct {
         set(words_direct(), _plus(get(words_direct()), int_lit(1)))
@@ -3329,7 +3082,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     set(h_stubs(), get(hand_labels()));
     set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
     if direct {
-        y6_prepared_x(rw, n)
+        t6_prepared_x(rw, n)
     } else {
         ()
     };
@@ -3501,12 +3254,10 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
 }
 
 /// Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or
-/// x86_64's; elsewhere none. Tier 6 (`--direct`) on x86_64 alone.
+/// x86_64's; elsewhere none.
 pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     let target = car(the::<List<Str>>(native_convention()));
-    if (get(hand_direct()) && string_eq_p(target, str_lit("(target arm64)"))) {
-        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(str_lit("tier 6: on x86_64 alone yet (TODO §34)")))
-    } else if (get(hand_fixpt_calls()) && string_eq_p(target, str_lit("(target arm64)"))) {
+    if (get(hand_fixpt_calls()) && string_eq_p(target, str_lit("(target arm64)"))) {
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(str_lit("--fixpt-calls: x86_64's alone (C140)")))
     } else if string_eq_p(target, str_lit("(target arm64)")) {
         hand_code_arm64_x()

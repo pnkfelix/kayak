@@ -1461,3 +1461,11 @@ Register code as native procedures (`--direct`): no step counted at each
 instruction, no return entry pushed by each call, leaving for tier 5
 where tier 5 would give back. The 338 programs agree under it.
 `helpers` −54%, `loop` −46%, `fib` −32% against tier 5.
+
+## §34: tier 6 on arm64 macOS (2026-10-24, C210)
+
+`--direct` on arm64: C138's tier 6 beside hand.kfx's tier 5, calling by
+`bl` and returning by `ret`, the caller keeping its link in its record.
+What decides which words and their blocks is shared by both machines now.
+The 338 programs agree under it, and the 85 of kayak's own words.
+`helpers` −72%, `loop` −69%, `tak` −37%, `fib` −33% against tier 5.

@@ -23,7 +23,8 @@ one in every so many, jittered (`--gc-stress`, C142), to the same end;
 each by tier 2's machine (`--hand`, C126), with its words compiled
 (`--compiled`, C128), these on arm64 macOS and x86_64 Linux (C136,
 C137), with register code as native procedures too (`--direct`, tier 6,
-C138, x86_64 Linux), with values as indices into the heap rather than
+C138, C210; Fixpt's calls for tier 5, `--fixpt-calls`, C140, on x86_64
+Linux alone), with values as indices into the heap rather than
 addresses (`--indexes`, C139, by tiers 1 and 2), and with register code
 (`--regs`, C129), its answer
 the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
@@ -204,8 +205,10 @@ def one(binary, cells, name, path):
 # and x86_64 Linux (C136, C137).
 HAND = (sys.platform == "darwin" and os.uname().machine == "arm64") or (sys.platform == "linux" and os.uname().machine == "x86_64")
 COMPILED = HAND
-# Tier 6, register code as native procedures (C138): x86_64 Linux alone.
-DIRECT = sys.platform == "linux" and os.uname().machine == "x86_64"
+# Tier 6, register code as native procedures (C138, C210), likewise.
+DIRECT = HAND
+# Fixpt's calling convention for tier 5 (C140): x86_64 Linux alone.
+FIXPT_CALLS = sys.platform == "linux" and os.uname().machine == "x86_64"
 TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icell-get|icell-put!)\b")
 
 
@@ -228,6 +231,7 @@ def stressed(cells, name, path, text, limit, have, fail):
         ways.append(["--regs", "--compiled"] + (["--step-limit", "none"] if limit else []))
     if DIRECT:
         ways.append(["--regs", "--direct"] + (["--step-limit", "none"] if limit else []))
+    if FIXPT_CALLS:
         # Fixpt's calling convention for tier 5 (C140), with tier 6 too.
         ways.append(["--regs", "--compiled", "--fixpt-calls"] + (["--step-limit", "none"] if limit else []))
         ways.append(["--regs", "--direct", "--fixpt-calls"] + (["--step-limit", "none"] if limit else []))
@@ -239,6 +243,7 @@ def stressed(cells, name, path, text, limit, have, fail):
             ways.append(["--regs", "--compiled", "--gc-stress"])
         if DIRECT:
             ways.append(["--regs", "--direct", "--gc-stress"])
+        if FIXPT_CALLS:
             ways.append(["--regs", "--compiled", "--fixpt-calls", "--gc-stress"])
         if HAND:
             ways.append(["--hand", "--gc-stress"])
@@ -253,6 +258,7 @@ def stressed(cells, name, path, text, limit, have, fail):
                 ways.append(["--regs", "--compiled", "--slice", "3", "--step-limit", "none"])
             if DIRECT:
                 ways.append(["--regs", "--direct", "--slice", "3", "--step-limit", "none"])
+            if FIXPT_CALLS:
                 ways.append(["--regs", "--direct", "--fixpt-calls", "--slice", "3", "--step-limit", "none"])
             if COMPILED:
                 ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])

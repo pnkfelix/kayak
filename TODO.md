@@ -808,16 +808,22 @@ compilers, on x86_64, at the same places; every `--compiled` way of
 `cells-programs.py` on Linux; `RESULT` in `rax`, `REGk` in the state,
 the link there too). Left:
 ~~5. Tier 6~~ (begun, C138: register code as native procedures, which
-leave for tier 5 rather than give back; `--direct`). Next, by what keeps
-words out or makes them leave: allocation as tier 5 allocates (done,
-C147: where it would collect, tier 6 leaves first). Looked at
+leave for tier 5 rather than give back; `--direct`; on arm64 too, C210,
+measured on macOS). Next, by what keeps words out or makes them leave:
+allocation as tier 5 allocates (done on x86_64, C147: where it would
+collect, tier 6 leaves first; arm64's next). Looked at
 2026-10-24, not taken: making the runtime primitives register code
 calls most (`%fx26-sched`, `%make-box`, `%make-frozen`, `setfield`) in
 place. Every hot word of the benchmarks and of `preempt/allocating.fx`
 is tier 6's already; what those primitives keep out is the scheduler's
 library and words run once a spawn, a send or a preemption. Left of
 tier 6's: the control routines (`prompt`, `callcomp`, `abort`, in
-`captures`), and the same on arm64, measured on macOS.
+`captures`).
+- Noticed on the way (C210): x86_64's tables never send a block's first
+  to its way in to tier 6, as C138 says they do: `yregister-compiled!`
+  writes them after `h-6-on` is reset, so `t6-to` gives tier 5's label.
+  Tier 5's calls and branches still go in. arm64's tables do (its calls
+  are found by them); x86_64's to be made so and measured on Linux.
 - ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137; `REG3` in `r10` with
   addresses, C139).
 - Values as tagged addresses (C139): done, and on x86_64 without the
