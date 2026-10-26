@@ -6311,12 +6311,37 @@ own, of Fixpt's layout too. So a host heap for a call:
 - **A trap said otherwise** comes back with what it said, a string made
   in the host heap (`allocated.fx`'s refused size).
 - **The callback runs by the interpreter**, the native tiers off while it
-  does: run on their machine, itself native code kayak-jit enters, under
-  the made code's live frames, it failed (a flat array read out of range,
-  then an abort, since a panic cannot unwind native frames). Thought, not
-  shown: kayak-jit's one state for the thread, entered again while a call
-  is under way, its per-call words (the trap, the arguments, the stack
-  pointers to leave by) overwritten. Left: `call` made re-entrant, so
-  that a callback may run natively too.
+  does: run on their machine, under the made code's live frames, it
+  failed (a flat array read out of range, then an abort, since a panic
+  cannot unwind native frames). Thought, wrongly: kayak-jit's state
+  entered again, not re-entrant. (C228: the run's end; now on every tier.)
 - All seven of Fixpt's `made-code-x86_64/` programs give Fixpt's answers
   on tier 1, every way, on Fixpt's words and kayak's.
+
+## C228. Made code's callbacks on every tier: the run's end, not re-entrancy (2026-10-26)
+
+The user, of C227's callback by the interpreter: "Make call re-entrant.
+I'm totally freaked out that the architecture you have evolved has such a
+fundamental limitation… downgrading to an interpreter should try its best
+to switch back to running the native code it has available". So the
+cause, found first:
+- **C227's diagnosis was wrong.** kayak-jit's `call` nests already: its
+  trampoline keeps the outer one's Rust stack pointer (`push qword ptr
+  [rdi]`, restored on the way out), the per-call words are read before
+  anything else runs (`foreign`'s arguments) or are the caller's to keep
+  (`reg4`-`reg8`, lost across calls by the convention), and C227's host
+  heap and cards are saved and restored. A backtrace showed the failure in
+  tier 1's `pop-return!`, under `hand-run!`: tier 1's interpreter ended
+  the callback's run where the return stack came back to its height
+  (`run! base`), but the native tiers' machine knows no such height, and
+  went on returning past the called procedure, into the frames of the
+  computation that had called the native code, popping below them.
+- **The callback now ends its run as a call ends**: a return entry to a
+  word of one cell, `halt`, pushed first, the procedure called as `call!`
+  does; every tier returns there and gives `halt` to tier 1, which stops.
+  So the callback runs on whatever tier runs, natively under `--hand`,
+  `--compiled`, `--regs --compiled` and `--direct`; its registers and
+  both stacks put back after.
+- **Re-entrancy stated as a test** (kayak-jit's `calls_nest_through_
+  foreign`): native code calls Rust by `foreign`, which calls native code,
+  which calls Rust again, three deep, each returning to its caller.

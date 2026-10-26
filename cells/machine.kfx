@@ -1110,14 +1110,16 @@
             ((i64= (get dsp) 0) (ran-failed "the word left nothing"))
             (else (ran-answer (ds-at (i64- (get dsp) 1))))))))
 
-"A procedure of tier 1's that native code calls (C227; Fixpt's machines'
- `foreign`, for a closure no native one): `box` its closure, its count of
- arguments, them, and the heap's next free address, as kayak-jit gives
- them (`kayak-cells`' `main.rs`); run to its return as a call of it does,
- by the interpreter, the machine's registers as they were after, nothing
- collected meanwhile.
- 0 and its answer in `box[0]`, or 1, the trap kept; the next free address
- in `box[10]`."
+"A procedure of tier 1's that native code calls (C227, C228; Fixpt's
+ machines' `foreign`, for a closure no native one): `box` its closure, its
+ count of arguments, them, and the heap's next free address, as kayak-jit
+ gives them (`kayak-cells`' `main.rs`). Called as `call!` calls one, its
+ return entry a word of one cell, `halt`, which every tier gives tier 1
+ and tier 1 stops at: so the run, on whatever tier runs, ends where the
+ procedure returns, whatever is under it (the native code's caller's
+ frames). The machine's registers and stacks as they were after; nothing
+ collected meanwhile. 0 and its answer in `box[0]`, or 1, the trap kept;
+ the next free address in `box[10]`."
 (define-rec
   (callback-args! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
     (lambda (box i n) (if (i64>= i n) #u (begin (push! (flatarray-ref-i64 box (i64+ 2 i))) (callback-args! box (i64+ i 1) n))))))
@@ -1125,23 +1127,26 @@
 (define native-callback (subr cm ((flatarrayof i64 @c)) i64)
   (lambda (box)
     (let* ((c (flatarray-ref-i64 box 0)) (count (flatarray-ref-i64 box 1))
-           (cur0 (get cur)) (kk0 (get kk)) (fp0 (get fp)) (clo0 (get clo)) (dsp0 (get dsp)) (base (get rsp)))
+           (cur0 (get cur)) (kk0 (get kk)) (fp0 (get fp)) (clo0 (get clo)) (dsp0 (get dsp)) (rsp0 (get rsp)))
       (begin
         (top-from! (flatarray-ref-i64 box 10))
         (if (not (closure? c))
             (trap! "native code: called no procedure tier 1 runs (C122)")
-            (begin
-              (callback-args! box 0 count)
-              (set fp (i64- (get dsp) count))
-              (set cur (slot-of c f-word)) (set kk f-cell0) (set clo c)
-              ;; By the interpreter: the native tiers' machine is native code
-              ;; kayak-jit enters, which made code's frames are under now.
-              (let ((h (get hand-on)))
-                (begin (set hand-on #f) (run! base) (set hand-on h)))))
+            (let ((back (make-word! "%callback-return" 1 0)))
+              (begin
+                (slot-set! back f-cell0 (fix r-halt))
+                (set cur back) (set kk f-cell0)
+                (push-return!)
+                (callback-args! box 0 count)
+                (set fp (i64- (get dsp) count))
+                (set cur (slot-of c f-word)) (set kk f-cell0) (set clo c)
+                (if (get hand-on)
+                    (tagcase (hand-code!) (made m (hand-run! m 0)) (failed why (trap! why)))
+                    (run! 0)))))
         (let* ((ok (and (not (trapped?)) (i64> (get dsp) dsp0)))
                (v (if ok (ds-at (i64- (get dsp) 1)) (the i64 0))))
           (begin
-            (set cur cur0) (set kk kk0) (set fp fp0) (set clo clo0) (set dsp dsp0)
+            (set cur cur0) (set kk kk0) (set fp fp0) (set clo clo0) (set dsp dsp0) (set rsp rsp0)
             (flatarray-set-i64! box 0 v)
             (flatarray-set-i64! box 10 (heap-ref (get top) 0))
             (if ok (the i64 0) (the i64 1))))))))

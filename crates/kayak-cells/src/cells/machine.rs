@@ -2114,14 +2114,16 @@ pub fn run_word_x(w: i64, steps: i64) -> &'static Ran {
     }
 }
 
-// A procedure of tier 1's that native code calls (C227; Fixpt's machines'
-// `foreign`, for a closure no native one): `box` its closure, its count of
-// arguments, them, and the heap's next free address, as kayak-jit gives
-// them (`kayak-cells`' `main.rs`); run to its return as a call of it does,
-// by the interpreter, the machine's registers as they were after, nothing
-// collected meanwhile.
-// 0 and its answer in `box[0]`, or 1, the trap kept; the next free address
-// in `box[10]`.
+// A procedure of tier 1's that native code calls (C227, C228; Fixpt's
+// machines' `foreign`, for a closure no native one): `box` its closure, its
+// count of arguments, them, and the heap's next free address, as kayak-jit
+// gives them (`kayak-cells`' `main.rs`). Called as `call!` calls one, its
+// return entry a word of one cell, `halt`, which every tier gives tier 1
+// and tier 1 stops at: so the run, on whatever tier runs, ends where the
+// procedure returns, whatever is under it (the native code's caller's
+// frames). The machine's registers and stacks as they were after; nothing
+// collected meanwhile. 0 and its answer in `box[0]`, or 1, the trap kept;
+// the next free address in `box[10]`.
 pub fn callback_args_x(mut r#box: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
@@ -2142,20 +2144,34 @@ pub fn native_callback(r#box: FlatArray<i64>) -> i64 {
     let fp0 = get(fp());
     let clo0 = get(clo());
     let dsp0 = get(dsp());
-    let base = get(rsp());
+    let rsp0 = get(rsp());
     top_from_x(flatarray_ref_i64(r#box, 10i64));
     if not(closure_p(c)) {
         trap_x(str_lit("native code: called no procedure tier 1 runs (C122)"))
     } else {
+        let back = make_word_x(str_lit("%callback-return"), 1i64, 0i64);
+        slot_set_x(back, f_cell0(), fix(r_halt()));
+        set(cur(), back);
+        set(kk(), f_cell0());
+        push_return_x();
         callback_args_x(r#box, 0i64, count);
         set(fp(), i64_minus(get(dsp()), count));
         set(cur(), slot_of(c, f_word()));
         set(kk(), f_cell0());
         set(clo(), c);
-        let h = get(hand_on());
-        set(hand_on(), false);
-        run_x(base);
-        set(hand_on(), h)
+        if get(hand_on()) {
+            let tagcase_ = hand_code_x();
+            match *tagcase_ {
+                Sum_4made_6failed::Made(m) => {
+                    hand_run_x(m, 0i64)
+                }
+                Sum_4made_6failed::Failed(why) => {
+                    trap_x(why)
+                }
+            }
+        } else {
+            run_x(0i64)
+        }
     };
     let ok = (not(trapped_p()) && i64_gt(get(dsp()), dsp0));
     let v = if ok {
@@ -2168,6 +2184,7 @@ pub fn native_callback(r#box: FlatArray<i64>) -> i64 {
     set(fp(), fp0);
     set(clo(), clo0);
     set(dsp(), dsp0);
+    set(rsp(), rsp0);
     flatarray_set_i64_x(r#box, 0i64, v);
     flatarray_set_i64_x(r#box, 10i64, heap_ref(get(top()), 0i64));
     if ok {

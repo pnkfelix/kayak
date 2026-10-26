@@ -329,6 +329,27 @@ fn a_panic_called_back_goes_on_past_native_code() {
     assert_eq!(e.downcast_ref::<&str>(), Some(&"boom"));
 }
 
+/// `call` is re-entrant (C228): native code calls a procedure by `foreign`,
+/// whose Rust calls native code again, which calls another; each returns to
+/// its own caller, the trampolines nested, and native code goes on after.
+#[test]
+fn calls_nest_through_foreign() {
+    if !native_code() {
+        return;
+    }
+    let code = calling(&call_first_on_second(), state::FOREIGN, &[]);
+    let inner = seal(layout::KIND_BLOBLET, &[], false, &code);
+    let add1 = foreign_procedure(Box::new(|a: &[u64]| a[0] + fixnum(1)));
+    let twice = foreign_procedure(Box::new(move |a: &[u64]| {
+        call(closure(inner), inner.entry(), &[add1, a[0]]).unwrap() + fixnum(1)
+    }));
+    assert_eq!(run(&code, &[twice, fixnum(5)]), Ok(fixnum(7)));
+    let thrice = foreign_procedure(Box::new(move |a: &[u64]| {
+        call(closure(inner), inner.entry(), &[twice, a[0]]).unwrap() + fixnum(1)
+    }));
+    assert_eq!(run(&code, &[thrice, fixnum(5)]), Ok(fixnum(8)));
+}
+
 #[test]
 fn poll_gives_fuel() {
     if !native_code() {
