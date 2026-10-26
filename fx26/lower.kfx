@@ -139,8 +139,12 @@
           ((string=? n "nat?") "(lambda ((n int)) (>= n 0))")
           ((string=? n "datum-int?") "(lambda ((d datum)) (int? d))")
           ((string=? n "list") "(vlambda xs xs)")
+          ((string=? n "append")
+           "As a value, a `vsubr` (C220): the lists joined, the last shared."
+           "(vlambda xss (letrec ((go (lambda (ls) (if (null? ls) nil (if (null? (cdr ls)) (car ls) (append (car ls) (go (cdr ls)))))))) (go xss)))")
+          ((string=? n "string-append")
+           "(vlambda ss (letrec ((go (lambda (ls) (if (null? ls) \"\" (string-append (car ls) (go (cdr ls))))))) (go ss)))")
           ((string=? n "native-code?") "(lambda () #f)")
-          ((string=? n "native-convention") "(lambda () (cons \"(target none)\" nil))")
           ((or (string=? n "certify-nat") (string=? n "certify-acyclic")) "(lambda ((x int)) x)")
           ((string=? n "acyclic?")
            "No cycle through its pairs: none met again on the way down to it."
@@ -520,7 +524,8 @@
               ((string=? n "#u") (i-lit (v-unit)))
               ((i64>= (position-of n gs 0) 0) (i-global (position-of n gs 0) n))
               ((or (string=? n "nil") (string=? n "no-pair")) (i-lit (v-nil)))
-              ((i64>= (prim-arity (prim-alias n)) 0) (i-lit (v-prim (prim-alias n) (prim-arity (prim-alias n)))))
+              ((and (i64>= (prim-arity (prim-alias n)) 0) (string=? (standard-written n) ""))
+               (i-lit (v-prim (prim-alias n) (prim-arity (prim-alias n)))))
               ((not (string=? (standard-written n) "")) (lower (read-one (standard-written n)) nil nil))
               (else (begin (error (string-append "the engine: nothing is named " n)) (i-lit (v-unit))))))))
 
@@ -670,6 +675,12 @@
              (cond ((null? xs) (i-lit (v-bool #f)))
                    ((null? (cdr xs)) (lower (car xs) sc gs))
                    (else (i-if (lower (car xs) sc gs) (i-lit (v-bool #t)) (lower-form "or" (cdr xs) e sc gs)))))
+            ((or (string=? h "string-append") (string=? h "append"))
+             "Variadic (C220): called, folded to the right, each argument in
+              turn, the primitive of two; as values, `standard-written`'s."
+             (cond ((null? xs) (i-lit (if (string=? h "append") (v-nil) (v-string ""))))
+                   ((null? (cdr xs)) (lower (car xs) sc gs))
+                   (else (i-call (i-lit (v-prim h 2)) (list (lower (car xs) sc gs) (lower-form h (cdr xs) e sc gs))))))
             ((string=? h "list")
              (if (null? xs)
                  (i-lit (v-nil))

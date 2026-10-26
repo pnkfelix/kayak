@@ -1,6 +1,8 @@
 arith
 arrows
 bignum
+bloblet-generic
+bloblets
 bytes
 caller-place
 cases
@@ -12,10 +14,14 @@ data
 datum
 define-star
 effect-poly
+eqtables
 escapes
+f32
 families
 fixed
+flat-sums
 floats
+frozen-shared
 generative
 imports
 input-nested
@@ -30,6 +36,7 @@ letrena-poly
 lets
 lifted
 lists
+loaded-bloblet-family
 loaded-family
 loaded-select
 module-aborting-val
@@ -38,11 +45,15 @@ module-params
 module-poly-val
 module-strings
 modules
+monitors
 mutable
 names
 null-of-call
 open-types
+paths-narrow
+places
 places-mutual
+processes
 procs
 promises
 recursion

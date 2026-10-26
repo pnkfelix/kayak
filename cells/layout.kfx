@@ -43,6 +43,7 @@
 (define k-icell i64 (int->i64 (with lay kind-icell)))
 (define k-mailbox i64 (int->i64 (with lay kind-mailbox)))
 (define k-native-closure i64 (int->i64 (with lay kind-native-closure)))
+(define k-eqtable i64 (int->i64 (with lay kind-eqtable)))
 
 "A word's fields, a closure's, a global cell's."
 (define f-entry i64 (int->i64 (with lay word-entry)))

@@ -49,6 +49,7 @@ datum/confirm-length.fx
 datum/data-kind.fx
 datum/type-tests.fx
 datum/union.fx
+diverge/cyclic-list-string.fx
 diverge/cyclic-reverse.fx
 diverge/resume.fx
 diverge/spin.fx
@@ -76,6 +77,7 @@ module-files/maker.fx
 module-files/two-exps.fx
 modules/abs-list.fx
 modules/constructors-in-lambda.fx
+modules/convention-read.fx
 modules/counter.fx
 modules/datatype-family.fx
 modules/datatype.fx
@@ -166,10 +168,12 @@ native/blobrefs.fx
 native/bytevector-sum.fx
 native/capture-across-collecting.fx
 native/captures.fx
+native/char-reads.fx
 native/crossing-overflow.fx
 native/dead-slot.fx
 native/deep-control.fx
 native/deep.fx
+native/eqtables.fx
 native/fixed-width-ops.fx
 native/flat-ints.fx
 native/floats.fx
@@ -193,6 +197,7 @@ native/shift-counts.fx
 native/shifts.fx
 native/small-width-ops.fx
 native/standard-ops.fx
+native/string-reads.fx
 native/variadic-standard.fx
 native/whole-captures.fx
 native/wide-frame.fx
@@ -317,6 +322,8 @@ specs/convention.fx
 specs/count-up.fx
 specs/count.fx
 specs/free-loop.fx
+specs/harness-insert-wrong.fx
+specs/harness-insert.fx
 specs/higher-order.fx
 specs/join.fx
 specs/latent-and-ensures.fx
@@ -325,6 +332,8 @@ specs/latent-within.fx
 specs/letrec-loop.fx
 specs/logic-bools-wrong.fx
 specs/logic-bools.fx
+specs/logic-harness-wrong.fx
+specs/logic-harness.fx
 specs/logic-insert.fx
 specs/logic-measure.fx
 specs/logic-nested-wrong.fx

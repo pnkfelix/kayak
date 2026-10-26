@@ -186,6 +186,20 @@ pub fn is_imm_p(w: i64, kind: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_kind(w), kind))
 }
 
+// `f32`s (C220): an immediate, as Fixpt's, a special one past the
+// machine's own (`w-failed` and the rest), its bits above 2^32.
+pub fn f32_word(x: f32) -> i64 {
+    immediate(imm_special(), i64_plus(4294967296i64, int_to_i64(u32_to_int(f32_to_bits(x)))))
+}
+
+pub fn f32_word_p(w: i64) -> bool {
+    (is_imm_p(w, imm_special()) && i64_gt_eq(immediate_value(w), 4294967296i64))
+}
+
+pub fn word_f32(w: i64) -> f32 {
+    bits_to_f32(int_to_u32(i64_to_int(i64_minus(immediate_value(w), 4294967296i64))))
+}
+
 // Objects of a kind.
 pub fn is_obj_p(w: i64, kind: i64) -> bool {
     (pointer_p(w) && i64_eq(obj_kind(w), kind))
@@ -268,6 +282,27 @@ pub fn list_count(mut xs: i64, mut n: i64) -> i64 {
             return n;
         } else {
             (xs, n) = (pair_cdr(xs), i64_plus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// How many elements the list at `fast` has (`n` so far), `slow` half
+/// as far along: -1 if it ends in no `()` or meets itself, a cycle.
+pub fn proper_count(mut slow: i64, mut fast: i64, mut n: i64) -> i64 {
+    loop {
+        if i64_eq(fast, w_nil()) {
+            return n;
+        } else if not(is_obj_p(fast, ob_pair())) {
+            return -1i64;
+        } else if i64_eq(pair_cdr(fast), w_nil()) {
+            return i64_plus(n, 1i64);
+        } else if not(is_obj_p(pair_cdr(fast), ob_pair())) {
+            return -1i64;
+        } else if (i64_gt(n, 0i64) && i64_eq(pair_cdr(slow), pair_cdr(pair_cdr(fast)))) {
+            return -1i64;
+        } else {
+            (slow, fast, n) = (pair_cdr(slow), pair_cdr(pair_cdr(fast)), i64_plus(n, 2i64));
             continue;
         }
     }

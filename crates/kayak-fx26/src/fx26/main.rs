@@ -236,7 +236,7 @@ pub fn load_x(gs: Strings) -> () {
         set(global_name_table(), names)
     };
     set(io_error_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil()))));
-    if (i64_eq(op_make_tag(), list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)) && i64_eq(op_abort(), list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)) && i64_eq(op_capture(), list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)) && i64_eq(op_capture_once(), list_position(str_lit("call-with-oneshot-continuation"), prim_list(), 0i64)) && i64_eq(op_suspend(), list_position(str_lit("abort-with-continuation"), prim_list(), 0i64)) && i64_eq(op_apply(), list_position(str_lit("apply"), prim_list(), 0i64))) {
+    if (i64_eq(op_make_tag(), list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)) && i64_eq(op_abort(), list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)) && i64_eq(op_capture(), list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)) && i64_eq(op_capture_once(), list_position(str_lit("call-with-oneshot-continuation"), prim_list(), 0i64)) && i64_eq(op_cwcc(), list_position(str_lit("cwcc"), prim_list(), 0i64)) && i64_eq(op_suspend(), list_position(str_lit("abort-with-continuation"), prim_list(), 0i64)) && i64_eq(op_apply(), list_position(str_lit("apply"), prim_list(), 0i64))) {
         ()
     } else {
         error(str_lit("the engine: the control primitives' numbers are not their places in prim-list"))

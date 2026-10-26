@@ -91,6 +91,14 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         i64_plus(i64_plus(fixnum_value(a), 1i64), i64_plus(list_count(pair_cdr(args), 0i64), 2i64))
     } else if i64_eq(op, 207i64) {
         4096i64
+    } else if i64_eq(op, 212i64) {
+        i64_plus(fixnum_value(b), 8i64)
+    } else if i64_eq(op, 222i64) {
+        8192i64
+    } else if i64_eq(op, 223i64) {
+        24i64
+    } else if i64_eq(op, 227i64) {
+        i64_plus(i64_star(2i64, obj_size(obj_ref(a, 2i64))), 16i64)
     } else if i64_gt_eq(op, fixed_base()) {
         8i64
     } else {
@@ -104,6 +112,84 @@ pub fn op_need(op: i64, args: i64) -> i64 {
 pub fn refused_op_x(message: Str) -> i64 {
     failed_with_x(message);
     0i64
+}
+
+// `f32`'s operation `i` (`f32-names`) on `a` and `b` (C220): IEEE's,
+// binary32, as KFX's own `f32`.
+pub fn f32_op_word(i: i64, a: i64, b: i64) -> i64 {
+    if i64_eq(i, 24i64) {
+        f32_word(int_to_f32(word_int(a)))
+    } else if i64_eq(i, 25i64) {
+        f32_word(f64_to_f32(word_real(a)))
+    } else if i64_eq(i, 26i64) {
+        bool_word(f32_word_p(a))
+    } else if i64_eq(i, 28i64) {
+        f32_word(bits_to_f32(int_to_u32(word_int(a))))
+    } else if not(f32_word_p(a)) {
+        refused_op_x(str_lit("an f32 expected"))
+    } else if i64_gt_eq(i, 11i64) {
+        let x = word_f32(a);
+        if i64_eq(i, 11i64) {
+            f32_word(f32_abs(x))
+        } else if i64_eq(i, 12i64) {
+            f32_word(f32_neg(x))
+        } else if i64_eq(i, 13i64) {
+            f32_word(f32_sqrt(x))
+        } else if i64_eq(i, 14i64) {
+            f32_word(f32_floor(x))
+        } else if i64_eq(i, 15i64) {
+            f32_word(f32_ceiling(x))
+        } else if i64_eq(i, 16i64) {
+            f32_word(f32_truncate(x))
+        } else if i64_eq(i, 17i64) {
+            f32_word(f32_round(x))
+        } else if i64_eq(i, 18i64) {
+            bool_word(f32_nan_p(x))
+        } else if i64_eq(i, 19i64) {
+            bool_word(f32_infinite_p(x))
+        } else if i64_eq(i, 20i64) {
+            bool_word(f32_finite_p(x))
+        } else if i64_eq(i, 21i64) {
+            string_word_x(f32_to_string(x))
+        } else if i64_eq(i, 22i64) {
+            if (f32_finite_p(x) && f32_eq(f32_truncate(x), x)) {
+                int_word_x(f32_to_int(x))
+            } else {
+                refused_op_x(str_lit("f32->int: not an integer"))
+            }
+        } else if i64_eq(i, 23i64) {
+            real_word_x(f32_to_f64(x))
+        } else {
+            int_word_x(u32_to_int(f32_to_bits(x)))
+        }
+    } else if not(f32_word_p(b)) {
+        refused_op_x(str_lit("an f32 expected"))
+    } else {
+        let (x, y) = (word_f32(a), word_f32(b));
+        if i64_eq(i, 0i64) {
+            f32_word(f32_plus(x, y))
+        } else if i64_eq(i, 1i64) {
+            f32_word(f32_minus(x, y))
+        } else if i64_eq(i, 2i64) {
+            f32_word(f32_star(x, y))
+        } else if i64_eq(i, 3i64) {
+            f32_word(f32_slash(x, y))
+        } else if i64_eq(i, 4i64) {
+            f32_word(f32_min(x, y))
+        } else if i64_eq(i, 5i64) {
+            f32_word(f32_max(x, y))
+        } else if i64_eq(i, 6i64) {
+            bool_word(f32_lt(x, y))
+        } else if i64_eq(i, 7i64) {
+            bool_word(f32_lt_eq(x, y))
+        } else if i64_eq(i, 8i64) {
+            bool_word(f32_gt(x, y))
+        } else if i64_eq(i, 9i64) {
+            bool_word(f32_gt_eq(x, y))
+        } else {
+            bool_word(f32_eq(x, y))
+        }
+    }
 }
 
 pub fn char_code_p(n: i64) -> bool {
@@ -203,7 +289,7 @@ pub fn blob_get(r: i64, code: i64) -> i64 {
     } else if i64_eq(code, 2i64) {
         real_word_x(bits_to_f64(int_to_u64(u)))
     } else if i64_eq(code, 5i64) {
-        refused_op_x(str_lit("the engine: an f32, which it has not yet"))
+        f32_word(bits_to_f32(int_to_u32(u)))
     } else if (i64_eq(code, 3i64) || i64_eq(code, 7i64)) {
         int_word_x(signed_from(u, n))
     } else {
@@ -216,15 +302,13 @@ pub fn blob_set_x(r: i64, code: i64, w: i64) -> i64 {
         i64_to_int(word_i64(w))
     } else if i64_eq(code, 2i64) {
         u64_to_int(f64_to_bits(word_real(w)))
+    } else if i64_eq(code, 5i64) {
+        u32_to_int(f32_to_bits(word_f32(w)))
     } else {
         word_int(w)
     };
-    if i64_eq(code, 5i64) {
-        refused_op_x(str_lit("the engine: an f32, which it has not yet"))
-    } else {
-        bytes_written_x(blobref_bytes(r), blob_at(r), scalar_width(code), x);
-        w_unit()
-    }
+    bytes_written_x(blobref_bytes(r), blob_at(r), scalar_width(code), x);
+    w_unit()
 }
 
 /// A flat array's length: `len`, or, to the end of the suffix
@@ -258,6 +342,142 @@ pub fn bloblet_x(n: i64, fields: i64) -> i64 {
     obj_set_x(p, 0i64, bytes);
     fields_set_x(p, 1i64, fields);
     p
+}
+
+// Tables keyed by identity (C220), as Fixpt's `eqtable.rs` (Larceny's
+// design, one stamp): hashed by address, every entry rehashed by an
+// operation that finds a collection since, relinked, nothing allocated.
+pub fn eq_bucket(key: i64, n: i64) -> i64 {
+    let z = i64_xor(i64_shr(key, int_lit(2)), i64_shr(key, int_lit(11)));
+    i64_remainder(i64_and(z, 1152921504606846975i64), n)
+}
+
+pub fn eqtable_made_x() -> i64 {
+    let bs = alloc_x(ob_array(), 8i64);
+    let t = alloc_x(ob_eqtable(), 3i64);
+    fill_x(bs, 0i64, 8i64, w_false());
+    obj_set_x(t, 0i64, fixnum(get(collections())));
+    obj_set_x(t, 1i64, fixnum(0i64));
+    obj_set_x(t, 2i64, bs);
+    t
+}
+
+pub fn chain_relinked_x(mut e: i64, mut bs: i64) -> () {
+    loop {
+        if i64_eq(e, w_false()) {
+            return ();
+        } else {
+            let (next, b) = (obj_ref(e, 2i64), eq_bucket(obj_ref(e, 0i64), obj_size(bs)));
+            obj_set_x(e, 2i64, obj_ref(bs, b));
+            obj_set_x(bs, b, e);
+            e = next;
+            continue;
+        }
+    }
+}
+
+pub fn buckets_relinked_x(mut old: i64, mut i: i64, mut bs: i64) -> () {
+    loop {
+        if i64_gt_eq(i, obj_size(old)) {
+            return ();
+        } else {
+            let e = obj_ref(old, i);
+            obj_set_x(old, i, w_false());
+            chain_relinked_x(e, bs);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Every entry of `t` linked into `bs` by its key's address now.
+pub fn eqtable_relinked_x(t: i64, bs: i64) -> () {
+    buckets_relinked_x(obj_ref(t, 2i64), 0i64, bs);
+    obj_set_x(t, 2i64, bs);
+    obj_set_x(t, 0i64, fixnum(get(collections())))
+}
+
+pub fn eqtable_fresh_x(t: i64) -> () {
+    if i64_eq(obj_ref(t, 0i64), fixnum(get(collections()))) {
+        ()
+    } else {
+        eqtable_relinked_x(t, obj_ref(t, 2i64))
+    }
+}
+
+/// The entry for `key` from `e` on, or `#f`.
+pub fn chain_find(mut e: i64, mut key: i64) -> i64 {
+    loop {
+        if i64_eq(e, w_false()) {
+            return w_false();
+        } else if i64_eq(obj_ref(e, 0i64), key) {
+            return e;
+        } else {
+            e = obj_ref(e, 2i64);
+            continue;
+        }
+    }
+}
+
+pub fn eq_entry(t: i64, key: i64) -> i64 {
+    eqtable_fresh_x(t);
+    let bs = obj_ref(t, 2i64);
+    chain_find(obj_ref(bs, eq_bucket(key, obj_size(bs))), key)
+}
+
+pub fn eq_set_x(t: i64, key: i64, v: i64) -> () {
+    let e = eq_entry(t, key);
+    if not(i64_eq(e, w_false())) {
+        obj_set_x(e, 1i64, v)
+    } else {
+        let (n, size) = (i64_plus(fixnum_value(obj_ref(t, 1i64)), 1i64), obj_size(obj_ref(t, 2i64)));
+        obj_set_x(t, 1i64, fixnum(n));
+        if i64_gt(n, i64_star(2i64, size)) {
+            let bigger = alloc_x(ob_array(), i64_star(2i64, size));
+            fill_x(bigger, 0i64, i64_star(2i64, size), w_false());
+            eqtable_relinked_x(t, bigger)
+        } else {
+            ()
+        };
+        let bs = obj_ref(t, 2i64);
+        let b = eq_bucket(key, obj_size(bs));
+        let x = alloc_x(ob_array(), 3i64);
+        obj_set_x(x, 0i64, key);
+        obj_set_x(x, 1i64, v);
+        obj_set_x(x, 2i64, obj_ref(bs, b));
+        obj_set_x(bs, b, x)
+    }
+}
+
+/// The entry for `key` after `before` taken out of its chain.
+pub fn chain_without_x(mut before: i64, mut key: i64) -> () {
+    loop {
+        let e = obj_ref(before, 2i64);
+        if i64_eq(e, w_false()) {
+            return ();
+        } else if i64_eq(obj_ref(e, 0i64), key) {
+            return obj_set_x(before, 2i64, obj_ref(e, 2i64));
+        } else {
+            before = e;
+            continue;
+        }
+    }
+}
+
+pub fn eq_delete_x(t: i64, key: i64) -> () {
+    if i64_eq(eq_entry(t, key), w_false()) {
+        ()
+    } else {
+        let bs = obj_ref(t, 2i64);
+        let b = eq_bucket(key, obj_size(bs));
+        let first = obj_ref(bs, b);
+        if i64_eq(obj_ref(first, 0i64), key) {
+            obj_set_x(bs, b, obj_ref(first, 2i64))
+        } else {
+            chain_without_x(first, key)
+        };
+        obj_set_x(t, 1i64, fixnum(i64_minus(fixnum_value(obj_ref(t, 1i64)), 1i64)))
+    }
 }
 
 pub fn apply_op(op: i64, args: i64) -> i64 {
@@ -545,7 +765,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 117i64) {
         bool_word((is_imm_p(a, imm_symbol()) || i64_eq(a, w_unit())))
     } else if i64_eq(op, 118i64) {
-        bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flat()) || is_obj_p(a, ob_bloblet())))
+        bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flat()) || is_obj_p(a, ob_flatx()) || is_obj_p(a, ob_bloblet())))
     } else if i64_eq(op, 119i64) {
         bool_word((is_obj_p(a, ob_proc()) || is_obj_p(a, ob_ctor()) || is_obj_p(a, ob_cont()) || is_imm_p(a, imm_prim())))
     } else if i64_eq(op, 120i64) {
@@ -653,6 +873,64 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         bool_word(is_obj_p(a, ob_vector()))
     } else if i64_eq(op, 175i64) {
         list_array_x(ob_vector(), a)
+    } else if i64_eq(op, 212i64) {
+        if i64_lt(fixnum_value(b), 0i64) {
+            refused_op_x(str_lit("make-flatarray: a negative length"))
+        } else {
+            let p = alloc_x(ob_flatx(), i64_plus(fixnum_value(b), 1i64));
+            fill_x(p, 1i64, i64_plus(fixnum_value(b), 1i64), c);
+            obj_set_x(p, 0i64, a);
+            p
+        }
+    } else if (i64_eq(op, 213i64) || i64_eq(op, 214i64)) {
+        let i = fixnum_value(b);
+        if (i64_lt(i, 0i64) || i64_gt_eq(i, i64_minus(obj_size(a), 1i64))) {
+            refused_op_x(str_lit("flatarray: index out of range"))
+        } else if i64_eq(op, 213i64) {
+            obj_ref(a, i64_plus(i, 1i64))
+        } else {
+            obj_set_x(a, i64_plus(i, 1i64), c);
+            w_unit()
+        }
+    } else if i64_eq(op, 215i64) {
+        fixnum(i64_minus(obj_size(a), 1i64))
+    } else if i64_eq(op, 222i64) {
+        strings_word_x(native_convention())
+    } else if i64_eq(op, 223i64) {
+        eqtable_made_x()
+    } else if (i64_eq(op, 224i64) || i64_eq(op, 225i64)) {
+        let e = eq_entry(a, b);
+        if i64_eq(op, 225i64) {
+            bool_word(not(i64_eq(e, w_false())))
+        } else if i64_eq(e, w_false()) {
+            c
+        } else {
+            obj_ref(e, 1i64)
+        }
+    } else if i64_eq(op, 226i64) {
+        obj_ref(a, 1i64)
+    } else if i64_eq(op, 227i64) {
+        eq_set_x(a, b, c);
+        w_unit()
+    } else if i64_eq(op, 228i64) {
+        eq_delete_x(a, b);
+        w_unit()
+    } else if (i64_gt_eq(op, 229i64) && i64_lt_eq(op, 232i64)) {
+        fixnum(0i64)
+    } else if i64_eq(op, 216i64) {
+        fixnum(4i64)
+    } else if i64_eq(op, 217i64) {
+        fixnum(4i64)
+    } else if i64_eq(op, 218i64) {
+        fixnum(8i64)
+    } else if i64_eq(op, 219i64) {
+        fixnum(8i64)
+    } else if i64_eq(op, 220i64) {
+        fixnum(4i64)
+    } else if i64_eq(op, 221i64) {
+        fixnum(8i64)
+    } else if i64_gt_eq(op, f32_base()) {
+        f32_op_word(i64_minus(op, f32_base()), a, b)
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
     } else if i64_eq(op, 176i64) {

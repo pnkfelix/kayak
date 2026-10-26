@@ -372,6 +372,10 @@ pub fn op_capture_once() -> i64 {
     210i64
 }
 
+pub fn op_cwcc() -> i64 {
+    211i64
+}
+
 pub fn op_suspend() -> i64 {
     138i64
 }
@@ -1071,8 +1075,16 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
     } else if is_obj_p(f, ob_cont()) {
         let top = obj_ref(f, 0i64);
         let n = fixnum_value(obj_ref(f, 1i64));
-        let room = frames_room(top, n, 0i64);
-        if i64_lt(heap_room(), i64_plus(room, reserve())) {
+        let room = if i64_lt(n, 0i64) {
+            the::<i64>(0i64)
+        } else {
+            frames_room(top, n, 0i64)
+        };
+        if i64_lt(n, 0i64) {
+            // A whole continuation (`cwcc`): the frames are never changed,
+            // so the run goes on at them, the current ones dropped.
+            run(1i64, 0i64, 0i64, top, pair_car(args), 0i64, 0i64)
+        } else if i64_lt(heap_room(), i64_plus(room, reserve())) {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
         } else if (truthy_p(obj_ref(f, 3i64)) && truthy_p(obj_ref(f, 2i64))) {
             failed_with_x(if i64_eq(obj_ref(f, 3i64), fixnum(2i64)) {
@@ -1124,11 +1136,17 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         } else if i64_eq(op, op_apply()) {
             // `(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
             // FX-26 copies it (a fresh list, which a `vlambda` may keep).
-            let need = i64_star(3i64, i64_plus(list_count(pair_car(pair_cdr(args)), 0i64), 1i64));
-            if i64_lt(heap_room(), i64_plus(need, reserve())) {
+            let xs = pair_car(pair_cdr(args));
+            let n = proper_count(xs, xs, 0i64);
+            let need = i64_star(3i64, i64_plus(n, 1i64));
+            if i64_lt(n, 0i64) {
+                // A list made cyclic, or improper: Fixpt's failure (C220).
+                failed_with_x(str_lit("expected a list"));
+                failed_at(node, env, k)
+            } else if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(pair_car(pair_cdr(args)), w_nil()), w_nil()))
+                run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(xs, w_nil()), w_nil()))
             }
         } else if i64_eq(op, op_abort()) {
             abort_to(tag_number(pair_car(args)), k, pair_car(pair_cdr(args)))
@@ -1152,6 +1170,15 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 });
                 run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
             }
+        } else if i64_eq(op, op_cwcc()) {
+            // `(cwcc f)` (C220): `f` given the whole continuation, every
+            // frame (`n` -1), to be resumed any number of times.
+            let c = alloc_x(ob_cont(), 4i64);
+            obj_set_x(c, 0i64, k);
+            obj_set_x(c, 1i64, fixnum(-1i64));
+            obj_set_x(c, 2i64, w_false());
+            obj_set_x(c, 3i64, w_false());
+            run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
         } else if i64_eq(op, op_suspend()) {
             let tag = tag_number(pair_car(args));
             let n = frames_to(k, tag, 0i64);

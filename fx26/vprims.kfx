@@ -45,6 +45,10 @@
         ((i64= op 175) (i64+ (list-count a 0) 1))
         ((i64= op 187) (i64+ (i64+ (fixnum-value a) 1) (i64+ (list-count (pair-cdr args) 0) 2)))
         ((i64= op 207) 4096)
+        ((i64= op 212) (i64+ (fixnum-value b) 8))
+        ((i64= op 222) 8192)
+        ((i64= op 223) 24)
+        ((i64= op 227) (i64+ (i64* 2 (obj-size (obj-ref a 2))) 16))
         ((i64>= op fixed-base) 8)
         (else 64)))))
 
@@ -53,6 +57,48 @@
  the REPL, the program's own computation, which nothing catches."
 (define refused-op! (subr hp (string) i64)
   (lambda (message) (begin (failed-with! message) 0)))
+
+"`f32`'s operation `i` (`f32-names`) on `a` and `b` (C220): IEEE's,
+ binary32, as KFX's own `f32`."
+(define f32-op-word (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
+  (lambda (i a b)
+    (cond
+      ((i64= i 24) (f32-word (int->f32 (word-int a))))
+      ((i64= i 25) (f32-word (f64->f32 (word-real a))))
+      ((i64= i 26) (bool-word (f32-word? a)))
+      ((i64= i 28) (f32-word (bits->f32 (int->u32 (word-int a)))))
+      ((not (f32-word? a)) (refused-op! "an f32 expected"))
+      ((i64>= i 11)
+       (let ((x (word-f32 a)))
+         (cond ((i64= i 11) (f32-word (f32-abs x)))
+               ((i64= i 12) (f32-word (f32-neg x)))
+               ((i64= i 13) (f32-word (f32-sqrt x)))
+               ((i64= i 14) (f32-word (f32-floor x)))
+               ((i64= i 15) (f32-word (f32-ceiling x)))
+               ((i64= i 16) (f32-word (f32-truncate x)))
+               ((i64= i 17) (f32-word (f32-round x)))
+               ((i64= i 18) (bool-word (f32-nan? x)))
+               ((i64= i 19) (bool-word (f32-infinite? x)))
+               ((i64= i 20) (bool-word (f32-finite? x)))
+               ((i64= i 21) (string-word! (f32->string x)))
+               ((i64= i 22)
+                (if (and (f32-finite? x) (f32= (f32-truncate x) x)) (int-word! (f32->int x)) (refused-op! "f32->int: not an integer")))
+               ((i64= i 23) (real-word! (f32->f64 x)))
+               (else (int-word! (u32->int (f32->bits x)))))))
+      ((not (f32-word? b)) (refused-op! "an f32 expected"))
+      (else
+       (let ((x (word-f32 a)) (y (word-f32 b)))
+         (cond ((i64= i 0) (f32-word (f32+ x y)))
+               ((i64= i 1) (f32-word (f32- x y)))
+               ((i64= i 2) (f32-word (f32* x y)))
+               ((i64= i 3) (f32-word (f32/ x y)))
+               ((i64= i 4) (f32-word (f32-min x y)))
+               ((i64= i 5) (f32-word (f32-max x y)))
+               ((i64= i 6) (bool-word (f32< x y)))
+               ((i64= i 7) (bool-word (f32<= x y)))
+               ((i64= i 8) (bool-word (f32> x y)))
+               ((i64= i 9) (bool-word (f32>= x y)))
+               (else (bool-word (f32= x y)))))))))
 
 (define char-code? (subr kfx (i64) bool)
   (lambda (n) (and (i64>= n 0) (i64<= n 1114111) (not (and (i64>= n 55296) (i64<= n 57343))))))
@@ -104,7 +150,7 @@
     (let* ((n (scalar-width code)) (u (bytes-read (blobref-bytes r) (blob-at r) n 0)))
       (cond ((i64= code 0) (i64-word! (int->i64 (signed-from u 8))))
             ((i64= code 2) (real-word! (bits->f64 (int->u64 u))))
-            ((i64= code 5) (refused-op! "the engine: an f32, which it has not yet"))
+            ((i64= code 5) (f32-word (bits->f32 (int->u32 u))))
             ((or (i64= code 3) (i64= code 7)) (int-word! (signed-from u n)))
             (else (int-word! u))))))
 
@@ -112,10 +158,9 @@
   (lambda (r code w)
     (let ((x (cond ((i64= code 0) (i64->int (word-i64 w)))
                    ((i64= code 2) (u64->int (f64->bits (word-real w))))
+                   ((i64= code 5) (u32->int (f32->bits (word-f32 w))))
                    (else (word-int w)))))
-      (if (i64= code 5)
-          (refused-op! "the engine: an f32, which it has not yet")
-          (begin (bytes-written! (blobref-bytes r) (blob-at r) (scalar-width code) x) w-unit)))))
+      (begin (bytes-written! (blobref-bytes r) (blob-at r) (scalar-width code) x) w-unit))))
 
 (define blob-length (subr hp (i64 i64 i64) i64)
   (lambda (r size len)
@@ -137,6 +182,88 @@
     (let* ((bytes (filled-raw! ob-bytes n 0))
            (p (alloc! ob-bloblet (i64+ (list-count fields 0) 1))))
       (begin (obj-set! p 0 bytes) (fields-set! p 1 fields) p))))
+
+"Tables keyed by identity (C220), as Fixpt's `eqtable.rs` (Larceny's
+ design, one stamp): hashed by address, every entry rehashed by an
+ operation that finds a collection since, relinked, nothing allocated."
+(define eq-bucket (subr kfx (i64 i64) i64)
+  (lambda (key n)
+    (let ((z (i64-xor (i64-shr key 2) (i64-shr key 11))))
+      (i64-remainder (i64-and z 1152921504606846975) n))))
+
+(define eqtable-made! (subr hp () i64)
+  (lambda ()
+    (let* ((bs (alloc! ob-array 8)) (t (alloc! ob-eqtable 3)))
+      (begin (fill! bs 0 8 w-false)
+             (obj-set! t 0 (fixnum (get collections))) (obj-set! t 1 (fixnum 0)) (obj-set! t 2 bs)
+             t))))
+
+(define-rec
+  (chain-relinked! (subr hp (i64 i64) unit)
+    (lambda (e bs)
+      (if (i64= e w-false)
+          #u
+          (let ((next (obj-ref e 2)) (b (eq-bucket (obj-ref e 0) (obj-size bs))))
+            (begin (obj-set! e 2 (obj-ref bs b)) (obj-set! bs b e) (chain-relinked! next bs))))))
+  (buckets-relinked! (subr hp (i64 i64 i64) unit)
+    (lambda (old i bs)
+      (if (i64>= i (obj-size old))
+          #u
+          (let ((e (obj-ref old i)))
+            (begin (obj-set! old i w-false) (chain-relinked! e bs) (buckets-relinked! old (i64+ i 1) bs)))))))
+
+(define eqtable-relinked! (subr hp (i64 i64) unit)
+  (lambda (t bs)
+    "Every entry of `t` linked into `bs` by its key's address now."
+    (begin (buckets-relinked! (obj-ref t 2) 0 bs) (obj-set! t 2 bs) (obj-set! t 0 (fixnum (get collections))))))
+
+(define eqtable-fresh! (subr hp (i64) unit)
+  (lambda (t) (if (i64= (obj-ref t 0) (fixnum (get collections))) #u (eqtable-relinked! t (obj-ref t 2)))))
+
+(define-rec
+  (chain-find (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+    (lambda (e key)
+      "The entry for `key` from `e` on, or `#f`."
+      (cond ((i64= e w-false) w-false)
+            ((i64= (obj-ref e 0) key) e)
+            (else (chain-find (obj-ref e 2) key))))))
+
+(define eq-entry (subr hp (i64 i64) i64)
+  (lambda (t key)
+    (begin (eqtable-fresh! t)
+           (let ((bs (obj-ref t 2))) (chain-find (obj-ref bs (eq-bucket key (obj-size bs))) key)))))
+
+(define eq-set! (subr hp (i64 i64 i64) unit)
+  (lambda (t key v)
+    (let ((e (eq-entry t key)))
+      (if (not (i64= e w-false))
+          (obj-set! e 1 v)
+          (let ((n (i64+ (fixnum-value (obj-ref t 1)) 1)) (size (obj-size (obj-ref t 2))))
+            (begin
+              (obj-set! t 1 (fixnum n))
+              (if (i64> n (i64* 2 size))
+                  (let ((bigger (alloc! ob-array (i64* 2 size)))) (begin (fill! bigger 0 (i64* 2 size) w-false) (eqtable-relinked! t bigger)))
+                  #u)
+              (let* ((bs (obj-ref t 2)) (b (eq-bucket key (obj-size bs))) (x (alloc! ob-array 3)))
+                (begin (obj-set! x 0 key) (obj-set! x 1 v) (obj-set! x 2 (obj-ref bs b)) (obj-set! bs b x)))))))))
+
+(define-rec
+  (chain-without! (subr hp (i64 i64) unit)
+    (lambda (before key)
+      "The entry for `key` after `before` taken out of its chain."
+      (let ((e (obj-ref before 2)))
+        (cond ((i64= e w-false) #u)
+              ((i64= (obj-ref e 0) key) (obj-set! before 2 (obj-ref e 2)))
+              (else (chain-without! e key)))))))
+
+(define eq-delete! (subr hp (i64 i64) unit)
+  (lambda (t key)
+    (if (i64= (eq-entry t key) w-false)
+        #u
+        (let* ((bs (obj-ref t 2)) (b (eq-bucket key (obj-size bs))) (first (obj-ref bs b)))
+          (begin
+            (if (i64= (obj-ref first 0) key) (obj-set! bs b (obj-ref first 2)) (chain-without! first key))
+            (obj-set! t 1 (fixnum (i64- (fixnum-value (obj-ref t 1)) 1))))))))
 
 (define apply-op (subr vm (i64 i64) i64)
   (lambda (op args)
@@ -272,7 +399,7 @@
         ((i64= op 115) (bool-word (is-imm? a imm-bool)))
         ((i64= op 116) (bool-word (is-imm? a imm-char)))
         ((i64= op 117) (bool-word (or (is-imm? a imm-symbol) (i64= a w-unit))))
-        ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-bloblet))))
+        ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-flatx) (is-obj? a ob-bloblet))))
         ((i64= op 119) (bool-word (or (is-obj? a ob-proc) (is-obj? a ob-ctor) (is-obj? a ob-cont) (is-imm? a imm-prim))))
         ((i64= op 120) (bool-word (is-obj? a ob-real)))
         ((i64= op 121) (bool-word (is-obj? a ob-ref)))
@@ -322,6 +449,28 @@
         ((i64= op 169) (one-word! ob-ref (fixnum 0)))
         ((i64= op 174) (bool-word (is-obj? a ob-vector)))
         ((i64= op 175) (list-array! ob-vector a))
+        ((i64= op 212)
+         (if (i64< (fixnum-value b) 0)
+             (refused-op! "make-flatarray: a negative length")
+             (let ((p (alloc! ob-flatx (i64+ (fixnum-value b) 1)))) (begin (fill! p 1 (i64+ (fixnum-value b) 1) c) (obj-set! p 0 a) p))))
+        ((or (i64= op 213) (i64= op 214))
+         (let ((i (fixnum-value b)))
+           (cond ((or (i64< i 0) (i64>= i (i64- (obj-size a) 1))) (refused-op! "flatarray: index out of range"))
+                 ((i64= op 213) (obj-ref a (i64+ i 1)))
+                 (else (begin (obj-set! a (i64+ i 1) c) w-unit)))))
+        ((i64= op 215) (fixnum (i64- (obj-size a) 1)))
+        ((i64= op 222) (strings-word! (native-convention)))
+        ((i64= op 223) (eqtable-made!))
+        ((or (i64= op 224) (i64= op 225))
+         (let ((e (eq-entry a b)))
+           (cond ((i64= op 225) (bool-word (not (i64= e w-false)))) ((i64= e w-false) c) (else (obj-ref e 1)))))
+        ((i64= op 226) (obj-ref a 1))
+        ((i64= op 227) (begin (eq-set! a b c) w-unit))
+        ((i64= op 228) (begin (eq-delete! a b) w-unit))
+        ((and (i64>= op 229) (i64<= op 232)) (fixnum 0))
+        ((i64= op 216) (fixnum 4)) ((i64= op 217) (fixnum 4)) ((i64= op 218) (fixnum 8))
+        ((i64= op 219) (fixnum 8)) ((i64= op 220) (fixnum 4)) ((i64= op 221) (fixnum 8))
+        ((i64>= op f32-base) (f32-op-word (i64- op f32-base) a b))
         ((i64>= op fixed-base) (fixed-op-word (name-of-number (i64- op fixed-base)) a b))
         ((i64= op 176) (real-word! (f64-exp (word-real a))))
         ((i64= op 177) (real-word! (f64-log (word-real a))))

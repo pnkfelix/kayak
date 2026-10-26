@@ -47,6 +47,8 @@ pub fn char_shown(c: char) -> Str {
 pub fn show_word(w: i64) -> Str {
     if fixnum_p(w) {
         i64_to_string(fixnum_value(w))
+    } else if f32_word_p(w) {
+        f32_to_string(word_f32(w))
     } else if immediate_p(w) {
         let kind = immediate_kind(w);
         if i64_eq(kind, imm_char()) {
@@ -94,6 +96,12 @@ pub fn show_word(w: i64) -> Str {
             string_append(str_lit("#u8("), string_append(bytes_shown(w, 0i64), str_lit(")")))
         } else if i64_eq(kind, ob_ctor()) {
             name_of_number(fixnum_value(obj_ref(w, 0i64)))
+        } else if i64_eq(kind, ob_cont()) {
+            str_lit("#<continuation>")
+        } else if i64_eq(kind, ob_eqtable()) {
+            string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(obj_ref(w, 1i64))), str_lit(">")))
+        } else if i64_eq(kind, ob_flatx()) {
+            string_append(str_lit("#<flat-array 2 fields "), string_append(i64_to_string(i64_star(fixnum_value(obj_ref(w, 0i64)), i64_minus(obj_size(w), 1i64))), str_lit(" bytes>")))
         } else {
             str_lit("#<closure>")
         }

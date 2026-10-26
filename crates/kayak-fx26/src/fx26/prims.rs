@@ -152,6 +152,26 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_eq_p(n, str_lit("call-with-oneshot-continuation")) {
         2i64
+    } else if string_eq_p(n, str_lit("cwcc")) {
+        1i64
+    } else if string_eq_p(n, str_lit("native-convention")) {
+        0i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-eqtable"), kayak_rt::heap_cons(str_lit("eqtable-count"), kayak_rt::nil()))) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eqtable-has?"), kayak_rt::heap_cons(str_lit("eqtable-delete!"), kayak_rt::nil()))) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eqtable-ref"), kayak_rt::heap_cons(str_lit("eqtable-set!"), kayak_rt::nil()))) {
+        3i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("pair-identity"), kayak_rt::heap_cons(str_lit("ref-identity"), kayak_rt::heap_cons(str_lit("array-identity"), kayak_rt::heap_cons(str_lit("icell-identity"), kayak_rt::nil()))))) {
+        0i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::nil()))) {
+        3i64
+    } else if string_eq_p(n, str_lit("flatarray-ref")) {
+        2i64
+    } else if string_eq_p(n, str_lit("flatarray-length")) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::nil()))))))) {
+        0i64
     } else if string_eq_p(n, str_lit("%blobref-label")) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::nil()))) {
@@ -166,6 +186,10 @@ pub fn prim_arity(n: Str) -> i64 {
         0i64
     } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
         fixed_arity(fixed_op(n))
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("f32+"), kayak_rt::heap_cons(str_lit("f32-"), kayak_rt::heap_cons(str_lit("f32*"), kayak_rt::heap_cons(str_lit("f32/"), kayak_rt::heap_cons(str_lit("f32-min"), kayak_rt::heap_cons(str_lit("f32-max"), kayak_rt::heap_cons(str_lit("f32<"), kayak_rt::heap_cons(str_lit("f32<="), kayak_rt::heap_cons(str_lit("f32>"), kayak_rt::heap_cons(str_lit("f32>="), kayak_rt::heap_cons(str_lit("f32="), kayak_rt::nil())))))))))))) {
+        2i64
+    } else if (has_prefix_p(n, str_lit("f32")) || string_member_p(n, kayak_rt::heap_cons(str_lit("int->f32"), kayak_rt::heap_cons(str_lit("f64->f32"), kayak_rt::heap_cons(str_lit("bits->f32"), kayak_rt::nil()))))) {
+        1i64
     } else if has_prefix_p(n, str_lit("f64")) {
         if string_member_p(n, kayak_rt::heap_cons(str_lit("f64-abs"), kayak_rt::heap_cons(str_lit("f64-neg"), kayak_rt::heap_cons(str_lit("f64-sqrt"), kayak_rt::heap_cons(str_lit("f64-floor"), kayak_rt::heap_cons(str_lit("f64-ceiling"), kayak_rt::heap_cons(str_lit("f64-truncate"), kayak_rt::heap_cons(str_lit("f64-round"), kayak_rt::heap_cons(str_lit("f64-exp"), kayak_rt::heap_cons(str_lit("f64-log"), kayak_rt::heap_cons(str_lit("f64-sin"), kayak_rt::heap_cons(str_lit("f64-cos"), kayak_rt::heap_cons(str_lit("f64-tan"), kayak_rt::heap_cons(str_lit("f64-asin"), kayak_rt::heap_cons(str_lit("f64-acos"), kayak_rt::heap_cons(str_lit("f64-atan"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("f64->int"), kayak_rt::heap_cons(str_lit("f64-nan?"), kayak_rt::heap_cons(str_lit("f64-infinite?"), kayak_rt::heap_cons(str_lit("f64-finite?"), kayak_rt::nil()))))))))))))))))))))) {
             1i64

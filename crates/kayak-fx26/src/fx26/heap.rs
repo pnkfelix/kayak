@@ -111,6 +111,20 @@ pub fn ob_blobref() -> i64 {
     15i64
 }
 
+// An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
+// then its elements, words (the engine's values are its own, not raw).
+pub fn ob_flatx() -> i64 {
+    18i64
+}
+
+// A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
+// collections when its keys were last hashed, its count of entries, its
+// buckets (an `ob-array` of chains); an entry an `ob-array`, its key,
+// value and next entry (`#f` at a chain's end).
+pub fn ob_eqtable() -> i64 {
+    19i64
+}
+
 // Kinds from here on hold raw words, not values: not scanned.
 pub fn ob_raw() -> i64 {
     32i64

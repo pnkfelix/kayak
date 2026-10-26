@@ -92,6 +92,15 @@
 (define symbol-word (subr kfx (i64) i64) (lambda (n) (immediate imm-symbol n)))
 (define is-imm? (subr kfx (i64 i64) bool) (lambda (w kind) (and (immediate? w) (i64= (immediate-kind w) kind))))
 
+"`f32`s (C220): an immediate, as Fixpt's, a special one past the
+ machine's own (`w-failed` and the rest), its bits above 2^32."
+(define f32-word (subr kfx (f32) i64)
+  (lambda (x) (immediate imm-special (i64+ 4294967296 (int->i64 (u32->int (f32->bits x)))))))
+(define f32-word? (subr kfx (i64) bool)
+  (lambda (w) (and (is-imm? w imm-special) (i64>= (immediate-value w) 4294967296))))
+(define word-f32 (subr kfx (i64) f32)
+  (lambda (w) (bits->f32 (int->u32 (i64->int (i64- (immediate-value w) 4294967296))))))
+
 "Objects of a kind."
 (define is-obj? (subr (maxeff (read @globals) spin (read @h)) (i64 i64) bool)
   (lambda (w kind) (and (pointer? w) (i64= (obj-kind w) kind))))
@@ -135,6 +144,18 @@
 (define-rec
   (list-count (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
     (lambda (xs n) (if (i64= xs w-nil) n (list-count (pair-cdr xs) (i64+ n 1))))))
+
+(define-rec
+  (proper-count (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (slow fast n)
+      "How many elements the list at `fast` has (`n` so far), `slow` half
+       as far along: -1 if it ends in no `()` or meets itself, a cycle."
+      (cond ((i64= fast w-nil) n)
+            ((not (is-obj? fast ob-pair)) -1)
+            ((i64= (pair-cdr fast) w-nil) (i64+ n 1))
+            ((not (is-obj? (pair-cdr fast) ob-pair)) -1)
+            ((and (i64> n 0) (i64= (pair-cdr slow) (pair-cdr (pair-cdr fast)))) -1)
+            (else (proper-count (pair-cdr slow) (pair-cdr (pair-cdr fast)) (i64+ n 2)))))))
 
 (define-rec
   (from-list! (subr hp (i64 i64 i64) unit)

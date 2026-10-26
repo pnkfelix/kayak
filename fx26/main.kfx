@@ -133,6 +133,7 @@
                (i64= op-abort (list-position "abort-current-continuation" prim-list 0))
                (i64= op-capture (list-position "call-with-composable-continuation" prim-list 0))
                (i64= op-capture-once (list-position "call-with-oneshot-continuation" prim-list 0))
+               (i64= op-cwcc (list-position "cwcc" prim-list 0))
                (i64= op-suspend (list-position "abort-with-continuation" prim-list 0))
                (i64= op-apply (list-position "apply" prim-list 0)))
           #u

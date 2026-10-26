@@ -838,6 +838,10 @@ pub fn k_native_closure() -> i64 {
     int_to_i64(lay::kind_native_closure())
 }
 
+pub fn k_eqtable() -> i64 {
+    int_to_i64(lay::kind_eqtable())
+}
+
 // A word's fields, a closure's, a global cell's.
 pub fn f_entry() -> i64 {
     int_to_i64(lay::word_entry())

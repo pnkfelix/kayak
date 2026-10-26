@@ -166,6 +166,7 @@
 (define op-abort i64 136)
 (define op-capture i64 137)
 (define op-capture-once i64 210)
+(define op-cwcc i64 211)
 (define op-suspend i64 138)
 (define op-with-mark i64 170)
 (define op-first-mark i64 171)
@@ -510,8 +511,12 @@
                 (p (alloc! ob-data (i64+ n 1))))
            (begin (obj-set! p 0 (obj-ref f 0)) (args-env! p 1 args n) (run 1 0 0 k p 0 0))))
         ((is-obj? f ob-cont)
-         (let* ((top (obj-ref f 0)) (n (fixnum-value (obj-ref f 1))) (room (frames-room top n 0)))
-           (cond ((i64< (heap-room) (i64+ room reserve)) (gc-run 2 0 0 k 0 f args room))
+         (let* ((top (obj-ref f 0)) (n (fixnum-value (obj-ref f 1))) (room (if (i64< n 0) (the i64 0) (frames-room top n 0))))
+           (cond ((i64< n 0)
+                  "A whole continuation (`cwcc`): the frames are never changed,
+                   so the run goes on at them, the current ones dropped."
+                  (run 1 0 0 top (pair-car args) 0 0))
+                 ((i64< (heap-room) (i64+ room reserve)) (gc-run 2 0 0 k 0 f args room))
                  ((and (truthy? (obj-ref f 3)) (truthy? (obj-ref f 2))) (begin (failed-with! (if (i64= (obj-ref f 3) (fixnum 2)) "a one-shot continuation resumed twice" "a continuation resumed twice")) (failed-at node env k)))
                  (else (begin (obj-set! f 2 w-true) (run 1 0 0 (frames-copied! top n k) (pair-car args) 0 0))))))
         ((is-imm? f imm-prim)
@@ -542,10 +547,12 @@
              ((i64= op op-apply)
               "`(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
                FX-26 copies it (a fresh list, which a `vlambda` may keep)."
-              (let ((need (i64* 3 (i64+ (list-count (pair-car (pair-cdr args)) 0) 1))))
-                (if (i64< (heap-room) (i64+ need reserve))
-                    (gc-run 2 0 0 k 0 f args need)
-                    (run 2 -1 0 k 0 (pair-car args) (reverse-words! (reverse-words! (pair-car (pair-cdr args)) w-nil) w-nil)))))
+              (let* ((xs (pair-car (pair-cdr args))) (n (proper-count xs xs 0)) (need (i64* 3 (i64+ n 1))))
+                (cond ((i64< n 0)
+                       "A list made cyclic, or improper: Fixpt's failure (C220)."
+                       (begin (failed-with! "expected a list") (failed-at node env k)))
+                      ((i64< (heap-room) (i64+ need reserve)) (gc-run 2 0 0 k 0 f args need))
+                      (else (run 2 -1 0 k 0 (pair-car args) (reverse-words! (reverse-words! xs w-nil) w-nil))))))
              ((i64= op op-abort) (abort-to (tag-number (pair-car args)) k (pair-car (pair-cdr args))))
              ((or (i64= op op-capture) (i64= op op-capture-once))
               "A one-shot continuation is captured as a composable one, marked
@@ -556,6 +563,12 @@
                     (let ((c (alloc! ob-cont 4)))
                       (begin (obj-set! c 0 k) (obj-set! c 1 (fixnum n)) (obj-set! c 2 w-false) (obj-set! c 3 (if (i64= op op-capture-once) (fixnum 2) w-false))
                              (run 2 -1 0 k 0 (pair-car args) (pair! c w-nil)))))))
+             ((i64= op op-cwcc)
+              "`(cwcc f)` (C220): `f` given the whole continuation, every
+               frame (`n` -1), to be resumed any number of times."
+              (let ((c (alloc! ob-cont 4)))
+                (begin (obj-set! c 0 k) (obj-set! c 1 (fixnum -1)) (obj-set! c 2 w-false) (obj-set! c 3 w-false)
+                       (run 2 -1 0 k 0 (pair-car args) (pair! c w-nil)))))
              ((i64= op op-suspend)
               (let* ((tag (tag-number (pair-car args))) (n (frames-to k tag 0)))
                 (if (i64< n 0)

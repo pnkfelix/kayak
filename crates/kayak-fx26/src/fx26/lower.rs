@@ -240,10 +240,13 @@ pub fn standard_written(n: Str) -> Str {
         str_lit("(lambda ((d datum)) (int? d))")
     } else if string_eq_p(n, str_lit("list")) {
         str_lit("(vlambda xs xs)")
+    } else if string_eq_p(n, str_lit("append")) {
+        // As a value, a `vsubr` (C220): the lists joined, the last shared.
+        str_lit("(vlambda xss (letrec ((go (lambda (ls) (if (null? ls) nil (if (null? (cdr ls)) (car ls) (append (car ls) (go (cdr ls)))))))) (go xss)))")
+    } else if string_eq_p(n, str_lit("string-append")) {
+        str_lit("(vlambda ss (letrec ((go (lambda (ls) (if (null? ls) \"\" (string-append (car ls) (go (cdr ls))))))) (go ss)))")
     } else if string_eq_p(n, str_lit("native-code?")) {
         str_lit("(lambda () #f)")
-    } else if string_eq_p(n, str_lit("native-convention")) {
-        str_lit("(lambda () (cons \"(target none)\" nil))")
     } else if (string_eq_p(n, str_lit("certify-nat")) || string_eq_p(n, str_lit("certify-acyclic"))) {
         str_lit("(lambda ((x int)) x)")
     } else if string_eq_p(n, str_lit("acyclic?")) {
@@ -982,7 +985,7 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
         i_global(position_of(n, gs, 0i64), n)
     } else if (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair"))) {
         i_lit(v_nil())
-    } else if i64_gt_eq(prim_arity(prim_alias(n)), 0i64) {
+    } else if (i64_gt_eq(prim_arity(prim_alias(n)), 0i64) && string_eq_p(standard_written(n), str_lit(""))) {
         i_lit(v_prim(prim_alias(n), prim_arity(prim_alias(n))))
     } else if not(string_eq_p(standard_written(n), str_lit(""))) {
         lower(read_one(standard_written(n)), nil::<List<Str>>(), nil::<Str>())
@@ -1246,6 +1249,20 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
                 return lower(car(xs), sc, gs);
             } else {
                 return i_if(lower(car(xs), sc, gs), i_lit(v_bool(true)), lower_form(str_lit("or"), cdr(xs), e, sc, gs));
+            }
+        } else if (string_eq_p(h, str_lit("string-append")) || string_eq_p(h, str_lit("append"))) {
+            // Variadic (C220): called, folded to the right, each argument in
+            // turn, the primitive of two; as values, `standard-written`'s.
+            if null_p(xs) {
+                return i_lit(if string_eq_p(h, str_lit("append")) {
+                    v_nil()
+                } else {
+                    v_string(str_lit(""))
+                });
+            } else if null_p(cdr(xs)) {
+                return lower(car(xs), sc, gs);
+            } else {
+                return i_call(i_lit(v_prim(h, 2i64)), kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::heap_cons(lower_form(h, cdr(xs), e, sc, gs), kayak_rt::nil())));
             }
         } else if string_eq_p(h, str_lit("list")) {
             if null_p(xs) {

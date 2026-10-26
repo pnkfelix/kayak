@@ -383,6 +383,11 @@ and what the generated code looks like for the compiler's own source.
   Next: the engine's speed (thread-local lookups, dispatch); its tasks on
   the scheduler; bloblets; FX-26 beyond KFX (pairof, datum, sizes,
   variadics, marks); a GC for kayak-rt itself, a research note.
+- Fixpt, to raise (not changed by us): on its default machine,
+  `native/mixed.fx`'s last form shows `#<continuation>`, its value 42 on
+  `fx-cells-rsinterp` and on kayak's engine (C220): a throw from native
+  code to a continuation cellular code took gives the continuation, not
+  the value thrown. The comparison counts it as a difference until then.
 
 ## 24. A uniform value beside unboxed generics (`docs/research/uniform-values.md`)
 
@@ -656,7 +661,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    preemption, the clock. Processes on kayak's own words and the engine
    too (C219): the forms made as Fixpt's parser makes them, the engine's
    scheduler `vsched.kfx`; left, `%sched`'s standard input (op 43) with
-   `read-byte`, on both. Next: eqtables, `%fx26-intern-datum`, I/O (the
+   `read-byte`, on both. Then (C220) `cwcc`, `f32`, flat arrays,
+   eqtables, `native-convention` on the engine; eqtables, `assume`,
+   `assert`, `list->string`, `string->symbol` on tier 1; left on tier 1,
+   `%fx26-intern-datum` (Fixpt's weak table). Next: eqtables, `%fx26-intern-datum`, I/O (the
    standard input waited for, too); native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A

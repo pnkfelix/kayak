@@ -183,7 +183,12 @@
         "%blobref-at" "%blobref+" "blobref-owner" "blobref-offset" "%blobref-get" "%blobref-set!" "%blobref-field"
         "%blobref-index" "%blobref-length" "%blobref-tag" "%blobref-variant!"
         "%blobref-variant-named!" "%blobref-label"
-        "%sched" "make-icell" "rmake-icell" "call-with-oneshot-continuation"))
+        "%sched" "make-icell" "rmake-icell" "call-with-oneshot-continuation" "cwcc"
+        "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length"
+        "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat"
+        "native-convention"
+        "make-eqtable" "eqtable-ref" "eqtable-has?" "eqtable-count" "eqtable-set!" "eqtable-delete!"
+        "pair-identity" "ref-identity" "array-identity" "icell-identity"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)
@@ -193,10 +198,19 @@
  interned, their number past the list's."
 (define fixed-base i64 1000)
 
+"`f32`'s operations (C220), numbered past the fixed widths'."
+(define f32-base i64 3000)
+(define f32-names strings
+  (list "f32+" "f32-" "f32*" "f32/" "f32-min" "f32-max" "f32<" "f32<=" "f32>" "f32>=" "f32="
+        "f32-abs" "f32-neg" "f32-sqrt" "f32-floor" "f32-ceiling" "f32-truncate" "f32-round"
+        "f32-nan?" "f32-infinite?" "f32-finite?" "f32->string" "f32->int" "f32->f64"
+        "int->f32" "f64->f32" "f32?" "f32->bits" "bits->f32"))
+
 (define prim-number (subr loading (string) i64)
   (lambda (n)
     (let ((i (list-position n prim-list 0)))
       (cond ((i64>= i 0) i)
+            ((string-member? n f32-names) (i64+ f32-base (list-position n f32-names 0)))
             ((not (string=? (fixed-type n) "")) (i64+ fixed-base (intern! n)))
             (else (begin (failed-with! (string-append "the engine has no primitive " n)) 0))))))
 

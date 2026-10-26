@@ -38,6 +38,14 @@
 (define ob-bloblet i64 14)
 "A blobref (C215): its owner, a bloblet, then its offset, a fixnum."
 (define ob-blobref i64 15)
+"An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
+ then its elements, words (the engine's values are its own, not raw)."
+(define ob-flatx i64 18)
+"A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
+ collections when its keys were last hashed, its count of entries, its
+ buckets (an `ob-array` of chains); an entry an `ob-array`, its key,
+ value and next entry (`#f` at a chain's end)."
+(define ob-eqtable i64 19)
 "Kinds from here on hold raw words, not values: not scanned."
 (define ob-raw i64 32)
 (define ob-string i64 32)

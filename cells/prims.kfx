@@ -180,6 +180,17 @@
 (define o-sleep-until i64 168)
 (define o-address-identity i64 169)
 (define o-char-in i64 170)
+(define o-native-convention i64 171)
+(define o-make-eqtable i64 172)
+(define o-eqtable-ref i64 173)
+(define o-eqtable-has i64 174)
+(define o-eqtable-count i64 175)
+(define o-eqtable-set i64 176)
+(define o-eqtable-delete i64 177)
+(define o-assume i64 178)
+(define o-list-string i64 179)
+(define o-assert i64 180)
+(define o-string-symbol i64 181)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -258,7 +269,12 @@
          (pdef "%bloblet-set!" 3 3 o-bloblet-set) (pdef "%bloblet-byte" 2 2 o-bloblet-byte) (pdef "%bloblet-set-byte!" 3 3 o-bloblet-set-byte)
          (pdef "%bloblet-freeze!" 3 3 o-bloblet-freeze) (pdef "%bloblet-frozen?" 1 1 o-bloblet-frozen)
          (pdef "%fx26-array->list" 1 1 o-array-list) (pdef "%fx26-list->array" 1 1 o-list-array) (pdef "%stay-cellular" 1 1 o-stay-cellular)
-         (pdef "%fx26-native-code?" 0 0 o-native-code) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
+         (pdef "%fx26-native-code?" 0 0 o-native-code) (pdef "%fx26-native-convention" 0 0 o-native-convention)
+         (pdef "%fx26-make-eqtable" 1 1 o-make-eqtable) (pdef "%fx26-eqtable-ref" 3 3 o-eqtable-ref)
+         (pdef "%fx26-eqtable-has?" 2 2 o-eqtable-has) (pdef "%fx26-eqtable-count" 1 1 o-eqtable-count)
+         (pdef "%fx26-eqtable-set!" 3 3 o-eqtable-set) (pdef "%fx26-eqtable-delete!" 2 2 o-eqtable-delete)
+         (pdef "%fx26-assume" 1 1 o-assume) (pdef "list->string" 1 1 o-list-string)
+         (pdef "%fx26-assert" 1 1 o-assert) (pdef "string->symbol" 1 1 o-string-symbol) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
          (pdef "%region-make-array" 3 3 o-region-make-array) (pdef "%region-make-bloblet" 2 -1 o-region-make-bloblet)
          (pdef "%region-closure" 2 -1 o-region-closure) (pdef "%fx26-vlambda" 1 1 o-vlambda) (pdef "%fx26-make-icell" 0 0 o-make-icell)
          (pdef "%region-make-icell" 1 1 o-region-make-icell) (pdef "%fx26-icell-get" 1 1 o-icell-get)
@@ -665,6 +681,92 @@
       (if (and (width-signed? w) (>= low (arithmetic-shift 1 (- b 1)))) (- low m) low))))
 (define fixed-in? (subr cm (i64 i64) bool)
   (lambda (w v) "Whether `v` is a value of width `w` (`fixed_in`)." (and (is-integer? v) (= (wrapped w (int-of v)) (int-of v)))))
+
+"A list in the heap of strings made of `ss`."
+(define-rec
+  (strings-list! (subr cm ((listof string @c)) i64)
+    (lambda (ss) (if (null? ss) v-null (let ((s (make-string! (car ss)))) (cons! s (strings-list! (cdr ss))))))))
+
+"`list->string`'s (C220): whether a proper list's elements are all
+ characters; their text."
+(define-rec
+  (chars? (subr cm (i64) bool)
+    (lambda (l) (or (not (is-pair? l)) (and (is-char? (pair-car l)) (chars? (pair-cdr l))))))
+  (chars-text (subr cm (i64 string) string)
+    (lambda (l acc)
+      (if (is-pair? l)
+          (chars-text (pair-cdr l) (string-append acc (char->string (i64->char (char-code (pair-car l))))))
+          acc))))
+
+"Tables keyed by identity (C220), as Fixpt's `eqtable.rs`: a bloblet of
+ kind `eqtable`, its slots the count of collections when its keys were
+ last hashed (2), its count (3), its buckets (4), a vector of chains; an
+ entry a vector of its key (2), value (3) and next entry (4), `#f` at a
+ chain's end. Hashed by address, rehashed after a collection, relinked."
+(define eq-bucket (subr kfx (i64 i64) i64)
+  (lambda (key n)
+    (let ((z (i64-xor (i64-shr key 3) (i64-shr key 12))))
+      (i64-remainder (i64-and z 1152921504606846975) n))))
+(define-rec
+  (eq-falses! (subr cm (i64 i64 i64) unit)
+    (lambda (v i n) (if (i64>= i n) #u (begin (slot-set! v (i64+ i 2) v-false) (eq-falses! v (i64+ i 1) n))))))
+(define eq-size (subr cm (i64) i64)
+  (lambda (v) "A vector's elements, its fields but the trailer." (i64- (fields-of v) 1)))
+(define eq-vector! (subr cm (i64) i64)
+  (lambda (n) (let ((v (make-bloblet! k-vector n 0 #t #f))) (begin (eq-falses! v 0 n) v))))
+(define eqtable-made! (subr cm () i64)
+  (lambda ()
+    (let* ((bs (eq-vector! 8)) (t (make-bloblet! k-eqtable 3 0 #t #f)))
+      (begin (slot-set! t 2 (fix (get collections))) (slot-set! t 3 (fix 0)) (slot-set! t 4 bs) t))))
+(define-rec
+  (chain-relinked! (subr cm (i64 i64) unit)
+    (lambda (e bs)
+      (if (i64= e v-false)
+          #u
+          (let ((next (slot-of e 4)) (b (i64+ 2 (eq-bucket (slot-of e 2) (eq-size bs)))))
+            (begin (slot-set! e 4 (slot-of bs b)) (slot-set! bs b e) (chain-relinked! next bs))))))
+  (buckets-relinked! (subr cm (i64 i64 i64) unit)
+    (lambda (old i bs)
+      (if (i64>= i (eq-size old))
+          #u
+          (let ((e (slot-of old (i64+ i 2))))
+            (begin (slot-set! old (i64+ i 2) v-false) (chain-relinked! e bs) (buckets-relinked! old (i64+ i 1) bs)))))))
+(define eqtable-relinked! (subr cm (i64 i64) unit)
+  (lambda (t bs) (begin (buckets-relinked! (slot-of t 4) 0 bs) (slot-set! t 4 bs) (slot-set! t 2 (fix (get collections))))))
+(define-rec
+  (chain-find (subr cm (i64 i64) i64)
+    (lambda (e key) (cond ((i64= e v-false) v-false) ((i64= (slot-of e 2) key) e) (else (chain-find (slot-of e 4) key))))))
+(define eq-entry (subr cm (i64 i64) i64)
+  (lambda (t key)
+    (begin
+      (if (i64= (slot-of t 2) (fix (get collections))) #u (eqtable-relinked! t (slot-of t 4)))
+      (let ((bs (slot-of t 4))) (chain-find (slot-of bs (i64+ 2 (eq-bucket key (eq-size bs)))) key)))))
+(define eq-set! (subr cm (i64 i64 i64) unit)
+  (lambda (t key v)
+    (let ((e (eq-entry t key)))
+      (if (not (i64= e v-false))
+          (slot-set! e 3 v)
+          (let ((n (i64+ (i64-shr (slot-of t 3) 3) 1)) (size (eq-size (slot-of t 4))))
+            (begin
+              (slot-set! t 3 (fix n))
+              (if (i64> n (i64* 2 size)) (eqtable-relinked! t (eq-vector! (i64* 2 size))) #u)
+              (let* ((bs (slot-of t 4)) (b (i64+ 2 (eq-bucket key (eq-size bs)))) (x (eq-vector! 3)))
+                (begin (slot-set! x 2 key) (slot-set! x 3 v) (slot-set! x 4 (slot-of bs b)) (slot-set! bs b x)))))))))
+(define-rec
+  (chain-without! (subr cm (i64 i64) unit)
+    (lambda (before key)
+      (let ((e (slot-of before 4)))
+        (cond ((i64= e v-false) #u)
+              ((i64= (slot-of e 2) key) (slot-set! before 4 (slot-of e 4)))
+              (else (chain-without! e key)))))))
+(define eq-delete! (subr cm (i64 i64) unit)
+  (lambda (t key)
+    (if (i64= (eq-entry t key) v-false)
+        #u
+        (let* ((bs (slot-of t 4)) (b (i64+ 2 (eq-bucket key (eq-size bs)))) (first (slot-of bs b)))
+          (begin
+            (if (i64= (slot-of first 2) key) (slot-set! bs b (slot-of first 4)) (chain-without! first key))
+            (slot-set! t 3 (fix (i64- (i64-shr (slot-of t 3) 3) 1))))))))
 
 (define fixed-op! (subr cm (i64 i64) i64)
   (lambda (w s)
@@ -1411,6 +1513,29 @@
                (else (let ((x (make-bloblet! k-bloblet (proper-length a) 0 #t #f))) (begin (fields-of-list! x 2 a) x)))))
         ((i64= op o-stay-cellular) a)
         ((i64= op o-native-code) v-false)
+        ((i64= op o-make-eqtable) (eqtable-made!))
+        ((i64= op o-assume) (if (i64= a v-false) (fail! "assumption not met") v-unit))
+        ((i64= op o-assert) (if (i64= a v-false) (fail! "assertion failed") v-unit))
+        ((i64= op o-string-symbol) (if (is-kind? a k-string) (symbol! (string-text a)) (expected! "a string")))
+        ((i64= op o-list-string)
+         "A proper list first, then of characters, as Fixpt's errors are."
+         (cond ((i64< (proper-length a) 0) (expected! "a proper list"))
+               ((not (chars? a)) (expected! "a character"))
+               (else (make-string! (chars-text a "")))))
+        ((or (i64= op o-eqtable-ref) (i64= op o-eqtable-has) (i64= op o-eqtable-count) (i64= op o-eqtable-set) (i64= op o-eqtable-delete))
+         (if (not (is-kind? a k-eqtable))
+             (expected! "an eqtable")
+             (cond ((i64= op o-eqtable-count) (slot-of a 3))
+                   ((i64= op o-eqtable-set) (begin (eq-set! a (parg 1) (parg 2)) v-unit))
+                   ((i64= op o-eqtable-delete) (begin (eq-delete! a (parg 1)) v-unit))
+                   (else
+                    (let ((e (eq-entry a (parg 1))))
+                      (cond ((i64= op o-eqtable-has) (boolean (not (i64= e v-false))))
+                            ((i64= e v-false) (parg 2))
+                            (else (slot-of e 3))))))))
+        ((i64= op o-native-convention)
+         "Fixpt's convention for this machine, which kayak-jit keeps (C220)."
+         (strings-list! (native-convention)))
         ((i64= op o-region-new) (let ((x (make-bloblet! k-box 1 0 #t #f))) (begin (slot-set! x 2 b) x)))
         ((i64= op o-region-closure) (closure-of! (parg (i64- (get pargc) 1)) 1 (i64- (get pargc) 1)))
         ((i64= op o-vlambda) (vlambda! a))

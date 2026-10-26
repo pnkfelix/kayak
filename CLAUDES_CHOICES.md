@@ -6038,3 +6038,47 @@ The forms of processes (`spawn`, `spawn-monitored`, `par`, `race`,
 - Measured: kayak's own words, 358 agree, 0 differ, 16 not yet compiled
   (were 326 and 49); beyond KFX, the engine 208 agree (were 182), 1
   differs (`native/crossing-overflow`, as before).
+
+## C220. Whole continuations, `f32`, flat arrays, eqtables and the rest, on both paths (2026-10-26)
+
+The user: "Keep going", feature by feature on the engine and the ladder.
+- **`cwcc`** on the engine (211): the whole continuation, every frame
+  (an `ob-cont` of -1 frames), resumed any number of times by going on
+  at its frames, the current ones dropped; the engine's frames are never
+  changed, so none is copied. Continuations print `#<continuation>`, as
+  Fixpt's printer does. Our compiler had it already (`callcc`).
+- **`f32`** on the engine: an immediate, as Fixpt's, a special one past
+  the machine's own (its bits above 2^32), so `eq?` compares bits; its 29
+  operations numbered past the fixed widths' (`f32-base`, 3000), done by
+  KFX's own `f32`; a blobref's `f32` field read and written.
+- **Flat arrays** (`make-flatarray` and the rest, the layouts) on the
+  engine: an `ob-flatx`, the elements' width then the elements, words
+  (the engine's values are its own); printed as Fixpt prints one, by its
+  bytes. KFX's own `flatarray-i64` keeps `ob-flat`.
+- **Eqtables**, both paths, as Fixpt's `eqtable.rs` (Larceny's design,
+  one stamp): hashed by address, every entry relinked, nothing allocated,
+  by an operation that finds a collection since. The engine's an
+  `ob-eqtable`; tier 1's a bloblet of Fixpt's kind `eqtable`, its chains
+  vectors. (A vector's header counts its trailer among its fields: the
+  buckets are one fewer, `eq-size`.)
+- **`native-convention`**, both paths: Fixpt's convention for this
+  machine, as kayak-jit keeps it (KFX's `(native-convention)`), in place
+  of the engine's `(target none)`.
+- **Variadic `append` and `string-append`** on the engine: a call of
+  other than two arguments took the first two (`(string-append "a" "b"
+  "c")` was `"ab"`); now folded to the right, and, as values, `vsubr`s
+  written in FX-26 (`standard-written`), as `list` is.
+- **`apply` of a list made cyclic** on the engine: Fixpt's failure,
+  "expected a list", where it counted forever (`proper-count`).
+- **Tier 1's primitives**: `%fx26-assume`, `%fx26-assert`,
+  `list->string`, `string->symbol`, as Fixpt's runtime has them.
+- Not yet: `%fx26-intern-datum` on tier 1 (Fixpt's hash-consing in a
+  weak table); `%fx26-seal-code`, `native-procedure` (made code); the
+  standard input (`read-byte`).
+- Fixpt, to raise: on its default machine, `native/mixed.fx`'s last form
+  shows `#<continuation>` where `fx-cells-rsinterp` and the engine give
+  42 (TODO §23).
+- Measured: kayak's own words, 367 agree, 0 differ, 16 not yet compiled
+  (were 358); beyond KFX, the engine 221 agree (were 208), 2 differ
+  (`native/crossing-overflow`, as before; `native/mixed`, Fixpt's), 6 not
+  run (`native-procedure`, made code).
