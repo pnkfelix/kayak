@@ -3478,6 +3478,14 @@
                                               (string-append (if (string=? h "rcons") "rheld-cons@" "rheld-ref@") (region-string s r))
                                               (list m)))))))))))))
 
+      (synth-fields (subr kfx (cv st sexps tys strings) mres)
+        (lambda (v s xs acc es)
+          "Each of `xs` found, in order: their types, their effects."
+          (if (null? xs)
+              (mres v (reverse acc) es s)
+              (tagcase (synth v s (car xs))
+                (res (t es1 s) (synth-fields v s (cdr xs) (cons t acc) (effs-union es1 es)))))))
+
       (blob-form (subr kfx (cv st string sexps tys) res)
         (lambda (v s h xs expected)
           "Bloblets and blobrefs (C31), syntax as FX-26's are, since a field's
@@ -3501,7 +3509,26 @@
                                (res want (effs-union (list (string-append "alloc:" (region-string s (car args)))) es)
                                     (blob-noted v (note-types s (cv-file v) (cv-pos v) "blob-make" (list want))
                                                 (tagcase (car rest) (num (k f p) (string-append "blob-bytes " (i64->string k))) (else other "")))))))))
-                   (else other (refuse v "a bloblet whose type nothing says: (the (bloblet (fields T ...) R) (make-bloblet bytes e ...))")))))
+                   (else other
+                     "Nothing says its type (C198; Fixpt's `synth_bloblet`): each field's
+                      found, its region the place's for `rmake-bloblet`, else a new one.
+                      FX-26's; KFX's bloblets are made under a `the`."
+                     (if (null? rest)
+                         (refuse v (string-append "(" (string-append h " ...) takes the parts FX-26's does")))
+                         (tagcase (check v s (car rest) (ty-int))
+                           (res (u bes s)
+                             (tagcase (synth-fields v s (cdr rest) nil bes)
+                               (mres (v2 tys es s)
+                                 (tagcase (if placed
+                                              (res (place-of v s (car xs)) nil s)
+                                              ;; A new constant region, as Fixpt's
+                                              ;; `fresh_region_named`: masked where nothing names it.
+                                              (tagcase (fresh s)
+                                                (res (m u3 s) (res (ty-rconst (string-append "@bloblet." (i64->string (st-next s)))) nil s))))
+                                   (res (r u2 s)
+                                     (let ((t (ty-data "%bloblet" (cons r tys))))
+                                       (res t (effs-union (list (string-append "alloc:" (region-string s r))) es)
+                                            (kfx-restricted v s "a bloblet whose type nothing says, FX-26's: KFX's are made as (the (bloblet (fields T ...) R) (make-bloblet bytes e ...))"))))))))))))))
               ((or (string=? h "bloblet-ref") (string=? h "bloblet-set!"))
                (begin
                  (args-are (if (string=? h "bloblet-ref") 2 3))

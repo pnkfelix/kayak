@@ -7775,6 +7775,20 @@ pub mod expressions {
         }
     }
 
+    /// Each of `xs` found, in order: their types, their effects.
+    pub fn synth_fields(v: &'static Cv, s: &'static St, xs: Sexps, acc: Tys, es: Strings) -> &'static Mres {
+        if null_p(xs) {
+            mres(v, reverse(acc), es, s)
+        } else {
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(t, es1, s) => {
+                    synth_fields(v, s, cdr(xs), kayak_rt::heap_cons(t, acc), effs_union(es1, es))
+                }
+            }
+        }
+    }
+
     /// Bloblets and blobrefs (C31), syntax as FX-26's are, since a field's
     /// type is its literal index's and an owner's region is in its type. The
     /// emitter is told each blobref read's and write's scalar, an `extract`'s
@@ -7836,7 +7850,39 @@ pub mod expressions {
                 }
                 _ => {
                     let other = tagcase_;
-                    match refuse(v, str_lit("a bloblet whose type nothing says: (the (bloblet (fields T ...) R) (make-bloblet bytes e ...))")) {}
+                    // Nothing says its type (C198; Fixpt's `synth_bloblet`): each field's
+                    // found, its region the place's for `rmake-bloblet`, else a new one.
+                    // FX-26's; KFX's bloblets are made under a `the`.
+                    if null_p(rest) {
+                        match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) takes the parts FX-26's does")))) {}
+                    } else {
+                        let tagcase_ = check(v, s, car(rest), ty_int());
+                        match *tagcase_ {
+                            Res::Res(u, bes, s) => {
+                                let tagcase_ = synth_fields(v, s, cdr(rest), nil::<&'static Ty>(), bes);
+                                match *tagcase_ {
+                                    Mres::Mres(v2, tys, es, s) => {
+                                        let tagcase_ = if placed {
+                                            res(place_of(v, s, car(xs)), nil::<Str>(), s)
+                                        } else {
+                                            let tagcase_ = fresh(s);
+                                            match *tagcase_ {
+                                                Res::Res(m, u3, s) => {
+                                                    res(ty_rconst(string_append(str_lit("@bloblet."), i64_to_string(st_next(s)))), nil::<Str>(), s)
+                                                }
+                                            }
+                                        };
+                                        match *tagcase_ {
+                                            Res::Res(r, u2, s) => {
+                                                let t = ty_data(str_lit("%bloblet"), kayak_rt::heap_cons(r, tys));
+                                                res(t, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), kfx_restricted(v, s, str_lit("a bloblet whose type nothing says, FX-26's: KFX's are made as (the (bloblet (fields T ...) R) (make-bloblet bytes e ...))")))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } else if (string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) {

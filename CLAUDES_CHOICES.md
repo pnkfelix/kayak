@@ -5444,3 +5444,18 @@ over.
   effect within the old (`narrower-effect?`). Other subtypes still
   refused at the redefinition (C61), stricter than Fixpt, K1 kept.
 - The checkers' comparison: refused 15 to 14, the same 356 to 357; K1 0.
+
+## C198. A bloblet whose type nothing says (2026-10-25)
+
+`native/many-values.fx`: `(let ((b (make-bloblet 0 x ...))) ...)`, no
+`the` around it. Fixpt's `synth_bloblet` finds each field's type, and
+gives the bloblet the place's region for `rmake-bloblet`, else a new
+constant region, `bloblet.N` (`fresh_region_named`), which masking drops
+where nothing names it. Kayak's checker refused it; now it does the
+same, the region `@bloblet.N` (a constant, so that masking may drop it,
+which it never does of an inference variable). KFX refuses it
+(`kfx-restricted`): its bloblets are made under a `the`, their Rust type
+said. Probes, each the same in both: such a bloblet given where one at
+`@heap` is wanted, refused; read inside a `pure` procedure, accepted;
+a field written at another type, refused.
+- The checkers' comparison: refused 14 to 13, the same 357 to 358; K1 0.
