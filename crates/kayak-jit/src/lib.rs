@@ -409,6 +409,14 @@ fn words(n: usize) -> usize {
     thread_local! {
         static CHUNK: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     }
+    if let Some((next, end)) = HOST.get() {
+        let at = next.next_multiple_of(16);
+        if at + 8 * n > end {
+            panic!("native code: the heap it was given is full");
+        }
+        HOST.set(Some((at + 8 * n, end)));
+        return at;
+    }
     let d = data().unwrap_or_else(|| panic!("native code: no memory for objects on this machine"));
     CHUNK.with(|c| {
         let (mut at, mut end) = c.get();
@@ -553,6 +561,29 @@ pub type Foreign = Box<dyn Fn(&[u64]) -> u64>;
 type Given = &'static dyn Fn(&[u64]) -> u64;
 
 thread_local! {
+    /// A runtime's own heap that the native code it calls allocates in,
+    /// as `call_mailbox` gives it (tier 1's): the next free address and
+    /// the end; none, kayak-jit's own space.
+    static HOST: Cell<Option<(usize, usize)>> = const { Cell::new(None) };
+    /// A card table for such a heap's addresses, from its lowest, and its
+    /// size: reserved once for each range.
+    static HOST_CARDS: Cell<(usize, usize, usize)> = const { Cell::new((0, 0, 0)) };
+}
+
+/// A procedure of the host runtime's that native code calls (`foreign`
+/// given a closure not kayak-rt's): the closure, its arguments and the
+/// host heap's next free address; its answer, or that it failed (the host
+/// keeps why), and the next free address after it.
+pub type HostForeign = fn(u64, &[u64], usize) -> (Result<u64, ()>, usize);
+static HOST_FOREIGN: std::sync::OnceLock<HostForeign> = std::sync::OnceLock::new();
+
+/// The host runtime's procedure calls, given once by its binary (tier 1's,
+/// `kayak-cells`).
+pub fn set_host_foreign(f: HostForeign) {
+    let _ = HOST_FOREIGN.set(f);
+}
+
+thread_local! {
     /// The Rust procedures made closures of on this thread, by number.
     static FOREIGN: std::cell::RefCell<Vec<Given>> = const { std::cell::RefCell::new(Vec::new()) };
 }
@@ -605,16 +636,50 @@ pub enum Trap {
 /// A call of native code with its words in a mailbox (the syscall
 /// `kayak:call-native/1`, for a runtime of KFX whose values are Fixpt's
 /// words, as tier 1's): at `m`, a flat array's first element, the closure,
-/// the entry's address, then `n` arguments (at most eight); the answer put
+/// the entry's address, then `n` arguments (at most eight, from `m[2]`);
+/// `m[10]` to `m[13]` the host heap and its cards' range (above); the
+/// answer put in the first, the host heap's next free address in `m[10]`;
+/// for a trap said otherwise (7), what it said, a string in the host heap,
 /// in the first. 0, or why not: a trap's kind (1 to 5), 6 a routine the
 /// caller's runtime is not given yet, 7 a trap said otherwise.
 pub fn call_mailbox(m: usize, n: usize) -> i64 {
     let at = |i: usize| sys::get(m + 8 * i);
     let args: Vec<u64> = (0..n.min(8)).map(|i| at(2 + i)).collect();
-    // A routine's Rust that panics (`foreign`, given a procedure of the
-    // caller's runtime, not kayak-rt's) is resumed past native code: here it
-    // is the routine's want, 6.
-    match std::panic::catch_unwind(|| call(at(0), at(1) as usize, &args)) {
+    // A host heap (`m[10]`, the next free address; `m[11]`, its end; 0, none)
+    // and the range its cards cover (`m[12]` to `m[13]`).
+    let host = at(11) != 0;
+    let was = HOST.get();
+    let cards_were = STATE.with(|s| s[state::CARDS / 8].get());
+    if host {
+        HOST.set(Some((at(10) as usize, at(11) as usize)));
+        let (lo, hi) = (at(12) as usize, at(13) as usize);
+        let (clo, chi, table) = HOST_CARDS.get();
+        let table = if (clo, chi) == (lo, hi) && table != 0 {
+            table
+        } else {
+            let t = sys::reserve(((hi - lo) >> CARD_SHIFT) + 1).unwrap_or(0);
+            HOST_CARDS.set((lo, hi, t));
+            t
+        };
+        STATE.with(|s| {
+            s[state::CARDS / 8].set((table as u64).wrapping_sub((lo >> CARD_SHIFT) as u64))
+        });
+    }
+    let answer = std::panic::catch_unwind(|| call(at(0), at(1) as usize, &args));
+    // What a trap said, as a string of the host's heap, for it to say too.
+    if host && let Ok(Err(Trap::Failed(said))) = &answer {
+        sys::put(m, string(said));
+    }
+    if host {
+        if let Some((next, _)) = HOST.get() {
+            sys::put(m + 80, next as u64);
+        }
+        HOST.set(was);
+        STATE.with(|s| s[state::CARDS / 8].set(cards_were));
+    }
+    // A routine's Rust that panics (`foreign` with no host to call) is
+    // resumed past native code: here it is the routine's want, 6.
+    match answer {
         Ok(Ok(w)) => {
             sys::put(m, w);
             0
@@ -698,6 +763,30 @@ pub fn call(closure: u64, entry: usize, args: &[u64]) -> Result<u64, Trap> {
 )]
 extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
     let s = |off: usize| sys::get(state + off);
+    // A closure of the host runtime's (its code no number of ours): its own
+    // procedure call, which allocates in the host heap from where native
+    // code left it, and leaves it on from there.
+    if let (Some((next, end)), Some(f)) = (HOST.get(), HOST_FOREIGN.get())
+        && closure_code(closure) & layout::TAG_MASK != layout::TAG_FIXNUM
+    {
+        let args: Vec<u64> = (0..count.min(8) as usize)
+            .map(|i| s(state::ARGS + 8 * i))
+            .collect();
+        let (answer, next) = f(closure, &args, next);
+        HOST.set(Some((next, end)));
+        return match answer {
+            Ok(w) => w,
+            Err(()) => {
+                REFUSAL.with(|r| {
+                    r.set(Some(
+                        "native code: a procedure it called failed".to_string(),
+                    ))
+                });
+                sys::put(state + state::TRAP, BY_TRAP << 8 | PRIMITIVE_FAILED);
+                0
+            }
+        };
+    }
     let run = || {
         let k = (closure_code(closure) >> layout::FIXNUM_SHIFT) as usize;
         let f = FOREIGN.with(|t| t.borrow().get(k).copied());

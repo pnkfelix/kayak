@@ -180,9 +180,15 @@
       (collect-end!)
       (if (get gc-stress) (stress-waited!) #u))))
 
+"How many native calls are under way: while any is, nothing collects, so
+ that what native frames hold stays where it is (C227); the heap grows."
+(define native-depth (ref i64 @c) (new 0))
+
 (define safepoint! (subr cm () unit)
   (lambda ()
-    (cond ((i64> (i64* 4 (get top)) (i64* 3 (get limit))) (collect!))
+    (cond ((i64> (get native-depth) 0)
+           (if (i64> (i64* 4 (get top)) (i64* 3 (get limit))) (room! (get limit)) #u))
+          ((i64> (i64* 4 (get top)) (i64* 3 (get limit))) (collect!))
           ((not (get gc-stress)) #u)
           ((i64> (get stress-wait) 0) (set stress-wait (i64- (get stress-wait) 1)))
           (else (collect!)))))
@@ -360,7 +366,21 @@
  mailbox; its answer the value, as a primitive's, or, in tail position,
  the frame's. Code a program makes calls none of the convention's routines
  here yet: one that does fails, as a trap of its own."
-(define native-box (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 10 0)))
+(define native-box (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 14 0)))
+
+(define lesser (subr kfx (i64 i64) i64) (lambda (a b) (if (i64< a b) a b)))
+(define greater (subr kfx (i64 i64) i64) (lambda (a b) (if (i64> a b) a b)))
+(define cards-low (subr cm () i64)
+  (lambda () (lesser (lesser (get vbase) (get to-vbase)) (get code-vbase))))
+(define cards-high (subr cm () i64)
+  (lambda () (greater (greater (i64+ (get vbase) (i64* 8 heap-capacity)) (i64+ (get to-vbase) (i64* 8 heap-capacity)))
+                      (i64+ (get code-vbase) (i64* 8 code-capacity)))))
+
+(define top-from! (subr cm (i64) unit)
+  (lambda (next)
+    "The heap's top, from the next free address native code left: the
+     limit grown past it if need be, the collection to come later."
+    (begin (set top (address (i64+ next 7))) (room! 0))))
 (define-rec
   (native-args! (subr cm (i64 i64) unit)
     (lambda (n i) (if (i64< i 0) #u (begin (flatarray-set-i64! (get native-box) (i64+ 2 i) (pop! n)) (native-args! n (i64- i 1)))))))
@@ -380,7 +400,17 @@
             (native-args! n (i64- count 1))
             (flatarray-set-i64! box 0 c)
             (flatarray-set-i64! box 1 (i64+ (i64- b t-bloblet) (get code-distance)))
+            ;; The heap, from its top to its reservation's end, for the
+            ;; routines' `cons` and `bloblet` (C227), and its cards' range.
+            (flatarray-set-i64! box 10 (heap-ref (get top) 0))
+            (flatarray-set-i64! box 11 (heap-ref heap-capacity 0))
+            (flatarray-set-i64! box 12 (cards-low))
+            (flatarray-set-i64! box 13 (cards-high))
+            (set native-depth (i64+ (get native-depth) 1))
             (let ((status (int->i64 (call-native box (i64->int count)))))
+              (begin
+               (set native-depth (i64- (get native-depth) 1))
+               (top-from! (flatarray-ref-i64 box 10))
               (cond ((and (i64= status 0) (not (tier1-word? (flatarray-ref-i64 box 0))))
                      "An object made elsewhere, by kayak-jit's routines in their own
                       space: none of tier 1's heap, so not yet tier 1's to keep."
@@ -398,8 +428,9 @@
                                     ((i64= status 4) "car or cdr of a non-pair")
                                     ((i64= status 5) "division by zero")
                                     ((i64= status 6) "native code: a routine of the convention's, which tier 1 does not give yet (C122)")
+                                    ((is-kind? (flatarray-ref-i64 box 0) k-string) (string-text (flatarray-ref-i64 box 0)))
                                     (else "native code failed")))
-                       next)))))))))
+                       next))))))))))
 
 (define call! (subr cm (i64 i64 bool) i64)
   (lambda (n count tail)
@@ -1078,3 +1109,39 @@
       (cond ((trapped?) (ran-failed (get trap-message)))
             ((i64= (get dsp) 0) (ran-failed "the word left nothing"))
             (else (ran-answer (ds-at (i64- (get dsp) 1))))))))
+
+"A procedure of tier 1's that native code calls (C227; Fixpt's machines'
+ `foreign`, for a closure no native one): `box` its closure, its count of
+ arguments, them, and the heap's next free address, as kayak-jit gives
+ them (`kayak-cells`' `main.rs`); run to its return as a call of it does,
+ by the interpreter, the machine's registers as they were after, nothing
+ collected meanwhile.
+ 0 and its answer in `box[0]`, or 1, the trap kept; the next free address
+ in `box[10]`."
+(define-rec
+  (callback-args! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
+    (lambda (box i n) (if (i64>= i n) #u (begin (push! (flatarray-ref-i64 box (i64+ 2 i))) (callback-args! box (i64+ i 1) n))))))
+
+(define native-callback (subr cm ((flatarrayof i64 @c)) i64)
+  (lambda (box)
+    (let* ((c (flatarray-ref-i64 box 0)) (count (flatarray-ref-i64 box 1))
+           (cur0 (get cur)) (kk0 (get kk)) (fp0 (get fp)) (clo0 (get clo)) (dsp0 (get dsp)) (base (get rsp)))
+      (begin
+        (top-from! (flatarray-ref-i64 box 10))
+        (if (not (closure? c))
+            (trap! "native code: called no procedure tier 1 runs (C122)")
+            (begin
+              (callback-args! box 0 count)
+              (set fp (i64- (get dsp) count))
+              (set cur (slot-of c f-word)) (set kk f-cell0) (set clo c)
+              ;; By the interpreter: the native tiers' machine is native code
+              ;; kayak-jit enters, which made code's frames are under now.
+              (let ((h (get hand-on)))
+                (begin (set hand-on #f) (run! base) (set hand-on h)))))
+        (let* ((ok (and (not (trapped?)) (i64> (get dsp) dsp0)))
+               (v (if ok (ds-at (i64- (get dsp) 1)) (the i64 0))))
+          (begin
+            (set cur cur0) (set kk kk0) (set fp fp0) (set clo clo0) (set dsp dsp0)
+            (flatarray-set-i64! box 0 v)
+            (flatarray-set-i64! box 10 (heap-ref (get top) 0))
+            (if ok (the i64 0) (the i64 1))))))))

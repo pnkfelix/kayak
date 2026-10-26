@@ -39,6 +39,8 @@ pub use fixed::*;
 pub use float::*;
 pub use heap::*;
 pub use int::*;
+/// For a runtime's binary whose heap native code allocates in (C227).
+pub use kayak_jit::{HostForeign, set_host_foreign};
 #[cfg(feature = "unsafe-par")]
 pub use kayak_sync::Global;
 pub use marks::{MarkKey, first_mark, make_continuation_mark_key, with_mark, with_mark_async};

@@ -6285,3 +6285,38 @@ Then what the syscalls were for (`native.md`, decision 3; Fixpt's
 - Measured: kayak's own words, 386 agree, 0 differ (282 Fixpt's words
   exactly; were 381 and 277); Fixpt's, 386 agree; 4 need what tier 1 has
   not yet (the routines).
+
+## C227. The convention's routines on tier 1's heap (2026-10-26)
+
+The user: "keep going", to the routines native code calls. kayak-jit's
+allocate in its own space and call Rust procedures; tier 1's heap is its
+own, of Fixpt's layout too. So a host heap for a call:
+- **Allocation** (`cons`, `bloblet`, and kayak-jit's strings): in
+  `call_mailbox`'s host heap (`m[10]`, `m[11]`: tier 1's top to its
+  reservation's end), a thread's for the call, saved and restored around
+  nested calls; tier 1 takes its top back from where native code left it.
+- **Cards**: a card table reserved for the host's range (its two spaces
+  and its code area, `m[12]`, `m[13]`), the state's `cards` biased to it
+  for the call, so a store's barrier marks a byte, not anywhere.
+- **`foreign`**, given a closure whose code is no number of kayak-jit's:
+  the host's procedure call, which `kayak-cells`' `main.rs` gives once
+  (`set_host_foreign`, by kayak-rt), and which runs `cells/machine.kfx`'s
+  `native-callback`: the closure entered with its arguments, run to its
+  return at the return stack's height it began (`run!`, or `hand-run!`),
+  the machine's registers put back after; its failure the call's trap.
+- **No collection while native frames are live** (`native-depth`): what
+  they hold stays where it is, and the heap grows instead; Fixpt's machine
+  collects there, by the frames' stack maps (`frames.fx`'s point), which
+  kayak's tier 1 does not read yet. The answers are the same.
+- **A trap said otherwise** comes back with what it said, a string made
+  in the host heap (`allocated.fx`'s refused size).
+- **The callback runs by the interpreter**, the native tiers off while it
+  does: run on their machine, itself native code kayak-jit enters, under
+  the made code's live frames, it failed (a flat array read out of range,
+  then an abort, since a panic cannot unwind native frames). Thought, not
+  shown: kayak-jit's one state for the thread, entered again while a call
+  is under way, its per-call words (the trap, the arguments, the stack
+  pointers to leave by) overwritten. Left: `call` made re-entrant, so
+  that a callback may run natively too.
+- All seven of Fixpt's `made-code-x86_64/` programs give Fixpt's answers
+  on tier 1, every way, on Fixpt's words and kayak's.
