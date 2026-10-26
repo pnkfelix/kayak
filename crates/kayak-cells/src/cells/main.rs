@@ -95,6 +95,20 @@ pub fn option_of(mut r#as: List<Str>, mut name: Str, mut otherwise: i64) -> i64 
     }
 }
 
+/// The arguments after `--`: the program's (C232).
+pub fn after_dashes(mut r#as: Strings) -> Strings {
+    loop {
+        if null_p(r#as) {
+            return nil::<Str>();
+        } else if string_eq_p(car(r#as), str_lit("--")) {
+            return cdr(r#as);
+        } else {
+            r#as = cdr(r#as);
+            continue;
+        }
+    }
+}
+
 pub fn cells_main() -> Int {
     let r#as = the::<Strings>(args());
     if null_p(r#as) {
@@ -105,6 +119,7 @@ pub fn cells_main() -> Int {
         say(usage());
         int_lit(0)
     } else {
+        let u01 = set(program_args(), after_dashes(r#as));
         let u00 = if string_member_p(str_lit("--indexes"), r#as) {
             ()
         } else {

@@ -83,6 +83,7 @@ higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
 kayak/conventions/both-ways.fx
 kayak/datum/interned-across-collections.fx
+kayak/io/streams.fx
 kayak/made-code-x86_64/adapter-called.fx
 kayak/made-code-x86_64/code-freed.fx
 kayak/made-code-x86_64/kept-across-collections.fx
@@ -243,6 +244,7 @@ processes/pselect-cell.fx
 processes/pselect-deadline.fx
 processes/pselect-deadlock.fx
 processes/pselect-in-time.fx
+processes/pselect-key.fx
 processes/pselect-main-deadline.fx
 processes/pselect-stop.fx
 processes/race-compute.fx

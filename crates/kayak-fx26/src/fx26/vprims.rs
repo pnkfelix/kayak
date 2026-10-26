@@ -81,6 +81,16 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         args_room()
     } else if i64_eq(op, 131i64) {
         line_room_x()
+    } else if i64_eq(op, 244i64) {
+        byte_room_x()
+    } else if i64_eq(op, 245i64) {
+        bytes_room_x(i64_minus(fixnum_value(pair_car(pair_cdr(pair_cdr(args)))), fixnum_value(b)))
+    } else if i64_eq(op, 247i64) {
+        term_room_x(0i64)
+    } else if i64_eq(op, 248i64) {
+        term_room_x(1i64)
+    } else if i64_eq(op, 249i64) {
+        term_room_x(2i64)
     } else if i64_eq(op, 132i64) {
         file_room_x(a)
     } else if i64_eq(op, 134i64) {
@@ -833,6 +843,18 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         strings_word_x(get(program_args()))
     } else if i64_eq(op, 131i64) {
         read_line_word_x()
+    } else if i64_eq(op, 244i64) {
+        read_byte_word_x()
+    } else if i64_eq(op, 245i64) {
+        read_bytes_word_x(a, fixnum_value(b), i64_minus(fixnum_value(c), fixnum_value(b)))
+    } else if i64_eq(op, 246i64) {
+        bool_word(stdin_ready_p())
+    } else if i64_eq(op, 247i64) {
+        term_word_x()
+    } else if i64_eq(op, 248i64) {
+        term_word_x()
+    } else if i64_eq(op, 249i64) {
+        size_word_x()
     } else if i64_eq(op, 132i64) {
         read_file_word_x(a)
     } else if i64_eq(op, 133i64) {

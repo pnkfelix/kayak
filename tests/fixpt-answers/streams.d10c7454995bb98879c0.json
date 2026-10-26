@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"streams.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"bit : (subr pure (bool int) int) ! pure",
+"kind-of : (subr pure (io-error) int) ! pure",
+"buf : (bytevectorof @b) ! (alloc @b)",
+"w : int ! (io stdout)",
+"l : int ! (io stdin)",
+"b : int ! (io stdin)",
+"n0 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"n1 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"r : int ! (io stdin)",
+"a : int ! (io args)",
+"f : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"d : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"t : int ! (io terminal)",
+"1023 : int ! (read (globals a b d f l n0 n1 r t w))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@f03cabe27105621d69eaef329d9657ead5f78ecf"
+]
+}
+]
+}

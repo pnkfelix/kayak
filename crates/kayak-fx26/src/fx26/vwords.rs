@@ -653,6 +653,218 @@ pub fn read_line_word_x() -> i64 {
     }
 }
 
+// The rest of FX-26's I/O (C232), as `read-line`: done where its room is
+// found, which a failure's detail sizes, its value made after.
+pub fn pending_byte() -> Ref<&'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_4byte_3eof_6failed::<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Eof(())))
+    })
+}
+
+pub fn pending_count() -> Ref<&'static Sum_5count_3eof_6failed<Int, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_5count_3eof_6failed<Int, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_5count_3eof_6failed::<Int, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Eof(())))
+    })
+}
+
+pub fn pending_bytes() -> Ref<Bytes> {
+    kayak_rt::kept_constant!(ONCE: Ref<Bytes>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_bytevector(int_lit(0), int_to_u8(int_lit(0))))
+    })
+}
+
+pub fn pending_term() -> Ref<&'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_4done_14not_a_terminal_6failed::<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Done(())))
+    })
+}
+
+pub fn pending_size() -> Ref<&'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_4size_14not_a_terminal_6failed::<Product_4rows_7columns<Int, Int>, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::NotATerminal(())))
+    })
+}
+
+// The labels of `terminal-size`'s product, made at loading.
+pub fn size_labels() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn failure_room(e: Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>) -> i64 {
+    i64_plus(32i64, string_length_i64(e.1))
+}
+
+pub fn byte_room_x() -> i64 {
+    set(pending_byte(), read_byte());
+    let tagcase_ = get(pending_byte());
+    match *tagcase_ {
+        Sum_4byte_3eof_6failed::Byte(k) => {
+            8i64
+        }
+        Sum_4byte_3eof_6failed::Eof(u) => {
+            8i64
+        }
+        Sum_4byte_3eof_6failed::Failed(e) => {
+            failure_room(e)
+        }
+    }
+}
+
+pub fn read_byte_word_x() -> i64 {
+    let tagcase_ = get(pending_byte());
+    match *tagcase_ {
+        Sum_4byte_3eof_6failed::Byte(k) => {
+            sum_word_x(str_lit("byte"), int_word_x(u8_to_int(k)))
+        }
+        Sum_4byte_3eof_6failed::Eof(u) => {
+            sum_word_x(str_lit("eof"), w_unit())
+        }
+        Sum_4byte_3eof_6failed::Failed(e) => {
+            sum_word_x(str_lit("failed"), io_error_word_x(e))
+        }
+    }
+}
+
+/// Read into a bytevector of KFX's, `n` bytes long (the span's), copied
+/// after into the program's (`read-bytes-word!`); an empty span read as
+/// none, as Fixpt's.
+pub fn bytes_room_x(n: i64) -> i64 {
+    set(pending_bytes(), make_bytevector(i64_to_int(if i64_lt(n, 0i64) {
+        0i64
+    } else {
+        n
+    }), int_to_u8(int_lit(0))));
+    set(pending_count(), if i64_lt_eq(n, 0i64) {
+        kayak_rt::heap_alloc(Sum_5count_3eof_6failed::<Int, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Count(the::<Int>(int_lit(0))))
+    } else {
+        read_bytes(get(pending_bytes()), int_lit(0), i64_to_int(n))
+    });
+    let tagcase_ = get(pending_count());
+    match *tagcase_ {
+        Sum_5count_3eof_6failed::Count(k) => {
+            8i64
+        }
+        Sum_5count_3eof_6failed::Eof(u) => {
+            8i64
+        }
+        Sum_5count_3eof_6failed::Failed(e) => {
+            failure_room(e)
+        }
+    }
+}
+
+pub fn read_copied_x(mut bv: i64, mut at: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            element_set_x(bv, i64_plus(at, i), int_to_i64(u8_to_int(bytevector_u8_ref(get(pending_bytes()), i64_to_int(i)))));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn read_bytes_word_x(bv: i64, at: i64, n: i64) -> i64 {
+    if (i64_lt(at, 0i64) || i64_lt(n, 0i64) || i64_gt(i64_plus(at, n), obj_size(bv))) {
+        failed_with_x(str_lit("read-bytes: a range past the bytevector's end"));
+        0i64
+    } else {
+        let tagcase_ = get(pending_count());
+        match *tagcase_ {
+            Sum_5count_3eof_6failed::Count(k) => {
+                read_copied_x(bv, at, 0i64, int_to_i64(k));
+                sum_word_x(str_lit("count"), int_word_x(k))
+            }
+            Sum_5count_3eof_6failed::Eof(u) => {
+                sum_word_x(str_lit("eof"), w_unit())
+            }
+            Sum_5count_3eof_6failed::Failed(e) => {
+                sum_word_x(str_lit("failed"), io_error_word_x(e))
+            }
+        }
+    }
+}
+
+pub fn term_room_x(which: i64) -> i64 {
+    if i64_eq(which, 0i64) {
+        set(pending_term(), terminal_raw())
+    } else if i64_eq(which, 1i64) {
+        set(pending_term(), terminal_restore())
+    } else {
+        set(pending_size(), terminal_size())
+    };
+    if i64_lt(which, 2i64) {
+        let tagcase_ = get(pending_term());
+        match *tagcase_ {
+            Sum_4done_14not_a_terminal_6failed::Done(u) => {
+                8i64
+            }
+            Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
+                8i64
+            }
+            Sum_4done_14not_a_terminal_6failed::Failed(e) => {
+                failure_room(e)
+            }
+        }
+    } else {
+        let tagcase_ = get(pending_size());
+        match *tagcase_ {
+            Sum_4size_14not_a_terminal_6failed::Size(p) => {
+                16i64
+            }
+            Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
+                8i64
+            }
+            Sum_4size_14not_a_terminal_6failed::Failed(e) => {
+                failure_room(e)
+            }
+        }
+    }
+}
+
+pub fn term_word_x() -> i64 {
+    let tagcase_ = get(pending_term());
+    match *tagcase_ {
+        Sum_4done_14not_a_terminal_6failed::Done(u) => {
+            sum_word_x(str_lit("done"), w_unit())
+        }
+        Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
+            sum_word_x(str_lit("not-a-terminal"), w_unit())
+        }
+        Sum_4done_14not_a_terminal_6failed::Failed(e) => {
+            sum_word_x(str_lit("failed"), io_error_word_x(e))
+        }
+    }
+}
+
+pub fn size_word_x() -> i64 {
+    let tagcase_ = get(pending_size());
+    match *tagcase_ {
+        Sum_4size_14not_a_terminal_6failed::Size(p) => {
+            let x = alloc_x(ob_product(), 3i64);
+            obj_set_x(x, 0i64, fixnum(get(size_labels())));
+            obj_set_x(x, 1i64, int_word_x(p.0));
+            obj_set_x(x, 2i64, int_word_x(p.1));
+            sum_word_x(str_lit("size"), x)
+        }
+        Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
+            sum_word_x(str_lit("not-a-terminal"), w_unit())
+        }
+        Sum_4size_14not_a_terminal_6failed::Failed(e) => {
+            sum_word_x(str_lit("failed"), io_error_word_x(e))
+        }
+    }
+}
+
 pub fn file_room_x(path: i64) -> i64 {
     set(pending_file(), read_file(word_string(path)));
     let tagcase_ = get(pending_file());

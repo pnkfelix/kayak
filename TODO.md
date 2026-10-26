@@ -682,9 +682,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    implementation was taken over the intent. The note is written:
    `docs/research/departures.md` (C231); the review is next. Then the
    suffix stub note for Fixpt's team, out of the same review.
-   Weak pairs and `%fx26-intern-datum` on tier 1 (C231). Next (the
-   user's order): the standard input (waited for, too), by kayak-rt
-   syscalls; a note for Fixpt's team: code bloblets dispatching by a stub
+   Weak pairs and `%fx26-intern-datum` on tier 1 (C231). FX-26's I/O on
+   every machine, the input waited for by one kayak-rt syscall (C232).
+   Next: a note for Fixpt's team: code bloblets dispatching by a stub
    in their suffix, so that native calls need no `code-lo` test (C230);
    native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,

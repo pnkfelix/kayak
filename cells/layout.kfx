@@ -11,7 +11,7 @@
  reads the clock, for FX-26's deadlines (C125); makes and runs tier 2's
  machine code (C126), x86_64's of bytes at `@k`, `fx26:x86_64.fx`'s
  region (C136)."
-(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock) (io native) (io sys) (alloc @heap) (read @heap) (write @heap) (alloc @k) (read @k)))
+(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock) (io native) (io sys) (io stdin) (io stdout) (io stderr) (io fs-read) (io fs-write) (io args) (io exit) (io terminal) (alloc @heap) (read @heap) (write @heap) (alloc @k) (read @k)))
 
 "Tags."
 (define t-fixnum i64 (int->i64 (with lay tag-fixnum)))

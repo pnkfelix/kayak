@@ -70,6 +70,10 @@ and status 1.
                    (tagcase (car ds) (num (n f p) (if (i64> n 0) n otherwise)) (else other otherwise)))))
             (else (option-of (cdr as) name otherwise))))))
 
+(define-rec
+  (after-dashes (subr kfx (strings) strings)
+    (lambda (as) "The arguments after `--`: the program's (C232)." (cond ((null? as) nil) ((string=? (car as) "--") (cdr as)) (else (after-dashes (cdr as)))))))
+
 (define cells-main (subr driving () int)
   (lambda ()
     (let ((as (the strings (args))))
@@ -77,7 +81,8 @@ and status 1.
         ((null? as) (begin (write-err usage) (exit 2) 2))
         ((or (string=? (car as) "--help") (string=? (car as) "-h")) (begin (say usage) 0))
         (else
-          (let* ((u00 (if (string-member? "--indexes" as) #u (begin (heap-addressed!) #u)))
+          (let* ((u01 (set program-args (after-dashes as)))
+                 (u00 (if (string-member? "--indexes" as) #u (begin (heap-addressed!) #u)))
                  (u0 (set regs-on (string-member? "--regs" as)))
                  (w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))

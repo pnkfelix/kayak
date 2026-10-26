@@ -71,6 +71,16 @@ const SYSCALLS: &[Syscall] = &[
             kayak_jit::call_mailbox((a[0] & !7) as usize, int(a[1]).clamp(0, 8) as usize).word()
         },
     },
+    // Whether the standard input is ready, having waited until it is or the
+    // clock reaches the deadline given (-1: none): for a scheduler with
+    // nothing to run but tasks that wait for input (C232; Fixpt's
+    // `wait_stdin`). KFX has `stdin-ready?` and `sleep-until`, not both at
+    // once.
+    Syscall {
+        host: "io:stdin-wait/1",
+        canonical: "(subr (io sys) (i64) bool)",
+        run: |a| crate::world::stdin_wait(int(a[0])).word(),
+    },
 ];
 
 /// What kayak-rt has under `host`: the syscall, if its type is `text`;

@@ -504,18 +504,32 @@
 (define-rec
   (heap-cars (->* ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-car (car xs)) (heap-cars (cdr xs)))))))
 
+"Whether the standard input is ready, having waited until it is or the
+ clock reaches a deadline (-1: none): kayak-rt's (C232)."
+(define-syscall stdin-wait "io:stdin-wait/1" (subr (io sys) (i64) bool))
+
+(define-rec
+  (stdin-wakers-pushed! (->* (i64) unit)
+    (lambda (l) (if (is-pair? l) (begin (stdin-wakers-pushed! (pair-cdr l)) (queue-push! (pair-car l))) #u))))
+
 (define timers-wait! (->* (bool) i64)
   (lambda (sleep)
-    "When no task can run and the first waits: `#f` if no timer is set;
-     else, having slept until the earliest (if `sleep`), each timer due
-     taken, its waker run, in the order of their times, and `#t`. Tier 1
-     reads no standard input: a waker waiting for it is not yet (C122)."
-    (let ((ts (st s-timers)))
-      (cond ((is-pair? (st s-stdin)) (begin (trap! "tier 1: the standard input waited for, not yet as Fixpt (C122)") v-false))
-            ((not (is-pair? ts)) v-false)
+    "When no task can run and the first waits: `#f` if no timer is set and
+     no waker waits for the standard input; else, having slept until the
+     earliest timer or until the input is ready, whichever is first (if
+     `sleep`), the input's wakers run if it is ready, oldest first, and
+     each timer due taken, its waker run, in the order of their times, and
+     `#t` (Fixpt's `timers_wait`; C232)."
+    (let ((ts (st s-timers)) (input (is-pair? (st s-stdin))))
+      (cond ((and (not (is-pair? ts)) (not input)) v-false)
             (else
              (begin
-               (if sleep (sleep-until (timers-earliest ts fix-max)) #u)
+               (cond ((not sleep) #u)
+                     (input (begin (stdin-wait (if (is-pair? ts) (timers-earliest ts fix-max) -1)) #u))
+                     (else (sleep-until (timers-earliest ts fix-max))))
+               (if (and input (stdin-ready?))
+                   (let ((ws (st s-stdin))) (begin (st-set! s-stdin v-null) (stdin-wakers-pushed! ws)))
+                   #u)
                (let ((now (clock)))
                  (begin
                    (st-set! s-timers (without! ts 5 now))

@@ -192,6 +192,10 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::nil())))) {
         0i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("read-byte"), kayak_rt::heap_cons(str_lit("stdin-ready?"), kayak_rt::heap_cons(str_lit("terminal-raw"), kayak_rt::heap_cons(str_lit("terminal-restore"), kayak_rt::heap_cons(str_lit("terminal-size"), kayak_rt::nil())))))) {
+        0i64
+    } else if string_eq_p(n, str_lit("read-bytes")) {
+        3i64
     } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
         fixed_arity(fixed_op(n))
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("f32+"), kayak_rt::heap_cons(str_lit("f32-"), kayak_rt::heap_cons(str_lit("f32*"), kayak_rt::heap_cons(str_lit("f32/"), kayak_rt::heap_cons(str_lit("f32-min"), kayak_rt::heap_cons(str_lit("f32-max"), kayak_rt::heap_cons(str_lit("f32<"), kayak_rt::heap_cons(str_lit("f32<="), kayak_rt::heap_cons(str_lit("f32>"), kayak_rt::heap_cons(str_lit("f32>="), kayak_rt::heap_cons(str_lit("f32="), kayak_rt::nil())))))))))))) {
@@ -418,6 +422,21 @@ pub fn io_error_val(e: Product_4kind_6detail<&'static Sum_9not_found_17permissio
         }
     };
     v_product(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
+}
+
+pub fn terminal_val(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Sum_4done_14not_a_terminal_6failed::Done(u) => {
+            v_sum(str_lit("done"), v_unit())
+        }
+        Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
+            v_sum(str_lit("not-a-terminal"), v_unit())
+        }
+        Sum_4done_14not_a_terminal_6failed::Failed(e) => {
+            v_sum(str_lit("failed"), io_error_val(e))
+        }
+    }
 }
 
 pub fn written(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
@@ -1148,6 +1167,51 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
                 v_sum(str_lit("eof"), v_unit())
             }
             Sum_4line_3eof_6failed::Failed(e) => {
+                v_sum(str_lit("failed"), io_error_val(e))
+            }
+        }
+    } else if string_eq_p(n, str_lit("read-byte")) {
+        let tagcase_ = read_byte();
+        match *tagcase_ {
+            Sum_4byte_3eof_6failed::Byte(k) => {
+                v_sum(str_lit("byte"), v_int(u8_to_int(k)))
+            }
+            Sum_4byte_3eof_6failed::Eof(u) => {
+                v_sum(str_lit("eof"), v_unit())
+            }
+            Sum_4byte_3eof_6failed::Failed(e) => {
+                v_sum(str_lit("failed"), io_error_val(e))
+            }
+        }
+    } else if string_eq_p(n, str_lit("read-bytes")) {
+        let tagcase_ = read_bytes(bytes_of(a), val_int(b), val_int(car(cdr(cdr(xs)))));
+        match *tagcase_ {
+            Sum_5count_3eof_6failed::Count(k) => {
+                v_sum(str_lit("count"), v_int(k))
+            }
+            Sum_5count_3eof_6failed::Eof(u) => {
+                v_sum(str_lit("eof"), v_unit())
+            }
+            Sum_5count_3eof_6failed::Failed(e) => {
+                v_sum(str_lit("failed"), io_error_val(e))
+            }
+        }
+    } else if string_eq_p(n, str_lit("stdin-ready?")) {
+        v_bool(stdin_ready_p())
+    } else if string_eq_p(n, str_lit("terminal-raw")) {
+        terminal_val(terminal_raw())
+    } else if string_eq_p(n, str_lit("terminal-restore")) {
+        terminal_val(terminal_restore())
+    } else if string_eq_p(n, str_lit("terminal-size")) {
+        let tagcase_ = terminal_size();
+        match *tagcase_ {
+            Sum_4size_14not_a_terminal_6failed::Size(p) => {
+                v_sum(str_lit("size"), v_product(kayak_rt::heap_cons(str_lit("rows"), kayak_rt::heap_cons(str_lit("columns"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_int(p.0), kayak_rt::heap_cons(v_int(p.1), kayak_rt::nil())))))
+            }
+            Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
+                v_sum(str_lit("not-a-terminal"), v_unit())
+            }
+            Sum_4size_14not_a_terminal_6failed::Failed(e) => {
                 v_sum(str_lit("failed"), io_error_val(e))
             }
         }

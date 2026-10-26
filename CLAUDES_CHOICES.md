@@ -6500,3 +6500,46 @@ which every quote that is not all literals calls. So this is that.
   over every entry, its most surprising claim checked in the code (made
   code's `poll` never stops it).
 
+## C232. FX-26's I/O on every machine; one syscall, to wait for input (2026-10-26)
+
+The user: "Then after that, add standard input. (Is that the only IO
+you're adding) For much of this, e.g. standard input, could you get it
+shipped faster if you leveraged the new syscall subsystem, so that you
+could just implement the core functionality in the runtime?"
+- **What FX-26 has** (`fx26.md`, "I/O"): the standard streams
+  (`write-out`, `write-err`, `read-line`, `read-byte`, `read-bytes`,
+  `stdin-ready?`), `exit`, `clock`, `sleep-until`, `args`, the files
+  (`read-file`, `list-dir`, `write-file`), the terminal (`terminal-raw`,
+  `terminal-restore`, `terminal-size`), and a `pselect` arm that waits for
+  input (`%fx26-sched` 43-45). The engine had all but `read-byte`,
+  `read-bytes`, `stdin-ready?`, the terminal and the wait; tier 1 had
+  only `clock` and `sleep-until`. Now every machine has all of it.
+- **Syscalls were not the faster way, mostly**: KFX has every one of these
+  as its own operation already, which kayak-rt gives, and tier 1 and the
+  engine are KFX programs: each calls KFX's of the name, its result made
+  the machine's (tier 1: Fixpt's sums and products, `fx26_sum`,
+  `fx26_io_result`; the engine: its words, reading where its room is
+  found, as `read-line` did). Syscalls are for what FX-26 does not have.
+- **One syscall, `io:stdin-wait/1`** (`(subr (io sys) (i64) bool)`): when
+  no task can run but some wait for input, the scheduler waits until the
+  input is ready or the earliest timer is due, whichever is first
+  (Fixpt's `timers_wait`, `wait_stdin`): KFX has `stdin-ready?` and
+  `sleep-until`, not both at once. kayak-rt waits on its reader thread's
+  condition, with a timeout; the engine and tier 1 declare it, their
+  wakers of the input run when it is ready, oldest first.
+- **`stdin-ready?` asks the descriptor too**, as Fixpt's does
+  (`tty::ready(0)`): kayak-rt's reader thread, only just started, had not
+  yet read input already there, so `pselect-key.fx`, input given, chose
+  the deadline (-1, where Fixpt gives 65). The `poll` is kayak-jit's
+  (`stdin_readable`), kayak-rt being built with unsafe code refused.
+- **Tier 1's program arguments** are those after `--`, as `fixpt run`'s;
+  its effect `cm` gains the I/O atoms, the engine's `(io terminal)`.
+- **Tests**: kayak's `io/streams.fx` (each operation as a test's run finds
+  the world: the input at its end, no arguments, paths not there): 1023
+  on Fixpt's two machines, the engine, tier 1 every way, on Fixpt's
+  words and kayak's. The input given late, with a deadline after it, and
+  not before the deadline: the byte, and the deadline's arm, on Fixpt and
+  the engine alike, at the same times. The engine's `read-bytes` took its
+  third argument for a count, not the span's end, first: found by the
+  test.
+

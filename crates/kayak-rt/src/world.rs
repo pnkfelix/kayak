@@ -16,7 +16,7 @@ use std::cell::Cell;
 use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::sync::{Condvar, Mutex, MutexGuard, Once};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 // The standard shapes, as `put-shape-decls` writes a program's.
 
@@ -409,11 +409,48 @@ fn arrived() -> MutexGuard<'static, Input> {
 }
 
 /// Whether a read of the standard input would not wait: a byte has come,
-/// or it is at its end.
+/// or it is at its end. Asked of the descriptor too, as Fixpt's
+/// `stdin_ready` does (`tty::ready(0)`), so that input there before the
+/// reader has read it counts (C232); then of the buffer again, which the
+/// reader may have filled meanwhile.
 pub fn stdin_ready_p() -> bool {
     reading();
+    {
+        let i = input();
+        if !i.buf.is_empty() || i.ended {
+            return true;
+        }
+    }
+    if kayak_jit::stdin_readable() {
+        return true;
+    }
     let i = input();
     !i.buf.is_empty() || i.ended
+}
+
+/// Whether the standard input is ready, having waited until it is or the
+/// clock reaches `until` (-1: no limit), whichever is first (Fixpt's
+/// `World::wait_stdin`; the syscall `io:stdin-wait/1`, C232).
+pub fn stdin_wait(until: i64) -> bool {
+    reading();
+    let mut i = input();
+    loop {
+        if !i.buf.is_empty() || i.ended {
+            return true;
+        }
+        if until < 0 {
+            i = ARRIVED.wait(i).unwrap_or_else(|p| p.into_inner());
+            continue;
+        }
+        let now = clock();
+        if now >= until {
+            return false;
+        }
+        i = ARRIVED
+            .wait_timeout(i, Duration::from_nanos((until - now) as u64))
+            .unwrap_or_else(|p| p.into_inner())
+            .0;
+    }
 }
 
 /// The next line, its ending (`\n` or `\r\n`) left off; a line not UTF-8

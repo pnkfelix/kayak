@@ -283,6 +283,79 @@
       (eof u (sum-word! "eof" w-unit))
       (failed e (sum-word! "failed" (io-error-word! e))))))
 
+"The rest of FX-26's I/O (C232), as `read-line`: done where its room is
+ found, which a failure's detail sizes, its value made after."
+(define pending-byte (ref (sumof (byte u8) (eof unit) (failed io-error)) @h) (new (sum eof #u)))
+(define pending-count (ref (sumof (count int) (eof unit) (failed io-error)) @h) (new (sum eof #u)))
+(define pending-bytes (ref (bytevectorof @h) @h) (new (make-bytevector 0 (int->u8 0))))
+(define pending-term (ref (sumof (done unit) (not-a-terminal unit) (failed io-error)) @h) (new (sum done #u)))
+(define pending-size (ref (sumof (size (productof (rows int) (columns int))) (not-a-terminal unit) (failed io-error)) @h)
+  (new (sum not-a-terminal #u)))
+"The labels of `terminal-size`'s product, made at loading."
+(define size-labels (ref i64 @h) (new -1))
+
+(define failure-room (subr kfx (io-error) i64) (lambda (e) (i64+ 32 (string-length-i64 (extract e detail)))))
+
+(define byte-room! (subr (maxeff hp (alloc @h) (io stdin)) () i64)
+  (lambda ()
+    (begin (set pending-byte (read-byte)) (tagcase (get pending-byte) (byte k 8) (eof u 8) (failed e (failure-room e))))))
+(define read-byte-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-byte)
+      (byte k (sum-word! "byte" (int-word! (u8->int k))))
+      (eof u (sum-word! "eof" w-unit))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+
+(define bytes-room! (subr (maxeff hp (alloc @h) (io stdin)) (i64) i64)
+  (lambda (n)
+    "Read into a bytevector of KFX's, `n` bytes long (the span's), copied
+     after into the program's (`read-bytes-word!`); an empty span read as
+     none, as Fixpt's."
+    (begin
+      (set pending-bytes (make-bytevector (i64->int (if (i64< n 0) 0 n)) (int->u8 0)))
+      (set pending-count (if (i64<= n 0) (sum count (the int 0)) (read-bytes (get pending-bytes) 0 (i64->int n))))
+      (tagcase (get pending-count) (count k 8) (eof u 8) (failed e (failure-room e))))))
+(define-rec
+  (read-copied! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (bv at i n)
+      (if (i64>= i n)
+          #u
+          (begin (element-set! bv (i64+ at i) (int->i64 (u8->int (bytevector-u8-ref (get pending-bytes) (i64->int i)))))
+                 (read-copied! bv at (i64+ i 1) n))))))
+(define read-bytes-word! (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
+  (lambda (bv at n)
+    (cond ((or (i64< at 0) (i64< n 0) (i64> (i64+ at n) (obj-size bv)))
+           (begin (failed-with! "read-bytes: a range past the bytevector's end") 0))
+          (else
+           (tagcase (get pending-count)
+             (count k (begin (read-copied! bv at 0 (int->i64 k)) (sum-word! "count" (int-word! k))))
+             (eof u (sum-word! "eof" w-unit))
+             (failed e (sum-word! "failed" (io-error-word! e))))))))
+
+(define term-room! (subr (maxeff hp (alloc @h) (io terminal)) (i64) i64)
+  (lambda (which)
+    (begin
+      (cond ((i64= which 0) (set pending-term (terminal-raw)))
+            ((i64= which 1) (set pending-term (terminal-restore)))
+            (else (set pending-size (terminal-size))))
+      (if (i64< which 2)
+          (tagcase (get pending-term) (done u 8) (not-a-terminal u 8) (failed e (failure-room e)))
+          (tagcase (get pending-size) (size p 16) (not-a-terminal u 8) (failed e (failure-room e)))))))
+(define term-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-term)
+      (done u (sum-word! "done" w-unit))
+      (not-a-terminal u (sum-word! "not-a-terminal" w-unit))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+(define size-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-size)
+      (size p (let ((x (alloc! ob-product 3)))
+                (begin (obj-set! x 0 (fixnum (get size-labels))) (obj-set! x 1 (int-word! (extract p rows)))
+                       (obj-set! x 2 (int-word! (extract p columns))) (sum-word! "size" x))))
+      (not-a-terminal u (sum-word! "not-a-terminal" w-unit))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+
 (define file-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin

@@ -1,0 +1,21 @@
+;;; FX-26's I/O on every machine (C232), with what a test's run gives: the
+;;; standard input at its end, no arguments, a path that is not there. A
+;;; bit for each answer as expected, so that each machine's is compared.
+(define-type line-result (sumof (line string) (eof unit) (failed io-error)))
+(define-type byte-result (sumof (byte u8) (eof unit) (failed io-error)))
+(define-type count-result (sumof (count int) (eof unit) (failed io-error)))
+(define* bit (subr pure (bool int) int) (lambda (b n) (if b n 0)))
+(define* kind-of (subr pure (io-error) int)
+  (lambda (e) (tagcase (extract e kind) (not-found u 1) (else other 2))))
+(define buf (bytevectorof @b) (make-bytevector 4 (int->u8 0)))
+(define w int (tagcase (write-out "") (done u 1) (failed e 0)))
+(define l int (tagcase (the line-result (read-line)) (line s 0) (eof u 1) (failed e 0)))
+(define b int (tagcase (the byte-result (read-byte)) (byte k 0) (eof u 1) (failed e 0)))
+(define n0 int (tagcase (the count-result (read-bytes buf 2 2)) (count k (if (= k 0) 1 0)) (eof u 0) (failed e 0)))
+(define n1 int (tagcase (the count-result (read-bytes buf 0 4)) (count k 0) (eof u 1) (failed e 0)))
+(define r int (if (stdin-ready?) 1 0))
+(define a int (if (null? (args)) 1 0))
+(define f int (tagcase (read-file "tests/fx26-kayak/io/no-such-file") (data d 0) (failed e (if (= (kind-of e) 1) 1 0))))
+(define d int (tagcase (list-dir "tests/fx26-kayak/io/no-such-dir") (names ns 0) (failed e (if (= (kind-of e) 1) 1 0))))
+(define t int (tagcase (terminal-size) (size p 0) (not-a-terminal u 1) (failed e 0)))
+(+ w (+ (* 2 l) (+ (* 4 b) (+ (* 8 n0) (+ (* 16 n1) (+ (* 32 r) (+ (* 64 a) (+ (* 128 f) (+ (* 256 d) (* 512 t))))))))))

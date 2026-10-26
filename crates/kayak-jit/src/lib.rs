@@ -706,6 +706,41 @@ pub fn call_mailbox(m: usize, n: usize) -> i64 {
     }
 }
 
+/// Whether the standard input's descriptor has a byte, or its end, now
+/// (`poll`, no wait): for kayak-rt's `stdin-ready?`, which is no unsafe
+/// code's, as Fixpt's `tty::ready(0)` (C232).
+pub fn stdin_readable() -> bool {
+    #[repr(C)]
+    struct PollFd {
+        fd: i32,
+        events: i16,
+        revents: i16,
+    }
+    #[cfg(target_os = "macos")]
+    type Nfds = u32;
+    #[cfg(not(target_os = "macos"))]
+    type Nfds = u64;
+    unsafe extern "C" {
+        fn poll(fds: *mut PollFd, n: Nfds, timeout: i32) -> i32;
+    }
+    const POLLIN: i16 = 1;
+    let mut p = PollFd {
+        fd: 0,
+        events: POLLIN,
+        revents: 0,
+    };
+    loop {
+        // SAFETY: one `pollfd`, valid for the call; no wait.
+        let n = unsafe { poll(&mut p, 1, 0) };
+        if n >= 0 {
+            return n > 0;
+        }
+        if std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted {
+            return true;
+        }
+    }
+}
+
 /// The trap kind of a stack overflow (`(trap (kinds (2 stack-overflow)))`).
 pub const STACK_OVERFLOW: u64 = 2;
 /// Fuel given at each `poll`.

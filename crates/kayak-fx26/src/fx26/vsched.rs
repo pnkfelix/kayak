@@ -568,18 +568,55 @@ pub fn wakers_pushed_x(mut l: i64) -> () {
     }
 }
 
-/// When no task can run and the first waits: `#f` if no timer is set;
-/// else, having slept until the earliest (if `sleep`), each timer due
-/// taken, its waker run, in the order of their times, and `#t`.
+// Whether the standard input is ready, having waited until it is or the
+// clock reaches a deadline (-1: none): kayak-rt's (C232).
+
+pub fn _pctsyscall_available_colonstdin_wait() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit("io:stdin-wait/1"), str_lit("(subr (io sys) (i64) bool)"));
+    true
+}
+
+pub fn stdin_wait(x1: i64) -> bool {
+    _pctsyscall_available_colonstdin_wait();
+    kayak_rt::syscall1(str_lit("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit("io:stdin-wait/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+}
+
+pub fn stdin_wakers_pushed_x(l: i64) -> () {
+    if is_pair_p(l) {
+        stdin_wakers_pushed_x(pair_cdr(l));
+        queue_push_x(pair_car(l))
+    } else {
+        ()
+    }
+}
+
+/// When no task can run and the first waits: `#f` if no timer is set and
+/// no waker waits for the standard input; else, having slept until the
+/// earliest timer or until the input is ready, whichever is first (if
+/// `sleep`), the input's wakers run if it is ready, oldest first, and
+/// each timer due taken, its waker run, in the order of their times, and
+/// `#t` (Fixpt's `timers_wait`).
 pub fn timers_wait_x(sleep: bool) -> i64 {
-    let ts = sched_ref(s_timers());
-    if is_pair_p(sched_ref(s_stdin())) {
-        sched_refused_x(str_lit("the engine: the standard input waited for, which it has not yet"))
-    } else if not(is_pair_p(ts)) {
+    let (ts, input) = (sched_ref(s_timers()), is_pair_p(sched_ref(s_stdin())));
+    if (not(is_pair_p(ts)) && not(input)) {
         w_false()
     } else {
-        if sleep {
+        if not(sleep) {
+            ()
+        } else if input {
+            stdin_wait(if is_pair_p(ts) {
+                timers_earliest(ts, fixnum_max())
+            } else {
+                -1i64
+            });
+            ()
+        } else {
             sleep_until(timers_earliest(ts, fixnum_max()))
+        };
+        if (input && stdin_ready_p()) {
+            let ws = sched_ref(s_stdin());
+            sched_set_x(s_stdin(), w_nil());
+            stdin_wakers_pushed_x(ws)
         } else {
             ()
         };
@@ -873,7 +910,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         sched_set_x(s_preempt(), a);
         w_unit()
     } else if i64_eq(n, 43i64) {
-        sched_refused_x(str_lit("the engine: `%fx26-sched` of the standard input, which it has not yet"))
+        bool_word(stdin_ready_p())
     } else if i64_eq(n, 44i64) {
         sched_cons_x(s_stdin(), a);
         w_unit()
