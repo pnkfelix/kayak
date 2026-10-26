@@ -4919,6 +4919,52 @@ pub mod expressions {
                                         check_by_synth(v, s, e, x)
                                     }
                                 }
+                            } else if (string_eq_p(name, str_lit("cons")) && std_prim_p(v, str_lit("cons")) && {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyProc(es, ps, r) => {
+                                        (i64_eq(size(ps), 2i64) && {
+                                            let tagcase_ = walk(s, r);
+                                            match *tagcase_ {
+                                                Ty::TyData(d, args) => {
+                                                    string_eq_p(d, str_lit("%pairof"))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    false
+                                                }
+                                            }
+                                        })
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }) {
+                                // `cons` as a value where a procedure making a pair is wanted (C197):
+                                // at Fixpt's type, `(subr (alloc r) (t1 t2) (pairof t1 t2 r))`,
+                                // instantiated at the pair wanted. KFX's `cons` makes lists.
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyProc(es, ps, r) => {
+                                        let tagcase_ = walk(s, r);
+                                        match *tagcase_ {
+                                            Ty::TyData(d, args) => {
+                                                let made = ty_proc(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, car(cdr(cdr(args))))), kayak_rt::nil()), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::nil())), walk(s, r));
+                                                res(x, nil::<Str>(), kfx_restricted(v, fits(v, s, made, x), str_lit("cons as a value making a pair, at FX-26's type, which KFX's cons, making lists, has not (C197)")))
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                check_by_synth(v, s, e, x)
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        check_by_synth(v, s, e, x)
+                                    }
+                                }
                             } else {
                                 check_by_synth(v, s, e, x)
                             }

@@ -381,6 +381,25 @@
 (define scheme-text (subr kfx (scheme) string)
   (lambda (sc) (tagcase sc (scheme (tvars t) (string-append (words-of tvars) (string-append " | " (show-ty (st nil 0 nil nil) t)))))))
 
+(define narrower-effect? (subr kfx (scheme scheme) bool)
+  (lambda (new old)
+    "Whether `new`, a procedure's scheme, is `old`'s but for an effect
+     within `old`'s: one every use of `old` can take, as Fixpt's
+     `fits_old` asks of a definition again (C197; a `define*`'s own
+     `(read (globals f))`, within `(read @globals)`)."
+    (tagcase new
+      (scheme (tn n)
+        (tagcase old
+          (scheme (to o)
+            (tagcase n
+              (ty-proc (ne nps nr)
+                (tagcase o
+                  (ty-proc (oe ops or)
+                    (and (string=? (scheme-text (scheme tn (ty-proc nil nps nr))) (scheme-text (scheme to (ty-proc nil ops or))))
+                         (effs-within? ne oe)))
+                  (else other #f)))
+              (else other #f))))))))
+
 (define global (subr kfx (cv string scheme) bind)
   (lambda (v name sc0)
     "A global. FX-26 may define a name again, at the same type (C61), and
@@ -403,6 +422,7 @@
                  (tagcase (car found)
                    (bind (n sc0 wher)
                      (if (or (string=? (scheme-text sc0) (scheme-text sc))
+                             (narrower-effect? sc sc0)
                              ;; FX-26's program shadows the standard environment (C171);
                              ;; KFX's names none of it (the restriction pass).
                              (string=? wher "prim")

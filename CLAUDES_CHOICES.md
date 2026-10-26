@@ -5424,3 +5424,23 @@ path reads (`unions/paths-narrow.fx`). Kayak's checker now does the same.
   `path-in-closure.kfx`, `path-written-other-branch.kfx`. Probes of an
   effect variable and a region binder refused by both too.
 - The checkers' comparison: refused 16 to 15, the same 355 to 356; K1 0.
+
+## C197. `cons` as a value, at Fixpt's type; a definition again at a narrower effect (2026-10-25)
+
+`native/adapters.fx`, accepted by Fixpt, refused by kayak's checker twice
+over.
+- **`cons` as a value** where a procedure making a pair is wanted, `(app2
+  cons 7)`, its parameter `(subr (alloc @heap) (int ints) int-and-ints)`:
+  FX-26's `cons` is `(poly (r t1 t2) (subr (alloc r) (t1 t2) (pairof t1
+  t2 r)))`, kayak's the list's. Named where such a procedure is expected,
+  `cons` is instantiated at the pair wanted, `(subr (alloc r) (a b)
+  (pairof a b r))`, and fitted to it. KFX refuses it (`kfx-restricted`):
+  its `cons` makes lists. Called, and as a value elsewhere, as before.
+- **A definition again** whose type is the old one's but for an effect
+  within it: `(define* down ...)` again, Fixpt's type for it with `(read
+  (globals down))` beside `(read @globals)`. Fixpt assigns the global
+  when the new type is a subtype of the old (`fits_old`); kayak compared
+  the two types' texts. Now also: the same parameters and result, the
+  effect within the old (`narrower-effect?`). Other subtypes still
+  refused at the redefinition (C61), stricter than Fixpt, K1 kept.
+- The checkers' comparison: refused 15 to 14, the same 356 to 357; K1 0.

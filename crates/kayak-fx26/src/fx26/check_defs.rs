@@ -294,6 +294,42 @@ pub fn scheme_text(sc: &'static Scheme) -> Str {
     }
 }
 
+/// Whether `new`, a procedure's scheme, is `old`'s but for an effect
+/// within `old`'s: one every use of `old` can take, as Fixpt's
+/// `fits_old` asks of a definition again (C197; a `define*`'s own
+/// `(read (globals f))`, within `(read @globals)`).
+pub fn narrower_effect_p(new: &'static Scheme, old: &'static Scheme) -> bool {
+    let tagcase_ = new;
+    match *tagcase_ {
+        Scheme::Scheme(tn, n) => {
+            let tagcase_ = old;
+            match *tagcase_ {
+                Scheme::Scheme(to, o) => {
+                    let tagcase_ = n;
+                    match *tagcase_ {
+                        Ty::TyProc(ne, nps, nr) => {
+                            let tagcase_ = o;
+                            match *tagcase_ {
+                                Ty::TyProc(oe, ops, or) => {
+                                    (string_eq_p(scheme_text(scheme(tn, ty_proc(nil::<Str>(), nps, nr))), scheme_text(scheme(to, ty_proc(nil::<Str>(), ops, or)))) && effs_within_p(ne, oe))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// A global. FX-26 may define a name again, at the same type (C61), and
 /// what used it sees the new one; at another type its users would break,
 /// which FX-26 says at their use, and the checker here at the
@@ -325,7 +361,7 @@ pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind 
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc0, wher) => {
-                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || string_eq_p(wher, str_lit("prim")) || (not(null_p(scope_bind(str_lit("%module"), v))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
+                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || narrower_effect_p(sc, sc0) || string_eq_p(wher, str_lit("prim")) || (not(null_p(scope_bind(str_lit("%module"), v))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
                         bind(name, sc, if null_p(scope_bind(str_lit("%module"), v)) {
                             str_lit("global")
                         } else {
