@@ -812,15 +812,21 @@ leave for tier 5 rather than give back; `--direct`; on arm64 too, C210,
 measured on macOS). Next, by what keeps words out or makes them leave:
 ~~allocation as tier 5 allocates~~ (C147 on x86_64, C211 on arm64:
 `cellular cons 2`, `prim %region-cons 3`, `lambda` of a closure; where it
-would collect, tier 6 leaves first). Looked at 2026-10-24, on x86_64, not
-taken: making the runtime primitives register code
+would collect, tier 6 leaves first); ~~then the rest of `prim` and
+`cellular`, by how often they keep a word out~~ (C212, arm64: `setfield`,
+`%make-box`, `%make-frozen`, `%fx26-procedure?`, `%fx26-mul` on fixnums;
+52% of the 338 programs' register words tier 6's, 85% but the
+scheduler's; `direct-able?`'s `fuller`). Looked at 2026-10-24, on
+x86_64, not taken: making the runtime primitives register code
 calls most (`%fx26-sched`, `%make-box`, `%make-frozen`, `setfield`) in
 place. Every hot word of the benchmarks and of `preempt/allocating.fx`
 is tier 6's already; what those primitives keep out is the scheduler's
-library and words run once a spawn, a send or a preemption. Left of
-tier 6's: the control routines (`prompt`, `callcomp`, `abort`, in
-`captures`); on arm64, the rest of `prim` and `cellular`, by how often
-they keep a word out.
+library and words run once a spawn, a send or a preemption. x86_64's
+tier 5 to have them before `fuller` is turned on there. Left, by words
+kept out on arm64: `%fx26-sched` (1564, the scheduler's own, tier 1's by
+nature); `%fx26-make-icell` (37), `prompt` (13), `%stay-cellular` (13),
+`modulo` (13), `abort` (12), `%fx26-error` (11), `exact-integer?` (11);
+the control routines (`prompt`, `callcomp`, `abort`, in `captures`).
 - Noticed on the way (C210): x86_64's tables never send a block's first
   to its way in to tier 6, as C138 says they do: `yregister-compiled!`
   writes them after `h-6-on` is reset, so `t6-to` gives tier 5's label.

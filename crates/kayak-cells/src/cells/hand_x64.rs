@@ -3067,7 +3067,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     let rgive = _plus(way_in, int_lit(2));
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
-    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, true));
+    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, true, false));
     set(hand_labels(), _plus(rgive, int_lit(1)));
     if direct {
         set(words_direct(), _plus(get(words_direct()), int_lit(1)))

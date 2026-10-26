@@ -948,6 +948,16 @@ pub fn lsl_x(d: Int, n: Int, sh: Int) -> () {
     e_x(arm_lsl(d, n, sh))
 }
 
+// `mul` and `smulh`, which `arm64.fx` has not: `madd xd, xn, xm, xzr`, and
+// the high 64 bits of the signed product.
+pub fn mul_x(d: Int, n: Int, m: Int) -> () {
+    e_x(_plus(int_lit(2600500224), _plus(_star(m, int_lit(65536)), _plus(_star(n, int_lit(32)), d))))
+}
+
+pub fn smulh_x(d: Int, n: Int, m: Int) -> () {
+    e_x(_plus(int_lit(2604694528), _plus(_star(m, int_lit(65536)), _plus(_star(n, int_lit(32)), d))))
+}
+
 pub fn ret_x() -> () {
     e_x(a64::arm_ret())
 }
@@ -2290,14 +2300,22 @@ pub fn l_materialize() -> Ref<Int> {
 /// with `allocs`, the allocations tier 5 makes itself, at the heap's top,
 /// too (C147, C211): where tier 5 would give back to collect first, tier
 /// 6 leaves, its records written as return entries, so the collector
-/// never sees one.
-pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool) -> bool {
+/// never sees one; with `fuller`, those arm64's tier 5 does itself since
+/// (C212): `%make-box`, `%make-frozen`, `setfield`, `%fx26-procedure?`
+/// and `%fx26-mul`.
+pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool, fuller: bool) -> bool {
     if i64_eq(op, ro_cellular()) {
         (allocs && i64_eq(a, r_cons()) && i64_eq(b, 2i64))
     } else if i64_eq(op, ro_prim()) {
-        (allocs && i64_eq(prim_op(a), o_region_cons()) && i64_eq(b, 3i64))
+        ((allocs && i64_eq(prim_op(a), o_region_cons()) && i64_eq(b, 3i64)) || (fuller && ((i64_eq(prim_op(a), o_make_box()) && i64_eq(b, 1i64)) || (i64_eq(prim_op(a), o_make_frozen()) && i64_gt_eq(b, 1i64) && i64_lt_eq(b, register_regs())))))
     } else if i64_eq(op, ro_lambda()) {
         (allocs && i64_lt_eq(b, register_regs()) && i64_eq(c, r_closure()))
+    } else if i64_eq(op, ro_setfield()) {
+        fuller
+    } else if i64_eq(op, ro_prim1()) {
+        (fuller && i64_eq(prim_op(a), o_procedure()))
+    } else if (i64_eq(op, ro_prim2()) || i64_eq(op, ro_prim2imm())) {
+        (fuller && i64_eq(prim_op(a), o_mul()))
     } else if (i64_eq(op, ro_op2()) || i64_eq(op, ro_op2imm())) {
         (i64_eq(a, r_eq()) || i64_eq(a, r_int_add()) || i64_eq(a, r_add()) || i64_eq(a, r_int_sub()) || i64_eq(a, r_sub()) || i64_eq(a, r_int_less()) || i64_eq(a, r_less()) || i64_eq(a, r_int_eq()))
     } else if i64_eq(op, ro_op1()) {
@@ -2308,8 +2326,8 @@ pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool) -> bool {
 }
 
 /// Whether every instruction of `rw` from `i`, of `n` cells, is tier 6's
-/// (with `allocs`, its allocations too).
-pub fn direct_able_p(rw: i64, i: i64, n: i64, allocs: bool) -> bool {
+/// (with `allocs` and `fuller`, `direct-op?`'s).
+pub fn direct_able_p(rw: i64, i: i64, n: i64, allocs: bool, fuller: bool) -> bool {
     if i64_gt_eq(i, n) {
         true
     } else {
@@ -2331,7 +2349,7 @@ pub fn direct_able_p(rw: i64, i: i64, n: i64, allocs: bool) -> bool {
         } else {
             the::<i64>(0i64)
         };
-        (direct_op_p(op, a, b, c, allocs) && direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n, allocs))
+        (direct_op_p(op, a, b, c, allocs, fuller) && direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n, allocs, fuller))
     }
 }
 
@@ -2553,7 +2571,7 @@ pub fn subsi_x(d: Int, n: Int, i: Int) -> () {
 /// Whether register operation `op` reads an operand from the word, at
 /// its place in `x12`.
 pub fn reads_operands_p(op: i64) -> bool {
-    (i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_setglbl()) || i64_eq(op, ro_op2imm()) || i64_eq(op, ro_global_guard()) || i64_eq(op, ro_lambda()))
+    (i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_setglbl()) || i64_eq(op, ro_op2imm()) || i64_eq(op, ro_global_guard()) || i64_eq(op, ro_lambda()) || i64_eq(op, ro_prim2imm()))
 }
 
 /// A call of tier 6 code at label `l`, or if it is -1 at the address in
@@ -2692,6 +2710,21 @@ pub fn materialize_x(l: Int) -> () {
     ldr_x(int_lit(30), int_lit(31), int_lit(40));
     addi_x(int_lit(31), x11(), int_lit(48));
     br_x(x16())
+}
+
+/// `REGr`… to `REG(n+1)` as a frozen bloblet's fields at `x16`, its
+/// header: `REG2` just below the trailer, the last just above the
+/// header.
+pub fn frozen_fields_x(mut r: Int, mut n: Int) -> () {
+    loop {
+        if _gt(r, _plus(n, int_lit(1))) {
+            return ();
+        } else {
+            str_x(r, x16(), _star(int_lit(8), _minus(_plus(n, int_lit(2)), r)));
+            r = _plus(r, int_lit(1));
+            continue;
+        }
+    }
 }
 
 /// What register instruction `i` of `rw`'s `n` cells does, its
@@ -2851,6 +2884,105 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         str_x(x14(), x_st(), at_st(st_top()));
         sub_x(x14(), x11(), x_mem());
         addi_x(int_lit(0), x14(), int_lit(4))
+    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_make_box()) && i64_eq(o(int_lit(1)), 1i64)) {
+        allocating_x(int_lit(3), int_lit(31));
+        movz_x(x15(), _plus(_plus(int_lit(6), _star(int_lit(8), i64_to_int(k_box()))), _star(int_lit(2), int_lit(16384))));
+        str_x(x15(), x16(), int_lit(0));
+        str_x(int_lit(1), x16(), int_lit(8));
+        movz_x(x14(), int_lit(21));
+        str_x(x14(), x16(), int_lit(16));
+        addi_x(x15(), x13(), int_lit(3));
+        str_x(x15(), x_st(), at_st(st_top()));
+        sub_x(int_lit(0), x16(), x_mem());
+        addi_x(int_lit(0), int_lit(0), int_lit(28))
+    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_make_frozen()) && i64_gt_eq(o(int_lit(1)), 1i64) && i64_lt_eq(o(int_lit(1)), register_regs())) {
+        let (n, kind) = (_minus(i64_to_int(o(int_lit(1))), int_lit(1)), label_x());
+        movz_x(x14(), _star(int_lit(8), i64_to_int(k_sum())));
+        cmp_x(int_lit(1), x14());
+        bc_x(c_eq(), kind);
+        movz_x(x14(), _star(int_lit(8), i64_to_int(k_product())));
+        cmp_x(int_lit(1), x14());
+        give_if_x(c_ne());
+        bind_x(kind);
+        allocating_x(_plus(n, int_lit(2)), int_lit(31));
+        movz_x(x15(), _plus(int_lit(6), int_lit(12288)));
+        movz_x(x14(), _plus(n, int_lit(1)));
+        lsl_x(x14(), x14(), int_lit(14));
+        orr_x(x15(), x15(), x14());
+        add_x(x15(), x15(), int_lit(1));
+        str_x(x15(), x16(), int_lit(0));
+        frozen_fields_x(int_lit(2), n);
+        movz_x(x14(), _plus(_star(int_lit(8), n), int_lit(13)));
+        str_x(x14(), x16(), _star(int_lit(8), _plus(n, int_lit(1))));
+        addi_x(x15(), x13(), _plus(n, int_lit(2)));
+        str_x(x15(), x_st(), at_st(st_top()));
+        sub_x(int_lit(0), x16(), x_mem());
+        addi_x(int_lit(0), int_lit(0), _plus(_star(int_lit(8), _plus(n, int_lit(2))), int_lit(4)))
+    } else if i64_eq(op, ro_setfield()) {
+        andl_x(x14(), int_lit(0), int_lit(3));
+        cmpi_x(x14(), int_lit(4));
+        give_if_x(c_ne());
+        add_x(x11(), x_mem(), int_lit(0));
+        movz_x(x13(), _star(int_lit(8), i64_to_int(o(int_lit(0)))));
+        fields_of_x(int_lit(0));
+        cmp_x(x13(), x14());
+        give_if_x(c_lt());
+        cmp_x(x13(), x15());
+        give_if_x(c_hi());
+        sub_x(x16(), x11(), x13());
+        stur_x(reg_of(i64_to_int(o(int_lit(1)))), x16(), int_lit(-4))
+    } else if (i64_eq(op, ro_prim1()) && i64_eq(prim_op(o(int_lit(0))), o_procedure())) {
+        let (header, yes, done) = (label_x(), label_x(), label_x());
+        movz_x(x13(), int_lit(3));
+        andl_x(x14(), int_lit(0), int_lit(3));
+        cmpi_x(x14(), int_lit(4));
+        bc_x(c_ne(), done);
+        add_x(x11(), x_mem(), int_lit(0));
+        ldur_x(x15(), x11(), int_lit(-12));
+        andl_x(x14(), x15(), int_lit(3));
+        cmpi_x(x14(), int_lit(5));
+        bc_x(c_ne(), header);
+        sub_x(x14(), x11(), x15());
+        ldur_x(x15(), x14(), int_lit(-7));
+        bind_x(header);
+        ubfx_x(x14(), x15(), int_lit(3), int_lit(8));
+        cmpi_x(x14(), int_lit(8));
+        bc_x(c_eq(), yes);
+        cmpi_x(x14(), int_lit(19));
+        bc_x(c_eq(), yes);
+        cmpi_x(x14(), int_lit(14));
+        bc_x(c_eq(), yes);
+        cmpi_x(x14(), i64_to_int(k_closure()));
+        bc_x(c_eq(), yes);
+        cmpi_x(x14(), i64_to_int(k_native_closure()));
+        bc_x(c_eq(), yes);
+        cmpi_x(x14(), i64_to_int(k_continuation()));
+        bc_x(c_ne(), done);
+        bind_x(yes);
+        movz_x(x13(), int_lit(11));
+        bind_x(done);
+        mov_x(int_lit(0), x13())
+    } else if ((i64_eq(op, ro_prim2()) || i64_eq(op, ro_prim2imm())) && i64_eq(prim_op(o(int_lit(0))), o_mul())) {
+        let y = if i64_eq(op, ro_prim2()) {
+            reg_of(i64_to_int(o(int_lit(1))))
+        } else {
+            x14()
+        };
+        if i64_eq(op, ro_prim2imm()) {
+            opnd_x(x14(), int_lit(1))
+        } else {
+            ()
+        };
+        orr_x(x15(), int_lit(0), y);
+        tstl_x(x15(), int_lit(3));
+        give_if_x(c_ne());
+        asr_x(x15(), int_lit(0), int_lit(3));
+        mul_x(x16(), x15(), y);
+        smulh_x(x17(), x15(), y);
+        asr_x(x15(), x16(), int_lit(63));
+        cmp_x(x17(), x15());
+        give_if_x(c_ne());
+        mov_x(int_lit(0), x16())
     } else if (get(h_6()) && (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()))) {
         t6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o(int_lit(0))), nx, i64_to_int(flatarray_ref_i64(get(h_6_after()), i)))
     } else if (get(h_6()) && i64_eq(op, ro_invokeself())) {
@@ -3126,7 +3258,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     let rgive = _plus(give, int_lit(2));
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
-    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, true));
+    let direct = (get(hand_direct()) && direct_able_p(rw, 0i64, n, true, true));
     set(hand_labels(), _plus(rgive, int_lit(1)));
     if direct {
         set(words_direct(), _plus(get(words_direct()), int_lit(1)))

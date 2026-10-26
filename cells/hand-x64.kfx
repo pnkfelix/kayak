@@ -1358,7 +1358,9 @@
            (base (get hand-labels)) (rbase (+ base (+ n-cells 1)))
            (way-in (+ rbase (+ n-cells 1))) (give-pre (+ way-in 1)) (rgive (+ way-in 2))
            (machine-give (get l-give)) (machine-give-pre (get l-give-pre))
-           (direct (and (get hand-direct) (direct-able? rw 0 n #t))))
+           ;; `direct-op?`'s fuller set not yet (C212): x86_64's tier 5 has
+           ;; but some of it, and none is tried on x86_64.
+           (direct (and (get hand-direct) (direct-able? rw 0 n #t #f))))
       (begin
         (set hand-labels (+ rgive 1))
         (if direct (set words-direct (+ (get words-direct) 1)) #u)

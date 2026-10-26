@@ -5817,3 +5817,39 @@ collection may not follow while records live").
 - **Checked**: `cells-programs.py` (`--regs --direct`, under
   `--gc-stress`, where every allocation leaves, and at a slice of 3):
   the 338 programs agree, and the 85 of `--ours`.
+
+## C212. Tier 5 does more of `prim` itself, and tier 6 takes it (2026-10-24)
+
+The user: "Go" (TODO §34, step 5's next: "the rest of `prim` and
+`cellular`, by how often they keep a word out").
+- **Counted first**: over the 338 programs' listings (4591 register
+  words, 42% tier 6's after C211), what keeps each word out, and which
+  words one instruction alone keeps out. `%fx26-sched` keeps out 1496,
+  but they are the scheduler's own words, in the 34 programs that run
+  tasks, and a call to tier 1's scheduler is tier 1's by nature. Then
+  `setfield` 130, `%make-box` 103, `%fx26-procedure?` 68, `%make-frozen`
+  46, `%fx26-mul` 39 (`prim2` and `prim2imm`): these five, 386 words.
+- **Tier 5 first**: tier 6 can take only what tier 5 does itself (else
+  it leaves at it each time), and tier 5 gave all five back. Now, in the
+  body tiers 5 and 6 share, each as tier 1 does it: `setfield` checks as
+  a field is read (tier 1's `field-ok?`) and stores with no barrier, as
+  tier 1's `slot-set!`; `%make-box` lays out `make-bloblet!`'s box;
+  `%make-frozen` checks its kind is a sum's or a product's and lays out
+  `frozen-of!`'s bloblet, frozen whole; `%fx26-procedure?` reads the
+  header, past a trailer or not, for tier 1's six kinds; `%fx26-mul` of
+  two fixnums is `mul`, given back where `smulh` says it overflows, for
+  tier 1's bignum. `mul` and `smulh` are encoded here, as `adr` and
+  `lsl` are: `arm64.fx` has neither.
+- **Then tier 6**: `direct-op?` takes a second flag beside `allocs`
+  (C147, C211), `fuller`, for what else arm64's tier 5 does itself since;
+  x86_64 passes `allocs` but not `fuller`, its tier 5 lacking these.
+- **Counted after**: 52% of register words are tier 6's (2392 of 4591),
+  85% of those not the scheduler's. Left, by words one instruction keeps
+  out: `%fx26-make-icell` 37, `prompt` 13, `%stay-cellular` 13, `modulo`
+  13, `abort` 12, `%fx26-error` 11, `exact-integer?` 11 (TODO §34).
+  Give-backs over the 338 programs fell by 3% only: most are the fuel
+  out at a slice's end, and the scheduler's.
+- **Checked**: `cells-programs.py`, every way (tier 5 does these in every
+  `--compiled` way now, tier 6 under `--direct`): the 338 programs agree,
+  and the 85 of `--ours`. A product past a fixnum is given back and agrees
+  (`native/i64-as-int.fx`).

@@ -195,6 +195,10 @@
 (define arm-lsl (->* (int int int) int)
   (lambda (d n sh) (+ 3544186880 (+ (* (modulo (- 64 sh) 64) 65536) (+ (* (- 63 sh) 1024) (+ (* n 32) d))))))
 (define lsl! (->* (int int int) unit) (lambda (d n sh) (e! (arm-lsl d n sh))))
+"`mul` and `smulh`, which `arm64.fx` has not: `madd xd, xn, xm, xzr`, and
+ the high 64 bits of the signed product."
+(define mul! (->* (int int int) unit) (lambda (d n m) (e! (+ 2600500224 (+ (* m 65536) (+ (* n 32) d))))))
+(define smulh! (->* (int int int) unit) (lambda (d n m) (e! (+ 2604694528 (+ (* m 65536) (+ (* n 32) d))))))
 (define ret! (->* () unit) (lambda () (e! (with a64 arm-ret))))
 (define ldr-reg! (->* (int int int) unit) (lambda (t n m) (e! ((with a64 arm-ldr-reg) t n m))))
 
@@ -896,16 +900,24 @@
 (define words-direct (ref int @c) (new 0))
 (define l-materialize (ref int @c) (new 0))
 
-(define direct-op? (->* (i64 i64 i64 i64 bool) bool)
-  (lambda (op a b c allocs)
+(define direct-op? (->* (i64 i64 i64 i64 bool bool) bool)
+  (lambda (op a b c allocs fuller)
     "Whether tier 6 has register operation `op`, of operands `a`, `b`, `c`;
      with `allocs`, the allocations tier 5 makes itself, at the heap's top,
      too (C147, C211): where tier 5 would give back to collect first, tier
      6 leaves, its records written as return entries, so the collector
-     never sees one."
+     never sees one; with `fuller`, those arm64's tier 5 does itself since
+     (C212): `%make-box`, `%make-frozen`, `setfield`, `%fx26-procedure?`
+     and `%fx26-mul`."
     (cond ((i64= op ro-cellular) (and allocs (i64= a r-cons) (i64= b 2)))
-          ((i64= op ro-prim) (and allocs (i64= (prim-op a) o-region-cons) (i64= b 3)))
+          ((i64= op ro-prim)
+           (or (and allocs (i64= (prim-op a) o-region-cons) (i64= b 3))
+               (and fuller (or (and (i64= (prim-op a) o-make-box) (i64= b 1))
+                               (and (i64= (prim-op a) o-make-frozen) (i64>= b 1) (i64<= b register-regs))))))
           ((i64= op ro-lambda) (and allocs (i64<= b register-regs) (i64= c r-closure)))
+          ((i64= op ro-setfield) fuller)
+          ((i64= op ro-prim1) (and fuller (i64= (prim-op a) o-procedure)))
+          ((or (i64= op ro-prim2) (i64= op ro-prim2imm)) (and fuller (i64= (prim-op a) o-mul)))
           ((or (i64= op ro-op2) (i64= op ro-op2imm))
            (or (i64= a r-eq) (i64= a r-int-add) (i64= a r-add) (i64= a r-int-sub) (i64= a r-sub)
                (i64= a r-int-less) (i64= a r-less) (i64= a r-int-eq)))
@@ -918,10 +930,10 @@
                 (i64= op ro-branch) (i64= op ro-branchf) (i64= op ro-brancht) (i64= op ro-global-guard))))))
 
 (define-rec
-  (direct-able? (->* (i64 i64 i64 bool) bool)
-    (lambda (rw i n allocs)
+  (direct-able? (->* (i64 i64 i64 bool bool) bool)
+    (lambda (rw i n allocs fuller)
       "Whether every instruction of `rw` from `i`, of `n` cells, is tier 6's
-       (with `allocs`, its allocations too)."
+       (with `allocs` and `fuller`, `direct-op?`'s)."
       (if (i64>= i n)
           #t
           (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk)))
@@ -929,7 +941,7 @@
                  (a (if (i64>= ops 1) (fix-val (slot-of rw (i64+ kk 1))) (the i64 0)))
                  (b (if (i64>= ops 2) (fix-val (slot-of rw (i64+ kk 2))) (the i64 0)))
                  (c (if (i64>= ops 3) (fix-val (slot-of rw (i64+ kk 3))) (the i64 0))))
-            (and (direct-op? op a b c allocs) (direct-able? rw (i64+ i (i64+ 1 ops)) n allocs)))))))
+            (and (direct-op? op a b c allocs fuller) (direct-able? rw (i64+ i (i64+ 1 ops)) n allocs fuller)))))))
 
 "Compiling a word for tier 6: whether, its instructions' labels, their
  ways out, its tier 5 code's labels, and its blocks."
@@ -1048,7 +1060,7 @@
     "Whether register operation `op` reads an operand from the word, at
      its place in `x12`."
     (or (i64= op ro-const) (i64= op ro-global) (i64= op ro-setglbl) (i64= op ro-op2imm) (i64= op ro-global-guard)
-        (i64= op ro-lambda))))
+        (i64= op ro-lambda) (i64= op ro-prim2imm))))
 
 (define t6-called! (->* (int int int i64 int) unit)
   (lambda (l r new-cur nx after)
@@ -1136,6 +1148,14 @@
         (ldr! 30 31 40) (addi! 31 x11 48)
         (br! x16)))))
 
+(define-rec
+  (frozen-fields! (->* (int int) unit)
+    (lambda (r n)
+      "`REGr`… to `REG(n+1)` as a frozen bloblet's fields at `x16`, its
+       header: `REG2` just below the trailer, the last just above the
+       header."
+      (if (> r (+ n 1)) #u (begin (str! r x16 (* 8 (- (+ n 2) r))) (frozen-fields! (+ r 1) n))))))
+
 (define reg-body! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
   (lambda (rw i n base resumes)
     "What register instruction `i` of `rw`'s `n` cells does, its
@@ -1221,6 +1241,61 @@
                (frees-stored! 1 n)
                (addi! x14 x13 (+ 3 n)) (str! x14 x-st (at-st st-top))
                (sub! x14 x11 x-mem) (addi! 0 x14 4))))
+          ((and (i64= op ro-prim) (i64= (prim-op (o 0)) o-make-box) (i64= (o 1) 1))
+           (begin
+             ;; As tier 1's `make-bloblet!`: its header, `REG1`, its trailer.
+             (allocating! 3 31)
+             (movz! x15 (+ (+ 6 (* 8 (i64->int k-box))) (* 2 16384))) (str! x15 x16 0)
+             (str! 1 x16 8) (movz! x14 21) (str! x14 x16 16)
+             (addi! x15 x13 3) (str! x15 x-st (at-st st-top))
+             (sub! 0 x16 x-mem) (addi! 0 0 28)))
+          ((and (i64= op ro-prim) (i64= (prim-op (o 0)) o-make-frozen) (i64>= (o 1) 1) (i64<= (o 1) register-regs))
+           (let ((n (- (i64->int (o 1)) 1)) (kind (label!)))
+             (begin
+               ;; `REG1` the kind, a sum's or a product's, else given back;
+               ;; `REG2`… the fields, from the header up the last first;
+               ;; frozen whole, as tier 1's `frozen-of!`.
+               (movz! x14 (* 8 (i64->int k-sum))) (cmp! 1 x14) (bc! c-eq kind)
+               (movz! x14 (* 8 (i64->int k-product))) (cmp! 1 x14) (give-if! c-ne)
+               (bind! kind)
+               (allocating! (+ n 2) 31)
+               (movz! x15 (+ 6 12288)) (movz! x14 (+ n 1)) (lsl! x14 x14 14) (orr! x15 x15 x14) (add! x15 x15 1)
+               (str! x15 x16 0)
+               (frozen-fields! 2 n)
+               (movz! x14 (+ (* 8 n) 13)) (str! x14 x16 (* 8 (+ n 1)))
+               (addi! x15 x13 (+ n 2)) (str! x15 x-st (at-st st-top))
+               (sub! 0 x16 x-mem) (addi! 0 0 (+ (* 8 (+ n 2)) 4)))))
+          ((i64= op ro-setfield)
+           (begin
+             ;; Where tier 1's `field-ok?` allows, as a field is read; no
+             ;; barrier, as tier 1's `slot-set!`.
+             (andl! x14 0 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem 0)
+             (movz! x13 (* 8 (i64->int (o 0)))) (fields-of! 0)
+             (cmp! x13 x14) (give-if! c-lt) (cmp! x13 x15) (give-if! c-hi)
+             (sub! x16 x11 x13) (stur! (reg-of (i64->int (o 1))) x16 -4)))
+          ((and (i64= op ro-prim1) (i64= (prim-op (o 0)) o-procedure))
+           (let ((header (label!)) (yes (label!)) (done (label!)))
+             (begin
+               ;; As tier 1's: a bloblet of one of six kinds.
+               (movz! x13 3)
+               (andl! x14 0 3) (cmpi! x14 4) (bc! c-ne done)
+               (add! x11 x-mem 0) (ldur! x15 x11 -12) (andl! x14 x15 3) (cmpi! x14 5) (bc! c-ne header)
+               (sub! x14 x11 x15) (ldur! x15 x14 -7)
+               (bind! header)
+               (ubfx! x14 x15 3 8)
+               (cmpi! x14 8) (bc! c-eq yes) (cmpi! x14 19) (bc! c-eq yes) (cmpi! x14 14) (bc! c-eq yes)
+               (cmpi! x14 (i64->int k-closure)) (bc! c-eq yes) (cmpi! x14 (i64->int k-native-closure)) (bc! c-eq yes)
+               (cmpi! x14 (i64->int k-continuation)) (bc! c-ne done)
+               (bind! yes) (movz! x13 11)
+               (bind! done) (mov! 0 x13))))
+          ((and (or (i64= op ro-prim2) (i64= op ro-prim2imm)) (i64= (prim-op (o 0)) o-mul))
+           (let ((y (if (i64= op ro-prim2) (reg-of (i64->int (o 1))) x14)))
+             (begin
+               ;; Of two fixnums, a fixnum, else given back (a bignum's).
+               (if (i64= op ro-prim2imm) (opnd! x14 1) #u)
+               (orr! x15 0 y) (tstl! x15 3) (give-if! c-ne)
+               (asr! x15 0 3) (mul! x16 x15 y) (smulh! x17 x15 y) (asr! x15 x16 63) (cmp! x17 x15) (give-if! c-ne)
+               (mov! 0 x16))))
           ((and (get h-6) (or (i64= op ro-invoke) (i64= op ro-tailinvoke)))
            (t6-invoked! (i64= op ro-tailinvoke) (i64->int (o 0)) nx (i64->int (flatarray-ref-i64 (get h-6-after) i))))
           ((and (get h-6) (i64= op ro-invokeself)) (t6-called! (+ base 2) -1 -1 nx (i64->int (flatarray-ref-i64 (get h-6-after) i))))
@@ -1412,7 +1487,7 @@
            (base (get hand-labels)) (rbase (+ base (+ n-cells 1)))
            (give (+ rbase (+ n-cells 1))) (give-pre (+ give 1)) (rgive (+ give 2))
            (machine-give (get l-give)) (machine-give-pre (get l-give-pre))
-           (direct (and (get hand-direct) (direct-able? rw 0 n #t))))
+           (direct (and (get hand-direct) (direct-able? rw 0 n #t #t))))
       (begin
         (set hand-labels (+ rgive 1))
         (if direct (set words-direct (+ (get words-direct) 1)) #u)

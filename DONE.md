@@ -1478,3 +1478,11 @@ and its frames keep tier 5's links, so that once left they return by
 them. The 338 programs agree under it. Against tier 5: `lists` −34%
 (from −21%), `closures` −11% (from −14%: leaving at each of its 750
 collections, 1000 calls deep, costs about what it saves).
+
+## §34: more of `prim` in tiers 5 and 6, on arm64 (2026-10-24, C212)
+
+arm64's tier 5 now does `setfield`, `%make-box`, `%make-frozen`,
+`%fx26-procedure?` and `%fx26-mul` of fixnums itself, rather than give
+them back, and tier 6 takes the words that have them: 52% of the 338
+programs' register words are tier 6's (from 42%), 85% of those not the
+scheduler's. The 338 programs agree under every way.
