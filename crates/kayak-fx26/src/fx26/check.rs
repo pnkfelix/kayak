@@ -6200,6 +6200,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     };
                     if string_member_p(string_append(str_lit("%place '"), r), tvars) {
                         return ty_data(str_lit("%place"), kayak_rt::heap_cons(ty_var(string_append(str_lit("'"), r)), kayak_rt::nil()));
+                    } else if string_eq_p(r, str_lit("heap")) {
+                        // The heap's place (C218; `processes.fx`'s `(place heap)`).
+                        return ty_data(str_lit("%place"), kayak_rt::heap_cons(ty_rconst(str_lit("@heap")), kayak_rt::nil()));
                     } else {
                         return match refuse(v, string_append(str_lit("a place's type names a letrena's place or a poly's place binder: "), show_sexp(t))) {};
                     }
@@ -6355,6 +6358,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             let (k, n) = (second(items(b)), sym_name(car(items(b))));
                             if sym_is_p(k, str_lit("region")) {
                                 string_append(str_lit("'"), n)
+                            } else if sym_is_p(k, str_lit("place")) {
+                                string_append(str_lit("'"), n)
                             } else if sym_is_p(k, str_lit("size")) {
                                 string_append(str_lit("#"), n)
                             } else if sym_is_p(k, str_lit("type")) {
@@ -6371,9 +6376,27 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }), bs);
                     let pos = datum_pos(t);
-                    let body = parse_type(v, onto(map(lambda1s(move |n: Str| {
+                    let places = concat(map(lambda1s(move |b: &'static Sexp| {
+                        if ({
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f, l, p) => {
+                                    i64_eq(size(ys), 2i64)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } && sym_is_p(second(items(b)), str_lit("place"))) {
+                            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%place '"), sym_name(car(items(b)))), kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), bs));
+                    let body = parse_type(v, onto(places, onto(map(lambda1s(move |n: Str| {
                         string_append(str_lit("%distinct "), n)
-                    }), distinct), onto(names, tvars)), third(xs));
+                    }), distinct), onto(names, tvars))), third(xs));
                     let at_pos = lambda1s(move |n: Str| {
                         string_append(n, string_append(str_lit("@"), string_append(i64_to_string(pos), if string_member_p(n, distinct) {
                             str_lit("%d")

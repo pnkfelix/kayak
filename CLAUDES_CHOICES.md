@@ -5977,3 +5977,22 @@ As the engine has them (C214):
 - The shapes' tests (`int?`, `string?`, ...) of one argument as values.
 - Kayak's own words on Fixpt's programs: agree 310 to 326, differ 0;
   not compiled 65 to 49.
+
+## C218. Fixpt's scheduler, `processes.fx`, checked by kayak (2026-10-26)
+
+Processes, the next feature for both of kayak's paths: in Fixpt the forms
+of processes are made by its parser into calls of `fx26:processes.fx`, a
+module file built in, the scheduler written in FX-26 over its runtime's
+`%sched` (tasks run under prompts, switched by their continuations).
+Tier 1 has the runtime's part (C125); what kayak lacked is the file, and
+its own compiler's and engine's making of the forms. First the file:
+- **Built in** (`scripts/built-in.py`): `fx26:processes.fx`, as it is at
+  the pin, beside `standard.fx`.
+- **Checked by kayak's checker**, which needed: a poly over a `place` in a
+  type and a `plambda` (a region binder, its place marked for `(place
+  r)`); `(place heap)`; `%sched` at Fixpt's type, named only by a module
+  file built in (`built_in_only`; by name and by `proj`); and, in a module
+  file built in, `(define icell-get await)`, a poly global's name at its
+  scheme (elsewhere refused yet: KFX would have to emit it).
+- Not yet: the forms made into calls of it (the engine, the compiler to
+  cells), and the engine's `%sched`.

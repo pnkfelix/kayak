@@ -4,7 +4,8 @@
 "Definitions"
 
 (define primitives string
-  "(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))
+  "(%sched (poly ((a type) (b type) (c type)) (subr (maxeff (read @sched) (write @sched) (alloc @sched)) (int a b) c)))
+   (i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))
    (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))
    (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))
    (i64-not (subr pure (i64) i64))
@@ -1511,6 +1512,16 @@
                       (bind (n sc w) (tagcase sc (scheme (tvars t) (if (null? tvars) nil (list sc))))))))))
         nil)))
 
+(define poly-global-named? (subr kfx (cv sexp) bool)
+  (lambda (v e)
+    "Whether `e` names a global of a poly scheme (C218)."
+    (tagcase e
+      (sym (n f p)
+        (let ((b (scope-bind n v)))
+          (and (not (null? b))
+               (tagcase (car b) (bind (m sc w) (and (or (string=? w "global") (string=? w "item")) (tagcase sc (scheme (tv t) (not (null? tv))))))))))
+      (else other #f))))
+
 (define check-untyped (subr kfx (cv sexp) elab)
   (lambda (v form)
     "`(define x e)`: `e`'s type found, `x` not in scope in `e` (as FX-26
@@ -1525,6 +1536,13 @@
           ;; at `y`'s scheme, and in Rust `y` itself, `pub use`d.
           (elab (with-binds v (list (global v name (car again))))
                 (list (typed name (lst (list (sym "%reexport" "" 0) (second (items e)) (third (items e))) "" 0 0))))
+      (if (and (has-prefix? (cv-file v) "fx26:") (poly-global-named? v e))
+          ;; In a module file built in, a poly global's name, `(define
+          ;; icell-get await)` (C218; `processes.fx`): at its scheme, as FX-26
+          ;; has it. Elsewhere not yet (KFX would have to emit it).
+          (tagcase (car (scope-bind (sym-name e) v))
+            (bind (n sc w)
+              (elab (with-binds v (list (global v name sc))) nil)))
       (tagcase (with expressions (synth v (new-state) e))
         (res (t es s)
           (let ((written (if (with expressions (has-var? s t))
@@ -1532,7 +1550,7 @@
                              (with expressions (ty-sexp v s t))))
                 (s (if (lambda-form? e) s (constant-made v s e es t))))
             (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (with expressions (settle-facts s)))
-                  (list (typed name written))))))))))
+                  (list (typed name written)))))))))))
 
 "Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the
  top level, a Rust `mod`. Its items are a program's definitions, each

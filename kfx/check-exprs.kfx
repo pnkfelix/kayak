@@ -2056,6 +2056,11 @@
                  "As a value, Fixpt's `vsubr` (C188); FX-26's."
                  (tagcase (variadic-standard s name)
                    (res (t es s) (res t nil (kfx-restricted v s (string-append name " as a value, FX-26's variadic one, which KFX has not (C188)"))))))
+                ((and (string=? name "%sched") (std-prim? v name) (not (has-prefix? (cv-file v) "fx26:")))
+                 "The scheduler's runtime (C218), named only by a module file built in,
+                  as Fixpt's `built_in_only` has it: it says nothing of what the tasks
+                  it is given do."
+                 (refuse v "%sched is named only by a module file built in"))
                 ((and (string=? name "certify-nat") (std-prim? v name))
                  "Named only to call it (C187; Fixpt's F16): bound to another name,
                   its call would escape the rule."
@@ -3862,6 +3867,8 @@
                 (refuse v "(proj f arg ...) of a poly procedure named")
                 (tagcase (car found)
                   (bind (n sc wher)
+                    (if (and (string=? n "%sched") (string=? wher "prim") (not (has-prefix? (cv-file v) "fx26:")))
+                        (refuse v "%sched is named only by a module file built in")
                     (if (string=? wher "broken")
                         (refuse v (string-append "`" (string-append n "` is broken: since what it used was defined again, at another type, it does not check")))
                     (tagcase sc
@@ -3917,7 +3924,7 @@
                                        "A global that may suspend, as a value: its future boxed, as a
                                         name's is (`async-global`), at any effect it is given."
                                        (async-global v (proj-needs v s n tvars (cdr xs)) name at-file at-pos))
-                                     (else other (proj-needs v s n tvars (cdr xs)))))))))))))))))))))
+                                     (else other (proj-needs v s n tvars (cdr xs))))))))))))))))))))))
 
       (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
         (lambda (v s n region-of-binder)
@@ -5243,11 +5250,18 @@
            binders the plambda's regions, rigid, in scope; none may be named as
            one in scope already, nor escape into a type found outside it."
           (let* ((args (tagcase (walk s expected) (ty-data (d args) args) (else other nil)))
-                 (marks (concat (map (lambda ((b sexp)) (if (distinct-binder? b) (the strings (list (string-append "%distinct '" (sym-name (car (items b)))))) nil)) (items (car xs)))))
+                 (marks (concat (map (lambda ((b sexp))
+                                       (cond ((distinct-binder? b) (the strings (list (string-append "%distinct '" (sym-name (car (items b)))))))
+                                             ;; A place binder's place, for `(place r)` (C218).
+                                             ((and (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f)) (sym-is? (second (items b)) "place"))
+                                              (the strings (list (string-append "%place '" (sym-name (car (items b)))))))
+                                             (else nil)))
+                                     (items (car xs)))))
                  (names (map (lambda ((b sexp))
                                (if (or (distinct-binder? b) (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f)))
                                    (let ((k (second (items b))) (n (sym-name (car (items b)))))
                                      (cond ((sym-is? k "region") (string-append "'" n))
+                                           ((sym-is? k "place") (string-append "'" n))
                                            ((sym-is? k "size") (string-append "#" n))
                                            ((sym-is? k "type") n)
                                            ((sym-is? k "conv") (binder-named "conv" n))

@@ -2751,9 +2751,13 @@
                 ((sym-is? (car xs) "place")
                  "`(place p)` (C34): a `letrena`'s place, or a poly's place binder."
                  (let ((r (if (i64= (size xs) 2) (tagcase (second xs) (sym (n f p) n) (else other "")) "")))
-                   (if (string-member? (string-append "%place '" r) tvars)
-                       (ty-data "%place" (list (ty-var (string-append "'" r))))
-                       (refuse v (string-append "a place's type names a letrena's place or a poly's place binder: " (show-sexp t))))))
+                   (cond ((string-member? (string-append "%place '" r) tvars)
+                          (ty-data "%place" (list (ty-var (string-append "'" r)))))
+                         ((string=? r "heap")
+                          "The heap's place (C218; `processes.fx`'s `(place heap)`)."
+                          (ty-data "%place" (list (ty-rconst "@heap"))))
+                         (else
+                       (refuse v (string-append "a place's type names a letrena's place or a poly's place binder: " (show-sexp t)))))))
                 ((sym-is? (car xs) "bloblet")
                  "`(bloblet (fields T ...) R)` (C31): fields that may be written, kept
                   at `R`, so none a procedure that reads `R` unless it says `spin`,
@@ -2834,6 +2838,8 @@
                                       (if (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
                                           (let ((k (second (items b))) (n (sym-name (car (items b)))))
                                             (cond ((sym-is? k "region") (string-append "'" n))
+                                                  ;; A place, a region of its own (C218).
+                                                  ((sym-is? k "place") (string-append "'" n))
                                                   ((sym-is? k "size") (string-append "#" n))
                                                   ((sym-is? k "type") n)
                                                   ((sym-is? k "conv") (binder-named "conv" n))
@@ -2842,7 +2848,11 @@
                                           (refuse v "a poly type whose binders are regions, types and sizes, which KFX has not yet past (C107)")))
                                     bs))
                         (pos (datum-pos t))
-                        (body (parse-type v (onto (map (lambda ((n string)) (string-append "%distinct " n)) distinct) (onto names tvars)) (third xs)))
+                        (places (concat (map (lambda ((b sexp)) (if (and (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f)) (sym-is? (second (items b)) "place"))
+                                                                    (the strings (list (string-append "%place '" (sym-name (car (items b))))))
+                                                                    nil))
+                                             bs)))
+                        (body (parse-type v (onto places (onto (map (lambda ((n string)) (string-append "%distinct " n)) distinct) (onto names tvars))) (third xs)))
                         (at-pos (lambda ((n string)) (string-append n (string-append "@" (string-append (i64->string pos) (if (string-member? n distinct) "%d" ""))))))
                         (renamed (substitute (map (lambda ((n string)) (string-append n (string-append "@" (i64->string pos)))) distinct)
                                              (map (lambda ((n string)) (ty-var (at-pos n))) distinct)
