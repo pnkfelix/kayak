@@ -569,7 +569,35 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
    10 of the 433 programs Fixpt accepts still refused (2026-10-25, C201);
-   62 differ; 361 the same.
+   62 differ; 361 the same. What each of the 10 needs (looked at
+   2026-10-25):
+   - `redefine/rerun-chain.fx`, `redefine/knot-spin.fx`: a definition
+     again at another type re-checks the definitions that use it, in
+     order, each defined again or broken (Fixpt's `top_defining`), and
+     `--check` prints each again; the engine then runs them again too.
+   - `modules/load-layers.fx`: inside a module, `(define-type t (select r
+     t))` and `(define-effect e (select r e))` of `r`, a module value the
+     module made before them, are read by the module's prep before `r` is
+     bound (`module-aliases`, `own-effects`); to be read in item order.
+     Smallest case: `(define n (module (define r m) (define-type t2
+     (select r t))))`.
+   - `regions/distinct-swap.fx`: `(r region distinct)` binders: the mark
+     kept in poly types and plambdas, printed; a tight poly no loose one
+     (`distinct-not-loose.fx`); at each instantiation, inferred ones too,
+     Lucassen's check (Fixpt's `check_distinct`, `regions_distinct`),
+     letregion's regions distinct; four refusals to keep.
+   - `conventions/poly.fx`: `(c conv)` binders, `(subr (conv c) ...)`, a
+     convention solved by what is given, or projected.
+   - `run/acyclic-in-a-place.fx`, `run/letfreeze-into-place.fx`: frozen
+     regions of a place, `(acyclic p)`, `(const p)`, as regions that
+     substitution reaches (kayak's frozen regions are the constants
+     `acyclic`, `const`); then `letfreeze` into a place.
+   - `sizes/narrayof-lengths.fx`: `(narrayof T n R)`, an array's length in
+     its type, kept by `the`, `array-length` a `(nat n)`.
+   - `made-code/leaves.fx`, `made-code-x86_64/leaves.fx`: `seal-code` of a
+     bloblet whose field is a pair: refused in the checker (C116) for what
+     kayak-jit lays out; the engine runs no native code, so a
+     `kfx-restricted` and a refusal where the engine would run it.
    The user (2026-10-25), on C183: Fixpt taking fixed-width integers as
    `int`s was probably a mistake, an ABI matter (an `i64` boxed where an
    `int` is wanted); perhaps `(raw i32)` apart from `i32`. Kayak follows
