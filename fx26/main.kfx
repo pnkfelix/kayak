@@ -50,6 +50,27 @@
             (onto (with-loads forms (car paths) loaded) (read-files (cdr paths))))))))
 
 (define-rec
+  (forms-mention? (subr kfx (sexps strings) bool)
+    (lambda (es heads)
+      "Whether any of `es` is, or holds, a list headed by one of `heads`."
+      (any? (lambda ((e sexp))
+              (tagcase e
+                (lst (xs f l p)
+                  (or (and (not (null? xs)) (tagcase (car xs) (sym (n f2 p2) (string-member? n heads)) (else other #f)))
+                      (forms-mention? xs heads)))
+                (else other #f)))
+            es))))
+
+(define with-processes (subr kfx (sexps) sexps)
+  (lambda (forms)
+    "A program of processes, `%processes` defined first, the scheduler's
+     module file built in (C219): what its forms are made calls of, as
+     Fixpt's parser makes them (`process-expanded`)."
+    (if (forms-mention? forms process-heads)
+        (onto (with-loads (read-all (string-chars "(define %processes (load-module \"fx26:processes.fx\"))") "<scheduler>" 1) "<scheduler>" nil) forms)
+        forms)))
+
+(define-rec
   (before-dashes (subr kfx (strings) strings)
     (lambda (xs) (if (or (null? xs) (string=? (car xs) "--")) nil (cons (car xs) (before-dashes (cdr xs)))))))
 
@@ -111,6 +132,7 @@
       (if (and (i64= op-make-tag (list-position "make-continuation-prompt-tag" prim-list 0))
                (i64= op-abort (list-position "abort-current-continuation" prim-list 0))
                (i64= op-capture (list-position "call-with-composable-continuation" prim-list 0))
+               (i64= op-capture-once (list-position "call-with-oneshot-continuation" prim-list 0))
                (i64= op-suspend (list-position "abort-with-continuation" prim-list 0))
                (i64= op-apply (list-position "apply" prim-list 0)))
           #u
@@ -153,11 +175,11 @@ and where the time went.
          (begin (write-err usage) (exit 2) 2))
         ;; The program's cellular words, as Fixpt lists its (C133).
         ((string=? (car as) "--cells")
-         (let* ((forms (read-files (cdr as))) (checked (check-program forms)))
+         (let* ((forms (with-processes (read-files (cdr as)))) (checked (check-program forms)))
            (tagcase checked
              (verdict (found fs) (begin (compile-cells forms fs) (say (cells-listing)) 0)))))
         (else
-          (let* ((forms (read-files paths))
+          (let* ((forms (with-processes (read-files paths)))
                  (checked (check-program forms))
                  (gs (onto (global-names forms) (onto (module-entries forms) (with-entries (verdict-facts checked))))))
             (begin

@@ -526,6 +526,10 @@
              (begin (cg-fail "not yet: a conversion to native code") (x-var "%none" a)))
             ((or (string=? h "the") (string=? h "convention")) (parse-x (car (cdr (cdr xs)))))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
+            ((member-of? h process-heads)
+             "A form of processes, a call of the scheduler's (C219), as Fixpt's
+              parser makes it."
+             (parse-x (process-expanded e)))
             ((and (string=? h "acyclic") (i64= (size xs) 4)) (parse-x (confirmed e "%acyclic-value" "acyclic?" "certify-acyclic" #f)))
             ((and (string=? h "confirm-nat") (i64= (size xs) 4)) (parse-x (confirmed e "%nat-value" "nat?" "certify-nat" #f)))
             ((and (string=? h "confirm-length") (i64= (size xs) 5)) (parse-x (confirmed e "%confirm-value" "length-is?" "certify-length" #t)))
@@ -539,6 +543,9 @@
                (cond ((not (string=? k "")) (x-extract (parse-x (second xs)) (digits-i64 (string-chars k) 0) a))
                      ;; A blobref's field: a blobref at its offset.
                      ((not (string=? o "")) (x-bloblet "%blobref-field" (digits-i64 (string-chars o) 0) (list (parse-x (second xs))) a))
+                     ;; `par`'s pair (C219): of fields 1 and 2, in order.
+                     ((tagcase (third xs) (num (k f2 p2) (and (i64>= k 1) (i64<= k 2))) (else other #f))
+                      (x-extract (parse-x (second xs)) (i64- (tagcase (third xs) (num (k f2 p2) k) (else other 1)) 1) a))
                      (else (begin (cg-fail "an extract the checker did not see") (x-unit a))))))
             ((bloblet-form? h) (parse-bloblet h (cdr xs) f a))
             ((string=? h "sum") (x-sum (label-of (second xs)) (parse-x (car (cdr (cdr xs)))) a))
@@ -1430,7 +1437,7 @@
                                    "int?" "string?" "bool?" "char?" "symbol?" "pair?" "procedure?" "f64?" "f32?" "ref?" "sum?"
                                    "product?" "bytevector?" "vector?" "array?" "nat?"))
            1)
-          ((string-member? n (list "with-mark" "array-set!" "substring")) 3)
+          ((string-member? n (list "with-mark" "array-set!" "substring" "%sched")) 3)
           ((string-member? n (list "+" "-" "*" "<" ">" "<=" ">=" "=" "modulo" "quotient" "cons" "set-car!" "set-cdr!" "char=?"
                                    "string=?" "array-ref" "string-ref" "make-array" "abort-current-continuation" "escape" "set"
                                    "marks-of" "call-with-composable-continuation" "call-with-oneshot-continuation" "first-mark"))

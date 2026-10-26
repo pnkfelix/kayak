@@ -182,7 +182,8 @@
         "%make-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-byte" "bloblet-set-byte!" "bloblet-bytes" "bloblet-freeze"
         "%blobref-at" "%blobref+" "blobref-owner" "blobref-offset" "%blobref-get" "%blobref-set!" "%blobref-field"
         "%blobref-index" "%blobref-length" "%blobref-tag" "%blobref-variant!"
-        "%blobref-variant-named!" "%blobref-label"))
+        "%blobref-variant-named!" "%blobref-label"
+        "%sched" "make-icell" "rmake-icell" "call-with-oneshot-continuation"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

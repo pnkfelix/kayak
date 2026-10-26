@@ -47,6 +47,164 @@ pub fn guarded_bind(t: Str, e: &'static Sexp, test: &'static Sexp, arm: &'static
     sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(e, kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(test, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(items(arm)), kayak_rt::heap_cons(sy(t), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(items(arm)), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
 }
 
+pub fn member_of_p(x: Str, xs: Strings) -> bool {
+    string_member_p(x, xs)
+}
+
+pub fn process_heads() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("spawn-monitored"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("race"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::nil()))))))))))
+    })
+}
+
+pub fn lib_op(name: Str) -> &'static Sexp {
+    sx(kayak_rt::heap_cons(sy(str_lit("with")), kayak_rt::heap_cons(sy(str_lit("%processes")), kayak_rt::heap_cons(sy(name), kayak_rt::nil()))))
+}
+
+pub fn thunk_of(e: &'static Sexp) -> &'static Sexp {
+    sx(kayak_rt::heap_cons(sy(str_lit("lambda")), kayak_rt::heap_cons(sx(nil::<&'static Sexp>()), kayak_rt::heap_cons(e, kayak_rt::nil()))))
+}
+
+/// The branches as nested `par2`s, from the last: `(par2 (lambda () e1)
+/// (lambda () rest))`.
+pub fn par_tree(es: Sexps, first: bool) -> &'static Sexp {
+    if null_p(cdr(es)) {
+        thunk_of(car(es))
+    } else {
+        let t = sx(kayak_rt::heap_cons(lib_op(str_lit("par2")), kayak_rt::heap_cons(thunk_of(car(es)), kayak_rt::heap_cons(par_tree(cdr(es), false), kayak_rt::nil()))));
+        if first {
+            t
+        } else {
+            thunk_of(t)
+        }
+    }
+}
+
+/// The branches' values out of `%par`, two by two, then the body.
+pub fn par_lets(names: Sexps, body: Sexps) -> &'static Sexp {
+    let ex = lambda1s(move |k: i64| {
+        sx(kayak_rt::heap_cons(sy(str_lit("extract")), kayak_rt::heap_cons(sy(str_lit("%par")), kayak_rt::heap_cons(num(k, str_lit(""), 0i64), kayak_rt::nil()))))
+    });
+    if null_p(cdr(cdr(names))) {
+        sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(names), kayak_rt::heap_cons(ex(1i64), kayak_rt::nil()))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(second(names), kayak_rt::heap_cons(ex(2i64), kayak_rt::nil()))), kayak_rt::nil()))), body)))
+    } else {
+        sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(names), kayak_rt::heap_cons(ex(1i64), kayak_rt::nil()))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%par")), kayak_rt::heap_cons(ex(2i64), kayak_rt::nil()))), kayak_rt::nil()))), kayak_rt::heap_cons(par_lets(cdr(names), body), kayak_rt::nil()))))
+    }
+}
+
+pub fn race_tree(es: Sexps, first: bool) -> &'static Sexp {
+    if null_p(cdr(es)) {
+        thunk_of(car(es))
+    } else {
+        let t = sx(kayak_rt::heap_cons(lib_op(str_lit("race2")), kayak_rt::heap_cons(thunk_of(car(es)), kayak_rt::heap_cons(race_tree(cdr(es), false), kayak_rt::nil()))));
+        if first {
+            t
+        } else {
+            thunk_of(t)
+        }
+    }
+}
+
+pub fn select_event(w: &'static Sexp) -> Str {
+    let h = {
+        let tagcase_ = car(items(w));
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                n
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
+    if string_eq_p(h, str_lit("icell-get")) {
+        str_lit("cell-event")
+    } else if string_eq_p(h, str_lit("receive")) {
+        str_lit("mailbox-event")
+    } else if string_eq_p(h, str_lit("sleep-until")) {
+        str_lit("clock-event")
+    } else {
+        str_lit("stdin-event")
+    }
+}
+
+pub fn select_events(arms: Sexps, i: i64) -> &'static Sexp {
+    let e = sx(kayak_rt::heap_cons(lib_op(select_event(car(items(car(arms))))), kayak_rt::heap_cons(sy(string_append(str_lit("%sel-"), i64_to_string(i))), kayak_rt::nil())));
+    if null_p(cdr(arms)) {
+        e
+    } else {
+        sx(kayak_rt::heap_cons(lib_op(str_lit("or-event")), kayak_rt::heap_cons(e, kayak_rt::heap_cons(select_events(cdr(arms), i64_plus(i, 1i64)), kayak_rt::nil()))))
+    }
+}
+
+pub fn select_arms(arms: Sexps, i: i64) -> &'static Sexp {
+    let arm = items(car(arms));
+    let w = items(car(arm));
+    let get = sx(if null_p(cdr(w)) {
+        kayak_rt::heap_cons(car(w), kayak_rt::nil())
+    } else {
+        kayak_rt::heap_cons(car(w), kayak_rt::heap_cons(sy(string_append(str_lit("%sel-"), i64_to_string(i))), kayak_rt::nil()))
+    });
+    let this = sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(second(arm), kayak_rt::heap_cons(get, kayak_rt::nil()))), kayak_rt::nil())), cdr(cdr(arm)))));
+    if null_p(cdr(arms)) {
+        this
+    } else {
+        sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("=")), kayak_rt::heap_cons(sy(str_lit("%sel")), kayak_rt::heap_cons(num(i, str_lit(""), 0i64), kayak_rt::nil())))), kayak_rt::heap_cons(this, kayak_rt::heap_cons(select_arms(cdr(arms), i64_plus(i, 1i64)), kayak_rt::nil())))))
+    }
+}
+
+pub fn select_binds(arms: Sexps, i: i64) -> Sexps {
+    if null_p(arms) {
+        nil::<&'static Sexp>()
+    } else {
+        let w = items(car(items(car(arms))));
+        kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(string_append(str_lit("%sel-"), i64_to_string(i))), kayak_rt::heap_cons(if null_p(cdr(w)) {
+            sy(str_lit("#u"))
+        } else {
+            second(w)
+        }, kayak_rt::nil()))), select_binds(cdr(arms), i64_plus(i, 1i64)))
+    }
+}
+
+/// A form of processes as Fixpt's parser makes it (C219).
+pub fn process_expanded(e: &'static Sexp) -> &'static Sexp {
+    let xs = items(e);
+    let h = sym_name(car(xs));
+    let args = cdr(xs);
+    if member_of_p(h, kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::nil())))))) {
+        sx(kayak_rt::heap_cons(lib_op(h), args))
+    } else if (string_eq_p(h, str_lit("spawn")) || string_eq_p(h, str_lit("spawn-monitored"))) {
+        let rest = if string_eq_p(h, str_lit("spawn")) {
+            args
+        } else {
+            cdr(cdr(args))
+        };
+        let header = items(car(rest));
+        let b = car(header);
+        let m = second(header);
+        let r = third(header);
+        let proc = sx(kayak_rt::heap_cons(sy(str_lit("plambda")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(r, kayak_rt::heap_cons(sy(str_lit("place")), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("lambda")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(b, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("inbox")), kayak_rt::heap_cons(m, kayak_rt::heap_cons(r, kayak_rt::nil())))), kayak_rt::nil()))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(r, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("place")), kayak_rt::heap_cons(r, kayak_rt::nil()))), kayak_rt::nil()))), kayak_rt::nil()))), onto(cdr(rest), kayak_rt::heap_cons(sy(str_lit("#u")), kayak_rt::nil()))))), kayak_rt::nil()))));
+        if string_eq_p(h, str_lit("spawn")) {
+            sx(kayak_rt::heap_cons(lib_op(str_lit("spawn-process")), kayak_rt::heap_cons(proc, kayak_rt::nil())))
+        } else {
+            sx(kayak_rt::heap_cons(lib_op(str_lit("spawn-monitored")), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(second(args), kayak_rt::heap_cons(proc, kayak_rt::nil())))))
+        }
+    } else if string_eq_p(h, str_lit("par")) {
+        let bs = items(car(args));
+        sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%par")), kayak_rt::heap_cons(par_tree(map(lambda1s(move |b: &'static Sexp| {
+            second(items(b))
+        }), bs), true), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(par_lets(map(lambda1s(move |b: &'static Sexp| {
+            car(items(b))
+        }), bs), cdr(args)), kayak_rt::nil()))))
+    } else if string_eq_p(h, str_lit("race")) {
+        race_tree(args, true)
+    } else {
+        sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(select_binds(args, 0i64)), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%sel")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(lib_op(str_lit("sync")), kayak_rt::heap_cons(select_events(args, 0i64), kayak_rt::nil()))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(select_arms(args, 0i64), kayak_rt::nil())))), kayak_rt::nil()))))
+    }
+}
+
 pub fn fresh_from(mut base: Str, mut taken: Strings, mut i: i64) -> Str {
     loop {
         let n = if i64_eq(i, 0i64) {
@@ -277,10 +435,6 @@ pub fn lit_int(w: Str) -> &'static Ir {
 
 pub fn second_ir(xs: Irs) -> &'static Ir {
     car(cdr(xs))
-}
-
-pub fn member_of_p(x: Str, xs: Strings) -> bool {
-    string_member_p(x, xs)
 }
 
 /// A flat sum's arms as `if`s on its tag `key` (C215; kayak-rt's
@@ -1005,6 +1159,9 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
                 error(string_append(str_lit("the engine: a blobref's operation it has not yet: "), h));
                 return i_lit(v_unit());
             }
+        } else if member_of_p(h, process_heads()) {
+            // A form of processes, a call of the scheduler's (C219).
+            return lower(process_expanded(e), sc, gs);
         } else if (string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) {
             // A bloblet (C215): its bytes' count, then its fields; `rmake-bloblet`'s
             // place, the heap here, left off.

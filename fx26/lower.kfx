@@ -26,6 +26,98 @@
                         (sx (list (sy "let") (sx (list (sx (list (car (items arm)) (sy t))))) (second (items arm))))
                         els))))))
 
+(define member-of? (subr kfx (string strings) bool) (lambda (x xs) (string-member? x xs)))
+
+;; The forms of processes and `par` (C219), made as Fixpt's parser makes
+;; them (its processes.rs): each a call of the scheduler's, `fx26:processes.fx`,
+;; loaded as the global `%processes`.
+(define process-heads strings
+  (list "spawn" "spawn-monitored" "send" "receive" "self" "par" "race" "pselect" "icell-get" "icell-put!"))
+
+(define lib-op (subr kfx (string) sexp)
+  (lambda (name) (sx (list (sy "with") (sy "%processes") (sy name)))))
+
+(define thunk-of (subr kfx (sexp) sexp) (lambda (e) (sx (list (sy "lambda") (sx nil) e))))
+
+(define-rec
+  (par-tree (subr kfx (sexps bool) sexp)
+    (lambda (es first)
+      "The branches as nested `par2`s, from the last: `(par2 (lambda () e1)
+       (lambda () rest))`."
+      (if (null? (cdr es))
+          (thunk-of (car es))
+          (let ((t (sx (list (lib-op "par2") (thunk-of (car es)) (par-tree (cdr es) #f)))))
+            (if first t (thunk-of t))))))
+  (par-lets (subr kfx (sexps sexps) sexp)
+    (lambda (names body)
+      "The branches' values out of `%par`, two by two, then the body."
+      (let ((ex (lambda ((k i64)) (sx (list (sy "extract") (sy "%par") (num k "" 0))))))
+        (if (null? (cdr (cdr names)))
+            (sx (cons (sy "let") (cons (sx (list (sx (list (car names) (ex 1))) (sx (list (second names) (ex 2))))) body)))
+            (sx (list (sy "let") (sx (list (sx (list (car names) (ex 1))) (sx (list (sy "%par") (ex 2)))))
+                      (par-lets (cdr names) body))))))))
+
+(define-rec
+  (race-tree (subr kfx (sexps bool) sexp)
+    (lambda (es first)
+      (if (null? (cdr es))
+          (thunk-of (car es))
+          (let ((t (sx (list (lib-op "race2") (thunk-of (car es)) (race-tree (cdr es) #f)))))
+            (if first t (thunk-of t)))))))
+
+(define select-event (subr kfx (sexp) string)
+  (lambda (w)
+    (let ((h (tagcase (car (items w)) (sym (n f p) n) (else other ""))))
+      (cond ((string=? h "icell-get") "cell-event") ((string=? h "receive") "mailbox-event")
+            ((string=? h "sleep-until") "clock-event") (else "stdin-event")))))
+
+(define-rec
+  (select-events (subr kfx (sexps i64) sexp)
+    (lambda (arms i)
+      (let ((e (sx (list (lib-op (select-event (car (items (car arms))))) (sy (string-append "%sel-" (i64->string i)))))))
+        (if (null? (cdr arms)) e (sx (list (lib-op "or-event") e (select-events (cdr arms) (i64+ i 1))))))))
+  (select-arms (subr kfx (sexps i64) sexp)
+    (lambda (arms i)
+      (let* ((arm (items (car arms))) (w (items (car arm)))
+             (get (sx (if (null? (cdr w)) (list (car w)) (list (car w) (sy (string-append "%sel-" (i64->string i)))))))
+             (this (sx (cons (sy "let") (cons (sx (list (sx (list (second arm) get)))) (cdr (cdr arm)))))))
+        (if (null? (cdr arms))
+            this
+            (sx (list (sy "if") (sx (list (sy "=") (sy "%sel") (num i "" 0))) this (select-arms (cdr arms) (i64+ i 1))))))))
+  (select-binds (subr kfx (sexps i64) sexps)
+    (lambda (arms i)
+      (if (null? arms)
+          nil
+          (let ((w (items (car (items (car arms))))))
+            (cons (sx (list (sy (string-append "%sel-" (i64->string i))) (if (null? (cdr w)) (sy "#u") (second w))))
+                  (select-binds (cdr arms) (i64+ i 1))))))))
+
+(define process-expanded (subr kfx (sexp) sexp)
+  (lambda (e)
+    "A form of processes as Fixpt's parser makes it (C219)."
+    (let* ((xs (items e)) (h (sym-name (car xs))) (args (cdr xs)))
+      (cond ((member-of? h (list "send" "receive" "self" "icell-get" "icell-put!")) (sx (cons (lib-op h) args)))
+            ((or (string=? h "spawn") (string=? h "spawn-monitored"))
+             (let* ((rest (if (string=? h "spawn") args (cdr (cdr args))))
+                    (header (items (car rest)))
+                    (b (car header)) (m (second header)) (r (third header))
+                    (proc (sx (list (sy "plambda") (sx (list (sx (list r (sy "place")))))
+                                    (sx (cons (sy "lambda")
+                                              (cons (sx (list (sx (list b (sx (list (sy "inbox") m r)))) (sx (list r (sx (list (sy "place") r))))))
+                                                    (onto (cdr rest) (list (sy "#u"))))))))))
+               (if (string=? h "spawn")
+                   (sx (list (lib-op "spawn-process") proc))
+                   (sx (list (lib-op "spawn-monitored") (car args) (second args) proc)))))
+            ((string=? h "par")
+             (let ((bs (items (car args))))
+               (sx (list (sy "let") (sx (list (sx (list (sy "%par") (par-tree (map (lambda ((b sexp)) (second (items b))) bs) #t)))))
+                         (par-lets (map (lambda ((b sexp)) (car (items b))) bs) (cdr args))))))
+            ((string=? h "race") (race-tree args #t))
+            (else
+             (sx (list (sy "let") (sx (select-binds args 0))
+                       (sx (list (sy "let") (sx (list (sx (list (sy "%sel") (sx (list (lib-op "sync") (select-events args 0)))))))
+                                 (select-arms args 0))))))))))
+
 (define-rec
   (fresh-from (subr kfx (string strings i64) string)
     (lambda (base taken i)
@@ -153,7 +245,6 @@
 
 (define second-ir (subr kfx (irs) ir) (lambda (xs) (car (cdr xs))))
 
-(define member-of? (subr kfx (string strings) bool) (lambda (x xs) (string-member? x xs)))
 
 (define-rec
   (flat-arms (subr kfx (sexps string string string) sexp)
@@ -529,6 +620,9 @@
                       (i-call (i-lit (v-prim "%blobref-variant!" 4))
                               (list (car args) (lit-int (car variant)) (lit-int (second-word variant)) (lit-int (car (cdr (cdr variant)))))))
                      (else (begin (error (string-append "the engine: a blobref's operation it has not yet: " h)) (i-lit (v-unit)))))))
+            ((member-of? h process-heads)
+             "A form of processes, a call of the scheduler's (C219)."
+             (lower (process-expanded e) sc gs))
             ((or (string=? h "make-bloblet") (string=? h "rmake-bloblet"))
              "A bloblet (C215): its bytes' count, then its fields; `rmake-bloblet`'s
               place, the heap here, left off."

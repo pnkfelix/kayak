@@ -2620,6 +2620,10 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         parse_x(car(cdr(cdr(xs))))
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
+    } else if member_of_p(h, process_heads()) {
+        // A form of processes, a call of the scheduler's (C219), as Fixpt's
+        // parser makes it.
+        parse_x(process_expanded(e))
     } else if (string_eq_p(h, str_lit("acyclic")) && i64_eq(size(xs), 4i64)) {
         parse_x(confirmed(e, str_lit("%acyclic-value"), str_lit("acyclic?"), str_lit("certify-acyclic"), false))
     } else if (string_eq_p(h, str_lit("confirm-nat")) && i64_eq(size(xs), 4i64)) {
@@ -2638,6 +2642,30 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
             x_extract(parse_x(second(xs)), digits_i64(string_chars(k), 0i64), a)
         } else if not(string_eq_p(o, str_lit(""))) {
             x_bloblet(str_lit("%blobref-field"), digits_i64(string_chars(o), 0i64), kayak_rt::heap_cons(parse_x(second(xs)), kayak_rt::nil()), a)
+        } else if {
+            let tagcase_ = third(xs);
+            match *tagcase_ {
+                Sexp::Num(k, f2, p2) => {
+                    (i64_gt_eq(k, 1i64) && i64_lt_eq(k, 2i64))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            x_extract(parse_x(second(xs)), i64_minus({
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        k
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        1i64
+                    }
+                }
+            }, 1i64), a)
         } else {
             match cg_fail(str_lit("an extract the checker did not see")) {};
             x_unit(a)
@@ -4689,7 +4717,7 @@ pub fn c_arity(n: Str) -> i64 {
         0i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("f32?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("%sched"), kayak_rt::nil()))))) {
         3i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil())))))))))))))))))))))))))) {
         2i64

@@ -144,6 +144,14 @@ pub fn prim_arity(n: Str) -> i64 {
         4i64
     } else if string_eq_p(n, str_lit("%blobref-variant-named!")) {
         3i64
+    } else if string_eq_p(n, str_lit("%sched")) {
+        3i64
+    } else if string_eq_p(n, str_lit("make-icell")) {
+        0i64
+    } else if string_eq_p(n, str_lit("rmake-icell")) {
+        1i64
+    } else if string_eq_p(n, str_lit("call-with-oneshot-continuation")) {
+        2i64
     } else if string_eq_p(n, str_lit("%blobref-label")) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::nil()))) {

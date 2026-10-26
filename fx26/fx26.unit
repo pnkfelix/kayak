@@ -16,6 +16,7 @@ heap.kfx
 words.kfx
 table.kfx
 vwords.kfx
+vsched.kfx
 vprims.kfx
 vm.kfx
 vshow.kfx

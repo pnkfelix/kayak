@@ -158,6 +158,13 @@ pub fn fk_mark() -> i64 {
     13i64
 }
 
+// The scheduler's `preempt` called at a slice's end: its value dropped,
+// the node it stopped at (field 0) evaluated in its environment (1) (C219,
+// Fixpt's `VmFrame::Discard`).
+pub fn fk_preempted() -> i64 {
+    14i64
+}
+
 pub fn frame_kind(k: i64) -> i64 {
     fixnum_value(obj_ref(k, 1i64))
 }
@@ -359,6 +366,10 @@ pub fn op_abort() -> i64 {
 
 pub fn op_capture() -> i64 {
     137i64
+}
+
+pub fn op_capture_once() -> i64 {
+    210i64
 }
 
 pub fn op_suspend() -> i64 {
@@ -576,10 +587,46 @@ pub fn stopped_x(node: i64, env: i64, k: i64) -> i64 {
     w_failed()
 }
 
+// Steps until the next slice's end, as Fixpt's machine counts them
+// (`sched::SLICE`), at which the scheduler may preempt the current task.
+pub fn sched_slice() -> i64 {
+    65536i64
+}
+
+pub fn sched_poll() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(65536i64)
+    })
+}
+
+/// A step: at a slice's end, the scheduler's `preempt`, if it would have
+/// another task run (Fixpt's `preempt_due`), the task then quiet until it
+/// has returned; else `#f`.
+pub fn preempt_at_x(k: i64) -> i64 {
+    if i64_gt(get(sched_poll()), 1i64) {
+        set(sched_poll(), i64_minus(get(sched_poll()), 1i64));
+        w_false()
+    } else {
+        set(sched_poll(), sched_slice());
+        if not(sched_p()) {
+            w_false()
+        } else {
+            let (f, t) = (sched_ref(s_preempt()), sched_ref(s_tag()));
+            if (is_obj_p(f, ob_proc()) && wanted_x((not(i64_eq(t, w_false())) && i64_gt_eq(frames_to(k, tag_number(t), 0i64), 0i64)))) {
+                quiet_enter_x();
+                f
+            } else {
+                w_false()
+            }
+        }
+    }
+}
+
 pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64, mut f: i64, mut args: i64) -> i64 {
     loop {
         if get(engine_failed()) {
-            return stopped_x(if i64_eq(mode, 0i64) {
+            return failed_at(if i64_eq(mode, 0i64) {
                 node
             } else {
                 -1i64
@@ -591,6 +638,9 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                 return park_x(mode, node, env, k, val, f, args);
             } else if (i64_gt_eq(get(deadline()), 0i64) && past_deadline_p()) {
                 return park_x(mode, node, env, k, val, f, args);
+            } else if (i64_eq(mode, 0i64) && not(i64_eq(preempt_at_x(k), w_false()))) {
+                (mode, node, env, k, val, f, args) = (2i64, -1i64, 0i64, frame_x(fk_preempted(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, sched_ref(s_preempt()), w_nil());
+                continue;
             } else if i64_eq(mode, 0i64) {
                 if i64_gt(get(fuel()), 0i64) {
                     set(fuel(), i64_minus(get(fuel()), 1i64))
@@ -611,7 +661,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         let w = flatarray_ref_i64(get(globals()), i);
                         if i64_eq(w, w_unbound()) {
                             unbound_global(i);
-                            return stopped_x(node, env, k);
+                            return failed_at(node, env, k);
                         } else {
                             (mode, node, val, f, args) = (1i64, 0i64, w, 0i64, 0i64);
                             continue;
@@ -777,7 +827,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
                         if i64_lt(i, 0i64) {
                             failed_with_x(str_lit("the engine: extract of a field the product has not"));
-                            return stopped_x(-1i64, 0i64, k);
+                            return failed_at(-1i64, 0i64, k);
                         } else {
                             (mode, node, k, val, f, args) = (1i64, 0i64, next, obj_ref(val, i64_plus(i, 1i64)), 0i64, 0i64);
                             continue;
@@ -816,11 +866,15 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_mark()) {
                         (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
                         continue;
+                    } else if i64_eq(kind, fk_preempted()) {
+                        quiet_leave_x();
+                        (mode, node, env, k, val, f, args) = (0i64, code_index(frame_field(k, 0i64)), frame_field(k, 1i64), next, 0i64, 0i64, 0i64);
+                        continue;
                     } else if i64_eq(kind, fk_abort()) {
                         return abort_to(fixnum_value(frame_field(k, 0i64)), next, val);
                     } else {
                         failed_with_x(str_lit("the engine: a frame of no kind"));
-                        return stopped_x(-1i64, 0i64, k);
+                        return failed_at(-1i64, 0i64, k);
                     }
                 }
             } else {
@@ -896,7 +950,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
         _ => {
             let other = tagcase_;
             failed_with_x(str_lit("the engine: a list frame of no list"));
-            stopped_x(-1i64, 0i64, k)
+            failed_at(-1i64, 0i64, k)
         }
     }
 }
@@ -946,7 +1000,26 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
         _ => {
             let other = tagcase_;
             failed_with_x(str_lit("the engine: a tagcase frame of no tagcase"));
-            stopped_x(-1i64, 0i64, k)
+            failed_at(-1i64, 0i64, k)
+        }
+    }
+}
+
+/// A failure: in a task of a monitored group, with the scheduler's
+/// prompt on the stack, an abort to it, the failure forgotten and kept
+/// for the scheduler (Fixpt's `task_failed`, C219); else the machine
+/// stopped.
+pub fn failed_at(node: i64, env: i64, k: i64) -> i64 {
+    let tag = sched_tag();
+    if (i64_eq(tag, w_false()) || i64_lt(frames_to(k, tag_number(tag), 0i64), 0i64)) {
+        stopped_x(node, env, k)
+    } else {
+        let t = task_failed_x(string_word_x(get(engine_failure())), true);
+        if i64_eq(t, w_false()) {
+            stopped_x(node, env, k)
+        } else {
+            failure_taken_x();
+            abort_to(tag_number(t), k, w_unit())
         }
     }
 }
@@ -986,7 +1059,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             _ => {
                 let other = tagcase_;
                 failed_with_x(str_lit("the engine: a procedure of no lambda"));
-                stopped_x(node, env, k)
+                failed_at(node, env, k)
             }
         }
     } else if is_obj_p(f, ob_ctor()) {
@@ -1002,8 +1075,12 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         if i64_lt(heap_room(), i64_plus(room, reserve())) {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
         } else if (truthy_p(obj_ref(f, 3i64)) && truthy_p(obj_ref(f, 2i64))) {
-            failed_with_x(str_lit("a continuation resumed twice"));
-            stopped_x(node, env, k)
+            failed_with_x(if i64_eq(obj_ref(f, 3i64), fixnum(2i64)) {
+                str_lit("a one-shot continuation resumed twice")
+            } else {
+                str_lit("a continuation resumed twice")
+            });
+            failed_at(node, env, k)
         } else {
             obj_set_x(f, 2i64, w_true());
             run(1i64, 0i64, 0i64, frames_copied_x(top, n, k), pair_car(args), 0i64, 0i64)
@@ -1055,18 +1132,24 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             }
         } else if i64_eq(op, op_abort()) {
             abort_to(tag_number(pair_car(args)), k, pair_car(pair_cdr(args)))
-        } else if i64_eq(op, op_capture()) {
+        } else if (i64_eq(op, op_capture()) || i64_eq(op, op_capture_once())) {
+            // A one-shot continuation is captured as a composable one, marked
+            // (field 3, 2) so that a second resume fails, as Fixpt's (C219).
             let tag = tag_number(pair_car(pair_cdr(args)));
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
                 failed_with_x(str_lit("the engine: no prompt for the tag"));
-                stopped_x(node, env, k)
+                failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
                 obj_set_x(c, 0i64, k);
                 obj_set_x(c, 1i64, fixnum(n));
                 obj_set_x(c, 2i64, w_false());
-                obj_set_x(c, 3i64, w_false());
+                obj_set_x(c, 3i64, if i64_eq(op, op_capture_once()) {
+                    fixnum(2i64)
+                } else {
+                    w_false()
+                });
                 run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
             }
         } else if i64_eq(op, op_suspend()) {
@@ -1074,7 +1157,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
                 failed_with_x(str_lit("the engine: no prompt for the tag"));
-                stopped_x(node, env, k)
+                failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
                 obj_set_x(c, 0i64, k);
@@ -1090,7 +1173,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             } else {
                 let v = apply_op(op, args);
                 if get(engine_failed()) {
-                    stopped_x(node, env, k)
+                    failed_at(node, env, k)
                 } else {
                     run(1i64, 0i64, 0i64, k, v, 0i64, 0i64)
                 }
@@ -1098,7 +1181,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         }
     } else {
         failed_with_x(str_lit("the engine: a call of no procedure"));
-        stopped_x(node, env, k)
+        failed_at(node, env, k)
     }
 }
 

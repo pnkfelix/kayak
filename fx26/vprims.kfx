@@ -44,6 +44,7 @@
         ((i64= op 134) (dir-room! a))
         ((i64= op 175) (i64+ (list-count a 0) 1))
         ((i64= op 187) (i64+ (i64+ (fixnum-value a) 1) (i64+ (list-count (pair-cdr args) 0) 2)))
+        ((i64= op 207) 4096)
         ((i64>= op fixed-base) 8)
         (else 64)))))
 
@@ -363,6 +364,8 @@
                (begin (bytes-written! (blobref-bytes a) (blob-at a) 1 (i64->int i))
                       (blobref! owner (i64+ (blob-at a) (fixnum-value c)) 0)))))
         ((i64= op 206) (obj-ref (obj-ref a 0) (i64+ (int->i64 (bytes-read (blobref-bytes a) (blob-at a) 1 0)) 1)))
+        ((i64= op 207) (sched-op! (fixnum-value a) b c))
+        ((or (i64= op 208) (i64= op 209)) (make-icell!))
         ((i64= op 204)
          (let ((off (fixnum-value (pair-car (pair-cdr r2)))))
            (begin (bytes-written! (blobref-bytes a) (blob-at a) (fixnum-value b) (word-int c))

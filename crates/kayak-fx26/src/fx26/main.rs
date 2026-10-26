@@ -89,6 +89,44 @@ pub fn read_files(paths: Strings) -> Sexps {
     }
 }
 
+/// Whether any of `es` is, or holds, a list headed by one of `heads`.
+pub fn forms_mention_p(es: Sexps, heads: Strings) -> bool {
+    any_p(lambda1s(move |e: &'static Sexp| {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                ((not(null_p(xs)) && {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            string_member_p(n, heads)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) || forms_mention_p(xs, heads))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }), es)
+}
+
+/// A program of processes, `%processes` defined first, the scheduler's
+/// module file built in (C219): what its forms are made calls of, as
+/// Fixpt's parser makes them (`process-expanded`).
+pub fn with_processes(forms: Sexps) -> Sexps {
+    if forms_mention_p(forms, process_heads()) {
+        onto(with_loads(read_all(string_chars(str_lit("(define %processes (load-module \"fx26:processes.fx\"))")), str_lit("<scheduler>"), 1i64), str_lit("<scheduler>"), nil::<&'static Filed>()), forms)
+    } else {
+        forms
+    }
+}
+
 pub fn before_dashes(xs: Strings) -> Strings {
     if (null_p(xs) || string_eq_p(car(xs), str_lit("--"))) {
         nil::<Str>()
@@ -198,7 +236,7 @@ pub fn load_x(gs: Strings) -> () {
         set(global_name_table(), names)
     };
     set(io_error_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil()))));
-    if (i64_eq(op_make_tag(), list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)) && i64_eq(op_abort(), list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)) && i64_eq(op_capture(), list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)) && i64_eq(op_suspend(), list_position(str_lit("abort-with-continuation"), prim_list(), 0i64)) && i64_eq(op_apply(), list_position(str_lit("apply"), prim_list(), 0i64))) {
+    if (i64_eq(op_make_tag(), list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)) && i64_eq(op_abort(), list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)) && i64_eq(op_capture(), list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)) && i64_eq(op_capture_once(), list_position(str_lit("call-with-oneshot-continuation"), prim_list(), 0i64)) && i64_eq(op_suspend(), list_position(str_lit("abort-with-continuation"), prim_list(), 0i64)) && i64_eq(op_apply(), list_position(str_lit("apply"), prim_list(), 0i64))) {
         ()
     } else {
         error(str_lit("the engine: the control primitives' numbers are not their places in prim-list"))
@@ -228,7 +266,7 @@ pub fn engine_main() -> Int {
         match exit(int_lit(2)) {};
         int_lit(2)
     } else if string_eq_p(car(r#as), str_lit("--cells")) {
-        let forms = read_files(cdr(r#as));
+        let forms = with_processes(read_files(cdr(r#as)));
         let checked = check_program(forms);
         let tagcase_ = checked;
         match *tagcase_ {
@@ -239,7 +277,7 @@ pub fn engine_main() -> Int {
             }
         }
     } else {
-        let forms = read_files(paths);
+        let forms = with_processes(read_files(paths));
         let checked = check_program(forms);
         let gs = onto(global_names(forms), onto(module_entries(forms), with_entries(verdict_facts(checked))));
         load_x(gs);

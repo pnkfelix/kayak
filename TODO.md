@@ -653,7 +653,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    gaps in them worked around, to be raised with Fixpt (C123). Done: the primitives, Fixpt's
    runtime's (C124; 292 agree). Done: the scheduler's runtime, Fixpt's
    (C125; 326 agree): processes, `par`, `race`, `pselect`, monitors,
-   preemption, the clock. Next: eqtables, `%fx26-intern-datum`, I/O (the
+   preemption, the clock. Processes on kayak's own words and the engine
+   too (C219): the forms made as Fixpt's parser makes them, the engine's
+   scheduler `vsched.kfx`; left, `%sched`'s standard input (op 43) with
+   `read-byte`, on both. Next: eqtables, `%fx26-intern-datum`, I/O (the
    standard input waited for, too); native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A

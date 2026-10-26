@@ -89,6 +89,8 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         i64_plus(list_count(a, 0i64), 1i64)
     } else if i64_eq(op, 187i64) {
         i64_plus(i64_plus(fixnum_value(a), 1i64), i64_plus(list_count(pair_cdr(args), 0i64), 2i64))
+    } else if i64_eq(op, 207i64) {
+        4096i64
     } else if i64_gt_eq(op, fixed_base()) {
         8i64
     } else {
@@ -729,6 +731,10 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         }
     } else if i64_eq(op, 206i64) {
         obj_ref(obj_ref(a, 0i64), i64_plus(int_to_i64(bytes_read(blobref_bytes(a), blob_at(a), 1i64, int_lit(0))), 1i64))
+    } else if i64_eq(op, 207i64) {
+        sched_op_x(fixnum_value(a), b, c)
+    } else if (i64_eq(op, 208i64) || i64_eq(op, 209i64)) {
+        make_icell_x()
     } else if i64_eq(op, 204i64) {
         let off = fixnum_value(pair_car(pair_cdr(r2)));
         bytes_written_x(blobref_bytes(a), blob_at(a), fixnum_value(b), word_int(c));

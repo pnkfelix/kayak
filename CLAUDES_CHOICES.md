@@ -5996,3 +5996,45 @@ its own compiler's and engine's making of the forms. First the file:
   scheme (elsewhere refused yet: KFX would have to emit it).
 - Not yet: the forms made into calls of it (the engine, the compiler to
   cells), and the engine's `%sched`.
+
+## C219. Processes on both of kayak's paths: the engine's scheduler, the compiler's forms (2026-10-26)
+
+The forms of processes (`spawn`, `spawn-monitored`, `par`, `race`,
+`pselect`, and the rest of `process-heads`) made into calls of
+`fx26:processes.fx` (C218) as Fixpt's parser makes them
+(`processes.rs`), once (`process-expanded`, lower.kfx), for both paths:
+- **The program given the module**: `with-processes` (main.kfx) puts
+  `(define %processes (load-module "fx26:processes.fx"))` before a
+  program that uses a form of them, for the engine and for `--cells`.
+- **The compiler to cells**: `parse-x` expands the form. A `proj` is no
+  longer a name: Fixpt's `e-proj` is not one, so a call of `(proj %sched
+  ...)` is a call of a value, `%sched`'s standard word (its arity, 3, now
+  known), not `%fx26-sched` inline. Inline, the scheduler's own code ran
+  with no call between its operations, which preemption at a slice's end
+  depends on: at `--slice 2`, `par` and the rest hung. Now the words are
+  Fixpt's, and every program of processes, monitors, preemption and
+  schedules that tier 1 can run agrees, plain and at `--slice 2`
+  (`pselect-key` needs `read-byte`, not yet tier 1's).
+- **The engine's scheduler** (`fx26/vsched.kfx`, new): `cells/sched.kfx`
+  ported onto the engine's heap, its state among the engine's constants;
+  I-cells (`ob-icell`) and mailboxes (`ob-mailbox`), the messages
+  shared, not copied (the checker has made them transmissible); `%sched`
+  (207), `make-icell`, `rmake-icell`.
+- **`call-with-oneshot-continuation`** (210) in the engine, captured as a
+  composable continuation marked one-shot: resumed again, it fails with
+  Fixpt's message (`run/oneshot-twice.fx`).
+- **Failures in a monitored task**: every failure of the engine's machine
+  goes by `failed-at`, which, in a task of a monitored group with the
+  scheduler's prompt on the stack, aborts to it, the failure kept for the
+  scheduler (`task-failed!`, Fixpt's `task_failed`); else the machine
+  stops, as before.
+- **Preemption**: the engine counts steps to a slice's end as Fixpt's
+  machine does (`SLICE`, 65536); there, if the scheduler would have
+  another task run, its `preempt` is called, quiet until it returns, under
+  a frame (`fk-preempted`, Fixpt's `VmFrame::Discard`) that then
+  evaluates the node it stopped at.
+- Not yet: `%sched`'s standard input (op 43) on either path, with
+  `read-byte`.
+- Measured: kayak's own words, 358 agree, 0 differ, 16 not yet compiled
+  (were 326 and 49); beyond KFX, the engine 208 agree (were 182), 1
+  differs (`native/crossing-overflow`, as before).

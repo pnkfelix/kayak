@@ -32,6 +32,8 @@ pub mod table;
 pub use table::*;
 pub mod vwords;
 pub use vwords::*;
+pub mod vsched;
+pub use vsched::*;
 pub mod vprims;
 pub use vprims::*;
 pub mod vm;
