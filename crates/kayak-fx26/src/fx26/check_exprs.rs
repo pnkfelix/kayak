@@ -1226,6 +1226,12 @@ pub mod expressions {
         }
     }
 
+    /// A closure's parameters, and that no path's fact holds in its body,
+    /// which may run after any write (C196).
+    pub fn closure_binds(v: &'static Cv, params: Sexps, types: Tys) -> Binds {
+        kayak_rt::heap_cons(bind(str_lit("%closure"), scheme(nil::<Str>(), ty_unit()), str_lit("closure")), kayak_rt::heap_cons(bind(str_lit("%paths"), scheme(nil::<Str>(), ty_unit()), str_lit("closed")), bind_params(v, params, types)))
+    }
+
     pub fn find_dt(mut d: Str, mut ds: Dts) -> List<Variants> {
         loop {
             if null_p(ds) {
@@ -2183,6 +2189,366 @@ pub mod expressions {
         }
     }
 
+    // Paths' facts (C196; Fixpt's `TODO.md` §54): a test narrows a path
+    // from a local, `(car x)`, `(cdr x)`, `(extract p a)`, as it does a
+    // local, while nothing may have changed what the path reads. A fact is
+    // a bind `%path ROOT STEP ...` whose `where` is `path K R ...`: how many
+    // writes the state had seen when it was made, `K`, and the regions the
+    // path reads through, a pair's (a product's field, none: nothing writes
+    // it). A write since to one that may be one of them, or a transfer of
+    // control, ends it (`path-kills`); a closure's body, which may run
+    // after any write, sees none (`%closure`). `%paths` says whether a fact
+    // may be in force here, `open`, or not, `closed`: no write is noted
+    // else.
+    /// `e` as a path: its root, a local, then its steps, `car`, `cdr` and
+    /// `.a`, a product's field `a`; none if it is not one.
+    pub fn path_of(v: &'static Cv, e: &'static Sexp) -> Strings {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                let b = scope_bind(n, v);
+                if (not(null_p(b)) && {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(m, sc, w) => {
+                            (string_eq_p(w, str_lit("local")) || string_eq_p(w, str_lit("narrowed")))
+                        }
+                    }
+                }) {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 2i64) && (sym_is_p(car(xs), str_lit("car")) || sym_is_p(car(xs), str_lit("cdr"))) && {
+                    let b = scope_bind(sym_name(car(xs)), v);
+                    (not(null_p(b)) && prim_p(car(b)))
+                }) {
+                    let r = path_of(v, second(xs));
+                    if null_p(r) {
+                        nil::<Str>()
+                    } else {
+                        onto(r, kayak_rt::heap_cons(sym_name(car(xs)), kayak_rt::nil()))
+                    }
+                } else if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("extract")) && {
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    let r = path_of(v, second(xs));
+                    if null_p(r) {
+                        nil::<Str>()
+                    } else {
+                        onto(r, kayak_rt::heap_cons(string_append(str_lit("."), sym_name(third(xs))), kayak_rt::nil()))
+                    }
+                } else {
+                    nil::<Str>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    pub fn field_typed(mut l: Str, mut ls: Strings, mut ts: Tys) -> Tys {
+        loop {
+            if (null_p(ls) || null_p(ts)) {
+                return nil::<&'static Ty>();
+            } else if string_eq_p(car(ls), l) {
+                return kayak_rt::heap_cons(car(ts), kayak_rt::nil());
+            } else {
+                (ls, ts) = (cdr(ls), cdr(ts));
+                continue;
+            }
+        }
+    }
+
+    /// Where a step from a value of type `t` reaches: its type, then the
+    /// region it read through (none for a product's field); or nothing.
+    pub fn path_step(s: &'static St, t: &'static Ty, step: Str) -> Tys {
+        let x = walk_mu(s, t);
+        if has_prefix_p(step, str_lit(".")) {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyShape(p, ls, ts) => {
+                    if p {
+                        field_typed(after_prefix(step, str_lit(".")), ls, ts)
+                    } else {
+                        nil::<&'static Ty>()
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        } else {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyList(e, r) => {
+                    kayak_rt::heap_cons(if string_eq_p(step, str_lit("car")) {
+                        e
+                    } else {
+                        x
+                    }, kayak_rt::heap_cons(r, kayak_rt::nil()))
+                }
+                Ty::TyData(d, args) => {
+                    if string_eq_p(d, str_lit("%pairof")) {
+                        kayak_rt::heap_cons(if string_eq_p(step, str_lit("car")) {
+                            car(args)
+                        } else {
+                            car(cdr(args))
+                        }, kayak_rt::heap_cons(car(cdr(cdr(args))), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Ty>()
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        }
+    }
+
+    pub fn first_of(xs: Strings, n: i64) -> Strings {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(car(xs), first_of(cdr(xs), i64_minus(n, 1i64)))
+        }
+    }
+
+    pub fn constant_region_p(r: Str) -> bool {
+        (has_prefix_p(r, str_lit("@")) || string_eq_p(r, str_lit("heap")))
+    }
+
+    /// Whether a write noted since fact `w` was made may have changed what
+    /// its path reads: `*`, any, or one to a region that may be one of its
+    /// regions not frozen (Fixpt's `path_killed`: two constants, unless
+    /// the same, are two regions; anything else may be any).
+    pub fn path_killed_p(s: &'static St, w: Str) -> bool {
+        let ws = text_words(w);
+        let open = filter(lambda1s(move |r: Str| {
+            not((string_eq_p(r, str_lit("acyclic")) || string_eq_p(r, str_lit("const"))))
+        }), cdr(cdr(ws)));
+        let ks = st_kills(s);
+        (not(null_p(open)) && any_p(lambda1s(move |k: Str| {
+            (string_eq_p(k, str_lit("*")) || any_p(lambda1s(move |r: Str| {
+                (string_eq_p(k, r) || not((constant_region_p(k) && constant_region_p(r))))
+            }), open))
+        }), first_of(ks, i64_minus(size(ks), string_to_i64(car(cdr(ws)))))))
+    }
+
+    pub fn path_fact_in(mut s: &'static St, mut key: Str, mut root: Str, mut bs: Binds) -> Tys {
+        loop {
+            if null_p(bs) {
+                return nil::<&'static Ty>();
+            } else {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        if string_eq_p(n, str_lit("%closure")) {
+                            return nil::<&'static Ty>();
+                        } else if (string_eq_p(n, root) && not(string_eq_p(w, str_lit("narrowed")))) {
+                            return nil::<&'static Ty>();
+                        } else if (string_eq_p(n, key) && not(path_killed_p(s, w))) {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    return kayak_rt::heap_cons(t, kayak_rt::nil());
+                                }
+                            }
+                        } else {
+                            bs = cdr(bs);
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn paths_open_p(v: &'static Cv) -> bool {
+        let b = scope_bind(str_lit("%paths"), v);
+        (not(null_p(b)) && {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    string_eq_p(w, str_lit("open"))
+                }
+            }
+        })
+    }
+
+    /// The type the fact in force of `path` says, if one is.
+    pub fn path_fact(v: &'static Cv, s: &'static St, path: Strings) -> Tys {
+        if paths_open_p(v) {
+            path_fact_in(s, string_append(str_lit("%path "), words_of(path)), car(path), cv_binds(v))
+        } else {
+            nil::<&'static Ty>()
+        }
+    }
+
+    pub fn path_walk(v: &'static Cv, s: &'static St, done: Strings, steps: Strings, t: &'static Ty, regions: Tys) -> Tys {
+        if null_p(steps) {
+            kayak_rt::heap_cons(t, reverse(regions))
+        } else {
+            let r = path_step(s, t, car(steps));
+            if null_p(r) {
+                nil::<&'static Ty>()
+            } else {
+                let done = onto(done, kayak_rt::heap_cons(car(steps), kayak_rt::nil()));
+                let f = path_fact(v, s, done);
+                path_walk(v, s, done, cdr(steps), if null_p(f) {
+                    car(r)
+                } else {
+                    car(f)
+                }, if null_p(cdr(r)) {
+                    regions
+                } else {
+                    kayak_rt::heap_cons(car(cdr(r)), regions)
+                })
+            }
+        }
+    }
+
+    /// Path `path`'s type, as the types say and the facts in force narrow
+    /// it, then the regions it reads through; nothing if it has none.
+    pub fn path_type(v: &'static Cv, s: &'static St, path: Strings) -> Tys {
+        let b = scope_bind(car(path), v);
+        if null_p(b) {
+            nil::<&'static Ty>()
+        } else {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            path_walk(v, s, kayak_rt::heap_cons(car(path), kayak_rt::nil()), cdr(path), t, nil::<&'static Ty>())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// `v` with path `path` narrowed to `t`.
+    pub fn path_narrowed(v: &'static Cv, s: &'static St, path: Strings, t: &'static Ty, regions: Tys) -> &'static Cv {
+        with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%path "), words_of(path)), scheme(nil::<Str>(), t), words_of(kayak_rt::heap_cons(str_lit("path"), kayak_rt::heap_cons(i64_to_string(size(st_kills(s))), map(lambda1s(move |r: &'static Ty| {
+            region_string(s, r)
+        }), regions))))), kayak_rt::heap_cons(bind(str_lit("%paths"), scheme(nil::<Str>(), ty_unit()), str_lit("open")), kayak_rt::nil())))
+    }
+
+    /// What effect atom `a0` ends of paths' facts: a write's or a fill's
+    /// region, `*` for any transfer of control, a process's wait, or an
+    /// effect not known (an effect variable); nothing for a read, an
+    /// allocation, `spin`, I/O or a global's.
+    pub fn kill_entries(s: &'static St, a0: Str) -> Strings {
+        let a = resolve_atom(s, a0);
+        if (has_prefix_p(a, str_lit("write:")) || has_prefix_p(a, str_lit("init:"))) {
+            kayak_rt::heap_cons(atom_region(a), kayak_rt::nil())
+        } else if region_atom_p(a) {
+            if (has_prefix_p(a, str_lit("goto:")) || has_prefix_p(a, str_lit("comefrom:")) || has_prefix_p(a, str_lit("await:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("receive:"))) {
+                the::<Strings>(kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        } else if (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet")) || string_eq_p(a, str_lit("@globals")) || string_eq_p(a, str_lit("~!")) || global_atom_p(a) || has_prefix_p(a, str_lit("io:"))) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil()))
+        }
+    }
+
+    /// `s` with the writes of effect `es`, of an expression just checked,
+    /// noted, where a path's fact may be in force.
+    pub fn path_kills(v: &'static Cv, s: &'static St, es: Strings) -> &'static St {
+        if paths_open_p(v) {
+            with_kills(s, concat(map(lambda1s(move |a: Str| {
+                kill_entries(s, a)
+            }), es)))
+        } else {
+            s
+        }
+    }
+
+    /// Compound expression `e`'s result, the writes it does noted, and, a
+    /// path whose fact is in force, of the type the fact says, unboxed if
+    /// that is no union's.
+    pub fn path_settled(v: &'static Cv, e: &'static Sexp, r: &'static Res) -> &'static Res {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                if not(paths_open_p(v)) {
+                    r
+                } else {
+                    let s = path_kills(v, s, es);
+                    let p = path_of(v, e);
+                    let f = if (null_p(p) || null_p(cdr(p))) {
+                        nil::<&'static Ty>()
+                    } else {
+                        path_fact(v, s, p)
+                    };
+                    if null_p(f) {
+                        res(t, es, s)
+                    } else {
+                        res(car(f), es, coerced(v, s, datum_file(e), datum_pos(e), t, car(f)))
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn path_in_force_p(v: &'static Cv, s: &'static St, e: &'static Sexp) -> bool {
+        (paths_open_p(v) && {
+            let p = path_of(v, e);
+            (not(null_p(p)) && not(null_p(cdr(p))) && not(null_p(path_fact(v, s, p))))
+        })
+    }
+
+    /// A union's members, a list's `nil` and pair apart; another type of a
+    /// shape, itself; else none.
+    pub fn type_members(s: &'static St, t: &'static Ty) -> Tys {
+        let x = walk(s, t);
+        let tagcase_ = x;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(shape_of(x), str_lit("union")) {
+                    lists_split(members_of(x))
+                } else {
+                    if string_eq_p(shape_of(x), str_lit("")) {
+                        nil::<&'static Ty>()
+                    } else {
+                        kayak_rt::heap_cons(x, kayak_rt::nil())
+                    }
+                }
+            }
+            Ty::TyList(e, r) => {
+                lists_split(kayak_rt::heap_cons(x, kayak_rt::nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                if string_eq_p(shape_of(x), str_lit("")) {
+                    nil::<&'static Ty>()
+                } else {
+                    kayak_rt::heap_cons(x, kayak_rt::nil())
+                }
+            }
+        }
+    }
+
     /// What a test proves: `x` narrowed in the branch it holds in and in the
     /// other, or nothing.
     pub fn narrowings_of_test(v: &'static Cv, s: &'static St, test: &'static Sexp) -> List<&'static Narrowing> {
@@ -2203,22 +2569,63 @@ pub mod expressions {
                 }) {
                     let pred = sym_name(car(xs));
                     let shape = tested_shape(pred);
-                    let ms = union_local(v, s, second(xs));
-                    if (string_eq_p(shape, str_lit("")) || null_p(ms) || {
+                    let path = {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                path_of(v, second(xs))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    };
+                    let pt = if (null_p(path) || null_p(cdr(path))) {
+                        nil::<&'static Ty>()
+                    } else {
+                        path_type(v, s, path)
+                    };
+                    let ms = if null_p(pt) {
+                        union_local(v, s, second(xs))
+                    } else {
+                        type_members(s, car(pt))
+                    };
+                    if (not(null_p(pt)) && not(string_eq_p(shape, str_lit(""))) && not(null_p(ms)) && {
                         let tagcase_ = car(scope_bind(pred, v));
                         match *tagcase_ {
                             Bind::Bind(n, sc, w) => {
-                                not(string_eq_p(w, str_lit("prim")))
+                                string_eq_p(w, str_lit("prim"))
                             }
                         }
                     }) {
-                        latent_narrowings(v, s, xs, ms)
-                    } else {
-                        let (yes, no, x) = (narrowed_to(ms, shape), narrowed_from(ms, shape), sym_name(second(xs)));
+                        let (yes, no) = (narrowed_to(ms, shape), narrowed_from(ms, shape));
                         if (null_p(yes) || null_p(no)) {
                             nil::<&'static expressions::Narrowing>()
                         } else {
-                            kayak_rt::heap_cons(narrowing(with_binds(v, kayak_rt::heap_cons(narrowed(v, x, union_of(yes)), kayak_rt::nil())), with_binds(v, kayak_rt::heap_cons(narrowed(v, x, union_of(no)), kayak_rt::nil()))), kayak_rt::nil())
+                            kayak_rt::heap_cons(narrowing(path_narrowed(v, s, path, union_of(yes), cdr(pt)), path_narrowed(v, s, path, union_of(no), cdr(pt))), kayak_rt::nil())
+                        }
+                    } else {
+                        if (string_eq_p(shape, str_lit("")) || null_p(ms) || not(null_p(path)) || {
+                            let tagcase_ = car(scope_bind(pred, v));
+                            match *tagcase_ {
+                                Bind::Bind(n, sc, w) => {
+                                    not(string_eq_p(w, str_lit("prim")))
+                                }
+                            }
+                        }) {
+                            if null_p(path) {
+                                latent_narrowings(v, s, xs, ms)
+                            } else {
+                                nil::<&'static expressions::Narrowing>()
+                            }
+                        } else {
+                            let (yes, no, x) = (narrowed_to(ms, shape), narrowed_from(ms, shape), sym_name(second(xs)));
+                            if (null_p(yes) || null_p(no)) {
+                                nil::<&'static expressions::Narrowing>()
+                            } else {
+                                kayak_rt::heap_cons(narrowing(with_binds(v, kayak_rt::heap_cons(narrowed(v, x, union_of(yes)), kayak_rt::nil())), with_binds(v, kayak_rt::heap_cons(narrowed(v, x, union_of(no)), kayak_rt::nil()))), kayak_rt::nil())
+                            }
                         }
                     }
                 } else {
@@ -3888,7 +4295,7 @@ pub mod expressions {
                 }
                 Sexp::Lst(xs, src_file, src_line, src_pos) => {
                     let v = near(v, src_file, src_line, src_pos);
-                    masked_res(v, e, {
+                    path_settled(v, e, masked_res(v, e, {
                         let tagcase_ = car(xs);
                         match *tagcase_ {
                             Sexp::Sym(h, at_file, at_pos) => {
@@ -3917,7 +4324,7 @@ pub mod expressions {
                                 }
                             }
                         }
-                    })
+                    }))
                 }
             }
         }
@@ -4310,7 +4717,11 @@ pub mod expressions {
             let tagcase_ = e;
             match *tagcase_ {
                 Sexp::Lst(xs, f, l, p) => {
-                    masked_res(v, e, check_plain(v, s, e, expected))
+                    if path_in_force_p(v, s, e) {
+                        check_by_synth(v, s, e, expected)
+                    } else {
+                        path_settled(v, e, masked_res(v, e, check_plain(v, s, e, expected)))
+                    }
                 }
                 _ => {
                     let other = tagcase_;
@@ -5984,7 +6395,7 @@ pub mod expressions {
                 }
             }
         };
-        let tagcase_ = body(with_binds(v, kayak_rt::heap_cons(local(v, name, ty_list(t, ty_rconst(str_lit("acyclic")))), kayak_rt::nil())), s, cdr(xs), nil::<&'static Ty>());
+        let tagcase_ = body(with_binds(v, kayak_rt::heap_cons(bind(str_lit("%closure"), scheme(nil::<Str>(), ty_unit()), str_lit("closure")), kayak_rt::heap_cons(bind(str_lit("%paths"), scheme(nil::<Str>(), ty_unit()), str_lit("closed")), kayak_rt::heap_cons(local(v, name, ty_list(t, ty_rconst(str_lit("acyclic")))), kayak_rt::nil())))), s, cdr(xs), nil::<&'static Ty>());
         match *tagcase_ {
             Res::Res(r, es, s2) => {
                 res(ty_data(str_lit("%vsubr"), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(t, kayak_rt::heap_cons(r, kayak_rt::nil())))), nil::<Str>(), s2)
@@ -8046,7 +8457,7 @@ pub mod expressions {
                 } else if string_member_p(binder_kind(car(tvars)), kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))) {
                     // A type where a binder of a kind is bound (C186): checked.
                     let t = parse_type(v, cv_tvars(v), car(args));
-                    kind_holds(v, st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), car(tvars), t);
+                    kind_holds(v, st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), car(tvars), t);
                     t
                 } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '^') {
                     // A function where one of arrow kind is bound (C173).
@@ -8143,7 +8554,7 @@ pub mod expressions {
         } else {
             s
         };
-        let tagcase_ = body(with_binds(v, bind_params(v, params, types)), s, forms, nil::<&'static Ty>());
+        let tagcase_ = body(with_binds(v, closure_binds(v, params, types)), s, forms, nil::<&'static Ty>());
         match *tagcase_ {
             Res::Res(r, es, s) => {
                 res(deps_of_params(params, types, 1i64, ty_proc(es, types, r)), nil::<Str>(), synced_lambda(v, noted_lambda(v, s, es), es, params, forms))
@@ -8219,7 +8630,7 @@ pub mod expressions {
                             return match refuse(v, str_lit("")) {};
                         } else {
                             let tagcase_ = {
-                                let inner = with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), bind_params(v, params, eps)));
+                                let inner = with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), closure_binds(v, params, eps)));
                                 masked_res(inner, lst(kayak_rt::heap_cons(sym(str_lit("begin"), str_lit(""), 0i64), forms), str_lit(""), 0i64, 0i64), body(inner, s, forms, kayak_rt::heap_cons(er, kayak_rt::nil())))
                             };
                             match *tagcase_ {
@@ -8308,7 +8719,7 @@ pub mod expressions {
                 if not(i64_eq(size(params), size(eps))) {
                     match refuse(v, str_lit("a lambda of the wrong number of parameters")) {}
                 } else {
-                    let inner = with_binds(v, bind_params(v, params, eps));
+                    let inner = with_binds(v, closure_binds(v, params, eps));
                     masked_res(inner, lst(kayak_rt::heap_cons(sym(str_lit("begin"), str_lit(""), 0i64), forms), str_lit(""), 0i64, 0i64), body(inner, check_written_params(v, s, params, eps), forms, kayak_rt::heap_cons(er, kayak_rt::nil())))
                 }
             }

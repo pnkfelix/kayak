@@ -410,7 +410,6 @@ pub fn fact(f0: Str, f1: i64, f2: Str) -> &'static Fact {
 
 pub type Facts = List<&'static Fact>;
 
-// Inference variables solved so far, the next one's number, and facts.
 pub enum Sb {
     Sb(i64, &'static Ty),
 }
@@ -421,12 +420,15 @@ pub fn sb(f0: i64, f1: &'static Ty) -> &'static Sb {
 
 pub type Sbs = List<&'static Sb>;
 
+// Inference variables solved so far, the next one's number, facts, and
+// the writes seen, newest first: what may have changed what a path read
+// (`path-kills`, C196).
 pub enum St {
-    St(Sbs, i64, Facts),
+    St(Sbs, i64, Facts, Strings),
 }
 
-pub fn st(f0: Sbs, f1: i64, f2: Facts) -> &'static St {
-    kayak_rt::heap_alloc(St::St(f0, f1, f2))
+pub fn st(f0: Sbs, f1: i64, f2: Facts, f3: Strings) -> &'static St {
+    kayak_rt::heap_alloc(St::St(f0, f1, f2, f3))
 }
 
 // What checking an expression gives: its type, its effect, and the state.
@@ -8048,7 +8050,7 @@ pub fn walk(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
             Ty::TyMeta(k) => {
                 let tagcase_ = s;
                 match *tagcase_ {
-                    St::St(subst, next, fs) => {
+                    St::St(subst, next, fs, ks) => {
                         let found = lookup_meta(k, subst);
                         if null_p(found) {
                             return t;
@@ -8158,8 +8160,8 @@ pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
 pub fn fresh(s: &'static St) -> &'static Res {
     let tagcase_ = s;
     match *tagcase_ {
-        St::St(subst, next, fs) => {
-            res(ty_meta(next), nil::<Str>(), st(subst, i64_plus(next, 1i64), fs))
+        St::St(subst, next, fs, ks) => {
+            res(ty_meta(next), nil::<Str>(), st(subst, i64_plus(next, 1i64), fs, ks))
         }
     }
 }
@@ -8167,8 +8169,8 @@ pub fn fresh(s: &'static St) -> &'static Res {
 pub fn note_fact(s: &'static St, file: Str, pos: i64, what: Str) -> &'static St {
     let tagcase_ = s;
     match *tagcase_ {
-        St::St(subst, next, fs) => {
-            st(subst, next, kayak_rt::heap_cons(fact(file, pos, what), fs))
+        St::St(subst, next, fs, ks) => {
+            st(subst, next, kayak_rt::heap_cons(fact(file, pos, what), fs), ks)
         }
     }
 }
@@ -8184,8 +8186,30 @@ pub fn kfx_restricted(v: &'static Cv, s: &'static St, message: Str) -> &'static 
 pub fn st_facts(s: &'static St) -> Facts {
     let tagcase_ = s;
     match *tagcase_ {
-        St::St(subst, next, fs) => {
+        St::St(subst, next, fs, ks) => {
             fs
+        }
+    }
+}
+
+pub fn st_kills(s: &'static St) -> Strings {
+    let tagcase_ = s;
+    match *tagcase_ {
+        St::St(subst, next, fs, ks) => {
+            ks
+        }
+    }
+}
+
+pub fn with_kills(s: &'static St, new: Strings) -> &'static St {
+    if null_p(new) {
+        s
+    } else {
+        let tagcase_ = s;
+        match *tagcase_ {
+            St::St(subst, next, fs, ks) => {
+                st(subst, next, fs, onto(new, ks))
+            }
         }
     }
 }
@@ -8193,7 +8217,7 @@ pub fn st_facts(s: &'static St) -> Facts {
 pub fn st_next(s: &'static St) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
-        St::St(subst, next, fs) => {
+        St::St(subst, next, fs, ks) => {
             next
         }
     }
@@ -8361,8 +8385,8 @@ pub fn refuse_named(v: &'static Cv, s: &'static St, message: Str) -> Void {
 pub fn solve(s: &'static St, k: i64, t: &'static Ty) -> &'static St {
     let tagcase_ = s;
     match *tagcase_ {
-        St::St(subst, next, fs) => {
-            st(kayak_rt::heap_cons(sb(k, t), subst), next, fs)
+        St::St(subst, next, fs, ks) => {
+            st(kayak_rt::heap_cons(sb(k, t), subst), next, fs, ks)
         }
     }
 }

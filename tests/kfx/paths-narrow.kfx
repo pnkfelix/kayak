@@ -1,0 +1,26 @@
+"Paths narrowed by a test (C196, Fixpt's `unions/paths-narrow.fx`): a
+ union read through a pair, `(car x)`, and through a product's field,
+ used at its member's type where the test held, unboxed in Rust; a write
+ to another region between, and a pair frozen, leave the fact."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type v (union int string))
+(define-type cell (pairof v int @r))
+(define-type frozen (pairof v int (const heap)))
+(define* plus (subr (read @r) (cell) int)
+  (lambda (x) (if (int? (car x)) (+ (car x) 1) 0)))
+(define* otherwise (subr (read @r) (cell) int)
+  (lambda (x) (if (string? (car x)) 0 (+ (car x) 2))))
+(define* elsewhere (subr (maxeff (read @r) (write @s)) (cell (ref int @s)) int)
+  (lambda (x b) (if (int? (car x)) (begin (set b 1) (+ (car x) 3)) 0)))
+(define* through-heap (subr (write @heap) (frozen (ref int @heap)) int)
+  (lambda (x b) (if (int? (car x)) (begin (set b 1) (+ (car x) 4)) 0)))
+(define* field (subr pure ((productof (a v))) int)
+  (lambda (p) (if (int? (extract p a)) (+ (extract p a) 5) 0)))
+(define* name-of (subr (read @r) (cell) string)
+  (lambda (x) (if (string? (car x)) (car x) "-")))
+(define main (subr (maxeff kfx (alloc @r) (alloc @s) (write @s) (read @r)) () string)
+  (lambda ()
+    (let ((a (the cell (cons 10 1))) (s (the cell (cons "s" 1))) (b (the (ref int @s) (new 0))))
+      (string-append
+        (int->string (+ (plus a) (+ (otherwise a) (+ (elsewhere a b) (+ (field (product (a 20))) (plus s))))))
+        (string-append " " (name-of s))))))

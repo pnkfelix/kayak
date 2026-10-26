@@ -289,7 +289,7 @@ pub fn scheme_text(sc: &'static Scheme) -> Str {
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            string_append(words_of(tvars), string_append(str_lit(" | "), show_ty(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), t)))
+            string_append(words_of(tvars), string_append(str_lit(" | "), show_ty(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), t)))
         }
     }
 }
@@ -367,7 +367,7 @@ pub fn polarities(mut v: &'static Cv, mut t: &'static Ty, mut x: Str, mut pol: S
                 }
             }
             Ty::TyList(e, r) => {
-                if frozen_region_p(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), r) {
+                if frozen_region_p(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), r) {
                     t = e;
                     continue;
                 } else {
@@ -395,7 +395,7 @@ pub fn polarities(mut v: &'static Cv, mut t: &'static Ty, mut x: Str, mut pol: S
                     return concat(map(lambda1s(move |u: &'static Ty| {
                         polarities(v, u, x, pol)
                     }), args));
-                } else if (string_eq_p(d, str_lit("%pairof")) && frozen_region_p(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), car(cdr(cdr(args))))) {
+                } else if (string_eq_p(d, str_lit("%pairof")) && frozen_region_p(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), car(cdr(cdr(args))))) {
                     return onto(polarities(v, car(args), x, pol), polarities(v, car(cdr(args)), x, pol));
                 } else {
                     return concat(map(inv, args));
@@ -517,7 +517,7 @@ pub fn defined_once(mut v: &'static Cv, mut bs: Binds) -> &'static Cv {
 }
 
 pub fn new_state() -> &'static St {
-    st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>())
+    st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>())
 }
 
 /// `v`, with a definition's facts.

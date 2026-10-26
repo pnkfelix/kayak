@@ -348,6 +348,11 @@ pub mod open_types;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/paths-narrow.rs"]
+pub mod paths_narrow;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/places.rs"]
 pub mod places;
 
@@ -558,6 +563,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("names", names::main),
     ("null-of-call", null_of_call::main),
     ("open-types", open_types::main),
+    ("paths-narrow", paths_narrow::main),
     ("places", places::main),
     ("places-mutual", places_mutual::main),
     ("processes", processes::main),

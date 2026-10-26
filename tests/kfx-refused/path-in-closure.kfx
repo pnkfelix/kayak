@@ -1,0 +1,9 @@
+"A path a test narrowed, read in a closure made where the test held: the
+ closure may run after any write, so in its body the path is a union's;
+ refused, as Fixpt refuses it (C196)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type v (union int string))
+(define-type cell (pairof v int @r))
+(define* f (subr (read @r) (cell) (subr (read @r) () int))
+  (lambda (x) (if (int? (car x)) (lambda () (+ (car x) 1)) (lambda () 0))))
+(define main (subr kfx () i64) (lambda () 0))

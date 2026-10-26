@@ -1,0 +1,9 @@
+"A write in one branch of an `if` ends a path's fact for the other branch
+ too, as Fixpt's checker, which checks the branches in turn, has it (C196):
+ refused, as Fixpt refuses it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type v (union int string))
+(define-type cell (pairof v int @r))
+(define* f (subr (maxeff (read @r) (write @r)) (cell (ref int @r)) int)
+  (lambda (x b) (if (int? (car x)) (if (= 1 2) (begin (set b 1) 0) (+ (car x) 1)) 0)))
+(define main (subr kfx () i64) (lambda () 0))

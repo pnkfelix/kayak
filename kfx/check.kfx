@@ -166,10 +166,12 @@
 (define-datatype fact (fact string i64 string))
 (define-type facts (listof fact acyclic))
 
-"Inference variables solved so far, the next one's number, and facts."
 (define-datatype sb (sb i64 ty))
 (define-type sbs (listof sb acyclic))
-(define-datatype st (st sbs i64 facts))
+"Inference variables solved so far, the next one's number, facts, and
+ the writes seen, newest first: what may have changed what a path read
+ (`path-kills`, C196)."
+(define-datatype st (st sbs i64 facts strings))
 
 "What checking an expression gives: its type, its effect, and the state."
 (define-datatype res (res ty strings st))
@@ -3535,7 +3537,7 @@
       (tagcase t
         (ty-meta (k)
           (tagcase s
-            (st (subst next fs)
+            (st (subst next fs ks)
               (let ((found (lookup-meta k subst)))
                 (if (null? found) t (walk s (car found)))))))
         (else other t))))
@@ -3572,11 +3574,11 @@
 (define fresh (subr kfx (st) res)
   (lambda (s)
     "A new inference variable."
-    (tagcase s (st (subst next fs) (res (ty-meta next) nil (st subst (i64+ next 1) fs))))))
+    (tagcase s (st (subst next fs ks) (res (ty-meta next) nil (st subst (i64+ next 1) fs ks))))))
 
 (define note-fact (subr kfx (st string i64 string) st)
   (lambda (s file pos what)
-    (tagcase s (st (subst next fs) (st subst next (cons (fact file pos what) fs))))))
+    (tagcase s (st (subst next fs ks) (st subst next (cons (fact file pos what) fs) ks)))))
 
 (define kfx-restricted (subr kfx (cv st string) st)
   (lambda (v s message)
@@ -3587,10 +3589,16 @@
     (note-fact s "%kfx" 0 (string-append "kfx-refuses " (refusal-text v message)))))
 
 (define st-facts (subr kfx (st) facts)
-  (lambda (s) (tagcase s (st (subst next fs) fs))))
+  (lambda (s) (tagcase s (st (subst next fs ks) fs))))
+
+(define st-kills (subr kfx (st) strings)
+  (lambda (s) (tagcase s (st (subst next fs ks) ks))))
+
+(define with-kills (subr kfx (st strings) st)
+  (lambda (s new) (if (null? new) s (tagcase s (st (subst next fs ks) (st subst next fs (onto new ks)))))))
 
 (define st-next (subr kfx (st) i64)
-  (lambda (s) (tagcase s (st (subst next fs) next))))
+  (lambda (s) (tagcase s (st (subst next fs ks) next))))
 
 "Inference variables said by their binders' names (C98): an instance's
  made in a REPL's draft or entry each noted as the binder it stands for,
@@ -3656,7 +3664,7 @@
 
 (define solve (subr kfx (st i64 ty) st)
   (lambda (s k t)
-    (tagcase s (st (subst next fs) (st (cons (sb k t) subst) next fs)))))
+    (tagcase s (st (subst next fs ks) (st (cons (sb k t) subst) next fs ks)))))
 
 (define-rec
   (occurs? (subr kfx (st i64 ty) bool)

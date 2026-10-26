@@ -547,6 +547,13 @@
               nil
               (cons (local v (param-name (car params)) (car types)) (bind-params v (cdr params) (cdr types))))))
 
+      (define closure-binds (subr kfx (cv sexps tys) binds)
+        (lambda (v params types)
+          "A closure's parameters, and that no path's fact holds in its body,
+           which may run after any write (C196)."
+          (cons (bind "%closure" (scheme nil (ty-unit)) "closure")
+                (cons (bind "%paths" (scheme nil (ty-unit)) "closed") (bind-params v params types)))))
+
       (define find-dt (subr kfx (string dts) (listof variants acyclic))
         (lambda (d ds)
           (cond ((null? ds) nil)
@@ -948,6 +955,186 @@
                       (list (narrowing (if (string=? yes "") v (with-binds v (list (narrowed v x (union-of in)))))
                                        (if (string=? no "") v (with-binds v (list (narrowed v x (union-of out)))))))))))))
 
+      "Paths' facts (C196; Fixpt's `TODO.md` §54): a test narrows a path
+       from a local, `(car x)`, `(cdr x)`, `(extract p a)`, as it does a
+       local, while nothing may have changed what the path reads. A fact is
+       a bind `%path ROOT STEP ...` whose `where` is `path K R ...`: how many
+       writes the state had seen when it was made, `K`, and the regions the
+       path reads through, a pair's (a product's field, none: nothing writes
+       it). A write since to one that may be one of them, or a transfer of
+       control, ends it (`path-kills`); a closure's body, which may run
+       after any write, sees none (`%closure`). `%paths` says whether a fact
+       may be in force here, `open`, or not, `closed`: no write is noted
+       else."
+      (define-rec
+        (path-of (subr kfx (cv sexp) strings)
+          (lambda (v e)
+            "`e` as a path: its root, a local, then its steps, `car`, `cdr` and
+             `.a`, a product's field `a`; none if it is not one."
+            (tagcase e
+              (sym (n f p)
+                (let ((b (scope-bind n v)))
+                  (if (and (not (null? b)) (tagcase (car b) (bind (m sc w) (or (string=? w "local") (string=? w "narrowed")))))
+                      (the strings (list n))
+                      nil)))
+              (lst (xs f l p)
+                (cond ((and (i64= (size xs) 2) (or (sym-is? (car xs) "car") (sym-is? (car xs) "cdr"))
+                            (let ((b (scope-bind (sym-name (car xs)) v))) (and (not (null? b)) (prim? (car b)))))
+                       (let ((r (path-of v (second xs)))) (if (null? r) nil (onto r (list (sym-name (car xs)))))))
+                      ((and (i64= (size xs) 3) (sym-is? (car xs) "extract") (tagcase (third xs) (sym (n f2 p2) #t) (else other #f)))
+                       (let ((r (path-of v (second xs)))) (if (null? r) nil (onto r (list (string-append "." (sym-name (third xs))))))))
+                      (else nil)))
+              (else other nil)))))
+
+      (define-rec
+        (field-typed (subr kfx (string strings tys) tys)
+          (lambda (l ls ts)
+            (cond ((or (null? ls) (null? ts)) nil)
+                  ((string=? (car ls) l) (list (car ts)))
+                  (else (field-typed l (cdr ls) (cdr ts)))))))
+
+      (define path-step (subr kfx (st ty string) tys)
+        (lambda (s t step)
+          "Where a step from a value of type `t` reaches: its type, then the
+           region it read through (none for a product's field); or nothing."
+          (let ((x (walk-mu s t)))
+            (if (has-prefix? step ".")
+                (tagcase x (ty-shape (p ls ts) (if p (field-typed (after-prefix step ".") ls ts) nil)) (else other nil))
+                (tagcase x
+                  (ty-list (e r) (list (if (string=? step "car") e x) r))
+                  (ty-data (d args)
+                    (if (string=? d "%pairof")
+                        (list (if (string=? step "car") (car args) (car (cdr args))) (car (cdr (cdr args))))
+                        nil))
+                  (else other nil))))))
+
+      (define-rec
+        (first-of (subr kfx (strings i64) strings)
+          (lambda (xs n) (if (or (null? xs) (i64<= n 0)) nil (cons (car xs) (first-of (cdr xs) (i64- n 1)))))))
+
+      (define constant-region? (subr kfx (string) bool)
+        (lambda (r) (or (has-prefix? r "@") (string=? r "heap"))))
+
+      (define path-killed? (subr kfx (st string) bool)
+        (lambda (s w)
+          "Whether a write noted since fact `w` was made may have changed what
+           its path reads: `*`, any, or one to a region that may be one of its
+           regions not frozen (Fixpt's `path_killed`: two constants, unless
+           the same, are two regions; anything else may be any)."
+          (let* ((ws (text-words w))
+                 (open (filter (lambda ((r string)) (not (or (string=? r "acyclic") (string=? r "const")))) (cdr (cdr ws))))
+                 (ks (st-kills s)))
+            (and (not (null? open))
+                 (any? (lambda ((k string))
+                         (or (string=? k "*")
+                             (any? (lambda ((r string)) (or (string=? k r) (not (and (constant-region? k) (constant-region? r))))) open)))
+                       (first-of ks (i64- (size ks) (string->i64 (car (cdr ws))))))))))
+
+      (define-rec
+        (path-fact-in (subr kfx (st string string binds) tys)
+          (lambda (s key root bs)
+            (if (null? bs)
+                nil
+                (tagcase (car bs)
+                  (bind (n sc w)
+                    (cond ((string=? n "%closure") nil)
+                          ((and (string=? n root) (not (string=? w "narrowed"))) nil)
+                          ((and (string=? n key) (not (path-killed? s w))) (tagcase sc (scheme (tv t) (list t))))
+                          (else (path-fact-in s key root (cdr bs))))))))))
+
+      (define paths-open? (subr kfx (cv) bool)
+        (lambda (v)
+          (let ((b (scope-bind "%paths" v)))
+            (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w "open")))))))
+
+      (define path-fact (subr kfx (cv st strings) tys)
+        (lambda (v s path)
+          "The type the fact in force of `path` says, if one is."
+          (if (paths-open? v)
+              (path-fact-in s (string-append "%path " (words-of path)) (car path) (cv-binds v))
+              nil)))
+
+      (define-rec
+        (path-walk (subr kfx (cv st strings strings ty tys) tys)
+          (lambda (v s done steps t regions)
+            (if (null? steps)
+                (cons t (reverse regions))
+                (let ((r (path-step s t (car steps))))
+                  (if (null? r)
+                      nil
+                      (let* ((done (onto done (list (car steps))))
+                             (f (path-fact v s done)))
+                        (path-walk v s done (cdr steps) (if (null? f) (car r) (car f))
+                                   (if (null? (cdr r)) regions (cons (car (cdr r)) regions))))))))))
+
+      (define path-type (subr kfx (cv st strings) tys)
+        (lambda (v s path)
+          "Path `path`'s type, as the types say and the facts in force narrow
+           it, then the regions it reads through; nothing if it has none."
+          (let ((b (scope-bind (car path) v)))
+            (if (null? b)
+                nil
+                (tagcase (car b) (bind (n sc w) (tagcase sc (scheme (tv t) (path-walk v s (list (car path)) (cdr path) t nil)))))))))
+
+      (define path-narrowed (subr kfx (cv st strings ty tys) cv)
+        (lambda (v s path t regions)
+          "`v` with path `path` narrowed to `t`."
+          (with-binds v (list (bind (string-append "%path " (words-of path)) (scheme nil t)
+                                    (words-of (cons "path" (cons (i64->string (size (st-kills s))) (map (lambda ((r ty)) (region-string s r)) regions)))))
+                              (bind "%paths" (scheme nil (ty-unit)) "open")))))
+
+      (define kill-entries (subr kfx (st string) strings)
+        (lambda (s a0)
+          "What effect atom `a0` ends of paths' facts: a write's or a fill's
+           region, `*` for any transfer of control, a process's wait, or an
+           effect not known (an effect variable); nothing for a read, an
+           allocation, `spin`, I/O or a global's."
+          (let ((a (resolve-atom s a0)))
+            (cond ((or (has-prefix? a "write:") (has-prefix? a "init:")) (list (atom-region a)))
+                  ((region-atom? a)
+                   (if (or (has-prefix? a "goto:") (has-prefix? a "comefrom:") (has-prefix? a "await:") (has-prefix? a "send:") (has-prefix? a "receive:"))
+                       (the strings (list "*"))
+                       nil))
+                  ((or (string=? a "spin") (string=? a "nondet") (string=? a "@globals") (string=? a "~!") (global-atom? a) (has-prefix? a "io:")) nil)
+                  (else (the strings (list "*")))))))
+
+      (define path-kills (subr kfx (cv st strings) st)
+        (lambda (v s es)
+          "`s` with the writes of effect `es`, of an expression just checked,
+           noted, where a path's fact may be in force."
+          (if (paths-open? v) (with-kills s (concat (map (lambda ((a string)) (kill-entries s a)) es))) s)))
+
+      (define path-settled (subr kfx (cv sexp res) res)
+        (lambda (v e r)
+          "Compound expression `e`'s result, the writes it does noted, and, a
+           path whose fact is in force, of the type the fact says, unboxed if
+           that is no union's."
+          (tagcase r
+            (res (t es s)
+              (if (not (paths-open? v))
+                  r
+                  (let* ((s (path-kills v s es))
+                         (p (path-of v e))
+                         (f (if (or (null? p) (null? (cdr p))) nil (path-fact v s p))))
+                    (if (null? f)
+                        (res t es s)
+                        (res (car f) es (coerced v s (datum-file e) (datum-pos e) t (car f))))))))))
+
+      (define path-in-force? (subr kfx (cv st sexp) bool)
+        (lambda (v s e)
+          (and (paths-open? v)
+               (let ((p (path-of v e))) (and (not (null? p)) (not (null? (cdr p))) (not (null? (path-fact v s p))))))))
+
+      (define type-members (subr kfx (st ty) tys)
+        (lambda (s t)
+          "A union's members, a list's `nil` and pair apart; another type of a
+           shape, itself; else none."
+          (let ((x (walk s t)))
+            (tagcase x
+              (ty-data (d args) (if (string=? (shape-of x) "union") (lists-split (members-of x)) (if (string=? (shape-of x) "") nil (list x))))
+              (ty-list (e r) (lists-split (list x)))
+              (else other (if (string=? (shape-of x) "") nil (list x)))))))
+
       (define narrowings-of-test (subr kfx (cv st sexp) (listof narrowing acyclic))
         (lambda (v s test)
           "What a test proves: `x` narrowed in the branch it holds in and in the
@@ -957,15 +1144,25 @@
               (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f)))
                   (let* ((pred (sym-name (car xs)))
                          (shape (tested-shape pred))
-                         (ms (union-local v s (second xs))))
-                    (if (or (string=? shape "") (null? ms)
+                         (path (tagcase (second xs) (lst (ys f2 l2 p2) (path-of v (second xs))) (else other nil)))
+                         (pt (if (or (null? path) (null? (cdr path))) nil (path-type v s path)))
+                         (ms (if (null? pt) (union-local v s (second xs)) (type-members s (car pt)))))
+                    (if (and (not (null? pt)) (not (string=? shape "")) (not (null? ms))
+                             (tagcase (car (scope-bind pred v)) (bind (n sc w) (string=? w "prim"))))
+                        ;; A path's test (C196): the path narrowed in each branch.
+                        (let ((yes (narrowed-to ms shape)) (no (narrowed-from ms shape)))
+                          (if (or (null? yes) (null? no))
+                              nil
+                              (list (narrowing (path-narrowed v s path (union-of yes) (cdr pt))
+                                               (path-narrowed v s path (union-of no) (cdr pt))))))
+                    (if (or (string=? shape "") (null? ms) (not (null? path))
                             (tagcase (car (scope-bind pred v)) (bind (n sc w) (not (string=? w "prim")))))
-                        (latent-narrowings v s xs ms)
+                        (if (null? path) (latent-narrowings v s xs ms) nil)
                         (let ((yes (narrowed-to ms shape)) (no (narrowed-from ms shape)) (x (sym-name (second xs))))
                           (if (or (null? yes) (null? no))
                               nil
                               (list (narrowing (with-binds v (list (narrowed v x (union-of yes))))
-                                               (with-binds v (list (narrowed v x (union-of no))))))))))
+                                               (with-binds v (list (narrowed v x (union-of no)))))))))))
                   nil))
             (else other nil))))
 
@@ -1721,6 +1918,7 @@
                       (res t es (narrowing-unboxed v (async-global v s name at-file at-pos) name at-file at-pos t))))))
             (lst (xs src-file src-line src-pos)
               (let ((v (near v src-file src-line src-pos)))
+                (path-settled v e
                 (masked-res v e
                 (tagcase (car xs)
                   (sym (h at-file at-pos) (synth-form v s e h (cdr xs)))
@@ -1739,7 +1937,7 @@
                                                               (if (or (and (head-is? head "proj") (or (std-prim? v (proj-base v head)) (not (poly-takes-procedure? v hs (projected-name head)))))
                                                                       (head-is? head "lambda") (not (self-applicable? v hs ht)))
                                                                   nil
-                                                                  (list "spin")))))))))))))))))))
+                                                                  (list "spin"))))))))))))))))))))
 
       (masked-res (subr kfx (cv sexp res) res)
         (lambda (v e r)
@@ -1921,7 +2119,13 @@
         (lambda (v s e expected)
           "`e` where an `expected` is wanted; a member boxed for its union (C75);
            a compound one's effect masked (C182)."
-          (tagcase (tagcase e (lst (xs f l p) (masked-res v e (check-plain v s e expected))) (else other (check-plain v s e expected)))
+          (tagcase (tagcase e
+                     (lst (xs f l p)
+                       ;; A path a fact narrows, found so (C196).
+                       (if (path-in-force? v s e)
+                           (check-by-synth v s e expected)
+                           (path-settled v e (masked-res v e (check-plain v s e expected)))))
+                     (else other (check-plain v s e expected)))
             (res (t es s)
               (if (and (valued? s expected) (not (valued? s t)))
                   (res expected es (coerced v s (datum-file e) (datum-pos e) t expected))
@@ -2711,7 +2915,7 @@
                (t (tagcase binder
                     (lst (ys f l p) (parse-type v (cv-tvars v) (second ys)))
                     (else other (if (null? given) (refuse v "a vlambda's elements' type: write it, (vlambda (xs T) ...)") (car given))))))
-          (tagcase (body (with-binds v (list (local v name (ty-list t (ty-rconst "acyclic"))))) s (cdr xs) nil)
+          (tagcase (body (with-binds v (list (bind "%closure" (scheme nil (ty-unit)) "closure") (bind "%paths" (scheme nil (ty-unit)) "closed") (local v name (ty-list t (ty-rconst "acyclic"))))) s (cdr xs) nil)
             (res (r es s2) (res (ty-data "%vsubr" (list (ty-proc es nil (ty-unit)) t r)) nil s2))))))
 
       (confirm-form (subr kfx (cv st string sexps tys) res)
@@ -3564,7 +3768,7 @@
                                             ((string-member? (binder-kind (car tvars)) (list "data" "sendable" "flat"))
                                              "A type where a binder of a kind is bound (C186): checked."
                                              (let ((t (parse-type v (cv-tvars v) (car args))))
-                                               (begin (kind-holds v (st nil 0 nil) (car tvars) t) t)))
+                                               (begin (kind-holds v (st nil 0 nil nil) (car tvars) t) t)))
                                             ((char=? (string-ref-i64 (car tvars) 0) #\^)
                                              "A function where one of arrow kind is bound (C173)."
                                              (fun-of-kind v (cv-tvars v) (car args) (binder-kind (car tvars)) (written-binder (car tvars))))
@@ -3615,7 +3819,7 @@
             (let ((s (if (any? (lambda ((p ty)) (not (null? (module-spec v p)))) types)
                          (kfx-restricted v s "a module parameter is a top-level procedure's (C24)")
                          s)))
-            (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
+            (tagcase (body (with-binds v (closure-binds v params types)) s forms nil)
               (res (r es s) (res (deps-of-params params types 1 (ty-proc es types r)) nil (synced-lambda v (noted-lambda v s es) es params forms))))))))
 
       (synth-param-types (subr kfx (cv sexps) tys)
@@ -3662,7 +3866,7 @@
                                 s)))
                     (if #f
                         (refuse v "")
-                    (tagcase (let ((inner (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (bind-params v params eps)))))
+                    (tagcase (let ((inner (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (closure-binds v params eps)))))
                                ;; The body as a whole masked, as Fixpt masks a lambda's
                                ;; (C191): a `letrec`'s storage no name outside sees.
                                (masked-res inner (lst (cons (sym "begin" "" 0) forms) "" 0 0)
@@ -3715,7 +3919,7 @@
             (ty-proc (ees eps er)
               (if (not (i64= (size params) (size eps)))
                   (refuse v "a lambda of the wrong number of parameters")
-                  (let ((inner (with-binds v (bind-params v params eps))))
+                  (let ((inner (with-binds v (closure-binds v params eps))))
                     ;; Masked as a lambda's body is (C191).
                     (masked-res inner (lst (cons (sym "begin" "" 0) forms) "" 0 0)
                                 (body inner (check-written-params v s params eps) forms (list er))))))

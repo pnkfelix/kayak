@@ -1,0 +1,9 @@
+"A path a test narrowed, `(car x)`, read again after a write to the region
+ it reads through: the write may have changed it, so it is a union's again;
+ refused, as Fixpt refuses it (C196)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type v (union int string))
+(define-type cell (pairof v int @r))
+(define* f (subr (maxeff (read @r) (write @r)) (cell (ref int @r)) int)
+  (lambda (x b) (if (int? (car x)) (begin (set b 1) (+ (car x) 1)) 0)))
+(define main (subr kfx () i64) (lambda () 0))

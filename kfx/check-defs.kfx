@@ -379,7 +379,7 @@
         (string=? name "lambda3") (string=? name "lambda4"))))
 
 (define scheme-text (subr kfx (scheme) string)
-  (lambda (sc) (tagcase sc (scheme (tvars t) (string-append (words-of tvars) (string-append " | " (show-ty (st nil 0 nil) t)))))))
+  (lambda (sc) (tagcase sc (scheme (tvars t) (string-append (words-of tvars) (string-append " | " (show-ty (st nil 0 nil nil) t)))))))
 
 (define global (subr kfx (cv string scheme) bind)
   (lambda (v name sc0)
@@ -421,14 +421,14 @@
             (flip (if (string=? pol "+") "-" (if (string=? pol "-") "+" "="))))
         (tagcase t
           (ty-var (n) (if (string=? n x) (the strings (list pol)) nil))
-          (ty-list (e r) (if (frozen-region? (st nil 0 nil) r) (polarities v e x pol) (inv e)))
+          (ty-list (e r) (if (frozen-region? (st nil 0 nil nil) r) (polarities v e x pol) (inv e)))
           (ty-ref (e r) (inv e))
           (ty-flat (e r) (inv e))
           (ty-shape (p ls ts) (concat (map (lambda ((u ty)) (polarities v u x pol)) ts)))
           (ty-proc (es ps r) (onto (polarities v r x pol) (concat (map (lambda ((u ty)) (polarities v u x flip)) ps))))
           (ty-data (d args)
             (cond ((string=? d "%union") (concat (map (lambda ((u ty)) (polarities v u x pol)) args)))
-                  ((and (string=? d "%pairof") (frozen-region? (st nil 0 nil) (car (cdr (cdr args)))))
+                  ((and (string=? d "%pairof") (frozen-region? (st nil 0 nil nil) (car (cdr (cdr args)))))
                    (onto (polarities v (car args) x pol) (polarities v (car (cdr args)) x pol)))
                   (else (concat (map inv args)))))
           (else other nil))))))
@@ -483,7 +483,7 @@
         (tagcase (car bs)
           (bind (n sc wher) (defined-once (with-binds v (list (global v n sc))) (cdr bs)))))))
 
-(define new-state (subr kfx () st) (lambda () (st nil 0 nil)))
+(define new-state (subr kfx () st) (lambda () (st nil 0 nil nil)))
 
 (define with-facts (subr kfx (cv facts) cv)
   (lambda (v more)

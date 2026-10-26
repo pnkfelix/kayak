@@ -5391,3 +5391,36 @@ refused), though the engine's tier 1 had the primitives (kind 43).
   cannot see it; TODO §36 asked for `frozen-shared.kfx` both ways.
 - The cost: a second release build of the corpus, beside the rest.
 - Agreed with the user (a change to which checks run).
+
+## C196. Paths narrowed by a test (2026-10-25; Fixpt's TODO §54)
+
+Fixpt narrows a path from a variable, `(car x)`, `(cdr x)`, `(extract p
+a)`, as it narrows a variable, while nothing may have changed what the
+path reads (`unions/paths-narrow.fx`). Kayak's checker now does the same.
+- **A fact** is a bind `%path ROOT STEP ...`, its type the narrowed one,
+  its `where` `path K R ...`: how many writes the state had seen when the
+  test made it, and the regions the path reads through (a pair's; a
+  product's field none). A test of a standard predicate on a path pushes
+  one into each branch, as `narrowed` does for a local; a path's type is
+  found step by step, each prefix narrowed by its own fact.
+- **What ends it** (Fixpt's `kill_paths`): the state (`st`) has a log of
+  the writes seen, newest first, each expression's effect noted as it is
+  checked (`path-settled`, in `synth` and `check`): a write's or a fill's
+  region, or `*` for a transfer of control, a process's wait, or an
+  effect not known. A fact is dead if a write since may be to one of its
+  regions not frozen: two constant regions are two, anything else may be
+  any. The log is threaded through the state, so a write in one branch of
+  an `if` ends the fact for the other branch too, as Fixpt's dead flag,
+  set as its checker goes, does (`path-written-other-branch.kfx`).
+- **Closures** see no fact: each lambda's parameters come with `%closure`,
+  where a fact's lookup stops, and `%paths` `closed`, so that writes in
+  its body are not noted against the facts outside, which Fixpt keeps
+  apart by closure depth.
+- **Rust**: a path whose fact is in force is found at the fact's type,
+  `coerced` from the path's own, so an unbox at it, as for a narrowed
+  local.
+- Tests: `tests/kfx/paths-narrow.kfx` (Fixpt's program, run: `61 s` by
+  Fixpt and by kayak's Rust); refused by both, `path-written.kfx`,
+  `path-in-closure.kfx`, `path-written-other-branch.kfx`. Probes of an
+  effect variable and a region binder refused by both too.
+- The checkers' comparison: refused 16 to 15, the same 355 to 356; K1 0.
