@@ -20,6 +20,8 @@ bidirectional/twice.fx
 bloblet-errors/flat-index-range.fx
 bloblet-errors/flat-past-suffix.fx
 bloblet-errors/flat-step-past-suffix.fx
+bloblet-errors/flat-tagcase-no-arm.fx
+bloblet-errors/flat-tagcase-no-field.fx
 bloblet-errors/flat-unsized-range.fx
 bloblet-errors/flat-variant-no-field.fx
 bloblet/array-sum.fx
@@ -30,8 +32,10 @@ bloblet/bytes.fx
 bloblet/else-narrows.fx
 bloblet/expr.fx
 bloblet/flat-bounds.fx
+bloblet/flat-inlined.fx
 bloblet/flat-kind.fx
 bloblet/flat-product.fx
+bloblet/flat-sum.fx
 bloblet/flat-unsized-recur.fx
 bloblet/flat-unsized.fx
 bloblet/point.fx
@@ -47,6 +51,8 @@ conventions/poly.fx
 datum/acyclic.fx
 datum/confirm-length.fx
 datum/data-kind.fx
+datum/quasiquote.fx
+datum/quote-shadowed.fx
 datum/type-tests.fx
 datum/union.fx
 diverge/cyclic-list-string.fx
@@ -104,7 +110,9 @@ modules/hide.fx
 modules/import.fx
 modules/include-abstract-alias.fx
 modules/include-abstract-hidden-ok.fx
+modules/include-abstract-made.fx
 modules/include-abstract.fx
+modules/include-bound-once.fx
 modules/include-effects.fx
 modules/include-family.fx
 modules/include-param-shadows.fx
@@ -176,6 +184,8 @@ native/deep.fx
 native/eqtables.fx
 native/fixed-width-ops.fx
 native/flat-ints.fx
+native/flat-keyed.fx
+native/flat-sums.fx
 native/floats.fx
 native/frozen-made.fx
 native/held-slots.fx
@@ -199,6 +209,7 @@ native/small-width-ops.fx
 native/standard-ops.fx
 native/string-reads.fx
 native/variadic-standard.fx
+native/variadic.fx
 native/whole-captures.fx
 native/wide-frame.fx
 pldi89/c7.fx
@@ -244,6 +255,7 @@ run/bytevector-printed.fx
 run/bytevectors.fx
 run/callbacks.fx
 run/caller-place.fx
+run/case-tree.fx
 run/case.fx
 run/conditions.fx
 run/define-rec.fx
@@ -287,10 +299,12 @@ run/region-throws.fx
 run/regions.fx
 run/shift-counts.fx
 run/sq.fx
+run/standard-refs.fx
 run/state.fx
 run/tail-marks.fx
 run/two-regions-one-place.fx
 run/unrolled-lists.fx
+run/variadic.fx
 run/versions.fx
 run/well-founded.fx
 schedules/arrival-order.fx

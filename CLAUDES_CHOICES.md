@@ -6082,3 +6082,39 @@ The user: "Keep going", feature by feature on the engine and the ladder.
   (were 358); beyond KFX, the engine 221 agree (were 208), 2 differ
   (`native/crossing-overflow`, as before; `native/mixed`, Fixpt's), 6 not
   run (`native-procedure`, made code).
+
+## C221. Kayak's compiler to cells: flat sums, quasiquotes, `vlambda`, case trees, `#%fx`, includes of expressions (2026-10-26)
+
+The rest of what kayak's own compiler to cells could not compile, but
+native code, each as Fixpt's compiler or parser has it:
+- **A `tagcase` of a blobref to a flat sum** (Fixpt's `c-tagcase`,
+  `c-flat-arms`): `x-tagcase` keeps the flat sum's layout code (`w + 8 *
+  numeric + 256 * p`, from the checker's `blob-tagcase` fact; -1 for a
+  sum's), its tag read once by `%fx26-flat-tag`, each arm's name a
+  blobref to the variant; arms' labels numbers too (`arm-label`).
+- **Quasiquotes**: Fixpt's parser's `quoted` (parser.fx), made as this
+  compiler's expressions: unquotes, splices (`append`), and what no
+  unquote reaches one `%quote`. **`vlambda`**: `%vlambda` of a lambda of
+  one, as Fixpt's parser makes it.
+- **The standard names, whatever a program binds** (Fixpt's `(with #%fx
+  n)`): a name marked `#%fx:` (`std-var`) the standard one wherever it
+  is: what quotes build with, a `case`'s and `typecase`'s tests, and a
+  program's own `(with #%fx n)`.
+- **`case`s of many data** (Fixpt's `case-tree`, TODO §46): the data
+  sorted by their values (the integer, or the runtime's hash of a string
+  or symbol, KFX's own `string-hash` and `symbol-name-hash` the same),
+  the clause found by halving, then its body by halving the indices; the
+  bodies at the leaves where each clause has one datum and the `else` is
+  one atom.
+- **An `include` of a module an expression makes** (a module literal in a
+  module's module, or a procedure's result), both paths: the checker
+  notes what it gives at the expression (`with-spec`), and the engine
+  binds it to a hidden name of its place, `%incl FILE:POS`, then its
+  values; our compiler makes it where it is included, once, as a module
+  made in place. Our compiler takes `%module-value` (C170's) as a
+  `module`, as the engine does, and makes a module's includes before its
+  items, as FX-26 does (no program's words changed by it).
+- Measured: kayak's own words, 381 agree, 0 differ (272 Fixpt's words
+  exactly), 1 not yet compiled (a conversion to native code); beyond KFX,
+  the engine 223 agree (were 221), 2 differ (as C220), 2 its checker
+  refuses (`redefine/`, the REPL's), 6 not run (made code).

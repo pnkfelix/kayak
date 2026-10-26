@@ -538,6 +538,34 @@ pub fn include_exports(f: &'static Sexp, gs: Strings) -> Strings {
     }), all))
 }
 
+// An `include` of a module an expression makes, not one named (C221): its
+// names those the checker noted it gives (`%with-at`), its value kept in a
+// hidden name of its place.
+pub fn include_named_p(f: &'static Sexp) -> bool {
+    let tagcase_ = second(items(f));
+    match *tagcase_ {
+        Sexp::Sym(n, p2, q) => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn include_hidden(f: &'static Sexp) -> Str {
+    string_append(str_lit("%incl "), key_of(second(items(f))))
+}
+
+pub fn include_names(f: &'static Sexp, gs: Strings) -> Strings {
+    if include_named_p(f) {
+        include_exports(f, gs)
+    } else {
+        with_at(key_of(second(items(f))), gs)
+    }
+}
+
 /// Whether `e` is the module a load of a file of parameters made (C213:
 /// `(module (%loaded path %instance ...) ...)`): one made again for each
 /// instance, as Fixpt makes one each time its maker is called.
@@ -580,6 +608,12 @@ pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
         } else if head_is_p(f, str_lit("define-generative")) {
             let n = binder_name(second(items(f)));
             kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+        } else if (head_is_p(f, str_lit("include")) && not(include_named_p(f))) {
+            if exported {
+                include_names(f, gs)
+            } else {
+                kayak_rt::heap_cons(include_hidden(f), include_names(f, gs))
+            }
         } else if head_is_p(f, str_lit("include")) {
             if (not(exported) && string_member_p(sym_name(second(items(f))), instances_of(gs))) {
                 kayak_rt::heap_cons(string_append(str_lit("%inst "), sym_name(second(items(f)))), include_exports(f, gs))
@@ -1327,6 +1361,10 @@ pub fn module_values(its: Sexps, sc: Scope, gs: Strings) -> Irs {
             }), cdr(cdr(items(f))))
         } else if head_is_p(f, str_lit("define-generative")) {
             kayak_rt::heap_cons(i_lit(v_prim(str_lit("%identity"), 1i64)), kayak_rt::heap_cons(i_lit(v_prim(str_lit("%identity"), 1i64)), kayak_rt::nil()))
+        } else if (head_is_p(f, str_lit("include")) && not(include_named_p(f))) {
+            kayak_rt::heap_cons(named(include_hidden(f), lower(second(items(f)), sc, gs)), map(lambda1s(move |n: Str| {
+                i_extract(n, lower_name(include_hidden(f), sc, gs))
+            }), include_names(f, gs)))
         } else if head_is_p(f, str_lit("include")) {
             let m = sym_name(second(items(f)));
             if string_member_p(m, instances_of(gs)) {

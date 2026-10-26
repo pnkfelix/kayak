@@ -305,6 +305,16 @@
                         (map sym-name (cdr (items (car ex))))))))
       (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) all)))))
 
+"An `include` of a module an expression makes, not one named (C221): its
+ names those the checker noted it gives (`%with-at`), its value kept in a
+ hidden name of its place."
+(define include-named? (subr kfx (sexp) bool)
+  (lambda (f) (tagcase (second (items f)) (sym (n p2 q) #t) (else other #f))))
+(define include-hidden (subr kfx (sexp) string)
+  (lambda (f) (string-append "%incl " (key-of (second (items f))))))
+(define include-names (subr kfx (sexp strings) strings)
+  (lambda (f gs) (if (include-named? f) (include-exports f gs) (with-at (key-of (second (items f))) gs))))
+
 (define instance-module? (subr kfx (sexp) bool)
   (lambda (e)
     "Whether `e` is the module a load of a file of parameters made (C213:
@@ -333,6 +343,8 @@
                         ((head-is? f "define-datatype") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative")
                          (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
+                        ((and (head-is? f "include") (not (include-named? f)))
+                         (if exported (include-names f gs) (cons (include-hidden f) (include-names f gs))))
                         ((head-is? f "include")
                          ;; An instance's module made first, then its values (C213).
                          (if (and (not exported) (string-member? (sym-name (second (items f))) (instances-of gs)))
@@ -722,6 +734,9 @@
                         ((head-is? f "define-datatype")
                          (map (lambda ((g sexp)) (i-lit (v-ctor (sym-name (car (items g))) (i64- (size (items g)) 1)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative") (list (i-lit (v-prim "%identity" 1)) (i-lit (v-prim "%identity" 1))))
+                        ((and (head-is? f "include") (not (include-named? f)))
+                         (cons (named (include-hidden f) (lower (second (items f)) sc gs))
+                               (map (lambda ((n string)) (i-extract n (lower-name (include-hidden f) sc gs))) (include-names f gs))))
                         ((head-is? f "include")
                          (let ((m (sym-name (second (items f)))))
                            (if (string-member? m (instances-of gs))

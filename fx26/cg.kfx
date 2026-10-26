@@ -55,7 +55,9 @@
   (x-product (listof cbind acyclic) i64)
   (x-extract cx i64 i64)
   (x-sum string cx i64)
-  (x-tagcase cx (listof carm acyclic) (listof cbind acyclic) i64)
+  ;; Its arms, its `else`, and, of a blobref to a flat sum, its layout's
+  ;; code (Fixpt's `w + 8 * numeric + 256 * p`), else -1.
+  (x-tagcase cx (listof carm acyclic) (listof cbind acyclic) i64 i64)
   (x-prompt cx cx cx i64)
   (x-bloblet string i64 (listof cx acyclic) i64)
   (x-region i64 string cx i64)
@@ -103,7 +105,7 @@
       (x-var (n a) a) (x-int (n a) a) (x-bool (v a) a) (x-str (s a) a) (x-char (c a) a) (x-float (b a) a)
       (x-sym (s a) a) (x-unit (a) a) (x-lambda (ps b a) a) (x-app (f xs a) a)
       (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a) (x-proj (x a) a)
-      (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els a) a)
+      (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els k a) a)
       (x-prompt (t body h a) a) (x-bloblet (op i xs a) a) (x-region (k r body a) a) (x-rlambda (r l a) a)
       (x-module (its a) a) (x-with (m ns ks body a) a) (x-reshape (y ps a) a))))
 
@@ -136,13 +138,19 @@
 
 "The names free in `x`, not `bound`, onto `acc`, the newest first, in
  Fixpt's order: what an expression's parts are walked in."
+"A standard name, whatever a program binds it to (Fixpt's `(with #%fx
+ name)`, C221): what a quote builds with."
+(define std-var (subr kfx (string i64) cx) (lambda (n a) (x-var (string-append "#%fx:" n) a)))
+(define std-marked? (subr kfx (string) bool) (lambda (n) (has-prefix? n "#%fx:")))
+(define std-named (subr kfx (string) string) (lambda (n) (if (std-marked? n) (after-prefix n "#%fx:") n)))
+
 (define-rec
   (c-free-all (subr kfx (cxs strings strings) strings)
     (lambda (es bound acc) (if (null? es) acc (c-free-all (cdr es) bound (c-free (car es) bound acc)))))
   (c-free (subr kfx (cx strings strings) strings)
     (lambda (x bound acc)
       (tagcase x
-        (x-var (n a) (if (string-member? n bound) acc (c-adjoin acc n)))
+        (x-var (n a) (if (or (std-marked? n) (string-member? n bound)) acc (c-adjoin acc n)))
         (x-lambda (ps body a) (c-free body (c-names ps bound) acc))
         (x-app (f args a) (c-free f bound (c-free-all args bound acc)))
         (x-if (t th el a) (c-free t bound (c-free th bound (c-free el bound acc))))
@@ -155,7 +163,7 @@
         (x-product (fs a) (c-free-all (c-bound-exps fs) bound acc))
         (x-extract (p i a) (c-free p bound acc))
         (x-sum (t v a) (c-free v bound acc))
-        (x-tagcase (s arms els a) (c-free s bound (c-free-arms arms bound (c-free-else els bound acc))))
+        (x-tagcase (s arms els k a) (c-free s bound (c-free-arms arms bound (c-free-else els bound acc))))
         (x-prompt (t body h a) (c-free t bound (c-free body bound (c-free h bound acc))))
         (x-bloblet (op i xs a) (c-free-all xs bound acc))
         (x-region (k r body a) (c-free body (cons r bound) acc))
@@ -231,6 +239,10 @@
 (define made-here-name? (subr kfx (string) bool)
   (lambda (n) (and (has-prefix? n "made--") (not (has-prefix? n "made--load--")) (not (has-prefix? n "made--input--")))))
 (define cg-layouts (ref (listof clayout acyclic) @g) (new nil))
+"The modules an `include` makes of an expression, not one named (C221),
+ by a hidden name of their place: the values the checker noted each gives
+ (`with-spec`)."
+(define cg-included (ref (listof clayout acyclic) @g) (new nil))
 
 (define-rec
   (layout-in (subr kfx ((listof clayout acyclic) string) (listof strings acyclic))
@@ -347,6 +359,100 @@
 (define case-tree-from (subr kfx (i64 bool) i64)
   (lambda (k direct)
     (cond ((i64= k 0) (if direct 8 32)) ((i64= k 2) 16) ((i64= k 3) (if direct 32 64)) (else 1000000000))))
+
+"A `case`'s data by halving (C221; Fixpt's `case-tree`, TODO §46): each
+ datum's test, the value it sorts by (the integer, or the runtime's hash
+ of the string or symbol), and its clause."
+(define-datatype ckey (ckey cx i64 i64))
+(define ckey-at (subr kfx (ckey) i64) (lambda (e) (tagcase e (ckey (t v c) v))))
+
+(define case-sort-key (subr kfx (i64 sexp) i64)
+  (lambda (k d)
+    (tagcase d
+      (num (n f p) (if (i64= k 0) n 0))
+      (str (t f p) (if (i64= k 2) (int->i64 (string-hash t)) 0))
+      (sym (n f p) (if (i64= k 3) (int->i64 (symbol-name-hash (string->symbol n))) 0))
+      (else other 0))))
+
+"Whether every datum has a sort value: integers only if fixnums."
+(define-rec
+  (case-all-keyed? (subr kfx (i64 sexps) bool)
+    (lambda (k clauses)
+      (or (not (i64= k 0)) (null? (cdr clauses))
+          (and (not (any? (lambda ((d sexp)) (tagcase d (num (n f p) (or (i64< n -1152921504606846976) (i64> n 1152921504606846975))) (else other #t)))
+                          (items (car (items (car clauses))))))
+               (case-all-keyed? k (cdr clauses)))))))
+
+"`e` into `sorted`, after those of no greater value: a stable sort."
+(define-rec
+  (case-insert (subr kfx (ckey (listof ckey acyclic)) (listof ckey acyclic))
+    (lambda (e sorted)
+      (if (or (null? sorted) (i64< (ckey-at e) (ckey-at (car sorted))))
+          (cons e sorted)
+          (cons (car sorted) (case-insert e (cdr sorted))))))
+  (case-sort (subr kfx ((listof ckey acyclic) (listof ckey acyclic)) (listof ckey acyclic))
+    (lambda (es sorted) (if (null? es) sorted (case-sort (cdr es) (case-insert (car es) sorted))))))
+
+(define-rec
+  (case-key-nth (subr kfx ((listof ckey acyclic) i64) i64)
+    (lambda (es i) (if (i64= i 0) (ckey-at (car es)) (case-key-nth (cdr es) (i64- i 1)))))
+  (case-take (subr kfx ((listof ckey acyclic) i64) (listof ckey acyclic))
+    (lambda (es k) (if (i64= k 0) nil (cons (car es) (case-take (cdr es) (i64- k 1))))))
+  (case-drop (subr kfx ((listof ckey acyclic) i64) (listof ckey acyclic))
+    (lambda (es k) (if (i64= k 0) es (case-drop (cdr es) (i64- k 1)))))
+  (case-mid-up (subr kfx ((listof ckey acyclic) i64 i64) i64)
+    (lambda (es mid n)
+      (if (and (i64< mid n) (i64> mid 0) (i64= (case-key-nth es mid) (case-key-nth es (i64- mid 1))))
+          (case-mid-up es (i64+ mid 1) n)
+          mid)))
+  (case-mid-down (subr kfx ((listof ckey acyclic) i64) i64)
+    (lambda (es mid)
+      (if (and (i64> mid 0) (i64= (case-key-nth es mid) (case-key-nth es (i64- mid 1))))
+          (case-mid-down es (i64- mid 1))
+          mid))))
+
+"Where to halve `n` sorted entries: nearest the middle, between unequal
+ values (0 if none)."
+(define case-mid (subr kfx ((listof ckey acyclic) i64) i64)
+  (lambda (es n)
+    (let ((up (case-mid-up es (i64-quotient n 2) n)))
+      (if (i64= up n) (case-mid-down es (i64-quotient n 2)) up))))
+
+(define-rec
+  (case-body-at (subr kfx (cxs i64) cx)
+    (lambda (es i) (if (i64= i 0) (car es) (case-body-at (cdr es) (i64- i 1)))))
+  (case-leaf (subr kfx ((listof ckey acyclic) i64 cxs bool cx i64) cx)
+    (lambda (es m bodies whole els a)
+      "The entries' tests in turn, each giving its clause (or, `whole`, its
+       body); `m` (or `els`) for none."
+      (cond ((and (null? es) (not whole)) (x-int (i64->int m) a))
+            ((null? es) els)
+            (else
+             (tagcase (car es)
+               (ckey (t v c)
+                 (x-if t (if whole (case-body-at bodies c) (x-int (i64->int c) a)) (case-leaf (cdr es) m bodies whole els a) a)))))))
+  (case-index (subr kfx (cx (listof ckey acyclic) i64 i64 cxs bool cx i64) cx)
+    (lambda (by es n m bodies whole els a)
+      "The clause of sorted entries, `by` halved against their values."
+      (if (i64<= n 3)
+          (case-leaf es m bodies whole els a)
+          (let ((mid (case-mid es n)))
+            (if (i64= mid 0)
+                (case-leaf es m bodies whole els a)
+                (x-if (x-app (std-var "<" a) (list by (x-int (i64->int (case-key-nth es mid)) a)) a)
+                      (case-index by (case-take es mid) mid m bodies whole els a)
+                      (case-index by (case-drop es mid) (i64- n mid) m bodies whole els a)
+                      a))))))
+  (case-pick (subr kfx (cx cxs i64 i64 i64) cx)
+    (lambda (i bodies lo hi a)
+      "The body of index `lo`..`hi` that `i` names, by halving."
+      (if (i64= lo hi)
+          (case-body-at bodies lo)
+          (let ((mid (i64-quotient (i64+ (i64+ lo hi) 1) 2)))
+            (x-if (x-app (std-var "<" a) (list i (x-int (i64->int mid) a)) a)
+                  (case-pick i bodies lo (i64- mid 1) a)
+                  (case-pick i bodies mid hi a)
+                  a))))))
 
 "Whether a `case`'s or `typecase`'s key is a variable, tested as it is."
 (define case-direct? (subr kfx (sexps) bool)
@@ -480,6 +586,58 @@
     (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (put-sep-words (cdr ss)))))))))
 
 
+"An arm's label: a name, or a flat sum's number, as its digits (C221)."
+(define arm-label (subr kfx (sexp) string)
+  (lambda (x) (tagcase x (num (k f p) (i64->string k)) (else other (sym-name x)))))
+
+"Quasiquotes' shapes (C221, Fixpt's parser.fx): `(form e)`'s `e`, as a
+ list of none or one; whether a list is dotted, its items before the dot
+ and its tail; the depth a list's items after its head are at."
+(define q-unquote-of (subr kfx (sexp string) sexps)
+  (lambda (x form)
+    (tagcase x
+      (lst (ys f l p) (if (and (i64= (size ys) 2) (sym-is? (car ys) form)) (cdr ys) nil))
+      (else other nil))))
+(define q-unquoted (subr kfx (sexp i64) sexps)
+  (lambda (x depth) (if (i64= depth 1) (q-unquote-of x "unquote") nil)))
+(define q-compound? (subr kfx (sexp) bool)
+  (lambda (x) (tagcase x (lst (ys f l p) (not (null? ys))) (else other #f))))
+(define-rec
+  (q-dotted? (subr kfx (sexps) bool)
+    (lambda (ys)
+      (cond ((or (null? ys) (null? (cdr ys))) #f)
+            ((null? (cdr (cdr ys))) (sym-is? (car ys) "."))
+            (else (q-dotted? (cdr ys))))))
+  (q-before-dot (subr kfx (sexps) sexps)
+    (lambda (ys) (if (sym-is? (car ys) ".") nil (cons (car ys) (q-before-dot (cdr ys))))))
+  (q-dot-tail (subr kfx (sexps) sexp)
+    (lambda (ys) (if (sym-is? (car ys) ".") (second ys) (q-dot-tail (cdr ys))))))
+(define q-inner (subr kfx (sexps i64) i64)
+  (lambda (items depth)
+    (let ((two (i64= (size items) 2)) (h (if (null? items) (sy "") (car items))))
+      (cond ((i64< depth 0) depth)
+            ((and two (sym-is? h "quasiquote")) (i64+ depth 1))
+            ((and two (i64> depth 1) (or (sym-is? h "unquote") (sym-is? h "unquote-splicing"))) (i64- depth 1))
+            (else depth)))))
+(define-rec
+  (q-free? (subr kfx (sexp i64) bool)
+    (lambda (x depth)
+      "Whether no `unquote` or `unquote-splicing` at depth 1 is in `x`."
+      (and (null? (q-unquoted x depth))
+           (tagcase x
+             (lst (ys f l p)
+               (cond ((head-is? x "#vector") (q-items-free? (cdr ys) depth depth))
+                     ((q-dotted? ys) (and (q-items-free? (q-before-dot ys) depth (q-inner (q-before-dot ys) depth))
+                                          (q-free? (q-dot-tail ys) depth)))
+                     (else (q-items-free? ys depth (q-inner ys depth)))))
+             (else other #t)))))
+  (q-items-free? (subr kfx (sexps i64 i64) bool)
+    (lambda (items depth inner)
+      (or (null? items)
+          (and (null? (if (i64= depth 1) (q-unquote-of (car items) "unquote-splicing") nil))
+               (q-free? (car items) depth)
+               (q-items-free? (cdr items) inner inner))))))
+
 (define-rec
   (parse-x (subr gen (sexp) cx)
     (lambda (e)
@@ -549,13 +707,24 @@
                      (else (begin (cg-fail "an extract the checker did not see") (x-unit a))))))
             ((bloblet-form? h) (parse-bloblet h (cdr xs) f a))
             ((string=? h "sum") (x-sum (label-of (second xs)) (parse-x (car (cdr (cdr xs)))) a))
-            ((and (string=? h "tagcase") (not (string=? (fact-text (get cg-facts) f a "blob-tagcase ") "")))
-             "A tagcase of a flat sum (C33, C175): not yet the generator's."
-             (begin (cg-fail "not yet: a tagcase of a flat sum") (x-var "%none" a)))
             ((string=? h "tagcase")
-             (x-tagcase (parse-x (second xs)) (parse-arms (cdr (cdr xs))) (parse-else (cdr (cdr xs))) a))
-            ((string=? h "module") (module-narrowed (parse-module (cdr xs) a) f a))
+             "Of a blobref to a flat sum (C33, C175), its layout's code from
+              the checker's fact: the key's width, whether it is numeric (it
+              is, but where the tag names an owner's field), the variant's
+              offset (C221)."
+             (let ((flat (spaced-words (fact-text (get cg-facts) f a "blob-tagcase "))))
+               (x-tagcase (parse-x (second xs)) (parse-arms (cdr (cdr xs))) (parse-else (cdr (cdr xs)))
+                          (if (null? flat)
+                              -1
+                              (i64+ (digits-i64 (string-chars (car flat)) 0)
+                                    (i64+ (if (i64= (size flat) 3) (the i64 0) (the i64 8))
+                                          (i64* 256 (digits-i64 (string-chars (car (cdr flat))) 0)))))
+                          a)))
+            ((or (string=? h "module") (string=? h "%module-value")) (module-narrowed (parse-module (cdr xs) a) f a))
             ((string=? h "extend") (module-narrowed (parse-extend (second xs) (third xs) a) f a))
+            ;; `(with #%fx n)`: the standard `n`, whatever is bound to it (C221).
+            ((and (string=? h "with") (i64= (size xs) 3) (sym-is? (second xs) "#%fx") (tagcase (third xs) (sym (n f2 p2) #t) (else other #f)))
+             (std-var (sym-name (third xs)) a))
             ((string=? h "with") (parse-with (second xs) (parse-body (cdr (cdr xs)) a) f a))
             ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "letfreeze"))
              ;; What it makes besides the region: nothing, an arena, a reap,
@@ -570,7 +739,12 @@
             ((string=? h "prompt") (x-prompt (parse-x (second xs)) (parse-x (third xs)) (parse-x (fourth xs)) a))
             ((string=? h "case") (parse-case (cdr xs) a))
             ((string=? h "typecase") (parse-typecase (cdr xs) a))
-            ((or (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
+            ;; `(vlambda p body …)`: `%vlambda` of a lambda of one (C221, as
+            ;; Fixpt's parser makes it).
+            ((string=? h "vlambda")
+             (x-app (x-var "%vlambda" a) (list (x-lambda (list (binder-name (second xs))) (parse-body (cdr (cdr xs)) a) a)) a))
+            ((string=? h "quasiquote") (quasi-in (second xs) 1))
+            ((string=? h "load-module")
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
             (else
              (begin
@@ -600,10 +774,52 @@
              (els (items (last clauses)))
              (direct (and (i64= (size els) 2) (not (tagcase (second els) (lst (ys f l p) #t) (else other #f)))
                           (i64= n (i64- (size clauses) 1)))))
-        (cond ((i64>= n (case-tree-from k direct)) (begin (cg-fail "not yet: a case of many data") (x-unit a)))
+        (cond ((and (i64>= n (case-tree-from k direct)) (case-all-keyed? k clauses))
+               (if (case-direct? xs)
+                   (case-tree (parse-x (car xs)) xs k a)
+                   (x-let (list (cbind "%case-key" (parse-x (car xs))))
+                          (case-tree (x-var "%case-key" (datum-pos (car xs))) xs k a) a)))
               ((case-direct? xs) (parse-case-arms (parse-x (car xs)) clauses))
               (else (x-let (list (cbind "%case-key" (parse-x (car xs))))
                            (parse-case-arms (x-var "%case-key" (datum-pos (car xs))) clauses) a))))))
+
+  ;; Many data (C221, Fixpt's `case-tree`): the clause's index by halving
+  ;; the sorted data, then its body by halving the indices; with a clause
+  ;; per datum and an `else` of one atom, the bodies at the leaves.
+  (case-tree (subr gen (cx sexps i64 i64) cx)
+    (lambda (kv xs k a)
+      (let* ((sorted (case-sort (case-entries kv k (cdr xs) 0) nil))
+             (bodies (case-bodies (cdr xs)))
+             (m (i64- (size bodies) 1))
+             (by (if (i64= k 0) kv (x-var "%case-hash" a)))
+             (n (size sorted))
+             (lastc (items (last (cdr xs))))
+             (atom-else (and (i64= (size lastc) 2) (not (tagcase (second lastc) (lst (ys f l p) #t) (else other #f)))))
+             (tree (if (and atom-else (i64= n m))
+                       (case-index by sorted n m bodies #t (case-body-at bodies m) a)
+                       (x-let (list (cbind "%case-index" (case-index by sorted n m bodies #f (x-unit a) a)))
+                              (case-pick (x-var "%case-index" a) bodies 0 m a) a))))
+        (if (i64= k 0)
+            tree
+            (x-let (list (cbind "%case-hash" (x-app (std-var (if (i64= k 2) "string-hash" "symbol-name-hash") a) (list kv) a))) tree a)))))
+
+  (case-entries (subr gen (cx i64 sexps i64) (listof ckey acyclic))
+    (lambda (kv k clauses c)
+      (if (null? (cdr clauses))
+          nil
+          (case-entries-of kv k (items (car (items (car clauses)))) c (case-entries kv k (cdr clauses) (i64+ c 1))))))
+
+  (case-entries-of (subr gen (cx i64 sexps i64 (listof ckey acyclic)) (listof ckey acyclic))
+    (lambda (kv k data c rest)
+      (if (null? data)
+          rest
+          (cons (ckey (parse-case-test kv (car data)) (case-sort-key k (car data)) c) (case-entries-of kv k (cdr data) c rest)))))
+
+  (case-bodies (subr gen (sexps) cxs)
+    (lambda (clauses)
+      (if (null? clauses)
+          nil
+          (cons (parse-body (cdr (items (car clauses))) (datum-pos (car clauses))) (case-bodies (cdr clauses))))))
 
   (parse-case-arms (subr gen (cx sexps) cx)
     (lambda (kv clauses)
@@ -622,7 +838,7 @@
       (let* ((at (datum-pos d)) (k (case-kind d))
              (eq (cond ((i64= k 0) "=") ((i64= k 1) "char=?") ((i64= k 2) "string=?") ((i64= k 3) "symbol=?") (else "bool=?")))
              (lit (if (i64= k 3) (x-sym (sym-name d) at) (parse-x d))))
-        (x-app (x-var eq at) (list kv lit) at))))
+        (x-app (std-var eq at) (list kv lit) at))))
 
   ;; `(typecase e (shape name body) … (else [name] body))`, as Fixpt's
   ;; parser expands it: a variable as it is, else bound to
@@ -640,7 +856,7 @@
             (if (i64= (size parts) 3)
                 (x-let (list (cbind (sym-name (second parts)) (x-var tmp a))) (parse-x (third parts)) a)
                 (parse-x (second parts)))
-            (x-if (x-app (x-var (typecase-predicate (sym-name (car parts))) a) (list (x-var tmp a)) a)
+            (x-if (x-app (std-var (typecase-predicate (sym-name (car parts))) a) (list (x-var tmp a)) a)
                   (x-let (list (cbind (sym-name (second parts)) (x-var tmp a))) (parse-x (third parts)) a)
                   (parse-typecase-arms (cdr arms) tmp a)
                   a)))))
@@ -705,8 +921,9 @@
        the values of the modules it includes but hides, then its own that
        it gives."
       (let* ((outer (get cg-layouts))
-             (own (parse-items forms 2))
+             ;; The modules included first, as FX-26 makes them.
              (incs (includes-of forms #f))
+             (own (parse-items forms 2))
              (own-names (map cmem-name (filter (lambda ((i cmem)) (i64> (cmem-kind i) 0)) own)))
              (given (map cmem-name (filter (lambda ((i cmem)) (i64= (cmem-kind i) 2)) own))))
         (begin
@@ -808,7 +1025,7 @@
 
   (included-layout (subr gen (string) strings)
     (lambda (m)
-      (let ((l (layout-in (get cg-layouts) m)))
+      (let ((l (if (has-prefix? m "%incl ") (layout-in (get cg-included) m) (layout-in (get cg-layouts) m))))
         (if (null? l) (begin (cg-fail (string-append "not yet: an include of a module not named: " m)) nil) (car l)))))
 
   (includes-of (subr gen (sexps bool) (listof cinc acyclic))
@@ -817,7 +1034,20 @@
       (if (null? forms)
           nil
           (let ((f (car forms)))
-            (cond ((head-is? f "include")
+            (cond ((and (head-is? f "include") (i64= (size (items f)) 2) (not (tagcase (second (items f)) (sym (n f2 p2) #t) (else other #f))))
+                   ;; A module an expression makes (C221): made where it is
+                   ;; included, once, as a module made in place is.
+                   (let* ((x (second (items f))) (n (string-append "%incl " (i64->string (datum-pos x)))))
+                     (begin
+                       (if (null? (made-module (get cg-made) n))
+                           (let ((made (parse-x x)))
+                             (begin
+                               (set cg-made (cons (cmade n made) (get cg-made)))
+                               (set cg-included (cons (clayout n (spaced-words (fact-text (get cg-facts) (datum-file x) (datum-pos x) "with-spec ")))
+                                                      (get cg-included)))))
+                           #u)
+                       (cons (cinc n hidden (datum-pos f)) (includes-of (cdr forms) hidden)))))
+                  ((head-is? f "include")
                    (if (i64= (size (items f)) 2)
                        (cons (cinc (sym-name (second (items f))) hidden (datum-pos f)) (includes-of (cdr forms) hidden))
                        (begin (cg-fail "not yet: an include with exceptions") nil)))
@@ -934,16 +1164,16 @@
       (tagcase d
         (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
         (lst (ys f l p)
-          (if (null? ys) (x-var "nil" a)
-              (x-app (x-var "%quote" a) (list (quoted-item d a)) a)))
+          (if (null? ys) (std-var "nil" a)
+              (x-app (std-var "%quote" a) (list (quoted-item d a)) a)))
         (else other (parse-x d)))))
 
   (quoted-list (subr gen (sexps i64) cx)
     (lambda (ys a)
-      (cond ((null? ys) (x-var "nil" a))
+      (cond ((null? ys) (std-var "nil" a))
             ((and (tagcase (car ys) (sym (n f p) (string=? n ".")) (else other #f)) (not (null? (cdr ys))) (null? (cdr (cdr ys))))
              (quoted-item (second ys) a))
-            (else (x-app (x-var "cons" a) (list (quoted-item (car ys) a) (quoted-list (cdr ys) a)) a)))))
+            (else (x-app (std-var "cons" a) (list (quoted-item (car ys) a) (quoted-list (cdr ys) a)) a)))))
 
   (quoted-item (subr gen (sexp i64) cx)
     (lambda (d a)
@@ -951,9 +1181,57 @@
         (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
         (lst (ys f l p)
           (if (and (not (null? ys)) (tagcase (car ys) (sym (n f2 p2) (string=? n "#vector")) (else other #f)))
-              (x-app (x-var "list->vector" a) (list (quoted-list (cdr ys) a)) a)
+              (x-app (std-var "list->vector" a) (list (quoted-list (cdr ys) a)) a)
               (quoted-list ys a)))
         (else other (parse-x d)))))
+
+  ;; Quasiquotes (C221): Fixpt's parser's `quoted` (parser.fx, TODO §51),
+  ;; its rewrite made as this compiler's expressions; a `the` erased.
+  ;; `(unquote e)` at depth 1 is `e`; `(unquote-splicing e)`, `e` appended
+  ;; to what follows; what no unquote reaches, one `%quote`, made once.
+  (quasi-in (subr gen (sexp i64) cx)
+    (lambda (x depth)
+      (let* ((u (q-unquoted x depth)) (a (datum-pos x))
+             (mark (and (null? u) (i64>= depth 1) (q-compound? x) (q-free? x depth)))
+             (dq (if mark (the i64 -1) depth)))
+        (if (not (null? u))
+            (parse-x (car u))
+            (let ((built
+                   (tagcase x
+                     (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
+                     (lst (ys f l p)
+                       (cond ((null? ys) (std-var "nil" a))
+                             ((head-is? x "#vector")
+                              (x-app (std-var "datum-list->vector" a)
+                                     (list (if (null? (cdr ys)) (std-var "nil" a) (q-items (cdr ys) #f (car (cdr ys)) dq a))) a))
+                             ((q-dotted? ys) (q-items (q-before-dot ys) #t (q-dot-tail ys) dq a))
+                             (else (q-items ys #f (car ys) dq a))))
+                     (else other (parse-x x)))))
+              (if mark (x-app (std-var "%quote" a) (list built) a) built))))))
+
+  (q-items (subr gen (sexps bool sexp i64 i64) cx)
+    (lambda (items dotted tail depth a)
+      (q-onto items dotted tail depth (and (i64>= depth 1) (or (not dotted) (q-free? tail depth)))
+              depth (q-inner items depth) #t a)))
+
+  (q-plain (subr gen (sexps bool sexp i64) cx)
+    (lambda (items dotted tail a)
+      (if (null? items)
+          (if dotted (quasi-in tail -1) (std-var "nil" a))
+          (x-app (std-var "cons" a) (list (quasi-in (car items) -1) (q-plain (cdr items) dotted tail a)) a))))
+
+  (q-onto (subr gen (sexps bool sexp i64 bool i64 i64 bool i64) cx)
+    (lambda (items dotted tail ldepth free-tail depth inner first a)
+      (cond
+        ((null? items) (if dotted (quasi-in tail ldepth) (std-var "nil" a)))
+        ((and free-tail (not first) (q-items-free? items inner inner))
+         (x-app (std-var "%quote" a) (list (q-plain items dotted tail a)) a))
+        (else
+         (let ((rest (q-onto (cdr items) dotted tail ldepth free-tail inner inner #f a))
+               (spliced (if (i64= depth 1) (q-unquote-of (car items) "unquote-splicing") nil)))
+           (if (null? spliced)
+               (x-app (std-var "cons" a) (list (quasi-in (car items) depth) rest) a)
+               (x-app (std-var "append" a) (list (parse-x (car spliced)) rest) a)))))))
 
   (parse-arms (subr gen (sexps) (listof carm acyclic))
     (lambda (arms)
@@ -962,8 +1240,8 @@
       (if (or (null? arms) (head-is? (car arms) "else")) nil
           (let* ((parts (items (car arms))) (b (second parts)))
             (cons (tagcase b
-                    (lst (ns f l p) (carm (sym-name (car parts)) #t (map sym-name ns) (parse-body (cdr (cdr parts)) (datum-pos (car arms)))))
-                    (else other (carm (sym-name (car parts)) #f (list (sym-name b)) (parse-body (cdr (cdr parts)) (datum-pos (car arms))))))
+                    (lst (ns f l p) (carm (arm-label (car parts)) #t (map sym-name ns) (parse-body (cdr (cdr parts)) (datum-pos (car arms)))))
+                    (else other (carm (arm-label (car parts)) #f (list (sym-name b)) (parse-body (cdr (cdr parts)) (datum-pos (car arms))))))
                   (parse-arms (cdr arms)))))))
 
   (parse-else (subr gen (sexps) cbinds)
@@ -1308,7 +1586,7 @@
         (x-product (fs a) (c-calls-only-all (c-bound-exps fs) f n loops))
         (x-extract (p i a) (c-calls-only p f n #f loops))
         (x-sum (t v a) (c-calls-only v f n #f loops))
-        (x-tagcase (s arms els a)
+        (x-tagcase (s arms els k a)
           (and (c-calls-only s f n #f loops) (c-calls-only-arms arms f n tail loops) (c-calls-only-else els f n tail loops)))
         (x-bloblet (op i xs a) (c-calls-only-all xs f n loops))
         (x-prompt (t body h a)
@@ -1541,7 +1819,8 @@
 "The standard operation `f` names, if it is a name bound nowhere else;
  else \"\"."
 (define c-standard-name (subr gen (cx cenv) string)
-  (lambda (f e) (tagcase f (x-var (n a) (if (null? (c-where e n)) n "")) (else y ""))))
+  (lambda (f e)
+    (tagcase f (x-var (n a) (cond ((std-marked? n) (std-named n)) ((null? (c-where e n)) n) (else ""))) (else y ""))))
 
 "The datum a quote builds, as a literal, where it is made of literals and
  symbols: none, or one."
@@ -1553,9 +1832,9 @@
         (x-bool (v a) (list (l-bool v)))
         (x-char (v a) (list (l-char v)))
         (x-sym (s a) (list (l-sym s)))
-        (x-var (n a) (if (string=? n "nil") (list (l-nil)) nil))
+        (x-var (n a) (if (string=? (std-named n) "nil") (list (l-nil)) nil))
         (x-app (f args a)
-          (if (and (tagcase f (x-var (n b) (string=? n "cons")) (else y #f)) (i64= (size args) 2))
+          (if (and (tagcase f (x-var (n b) (string=? (std-named n) "cons")) (else y #f)) (i64= (size args) 2))
               (let ((h (c-quoted-cell (car args))) (t (c-quoted-cell (car (cdr args)))))
                 (if (or (null? h) (null? t)) nil (list (l-pair (car h) (car t)))))
               nil))
@@ -1733,10 +2012,10 @@
     (lambda (x e depth c tail)
       (tagcase x
         (x-var (n a)
-          (let ((l (c-where e n)))
+          (let ((l (if (std-marked? n) nil (c-where e n))))
             (begin
               (if (null? l)
-                  (if (std-nil-name? n) (c-lit c (l-nil)) (c-standard-value n c))
+                  (if (std-nil-name? (std-named n)) (c-lit c (l-nil)) (c-standard-value (std-named n) c))
                   (c-load c (car l)))
               (c-done c tail))))
         (x-int (n a) (begin (c-lit c (l-int n)) (c-done c tail)))
@@ -1802,9 +2081,16 @@
         (x-sum (t v a)
           (begin (c-int c 36) (c-lit c (l-sym t)) (c-exp v e (i64+ depth 2) c #f)
                  (c-prim c "%make-frozen" 3) (c-done c tail)))
-        (x-tagcase (s arms els a)
+        (x-tagcase (s arms els k a)
+          ;; Of a flat sum, its tag read once, as a label, into the slot
+          ;; after it (Fixpt's `c-tagcase`).
           (let ((end (c-fresh)))
-            (begin (c-exp s e depth c #f) (c-arms arms els e depth c tail end) (c-emit c (it-label end)))))
+            (begin (c-exp s e depth c #f)
+                   (if (i64< k 0)
+                       (c-arms arms els e depth c tail end)
+                       (begin (c-op1 c "slot" (o-int depth)) (c-int c k) (c-prim c "%fx26-flat-tag" 2)
+                              (c-flat-arms arms els k e depth c tail end)))
+                   (c-emit c (it-label end)))))
         (x-module (its a) (c-module its e depth c tail))
         (x-with (m ns ks body a)
           (let* ((fv (c-free body nil nil))
@@ -2009,6 +2295,36 @@
                   (else (begin (c-standard-on standard (c-exps args e depth c) c) (c-done c tail))))))))
 
   ;;; tagcase
+  ;; A flat sum's arms (Fixpt's `c-flat-arms`): each name a blobref to its
+  ;; variant, `k / 256` bytes along; no arm for the tag a failure.
+  (c-flat-arms (subr gen ((listof carm acyclic) cbinds i64 cenv i64 code bool i64) unit)
+    (lambda (arms els k e depth c tail end)
+      (if (null? arms)
+          (begin
+            (if (null? els)
+                (begin (c-op1 c "slot" (o-int (i64+ depth 1))) (c-prim c "%fx26-flat-no-arm" 1) (c-done c tail))
+                (tagcase (car els)
+                  (cbind (n x) (c-exp x (c-extend n (at-slot depth) e) (i64+ depth 2) c tail))))
+            (c-unbind c depth 2 tail))
+          (tagcase (car arms)
+            (carm (tag whole ns body)
+              (let ((next (c-fresh)))
+                (begin
+                  (c-op1 c "slot" (o-int (i64+ depth 1)))
+                  (c-lit c (if (i64= (i64-remainder (i64-quotient k 8) 2) 1)
+                               (l-int (i64->int (digits-i64 (string-chars tag) 0)))
+                               (l-sym tag)))
+                  (c-op c "eq")
+                  (c-emit c (it-zbranch next))
+                  (c-op1 c "slot" (o-int depth))
+                  (c-int c (i64-quotient k 256))
+                  (c-prim c "%suffix-ref+" 2)
+                  (c-exp body (c-extend (car ns) (at-slot (i64+ depth 2)) e) (i64+ depth 3) c tail)
+                  (c-unbind c depth 3 tail)
+                  (if tail #u (c-emit c (it-branch end)))
+                  (c-emit c (it-label next))
+                  (c-flat-arms (cdr arms) els k e depth c tail end))))))))
+
   (c-arms (subr gen ((listof carm acyclic) cbinds cenv i64 code bool i64) unit)
     (lambda (arms els e depth c tail end)
       (if (null? arms)
@@ -2107,6 +2423,7 @@
         (set cg-module-facts
              (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (has-prefix? what "module-had ") (has-prefix? what "module-made ") (string=? what "module-value") (string=? what "with-value"))))) fs))
         (set cg-layouts nil)
+        (set cg-included nil)
         (set cg-made nil)
         (set cg-words nil)
         (set cg-globals nil)

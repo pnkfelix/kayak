@@ -4398,7 +4398,12 @@
                          (res (t ies s2)
                            (if (not (mtype? (walk s2 t)))
                                (refuse v (string-append "an include of no module: a " (show-ty s2 t)))
-                               (mod-types (mtype-opened v (walk s2 t)) s2 (cdr fs) id export
+                               ;; What it gives, noted at the module included, for
+                               ;; the engine and the compiler to cells (C221).
+                               (mod-types (mtype-opened v (walk s2 t))
+                                          (note-fact s2 (datum-file (second xs)) (datum-pos (second xs))
+                                                     (string-append "with-spec " (words-of (mtype-value-names (walk s2 t)))))
+                                          (cdr fs) id export
                                           (if export (onto (reverse (map included-item (mtype-items (walk s2 t)))) got) got) (effs-union ies es))))))
                       ((string=? hd "hide")
                        (tagcase (mod-types v s (cdr xs) id #f nil es)

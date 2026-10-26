@@ -664,7 +664,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    `read-byte`, on both. Then (C220) `cwcc`, `f32`, flat arrays,
    eqtables, `native-convention` on the engine; eqtables, `assume`,
    `assert`, `list->string`, `string->symbol` on tier 1; left on tier 1,
-   `%fx26-intern-datum` (Fixpt's weak table). Next: eqtables, `%fx26-intern-datum`, I/O (the
+   `%fx26-intern-datum` (Fixpt's weak table). Kayak's compiler to cells
+   (C221): all but a conversion to native code; words not Fixpt's exactly
+   in `bloblet/flat-inlined`, `native/flat-keyed`, `native/variadic`,
+   `run/variadic`, `run/case-tree`. Next: eqtables, `%fx26-intern-datum`, I/O (the
    standard input waited for, too); native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A

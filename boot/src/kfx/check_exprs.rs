@@ -9759,7 +9759,7 @@ pub mod expressions {
                             if not(mtype_p(walk(s2, t))) {
                                 return match refuse(v, string_append(str_lit("an include of no module: a "), show_ty(s2, t))) {};
                             } else {
-                                (v, s, fs, got, es) = (mtype_opened(v, walk(s2, t)), s2, cdr(fs), if export {
+                                (v, s, fs, got, es) = (mtype_opened(v, walk(s2, t)), note_fact(s2, datum_file(second(xs)), datum_pos(second(xs)), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s2, t))))), cdr(fs), if export {
                                     onto(reverse(map(&included_item, mtype_items(walk(s2, t)))), got)
                                 } else {
                                     got
