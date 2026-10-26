@@ -250,7 +250,13 @@ pub fn usage() -> Str {
 // The engine run on files (`kayak-fx26 FILE ...`), as `main` (start.kfx) runs
 // it for whatever is not the REPL.
 pub fn engine_main() -> Int {
-    let r#as = the::<Strings>(args());
+    let all = the::<Strings>(args());
+    let sys = (not(null_p(all)) && string_eq_p(car(all), str_lit("--syscalls")));
+    let r#as = if sys {
+        cdr(all)
+    } else {
+        all
+    };
     let running = (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--run")));
     let with_main = (running || (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--main"))));
     let paths = before_dashes(if with_main {
@@ -267,7 +273,7 @@ pub fn engine_main() -> Int {
         int_lit(2)
     } else if string_eq_p(car(r#as), str_lit("--cells")) {
         let forms = with_processes(read_files(cdr(r#as)));
-        let checked = check_program(forms);
+        let checked = check_program_as(forms, sys);
         let tagcase_ = checked;
         match *tagcase_ {
             Verdict::Verdict(found, fs) => {
@@ -278,7 +284,7 @@ pub fn engine_main() -> Int {
         }
     } else {
         let forms = with_processes(read_files(paths));
-        let checked = check_program(forms);
+        let checked = check_program_as(forms, sys);
         let gs = onto(global_names(forms), onto(module_entries(forms), with_entries(verdict_facts(checked))));
         load_x(gs);
         let ns = number_tops_x(lower_tops(forms, gs));

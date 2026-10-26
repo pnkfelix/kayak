@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/syscalls/missing.fx:3:1: syscalls are declared only by a runtime's own code",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@f03cabe27105621d69eaef329d9657ead5f78ecf"
+]
+}
+]
+}

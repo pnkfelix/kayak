@@ -6177,3 +6177,40 @@ sharing".
   (arm64's corpus); 30 have answers that differ by machine. The home
   machine's prune drops the `unknown` keys, after its own full check has
   added its keys.
+
+## C224. The pin at Fixpt f03cabe; syscalls, on every path of kayak's (2026-10-26)
+
+The user: "update to latest fixpt and look into leveraging the new syscall
+system". Fixpt implemented docs/research/syscalls.md (its `f03cabe2`,
+its copy of the note recording what it decided), after fixing the bug we
+reported (`19973abf`: `ncallcc` among the register machine's control
+call-outs, so `native/mixed.fx` gives 42 on its default machine too).
+- **The pin moved to `f03cabe`.** Fixpt's history had been rewritten
+  since `b9dae98` (the same commits, new hashes: `b9dae98` is `1e4d4ed6`,
+  `ae397dc` `d28cc6d3`), so the `fixpt-source:` markers at the old hashes
+  were remapped where the file is the same at the new one, and where not
+  (`heap.rs`: `copy_graph`, which kayak does not port), to the pin.
+  `cellular.rs`'s change (Fixpt's `CONTROL_CALLOUTS`) kayak's hand machine
+  has no counterpart of: its control routines are given back to tier 1.
+- **The checker** (shared by KFX and the engine): `define-syscall` and
+  `define-optional-syscall`, as Fixpt's `syscall.rs` checks them, its
+  messages word for word: only in a file built in or a program its driver
+  says is a runtime's (`check-program-as`, the alias `%syscalls`; the
+  engine's `--syscalls`); the host name; a `subr` or a `poly` over
+  regions only; the effect (`(io sys)`, a new `io` kind); the types that
+  cross; at most six arguments. Its type printed in canonical form
+  (`syscall-canonical`), the same text as Fixpt's (its `other-type.fx`'s
+  message, alike), noted as the fact `syscall N TEXT`; KFX refuses one
+  yet. `(syscall-available? NAME)` is read as `%syscall-available:NAME`
+  where programs are read (`with-loads`).
+- **The engine and the compiler to cells** expand a declaration into
+  Fixpt's two definitions (`syscall-definitions`); the engine's runtime
+  has its own three syscalls, as Fixpt's evaluator does (`exec-view` -1,
+  `flush` nothing; `page-words` by the native convention's target, KFX
+  having no way to ask yet), and tier 1 the same, as Fixpt's runtime's
+  primitives (`%fx26-syscall-require`, `-available?`, `%fx26-syscall`).
+  Fixpt's five programs (`syscalls/`), run with `--syscalls`, give
+  Fixpt's answers on the engine and on kayak's own words.
+- Next (C225): kayak-rt's syscalls for KFX, so that tier 1, a runtime of
+  KFX, asks for an executable view of its heap's range by
+  `code:exec-view/1`, and makes code as Fixpt's heap does.

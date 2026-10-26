@@ -1921,6 +1921,303 @@ pub fn lemma_proved(v: &'static Cv, name: Str, t: &'static Sexp, defined: &'stat
     }
 }
 
+// Syscalls (C224; Fixpt's `syscall.rs`, docs/research/syscalls.md):
+// `(define-syscall name "host" type)`, `(define-optional-syscall …)`,
+// declared only by a runtime's own code (a file built in, or a program its
+// driver says is one: the alias `%syscalls`). Each is checked alone, its
+// type printed in canonical form, Fixpt's word for word: names expanded,
+// effects' atoms sorted by their text and each once, region binders `r1`,
+// `r2`, … in order. The form defines `name` at its type and
+// `%syscall-available:NAME`, a `bool`; the engine and the compiler to cells
+// expand it into those definitions from the fact `syscall N TEXT`, `N` its
+// arguments.
+pub fn syscall_shape() -> Str {
+    str_lit("a syscall's type is a `subr`, or a `poly` over regions only of one")
+}
+
+pub fn syscall_crossing_message() -> Str {
+    str_lit("a syscall takes and gives only `int`, `i64`, `u64`, `bool`, `char`, `unit`, `string`, `(flatarrayof i64 r)` and `(bytevectorof r)`")
+}
+
+pub fn syscall_effects_message() -> Str {
+    str_lit("a syscall's effect holds `(io sys)`, and only reads, writes and allocations of its regions, other I/O, `spin` and `nondet`")
+}
+
+pub fn syscall_host_message() -> Str {
+    str_lit("a syscall's host name is a string, `namespace:name/version`")
+}
+
+pub fn host_part_p(cs: List<char>) -> bool {
+    (not(null_p(cs)) && not(any_p(lambda1s(move |c: char| {
+        not(((char_gt_eq_p(c, 'a') && char_lt_eq_p(c, 'z')) || (char_gt_eq_p(c, '0') && char_lt_eq_p(c, '9')) || char_eq_p(c, '-')))
+    }), cs)))
+}
+
+pub fn syscall_chars_before(cs: List<char>, c: char) -> List<char> {
+    if (null_p(cs) || char_eq_p(car(cs), c)) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), syscall_chars_before(cdr(cs), c))
+    }
+}
+
+pub fn syscall_chars_after(mut cs: List<char>, mut c: char) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if char_eq_p(car(cs), c) {
+            return cdr(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+/// `namespace:name/version`: the first two of lower-case letters, digits
+/// and `-`, the version a number from 1 (Fixpt's `valid_host`).
+pub fn valid_host_p(h: Str) -> bool {
+    let cs = string_chars(h);
+    let rest = syscall_chars_after(cs, ':');
+    let backwards = the::<List<char>>(reverse(rest));
+    let version = the::<List<char>>(reverse(syscall_chars_before(backwards, '/')));
+    let name = the::<List<char>>(reverse(syscall_chars_after(backwards, '/')));
+    (string_member_p(str_lit(":"), map(&char_to_string, cs)) && string_member_p(str_lit("/"), map(&char_to_string, rest)) && host_part_p(syscall_chars_before(cs, ':')) && host_part_p(name) && not(null_p(version)) && not(char_eq_p(car(version), '0')) && not(any_p(lambda1s(move |c: char| {
+        not((char_gt_eq_p(c, '0') && char_lt_eq_p(c, '9')))
+    }), version)))
+}
+
+/// Region `r` as the canonical form names it, `rI`, or "" if no binder
+/// of the `poly` is it.
+pub fn syscall_region(mut tvars: Strings, mut r: Str, mut i: i64) -> Str {
+    loop {
+        if null_p(tvars) {
+            return str_lit("");
+        } else if string_eq_p(car(tvars), r) {
+            return string_append(str_lit("r"), i64_to_string(i));
+        } else {
+            (tvars, i) = (cdr(tvars), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn syscall_crossing(v: &'static Cv, tvars: Strings, t: &'static Ty) -> Str {
+    let rgn = lambda1s(move |r: &'static Ty| {
+        let n = {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Ty::TyVar(x) => {
+                    syscall_region(tvars, x, 1i64)
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        if string_eq_p(n, str_lit("")) {
+            match refuse(v, str_lit("a syscall's regions are its `poly`'s")) {}
+        } else {
+            n
+        }
+    });
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyInt() => {
+            str_lit("int")
+        }
+        Ty::TyI64() => {
+            str_lit("i64")
+        }
+        Ty::TyBool() => {
+            str_lit("bool")
+        }
+        Ty::TyChar() => {
+            str_lit("char")
+        }
+        Ty::TyUnit() => {
+            str_lit("unit")
+        }
+        Ty::TyString() => {
+            str_lit("string")
+        }
+        Ty::TyData(d, args) => {
+            if (string_eq_p(d, str_lit("u64")) && null_p(args)) {
+                str_lit("u64")
+            } else if (string_eq_p(d, str_lit("%bytes")) && i64_eq(size(args), 1i64)) {
+                string_append(str_lit("(bytevectorof "), string_append(rgn(car(args)), str_lit(")")))
+            } else {
+                match refuse(v, syscall_crossing_message()) {}
+            }
+        }
+        Ty::TyFlat(e, r) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyI64() => {
+                    string_append(str_lit("(flatarrayof i64 "), string_append(rgn(r), str_lit(")")))
+                }
+                _ => {
+                    let other = tagcase_;
+                    match refuse(v, syscall_crossing_message()) {}
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            match refuse(v, syscall_crossing_message()) {}
+        }
+    }
+}
+
+pub fn strings_once(mut xs: Strings) -> Strings {
+    loop {
+        if (null_p(xs) || null_p(cdr(xs))) {
+            return xs;
+        } else if string_eq_p(car(xs), second_string(xs)) {
+            xs = cdr(xs);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(car(xs), strings_once(cdr(xs)));
+        }
+    }
+}
+
+pub fn second_string(xs: Strings) -> Str {
+    car(cdr(xs))
+}
+
+pub fn syscall_effect(v: &'static Cv, tvars: Strings, es: Strings) -> Str {
+    if not(string_member_p(str_lit("io:sys"), es)) {
+        match refuse(v, syscall_effects_message()) {}
+    } else {
+        let texts = strings_once(sorted_strings(map(lambda1s(move |a: Str| {
+            if (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet"))) {
+                a
+            } else if has_prefix_p(a, str_lit("io:")) {
+                string_append(str_lit("(io "), string_append(after_prefix(a, str_lit("io:")), str_lit(")")))
+            } else if (string_member_p(atom_kind(a), kayak_rt::heap_cons(str_lit("read:"), kayak_rt::heap_cons(str_lit("write:"), kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::nil())))) && not(string_eq_p(syscall_region(tvars, atom_region(a), 1i64), str_lit("")))) {
+                string_append(str_lit("("), string_append(substring_of(atom_kind(a), i64_minus(string_length_i64(atom_kind(a)), 1i64)), string_append(str_lit(" "), string_append(syscall_region(tvars, atom_region(a), 1i64), str_lit(")")))))
+            } else {
+                match refuse(v, syscall_effects_message()) {}
+            }
+        }), es)));
+        if null_p(cdr(texts)) {
+            car(texts)
+        } else {
+            string_append(str_lit("(maxeff "), string_append(words_of(texts), str_lit(")")))
+        }
+    }
+}
+
+pub fn region_binders_written(i: i64, n: i64) -> Strings {
+    if i64_gt(i, n) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(string_append(str_lit("(r"), string_append(i64_to_string(i), str_lit(" region)"))), region_binders_written(i64_plus(i, 1i64), n))
+    }
+}
+
+/// A syscall's type in canonical form, or refused where it is no
+/// syscall's.
+pub fn syscall_canonical(v: &'static Cv, sc: &'static Scheme) -> Str {
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            if any_p(lambda1s(move |b: Str| {
+                not(string_eq_p(binder_kind_shown(b), str_lit("region")))
+            }), tvars) {
+                match refuse(v, syscall_shape()) {}
+            } else {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r) => {
+                        if i64_gt(size(ps), 6i64) {
+                            match refuse(v, str_lit("a syscall takes at most 6 arguments")) {}
+                        } else {
+                            let eff = syscall_effect(v, tvars, es);
+                            let params = map(lambda1s(move |p: &'static Ty| {
+                                syscall_crossing(v, tvars, p)
+                            }), ps);
+                            let subr = string_append(str_lit("(subr "), string_append(eff, string_append(str_lit(" ("), string_append(words_of(params), string_append(str_lit(") "), string_append(syscall_crossing(v, tvars, r), str_lit(")")))))));
+                            if null_p(tvars) {
+                                subr
+                            } else {
+                                string_append(str_lit("(poly ("), string_append(words_of(region_binders_written(1i64, size(tvars))), string_append(str_lit(") "), string_append(subr, str_lit(")")))))
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, syscall_shape()) {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn syscalls_allowed_p(v: &'static Cv) -> bool {
+    (has_prefix_p(cv_file(v), str_lit("fx26:")) || not(null_p(find_alias(str_lit("%syscalls"), cv_aliases(v)))))
+}
+
+pub fn check_syscall(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64) -> &'static Cv {
+    let what = sym_name(car(xs));
+    if not(syscalls_allowed_p(v)) {
+        match refuse(v, str_lit("syscalls are declared only by a runtime's own code")) {}
+    } else if not(i64_eq(size(xs), 4i64)) {
+        match refuse(v, string_append(str_lit("`("), string_append(what, str_lit(" name \"host-name\" type)`")))) {}
+    } else if not({
+        let tagcase_ = second(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        match refuse(v, str_lit("expected a name")) {}
+    } else if not({
+        let tagcase_ = third(xs);
+        match *tagcase_ {
+            Sexp::Str(h, f, p) => {
+                valid_host_p(h)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        match refuse(v, syscall_host_message()) {}
+    } else {
+        let name = sym_name(second(xs));
+        let sc = parse_scheme(v, fourth(xs));
+        let text = syscall_canonical(v, sc);
+        let n = {
+            let tagcase_ = sc;
+            match *tagcase_ {
+                Scheme::Scheme(tvars, t) => {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            size(ps)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            the::<i64>(0i64)
+                        }
+                    }
+                }
+            }
+        };
+        with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, sc), kayak_rt::heap_cons(global(v, string_append(str_lit("%syscall-available:"), name), scheme(nil::<Str>(), ty_bool())), kayak_rt::nil()))), kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("syscall "), string_append(i64_to_string(n), string_append(str_lit(" "), text)))), kayak_rt::heap_cons(fact(str_lit("%kfx"), 0i64, string_append(str_lit("kfx-refuses "), refusal_text(v, str_lit("a syscall, which KFX has not yet (C224)")))), kayak_rt::nil())))
+    }
+}
+
 /// One top-level form, which may add to what the forms after it see.
 pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
@@ -1957,6 +2254,8 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 with_effdef(v, xs)
             } else if string_eq_p(h, str_lit("define-convention")) {
                 v
+            } else if (string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) {
+                check_syscall(v, xs, src_file, src_pos)
             } else if string_eq_p(h, str_lit("define-type")) {
                 // Its body read where it stands, used or not: so that one that
                 // mentions itself, or names no type, is refused.
@@ -4772,10 +5071,16 @@ pub fn verdict_facts(x: &'static Verdict) -> Facts {
 }
 
 /// Every form, in order; the first error stops the compiler. What it gives
-/// is the types of the definitions written with none.
-pub fn check_program(forms: Sexps) -> &'static Verdict {
+/// is the types of the definitions written with none. A `runtime`'s own
+/// program may declare syscalls (C224: the alias `%syscalls`).
+pub fn check_program_as(forms: Sexps, runtime: bool) -> &'static Verdict {
     let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
-    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+    let declared = declare_types(empty, forms, nil::<&'static Alias>());
+    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), if runtime {
+        kayak_rt::heap_cons(alias(str_lit("%syscalls"), nil::<Str>(), sym(str_lit("#t"), str_lit(""), 0i64)), declared)
+    } else {
+        declared
+    }, nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
@@ -4800,6 +5105,10 @@ pub fn check_program(forms: Sexps) -> &'static Verdict {
             verdict(found, cv_facts(done))
         }
     }
+}
+
+pub fn check_program(forms: Sexps) -> &'static Verdict {
+    check_program_as(forms, false)
 }
 
 // A file read, for a load: its path and text (C88).
@@ -5899,6 +6208,39 @@ pub fn as_module_value(f: &'static Sexp) -> &'static Sexp {
     }
 }
 
+/// `(syscall-available? NAME)`, the hidden global its declaration makes,
+/// `%syscall-available:NAME`, everywhere but in a quote (C224, as
+/// Fixpt's parsers read it).
+pub fn syscall_asked(e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if head_is_p(e, str_lit("quote")) {
+                e
+            } else if (head_is_p(e, str_lit("syscall-available?")) && i64_eq(size(xs), 2i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                sym(string_append(str_lit("%syscall-available:"), sym_name(second(xs))), f, p)
+            } else {
+                lst(map(&syscall_asked, xs), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
 /// A program's forms: what it loads spliced in (C88), and what its modules
 /// make in place defined before them (C90); a `poly` in a `poly` around a
 /// definition, one (C107); a `load-input` of a module, the module (C116);
@@ -5907,7 +6249,9 @@ pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
     let forms = map(&as_module_value, concat(map(lambda1s(move |f: &'static Sexp| {
         input_expanded(f, directory_of(file), loaded)
     }), import_items(forms))));
-    map(&flat_definition, concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
+    map(lambda1s(move |f: &'static Sexp| {
+        syscall_asked(flat_definition(f))
+    }), concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
         forms
     } else {
         spliced_tops(forms, directory_of(file), loaded, nil::<&'static Keyed>())

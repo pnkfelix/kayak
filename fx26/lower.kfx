@@ -315,6 +315,33 @@
 (define include-names (subr kfx (sexp strings) strings)
   (lambda (f gs) (if (include-named? f) (include-exports f gs) (with-at (key-of (second (items f))) gs))))
 
+"A syscall's declaration (C224), as the two definitions Fixpt's checkers
+ expand it into (`syscall.rs`): `%syscall-available:NAME`, whether the
+ runtime has it (for a required one, `%syscall-require`'s check first);
+ `NAME`, a procedure calling `%syscallN` with its label, host name and
+ canonical type. `found`, the checker's fact: its arguments, then its
+ type's text. (Each `(define name value)`, typeless: the engine's are.)"
+(define-rec
+  (syscall-params (subr kfx (i64 i64) sexps)
+    (lambda (i n) (if (i64> i n) nil (cons (sy (string-append "x" (i64->string i))) (syscall-params (i64+ i 1) n))))))
+(define syscall-definitions (subr kfx (sexp strings) sexps)
+  (lambda (f found)
+    (let* ((xs (items f))
+           (name (sym-name (second xs)))
+           (host (tagcase (third xs) (str (h a b) h) (else other "")))
+           (n (string->i64 (car found)))
+           (text (words-of (cdr found)))
+           (label (string-append "syscall " (string-append name (string-append " (\"" (string-append host "\")")))))
+           (strs (lambda ((s string)) (str s "" 0)))
+           (said (the sexps (list (strs label) (strs host) (strs text))))
+           (xs1 (syscall-params 1 n)))
+      (list (sx (list (sy "define") (sy (string-append "%syscall-available:" name))
+                      (if (head-is? f "define-syscall")
+                          (sx (list (sy "begin") (sx (cons (sy "%syscall-require") said)) (sy "#t")))
+                          (sx (list (sy "%syscall-available?") (strs host) (strs text))))))
+            (sx (list (sy "define") (sy name)
+                      (sx (list (sy "lambda") (sx xs1) (sx (cons (sy (string-append "%syscall" (i64->string n))) (onto said xs1)))))))))))
+
 (define instance-module? (subr kfx (sexp) bool)
   (lambda (e)
     "Whether `e` is the module a load of a file of parameters made (C213:
@@ -453,6 +480,8 @@
                          (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative")
                          (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
+                        ((or (head-is? f "define-syscall") (head-is? f "define-optional-syscall"))
+                         (let ((n (sym-name (second (items f))))) (list (string-append "%syscall-available:" n) n)))
                         (else nil))
                   (global-names (cdr forms))))))))
 
@@ -853,6 +882,10 @@
                                  (top-define (i-define (position-of (string-append "down-" n) gs 0) (i-lit (v-prim "%identity" 1)))))))
                         ((or (head-is? f "define-type") (head-is? f "define-effect") (head-is? f "define-convention"))
                          (list (top-none)))
+                        ((or (head-is? f "define-syscall") (head-is? f "define-optional-syscall"))
+                         (map (lambda ((d sexp))
+                                (top-define (i-define (position-of (sym-name (second (items d))) gs 0) (named (sym-name (second (items d))) (lower (third (items d)) nil gs)))))
+                              (syscall-definitions f (fact-at (key-of f) "syscall " gs))))
                         (else (list (top-expr (lower f nil gs)))))
                   (lower-tops (cdr forms) gs)))))))
 
@@ -866,7 +899,7 @@
                      (fact (file pos what)
                        (cond ((has-prefix? what "with-spec ")
                               (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec ")))))))))
-                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase "))
+                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase " "syscall "))
                               ;; A flat's layout where it is read (C215).
                               (the strings (list (string-append "%fact " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " what))))))))
                              (else nil)))))

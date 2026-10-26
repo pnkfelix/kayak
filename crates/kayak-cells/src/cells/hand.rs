@@ -19,7 +19,7 @@ use super::*;
 // free element), the state's address, the data stack's base, the frame
 // (an address), `clo`, the fuel, and the cell being run (for giving back).
 // Unlike Fixpt's, the stacks grow up, as tier 1's do.
-// fixpt-source: crates/fixpt-native/src/cellular.rs@ae397dc
+// fixpt-source: crates/fixpt-native/src/cellular.rs@f03cabe
 pub mod made__load__0__fx26_arm64 {
     use super::*;
 

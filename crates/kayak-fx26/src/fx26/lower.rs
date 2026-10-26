@@ -566,6 +566,50 @@ pub fn include_names(f: &'static Sexp, gs: Strings) -> Strings {
     }
 }
 
+// A syscall's declaration (C224), as the two definitions Fixpt's checkers
+// expand it into (`syscall.rs`): `%syscall-available:NAME`, whether the
+// runtime has it (for a required one, `%syscall-require`'s check first);
+// `NAME`, a procedure calling `%syscallN` with its label, host name and
+// canonical type. `found`, the checker's fact: its arguments, then its
+// type's text. (Each `(define name value)`, typeless: the engine's are.)
+pub fn syscall_params(i: i64, n: i64) -> Sexps {
+    if i64_gt(i, n) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(sy(string_append(str_lit("x"), i64_to_string(i))), syscall_params(i64_plus(i, 1i64), n))
+    }
+}
+
+pub fn syscall_definitions(f: &'static Sexp, found: Strings) -> Sexps {
+    let xs = items(f);
+    let name = sym_name(second(xs));
+    let host = {
+        let tagcase_ = third(xs);
+        match *tagcase_ {
+            Sexp::Str(h, a, b) => {
+                h
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
+    let n = string_to_i64(car(found));
+    let text = words_of(cdr(found));
+    let label = string_append(str_lit("syscall "), string_append(name, string_append(str_lit(" (\""), string_append(host, str_lit("\")")))));
+    let strs = lambda1s(move |s: Str| {
+        str(s, str_lit(""), 0i64)
+    });
+    let said = the::<Sexps>(kayak_rt::heap_cons(strs(label), kayak_rt::heap_cons(strs(host), kayak_rt::heap_cons(strs(text), kayak_rt::nil()))));
+    let xs1 = syscall_params(1i64, n);
+    kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("define")), kayak_rt::heap_cons(sy(string_append(str_lit("%syscall-available:"), name)), kayak_rt::heap_cons(if head_is_p(f, str_lit("define-syscall")) {
+        sx(kayak_rt::heap_cons(sy(str_lit("begin")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%syscall-require")), said)), kayak_rt::heap_cons(sy(str_lit("#t")), kayak_rt::nil()))))
+    } else {
+        sx(kayak_rt::heap_cons(sy(str_lit("%syscall-available?")), kayak_rt::heap_cons(strs(host), kayak_rt::heap_cons(strs(text), kayak_rt::nil()))))
+    }, kayak_rt::nil())))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("define")), kayak_rt::heap_cons(sy(name), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("lambda")), kayak_rt::heap_cons(sx(xs1), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(string_append(str_lit("%syscall"), i64_to_string(n))), onto(said, xs1))), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::nil()))
+}
+
 /// Whether `e` is the module a load of a file of parameters made (C213:
 /// `(module (%loaded path %instance ...) ...)`): one made again for each
 /// instance, as Fixpt makes one each time its maker is called.
@@ -842,6 +886,9 @@ pub fn global_names(forms: Sexps) -> Strings {
         } else if head_is_p(f, str_lit("define-generative")) {
             let n = binder_name(second(items(f)));
             kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+        } else if (head_is_p(f, str_lit("define-syscall")) || head_is_p(f, str_lit("define-optional-syscall"))) {
+            let n = sym_name(second(items(f)));
+            kayak_rt::heap_cons(string_append(str_lit("%syscall-available:"), n), kayak_rt::heap_cons(n, kayak_rt::nil()))
         } else {
             nil::<Str>()
         }, global_names(cdr(forms)))
@@ -1584,6 +1631,10 @@ pub fn lower_tops(forms: Sexps, gs: Strings) -> List<&'static Top> {
             kayak_rt::heap_cons(top_define(i_define(position_of(string_append(str_lit("up-"), n), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::heap_cons(top_define(i_define(position_of(string_append(str_lit("down-"), n), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::nil()))
         } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("define-convention"))) {
             kayak_rt::heap_cons(top_none(), kayak_rt::nil())
+        } else if (head_is_p(f, str_lit("define-syscall")) || head_is_p(f, str_lit("define-optional-syscall"))) {
+            map(lambda1s(move |d: &'static Sexp| {
+                top_define(i_define(position_of(sym_name(second(items(d))), gs, 0i64), named(sym_name(second(items(d))), lower(third(items(d)), nil::<List<Str>>(), gs))))
+            }), syscall_definitions(f, fact_at(key_of(f), str_lit("syscall "), gs)))
         } else {
             kayak_rt::heap_cons(top_expr(lower(f, nil::<List<Str>>(), gs)), kayak_rt::nil())
         }, lower_tops(cdr(forms), gs))
@@ -1602,7 +1653,7 @@ pub fn with_entries(fs: Facts) -> Strings {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%with-at "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), after_prefix(what, str_lit("with-spec "))))))), kayak_rt::nil()))
                 } else if any_p(lambda1s(move |k: Str| {
                     has_prefix_p(what, k)
-                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::nil()))))))) {
+                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::nil())))))))) {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%fact "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), what))))), kayak_rt::nil()))
                 } else {
                     nil::<Str>()

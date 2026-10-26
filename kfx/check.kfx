@@ -608,7 +608,7 @@
 (define io-kind? (subr kfx (string) bool)
   (lambda (k)
     "The `io` effects' kinds, a fixed family (C49)."
-    (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native"))))
+    (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native" "sys"))))
 
 (define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) ds))))
 (define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) als))))

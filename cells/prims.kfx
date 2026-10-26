@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@ae397dc"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@f03cabe"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -191,6 +191,9 @@
 (define o-list-string i64 179)
 (define o-assert i64 180)
 (define o-string-symbol i64 181)
+(define o-syscall-require i64 182)
+(define o-syscall-available i64 183)
+(define o-syscall i64 184)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -274,7 +277,9 @@
          (pdef "%fx26-eqtable-has?" 2 2 o-eqtable-has) (pdef "%fx26-eqtable-count" 1 1 o-eqtable-count)
          (pdef "%fx26-eqtable-set!" 3 3 o-eqtable-set) (pdef "%fx26-eqtable-delete!" 2 2 o-eqtable-delete)
          (pdef "%fx26-assume" 1 1 o-assume) (pdef "list->string" 1 1 o-list-string)
-         (pdef "%fx26-assert" 1 1 o-assert) (pdef "string->symbol" 1 1 o-string-symbol) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
+         (pdef "%fx26-assert" 1 1 o-assert) (pdef "string->symbol" 1 1 o-string-symbol)
+         (pdef "%fx26-syscall-require" 3 3 o-syscall-require) (pdef "%fx26-syscall-available?" 2 2 o-syscall-available)
+         (pdef "%fx26-syscall" 3 9 o-syscall) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
          (pdef "%region-make-array" 3 3 o-region-make-array) (pdef "%region-make-bloblet" 2 -1 o-region-make-bloblet)
          (pdef "%region-closure" 2 -1 o-region-closure) (pdef "%fx26-vlambda" 1 1 o-vlambda) (pdef "%fx26-make-icell" 0 0 o-make-icell)
          (pdef "%region-make-icell" 1 1 o-region-make-icell) (pdef "%fx26-icell-get" 1 1 o-icell-get)
@@ -686,6 +691,23 @@
 (define-rec
   (strings-list! (subr cm ((listof string @c)) i64)
     (lambda (ss) (if (null? ss) v-null (let ((s (make-string! (car ss)))) (cons! s (strings-list! (cdr ss))))))))
+
+"Tier 1's syscalls (C224): each host name's type in canonical form, \"\"
+ for none; Fixpt's three, as its runtime gives them, for now: no view of a
+ flat array yet (-1), so nothing to flush."
+(define tier1-syscall-type (subr kfx (string) string)
+  (lambda (host)
+    (cond ((string=? host "code:exec-view/1")
+           "(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))")
+          ((string=? host "code:page-words/1") "(subr (io sys) () int)")
+          ((string=? host "code:flush/1")
+           "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+          (else ""))))
+
+"The words in one page: 2048 on arm64 (macOS's 16 KiB pages), else 512, by
+ the native convention's target, until kayak-rt gives it."
+(define tier1-page-words (subr (maxeff (read @globals) spin) () i64)
+  (lambda () (if (string=? (car (the strings (native-convention))) "(target arm64)") 2048 512)))
 
 "`list->string`'s (C220): whether a proper list's elements are all
  characters; their text."
@@ -1516,6 +1538,22 @@
         ((i64= op o-make-eqtable) (eqtable-made!))
         ((i64= op o-assume) (if (i64= a v-false) (fail! "assumption not met") v-unit))
         ((i64= op o-assert) (if (i64= a v-false) (fail! "assertion failed") v-unit))
+        ;; Syscalls (C224; Fixpt's `fixpt_runtime::syscall`): a required
+        ;; one's check, whether one is here, a call.
+        ((i64= op o-syscall-require)
+         (let* ((label (string-text a)) (text (string-text (parg 2))) (have (tier1-syscall-type (string-text (parg 1)))))
+           (cond ((string=? have "") (fail! (string-append label ": this runtime has none")))
+                 ((not (string=? have text))
+                  (fail! (string-append label (string-append ": declared " (string-append text (string-append "; this runtime's is " have))))))
+                 (else v-unit))))
+        ((i64= op o-syscall-available) (boolean (string=? (tier1-syscall-type (string-text a)) (string-text (parg 1)))))
+        ((i64= op o-syscall)
+         (let ((host (string-text (parg 1))))
+           (cond ((not (string=? (tier1-syscall-type host) (string-text (parg 2))))
+                  (fail! (string-append (string-text a) ": not available on this runtime")))
+                 ((string=? host "code:page-words/1") (fix (tier1-page-words)))
+                 ((string=? host "code:exec-view/1") (fix -1))
+                 (else v-unit))))
         ((i64= op o-string-symbol) (if (is-kind? a k-string) (symbol! (string-text a)) (expected! "a string")))
         ((i64= op o-list-string)
          "A proper list first, then of characters, as Fixpt's errors are."

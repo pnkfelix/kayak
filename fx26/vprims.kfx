@@ -265,6 +265,26 @@
             (if (i64= (obj-ref first 0) key) (obj-set! bs b (obj-ref first 2)) (chain-without! first key))
             (obj-set! t 1 (fixnum (i64- (fixnum-value (obj-ref t 1)) 1))))))))
 
+"The engine's syscalls (C224; docs/research/syscalls.md), as Fixpt's
+ evaluator's, a runtime of its own: each host name's type in canonical
+ form, \"\" for none. Its flat arrays are its own words, at no address
+ native code could run, so `code:exec-view/1` gives -1 and `code:flush/1`
+ has nothing to do."
+(define engine-syscall-type (subr kfx (string) string)
+  (lambda (host)
+    (cond ((string=? host "code:exec-view/1")
+           "(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))")
+          ((string=? host "code:page-words/1") "(subr (io sys) () int)")
+          ((string=? host "code:flush/1")
+           "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+          (else ""))))
+
+"The words in one page of the machine this runs on: 2048 on arm64 (macOS's
+ 16 KiB pages), else 512, by the native convention's target (KFX has no way
+ to ask the system yet; a syscall of kayak-rt's, later)."
+(define engine-page-words (subr (maxeff (read @globals) spin) () i64)
+  (lambda () (if (string=? (car (the strings (native-convention))) "(target arm64)") 2048 512)))
+
 (define apply-op (subr vm (i64 i64) i64)
   (lambda (op args)
     (let* ((a (if (i64= args w-nil) (the i64 0) (pair-car args)))
@@ -472,6 +492,21 @@
         ;; (C222): `native-code?` is `#f`, and these fail as Fixpt's do.
         ((i64= op 233) (refused-op! "seal-code: this machine runs no native code a program makes"))
         ((i64= op 234) (refused-op! "native-procedure: this machine runs no native code"))
+        ;; Syscalls (C224): a required one's check, whether one is here, a call.
+        ((i64= op 235)
+         (let* ((label (word-string a)) (host (word-string b)) (text (word-string c)) (have (engine-syscall-type host)))
+           (cond ((string=? have "") (refused-op! (string-append label ": this runtime has none")))
+                 ((not (string=? have text))
+                  (refused-op! (string-append label (string-append ": declared " (string-append text (string-append "; this runtime's is " have))))))
+                 (else w-unit))))
+        ((i64= op 236) (bool-word (string=? (engine-syscall-type (word-string a)) (word-string b))))
+        ((and (i64>= op 237) (i64<= op 243))
+         (let ((host (word-string b)))
+           (cond ((not (string=? (engine-syscall-type host) (word-string c)))
+                  (refused-op! (string-append (word-string a) ": not available on this runtime")))
+                 ((string=? host "code:page-words/1") (fixnum (engine-page-words)))
+                 ((string=? host "code:exec-view/1") (fixnum -1))
+                 (else w-unit))))
         ((i64= op 216) (fixnum 4)) ((i64= op 217) (fixnum 4)) ((i64= op 218) (fixnum 8))
         ((i64= op 219) (fixnum 8)) ((i64= op 220) (fixnum 4)) ((i64= op 221) (fixnum 8))
         ((i64>= op f32-base) (f32-op-word (i64- op f32-base) a b))

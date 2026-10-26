@@ -1204,6 +1204,141 @@
                                (with-binds v (list (bind (string-append "%lemma " name) sc "lemma"))))))))))
             (else other (refuse v "a lemma's proposition"))))))))
 
+"Syscalls (C224; Fixpt's `syscall.rs`, docs/research/syscalls.md):
+ `(define-syscall name \"host\" type)`, `(define-optional-syscall …)`,
+ declared only by a runtime's own code (a file built in, or a program its
+ driver says is one: the alias `%syscalls`). Each is checked alone, its
+ type printed in canonical form, Fixpt's word for word: names expanded,
+ effects' atoms sorted by their text and each once, region binders `r1`,
+ `r2`, … in order. The form defines `name` at its type and
+ `%syscall-available:NAME`, a `bool`; the engine and the compiler to cells
+ expand it into those definitions from the fact `syscall N TEXT`, `N` its
+ arguments."
+(define syscall-shape string "a syscall's type is a `subr`, or a `poly` over regions only of one")
+(define syscall-crossing-message string
+  "a syscall takes and gives only `int`, `i64`, `u64`, `bool`, `char`, `unit`, `string`, `(flatarrayof i64 r)` and `(bytevectorof r)`")
+(define syscall-effects-message string
+  "a syscall's effect holds `(io sys)`, and only reads, writes and allocations of its regions, other I/O, `spin` and `nondet`")
+(define syscall-host-message string "a syscall's host name is a string, `namespace:name/version`")
+
+(define-rec
+  (host-part? (subr kfx ((listof char acyclic)) bool)
+    (lambda (cs)
+      (and (not (null? cs))
+           (not (any? (lambda ((c char))
+                        (not (or (and (char>=? c #\a) (char<=? c #\z)) (and (char>=? c #\0) (char<=? c #\9)) (char=? c #\-))))
+                      cs)))))
+  (syscall-chars-before (subr kfx ((listof char acyclic) char) (listof char acyclic))
+    (lambda (cs c) (if (or (null? cs) (char=? (car cs) c)) nil (cons (car cs) (syscall-chars-before (cdr cs) c)))))
+  (syscall-chars-after (subr kfx ((listof char acyclic) char) (listof char acyclic))
+    (lambda (cs c) (cond ((null? cs) nil) ((char=? (car cs) c) (cdr cs)) (else (syscall-chars-after (cdr cs) c))))))
+
+(define valid-host? (subr kfx (string) bool)
+  (lambda (h)
+    "`namespace:name/version`: the first two of lower-case letters, digits
+     and `-`, the version a number from 1 (Fixpt's `valid_host`)."
+    (let* ((cs (string-chars h))
+           (rest (syscall-chars-after cs #\:))
+           (backwards (the (listof char acyclic) (reverse rest)))
+           (version (the (listof char acyclic) (reverse (syscall-chars-before backwards #\/))))
+           (name (the (listof char acyclic) (reverse (syscall-chars-after backwards #\/)))))
+      (and (string-member? ":" (map char->string cs))
+           (string-member? "/" (map char->string rest))
+           (host-part? (syscall-chars-before cs #\:)) (host-part? name)
+           (not (null? version)) (not (char=? (car version) #\0))
+           (not (any? (lambda ((c char)) (not (and (char>=? c #\0) (char<=? c #\9)))) version))))))
+
+(define-rec
+  (syscall-region (subr kfx (strings string i64) string)
+    (lambda (tvars r i)
+      "Region `r` as the canonical form names it, `rI`, or \"\" if no binder
+       of the `poly` is it."
+      (cond ((null? tvars) "")
+            ((string=? (car tvars) r) (string-append "r" (i64->string i)))
+            (else (syscall-region (cdr tvars) r (i64+ i 1)))))))
+
+(define syscall-crossing (subr kfx (cv strings ty) string)
+  (lambda (v tvars t)
+    (let ((rgn (lambda ((r ty))
+                 (let ((n (tagcase r (ty-var (x) (syscall-region tvars x 1)) (else other ""))))
+                   (if (string=? n "") (refuse v "a syscall's regions are its `poly`'s") n)))))
+      (tagcase t
+        (ty-int () "int") (ty-i64 () "i64") (ty-bool () "bool") (ty-char () "char") (ty-unit () "unit") (ty-string () "string")
+        (ty-data (d args)
+          (cond ((and (string=? d "u64") (null? args)) "u64")
+                ((and (string=? d "%bytes") (i64= (size args) 1)) (string-append "(bytevectorof " (string-append (rgn (car args)) ")")))
+                (else (refuse v syscall-crossing-message))))
+        (ty-flat (e r)
+          (tagcase e
+            (ty-i64 () (string-append "(flatarrayof i64 " (string-append (rgn r) ")")))
+            (else other (refuse v syscall-crossing-message))))
+        (else other (refuse v syscall-crossing-message))))))
+
+(define-rec
+  (strings-once (subr kfx (strings) strings)
+    (lambda (xs) (cond ((or (null? xs) (null? (cdr xs))) xs) ((string=? (car xs) (second-string xs)) (strings-once (cdr xs))) (else (cons (car xs) (strings-once (cdr xs)))))))
+  (second-string (subr kfx (strings) string) (lambda (xs) (car (cdr xs)))))
+
+(define syscall-effect (subr kfx (cv strings strings) string)
+  (lambda (v tvars es)
+    (if (not (string-member? "io:sys" es))
+        (refuse v syscall-effects-message)
+        (let ((texts (strings-once (sorted-strings
+                       (map (lambda ((a string))
+                              (cond ((or (string=? a "spin") (string=? a "nondet")) a)
+                                    ((has-prefix? a "io:") (string-append "(io " (string-append (after-prefix a "io:") ")")))
+                                    ((and (string-member? (atom-kind a) (list "read:" "write:" "alloc:"))
+                                          (not (string=? (syscall-region tvars (atom-region a) 1) "")))
+                                     (string-append "(" (string-append (substring-of (atom-kind a) (i64- (string-length-i64 (atom-kind a)) 1))
+                                                       (string-append " " (string-append (syscall-region tvars (atom-region a) 1) ")")))))
+                                    (else (refuse v syscall-effects-message))))
+                            es)))))
+          (if (null? (cdr texts)) (car texts) (string-append "(maxeff " (string-append (words-of texts) ")")))))))
+
+(define-rec
+  (region-binders-written (subr kfx (i64 i64) strings)
+    (lambda (i n) (if (i64> i n) nil (cons (string-append "(r" (string-append (i64->string i) " region)")) (region-binders-written (i64+ i 1) n))))))
+
+(define syscall-canonical (subr kfx (cv scheme) string)
+  (lambda (v sc)
+    "A syscall's type in canonical form, or refused where it is no
+     syscall's."
+    (tagcase sc
+      (scheme (tvars t)
+        (if (any? (lambda ((b string)) (not (string=? (binder-kind-shown b) "region"))) tvars)
+            (refuse v syscall-shape)
+            (tagcase t
+              (ty-proc (es ps r)
+                (cond ((i64> (size ps) 6) (refuse v "a syscall takes at most 6 arguments"))
+                      (else
+                       (let* ((eff (syscall-effect v tvars es))
+                              (params (map (lambda ((p ty)) (syscall-crossing v tvars p)) ps))
+                              (subr (string-append "(subr " (string-append eff (string-append " (" (string-append (words-of params) (string-append ") " (string-append (syscall-crossing v tvars r) ")"))))))))
+                         (if (null? tvars)
+                             subr
+                             (string-append "(poly (" (string-append (words-of (region-binders-written 1 (size tvars)))
+                                                                (string-append ") " (string-append subr ")")))))))))
+              (else other (refuse v syscall-shape))))))))
+
+(define syscalls-allowed? (subr kfx (cv) bool)
+  (lambda (v) (or (has-prefix? (cv-file v) "fx26:") (not (null? (find-alias "%syscalls" (cv-aliases v)))))))
+
+(define check-syscall (subr kfx (cv sexps string i64) cv)
+  (lambda (v xs src-file src-pos)
+    (let ((what (sym-name (car xs))))
+      (cond ((not (syscalls-allowed? v)) (refuse v "syscalls are declared only by a runtime's own code"))
+            ((not (i64= (size xs) 4)) (refuse v (string-append "`(" (string-append what " name \"host-name\" type)`"))))
+            ((not (tagcase (second xs) (sym (n f p) #t) (else other #f))) (refuse v "expected a name"))
+            ((not (tagcase (third xs) (str (h f p) (valid-host? h)) (else other #f))) (refuse v syscall-host-message))
+            (else
+             (let* ((name (sym-name (second xs)))
+                    (sc (parse-scheme v (fourth xs)))
+                    (text (syscall-canonical v sc))
+                    (n (tagcase sc (scheme (tvars t) (tagcase t (ty-proc (es ps r) (size ps)) (else other (the i64 0)))))))
+               (with-facts (with-binds v (list (global v name sc) (global v (string-append "%syscall-available:" name) (scheme nil (ty-bool)))))
+                           (list (fact src-file src-pos (string-append "syscall " (string-append (i64->string n) (string-append " " text))))
+                                 (fact "%kfx" 0 (string-append "kfx-refuses " (refusal-text v "a syscall, which KFX has not yet (C224)")))))))))))
+
 (define check-top-plain (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see."
@@ -1218,6 +1353,7 @@
                          (else xs))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-convention") v)
+                ((or (string=? h "define-syscall") (string=? h "define-optional-syscall")) (check-syscall v xs src-file src-pos))
                 ((string=? h "define-type")
                  "Its body read where it stands, used or not: so that one that
                   mentions itself, or names no type, is refused."
@@ -2527,17 +2663,21 @@
 (define verdict-facts (subr kfx (verdict) facts)
   (lambda (x) (tagcase x (verdict (ts fs) fs))))
 
-(define check-program (subr kfx (sexps) verdict)
-  (lambda (forms)
+(define check-program-as (subr kfx (sexps bool) verdict)
+  (lambda (forms runtime)
     "Every form, in order; the first error stops the compiler. What it gives
-     is the types of the definitions written with none."
+     is the types of the definitions written with none. A `runtime`'s own
+     program may declare syscalls (C224: the alias `%syscalls`)."
     (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
+           (declared (declare-types empty forms nil))
+           (start (cv nil nil (if runtime (cons (alias "%syscalls" nil (sym "#t" "" 0)) declared) declared) nil "a type" nil "the program" 0 nil nil 0 (bempty) nil))
            (types (type-names-free start forms))
            (named (tagcase start (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (datatype-names start forms nil) als es here group file line fs tv at ix mk))))
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at ix mk))))
            (v (with-binds typed (prim-binds typed))))
       (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))
+
+(define check-program (subr kfx (sexps) verdict) (lambda (forms) (check-program-as forms #f)))
 
 "A file read, for a load: its path and text (C88)."
 (define-datatype filed (filed string string))
@@ -3055,6 +3195,20 @@
           (else other f))
         f)))
 
+(define-rec
+  (syscall-asked (subr kfx (sexp) sexp)
+    (lambda (e)
+      "`(syscall-available? NAME)`, the hidden global its declaration makes,
+       `%syscall-available:NAME`, everywhere but in a quote (C224, as
+       Fixpt's parsers read it)."
+      (tagcase e
+        (lst (xs f l p)
+          (cond ((head-is? e "quote") e)
+                ((and (head-is? e "syscall-available?") (i64= (size xs) 2) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+                 (sym (string-append "%syscall-available:" (sym-name (second xs))) f p))
+                (else (lst (map syscall-asked xs) f l p))))
+        (else other e)))))
+
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)
     "A program's forms: what it loads spliced in (C88), and what its modules
@@ -3062,7 +3216,7 @@
      definition, one (C107); a `load-input` of a module, the module (C116);
      a module KFX's cannot be, a module value (C171)."
     (let ((forms (map as-module-value (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) (import-items forms))))))
-      (map flat-definition
+      (map (lambda ((f sexp)) (syscall-asked (flat-definition f)))
            (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
                                     forms
                                     (spliced-tops forms (directory-of file) loaded nil))))))))

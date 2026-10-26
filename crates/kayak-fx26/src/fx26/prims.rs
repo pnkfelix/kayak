@@ -158,6 +158,12 @@ pub fn prim_arity(n: Str) -> i64 {
         0i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("seal-code"), kayak_rt::heap_cons(str_lit("native-procedure"), kayak_rt::nil()))) {
         1i64
+    } else if string_eq_p(n, str_lit("%syscall-require")) {
+        3i64
+    } else if string_eq_p(n, str_lit("%syscall-available?")) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%syscall0"), kayak_rt::heap_cons(str_lit("%syscall1"), kayak_rt::heap_cons(str_lit("%syscall2"), kayak_rt::heap_cons(str_lit("%syscall3"), kayak_rt::heap_cons(str_lit("%syscall4"), kayak_rt::heap_cons(str_lit("%syscall5"), kayak_rt::heap_cons(str_lit("%syscall6"), kayak_rt::nil())))))))) {
+        i64_plus(3i64, string_to_i64(after_prefix(n, str_lit("%syscall"))))
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-eqtable"), kayak_rt::heap_cons(str_lit("eqtable-count"), kayak_rt::nil()))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eqtable-has?"), kayak_rt::heap_cons(str_lit("eqtable-delete!"), kayak_rt::nil()))) {

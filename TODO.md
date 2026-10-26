@@ -383,11 +383,8 @@ and what the generated code looks like for the compiler's own source.
   Next: the engine's speed (thread-local lookups, dispatch); its tasks on
   the scheduler; bloblets; FX-26 beyond KFX (pairof, datum, sizes,
   variadics, marks); a GC for kayak-rt itself, a research note.
-- Fixpt, to raise (not changed by us): on its default machine,
-  `native/mixed.fx`'s last form shows `#<continuation>`, its value 42 on
-  `fx-cells-rsinterp` and on kayak's engine (C220): a throw from native
-  code to a continuation cellular code took gives the continuation, not
-  the value thrown. The comparison counts it as a difference until then.
+- ~~Fixpt, to raise: `native/mixed.fx`'s `#<continuation>` on its default
+  machine~~ (raised; fixed by Fixpt `19973abf`, at the pin since C224).
 
 ## 24. A uniform value beside unboxed generics (`docs/research/uniform-values.md`)
 

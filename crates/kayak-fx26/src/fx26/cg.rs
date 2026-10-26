@@ -21,12 +21,12 @@ use super::*;
 // yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
 // lifting, register code (the words' twins). Bloblets and floats: C152.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@ae397dc
-// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@ae397dc
+// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@d28cc6d
+// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@ae397dc
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@8f76d65
+// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@f03cabe
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@f03cabe
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@f03cabe
 
 // The generator's data lives at `@g`.
 
@@ -800,6 +800,27 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("wglobal=?")) => {
                         str_lit("eq?")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall0")) => {
+                        str_lit("%fx26-syscall")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall1")) => {
+                        str_lit("%fx26-syscall")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall2")) => {
+                        str_lit("%fx26-syscall")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall3")) => {
+                        str_lit("%fx26-syscall")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall4")) => {
+                        str_lit("%fx26-syscall")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall5")) => {
+                        str_lit("%fx26-syscall")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall6")) => {
+                        str_lit("%fx26-syscall")
+                    }
                     _ => {
                         str_lit("")
                     }
@@ -1212,6 +1233,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("close-over-word!")) => {
                         str_lit("%fx26-close-over-word!")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall-require")) => {
+                        str_lit("%fx26-syscall-require")
+                    }
                     _ => {
                         str_lit("")
                     }
@@ -1259,6 +1283,9 @@ pub mod made__load__0__cg {
                 match n {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%string-append-list")) => {
                         str_lit("%fx26-string-append-list")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall-available?")) => {
+                        str_lit("%fx26-syscall-available?")
                     }
                     _ => {
                         str_lit("")
@@ -4131,6 +4158,15 @@ pub fn parse_else(mut arms: Sexps) -> Cbinds {
     }
 }
 
+pub fn parse_syscall_tops(ds: Sexps) -> List<&'static Ctop> {
+    if null_p(ds) {
+        nil::<&'static Ctop>()
+    } else {
+        let d = items(car(ds));
+        kayak_rt::heap_cons(t_define(sym_name(second(d)), false, parse_x(third(d))), parse_syscall_tops(cdr(ds)))
+    }
+}
+
 pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     let h = {
         let tagcase_ = e;
@@ -4190,6 +4226,8 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     } else if string_eq_p(h, str_lit("include")) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         nil::<&'static Ctop>()
+    } else if (string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) {
+        parse_syscall_tops(syscall_definitions(e, spaced_words(fact_text(get(cg_facts()), datum_file(e), datum_pos(e), str_lit("syscall ")))))
     } else {
         kayak_rt::heap_cons(t_exp(parse_x(e)), kayak_rt::nil())
     }

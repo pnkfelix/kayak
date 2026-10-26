@@ -189,7 +189,9 @@
         "native-convention"
         "make-eqtable" "eqtable-ref" "eqtable-has?" "eqtable-count" "eqtable-set!" "eqtable-delete!"
         "pair-identity" "ref-identity" "array-identity" "icell-identity"
-        "seal-code" "native-procedure"))
+        "seal-code" "native-procedure"
+        "%syscall-require" "%syscall-available?" "%syscall0" "%syscall1" "%syscall2" "%syscall3" "%syscall4"
+        "%syscall5" "%syscall6"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

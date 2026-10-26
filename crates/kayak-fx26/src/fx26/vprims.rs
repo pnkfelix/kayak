@@ -480,6 +480,34 @@ pub fn eq_delete_x(t: i64, key: i64) -> () {
     }
 }
 
+// The engine's syscalls (C224; docs/research/syscalls.md), as Fixpt's
+// evaluator's, a runtime of its own: each host name's type in canonical
+// form, "" for none. Its flat arrays are its own words, at no address
+// native code could run, so `code:exec-view/1` gives -1 and `code:flush/1`
+// has nothing to do.
+pub fn engine_syscall_type(host: Str) -> Str {
+    if string_eq_p(host, str_lit("code:exec-view/1")) {
+        str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))")
+    } else if string_eq_p(host, str_lit("code:page-words/1")) {
+        str_lit("(subr (io sys) () int)")
+    } else if string_eq_p(host, str_lit("code:flush/1")) {
+        str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+    } else {
+        str_lit("")
+    }
+}
+
+// The words in one page of the machine this runs on: 2048 on arm64 (macOS's
+// 16 KiB pages), else 512, by the native convention's target (KFX has no way
+// to ask the system yet; a syscall of kayak-rt's, later).
+pub fn engine_page_words() -> i64 {
+    if string_eq_p(car(the::<Strings>(native_convention())), str_lit("(target arm64)")) {
+        2048i64
+    } else {
+        512i64
+    }
+}
+
 pub fn apply_op(op: i64, args: i64) -> i64 {
     let a = if i64_eq(args, w_nil()) {
         the::<i64>(0i64)
@@ -921,6 +949,31 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         refused_op_x(str_lit("seal-code: this machine runs no native code a program makes"))
     } else if i64_eq(op, 234i64) {
         refused_op_x(str_lit("native-procedure: this machine runs no native code"))
+    } else if i64_eq(op, 235i64) {
+        let label = word_string(a);
+        let host = word_string(b);
+        let text = word_string(c);
+        let have = engine_syscall_type(host);
+        if string_eq_p(have, str_lit("")) {
+            refused_op_x(string_append(label, str_lit(": this runtime has none")))
+        } else if not(string_eq_p(have, text)) {
+            refused_op_x(string_append(label, string_append(str_lit(": declared "), string_append(text, string_append(str_lit("; this runtime's is "), have)))))
+        } else {
+            w_unit()
+        }
+    } else if i64_eq(op, 236i64) {
+        bool_word(string_eq_p(engine_syscall_type(word_string(a)), word_string(b)))
+    } else if (i64_gt_eq(op, 237i64) && i64_lt_eq(op, 243i64)) {
+        let host = word_string(b);
+        if not(string_eq_p(engine_syscall_type(host), word_string(c))) {
+            refused_op_x(string_append(word_string(a), str_lit(": not available on this runtime")))
+        } else if string_eq_p(host, str_lit("code:page-words/1")) {
+            fixnum(engine_page_words())
+        } else if string_eq_p(host, str_lit("code:exec-view/1")) {
+            fixnum(-1i64)
+        } else {
+            w_unit()
+        }
     } else if i64_eq(op, 216i64) {
         fixnum(4i64)
     } else if i64_eq(op, 217i64) {

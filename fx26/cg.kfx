@@ -16,12 +16,12 @@
  yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
  lifting, register code (the words' twins). Bloblets and floats: C152.
  fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
- fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@ae397dc
- fixpt-source: crates/fixpt-fx26/src/compile-state.fx@ae397dc
+ fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@d28cc6d
+ fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
  fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
- fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@ae397dc
- fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@bb3f570
- fixpt-source: crates/fixpt-fx26/src/parser.fx@8f76d65"
+ fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@f03cabe
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@f03cabe
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@f03cabe"
 
 "The generator's data lives at `@g`."
 (define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))
@@ -1252,6 +1252,14 @@
                (list (cbind (sym-name (second parts)) (parse-body (cdr (cdr parts)) (datum-pos (car arms)))))))
             (else (parse-else (cdr arms)))))))
 
+(define-rec
+  (parse-syscall-tops (subr gen (sexps) (listof ctop acyclic))
+    (lambda (ds)
+      (if (null? ds)
+          nil
+          (let ((d (items (car ds))))
+            (cons (t-define (sym-name (second d)) #f (parse-x (third d))) (parse-syscall-tops (cdr ds))))))))
+
 (define parse-top (subr gen (sexp) (listof ctop acyclic))
   (lambda (e)
     (let ((h (tagcase e (lst (xs f l p) (if (null? xs) "" (tagcase (car xs) (sym (n f2 p2) n) (else other2 "")))) (else other ""))))
@@ -1268,6 +1276,11 @@
             ((string=? h "define-generative") (generative-conversions (generative-name (second (items e))) (datum-pos e)))
             ((string=? h "import") (imports e))
             ((string=? h "include") (begin (cg-fail (string-append "not yet: " h)) nil))
+            ;; A syscall's declaration (C224): the two definitions it is, as
+            ;; the engine makes them (`syscall-definitions`), from the
+            ;; checker's fact.
+            ((or (string=? h "define-syscall") (string=? h "define-optional-syscall"))
+             (parse-syscall-tops (syscall-definitions e (spaced-words (fact-text (get cg-facts) (datum-file e) (datum-pos e) "syscall ")))))
             (else (list (t-exp (parse-x e))))))))
 
 ;;; ------------------------------------------------------------- the code

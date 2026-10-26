@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"absent.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/syscalls/absent.fx:3:1: syscalls are declared only by a runtime's own code",
+""
+],
+"by": [
+"x86_64-linux@f03cabe27105621d69eaef329d9657ead5f78ecf"
+]
+}
+]
+}

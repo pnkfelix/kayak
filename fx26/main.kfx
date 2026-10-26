@@ -165,7 +165,11 @@ and where the time went.
  it for whatever is not the REPL."
 (define engine-main (subr running () int)
   (lambda ()
-    (let* ((as (the strings (args)))
+    (let* ((all (the strings (args)))
+           ;; `--syscalls`: the program a runtime's own, which may declare
+           ;; syscalls (C224), as Fixpt's flag says.
+           (sys (and (not (null? all)) (string=? (car all) "--syscalls")))
+           (as (if sys (cdr all) all))
            (running (and (not (null? as)) (string=? (car as) "--run")))
            (with-main (or running (and (not (null? as)) (string=? (car as) "--main"))))
            (paths (before-dashes (if with-main (cdr as) as))))
@@ -176,12 +180,12 @@ and where the time went.
          (begin (write-err usage) (exit 2) 2))
         ;; The program's cellular words, as Fixpt lists its (C133).
         ((string=? (car as) "--cells")
-         (let* ((forms (with-processes (read-files (cdr as)))) (checked (check-program forms)))
+         (let* ((forms (with-processes (read-files (cdr as)))) (checked (check-program-as forms sys)))
            (tagcase checked
              (verdict (found fs) (begin (compile-cells forms fs) (say (cells-listing)) 0)))))
         (else
           (let* ((forms (with-processes (read-files paths)))
-                 (checked (check-program forms))
+                 (checked (check-program-as forms sys))
                  (gs (onto (global-names forms) (onto (module-entries forms) (with-entries (verdict-facts checked))))))
             (begin
               (load! gs)

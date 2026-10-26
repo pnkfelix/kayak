@@ -1,7 +1,10 @@
 # Syscalls: one FX-26 extension through which each runtime extends itself
 
-Status: a design, 2026-10-26, for Fixpt to implement first (FX-26
-extensions land in Fixpt before kayak uses them), then kayak. Agreed with
+Status: implemented by Fixpt at `f03cabe2` (its copy of this note, in its
+`docs/research/`, records what it decided and changed: a declaration
+expands into two definitions, the check at load is their run, `(io sys)`
+one atom, declarations per program), and by kayak's checker, engine and
+compiler to cells at that pin (C224). Kayak's request follows, as sent. Agreed with
 the user in conversation; the details below are this note's proposal, for
 the Fixpt team to adjust as they implement it (and to say so here, or in
 their copy).
