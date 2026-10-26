@@ -28,6 +28,9 @@ python3 -I scripts/repl-sessions.py
 # C103's REPL, kept to compare with C111's: the same sessions, the same bytes.
 python3 -I scripts/repl-sessions.py --rust-repl
 cargo clippy --release -p kayak-fx26 --features rust-repl --target-dir target/rust-repl --quiet -- -D warnings
+# The corpus again with `par`'s shared branches at once (C102, C195): the
+# one run of kayak-sync's `unsafe`.
+cargo test --release -p kfx-corpus --features kayak-rt/unsafe-par --target-dir target/unsafe-par --quiet
 # The bootstrap's fixed point (stage 0, Fixpt's runs, about 10 minutes) and
 # the incremental compiles use a few processors, each in a directory of its
 # own: beside the rest, which uses them all, their output kept and said when

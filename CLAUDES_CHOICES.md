@@ -5380,3 +5380,14 @@ refused), though the engine's tier 1 had the primitives (kind 43).
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its
   abbreviation's name in an expression's type.
+
+## C195. The corpus under `unsafe-par` in the check (2026-10-25)
+
+- `scripts/check.sh` runs the KFX corpus a second time built with
+  `kayak-rt/unsafe-par` (C102), in `target/unsafe-par`: `par`'s branches
+  sharing what may be written, in regions neither other touches, at once
+  rather than in turn. Until now no check ran kayak-sync's `unsafe`, the
+  one place kayak relies on the checker's interference table where rustc
+  cannot see it; TODO §36 asked for `frozen-shared.kfx` both ways.
+- The cost: a second release build of the corpus, beside the rest.
+- Agreed with the user (a change to which checks run).

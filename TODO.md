@@ -866,7 +866,7 @@ Fixpt will measure what lands, on a new pinned snapshot.
 by references, arrays and I-cells, in the checker, kayak-rt and the
 emitter; `pair-identity` and `eq?` still refused for KFX. Left:
 `(letfreeze (r p) ...)` into another place (on `letreap`'s emitting), pair
-keys. Not in the check: the corpus under `unsafe-par` (run by hand).
+keys. The corpus under `unsafe-par` in the check since C195.
 
 For the compiler on kayak's own FX-26 runtime, tasks on several threads:
 frozen data tasks share without copying (a form's checked interface,
