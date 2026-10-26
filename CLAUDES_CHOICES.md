@@ -5683,3 +5683,25 @@ its type says. The same as Fixpt's now, printing too.
 - Probes the same as Fixpt's: a length other than the one wanted, made,
   through `the`, asked of `array-length`; an array where one of a length is.
 - The checkers' comparison: refused 3 to 2, the same 366 to 367; K1 0.
+
+## C208. Made code's leaves; the last refusals (2026-10-25)
+
+`made-code/leaves.fx`, `made-code-x86_64/leaves.fx`, the last two of the
+programs Fixpt accepts that kayak's checker refused. Now none is.
+- **What kayak-jit cannot run yet is KFX's to refuse** (C116): `seal-code`
+  of a bloblet whose fields native code cannot read in kayak, a
+  `native-procedure` of more than four parameters or of values that do not
+  cross, were the checker's refusals; now `kfx-restricted`, KFX refusing
+  them as before. The engine runs no native code (`native-code?` is no
+  name of its), so it never runs these.
+- **A local named by a word FX-26 has only in types and effects** (`read`,
+  `ref`, `pairof`, ...), called: a call, as Fixpt's parser makes it, which
+  treats as forms only its expression forms' heads; KFX's restriction pass
+  refuses such names (C187).
+- **`car`, `cdr` of a pair whose tail is no list, an expression's**, not a
+  name's, `(car (read))`: its part (KFX refuses it; its pairs are taken
+  apart where named, C68, C77).
+- Probes the same as Fixpt's: such a part of the wrong type; its effect.
+- The checkers' comparison: of the 433 programs Fixpt accepts, refused 2
+  to 0, the same 367 to 369, 64 differing in printing; of the 336 it
+  refuses, all refused; K1 0.

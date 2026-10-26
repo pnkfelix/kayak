@@ -9978,7 +9978,18 @@ pub mod expressions {
                 return module_expr(v, s, args);
             } else if (string_eq_p(h, str_lit("extend")) && null_p(found) && i64_eq(size(args), 2i64)) {
                 return module_extend(v, s, args);
-            } else if keyword_p(h) {
+            } else if (keyword_p(h) && not((string_member_p(h, kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("fields"), kayak_rt::heap_cons(str_lit("frozen"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::heap_cons(str_lit("=>"), kayak_rt::nil())))))))))))))))))))))))))))))))))))) && not(null_p(found)) && {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        (string_eq_p(w, str_lit("local")) || string_eq_p(w, str_lit("narrowed")))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }))) {
                 return match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))) {};
             } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
                 return abort_call(v, s, args);
@@ -10186,6 +10197,74 @@ pub mod expressions {
                                     let other = tagcase_;
                                     return match refuse(v, str_lit("a pair that is none")) {};
                                 }
+                            }
+                        }
+                    }
+                }
+            } else if ((string_eq_p(h, str_lit("car")) || string_eq_p(h, str_lit("cdr"))) && i64_eq(size(args), 1i64) && not(null_p(found)) && prim_p(car(found)) && {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && null_p(chain_type(v, s, car(args))) && {
+                let tagcase_ = walk_mu(s, {
+                    let tagcase_ = synth(v, s, car(args));
+                    match *tagcase_ {
+                        Res::Res(t, es, s2) => {
+                            walk(s2, t)
+                        }
+                    }
+                });
+                match *tagcase_ {
+                    Ty::TyData(d, parts) => {
+                        (string_eq_p(d, str_lit("%pairof")) && not({
+                            let tagcase_ = walk(s, car(cdr(parts)));
+                            match *tagcase_ {
+                                Ty::TyList(e, r) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                // Of a pair whose tail is no list, an expression's (C208; Fixpt's
+                // `made-code/leaves.fx`, `(car (read))`): its head or its tail. KFX's
+                // such pairs are taken apart where named (C68, C77).
+                let tagcase_ = synth(v, s, car(args));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let tagcase_ = walk_mu(s, t);
+                        match *tagcase_ {
+                            Ty::TyData(d, parts) => {
+                                let part = if string_eq_p(h, str_lit("car")) {
+                                    car(parts)
+                                } else {
+                                    car(cdr(parts))
+                                };
+                                return res(part, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, car(cdr(cdr(parts))))), kayak_rt::nil()), es), kfx_restricted(v, if null_p(expected) {
+                                    s
+                                } else {
+                                    fits(v, s, part, car(expected))
+                                }, str_lit("a car or cdr of a pair whose tail is no list, not named, FX-26's (C208)")));
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return match refuse(v, str_lit("a pair that is none")) {};
                             }
                         }
                     }
@@ -11238,13 +11317,7 @@ pub mod expressions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Ty::TyProc(es, ps, r) => {
-                            if i64_gt(size(ps), 4i64) {
-                                match refuse(v, str_lit("a native procedure of more than four parameters, which KFX does not have yet (C116)")) {}
-                            } else if (not(native_crossing_p(s, r)) || any_p(lambda1s(move |t: &'static Ty| {
-                                not(native_given_p(s, t))
-                            }), ps)) {
-                                match refuse(v, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "), show_ty(s, want))) {}
-                            } else if (escapes_p(es) || suspends_p(es)) {
+                            if (escapes_p(es) || suspends_p(es)) {
                                 match refuse(v, string_append(str_lit("a native procedure that may abort or suspend, which KFX does not have: "), show_ty(s, want))) {}
                             } else {
                                 let tagcase_ = synth(v, s, car(args));
@@ -11262,7 +11335,15 @@ pub mod expressions {
                                                 }
                                             }
                                         } {
-                                            res(want, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es0), note_fact(s0, cv_file(v), cv_pos(v), string_append(str_lit("native-types "), show_sexp(lst(map(lambda1s(move |p: &'static Ty| {
+                                            res(want, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es0), note_fact(if i64_gt(size(ps), 4i64) {
+                                                kfx_restricted(v, s0, str_lit("a native procedure of more than four parameters, which KFX does not have yet (C116)"))
+                                            } else if (not(native_crossing_p(s0, r)) || any_p(lambda1s(move |t: &'static Ty| {
+                                                not(native_given_p(s0, t))
+                                            }), ps)) {
+                                                kfx_restricted(v, s0, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "), show_ty(s0, want)))
+                                            } else {
+                                                s0
+                                            }, cv_file(v), cv_pos(v), string_append(str_lit("native-types "), show_sexp(lst(map(lambda1s(move |p: &'static Ty| {
                                                 ty_sexp(v, s0, zonk(s0, p))
                                             }), onto(ps, kayak_rt::heap_cons(r, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)))))
                                         } else {
@@ -11305,7 +11386,10 @@ pub mod expressions {
                             } else if any_p(lambda1s(move |f: &'static Ty| {
                                 not(native_given_p(s0, f))
                             }), cdr(ys)) {
-                                match refuse(v, string_append(str_lit("seal-code of a bloblet whose fields native code cannot read in kayak yet (C116): "), show_ty(s0, t))) {}
+                                // Fields native code cannot read in kayak yet (C116): KFX's, whose
+                                // made code kayak-jit runs, refused; FX-26's checker takes it, as
+                                // Fixpt's does (C208), the engine running no native code.
+                                res(t, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es), kfx_restricted(v, s0, string_append(str_lit("seal-code of a bloblet whose fields native code cannot read in kayak yet (C116): "), show_ty(s0, t))))
                             } else {
                                 res(t, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es), s0)
                             }

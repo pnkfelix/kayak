@@ -4465,7 +4465,13 @@
                    (module-expr v s args))
                   ((and (string=? h "extend") (null? found) (i64= (size args) 2))
                    (module-extend v s args))
-                  ((keyword? h)
+                  ((and (keyword? h)
+                        (not (and (string-member? h (list "read" "write" "alloc" "goto" "comefrom" "region" "effect" "type" "pure" "maxeff" "void"
+                                                          "subr" "->" "->*" "poly" "ref" "pairof" "dletrec" "listof" "prompt-tag" "composable"
+                                                          "oneshot" "mark-key" "bloblet" "fields" "frozen" "arrayof" "icell" "productof" "sumof"
+                                                          "moduleof" "select" "else" "dlambda" "=>"))
+                                  (not (null? found))
+                                  (tagcase (car found) (bind (n sc w) (or (string=? w "local") (string=? w "narrowed"))) (else other #f)))))
                    (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
                   ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
                   ((and (null? found) (string=? h "native-procedure")) (native-call v s args expected))
@@ -4546,6 +4552,24 @@
                                         (effs-union (list (string-append "read:" (region-string s2 (car (cdr (cdr parts)))))) es)
                                         (coerced v (note-fact s2 (cv-file v) (cv-pos v) "value-call") (cv-file v) (cv-pos v) (ty-data "datum" nil) part))))
                                (else other (refuse v "a pair that is none"))))))))
+                  ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? found)) (prim? (car found))
+                        (tagcase (car args) (lst (ys f l p) #t) (else other #f))
+                        (null? (chain-type v s (car args)))
+                        (tagcase (walk-mu s (tagcase (synth v s (car args)) (res (t es s2) (walk s2 t))))
+                          (ty-data (d parts) (and (string=? d "%pairof") (not (tagcase (walk s (car (cdr parts))) (ty-list (e r) #t) (else other #f)))))
+                          (else other #f)))
+                   "Of a pair whose tail is no list, an expression's (C208; Fixpt's
+                    `made-code/leaves.fx`, `(car (read))`): its head or its tail. KFX's
+                    such pairs are taken apart where named (C68, C77)."
+                   (tagcase (synth v s (car args))
+                     (res (t es s)
+                       (tagcase (walk-mu s t)
+                         (ty-data (d parts)
+                           (let ((part (if (string=? h "car") (car parts) (car (cdr parts)))))
+                             (res part (effs-union (list (string-append "read:" (region-string s (car (cdr (cdr parts)))))) es)
+                                  (kfx-restricted v (if (null? expected) s (fits v s part (car expected)))
+                                                  "a car or cdr of a pair whose tail is no list, not named, FX-26's (C208)"))))
+                         (else other (refuse v "a pair that is none"))))))
                   ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? (local-pair v s (car args)))))
                    "Of a local known to be a pair (C68): its head or its tail, of any
                     type, not only a list's."
@@ -5027,18 +5051,21 @@
                      (ty-data (d xs)
                        (tagcase (car xs)
                          (ty-proc (es ps r)
-                           (cond ((i64> (size ps) 4) (refuse v "a native procedure of more than four parameters, which KFX does not have yet (C116)"))
-                                 ((or (not (native-crossing? s r)) (any? (lambda ((t ty)) (not (native-given? s t))) ps))
-                                  (refuse v (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
-                                                           (show-ty s want))))
-                                 ((or (escapes? es) (suspends? es))
+                           (cond ((or (escapes? es) (suspends? es))
                                   (refuse v (string-append "a native procedure that may abort or suspend, which KFX does not have: " (show-ty s want))))
                                  (else
                                   (tagcase (synth v s (car args))
                                     (res (t es0 s0)
                                       (if (tagcase (walk s0 t) (ty-data (d2 ys) (string=? d2 "%bloblet")) (else other #f))
                                           (res want (effs-union (list "io:native") es0)
-                                               (note-fact s0 (cv-file v) (cv-pos v)
+                                               (note-fact (cond ((i64> (size ps) 4)
+                                                                 ;; What kayak-jit cannot call yet: KFX's alone (C208).
+                                                                 (kfx-restricted v s0 "a native procedure of more than four parameters, which KFX does not have yet (C116)"))
+                                                                ((or (not (native-crossing? s0 r)) (any? (lambda ((t ty)) (not (native-given? s0 t))) ps))
+                                                                 (kfx-restricted v s0 (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
+                                                                                                     (show-ty s0 want))))
+                                                                (else s0))
+                                                          (cv-file v) (cv-pos v)
                                                           (string-append "native-types "
                                                             (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s0 (zonk s0 p))) (onto ps (list r))) "" 0 0)))))
                                           (refuse v (string-append "native-procedure of what is not a bloblet: " (show-ty s0 t)))))))))
@@ -5060,7 +5087,11 @@
                       (cond ((not (string=? d "%bloblet"))
                              (refuse v (string-append "seal-code of what is not a bloblet, which KFX does not have: " (show-ty s0 t))))
                             ((any? (lambda ((f ty)) (not (native-given? s0 f))) (cdr ys))
-                             (refuse v (string-append "seal-code of a bloblet whose fields native code cannot read in kayak yet (C116): " (show-ty s0 t))))
+                             "Fields native code cannot read in kayak yet (C116): KFX's, whose
+                              made code kayak-jit runs, refused; FX-26's checker takes it, as
+                              Fixpt's does (C208), the engine running no native code."
+                             (res t (effs-union (list "io:native") es)
+                                  (kfx-restricted v s0 (string-append "seal-code of a bloblet whose fields native code cannot read in kayak yet (C116): " (show-ty s0 t)))))
                             (else (res t (effs-union (list "io:native") es) s0))))
                     (else other (refuse v (string-append "seal-code of what is not a bloblet, which KFX does not have: " (show-ty s0 t))))))))))
 

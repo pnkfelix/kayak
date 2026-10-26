@@ -568,8 +568,8 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   2 of the 433 programs Fixpt accepts still refused (2026-10-25, C207);
-   64 differ; 367 the same. What each needs (looked at 2026-10-25):
+   None of the 433 programs Fixpt accepts refused (2026-10-25, C208); 64
+   differ in printing; 369 the same; the 336 it refuses all refused. What each needs (looked at 2026-10-25):
    - Redefinition at another type: **done** under `--check` (C202); the
      REPL and the engine's run still refuse it.
    - `modules/load-layers.fx`: **accepted** (C203); its printing differs.
@@ -579,10 +579,8 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    - `run/acyclic-in-a-place.fx`, `run/letfreeze-into-place.fx`:
      **accepted** (C206).
    - `sizes/narrayof-lengths.fx`: **accepted** (C207).
-   - `made-code/leaves.fx`, `made-code-x86_64/leaves.fx`: `seal-code` of a
-     bloblet whose field is a pair: refused in the checker (C116) for what
-     kayak-jit lays out; the engine runs no native code, so a
-     `kfx-restricted` and a refusal where the engine would run it.
+   - `made-code/leaves.fx`, `made-code-x86_64/leaves.fx`: **accepted**
+     (C208).
    The user (2026-10-25), on C183: Fixpt taking fixed-width integers as
    `int`s was probably a mistake, an ABI matter (an `i64` boxed where an
    `int` is wanted); perhaps `(raw i32)` apart from `i32`. Kayak follows
