@@ -374,6 +374,9 @@
               given (`rcons`, `rnew`), where the engine drops it."
              (i-let (list (i-lit (v-unit))) (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
             ((string=? h "rlambda") (lower-form "lambda" (cdr xs) e sc gs))
+            ((and (string=? h "with") (sym-is? (car xs) "#%fx"))
+             "`(with #%fx n)`: the standard `n`, whatever names it here (C199)."
+             (lower-name (sym-name (second xs)) nil nil))
             ((string=? h "with")
              (let* ((m (car xs))
                     (statics (tagcase m (sym (n f p) (exports-of n gs)) (else other nil)))

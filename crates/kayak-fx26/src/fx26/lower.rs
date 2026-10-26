@@ -754,6 +754,9 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("rlambda")) {
             (h, xs) = (str_lit("lambda"), cdr(xs));
             continue;
+        } else if (string_eq_p(h, str_lit("with")) && sym_is_p(car(xs), str_lit("#%fx"))) {
+            // `(with #%fx n)`: the standard `n`, whatever names it here (C199).
+            return lower_name(sym_name(second(xs)), nil::<List<Str>>(), nil::<Str>());
         } else if string_eq_p(h, str_lit("with")) {
             let m = car(xs);
             let statics = {

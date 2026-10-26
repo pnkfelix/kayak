@@ -5459,3 +5459,18 @@ said. Probes, each the same in both: such a bloblet given where one at
 `@heap` is wanted, refused; read inside a `pure` procedure, accepted;
 a field written at another type, refused.
 - The checkers' comparison: refused 14 to 13, the same 357 to 358; K1 0.
+
+## C199. `(with #%fx n)`, the standard name (2026-10-25; Fixpt's TODO §46)
+
+`run/standard-refs.fx`: `(with #%fx n)` is the standard `n`, wherever it
+is and whatever names it there (a local `+`, say), called or as a value.
+- **The checker**: `#%fx` opened by `with` around one name, a standard
+  binding: the body checked with that binding in front of the scope (the
+  first bind of the name whose `where` is `prim`), so the name has its
+  standard type, instantiated as where nothing shadows it. Anything else
+  under `#%fx` refused, as Fixpt refuses it. KFX refuses the form
+  (`kfx-restricted`): KFX shadows no standard name.
+- **The engine**: lowered as the name is with no local and no global in
+  scope (`lower-name n nil nil`): the primitive itself. `standard-refs.fx`
+  answers `123456`, as on Fixpt.
+- The checkers' comparison: refused 13 to 12, the same 358 to 359; K1 0.

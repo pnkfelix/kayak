@@ -6065,7 +6065,39 @@ pub mod expressions {
             } else {
                 scope_bind(m, v)
             };
-            if (string_eq_p(m, str_lit("")) || (not(null_p(found)) && {
+            if string_eq_p(m, str_lit("#%fx")) {
+                // `(with #%fx n)`, the standard `n` wherever it is (C199; Fixpt's
+                // TODO §46), whatever names it here: its type, as named where
+                // nothing shadows it. FX-26's; KFX's standard names are not shadowed.
+                let std = if (i64_eq(size(xs), 2i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    filter(lambda1s(move |b: &'static Bind| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                (string_eq_p(w, str_lit("prim")) && string_eq_p(n, sym_name(second(xs))))
+                            }
+                        }
+                    }), cv_binds(v))
+                } else {
+                    nil::<&'static Bind>()
+                };
+                if null_p(std) {
+                    match refuse(v, str_lit("(with #%fx name) names one standard binding")) {}
+                } else {
+                    found_then_fitted(v, body(with_binds(v, kayak_rt::heap_cons(car(std), kayak_rt::nil())), kfx_restricted(v, s, str_lit("(with #%fx name), FX-26's standard names through their module, which KFX has not (C199)")), cdr(xs), nil::<&'static Ty>()), expected)
+                }
+            } else if (string_eq_p(m, str_lit("")) || (not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {
                     Bind::Bind(n, sc, wher) => {

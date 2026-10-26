@@ -2776,7 +2776,21 @@
                   global."
                  (let* ((m (tagcase (car xs) (sym (n f p) n) (else other "")))
                         (found (if (string=? m "") nil (scope-bind m v))))
-                   (cond ((or (string=? m "")
+                   (cond ((string=? m "#%fx")
+                          "`(with #%fx n)`, the standard `n` wherever it is (C199; Fixpt's
+                           TODO §46), whatever names it here: its type, as named where
+                           nothing shadows it. FX-26's; KFX's standard names are not shadowed."
+                          (let ((std (if (and (i64= (size xs) 2) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
+                                         (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (string=? w "prim") (string=? n (sym-name (second xs)))))))
+                                                 (cv-binds v))
+                                         nil)))
+                            (if (null? std)
+                                (refuse v "(with #%fx name) names one standard binding")
+                                (found-then-fitted v (body (with-binds v (list (car std)))
+                                                           (kfx-restricted v s "(with #%fx name), FX-26's standard names through their module, which KFX has not (C199)")
+                                                           (cdr xs) nil)
+                                                   expected))))
+                         ((or (string=? m "")
                               (and (not (null? found))
                                    (tagcase (car found) (bind (n sc wher) (and (not (string=? wher "module")) (tagcase sc (scheme (tv t) (mtype? (walk s t)))))))))
                           "A module value's (C170): the value a variable names, or one an
