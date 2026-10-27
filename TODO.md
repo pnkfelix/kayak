@@ -748,7 +748,7 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         logic copied into each; weak pairs then Fixpt's layout (two
         fields, no trailer, car field 2, cdr field 1); a test of such a
         bloblet across collections.
-     1. Heap sizing as Fixpt's (a nursery's worth to start, growth by what
+     1. **Done** (C238; collections a quarter of the gap, not most). Heap sizing as Fixpt's (a nursery's worth to start, growth by what
         lives), measured against the table: cheap, likely most of
         `lists`' and `closures`' gap.
      2. `perf` of `tak` and `lists` on tier 6, to apportion the rest.

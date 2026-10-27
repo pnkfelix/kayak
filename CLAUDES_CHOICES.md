@@ -6726,3 +6726,20 @@ where one is written).
   field 1; the interning test (`datum/interned-across-collections.fx`,
   every entry such a bloblet) 63 every way, `--gc-stress` among them.
 
+## C238. Tier 1's first space a nursery's size (2026-10-27)
+
+Item 1 of the performance plan. Tier 1's space began at 4096 words,
+collected at three quarters, and doubled only when more than half lived
+after a collection: a program of little live data collected every 3072
+words (`lists` 2999 collections, `closures` 750, Fixpt's 6 each). Now,
+where values are addresses (the space reserved whole, committed as
+touched), the first limit is 2^20 words, Fixpt's nursery's.
+- Measured (best of 3, ms; tier 1, tier 2, tier 6): `lists` 1826 211 58
+  before, 1832 196 43 after, 7 collections, 22 MB at most; `closures`
+  2569 285 85 before, 2560 264 68 after, 7 collections, 25 MB. The rest
+  unchanged (no collections), at most 10 MB.
+- **A guess corrected**: the review's table (C233) put most of `lists`'
+  and `closures`' gap at tier 6 (4-5x behind Fixpt's native machine) on
+  collections; they were about a quarter of it. The rest is per
+  allocation or per call: item 2, a profile, next.
+

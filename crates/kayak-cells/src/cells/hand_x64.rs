@@ -3374,6 +3374,7 @@ pub fn heap_addressed_x() -> bool {
                 set(vbase(), int_to_i64(p(m)));
                 set(to_vbase(), int_to_i64(p(o)));
                 set(addressed(), true);
+                set(limit(), 1048576i64);
                 code_area_made_x(p, first, i64_plus(if i64_gt(get(vbase()), get(to_vbase())) {
                     get(vbase())
                 } else {

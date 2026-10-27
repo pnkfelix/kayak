@@ -1565,6 +1565,10 @@
                 (set mem m) (set other o)
                 (set vbase (int->i64 (p m))) (set to-vbase (int->i64 (p o)))
                 (set addressed #t)
+                ;; A first space of a nursery's size, Fixpt's (2^20 words, C238):
+                ;; reserved whole, committed as touched; from 4096 words, a
+                ;; program of little live data collected every 3072 words.
+                (set limit 1048576)
                 (code-area-made! p first
                                  (i64+ (if (i64> (get vbase) (get to-vbase)) (get vbase) (get to-vbase)) (i64* 8 heap-capacity)))
                 #t)))
