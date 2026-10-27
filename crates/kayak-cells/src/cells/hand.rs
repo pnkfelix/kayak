@@ -2604,6 +2604,79 @@ pub fn h_6_len() -> Ref<FlatArray<i64>> {
     })
 }
 
+// What the registers hold of the frame, in tier 6's straight-line code
+// (C242; Fixpt's `held`, `direct/x64.rs`): for `REG1` to `REG3`, the slot
+// whose value the register has (written there by `store`, or read from it
+// by `load`), else -1; forgotten at a block's first (where ways meet, and
+// where tier 5's code comes back in) and after anything that may change a
+// register. A `load` of what a register holds is then nothing, or a move;
+// a `stack` of it, a move. Stores still write the frame: the collector,
+// callbacks and tier 5's code read it.
+pub fn h_held() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(4i64, -1i64))
+    })
+}
+
+pub fn held_cleared_x(mut k: i64) -> () {
+    loop {
+        if i64_gt(k, 3i64) {
+            return ();
+        } else {
+            flatarray_set_i64_x(get(h_held()), k, -1i64);
+            k = i64_plus(k, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn held_of(k: i64) -> i64 {
+    if (i64_lt(k, 1i64) || i64_gt(k, 3i64)) {
+        -1i64
+    } else {
+        flatarray_ref_i64(get(h_held()), k)
+    }
+}
+
+pub fn held_set_x(k: i64, s: i64) -> () {
+    if (i64_lt(k, 1i64) || i64_gt(k, 3i64)) {
+        ()
+    } else {
+        flatarray_set_i64_x(get(h_held()), k, s)
+    }
+}
+
+/// A register from `k` that holds slot `s`, or -1.
+pub fn holder_from(mut k: i64, mut s: i64) -> i64 {
+    loop {
+        if i64_gt(k, 3i64) {
+            return -1i64;
+        } else if i64_eq(held_of(k), s) {
+            return k;
+        } else {
+            k = i64_plus(k, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn slot_forgotten_x(mut k: i64, mut s: i64) -> () {
+    loop {
+        if i64_gt(k, 3i64) {
+            return ();
+        } else {
+            if i64_eq(held_of(k), s) {
+                held_set_x(k, -1i64)
+            } else {
+                ()
+            };
+            k = i64_plus(k, 1i64);
+            continue;
+        }
+    }
+}
+
 // A comparison and the branch on its boolean after it made one (C241;
 // Fixpt's `branch_on`, `direct/x64.rs`): only in tier 6's code, the branch
 // at `b` no block's first (none other comes to it), and both ways on, the

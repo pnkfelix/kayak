@@ -6821,3 +6821,27 @@ calls, is the call protocol's, next.
   381 (241). Fuel is still counted at each block: counted once a call, it
   would trip where tier 1's does not (departure 2's rule).
 
+## C242. Tier 6 keeps what registers hold of the frame (2026-10-27)
+
+The fourth of C241's changes, in its contained part. `tak`'s register code
+stores its arguments into the frame and reads them straight back
+(`store 1 0` … `load 1 0`, `stack 1`): the compiler's code, not tier 6's
+protocol. Fixpt's native compiler keeps, in straight-line code, which
+slot each register has (`held`, `direct/x64.rs`): "a read of the slot is
+then a move". Now tier 6's too (x86_64): `h-held`, for `REG1` to `REG3`
+where they are machine registers; a `store` notes it (the frame still
+written: the collector, callbacks and tier 5's code read it), a `load`
+of what the register holds makes nothing, of what another holds a move,
+a `stack` of it a move; all forgotten at a block's first (where tier 5's
+code comes back in), after anything that may change a register, and at
+each word's start (else a word's last knowledge would reach the next's
+code, which begins at instruction 2, not always a block's first: caught
+before it was run).
+- Measured: `tak` 87 ms to 84, `lists` 381 to 377. Since C239: `tak` 103 to
+  84 (Fixpt's native machine 36), `lists` 409 to 377 (241).
+- **What is left of the gap is the call itself**: each call's frame on
+  tier 1's data stack, a record on the machine stack, the link and its
+  reloading, fuel at each block. Frames on the machine stack, arguments
+  kept in registers across the call, are the call protocol's change, with
+  the frame-flushing work (departures 1, 5, 6; `TODO.md`).
+

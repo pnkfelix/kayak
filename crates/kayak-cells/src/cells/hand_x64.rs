@@ -2703,6 +2703,12 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         ycmp_st_x(y16(), st_dsb());
         ygive_if_x(q_b());
         ymov_x(y_dsp(), y16())
+    } else if (get(h_6()) && i64_eq(op, ro_load()) && _gt_eq(y_reg_in(i64_to_int(o(int_lit(0)))), int_lit(0)) && i64_eq(held_of(o(int_lit(0))), o(int_lit(1)))) {
+        ()
+    } else if (get(h_6()) && i64_eq(op, ro_load()) && _gt_eq(y_reg_in(i64_to_int(o(int_lit(0)))), int_lit(0)) && i64_gt_eq(holder_from(1i64, o(int_lit(1))), 0i64) && _gt_eq(y_reg_in(i64_to_int(holder_from(1i64, o(int_lit(1))))), int_lit(0))) {
+        yreg_st_x(i64_to_int(o(int_lit(0))), y_reg_in(i64_to_int(holder_from(1i64, o(int_lit(1))))))
+    } else if (get(h_6()) && i64_eq(op, ro_stack()) && i64_gt_eq(holder_from(1i64, o(int_lit(0))), 0i64) && _gt_eq(y_reg_in(i64_to_int(holder_from(1i64, o(int_lit(0))))), int_lit(0))) {
+        ymov_x(y_w(), y_reg_in(i64_to_int(holder_from(1i64, o(int_lit(0))))))
     } else if (i64_eq(op, ro_stack()) || i64_eq(op, ro_load()) || i64_eq(op, ro_setstk()) || i64_eq(op, ro_store())) {
         let (slot, k) = (i64_to_int(if (i64_eq(op, ro_stack()) || i64_eq(op, ro_setstk())) {
             o(int_lit(0))
@@ -2947,6 +2953,40 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
     yreg_body_x(rw, i, n, base, resumes)
 }
 
+/// What the registers hold after instruction `i` (C242).
+pub fn held_after_x(rw: i64, i: i64) -> () {
+    let kk = i64_plus(f_cell0(), i);
+    let op = fix_val(slot_of(rw, kk));
+    let o = lambda1(move |j: Int| {
+        fix_val(slot_of(rw, i64_plus(kk, int_to_i64(_plus(j, int_lit(1))))))
+    });
+    if i64_eq(op, ro_store()) {
+        slot_forgotten_x(1i64, o(int_lit(1)));
+        if _gt_eq(y_reg_in(i64_to_int(o(int_lit(0)))), int_lit(0)) {
+            held_set_x(o(int_lit(0)), o(int_lit(1)))
+        } else {
+            ()
+        }
+    } else if i64_eq(op, ro_load()) {
+        held_set_x(o(int_lit(0)), -1i64);
+        if _gt_eq(y_reg_in(i64_to_int(o(int_lit(0)))), int_lit(0)) {
+            held_set_x(o(int_lit(0)), o(int_lit(1)))
+        } else {
+            ()
+        }
+    } else if i64_eq(op, ro_setstk()) {
+        slot_forgotten_x(1i64, o(int_lit(0)))
+    } else if i64_eq(op, ro_setreg()) {
+        held_set_x(o(int_lit(0)), -1i64)
+    } else if i64_eq(op, ro_movereg()) {
+        held_set_x(o(int_lit(1)), held_of(o(int_lit(0))))
+    } else if (i64_eq(op, ro_stack()) || i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_op2()) || i64_eq(op, ro_op2imm()) || i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht()) || i64_eq(op, ro_save()) || i64_eq(op, ro_lexical()) || i64_eq(op, ro_field())) {
+        ()
+    } else {
+        held_cleared_x(0i64)
+    }
+}
+
 /// Register instruction `i` of `rw`'s `n` cells for tier 6: at a block's
 /// first, the block's steps counted; its way out its own.
 pub fn y6_ins_x(rw: i64, i: i64, n: i64, none: FlatArray<i64>) -> () {
@@ -2954,12 +2994,14 @@ pub fn y6_ins_x(rw: i64, i: i64, n: i64, none: FlatArray<i64>) -> () {
     set(l_give(), _plus(get(h_6_exits()), i64_to_int(i)));
     set(l_give_pre(), get(l_give()));
     if i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64) {
+        held_cleared_x(0i64);
         yalumi_x(a_sub(), y_st(), at_st(st_fuel()), i64_to_int(flatarray_ref_i64(get(h_6_len()), i)));
         ygive_if_x(q_b())
     } else {
         ()
     };
-    yreg_body_x(rw, i, n, get(h_6_base()), none)
+    yreg_body_x(rw, i, n, get(h_6_base()), none);
+    held_after_x(rw, i)
 }
 
 pub fn y6_instructions_x(mut rw: i64, mut i: i64, mut n: i64, mut none: FlatArray<i64>) -> () {
@@ -3100,6 +3142,7 @@ pub fn y6_compiled_x(rw: i64, n: i64, base: Int, starts: FlatArray<i64>) -> () {
     let n_cells = i64_to_int(n);
     set(h_6_tier5(), base);
     set(h_6(), true);
+    held_cleared_x(0i64);
     y6_instructions_x(rw, 2i64, n, get(h_6_lead()));
     set(h_6(), false);
     ybind_x(_plus(get(h_6_base()), n_cells));

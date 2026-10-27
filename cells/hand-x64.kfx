@@ -1119,6 +1119,14 @@
                (set h-link m))))
           ((i64= op ro-pop)
            (begin (ylea! y16 y-dsp (* -8 (+ (i64->int (o 0)) 1))) (ycmp-st! y16 st-dsb) (ygive-if! q-b) (ymov! y-dsp y16)))
+          ;; What a register holds already (C242): a `load` of it nothing, or a
+          ;; move; a `stack` of it a move.
+          ((and (get h-6) (i64= op ro-load) (>= (y-reg-in (i64->int (o 0))) 0) (i64= (held-of (o 0)) (o 1))) #u)
+          ((and (get h-6) (i64= op ro-load) (>= (y-reg-in (i64->int (o 0))) 0) (i64>= (holder-from 1 (o 1)) 0)
+                (>= (y-reg-in (i64->int (holder-from 1 (o 1)))) 0))
+           (yreg-st! (i64->int (o 0)) (y-reg-in (i64->int (holder-from 1 (o 1))))))
+          ((and (get h-6) (i64= op ro-stack) (i64>= (holder-from 1 (o 0)) 0) (>= (y-reg-in (i64->int (holder-from 1 (o 0)))) 0))
+           (ymov! y-w (y-reg-in (i64->int (holder-from 1 (o 0))))))
           ((or (i64= op ro-stack) (i64= op ro-load) (i64= op ro-setstk) (i64= op ro-store))
            (let ((slot (i64->int (if (or (i64= op ro-stack) (i64= op ro-setstk)) (o 0) (o 1))))
                  (k (i64->int (o 0))))
@@ -1263,6 +1271,24 @@
       (yalumi! a-sub y-st (at-st st-fuel) 1) (ygive-if! q-b)
       (yreg-body! rw i n base resumes))))
 
+(define held-after! (->* (i64 i64) unit)
+  (lambda (rw i)
+    "What the registers hold after instruction `i` (C242)."
+    (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk)))
+           (o (lambda ((j int)) (fix-val (slot-of rw (i64+ kk (int->i64 (+ j 1))))))))
+      (cond ((i64= op ro-store)
+             (begin (slot-forgotten! 1 (o 1)) (if (>= (y-reg-in (i64->int (o 0))) 0) (held-set! (o 0) (o 1)) #u)))
+            ((i64= op ro-load)
+             (begin (held-set! (o 0) -1) (if (>= (y-reg-in (i64->int (o 0))) 0) (held-set! (o 0) (o 1)) #u)))
+            ((i64= op ro-setstk) (slot-forgotten! 1 (o 0)))
+            ((i64= op ro-setreg) (held-set! (o 0) -1))
+            ((i64= op ro-movereg) (held-set! (o 1) (held-of (o 0))))
+            ;; Those that change no register `REG1` to `REG3` are in.
+            ((or (i64= op ro-stack) (i64= op ro-const) (i64= op ro-global) (i64= op ro-reg) (i64= op ro-op2)
+                 (i64= op ro-op2imm) (i64= op ro-branch) (i64= op ro-branchf) (i64= op ro-brancht) (i64= op ro-save)
+                 (i64= op ro-lexical) (i64= op ro-field)) #u)
+            (else (held-cleared! 0))))))
+
 (define y6-ins! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
   (lambda (rw i n none)
     "Register instruction `i` of `rw`'s `n` cells for tier 6: at a block's
@@ -1271,9 +1297,12 @@
       (ybind! (+ (get h-6-base) (i64->int i)))
       (set l-give (+ (get h-6-exits) (i64->int i))) (set l-give-pre (get l-give))
       (if (i64= (flatarray-ref-i64 (get h-6-lead) i) 1)
-          (begin (yalumi! a-sub y-st (at-st st-fuel) (i64->int (flatarray-ref-i64 (get h-6-len) i))) (ygive-if! q-b))
+          (begin (held-cleared! 0) (yalumi! a-sub y-st (at-st st-fuel) (i64->int (flatarray-ref-i64 (get h-6-len) i))) (ygive-if! q-b))
           #u)
-      (yreg-body! rw i n (get h-6-base) none))))
+      (yreg-body! rw i n (get h-6-base) none)
+      (held-after! rw i))))
+
+
 
 (define-rec
   (y6-instructions! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
@@ -1370,6 +1399,8 @@
       (begin
         (set h-6-tier5 base)
         (set h-6 #t)
+        ;; Nothing known of another word's registers (C242).
+        (held-cleared! 0)
         (y6-instructions! rw 2 n (get h-6-lead))
         (set h-6 #f)
         ;; Past the last, as tier 5's.

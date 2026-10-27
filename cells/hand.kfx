@@ -1056,6 +1056,26 @@
 (define h-6-lead (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define h-6-len (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 
+"What the registers hold of the frame, in tier 6's straight-line code
+ (C242; Fixpt's `held`, `direct/x64.rs`): for `REG1` to `REG3`, the slot
+ whose value the register has (written there by `store`, or read from it
+ by `load`), else -1; forgotten at a block's first (where ways meet, and
+ where tier 5's code comes back in) and after anything that may change a
+ register. A `load` of what a register holds is then nothing, or a move;
+ a `stack` of it, a move. Stores still write the frame: the collector,
+ callbacks and tier 5's code read it."
+(define h-held (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 4 -1)))
+(define-rec
+  (held-cleared! (->* (i64) unit)
+    (lambda (k) (if (i64> k 3) #u (begin (flatarray-set-i64! (get h-held) k -1) (held-cleared! (i64+ k 1)))))))
+(define held-of (->* (i64) i64) (lambda (k) (if (or (i64< k 1) (i64> k 3)) -1 (flatarray-ref-i64 (get h-held) k))))
+(define held-set! (->* (i64 i64) unit) (lambda (k s) (if (or (i64< k 1) (i64> k 3)) #u (flatarray-set-i64! (get h-held) k s))))
+(define-rec
+  (holder-from (->* (i64 i64) i64)
+    (lambda (k s) "A register from `k` that holds slot `s`, or -1." (cond ((i64> k 3) -1) ((i64= (held-of k) s) k) (else (holder-from (i64+ k 1) s)))))
+  (slot-forgotten! (->* (i64 i64) unit)
+    (lambda (k s) (if (i64> k 3) #u (begin (if (i64= (held-of k) s) (held-set! k -1) #u) (slot-forgotten! (i64+ k 1) s))))))
+
 "A comparison and the branch on its boolean after it made one (C241;
  Fixpt's `branch_on`, `direct/x64.rs`): only in tier 6's code, the branch
  at `b` no block's first (none other comes to it), and both ways on, the
