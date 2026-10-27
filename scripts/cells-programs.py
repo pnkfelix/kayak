@@ -1,7 +1,7 @@
 """Tier 1 (C122): kayak-cells, Fixpt's cellular machine in KFX, run on the
 words Fixpt's own compiler makes, its answers compared with Fixpt's.
 
-usage: python3 -I scripts/cells-programs.py [--bless] [--why]
+usage: python3 -I scripts/cells-programs.py [--bless | --bless-drop] [--why]
 
 --why: the reasons programs are not run, counted.
 
@@ -306,7 +306,7 @@ def ways_run(cells, ps, ran):
 
 
 def main():
-    bless = "--bless" in sys.argv[1:]
+    bless = fixptcache.blessing()
     made = generated()
     kept = {f: open(os.path.join(GENERATED, f), encoding="utf-8").read() for f in os.listdir(GENERATED)} if os.path.isdir(GENERATED) else {}
     if made != kept:
@@ -336,6 +336,8 @@ def main():
     passing = OURS_PASSING if OURS else PASSING
     before = open(passing).read().split() if os.path.exists(passing) else []
     lost = [n for n in before if n not in agree]
+    if bless and fixptcache.drop_refused(lost, "cells-programs"):
+        sys.exit(1)
     if bless:
         with open(passing, "w") as f:
             f.write("\n".join(agree) + "\n")

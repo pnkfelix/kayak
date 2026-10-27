@@ -6667,3 +6667,22 @@ again alike made once.
   Fixpt's two machines and on tier 1 every way, Fixpt's words and
   kayak's. Every other made-code program unchanged. arm64 not run.
 
+## C235. A bless that would drop a program refuses, unless told (2026-10-27)
+
+The user, asking what blessing is, then: "make --bless refuse to remove a
+program from a passing list unless given an explicit flag (say
+--bless-drop), naming each one it would drop." Blessing accepts what runs
+now as the record: the generated Rust, checked in, and the lists of the
+programs that agree with Fixpt (`tests/cells-passing`, `cellgen-passing`,
+`engine-passing`, `engine-fixpt-passing`), whose answers are always
+Fixpt's. A bless rewrote a list whatever it lost, so a regression blessed
+was a regression kept: C234's first bless dropped the 26 programs its own
+fault made differ, and only reading its output caught it.
+- `fixptcache.drop_refused`: a bless whose list would lose programs names
+  each (`WOULD DROP`), writes nothing, and fails, unless given
+  `--bless-drop` (which blesses, and names each `DROPPED`). Growing a list
+  stays a plain `--bless`. In `cells-programs.py` (both lists),
+  `engine-programs.py` and `run-fixpt-programs.py`.
+- Tested: a list given a program that is not there, `--bless` refused it
+  (status 1, the list unchanged), `--bless-drop` dropped it.
+

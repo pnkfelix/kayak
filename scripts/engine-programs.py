@@ -1,6 +1,6 @@
 """FX-26's engine (docs/research/engine.md, C58) on the corpus: K6.
 
-usage: python3 -I scripts/engine-programs.py [--bless]
+usage: python3 -I scripts/engine-programs.py [--bless | --bless-drop]
 
 The engine's Rust is made from fx26/fx26.unit by kfx, and kept in
 crates/kayak-fx26/src/fx26 (golden: --bless rewrites it). Built, it runs
@@ -49,7 +49,7 @@ def read(path):
 
 
 def main():
-    bless = "--bless" in sys.argv[1:]
+    bless = fixptcache.blessing()
     if run(["cargo", "build", "--release", "--quiet", "-p", "kfx"], cwd=ROOT).returncode != 0:
         sys.exit("engine-programs: kfx does not build")
     with tempfile.TemporaryDirectory() as out:
@@ -102,6 +102,8 @@ def main():
         print(f"engine-programs: {name}: DIFFERS: {got!r}")
     was = set(open(PASSING).read().split()) if os.path.exists(PASSING) else set()
     lost = sorted(was - set(agree) - elsewhere)
+    if bless and fixptcache.drop_refused(lost, "engine-programs"):
+        sys.exit(1)
     if bless:
         with open(PASSING, "w") as f:
             f.write("".join(n + "\n" for n in sorted(set(agree) | (was & elsewhere))))

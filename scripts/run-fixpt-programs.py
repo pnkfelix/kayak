@@ -1,6 +1,6 @@
 """Fixpt's FX-26 programs that kfx accepts, run both ways (PLAN.md, K1).
 
-usage: python3 -I scripts/run-fixpt-programs.py [--list] [--bless]
+usage: python3 -I scripts/run-fixpt-programs.py [--list] [--bless | --bless-drop]
 
 Each of Fixpt's programs (as kept in tests/fx26/programs, C132) that kfx accepts
 is compiled with `kfx --toplevel`, whose `kfx_toplevel` writes the values
@@ -255,6 +255,8 @@ def engine_runs(accepted, fixpt, listing, bless):
         print("ENGINE DIFFERS  %s: %s" % (rel, why))
     was = set(open(ENGINE_PASSING).read().split()) if os.path.exists(ENGINE_PASSING) else set()
     lost = sorted(was - set(agree))
+    if bless and fixptcache.drop_refused(lost, "run-fixpt-programs"):
+        return True
     if bless:
         with open(ENGINE_PASSING, "w") as g:
             g.write("".join(r + "\n" for r in agree))
@@ -318,7 +320,7 @@ def beyond_runs(refused, fixpt, listing):
 
 def main():
     listing = "--list" in sys.argv[1:]
-    bless = "--bless" in sys.argv[1:]
+    bless = fixptcache.blessing()
     fixpt = fixptcache.binary()
     programs_dir = fixptcache.PROGRAMS
     if run(["cargo", "build", "--release", "--quiet", "-p", "kfx"], cwd=ROOT).returncode != 0:

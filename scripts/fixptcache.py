@@ -352,6 +352,30 @@ def reset_used():
             os.remove(os.path.join(USED, f))
 
 
+def blessing():
+    """Whether a run is to bless (`--bless`, or `--bless-drop`, which also
+    lets it drop programs from a passing list)."""
+    return "--bless" in sys.argv[1:] or "--bless-drop" in sys.argv[1:]
+
+
+def drop_refused(lost, tool):
+    """A bless's passing list would lose `lost` (C235): unless the run was
+    given `--bless-drop`, each named, and True, so that the caller writes
+    nothing and fails; a program that stopped agreeing is then a decision,
+    not a side effect. With it, each named as dropped, and False."""
+    if not lost:
+        return False
+    if "--bless-drop" in sys.argv[1:]:
+        for n in lost:
+            print("%s: DROPPED  %s" % (tool, n))
+        return False
+    for n in lost:
+        print("%s: WOULD DROP  %s" % (tool, n))
+    print("%s: --bless would drop %d program(s) from its passing list; nothing written. "
+          "Fix them, or bless with --bless-drop to drop them." % (tool, len(lost)))
+    return True
+
+
 def parallel(f, xs):
     """`f` of each of `xs`, as many at once as there are processors; in order."""
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
