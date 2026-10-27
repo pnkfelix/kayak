@@ -664,7 +664,14 @@ pub fn failure_detail() -> Str {
 /// `FIXPT_PERF_MAP`; else nothing.
 pub fn code_noted(start: i64, len: i64, name: &str) {
     static MAP: Mutex<Option<std::fs::File>> = Mutex::new(None);
-    if std::env::var_os("KAYAK_PERF_MAP").is_none() || len <= 0 {
+    if len <= 0 {
+        return;
+    }
+    // With `KAYAK_JITDUMP` set, a jitdump record too, its bytes (C240).
+    if std::env::var_os("KAYAK_JITDUMP").is_some() {
+        kayak_jit::jitdump::code_load(start as usize, len as usize, name);
+    }
+    if std::env::var_os("KAYAK_PERF_MAP").is_none() {
         return;
     }
     let mut m = MAP.lock().unwrap_or_else(|p| p.into_inner());

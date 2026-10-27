@@ -758,6 +758,12 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         start-up (tier 2's machine encoded at each start) on its own.
      3. The call protocol (values in registers across calls, frames on the
         machine stack), with the frame-flushing work (departures 1, 5, 6).
+        What tier 6's code does, annotated (C240): a bounds check before
+        each data-stack slot's access; arguments through the frame's
+        slots in memory; slots made a store and an `add` each; comparisons
+        made booleans before a branch; fuel counted at several blocks of a
+        call. Each its own improvement, measured against C239's runs
+        (`tak 30 21 12`, `lists` 60000 rounds).
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

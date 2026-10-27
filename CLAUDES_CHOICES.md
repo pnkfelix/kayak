@@ -6775,3 +6775,25 @@ did not: the native tiers' code ran in anonymous mappings, `perf`'s
   code's quality; which of its instructions, a jitdump (code bytes for
   `perf annotate`) will say.
 
+## C240. A jitdump: the native tiers' code annotated (2026-10-27)
+
+The second level of FX-26's debug info (C239): Linux `perf`'s jitdump.
+With `KAYAK_JITDUMP` set, kayak-jit writes `/tmp/jit-PID.dump` (its
+`jitdump` module; unsafe code, which kayak-rt refuses): the header, then,
+for each piece of code named (C239's `kayak:note-code/1`), a
+`JIT_CODE_LOAD` record of its address, size, name and bytes; the file
+mapped executable once, which is how `perf record` notes it; times by the
+monotonic clock (`perf record -k 1`). Linux only; elsewhere nothing.
+Then `perf inject --jit` and `perf annotate` show tier 6's instructions.
+- **What it shows of `tak` on tier 6** (C239's 2.8x): no one hot place,
+  the time spread over code of a costly shape: a bounds check before every
+  data-stack slot's load or store (tier 1's, carried into the code); the
+  arguments written into the frame's slots on tier 1's data stack and read
+  back, not kept in registers; a frame's slots made one store and one
+  `add` each; a comparison made a boolean (`cmov` of `#t` and `#f`), then
+  compared with `#f`, not a compare and branch; fuel counted at several
+  blocks of each call. Each a choice of tier 6's code generation, to be
+  improved before the Coopt revision (`TODO.md`).
+- Source lines (`JIT_CODE_DEBUG_INFO`) next: kayak's compiler's listings
+  to carry them.
+

@@ -741,6 +741,108 @@ pub fn words_put(at: usize, ws: &[u64]) {
     }
 }
 
+/// Linux `perf`'s jitdump (C240; `tools/perf/Documentation/
+/// jitdump-specification.txt`): with `KAYAK_JITDUMP` set (kayak-rt's
+/// `code_noted`), `/tmp/jit-PID.dump`, its header, then for each piece of
+/// machine code named a `JIT_CODE_LOAD` record, its address, size, name
+/// and bytes, so that `perf inject --jit` gives `perf annotate` the code.
+/// The file mapped executable once, which is how `perf record` notes it;
+/// times by the monotonic clock, `perf record -k 1`'s.
+#[cfg(target_os = "linux")]
+pub mod jitdump {
+    use std::io::Write;
+    use std::os::unix::io::AsRawFd;
+    use std::sync::Mutex;
+
+    #[repr(C)]
+    struct Timespec {
+        sec: i64,
+        nsec: i64,
+    }
+    unsafe extern "C" {
+        fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
+        fn mmap(addr: *mut u8, len: usize, prot: i32, flags: i32, fd: i32, off: i64) -> *mut u8;
+        fn gettid() -> i32;
+    }
+    const CLOCK_MONOTONIC: i32 = 1;
+    const MAGIC: u32 = 0x4A69_5444;
+    #[cfg(target_arch = "aarch64")]
+    const ELF_MACHINE: u32 = 183;
+    #[cfg(not(target_arch = "aarch64"))]
+    const ELF_MACHINE: u32 = 62;
+
+    fn now() -> u64 {
+        let mut t = Timespec { sec: 0, nsec: 0 };
+        // SAFETY: one `timespec`, valid for the call.
+        unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
+        t.sec as u64 * 1_000_000_000 + t.nsec as u64
+    }
+
+    struct Dump {
+        file: std::fs::File,
+        index: u64,
+    }
+    static DUMP: Mutex<Option<Dump>> = Mutex::new(None);
+
+    fn opened() -> Option<Dump> {
+        let pid = std::process::id();
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .read(true)
+            .write(true)
+            .open(format!("/tmp/jit-{pid}.dump"))
+            .ok()?;
+        // SAFETY: a fresh mapping of the file, read+execute, never read
+        // through: only so that `perf record` sees the file's name.
+        unsafe { mmap(std::ptr::null_mut(), 4096, 1 | 4, 2, file.as_raw_fd(), 0) };
+        let mut h = Vec::with_capacity(40);
+        for w in [MAGIC, 1, 40, ELF_MACHINE, 0, pid] {
+            h.extend(w.to_le_bytes());
+        }
+        h.extend(now().to_le_bytes());
+        h.extend(0u64.to_le_bytes());
+        (&file).write_all(&h).ok()?;
+        Some(Dump { file, index: 0 })
+    }
+
+    /// Code at `start`, `len` bytes, named `name`: a `JIT_CODE_LOAD` record.
+    pub fn code_load(start: usize, len: usize, name: &str) {
+        let mut d = DUMP.lock().unwrap_or_else(|p| p.into_inner());
+        if d.is_none() {
+            *d = opened();
+        }
+        let Some(dump) = d.as_mut() else { return };
+        // SAFETY: the code just placed, `len` bytes from `start`, mapped
+        // readable (the code area's execute view).
+        let code: Vec<u8> = (0..len)
+            .map(|i| unsafe { std::ptr::read((start + i) as *const u8) })
+            .collect();
+        let total = 16 + 8 + 32 + name.len() + 1 + len;
+        let mut r = Vec::with_capacity(total);
+        r.extend(0u32.to_le_bytes());
+        r.extend((total as u32).to_le_bytes());
+        r.extend(now().to_le_bytes());
+        r.extend(std::process::id().to_le_bytes());
+        // SAFETY: no memory is passed.
+        r.extend((unsafe { gettid() } as u32).to_le_bytes());
+        for w in [start as u64, start as u64, len as u64, dump.index] {
+            r.extend(w.to_le_bytes());
+        }
+        r.extend(name.as_bytes());
+        r.push(0);
+        r.extend(code);
+        dump.index += 1;
+        let _ = dump.file.write_all(&r);
+    }
+}
+
+/// Elsewhere none: `perf`'s format is Linux's.
+#[cfg(not(target_os = "linux"))]
+pub mod jitdump {
+    pub fn code_load(_: usize, _: usize, _: &str) {}
+}
+
 /// Whether the standard input's descriptor has a byte, or its end, now
 /// (`poll`, no wait): for kayak-rt's `stdin-ready?`, which is no unsafe
 /// code's, as Fixpt's `tty::ready(0)` (C232).
