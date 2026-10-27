@@ -14,9 +14,11 @@ use super::*;
 //
 // Stage 1 (the plan's): variables, constants, `if` and its tests, `begin`,
 // `let`, standard operations, calls, the procedure's calls of itself and
-// loops, a leaf's tail calls. Declined: closures made, `letrec`,
-// `tagcase`, regions, prompts, modules, bloblets, `apply`, `list`, a mark
-// in tail position, more arguments than registers.
+// loops, a leaf's tail calls. Stage 2 (C253): closures, `letrec`,
+// `tagcase`, prompts, `apply`, `list`. Stage 3 (C259): regions and
+// closures made in them, bloblets and blobrefs, flat sums' `tagcase`,
+// modules, `with` and reshaping. Declined, as Fixpt's are: what a leaf
+// cannot make without a frame, more registers than there are.
 
 // How many times each global has been written once the forms compiled so
 // far have run, and the globals the form being compiled writes: what a
@@ -1427,6 +1429,68 @@ pub fn r_slot_args_of(g: &'static Rgen, ls: Rlocs) -> Rargs {
     }
 }
 
+// A frame slot for each of a module's items, in order, by name.
+pub fn r_module_slots(g: &'static Rgen, its: List<&'static Cmem>) -> Cenv {
+    if null_p(its) {
+        nil::<&'static Centry>()
+    } else {
+        let s = r_slot(g);
+        kayak_rt::heap_cons(centry(cmem_name(car(its)), at_slot(s)), r_module_slots(g, cdr(its)))
+    }
+}
+
+// Each frame slot as an operand, in order.
+pub fn r_slot_args(ss: List<i64>) -> Rargs {
+    if null_p(ss) {
+        nil::<&'static Rarg>()
+    } else {
+        kayak_rt::heap_cons(a_slot(car(ss)), r_slot_args(cdr(ss)))
+    }
+}
+
+// Item `n`'s lambda's scopes while it is made: each of `later` pending, and
+// itself a loop if it only calls itself in loops.
+pub fn r_module_own(mut n: Str, mut sc: &'static Rscope, mut later: Cenv, mut lbody: &'static Cx, mut nps: i64) -> &'static Rscope {
+    loop {
+        if null_p(later) {
+            return sc;
+        } else {
+            let tagcase_ = car(later);
+            match *tagcase_ {
+                Centry::Centry(m, l) => {
+                    let (loops, s) = ((string_eq_p(m, n) && c_loops_only(lbody, n, nps, true)), {
+                        let tagcase_ = l;
+                        match *tagcase_ {
+                            Loc::AtSlot(i) => {
+                                i
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                the::<i64>(0i64)
+                            }
+                        }
+                    });
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Rscope::Rscope(env, te) => {
+                            (sc, later) = (rscope(r_bind(m, if loops {
+                                rl_loop()
+                            } else {
+                                rl_pending(s)
+                            }, env), c_extend(m, if loops {
+                                at_loop()
+                            } else {
+                                at_pending(s)
+                            }, te)), cdr(later));
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// `x`'s value into RESULT; in tail position, returned: where its code
 /// begins noted, and where the code after it, its parent's again,
 /// does (C249, as the stack code's).
@@ -1487,7 +1551,7 @@ pub fn r_exp_at(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: boo
                 if (i64_eq(k2, 0i64) || i64_eq(k2, 3i64)) {
                     r_exp(g, body, env, te, tail)
                 } else {
-                    r_decline(g)
+                    r_letregion(g, k2, r, body, env, te, tail)
                 }
             }
             Cx::XIf(t, th, el, a) => {
@@ -1546,8 +1610,21 @@ pub fn r_exp_at(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: boo
                 }
             }
             Cx::XLambda(ps, body, a) => {
-                r_lambda(g, ps, body, env, te, nil::<Str>(), tail);
+                r_lambda(g, ps, body, env, te, nil::<Str>(), nil::<&'static Cx>(), tail);
                 r_done(g, tail)
+            }
+            Cx::XRlambda(r, l, a) => {
+                let tagcase_ = l;
+                match *tagcase_ {
+                    Cx::XLambda(ps, body, b) => {
+                        r_lambda(g, ps, body, env, te, nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), false);
+                        r_done(g, tail)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        r_decline(g)
+                    }
+                }
             }
             Cx::XLetrec(bs, body, a) => {
                 if (g_leaf(g) && not(r_all_p(r_join_flags(bs, body, tail)))) {
@@ -1560,8 +1637,21 @@ pub fn r_exp_at(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: boo
                 if i64_lt(k, 0i64) {
                     r_tagcase(g, s, arms, els, env, te, tail)
                 } else {
-                    r_decline(g)
+                    r_flat_tagcase(g, k, s, arms, els, env, te, tail)
                 }
+            }
+            Cx::XBloblet(op, i, args, a) => {
+                r_bloblet(g, op, i, args, env, te);
+                r_done(g, tail)
+            }
+            Cx::XModule(its, a) => {
+                r_module(g, its, env, te, tail)
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                r_with(g, m, ns, ks, body, env, te, tail)
+            }
+            Cx::XReshape(y, ps, a) => {
+                r_reshape(g, y, ps, env, te, tail)
             }
             Cx::XSum(t, v, a) => {
                 r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(36))), kayak_rt::heap_cons(a_v(l_sym(t)), kayak_rt::heap_cons(a_e(v), kayak_rt::nil()))), env, te);
@@ -1579,6 +1669,473 @@ pub fn r_exp_at(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: boo
                 let y = tagcase_;
                 r_decline(g)
             }
+        }
+    }
+}
+
+/// The region's name bound, as a `let`'s, to a region entered (never in
+/// a leaf), and left with the body's value, which is so not in tail
+/// position (C259, Fixpt's `r-letregion`).
+pub fn r_letregion(g: &'static Rgen, k: i64, r: Str, body: &'static Cx, env: Renv, te: Cenv, tail: bool) -> () {
+    if g_leaf(g) {
+        r_decline(g)
+    } else {
+        let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+        r_prim(g, if i64_eq(k, 1i64) {
+            str_lit("%region-enter")
+        } else {
+            str_lit("%reap-enter")
+        }, nil::<&'static Rarg>(), env, te);
+        {
+            let h = r_keep_in_slot(g);
+            r_exp(g, body, r_bind(r, rl_slot(h), env), r_local(te, r), false);
+            let v = r_keep_in_slot(g);
+            r_prim(g, str_lit("%region-exit"), kayak_rt::heap_cons(a_slot(h), kayak_rt::heap_cons(a_slot(v), kayak_rt::nil())), env, te);
+            r_done(g, tail)
+        };
+        r_restore(g, regs, slots)
+    }
+}
+
+/// A bloblet form, by its field index or, a blobref's, the operand the
+/// checker found: a scalar's layout, an array's, a flat sum's.
+pub fn r_bloblet(g: &'static Rgen, op: Str, i: i64, args: Cxs, env: Renv, te: Cenv) -> () {
+    let all = r_exp_args(args);
+    if string_eq_p(op, str_lit("bloblet-ref")) {
+        r_exp(g, car(args), env, te, false);
+        r_opn(g, str_lit("field"), i64_plus(i, 2i64))
+    } else if string_eq_p(op, str_lit("make-bloblet")) {
+        r_prim(g, str_lit("%make-bloblet"), all, env, te)
+    } else if string_eq_p(op, str_lit("rmake-bloblet")) {
+        r_prim(g, str_lit("%region-make-bloblet"), all, env, te)
+    } else if string_eq_p(op, str_lit("bloblet-set!")) {
+        r_prim(g, str_lit("%bloblet-set!"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i64_plus(i, 2i64)))), kayak_rt::heap_cons(a_e(second_cx(args)), kayak_rt::nil()))), env, te);
+        r_unit(g)
+    } else if string_eq_p(op, str_lit("bloblet-byte")) {
+        r_prim(g, str_lit("%bloblet-byte"), all, env, te)
+    } else if string_eq_p(op, str_lit("bloblet-set-byte!")) {
+        r_prim(g, str_lit("%bloblet-set-byte!"), all, env, te);
+        r_unit(g)
+    } else if string_eq_p(op, str_lit("bloblet-bytes")) {
+        r_prim(g, str_lit("%bloblet-bytes"), all, env, te)
+    } else if string_eq_p(op, str_lit("blobref-at")) {
+        {
+            let tagcase_ = second_cx(args);
+            match *tagcase_ {
+                Cx::XInt(k, a) => {
+                    if (_gt_eq(k, int_lit(0)) && _lt(k, int_lit(67108864))) {
+                        r_prim(g, str_lit("%suffix-ref"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(k)), kayak_rt::nil())), env, te)
+                    } else {
+                        r_prim(g, str_lit("%suffix-ref"), all, env, te)
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    r_prim(g, str_lit("%suffix-ref"), all, env, te)
+                }
+            }
+        };
+        r_fits(g, i)
+    } else if string_eq_p(op, str_lit("blobref+")) {
+        r_prim(g, str_lit("%suffix-ref+"), all, env, te);
+        r_fits(g, i)
+    } else if string_eq_p(op, str_lit("%blobref-field")) {
+        r_prim(g, str_lit("%suffix-ref+"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
+    } else if string_eq_p(op, str_lit("blobref-owner")) {
+        r_prim(g, str_lit("%suffix-ref-owner"), all, env, te)
+    } else if string_eq_p(op, str_lit("blobref-offset")) {
+        r_prim(g, str_lit("%suffix-ref-offset"), all, env, te)
+    } else if i64_lt(i, 0i64) {
+        r_decline(g)
+    } else if string_eq_p(op, str_lit("blobref-get")) {
+        r_prim(g, str_lit("%fx26-suffix-ref-get"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
+    } else if string_eq_p(op, str_lit("blobref-length")) {
+        r_prim(g, str_lit("%fx26-suffix-ref-length"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
+    } else if string_eq_p(op, str_lit("blobref-index")) {
+        r_prim3(g, str_lit("%fx26-blobref-index"), car(args), i, second_cx(args), env, te)
+    } else if string_eq_p(op, str_lit("blobref-set!")) {
+        r_prim3(g, str_lit("%fx26-suffix-ref-set!"), car(args), i, second_cx(args), env, te)
+    } else if string_eq_p(op, str_lit("blobref-variant!")) {
+        r_prim3(g, str_lit("%fx26-flat-variant!"), car(args), i, second_cx(args), env, te)
+    } else {
+        r_decline(g)
+    }
+}
+
+/// RESULT := runtime primitive `name`, one that never collects, of `a`'s
+/// value, constant `x` and `b`'s (`prim3imm`): `a` kept in its place
+/// while `b` is made into a register of its own.
+pub fn r_prim3(g: &'static Rgen, name: Str, a: &'static Cx, x: i64, b: &'static Cx, env: Renv, te: Cenv) -> () {
+    let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+    r_exp(g, a, env, te, false);
+    {
+        let at = r_place_value(g);
+        let k = {
+            r_exp(g, b, env, te, false);
+            r_reg(g)
+        };
+        r_opn(g, str_lit("setreg"), k);
+        r_get(g, at);
+        r_ins(g, str_lit("prim3imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(l_int(i64_to_int(x))), kayak_rt::heap_cons(o_int(k), kayak_rt::nil()))))
+    };
+    r_restore(g, regs, slots)
+}
+
+pub fn r_imm_prim(g: &'static Rgen, name: Str, v: &'static Lit) -> () {
+    r_ins(g, str_lit("prim2imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(v), kayak_rt::nil())))
+}
+
+/// A new blobref's flat's `size` bytes checked in the suffix, in line;
+/// declined where the checker noted none.
+pub fn r_fits(g: &'static Rgen, size: i64) -> () {
+    if i64_lt(size, 0i64) {
+        r_decline(g)
+    } else if i64_gt(size, 1i64) {
+        r_imm_prim(g, str_lit("%fx26-suffix-fits"), l_int(i64_to_int(size)))
+    } else {
+        ()
+    }
+}
+
+/// The blobref and its tag, a label, kept in places (registers in a
+/// leaf); each arm's name a blobref to its variant, `k / 256` bytes
+/// along; no arm for the tag a failure. No call-outs.
+pub fn r_flat_tagcase(g: &'static Rgen, k: i64, s: &'static Cx, arms: List<&'static Carm>, els: Cbinds, env: Renv, te: Cenv, tail: bool) -> () {
+    let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+    {
+        let sc = r_scrutinee_place(g, s, env, te);
+        let tag = {
+            r_imm_prim(g, str_lit("%fx26-flat-tag"), l_int(i64_to_int(k)));
+            r_place_value(g)
+        };
+        let end = r_new_label(g);
+        r_flat_arms(g, k, arms, sc, tag, end, regs, slots, env, te, tail);
+        if null_p(els) {
+            r_get(g, tag);
+            r_ins(g, str_lit("prim1"), kayak_rt::heap_cons(o_prim(str_lit("%fx26-flat-no-arm")), kayak_rt::nil()));
+            r_done(g, tail)
+        } else {
+            let tagcase_ = car(els);
+            match *tagcase_ {
+                Cbind::Cbind(n, x) => {
+                    r_exp(g, x, r_bind(n, sc, env), r_local(te, n), tail)
+                }
+            }
+        };
+        r_emit(g, ri_label(end))
+    };
+    r_restore(g, regs, slots)
+}
+
+pub fn r_flat_arms(mut g: &'static Rgen, mut k: i64, mut arms: List<&'static Carm>, mut sc: &'static Rloc, mut tag: &'static Rloc, mut end: i64, mut regs0: i64, mut slots0: i64, mut env: Renv, mut te: Cenv, mut tail: bool) -> () {
+    loop {
+        if null_p(arms) {
+            return ();
+        } else {
+            let tagcase_ = car(arms);
+            match *tagcase_ {
+                Carm::Carm(name, whole, ns, body) => {
+                    let next = r_new_label(g);
+                    r_get(g, tag);
+                    r_op2imm(g, str_lit("eq"), if i64_eq(i64_remainder(i64_quotient(k, 8i64), 2i64), 1i64) {
+                        l_int(i64_to_int(digits_i64(string_chars(name), 0i64)))
+                    } else {
+                        l_sym(name)
+                    });
+                    r_emit(g, ri_branch(str_lit("branchf"), next));
+                    {
+                        let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+                        r_get(g, sc);
+                        r_imm_prim(g, str_lit("%suffix-ref+"), l_int(i64_to_int(i64_quotient(k, 256i64))));
+                        r_restore(g, regs0, slots0);
+                        {
+                            let at = r_place_value(g);
+                            r_exp(g, body, r_bind(car(ns), at, env), r_local(te, car(ns)), tail)
+                        };
+                        r_restore(g, regs, slots)
+                    };
+                    if tail {
+                        ()
+                    } else {
+                        r_emit(g, ri_branch(str_lit("branch"), end))
+                    };
+                    r_emit(g, ri_label(next));
+                    arms = cdr(arms);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `s`'s value into RESULT, and where it is kept: where it is already,
+/// if a variable in a register or the frame; else a place of its own.
+pub fn r_scrutinee_place(g: &'static Rgen, s: &'static Cx, env: Renv, te: Cenv) -> &'static Rloc {
+    let v = r_plain_var_loc(env, s);
+    if (not(null_p(v)) && {
+        let tagcase_ = car(v);
+        match *tagcase_ {
+            Rloc::RlReg(r) => {
+                true
+            }
+            Rloc::RlSlot(n) => {
+                true
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    }) {
+        r_get(g, car(v));
+        car(v)
+    } else {
+        r_exp(g, s, env, te, false);
+        r_place_value(g)
+    }
+}
+
+/// A module: its items made in frame slots in order, as its stack code
+/// makes them; then the product of its values. Declined in a leaf.
+pub fn r_module(g: &'static Rgen, its: List<&'static Cmem>, env: Renv, te: Cenv, tail: bool) -> () {
+    if g_leaf(g) {
+        r_decline(g)
+    } else {
+        let slots = get(g_nslot(g));
+        let later = r_module_slots(g, its);
+        let vals = r_module_make(g, its, env, te, later, nil::<&'static Wait>(), nil::<i64>());
+        r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), r_slot_args(reverse(vals))), env, te);
+        set(g_nslot(g), slots);
+        r_done(g, tail)
+    }
+}
+
+/// Items `its` made in their slots, `later`, in order, as a `letrec*`'s:
+/// a typed lambda naming an item not made yet captures it once it is
+/// made; `ws` the closures waiting, `vals` the slots of the values the
+/// module gives so far (newest first).
+pub fn r_module_make(mut g: &'static Rgen, mut its: List<&'static Cmem>, mut env: Renv, mut te: Cenv, mut later: Cenv, mut ws: List<&'static Wait>, mut vals: List<i64>) -> List<i64> {
+    loop {
+        if null_p(its) {
+            return vals;
+        } else {
+            let tagcase_ = car(its);
+            match *tagcase_ {
+                Cmem::Cmem(n, x, k, lam, at) => {
+                    let s = {
+                        let tagcase_ = car(later);
+                        match *tagcase_ {
+                            Centry::Centry(m, l) => {
+                                let tagcase_ = l;
+                                match *tagcase_ {
+                                    Loc::AtSlot(i) => {
+                                        i
+                                    }
+                                    _ => {
+                                        let y = tagcase_;
+                                        the::<i64>(0i64)
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    let ps = if (lam && c_names_any_p(x, later)) {
+                        r_module_closure(g, n, x, env, te, later)
+                    } else {
+                        r_exp(g, x, env, te, false);
+                        the::<Rpatches>(nil::<&'static Rpatch>())
+                    };
+                    let waits = {
+                        r_opn(g, str_lit("setstk"), s);
+                        onto(ws, map(lambda1s(move |p: &'static Rpatch| {
+                            let tagcase_ = p;
+                            match *tagcase_ {
+                                Rpatch::Rpatch(j, t) => {
+                                    wait(s, j, t)
+                                }
+                            }
+                        }), ps))
+                    };
+                    r_give_waiting(g, waits, s);
+                    (its, env, te, later, ws, vals) = (cdr(its), r_bind(n, rl_slot(s), env), r_local(te, n), cdr(later), waits, if i64_gt(k, 0i64) {
+                        kayak_rt::heap_cons(s, vals)
+                    } else {
+                        vals
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// Item `n`'s lambda `x`, naming items of `later` not made yet: those
+/// captured as a `letrec`'s siblings are, to be given once made.
+pub fn r_module_closure(g: &'static Rgen, n: Str, x: &'static Cx, env: Renv, te: Cenv, later: Cenv) -> Rpatches {
+    let l = lambda_of(x);
+    if null_p(l) {
+        r_decline(g);
+        nil::<&'static Rpatch>()
+    } else {
+        let tagcase_ = car(l);
+        match *tagcase_ {
+            Lparts::Lparts(ps, lbody, region) => {
+                let tagcase_ = r_module_own(n, rscope(env, te), later, lbody, size(ps));
+                match *tagcase_ {
+                    Rscope::Rscope(e2, te2) => {
+                        r_lambda(g, ps, lbody, e2, te2, kayak_rt::heap_cons(n, kayak_rt::nil()), region, false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Each closure of `ws` waiting for slot `s`, given it.
+pub fn r_give_waiting(mut g: &'static Rgen, mut ws: List<&'static Wait>, mut s: i64) -> () {
+    loop {
+        if null_p(ws) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(ws);
+                match *tagcase_ {
+                    Wait::Wait(at, j, t) => {
+                        if i64_eq(t, s) {
+                            r_opnn(g, str_lit("load"), 1i64, s);
+                            r_opn(g, str_lit("stack"), at);
+                            r_opnn(g, str_lit("setfield"), i64_plus(3i64, j), 1i64)
+                        } else {
+                            ()
+                        }
+                    }
+                }
+            };
+            ws = cdr(ws);
+            continue;
+        }
+    }
+}
+
+/// `with`: the module's values the body names, by position, each kept
+/// as a `let`'s value is (in a leaf, in a register); then the body.
+pub fn r_with(g: &'static Rgen, m: &'static Cx, ns: Strings, ks: List<i64>, body: &'static Cx, env: Renv, te: Cenv, tail: bool) -> () {
+    let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+    {
+        let tagcase_ = r_with_fields(g, m, ns, ks, c_free(body, nil::<Str>(), nil::<Str>()), env, rscope(env, te));
+        match *tagcase_ {
+            Rscope::Rscope(e2, te2) => {
+                r_exp(g, body, e2, te2, tail)
+            }
+        }
+    };
+    r_restore(g, regs, slots)
+}
+
+pub fn r_with_fields(mut g: &'static Rgen, mut m: &'static Cx, mut ns: Strings, mut ks: List<i64>, mut fv: Strings, mut env: Renv, mut sc: &'static Rscope) -> &'static Rscope {
+    loop {
+        if (null_p(ns) || null_p(ks)) {
+            return sc;
+        } else {
+            if string_member_p(car(ns), fv) {
+                let l = {
+                    r_module_value(g, m, env);
+                    r_opn(g, str_lit("field"), i64_plus(car(ks), 2i64));
+                    r_keep(g, g_leaf(g))
+                };
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Rscope::Rscope(e2, te2) => {
+                        (ns, ks, sc) = (cdr(ns), cdr(ks), rscope(r_bind(car(ns), l, e2), r_local(te2, car(ns))));
+                        continue;
+                    }
+                }
+            } else {
+                (ns, ks) = (cdr(ns), cdr(ks));
+                continue;
+            }
+        }
+    }
+}
+
+/// Module `m`'s value into RESULT, from where `env` has it; declined if
+/// it is not a name in a place.
+pub fn r_module_value(g: &'static Rgen, m: &'static Cx, env: Renv) -> () {
+    let tagcase_ = m;
+    match *tagcase_ {
+        Cx::XVar(n, a) => {
+            let l = r_where(env, n);
+            if null_p(l) {
+                r_decline(g)
+            } else {
+                let tagcase_ = car(l);
+                match *tagcase_ {
+                    Rloc::RlReg(k) => {
+                        r_opn(g, str_lit("reg"), k)
+                    }
+                    Rloc::RlSlot(s) => {
+                        r_opn(g, str_lit("stack"), s)
+                    }
+                    Rloc::RlFree(i) => {
+                        r_opn(g, str_lit("lexical"), i)
+                    }
+                    Rloc::RlGlobal(c) => {
+                        r_ins(g, str_lit("global"), kayak_rt::heap_cons(o_global(c), kayak_rt::nil()))
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        r_decline(g)
+                    }
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            r_decline(g)
+        }
+    }
+}
+
+/// A module reshaped: kept in a slot, the values the type wanted has
+/// (by path) each into a slot, and a product of them. Declined in a
+/// leaf.
+pub fn r_reshape(g: &'static Rgen, y: &'static Cx, ps: Paths, env: Renv, te: Cenv, tail: bool) -> () {
+    if g_leaf(g) {
+        r_decline(g)
+    } else {
+        let slots = get(g_nslot(g));
+        let m = {
+            r_exp(g, y, env, te, false);
+            r_keep_in_slot(g)
+        };
+        let args = r_reshape_fields(g, m, ps);
+        r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), args), env, te);
+        set(g_nslot(g), slots);
+        r_done(g, tail)
+    }
+}
+
+pub fn r_reshape_fields(g: &'static Rgen, m: i64, ps: Paths) -> Rargs {
+    if null_p(ps) {
+        nil::<&'static Rarg>()
+    } else {
+        let s = {
+            r_opn(g, str_lit("stack"), m);
+            r_fields_in(g, car(ps));
+            r_keep_in_slot(g)
+        };
+        kayak_rt::heap_cons(a_slot(s), r_reshape_fields(g, m, cdr(ps)))
+    }
+}
+
+pub fn r_fields_in(mut g: &'static Rgen, mut ks: List<i64>) -> () {
+    loop {
+        if null_p(ks) {
+            return ();
+        } else {
+            r_opn(g, str_lit("field"), i64_plus(car(ks), 2i64));
+            ks = cdr(ks);
+            continue;
         }
     }
 }
@@ -2047,11 +2604,13 @@ pub fn r_inline_args(g: &'static Rgen, ps: Strings, args: Cxs, env: Renv, te: Ce
 }
 
 /// A closure of a lambda into RESULT, its free values into REG1…REGn
-/// first: of the word the stack code made (`r-made-word`). A leaf makes
-/// one only as its value, in tail position. What it gives: for each
-/// sibling not made yet, the free value and the sibling's slot.
-pub fn r_lambda(g: &'static Rgen, ps: Strings, body: &'static Cx, env: Renv, te: Cenv, own: Strings, tail: bool) -> Rpatches {
-    if (g_leaf(g) && not(tail)) {
+/// first: of the word the stack code made (`r-made-word`); with a
+/// `region` (an `rlambda`'s, one or none), made there, by
+/// `%region-closure h fv … w` (C259). A leaf makes one only as its
+/// value, in tail position, and none in a region. What it gives: for
+/// each sibling not made yet, the free value and the sibling's slot.
+pub fn r_lambda(g: &'static Rgen, ps: Strings, body: &'static Cx, env: Renv, te: Cenv, own: Strings, region: Cxs, tail: bool) -> Rpatches {
+    if (g_leaf(g) && not((tail && null_p(region)))) {
         r_decline(g);
         nil::<&'static Rpatch>()
     } else {
@@ -2064,7 +2623,15 @@ pub fn r_lambda(g: &'static Rgen, ps: Strings, body: &'static Cx, env: Renv, te:
             match *tagcase_ {
                 Rmade::Rmade(w, fv) => {
                     let n = size(fv);
-                    if i64_gt(n, register_regs()) {
+                    if not(null_p(region)) {
+                        let tagcase_ = r_free_args(g, fv, env, 0i64);
+                        match *tagcase_ {
+                            Rfree::Rfree(r#as, ps2) => {
+                                r_prim(g, str_lit("%region-closure"), kayak_rt::heap_cons(a_e(car(region)), onto(r#as, kayak_rt::heap_cons(a_v(l_word(w)), kayak_rt::nil()))), env, te);
+                                ps2
+                            }
+                        }
+                    } else if i64_gt(n, register_regs()) {
                         let tagcase_ = r_free_args(g, fv, env, 0i64);
                         match *tagcase_ {
                             Rfree::Rfree(r#as, ps2) => {
@@ -2085,7 +2652,7 @@ pub fn r_lambda(g: &'static Rgen, ps: Strings, body: &'static Cx, env: Renv, te:
 }
 
 pub fn r_thunk(g: &'static Rgen, body: &'static Cx, env: Renv, te: Cenv) -> () {
-    r_lambda(g, nil::<Str>(), body, env, te, nil::<Str>(), false);
+    r_lambda(g, nil::<Str>(), body, env, te, nil::<Str>(), nil::<&'static Cx>(), false);
     ()
 }
 
@@ -2232,16 +2799,11 @@ pub fn r_letrec_make(g: &'static Rgen, all: Cbinds, bs: Cbinds, at: List<i64>, i
                     let tagcase_ = car(l);
                     match *tagcase_ {
                         Lparts::Lparts(ps, lbody, region) => {
-                            if null_p(region) {
-                                let tagcase_ = r_sibling_env(all, at, i, 0i64, lbody, size(ps), env, te);
-                                match *tagcase_ {
-                                    Rscope::Rscope(e2, te2) => {
-                                        r_lambda(g, ps, lbody, e2, te2, kayak_rt::heap_cons(name, kayak_rt::nil()), false)
-                                    }
+                            let tagcase_ = r_sibling_env(all, at, i, 0i64, lbody, size(ps), env, te);
+                            match *tagcase_ {
+                                Rscope::Rscope(e2, te2) => {
+                                    r_lambda(g, ps, lbody, e2, te2, kayak_rt::heap_cons(name, kayak_rt::nil()), region, false)
                                 }
-                            } else {
-                                r_decline(g);
-                                nil::<&'static Rpatch>()
                             }
                         }
                     }

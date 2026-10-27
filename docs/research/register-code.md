@@ -167,3 +167,16 @@ parameters, the standard operations' words. `(the T e)` kept as a node,
 as Fixpt's register code sees it. 733 register words Fixpt's exactly, 9
 differ, 94 declined (bloblets, regions, modules: stage 3). `closures`'
 remaining gap is Fixpt's specialization (stage 4).
+
+## Stage 3 (C259)
+
+Regions (`letregion` entered and left by calling out, its region in a
+slot; a closure made in one by `%region-closure`, a `letrec`'s too),
+bloblets and blobrefs (each operation as Fixpt's `r-bloblet-op`: in line
+where the operation never collects, `prim2imm` and `prim3imm`), a flat
+sum's `tagcase` (the blobref and its tag kept, no call-outs), modules (their
+items in slots, the closures that name later items given them once made),
+`with` (each value the body names loaded into a place) and reshaping. A word
+constant listed as its cell is (`#word "NAME"`). Where kayak's stack words
+are Fixpt's: 830 register words Fixpt's exactly, 9 differ (specialization,
+and C253's), none declined.

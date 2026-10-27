@@ -477,8 +477,11 @@
     (tagcase (r-operator f)
       (x-var (n a)
         ;; A standard name written `(with #%fx n)` is not: Fixpt's
-        ;; `r-operator` leaves the `with`.
-        (and (not (std-written? n)) (or (std-marked? n) (null? (c-where e n)))
+        ;; `r-operator` leaves the `with`. Nor is one the parser wrote so
+        ;; (a `case`'s comparison) where a local or global of its name
+        ;; shadows it, as there Fixpt's checker leaves the `with` too
+        ;; (C259).
+        (and (not (std-written? n)) (null? (c-where e (std-named n)))
              (tagcase (r-standard (std-named n) (size args))
                (s-op1 (r) #t) (s-op2 (r w z) #t) (s-op2imm (r v) #t) (s-field (k) #t)
                (s-identity () #t) (s-set () #t) (s-pure (p) #t) (else y #f))))
@@ -547,8 +550,11 @@
 (define-rec
   (r-locals (subr kfx (strings cenv) cenv) (lambda (ps te) (if (null? ps) te (r-locals (cdr ps) (c-extend (car ps) (at-slot -1) te))))))
 
+"Whether bloblet form `op` itself never calls out: a field's read; a
+ blobref's read, write, element or variant, in line; a product's field
+ through a blobref (Fixpt's `extract`, C259)."
 (define r-bloblet-quiet? (subr kfx (string) bool)
-  (lambda (op) (string-member? op (list "bloblet-ref" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!"))))
+  (lambda (op) (string-member? op (list "bloblet-ref" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!" "%blobref-field"))))
 
 (define c-with-local (subr kfx (cenv string) cenv) (lambda (te n) (c-extend n (at-slot -1) te)))
 
@@ -576,6 +582,8 @@
         (x-begin (es a) (r-collects-begin v es e me tail))
         (x-region (k r body a) (if (or (i64= k 0) (i64= k 3)) (r-collects v body e me tail) #t))
         (x-proj (y a) (r-collects v y e me tail))
+        ;; A `with` only loads fields: as its body (C259).
+        (x-with (m ns ks body a) (r-collects v body (r-locals ns e) me tail))
         (x-extract (p i a) (r-collects v p e me #f))
         (x-bloblet (op i args a) (if (r-bloblet-quiet? op) (r-collects-all v args e me) #t))
         (x-tagcase (s arms els k a)

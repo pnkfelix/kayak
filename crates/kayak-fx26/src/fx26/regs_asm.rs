@@ -130,6 +130,30 @@ pub fn rline(at: i64, text: Str) -> Str {
     string_append(str_lit("  "), string_append(rpadded(i64_to_string(at), 6i64), string_append(str_lit(": "), text)))
 }
 
+// An operand as register code lists it: a word as a constant, as its
+// cell is shown (`#word "NAME"`, C259); any other as the stack code's.
+pub fn ropnd_text(o: &'static Opnd) -> Str {
+    let tagcase_ = o;
+    match *tagcase_ {
+        Opnd::OLit(l) => {
+            let tagcase_ = l;
+            match *tagcase_ {
+                Lit::LWord(w) => {
+                    string_append(str_lit("#word \""), string_append(shown_name(w), str_lit("\"")))
+                }
+                _ => {
+                    let y = tagcase_;
+                    opnd_text(o)
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            opnd_text(o)
+        }
+    }
+}
+
 pub fn rop_text(name: Str, os: List<&'static Opnd>) -> Str {
     if string_eq_p(name, str_lit("lambda")) {
         string_append(str_lit("lambda "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
@@ -137,7 +161,7 @@ pub fn rop_text(name: Str, os: List<&'static Opnd>) -> Str {
         if null_p(os) {
             name
         } else {
-            string_append(name, string_append(str_lit(" "), put_sep_words(map(&opnd_text, os))))
+            string_append(name, string_append(str_lit(" "), put_sep_words(map(&ropnd_text, os))))
         }
     }
 }

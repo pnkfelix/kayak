@@ -51,11 +51,19 @@
 (define rline (subr kfx (i64 string) string)
   (lambda (at text) (string-append "  " (string-append (rpadded (i64->string at) 6) (string-append ": " text)))))
 
+"An operand as register code lists it: a word as a constant, as its
+ cell is shown (`#word \"NAME\"`, C259); any other as the stack code's."
+(define ropnd-text (subr kfx (opnd) string)
+  (lambda (o)
+    (tagcase o
+      (o-lit (l) (tagcase l (l-word (w) (string-append "#word \"" (string-append (shown-name w) "\""))) (else y (opnd-text o))))
+      (else y (opnd-text o)))))
+
 (define rop-text (subr kfx (string (listof opnd acyclic)) string)
   (lambda (name os)
     (if (string=? name "lambda")
         (string-append "lambda " (string-append (opnd-text (car os)) (string-append " over " (opnd-text (second-opnd os)))))
-        (if (null? os) name (string-append name (string-append " " (put-sep-words (map opnd-text os))))))))
+        (if (null? os) name (string-append name (string-append " " (put-sep-words (map ropnd-text os))))))))
 
 "A word's register code's lines, and the words they name, in order;
  `frame` the frame's size."

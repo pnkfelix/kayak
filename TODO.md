@@ -31,9 +31,12 @@ section below where it has one; here the order, and what each is.
    heap without bound** (killed at 248 GB; Fixpt runs it in 0.6 GB):
    a leak, or what tier 1 keeps reachable; first to find, with `--gc-stats`
    on a shorter run, what the heap holds.
-2. **Register code stage 3** (`docs/research/register-code.md`): bloblets,
-   regions, modules and `with`, flat sums' `tagcase`, conversions; 94
-   register words declined (C253).
+2. **Register code stage 3** (`docs/research/register-code.md`). Done
+   (C259): bloblets, regions, modules and `with`, flat sums' `tagcase`;
+   830 register words Fixpt's exactly, 9 differ, none declined. Found:
+   Fixpt's `r-collects` takes a `case`'s comparison for a call where a
+   local of its name shadows it (the checker leaves its `(with #%fx …)`);
+   kayak matches it, a question for Fixpt's team whether to keep.
 3. **Specialization** (Fixpt's middle phase: its plans and copies): a
    procedure taking a lambda it only calls copied for the lambda given
    (`map-add@lambda@730`); `bench/closures` 253 to 216 million cycles

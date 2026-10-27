@@ -2,8 +2,11 @@
 words Fixpt's own compiler makes, its answers compared with Fixpt's.
 
 usage: python3 -I scripts/cells-programs.py [--bless | --bless-drop] [--why]
+       [--ours [--list] [--regs-differ] [--regs-declined]]
 
---why: the reasons programs are not run, counted.
+--why: the reasons programs are not run, counted. With --ours,
+--regs-differ names the register words that differ from Fixpt's, and
+--regs-declined those Fixpt has and kayak declined (C259).
 
 kfx compiles cells/cells.unit; its Rust is kept in
 crates/kayak-cells/src/cells (--bless rewrites it; else it must be what
@@ -175,7 +178,8 @@ def compare_regs(ours, theirs):
     a, b = reg_words(ours), reg_words(theirs)
     same = [n for n in a if n in b and a[n] == b[n]]
     differ = [n for n in a if n in b and a[n] != b[n]]
-    return (len(same), differ, len([n for n in b if n not in a]), len([n for n in a if n not in b]))
+    return (len(same), differ, len([n for n in b if n not in a]), len([n for n in a if n not in b]),
+            [n for n in b if n not in a])
 
 
 def one(binary, cells, name, path):
@@ -398,6 +402,10 @@ def main():
             for n, r in sorted(REGS.items()):
                 if r[1] and SAME.get(n):
                     print("REGS DIFFER  %s: %s" % (n, " ".join(r[1])))
+        if "--regs-declined" in sys.argv[1:]:
+            for n, r in sorted(REGS.items()):
+                if r[4] and SAME.get(n):
+                    print("REGS DECLINED  %s: %s" % (n, " ".join(r[4])))
     print("cells-programs: %d of Fixpt's programs agree on tier 1, %d differ; not run: %d listings not exact, %d need what tier 1 has not yet, %d leave no value, %d Fixpt refuses"
           % (len(agree), len(wrong), len(by.get("refused", [])), len(by.get("not-yet", [])), len(by.get("no-value", [])), len(by.get("fixpt-refuses", []))))
     if wrong or (lost and not bless):

@@ -1361,7 +1361,7 @@ pub fn r_inline_op_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
     let tagcase_ = r_operator(f);
     match *tagcase_ {
         Cx::XVar(n, a) => {
-            (not(std_written_p(n)) && (std_marked_p(n) || null_p(c_where(e, n))) && {
+            (not(std_written_p(n)) && null_p(c_where(e, std_named(n))) && {
                 let tagcase_ = r_standard(std_named(n), size(args));
                 match *tagcase_ {
                     Rstd::SOp1(r) => {
@@ -1532,8 +1532,11 @@ pub fn r_locals(mut ps: Strings, mut te: Cenv) -> Cenv {
     }
 }
 
+// Whether bloblet form `op` itself never calls out: a field's read; a
+// blobref's read, write, element or variant, in line; a product's field
+// through a blobref (Fixpt's `extract`, C259).
 pub fn r_bloblet_quiet_p(op: Str) -> bool {
-    string_member_p(op, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil()))))))
+    string_member_p(op, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("%blobref-field"), kayak_rt::nil())))))))
 }
 
 pub fn c_with_local(te: Cenv, n: Str) -> Cenv {
@@ -1606,6 +1609,10 @@ pub fn r_collects(mut v: &'static Rview, mut x: &'static Cx, mut e: Cenv, mut me
             }
             Cx::XProj(y, a) => {
                 x = y;
+                continue;
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                (x, e) = (body, r_locals(ns, e));
                 continue;
             }
             Cx::XExtract(p, i, a) => {

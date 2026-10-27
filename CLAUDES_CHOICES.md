@@ -7269,3 +7269,39 @@ calling out to it. A test, `kayak/datum/string-list.fx`, on every tier.
   killed at 556 s and 248 GB, where Fixpt runs it in 7.7 s and 0.6 GB:
   tier 1's heap grows without bound on it (a leak, or what is kept
   reachable). Filed (`TODO.md`).
+
+## C259. Register code stage 3: regions, bloblets, flat sums, modules (2026-10-27)
+
+The user's order (`TODO.md`, "Next, in order"), its second: register code
+stage 3. The 94 register words kayak declined, where its stack words are
+Fixpt's, listed by a new `cells-programs.py --ours --regs-declined`: modules
+the most, then bloblets and blobrefs, regions, flat sums. Each as Fixpt's
+register code makes it (`regcode-core.fx`, `regcode-helpers.fx`,
+`regcode-modules.fx`), in `fx26/regs-gen.kfx`:
+- **Regions**: `letregion` (`%region-enter` or `%reap-enter`, the region in
+  a slot, the body not in tail position, `%region-exit` of both); a closure
+  made in a region, an `rlambda`'s and a `letrec`'s, by `%region-closure`
+  of the region, the free values and the word. A leaf declines both.
+- **Bloblets and blobrefs**: each operation as Fixpt's `r-bloblet-op`,
+  mirroring the stack code's `c-bloblet` (`%blobref-field` is Fixpt's
+  `extract` through a blobref): `prim2imm` at a literal offset, the
+  suffix's room checked in line, `prim3imm` for a blobref's element, write
+  and variant (`%fx26-blobref-index`, as Fixpt's register code calls it).
+  `%blobref-field` never calls out, now said so to the analyses.
+- **A flat sum's `tagcase`**: the blobref and its tag, a label, kept
+  (where they are already if a variable), each arm compared and its name a
+  blobref to its variant; no arm a failure.
+- **Modules, `with`, reshaping**: a module's items in slots, a typed lambda
+  naming a later item capturing it once made (`r-give-waiting`); `with`
+  loading each value its body names; a reshape's values into slots, then a
+  product. A `with` calls only as its body does (`r-collects`).
+- **Listing**: a word constant shown as its cell is, `#word "NAME"`.
+
+Where kayak's stack words are Fixpt's, 830 register words are Fixpt's
+exactly (from 736), 9 differ (specialization, and C253's), none declined.
+- **One of Fixpt's choices matched, a question for its team**: a `case`'s
+  comparison (`symbol=?`), where the program binds a local `symbol=?`,
+  Fixpt's checker leaves as `(with #%fx symbol=?)`, which its `r-collects`
+  takes for a call (`run/standard-refs.fx`): a value kept across it goes in
+  the frame. Kayak's analysis now does the same (`r-inline-op?`), so the
+  words agree; filed in `TODO.md` to ask.
