@@ -1,0 +1,27 @@
+"regs-isa.kfx: the register machine's instructions (Fixpt's
+ `layout::regcode::OPS`, numbered as its `fx26:layout.fx`'s `rop-`
+ constants), shared by kayak's compiler to cells, which writes them, and
+ tier 1, which reads them (C248): each name by its number, how many
+ operand cells follow it, and the calls' conventions by number."
+
+(define rop-names (listof string acyclic)
+  (list "args" "const" "global" "setglbl" "reg" "setreg" "movereg" "lexical" "save" "pop" "stack" "setstk" "load" "store" "op1" "op2" "op2imm" "field" "setfield" "prim" "lambda" "invoke" "tailinvoke" "return" "branch" "branchf" "cellular" "invokeself" "global-guard" "brancht" "vargs" "prim1" "prim2" "prim2imm" "prim3imm"))
+(define rop-count i64 35)
+
+(define rop-operands (subr kfx (i64) i64)
+  (lambda (n)
+    "How many operand cells follow instruction `n`."
+    (cond ((or (i64= n 23) (i64= n 30)) 0)
+          ((or (i64= n 20) (i64= n 28) (i64= n 34)) 3)
+          ((or (i64= n 6) (i64= n 12) (i64= n 13) (i64= n 15) (i64= n 16) (i64= n 18) (i64= n 19)
+               (i64= n 21) (i64= n 22) (i64= n 26) (i64= n 32) (i64= n 33))
+           2)
+          (else 1))))
+
+"How many registers (REG1…REGn) the machine has: past them, a call's
+ arguments are a list in the last."
+(define regs-layout (load-module "fx26:layout.fx"))
+(define register-regs i64 (int->i64 (with regs-layout register-regs)))
+
+"An `invoke`'s convention, its second operand (Fixpt's `CONVS`)."
+(define rconv-names (listof string acyclic) (list "fx" "cellular" "native"))

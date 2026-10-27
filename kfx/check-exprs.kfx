@@ -5418,7 +5418,13 @@
             ;; And a procedure of the native convention, written (C226): Fixpt's
             ;; typed call is only of the cellular one (`c-call-in`). And of
             ;; `fx`, which may be either (C230).
-            (ty-data (d args) (if (or (string=? d "%composable") (string=? d "%native") (string=? d "%fx")) (note-fact s (cv-file v) (cv-pos v) "call-fx") s))
+            ;; A native one noted `call-native` too: register code calls it
+            ;; by the native convention, with no look (C248; Fixpt's `n-call`).
+            (ty-data (d args)
+              (if (or (string=? d "%composable") (string=? d "%native") (string=? d "%fx"))
+                  (let ((s (note-fact s (cv-file v) (cv-pos v) "call-fx")))
+                    (if (string=? d "%native") (note-fact s (cv-file v) (cv-pos v) "call-native") s))
+                  s))
             (else other s))))
 
       (lambda-given-result? (subr kfx (st ty tys sexps) bool)

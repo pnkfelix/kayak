@@ -10,10 +10,17 @@
 ../kfx/check-exprs.kfx
 ../kfx/built-in.kfx
 ../kfx/check-defs.kfx
+../kfx/regs-isa.kfx
 ir.kfx
 prims.kfx
 lower.kfx
 cg.kfx
+regs-asm.kfx
+regs-moves.kfx
+regs-know.kfx
+regs-gen.kfx
+regs-entry.kfx
+cg-top.kfx
 heap.kfx
 words.kfx
 table.kfx

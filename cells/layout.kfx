@@ -168,15 +168,6 @@
 (define ro-prim2 i64 (int->i64 (with lay rop-prim2)))
 (define ro-prim2imm i64 (int->i64 (with lay rop-prim2imm)))
 (define ro-prim3imm i64 (int->i64 (with lay rop-prim3imm)))
-(define register-regs i64 (int->i64 (with lay register-regs)))
-(define rop-names (listof string acyclic)
-  (list "args" "const" "global" "setglbl" "reg" "setreg" "movereg" "lexical" "save" "pop" "stack" "setstk" "load" "store" "op1" "op2" "op2imm" "field" "setfield" "prim" "lambda" "invoke" "tailinvoke" "return" "branch" "branchf" "cellular" "invokeself" "global-guard" "brancht" "vargs" "prim1" "prim2" "prim2imm" "prim3imm"))
-(define rop-count i64 35)
-(define rop-operands (subr kfx (i64) i64)
-  (lambda (n)
-    (cond ((i64= n ro-movereg) 2) ((i64= n ro-load) 2) ((i64= n ro-store) 2) ((i64= n ro-op2) 2) ((i64= n ro-op2imm) 2) ((i64= n ro-setfield) 2) ((i64= n ro-prim) 2) ((i64= n ro-lambda) 3) ((i64= n ro-invoke) 2) ((i64= n ro-tailinvoke) 2) ((i64= n ro-return) 0) ((i64= n ro-cellular) 2) ((i64= n ro-global-guard) 3) ((i64= n ro-vargs) 0) ((i64= n ro-prim2) 2) ((i64= n ro-prim2imm) 2) ((i64= n ro-prim3imm) 3)
-          (else 1))))
-
 "The routines' names, by number, as Fixpt's `ROUTINES` spells them: in
  listings, and in a trap's message."
 (define routine-names (listof string acyclic)

@@ -5,6 +5,7 @@
 --syscalls
 ../kfx/base.kfx
 ../kfx/read.kfx
+../kfx/regs-isa.kfx
 layout.kfx
 heap.kfx
 numbers.kfx

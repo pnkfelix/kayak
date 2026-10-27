@@ -1077,13 +1077,17 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                         if effs_within_p(es, effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
                             let sc = scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r));
                             let w = with_binds(no_reaching_itself(v, kayak_rt::heap_cons(name, kayak_rt::nil()), sc), kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
-                            with_facts(with_place_needs(with_facts(w, fs), name, sc, size(cv_facts(w)), src_file, src_pos), concat(map(lambda1s(move |m: Str| {
+                            with_facts(with_place_needs(with_facts(w, fs), name, sc, size(cv_facts(w)), src_file, src_pos), onto(if suspends_p(es) {
+                                the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, str_lit("suspends")), kayak_rt::nil()))
+                            } else {
+                                nil::<&'static Fact>()
+                            }, concat(map(lambda1s(move |m: Str| {
                                 if has_prefix_p(m, str_lit("%within ")) {
                                     the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
                                 } else {
                                     nil::<&'static Fact>()
                                 }
-                            }), place_marks(third(xs)))))
+                            }), place_marks(third(xs))))))
                         } else {
                             match refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared))))) {}
                         }

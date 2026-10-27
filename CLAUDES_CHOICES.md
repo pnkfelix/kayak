@@ -6978,3 +6978,48 @@ opt-in signal?".
 - **`docs/profiling.md`**: the four ways together (`--profile`, the perf
   map, the jitdump, `expr`).
 - Not run by `check.sh`: it needs `perf` and its permissions.
+
+## C248. Register code from kayak's own compiler, stage 1 (2026-10-27)
+
+The user: "Yes I've been waiting days (weeks?) for register code in
+Kayak"; and, while it was planned, "If you could try to make your own
+architecture more modular compared to Fixpt, it would probably yield big
+dividends". The plan and its stages: `docs/research/register-code.md`.
+- **Why**: tiers 5 and 6 run register code, which only Fixpt's listings
+  had, so a program kayak compiled stopped at tier 4.
+- **Fixpt's output the oracle, not its structure.** Fixpt's generator
+  (`regcode*.fx`, 5,100 lines) is one recursive group whose state is
+  globals set and restored around calls. Kayak's is six layers, each on
+  those before it: the instruction set (`kfx/regs-isa.kfx`, shared with
+  tier 1, whose own copy it replaces), an assembler that knows nothing of
+  FX-26, places and parallel moves, the analyses (standard operations,
+  constants, tests, whether an expression may collect), the expressions'
+  compiler, and a lambda's entry (leaf or framed, fast and plain
+  versions). The state is a record passed along (`rgen`, its `rctx`):
+  what is made, what the body assumes. Each feature not ported is one
+  `r-decline`.
+- **The stack compiler's side**: each lambda's word noted as a twin
+  (`cg-twins`: its parameters, body and scope, what it knows of itself,
+  the definition it is the value of, where the lambda is); the form loop
+  and the listing split into `fx26/cg-top.kfx`, after the layers, which
+  makes each form's twins after its words, as Fixpt's form loop does, and
+  counts each global's writes, which a guard expects (by name, as tier 1
+  keeps its globals).
+- **What the checker gives it**: a call of a native procedure noted
+  `call-native` beside `call-fx` (its `invoke`'s convention, 2); and a
+  `define*`'s body that may suspend noted `suspends` at the definition, as
+  a lambda's is at the lambda (where the fast version is unsound, Fixpt's
+  summary 3). A written `(with #%fx n)` marked apart from the parser's own
+  standard names (`#%fx!:`), as Fixpt keeps its `with`, which its
+  register code takes for no operation in line.
+- **Measured**: every program agrees on every `--regs` way
+  (`cells-programs --ours`, which ran them before on Fixpt's register code
+  only). Of the 292 programs whose stack words are Fixpt's, 523 register
+  words are Fixpt's exactly, 72 differ, 241 declined, none kayak's alone
+  (`cells-programs --ours` now says so; `--regs-differ` names them).
+  `tak`'s is Fixpt's, all 241 cells; tier 6 on kayak's `tak 30 21 12`,
+  0.07 s, as on Fixpt's. The differences: 68 inlining and constant globals
+  (not yet), 2 Fixpt's `the` kept as a node, 2 its specialization's
+  registry; each in the plan.
+- **One mistake, undone**: an exploratory command ran `git stash` in a
+  loop; the stash it made was popped at once, the work whole.

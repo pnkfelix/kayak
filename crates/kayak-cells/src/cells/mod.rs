@@ -4,6 +4,8 @@ pub mod base;
 pub use base::*;
 pub mod read;
 pub use read::*;
+pub mod regs_isa;
+pub use regs_isa::*;
 pub mod layout;
 pub use layout::*;
 pub mod heap;

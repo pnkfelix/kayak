@@ -1,0 +1,111 @@
+"regs-moves.kfx: register code's places and moves (C248), the third of
+ its layers (`docs/research/register-code.md`). Where a name's value is
+ to register code, and register moves made in an order that overwrites
+ nothing another move has yet to read (Fixpt's `r-par-moves`). Pure: a
+ move's items are returned, not emitted."
+
+"A constant that needs no allocation when it runs, as register code may
+ know one (Fixpt's `rconst`; its sums, products, symbols and lists not
+ yet)."
+(define-datatype rconst (rc-int int) (rc-bool bool) (rc-char char) (rc-nil))
+
+(define rconst-lit (subr kfx (rconst) lit)
+  (lambda (c) (tagcase c (rc-int (n) (l-int n)) (rc-bool (v) (l-bool v)) (rc-char (ch) (l-char ch)) (rc-nil () (l-nil)))))
+
+"Where a name's value is: a register, a frame slot, a free value of the
+ closure running, a global, the procedure itself (a loop), a `letrec`
+ sibling not made yet (in a frame slot), a constant; or no name's place:
+ a test an `if` around decided, its comparison and operands, and how."
+(define-datatype rloc
+  (rl-reg i64)
+  (rl-slot i64)
+  (rl-free i64)
+  (rl-global string)
+  (rl-loop)
+  (rl-pending i64)
+  (rl-const rconst)
+  (rl-test string (listof rloc acyclic) bool))
+(define-type rlocs (listof rloc acyclic))
+
+(define-datatype rbind (rbind string rloc))
+(define-type renv (listof rbind acyclic))
+
+(define r-bind (subr kfx (string rloc renv) renv) (lambda (n l env) (cons (rbind n l) env)))
+
+"Where local `n` is, in a list; none if it is no local."
+(define-rec
+  (r-local-loc (subr kfx (renv string) rlocs)
+    (lambda (env n)
+      (cond ((null? env) nil)
+            ((tagcase (car env) (rbind (m l) (string=? m n))) (tagcase (car env) (rbind (m l) (list l))))
+            (else (r-local-loc (cdr env) n))))))
+
+"The register a place is, or 0."
+(define r-reg-of (subr kfx (rlocs) i64)
+  (lambda (l) (if (null? l) 0 (tagcase (car l) (rl-reg (r) r) (else y 0)))))
+
+;;; ------------------------------------------------------------- moves
+
+"A register move: its source (0: RESULT) and its destination."
+(define-datatype rmove (rmove i64 i64))
+(define-type rmoves (listof rmove acyclic))
+(define move-from (subr kfx (rmove) i64) (lambda (m) (tagcase m (rmove (s d) s))))
+(define move-to (subr kfx (rmove) i64) (lambda (m) (tagcase m (rmove (s d) d))))
+
+(define move-item (subr kfx (rmove) ritem)
+  (lambda (m)
+    (tagcase m
+      (rmove (s d) (if (i64= s 0) (ri-op "setreg" (list (o-int d))) (ri-op "movereg" (list (o-int s) (o-int d))))))))
+
+(define-rec
+  (read-by-other? (subr kfx (rmoves i64 i64 i64) bool)
+    (lambda (ms d k i)
+      "Whether a move of `ms` but the `k`th reads register `d`."
+      (cond ((null? ms) #f)
+            ((and (not (i64= i k)) (i64= (move-from (car ms)) d)) #t)
+            (else (read-by-other? (cdr ms) d k (i64+ i 1))))))
+  (free-move (subr kfx (rmoves rmoves i64) i64)
+    (lambda (all ms k)
+      "The index of the first move (from the `k`th) whose destination no
+       other move reads; -1 if none."
+      (cond ((null? ms) -1)
+            ((read-by-other? all (move-to (car ms)) k 0) (free-move all (cdr ms) (i64+ k 1)))
+            (else k)))))
+
+(define-rec
+  (nth-move (subr kfx (rmoves i64) rmove)
+    (lambda (ms k) (if (i64= k 0) (car ms) (nth-move (cdr ms) (i64- k 1)))))
+  (drop-move (subr kfx (rmoves i64 i64) rmoves)
+    (lambda (ms k i) (cond ((null? ms) nil) ((i64= i k) (cdr ms)) (else (cons (car ms) (drop-move (cdr ms) k (i64+ i 1)))))))
+  (reread (subr kfx (rmoves i64) rmoves)
+    (lambda (ms d)
+      "`ms`, those reading register `d` reading RESULT instead."
+      (if (null? ms) nil
+          (cons (if (i64= (move-from (car ms)) d) (rmove 0 (move-to (car ms))) (car ms)) (reread (cdr ms) d))))))
+
+"Moves made so that none overwrites what another has yet to read: the
+ first whose destination no other reads, in order; else, the rest a
+ cycle, the first's destination kept in RESULT and read from there. The
+ items, in order, onto `acc` reversed."
+(define-rec
+  (par-move-items (subr kfx (rmoves ritems) ritems)
+    (lambda (ms acc)
+      (if (null? ms)
+          (reverse acc)
+          (let ((k (free-move ms ms 0)))
+            (if (i64>= k 0)
+                (par-move-items (drop-move ms k 0) (cons (move-item (nth-move ms k)) acc))
+                (let ((d (move-to (car ms))))
+                  (par-move-items (reread ms d) (cons (ri-op "reg" (list (o-int d))) acc)))))))))
+
+"Whether moves form a cycle: some left when every move whose destination
+ no other reads is taken away."
+(define-rec
+  (moves-cycle? (subr kfx (rmoves) bool)
+    (lambda (ms)
+      (and (not (null? ms))
+           (let ((k (free-move ms ms 0))) (or (i64< k 0) (moves-cycle? (drop-move ms k 0))))))))
+
+(define-rec
+  (moves-snoc (subr kfx (rmoves i64 i64) rmoves)
+    (lambda (ms s d) (if (null? ms) (list (rmove s d)) (cons (car ms) (moves-snoc (cdr ms) s d))))))

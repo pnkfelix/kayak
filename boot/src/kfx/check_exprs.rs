@@ -12006,7 +12006,12 @@ pub mod expressions {
         match *tagcase_ {
             Ty::TyData(d, args) => {
                 if (string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
-                    note_fact(s, cv_file(v), cv_pos(v), str_lit("call-fx"))
+                    let s = note_fact(s, cv_file(v), cv_pos(v), str_lit("call-fx"));
+                    if string_eq_p(d, str_lit("%native")) {
+                        note_fact(s, cv_file(v), cv_pos(v), str_lit("call-native"))
+                    } else {
+                        s
+                    }
                 } else {
                     s
                 }

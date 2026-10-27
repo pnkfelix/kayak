@@ -19,7 +19,9 @@ use super::*;
 // region an arena or a reap entered and left (C145); a prompt the routine
 // that runs its body, a procedure of nothing, under its tag (C146). Not
 // yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
-// lifting, register code (the words' twins). Bloblets and floats: C152.
+// lifting. Bloblets and floats: C152. Register code, each lambda's word's
+// twin, the `regs-*.kfx` files' (C248), from the twins noted here
+// (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@d28cc6d
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
@@ -1675,6 +1677,74 @@ pub fn lambda_of(x: &'static Cx) -> List<&'static Lparts> {
     }
 }
 
+// Where a lambda is (an `rlambda`'s, its lambda), -1 if `x` is none.
+pub fn lambda_at(x: &'static Cx) -> i64 {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Cx::XLambda(ps, body, a) => {
+            a
+        }
+        Cx::XRlambda(r, l, a) => {
+            let tagcase_ = l;
+            match *tagcase_ {
+                Cx::XLambda(ps, body, b) => {
+                    b
+                }
+                _ => {
+                    let y = tagcase_;
+                    -1i64
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            -1i64
+        }
+    }
+}
+
+// Each typed top-level definition's lambda's position, and the
+// definition's, where the checker notes what it found of the lambda (C248).
+pub enum Dpos {
+    Dpos(i64, i64),
+}
+
+pub fn dpos(f0: i64, f1: i64) -> &'static Dpos {
+    kayak_rt::heap_alloc(Dpos::Dpos(f0, f1))
+}
+
+pub fn cg_define_at() -> Ref<List<&'static Dpos>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Dpos>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Dpos>())
+    })
+}
+
+pub fn define_at(mut ds: List<&'static Dpos>, mut a: i64) -> i64 {
+    loop {
+        if null_p(ds) {
+            return -1i64;
+        } else if {
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Dpos::Dpos(l, d) => {
+                    i64_eq(l, a)
+                }
+            }
+        } {
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Dpos::Dpos(l, d) => {
+                    return d;
+                }
+            }
+        } else {
+            ds = cdr(ds);
+            continue;
+        }
+    }
+}
+
 pub fn c_adjoin(xs: Strings, n: Str) -> Strings {
     if string_member_p(n, xs) {
         xs
@@ -1732,12 +1802,25 @@ pub fn std_var(n: Str, a: i64) -> &'static Cx {
     x_var(string_append(str_lit("#%fx:"), n), a)
 }
 
+// Written so, `(with #%fx n)` is marked apart (`#%fx!:`), as Fixpt keeps
+// its `with`, which its register code takes for no operation done in line
+// (C248).
+pub fn std_written_var(n: Str, a: i64) -> &'static Cx {
+    x_var(string_append(str_lit("#%fx!:"), n), a)
+}
+
+pub fn std_written_p(n: Str) -> bool {
+    has_prefix_p(n, str_lit("#%fx!:"))
+}
+
 pub fn std_marked_p(n: Str) -> bool {
-    has_prefix_p(n, str_lit("#%fx:"))
+    (has_prefix_p(n, str_lit("#%fx:")) || std_written_p(n))
 }
 
 pub fn std_named(n: Str) -> Str {
-    if std_marked_p(n) {
+    if std_written_p(n) {
+        after_prefix(n, str_lit("#%fx!:"))
+    } else if std_marked_p(n) {
         after_prefix(n, str_lit("#%fx:"))
     } else {
         n
@@ -1927,6 +2010,15 @@ pub fn cg_module_facts() -> Ref<Facts> {
 // `call-fx`): made a call that looks at its callee's kind, not a typed one,
 // as Fixpt's `c-call-in` makes it.
 pub fn cg_fx_calls() -> Ref<List<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<i64>())
+    })
+}
+
+// Of those, the calls of a procedure of the native convention, which
+// register code calls with no look (C248).
+pub fn cg_native_calls() -> Ref<List<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<i64>())
@@ -3146,7 +3238,7 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
             }
         }
     }) {
-        std_var(sym_name(third(xs)), a)
+        std_written_var(sym_name(third(xs)), a)
     } else if string_eq_p(h, str_lit("with")) {
         parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a)
     } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
@@ -3188,6 +3280,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
     } else {
         if fact_noted_p(get(cg_facts()), f, a, str_lit("call-fx")) {
             set(cg_fx_calls(), kayak_rt::heap_cons(a, get(cg_fx_calls())))
+        } else {
+            ()
+        };
+        if fact_noted_p(get(cg_facts()), f, a, str_lit("call-native")) {
+            set(cg_native_calls(), kayak_rt::heap_cons(a, get(cg_native_calls())))
         } else {
             ()
         };
@@ -4256,6 +4353,11 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
             set(cg_made(), kayak_rt::heap_cons(cmade(n, x), get(cg_made())));
             nil::<&'static Ctop>()
         } else {
+            if (typed && i64_gt_eq(lambda_at(x), 0i64)) {
+                set(cg_define_at(), kayak_rt::heap_cons(dpos(lambda_at(x), datum_pos(e)), get(cg_define_at())))
+            } else {
+                ()
+            };
             kayak_rt::heap_cons(t_define(n, typed, x), kayak_rt::nil())
         }
     } else if string_eq_p(h, str_lit("define-rec")) {
@@ -5384,6 +5486,42 @@ pub fn c_take(r: Ref<Strings>) -> Strings {
     v
 }
 
+// Register code's twins (C248): each lambda's word, noted as the stack
+// compiler makes it, for its register code (`regs-entry.kfx`) once its
+// form's words are made, as Fixpt's `c-twins`: the word, its parameters,
+// body and scope, what it knows of itself, the top-level definition it is
+// the value of ("" if none), and where the lambda is (-1 if not known),
+// where the checker's facts of it are. `cg-defining` and `cg-lambda-at` are
+// the next lambda's, taken by it.
+pub enum Twin {
+    Twin(Str, Strings, &'static Cx, Cenv, List<&'static This>, Str, i64),
+}
+
+pub fn twin(f0: Str, f1: Strings, f2: &'static Cx, f3: Cenv, f4: List<&'static This>, f5: Str, f6: i64) -> &'static Twin {
+    kayak_rt::heap_alloc(Twin::Twin(f0, f1, f2, f3, f4, f5, f6))
+}
+
+pub fn cg_twins() -> Ref<List<&'static Twin>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Twin>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Twin>())
+    })
+}
+
+pub fn cg_defining() -> Ref<Strings> {
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Str>())
+    })
+}
+
+pub fn cg_lambda_at() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
 // A lambda's word's name, but for where its body starts: `named`'s, if it
 // has one (a global's); else for the definition it is in, and the name it
 // is bound to there (`own`, a `letrec`'s, or `bound`, a `let`'s), or
@@ -6293,6 +6431,7 @@ pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () 
             c_done(c, tail)
         }
         Cx::XLambda(ps, body, a) => {
+            set(cg_lambda_at(), a);
             c_lambda(ps, body, e, depth, c, nil::<Str>(), nil::<&'static Cx>());
             c_done(c, tail)
         }
@@ -6300,6 +6439,7 @@ pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () 
             let tagcase_ = l;
             match *tagcase_ {
                 Cx::XLambda(ps, body, b) => {
+                    set(cg_lambda_at(), b);
                     c_lambda(ps, body, e, depth, c, nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()));
                     c_done(c, tail)
                 }
@@ -6535,6 +6675,7 @@ pub fn c_module_make(mut its: List<&'static Cmem>, mut e: Cenv, mut d: i64, mut 
                         let tagcase_ = car(lambda_of(x));
                         match *tagcase_ {
                             Lparts::Lparts(qs, body, region) => {
+                                set(cg_lambda_at(), lambda_at(x));
                                 c_lambda(qs, body, c_module_own(n, e, later, body, size(qs)), d, c, kayak_rt::heap_cons(n, kayak_rt::nil()), region)
                             }
                         }
@@ -6627,7 +6768,10 @@ pub fn c_letrec_make(all: Cbinds, bs: Cbinds, e: Cenv, depth: i64, i: i64, c: Co
                     let tagcase_ = car(lambda_of(x));
                     match *tagcase_ {
                         Lparts::Lparts(ps, body, region) => {
-                            let made = c_lambda(ps, body, c_letrec_own(all, e, depth, 0i64, i, body, size(ps)), i64_plus(depth, i), c, kayak_rt::heap_cons(name, kayak_rt::nil()), region);
+                            let made = {
+                                set(cg_lambda_at(), lambda_at(x));
+                                c_lambda(ps, body, c_letrec_own(all, e, depth, 0i64, i, body, size(ps)), i64_plus(depth, i), c, kayak_rt::heap_cons(name, kayak_rt::nil()), region)
+                            };
                             let rest = c_letrec_make(all, cdr(bs), e, depth, i64_plus(i, 1i64), c);
                             kayak_rt::heap_cons(made, rest)
                         }
@@ -6661,6 +6805,12 @@ pub fn c_lambda(ps: Strings, body: &'static Cx, e: Cenv, depth: i64, c: Code, ow
 
 pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> &'static Cclosing {
     let named = c_take(c_word_name());
+    let defining = c_take(cg_defining());
+    let at = {
+        let p = get(cg_lambda_at());
+        set(cg_lambda_at(), -1i64);
+        p
+    };
     let bound = c_take(c_bind_name());
     let fv = c_captured(c_free(body, ps, nil::<Str>()), e);
     let own = c_own_of(ps, own0);
@@ -6683,6 +6833,11 @@ pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> 
     c_exp(body, inner, n, body_code, true);
     c_this_enter_x(outer, outer_start);
     let w = c_assemble(body_code, c_word_symbol(base, named, body));
+    set(cg_twins(), kayak_rt::heap_cons(twin(w, ps, body, inner, me, if null_p(defining) {
+        str_lit("")
+    } else {
+        car(defining)
+    }, at), get(cg_twins())));
     set(c_scope_name(), outer_scope);
     cclosing(w, fv)
 }
@@ -6871,26 +7026,6 @@ pub fn c_rec_globals_x(mut bs: Cbinds) -> () {
     }
 }
 
-// Each of a `define-rec`'s values made, and its global set.
-pub fn c_rec_fill_x(mut bs: Cbinds, mut c: Code) -> () {
-    loop {
-        if null_p(bs) {
-            return ();
-        } else {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Cbind::Cbind(n, x) => {
-                    c_name_for_x(n, x);
-                    c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
-                    c_op1(c, str_lit("global!"), o_global(n));
-                    bs = cdr(bs);
-                    continue;
-                }
-            }
-        }
-    }
-}
-
 pub fn parse_tops(fs: Sexps) -> List<&'static Ctop> {
     if null_p(fs) {
         nil::<&'static Ctop>()
@@ -6898,493 +7033,5 @@ pub fn parse_tops(fs: Sexps) -> List<&'static Ctop> {
         let t = parse_top(car(fs));
         onto(t, parse_tops(cdr(fs)))
     }
-}
-
-// Each form in turn; the last expression's value is left on the stack.
-pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> bool {
-    loop {
-        if null_p(ts) {
-            return has_value;
-        } else {
-            let tagcase_ = car(ts);
-            match *tagcase_ {
-                Ctop::TDefine(n, typed, x) => {
-                    if has_value {
-                        c_op(c, str_lit("drop"))
-                    } else {
-                        ()
-                    };
-                    {
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Cx::XLambda(ps, body, a) => {
-                                if typed {
-                                    c_push_global_x(n);
-                                    set(c_word_name(), kayak_rt::heap_cons(n, kayak_rt::nil()));
-                                    c_lambda(ps, body, nil::<&'static Centry>(), 0i64, c, nil::<Str>(), nil::<&'static Cx>());
-                                    c_op1(c, str_lit("global!"), o_global(n))
-                                } else {
-                                    c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
-                                    c_push_global_x(n);
-                                    c_op1(c, str_lit("global!"), o_global(n))
-                                }
-                            }
-                            _ => {
-                                let y = tagcase_;
-                                c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
-                                c_push_global_x(n);
-                                c_op1(c, str_lit("global!"), o_global(n))
-                            }
-                        }
-                    };
-                    (ts, has_value) = (cdr(ts), false);
-                    continue;
-                }
-                Ctop::TDefineRec(bs) => {
-                    if has_value {
-                        c_op(c, str_lit("drop"))
-                    } else {
-                        ()
-                    };
-                    c_rec_globals_x(bs);
-                    c_rec_fill_x(bs, c);
-                    (ts, has_value) = (cdr(ts), false);
-                    continue;
-                }
-                Ctop::TExp(x) => {
-                    if has_value {
-                        c_op(c, str_lit("drop"))
-                    } else {
-                        ()
-                    };
-                    c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
-                    (ts, has_value) = (cdr(ts), true);
-                    continue;
-                }
-                Ctop::TNone() => {
-                    ts = cdr(ts);
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-// A program's one word, which runs it and leaves the value of its last
-// expression (unit, if it has none), and the words it makes.
-pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
-    let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
-    set(cg_facts(), fs);
-    set(cg_source(), if null_p(forms) {
-        str_lit("")
-    } else {
-        datum_file(car(forms))
-    });
-    set(cg_qnodes(), nil::<&'static Qnode>());
-    set(cg_convert_facts(), filter(lambda1s(move |x: &'static Fact| {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit("convert ")) || has_prefix_p(what, str_lit("convention ")))
-            }
-        }
-    }), fs));
-    set(cg_fx_calls(), nil::<i64>());
-    set(cg_module_facts(), filter(lambda1s(move |x: &'static Fact| {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")) || has_prefix_p(what, str_lit("module-had ")) || has_prefix_p(what, str_lit("module-made ")) || string_eq_p(what, str_lit("module-value")) || string_eq_p(what, str_lit("with-value")))
-            }
-        }
-    }), fs));
-    set(cg_layouts(), nil::<&'static Clayout>());
-    set(cg_included(), nil::<&'static Clayout>());
-    set(cg_made(), nil::<&'static Cmade>());
-    set(cg_words(), nil::<&'static Word>());
-    set(cg_globals(), nil::<Str>());
-    set(cg_standard_words(), nil::<Str>());
-    set(c_this_params(), -1i64);
-    if c_tops(parse_tops(forms), c, false) {
-        ()
-    } else {
-        c_lit(c, l_unit())
-    };
-    c_op(c, str_lit("exit"));
-    c_assemble(c, str_lit("program"));
-    ()
-}
-
-pub fn cells_of(mut xs: Citems, mut n: i64) -> i64 {
-    loop {
-        if null_p(xs) {
-            return n;
-        } else {
-            (xs, n) = (cdr(xs), i64_plus(n, item_size(car(xs))));
-            continue;
-        }
-    }
-}
-
-pub fn word_named(mut ws: List<&'static Word>, mut n: Str) -> List<&'static Word> {
-    loop {
-        if null_p(ws) {
-            return nil::<&'static Word>();
-        } else if {
-            let tagcase_ = car(ws);
-            match *tagcase_ {
-                Word::Word(m, xs) => {
-                    string_eq_p(m, n)
-                }
-            }
-        } {
-            return kayak_rt::heap_cons(car(ws), kayak_rt::nil());
-        } else {
-            ws = cdr(ws);
-            continue;
-        }
-    }
-}
-
-// A word's line table (C245): `; at FILE CELL:POS …`, each where an
-// expression's code begins and its source position, the source the
-// program's file (`cg-source`; a word from a module file of its own not
-// told apart yet); at column 0, a comment to what compares listings with
-// Fixpt's; none if none.
-pub enum Tentry {
-    Tentry(i64, i64),
-}
-
-pub fn tentry(f0: i64, f1: i64) -> &'static Tentry {
-    kayak_rt::heap_alloc(Tentry::Tentry(f0, f1))
-}
-
-/// The entries, newest first: one where the position changes, the
-/// last of those at one cell.
-pub fn table_entries(mut xs: Citems, mut at: i64, mut acc: List<&'static Tentry>) -> List<&'static Tentry> {
-    loop {
-        if null_p(xs) {
-            return acc;
-        } else {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Item::ItPos(p) => {
-                    let acc = if (not(null_p(acc)) && {
-                        let tagcase_ = car(acc);
-                        match *tagcase_ {
-                            Tentry::Tentry(a, q) => {
-                                i64_eq(a, at)
-                            }
-                        }
-                    }) {
-                        cdr(acc)
-                    } else {
-                        acc
-                    };
-                    if (not(null_p(acc)) && {
-                        let tagcase_ = car(acc);
-                        match *tagcase_ {
-                            Tentry::Tentry(a, q) => {
-                                i64_eq(q, p)
-                            }
-                        }
-                    }) {
-                        return table_entries(cdr(xs), at, acc);
-                    } else {
-                        return table_entries(cdr(xs), at, kayak_rt::heap_cons(tentry(at, p), acc));
-                    }
-                }
-                _ => {
-                    let y = tagcase_;
-                    (xs, at) = (cdr(xs), i64_plus(at, item_size(car(xs))));
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-pub fn entries_shown(mut es: List<&'static Tentry>, mut out: Strings) -> Strings {
-    loop {
-        if null_p(es) {
-            return out;
-        } else {
-            (es, out) = (cdr(es), kayak_rt::heap_cons({
-                let tagcase_ = car(es);
-                match *tagcase_ {
-                    Tentry::Tentry(a, p) => {
-                        string_append(i64_to_string(a), string_append(str_lit(":"), i64_to_string(p)))
-                    }
-                }
-            }, out));
-            continue;
-        }
-    }
-}
-
-pub fn spaced(ss: Strings) -> Str {
-    if null_p(ss) {
-        str_lit("")
-    } else if null_p(cdr(ss)) {
-        car(ss)
-    } else {
-        string_append(car(ss), string_append(str_lit(" "), spaced(cdr(ss))))
-    }
-}
-
-pub fn line_table(xs: Citems) -> Str {
-    let es = entries_shown(table_entries(xs, 0i64, nil::<&'static Tentry>()), nil::<Str>());
-    if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
-        str_lit("")
-    } else {
-        string_append(str_lit("; at "), string_append(get(cg_source()), string_append(str_lit(" "), string_append(spaced(es), str_lit("\n")))))
-    }
-}
-
-// The listing: from `program`, each word reached, as `disasm.rs` walks
-// them: the words a word names pushed in order, the last pushed next.
-pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
-    loop {
-        if null_p(todo) {
-            return out;
-        } else if string_member_p(car(todo), seen) {
-            todo = cdr(todo);
-            continue;
-        } else {
-            let w = word_named(get(cg_words()), car(todo));
-            if null_p(w) {
-                (todo, seen) = (cdr(todo), kayak_rt::heap_cons(car(todo), seen));
-                continue;
-            } else {
-                let tagcase_ = car(w);
-                match *tagcase_ {
-                    Word::Word(name, xs) => {
-                        let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
-                        match *tagcase_ {
-                            Wsaid::Wsaid(text, named) => {
-                                (todo, seen, out) = (onto(reverse(named), cdr(todo)), kayak_rt::heap_cons(name, seen), string_append(out, string_append(str_lit("\nword "), string_append(shown_name(name), string_append(str_lit(" ("), string_append(i64_to_string(cells_of(xs, 0i64)), string_append(str_lit(" cells, cellular):\n"), string_append(text, line_table(xs)))))))));
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// The listing's quoted nodes written (`quoted-interned`): Fixpt's
-// `literal.rs`, an object reached more than once labelled `#N=` where it
-// is first written and named `#N#` after, numbered as written, across the
-// listing. First each node's reaches counted, in the order written, its
-// parts only at its first; then the marks replaced.
-pub enum Qseen {
-    Qseen(i64, i64),
-}
-
-pub fn qseen(f0: i64, f1: i64) -> &'static Qseen {
-    kayak_rt::heap_alloc(Qseen::Qseen(f0, f1))
-}
-
-pub fn cg_qreached() -> Ref<List<&'static Qseen>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Qseen>())
-    })
-}
-
-pub fn cg_qlabels() -> Ref<List<&'static Qseen>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Qseen>())
-    })
-}
-
-pub fn cg_qnext() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
-    })
-}
-
-pub fn qseen_of(mut ss: List<&'static Qseen>, mut n: i64) -> i64 {
-    loop {
-        if null_p(ss) {
-            return 0i64;
-        } else {
-            let tagcase_ = car(ss);
-            match *tagcase_ {
-                Qseen::Qseen(k, v) => {
-                    if i64_eq(k, n) {
-                        return v;
-                    } else {
-                        ss = cdr(ss);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn qnode_parts(mut ns: List<&'static Qnode>, mut n: i64) -> List<&'static Lit> {
-    loop {
-        if null_p(ns) {
-            return nil::<&'static Lit>();
-        } else {
-            let tagcase_ = car(ns);
-            match *tagcase_ {
-                Qnode::Qnode(k, a, d) => {
-                    if i64_eq(k, n) {
-                        return kayak_rt::heap_cons(a, kayak_rt::heap_cons(d, kayak_rt::nil()));
-                    } else {
-                        ns = cdr(ns);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn q_reached_x(mut l: &'static Lit) -> () {
-    loop {
-        let tagcase_ = l;
-        match *tagcase_ {
-            Lit::LQuoted(n) => {
-                let c = qseen_of(get(cg_qreached()), n);
-                set(cg_qreached(), kayak_rt::heap_cons(qseen(n, i64_plus(c, 1i64)), get(cg_qreached())));
-                if i64_eq(c, 0i64) {
-                    let ps = qnode_parts(get(cg_qnodes()), n);
-                    q_reached_x(car(ps));
-                    l = car(cdr(ps));
-                    continue;
-                } else {
-                    return ();
-                }
-            }
-            _ => {
-                let y = tagcase_;
-                return ();
-            }
-        }
-    }
-}
-
-pub fn q_written_x(l: &'static Lit) -> Str {
-    let tagcase_ = l;
-    match *tagcase_ {
-        Lit::LQuoted(n) => {
-            let (ps, k) = (qnode_parts(get(cg_qnodes()), n), qseen_of(get(cg_qlabels()), n));
-            if i64_gt(k, 0i64) {
-                string_append(str_lit("#"), string_append(i64_to_string(i64_minus(k, 1i64)), str_lit("#")))
-            } else if i64_gt(qseen_of(get(cg_qreached()), n), 1i64) {
-                let m = get(cg_qnext());
-                set(cg_qnext(), i64_plus(m, 1i64));
-                set(cg_qlabels(), kayak_rt::heap_cons(qseen(n, i64_plus(m, 1i64)), get(cg_qlabels())));
-                string_append(str_lit("#"), string_append(i64_to_string(m), string_append(str_lit("="), q_pair_text(ps))))
-            } else {
-                q_pair_text(ps)
-            }
-        }
-        _ => {
-            let y = tagcase_;
-            lit_text(l)
-        }
-    }
-}
-
-pub fn q_pair_text(ps: List<&'static Lit>) -> Str {
-    string_append(str_lit("("), string_append(q_written_x(car(ps)), string_append(str_lit(" . "), string_append(q_written_x(car(cdr(ps))), str_lit(")")))))
-}
-
-/// The marks' numbers in `cs`, in order.
-pub fn q_marks(mut cs: Chars, mut acc: List<i64>) -> List<i64> {
-    loop {
-        if null_p(cs) {
-            return reverse(acc);
-        } else if char_eq_p(car(cs), i64_to_char(1i64)) {
-            return q_mark_number(cdr(cs), 0i64, acc);
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn q_mark_number(mut cs: Chars, mut n: i64, mut acc: List<i64>) -> List<i64> {
-    loop {
-        if char_eq_p(car(cs), i64_to_char(2i64)) {
-            return q_marks(cdr(cs), kayak_rt::heap_cons(n, acc));
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn strings_joined(mut ss: Strings, mut acc: Str) -> Str {
-    loop {
-        if null_p(ss) {
-            return acc;
-        } else {
-            (ss, acc) = (cdr(ss), string_append(acc, car(ss)));
-            continue;
-        }
-    }
-}
-
-pub fn q_all_reached_x(mut ns: List<i64>) -> () {
-    loop {
-        if null_p(ns) {
-            return ();
-        } else {
-            q_reached_x(l_quoted(car(ns)));
-            ns = cdr(ns);
-            continue;
-        }
-    }
-}
-
-/// `cs` with each mark written, `run` the plain characters not yet put.
-pub fn q_replaced(mut cs: Chars, mut run: Chars, mut acc: Strings) -> Str {
-    loop {
-        if null_p(cs) {
-            return strings_joined(reverse(kayak_rt::heap_cons(list_to_string(reverse(run)), acc)), str_lit(""));
-        } else if char_eq_p(car(cs), i64_to_char(1i64)) {
-            return q_replaced_mark(cdr(cs), 0i64, kayak_rt::heap_cons(list_to_string(reverse(run)), acc));
-        } else {
-            (cs, run) = (cdr(cs), kayak_rt::heap_cons(car(cs), run));
-            continue;
-        }
-    }
-}
-
-pub fn q_replaced_mark(mut cs: Chars, mut n: i64, mut acc: Strings) -> Str {
-    loop {
-        if char_eq_p(car(cs), i64_to_char(2i64)) {
-            return q_replaced(cdr(cs), nil::<char>(), kayak_rt::heap_cons(q_written_x(l_quoted(n)), acc));
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn labelled_listing(text: Str) -> Str {
-    if null_p(get(cg_qnodes())) {
-        text
-    } else {
-        let cs = string_chars(text);
-        set(cg_qreached(), nil::<&'static Qseen>());
-        set(cg_qlabels(), nil::<&'static Qseen>());
-        set(cg_qnext(), 0i64);
-        q_all_reached_x(q_marks(cs, nil::<i64>()));
-        q_replaced(cs, nil::<char>(), nil::<Str>())
-    }
-}
-
-pub fn cells_listing() -> Str {
-    labelled_listing(listing_from(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), str_lit("")))
 }
 

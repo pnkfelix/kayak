@@ -145,6 +145,39 @@ def stack_words(listing):
     return {n: sorted(ws) for n, ws in words.items()}
 
 
+# Of each program's register words, with --ours, how many are Fixpt's
+# exactly, differ, are Fixpt's only (kayak's compiler declined) or kayak's
+# only (C248); and the differing words' names.
+REGS = {}
+
+
+def reg_words(listing):
+    """A listing's words' register code, by name: each its lines, the words
+    of one name sorted; a word with none left out."""
+    words, name, lines, inside = {}, None, None, False
+    for l in listing.splitlines():
+        if l.startswith("word "):
+            if name is not None and lines is not None:
+                words.setdefault(name, []).append(lines)
+            name, lines, inside = l.split(" (", 1)[0][5:], None, False
+        elif l.startswith("  its register code"):
+            lines, inside = [l.split(", ", 1)[0]], True
+        elif l.startswith(";") or not l.strip() or l.startswith("  its "):
+            inside = False if l.startswith("  its ") else inside
+        elif inside:
+            lines.append(l)
+    if name is not None and lines is not None:
+        words.setdefault(name, []).append(lines)
+    return {n: sorted(ws) for n, ws in words.items()}
+
+
+def compare_regs(ours, theirs):
+    a, b = reg_words(ours), reg_words(theirs)
+    same = [n for n in a if n in b and a[n] == b[n]]
+    differ = [n for n in a if n in b and a[n] != b[n]]
+    return (len(same), differ, len([n for n in b if n not in a]), len([n for n in a if n not in b]))
+
+
 def one(binary, cells, name, path):
     limit = ["--step-limit", "none"] if name.startswith(UNLIMITED) else []
     ev = fixptcache.run(binary, MACHINE + limit + ["eval", path], [path])
@@ -177,6 +210,7 @@ def one(binary, cells, name, path):
             return "gen-refuses", (said or made.stderr.strip().splitlines()[-1:] or ["?"])[0]
         text = made.stdout
         SAME[name] = stack_words(text) == stack_words(theirs)
+        REGS[name] = compare_regs(text, theirs)
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
         f.write(text)
         listing = f.name
@@ -354,6 +388,16 @@ def main():
                 print("%s %s" % ("same " if SAME.get(n) else "other", n))
         print("cells-programs: kayak's own words: %d programs agree, %d differ, %d of them Fixpt's words exactly; "
               "%d the generator cannot yet" % (len(agree), len(wrong), len(same), len(by.get("gen-refuses", []))))
+        # Where the stack words are Fixpt's exactly, the register words are
+        # named alike: there, each is compared.
+        rs = [r for n, r in REGS.items() if SAME.get(n)]
+        print("cells-programs: kayak's register words, where its stack words are Fixpt's: %d Fixpt's exactly, %d differ, "
+              "%d Fixpt's only (declined), %d kayak's only"
+              % (sum(r[0] for r in rs), sum(len(r[1]) for r in rs), sum(r[2] for r in rs), sum(r[3] for r in rs)))
+        if "--regs-differ" in sys.argv[1:]:
+            for n, r in sorted(REGS.items()):
+                if r[1] and SAME.get(n):
+                    print("REGS DIFFER  %s: %s" % (n, " ".join(r[1])))
     print("cells-programs: %d of Fixpt's programs agree on tier 1, %d differ; not run: %d listings not exact, %d need what tier 1 has not yet, %d leave no value, %d Fixpt refuses"
           % (len(agree), len(wrong), len(by.get("refused", [])), len(by.get("not-yet", [])), len(by.get("no-value", [])), len(by.get("fixpt-refuses", []))))
     if wrong or (lost and not bless):

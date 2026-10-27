@@ -1,0 +1,88 @@
+"regs-asm.kfx: register code assembled (C248), the second of its layers
+ (`docs/research/register-code.md`): items, as the generator emits them,
+ made the listing's lines, as Fixpt's `disasm.rs` writes register code.
+ It knows nothing of FX-26: an instruction is its name and its operands
+ (`opnd`, as stack code's), a label a number, a branch or guard a label
+ it goes to, and `save`'s and `pop`'s operand the frame's size, known
+ once the body is done."
+
+(define-datatype ritem
+  (ri-op string (listof opnd acyclic))
+  (ri-frame string)
+  (ri-label i64)
+  ;; `branch`, `branchf` or `brancht`, to a label.
+  (ri-branch string i64)
+  ;; `global-guard G written N`, to a label where it fails.
+  (ri-guard string i64 i64))
+(define-type ritems (listof ritem acyclic))
+
+(define-rec
+  (rop-index (subr kfx ((listof string acyclic) string i64) i64)
+    (lambda (xs n i) (cond ((null? xs) -1) ((string=? (car xs) n) i) (else (rop-index (cdr xs) n (i64+ i 1)))))))
+
+(define ritem-size (subr kfx (ritem) i64)
+  (lambda (x)
+    (tagcase x
+      (ri-op (name os) (i64+ 1 (rop-operands (rop-index rop-names name 0))))
+      (ri-frame (name) 2)
+      (ri-label (n) 0)
+      (ri-branch (name n) 2)
+      (ri-guard (g w n) 4))))
+
+(define-rec
+  (ritems-size (subr kfx (ritems i64) i64)
+    (lambda (xs n) (if (null? xs) n (ritems-size (cdr xs) (i64+ n (ritem-size (car xs))))))))
+
+(define-rec
+  (rplaces-of (subr kfx (ritems i64 (listof place acyclic)) (listof place acyclic))
+    (lambda (xs at acc)
+      (if (null? xs)
+          acc
+          (rplaces-of (cdr xs) (i64+ at (ritem-size (car xs)))
+                      (tagcase (car xs) (ri-label (n) (cons (place n at) acc)) (else y acc)))))))
+
+(define-rec
+  (rpadded (subr kfx (string i64) string)
+    (lambda (s n) (if (i64>= (string-length-i64 s) n) s (rpadded (string-append " " s) n)))))
+(define rline (subr kfx (i64 string) string)
+  (lambda (at text) (string-append "  " (string-append (rpadded (i64->string at) 6) (string-append ": " text)))))
+
+(define rop-text (subr kfx (string (listof opnd acyclic)) string)
+  (lambda (name os)
+    (if (string=? name "lambda")
+        (string-append "lambda " (string-append (opnd-text (car os)) (string-append " over " (opnd-text (second-opnd os)))))
+        (if (null? os) name (string-append name (string-append " " (put-sep-words (map opnd-text os))))))))
+
+"A word's register code's lines, and the words they name, in order;
+ `frame` the frame's size."
+(define-rec
+  (rlines-of (subr kfx (ritems i64 (listof place acyclic) i64 strings strings) wsaid)
+    (lambda (xs at ps frame out named)
+      (if (null? xs)
+          (wsaid (put-sep-lines (reverse out)) (reverse named))
+          (let* ((x (car xs)) (next (i64+ at (ritem-size x))))
+            (tagcase x
+              (ri-label (n) (rlines-of (cdr xs) next ps frame out named))
+              (ri-frame (name) (rlines-of (cdr xs) next ps frame (cons (rline at (string-append name (string-append " " (i64->string frame)))) out) named))
+              (ri-branch (name n)
+                (rlines-of (cdr xs) next ps frame (cons (rline at (string-append name (string-append " → " (i64->string (place-at ps n))))) out) named))
+              (ri-guard (g w n)
+                (rlines-of (cdr xs) next ps frame
+                           (cons (rline at (string-append "global-guard " (string-append g (string-append " written " (string-append (i64->string w) (string-append " else → " (i64->string (place-at ps n))))))))
+                                 out)
+                           named))
+              (ri-op (name os) (rlines-of (cdr xs) next ps frame (cons (rline at (rop-text name os)) out) (onto (reverse (words-said os)) named)))))))))
+
+"Register code made: its items in order, its frame's size."
+(define-datatype rcode (rcode ritems i64))
+
+"Its lines as the listing writes them, after its word's cells, and the
+ words it names."
+(define rcode-said (subr kfx (rcode) wsaid)
+  (lambda (rc)
+    (tagcase rc
+      (rcode (xs frame)
+        (tagcase (rlines-of xs 0 (rplaces-of xs 0 nil) frame nil nil)
+          (wsaid (text named)
+            (wsaid (string-append "  its register code (" (string-append (i64->string (ritems-size xs 0)) (string-append " cells, not compiled):\n" text)))
+                   named)))))))

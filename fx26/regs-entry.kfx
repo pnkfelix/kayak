@@ -1,0 +1,204 @@
+"regs-entry.kfx: a lambda's register code (C248), the last of its layers
+ (`docs/research/register-code.md`), as Fixpt's `regcode-entry.fx` makes
+ it: a *twin* the stack compiler noted (`cg-twins`) in, its register code
+ or none out. A leaf (nothing in it calls, plain tail calls aside) keeps
+ its parameters in registers; any other stores them to a frame made on
+ entry. Where sound (no global can change during a run of the body, which
+ makes no closure) and worth it (a leaf, or it loops), a *fast* version
+ assumes each global it calls itself through still holds what it held:
+ a `global-guard` each at its start, to the *plain* version where one
+ fails."
+
+"The register code made, by its word's name."
+(define-datatype rnamed (rnamed string rcode))
+(define cg-reg-codes (ref (listof rnamed acyclic) @g) (new nil))
+(define-rec
+  (reg-code-of (subr kfx ((listof rnamed acyclic) string) (listof rcode acyclic))
+    (lambda (xs n) (cond ((null? xs) nil) ((tagcase (car xs) (rnamed (m c) (string=? m n))) (tagcase (car xs) (rnamed (m c) (list c)))) (else (reg-code-of (cdr xs) n))))))
+
+(define twin-word (subr kfx (twin) string) (lambda (t) (tagcase t (twin (w ps body inner me own at) w))))
+
+"The register environment of a lambda's body, from its stack one: its
+ parameters in registers in a leaf, else in the frame."
+(define-rec
+  (r-env-of (subr gen (rgen cenv bool) renv)
+    (lambda (g inner leaf)
+      (if (null? inner)
+          nil
+          (tagcase (car inner)
+            (centry (n l)
+              (let ((rest (r-env-of g (cdr inner) leaf)))
+                (tagcase l
+                  (at-slot (i) (r-bind n (if leaf (rl-reg (i64+ i 1)) (rl-slot i)) rest))
+                  (at-free (i) (r-bind n (rl-free i) rest))
+                  (at-loop () (r-bind n (rl-loop) rest))
+                  (at-global (c) (r-bind n (rl-global c) rest))
+                  (at-pending (s) (begin (r-decline g) rest))))))))))
+
+"Parameters `i` on, of `n`, each into a frame slot of its own."
+(define-rec
+  (r-store-params (subr gen (rgen i64 i64) unit)
+    (lambda (g i n) (if (i64= i n) #u (let ((s (r-slot g))) (begin (r-opnn g "store" (i64+ i 1) s) (r-store-params g (i64+ i 1) n)))))))
+
+"The body as a leaf, or not, as `leaf` says, in a list; none if declined.
+ `assuming`: a fast version's, its assumptions into `assumed`."
+(define r-register-body-as (subr gen (twin bool (ref strings @g) bool) (listof rgen acyclic))
+  (lambda (t assuming assumed leaf)
+    (tagcase t
+      (twin (w ps body inner me own at)
+        (let* ((n (size ps))
+               (own-at (if (null? me) (the i64 0) (the i64 1)))
+               (labels (i64+ own-at (if (string=? own "") (the i64 0) (the i64 1))))
+               (cx (rctx (new #f) assuming assumed (new #f) own n (if (string=? own "") (the i64 -1) own-at)))
+               (g (rgen (new nil) leaf (new (the i64 0)) (new (the i64 0)) (new (the i64 0)) (new labels) me (the i64 0) cx)))
+          (begin
+            (r-opn g "args" n)
+            (let ((env (r-env-of g inner leaf)))
+              (begin
+                (if leaf (set (g-nreg g) n) (begin (r-emit g (ri-frame "save")) (r-store-params g 0 n)))
+                ;; The body's starts: the procedure's own (0), for its loops,
+                ;; if it knows itself; its definition's, for its calls of
+                ;; itself.
+                (if (null? me) #u (r-emit g (ri-label 0)))
+                (if (string=? own "") #u (r-emit g (ri-label own-at)))
+                (r-exp g body env inner #t)
+                (if (r-declined? g) nil (list g))))))))))
+
+(define twin-view (subr kfx (twin bool bool) rview)
+  (lambda (t assuming tail-leaves) (tagcase t (twin (w ps body inner me own at) (rview assuming tail-leaves own (size ps))))))
+
+"A lambda's body in register code, in a list; none where declined. A leaf
+ if nothing in it calls; else, where its only calls are plain tail calls,
+ a leaf first, and if that declines (out of registers), not."
+(define r-register-body (subr gen (twin bool (ref strings @g)) (listof rgen acyclic))
+  (lambda (t assuming assumed)
+    (tagcase t
+      (twin (w ps body inner me own at)
+        (let* ((n (size ps))
+               (leaf (and (i64<= n register-regs) (not (r-collects (twin-view t assuming #f) body inner me #t)))))
+          (cond ((i64> n register-regs) nil)
+                ((or leaf (r-collects (twin-view t assuming #t) body inner me #t))
+                 (r-register-body-as t assuming assumed leaf))
+                (else
+                 (let ((gs (r-register-body-as t assuming assumed #t)))
+                   (if (null? gs) (r-register-body-as t assuming assumed #f) gs)))))))))
+
+(define r-assemble (subr gen (rgen) rcode)
+  (lambda (g) (rcode (the ritems (reverse (get (g-items g)))) (get (g-mslot g)))))
+
+"Items' labels moved up by `k`."
+(define relabelled (subr kfx (ritems i64) ritems)
+  (lambda (xs k)
+    (map (lambda ((x ritem))
+           (tagcase x
+             (ri-label (n) (ri-label (i64+ n k)))
+             (ri-branch (name n) (ri-branch name (i64+ n k)))
+             (ri-guard (c w n) (ri-guard c w (i64+ n k)))
+             (else y x)))
+         xs)))
+
+(define-rec
+  (r-guards-of (subr gen (strings i64) ritems)
+    (lambda (cs to) (if (null? cs) nil (cons (ri-guard (car cs) (writes-expected (car cs)) to) (r-guards-of (cdr cs) to))))))
+
+"The two versions as one: `args n`, a guard for each assumption (to the
+ plain version where it fails), the fast body, the plain one; both with
+ the larger frame."
+(define r-versions (subr gen (rgen rgen strings) rcode)
+  (lambda (fast plain assumptions)
+    (let* ((f (get (g-mslot fast))) (p (get (g-mslot plain)))
+           (fl (get (g-labels fast))) (pl (get (g-labels plain)))
+           (plain-at (i64+ fl pl))
+           (fi (the ritems (reverse (get (g-items fast)))))
+           (pi (relabelled (the ritems (reverse (get (g-items plain)))) fl))
+           (guards (r-guards-of assumptions plain-at)))
+      (rcode (cons (car fi) (onto guards (onto (cdr fi) (cons (ri-label plain-at) (cdr pi)))))
+             (if (i64> f p) f p)))))
+
+"Whether `x` makes no closure (Fixpt's `c-room`, a `with` as its body)."
+(define-rec
+  (r-closure-free? (subr gen (cx) bool)
+    (lambda (x)
+      (tagcase x
+        (x-lambda (ps body a) #f) (x-rlambda (r l a) #f) (x-letrec (bs body a) #f) (x-prompt (t body h a) #f) (x-module (its a) #f)
+        (x-with (m ns ks body a) (r-closure-free? body))
+        (x-var (n a) (not (r-standard-value-name? (std-named n))))
+        (x-app (f args a) (and (tagcase f (x-var (n b) #t) (else y (r-closure-free? f))) (r-closure-free-all? args)))
+        (x-proj (y a) (r-closure-free? y))
+        (x-region (k r body a) (r-closure-free? body))
+        (x-if (t th el a) (and (r-closure-free? t) (r-closure-free? th) (r-closure-free? el)))
+        (x-let (bs body a) (and (r-closure-free-all? (c-bound-exps bs)) (r-closure-free? body)))
+        (x-begin (es a) (r-closure-free-all? es))
+        (x-bloblet (op i args a) (r-closure-free-all? args))
+        (x-product (fs a) (r-closure-free-all? (c-bound-exps fs)))
+        (x-extract (p i a) (r-closure-free? p))
+        (x-sum (t v a) (r-closure-free? v))
+        (x-tagcase (s arms els k a)
+          (and (r-closure-free? s)
+               (r-closure-free-all? (map (lambda ((m carm)) (tagcase m (carm (t2 p ns body) body))) arms))
+               (r-closure-free-all? (c-bound-exps els))))
+        (else y #t))))
+  (r-closure-free-all? (subr gen (cxs) bool)
+    (lambda (es) (or (null? es) (and (r-closure-free? (car es)) (r-closure-free-all? (cdr es)))))))
+
+(define-rec
+  (fact-at? (subr kfx (facts i64 string) bool)
+    (lambda (fs pos what)
+      (and (not (null? fs)) (or (tagcase (car fs) (fact (f p w) (and (i64= p pos) (string=? w what)))) (fact-at? (cdr fs) pos what))))))
+
+"Whether a fast version is sound, as far as the body says: no global can
+ change during a run of it (the checker found it neither suspends nor
+ runs an effect it does not know, Fixpt's summary under 3: its
+ `suspends`, wherever the lambda is); and it makes no closure."
+(define r-fast-sound? (subr gen (twin) bool)
+  (lambda (t)
+    (tagcase t
+      (twin (w ps body inner me own at)
+        (and (i64>= at 0)
+             (not (fact-at? (get cg-facts) at "suspends"))
+             ;; A typed top-level definition's, noted at the definition.
+             (let ((d (define-at (get cg-define-at) at))) (or (i64< d 0) (not (fact-at? (get cg-facts) d "suspends"))))
+             (r-closure-free? body))))))
+
+"Whether a fast version may be worth making: it mentions its own name,
+ and so may loop; or, assuming, the body would be a leaf."
+(define r-fast-may-pay? (subr gen (twin) bool)
+  (lambda (t)
+    (tagcase t
+      (twin (w ps body inner me own at)
+        (or (and (not (string=? own "")) (c-mentions? body own))
+            (not (r-collects (twin-view t #t #f) body inner me #t)))))))
+
+(define r-plain-code (subr gen (twin) (listof rcode acyclic))
+  (lambda (t) (let ((gs (r-register-body t #f (new nil)))) (if (null? gs) nil (list (r-assemble (car gs)))))))
+
+"The body compiled assuming every global it calls itself through holds
+ what it held, behind a guard each; and, where one fails, as ever. Worth
+ it where the fast version is a leaf, or loops: else only the plain one."
+(define r-fast-code (subr gen (twin) (listof rcode acyclic))
+  (lambda (t)
+    (let* ((assumed (the (ref strings @g) (new nil)))
+           (fast (r-register-body t #t assumed))
+           (assumptions (the strings (reverse (get assumed)))))
+      (if (or (null? assumptions) (null? fast)
+              (not (or (g-leaf (car fast)) (get (x-looped (g-ctx (car fast)))))))
+          (r-plain-code t)
+          (let ((plain (r-register-body t #f (new nil))))
+            (if (null? plain) nil (list (r-versions (car fast) (car plain) assumptions))))))))
+
+"A twin's register code, noted under its word's name, unless declined."
+(define r-twin-made! (subr gen (twin) unit)
+  (lambda (t)
+    (let ((cs (if (and (r-fast-sound? t) (r-fast-may-pay? t)) (r-fast-code t) (r-plain-code t))))
+      (if (null? cs) #u (set cg-reg-codes (cons (rnamed (twin-word t) (car cs)) (get cg-reg-codes)))))))
+
+(define-rec
+  (r-twins-made! (subr gen ((listof twin acyclic)) unit)
+    (lambda (ts) (if (null? ts) #u (begin (r-twin-made! (car ts)) (r-twins-made! (cdr ts)))))))
+
+"The form's twins, each its register code, in the order their words were
+ made (Fixpt's `c-form-twins`)."
+(define regs-form-twins! (subr gen () unit)
+  (lambda ()
+    (let ((ts (the (listof twin acyclic) (reverse (get cg-twins)))))
+      (begin (set cg-twins nil) (r-twins-made! ts)))))

@@ -793,11 +793,16 @@
                         (let* ((sc (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))
                                (w (with-binds (no-reaching-itself v (list name) sc) (list (global v name sc)))))
                           (with-facts (with-place-needs (with-facts w fs) name sc (size (cv-facts w)) src-file src-pos)
-                            (concat (map (lambda ((m string))
-                                           (if (has-prefix? m "%within ")
-                                               (the facts (list (fact src-file src-pos (string-append "region-within " (string-append name (string-append " " (after-prefix m "%within ")))))))
-                                               nil))
-                                         (place-marks (third xs))))))
+                            (onto
+                              ;; Whether its body may suspend or runs an effect not
+                              ;; known, at the definition: where a register code's
+                              ;; fast version is unsound (C248; Fixpt's summary 3).
+                              (if (suspends? es) (the facts (list (fact src-file src-pos "suspends"))) nil)
+                              (concat (map (lambda ((m string))
+                                             (if (has-prefix? m "%within ")
+                                                 (the facts (list (fact src-file src-pos (string-append "region-within " (string-append name (string-append " " (after-prefix m "%within ")))))))
+                                                 nil))
+                                           (place-marks (third xs)))))))
                         (refuse v (string-append "a define* whose effect " (string-append (show-effs es)
                                   (string-append " is not within " (show-effs declared))))))))
                 (else other (refuse v "a define* is of a procedure")))))))))

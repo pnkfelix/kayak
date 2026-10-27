@@ -1291,61 +1291,6 @@ pub fn ro_prim3imm() -> i64 {
     int_to_i64(lay::rop_prim3imm())
 }
 
-pub fn register_regs() -> i64 {
-    int_to_i64(lay::register_regs())
-}
-
-pub fn rop_names() -> List<Str> {
-    static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
-    once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::heap_cons(str_lit("global"), kayak_rt::heap_cons(str_lit("setglbl"), kayak_rt::heap_cons(str_lit("reg"), kayak_rt::heap_cons(str_lit("setreg"), kayak_rt::heap_cons(str_lit("movereg"), kayak_rt::heap_cons(str_lit("lexical"), kayak_rt::heap_cons(str_lit("save"), kayak_rt::heap_cons(str_lit("pop"), kayak_rt::heap_cons(str_lit("stack"), kayak_rt::heap_cons(str_lit("setstk"), kayak_rt::heap_cons(str_lit("load"), kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(str_lit("op1"), kayak_rt::heap_cons(str_lit("op2"), kayak_rt::heap_cons(str_lit("op2imm"), kayak_rt::heap_cons(str_lit("field"), kayak_rt::heap_cons(str_lit("setfield"), kayak_rt::heap_cons(str_lit("prim"), kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("invoke"), kayak_rt::heap_cons(str_lit("tailinvoke"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("branch"), kayak_rt::heap_cons(str_lit("branchf"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("invokeself"), kayak_rt::heap_cons(str_lit("global-guard"), kayak_rt::heap_cons(str_lit("brancht"), kayak_rt::heap_cons(str_lit("vargs"), kayak_rt::heap_cons(str_lit("prim1"), kayak_rt::heap_cons(str_lit("prim2"), kayak_rt::heap_cons(str_lit("prim2imm"), kayak_rt::heap_cons(str_lit("prim3imm"), kayak_rt::nil())))))))))))))))))))))))))))))))))))
-    })
-}
-
-pub fn rop_count() -> i64 {
-    35i64
-}
-
-pub fn rop_operands(n: i64) -> i64 {
-    if i64_eq(n, ro_movereg()) {
-        2i64
-    } else if i64_eq(n, ro_load()) {
-        2i64
-    } else if i64_eq(n, ro_store()) {
-        2i64
-    } else if i64_eq(n, ro_op2()) {
-        2i64
-    } else if i64_eq(n, ro_op2imm()) {
-        2i64
-    } else if i64_eq(n, ro_setfield()) {
-        2i64
-    } else if i64_eq(n, ro_prim()) {
-        2i64
-    } else if i64_eq(n, ro_lambda()) {
-        3i64
-    } else if i64_eq(n, ro_invoke()) {
-        2i64
-    } else if i64_eq(n, ro_tailinvoke()) {
-        2i64
-    } else if i64_eq(n, ro_return()) {
-        0i64
-    } else if i64_eq(n, ro_cellular()) {
-        2i64
-    } else if i64_eq(n, ro_global_guard()) {
-        3i64
-    } else if i64_eq(n, ro_vargs()) {
-        0i64
-    } else if i64_eq(n, ro_prim2()) {
-        2i64
-    } else if i64_eq(n, ro_prim2imm()) {
-        2i64
-    } else if i64_eq(n, ro_prim3imm()) {
-        3i64
-    } else {
-        1i64
-    }
-}
-
 // The routines' names, by number, as Fixpt's `ROUTINES` spells them: in
 // listings, and in a trap's message.
 pub fn routine_names() -> List<Str> {

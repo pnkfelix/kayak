@@ -1,0 +1,231 @@
+"cg-top.kfx: kayak's compiler to cells, its form loop and its listing (split from
+ `cg.kfx`, C248): each top-level form's words, then its register twins
+ (`regs-entry.kfx`), as Fixpt's `compile-twins.fx`; and the listing, each
+ word's cells and its register code."
+
+"Each of a `define-rec`'s values made, then its words' twins (C248), and
+ its global set."
+(define-rec
+  (c-rec-fill! (subr gen (cbinds code) unit)
+    (lambda (bs c)
+      (if (null? bs) #u
+          (tagcase (car bs)
+            (cbind (n x)
+              (begin (c-name-for! n x) (set cg-lambda-at (lambda-at x)) (c-exp x nil 0 c #f) (regs-form-twins!)
+                     (c-op1 c "global!" (o-global n)) (c-wrote! n) (c-rec-fill! (cdr bs) c))))))))
+
+"A global defined by a form not a lambda's, or by an untyped one: its
+ value made, its words' twins, its global set."
+(define c-define-value! (subr gen (string cx code) unit)
+  (lambda (n x c)
+    (begin (set cg-form-writes nil) (c-exp x nil 0 c #f) (regs-form-twins!)
+           (c-push-global! n) (c-op1 c "global!" (o-global n)) (c-wrote! n))))
+
+"Each form in turn; the last expression's value is left on the stack.
+ After each, the twins of the words it made, as Fixpt's form loop makes
+ them, the globals it writes counted (C248)."
+(define-rec
+  (c-tops (subr gen ((listof ctop acyclic) code bool) bool)
+    (lambda (ts c has-value)
+      (if (null? ts)
+          has-value
+          (tagcase (car ts)
+            (t-define (n typed x)
+              (begin
+                (if has-value (c-op c "drop") #u)
+                (tagcase x
+                  ;; A lambda written with its type: its global first, so
+                  ;; that it can call itself through it.
+                  (x-lambda (ps body a)
+                    (if typed
+                        (begin (c-push-global! n) (set c-word-name (list n)) (set cg-defining (list n))
+                               (set cg-lambda-at a) (set cg-form-writes (list n))
+                               (c-lambda ps body nil 0 c nil nil) (regs-form-twins!)
+                               (c-op1 c "global!" (o-global n)) (c-wrote! n))
+                        (c-define-value! n x c)))
+                  (else y (c-define-value! n x c)))
+                (c-tops (cdr ts) c #f)))
+            ;; Every name's global first; then each lambda, which runs nothing.
+            (t-define-rec (bs)
+              (begin
+                (if has-value (c-op c "drop") #u)
+                (c-rec-globals! bs)
+                (set cg-form-writes (map (lambda ((b cbind)) (tagcase b (cbind (n x) n))) bs))
+                (c-rec-fill! bs c)
+                (c-tops (cdr ts) c #f)))
+            (t-exp (x) (begin (if has-value (c-op c "drop") #u) (set cg-form-writes nil) (c-exp x nil 0 c #f) (regs-form-twins!) (c-tops (cdr ts) c #t)))
+            (t-none () (c-tops (cdr ts) c has-value)))))))
+
+"A program's one word, which runs it and leaves the value of its last
+ expression (unit, if it has none), and the words it makes."
+(define compile-cells (subr gen (sexps facts) unit)
+  (lambda (forms fs)
+    (let ((c (the code (new nil))))
+      (begin
+        (set cg-facts fs)
+        (set cg-source (if (null? forms) "" (datum-file (car forms))))
+        (set cg-qnodes nil)
+        (set cg-convert-facts
+             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "convert ") (has-prefix? what "convention "))))) fs))
+        (set cg-fx-calls nil)
+        (set cg-native-calls nil)
+        (set cg-module-facts
+             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (has-prefix? what "module-had ") (has-prefix? what "module-made ") (string=? what "module-value") (string=? what "with-value"))))) fs))
+        (set cg-layouts nil)
+        (set cg-included nil)
+        (set cg-made nil)
+        (set cg-words nil)
+        (set cg-globals nil)
+        (set cg-standard-words nil)
+        (set c-this-params -1)
+        (set cg-twins nil) (set cg-defining nil) (set cg-lambda-at -1) (set cg-define-at nil)
+        (set cg-writes nil) (set cg-form-writes nil) (set cg-reg-codes nil)
+        (if (c-tops (parse-tops forms) c #f) #u (c-lit c (l-unit)))
+        (c-op c "exit")
+        (c-assemble c "program")
+        #u))))
+
+(define-rec
+  (cells-of (subr kfx (citems i64) i64) (lambda (xs n) (if (null? xs) n (cells-of (cdr xs) (i64+ n (item-size (car xs)))))))
+  (word-named (subr kfx ((listof word acyclic) string) (listof word acyclic))
+    (lambda (ws n) (cond ((null? ws) nil) ((tagcase (car ws) (word (m xs) (string=? m n))) (list (car ws))) (else (word-named (cdr ws) n))))))
+
+"A word's line table (C245): `; at FILE CELL:POS …`, each where an
+ expression's code begins and its source position, the source the
+ program's file (`cg-source`; a word from a module file of its own not
+ told apart yet); at column 0, a comment to what compares listings with
+ Fixpt's; none if none."
+(define-datatype tentry (tentry i64 i64))
+(define-rec
+  (table-entries (subr kfx (citems i64 (listof tentry acyclic)) (listof tentry acyclic))
+    (lambda (xs at acc)
+      "The entries, newest first: one where the position changes, the
+       last of those at one cell."
+      (if (null? xs)
+          acc
+          (tagcase (car xs)
+            (it-pos (p)
+              (let ((acc (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= a at)))) (cdr acc) acc)))
+                (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= q p))))
+                    (table-entries (cdr xs) at acc)
+                    (table-entries (cdr xs) at (cons (tentry at p) acc)))))
+            (else y (table-entries (cdr xs) (i64+ at (item-size (car xs))) acc)))))))
+(define-rec
+  (entries-shown (subr kfx ((listof tentry acyclic) strings) strings)
+    (lambda (es out)
+      (if (null? es)
+          out
+          (entries-shown (cdr es) (cons (tagcase (car es) (tentry (a p) (string-append (i64->string a) (string-append ":" (i64->string p))))) out))))))
+(define-rec
+  (spaced (subr kfx (strings) string)
+    (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (spaced (cdr ss)))))))))
+(define line-table (subr gen (citems) string)
+  (lambda (xs)
+    (let ((es (entries-shown (table-entries xs 0 nil) nil)))
+      (if (or (null? es) (string=? (get cg-source) ""))
+          ""
+          (string-append "; at " (string-append (get cg-source) (string-append " " (string-append (spaced es) "\n"))))))))
+
+"The listing: from `program`, each word reached, as `disasm.rs` walks
+ them: the words a word names pushed in order, the last pushed next."
+(define-rec
+  (listing-from (subr gen (strings strings string) string)
+    (lambda (todo seen out)
+      (cond ((null? todo) out)
+            ((string-member? (car todo) seen) (listing-from (cdr todo) seen out))
+            (else
+             (let ((w (word-named (get cg-words) (car todo))))
+               (if (null? w)
+                   (listing-from (cdr todo) (cons (car todo) seen) out)
+                   (tagcase (car w)
+                     (word (name xs)
+                       (tagcase (lines-of-items xs 0 (places-of xs 0 nil) nil nil)
+                         (wsaid (text named)
+                           ;; Its register code after its cells (C248).
+                           (tagcase (let ((rc (reg-code-of (get cg-reg-codes) name))) (if (null? rc) (wsaid "" nil) (rcode-said (car rc))))
+                             (wsaid (rtext rnamed)
+                               (listing-from (onto (reverse (onto named rnamed)) (cdr todo)) (cons name seen)
+                                             (string-append out (string-append "\nword " (string-append (shown-name name) (string-append " (" (string-append (i64->string (cells-of xs 0)) (string-append " cells, cellular):\n" (string-append text (string-append rtext (line-table xs)))))))))))))))))))))))
+
+"The listing's quoted nodes written (`quoted-interned`): Fixpt's
+ `literal.rs`, an object reached more than once labelled `#N=` where it
+ is first written and named `#N#` after, numbered as written, across the
+ listing. First each node's reaches counted, in the order written, its
+ parts only at its first; then the marks replaced."
+(define-datatype qseen (qseen i64 i64))
+(define cg-qreached (ref (listof qseen acyclic) @g) (new nil))
+(define cg-qlabels (ref (listof qseen acyclic) @g) (new nil))
+(define cg-qnext (ref i64 @g) (new 0))
+(define-rec
+  (qseen-of (subr kfx ((listof qseen acyclic) i64) i64)
+    (lambda (ss n) (if (null? ss) 0 (tagcase (car ss) (qseen (k v) (if (i64= k n) v (qseen-of (cdr ss) n)))))))
+  (qnode-parts (subr kfx ((listof qnode acyclic) i64) (listof lit acyclic))
+    (lambda (ns n) (if (null? ns) nil (tagcase (car ns) (qnode (k a d) (if (i64= k n) (list a d) (qnode-parts (cdr ns) n))))))))
+(define-rec
+  (q-reached! (subr gen (lit) unit)
+    (lambda (l)
+      (tagcase l
+        (l-quoted (n)
+          (let ((c (qseen-of (get cg-qreached) n)))
+            (begin
+              (set cg-qreached (cons (qseen n (i64+ c 1)) (get cg-qreached)))
+              (if (i64= c 0)
+                  (let ((ps (qnode-parts (get cg-qnodes) n))) (begin (q-reached! (car ps)) (q-reached! (car (cdr ps)))))
+                  #u))))
+        (else y #u))))
+  (q-written! (subr gen (lit) string)
+    (lambda (l)
+      (tagcase l
+        (l-quoted (n)
+          (let ((ps (qnode-parts (get cg-qnodes) n)) (k (qseen-of (get cg-qlabels) n)))
+            (cond ((i64> k 0) (string-append "#" (string-append (i64->string (i64- k 1)) "#")))
+                  ((i64> (qseen-of (get cg-qreached) n) 1)
+                   (let ((m (get cg-qnext)))
+                     (begin
+                       (set cg-qnext (i64+ m 1))
+                       (set cg-qlabels (cons (qseen n (i64+ m 1)) (get cg-qlabels)))
+                       (string-append "#" (string-append (i64->string m) (string-append "=" (q-pair-text ps)))))))
+                  (else (q-pair-text ps)))))
+        (else y (lit-text l)))))
+  (q-pair-text (subr gen ((listof lit acyclic)) string)
+    (lambda (ps) (string-append "(" (string-append (q-written! (car ps)) (string-append " . " (string-append (q-written! (car (cdr ps))) ")")))))))
+(define-rec
+  (q-marks (subr kfx (chars (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (cs acc)
+      "The marks' numbers in `cs`, in order."
+      (cond ((null? cs) (reverse acc))
+            ((char=? (car cs) (i64->char 1)) (q-mark-number (cdr cs) 0 acc))
+            (else (q-marks (cdr cs) acc)))))
+  (q-mark-number (subr kfx (chars i64 (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (cs n acc)
+      (if (char=? (car cs) (i64->char 2))
+          (q-marks (cdr cs) (cons n acc))
+          (q-mark-number (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) acc)))))
+(define-rec
+  (strings-joined (subr kfx (strings string) string)
+    (lambda (ss acc) (if (null? ss) acc (strings-joined (cdr ss) (string-append acc (car ss))))))
+  (q-all-reached! (subr gen ((listof i64 acyclic)) unit)
+    (lambda (ns) (if (null? ns) #u (begin (q-reached! (l-quoted (car ns))) (q-all-reached! (cdr ns)))))))
+(define-rec
+  (q-replaced (subr gen (chars chars strings) string)
+    (lambda (cs run acc)
+      "`cs` with each mark written, `run` the plain characters not yet put."
+      (cond ((null? cs) (strings-joined (reverse (cons (list->string (reverse run)) acc)) ""))
+            ((char=? (car cs) (i64->char 1)) (q-replaced-mark (cdr cs) 0 (cons (list->string (reverse run)) acc)))
+            (else (q-replaced (cdr cs) (cons (car cs) run) acc)))))
+  (q-replaced-mark (subr gen (chars i64 strings) string)
+    (lambda (cs n acc)
+      (if (char=? (car cs) (i64->char 2))
+          (q-replaced (cdr cs) nil (cons (q-written! (l-quoted n)) acc))
+          (q-replaced-mark (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) acc)))))
+(define labelled-listing (subr gen (string) string)
+  (lambda (text)
+    (if (null? (get cg-qnodes))
+        text
+        (let ((cs (string-chars text)))
+          (begin
+            (set cg-qreached nil) (set cg-qlabels nil) (set cg-qnext 0)
+            (q-all-reached! (q-marks cs nil))
+            (q-replaced cs nil nil))))))
+
+(define cells-listing (subr gen () string) (lambda () (labelled-listing (listing-from (list "program") nil ""))))

@@ -778,10 +778,17 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         tables: lines there when kayak's compiler makes register code
         (with a table of its own, instruction to position). Columns:
         `KAYAK_JITDUMP=expr` (C247), each expression a line of a side
-        file, read back by `scripts/perf-expr.py`. A word from a module file of
+        file, read back by `scripts/perf-expr.py`. Later (the user): that
+        script ported to KFX, and all of this a REPL `,profile` command. A word from a module file of
         its own is given the program's file; positions are characters,
         not bytes; a listing's relative path read from where kayak-cells
         runs (no lines if not found there).
+     Register code from kayak's compiler (C248, `docs/research/
+        register-code.md`): stage 1 done; next, inlining and constant
+        globals (68 of the 72 differences from Fixpt's), then stage 2
+        (closures, `letrec`, `tagcase`, `apply`, `list`), stage 3 (modules,
+        regions, prompts, bloblets), and register code's line tables for
+        tiers 5-6's debug info.
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

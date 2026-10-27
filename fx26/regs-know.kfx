@@ -1,0 +1,456 @@
+"regs-know.kfx: what register code knows of an expression (C248), the
+ fourth of its layers (`docs/research/register-code.md`): what each
+ standard operation is in register code; whether an expression is
+ simple, a constant (folded), a test an `if` around decided; whether it
+ may collect (calls or calls out). As Fixpt's `regcode.fx`'s standard
+ names and `r-known`, and `regcode-exps.fx`'s `r-collects`. Pure but for
+ the globals defined so far (`cg-globals`), given what the body being
+ made assumes (`rview`)."
+
+"What the body being made assumes, which the analyses ask: whether it is
+ a fast version (Fixpt's `r-assuming`); whether a plain call in tail
+ position counts as no call (`r-tail-calls-leave`); and its definition's
+ global and arity, if it is one (`r-own-name`): \"\" and -1 if not."
+(define-datatype rview (rview bool bool string i64))
+(define rview-assuming (subr kfx (rview) bool) (lambda (v) (tagcase v (rview (a t n k) a))))
+(define rview-tail-leaves (subr kfx (rview) bool) (lambda (v) (tagcase v (rview (a t n k) t))))
+(define rview-own-is? (subr kfx (rview string i64) bool)
+  (lambda (v name arity) (tagcase v (rview (a t n k) (and (string=? n name) (i64= k arity))))))
+
+"What the procedure running knows of itself (the stack compiler's
+ `this`), one or none."
+(define-type rthis (listof this acyclic))
+
+;;; ------------------------------------------------- standard operations
+
+"A standard operation as register code does it (Fixpt's `rstd`): `op2`
+ of a routine, its operands swapped, then negated; `op1`; `op2imm` with a
+ constant; a field; a call-out (`prim`), or in line if it never collects
+ (`prim1`, `prim2`, `prim2imm`); a cellular routine called out to; its
+ argument itself; a reference written; several instructions (`special`);
+ `apply`; `list`; none."
+(define-datatype rstd
+  (s-op2 string bool bool)
+  (s-op1 string)
+  (s-op2imm string lit)
+  (s-field i64)
+  (s-prim string)
+  (s-pure string)
+  (s-cellular string)
+  (s-identity)
+  (s-set)
+  (s-special string)
+  (s-apply)
+  (s-list)
+  (s-none))
+
+(define r-fixed-width-op? (subr kfx (string) bool)
+  (lambda (n)
+    (or (has-prefix? n "%fx26-i8") (has-prefix? n "%fx26-u8") (has-prefix? n "%fx26-i32") (has-prefix? n "%fx26-u32")
+        (has-prefix? n "%fx26-i64") (has-prefix? n "%fx26-u64") (has-prefix? n "%fx26-f64") (has-prefix? n "%fx26-f32")
+        (has-prefix? n "%fx26-int->"))))
+
+"Whether runtime primitive `name` never collects (Fixpt's
+ `never_collects`), so that register code calls it in line."
+(define r-never-collects? (subr kfx (string) bool)
+  (lambda (name)
+    (or (string-member? name
+                        (list "%fx26-mul" "%fx26-quotient" "modulo" "%fx26-arithmetic-shift" "%bloblet-fields"
+                              "%fx26-string->f64" "%fx26-remainder" "%fx26-flatarray-ref" "%fx26-flatarray-length"
+                              "char->integer" "integer->char" "string-length" "string-ref" "%string-hash" "%symbol-hash"
+                              "%fx26-string-compare" "%fx26-symbol-compare" "%fx26-string<?" "%fx26-string<=?"
+                              "%fx26-string>?" "%fx26-string>=?" "%fx26-char<?" "%fx26-char<=?" "%fx26-char>?" "%fx26-char>=?"
+                              "null?" "pair?" "exact-integer?" "char?" "boolean?" "string?" "symbol?" "%fx26-procedure?"
+                              "%fx26-array?" "%fx26-f32?" "%fx26-box?" "%fx26-sum?" "%fx26-product?" "%fx26-suffix-ref-get"
+                              "%suffix-ref-owner" "%suffix-ref-offset" "%suffix-ref+" "%suffix-ref" "%fx26-flat-tag"
+                              "%fx26-flat-no-arm" "bytevector-length" "bytevector-u8-ref" "%fx26-suffix-ref-length"
+                              "%fx26-suffix-fits"
+                              "%fx26-eqtable-has?" "%fx26-eqtable-count" "%fx26-eqtable-delete!"))
+        (r-fixed-width-op? name))))
+
+"Runtime primitive `p` as a call-out, when `n` is `k`; in line if it never
+ collects and takes one or two."
+(define r-prim-std (subr kfx (string i64 i64) rstd)
+  (lambda (p n k)
+    (cond ((not (i64= n k)) (s-none))
+          ((and (i64<= n 2) (r-never-collects? p)) (s-pure p))
+          (else (s-prim p)))))
+
+(define r-prim-name? (subr kfx (string) bool)
+  (lambda (n)
+    (string-member? n (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref"
+                            "substring" "string=?" "string->symbol" "symbol->string"))))
+
+"Standard operation `name` applied to `n` arguments, as register code
+ does it (Fixpt's `r-standard`)."
+(define r-standard (subr kfx (string i64) rstd)
+  (lambda (name n)
+    (let ((is (lambda ((s string) (k i64)) (and (string=? name s) (i64= n k)))))
+      (cond ((is "+" 2) (s-op2 "int-add" #f #f))
+            ((is "-" 2) (s-op2 "int-sub" #f #f))
+            ((is "<" 2) (s-op2 "int-less" #f #f))
+            ((is ">" 2) (s-op2 "int-less" #t #f))
+            ((is "<=" 2) (s-op2 "int-less" #t #t))
+            ((is ">=" 2) (s-op2 "int-less" #f #t))
+            ((is "=" 2) (s-op2 "int-eq" #f #f))
+            ((and (std-eq-name? name) (i64= n 2)) (s-op2 "eq" #f #f))
+            ((is "not" 1) (s-op2imm "eq" (l-bool #f)))
+            ((is "null?" 1) (s-op2imm "eq" (l-nil)))
+            ((is "car" 1) (s-op1 "pair-car"))
+            ((is "cdr" 1) (s-op1 "pair-cdr"))
+            ((is "get" 1) (s-field 2))
+            ((is "cons" 2) (s-cellular "cons"))
+            ((is "set" 2) (s-set))
+            ((or (is "abort-current-continuation" 2) (is "escape" 2)) (s-cellular "abort"))
+            ((is "call-with-composable-continuation" 2) (s-cellular "callcomp"))
+            ((is "call-with-oneshot-continuation" 2) (s-cellular "callone"))
+            ((is "cwcc" 1) (s-cellular "callcc"))
+            ((is "with-mark" 3) (s-cellular "withmark"))
+            ((is "first-mark" 2) (s-cellular "firstmark"))
+            ((is "current-marks" 1) (s-cellular "currentmarks"))
+            ((is "marks-of" 2) (s-cellular "marksof"))
+            ((is "array-ref" 2) (s-special "array-ref"))
+            ((is "array-set!" 3) (s-special "array-set!"))
+            ((is "array-length" 1) (s-special "array-length"))
+            ((is "make-array" 2) (s-special "make-array"))
+            ((is "apply" 2) (s-apply))
+            ((string=? name "list") (s-list))
+            ((and (i64= n 0) (string-member? name (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key")))
+             (s-special "make-box"))
+            ((or (is "set-car!" 2) (is "set-cdr!" 2)) (s-special name))
+            ((string=? name "new") (r-prim-std "%make-box" n 1))
+            ((string=? name "char->string") (r-prim-std "string" n 1))
+            ((r-prim-name? name) (r-prim-std name n n))
+            ((string=? name "%fx26-convert") (r-prim-std name n 2))
+            (else
+             (let ((p (std-primitive name)))
+               (cond ((string=? p "%fx26-identity") (if (i64= n 1) (s-identity) (s-none)))
+                     ((string=? p "") (s-none))
+                     (else (r-prim-std p n n)))))))))
+
+;;; --------------------------------------------------------------- names
+
+"Where `n` is to register code: a local of `env`; else a global defined
+ so far; else none (a standard name)."
+(define r-where (subr gen (renv string) rlocs)
+  (lambda (env n)
+    (let ((l (r-local-loc env n)))
+      (cond ((not (null? l)) l)
+            ((std-marked? n) nil)
+            ((string-member? n (get cg-globals)) (list (rl-global n)))
+            (else nil)))))
+
+(define r-var-loc (subr gen (renv cx) rlocs)
+  (lambda (env f) (tagcase f (x-var (n a) (r-where env n)) (else y nil))))
+
+"The operator under the projections, which compile to nothing."
+(define-rec
+  (r-operator (subr kfx (cx) cx) (lambda (f) (tagcase f (x-proj (x a) (r-operator x)) (else y f)))))
+
+"The standard operation `f` names, as the stack compiler's
+ `c-standard-name` says, \"\" if none."
+(define r-standard-name (subr gen (renv cx) string)
+  (lambda (env f)
+    (tagcase (r-operator f)
+      (x-var (n a) (cond ((std-marked? n) (std-named n)) ((null? (r-where env n)) n) (else "")))
+      (else y ""))))
+
+"Whether a name is a standard operation had as a value, a closure made
+ (Fixpt's `c-has-standard-value?`): a `vsubr`, or one of a known arity.
+ By name, wherever it is bound, as Fixpt asks; each name's answer kept,
+ the arity's table being read whole (`c-arity`)."
+(define-datatype sv (sv string bool))
+(define r-std-values (ref (listof sv acyclic) @g) (new nil))
+(define-rec
+  (sv-of (subr kfx ((listof sv acyclic) string) (listof bool acyclic))
+    (lambda (xs n) (cond ((null? xs) nil) ((tagcase (car xs) (sv (m b) (string=? m n))) (tagcase (car xs) (sv (m b) (list b)))) (else (sv-of (cdr xs) n))))))
+(define r-standard-value-name? (subr gen (string) bool)
+  (lambda (n)
+    (let ((known (sv-of (get r-std-values) n)))
+      (if (not (null? known))
+          (car known)
+          (let ((b (or (c-vsubr? n) (i64>= (c-arity n) 0))))
+            (begin (set r-std-values (cons (sv n b) (get r-std-values))) b))))))
+
+"Whether `x` needs no code of its own to be had: a constant, or a
+ variable that is no standard operation's value."
+(define r-simple? (subr gen (cx) bool)
+  (lambda (x)
+    (tagcase x
+      (x-var (n a) (not (r-standard-value-name? (std-named n))))
+      (x-int (n a) #t) (x-bool (v a) #t) (x-char (v a) #t) (x-sym (s a) #t) (x-unit (a) #t) (x-str (s a) #t) (x-float (b a) #t)
+      (else y #f))))
+
+(define r-literal? (subr kfx (cx) bool)
+  (lambda (x) (tagcase x (x-int (n a) #t) (x-bool (v a) #t) (x-char (v a) #t) (else y #f))))
+
+(define r-add-name? (subr kfx (string) bool) (lambda (n) (or (string=? n "+") (string=? n "-"))))
+
+;;; ----------------------------------------------------------- constants
+
+(define r-small? (subr kfx (int) bool) (lambda (n) (and (< n 1073741824) (> n -1073741824))))
+(define r-const-small (subr kfx (rconst) (listof int acyclic))
+  (lambda (c) (tagcase c (rc-int (n) (if (r-small? n) (list n) nil)) (else y nil))))
+(define r-const-false? (subr kfx (rconst) bool) (lambda (c) (tagcase c (rc-bool (v) (not v)) (else y #f))))
+"Whether constant `c` (in a list) is `when` (true: anything but #f)."
+(define r-holds? (subr kfx ((listof rconst acyclic) bool) bool)
+  (lambda (c when) (if (r-const-false? (car c)) (not when) when)))
+
+"Whether constant `c` is an integer that fits the fixed-width type `name`
+ converts to (`int->u32` and its kin): then it is its own conversion."
+(define r-fits-fixed? (subr kfx (string rconst) bool)
+  (lambda (name c)
+    (tagcase c
+      (rc-int (n)
+        (cond ((string=? name "int->i8") (and (>= n -128) (<= n 127)))
+              ((string=? name "int->u8") (and (>= n 0) (<= n 255)))
+              ((string=? name "int->i32") (and (>= n -2147483648) (<= n 2147483647)))
+              ((string=? name "int->u32") (and (>= n 0) (<= n 4294967295)))
+              ((string=? name "int->i64") #t)
+              ((string=? name "int->u64") (>= n 0))
+              (else #f)))
+      (else y #f))))
+
+"Standard operation `name` on constants `vs`, folded, if it folds."
+(define r-fold (subr kfx (string (listof rconst acyclic)) (listof rconst acyclic))
+  (lambda (name vs)
+    (let* ((two (and (not (null? vs)) (not (null? (cdr vs))) (null? (cdr (cdr vs)))))
+           (one (and (not (null? vs)) (null? (cdr vs))))
+           (a (if two (r-const-small (car vs)) nil))
+           (b (if two (r-const-small (car (cdr vs))) nil))
+           (ints (and (not (null? a)) (not (null? b)))))
+      (cond ((and ints (string=? name "+")) (list (rc-int (+ (car a) (car b)))))
+            ((and ints (string=? name "-")) (list (rc-int (- (car a) (car b)))))
+            ((and ints (string=? name "<")) (list (rc-bool (< (car a) (car b)))))
+            ((and ints (string=? name ">")) (list (rc-bool (> (car a) (car b)))))
+            ((and ints (string=? name "<=")) (list (rc-bool (<= (car a) (car b)))))
+            ((and ints (string=? name ">=")) (list (rc-bool (>= (car a) (car b)))))
+            ((and ints (string=? name "=")) (list (rc-bool (= (car a) (car b)))))
+            ((and ints (string=? name "*")) (let ((p (* (car a) (car b)))) (if (r-small? p) (list (rc-int p)) nil)))
+            ((and one (string=? name "not")) (list (rc-bool (r-const-false? (car vs)))))
+            ((and one (string=? name "null?")) (list (rc-bool (tagcase (car vs) (rc-nil () #t) (else y #f)))))
+            ((and two (string=? name "char=?"))
+             (tagcase (car vs)
+               (rc-char (x) (tagcase (car (cdr vs)) (rc-char (y) (list (rc-bool (char=? x y)))) (else z nil)))
+               (else z nil)))
+            ((and one (r-fits-fixed? name (car vs))) vs)
+            (else nil)))))
+
+"Whether `name` is a comparison a test an `if` decides may be of."
+(define r-test-name? (subr kfx (string) bool)
+  (lambda (n) (string-member? n (list "<" ">" "<=" ">=" "=" "eq?" "symbol=?" "char=?" "null?" "pair?"))))
+
+(define-rec
+  (r-same-const? (subr kfx (rconst rconst) bool)
+    (lambda (c d)
+      (tagcase c
+        (rc-int (n) (tagcase d (rc-int (m) (= n m)) (else z #f)))
+        (rc-bool (v) (tagcase d (rc-bool (w) (if v w (not w))) (else z #f)))
+        (rc-char (v) (tagcase d (rc-char (w) (char=? v w)) (else z #f)))
+        (rc-nil () (tagcase d (rc-nil () #t) (else z #f)))))))
+(define r-same-operand? (subr kfx (rloc rloc) bool)
+  (lambda (x y)
+    (tagcase x
+      (rl-reg (i) (tagcase y (rl-reg (j) (i64= i j)) (else z #f)))
+      (rl-slot (i) (tagcase y (rl-slot (j) (i64= i j)) (else z #f)))
+      (rl-free (i) (tagcase y (rl-free (j) (i64= i j)) (else z #f)))
+      (rl-const (c) (tagcase y (rl-const (d) (r-same-const? c d)) (else z #f)))
+      (else z #f))))
+(define-rec
+  (r-same-operands? (subr kfx (rlocs rlocs) bool)
+    (lambda (xs ys)
+      (cond ((null? xs) (null? ys)) ((null? ys) #f)
+            (else (and (r-same-operand? (car xs) (car ys)) (r-same-operands? (cdr xs) (cdr ys))))))))
+
+"A test's description: its comparison, and its operands' places."
+(define-datatype rtest (rtest string rlocs))
+
+(define-rec
+  (r-tests-in? (subr kfx (renv) bool)
+    (lambda (env)
+      (and (not (null? env))
+           (or (tagcase (car env) (rbind (n l) (tagcase l (rl-test (m o v) #t) (else y #f)))) (r-tests-in? (cdr env)))))))
+"The value of the test `d` describes, if one in `env` is it, the newest."
+(define-rec
+  (r-decided (subr kfx (renv rtest) (listof rconst acyclic))
+    (lambda (env d)
+      (if (null? env)
+          nil
+          (tagcase (car env)
+            (rbind (n l)
+              (tagcase l
+                (rl-test (m ops v)
+                  (if (tagcase d (rtest (dn dops) (and (string=? m dn) (r-same-operands? ops dops))))
+                      (list (rc-bool v))
+                      (r-decided (cdr env) d)))
+                (else y (r-decided (cdr env) d)))))))))
+
+(define-rec
+  (r-known (subr gen (renv cx) (listof rconst acyclic))
+    (lambda (env x)
+      "`x`'s value, if it is a constant that needs no allocation when it
+       runs (Fixpt's `r-known`): a literal, a name bound to one, `nil`, a
+       standard operation on constants folded, or a test an `if` around
+       decided."
+      (tagcase x
+        (x-int (n a) (list (rc-int n)))
+        (x-bool (v a) (list (rc-bool v)))
+        (x-char (v a) (list (rc-char v)))
+        (x-var (n a)
+          (let ((l (r-where env n)))
+            (if (null? l)
+                (if (std-nil-name? (std-named n)) (list (rc-nil)) nil)
+                (tagcase (car l) (rl-const (c) (list c)) (else y nil)))))
+        (x-proj (y a) (r-known env y))
+        (x-app (f args a)
+          (let* ((name (r-standard-name env f))
+                 (decided (if (r-test-name? name) (r-known-test env x) nil)))
+            (cond ((not (null? decided)) decided)
+                  ((string=? name "") nil)
+                  (else
+                   (let ((vs (r-knowns env args nil)))
+                     (if (or (null? vs) (not (i64= (size (car vs)) (size args)))) nil (r-fold name (car vs))))))))
+        (else y nil))))
+  (r-known-test (subr gen (renv cx) (listof rconst acyclic))
+    (lambda (env x)
+      (if (not (r-tests-in? env))
+          nil
+          (let ((d (r-test-desc env x))) (if (null? d) nil (r-decided env (car d)))))))
+  (r-test-desc (subr gen (renv cx) (listof rtest acyclic))
+    (lambda (env x)
+      "What test `x` is, to know it again: its comparison and each operand,
+       a place or a constant; none if it is not such a test."
+      (tagcase x
+        (x-app (f args a)
+          (let ((name (r-standard-name env f)))
+            (if (not (r-test-name? name))
+                nil
+                (let ((ops (r-test-operands env args))) (if (null? ops) nil (list (rtest name (car ops))))))))
+        (else y nil))))
+  (r-test-operands (subr gen (renv cxs) (listof rlocs acyclic))
+    (lambda (env args)
+      (if (null? args)
+          (list nil)
+          (let ((one (r-test-operand env (car args))) (rest (r-test-operands env (cdr args))))
+            (if (or (null? one) (null? rest)) nil (list (cons (car one) (car rest))))))))
+  (r-test-operand (subr gen (renv cx) rlocs)
+    (lambda (env a)
+      (let ((k (r-known env a)))
+        (if (null? k)
+            (let ((l (r-var-loc env a)))
+              (if (null? l) nil (tagcase (car l) (rl-reg (i) l) (rl-slot (i) l) (rl-free (i) l) (else y nil))))
+            (list (rl-const (car k)))))))
+  (r-knowns (subr gen (renv cxs (listof rconst acyclic)) (listof (listof rconst acyclic) acyclic))
+    (lambda (env es acc)
+      (if (null? es)
+          (list (reverse acc))
+          (let ((c (r-known env (car es)))) (if (null? c) nil (r-knowns env (cdr es) (cons (car c) acc))))))))
+
+"`env` in an arm of an `if` on `t`, where it is `v`: the test decided, if
+ it is a comparison of places and constants, bound to no name a program
+ can write."
+(define r-knowing (subr gen (renv cx bool) renv)
+  (lambda (env t v)
+    (let ((d (r-test-desc env t)))
+      (if (null? d) env (tagcase (car d) (rtest (n ops) (r-bind "%if" (rl-test n ops v) env)))))))
+
+(define r-known-cell (subr gen (renv cx) (listof lit acyclic))
+  (lambda (env x) (let ((k (r-known env x))) (if (null? k) nil (list (rconst-lit (car k)))))))
+
+;;; ------------------------------------------------------------ collects
+
+"Whether `f`, applied to `args`, is the procedure itself: its own name, or
+ a loop's."
+(define r-self-call? (subr kfx (cx cxs cenv rthis) bool)
+  (lambda (f args e me)
+    (tagcase f
+      (x-var (n a)
+        (or (and (not (null? me)) (tagcase (car me) (this (m l k) (and (string=? m n) (i64= k (size args))))))
+            (let ((l (c-find e n))) (and (not (null? l)) (c-loop? (car l))))))
+      (else y #f))))
+
+"Whether `f`, applied to `args`, is a standard operation done in line."
+(define r-inline-op? (subr gen (cx cxs cenv) bool)
+  (lambda (f args e)
+    (tagcase (r-operator f)
+      (x-var (n a)
+        ;; A standard name written `(with #%fx n)` is not: Fixpt's
+        ;; `r-operator` leaves the `with`.
+        (and (not (std-written? n)) (or (std-marked? n) (null? (c-where e n)))
+             (tagcase (r-standard (std-named n) (size args))
+               (s-op1 (r) #t) (s-op2 (r w z) #t) (s-op2imm (r v) #t) (s-field (k) #t)
+               (s-identity () #t) (s-set () #t) (s-pure (p) #t) (else y #f))))
+      (else y #f))))
+
+"Whether a call of `f` is a plain `invoke` (no standard operation)."
+(define r-plain-callee? (subr gen (cx cenv) bool)
+  (lambda (f e)
+    (tagcase f
+      (x-var (name a)
+        (or (std-written? name)
+            (let ((l (if (std-marked? name) nil (c-where e name))))
+              (and (not (null? l)) (tagcase (car l) (at-global (c) #t) (at-slot (i) #t) (at-free (i) #t) (else y #f))))))
+      (else y #t))))
+
+"Whether a call of global `f` with `n` arguments, in a fast version, is no
+ call: its own, in tail position, a loop."
+(define r-call-is-free? (subr gen (rview cx i64 cenv bool) bool)
+  (lambda (v f n e tail)
+    (and (rview-assuming v)
+         tail
+         (tagcase f
+           (x-var (name a)
+             (let ((l (if (std-marked? name) nil (c-where e name))))
+               (and (not (null? l)) (c-global? (car l)) (rview-own-is? v name n))))
+           (else y #f)))))
+
+(define r-bloblet-quiet? (subr kfx (string) bool)
+  (lambda (op) (string-member? op (list "bloblet-ref" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!"))))
+
+(define c-with-local (subr kfx (cenv string) cenv) (lambda (te n) (c-extend n (at-slot -1) te)))
+
+(define-rec
+  (r-collects (subr gen (rview cx cenv rthis bool) bool)
+    (lambda (v x e me tail)
+      "Whether evaluating `x` may call or call out, and so collect (Fixpt's
+       `r-collects`). Loops do not. What register code declines is said
+       to, which does not matter."
+      (tagcase x
+        (x-var (n a)
+          (let ((l (if (std-marked? n) nil (c-where e n))))
+            (and (null? l) (r-standard-value-name? (std-named n)) (or (not tail) (c-vsubr? (std-named n))))))
+        (x-int (n a) #f) (x-bool (b a) #f) (x-str (s a) #f) (x-char (ch a) #f) (x-float (f a) #f)
+        (x-sym (s a) #f) (x-unit (a) #f)
+        (x-lambda (ps body a) (not tail))
+        (x-if (t th el a) (or (r-collects v t e me #f) (r-collects v th e me tail) (r-collects v el e me tail)))
+        (x-let (bs body a)
+          (or (r-collects-all v (c-bound-exps bs) e me) (r-collects v body e me tail)))
+        (x-begin (es a) (r-collects-begin v es e me tail))
+        (x-region (k r body a) (if (or (i64= k 0) (i64= k 3)) (r-collects v body e me tail) #t))
+        (x-proj (y a) (r-collects v y e me tail))
+        (x-extract (p i a) (r-collects v p e me #f))
+        (x-bloblet (op i args a) (if (r-bloblet-quiet? op) (r-collects-all v args e me) #t))
+        (x-tagcase (s arms els k a)
+          (or (r-collects v s e me #f) (r-collects-arms v arms e me tail)
+              (and (not (null? els)) (tagcase (car els) (cbind (n y) (r-collects v y e me tail))))))
+        (x-app (f args a)
+          (let* ((n (size args))
+                 (args-collect (r-collects-all v args e me))
+                 (loop-call (and tail (r-self-call? f args e me)))
+                 (inline (r-inline-op? f args e))
+                 (leaves (and (rview-tail-leaves v) tail (i64< n register-regs)
+                              (r-plain-callee? f e) (not (r-collects v f e me #f)))))
+            (or args-collect (not (or loop-call inline leaves (r-call-is-free? v f n e tail))))))
+        (else y #t))))
+  (r-collects-all (subr gen (rview cxs cenv rthis) bool)
+    (lambda (v es e me) (and (not (null? es)) (or (r-collects v (car es) e me #f) (r-collects-all v (cdr es) e me)))))
+  (r-collects-begin (subr gen (rview cxs cenv rthis bool) bool)
+    (lambda (v es e me tail)
+      (cond ((null? es) #f)
+            ((null? (cdr es)) (r-collects v (car es) e me tail))
+            (else (or (r-collects v (car es) e me #f) (r-collects-begin v (cdr es) e me tail))))))
+  (r-collects-arms (subr gen (rview (listof carm acyclic) cenv rthis bool) bool)
+    (lambda (v arms e me tail)
+      (and (not (null? arms))
+           (or (tagcase (car arms) (carm (t p ns body) (r-collects v body e me tail)))
+               (r-collects-arms v (cdr arms) e me tail))))))
