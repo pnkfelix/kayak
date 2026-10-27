@@ -764,6 +764,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         made booleans before a branch; fuel counted at several blocks of a
         call. Each its own improvement, measured against C239's runs
         (`tak 30 21 12`, `lists` 60000 rounds).
+     Start-up (C243): the stacks reserved, not written, 1.3 ms a start;
+        tier 2's encoding 0.3 ms, not the cost guessed; the rest the
+        kernel's loading of the binary.
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

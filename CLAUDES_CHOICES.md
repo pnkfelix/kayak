@@ -6845,3 +6845,27 @@ before it was run).
   kept in registers across the call, are the call protocol's change, with
   the frame-flushing work (departures 1, 5, 6; `TODO.md`).
 
+## C243. Start-up: the stacks reserved, not written (2026-10-27)
+
+The user: "lets tackle 'tier 2 encoding its whole machine on every start,
+which dominates short runs' next". Measured first (a one-form program,
+best of 40, against `/bin/true`'s 2.27 ms): tier 1 1.6 ms above it, tier 2
+0.3 more, tier 6 0.6 more. So tier 2's encoding never dominated: a guess
+of C239's, corrected.
+- **What did**: kayak-rt wrote every flat array of 0s under 2^20 elements
+  element by element, and tier 1's data stack (132096 words, 1 MB) and
+  return stack (262208, 2 MB) are under it: 3 MB written, some 800 pages
+  faulted, at every start, of which a run uses a little. Now from 2^16
+  elements such an array is reserved (`zeroed_cells`), committed as
+  touched; not lower, each reservation a mapping of its own, of which a
+  process may have some 65000. Tier 1's start 1.3 ms less (5.56 to 4.25,
+  best of 10); the short benchmarks on tier 6 3-7 ms less each (`fib` 25
+  to 19 ms, `tak` 17 to 13, `loop` 28 to 23, `lists` 43 to 40, `closures`
+  68 to 61, `helpers` 29 to 25).
+- **What is left**: 1.6 ms over an empty process, of which kayak's own
+  code is about 1% (`perf`), the dynamic loader and libc 5%, the kernel the
+  rest: loading and relocating a large binary, the big stack's thread
+  (148 page faults to `/bin/true`'s 65; some 100 system calls). Static
+  linking or a binary not position-independent might take some of it:
+  changes to the whole build, for little; not done.
+

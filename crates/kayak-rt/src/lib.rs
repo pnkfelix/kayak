@@ -422,8 +422,13 @@ pub fn set<T: Copy>(r: RefAt<'_, T>, v: T) {
     r.set(v)
 }
 
-/// Elements from which a flat array of 0s is reserved rather than written.
-const BIG_FLATARRAY: usize = 1 << 20;
+/// Elements from which a flat array of 0s is reserved rather than written:
+/// committed as it is touched, so that one used little costs little. From
+/// 2^16 (512 KB; C243), so that tier 1's stacks, 1 and 2 MB of which a
+/// run touches what it uses, are not written at every start; not lower, a
+/// reservation being a mapping of its own, of which a process may have
+/// some 65000.
+const BIG_FLATARRAY: usize = 1 << 16;
 
 #[inline]
 pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
