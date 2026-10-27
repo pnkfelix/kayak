@@ -1282,6 +1282,11 @@
             ((and (string=? d "%bloblet") (not (null? args)))
              "A bloblet's fields, kept at its region (C119), as a ref's value."
              (first-knot v res (cdr args) (cons (region-name-of (car args)) kept) every seen))
+            ((or (string=? d "%native") (string=? d "%fx") (string=? d "%cellular") (string=? d "%convof"))
+             "A procedure of a convention written (C255): the procedure it
+              wraps, as Fixpt's `k-knot-in` sees it (a `hand-code` kept in `@c`
+              went unchecked)."
+             (first-knot v res args kept every seen))
             ((string-member? d seen) nil)
             (else
               (let ((found (find-family d (cv-dts v))))

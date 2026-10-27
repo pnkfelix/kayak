@@ -7192,3 +7192,19 @@ ahead" to: a check of it, the sources fixed, kayak's checker aligned, and
   expected says which; KFX's makes a list at its tail's); and its `car`,
   `cdr`, `set-car!`, `set-cdr!` take only lists, where FX-26's take any
   pair that may be `nil` (`scheme-bench/peval.fx`, refused).
+
+## C255. The knot rule sees through a convention (2026-10-27)
+
+Of the cases C254 found, the one unsound one (the user asked which were
+inexpressive, weak or unsound): tier 2's machine code, `(subr (conv
+native) (maxeff (read @c) (write @c)) …)`, kept in `@c`, which it reads,
+said no `spin`; FX-26's rule (Fixpt's `k-knot-in`) has a procedure that
+could reach itself so say. Kayak's checker has the rule (`knot-in`), but
+did not look inside a procedure of a convention written (`%native`,
+`%fx`, `%cellular`, `%convof`): now it does, so it refuses what Fixpt
+refuses (a `(subr (conv native) (read @c) () int)` kept in a list at `@c`).
+The region cases are a typing rule, not unsoundness: kayak solves an
+allocation's region from later uses where FX-26 makes one its arguments
+and what is expected leave unsaid fresh at the call (`docs/fx26.md`,
+"implicit projection"); and `peval`, kayak's `car` and kin of lists only.
+Both next.

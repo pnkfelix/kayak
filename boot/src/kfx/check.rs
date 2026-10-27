@@ -2707,6 +2707,11 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static (dyn Fn(Str) -> Str + Send 
                 } else if (string_eq_p(d, str_lit("%bloblet")) && not(null_p(args))) {
                     // A bloblet's fields, kept at its region (C119), as a ref's value.
                     return first_knot(v, res, cdr(args), kayak_rt::heap_cons(region_name_of(car(args)), kept), every, seen);
+                } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%cellular")) || string_eq_p(d, str_lit("%convof"))) {
+                    // A procedure of a convention written (C255): the procedure it
+                    // wraps, as Fixpt's `k-knot-in` sees it (a `hand-code` kept in `@c`
+                    // went unchecked).
+                    return first_knot(v, res, args, kept, every, seen);
                 } else if string_member_p(d, seen) {
                     return nil::<Str>();
                 } else {
