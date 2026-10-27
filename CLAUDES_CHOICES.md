@@ -7047,3 +7047,22 @@ want us to be on top of performance from the outset now".
   stack bounds, six slots and a header written, three parameters stored.
   The call protocol's cost, which the frame work is to take away
   (TODO, performance item 3); `(< y x)` 11%, the calls 6-9% each.
+
+## C250. A register word's entry, part by part, at the letters of `(lambda` (2026-10-27)
+
+The user: "Can you get finer grain data on [the entry's 35%] … maybe by
+attributing each part to distinct letters in l a m b d a ?"
+- **The positions**: a body's entry parts each at a character of its
+  lambda's `(lambda`, P its position: the entry itself at P (`(`), a fast
+  version's guards at P+1 (`l`), the frame made at P+2 (`a`), the first
+  three parameters stored at P+3 to P+5 (`m`, `b`, `d`), any more at P+6.
+  Lines are as before (all the lambda's line); `KAYAK_JITDUMP=expr` tells
+  them apart. Its side file now gives every position but a blank's its
+  text, not only where a token may start, so that each letter has one.
+- **Measured** (`tak 30 21 12`, tier 6): the entry 33% of the samples:
+  the frame made 18.6% (a fuel count of the block, three stack bounds,
+  six slots written `#f` and a header word: these writes about 14%),
+  the guard 7.8% (a fuel count, the global loaded, its writes loaded, the
+  count expected loaded, not an immediate, and compared), the stores
+  1.3%, 2.6%, 2.9%. The frame made is `tak`'s one dearest part, above any
+  expression of its body: what the call protocol's work starts from.

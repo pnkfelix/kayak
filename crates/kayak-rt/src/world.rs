@@ -724,7 +724,7 @@ pub fn code_lines_noted(start: i64, len: i64, name: &str, file: &str, pairs: &[u
 /// lines the source's (N `text`'s lines), then a line saying so, then
 /// line N + 2 + P for character position P: `LINE:COLUMN  TEXT`, the
 /// line from 1, the column from 0, the text from there to the line's end
-/// (cut at 60), where a token may start, else empty. So a line of N or
+/// (cut at 60), at every position but a blank's, else empty. So a line of N or
 /// less is the source's own, and one past N + 1 a position, which
 /// `scripts/perf-expr.py` reads back. At `/tmp/jit-PID.NAME.expr`,
 /// beside the jitdump. Its path and N; none if it cannot be written.
@@ -746,8 +746,9 @@ fn side_file(path: &str, text: &str) -> Option<(String, u64)> {
     let cs: Vec<char> = text.chars().collect();
     let (mut line, mut col) = (1, 0);
     for (p, &c) in cs.iter().enumerate() {
-        let starts = p == 0 || cs[p - 1].is_whitespace() || "()[]'`,\"".contains(cs[p - 1]);
-        if starts && !c.is_whitespace() {
+        // Every position but a blank's: an entry's parts are at the
+        // letters of its `(lambda` (C250).
+        if !c.is_whitespace() {
             let rest: String = cs[p..].iter().take_while(|&&c| c != '\n').collect();
             let cut: String = rest.chars().take(60).collect();
             let more = if rest.chars().count() > 60 { "…" } else { "" };

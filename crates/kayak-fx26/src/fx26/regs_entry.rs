@@ -102,13 +102,32 @@ pub fn r_env_of(g: &'static Rgen, inner: Cenv, leaf: bool) -> Renv {
     }
 }
 
+// The parts of a body's entry, each at a letter of its lambda's
+// `(lambda` (C250), so that a profile tells them apart: the entry itself
+// at its `(`, the fast version's guards at `l`, the frame made at `a`, the
+// first parameters stored at `m`, `b` and `d`, any more at the last `a`.
+// `at` the lambda's position (none, 0).
+pub fn entry_pos_x(g: &'static Rgen, at: i64, k: i64) -> () {
+    if i64_gt(at, 0i64) {
+        r_emit(g, ri_pos(i64_plus(at, k)))
+    } else {
+        ()
+    }
+}
+
 // Parameters `i` on, of `n`, each into a frame slot of its own.
-pub fn r_store_params(mut g: &'static Rgen, mut i: i64, mut n: i64) -> () {
+/// Each store the lambda's letter for it (`entry-at`).
+pub fn r_store_params(mut g: &'static Rgen, mut i: i64, mut n: i64, mut at: i64) -> () {
     loop {
         if i64_eq(i, n) {
             return ();
         } else {
             let s = r_slot(g);
+            entry_pos_x(g, at, i64_plus(3i64, if i64_lt(i, 3i64) {
+                i
+            } else {
+                3i64
+            }));
             r_opnn(g, str_lit("store"), i64_plus(i, 1i64), s);
             i = i64_plus(i, 1i64);
             continue;
@@ -140,17 +159,14 @@ pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings
             }, kayak_rt::heap_new(the::<i64>(0i64)));
             let g = rgen(kayak_rt::heap_new(nil::<&'static Ritem>()), leaf, kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(labels), me, the::<i64>(0i64), cx);
             r_opn(g, str_lit("args"), n);
-            if i64_gt(at, 0i64) {
-                r_emit(g, ri_pos(at))
-            } else {
-                ()
-            };
+            entry_pos_x(g, at, 0i64);
             let env = r_env_of(g, inner, leaf);
             if leaf {
                 set(g_nreg(g), n)
             } else {
+                entry_pos_x(g, at, 2i64);
                 r_emit(g, ri_frame(str_lit("save")));
-                r_store_params(g, 0i64, n)
+                r_store_params(g, 0i64, n, at)
             };
             if null_p(me) {
                 ()
@@ -243,7 +259,7 @@ pub fn r_guards_of(cs: Strings, to: i64) -> Ritems {
 // The two versions as one: `args n`, a guard for each assumption (to the
 // plain version where it fails), the fast body, the plain one; both with
 // the larger frame.
-pub fn r_versions(fast: &'static Rgen, plain: &'static Rgen, assumptions: Strings) -> &'static Rcode {
+pub fn r_versions(fast: &'static Rgen, plain: &'static Rgen, assumptions: Strings, at: i64) -> &'static Rcode {
     let f = get(g_mslot(fast));
     let p = get(g_mslot(plain));
     let fl = get(g_labels(fast));
@@ -251,7 +267,11 @@ pub fn r_versions(fast: &'static Rgen, plain: &'static Rgen, assumptions: String
     let plain_at = i64_plus(fl, pl);
     let fi = the::<Ritems>(reverse(get(g_items(fast))));
     let pi = relabelled(the::<Ritems>(reverse(get(g_items(plain)))), fl);
-    let guards = r_guards_of(assumptions, plain_at);
+    let guards = the::<Ritems>(if i64_gt(at, 0i64) {
+        kayak_rt::heap_cons(ri_pos(i64_plus(at, 1i64)), r_guards_of(assumptions, plain_at))
+    } else {
+        r_guards_of(assumptions, plain_at)
+    });
     rcode(kayak_rt::heap_cons(car(fi), if (not(null_p(cdr(fi))) && {
         let tagcase_ = car(cdr(fi));
         match *tagcase_ {
@@ -429,7 +449,14 @@ pub fn r_fast_code(t: &'static Twin) -> List<&'static Rcode> {
         if null_p(plain) {
             nil::<&'static Rcode>()
         } else {
-            kayak_rt::heap_cons(r_versions(car(fast), car(plain), assumptions), kayak_rt::nil())
+            kayak_rt::heap_cons(r_versions(car(fast), car(plain), assumptions, {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Twin::Twin(w, ps, body, inner, me, own, at) => {
+                        at
+                    }
+                }
+            }), kayak_rt::nil())
         }
     }
 }

@@ -31,9 +31,17 @@ NAME (tier 6)`) and the machine's (`kayak tier 2: the machine`).
 The jitdump gives perf each word's code, and for words with a line table
 each instruction's source line: tier 4's from its cells' table, tiers 5
 and 6's from their register code's (`; regs at`, C249), from kayak's
-listings. A register word's entry (its frame made, its parameters
-stored, its guards) is the lambda's own line: the call protocol's cost,
-in `expr` mode the lambda's text.
+listings. A register word's entry is the lambda's own line: the call
+protocol's cost. In `expr` mode its parts are told apart, each at a
+letter of the lambda's `(lambda` (C250):
+
+| column of `(lambda` | part of the entry |
+|---|---|
+| `(` | the entry itself, where nothing below follows |
+| `l` | the fast version's guards |
+| `a` | the frame made (`save`) |
+| `m`, `b`, `d` | the first three parameters stored |
+| the last `a` | any more parameters stored |
 
 ## Per expression: `KAYAK_JITDUMP=expr`
 

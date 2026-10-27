@@ -35,10 +35,25 @@
                   (at-global (c) (r-bind n (rl-global c) rest))
                   (at-pending (s) (begin (r-decline g) rest))))))))))
 
+"The parts of a body's entry, each at a letter of its lambda's
+ `(lambda` (C250), so that a profile tells them apart: the entry itself
+ at its `(`, the fast version's guards at `l`, the frame made at `a`, the
+ first parameters stored at `m`, `b` and `d`, any more at the last `a`.
+ `at` the lambda's position (none, 0)."
+(define entry-pos! (subr gen (rgen i64 i64) unit)
+  (lambda (g at k) (if (i64> at 0) (r-emit g (ri-pos (i64+ at k))) #u)))
+
 "Parameters `i` on, of `n`, each into a frame slot of its own."
 (define-rec
-  (r-store-params (subr gen (rgen i64 i64) unit)
-    (lambda (g i n) (if (i64= i n) #u (let ((s (r-slot g))) (begin (r-opnn g "store" (i64+ i 1) s) (r-store-params g (i64+ i 1) n)))))))
+  (r-store-params (subr gen (rgen i64 i64 i64) unit)
+    (lambda (g i n at)
+      "Each store the lambda's letter for it (`entry-at`)."
+      (if (i64= i n)
+          #u
+          (let ((s (r-slot g)))
+            (begin (entry-pos! g at (i64+ 3 (if (i64< i 3) i 3)))
+                   (r-opnn g "store" (i64+ i 1) s)
+                   (r-store-params g (i64+ i 1) n at)))))))
 
 "The body as a leaf, or not, as `leaf` says, in a list; none if declined.
  `assuming`: a fast version's, its assumptions into `assumed`."
@@ -55,10 +70,10 @@
             (r-opn g "args" n)
             ;; The entry's code, its frame made and its parameters stored,
             ;; the lambda's own, in its line table (C249).
-            (if (i64> at 0) (r-emit g (ri-pos at)) #u)
+            (entry-pos! g at 0)
             (let ((env (r-env-of g inner leaf)))
               (begin
-                (if leaf (set (g-nreg g) n) (begin (r-emit g (ri-frame "save")) (r-store-params g 0 n)))
+                (if leaf (set (g-nreg g) n) (begin (entry-pos! g at 2) (r-emit g (ri-frame "save")) (r-store-params g 0 n at)))
                 ;; The body's starts: the procedure's own (0), for its loops,
                 ;; if it knows itself; its definition's, for its calls of
                 ;; itself.
@@ -107,14 +122,14 @@
 "The two versions as one: `args n`, a guard for each assumption (to the
  plain version where it fails), the fast body, the plain one; both with
  the larger frame."
-(define r-versions (subr gen (rgen rgen strings) rcode)
-  (lambda (fast plain assumptions)
+(define r-versions (subr gen (rgen rgen strings i64) rcode)
+  (lambda (fast plain assumptions at)
     (let* ((f (get (g-mslot fast))) (p (get (g-mslot plain)))
            (fl (get (g-labels fast))) (pl (get (g-labels plain)))
            (plain-at (i64+ fl pl))
            (fi (the ritems (reverse (get (g-items fast)))))
            (pi (relabelled (the ritems (reverse (get (g-items plain)))) fl))
-           (guards (r-guards-of assumptions plain-at)))
+           (guards (the ritems (if (i64> at 0) (cons (ri-pos (i64+ at 1)) (r-guards-of assumptions plain-at)) (r-guards-of assumptions plain-at)))))
       ;; The guards after the entry's position, as the lambda's (C249).
       (rcode (cons (car fi)
                    (if (and (not (null? (cdr fi))) (tagcase (car (cdr fi)) (ri-pos (q) #t) (else y #f)))
@@ -191,7 +206,7 @@
               (not (or (g-leaf (car fast)) (get (x-looped (g-ctx (car fast)))))))
           (r-plain-code t)
           (let ((plain (r-register-body t #f (new nil))))
-            (if (null? plain) nil (list (r-versions (car fast) (car plain) assumptions))))))))
+            (if (null? plain) nil (list (r-versions (car fast) (car plain) assumptions (tagcase t (twin (w ps body inner me own at) at))))))))))
 
 "A twin's register code, noted under its word's name, unless declined."
 (define r-twin-made! (subr gen (twin) unit)
