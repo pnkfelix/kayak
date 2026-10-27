@@ -1059,7 +1059,9 @@
   (t6-leaders! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
     (lambda (rw i n lead)
       "Which instructions from `i` begin a block, 1 in `lead`: a branch's
-       target, what follows a branch, a call or a return."
+       target, what follows a branch (but a `global-guard`, C251: where it
+       holds, on in its block, the entry's fuel counted once; where it
+       fails, a few steps counted more), a call or a return."
       (if (i64>= i n)
           #u
           (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk)))
@@ -1067,7 +1069,8 @@
                  (t (branch-target rw i)))
             (begin
               (if (and (i64>= t 0) (i64<= t n)) (flatarray-set-i64! lead t 1) #u)
-              (if (or (i64>= t 0) (i64= op ro-invoke) (i64= op ro-tailinvoke) (i64= op ro-invokeself) (i64= op ro-return))
+              (if (or (and (i64>= t 0) (not (i64= op ro-global-guard)))
+                      (i64= op ro-invoke) (i64= op ro-tailinvoke) (i64= op ro-invokeself) (i64= op ro-return))
                   (flatarray-set-i64! lead nx 1)
                   #u)
               (t6-leaders! rw nx n lead)))))))
@@ -1092,6 +1095,31 @@
  if there is not as much."
 (define h-6-lead (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define h-6-len (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+
+(define-rec
+  (stored-after-save? (->* (i64 i64 i64 i64) bool)
+    (lambda (rw i n s)
+      "Whether frame slot `s` is written by a `store` of the run of them
+       from instruction `i`, the one after a `save`, in its block (C251):
+       tier 6 runs nothing between that may give back or collect, so the
+       slot need not be filled with `#f` first."
+      (if (or (i64>= i n) (i64= (flatarray-ref-i64 (get h-6-lead) i) 1))
+          #f
+          (let ((kk (i64+ f-cell0 i)))
+            (and (i64= (fix-val (slot-of rw kk)) ro-store)
+                 (or (i64= (fix-val (slot-of rw (i64+ kk 2))) s) (stored-after-save? rw (i64+ i 3) n s))))))))
+
+(define-rec
+  (fills-but! (->* (i64 i64 i64 int int) unit)
+    (lambda (rw i n j m)
+      "Slots `j` on, of `m`, `x13` (`#f`) stored at each but those the
+       `store`s from instruction `i` write (`stored-after-save?`)."
+      (if (>= j m)
+          #u
+          (begin (if (stored-after-save? rw i n (int->i64 j)) #u (stur! x13 x-dsp (* 8 j)))
+                 (fills-but! rw i n (+ j 1) m))))))
+
+
 
 "What the registers hold of the frame, in tier 6's straight-line code
  (C242; Fixpt's `held`, `direct/x64.rs`): for `REG1` to `REG3`, the slot
@@ -1328,10 +1356,14 @@
                (ldr! x13 x-st (at-st st-ds-end)) (cmp! x16 x13) (give-if! c-hi)
                (ldr! x13 x-st (at-st st-rs-lim)) (cmp! x-rsp x13) (give-if! c-hs)
                (mov! x-fp x-dsp) (movz! x13 3)
-               (if (<= m 16)
-                   (fill-false! m)
+               (cond
+                 ;; Tier 6's: each slot the `store`s after it write not
+                 ;; filled first (C251).
+                 ((and (get h-6) (<= m 16)) (begin (fills-but! rw nx n 0 m) (add-const! x-dsp x-dsp (* 8 m))))
+                 ((<= m 16) (fill-false! m))
+                 (else
                    (let ((loop (label!)))
-                     (begin (sub-const! x15 x16 8) (bind! loop) (str-post! x13 x-dsp 8) (cmp! x-dsp x15) (bc! c-lo loop))))
+                     (begin (sub-const! x15 x16 8) (bind! loop) (str-post! x13 x-dsp 8) (cmp! x-dsp x15) (bc! c-lo loop)))))
                ;; The link (C131): 8-aligned, a fixnum to the collector;
                ;; tier 6's, tier 5's, from its caller's record (C210).
                (if (get h-6) (begin (ldr! x13 31 40) (str-post! x13 x-dsp 8)) (str-post! 30 x-dsp 8))
@@ -1498,7 +1530,11 @@
           ((i64= op ro-global-guard)
            (begin
              (opnd! x16 0) (add! x16 x-mem x16) (ldur! x13 x16 (at-field f-writes))
-             (opnd! x14 1) (cmp! x13 x14) (bc! c-ne (to 3 (fix-val (slot-of rw (i64+ kk 3)))))))
+             ;; The count expected, fixed when compiled: an immediate where
+             ;; it fits (C251).
+             (let ((w (i64->int (slot-of rw (i64+ kk 2)))))
+               (if (and (>= w 0) (< w 4096)) (cmpi! x13 w) (begin (opnd! x14 1) (cmp! x13 x14))))
+             (bc! c-ne (to 3 (fix-val (slot-of rw (i64+ kk 3)))))))
           (else (b! (get l-give))))
         ;; Where a call or a call-out comes back to: its value on the data
         ;; stack, whether it ran here or was given back.

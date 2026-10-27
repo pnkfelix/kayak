@@ -790,7 +790,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         regions, prompts, bloblets). Register code's line tables, tiers
         5-6's debug info: done (C249); `tak` on tier 6, 35% in its entry
         (fuel, the guard, stack bounds, six slots written `#f`, the
-        parameters stored), the call protocol's cost.
+        parameters stored), the call protocol's cost. C251: fewer fills, the
+        guard's count an immediate, the entry's fuel once: -14.6% cycles;
+        the entry 26.9%, its three stack bounds the most of what is left.
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

@@ -2235,6 +2235,24 @@ pub fn yfrees_stored_x(mut r: Int, mut n: Int) -> () {
     }
 }
 
+/// Slots `j` on, of `m`, `rcx` (`#f`) stored at each but those the
+/// `store`s from instruction `i` write (`stored-after-save?`).
+pub fn yfills_but_x(mut rw: i64, mut i: i64, mut n: i64, mut j: Int, mut m: Int) -> () {
+    loop {
+        if _gt_eq(j, m) {
+            return ();
+        } else {
+            if stored_after_save_p(rw, i, n, int_to_i64(j)) {
+                ()
+            } else {
+                yst_x(y_dsp(), _star(int_lit(8), j), y13())
+            };
+            j = _plus(j, int_lit(1));
+            continue;
+        }
+    }
+}
+
 pub fn yfills_at_x(mut j: Int, mut m: Int) -> () {
     loop {
         if _gt_eq(j, m) {
@@ -2656,7 +2674,10 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         ygive_if_x(q_ae());
         ymov_x(y_fp(), y_dsp());
         yimm_x(y13(), int_lit(3));
-        if _lt_eq(m, int_lit(16)) {
+        if (get(h_6()) && _lt_eq(m, int_lit(16))) {
+            yfills_but_x(rw, nx, n, int_lit(0), m);
+            yalui_x(a_add(), y_dsp(), _star(int_lit(8), m))
+        } else if _lt_eq(m, int_lit(16)) {
             yfill_false_x(m)
         } else {
             let r#loop = label_x();
@@ -2883,8 +2904,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
     } else if i64_eq(op, ro_global_guard()) {
         yopnd_x(y16(), kk, int_lit(0));
         yld_v_x(y13(), y16(), at_field(f_writes()));
-        yopnd_x(y14(), kk, int_lit(1));
-        yalu_x(a_cmp(), y13(), y14());
+        yalui_x(a_cmp(), y13(), i64_to_int(slot_of(rw, i64_plus(kk, 2i64))));
         ybc_x(q_ne(), to(int_lit(3), fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
     } else {
         yb_x(get(l_give()))

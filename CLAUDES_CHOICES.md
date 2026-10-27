@@ -7066,3 +7066,25 @@ attributing each part to distinct letters in l a m b d a ?"
   count expected loaded, not an immediate, and compared), the stores
   1.3%, 2.6%, 2.9%. The frame made is `tak`'s one dearest part, above any
   expression of its body: what the call protocol's work starts from.
+
+## C251. Tier 6's entry made cheaper: fills, the guard, fuel (2026-10-27)
+
+The user, of C250's next steps: "Yeah do 1, 2, then 3"; the first, the
+entry's quick costs C250 measured.
+- **Fewer fills**: tier 6's `save` fills with `#f` only the slots the
+  run of `store`s after it does not write (`stored-after-save?`): a run
+  in the same block, so that nothing between may give back or collect;
+  tier 5, which counts each instruction's fuel and may give back between
+  any two, fills them all. `tak`: three slots filled, not six.
+- **The guard's count an immediate**: what a `global-guard` expects is
+  fixed when its code is made: compared as an immediate (arm64's where it
+  fits 12 bits), not loaded from the word.
+- **The entry's fuel counted once**: a `global-guard`'s fall-through no
+  longer begins a block (`t6-leaders!`); where it holds, on in its block,
+  one count; where it fails (its global written again), the rest of its
+  block counted too, a few steps more, never less.
+- **Measured** (`tak 30 21 12`, tier 6, `perf stat -r 10`): 335 to 286
+  million cycles (-14.6%), 1,367 to 1,296 million instructions; the entry
+  33.2% of the samples to 26.9%, the frame made 18.6% to 14.5% (its
+  three stack bounds the most of it now), the guard 7.8% to 6.2%.
+- **arm64**: the same, made but not run here (TODO's arm64 items).

@@ -861,6 +861,16 @@
       (if (> r n) #u (begin (yreg-ld! y14 r) (yst! y11 (- -24 (* 8 (- r 1))) y14) (yfrees-stored! (+ r 1) n))))))
 
 (define-rec
+  (yfills-but! (->* (i64 i64 i64 int int) unit)
+    (lambda (rw i n j m)
+      "Slots `j` on, of `m`, `rcx` (`#f`) stored at each but those the
+       `store`s from instruction `i` write (`stored-after-save?`)."
+      (if (>= j m)
+          #u
+          (begin (if (stored-after-save? rw i n (int->i64 j)) #u (yst! y-dsp (* 8 j) y13))
+                 (yfills-but! rw i n (+ j 1) m))))))
+
+(define-rec
   (yfills-at! (->* (int int) unit)
     (lambda (j m) (if (>= j m) #u (begin (yst! y-dsp (* 8 j) y13) (yfills-at! (+ j 1) m)))))
   (yfill-false! (->* (int) unit)
@@ -1105,10 +1115,14 @@
                (ycmp-st! y16 st-ds-end) (ygive-if! q-a)
                (ycmp-st! y-rsp st-rs-lim) (ygive-if! q-ae)
                (ymov! y-fp y-dsp) (yimm! y13 3)
-               (if (<= m 16)
-                   (yfill-false! m)
+               (cond
+                   ;; Tier 6's: each slot the `store`s after it write not
+                   ;; filled first (C251).
+                   ((and (get h-6) (<= m 16)) (begin (yfills-but! rw nx n 0 m) (yalui! a-add y-dsp (* 8 m))))
+                   ((<= m 16) (yfill-false! m))
+                   (else
                    (let ((loop (label!)))
-                     (begin (ylea! y15 y16 -8) (ybind! loop) (ypushed! y13) (yalu! a-cmp y-dsp y15) (ybc! q-b loop))))
+                     (begin (ylea! y15 y16 -8) (ybind! loop) (ypushed! y13) (yalu! a-cmp y-dsp y15) (ybc! q-b loop)))))
                ;; The link: 8-aligned, a fixnum to the collector; tier 6's
                ;; none, its frames returning the stack's way once left.
                (cond ((get h-6) (yimm! y13 0))
@@ -1241,7 +1255,8 @@
           ((i64= op ro-global-guard)
            (begin
              (yopnd! y16 kk 0) (yld-v! y13 y16 (at-field f-writes))
-             (yopnd! y14 kk 1) (yalu! a-cmp y13 y14) (ybc! q-ne (to 3 (fix-val (slot-of rw (i64+ kk 3)))))))
+             ;; The count expected, fixed when compiled: an immediate (C251).
+             (yalui! a-cmp y13 (i64->int (slot-of rw (i64+ kk 2)))) (ybc! q-ne (to 3 (fix-val (slot-of rw (i64+ kk 3)))))))
           (else (yb! (get l-give))))
         ;; Where a call or a call-out comes back to: its value on the data
         ;; stack, whether it ran here or was given back.

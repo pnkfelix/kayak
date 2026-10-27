@@ -2607,7 +2607,9 @@ pub fn branch_target(rw: i64, i: i64) -> i64 {
 }
 
 /// Which instructions from `i` begin a block, 1 in `lead`: a branch's
-/// target, what follows a branch, a call or a return.
+/// target, what follows a branch (but a `global-guard`, C251: where it
+/// holds, on in its block, the entry's fuel counted once; where it
+/// fails, a few steps counted more), a call or a return.
 pub fn t6_leaders_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64>) -> () {
     loop {
         if i64_gt_eq(i, n) {
@@ -2622,7 +2624,7 @@ pub fn t6_leaders_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64
             } else {
                 ()
             };
-            if (i64_gt_eq(t, 0i64) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return())) {
+            if ((i64_gt_eq(t, 0i64) && not(i64_eq(op, ro_global_guard()))) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return())) {
                 flatarray_set_i64_x(lead, nx, 1i64)
             } else {
                 ()
@@ -2670,6 +2672,37 @@ pub fn h_6_len() -> Ref<FlatArray<i64>> {
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
     })
+}
+
+/// Whether frame slot `s` is written by a `store` of the run of them
+/// from instruction `i`, the one after a `save`, in its block (C251):
+/// tier 6 runs nothing between that may give back or collect, so the
+/// slot need not be filled with `#f` first.
+pub fn stored_after_save_p(rw: i64, i: i64, n: i64, s: i64) -> bool {
+    if (i64_gt_eq(i, n) || i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64)) {
+        false
+    } else {
+        let kk = i64_plus(f_cell0(), i);
+        (i64_eq(fix_val(slot_of(rw, kk)), ro_store()) && (i64_eq(fix_val(slot_of(rw, i64_plus(kk, 2i64))), s) || stored_after_save_p(rw, i64_plus(i, 3i64), n, s)))
+    }
+}
+
+/// Slots `j` on, of `m`, `x13` (`#f`) stored at each but those the
+/// `store`s from instruction `i` write (`stored-after-save?`).
+pub fn fills_but_x(mut rw: i64, mut i: i64, mut n: i64, mut j: Int, mut m: Int) -> () {
+    loop {
+        if _gt_eq(j, m) {
+            return ();
+        } else {
+            if stored_after_save_p(rw, i, n, int_to_i64(j)) {
+                ()
+            } else {
+                stur_x(x13(), x_dsp(), _star(int_lit(8), j))
+            };
+            j = _plus(j, int_lit(1));
+            continue;
+        }
+    }
 }
 
 // What the registers hold of the frame, in tier 6's straight-line code
@@ -3071,7 +3104,10 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         give_if_x(c_hs());
         mov_x(x_fp(), x_dsp());
         movz_x(x13(), int_lit(3));
-        if _lt_eq(m, int_lit(16)) {
+        if (get(h_6()) && _lt_eq(m, int_lit(16))) {
+            fills_but_x(rw, nx, n, int_lit(0), m);
+            add_const_x(x_dsp(), x_dsp(), _star(int_lit(8), m))
+        } else if _lt_eq(m, int_lit(16)) {
             fill_false_x(m)
         } else {
             let r#loop = label_x();
@@ -3378,8 +3414,15 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         opnd_x(x16(), int_lit(0));
         add_x(x16(), x_mem(), x16());
         ldur_x(x13(), x16(), at_field(f_writes()));
-        opnd_x(x14(), int_lit(1));
-        cmp_x(x13(), x14());
+        {
+            let w = i64_to_int(slot_of(rw, i64_plus(kk, 2i64)));
+            if (_gt_eq(w, int_lit(0)) && _lt(w, int_lit(4096))) {
+                cmpi_x(x13(), w)
+            } else {
+                opnd_x(x14(), int_lit(1));
+                cmp_x(x13(), x14())
+            }
+        };
         bc_x(c_ne(), to(int_lit(3), fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
     } else {
         b_x(get(l_give()))
