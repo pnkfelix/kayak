@@ -622,34 +622,153 @@ pub fn pending_names() -> Ref<&'static Sum_5names_6failed<Strings, Product_4kind
     })
 }
 
+// Text in the engine's own words (C233): kayak-rt writes a string's code
+// points from `space` (one to a word), and reads a line into a string made
+// here, so that no KFX string is made, which would never be freed; a
+// failure's kind and detail asked after (then a KFX string, on that path
+// alone).
+
+pub fn _pctsyscall_available_colonwrite_points() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall write-points (\"io:write-points/1\")"), str_lit("io:write-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"));
+    true
+}
+
+pub fn write_points(x1: FlatArray<i64>, x2: Int, x3: Int, x4: Int, x5: Int) -> Int {
+    _pctsyscall_available_colonwrite_points();
+    kayak_rt::syscall5(str_lit("syscall write-points (\"io:write-points/1\")"), str_lit("io:write-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"), x1, x2, x3, x4, x5)
+}
+
+pub fn _pctsyscall_available_colonread_line_points() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall read-line-points (\"io:read-line-points/1\")"), str_lit("io:read-line-points/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn read_line_points() -> Int {
+    _pctsyscall_available_colonread_line_points();
+    kayak_rt::syscall0(str_lit("syscall read-line-points (\"io:read-line-points/1\")"), str_lit("io:read-line-points/1"), str_lit("(subr (io sys) () int)"))
+}
+
+pub fn _pctsyscall_available_colontake_points() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall take-points (\"io:take-points/1\")"), str_lit("io:take-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"));
+    true
+}
+
+pub fn take_points(x1: FlatArray<i64>, x2: Int, x3: Int) -> () {
+    _pctsyscall_available_colontake_points();
+    kayak_rt::syscall3(str_lit("syscall take-points (\"io:take-points/1\")"), str_lit("io:take-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_colonfailure_kind() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall failure-kind (\"io:failure-kind/1\")"), str_lit("io:failure-kind/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn failure_kind() -> Int {
+    _pctsyscall_available_colonfailure_kind();
+    kayak_rt::syscall0(str_lit("syscall failure-kind (\"io:failure-kind/1\")"), str_lit("io:failure-kind/1"), str_lit("(subr (io sys) () int)"))
+}
+
+pub fn _pctsyscall_available_colonfailure_detail() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"));
+    true
+}
+
+pub fn failure_detail() -> Str {
+    _pctsyscall_available_colonfailure_detail();
+    kayak_rt::syscall0(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"))
+}
+
+// The line read where its room is found: its length (-1 the end, -2 a
+// failure, its kind and detail kept).
+pub fn pending_points() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn pending_kind() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(7i64)
+    })
+}
+
+pub fn pending_detail() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
+}
+
+pub fn failure_pended_x() -> i64 {
+    set(pending_kind(), int_to_i64(failure_kind()));
+    set(pending_detail(), failure_detail());
+    i64_plus(32i64, string_length_i64(get(pending_detail())))
+}
+
+/// The failure pended, as `io-error-word!` makes one.
+pub fn failure_word_x() -> i64 {
+    let k = get(pending_kind());
+    let kind = if i64_eq(k, 0i64) {
+        str_lit("not-found")
+    } else if i64_eq(k, 1i64) {
+        str_lit("permission-denied")
+    } else if i64_eq(k, 2i64) {
+        str_lit("already-exists")
+    } else if i64_eq(k, 3i64) {
+        str_lit("not-a-directory")
+    } else if i64_eq(k, 4i64) {
+        str_lit("is-a-directory")
+    } else if i64_eq(k, 5i64) {
+        str_lit("broken-pipe")
+    } else if i64_eq(k, 6i64) {
+        str_lit("invalid-data")
+    } else {
+        str_lit("other")
+    };
+    let s = sum_word_x(kind, w_unit());
+    let d = string_word_x(get(pending_detail()));
+    let p = alloc_x(ob_product(), 3i64);
+    obj_set_x(p, 0i64, fixnum(get(io_error_labels())));
+    obj_set_x(p, 1i64, s);
+    obj_set_x(p, 2i64, d);
+    sum_word_x(str_lit("failed"), p)
+}
+
 pub fn line_room_x() -> i64 {
-    set(pending_line(), read_line());
-    let tagcase_ = get(pending_line());
-    match *tagcase_ {
-        Sum_4line_3eof_6failed::Line(s) => {
-            i64_plus(16i64, string_length_i64(s))
-        }
-        Sum_4line_3eof_6failed::Eof(u) => {
-            8i64
-        }
-        Sum_4line_3eof_6failed::Failed(e) => {
-            i64_plus(32i64, string_length_i64(e.1))
-        }
+    set(pending_points(), int_to_i64(read_line_points()));
+    if i64_gt_eq(get(pending_points()), 0i64) {
+        i64_plus(16i64, get(pending_points()))
+    } else if i64_eq(get(pending_points()), -1i64) {
+        8i64
+    } else {
+        failure_pended_x()
     }
 }
 
 pub fn read_line_word_x() -> i64 {
-    let tagcase_ = get(pending_line());
-    match *tagcase_ {
-        Sum_4line_3eof_6failed::Line(s) => {
-            sum_word_x(str_lit("line"), string_word_x(s))
-        }
-        Sum_4line_3eof_6failed::Eof(u) => {
-            sum_word_x(str_lit("eof"), w_unit())
-        }
-        Sum_4line_3eof_6failed::Failed(e) => {
-            sum_word_x(str_lit("failed"), io_error_word_x(e))
-        }
+    let n = get(pending_points());
+    if i64_gt_eq(n, 0i64) {
+        let p = alloc_x(ob_string(), n);
+        take_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), int_lit(1));
+        sum_word_x(str_lit("line"), p)
+    } else if i64_eq(n, -1i64) {
+        sum_word_x(str_lit("eof"), w_unit())
+    } else {
+        failure_word_x()
+    }
+}
+
+// A string written from the engine's words, to the standard output (1) or
+// error (2): `done`, or the failure (its room found before, as a write's
+// is not: a failure's is made after, a rare path).
+pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
+    if i64_eq(int_to_i64(write_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), i64_to_int(obj_size(p)), int_lit(1), i64_to_int(stream))), 0i64) {
+        sum_word_x(str_lit("done"), w_unit())
+    } else {
+        failure_pended_x();
+        failure_word_x()
     }
 }
 

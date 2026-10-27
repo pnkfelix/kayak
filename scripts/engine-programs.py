@@ -26,6 +26,10 @@ PASSING = os.path.join(ROOT, "tests", "engine-passing")
 
 
 def run(args, **kw):
+    # The standard input empty unless one is given, as Fixpt's runs are
+    # (C233).
+    if "input" not in kw:
+        kw["stdin"] = subprocess.DEVNULL
     return subprocess.run(args, capture_output=True, **kw)
 
 

@@ -270,18 +270,67 @@
 (define pending-file (ref (sumof (data (bytevectorof @h)) (failed io-error)) @h) (new (sum data (make-bytevector 0 (int->u8 0)))))
 (define pending-names (ref (sumof (names strings) (failed io-error)) @h) (new (sum names nil)))
 
-(define line-room! (subr (maxeff hp (alloc @h) (io stdin)) () i64)
+"Text in the engine's own words (C233): kayak-rt writes a string's code
+ points from `space` (one to a word), and reads a line into a string made
+ here, so that no KFX string is made, which would never be freed; a
+ failure's kind and detail asked after (then a KFX string, on that path
+ alone)."
+(define-syscall write-points "io:write-points/1"
+  (poly ((r region)) (subr (maxeff (io sys) (read r)) ((flatarrayof i64 r) int int int int) int)))
+(define-syscall read-line-points "io:read-line-points/1" (subr (io sys) () int))
+(define-syscall take-points "io:take-points/1"
+  (poly ((r region)) (subr (maxeff (io sys) (write r)) ((flatarrayof i64 r) int int) unit)))
+(define-syscall failure-kind "io:failure-kind/1" (subr (io sys) () int))
+(define-syscall failure-detail "io:failure-detail/1" (subr (io sys) () string))
+
+"The line read where its room is found: its length (-1 the end, -2 a
+ failure, its kind and detail kept)."
+(define pending-points (ref i64 @h) (new -1))
+(define pending-kind (ref i64 @h) (new 7))
+(define pending-detail (ref string @h) (new ""))
+
+(define failure-pended! (subr (maxeff hp (io sys)) () i64)
+  (lambda ()
+    (begin (set pending-kind (int->i64 (failure-kind))) (set pending-detail (failure-detail))
+           (i64+ 32 (string-length-i64 (get pending-detail))))))
+
+(define failure-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    "The failure pended, as `io-error-word!` makes one."
+    (let* ((k (get pending-kind))
+           (kind (cond ((i64= k 0) "not-found") ((i64= k 1) "permission-denied") ((i64= k 2) "already-exists")
+                       ((i64= k 3) "not-a-directory") ((i64= k 4) "is-a-directory") ((i64= k 5) "broken-pipe")
+                       ((i64= k 6) "invalid-data") (else "other")))
+           (s (sum-word! kind w-unit))
+           (d (string-word! (get pending-detail)))
+           (p (alloc! ob-product 3)))
+      (begin (obj-set! p 0 (fixnum (get io-error-labels))) (obj-set! p 1 s) (obj-set! p 2 d) (sum-word! "failed" p)))))
+
+(define line-room! (subr (maxeff hp (alloc @h) (io stdin) (io sys)) () i64)
   (lambda ()
     (begin
-      (set pending-line (read-line))
-      (tagcase (get pending-line) (line s (i64+ 16 (string-length-i64 s))) (eof u 8) (failed e (i64+ 32 (string-length-i64 (extract e detail))))))))
+      (set pending-points (int->i64 (read-line-points)))
+      (cond ((i64>= (get pending-points) 0) (i64+ 16 (get pending-points)))
+            ((i64= (get pending-points) -1) 8)
+            (else (failure-pended!))))))
 
-(define read-line-word! (subr (maxeff hp (alloc @h)) () i64)
+(define read-line-word! (subr (maxeff hp (alloc @h) (io sys)) () i64)
   (lambda ()
-    (tagcase (get pending-line)
-      (line s (sum-word! "line" (string-word! s)))
-      (eof u (sum-word! "eof" w-unit))
-      (failed e (sum-word! "failed" (io-error-word! e))))))
+    (let ((n (get pending-points)))
+      (cond ((i64>= n 0)
+             (let ((p (alloc! ob-string n)))
+               (begin (take-points (get space) (i64->int (i64+ (pointer-index p) 1)) 1) (sum-word! "line" p))))
+            ((i64= n -1) (sum-word! "eof" w-unit))
+            (else (failure-word!))))))
+
+"A string written from the engine's words, to the standard output (1) or
+ error (2): `done`, or the failure (its room found before, as a write's
+ is not: a failure's is made after, a rare path)."
+(define text-written-word! (subr (maxeff hp (alloc @h) (io sys)) (i64 i64) i64)
+  (lambda (p stream)
+    (if (i64= (int->i64 (write-points (get space) (i64->int (i64+ (pointer-index p) 1)) (i64->int (obj-size p)) 1 (i64->int stream))) 0)
+        (sum-word! "done" w-unit)
+        (begin (failure-pended!) (failure-word!)))))
 
 "The rest of FX-26's I/O (C232), as `read-line`: done where its room is
  found, which a failure's detail sizes, its value made after."

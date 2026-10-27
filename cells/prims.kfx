@@ -795,6 +795,18 @@
 
 "The words in one page of this machine, as kayak-rt says (C225)."
 (define-syscall page-words "code:page-words/1" (subr (io sys) () int))
+
+"Text in tier 1's own words (C233): kayak-rt writes a string's code
+ points from `mem` (two to a word, after its length), and reads a line
+ into a string made here, so that no KFX string is made, which would never
+ be freed; a failure's kind and detail asked after."
+(define-syscall write-points "io:write-points/1"
+  (poly ((r region)) (subr (maxeff (io sys) (read r)) ((flatarrayof i64 r) int int int int) int)))
+(define-syscall read-line-points "io:read-line-points/1" (subr (io sys) () int))
+(define-syscall take-points "io:take-points/1"
+  (poly ((r region)) (subr (maxeff (io sys) (write r)) ((flatarrayof i64 r) int int) unit)))
+(define-syscall failure-kind "io:failure-kind/1" (subr (io sys) () int))
+(define-syscall failure-detail "io:failure-detail/1" (subr (io sys) () string))
 (define tier1-page-words (subr (maxeff (read @globals) (io sys)) () i64)
   (lambda () (int->i64 (page-words))))
 
@@ -1436,6 +1448,37 @@
       (io-sum! "failed" (frozen2! k-product (io-sum! kind v-unit) (make-string! (extract e detail)))))))
 (define io-done! (subr cm ((sumof (done unit) (failed io-error))) i64)
   (lambda (r) (tagcase r (done u (io-sum! "done" v-unit)) (failed e (io-failed! e)))))
+(define io-failure! (subr cm () i64)
+  (lambda ()
+    "The failure kayak-rt kept, as `io-failed!` makes one."
+    (let* ((k (int->i64 (failure-kind)))
+           (kind (cond ((i64= k 0) "not-found") ((i64= k 1) "permission-denied") ((i64= k 2) "already-exists")
+                       ((i64= k 3) "not-a-directory") ((i64= k 4) "is-a-directory") ((i64= k 5) "broken-pipe")
+                       ((i64= k 6) "invalid-data") (else "other"))))
+      (io-sum! "failed" (frozen2! k-product (io-sum! kind v-unit) (make-string! (failure-detail)))))))
+(define in-mem? (subr cm (i64) bool)
+  (lambda (v) (let ((i (address v))) (and (i64>= i 0) (i64< i (flatarray-length-i64 (get mem)))))))
+(define text-written! (subr cm (i64 i64) i64)
+  (lambda (v stream)
+    "String `v` written to the standard output (1) or error (2), from
+     tier 1's words; one not in its space (made elsewhere) by KFX's."
+    (cond ((not (str? v)) (expected! "a string"))
+          ((not (in-mem? v)) (io-done! (if (i64= stream 1) (write-out (string-text v)) (write-err (string-text v)))))
+          ((i64= (int->i64 (write-points (get mem) (i64->int (i64+ (address v) 1)) (i64->int (str-length v)) 2 (i64->int stream))) 0)
+           (io-sum! "done" v-unit))
+          (else (io-failure!)))))
+(define line-read! (subr cm () i64)
+  (lambda ()
+    "The next line, made a string of tier 1's, its code points put in it."
+    (let ((n (int->i64 (read-line-points))))
+      (cond ((i64= n -1) (io-sum! "eof" v-unit))
+            ((i64< n 0) (io-failure!))
+            (else
+             (let ((v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f)))
+               (begin
+                 (word-set! (address v) n)
+                 (take-points (get mem) (i64->int (i64+ (address v) 1)) 2)
+                 (io-sum! "line" v))))))))
 (define terminal-done! (subr cm ((sumof (done unit) (not-a-terminal unit) (failed io-error))) i64)
   (lambda (r) (tagcase r (done u (io-sum! "done" v-unit)) (not-a-terminal u (io-sum! "not-a-terminal" v-unit)) (failed e (io-failed! e)))))
 (define-rec
@@ -1453,11 +1496,10 @@
 (define io-op! (subr cm (i64 i64 i64 i64) i64)
   (lambda (op a b c)
     (cond
-      ((i64= op o-write-out) (if (str? a) (io-done! (write-out (string-text a))) (expected! "a string")))
-      ((i64= op o-write-err) (if (str? a) (io-done! (write-err (string-text a))) (expected! "a string")))
+      ((i64= op o-write-out) (text-written! a 1))
+      ((i64= op o-write-err) (text-written! a 2))
       ((i64= op o-exit) (if (is-integer? a) (begin (exit (int-of a)) v-unit) (expected! "an exact integer")))
-      ((i64= op o-read-line)
-       (tagcase (read-line) (line t (io-sum! "line" (make-string! t))) (eof u (io-sum! "eof" v-unit)) (failed e (io-failed! e))))
+      ((i64= op o-read-line) (line-read!))
       ((i64= op o-read-byte)
        (tagcase (read-byte) (byte k (io-sum! "byte" (fix (int->i64 (u8->int k))))) (eof u (io-sum! "eof" v-unit)) (failed e (io-failed! e))))
       ((i64= op o-read-bytes)

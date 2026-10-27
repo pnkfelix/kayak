@@ -60,7 +60,10 @@ UNLIMITED = ("bench/",)
 
 
 def run(args, **kw):
-    return subprocess.run(args, capture_output=True, text=True, **kw)
+    # The standard input empty, as Fixpt's runs are given it (fixptcache):
+    # a program that reads it gets the end, whatever the check was started
+    # with (C233).
+    return subprocess.run(args, capture_output=True, text=True, stdin=subprocess.DEVNULL, **kw)
 
 
 def generated():

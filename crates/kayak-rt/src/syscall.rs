@@ -81,6 +81,57 @@ const SYSCALLS: &[Syscall] = &[
         canonical: "(subr (io sys) (i64) bool)",
         run: |a| crate::world::stdin_wait(int(a[0])).word(),
     },
+    // Text in a runtime's own words (C233): code points, one or two to a
+    // word, written from a flat array's range to the standard output (1)
+    // or error (2), 0 or -1; a line read and kept, how many code points
+    // (-1 the end, -2 a failure); those put into a range; a failure's kind
+    // and detail. So that a machine's I/O makes no KFX string, which is
+    // never freed.
+    Syscall {
+        host: "io:write-points/1",
+        canonical: "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))",
+        run: |a| {
+            let (start, n, per, stream) = (int(a[1]), int(a[2]), int(a[3]), int(a[4]));
+            match (usize::try_from(start), usize::try_from(n), per) {
+                (Ok(s), Ok(n), 1 | 2) => {
+                    let per = per as usize;
+                    let words = kayak_jit::words_at((a[0] & !7) as usize + 8 * s, n.div_ceil(per));
+                    crate::world::write_points(&words, n, per, stream).word()
+                }
+                _ => fail("io:write-points/1: a range or packing out of bounds"),
+            }
+        },
+    },
+    Syscall {
+        host: "io:read-line-points/1",
+        canonical: "(subr (io sys) () int)",
+        run: |_| crate::world::read_line_points().word(),
+    },
+    Syscall {
+        host: "io:take-points/1",
+        canonical: "(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))",
+        run: |a| {
+            let (start, per) = (int(a[1]), int(a[2]));
+            match (usize::try_from(start), per) {
+                (Ok(s), 1 | 2) => {
+                    let ws = crate::world::taken_points(per as usize);
+                    kayak_jit::words_put((a[0] & !7) as usize + 8 * s, &ws);
+                    ().word()
+                }
+                _ => fail("io:take-points/1: a range or packing out of bounds"),
+            }
+        },
+    },
+    Syscall {
+        host: "io:failure-kind/1",
+        canonical: "(subr (io sys) () int)",
+        run: |_| crate::world::failure_kind().word(),
+    },
+    Syscall {
+        host: "io:failure-detail/1",
+        canonical: "(subr (io sys) () string)",
+        run: |_| crate::world::failure_detail().word(),
+    },
 ];
 
 /// What kayak-rt has under `host`: the syscall, if its type is `text`;

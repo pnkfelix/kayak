@@ -706,6 +706,27 @@ pub fn call_mailbox(m: usize, n: usize) -> i64 {
     }
 }
 
+/// `n` words from address `at`, a flat array's elements a syscall was
+/// given (kayak-rt's `io:write-points/1`, C233): read here, kayak-rt being
+/// built with unsafe code refused.
+pub fn words_at(at: usize, n: usize) -> Vec<u64> {
+    // SAFETY: the caller's runtime gave the array, `n` words of it from
+    // `at` within it, its own code's syscall (none but a runtime's may
+    // declare one, C224).
+    (0..n)
+        .map(|i| unsafe { std::ptr::read((at + 8 * i) as *const u64) })
+        .collect()
+}
+
+/// Words `ws` written from address `at`, a flat array's elements a syscall
+/// was given (`io:take-points/1`, C233).
+pub fn words_put(at: usize, ws: &[u64]) {
+    for (i, &w) in ws.iter().enumerate() {
+        // SAFETY: as `words_at`'s, the range within the array given.
+        unsafe { std::ptr::write((at + 8 * i) as *mut u64, w) };
+    }
+}
+
 /// Whether the standard input's descriptor has a byte, or its end, now
 /// (`poll`, no wait): for kayak-rt's `stdin-ready?`, which is no unsafe
 /// code's, as Fixpt's `tty::ready(0)` (C232).

@@ -305,11 +305,47 @@ pub fn utf8_to_string(b: Bytes) -> &'static Sum_4text_3bad<Str, Int> {
 // The world. Each write flushed, as Fixpt's are, so that the two streams
 // interleave as written.
 
+// The results that carry nothing new, or one of few values, made once,
+// not at every call (C233): an I/O loop of a program bounded in space is
+// bounded here too. Only a failure, or a result with text or data, is
+// made anew.
+
+/// The 256 results `read-byte` gives of a byte.
+static BYTES: [Sum_4byte_3eof_6failed<u8, (), IoError>; 256] = {
+    let mut a = [const { Sum_4byte_3eof_6failed::Eof(()) }; 256];
+    let mut i = 0;
+    while i < 256 {
+        a[i] = Sum_4byte_3eof_6failed::Byte(i as u8);
+        i += 1;
+    }
+    a
+};
+
+/// How many counts of `read-bytes` are made once.
+const COUNTS_KEPT: usize = 4096;
+static COUNTS: [Sum_5count_3eof_6failed<Int, (), IoError>; COUNTS_KEPT + 1] = {
+    let mut a = [const { Sum_5count_3eof_6failed::Eof(()) }; COUNTS_KEPT + 1];
+    let mut i = 0;
+    while i <= COUNTS_KEPT {
+        a[i] = Sum_5count_3eof_6failed::Count(Int::Small(i as i64));
+        i += 1;
+    }
+    a
+};
+
+fn counted(k: usize) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
+    if k <= COUNTS_KEPT {
+        &COUNTS[k]
+    } else {
+        heap_alloc(Sum_5count_3eof_6failed::Count(i64_to_int(k as i64)))
+    }
+}
+
 fn written(r: std::io::Result<()>) -> &'static Sum_4done_6failed<(), IoError> {
-    heap_alloc(match r {
-        Ok(()) => Sum_4done_6failed::Done(()),
-        Err(e) => Sum_4done_6failed::Failed(io_error(&e)),
-    })
+    match r {
+        Ok(()) => &Sum_4done_6failed::Done(()),
+        Err(e) => heap_alloc(Sum_4done_6failed::Failed(io_error(&e))),
+    }
 }
 
 pub fn write_out(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
@@ -354,6 +390,12 @@ static INPUT: Mutex<Input> = Mutex::new(Input {
     error: None,
 });
 static ARRIVED: Condvar = Condvar::new();
+/// Signalled when a read takes from the buffer: the reader waits for it
+/// while `READ_AHEAD` bytes are unread, so that the input is never held
+/// whole (C233: a program reading a long input in bounded space does so
+/// here too).
+static TAKEN: Condvar = Condvar::new();
+const READ_AHEAD: usize = 1 << 16;
 static READER: Once = Once::new();
 
 fn input() -> MutexGuard<'static, Input> {
@@ -370,6 +412,12 @@ fn reading() {
                 let mut stdin = std::io::stdin();
                 let mut chunk = [0u8; 4096];
                 loop {
+                    {
+                        let mut i = input();
+                        while i.buf.len() >= READ_AHEAD {
+                            i = TAKEN.wait(i).unwrap_or_else(|p| p.into_inner());
+                        }
+                    }
                     let r = stdin.read(&mut chunk);
                     let mut i = input();
                     match r {
@@ -456,6 +504,19 @@ pub fn stdin_wait(until: i64) -> bool {
 /// The next line, its ending (`\n` or `\r\n`) left off; a line not UTF-8
 /// an `invalid-data` failure, reading going on after it.
 pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
+    match read_line_bytes() {
+        Ok(None) => &Sum_4line_3eof_6failed::Eof(()),
+        Ok(Some(line)) => heap_alloc(match String::from_utf8(line) {
+            Ok(s) => Sum_4line_3eof_6failed::Line(leak_string(s)),
+            Err(_) => Sum_4line_3eof_6failed::Failed(invalid_data("a line not UTF-8")),
+        }),
+        Err(e) => heap_alloc(Sum_4line_3eof_6failed::Failed(io_error(&e))),
+    }
+}
+
+/// The next line's bytes, its ending left off; none at the end; or the
+/// failure the reader met.
+fn read_line_bytes() -> std::io::Result<Option<Vec<u8>>> {
     let mut line = Vec::new();
     let mut i = arrived();
     loop {
@@ -470,39 +531,147 @@ pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
                     break;
                 }
                 drop(i);
+                // The reader may wait for the buffer to drain: a line
+                // longer than it holds.
+                TAKEN.notify_one();
                 i = arrived();
             }
         }
     }
     if line.is_empty() {
-        return heap_alloc(match i.error.take() {
-            Some(e) => Sum_4line_3eof_6failed::Failed(io_error(&e)),
-            None => Sum_4line_3eof_6failed::Eof(()),
-        });
+        return match i.error.take() {
+            Some(e) => Err(e),
+            None => Ok(None),
+        };
     }
     drop(i);
+    TAKEN.notify_one();
     if line.last() == Some(&b'\n') {
         line.pop();
         if line.last() == Some(&b'\r') {
             line.pop();
         }
     }
-    heap_alloc(match String::from_utf8(line) {
-        Ok(s) => Sum_4line_3eof_6failed::Line(leak_string(s)),
-        Err(_) => Sum_4line_3eof_6failed::Failed(invalid_data("a line not UTF-8")),
+    Ok(Some(line))
+}
+
+// Text as code points in a runtime's own words (C233): written from them,
+// and a line read into them, so that no KFX string is made, which would
+// never be freed: a machine's I/O loop then bounded in space. A failure is
+// kept, for the machine to ask its kind and detail.
+thread_local! {
+    static FAILURE: std::cell::RefCell<Option<std::io::Error>> = const { std::cell::RefCell::new(None) };
+    static POINTS: std::cell::RefCell<Vec<u32>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn failed_with(e: std::io::Error) {
+    FAILURE.with(|f| *f.borrow_mut() = Some(e));
+}
+
+/// `n` code points from `words`, `per` to a word (1, or 2: the low half
+/// first), written to the standard output (`stream` 1) or error (2): 0,
+/// or -1, the failure kept.
+pub fn write_points(words: &[u64], n: usize, per: usize, stream: i64) -> i64 {
+    let mut s = String::with_capacity(n);
+    for k in 0..n {
+        let w = words[k / per];
+        let cp = if per == 2 {
+            (w >> (32 * (k % 2))) as u32
+        } else {
+            w as u32
+        };
+        s.push(char::from_u32(cp).unwrap_or('\u{fffd}'));
+    }
+    let r = if stream == 2 {
+        let mut err = std::io::stderr().lock();
+        err.write_all(s.as_bytes()).and_then(|()| err.flush())
+    } else {
+        let mut out = std::io::stdout().lock();
+        out.write_all(s.as_bytes()).and_then(|()| out.flush())
+    };
+    match r {
+        Ok(()) => 0,
+        Err(e) => {
+            failed_with(e);
+            -1
+        }
+    }
+}
+
+/// The next line, as `read-line` reads it, its code points kept for
+/// `take_points`: how many; -1 at the end; -2 a failure, kept.
+pub fn read_line_points() -> i64 {
+    match read_line_bytes() {
+        Ok(None) => -1,
+        Ok(Some(line)) => match String::from_utf8(line) {
+            Ok(s) => POINTS.with(|p| {
+                let mut p = p.borrow_mut();
+                p.clear();
+                p.extend(s.chars().map(|c| c as u32));
+                p.len() as i64
+            }),
+            Err(_) => {
+                failed_with(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "a line not UTF-8",
+                ));
+                -2
+            }
+        },
+        Err(e) => {
+            failed_with(e);
+            -2
+        }
+    }
+}
+
+/// The line `read_line_points` kept, as words, `per` code points to a word.
+pub fn taken_points(per: usize) -> Vec<u64> {
+    POINTS.with(|p| {
+        let p = p.borrow();
+        if per == 2 {
+            p.chunks(2)
+                .map(|c| c[0] as u64 | c.get(1).map_or(0, |&h| (h as u64) << 32))
+                .collect()
+        } else {
+            p.iter().map(|&c| c as u64).collect()
+        }
     })
+}
+
+/// The failure kept: its kind, as FX-26's `io-error` orders them
+/// (`not-found` 0 … `other` 7), and its detail.
+pub fn failure_kind() -> i64 {
+    use std::io::ErrorKind as K;
+    FAILURE.with(|f| match f.borrow().as_ref().map(|e| e.kind()) {
+        Some(K::NotFound) => 0,
+        Some(K::PermissionDenied) => 1,
+        Some(K::AlreadyExists) => 2,
+        Some(K::NotADirectory) => 3,
+        Some(K::IsADirectory) => 4,
+        Some(K::BrokenPipe) => 5,
+        Some(K::InvalidData) => 6,
+        _ => 7,
+    })
+}
+pub fn failure_detail() -> Str {
+    FAILURE.with(|f| leak_string(f.borrow().as_ref().map_or(String::new(), |e| e.to_string())))
 }
 
 /// The next byte, waiting for one; `eof` at the end.
 pub fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
     let mut i = arrived();
-    heap_alloc(match i.buf.pop_front() {
-        Some(b) => Sum_4byte_3eof_6failed::Byte(b),
+    match i.buf.pop_front() {
+        Some(b) => {
+            drop(i);
+            TAKEN.notify_one();
+            &BYTES[b as usize]
+        }
         None => match i.error.take() {
-            Some(e) => Sum_4byte_3eof_6failed::Failed(io_error(&e)),
-            None => Sum_4byte_3eof_6failed::Eof(()),
+            Some(e) => heap_alloc(Sum_4byte_3eof_6failed::Failed(io_error(&e))),
+            None => &Sum_4byte_3eof_6failed::Eof(()),
         },
-    })
+    }
 }
 
 /// `(read-bytes bv start end)`: waits for one byte, then takes as many as
@@ -515,20 +684,22 @@ pub fn read_bytes(
 ) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
     let (s, e) = span(bv, start, end, "read-bytes: a span that does not fit");
     if s == e {
-        return heap_alloc(Sum_5count_3eof_6failed::Count(i64_to_int(0)));
+        return counted(0);
     }
     let mut i = arrived();
     if i.buf.is_empty() {
-        return heap_alloc(match i.error.take() {
-            Some(e) => Sum_5count_3eof_6failed::Failed(io_error(&e)),
-            None => Sum_5count_3eof_6failed::Eof(()),
-        });
+        return match i.error.take() {
+            Some(e) => heap_alloc(Sum_5count_3eof_6failed::Failed(io_error(&e))),
+            None => &Sum_5count_3eof_6failed::Eof(()),
+        };
     }
     let k = i.buf.len().min(e - s);
     for (cell, b) in bv.0[s..s + k].iter().zip(i.buf.drain(..k)) {
         cell.set(b);
     }
-    heap_alloc(Sum_5count_3eof_6failed::Count(i64_to_int(k as i64)))
+    drop(i);
+    TAKEN.notify_one();
+    counted(k)
 }
 
 // The terminal (C109), by `stty`, as kayak-fx26's REPL set it before: safe
@@ -567,11 +738,11 @@ fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
 fn moded(
     r: Option<std::io::Result<String>>,
 ) -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
-    heap_alloc(match r {
-        None => Sum_4done_14not_a_terminal_6failed::NotATerminal(()),
-        Some(Ok(_)) => Sum_4done_14not_a_terminal_6failed::Done(()),
-        Some(Err(e)) => Sum_4done_14not_a_terminal_6failed::Failed(io_error(&e)),
-    })
+    match r {
+        None => &Sum_4done_14not_a_terminal_6failed::NotATerminal(()),
+        Some(Ok(_)) => &Sum_4done_14not_a_terminal_6failed::Done(()),
+        Some(Err(e)) => heap_alloc(Sum_4done_14not_a_terminal_6failed::Failed(io_error(&e))),
+    }
 }
 
 /// The terminal in raw mode, its modes before saved the first time.

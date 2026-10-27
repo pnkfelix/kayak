@@ -680,8 +680,224 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    machine's registers kept across a callback on the return stack, the
    frames' values on the data stack (C228, C229); and any other place the
    implementation was taken over the intent. The note is written:
-   `docs/research/departures.md` (C231); the review is next. Then the
-   suffix stub note for Fixpt's team, out of the same review.
+   `docs/research/departures.md` (C231); the review is under way, its
+   decisions recorded there and here:
+   - **Departure 7, Cheney's collector, no barrier read** (the user: "just
+     leave this for now. We will revise the runtime entirely when we start
+     pulling in Coopt's runtime and codegen design"): left; the runtime's
+     collector and code generation to be revised whole then, from Coopt's.
+   - **Departure 8, regions and reaps in the one heap** (the user,
+     "Sure"): left for the same revision; unobservable, even in space
+     (what a region held is unreachable once it exits, and collected).
+   - **Departure 9, tier 6's frames kayak's own** (the user, "Yeah
+     okay"): left for the revision from Coopt's code generation; the
+     native-frame flushing work (departures 1, 5, 6) overlaps it, and
+     would give tier 6 real frames.
+   - **Departure 10, register code's registers on x86_64** (the user,
+     "Okay"): left for the code-generation revision; `--fixpt-calls`
+     (C140) already gives Fixpt's, checked every way.
+   - **Departure 11, tiers 2-5 on tier 1's state**, and **performance
+     before the Coopt adoption** (the user: "Frankly I was shocked by the
+     overheads you measured, so hopefully we can address the bulk of that
+     *before* undertaking the Coopt adoption"). Measured 2026-10-26, x86_64
+     Linux, best of 3, ms, kayak's ~6 ms start-up taken off, kayak's tier
+     against Fixpt's machine of the same kind:
+
+     | program  | t1/rsinterp | t2/asminterp | t4/rsjit-cellcc | t5/regs-rsjit-cellcc | t6/regs-rsjit-nativecc |
+     | fib      | 753/292     | 91/38        | 54/27           | 21/12.5              | 16/6.3  |
+     | tak      | 342/104     | 35/16        | 20/10           | 11/3.7               | 10/2.0  |
+     | loop     | 3062/868    | 297/117      | 122/77          | 36/24                | 22/9.5  |
+     | lists    | 1912/634    | 201/119      | 118/102         | 58/15                | 48/11   |
+     | closures | 2604/962    | 280/154      | 171/123         | 89/25                | 81/18   |
+     | helpers  | 4128/1637   | 336/159      | 240/122         | 32/14                | 23/6.4  |
+
+     Not hand-backs to tier 1 (184 to ~4400 machine entries a run):
+     `tak`, no collection, 5x at tier 6: the call protocol (frames on tier
+     1's flat-array stacks, a return entry each call); `lists` 2999
+     collections, `closures` 750, Fixpt's 6 each: tier 1's spaces start
+     small and grow only past half live. In order:
+     0. **The I/O leak, first** (the user: "Yes definitely fix the IO
+        leak"; departure 14): tier 1's `write-out`, 2M calls 71 MB peak
+        against 13 MB for 200k, ~32 bytes a call, linear: KFX's built-ins
+        leak their results (`heap_alloc` in kayak-rt) and tier 1 copies
+        each string to KFX's first (`string-text`). The engine uses the
+        same built-ins (not measured). Fix: the built-ins' constant
+        results made once (`done`, `eof`), the machines' per-operation
+        temporaries in a `letrena` or a reused buffer; then each machine's
+        peak memory flat over a 10x longer loop.
+        **Done** (C233) for the results, the standard streams' text and
+        the input's read-ahead; left: `read-file`, `list-dir`, `args`,
+        `write-file` (KFX data per call).
+     0a. **The engine's tail calls through `tagcase`** (found by C233):
+        `vm.kfx`'s `run` and `tagcase-step` call each other, a Rust call
+        each time (KFX makes no mutual tail call a jump): a loop through a
+        `tagcase` arm, 10M iterations 930 MB and 35 s, 40M an abort; Fixpt
+        and tier 1 flat. `tagcase-step` to give `run`'s own loop the arm's
+        body and environment; every mutual call of `vm.kfx`'s swept for the
+        same; a test per kind of continuation, in bounded space.
+     0b. **Fixpt's backward scan for a bloblet's header** (the user,
+        "Yeah"; departure 15): a bloblet with fields and no trailer has
+        its header found by scanning back from its suffix to the first
+        header-tagged word, which no field can hold (Fixpt's `main_of`,
+        `bloblet_main_cold`; `object-model.md`'s invariants). Tier 1
+        assumes the header just before the suffix whenever there is no
+        trailer, right only with no fields: a latent bug for any
+        trailer-less bloblet with fields (copied as garbage, as C231's
+        first weak pair was). One lookup, `header-index`, called by
+        `forward-object!`, `weak-after` and `code-marked!` rather than its
+        logic copied into each; weak pairs then Fixpt's layout (two
+        fields, no trailer, car field 2, cdr field 1); a test of such a
+        bloblet across collections.
+     1. Heap sizing as Fixpt's (a nursery's worth to start, growth by what
+        lives), measured against the table: cheap, likely most of
+        `lists`' and `closures`' gap.
+     2. `perf` of `tak` and `lists` on tier 6, to apportion the rest.
+     3. The call protocol (values in registers across calls, frames on the
+        machine stack), with the frame-flushing work (departures 1, 5, 6).
+     4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
+        arrays, words through calls), if it still matters.
+   - **Departure 12, the native tiers' code never freed** (the user,
+     "Yep"): no action; tier 1 compiles a listing's fixed words once at
+     start, so the code is bounded by the program. Relevant when tier 1
+     makes words at run time (a REPL, `eval`): the code-stubs design
+     (words in the collected code area) covers it. Compiling every word
+     up front lengthens start-up for big listings: lazily, in the
+     code-generation revision.
+   - **Departure 13, values as addresses** (the user: "Let's kill
+     `--indexes`"): addresses the one mode. To do: `--indexes` removed
+     from tier 1 and tiers 2-6 (the `addressed` branches, arm64's base
+     register `x19`, the index mode's paths) and from `cells-programs`'
+     ways (`--indexes`, `--hand --indexes`, `--indexes --gc-stress`), the
+     check so changing by the user's decision; C139's note of why it was
+     kept answered. Heap images do not need indices (the user): a dump
+     with addresses normalizes as it writes, each pointer word an offset
+     from its space's base (the code area's from its own), its tag kept,
+     and a load adds the new base, a linear pass each way; the code's
+     bytes need none while made code addresses through the state and
+     reference plus `delta`, as the convention has it (a rule to state
+     when images come). And for performance item 4: tier 1's `word-at` and
+     `word-set!` test every index for the code area (`code-on`, two
+     compares; C226), on its hottest path: accessors of their own for the
+     code area, or one reservation.
+   - **KFX's own object model** (the review's last item; the user: "these
+     differences are reasonably motivated"): KFX may differ from FX-26 by
+     refusing, as K1 allows (its continuations Rust futures, resumed once,
+     C45). One possible hole to probe: values crossing into made code are
+     copied (C116, "a copy native code keeps does not see KFX's later
+     writes"), which would be reinterpretation, not refusal. The probe: a
+     KFX program that gives made code a bloblet, writes it after, and has
+     the made code read it, on kayak and on Fixpt. If they part, the
+     remedy the user points to: FX-26's flat data and blobrefs, added for
+     a value model laid out as Rust's, shared in place across the
+     boundary (as syscalls pass `flatarrayof` and `bytevectorof`), copying
+     left only for KFX's Rust-shaped values, which have no FX-26 layout.
+     **The review is done** (2026-10-26).
+   - **Self-hosting, after the Coopt revision** (agreed with the user):
+     kayak's runtimes (tier 1, the engine, KFX's compiler) compiled by
+     kayak's own FX-26 native compiler, standalone with their own
+     runtime routines; KFX to Rust then only the bootstrap. Not possible
+     before: today's native code runs on tier 1's state, so compiling
+     tier 1 by it would be circular.
+   - **Convention changes go to Fixpt first** (the user, departure 4: "We
+     can try delivering the request to the fixpt team"): the suffix stub
+     written as a request, `docs/research/code-stubs.md`, its prompt
+     given to the user; kayak follows when the pin moves.
+   - **Departure 1, made code's `poll`** (the user, 2026-10-26: "we will
+     want all of 1,2,3 at once"): one piece of work, not split. `poll`
+     as Fixpt's `common_poll`: (1) the step limit, the slice charged to
+     tier 1's count, trap kind 1 when spent; (2) a collection at a `poll`
+     (`may-collect`); (3) preemption with made code's frames live, those
+     frames captured as Fixpt flushes its native stack into heap
+     `native-frame` objects, so that a task switch with them on the
+     machine stack is whole. Reaching tier 1 as `foreign` does (C228,
+     C229). With departure 5 folded in (the user, "Yep"): the mechanism
+     is Fixpt's, made code's frames flushed into the heap Larceny's way
+     (`flush_all`, `restore`, a stack cache returned into by underflow;
+     `fixpt-native/src/direct.rs`, `callout`, `overflow`), which gives
+     preemption with them live, `overflow` going on instead of trapping,
+     and a collection that reads no stack, retiring C229's copy of their
+     values onto tier 1's data stack and back (correct, kept until then). With
+     departure 6 folded in too (the user, "Yep"): every `may-collect`
+     routine can collect, as Fixpt's `callout` does. Today made code's
+     `cons` and `bloblet` bump through all of tier 1's reservation
+     (`box[11] = heap-capacity`), never collect, and `panic!` when it is
+     full ("the heap it was given is full"): a program bounded in space
+     on Fixpt crashes kayak (read in the code, not run). To be: the bump
+     against the state's `alloc-limit`, tier 1's threshold; past it, the
+     slow path to tier 1 as `foreign` goes, which collects (frames
+     flushed) and retries; `poll` alike; the slow path's logic tier 1's,
+     in KFX, as C116 and `native.md` decision 6 meant.
+   - **Departure 2, the step limit's scope** (the user: kayak to be the
+     reference, "we will stop depending on details of Fixpt's listing
+     format"): the rule, each top-level form its own budget, a step a cell
+     run, is FX-26's, to be written down as kayak's definition says it.
+     Kayak's compiler marks each form's start (a primitive cell, `%form`,
+     beginning a budget); tier 1 obeys it, and so matches Fixpt and the
+     engine on kayak's words. Fixpt's listings, run on tier 1 as a
+     cross-check, have no marks: their program one form there, a limit of
+     the cross-check, not kayak's. `cells-programs` leaves the marks out
+     when it compares kayak's words with Fixpt's. Counting (a step a cell
+     on every tier) stays: it is Fixpt's cellular machine's, the one
+     compared with.
+   - **Departure 3, the engine not Fixpt's evaluator** (reviewed): both
+     its effects kept. `native/crossing-overflow.fx`, 3 million crossings
+     deep: Fixpt overflows its Rust stack, the engine answers. Messages
+     shared, not copied: tier 1 copies (`eq?` of a sent string `#f`, as
+     Fixpt), the engine shares (`#t`), both as FX-26's `eq?` allows on
+     immutable data (`fx26.md` "Identity": `#f` says nothing). To do:
+     C219's note corrected (the `eq?` rule permits the sharing, not the
+     transmissible rule); `run-fixpt-programs` to report
+     `crossing-overflow` as expected, not as a difference.
+   - **Space efficiency** (the user: "some kind of formal safe-for-space
+     property, a la Will Clinger's asymptotic space efficiency classes";
+     Clinger, "Proper Tail Recursion and Space Efficiency", PLDI 1998):
+     kayak's definition of FX-26 to state the class every machine must
+     meet (proper tail calls at least; which of Clinger's, `S_sfs` the
+     aim, to be settled), and that running out of a resource is an
+     implementation limit only where the program's needs under that
+     class pass what the machine was given. Then tests of the class, each
+     machine's, among them a bounded-memory loop per class of operation
+     (I/O, allocation, calls, scheduling), each machine's peak memory
+     flat over a 10x longer run (departure 14): Fixpt's crossing (Rust frames per crossing) would not
+     meet it. These are FX-26's guarantees, not KFX's (the user: "it's
+     okay for KFX to not enjoy the same guarantees that FX26 does"): KFX,
+     kayak's language for writing its runtimes, may promise less; what it
+     lacks matters only where it keeps one of kayak's FX-26 machines from
+     FX-26's promises (so departure 14, kayak-rt freeing nothing, and KFX's
+     own object model are KFX's, reviewed as such).
+   - **Departure 4, tier 1's code area its own reservation** (the user:
+     option 1): kept until the suffix stub lands, then its ordering check
+     dropped. To do, on the user's arm64 Mac: kayak's made-code programs
+     (`made-code/*.fx`, and kayak's own) every way, which tries both the
+     code area reserved above the heap after the spaces (bottom-up) and
+     made code run from a `mach_vm_remap` view. The user asked whether
+     macOS needs code pages flipped between writable and executable: no,
+     not as Fixpt and kayak map them, twice (read+write and read+execute
+     views of shared pages, a fixed distance apart, nothing re-protected;
+     Fixpt's `exec.rs`); flipping (`MAP_JIT`, per-thread
+     `pthread_jit_write_protect_np`) is Apple's blessed way, kept per
+     address by dual mapping only in letter. Not known: whether a signed,
+     hardened kayak needs `allow-unsigned-executable-memory` for dual
+     mapping, as `allow-jit` for `MAP_JIT`.
+     **Decided** (the user, "sounds fine"): dual mapping the baseline on
+     both systems (no kernel entry when code is written: tier 1 writes
+     code bloblets at every seal and every collection's forwarding and
+     sweep); `MAP_JIT` with per-thread toggling on macOS a hardening
+     option, for W^X in substance or a signed, hardened kayak: the
+     state's `delta` then cancels only the tag, tier 1's writes into the
+     code area wrapped in toggles, made code unchanged. The instruction
+     cache flushed after code is sealed (only instructions; fields are
+     data), by user-mode cache maintenance (`dc cvau`, `ic ivau`) on
+     arm64 Linux; on the Mac, `sys_icache_invalidate` disassembled to see
+     that it enters no kernel.
+   - **Through the review**: each rule that is FX-26's meaning, not an
+     implementation's choice, flagged to be written down as kayak's
+     definition of FX-26. So far: the step limit per top-level form
+     (departure 2); `eq?` on immutable data (departure 3, as Fixpt's
+     `fx26.md` has it); the space-efficiency class and resource limits
+     (above). Then the
+   suffix stub note for Fixpt's team, out of the same review: written,
+   `docs/research/code-stubs.md`.
    Weak pairs and `%fx26-intern-datum` on tier 1 (C231). FX-26's I/O on
    every machine, the input waited for by one kayak-rt syscall (C232).
    Next: a note for Fixpt's team: code bloblets dispatching by a stub

@@ -1850,6 +1850,61 @@ pub fn page_words() -> Int {
     kayak_rt::syscall0(str_lit("syscall page-words (\"code:page-words/1\")"), str_lit("code:page-words/1"), str_lit("(subr (io sys) () int)"))
 }
 
+// Text in tier 1's own words (C233): kayak-rt writes a string's code
+// points from `mem` (two to a word, after its length), and reads a line
+// into a string made here, so that no KFX string is made, which would never
+// be freed; a failure's kind and detail asked after.
+
+pub fn _pctsyscall_available_colonwrite_points() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall write-points (\"io:write-points/1\")"), str_lit("io:write-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"));
+    true
+}
+
+pub fn write_points(x1: FlatArray<i64>, x2: Int, x3: Int, x4: Int, x5: Int) -> Int {
+    _pctsyscall_available_colonwrite_points();
+    kayak_rt::syscall5(str_lit("syscall write-points (\"io:write-points/1\")"), str_lit("io:write-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"), x1, x2, x3, x4, x5)
+}
+
+pub fn _pctsyscall_available_colonread_line_points() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall read-line-points (\"io:read-line-points/1\")"), str_lit("io:read-line-points/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn read_line_points() -> Int {
+    _pctsyscall_available_colonread_line_points();
+    kayak_rt::syscall0(str_lit("syscall read-line-points (\"io:read-line-points/1\")"), str_lit("io:read-line-points/1"), str_lit("(subr (io sys) () int)"))
+}
+
+pub fn _pctsyscall_available_colontake_points() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall take-points (\"io:take-points/1\")"), str_lit("io:take-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"));
+    true
+}
+
+pub fn take_points(x1: FlatArray<i64>, x2: Int, x3: Int) -> () {
+    _pctsyscall_available_colontake_points();
+    kayak_rt::syscall3(str_lit("syscall take-points (\"io:take-points/1\")"), str_lit("io:take-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_colonfailure_kind() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall failure-kind (\"io:failure-kind/1\")"), str_lit("io:failure-kind/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn failure_kind() -> Int {
+    _pctsyscall_available_colonfailure_kind();
+    kayak_rt::syscall0(str_lit("syscall failure-kind (\"io:failure-kind/1\")"), str_lit("io:failure-kind/1"), str_lit("(subr (io sys) () int)"))
+}
+
+pub fn _pctsyscall_available_colonfailure_detail() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"));
+    true
+}
+
+pub fn failure_detail() -> Str {
+    _pctsyscall_available_colonfailure_detail();
+    kayak_rt::syscall0(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"))
+}
+
 pub fn tier1_page_words() -> i64 {
     int_to_i64(page_words())
 }
@@ -3145,6 +3200,67 @@ pub fn io_done_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'stati
     }
 }
 
+/// The failure kayak-rt kept, as `io-failed!` makes one.
+pub fn io_failure_x() -> i64 {
+    let k = int_to_i64(failure_kind());
+    let kind = if i64_eq(k, 0i64) {
+        str_lit("not-found")
+    } else if i64_eq(k, 1i64) {
+        str_lit("permission-denied")
+    } else if i64_eq(k, 2i64) {
+        str_lit("already-exists")
+    } else if i64_eq(k, 3i64) {
+        str_lit("not-a-directory")
+    } else if i64_eq(k, 4i64) {
+        str_lit("is-a-directory")
+    } else if i64_eq(k, 5i64) {
+        str_lit("broken-pipe")
+    } else if i64_eq(k, 6i64) {
+        str_lit("invalid-data")
+    } else {
+        str_lit("other")
+    };
+    io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit()), make_string_x(failure_detail())))
+}
+
+pub fn in_mem_p(v: i64) -> bool {
+    let i = address(v);
+    (i64_gt_eq(i, 0i64) && i64_lt(i, flatarray_length_i64(get(mem()))))
+}
+
+/// String `v` written to the standard output (1) or error (2), from
+/// tier 1's words; one not in its space (made elsewhere) by KFX's.
+pub fn text_written_x(v: i64, stream: i64) -> i64 {
+    if not(str_p(v)) {
+        expected_x(str_lit("a string"))
+    } else if not(in_mem_p(v)) {
+        io_done_x(if i64_eq(stream, 1i64) {
+            write_out(string_text(v))
+        } else {
+            write_err(string_text(v))
+        })
+    } else if i64_eq(int_to_i64(write_points(get(mem()), i64_to_int(i64_plus(address(v), 1i64)), i64_to_int(str_length(v)), int_lit(2), i64_to_int(stream))), 0i64) {
+        io_sum_x(str_lit("done"), v_unit())
+    } else {
+        io_failure_x()
+    }
+}
+
+/// The next line, made a string of tier 1's, its code points put in it.
+pub fn line_read_x() -> i64 {
+    let n = int_to_i64(read_line_points());
+    if i64_eq(n, -1i64) {
+        io_sum_x(str_lit("eof"), v_unit())
+    } else if i64_lt(n, 0i64) {
+        io_failure_x()
+    } else {
+        let v = make_bloblet_x(k_string(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64))), false, false);
+        word_set_x(address(v), n);
+        take_points(get(mem()), i64_to_int(i64_plus(address(v), 1i64)), int_lit(2));
+        io_sum_x(str_lit("line"), v)
+    }
+}
+
 pub fn terminal_done_x(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
     let tagcase_ = r;
     match *tagcase_ {
@@ -3197,17 +3313,9 @@ pub fn bytes_from_kfx_x(mut kb: Bytes, mut v: i64, mut at: i64, mut i: i64, mut 
 
 pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
     if i64_eq(op, o_write_out()) {
-        if str_p(a) {
-            io_done_x(write_out(string_text(a)))
-        } else {
-            expected_x(str_lit("a string"))
-        }
+        text_written_x(a, 1i64)
     } else if i64_eq(op, o_write_err()) {
-        if str_p(a) {
-            io_done_x(write_err(string_text(a)))
-        } else {
-            expected_x(str_lit("a string"))
-        }
+        text_written_x(a, 2i64)
     } else if i64_eq(op, o_exit()) {
         if is_integer_p(a) {
             match exit(int_of(a)) {};
@@ -3216,18 +3324,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
             expected_x(str_lit("an exact integer"))
         }
     } else if i64_eq(op, o_read_line()) {
-        let tagcase_ = read_line();
-        match *tagcase_ {
-            Sum_4line_3eof_6failed::Line(t) => {
-                io_sum_x(str_lit("line"), make_string_x(t))
-            }
-            Sum_4line_3eof_6failed::Eof(u) => {
-                io_sum_x(str_lit("eof"), v_unit())
-            }
-            Sum_4line_3eof_6failed::Failed(e) => {
-                io_failed_x(e)
-            }
-        }
+        line_read_x()
     } else if i64_eq(op, o_read_byte()) {
         let tagcase_ = read_byte();
         match *tagcase_ {

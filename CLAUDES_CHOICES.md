@@ -6543,3 +6543,68 @@ could just implement the core functionality in the runtime?"
   third argument for a count, not the span's end, first: found by the
   test.
 
+## C233. I/O in bounded space; the departures reviewed (2026-10-26)
+
+**The review.** The user went through `docs/research/departures.md`, one
+departure at a time; each decision is recorded there and in `TODO.md`
+(the review's list). Among them: made code's `poll`, its frames in a
+collection and its routines that may collect, one piece of work (Fixpt's
+frames flushed into the heap, Larceny's way); the step limit a budget per
+top-level form, kayak's compiler marking each (`%form`); `eq?` on
+immutable data, and a space-efficiency class (Clinger's), to be written
+down as kayak's definition of FX-26, FX-26's guarantees and not KFX's;
+code mapped twice kept, `MAP_JIT` a macOS option, the code-stubs request
+for Fixpt's team (`docs/research/code-stubs.md`); the collector, regions
+and kayak's tiers left for the revision from Coopt's runtime and code
+generation, but the measured overheads (1.2-5x behind Fixpt's machines)
+to be addressed before it; `--indexes` to go; Fixpt's backward scan for a
+header to be tier 1's. The user, of the overheads: "Frankly I was
+shocked".
+
+**The I/O leak** (departure 14; the user: "Yes definitely fix the IO
+leak"). Measured: tier 1's `write-out` 2M calls 71 MB peak, 200k 13 MB.
+Three causes, each fixed:
+- **kayak-rt made every I/O result anew**, never freed (`heap_alloc`):
+  now those that carry nothing new are one value each (`done`, `eof`,
+  `not-a-terminal`, promoted statics), a byte's one of 256 made once, a
+  count up to 4096 one of a table; a failure, or text, or data, still
+  made.
+- **Each machine made a KFX string of each string it wrote, and KFX made
+  one of each line read**, never freed. Now text crosses as code points in
+  the machine's own words, by five syscalls of kayak-rt's
+  (`io:write-points/1` from a flat array's range, one or two code points
+  to a word; `io:read-line-points/1` a line read and kept, its length;
+  `io:take-points/1` put into a string the machine made;
+  `io:failure-kind/1`, `io:failure-detail/1` on the failure's path
+  alone). kayak-jit reads and writes the words (`words_at`, `words_put`),
+  kayak-rt being built with unsafe code refused. Tier 1 packs two to a
+  word, the engine one; tier 1 writes a string not in its space (made
+  elsewhere) by KFX's still; the engine's REPL, capturing output, by its
+  text still.
+- **kayak-rt's reader read the whole input ahead.** Now it waits while
+  64 KiB are unread; a read signals as it takes, inside a line's loop too
+  (else a line longer than the buffer would wait on itself: tested, a
+  200 KB line).
+- Measured after: tier 1, `write-out` of a non-ASCII string 200k and 2M
+  calls 5.2 MB both, `read-line` 100k and 1M lines 5.2 MB both; the
+  engine, `write-out` 35 MB and 34 MB.
+- **The harness given an empty input**: the first check of this timed out
+  (600 s) in `cells-programs`, which ran tier 1 with the check's own
+  standard input; `io/streams.fx` waited, rightly, on an input left open
+  (the last check's had been at its end). Fixpt's runs are given
+  `/dev/null` (`fixptcache`, `run-fixpt-programs`); now `cells-programs`'
+  and `engine-programs`' are too (unless given an input), so that a
+  program reading the input gets its end whatever the check was started
+  with. No check changed, only made not to depend on that.
+- **Not done**: `read-file`, `list-dir`, `args` and `write-file` still
+  make KFX data per call (their data's size each); to be moved the same
+  way.
+
+**Found on the way, not fixed here**: the engine's `read-line` loop still
+grew, and so does any loop whose call is in a `tagcase` arm, with no I/O
+at all: 10M iterations 930 MB and 35 s, 40M an abort, the 1 GiB stack
+spent. Fixpt and tier 1 run it flat. `vm.kfx`'s `run` and `tagcase-step`
+call each other, and KFX makes a mutual tail call a Rust call: the engine
+has no proper tail call through a `tagcase`, against FX-26's, and against
+C64's "never recurses on the Rust stack" (departure 3). `TODO.md`.
+
