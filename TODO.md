@@ -767,6 +767,15 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      Start-up (C243): the stacks reserved, not written, 1.3 ms a start;
         tier 2's encoding 0.3 ms, not the cost guessed; the rest the
         kernel's loading of the binary.
+     Debug info for FX-26 itself: **done** for tier 1 (C245): kayak's
+        listings carry each word's line table (`; at FILE CELL:POS …`),
+        and `kayak-cells --profile` counts tier 1's cells by source line,
+        expression and word. Next: the jitdump's `JIT_CODE_DEBUG_INFO`
+        records for tiers 4-6, each native instruction's line from its
+        cell's (the per-cell native offsets to be kept as the words are
+        compiled), so that `perf annotate` shows FX-26 lines. Left in the
+        tables: a word from a module file of its own is given the
+        program's file; positions are characters, not bytes.
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

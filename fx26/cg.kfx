@@ -190,6 +190,10 @@
 
 "The checker's facts, for the program being compiled."
 (define cg-facts (ref facts @g) (new nil))
+"The program's file, for its words' line tables (C245)."
+(define cg-source (ref string @g) (new ""))
+"The source position of the expression being compiled (C245)."
+(define cg-at (ref i64 @g) (new 0))
 
 "Of those, the conversions (C230; `conversion-noted`), looked for at every
  expression: none, in most programs."
@@ -1330,7 +1334,10 @@
   (it-ins string (listof opnd acyclic))
   (it-label i64)
   (it-branch i64)
-  (it-zbranch i64))
+  (it-zbranch i64)
+  ;; Where an expression's code begins, its source position (C245): no
+  ;; cell, for the listing's line table.
+  (it-pos i64))
 
 (define-type citems (listof item acyclic))
 (define-type code (ref citems @g))
@@ -1456,7 +1463,7 @@
         (l-quoted (n) (string-append q-open (string-append (i64->string n) q-close)))))))
 
 (define item-size (subr kfx (item) i64)
-  (lambda (i) (tagcase i (it-ins (r os) (i64+ 1 (size os))) (it-label (n) 0) (it-branch (n) 2) (it-zbranch (n) 2))))
+  (lambda (i) (tagcase i (it-ins (r os) (i64+ 1 (size os))) (it-label (n) 0) (it-branch (n) 2) (it-zbranch (n) 2) (it-pos (p) 0))))
 
 "Where each label is: a list of (label, cell) pairs."
 (define-datatype place (place i64 i64))
@@ -1522,6 +1529,7 @@
           (let* ((x (car xs)) (next (i64+ at (item-size x))))
             (tagcase x
               (it-label (n) (lines-of-items (cdr xs) next ps out named))
+              (it-pos (p) (lines-of-items (cdr xs) next ps out named))
               (it-branch (n) (lines-of-items (cdr xs) next ps (cons (line at (string-append "branch → " (i64->string (place-at ps n)))) out) named))
               (it-zbranch (n) (lines-of-items (cdr xs) next ps (cons (line at (string-append "0branch → " (i64->string (place-at ps n)))) out) named))
               (it-ins (r os) (lines-of-items (cdr xs) next ps (cons (line at (ins-text r os)) out) (onto (reverse (words-said os)) named)))))))))
@@ -2110,6 +2118,20 @@
 
   (c-exp (subr gen (cx cenv i64 code bool) unit)
     (lambda (x e depth c tail)
+      "Expression `x` compiled, where its code begins noted, and where
+       the code after it, its parent's again, does (C245)."
+      (let ((p (cx-start x)) (outer (get cg-at)))
+        (if (i64> p 0)
+            (begin
+              (c-emit c (it-pos p))
+              (set cg-at p)
+              (c-exp-at x e depth c tail)
+              (set cg-at outer)
+              (if (i64> outer 0) (c-emit c (it-pos outer)) #u))
+            (c-exp-at x e depth c tail)))))
+
+  (c-exp-at (subr gen (cx cenv i64 code bool) unit)
+    (lambda (x e depth c tail)
       (tagcase x
         (x-var (n a)
           (let ((l (if (std-marked? n) nil (c-where e n))))
@@ -2519,6 +2541,7 @@
     (let ((c (the code (new nil))))
       (begin
         (set cg-facts fs)
+        (set cg-source (if (null? forms) "" (datum-file (car forms))))
         (set cg-qnodes nil)
         (set cg-convert-facts
              (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "convert ") (has-prefix? what "convention "))))) fs))
@@ -2542,6 +2565,42 @@
   (word-named (subr kfx ((listof word acyclic) string) (listof word acyclic))
     (lambda (ws n) (cond ((null? ws) nil) ((tagcase (car ws) (word (m xs) (string=? m n))) (list (car ws))) (else (word-named (cdr ws) n))))))
 
+"A word's line table (C245): `; at FILE CELL:POS …`, each where an
+ expression's code begins and its source position, the source the
+ program's file (`cg-source`; a word from a module file of its own not
+ told apart yet); at column 0, a comment to what compares listings with
+ Fixpt's; none if none."
+(define-datatype tentry (tentry i64 i64))
+(define-rec
+  (table-entries (subr kfx (citems i64 (listof tentry acyclic)) (listof tentry acyclic))
+    (lambda (xs at acc)
+      "The entries, newest first: one where the position changes, the
+       last of those at one cell."
+      (if (null? xs)
+          acc
+          (tagcase (car xs)
+            (it-pos (p)
+              (let ((acc (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= a at)))) (cdr acc) acc)))
+                (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= q p))))
+                    (table-entries (cdr xs) at acc)
+                    (table-entries (cdr xs) at (cons (tentry at p) acc)))))
+            (else y (table-entries (cdr xs) (i64+ at (item-size (car xs))) acc)))))))
+(define-rec
+  (entries-shown (subr kfx ((listof tentry acyclic) strings) strings)
+    (lambda (es out)
+      (if (null? es)
+          out
+          (entries-shown (cdr es) (cons (tagcase (car es) (tentry (a p) (string-append (i64->string a) (string-append ":" (i64->string p))))) out))))))
+(define-rec
+  (spaced (subr kfx (strings) string)
+    (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (spaced (cdr ss)))))))))
+(define line-table (subr gen (citems) string)
+  (lambda (xs)
+    (let ((es (entries-shown (table-entries xs 0 nil) nil)))
+      (if (or (null? es) (string=? (get cg-source) ""))
+          ""
+          (string-append "; at " (string-append (get cg-source) (string-append " " (string-append (spaced es) "\n"))))))))
+
 "The listing: from `program`, each word reached, as `disasm.rs` walks
  them: the words a word names pushed in order, the last pushed next."
 (define-rec
@@ -2558,7 +2617,7 @@
                        (tagcase (lines-of-items xs 0 (places-of xs 0 nil) nil nil)
                          (wsaid (text named)
                            (listing-from (onto (reverse named) (cdr todo)) (cons name seen)
-                                         (string-append out (string-append "\nword " (string-append (shown-name name) (string-append " (" (string-append (i64->string (cells-of xs 0)) (string-append " cells, cellular):\n" text))))))))))))))))))
+                                         (string-append out (string-append "\nword " (string-append (shown-name name) (string-append " (" (string-append (i64->string (cells-of xs 0)) (string-append " cells, cellular):\n" (string-append text (line-table xs))))))))))))))))))))
 
 "The listing's quoted nodes written (`quoted-interned`): Fixpt's
  `literal.rs`, an object reached more than once labelled `#N=` where it

@@ -5,7 +5,7 @@ use super::*;
 
 // main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
 // [--hand|--compiled|--direct] [--regs] [--fixpt-calls]
-// [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
+// [--gc-stress] [--gc-stats] [--profile]` (C122, C125, C126, C128, C129, C138, C139,
 // C140, C142, C210): the words of a listing Fixpt's compiler wrote, its
 // `program` run, at most N instructions (Fixpt's FX-26 default,
 // 20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
@@ -60,7 +60,7 @@ pub fn default_steps() -> i64 {
 }
 
 pub fn usage() -> Str {
-    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6;\n                       implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
+    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6;\n                       implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\n  --profile            tier 1 only: the source lines and the words that\n                       ran the most cells, on the standard error (the\n                       lines from a listing of `kayak-fx26 --cells`)\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
 }
 
 /// Option `name`'s number, `none` the most there is; else `otherwise`.
@@ -109,6 +109,329 @@ pub fn after_dashes(mut r#as: Strings) -> Strings {
     }
 }
 
+// `--profile`'s report (C245): of the cells tier 1 ran, the source lines
+// and the words that ran the most, on the standard error. A cell's line is
+// that of the last entry of its word's line table at or before it, its
+// position read in the table's file.
+pub enum Cpos {
+    Cpos(i64, i64),
+}
+
+pub fn cpos(f0: i64, f1: i64) -> &'static Cpos {
+    kayak_rt::heap_alloc(Cpos::Cpos(f0, f1))
+}
+
+pub fn cposes(cs: Chars, out: List<&'static Cpos>) -> List<&'static Cpos> {
+    let cs = spaces_dropped(cs);
+    if null_p(cs) {
+        reverse(out)
+    } else {
+        let rest = after_char(cs, colon());
+        cposes(after_char(rest, ' '), kayak_rt::heap_cons(cpos(digits_of(cs, 0i64), digits_of(rest, 0i64)), out))
+    }
+}
+
+pub fn pos_at(mut es: List<&'static Cpos>, mut cell: i64, mut had: i64) -> i64 {
+    loop {
+        if null_p(es) {
+            return had;
+        } else {
+            let tagcase_ = car(es);
+            match *tagcase_ {
+                Cpos::Cpos(c, p) => {
+                    if i64_gt(c, cell) {
+                        return had;
+                    } else {
+                        (es, had) = (cdr(es), p);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn newlines(mut cs: Chars, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, n) = (cdr(cs), i64_plus(n, 1i64));
+            continue;
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+/// Where each line starts.
+pub fn starts_noted_x(mut cs: Chars, mut into: FlatArray<i64>, mut at: i64, mut line: i64) -> FlatArray<i64> {
+    loop {
+        if null_p(cs) {
+            return into;
+        } else if char_eq_p(car(cs), '\n') {
+            flatarray_set_i64_x(into, i64_plus(line, 1i64), i64_plus(at, 1i64));
+            (cs, at, line) = (cdr(cs), i64_plus(at, 1i64), i64_plus(line, 1i64));
+            continue;
+        } else {
+            (cs, at) = (cdr(cs), i64_plus(at, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The line (from 0) of position `pos`: the last start at or before it, in `lo`..`hi`.
+pub fn line_of(mut starts: FlatArray<i64>, mut pos: i64, mut lo: i64, mut hi: i64) -> i64 {
+    loop {
+        if i64_gt_eq(lo, hi) {
+            return lo;
+        } else {
+            let mid = i64_quotient(i64_plus(lo, i64_plus(hi, 1i64)), 2i64);
+            if i64_lt_eq(flatarray_ref_i64(starts, mid), pos) {
+                lo = mid;
+                continue;
+            } else {
+                hi = i64_minus(mid, 1i64);
+                continue;
+            }
+        }
+    }
+}
+
+/// Word `w`'s counts, each added to its line's in `into` (key: line +
+/// 1), or if `exact` its position's (key: position + 1).
+pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<&'static Cpos>, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
+    loop {
+        if i64_gt_eq(i, tally_slots(t)) {
+            return into;
+        } else {
+            let at = i64_plus(1i64, i64_star(3i64, i));
+            let p = pos_at(es, flatarray_ref_i64(t, i64_plus(at, 1i64)), -1i64);
+            (into, i) = (if (not(i64_eq(flatarray_ref_i64(t, at), w)) || i64_lt(p, 0i64)) {
+                into
+            } else {
+                tally_added_x(into, i64_plus(1i64, if exact {
+                    p
+                } else {
+                    line_of(starts, p, 0i64, i64_minus(flatarray_length_i64(starts), 1i64))
+                }), 0i64, flatarray_ref_i64(t, i64_plus(at, 2i64)))
+            }, i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn lines_tallied_x(mut ts: List<&'static Ltext>, mut file: Str, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>) -> FlatArray<i64> {
+    loop {
+        if null_p(ts) {
+            return into;
+        } else {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ltext::Ltext(n, text) => {
+                    let cs = string_chars(text);
+                    let w = lookup(get(words()), n);
+                    (ts, into) = (cdr(ts), if (i64_eq(w, 0i64) || not(string_eq_p(list_to_string(before_char(cs, ' ')), file))) {
+                        into
+                    } else {
+                        word_lines_x(get(profile()), w, cposes(after_char(cs, ' '), nil::<&'static Cpos>()), starts, exact, into, 0i64)
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn words_tallied_x(mut t: FlatArray<i64>, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
+    loop {
+        if i64_gt_eq(i, tally_slots(t)) {
+            return into;
+        } else {
+            let at = i64_plus(1i64, i64_star(3i64, i));
+            (into, i) = (if i64_eq(flatarray_ref_i64(t, at), 0i64) {
+                into
+            } else {
+                tally_added_x(into, flatarray_ref_i64(t, at), 0i64, flatarray_ref_i64(t, i64_plus(at, 2i64)))
+            }, i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn tally_total(mut t: FlatArray<i64>, mut i: i64, mut n: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, tally_slots(t)) {
+            return n;
+        } else {
+            (i, n) = (i64_plus(i, 1i64), i64_plus(n, flatarray_ref_i64(t, i64_plus(3i64, i64_star(3i64, i)))));
+            continue;
+        }
+    }
+}
+
+/// Where the greatest count not yet shown is (shown ones made negative); 0 if none.
+pub fn tally_most(mut t: FlatArray<i64>, mut i: i64, mut best: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, tally_slots(t)) {
+            return best;
+        } else {
+            let at = i64_plus(1i64, i64_star(3i64, i));
+            (i, best) = (i64_plus(i, 1i64), if (i64_gt(flatarray_ref_i64(t, i64_plus(at, 2i64)), 0i64) && (i64_eq(best, 0i64) || i64_gt(flatarray_ref_i64(t, i64_plus(at, 2i64)), flatarray_ref_i64(t, i64_plus(best, 2i64))))) {
+                at
+            } else {
+                best
+            });
+            continue;
+        }
+    }
+}
+
+pub fn nth_line(mut ls: List<Chars>, mut n: i64) -> Chars {
+    loop {
+        if null_p(ls) {
+            return nil::<char>();
+        } else if i64_eq(n, 0i64) {
+            return car(ls);
+        } else {
+            (ls, n) = (cdr(ls), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn padded(mut s: Str, mut n: i64) -> Str {
+    loop {
+        if i64_gt_eq(int_to_i64(string_length(s)), n) {
+            return s;
+        } else {
+            s = string_append(str_lit(" "), s);
+            continue;
+        }
+    }
+}
+
+pub fn percent(n: i64, total: i64) -> Str {
+    let m = if i64_eq(total, 0i64) {
+        the::<i64>(0i64)
+    } else {
+        i64_quotient(i64_star(n, 1000i64), total)
+    };
+    string_append(i64_to_string(i64_quotient(m, 10i64)), string_append(str_lit("."), string_append(i64_to_string(i64_remainder(m, 10i64)), str_lit("%"))))
+}
+
+pub fn cut(mut cs: Chars, mut n: i64, mut acc: Chars) -> Str {
+    loop {
+        if (null_p(cs) || char_eq_p(car(cs), '\n')) {
+            return list_to_string(reverse(acc));
+        } else if i64_eq(n, 0i64) {
+            return string_append(list_to_string(reverse(acc)), str_lit("…"));
+        } else {
+            (cs, n, acc) = (cdr(cs), i64_minus(n, 1i64), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn name_of(mut ws: List<&'static Named>, mut w: i64) -> Str {
+    loop {
+        if null_p(ws) {
+            return string_append(str_lit("(word at "), string_append(i64_to_string(w), str_lit(")")));
+        } else if i64_eq(named_value(car(ws)), w) {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Named::Named(n, i) => {
+                    return n;
+                }
+            }
+        } else {
+            ws = cdr(ws);
+            continue;
+        }
+    }
+}
+
+/// The `n` greatest counts of tally `t`, each with `what` its key's first part is.
+pub fn most_shown(mut t: FlatArray<i64>, mut total: i64, mut n: i64, mut what: &'static dyn Fn(i64) -> Str, mut out: Str) -> Str {
+    loop {
+        let at = if i64_eq(n, 0i64) {
+            the::<i64>(0i64)
+        } else {
+            tally_most(t, 0i64, 0i64)
+        };
+        if i64_eq(at, 0i64) {
+            return out;
+        } else {
+            let c = flatarray_ref_i64(t, i64_plus(at, 2i64));
+            flatarray_set_i64_x(t, i64_plus(at, 2i64), i64_minus(0i64, c));
+            (n, out) = (i64_minus(n, 1i64), string_append(out, string_append(str_lit("  "), string_append(padded(i64_to_string(c), 12i64), string_append(padded(percent(c, total), 8i64), string_append(str_lit("  "), string_append(what(flatarray_ref_i64(t, at)), str_lit("\n"))))))));
+            continue;
+        }
+    }
+}
+
+pub fn profile_shown_x() -> () {
+    let total = tally_total(get(profile()), 0i64, 0i64);
+    let ws = words_tallied_x(get(profile()), tally_made(256i64), 0i64);
+    let head = string_append(str_lit("profile: "), string_append(i64_to_string(total), str_lit(" cells run by tier 1\n")));
+    let by_word = most_shown(ws, total, 15i64, lambda1(move |w: i64| {
+        name_of(get(words()), w)
+    }), str_lit("the words that ran the most:\n"));
+    let ts = get(line_tables());
+    let file = if null_p(ts) {
+        str_lit("")
+    } else {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Ltext::Ltext(n, text) => {
+                list_to_string(before_char(string_chars(text), ' '))
+            }
+        }
+    };
+    let by_line = if string_eq_p(file, str_lit("")) {
+        str_lit("no line tables: the listing is not kayak's (`kayak-fx26 --cells`)\n")
+    } else {
+        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(file));
+        match *tagcase_ {
+            Sum_4data_6failed::Data(b) => {
+                let tagcase_ = utf8_to_string(b);
+                match *tagcase_ {
+                    Sum_4text_3bad::Text(src) => {
+                        let cs = string_chars(src);
+                        let starts = starts_noted_x(cs, make_flatarray_i64(i64_plus(1i64, newlines(cs, 0i64)), 0i64), 0i64, 0i64);
+                        let lines = lines_of(cs, nil::<char>(), nil::<List<char>>());
+                        let ls = lines_tallied_x(ts, file, starts, false, tally_made(256i64));
+                        let ps = lines_tallied_x(ts, file, starts, true, tally_made(256i64));
+                        string_append(most_shown(ls, total, 15i64, lambda1(move |l: i64| {
+                            string_append(file, string_append(str_lit(":"), string_append(i64_to_string(l), string_append(str_lit("  "), cut(spaces_dropped(nth_line(lines, i64_minus(l, 1i64))), 60i64, nil::<char>())))))
+                        }), str_lit("the source lines that ran the most:\n")), most_shown(ps, total, 15i64, lambda1(move |q: i64| {
+                            let p = i64_minus(q, 1i64);
+                            let l = line_of(starts, p, 0i64, i64_minus(flatarray_length_i64(starts), 1i64));
+                            string_append(i64_to_string(i64_plus(l, 1i64)), string_append(str_lit(":"), string_append(i64_to_string(i64_minus(p, flatarray_ref_i64(starts, l))), string_append(str_lit("  "), cut(drop_n(cs, p), 50i64, nil::<char>())))))
+                        }), str_lit("the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n")))
+                    }
+                    Sum_4text_3bad::Bad(k) => {
+                        string_append(file, str_lit(": not UTF-8\n"))
+                    }
+                }
+            }
+            Sum_4data_6failed::Failed(e) => {
+                string_append(str_lit("cannot read "), string_append(file, str_lit("\n")))
+            }
+        }
+    };
+    let tagcase_ = write_err(string_append(head, string_append(by_line, by_word)));
+    match *tagcase_ {
+        Sum_4done_6failed::Done(u) => {
+            ()
+        }
+        Sum_4done_6failed::Failed(e) => {
+            ()
+        }
+    }
+}
+
 pub fn cells_main() -> Int {
     let r#as = the::<Strings>(args());
     if null_p(r#as) {
@@ -135,7 +458,20 @@ pub fn cells_main() -> Int {
         let u6 = set(hand_fixpt_calls(), string_member_p(str_lit("--fixpt-calls"), r#as));
         let u3 = set(hand_on(), (string_member_p(str_lit("--hand"), r#as) || string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
         let u4 = set(hand_compiled(), (string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
+        let u7 = set(profiling(), string_member_p(str_lit("--profile"), r#as));
+        let u8 = if (get(profiling()) && (get(hand_on()) || get(regs_on()))) {
+            write_err(str_lit("kayak-cells: --profile counts tier 1's cells: no --hand, --compiled, --direct or --regs\n"));
+            match exit(int_lit(2)) {};
+            ()
+        } else {
+            ()
+        };
         let r = run_word_x(w, option_of(cdr(r#as), str_lit("--step-limit"), default_steps()));
+        let u9 = if get(profiling()) {
+            profile_shown_x()
+        } else {
+            ()
+        };
         let u2 = if string_member_p(str_lit("--gc-stats"), r#as) {
             write_err(string_append(string_append(str_lit("values: addresses from "), string_append(i64_to_string(get(vbase())), str_lit("; "))), string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), string_append(str_lit(", words compiled: "), string_append(int_to_string(get(words_compiled())), string_append(str_lit(", tier 6: "), string_append(int_to_string(get(words_direct())), string_append(str_lit("\n"), given_shown(0i64, str_lit("")))))))))))))));
             ()

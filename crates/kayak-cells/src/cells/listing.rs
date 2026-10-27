@@ -252,6 +252,42 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut mode: i64)
     }
 }
 
+// Each word's line table (C245), as kayak's compiler writes it after the
+// word: its name, and the rest of its `; at FILE CELL:POS …` line, read
+// by `--profile`. Fixpt's listings have none.
+pub enum Ltext {
+    Ltext(Str, Str),
+}
+
+pub fn ltext(f0: Str, f1: Str) -> &'static Ltext {
+    kayak_rt::heap_alloc(Ltext::Ltext(f0, f1))
+}
+
+pub fn line_tables() -> Ref<List<&'static Ltext>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Ltext>())
+    })
+}
+
+pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
+    loop {
+        if null_p(ls) {
+            return ();
+        } else if starts_p(car(ls), string_chars(str_lit("word "))) {
+            (ls, name) = (cdr(ls), list_to_string(before_char(drop_n(car(ls), 5i64), ' ')));
+            continue;
+        } else if starts_p(car(ls), string_chars(str_lit("; at "))) {
+            set(line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(drop_n(car(ls), 5i64))), get(line_tables())));
+            ls = cdr(ls);
+            continue;
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
 // The words, by name.
 pub fn words() -> Ref<List<&'static Named>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);
@@ -1360,7 +1396,9 @@ pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
 
 /// The words of a listing, made; the word named `program`.
 pub fn listing_words_x(text: Str) -> i64 {
-    let all = blocks(lines_of(string_chars(text), nil::<char>(), nil::<List<char>>()), nil::<&'static Block>(), 0i64);
+    let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
+    let u = tables_read_x(ls, str_lit(""));
+    let all = blocks(ls, nil::<&'static Block>(), 0i64);
     let bs = distinct_blocks(all, nil::<&'static Block>());
     words_made_x(bs);
     blocks_written_x(all, nil::<Str>());

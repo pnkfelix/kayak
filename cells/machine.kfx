@@ -1007,10 +1007,56 @@
                      (if (i64= (get rsp) base) #f (begin (pop-return!) #t)))
                     (else #f)))))))))
 
+"`--profile` (C245): each cell tier 1 runs, counted by its word and its
+ place in it. A tally: open addressing over slots of three, a key's two
+ parts (the first never 0) and its count, after one that counts the slots
+ used. A word never moves (in the code area), so its address is its key."
+(define profiling (ref bool @c) (new #f))
+(define tally-made (subr cm (i64) (flatarrayof i64 @c))
+  (lambda (slots) (make-flatarray-i64 (i64+ 1 (i64* 3 slots)) 0)))
+(define tally-slots (subr cm ((flatarrayof i64 @c)) i64)
+  (lambda (t) (i64-quotient (i64- (flatarray-length-i64 t) 1) 3)))
+(define profile (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 3073 0)))
+
+(define-rec
+  (tally-at (subr cm ((flatarrayof i64 @c) i64 i64 i64 i64) i64)
+    (lambda (t a b i mask)
+      "Where key (`a`, `b`) is, or the free slot where it would go."
+      (let* ((at (i64+ 1 (i64* 3 i))) (x (flatarray-ref-i64 t at)))
+        (if (or (i64= x 0) (and (i64= x a) (i64= (flatarray-ref-i64 t (i64+ at 1)) b)))
+            at
+            (tally-at t a b (i64-and (i64+ i 1) mask) mask)))))
+  (tally-added! (subr cm ((flatarrayof i64 @c) i64 i64 i64) (flatarrayof i64 @c))
+    (lambda (t a b n)
+      "`n` counted for key (`a`, `b`): the tally, grown if it had to be."
+      (let* ((slots (tally-slots t))
+             (mask (i64- slots 1))
+             (at (tally-at t a b (i64-and (i64-xor (i64-xor (i64-shr a 4) (i64-shr a 13)) (i64* b 40503)) mask) mask)))
+        (cond ((not (i64= (flatarray-ref-i64 t at) 0))
+               (begin (flatarray-set-i64! t (i64+ at 2) (i64+ n (flatarray-ref-i64 t (i64+ at 2)))) t))
+              ((i64>= (i64* 2 (flatarray-ref-i64 t 0)) slots)
+               (tally-added! (tally-moved! t (tally-made (i64* 2 slots)) 0) a b n))
+              (else
+               (begin
+                 (flatarray-set-i64! t at a) (flatarray-set-i64! t (i64+ at 1) b) (flatarray-set-i64! t (i64+ at 2) n)
+                 (flatarray-set-i64! t 0 (i64+ 1 (flatarray-ref-i64 t 0)))
+                 t))))))
+  (tally-moved! (subr cm ((flatarrayof i64 @c) (flatarrayof i64 @c) i64) (flatarrayof i64 @c))
+    (lambda (t into i)
+      (if (i64>= i (tally-slots t))
+          into
+          (let ((at (i64+ 1 (i64* 3 i))))
+            (tally-moved! t
+                          (if (i64= (flatarray-ref-i64 t at) 0)
+                              into
+                              (tally-added! into (flatarray-ref-i64 t at) (flatarray-ref-i64 t (i64+ at 1)) (flatarray-ref-i64 t (i64+ at 2))))
+                          (i64+ i 1)))))))
+
 (define cell-step! (subr cm (i64) bool)
   (lambda (base)
     (let ((cell (slot-of (get cur) (get kk))))
       (begin
+        (if (get profiling) (set profile (tally-added! (get profile) (get cur) (i64- (get kk) f-cell0) 1)) #u)
         (set kk (i64+ (get kk) 1))
         (cond
           ((and (i64= (get fuel) 0) (i64= (get reserve) 0))

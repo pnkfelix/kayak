@@ -119,6 +119,24 @@
                                    (block (n c e is) (cons (block n c e (cons (iline (if (i64= mode 1) (i64- -2 at) at) text) is)) (cdr out))))
                                  mode))))))))))
 
+"Each word's line table (C245), as kayak's compiler writes it after the
+ word: its name, and the rest of its `; at FILE CELL:POS …` line, read
+ by `--profile`. Fixpt's listings have none."
+(define-datatype ltext (ltext string string))
+(define line-tables (ref (listof ltext @c) @c) (new nil))
+
+(define-rec
+  (tables-read! (subr cm ((listof chars acyclic) string) unit)
+    (lambda (ls name)
+      (cond ((null? ls) #u)
+            ((starts? (car ls) (string-chars "word "))
+             (tables-read! (cdr ls) (list->string (before-char (drop-n (car ls) 5) #\space))))
+            ((starts? (car ls) (string-chars "; at "))
+             (begin
+               (set line-tables (cons (ltext name (list->string (drop-n (car ls) 5))) (get line-tables)))
+               (tables-read! (cdr ls) name)))
+            (else (tables-read! (cdr ls) name))))))
+
 "The words, by name."
 (define words (ref (listof named @c) @c) (new nil))
 
@@ -681,7 +699,9 @@
 (define listing-words! (subr cm (string) i64)
   (lambda (text)
     "The words of a listing, made; the word named `program`."
-    (let* ((all (blocks (lines-of (string-chars text) nil nil) nil 0))
+    (let* ((ls (lines-of (string-chars text) nil nil))
+           (u (tables-read! ls ""))
+           (all (blocks ls nil 0))
            (bs (distinct-blocks all nil)))
       (begin
         (words-made! bs)

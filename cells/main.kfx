@@ -1,6 +1,6 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
  [--hand|--compiled|--direct] [--regs] [--fixpt-calls]
- [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
+ [--gc-stress] [--gc-stats] [--profile]` (C122, C125, C126, C128, C129, C138, C139,
  C140, C142, C210): the words of a listing Fixpt's compiler wrote, its
  `program` run, at most N instructions (Fixpt's FX-26 default,
  20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
@@ -52,6 +52,9 @@ And:
   --gc-stats           how values are kept, collections, words copied,
                        the machine's entries, words compiled and those
                        of tier 6, on the standard error
+  --profile            tier 1 only: the source lines and the words that
+                       ran the most cells, on the standard error (the
+                       lines from a listing of `kayak-fx26 --cells`)
 If the program fails: `evaluation failed: MESSAGE` on the standard error,
 and status 1.
 ")
@@ -72,6 +75,163 @@ and status 1.
   (after-dashes (subr kfx (strings) strings)
     (lambda (as) "The arguments after `--`: the program's (C232)." (cond ((null? as) nil) ((string=? (car as) "--") (cdr as)) (else (after-dashes (cdr as)))))))
 
+"`--profile`'s report (C245): of the cells tier 1 ran, the source lines
+ and the words that ran the most, on the standard error. A cell's line is
+ that of the last entry of its word's line table at or before it, its
+ position read in the table's file."
+(define-datatype cpos (cpos i64 i64))
+(define-rec
+  (cposes (subr kfx (chars (listof cpos acyclic)) (listof cpos acyclic))
+    (lambda (cs out)
+      (let ((cs (spaces-dropped cs)))
+        (if (null? cs)
+            (reverse out)
+            (let ((rest (after-char cs colon)))
+              (cposes (after-char rest #\space) (cons (cpos (digits-of cs 0) (digits-of rest 0)) out))))))))
+(define-rec
+  (pos-at (subr kfx ((listof cpos acyclic) i64 i64) i64)
+    (lambda (es cell had)
+      (if (null? es) had (tagcase (car es) (cpos (c p) (if (i64> c cell) had (pos-at (cdr es) cell p))))))))
+
+(define-rec
+  (newlines (subr kfx (chars i64) i64)
+    (lambda (cs n) (cond ((null? cs) n) ((char=? (car cs) #\newline) (newlines (cdr cs) (i64+ n 1))) (else (newlines (cdr cs) n))))))
+(define-rec
+  (starts-noted! (subr cm (chars (flatarrayof i64 @c) i64 i64) (flatarrayof i64 @c))
+    (lambda (cs into at line)
+      "Where each line starts."
+      (cond ((null? cs) into)
+            ((char=? (car cs) #\newline)
+             (begin (flatarray-set-i64! into (i64+ line 1) (i64+ at 1)) (starts-noted! (cdr cs) into (i64+ at 1) (i64+ line 1))))
+            (else (starts-noted! (cdr cs) into (i64+ at 1) line))))))
+(define-rec
+  (line-of (subr cm ((flatarrayof i64 @c) i64 i64 i64) i64)
+    (lambda (starts pos lo hi)
+      "The line (from 0) of position `pos`: the last start at or before it, in `lo`..`hi`."
+      (if (i64>= lo hi)
+          lo
+          (let ((mid (i64-quotient (i64+ lo (i64+ hi 1)) 2)))
+            (if (i64<= (flatarray-ref-i64 starts mid) pos) (line-of starts pos mid hi) (line-of starts pos lo (i64- mid 1))))))))
+
+(define-rec
+  (word-lines! (subr cm ((flatarrayof i64 @c) i64 (listof cpos acyclic) (flatarrayof i64 @c) bool (flatarrayof i64 @c) i64) (flatarrayof i64 @c))
+    (lambda (t w es starts exact into i)
+      "Word `w`'s counts, each added to its line's in `into` (key: line +
+       1), or if `exact` its position's (key: position + 1)."
+      (if (i64>= i (tally-slots t))
+          into
+          (let* ((at (i64+ 1 (i64* 3 i))) (p (pos-at es (flatarray-ref-i64 t (i64+ at 1)) -1)))
+            (word-lines! t w es starts exact
+                         (if (or (not (i64= (flatarray-ref-i64 t at) w)) (i64< p 0))
+                             into
+                             (tally-added! into (i64+ 1 (if exact p (line-of starts p 0 (i64- (flatarray-length-i64 starts) 1)))) 0 (flatarray-ref-i64 t (i64+ at 2))))
+                         (i64+ i 1)))))))
+(define-rec
+  (lines-tallied! (subr cm ((listof ltext @c) string (flatarrayof i64 @c) bool (flatarrayof i64 @c)) (flatarrayof i64 @c))
+    (lambda (ts file starts exact into)
+      (if (null? ts)
+          into
+          (tagcase (car ts)
+            (ltext (n text)
+              (let* ((cs (string-chars text)) (w (lookup (get words) n)))
+                (lines-tallied! (cdr ts) file starts exact
+                                (if (or (i64= w 0) (not (string=? (list->string (before-char cs #\space)) file)))
+                                    into
+                                    (word-lines! (get profile) w (cposes (after-char cs #\space) nil) starts exact into 0))))))))))
+(define-rec
+  (words-tallied! (subr cm ((flatarrayof i64 @c) (flatarrayof i64 @c) i64) (flatarrayof i64 @c))
+    (lambda (t into i)
+      (if (i64>= i (tally-slots t))
+          into
+          (let ((at (i64+ 1 (i64* 3 i))))
+            (words-tallied! t
+                            (if (i64= (flatarray-ref-i64 t at) 0) into (tally-added! into (flatarray-ref-i64 t at) 0 (flatarray-ref-i64 t (i64+ at 2))))
+                            (i64+ i 1)))))))
+(define-rec
+  (tally-total (subr cm ((flatarrayof i64 @c) i64 i64) i64)
+    (lambda (t i n) (if (i64>= i (tally-slots t)) n (tally-total t (i64+ i 1) (i64+ n (flatarray-ref-i64 t (i64+ 3 (i64* 3 i)))))))))
+(define-rec
+  (tally-most (subr cm ((flatarrayof i64 @c) i64 i64) i64)
+    (lambda (t i best)
+      "Where the greatest count not yet shown is (shown ones made negative); 0 if none."
+      (if (i64>= i (tally-slots t))
+          best
+          (let ((at (i64+ 1 (i64* 3 i))))
+            (tally-most t (i64+ i 1)
+                        (if (and (i64> (flatarray-ref-i64 t (i64+ at 2)) 0)
+                                 (or (i64= best 0) (i64> (flatarray-ref-i64 t (i64+ at 2)) (flatarray-ref-i64 t (i64+ best 2)))))
+                            at
+                            best)))))))
+
+(define-rec
+  (nth-line (subr kfx ((listof chars acyclic) i64) chars)
+    (lambda (ls n) (cond ((null? ls) nil) ((i64= n 0) (car ls)) (else (nth-line (cdr ls) (i64- n 1)))))))
+(define-rec
+  (padded (subr kfx (string i64) string)
+    (lambda (s n) (if (i64>= (int->i64 (string-length s)) n) s (padded (string-append " " s) n)))))
+(define percent (subr kfx (i64 i64) string)
+  (lambda (n total)
+    (let ((m (if (i64= total 0) (the i64 0) (i64-quotient (i64* n 1000) total))))
+      (string-append (i64->string (i64-quotient m 10)) (string-append "." (string-append (i64->string (i64-remainder m 10)) "%"))))))
+(define-rec
+  (cut (subr kfx (chars i64 chars) string)
+    (lambda (cs n acc)
+      (cond ((or (null? cs) (char=? (car cs) #\newline)) (list->string (reverse acc)))
+            ((i64= n 0) (string-append (list->string (reverse acc)) "…"))
+            (else (cut (cdr cs) (i64- n 1) (cons (car cs) acc)))))))
+(define-rec
+  (name-of (subr cm ((listof named @c) i64) string)
+    (lambda (ws w)
+      (cond ((null? ws) (string-append "(word at " (string-append (i64->string w) ")")))
+            ((i64= (named-value (car ws)) w) (tagcase (car ws) (named (n i) n)))
+            (else (name-of (cdr ws) w))))))
+(define-rec
+  (most-shown (subr cm ((flatarrayof i64 @c) i64 i64 (subr cm (i64) string) string) string)
+    (lambda (t total n what out)
+      "The `n` greatest counts of tally `t`, each with `what` its key's first part is."
+      (let ((at (if (i64= n 0) (the i64 0) (tally-most t 0 0))))
+        (if (i64= at 0)
+            out
+            (let ((c (flatarray-ref-i64 t (i64+ at 2))))
+              (begin
+                (flatarray-set-i64! t (i64+ at 2) (i64- 0 c))
+                (most-shown t total (i64- n 1) what
+                            (string-append out (string-append "  " (string-append (padded (i64->string c) 12) (string-append (padded (percent c total) 8) (string-append "  " (string-append (what (flatarray-ref-i64 t at)) "\n"))))))))))))))
+
+(define profile-shown! (subr driving () unit)
+  (lambda ()
+    (let* ((total (tally-total (get profile) 0 0))
+           (ws (words-tallied! (get profile) (tally-made 256) 0))
+           (head (string-append "profile: " (string-append (i64->string total) " cells run by tier 1\n")))
+           (by-word (most-shown ws total 15 (lambda ((w i64)) (name-of (get words) w)) "the words that ran the most:\n"))
+           (ts (get line-tables))
+           (file (if (null? ts) "" (tagcase (car ts) (ltext (n text) (list->string (before-char (string-chars text) #\space))))))
+           (by-line
+             (if (string=? file "")
+                 "no line tables: the listing is not kayak's (`kayak-fx26 --cells`)\n"
+                 (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file file))
+                   (data b
+                     (tagcase (utf8->string b)
+                       (text src
+                         (let* ((cs (string-chars src))
+                                (starts (starts-noted! cs (make-flatarray-i64 (i64+ 1 (newlines cs 0)) 0) 0 0))
+                                (lines (lines-of cs nil nil))
+                                (ls (lines-tallied! ts file starts #f (tally-made 256)))
+                                (ps (lines-tallied! ts file starts #t (tally-made 256))))
+                           (string-append
+                             (most-shown ls total 15
+                                         (lambda ((l i64))
+                                           (string-append file (string-append ":" (string-append (i64->string l) (string-append "  " (cut (spaces-dropped (nth-line lines (i64- l 1))) 60 nil))))))
+                                         "the source lines that ran the most:\n")
+                             (most-shown ps total 15
+                                         (lambda ((q i64))
+                                           (let* ((p (i64- q 1)) (l (line-of starts p 0 (i64- (flatarray-length-i64 starts) 1))))
+                                             (string-append (i64->string (i64+ l 1)) (string-append ":" (string-append (i64->string (i64- p (flatarray-ref-i64 starts l))) (string-append "  " (cut (drop-n cs p) 50 nil)))))))
+                                         "the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n"))))
+                       (bad k (string-append file ": not UTF-8\n"))))
+                   (failed e (string-append "cannot read " (string-append file "\n")))))))
+      (tagcase (write-err (string-append head (string-append by-line by-word))) (done u #u) (failed e #u)))))
+
 (define cells-main (subr driving () int)
   (lambda ()
     (let ((as (the strings (args))))
@@ -91,7 +251,12 @@ and status 1.
                  (u6 (set hand-fixpt-calls (string-member? "--fixpt-calls" as)))
                  (u3 (set hand-on (or (string-member? "--hand" as) (string-member? "--compiled" as) (get hand-direct))))
                  (u4 (set hand-compiled (or (string-member? "--compiled" as) (get hand-direct))))
+                 (u7 (set profiling (string-member? "--profile" as)))
+                 (u8 (if (and (get profiling) (or (get hand-on) (get regs-on)))
+                         (begin (write-err "kayak-cells: --profile counts tier 1's cells: no --hand, --compiled, --direct or --regs\n") (exit 2) #u)
+                         #u))
                  (r (run-word! w (option-of (cdr as) "--step-limit" default-steps)))
+                 (u9 (if (get profiling) (profile-shown!) #u))
                  (u2 (if (string-member? "--gc-stats" as)
                          (begin
                            (write-err (string-append (string-append "values: addresses from " (string-append (i64->string (get vbase)) "; ")) (string-append "collections: " (string-append (i64->string (get collections))

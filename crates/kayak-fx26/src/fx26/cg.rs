@@ -1888,6 +1888,22 @@ pub fn cg_facts() -> Ref<Facts> {
     })
 }
 
+// The program's file, for its words' line tables (C245).
+pub fn cg_source() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
+}
+
+// The source position of the expression being compiled (C245).
+pub fn cg_at() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
 // Of those, the conversions (C230; `conversion-noted`), looked for at every
 // expression: none, in most programs.
 pub fn cg_convert_facts() -> Ref<Facts> {
@@ -4358,6 +4374,7 @@ pub enum Item {
     ItLabel(i64),
     ItBranch(i64),
     ItZbranch(i64),
+    ItPos(i64),
 }
 
 pub fn it_ins(f0: Str, f1: List<&'static Opnd>) -> &'static Item {
@@ -4374,6 +4391,10 @@ pub fn it_branch(f0: i64) -> &'static Item {
 
 pub fn it_zbranch(f0: i64) -> &'static Item {
     kayak_rt::heap_alloc(Item::ItZbranch(f0))
+}
+
+pub fn it_pos(f0: i64) -> &'static Item {
+    kayak_rt::heap_alloc(Item::ItPos(f0))
 }
 
 pub type Citems = List<&'static Item>;
@@ -4662,6 +4683,9 @@ pub fn item_size(i: &'static Item) -> i64 {
         Item::ItZbranch(n) => {
             2i64
         }
+        Item::ItPos(p) => {
+            0i64
+        }
     }
 }
 
@@ -4839,6 +4863,10 @@ pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static Place>,
             let tagcase_ = x;
             match *tagcase_ {
                 Item::ItLabel(n) => {
+                    (xs, at) = (cdr(xs), next);
+                    continue;
+                }
+                Item::ItPos(p) => {
                     (xs, at) = (cdr(xs), next);
                     continue;
                 }
@@ -6197,192 +6225,208 @@ pub fn c_exps(es: Cxs, e: Cenv, depth: i64, c: Code) -> i64 {
     }
 }
 
-pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: bool) -> () {
-    loop {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Cx::XVar(n, a) => {
-                let l = if std_marked_p(n) {
-                    nil::<&'static Loc>()
+/// Expression `x` compiled, where its code begins noted, and where
+/// the code after it, its parent's again, does (C245).
+pub fn c_exp(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+    let (p, outer) = (cx_start(x), get(cg_at()));
+    if i64_gt(p, 0i64) {
+        c_emit(c, it_pos(p));
+        set(cg_at(), p);
+        c_exp_at(x, e, depth, c, tail);
+        set(cg_at(), outer);
+        if i64_gt(outer, 0i64) {
+            c_emit(c, it_pos(outer))
+        } else {
+            ()
+        }
+    } else {
+        c_exp_at(x, e, depth, c, tail)
+    }
+}
+
+pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Cx::XVar(n, a) => {
+            let l = if std_marked_p(n) {
+                nil::<&'static Loc>()
+            } else {
+                c_where(e, n)
+            };
+            if null_p(l) {
+                if std_nil_name_p(std_named(n)) {
+                    c_lit(c, l_nil())
                 } else {
-                    c_where(e, n)
-                };
-                if null_p(l) {
-                    if std_nil_name_p(std_named(n)) {
-                        c_lit(c, l_nil())
+                    c_standard_value(std_named(n), c)
+                }
+            } else {
+                c_load(c, car(l))
+            };
+            c_done(c, tail)
+        }
+        Cx::XInt(n, a) => {
+            c_lit(c, l_int(n));
+            c_done(c, tail)
+        }
+        Cx::XBool(v, a) => {
+            c_lit(c, l_bool(v));
+            c_done(c, tail)
+        }
+        Cx::XStr(s, a) => {
+            c_lit(c, l_str(s));
+            c_done(c, tail)
+        }
+        Cx::XChar(ch, a) => {
+            c_lit(c, l_char(ch));
+            c_done(c, tail)
+        }
+        Cx::XFloat(b, a) => {
+            c_lit(c, l_f64(b));
+            c_done(c, tail)
+        }
+        Cx::XSym(s, a) => {
+            c_lit(c, l_sym(s));
+            c_done(c, tail)
+        }
+        Cx::XUnit(a) => {
+            c_lit(c, l_unit());
+            c_done(c, tail)
+        }
+        Cx::XLambda(ps, body, a) => {
+            c_lambda(ps, body, e, depth, c, nil::<Str>(), nil::<&'static Cx>());
+            c_done(c, tail)
+        }
+        Cx::XRlambda(r, l, a) => {
+            let tagcase_ = l;
+            match *tagcase_ {
+                Cx::XLambda(ps, body, b) => {
+                    c_lambda(ps, body, e, depth, c, nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()));
+                    c_done(c, tail)
+                }
+                _ => {
+                    let y = tagcase_;
+                    match cg_fail(str_lit("an rlambda's lambda")) {}
+                }
+            }
+        }
+        Cx::XBloblet(op, i, xs, a) => {
+            c_bloblet(op, i, xs, e, depth, c);
+            c_done(c, tail)
+        }
+        Cx::XPrompt(t, body, h, a) => {
+            c_exp(t, e, depth, c, false);
+            c_exp(h, e, i64_plus(depth, 1i64), c, false);
+            c_lambda(nil::<Str>(), body, e, i64_plus(depth, 2i64), c, nil::<Str>(), nil::<&'static Cx>());
+            c_op(c, str_lit("prompt"));
+            c_done(c, tail)
+        }
+        Cx::XRegion(k, r, body, a) => {
+            if (i64_eq(k, 0i64) || i64_eq(k, 3i64)) {
+                c_exp(body, e, depth, c, tail)
+            } else {
+                c_prim(c, if i64_eq(k, 1i64) {
+                    str_lit("%region-enter")
+                } else {
+                    str_lit("%reap-enter")
+                }, 0i64);
+                c_exp(body, c_extend(r, at_slot(depth), e), i64_plus(depth, 1i64), c, false);
+                c_prim(c, str_lit("%region-exit"), 2i64);
+                c_done(c, tail)
+            }
+        }
+        Cx::XApp(f, args, a) => {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Cx::XLambda(ps, body, b) => {
+                    if i64_eq(size(ps), size(args)) {
+                        c_let(map2(lambda2s(move |p: Str, y: &'static Cx| {
+                            cbind(p, y)
+                        }), ps, args), body, e, depth, c, tail)
                     } else {
-                        c_standard_value(std_named(n), c)
-                    }
-                } else {
-                    c_load(c, car(l))
-                };
-                return c_done(c, tail);
-            }
-            Cx::XInt(n, a) => {
-                c_lit(c, l_int(n));
-                return c_done(c, tail);
-            }
-            Cx::XBool(v, a) => {
-                c_lit(c, l_bool(v));
-                return c_done(c, tail);
-            }
-            Cx::XStr(s, a) => {
-                c_lit(c, l_str(s));
-                return c_done(c, tail);
-            }
-            Cx::XChar(ch, a) => {
-                c_lit(c, l_char(ch));
-                return c_done(c, tail);
-            }
-            Cx::XFloat(b, a) => {
-                c_lit(c, l_f64(b));
-                return c_done(c, tail);
-            }
-            Cx::XSym(s, a) => {
-                c_lit(c, l_sym(s));
-                return c_done(c, tail);
-            }
-            Cx::XUnit(a) => {
-                c_lit(c, l_unit());
-                return c_done(c, tail);
-            }
-            Cx::XLambda(ps, body, a) => {
-                c_lambda(ps, body, e, depth, c, nil::<Str>(), nil::<&'static Cx>());
-                return c_done(c, tail);
-            }
-            Cx::XRlambda(r, l, a) => {
-                let tagcase_ = l;
-                match *tagcase_ {
-                    Cx::XLambda(ps, body, b) => {
-                        c_lambda(ps, body, e, depth, c, nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()));
-                        return c_done(c, tail);
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        return match cg_fail(str_lit("an rlambda's lambda")) {};
+                        c_app(f, args, e, depth, c, tail, a)
                     }
                 }
-            }
-            Cx::XBloblet(op, i, xs, a) => {
-                c_bloblet(op, i, xs, e, depth, c);
-                return c_done(c, tail);
-            }
-            Cx::XPrompt(t, body, h, a) => {
-                c_exp(t, e, depth, c, false);
-                c_exp(h, e, i64_plus(depth, 1i64), c, false);
-                c_lambda(nil::<Str>(), body, e, i64_plus(depth, 2i64), c, nil::<Str>(), nil::<&'static Cx>());
-                c_op(c, str_lit("prompt"));
-                return c_done(c, tail);
-            }
-            Cx::XRegion(k, r, body, a) => {
-                if (i64_eq(k, 0i64) || i64_eq(k, 3i64)) {
-                    x = body;
-                    continue;
-                } else {
-                    c_prim(c, if i64_eq(k, 1i64) {
-                        str_lit("%region-enter")
-                    } else {
-                        str_lit("%reap-enter")
-                    }, 0i64);
-                    c_exp(body, c_extend(r, at_slot(depth), e), i64_plus(depth, 1i64), c, false);
-                    c_prim(c, str_lit("%region-exit"), 2i64);
-                    return c_done(c, tail);
+                _ => {
+                    let y = tagcase_;
+                    c_app(f, args, e, depth, c, tail, a)
                 }
             }
-            Cx::XApp(f, args, a) => {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Cx::XLambda(ps, body, b) => {
-                        if i64_eq(size(ps), size(args)) {
-                            return c_let(map2(lambda2s(move |p: Str, y: &'static Cx| {
-                                cbind(p, y)
-                            }), ps, args), body, e, depth, c, tail);
-                        } else {
-                            return c_app(f, args, e, depth, c, tail, a);
-                        }
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        return c_app(f, args, e, depth, c, tail, a);
-                    }
-                }
-            }
-            Cx::XIf(t, th, el, a) => {
-                let (no, end) = (c_fresh(), c_fresh());
-                c_exp(t, e, depth, c, false);
-                c_emit(c, it_zbranch(no));
-                c_exp(th, e, depth, c, tail);
-                if tail {
-                    ()
-                } else {
-                    c_emit(c, it_branch(end))
-                };
-                c_emit(c, it_label(no));
-                c_exp(el, e, depth, c, tail);
-                return c_emit(c, it_label(end));
-            }
-            Cx::XLet(bs, body, a) => {
-                return c_let(bs, body, e, depth, c, tail);
-            }
-            Cx::XLetrec(bs, body, a) => {
-                return c_letrec(bs, body, e, depth, c, tail);
-            }
-            Cx::XBegin(es, a) => {
-                return c_begin(es, e, depth, c, tail);
-            }
-            Cx::XProj(x, a) => {
-                return c_exp(x, e, depth, c, tail);
-            }
-            Cx::XProduct(fs, a) => {
-                c_int(c, 37i64);
-                c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, c_exps(c_bound_exps(fs), e, i64_plus(depth, 1i64), c)));
-                return c_done(c, tail);
-            }
-            Cx::XExtract(p, i, a) => {
-                c_exp(p, e, depth, c, false);
-                c_field(c, i64_plus(i, 2i64));
-                return c_done(c, tail);
-            }
-            Cx::XSum(t, v, a) => {
-                c_int(c, 36i64);
-                c_lit(c, l_sym(t));
-                c_exp(v, e, i64_plus(depth, 2i64), c, false);
-                c_prim(c, str_lit("%make-frozen"), 3i64);
-                return c_done(c, tail);
-            }
-            Cx::XTagcase(s, arms, els, k, a) => {
-                let end = c_fresh();
-                c_exp(s, e, depth, c, false);
-                if i64_lt(k, 0i64) {
-                    c_arms(arms, els, e, depth, c, tail, end)
-                } else {
-                    c_op1(c, str_lit("slot"), o_int(depth));
-                    c_int(c, k);
-                    c_prim(c, str_lit("%fx26-flat-tag"), 2i64);
-                    c_flat_arms(arms, els, k, e, depth, c, tail, end)
-                };
-                return c_emit(c, it_label(end));
-            }
-            Cx::XModule(its, a) => {
-                return c_module(its, e, depth, c, tail);
-            }
-            Cx::XWith(m, ns, ks, body, a) => {
-                let fv = c_free(body, nil::<Str>(), nil::<Str>());
-                let inner = c_with_fields(m, ns, ks, fv, e, e, depth, c);
-                let n = size(filter(lambda1s(move |k: Str| {
-                    string_member_p(k, fv)
-                }), ns));
-                c_exp(body, inner, i64_plus(depth, n), c, tail);
-                return c_unbind(c, depth, n, tail);
-            }
-            Cx::XReshape(y, ps, a) => {
-                c_exp(y, e, depth, c, false);
-                c_int(c, 37i64);
-                c_reshape_fields(c, depth, ps);
-                c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(ps)));
-                c_op1(c, str_lit("slot!"), o_int(depth));
-                return c_done(c, tail);
-            }
+        }
+        Cx::XIf(t, th, el, a) => {
+            let (no, end) = (c_fresh(), c_fresh());
+            c_exp(t, e, depth, c, false);
+            c_emit(c, it_zbranch(no));
+            c_exp(th, e, depth, c, tail);
+            if tail {
+                ()
+            } else {
+                c_emit(c, it_branch(end))
+            };
+            c_emit(c, it_label(no));
+            c_exp(el, e, depth, c, tail);
+            c_emit(c, it_label(end))
+        }
+        Cx::XLet(bs, body, a) => {
+            c_let(bs, body, e, depth, c, tail)
+        }
+        Cx::XLetrec(bs, body, a) => {
+            c_letrec(bs, body, e, depth, c, tail)
+        }
+        Cx::XBegin(es, a) => {
+            c_begin(es, e, depth, c, tail)
+        }
+        Cx::XProj(x, a) => {
+            c_exp(x, e, depth, c, tail)
+        }
+        Cx::XProduct(fs, a) => {
+            c_int(c, 37i64);
+            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, c_exps(c_bound_exps(fs), e, i64_plus(depth, 1i64), c)));
+            c_done(c, tail)
+        }
+        Cx::XExtract(p, i, a) => {
+            c_exp(p, e, depth, c, false);
+            c_field(c, i64_plus(i, 2i64));
+            c_done(c, tail)
+        }
+        Cx::XSum(t, v, a) => {
+            c_int(c, 36i64);
+            c_lit(c, l_sym(t));
+            c_exp(v, e, i64_plus(depth, 2i64), c, false);
+            c_prim(c, str_lit("%make-frozen"), 3i64);
+            c_done(c, tail)
+        }
+        Cx::XTagcase(s, arms, els, k, a) => {
+            let end = c_fresh();
+            c_exp(s, e, depth, c, false);
+            if i64_lt(k, 0i64) {
+                c_arms(arms, els, e, depth, c, tail, end)
+            } else {
+                c_op1(c, str_lit("slot"), o_int(depth));
+                c_int(c, k);
+                c_prim(c, str_lit("%fx26-flat-tag"), 2i64);
+                c_flat_arms(arms, els, k, e, depth, c, tail, end)
+            };
+            c_emit(c, it_label(end))
+        }
+        Cx::XModule(its, a) => {
+            c_module(its, e, depth, c, tail)
+        }
+        Cx::XWith(m, ns, ks, body, a) => {
+            let fv = c_free(body, nil::<Str>(), nil::<Str>());
+            let inner = c_with_fields(m, ns, ks, fv, e, e, depth, c);
+            let n = size(filter(lambda1s(move |k: Str| {
+                string_member_p(k, fv)
+            }), ns));
+            c_exp(body, inner, i64_plus(depth, n), c, tail);
+            c_unbind(c, depth, n, tail)
+        }
+        Cx::XReshape(y, ps, a) => {
+            c_exp(y, e, depth, c, false);
+            c_int(c, 37i64);
+            c_reshape_fields(c, depth, ps);
+            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(ps)));
+            c_op1(c, str_lit("slot!"), o_int(depth));
+            c_done(c, tail)
         }
     }
 }
@@ -6931,6 +6975,11 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
     set(cg_facts(), fs);
+    set(cg_source(), if null_p(forms) {
+        str_lit("")
+    } else {
+        datum_file(car(forms))
+    });
     set(cg_qnodes(), nil::<&'static Qnode>());
     set(cg_convert_facts(), filter(lambda1s(move |x: &'static Fact| {
         let tagcase_ = x;
@@ -6997,6 +7046,101 @@ pub fn word_named(mut ws: List<&'static Word>, mut n: Str) -> List<&'static Word
     }
 }
 
+// A word's line table (C245): `; at FILE CELL:POS …`, each where an
+// expression's code begins and its source position, the source the
+// program's file (`cg-source`; a word from a module file of its own not
+// told apart yet); at column 0, a comment to what compares listings with
+// Fixpt's; none if none.
+pub enum Tentry {
+    Tentry(i64, i64),
+}
+
+pub fn tentry(f0: i64, f1: i64) -> &'static Tentry {
+    kayak_rt::heap_alloc(Tentry::Tentry(f0, f1))
+}
+
+/// The entries, newest first: one where the position changes, the
+/// last of those at one cell.
+pub fn table_entries(mut xs: Citems, mut at: i64, mut acc: List<&'static Tentry>) -> List<&'static Tentry> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Item::ItPos(p) => {
+                    let acc = if (not(null_p(acc)) && {
+                        let tagcase_ = car(acc);
+                        match *tagcase_ {
+                            Tentry::Tentry(a, q) => {
+                                i64_eq(a, at)
+                            }
+                        }
+                    }) {
+                        cdr(acc)
+                    } else {
+                        acc
+                    };
+                    if (not(null_p(acc)) && {
+                        let tagcase_ = car(acc);
+                        match *tagcase_ {
+                            Tentry::Tentry(a, q) => {
+                                i64_eq(q, p)
+                            }
+                        }
+                    }) {
+                        return table_entries(cdr(xs), at, acc);
+                    } else {
+                        return table_entries(cdr(xs), at, kayak_rt::heap_cons(tentry(at, p), acc));
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    (xs, at) = (cdr(xs), i64_plus(at, item_size(car(xs))));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn entries_shown(mut es: List<&'static Tentry>, mut out: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return out;
+        } else {
+            (es, out) = (cdr(es), kayak_rt::heap_cons({
+                let tagcase_ = car(es);
+                match *tagcase_ {
+                    Tentry::Tentry(a, p) => {
+                        string_append(i64_to_string(a), string_append(str_lit(":"), i64_to_string(p)))
+                    }
+                }
+            }, out));
+            continue;
+        }
+    }
+}
+
+pub fn spaced(ss: Strings) -> Str {
+    if null_p(ss) {
+        str_lit("")
+    } else if null_p(cdr(ss)) {
+        car(ss)
+    } else {
+        string_append(car(ss), string_append(str_lit(" "), spaced(cdr(ss))))
+    }
+}
+
+pub fn line_table(xs: Citems) -> Str {
+    let es = entries_shown(table_entries(xs, 0i64, nil::<&'static Tentry>()), nil::<Str>());
+    if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
+        str_lit("")
+    } else {
+        string_append(str_lit("; at "), string_append(get(cg_source()), string_append(str_lit(" "), string_append(spaced(es), str_lit("\n")))))
+    }
+}
+
 // The listing: from `program`, each word reached, as `disasm.rs` walks
 // them: the words a word names pushed in order, the last pushed next.
 pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
@@ -7018,7 +7162,7 @@ pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
                         let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
                         match *tagcase_ {
                             Wsaid::Wsaid(text, named) => {
-                                (todo, seen, out) = (onto(reverse(named), cdr(todo)), kayak_rt::heap_cons(name, seen), string_append(out, string_append(str_lit("\nword "), string_append(shown_name(name), string_append(str_lit(" ("), string_append(i64_to_string(cells_of(xs, 0i64)), string_append(str_lit(" cells, cellular):\n"), text)))))));
+                                (todo, seen, out) = (onto(reverse(named), cdr(todo)), kayak_rt::heap_cons(name, seen), string_append(out, string_append(str_lit("\nword "), string_append(shown_name(name), string_append(str_lit(" ("), string_append(i64_to_string(cells_of(xs, 0i64)), string_append(str_lit(" cells, cellular):\n"), string_append(text, line_table(xs)))))))));
                                 continue;
                             }
                         }

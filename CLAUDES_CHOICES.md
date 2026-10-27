@@ -6892,3 +6892,30 @@ which no code a program makes could run.
   decision; C244 is it). Fixpt's heap images were indices, but a dump of
   addresses normalizes them as it writes (the user, departure 13).
 
+
+## C245. Source lines, and tier 1's `--profile` (2026-10-27)
+
+The user: "sure, okay, lets add source lines and a tier 1 --profile for
+debug info", after C240's jitdump showed tier 6's code with no FX-26
+line to tie it to.
+- **Line tables**: kayak's compiler to cells notes, as it compiles each
+  expression, where the expression's code begins (an item of no cells,
+  `it-pos`), and, after it, its parent's position again, so that what
+  the parent's own code does (a call's cell after its arguments) is the
+  parent's. After each word's lines, the listing has
+  `; at FILE CELL:POS …`: an entry where the position changes, the last
+  of several at one cell. A comment at column 0: what compares listings
+  with Fixpt's passes it over, and Fixpt's listings have none. `FILE` is
+  the program's (`cg-source`); a word from a module file of its own is
+  not told apart yet. Positions are characters, as the reader counts.
+- **`kayak-cells --profile`**: tier 1 only (refused with `--hand`,
+  `--compiled`, `--direct` or `--regs`, whose code tier 1 does not step).
+  `cell-step!` counts each cell by its word and its place there, in an
+  open-addressed tally (words never move, in the code area, so an address
+  is a key); one test of a flag per cell when not profiling. At the end,
+  on the standard error, even when the program fails: the cells run; the
+  source lines and the expressions (LINE:COLUMN and the expression's
+  text) that ran the most, each cell given its word's last table entry at
+  or before it; and the words. `tak 22 16 8`: 12,000,329 cells, 0.41 s to
+  0.36 s without; `(not (< y x))` 15%.
+- **Next**: the jitdump's debug-info records for tiers 4-6 (TODO).

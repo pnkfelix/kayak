@@ -1897,8 +1897,91 @@ pub fn reg_step_x(base: i64) -> bool {
     }
 }
 
+// `--profile` (C245): each cell tier 1 runs, counted by its word and its
+// place in it. A tally: open addressing over slots of three, a key's two
+// parts (the first never 0) and its count, after one that counts the slots
+// used. A word never moves (in the code area), so its address is its key.
+pub fn profiling() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn tally_made(slots: i64) -> FlatArray<i64> {
+    make_flatarray_i64(i64_plus(1i64, i64_star(3i64, slots)), 0i64)
+}
+
+pub fn tally_slots(t: FlatArray<i64>) -> i64 {
+    i64_quotient(i64_minus(flatarray_length_i64(t), 1i64), 3i64)
+}
+
+pub fn profile() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(3073i64, 0i64))
+    })
+}
+
+/// Where key (`a`, `b`) is, or the free slot where it would go.
+pub fn tally_at(mut t: FlatArray<i64>, mut a: i64, mut b: i64, mut i: i64, mut mask: i64) -> i64 {
+    loop {
+        let at = i64_plus(1i64, i64_star(3i64, i));
+        let x = flatarray_ref_i64(t, at);
+        if (i64_eq(x, 0i64) || (i64_eq(x, a) && i64_eq(flatarray_ref_i64(t, i64_plus(at, 1i64)), b))) {
+            return at;
+        } else {
+            i = i64_and(i64_plus(i, 1i64), mask);
+            continue;
+        }
+    }
+}
+
+/// `n` counted for key (`a`, `b`): the tally, grown if it had to be.
+pub fn tally_added_x(mut t: FlatArray<i64>, mut a: i64, mut b: i64, mut n: i64) -> FlatArray<i64> {
+    loop {
+        let slots = tally_slots(t);
+        let mask = i64_minus(slots, 1i64);
+        let at = tally_at(t, a, b, i64_and(i64_xor(i64_xor(i64_shr(a, int_lit(4)), i64_shr(a, int_lit(13))), i64_star(b, 40503i64)), mask), mask);
+        if not(i64_eq(flatarray_ref_i64(t, at), 0i64)) {
+            flatarray_set_i64_x(t, i64_plus(at, 2i64), i64_plus(n, flatarray_ref_i64(t, i64_plus(at, 2i64))));
+            return t;
+        } else if i64_gt_eq(i64_star(2i64, flatarray_ref_i64(t, 0i64)), slots) {
+            t = tally_moved_x(t, tally_made(i64_star(2i64, slots)), 0i64);
+            continue;
+        } else {
+            flatarray_set_i64_x(t, at, a);
+            flatarray_set_i64_x(t, i64_plus(at, 1i64), b);
+            flatarray_set_i64_x(t, i64_plus(at, 2i64), n);
+            flatarray_set_i64_x(t, 0i64, i64_plus(1i64, flatarray_ref_i64(t, 0i64)));
+            return t;
+        }
+    }
+}
+
+pub fn tally_moved_x(mut t: FlatArray<i64>, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
+    loop {
+        if i64_gt_eq(i, tally_slots(t)) {
+            return into;
+        } else {
+            let at = i64_plus(1i64, i64_star(3i64, i));
+            (into, i) = (if i64_eq(flatarray_ref_i64(t, at), 0i64) {
+                into
+            } else {
+                tally_added_x(into, flatarray_ref_i64(t, at), flatarray_ref_i64(t, i64_plus(at, 1i64)), flatarray_ref_i64(t, i64_plus(at, 2i64)))
+            }, i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
 pub fn cell_step_x(base: i64) -> bool {
     let cell = slot_of(get(cur()), get(kk()));
+    if get(profiling()) {
+        set(profile(), tally_added_x(get(profile()), get(cur()), i64_minus(get(kk()), f_cell0()), 1i64))
+    } else {
+        ()
+    };
     set(kk(), i64_plus(get(kk()), 1i64));
     if (i64_eq(get(fuel()), 0i64) && i64_eq(get(reserve()), 0i64)) {
         trap_x(str_lit("evaluation step limit exceeded"));
