@@ -2201,12 +2201,12 @@ pub fn interned_chain_x(mut e: i64, mut bs: i64) -> () {
         if i64_eq(e, v_false()) {
             return ();
         } else {
-            let (next, o) = (slot_of(e, 2i64), slot_of(e, 3i64));
+            let (next, o) = (slot_of(e, 1i64), slot_of(e, 2i64));
             if i64_eq(o, weak_dead()) {
                 ()
             } else {
                 let b = intern_bucket(datum_hash(o), eq_size(bs));
-                slot_set_x(e, 2i64, slot_of(bs, b));
+                slot_set_x(e, 1i64, slot_of(bs, b));
                 slot_set_x(bs, b, e)
             };
             e = next;
@@ -2232,7 +2232,7 @@ pub fn chain_length(mut e: i64, mut n: i64) -> i64 {
         if i64_eq(e, v_false()) {
             return n;
         } else {
-            (e, n) = (slot_of(e, 2i64), i64_plus(n, 1i64));
+            (e, n) = (slot_of(e, 1i64), i64_plus(n, 1i64));
             continue;
         }
     }
@@ -2283,10 +2283,10 @@ pub fn chain_interned(mut e: i64, mut c: i64) -> i64 {
     loop {
         if i64_eq(e, v_false()) {
             return the::<i64>(-1i64);
-        } else if (not(i64_eq(slot_of(e, 3i64), weak_dead())) && datum_same_p(slot_of(e, 3i64), c)) {
-            return slot_of(e, 3i64);
+        } else if (not(i64_eq(slot_of(e, 2i64), weak_dead())) && datum_same_p(slot_of(e, 2i64), c)) {
+            return slot_of(e, 2i64);
         } else {
-            e = slot_of(e, 2i64);
+            e = slot_of(e, 1i64);
             continue;
         }
     }
@@ -2343,9 +2343,9 @@ pub fn intern_datum_x(v: i64) -> i64 {
         if not(i64_eq(found, -1i64)) {
             found
         } else {
-            let (e, n) = (make_bloblet_x(k_weak_pair(), 2i64, 0i64, true, false), i64_plus(fix_val(slot_of(t, 3i64)), 1i64));
-            slot_set_x(e, 3i64, c);
-            slot_set_x(e, 2i64, slot_of(bs, b));
+            let (e, n) = (make_bloblet_x(k_weak_pair(), 2i64, 0i64, false, false), i64_plus(fix_val(slot_of(t, 3i64)), 1i64));
+            slot_set_x(e, 2i64, c);
+            slot_set_x(e, 1i64, slot_of(bs, b));
             slot_set_x(bs, b, e);
             slot_set_x(t, 3i64, fix(n));
             if i64_gt(n, i64_star(2i64, eq_size(bs))) {

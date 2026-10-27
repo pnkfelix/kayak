@@ -956,18 +956,18 @@
       "Entries from `e` on, those alive linked into `bs`, the dead dropped."
       (if (i64= e v-false)
           #u
-          (let ((next (slot-of e 2)) (o (slot-of e 3)))
+          (let ((next (slot-of e 1)) (o (slot-of e 2)))
             (begin
               (if (i64= o weak-dead)
                   #u
                   (let ((b (intern-bucket (datum-hash o) (eq-size bs))))
-                    (begin (slot-set! e 2 (slot-of bs b)) (slot-set! bs b e))))
+                    (begin (slot-set! e 1 (slot-of bs b)) (slot-set! bs b e))))
               (interned-chain! next bs))))))
   (interned-buckets! (subr cm (i64 i64 i64) unit)
     (lambda (old i bs)
       (if (i64>= i (eq-size old)) #u (begin (interned-chain! (slot-of old (i64+ i 2)) bs) (interned-buckets! old (i64+ i 1) bs)))))
   (chain-length (subr cm (i64 i64) i64)
-    (lambda (e n) (if (i64= e v-false) n (chain-length (slot-of e 2) (i64+ n 1)))))
+    (lambda (e n) (if (i64= e v-false) n (chain-length (slot-of e 1) (i64+ n 1)))))
   (buckets-length (subr cm (i64 i64 i64) i64)
     (lambda (bs i n) (if (i64>= i (eq-size bs)) n (buckets-length bs (i64+ i 1) (chain-length (slot-of bs (i64+ i 2)) n))))))
 (define interned-relinked! (subr cm (i64 i64) unit)
@@ -995,8 +995,8 @@
   (chain-interned (subr cm (i64 i64) i64)
     (lambda (e c)
       (cond ((i64= e v-false) (the i64 -1))
-            ((and (not (i64= (slot-of e 3) weak-dead)) (datum-same? (slot-of e 3) c)) (slot-of e 3))
-            (else (chain-interned (slot-of e 2) c)))))
+            ((and (not (i64= (slot-of e 2) weak-dead)) (datum-same? (slot-of e 2) c)) (slot-of e 2))
+            (else (chain-interned (slot-of e 1) c)))))
   (vector-interned! (subr cm (i64 i64 i64 bool) bool)
     (lambda (v w i same)
       "`v`'s elements from `i` interned into `w`: whether each was already."
@@ -1024,9 +1024,9 @@
                    (found (chain-interned (slot-of bs b) c)))
               (if (not (i64= found -1))
                   found
-                  (let ((e (make-bloblet! k-weak-pair 2 0 #t #f)) (n (i64+ (fix-val (slot-of t 3)) 1)))
+                  (let ((e (make-bloblet! k-weak-pair 2 0 #f #f)) (n (i64+ (fix-val (slot-of t 3)) 1)))
                     (begin
-                      (slot-set! e 3 c) (slot-set! e 2 (slot-of bs b)) (slot-set! bs b e)
+                      (slot-set! e 2 c) (slot-set! e 1 (slot-of bs b)) (slot-set! bs b e)
                       (slot-set! t 3 (fix n))
                       (if (i64> n (i64* 2 (eq-size bs))) (interned-relinked! t (i64* 4 (eq-size bs))) #u)
                       c)))))))))

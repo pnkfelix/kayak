@@ -6707,3 +6707,22 @@ C64's "never recurses on the Rust stack".
   A test that would fail without it needs some 12M turns: left to the
   space-efficiency tests (`TODO.md`), which measure memory.
 
+## C237. Fixpt's backward scan for a header; weak pairs as Fixpt's (2026-10-27)
+
+Item 0b of the performance plan (departure 15, the user: "Yeah"). Fixpt
+finds a bloblet's main header from its suffix (`main_of`): a trailer just
+below says how far; a header there is it (no fields); else that word is a
+field, and the header is found by scanning back to the first header-tagged
+word, which no field can be (no value's tag is a header's, a trailer's or
+a forwarding word's). Tier 1 took the word below for the header whenever
+there was no trailer: right only with no fields, so a trailer-less
+bloblet with fields was copied as garbage (C231's first weak pair), and
+such a literal can come in a listing (`listing.kfx` reads a trailer only
+where one is written).
+- One lookup, `header-below` (and `header-index`, `header-of` by it), for
+  the accessors, `forward-object!` and `weak-after`; `code-marked!` the
+  same in the code area (`code-header-scanned`).
+- Weak pairs as Fixpt's: two fields, no trailer, the car field 2, the cdr
+  field 1; the interning test (`datum/interned-across-collections.fx`,
+  every entry such a bloblet) 63 every way, `--gc-stress` among them.
+

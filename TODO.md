@@ -735,7 +735,7 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         and tier 1 flat. `tagcase-step` to give `run`'s own loop the arm's
         body and environment; every mutual call of `vm.kfx`'s swept for the
         same; a test per kind of continuation, in bounded space.
-     0b. **Fixpt's backward scan for a bloblet's header** (the user,
+     0b. **Done** (C237). **Fixpt's backward scan for a bloblet's header** (the user,
         "Yeah"; departure 15): a bloblet with fields and no trailer has
         its header found by scanning back from its suffix to the first
         header-tagged word, which no field can hold (Fixpt's `main_of`,

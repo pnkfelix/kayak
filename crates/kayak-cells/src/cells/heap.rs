@@ -532,26 +532,42 @@ pub fn make_bloblet_x(kind: i64, n: i64, bytes: i64, trailer: bool, frozen: bool
     heap_ref(p, t_bloblet())
 }
 
-/// A bloblet's header word: just below its suffix, or as far below as its
-/// trailer says.
-pub fn header_of(v: i64) -> i64 {
-    let p = address(v);
-    let w = word_at(i64_minus(p, 1i64));
-    if i64_eq(tag_of(w), t_trailer()) {
-        word_at(i64_minus(i64_minus(p, 1i64), i64_shr(w, int_lit(3))))
+// A bloblet's main header, from its suffix's index `p` and the word just
+// below it, `before` (Fixpt's `main_of`, C237): as far below as a trailer
+// there says; that word, if it is the header (no fields); else, the word a
+// field, by the backward scan to the first header, which no field can be
+// (its tag no value's: Fixpt's invariants, `object-model.md`). Tier 1 took
+// the word below for the header whenever there was no trailer, right only
+// with no fields.
+pub fn header_scanned(mut j: i64) -> i64 {
+    loop {
+        if i64_eq(tag_of(word_at(j)), t_header()) {
+            return j;
+        } else {
+            j = i64_minus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn header_below(p: i64, before: i64) -> i64 {
+    if i64_eq(tag_of(before), t_trailer()) {
+        i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
+    } else if i64_eq(tag_of(before), t_header()) {
+        i64_minus(p, 1i64)
     } else {
-        w
+        header_scanned(i64_minus(p, 2i64))
     }
 }
 
 pub fn header_index(v: i64) -> i64 {
     let p = address(v);
-    let w = word_at(i64_minus(p, 1i64));
-    if i64_eq(tag_of(w), t_trailer()) {
-        i64_minus(i64_minus(p, 1i64), i64_shr(w, int_lit(3)))
-    } else {
-        i64_minus(p, 1i64)
-    }
+    header_below(p, word_at(i64_minus(p, 1i64)))
+}
+
+/// A bloblet's header word.
+pub fn header_of(v: i64) -> i64 {
+    word_at(header_index(v))
 }
 
 /// A bloblet's fields and suffix frozen (Fixpt's `freeze_bloblet`).
@@ -842,9 +858,9 @@ pub fn words_copied() -> Ref<i64> {
 }
 
 // Weak pairs (C231; Fixpt's `make_weak_pair`, `update_weak_pairs`): a
-// bloblet of kind `weak-pair`, two fields and the trailer (by which tier 1
-// finds a header), its car field 3 (the first a scan meets), its cdr
-// field 2. A collection does not trace the
+// bloblet of kind `weak-pair`, two fields and no trailer, as Fixpt's (its
+// header found by the backward scan, C237), its car field 2 (the first a
+// scan meets), its cdr field 1. A collection does not trace the
 // car: it notes the pair, and when everything else is traced makes the car
 // its object's copy, or, if nothing else kept the object, `WEAK_DEAD` (the
 // fixnum -1). Those this collection noted, by their copies' headers.
@@ -909,14 +925,27 @@ pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
     }
 }
 
+pub fn code_header_scanned(mut j: i64) -> i64 {
+    loop {
+        if i64_eq(tag_of(code_at(j)), t_header()) {
+            return j;
+        } else {
+            j = i64_minus(j, 1i64);
+            continue;
+        }
+    }
+}
+
 /// Code bloblet `w` marked, to be traced, if it was not.
 pub fn code_marked_x(w: i64) -> () {
     let p = i64_shr(i64_minus(w, get(code_vbase())), int_lit(3));
     let t = code_at(i64_minus(p, 1i64));
     let h = if i64_eq(tag_of(t), t_trailer()) {
         i64_minus(i64_minus(p, 1i64), i64_shr(t, int_lit(3)))
-    } else {
+    } else if i64_eq(tag_of(t), t_header()) {
         i64_minus(p, 1i64)
+    } else {
+        code_header_scanned(i64_minus(p, 2i64))
     };
     if i64_eq(flatarray_ref_i64(get(code_marks()), h), 0i64) {
         flatarray_set_i64_x(get(code_marks()), h, 1i64);
@@ -951,11 +980,7 @@ pub fn forward_object_x(w: i64) -> i64 {
         if i64_eq(tag_of(before), t_forward()) {
             to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
         } else {
-            let h = if i64_eq(tag_of(before), t_trailer()) {
-                i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
-            } else {
-                i64_minus(p, 1i64)
-            };
+            let h = header_below(p, before);
             let head = word_at(h);
             if i64_eq(tag_of(head), t_forward()) {
                 to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
@@ -1056,11 +1081,7 @@ pub fn weak_after(w: i64) -> i64 {
         if i64_eq(tag_of(before), t_forward()) {
             to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
         } else {
-            let h = if i64_eq(tag_of(before), t_trailer()) {
-                i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
-            } else {
-                i64_minus(p, 1i64)
-            };
+            let h = header_below(p, before);
             let head = word_at(h);
             if i64_eq(tag_of(head), t_forward()) {
                 to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())

@@ -216,20 +216,27 @@
         (if trailer (word-set! (i64- p 1) (i64-or (i64-shl f 3) t-trailer)) #u)
         (heap-ref p t-bloblet)))))
 
-(define header-of (subr cm (i64) i64)
-  (lambda (v)
-    "A bloblet's header word: just below its suffix, or as far below as its
-     trailer says."
-    (let* ((p (address v))
-           (w (word-at (i64- p 1))))
-      (if (i64= (tag-of w) t-trailer)
-          (word-at (i64- (i64- p 1) (i64-shr w 3)))
-          w))))
+"A bloblet's main header, from its suffix's index `p` and the word just
+ below it, `before` (Fixpt's `main_of`, C237): as far below as a trailer
+ there says; that word, if it is the header (no fields); else, the word a
+ field, by the backward scan to the first header, which no field can be
+ (its tag no value's: Fixpt's invariants, `object-model.md`). Tier 1 took
+ the word below for the header whenever there was no trailer, right only
+ with no fields."
+(define-rec
+  (header-scanned (subr cm (i64) i64)
+    (lambda (j) (if (i64= (tag-of (word-at j)) t-header) j (header-scanned (i64- j 1))))))
+(define header-below (subr cm (i64 i64) i64)
+  (lambda (p before)
+    (cond ((i64= (tag-of before) t-trailer) (i64- (i64- p 1) (i64-shr before 3)))
+          ((i64= (tag-of before) t-header) (i64- p 1))
+          (else (header-scanned (i64- p 2))))))
 
 (define header-index (subr cm (i64) i64)
-  (lambda (v)
-    (let* ((p (address v)) (w (word-at (i64- p 1))))
-      (if (i64= (tag-of w) t-trailer) (i64- (i64- p 1) (i64-shr w 3)) (i64- p 1)))))
+  (lambda (v) (let ((p (address v))) (header-below p (word-at (i64- p 1))))))
+
+(define header-of (subr cm (i64) i64)
+  (lambda (v) "A bloblet's header word." (word-at (header-index v))))
 
 (define frozen-whole! (subr cm (i64) unit)
   (lambda (v)
@@ -396,9 +403,9 @@
 (define words-copied (ref i64 @c) (new 0))
 
 "Weak pairs (C231; Fixpt's `make_weak_pair`, `update_weak_pairs`): a
- bloblet of kind `weak-pair`, two fields and the trailer (by which tier 1
- finds a header), its car field 3 (the first a scan meets), its cdr
- field 2. A collection does not trace the
+ bloblet of kind `weak-pair`, two fields and no trailer, as Fixpt's (its
+ header found by the backward scan, C237), its car field 2 (the first a
+ scan meets), its cdr field 1. A collection does not trace the
  car: it notes the pair, and when everything else is traced makes the car
  its object's copy, or, if nothing else kept the object, `WEAK_DEAD` (the
  fixnum -1). Those this collection noted, by their copies' headers."
@@ -428,11 +435,17 @@
     (lambda (from at n)
       (if (i64<= n 0) #u (begin (to-set! at (word-at from)) (copied-words! (i64+ from 1) (i64+ at 1) (i64- n 1)))))))
 
+(define-rec
+  (code-header-scanned (subr cm (i64) i64)
+    (lambda (j) (if (i64= (tag-of (code-at j)) t-header) j (code-header-scanned (i64- j 1))))))
+
 (define code-marked! (subr cm (i64) unit)
   (lambda (w)
     "Code bloblet `w` marked, to be traced, if it was not."
     (let* ((p (i64-shr (i64- w (get code-vbase)) 3)) (t (code-at (i64- p 1)))
-           (h (if (i64= (tag-of t) t-trailer) (i64- (i64- p 1) (i64-shr t 3)) (i64- p 1))))
+           (h (cond ((i64= (tag-of t) t-trailer) (i64- (i64- p 1) (i64-shr t 3)))
+                    ((i64= (tag-of t) t-header) (i64- p 1))
+                    (else (code-header-scanned (i64- p 2))))))
       (if (i64= (flatarray-ref-i64 (get code-marks) h) 0)
           (begin (flatarray-set-i64! (get code-marks) h 1) (set code-gray (cons h (get code-gray))))
           #u))))
@@ -458,7 +471,7 @@
        (let* ((p (address w)) (before (word-at (i64- p 1))))
          (if (i64= (tag-of before) t-forward)
              (to-ref (i64+ (i64-shr before 3) 1) t-bloblet)
-             (let* ((h (if (i64= (tag-of before) t-trailer) (i64- (i64- p 1) (i64-shr before 3)) (i64- p 1)))
+             (let* ((h (header-below p before))
                     (head (word-at h)))
                (if (i64= (tag-of head) t-forward)
                    (to-ref (i64+ (i64-shr head 3) (i64- p h)) t-bloblet)
@@ -521,7 +534,7 @@
        (let* ((p (address w)) (before (word-at (i64- p 1))))
          (if (i64= (tag-of before) t-forward)
              (to-ref (i64+ (i64-shr before 3) 1) t-bloblet)
-             (let* ((h (if (i64= (tag-of before) t-trailer) (i64- (i64- p 1) (i64-shr before 3)) (i64- p 1)))
+             (let* ((h (header-below p before))
                     (head (word-at h)))
                (if (i64= (tag-of head) t-forward) (to-ref (i64+ (i64-shr head 3) (i64- p h)) t-bloblet) weak-dead)))))
       (else w))))
