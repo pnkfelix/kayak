@@ -110,11 +110,11 @@ pub fn c_wrote_x(n: Str) -> () {
 // was made a loop; its definition's global, its arity and its start's
 // label ("", -1, -1 if none).
 pub enum Rctx {
-    Rctx(Ref<bool>, bool, Ref<Strings>, Ref<bool>, Str, i64, i64),
+    Rctx(Ref<bool>, bool, Ref<Strings>, Ref<bool>, Str, i64, i64, Ref<i64>),
 }
 
-pub fn rctx(f0: Ref<bool>, f1: bool, f2: Ref<Strings>, f3: Ref<bool>, f4: Str, f5: i64, f6: i64) -> &'static Rctx {
-    kayak_rt::heap_alloc(Rctx::Rctx(f0, f1, f2, f3, f4, f5, f6))
+pub fn rctx(f0: Ref<bool>, f1: bool, f2: Ref<Strings>, f3: Ref<bool>, f4: Str, f5: i64, f6: i64, f7: Ref<i64>) -> &'static Rctx {
+    kayak_rt::heap_alloc(Rctx::Rctx(f0, f1, f2, f3, f4, f5, f6, f7))
 }
 
 // What is being made: its items, newest first; whether a leaf; the next
@@ -212,7 +212,7 @@ pub fn g_ctx(g: &'static Rgen) -> &'static Rctx {
 pub fn x_declined(x: &'static Rctx) -> Ref<bool> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             d
         }
     }
@@ -221,7 +221,7 @@ pub fn x_declined(x: &'static Rctx) -> Ref<bool> {
 pub fn x_assuming(x: &'static Rctx) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             a
         }
     }
@@ -230,7 +230,7 @@ pub fn x_assuming(x: &'static Rctx) -> bool {
 pub fn x_assumed(x: &'static Rctx) -> Ref<Strings> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             r#as
         }
     }
@@ -239,7 +239,7 @@ pub fn x_assumed(x: &'static Rctx) -> Ref<Strings> {
 pub fn x_looped(x: &'static Rctx) -> Ref<bool> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             l
         }
     }
@@ -248,7 +248,7 @@ pub fn x_looped(x: &'static Rctx) -> Ref<bool> {
 pub fn x_own(x: &'static Rctx) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             o
         }
     }
@@ -257,7 +257,7 @@ pub fn x_own(x: &'static Rctx) -> Str {
 pub fn x_own_arity(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             k
         }
     }
@@ -266,8 +266,18 @@ pub fn x_own_arity(x: &'static Rctx) -> i64 {
 pub fn x_own_start(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
             s
+        }
+    }
+}
+
+// The source position of the expression being compiled (C249), 0 if none.
+pub fn x_at(x: &'static Rctx) -> Ref<i64> {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+            at
         }
     }
 }
@@ -1048,97 +1058,112 @@ pub fn r_slot_args_of(g: &'static Rgen, ls: Rlocs) -> Rargs {
     }
 }
 
-/// `x`'s value into RESULT; in tail position, returned.
-pub fn r_exp(mut g: &'static Rgen, mut x: &'static Cx, mut env: Renv, mut te: Cenv, mut tail: bool) -> () {
-    loop {
-        let k = r_known(env, x);
-        if not(null_p(k)) {
-            return r_const_value(g, rconst_lit(car(k)), tail);
+/// `x`'s value into RESULT; in tail position, returned: where its code
+/// begins noted, and where the code after it, its parent's again,
+/// does (C249, as the stack code's).
+pub fn r_exp(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: bool) -> () {
+    let (p, here) = (cx_start(x), x_at(g_ctx(g)));
+    let outer = get(here);
+    if i64_gt(p, 0i64) {
+        r_emit(g, ri_pos(p));
+        set(here, p);
+        r_exp_at(g, x, env, te, tail);
+        set(here, outer);
+        if i64_gt(outer, 0i64) {
+            r_emit(g, ri_pos(outer))
         } else {
-            let tagcase_ = x;
-            match *tagcase_ {
-                Cx::XVar(n, a) => {
-                    r_var_value(g, r_where(env, n), n, tail);
-                    return r_done(g, tail);
+            ()
+        }
+    } else {
+        r_exp_at(g, x, env, te, tail)
+    }
+}
+
+pub fn r_exp_at(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: bool) -> () {
+    let k = r_known(env, x);
+    if not(null_p(k)) {
+        r_const_value(g, rconst_lit(car(k)), tail)
+    } else {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(n, a) => {
+                r_var_value(g, r_where(env, n), n, tail);
+                r_done(g, tail)
+            }
+            Cx::XStr(s, a) => {
+                r_const_value(g, l_str(s), tail)
+            }
+            Cx::XFloat(b, a) => {
+                r_const_value(g, l_f64(b), tail)
+            }
+            Cx::XSym(s, a) => {
+                r_const_value(g, l_sym(s), tail)
+            }
+            Cx::XUnit(a) => {
+                r_const_value(g, l_unit(), tail)
+            }
+            Cx::XInt(n, a) => {
+                r_const_value(g, l_int(n), tail)
+            }
+            Cx::XBool(v, a) => {
+                r_const_value(g, l_bool(v), tail)
+            }
+            Cx::XChar(v, a) => {
+                r_const_value(g, l_char(v), tail)
+            }
+            Cx::XProj(y, a) => {
+                r_exp(g, y, env, te, tail)
+            }
+            Cx::XRegion(k2, r, body, a) => {
+                if (i64_eq(k2, 0i64) || i64_eq(k2, 3i64)) {
+                    r_exp(g, body, env, te, tail)
+                } else {
+                    r_decline(g)
                 }
-                Cx::XStr(s, a) => {
-                    return r_const_value(g, l_str(s), tail);
-                }
-                Cx::XFloat(b, a) => {
-                    return r_const_value(g, l_f64(b), tail);
-                }
-                Cx::XSym(s, a) => {
-                    return r_const_value(g, l_sym(s), tail);
-                }
-                Cx::XUnit(a) => {
-                    return r_const_value(g, l_unit(), tail);
-                }
-                Cx::XInt(n, a) => {
-                    return r_const_value(g, l_int(n), tail);
-                }
-                Cx::XBool(v, a) => {
-                    return r_const_value(g, l_bool(v), tail);
-                }
-                Cx::XChar(v, a) => {
-                    return r_const_value(g, l_char(v), tail);
-                }
-                Cx::XProj(y, a) => {
-                    x = y;
-                    continue;
-                }
-                Cx::XRegion(k2, r, body, a) => {
-                    if (i64_eq(k2, 0i64) || i64_eq(k2, 3i64)) {
-                        x = body;
-                        continue;
+            }
+            Cx::XIf(t, th, el, a) => {
+                let kt = r_known(env, t);
+                if not(null_p(kt)) {
+                    r_exp(g, if r_const_false_p(car(kt)) {
+                        el
                     } else {
-                        return r_decline(g);
-                    }
-                }
-                Cx::XIf(t, th, el, a) => {
-                    let kt = r_known(env, t);
-                    if not(null_p(kt)) {
-                        x = if r_const_false_p(car(kt)) {
-                            el
-                        } else {
-                            th
-                        };
-                        continue;
+                        th
+                    }, env, te, tail)
+                } else {
+                    let (no, end) = (r_new_label(g), r_new_label(g));
+                    r_branch_on(g, t, false, no, env, te);
+                    r_exp(g, th, r_knowing(env, t, true), te, tail);
+                    if tail {
+                        ()
                     } else {
-                        let (no, end) = (r_new_label(g), r_new_label(g));
-                        r_branch_on(g, t, false, no, env, te);
-                        r_exp(g, th, r_knowing(env, t, true), te, tail);
-                        if tail {
-                            ()
-                        } else {
-                            r_emit(g, ri_branch(str_lit("branch"), end))
-                        };
-                        r_emit(g, ri_label(no));
-                        r_exp(g, el, r_knowing(env, t, false), te, tail);
-                        return r_emit(g, ri_label(end));
-                    }
+                        r_emit(g, ri_branch(str_lit("branch"), end))
+                    };
+                    r_emit(g, ri_label(no));
+                    r_exp(g, el, r_knowing(env, t, false), te, tail);
+                    r_emit(g, ri_label(end))
                 }
-                Cx::XBegin(es, a) => {
-                    if null_p(es) {
-                        return r_const_value(g, l_unit(), tail);
-                    } else {
-                        return r_begin(g, es, env, te, tail);
-                    }
+            }
+            Cx::XBegin(es, a) => {
+                if null_p(es) {
+                    r_const_value(g, l_unit(), tail)
+                } else {
+                    r_begin(g, es, env, te, tail)
                 }
-                Cx::XLet(bs, body, a) => {
-                    return r_let(g, bs, body, env, te, tail);
-                }
-                Cx::XExtract(p, i, a) => {
-                    r_exp(g, p, env, te, false);
-                    r_opn(g, str_lit("field"), i64_plus(i, 2i64));
-                    return r_done(g, tail);
-                }
-                Cx::XApp(f, args, a) => {
-                    return r_app(g, f, args, a, env, te, tail);
-                }
-                _ => {
-                    let y = tagcase_;
-                    return r_decline(g);
-                }
+            }
+            Cx::XLet(bs, body, a) => {
+                r_let(g, bs, body, env, te, tail)
+            }
+            Cx::XExtract(p, i, a) => {
+                r_exp(g, p, env, te, false);
+                r_opn(g, str_lit("field"), i64_plus(i, 2i64));
+                r_done(g, tail)
+            }
+            Cx::XApp(f, args, a) => {
+                r_app(g, f, args, a, env, te, tail)
+            }
+            _ => {
+                let y = tagcase_;
+                r_decline(g)
             }
         }
     }

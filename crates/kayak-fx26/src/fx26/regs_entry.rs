@@ -137,9 +137,14 @@ pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings
                 the::<i64>(-1i64)
             } else {
                 own_at
-            });
+            }, kayak_rt::heap_new(the::<i64>(0i64)));
             let g = rgen(kayak_rt::heap_new(nil::<&'static Ritem>()), leaf, kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(labels), me, the::<i64>(0i64), cx);
             r_opn(g, str_lit("args"), n);
+            if i64_gt(at, 0i64) {
+                r_emit(g, ri_pos(at))
+            } else {
+                ()
+            };
             let env = r_env_of(g, inner, leaf);
             if leaf {
                 set(g_nreg(g), n)
@@ -247,7 +252,22 @@ pub fn r_versions(fast: &'static Rgen, plain: &'static Rgen, assumptions: String
     let fi = the::<Ritems>(reverse(get(g_items(fast))));
     let pi = relabelled(the::<Ritems>(reverse(get(g_items(plain)))), fl);
     let guards = r_guards_of(assumptions, plain_at);
-    rcode(kayak_rt::heap_cons(car(fi), onto(guards, onto(cdr(fi), kayak_rt::heap_cons(ri_label(plain_at), cdr(pi))))), if i64_gt(f, p) {
+    rcode(kayak_rt::heap_cons(car(fi), if (not(null_p(cdr(fi))) && {
+        let tagcase_ = car(cdr(fi));
+        match *tagcase_ {
+            Ritem::RiPos(q) => {
+                true
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    }) {
+        kayak_rt::heap_cons(car(cdr(fi)), onto(guards, onto(cdr(cdr(fi)), kayak_rt::heap_cons(ri_label(plain_at), cdr(pi)))))
+    } else {
+        onto(guards, onto(cdr(fi), kayak_rt::heap_cons(ri_label(plain_at), cdr(pi))))
+    }), if i64_gt(f, p) {
         f
     } else {
         p

@@ -796,25 +796,28 @@
  machine's own before the first word's, given kayak-rt once the code is
  sealed, at the place it runs (`last-sealed`), to write a perf map
  (`KAYAK_PERF_MAP`)."
-(define-datatype span (span string int int i64))
+(define-datatype span (span string int int i64 bool int))
 (define word-spans (ref (listof span @c) @c) (new nil))
 (define-syscall note-code "kayak:note-code/1" (subr (io sys) (int int string) unit))
 (define-syscall last-sealed "kayak:last-sealed/1" (subr (io sys) () int))
 (define-syscall note-code-lines "kayak:note-code-lines/1"
   (poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit)))
 
-(define span-labelled! (->* (string int int i64) unit)
-  (lambda (name lo hi w)
-    "Code from label `lo` to `hi`, named `name`; `w` the cellular word whose
-     cells' labels they are, if it is one (its source lines then noted with
-     it, C246), else 0."
-    (set word-spans (cons (span name lo hi w) (get word-spans)))))
+(define span-labelled! (->* (string int int i64 bool int) unit)
+  (lambda (name lo hi w regs base)
+    "Code from label `lo` to `hi`, named `name`; `w` the word whose cells'
+     or register instructions' code it is (its source lines then noted
+     with it, C246, C249), else 0; `regs` whether a register word's;
+     `base` the label of its cell, or instruction, 0."
+    (set word-spans (cons (span name lo hi w regs base) (get word-spans)))))
 (define span-noted! (->* (i64 int) unit)
   (lambda (w base)
     "Word `w`'s compiled code to be named, its cells' labels from `base`."
-    (span-labelled! (symbol-text (slot-of w f-name)) base (+ base (i64->int (cells-in w f-cell0))) w)))
+    (span-labelled! (symbol-text (slot-of w f-name)) base (+ base (i64->int (cells-in w f-cell0))) w #f base)))
+(define twin-name (->* (i64) string)
+  (lambda (rw) "Register word `rw`'s cellular twin's name, as the listing has it." (symbol-text (slot-of (slot-of rw f-twin) f-name))))
 (define register-name (->* (i64 string) string)
-  (lambda (rw tier) "Register word `rw`'s name, its cellular twin's, and the tier." (string-append (symbol-text (slot-of (slot-of rw f-twin) f-name)) tier)))
+  (lambda (rw tier) "Register word `rw`'s name, its cellular twin's, and the tier." (string-append (twin-name rw) tier)))
 
 (define-rec
   (spans-noted! (->* (int (flatarrayof i64 @c) int (listof span @c)) unit)
@@ -822,39 +825,45 @@
       (if (null? ss)
           #u
           (tagcase (car ss)
-            (span (name lo hi w)
+            (span (name lo hi w regs base)
               (let* ((from (* scale (i64->int (flatarray-ref-i64 ls (int->i64 lo)))))
                      (to (* scale (i64->int (flatarray-ref-i64 ls (int->i64 hi)))))
-                     (table (if (i64= w 0) "" (table-named (get line-tables) name ""))))
+                     (table (cond ((i64= w 0) "")
+                                  (regs (table-named (get reg-line-tables) (twin-name w) ""))
+                                  (else (table-named (get line-tables) name "")))))
                 (begin
                   (if (string=? table "")
                       (note-code (+ at from) (- to from) (string-append "fx26 " name))
                       (let* ((cs (string-chars table))
                              (es (cposes (after-char cs #\space) nil))
-                             (pairs (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (int->i64 (+ 1 (- hi lo)))) 0)))
-                             (n (lines-paired! es pairs at ls scale lo (- hi lo) 0)))
+                             (pairs (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (i64+ 1 (size es))) 0)))
+                             (n (lines-paired! es pairs at ls scale base from to 0)))
                         (note-code-lines (+ at from) (- to from) (string-append "fx26 " name) (list->string (before-char cs #\space)) pairs (i64->int n))))
                   (spans-noted! at ls scale (cdr ss)))))))))
-  (lines-paired! (->* ((listof cpos acyclic) (flatarrayof i64 @c) int (flatarrayof i64 @c) int int int i64) i64)
-    (lambda (es pairs at ls scale lo cells n)
-      "Each entry of a word's line table at or before its last cell, the
-       address of its cell's code and its position, into `pairs`: how many."
-      (if (null? es)
+  (lines-paired! (->* ((listof cpos acyclic) (flatarrayof i64 @c) int (flatarrayof i64 @c) int int int int i64) i64)
+    (lambda (es pairs at ls scale base from to n)
+      "Each entry of a word's line table whose cell's, or instruction's,
+       code is in the span, `from` to `to`, its address and its position,
+       into `pairs`: how many. Tier 6's span starts past `args`, and an
+       instruction fused into the one before has no code of its own."
+      (if (or (null? es) (i64> (i64* 2 (i64+ n 1)) (flatarray-length-i64 pairs)))
           n
           (tagcase (car es)
             (cpos (c p)
-              (if (or (i64> c (int->i64 cells)) (i64> (i64* 2 (i64+ n 1)) (flatarray-length-i64 pairs)))
-                  n
-                  (begin
-                    (flatarray-set-i64! pairs (i64* 2 n) (int->i64 (+ at (* scale (i64->int (flatarray-ref-i64 ls (int->i64 (+ lo (i64->int c)))))))))
-                    (flatarray-set-i64! pairs (i64+ 1 (i64* 2 n)) p)
-                    (lines-paired! (cdr es) pairs at ls scale lo cells (i64+ n 1)))))))))
+              (let* ((k (i64+ (int->i64 base) c))
+                     (off (if (i64< k (flatarray-length-i64 ls)) (* scale (i64->int (flatarray-ref-i64 ls k))) -1)))
+                (if (or (< off from) (> off to))
+                    (lines-paired! (cdr es) pairs at ls scale base from to n)
+                    (begin
+                      (flatarray-set-i64! pairs (i64* 2 n) (int->i64 (+ at off)))
+                      (flatarray-set-i64! pairs (i64+ 1 (i64* 2 n)) p)
+                      (lines-paired! (cdr es) pairs at ls scale base from to (i64+ n 1))))))))))
   (spans-first (->* ((flatarrayof i64 @c) int (listof span @c) int) int)
     (lambda (ls scale ss least)
       (if (null? ss)
           least
           (tagcase (car ss)
-            (span (name lo hi w)
+            (span (name lo hi w regs base)
               (let ((from (* scale (i64->int (flatarray-ref-i64 ls (int->i64 lo))))))
                 (spans-first ls scale (cdr ss) (if (< from least) from least)))))))))
 
@@ -1628,13 +1637,13 @@
         (if direct (begin (t6-prepared! rw n) (set h-6-after (make-flatarray-i64 (i64+ n 1) 0))) #u)
         (reg-instructions! rw 0 n base starts resumes)
         (bind! (+ base n-cells)) (b! give)
-        (span-labelled! (register-name rw " (tier 5)") base (+ base n-cells) 0)
+        (span-labelled! (register-name rw " (tier 5)") base (+ base n-cells) rw #t base)
         (resumes-emitted! 0 n base rbase rgive resumes)
         (bind! give) (addi! x-fuel x-fuel 1)
         (bind! give-pre) (b! machine-give-pre)
         (bind! rgive) (b! (get l-resume-give))
         (if direct
-            (let ((end (label!))) (begin (t6-compiled! rw n base starts) (bind! end) (span-labelled! (register-name rw " (tier 6)") (+ (get h-6-base) 2) end 0)))
+            (let ((end (label!))) (begin (t6-compiled! rw n base starts) (bind! end) (span-labelled! (register-name rw " (tier 6)") (+ (get h-6-base) 2) end rw #t (get h-6-base))))
             #u)
         (set l-give machine-give) (set l-give-pre machine-give-pre)
         (data-label! rt)

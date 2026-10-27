@@ -2545,3 +2545,39 @@
   (parse-tops (subr gen (sexps) (listof ctop acyclic))
     (lambda (fs) (if (null? fs) nil (let ((t (parse-top (car fs)))) (onto t (parse-tops (cdr fs))))))))
 
+"A word's line table (C245): `; at FILE CELL:POS …`, each where an
+ expression's code begins and its source position, the source the
+ program's file (`cg-source`; a word from a module file of its own not
+ told apart yet); at column 0, a comment to what compares listings with
+ Fixpt's; none if none."
+(define-datatype tentry (tentry i64 i64))
+(define-rec
+  (table-entries (subr kfx (citems i64 (listof tentry acyclic)) (listof tentry acyclic))
+    (lambda (xs at acc)
+      "The entries, newest first: one where the position changes, the
+       last of those at one cell."
+      (if (null? xs)
+          acc
+          (tagcase (car xs)
+            (it-pos (p)
+              (let ((acc (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= a at)))) (cdr acc) acc)))
+                (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= q p))))
+                    (table-entries (cdr xs) at acc)
+                    (table-entries (cdr xs) at (cons (tentry at p) acc)))))
+            (else y (table-entries (cdr xs) (i64+ at (item-size (car xs))) acc)))))))
+(define-rec
+  (entries-shown (subr kfx ((listof tentry acyclic) strings) strings)
+    (lambda (es out)
+      (if (null? es)
+          out
+          (entries-shown (cdr es) (cons (tagcase (car es) (tentry (a p) (string-append (i64->string a) (string-append ":" (i64->string p))))) out))))))
+(define-rec
+  (spaced (subr kfx (strings) string)
+    (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (spaced (cdr ss)))))))))
+(define line-table (subr gen (citems) string)
+  (lambda (xs)
+    (let ((es (entries-shown (table-entries xs 0 nil) nil)))
+      (if (or (null? es) (string=? (get cg-source) ""))
+          ""
+          (string-append "; at " (string-append (get cg-source) (string-append " " (string-append (spaced es) "\n"))))))))
+

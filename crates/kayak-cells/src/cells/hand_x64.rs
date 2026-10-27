@@ -3170,7 +3170,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     yreg_instructions_x(rw, 0i64, n, base, starts, resumes);
     ybind_x(_plus(base, n_cells));
     yb_x(_plus(get(h_gbase()), _star(int_lit(2), n_cells)));
-    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells), 0i64);
+    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells), rw, true, base);
     yresumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
     flatarray_set_i64_x(get(h_5_pushed()), n, if y_pushed_p() {
         1i64
@@ -3191,7 +3191,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
         let end = label_x();
         y6_compiled_x(rw, n, base, starts);
         ybind_x(end);
-        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, 0i64)
+        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, rw, true, get(h_6_base()))
     } else {
         ()
     };

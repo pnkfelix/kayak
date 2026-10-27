@@ -7023,3 +7023,27 @@ dividends". The plan and its stages: `docs/research/register-code.md`.
   registry; each in the plan.
 - **One mistake, undone**: an exploratory command ran `git stash` in a
   loop; the stash it made was popped at once, the work whole.
+
+## C249. Register code's line tables: tiers 5 and 6 under `perf` (2026-10-27)
+
+The user, offered inlining or line tables next: "Do line tables first. I
+want us to be on top of performance from the outset now".
+- **The generator** notes, as the stack compiler does (C245), where each
+  expression's code begins and where its parent's resumes (`ri-pos`, an
+  item of no cells; the position kept in the context, `rctx`); a body's
+  entry, after `args` (its frame made, its parameters stored, a fast
+  version's guards), is the lambda's own position. The listing writes, after
+  a word's register code, `; regs at FILE INSTRUCTION:POS …`.
+- **Tier 1's reader** keeps those tables apart (`reg-line-tables`), and
+  tier 2 notes each register word's spans with them, as each cellular
+  word's (C246): a span now says whose code it is, a cellular word's or a
+  register word's, and where its cells' or instructions' labels start
+  (tier 6's span begins past `args`); an entry whose instruction's code is
+  outside the span (fused into the one before it, or before tier 6's
+  start) is left out.
+- **Measured**: `tak 30 21 12` on tier 6, `KAYAK_JITDUMP=expr` and
+  `scripts/perf-expr.py`: 35% in the lambda's own line, its entry; in
+  `perf annotate`, a fuel count, the guard, a second fuel count, three
+  stack bounds, six slots and a header written, three parameters stored.
+  The call protocol's cost, which the frame work is to take away
+  (TODO, performance item 3); `(< y x)` 11%, the calls 6-9% each.

@@ -48,7 +48,7 @@
  it assumes hold what they held, newest first; whether a call of itself
  was made a loop; its definition's global, its arity and its start's
  label (\"\", -1, -1 if none)."
-(define-datatype rctx (rctx (ref bool @g) bool (ref strings @g) (ref bool @g) string i64 i64))
+(define-datatype rctx (rctx (ref bool @g) bool (ref strings @g) (ref bool @g) string i64 i64 (ref i64 @g)))
 
 "What is being made: its items, newest first; whether a leaf; the next
  register and frame slot, and the most slots used; the labels; what the
@@ -65,13 +65,15 @@
 (define g-start (subr kfx (rgen) i64) (lambda (g) (tagcase g (rgen (xs leaf nr ns ms ls me st cx) st))))
 (define g-ctx (subr kfx (rgen) rctx) (lambda (g) (tagcase g (rgen (xs leaf nr ns ms ls me st cx) cx))))
 
-(define x-declined (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s) d))))
-(define x-assuming (subr kfx (rctx) bool) (lambda (x) (tagcase x (rctx (d a as l o k s) a))))
-(define x-assumed (subr kfx (rctx) (ref strings @g)) (lambda (x) (tagcase x (rctx (d a as l o k s) as))))
-(define x-looped (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s) l))))
-(define x-own (subr kfx (rctx) string) (lambda (x) (tagcase x (rctx (d a as l o k s) o))))
-(define x-own-arity (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s) k))))
-(define x-own-start (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s) s))))
+(define x-declined (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) d))))
+(define x-assuming (subr kfx (rctx) bool) (lambda (x) (tagcase x (rctx (d a as l o k s at) a))))
+(define x-assumed (subr kfx (rctx) (ref strings @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) as))))
+(define x-looped (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) l))))
+(define x-own (subr kfx (rctx) string) (lambda (x) (tagcase x (rctx (d a as l o k s at) o))))
+(define x-own-arity (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at) k))))
+(define x-own-start (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at) s))))
+"The source position of the expression being compiled (C249), 0 if none."
+(define x-at (subr kfx (rctx) (ref i64 @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) at))))
 
 "What the analyses are told of the body (`rview`)."
 (define g-view (subr kfx (rgen) rview)
@@ -328,7 +330,22 @@
 (define-rec
   (r-exp (subr gen (rgen cx renv cenv bool) unit)
     (lambda (g x env te tail)
-      "`x`'s value into RESULT; in tail position, returned."
+      "`x`'s value into RESULT; in tail position, returned: where its code
+       begins noted, and where the code after it, its parent's again,
+       does (C249, as the stack code's)."
+      (let ((p (cx-start x)) (here (x-at (g-ctx g))))
+        (let ((outer (get here)))
+          (if (i64> p 0)
+              (begin
+                (r-emit g (ri-pos p))
+                (set here p)
+                (r-exp-at g x env te tail)
+                (set here outer)
+                (if (i64> outer 0) (r-emit g (ri-pos outer)) #u))
+              (r-exp-at g x env te tail))))))
+
+  (r-exp-at (subr gen (rgen cx renv cenv bool) unit)
+    (lambda (g x env te tail)
       (let ((k (r-known env x)))
         (if (not (null? k))
             (r-const-value g (rconst-lit (car k)) tail)

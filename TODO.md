@@ -787,8 +787,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         register-code.md`): stage 1 done; next, inlining and constant
         globals (68 of the 72 differences from Fixpt's), then stage 2
         (closures, `letrec`, `tagcase`, `apply`, `list`), stage 3 (modules,
-        regions, prompts, bloblets), and register code's line tables for
-        tiers 5-6's debug info.
+        regions, prompts, bloblets). Register code's line tables, tiers
+        5-6's debug info: done (C249); `tak` on tier 6, 35% in its entry
+        (fuel, the guard, stack bounds, six slots written `#f`, the
+        parameters stored), the call protocol's cost.
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

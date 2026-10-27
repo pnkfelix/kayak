@@ -270,12 +270,24 @@ pub fn line_tables() -> Ref<List<&'static Ltext>> {
     })
 }
 
+// Its register code's, `; regs at FILE INSTRUCTION:POS …` (C249).
+pub fn reg_line_tables() -> Ref<List<&'static Ltext>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Ltext>())
+    })
+}
+
 pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
     loop {
         if null_p(ls) {
             return ();
         } else if starts_p(car(ls), string_chars(str_lit("word "))) {
             (ls, name) = (cdr(ls), list_to_string(before_char(drop_n(car(ls), 5i64), ' ')));
+            continue;
+        } else if starts_p(car(ls), string_chars(str_lit("; regs at "))) {
+            set(reg_line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(drop_n(car(ls), 10i64))), get(reg_line_tables())));
+            ls = cdr(ls);
             continue;
         } else if starts_p(car(ls), string_chars(str_lit("; at "))) {
             set(line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(drop_n(car(ls), 5i64))), get(line_tables())));

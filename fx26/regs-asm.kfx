@@ -13,7 +13,10 @@
   ;; `branch`, `branchf` or `brancht`, to a label.
   (ri-branch string i64)
   ;; `global-guard G written N`, to a label where it fails.
-  (ri-guard string i64 i64))
+  (ri-guard string i64 i64)
+  ;; Where an expression's code begins, its source position: no cells,
+  ;; for the listing's line table (C249, as stack code's `it-pos`).
+  (ri-pos i64))
 (define-type ritems (listof ritem acyclic))
 
 (define-rec
@@ -27,7 +30,8 @@
       (ri-frame (name) 2)
       (ri-label (n) 0)
       (ri-branch (name n) 2)
-      (ri-guard (g w n) 4))))
+      (ri-guard (g w n) 4)
+      (ri-pos (p) 0))))
 
 (define-rec
   (ritems-size (subr kfx (ritems i64) i64)
@@ -63,6 +67,7 @@
           (let* ((x (car xs)) (next (i64+ at (ritem-size x))))
             (tagcase x
               (ri-label (n) (rlines-of (cdr xs) next ps frame out named))
+              (ri-pos (p) (rlines-of (cdr xs) next ps frame out named))
               (ri-frame (name) (rlines-of (cdr xs) next ps frame (cons (rline at (string-append name (string-append " " (i64->string frame)))) out) named))
               (ri-branch (name n)
                 (rlines-of (cdr xs) next ps frame (cons (rline at (string-append name (string-append " → " (i64->string (place-at ps n))))) out) named))
@@ -75,6 +80,30 @@
 
 "Register code made: its items in order, its frame's size."
 (define-datatype rcode (rcode ritems i64))
+
+"Its line table (C249): `; regs at FILE CELL:POS …`, each where an
+ expression's code begins and its source position, as the stack code's
+ (`line-table`); none if none."
+(define-rec
+  (rtable-entries (subr kfx (ritems i64 (listof tentry acyclic)) (listof tentry acyclic))
+    (lambda (xs at acc)
+      (if (null? xs)
+          acc
+          (tagcase (car xs)
+            (ri-pos (p)
+              (let ((acc (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= a at)))) (cdr acc) acc)))
+                (if (and (not (null? acc)) (tagcase (car acc) (tentry (a q) (i64= q p))))
+                    (rtable-entries (cdr xs) at acc)
+                    (rtable-entries (cdr xs) at (cons (tentry at p) acc)))))
+            (else y (rtable-entries (cdr xs) (i64+ at (ritem-size (car xs))) acc)))))))
+(define rcode-line-table (subr gen (rcode) string)
+  (lambda (rc)
+    (tagcase rc
+      (rcode (xs frame)
+        (let ((es (entries-shown (rtable-entries xs 0 nil) nil)))
+          (if (or (null? es) (string=? (get cg-source) ""))
+              ""
+              (string-append "; regs at " (string-append (get cg-source) (string-append " " (string-append (spaced es) "\n"))))))))))
 
 "Its lines as the listing writes them, after its word's cells, and the
  words it names."

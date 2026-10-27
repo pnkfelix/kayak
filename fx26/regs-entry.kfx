@@ -49,10 +49,13 @@
         (let* ((n (size ps))
                (own-at (if (null? me) (the i64 0) (the i64 1)))
                (labels (i64+ own-at (if (string=? own "") (the i64 0) (the i64 1))))
-               (cx (rctx (new #f) assuming assumed (new #f) own n (if (string=? own "") (the i64 -1) own-at)))
+               (cx (rctx (new #f) assuming assumed (new #f) own n (if (string=? own "") (the i64 -1) own-at) (new (the i64 0))))
                (g (rgen (new nil) leaf (new (the i64 0)) (new (the i64 0)) (new (the i64 0)) (new labels) me (the i64 0) cx)))
           (begin
             (r-opn g "args" n)
+            ;; The entry's code, its frame made and its parameters stored,
+            ;; the lambda's own, in its line table (C249).
+            (if (i64> at 0) (r-emit g (ri-pos at)) #u)
             (let ((env (r-env-of g inner leaf)))
               (begin
                 (if leaf (set (g-nreg g) n) (begin (r-emit g (ri-frame "save")) (r-store-params g 0 n)))
@@ -112,7 +115,11 @@
            (fi (the ritems (reverse (get (g-items fast)))))
            (pi (relabelled (the ritems (reverse (get (g-items plain)))) fl))
            (guards (r-guards-of assumptions plain-at)))
-      (rcode (cons (car fi) (onto guards (onto (cdr fi) (cons (ri-label plain-at) (cdr pi)))))
+      ;; The guards after the entry's position, as the lambda's (C249).
+      (rcode (cons (car fi)
+                   (if (and (not (null? (cdr fi))) (tagcase (car (cdr fi)) (ri-pos (q) #t) (else y #f)))
+                       (cons (car (cdr fi)) (onto guards (onto (cdr (cdr fi)) (cons (ri-label plain-at) (cdr pi)))))
+                       (onto guards (onto (cdr fi) (cons (ri-label plain-at) (cdr pi))))))
              (if (i64> f p) f p)))))
 
 "Whether `x` makes no closure (Fixpt's `c-room`, a `with` as its body)."

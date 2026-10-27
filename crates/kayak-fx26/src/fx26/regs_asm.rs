@@ -16,6 +16,7 @@ pub enum Ritem {
     RiLabel(i64),
     RiBranch(Str, i64),
     RiGuard(Str, i64, i64),
+    RiPos(i64),
 }
 
 pub fn ri_op(f0: Str, f1: List<&'static Opnd>) -> &'static Ritem {
@@ -36,6 +37,10 @@ pub fn ri_branch(f0: Str, f1: i64) -> &'static Ritem {
 
 pub fn ri_guard(f0: Str, f1: i64, f2: i64) -> &'static Ritem {
     kayak_rt::heap_alloc(Ritem::RiGuard(f0, f1, f2))
+}
+
+pub fn ri_pos(f0: i64) -> &'static Ritem {
+    kayak_rt::heap_alloc(Ritem::RiPos(f0))
 }
 
 pub type Ritems = List<&'static Ritem>;
@@ -70,6 +75,9 @@ pub fn ritem_size(x: &'static Ritem) -> i64 {
         }
         Ritem::RiGuard(g, w, n) => {
             4i64
+        }
+        Ritem::RiPos(p) => {
+            0i64
         }
     }
 }
@@ -149,6 +157,10 @@ pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<&'static Place>, mut 
                     (xs, at) = (cdr(xs), next);
                     continue;
                 }
+                Ritem::RiPos(p) => {
+                    (xs, at) = (cdr(xs), next);
+                    continue;
+                }
                 Ritem::RiFrame(name) => {
                     (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit(" "), i64_to_string(frame)))), out));
                     continue;
@@ -177,6 +189,66 @@ pub enum Rcode {
 
 pub fn rcode(f0: Ritems, f1: i64) -> &'static Rcode {
     kayak_rt::heap_alloc(Rcode::Rcode(f0, f1))
+}
+
+// Its line table (C249): `; regs at FILE CELL:POS …`, each where an
+// expression's code begins and its source position, as the stack code's
+// (`line-table`); none if none.
+pub fn rtable_entries(mut xs: Ritems, mut at: i64, mut acc: List<&'static Tentry>) -> List<&'static Tentry> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Ritem::RiPos(p) => {
+                    let acc = if (not(null_p(acc)) && {
+                        let tagcase_ = car(acc);
+                        match *tagcase_ {
+                            Tentry::Tentry(a, q) => {
+                                i64_eq(a, at)
+                            }
+                        }
+                    }) {
+                        cdr(acc)
+                    } else {
+                        acc
+                    };
+                    if (not(null_p(acc)) && {
+                        let tagcase_ = car(acc);
+                        match *tagcase_ {
+                            Tentry::Tentry(a, q) => {
+                                i64_eq(q, p)
+                            }
+                        }
+                    }) {
+                        return rtable_entries(cdr(xs), at, acc);
+                    } else {
+                        return rtable_entries(cdr(xs), at, kayak_rt::heap_cons(tentry(at, p), acc));
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    (xs, at) = (cdr(xs), i64_plus(at, ritem_size(car(xs))));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn rcode_line_table(rc: &'static Rcode) -> Str {
+    let tagcase_ = rc;
+    match *tagcase_ {
+        Rcode::Rcode(xs, frame) => {
+            let es = entries_shown(rtable_entries(xs, 0i64, nil::<&'static Tentry>()), nil::<Str>());
+            if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
+                str_lit("")
+            } else {
+                string_append(str_lit("; regs at "), string_append(get(cg_source()), string_append(str_lit(" "), string_append(spaced(es), str_lit("\n")))))
+            }
+        }
+    }
 }
 
 // Its lines as the listing writes them, after its word's cells, and the

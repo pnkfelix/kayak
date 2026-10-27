@@ -1433,7 +1433,7 @@
         (if direct (t6-prepared! rw n) #u)
         (yreg-instructions! rw 0 n base starts resumes)
         (ybind! (+ base n-cells)) (yb! (+ (get h-gbase) (* 2 n-cells)))
-        (span-labelled! (register-name rw " (tier 5)") base (+ base n-cells) 0)
+        (span-labelled! (register-name rw " (tier 5)") base (+ base n-cells) rw #t base)
         (yresumes-emitted! 0 n base rbase rgive resumes)
         (flatarray-set-i64! (get h-5-pushed) n (if (y-pushed?) 1 0))
         (ygive-stubs! 0 n starts give-pre)
@@ -1442,7 +1442,7 @@
         (ybind! way-in) (yentered-reg!) (yjmp-r! y16)
         (ybind! rgive) (yb! (get l-resume-give))
         (if direct
-            (let ((end (label!))) (begin (y6-compiled! rw n base starts) (ybind! end) (span-labelled! (register-name rw " (tier 6)") (+ (get h-6-base) 2) end 0)))
+            (let ((end (label!))) (begin (y6-compiled! rw n base starts) (ybind! end) (span-labelled! (register-name rw " (tier 6)") (+ (get h-6-base) 2) end rw #t (get h-6-base))))
             #u)
         (set h-6-adapter -1) (set h-6-on #f)
         (ylink-stubs! 0 n base starts (get h-stubs) direct)

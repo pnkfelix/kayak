@@ -124,6 +124,8 @@
  by `--profile`. Fixpt's listings have none."
 (define-datatype ltext (ltext string string))
 (define line-tables (ref (listof ltext @c) @c) (new nil))
+"Its register code's, `; regs at FILE INSTRUCTION:POS …` (C249)."
+(define reg-line-tables (ref (listof ltext @c) @c) (new nil))
 
 (define-rec
   (tables-read! (subr cm ((listof chars acyclic) string) unit)
@@ -131,6 +133,10 @@
       (cond ((null? ls) #u)
             ((starts? (car ls) (string-chars "word "))
              (tables-read! (cdr ls) (list->string (before-char (drop-n (car ls) 5) #\space))))
+            ((starts? (car ls) (string-chars "; regs at "))
+             (begin
+               (set reg-line-tables (cons (ltext name (list->string (drop-n (car ls) 10))) (get reg-line-tables)))
+               (tables-read! (cdr ls) name)))
             ((starts? (car ls) (string-chars "; at "))
              (begin
                (set line-tables (cons (ltext name (list->string (drop-n (car ls) 5))) (get line-tables)))

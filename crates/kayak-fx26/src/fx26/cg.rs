@@ -7035,3 +7035,98 @@ pub fn parse_tops(fs: Sexps) -> List<&'static Ctop> {
     }
 }
 
+// A word's line table (C245): `; at FILE CELL:POS …`, each where an
+// expression's code begins and its source position, the source the
+// program's file (`cg-source`; a word from a module file of its own not
+// told apart yet); at column 0, a comment to what compares listings with
+// Fixpt's; none if none.
+pub enum Tentry {
+    Tentry(i64, i64),
+}
+
+pub fn tentry(f0: i64, f1: i64) -> &'static Tentry {
+    kayak_rt::heap_alloc(Tentry::Tentry(f0, f1))
+}
+
+/// The entries, newest first: one where the position changes, the
+/// last of those at one cell.
+pub fn table_entries(mut xs: Citems, mut at: i64, mut acc: List<&'static Tentry>) -> List<&'static Tentry> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Item::ItPos(p) => {
+                    let acc = if (not(null_p(acc)) && {
+                        let tagcase_ = car(acc);
+                        match *tagcase_ {
+                            Tentry::Tentry(a, q) => {
+                                i64_eq(a, at)
+                            }
+                        }
+                    }) {
+                        cdr(acc)
+                    } else {
+                        acc
+                    };
+                    if (not(null_p(acc)) && {
+                        let tagcase_ = car(acc);
+                        match *tagcase_ {
+                            Tentry::Tentry(a, q) => {
+                                i64_eq(q, p)
+                            }
+                        }
+                    }) {
+                        return table_entries(cdr(xs), at, acc);
+                    } else {
+                        return table_entries(cdr(xs), at, kayak_rt::heap_cons(tentry(at, p), acc));
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    (xs, at) = (cdr(xs), i64_plus(at, item_size(car(xs))));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn entries_shown(mut es: List<&'static Tentry>, mut out: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return out;
+        } else {
+            (es, out) = (cdr(es), kayak_rt::heap_cons({
+                let tagcase_ = car(es);
+                match *tagcase_ {
+                    Tentry::Tentry(a, p) => {
+                        string_append(i64_to_string(a), string_append(str_lit(":"), i64_to_string(p)))
+                    }
+                }
+            }, out));
+            continue;
+        }
+    }
+}
+
+pub fn spaced(ss: Strings) -> Str {
+    if null_p(ss) {
+        str_lit("")
+    } else if null_p(cdr(ss)) {
+        car(ss)
+    } else {
+        string_append(car(ss), string_append(str_lit(" "), spaced(cdr(ss))))
+    }
+}
+
+pub fn line_table(xs: Citems) -> Str {
+    let es = entries_shown(table_entries(xs, 0i64, nil::<&'static Tentry>()), nil::<Str>());
+    if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
+        str_lit("")
+    } else {
+        string_append(str_lit("; at "), string_append(get(cg_source()), string_append(str_lit(" "), string_append(spaced(es), str_lit("\n")))))
+    }
+}
+

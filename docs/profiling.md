@@ -21,7 +21,7 @@ ran the most. Exact counts, no sampling; tier 1 only.
 `/tmp/perf-PID.map` names each compiled word's code (`fx26 NAME`, `fx26
 NAME (tier 6)`) and the machine's (`kayak tier 2: the machine`).
 
-## Tiers 2-6: `perf annotate`, with source lines (tier 4)
+## Tiers 2-6: `perf annotate`, with source lines (tiers 4-6)
 
     KAYAK_JITDUMP=1 perf record -k 1 kayak-cells prog.cells --compiled
     perf inject --jit -i perf.data -o perf.jit.data
@@ -29,7 +29,11 @@ NAME (tier 6)`) and the machine's (`kayak tier 2: the machine`).
     perf report -i perf.jit.data --sort srcline
 
 The jitdump gives perf each word's code, and for words with a line table
-(tier 4's, from kayak's listings) each instruction's source line.
+each instruction's source line: tier 4's from its cells' table, tiers 5
+and 6's from their register code's (`; regs at`, C249), from kayak's
+listings. A register word's entry (its frame made, its parameters
+stored, its guards) is the lambda's own line: the call protocol's cost,
+in `expr` mode the lambda's text.
 
 ## Per expression: `KAYAK_JITDUMP=expr`
 
@@ -48,6 +52,5 @@ unaided, and `scripts/perf-expr.py` reads perf's lines back.
 
 ## Not yet
 
-- Tiers 5 and 6 run register code, which only Fixpt's listings have, with
-  no line tables: names only there.
+- Fixpt's listings have no line tables: names only there.
 - A word from a module file of its own is given the program's file.
