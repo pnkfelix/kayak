@@ -7250,3 +7250,22 @@ on both.
   344, kayak each; of the 496 Fixpt accepts, kayak refuses 12 (all
   `scheme-bench/`, for other gaps: a `typecase` of a union's local, `#\nul`,
   `f64`'s arithmetic, recursive bloblet types and others).
+
+## C258. Tier 1's `string->list` and `symbol->string` (2026-10-27)
+
+The user: "File all of these as todo's. Then do tier 1's missing
+primitives." (`TODO.md`, "Next, in order".) Of the primitives the KFX
+compiler compiled to cells and `scheme-bench/peval.fx` call, tier 1 lacked
+two: the 64-bit integers' operations it has already, made by family
+(`fixed-families`), which a search for their names had missed. Each a
+`prim` of tier 1's (`o-string-list`, `o-symbol-string`), the tiers after it
+calling out to it. A test, `kayak/datum/string-list.fx`, on every tier.
+- **`peval` on kayak's tiers**: its answer at 2 iterations the engine's
+  (Fixpt's) on tiers 1, 4 and 6; its 2000, 281 s on tier 6: a benchmark of
+  size for the native work, to measure against Fixpt's.
+- **The KFX compiler on kayak's tiers** (with a `(main)` after it, as
+  `fixpt run` calls `main`): compiled to cells by kayak's FX-26 compiler
+  (45 s, 55 GB at peak), then run on tier 6 to compile itself, it was
+  killed at 556 s and 248 GB, where Fixpt runs it in 7.7 s and 0.6 GB:
+  tier 1's heap grows without bound on it (a leak, or what is kept
+  reachable). Filed (`TODO.md`).

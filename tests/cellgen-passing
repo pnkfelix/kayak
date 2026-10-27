@@ -85,6 +85,7 @@ kayak/checker/let-cons-car.fx
 kayak/checker/union-car.fx
 kayak/conventions/both-ways.fx
 kayak/datum/interned-across-collections.fx
+kayak/datum/string-list.fx
 kayak/io/streams.fx
 kayak/made-code-x86_64/adapter-called.fx
 kayak/made-code-x86_64/code-freed.fx

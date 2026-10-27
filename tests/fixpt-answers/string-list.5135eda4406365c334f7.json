@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"string-list.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define count-of : (subr (maxeff (read (globals count-of)) (read @heap) spin) (char (listof char @heap)) int) ! pure",
+"define cs : (listof char @heap) ! (alloc @heap)",
+"int ! (maxeff (read (globals count-of cs)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

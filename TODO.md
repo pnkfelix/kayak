@@ -18,6 +18,45 @@ regenerate `boot/`, and only then use it in the compiler (`README.md`).
 
 ---
 
+## Next, in order (the user, 2026-10-27)
+
+"File all of these as todo's. Then do tier 1's missing primitives. After
+that, register code stage 3. After that, specialization." Each in its own
+section below where it has one; here the order, and what each is.
+
+1. **Tier 1's missing primitives.** Done (C258): `string->list`,
+   `symbol->string` (the 64-bit integers' tier 1 had). `peval` runs on
+   tiers 1-6 (its 2000 iterations 281 s on tier 6: a benchmark to measure
+   against Fixpt's). Found by it: **the KFX compiler on tier 6 grows its
+   heap without bound** (killed at 248 GB; Fixpt runs it in 0.6 GB):
+   a leak, or what tier 1 keeps reachable; first to find, with `--gc-stats`
+   on a shorter run, what the heap holds.
+2. **Register code stage 3** (`docs/research/register-code.md`): bloblets,
+   regions, modules and `with`, flat sums' `tagcase`, conversions; 94
+   register words declined (C253).
+3. **Specialization** (Fixpt's middle phase: its plans and copies): a
+   procedure taking a lambda it only calls copied for the lambda given
+   (`map-add@lambda@730`); `bench/closures` 253 to 216 million cycles
+   behind on tier 6 for it (C253), and 2 register words differ by its
+   registry (C248).
+4. **Compile memory and time**: kayak compiles 10-30x slower than Fixpt,
+   mostly page faults: KFX's regions are never freed while a program runs
+   (an 11 KB program 261 MB at peak; the KFX compiler compiled to cells by
+   kayak's FX-26 compiler, 55 GB). First measure which regions grow, then
+   options (per-definition work freed, arenas reused, regions that end),
+   to the user before building.
+5. **The call protocol on tier 6** (performance item 3 below): the
+   entry's stack bounds, the frame's header word, values kept in
+   registers across calls; each part measured by the line tables (C250).
+6. **arm64**: nothing of C241-C253 has run there (the Mac).
+7. **Checker completeness**: the 12 of `scheme-bench/` kayak refuses
+   (`compare-checkers.py --list refused`); the knot rule at a poly's
+   instantiation; `set-car!`/`set-cdr!` of a union's pair; the 69 programs
+   whose types print otherwise.
+8. **Register code's remaining differences from Fixpt's**: globals
+   holding constant lists (`unrolled-lists.fx`), a module's member
+   re-exported and inlined (`reexport-inlined.fx`).
+
 ## 7. Errors that point at KFX source: what is left
 
 Done is `DONE.md` §7. Left:

@@ -212,6 +212,10 @@
 (define o-read-file i64 199)
 (define o-list-dir i64 200)
 (define o-write-file i64 201)
+"A string's characters, a list; a symbol's name, a string (C258: the KFX
+ compiler and `scheme-bench/peval.fx` on tier 1)."
+(define o-string-list i64 202)
+(define o-symbol-string i64 203)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -296,6 +300,7 @@
          (pdef "%fx26-eqtable-set!" 3 3 o-eqtable-set) (pdef "%fx26-eqtable-delete!" 2 2 o-eqtable-delete)
          (pdef "%fx26-assume" 1 1 o-assume) (pdef "list->string" 1 1 o-list-string)
          (pdef "%fx26-assert" 1 1 o-assert) (pdef "string->symbol" 1 1 o-string-symbol)
+         (pdef "string->list" 1 1 o-string-list) (pdef "symbol->string" 1 1 o-symbol-string)
          (pdef "%fx26-syscall-require" 3 3 o-syscall-require) (pdef "%fx26-syscall-available?" 2 2 o-syscall-available)
          (pdef "%fx26-syscall" 3 9 o-syscall)
          (pdef "%fx26-seal-code" 1 1 o-seal-code) (pdef "%fx26-native-procedure" 1 1 o-native-procedure) (pdef "%reap-enter" 0 0 o-reap-enter) (pdef "%region-new" 2 2 o-region-new)
@@ -711,6 +716,11 @@
       (if (and (width-signed? w) (>= low (arithmetic-shift 1 (- b 1)))) (- low m) low))))
 (define fixed-in? (subr cm (i64 i64) bool)
   (lambda (w v) "Whether `v` is a value of width `w` (`fixed_in`)." (and (is-integer? v) (= (wrapped w (int-of v)) (int-of v)))))
+
+"A list in the heap of the characters `cs`."
+(define-rec
+  (chars-list! (subr cm ((listof char acyclic)) i64)
+    (lambda (cs) (if (null? cs) v-null (cons! (char-value (char->i64 (car cs))) (chars-list! (cdr cs)))))))
 
 "A list in the heap of strings made of `ss`."
 (define-rec
@@ -1925,6 +1935,8 @@
                  ((string=? host "code:exec-view/1") (fix -1))
                  (else v-unit))))
         ((i64= op o-string-symbol) (if (is-kind? a k-string) (symbol! (string-text a)) (expected! "a string")))
+        ((i64= op o-string-list) (if (is-kind? a k-string) (chars-list! (string-chars (string-text a))) (expected! "a string")))
+        ((i64= op o-symbol-string) (if (is-kind? a k-symbol) (make-string! (symbol-text a)) (expected! "a symbol")))
         ((i64= op o-list-string)
          "A proper list first, then of characters, as Fixpt's errors are."
          (cond ((i64< (proper-length a) 0) (expected! "a proper list"))
