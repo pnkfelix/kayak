@@ -977,28 +977,16 @@ pub fn ytesti_x(r: Int, i: Int) -> () {
 // address and its tag; with indices, its offset from `r10`, the heap's
 // base.
 pub fn yld_v_x(d: Int, v: Int, o: Int) -> () {
-    if get(addressed()) {
-        yld_x(d, v, o)
-    } else {
-        yld_ix_x(d, y_mem(), v, o)
-    }
+    yld_x(d, v, o)
 }
 
 pub fn ylea_v_x(d: Int, v: Int, o: Int) -> () {
-    if get(addressed()) {
-        ylea_x(d, v, o)
-    } else {
-        ylea_ix_x(d, y_mem(), v, int_lit(1), o)
-    }
+    ylea_x(d, v, o)
 }
 
-/// The address in `d` as a value, less its tag.
+/// The address in `d` as a value, less its tag: itself (C244).
 pub fn yvalued_x(d: Int) -> () {
-    if get(addressed()) {
-        ()
-    } else {
-        yalu_x(a_sub(), d, y_mem())
-    }
+    ()
 }
 
 pub fn yshift_x(op: Int, d: Int, i: Int) -> () {
@@ -1350,12 +1338,8 @@ pub fn yallocating_x(words: Int, count8: Int) -> () {
     };
     ycmp_st_x(y15(), st_mem_length());
     ygive_if_x(q_a());
-    if get(addressed()) {
-        ymov_x(y16(), y13());
-        yshift_x(s_shl(), y16(), int_lit(3))
-    } else {
-        ylea_ix_x(y16(), y_mem(), y13(), int_lit(8), int_lit(0))
-    };
+    ymov_x(y16(), y13());
+    yshift_x(s_shl(), y16(), int_lit(3));
     yalurm_x(a_add(), y16(), y_st(), at_st(st_vbase()))
 }
 
@@ -1731,12 +1715,6 @@ pub fn yentry_x() -> () {
     ykept_x();
     yld_x(y13(), y_st(), y_reg4());
     ylea_x(y_st(), y_rdi(), int_lit(-4));
-    if get(addressed()) {
-        ()
-    } else {
-        ylea_x(y_mem(), y_rsi(), int_lit(-4));
-        yalurm_x(a_sub(), y_mem(), y_st(), at_st(st_vbase()))
-    };
     ylea_x(y15(), y_r8(), int_lit(-4));
     yst_st_x(st_dsb(), y15());
     ylea_x(y13(), y13(), int_lit(-4));
@@ -1807,7 +1785,7 @@ pub fn y_reg_in(k: Int) -> Int {
         y10()
     } else if _eq(k, int_lit(2)) {
         y_ip()
-    } else if (_eq(k, int_lit(3)) && get(addressed())) {
+    } else if _eq(k, int_lit(3)) {
         y_mem()
     } else {
         int_lit(-1)
@@ -3481,7 +3459,6 @@ pub fn heap_addressed_x() -> bool {
                 set(other(), o);
                 set(vbase(), int_to_i64(p(m)));
                 set(to_vbase(), int_to_i64(p(o)));
-                set(addressed(), true);
                 set(limit(), 1048576i64);
                 code_area_made_x(p, first, i64_plus(if i64_gt(get(vbase()), get(to_vbase())) {
                     get(vbase())

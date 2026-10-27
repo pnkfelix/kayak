@@ -1,5 +1,5 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
- [--hand|--compiled|--direct] [--regs] [--fixpt-calls] [--indexes]
+ [--hand|--compiled|--direct] [--regs] [--fixpt-calls]
  [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
  C140, C142, C210): the words of a listing Fixpt's compiler wrote, its
  `program` run, at most N instructions (Fixpt's FX-26 default,
@@ -8,8 +8,8 @@
  the words compiled (tier 4) if `--compiled`, with their register code
  where they have it if `--regs`, and register code as native procedures
  too (tier 6) if `--direct`, register code calling as Fixpt's
- does (x86_64) if `--fixpt-calls`, its values tagged addresses where
- native code runs, else, or with `--indexes`, indices into the heap, its
+ does (x86_64) if `--fixpt-calls`, its values tagged addresses (where
+ they cannot be, as where no native code runs, it refuses to run: C244), its
  value written as Fixpt writes it; or, if it fails, `evaluation failed:
  MESSAGE` on the standard error and status 1."
 
@@ -46,8 +46,6 @@ LISTING is the words of `fixpt compile --full-literals`, or of
                        implies --compiled)
 And:
   --fixpt-calls        register code calling as Fixpt's does (x86_64)
-  --indexes            values as indices into the heap, not tagged
-                       addresses where native code runs
   --step-limit N|none  at most N instructions (20000000; none, no limit)
   --slice N            a task's time slice, N polls (65536)
   --gc-stress          collect at every safepoint
@@ -82,7 +80,9 @@ and status 1.
         ((or (string=? (car as) "--help") (string=? (car as) "-h")) (begin (say usage) 0))
         (else
           (let* ((u01 (set program-args (after-dashes as)))
-                 (u00 (if (string-member? "--indexes" as) #u (begin (heap-addressed!) #u)))
+                 (u00 (if (heap-addressed!)
+                          #u
+                          (begin (write-err "kayak-cells: values cannot be addresses here, which tier 1 needs (C244)\n") (exit 1) #u)))
                  (u0 (set regs-on (string-member? "--regs" as)))
                  (w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))
@@ -94,7 +94,7 @@ and status 1.
                  (r (run-word! w (option-of (cdr as) "--step-limit" default-steps)))
                  (u2 (if (string-member? "--gc-stats" as)
                          (begin
-                           (write-err (string-append (if (get addressed) (string-append "values: addresses from " (string-append (i64->string (get vbase)) "; ")) "values: indices; ") (string-append "collections: " (string-append (i64->string (get collections))
+                           (write-err (string-append (string-append "values: addresses from " (string-append (i64->string (get vbase)) "; ")) (string-append "collections: " (string-append (i64->string (get collections))
                                         (string-append ", words copied: " (string-append (i64->string (get words-copied))
                                           (string-append ", machine entries: " (string-append (i64->string (get hand-entries)) (string-append ", words compiled: " (string-append (int->string (get words-compiled)) (string-append ", tier 6: " (string-append (int->string (get words-direct)) (string-append "\n" (given-shown 0 ""))))))))))))))
                            #u)

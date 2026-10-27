@@ -1,8 +1,7 @@
 "heap.kfx: tier 1's heap, in Fixpt's format (C122): one flat array of
  `i64`, a value `vbase + 8 index + tag` (C139): the word's machine
- address and its tag, as Fixpt's values are, `vbase` the array's address;
- or, with `--indexes`, its index and its tag, `vbase` 0, as Fixpt's
- images have it. Pairs are two words; every other object a bloblet: a
+ address and its tag, as Fixpt's values are, `vbase` the array's address
+ (C139; indices into it, the other way, gone, C244). Pairs are two words; every other object a bloblet: a
  header, its fields below its suffix (field `k` at `p - k`, the trailer
  field 1, its payload the distance back to the header), its suffix's
  bytes. Collected by Coopt's collector's baseline, below (C122).
@@ -11,15 +10,12 @@
 (define mem (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 4096 0)))
 "The next free index. Indices 0 to 7 are never an object's."
 (define top (ref i64 @c) (new 8))
-"How far the heap may be used: the array's length with `--indexes`, which
- is copied to a bigger one to grow; else less than `heap-capacity`, to
- which each space is reserved once (committed as it is touched), so that
- nothing moves but by a collection, which moves every value (C139)."
+"How far the heap may be used: less than `heap-capacity`, to which each
+ space is reserved once (committed as it is touched), so that nothing
+ moves but by a collection, which moves every value (C139)."
 (define limit (ref i64 @c) (new 4096))
 (define heap-capacity i64 268435456)
-(define addressed (ref bool @c) (new #f))
-"The values' base, this space's and the other's: the arrays' addresses,
- or 0 with `--indexes`."
+"The values' base, this space's and the other's: the arrays' addresses."
 (define vbase (ref i64 @c) (new 0))
 (define to-vbase (ref i64 @c) (new 0))
 
@@ -40,18 +36,14 @@
 
 (define room! (subr cm (i64) unit)
   (lambda (n)
-    "Room for `n` more words: the heap twice as big, if need be; with
-     addresses, within the space reserved, else a trap."
-    (let ((m (get mem)))
-      (cond ((i64<= (i64+ (get top) n) (get limit)) #u)
-            ((get addressed)
-             (let ((more (i64* 2 (i64+ (get limit) n))))
-               (if (i64> (i64+ (get top) n) heap-capacity)
-                   (trap! "out of heap")
-                   (set limit (if (i64> more heap-capacity) heap-capacity more)))))
-            (else
-              (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (i64+ (flatarray-length-i64 m) n)) 0))))
-                (begin (copied-into! m bigger 0 (get top)) (set mem bigger) (set limit (flatarray-length-i64 bigger)))))))))
+    "Room for `n` more words: the heap's limit twice as far, if need be,
+     within the space reserved, else a trap."
+    (if (i64<= (i64+ (get top) n) (get limit))
+        #u
+        (let ((more (i64* 2 (i64+ (get limit) n))))
+          (if (i64> (i64+ (get top) n) heap-capacity)
+              (trap! "out of heap")
+              (set limit (if (i64> more heap-capacity) heap-capacity more)))))))
 
 (define-rec
   (zeroed! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
@@ -74,7 +66,7 @@
  machine's accessors read it as they read the heap: an index outside the
  heap's reservation is the code area's. The collector leaves its objects
  where they are and forwards their fields in place; none is freed yet.
- Only where values are addresses (`addressed`) and the view was made."
+ Only where the view was made."
 (define code (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define code-on (ref bool @c) (new #f))
 (define code-vbase (ref i64 @c) (new 0))
@@ -679,9 +671,6 @@
     "The other space made ready, as big as this one: the roots are then
      forwarded (`forward!`), then `collect-end!`."
     (begin
-      (if (and (not (get addressed)) (i64< (flatarray-length-i64 (get other)) (flatarray-length-i64 (get mem))))
-          (set other (the (flatarrayof i64 @c) (make-flatarray-i64 (flatarray-length-i64 (get mem)) 0)))
-          #u)
       (set to-top 8)
       (named-forwarded! 0)
       (set interned (forward! (get interned)))
@@ -705,7 +694,6 @@
           (set mem (get other))
           (set other old)
           (let ((b (get vbase))) (begin (set vbase (get to-vbase)) (set to-vbase b)))
-          (if (get addressed) #u (set limit (flatarray-length-i64 (get mem))))
           (set top (get to-top))
           (set collections (i64+ (get collections) 1))
           (if (i64> (i64* 2 (get top)) (get limit))

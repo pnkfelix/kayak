@@ -777,7 +777,8 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      up front lengthens start-up for big listings: lazily, in the
      code-generation revision.
    - **Departure 13, values as addresses** (the user: "Let's kill
-     `--indexes`"): addresses the one mode. To do: `--indexes` removed
+     `--indexes`"): addresses the one mode. **Done** (C244), but arm64's
+     base register `x19`, left until arm64 runs. Was to do: `--indexes` removed
      from tier 1 and tiers 2-6 (the `addressed` branches, arm64's base
      register `x19`, the index mode's paths) and from `cells-programs`'
      ways (`--indexes`, `--hand --indexes`, `--indexes --gc-stress`), the

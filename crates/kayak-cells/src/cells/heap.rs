@@ -5,9 +5,8 @@ use super::*;
 
 // heap.kfx: tier 1's heap, in Fixpt's format (C122): one flat array of
 // `i64`, a value `vbase + 8 index + tag` (C139): the word's machine
-// address and its tag, as Fixpt's values are, `vbase` the array's address;
-// or, with `--indexes`, its index and its tag, `vbase` 0, as Fixpt's
-// images have it. Pairs are two words; every other object a bloblet: a
+// address and its tag, as Fixpt's values are, `vbase` the array's address
+// (C139; indices into it, the other way, gone, C244). Pairs are two words; every other object a bloblet: a
 // header, its fields below its suffix (field `k` at `p - k`, the trailer
 // field 1, its payload the distance back to the header), its suffix's
 // bytes. Collected by Coopt's collector's baseline, below (C122).
@@ -27,10 +26,9 @@ pub fn top() -> Ref<i64> {
     })
 }
 
-// How far the heap may be used: the array's length with `--indexes`, which
-// is copied to a bigger one to grow; else less than `heap-capacity`, to
-// which each space is reserved once (committed as it is touched), so that
-// nothing moves but by a collection, which moves every value (C139).
+// How far the heap may be used: less than `heap-capacity`, to which each
+// space is reserved once (committed as it is touched), so that nothing
+// moves but by a collection, which moves every value (C139).
 pub fn limit() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -42,15 +40,7 @@ pub fn heap_capacity() -> i64 {
     268435456i64
 }
 
-pub fn addressed() -> Ref<bool> {
-    kayak_rt::kept_constant!(ONCE: Ref<bool>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(false)
-    })
-}
-
-// The values' base, this space's and the other's: the arrays' addresses,
-// or 0 with `--indexes`.
+// The values' base, this space's and the other's: the arrays' addresses.
 pub fn vbase() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -97,13 +87,12 @@ pub fn copied_into_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i6
     }
 }
 
-/// Room for `n` more words: the heap twice as big, if need be; with
-/// addresses, within the space reserved, else a trap.
+/// Room for `n` more words: the heap's limit twice as far, if need be,
+/// within the space reserved, else a trap.
 pub fn room_x(n: i64) -> () {
-    let m = get(mem());
     if i64_lt_eq(i64_plus(get(top()), n), get(limit())) {
         ()
-    } else if get(addressed()) {
+    } else {
         let more = i64_star(2i64, i64_plus(get(limit()), n));
         if i64_gt(i64_plus(get(top()), n), heap_capacity()) {
             trap_x(str_lit("out of heap"))
@@ -114,11 +103,6 @@ pub fn room_x(n: i64) -> () {
                 more
             })
         }
-    } else {
-        let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i64_plus(flatarray_length_i64(m), n)), 0i64));
-        copied_into_x(m, bigger, 0i64, get(top()));
-        set(mem(), bigger);
-        set(limit(), flatarray_length_i64(bigger))
     }
 }
 
@@ -152,7 +136,7 @@ pub fn alloc_x(n: i64) -> i64 {
 // machine's accessors read it as they read the heap: an index outside the
 // heap's reservation is the code area's. The collector leaves its objects
 // where they are and forwards their fields in place; none is freed yet.
-// Only where values are addresses (`addressed`) and the view was made.
+// Only where the view was made.
 pub fn code() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -1338,11 +1322,6 @@ pub fn adapters_forwarded_x(ws: List<&'static Cblock>) -> List<&'static Cblock> 
 /// The other space made ready, as big as this one: the roots are then
 /// forwarded (`forward!`), then `collect-end!`.
 pub fn collect_begin_x() -> () {
-    if (not(get(addressed())) && i64_lt(flatarray_length_i64(get(other())), flatarray_length_i64(get(mem())))) {
-        set(other(), the::<FlatArray<i64>>(make_flatarray_i64(flatarray_length_i64(get(mem())), 0i64)))
-    } else {
-        ()
-    };
     set(to_top(), 8i64);
     named_forwarded_x(0i64);
     set(interned(), forward_x(get(interned())));
@@ -1383,11 +1362,6 @@ pub fn collect_end_x() -> () {
         let b = get(vbase());
         set(vbase(), get(to_vbase()));
         set(to_vbase(), b)
-    };
-    if get(addressed()) {
-        ()
-    } else {
-        set(limit(), flatarray_length_i64(get(mem())))
     };
     set(top(), get(to_top()));
     set(collections(), i64_plus(get(collections()), 1i64));

@@ -6869,3 +6869,26 @@ of C239's, corrected.
   linking or a binary not position-independent might take some of it:
   changes to the whole build, for little; not done.
 
+## C244. `--indexes` gone: values are addresses (2026-10-27)
+
+The user, in the review of the departures (departure 13): "Let's kill
+`--indexes`"; then "lets remove `--indexes`". C139 kept tier 1's values
+as indices into its heap as a mode beside addresses, run by
+`cells-programs` three ways (`--indexes`, `--hand --indexes`, `--indexes
+--gc-stress`): coverage the address mode's own runs give, and a mode in
+which no code a program makes could run.
+- **Tier 1**: values are addresses, always; `heap-addressed!` at every start,
+  and where it cannot be (no native code, so no array's address to be
+  had: neither of kayak's machines) tier 1 refuses to run, saying so,
+  rather than fall back. The `addressed` flag and its branches gone: the
+  heap's growth by copying to a bigger array (`room!`), the other space's
+  resizing, the limit reset after a collection; on x86_64 the machine's
+  loads, `lea`s and values by the base register (`yld-v!`, `ylea-v!`,
+  `yvalued!`, the allocation's index, the base's set-up), and `REG3` in
+  `r10` always. arm64's machine keeps its base register (`x19`, 0 in
+  address mode): its code unchanged, as arm64 runs nothing here; to go
+  when it is run.
+- **The check**: the three ways gone from `cells-programs` (the user's
+  decision; C244 is it). Fixpt's heap images were indices, but a dump of
+  addresses normalizes them as it writes (the user, departure 13).
+

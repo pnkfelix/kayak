@@ -81,7 +81,7 @@
 "Where the code starts (C131): its tables are at fixed places past it."
 (define st-start int 29)
 "The values' base (C139): the heap's address, the values being
- addresses, or 0 (`--indexes`); the machine's base register is the heap's
+ addresses (never indices now, C244); the machine's base register is the heap's
  address less it, so that a value plus it is the value's word."
 (define st-vbase int 34)
 "Its length: 30 to 32 are hand-x64.kfx's own, 33 tier 6's (`st-t6link`)."

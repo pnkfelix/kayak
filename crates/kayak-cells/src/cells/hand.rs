@@ -582,7 +582,7 @@ pub fn st_start() -> Int {
 }
 
 // The values' base (C139): the heap's address, the values being
-// addresses, or 0 (`--indexes`); the machine's base register is the heap's
+// addresses (never indices now, C244); the machine's base register is the heap's
 // address less it, so that a value plus it is the value's word.
 pub fn st_vbase() -> Int {
     int_lit(34)

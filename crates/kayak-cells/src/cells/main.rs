@@ -4,7 +4,7 @@ use kayak_rt::*;
 use super::*;
 
 // main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
-// [--hand|--compiled|--direct] [--regs] [--fixpt-calls] [--indexes]
+// [--hand|--compiled|--direct] [--regs] [--fixpt-calls]
 // [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
 // C140, C142, C210): the words of a listing Fixpt's compiler wrote, its
 // `program` run, at most N instructions (Fixpt's FX-26 default,
@@ -13,8 +13,8 @@ use super::*;
 // the words compiled (tier 4) if `--compiled`, with their register code
 // where they have it if `--regs`, and register code as native procedures
 // too (tier 6) if `--direct`, register code calling as Fixpt's
-// does (x86_64) if `--fixpt-calls`, its values tagged addresses where
-// native code runs, else, or with `--indexes`, indices into the heap, its
+// does (x86_64) if `--fixpt-calls`, its values tagged addresses (where
+// they cannot be, as where no native code runs, it refuses to run: C244), its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
 // MESSAGE` on the standard error and status 1.
 
@@ -60,7 +60,7 @@ pub fn default_steps() -> i64 {
 }
 
 pub fn usage() -> Str {
-    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6;\n                       implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --indexes            values as indices into the heap, not tagged\n                       addresses where native code runs\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
+    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6;\n                       implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
 }
 
 /// Option `name`'s number, `none` the most there is; else `otherwise`.
@@ -120,10 +120,11 @@ pub fn cells_main() -> Int {
         int_lit(0)
     } else {
         let u01 = set(program_args(), after_dashes(r#as));
-        let u00 = if string_member_p(str_lit("--indexes"), r#as) {
+        let u00 = if heap_addressed_x() {
             ()
         } else {
-            heap_addressed_x();
+            write_err(str_lit("kayak-cells: values cannot be addresses here, which tier 1 needs (C244)\n"));
+            match exit(int_lit(1)) {};
             ()
         };
         let u0 = set(regs_on(), string_member_p(str_lit("--regs"), r#as));
@@ -136,11 +137,7 @@ pub fn cells_main() -> Int {
         let u4 = set(hand_compiled(), (string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
         let r = run_word_x(w, option_of(cdr(r#as), str_lit("--step-limit"), default_steps()));
         let u2 = if string_member_p(str_lit("--gc-stats"), r#as) {
-            write_err(string_append(if get(addressed()) {
-                string_append(str_lit("values: addresses from "), string_append(i64_to_string(get(vbase())), str_lit("; ")))
-            } else {
-                str_lit("values: indices; ")
-            }, string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), string_append(str_lit(", words compiled: "), string_append(int_to_string(get(words_compiled())), string_append(str_lit(", tier 6: "), string_append(int_to_string(get(words_direct())), string_append(str_lit("\n"), given_shown(0i64, str_lit("")))))))))))))));
+            write_err(string_append(string_append(str_lit("values: addresses from "), string_append(i64_to_string(get(vbase())), str_lit("; "))), string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), string_append(str_lit(", words compiled: "), string_append(int_to_string(get(words_compiled())), string_append(str_lit(", tier 6: "), string_append(int_to_string(get(words_direct())), string_append(str_lit("\n"), given_shown(0i64, str_lit("")))))))))))))));
             ()
         } else {
             ()

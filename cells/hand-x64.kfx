@@ -159,11 +159,11 @@
  address and its tag; with indices, its offset from `r10`, the heap's
  base."
 (define yld-v! (->* (int int int) unit)
-  (lambda (d v o) (if (get addressed) (yld! d v o) (yld-ix! d y-mem v o))))
+  (lambda (d v o) (yld! d v o)))
 (define ylea-v! (->* (int int int) unit)
-  (lambda (d v o) (if (get addressed) (ylea! d v o) (ylea-ix! d y-mem v 1 o))))
+  (lambda (d v o) (ylea! d v o)))
 (define yvalued! (->* (int) unit)
-  (lambda (d) "The address in `d` as a value, less its tag." (if (get addressed) #u (yalu! a-sub d y-mem))))
+  (lambda (d) "The address in `d` as a value, less its tag: itself (C244)." #u))
 
 (define yshift! (->* (int int int) unit) (lambda (op d i) (ye! ((with x86 x86-shift-imm) op d i))))
 (define ycmov! (->* (int int int) unit) (lambda (c d s) (ye! ((with x86 x86-cmov) c d s))))
@@ -347,7 +347,7 @@
       (ylea! y15 y13 words)
       (if (< count8 0) #u (begin (ymov! y14 count8) (yshift! s-shr y14 3) (yalu! a-add y15 y14)))
       (ycmp-st! y15 st-mem-length) (ygive-if! q-a)
-      (if (get addressed) (begin (ymov! y16 y13) (yshift! s-shl y16 3)) (ylea-ix! y16 y-mem y13 8 0))
+      (ymov! y16 y13) (yshift! s-shl y16 3)
       (yalurm! a-add y16 y-st (at-st st-vbase)))))
 
 (define yconsed! (->* (bool) unit)
@@ -554,7 +554,6 @@
       (ykept!)
       (yld! y13 y-st y-reg4)
       (ylea! y-st y-rdi -4) 
-      (if (get addressed) #u (begin (ylea! y-mem y-rsi -4) (yalurm! a-sub y-mem y-st (at-st st-vbase))))
       (ylea! y15 y-r8 -4) (yst-st! st-dsb y15)
       (ylea! y13 y13 -4) (yst-st! st-rsb y13)
       ;; The limits, as addresses.
@@ -597,7 +596,7 @@
      register code does not use as scratch, `REG2` in `r14`, the ip's
      register, which it does not use either; with addresses (C139),
      `REG3` in `r10`, the heap's base with indices."
-    (cond ((= k 0) y-clo) ((= k 1) y10) ((= k 2) y-ip) ((and (= k 3) (get addressed)) y-mem) (else -1))))
+    (cond ((= k 0) y-clo) ((= k 1) y10) ((= k 2) y-ip) ((= k 3) y-mem) (else -1))))
 (define yreg-ld! (->* (int int) unit)
   (lambda (d k)
     "`d` := `REGk`."
@@ -1630,7 +1629,6 @@
               (begin
                 (set mem m) (set other o)
                 (set vbase (int->i64 (p m))) (set to-vbase (int->i64 (p o)))
-                (set addressed #t)
                 ;; A first space of a nursery's size, Fixpt's (2^20 words, C238):
                 ;; reserved whole, committed as touched; from 4096 words, a
                 ;; program of little live data collected every 3072 words.

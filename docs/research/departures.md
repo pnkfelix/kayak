@@ -174,6 +174,7 @@ checker accepts or refuses differently, and KFX's own Rust object model
   code there); each space 2^28 words reserved apart; arm64 keeps a base
   register (`x19`, 0).
 - **Fixpt**: addresses, one reservation.
+- **Done** (C244): `--indexes` removed; arm64's base register left.
 - **Reviewed** (2026-10-26): `--indexes` to be removed (the user);
   addresses the one mode. Found here: tier 1's word accessors test every
   index for the code area, a cost of departure 4 on its hottest path
