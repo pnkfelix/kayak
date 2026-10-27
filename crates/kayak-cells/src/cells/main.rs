@@ -113,24 +113,6 @@ pub fn after_dashes(mut r#as: Strings) -> Strings {
 // and the words that ran the most, on the standard error. A cell's line is
 // that of the last entry of its word's line table at or before it, its
 // position read in the table's file.
-pub enum Cpos {
-    Cpos(i64, i64),
-}
-
-pub fn cpos(f0: i64, f1: i64) -> &'static Cpos {
-    kayak_rt::heap_alloc(Cpos::Cpos(f0, f1))
-}
-
-pub fn cposes(cs: Chars, out: List<&'static Cpos>) -> List<&'static Cpos> {
-    let cs = spaces_dropped(cs);
-    if null_p(cs) {
-        reverse(out)
-    } else {
-        let rest = after_char(cs, colon());
-        cposes(after_char(rest, ' '), kayak_rt::heap_cons(cpos(digits_of(cs, 0i64), digits_of(rest, 0i64)), out))
-    }
-}
-
 pub fn pos_at(mut es: List<&'static Cpos>, mut cell: i64, mut had: i64) -> i64 {
     loop {
         if null_p(es) {

@@ -658,6 +658,47 @@ pub fn failure_detail() -> Str {
     FAILURE.with(|f| leak_string(f.borrow().as_ref().map_or(String::new(), |e| e.to_string())))
 }
 
+/// Machine code at `start`, `len` bytes, named `name`, its source lines
+/// with it (C246): `pairs` an address and a source position (a character
+/// offset into `file`) each, the code from that address on the
+/// position's. With `KAYAK_JITDUMP` set, the positions made lines of
+/// `file` and a jitdump's debug-info record written before the code's;
+/// else as `code_noted`.
+pub fn code_lines_noted(start: i64, len: i64, name: &str, file: &str, pairs: &[u64]) {
+    if len > 0 && std::env::var_os("KAYAK_JITDUMP").is_some() {
+        static STARTS: Mutex<Vec<(String, Vec<usize>)>> = Mutex::new(Vec::new());
+        let mut known = STARTS.lock().unwrap_or_else(|p| p.into_inner());
+        if !known.iter().any(|(f, _)| f == file) {
+            // Where each line starts, in characters, as the reader counts;
+            // none if the file cannot be read (the listing's path relative
+            // to another directory), so no lines rather than wrong ones.
+            let starts = std::fs::read_to_string(file).map_or(Vec::new(), |text| {
+                let mut starts = vec![0];
+                for (i, c) in text.chars().enumerate() {
+                    if c == '\n' {
+                        starts.push(i + 1);
+                    }
+                }
+                starts
+            });
+            known.push((file.to_string(), starts));
+        }
+        let starts = &known.iter().find(|(f, _)| f == file).expect("just noted").1;
+        if !starts.is_empty() {
+            let lines: Vec<(u64, u32)> = pairs
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|&[at, pos]| (at, starts.partition_point(|&s| s <= pos as usize) as u32))
+                .collect();
+            let path =
+                std::fs::canonicalize(file).map_or(file.to_string(), |p| p.display().to_string());
+            kayak_jit::jitdump::debug_info(start as usize, &path, &lines);
+        }
+    }
+    code_noted(start, len, name);
+}
+
 /// Machine code at `start`, `len` bytes, named `name`, for profilers
 /// (C239): with `KAYAK_PERF_MAP` set, a line of `/tmp/perf-PID.map`, the
 /// format `perf report` reads (`START LEN NAME`, both in hex), as Fixpt's

@@ -137,6 +137,24 @@
                (tables-read! (cdr ls) name)))
             (else (tables-read! (cdr ls) name))))))
 
+"A line table's entries: each a cell and the source position from it on."
+(define-datatype cpos (cpos i64 i64))
+(define-rec
+  (cposes (subr kfx (chars (listof cpos acyclic)) (listof cpos acyclic))
+    (lambda (cs out)
+      (let ((cs (spaces-dropped cs)))
+        (if (null? cs)
+            (reverse out)
+            (let ((rest (after-char cs colon)))
+              (cposes (after-char rest #\space) (cons (cpos (digits-of cs 0) (digits-of rest 0)) out))))))))
+
+(define-rec
+  (table-named (subr cm ((listof ltext @c) string string) string)
+    (lambda (ts n had)
+      "The rest of word `n`'s `; at` line, \"\" if none: the first listed of
+       a name listed again, the one its word is made from."
+      (if (null? ts) had (tagcase (car ts) (ltext (m text) (table-named (cdr ts) n (if (string=? m n) text had))))))))
+
 "The words, by name."
 (define words (ref (listof named @c) @c) (new nil))
 

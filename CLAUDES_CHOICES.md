@@ -6919,3 +6919,33 @@ line to tie it to.
   or before it; and the words. `tak 22 16 8`: 12,000,329 cells, 0.41 s to
   0.36 s without; `(not (< y x))` 15%.
 - **Next**: the jitdump's debug-info records for tiers 4-6 (TODO).
+
+## C246. Tier 4's code given its FX-26 lines, for `perf` (2026-10-27)
+
+The user: "Go for it", C245's next step: the jitdump's debug-info
+records, so that `perf annotate` shows FX-26's lines beside the native
+code (C240 gave it the code, with names only).
+- **What is noted**: when tier 2 seals its code, each compiled word's span
+  (`span`, now with the word) is looked up in the listing's line tables
+  (`table-named`; the first listed of a name listed again, as its word is
+  made). Each table entry at or before the word's last cell gives a pair,
+  the address of its cell's code (the cell's label, `ls`) and its source
+  position, and the span is noted by a new syscall,
+  `kayak:note-code-lines/1` (start, length, name, file, pairs, count),
+  in place of `note-code`.
+- **kayak-rt**: with `KAYAK_JITDUMP` set, the positions are made lines of
+  the file (its line starts counted once per file, in characters, as the
+  reader counts) and a `JIT_CODE_DEBUG_INFO` record, the file's path made
+  absolute, written before the code's `JIT_CODE_LOAD`, as the format asks.
+  If the file cannot be read (a listing's relative path, from another
+  directory), no record: no lines rather than wrong ones. Without the
+  variable, as `note-code`; the perf map unchanged.
+- **Measured**: `tak 24 16 8` on tier 4, `perf inject --jit` then
+  `perf annotate -l -s "fx26 tak"`: the code under its source line,
+  `tak.fx:3`. `lists` (3000 rounds): `perf report --sort srcline`, 46%
+  `lists.fx:3` (`iota`), 38% `lists.fx:5` (`add-up`).
+- **Not given lines**: tiers 5 and 6 run register code, which only
+  Fixpt's listings have, and they have no line tables; kayak's compiler
+  makes no register code yet. Columns: perf's injected ELF keeps lines
+  only, so an expression's place within a line is `--profile`'s (C245),
+  on tier 1.

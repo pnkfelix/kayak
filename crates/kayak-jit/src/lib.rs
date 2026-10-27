@@ -806,6 +806,36 @@ pub mod jitdump {
         Some(Dump { file, index: 0 })
     }
 
+    fn prefix(r: &mut Vec<u8>, id: u32, total: usize) {
+        r.extend(id.to_le_bytes());
+        r.extend((total as u32).to_le_bytes());
+        r.extend(now().to_le_bytes());
+    }
+
+    /// The source lines of the code at `start`, to come next (C246): a
+    /// `JIT_CODE_DEBUG_INFO` record, each entry an address, from which on
+    /// the code is that line's of `file`, until the next entry's.
+    pub fn debug_info(start: usize, file: &str, lines: &[(u64, u32)]) {
+        let mut d = DUMP.lock().unwrap_or_else(|p| p.into_inner());
+        if d.is_none() {
+            *d = opened();
+        }
+        let Some(dump) = d.as_mut() else { return };
+        let total = 16 + 16 + lines.len() * (16 + file.len() + 1);
+        let mut r = Vec::with_capacity(total);
+        prefix(&mut r, 2, total);
+        r.extend((start as u64).to_le_bytes());
+        r.extend((lines.len() as u64).to_le_bytes());
+        for &(at, line) in lines {
+            r.extend(at.to_le_bytes());
+            r.extend(line.to_le_bytes());
+            r.extend(0u32.to_le_bytes());
+            r.extend(file.as_bytes());
+            r.push(0);
+        }
+        let _ = dump.file.write_all(&r);
+    }
+
     /// Code at `start`, `len` bytes, named `name`: a `JIT_CODE_LOAD` record.
     pub fn code_load(start: usize, len: usize, name: &str) {
         let mut d = DUMP.lock().unwrap_or_else(|p| p.into_inner());
@@ -820,9 +850,7 @@ pub mod jitdump {
             .collect();
         let total = 16 + 8 + 32 + name.len() + 1 + len;
         let mut r = Vec::with_capacity(total);
-        r.extend(0u32.to_le_bytes());
-        r.extend((total as u32).to_le_bytes());
-        r.extend(now().to_le_bytes());
+        prefix(&mut r, 0, total);
         r.extend(std::process::id().to_le_bytes());
         // SAFETY: no memory is passed.
         r.extend((unsafe { gettid() } as u32).to_le_bytes());
@@ -841,6 +869,7 @@ pub mod jitdump {
 #[cfg(not(target_os = "linux"))]
 pub mod jitdump {
     pub fn code_load(_: usize, _: usize, _: &str) {}
+    pub fn debug_info(_: usize, _: &str, _: &[(u64, u32)]) {}
 }
 
 /// Whether the standard input's descriptor has a byte, or its end, now

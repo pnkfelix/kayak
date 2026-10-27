@@ -145,6 +145,27 @@ const SYSCALLS: &[Syscall] = &[
             ().word()
         },
     },
+    // The same, with the code's source lines (C246): a flat array of
+    // `n` pairs from `start`, each an address and a source position in
+    // `file`.
+    Syscall {
+        host: "kayak:note-code-lines/1",
+        canonical: "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))",
+        run: |a| match usize::try_from(int(a[5])) {
+            Ok(n) => {
+                let words = kayak_jit::words_at((a[4] & !7) as usize, 2 * n);
+                crate::world::code_lines_noted(
+                    int(a[0]),
+                    int(a[1]),
+                    crate::Str::of_word(a[2]).as_str(),
+                    crate::Str::of_word(a[3]).as_str(),
+                    &words,
+                );
+                ().word()
+            }
+            Err(_) => fail("kayak:note-code-lines/1: a count out of bounds"),
+        },
+    },
     Syscall {
         host: "kayak:last-sealed/1",
         canonical: "(subr (io sys) () int)",

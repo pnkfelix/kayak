@@ -79,15 +79,6 @@ and status 1.
  and the words that ran the most, on the standard error. A cell's line is
  that of the last entry of its word's line table at or before it, its
  position read in the table's file."
-(define-datatype cpos (cpos i64 i64))
-(define-rec
-  (cposes (subr kfx (chars (listof cpos acyclic)) (listof cpos acyclic))
-    (lambda (cs out)
-      (let ((cs (spaces-dropped cs)))
-        (if (null? cs)
-            (reverse out)
-            (let ((rest (after-char cs colon)))
-              (cposes (after-char rest #\space) (cons (cpos (digits-of cs 0) (digits-of rest 0)) out))))))))
 (define-rec
   (pos-at (subr kfx ((listof cpos acyclic) i64 i64) i64)
     (lambda (es cell had)

@@ -770,12 +770,17 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      Debug info for FX-26 itself: **done** for tier 1 (C245): kayak's
         listings carry each word's line table (`; at FILE CELL:POS …`),
         and `kayak-cells --profile` counts tier 1's cells by source line,
-        expression and word. Next: the jitdump's `JIT_CODE_DEBUG_INFO`
-        records for tiers 4-6, each native instruction's line from its
-        cell's (the per-cell native offsets to be kept as the words are
-        compiled), so that `perf annotate` shows FX-26 lines. Left in the
-        tables: a word from a module file of its own is given the
-        program's file; positions are characters, not bytes.
+        expression and word. **Done** for tier 4 (C246): the jitdump's
+        `JIT_CODE_DEBUG_INFO` records, each compiled word's cells' code
+        given their lines, so that `perf annotate -l` and `perf report
+        --sort srcline` show FX-26 lines. Left: tiers 5-6 run register
+        code, which only Fixpt's listings have, and those have no line
+        tables: lines there when kayak's compiler makes register code
+        (with a table of its own, instruction to position). Lines only:
+        perf's injected ELF has no columns. A word from a module file of
+        its own is given the program's file; positions are characters,
+        not bytes; a listing's relative path read from where kayak-cells
+        runs (no lines if not found there).
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat
         arrays, words through calls), if it still matters.
    - **Departure 12, the native tiers' code never freed** (the user,

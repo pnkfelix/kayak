@@ -288,6 +288,47 @@ pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
     }
 }
 
+// A line table's entries: each a cell and the source position from it on.
+pub enum Cpos {
+    Cpos(i64, i64),
+}
+
+pub fn cpos(f0: i64, f1: i64) -> &'static Cpos {
+    kayak_rt::heap_alloc(Cpos::Cpos(f0, f1))
+}
+
+pub fn cposes(cs: Chars, out: List<&'static Cpos>) -> List<&'static Cpos> {
+    let cs = spaces_dropped(cs);
+    if null_p(cs) {
+        reverse(out)
+    } else {
+        let rest = after_char(cs, colon());
+        cposes(after_char(rest, ' '), kayak_rt::heap_cons(cpos(digits_of(cs, 0i64), digits_of(rest, 0i64)), out))
+    }
+}
+
+/// The rest of word `n`'s `; at` line, "" if none: the first listed of
+/// a name listed again, the one its word is made from.
+pub fn table_named(mut ts: List<&'static Ltext>, mut n: Str, mut had: Str) -> Str {
+    loop {
+        if null_p(ts) {
+            return had;
+        } else {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ltext::Ltext(m, text) => {
+                    (ts, had) = (cdr(ts), if string_eq_p(m, n) {
+                        text
+                    } else {
+                        had
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
 // The words, by name.
 pub fn words() -> Ref<List<&'static Named>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);

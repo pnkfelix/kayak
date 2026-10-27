@@ -2078,11 +2078,11 @@ pub fn zeros_x(mut k: i64) -> () {
 // sealed, at the place it runs (`last-sealed`), to write a perf map
 // (`KAYAK_PERF_MAP`).
 pub enum Span {
-    Span(Str, Int, Int),
+    Span(Str, Int, Int, i64),
 }
 
-pub fn span(f0: Str, f1: Int, f2: Int) -> &'static Span {
-    kayak_rt::heap_alloc(Span::Span(f0, f1, f2))
+pub fn span(f0: Str, f1: Int, f2: Int, f3: i64) -> &'static Span {
+    kayak_rt::heap_alloc(Span::Span(f0, f1, f2, f3))
 }
 
 pub fn word_spans() -> Ref<List<&'static Span>> {
@@ -2112,13 +2112,26 @@ pub fn last_sealed() -> Int {
     kayak_rt::syscall0(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"))
 }
 
-pub fn span_labelled_x(name: Str, lo: Int, hi: Int) -> () {
-    set(word_spans(), kayak_rt::heap_cons(span(name, lo, hi), get(word_spans())))
+pub fn _pctsyscall_available_colonnote_code_lines() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall note-code-lines (\"kayak:note-code-lines/1\")"), str_lit("kayak:note-code-lines/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))"));
+    true
+}
+
+pub fn note_code_lines(x1: Int, x2: Int, x3: Str, x4: Str, x5: FlatArray<i64>, x6: Int) -> () {
+    _pctsyscall_available_colonnote_code_lines();
+    kayak_rt::syscall6(str_lit("syscall note-code-lines (\"kayak:note-code-lines/1\")"), str_lit("kayak:note-code-lines/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))"), x1, x2, x3, x4, x5, x6)
+}
+
+/// Code from label `lo` to `hi`, named `name`; `w` the cellular word whose
+/// cells' labels they are, if it is one (its source lines then noted with
+/// it, C246), else 0.
+pub fn span_labelled_x(name: Str, lo: Int, hi: Int, w: i64) -> () {
+    set(word_spans(), kayak_rt::heap_cons(span(name, lo, hi, w), get(word_spans())))
 }
 
 /// Word `w`'s compiled code to be named, its cells' labels from `base`.
 pub fn span_noted_x(w: i64, base: Int) -> () {
-    span_labelled_x(symbol_text(slot_of(w, f_name())), base, _plus(base, i64_to_int(cells_in(w, f_cell0()))))
+    span_labelled_x(symbol_text(slot_of(w, f_name())), base, _plus(base, i64_to_int(cells_in(w, f_cell0()))), w)
 }
 
 /// Register word `rw`'s name, its cellular twin's, and the tier.
@@ -2133,11 +2146,49 @@ pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss
         } else {
             let tagcase_ = car(ss);
             match *tagcase_ {
-                Span::Span(name, lo, hi) => {
-                    let (from, to) = (_star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo)))), _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(hi)))));
-                    note_code(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name));
+                Span::Span(name, lo, hi, w) => {
+                    let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
+                    let to = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(hi))));
+                    let table = if i64_eq(w, 0i64) {
+                        str_lit("")
+                    } else {
+                        table_named(get(line_tables()), name, str_lit(""))
+                    };
+                    if string_eq_p(table, str_lit("")) {
+                        note_code(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name))
+                    } else {
+                        let cs = string_chars(table);
+                        let es = cposes(after_char(cs, ' '), nil::<&'static Cpos>());
+                        let pairs = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, int_to_i64(_plus(int_lit(1), _minus(hi, lo)))), 0i64));
+                        let n = lines_paired_x(es, pairs, at, ls, scale, lo, _minus(hi, lo), 0i64);
+                        note_code_lines(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name), list_to_string(before_char(cs, ' ')), pairs, i64_to_int(n))
+                    };
                     ss = cdr(ss);
                     continue;
+                }
+            }
+        }
+    }
+}
+
+/// Each entry of a word's line table at or before its last cell, the
+/// address of its cell's code and its position, into `pairs`: how many.
+pub fn lines_paired_x(mut es: List<&'static Cpos>, mut pairs: FlatArray<i64>, mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut lo: Int, mut cells: Int, mut n: i64) -> i64 {
+    loop {
+        if null_p(es) {
+            return n;
+        } else {
+            let tagcase_ = car(es);
+            match *tagcase_ {
+                Cpos::Cpos(c, p) => {
+                    if (i64_gt(c, int_to_i64(cells)) || i64_gt(i64_star(2i64, i64_plus(n, 1i64)), flatarray_length_i64(pairs))) {
+                        return n;
+                    } else {
+                        flatarray_set_i64_x(pairs, i64_star(2i64, n), int_to_i64(_plus(at, _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(_plus(lo, i64_to_int(c)))))))));
+                        flatarray_set_i64_x(pairs, i64_plus(1i64, i64_star(2i64, n)), p);
+                        (es, n) = (cdr(es), i64_plus(n, 1i64));
+                        continue;
+                    }
                 }
             }
         }
@@ -2151,7 +2202,7 @@ pub fn spans_first(mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<&'static
         } else {
             let tagcase_ = car(ss);
             match *tagcase_ {
-                Span::Span(name, lo, hi) => {
+                Span::Span(name, lo, hi, w) => {
                     let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
                     (ss, least) = (cdr(ss), if _lt(from, least) {
                         from
@@ -3501,7 +3552,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     reg_instructions_x(rw, 0i64, n, base, starts, resumes);
     bind_x(_plus(base, n_cells));
     b_x(give);
-    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells));
+    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells), 0i64);
     resumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
     bind_x(give);
     addi_x(x_fuel(), x_fuel(), int_lit(1));
@@ -3513,7 +3564,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
         let end = label_x();
         t6_compiled_x(rw, n, base, starts);
         bind_x(end);
-        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end)
+        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, 0i64)
     } else {
         ()
     };
