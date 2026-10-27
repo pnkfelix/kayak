@@ -1056,6 +1056,35 @@
 (define h-6-lead (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define h-6-len (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 
+"A comparison and the branch on its boolean after it made one (C241;
+ Fixpt's `branch_on`, `direct/x64.rs`): only in tier 6's code, the branch
+ at `b` no block's first (none other comes to it), and both ways on, the
+ one after it and its target, an instruction that sets `RESULT` before
+ any reads it (Fixpt's `sets_first`), so that nothing reads the boolean.
+ The branch's instruction then makes nothing (`h-fused`)."
+(define h-fused (ref i64 @c) (new -1))
+(define sets-result-first? (->* (i64) bool)
+  (lambda (op) (or (i64= op ro-const) (i64= op ro-reg) (i64= op ro-stack) (i64= op ro-global) (i64= op ro-lexical))))
+(define fused-target (->* (i64 i64) i64)
+  (lambda (rw b) "Branch `b`'s target." (i64+ (i64+ b 2) (fix-val (slot-of rw (i64+ f-cell0 (i64+ b 1)))))))
+(define fused-branch (->* (i64 i64 i64 i64) i64)
+  (lambda (rw b n r)
+    "1 if comparison `r` and the branch at `b` after it are to be made one,
+     else 0."
+    (if (or (not (get h-6)) (i64>= b n)
+            (not (or (i64= r r-int-less) (i64= r r-less) (i64= r r-int-eq) (i64= r r-eq))))
+        0
+        (let ((op (fix-val (slot-of rw (i64+ f-cell0 b)))))
+          (if (not (or (i64= op ro-branchf) (i64= op ro-brancht)))
+              0
+              (let ((after (i64+ b 2)) (to (fused-target rw b)))
+                (if (and (i64< after n) (i64>= to 0) (i64< to n)
+                         (i64= (flatarray-ref-i64 (get h-6-lead) b) 0)
+                         (sets-result-first? (fix-val (slot-of rw (i64+ f-cell0 after))))
+                         (sets-result-first? (fix-val (slot-of rw (i64+ f-cell0 to)))))
+                    1
+                    0)))))))
+
 (define t6-to (->* (int i64) int)
   (lambda (base t)
     "The label instruction `t` is branched to at, its code's at `base`:
@@ -1256,7 +1285,10 @@
            (let ((slot (i64->int (if (or (i64= op ro-stack) (i64= op ro-setstk)) (o 0) (o 1))))
                  (r (if (or (i64= op ro-stack) (i64= op ro-setstk)) 0 (reg-of (i64->int (o 0))))))
              (begin
-               (add-const! x14 x-fp (* 8 slot)) (cmp! x14 x-dsp) (give-if! c-hs)
+               (add-const! x14 x-fp (* 8 slot))
+               ;; As hand-x64.kfx's (C241): not checked where `save`'s frame
+               ;; holds the slot.
+               (if (and (>= (get h-link) 0) (< slot (get h-link))) #u (begin (cmp! x14 x-dsp) (give-if! c-hs)))
                (if (or (i64= op ro-stack) (i64= op ro-load)) (ldr! r x14 0) (str! r x14 0)))))
           ((i64= op ro-op1)
            (let ((r (o 0)))

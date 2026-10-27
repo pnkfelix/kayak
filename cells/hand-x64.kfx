@@ -60,6 +60,7 @@
 (define q-be int 6)
 (define q-a int 7)
 (define q-l int 12)
+(define q-ge int 13)
 
 "Arithmetic and shifts, as `x86-alu` and `x86-shift-imm` take them."
 (define a-add int 0)
@@ -815,6 +816,20 @@
     "Operand `j` of the instruction at field `kk` of the running word."
     (yld-v! d y-cur (- (- -4 (* 8 (i64->int kk))) (* 8 (+ j 1))))))
 
+(define yfused! (->* (i64 i64 int i64 int) unit)
+  (lambda (rw b base r y)
+    "Comparison `r` of `RESULT` and `y` and the branch `b` after it, as one
+     (C241): their operands fixnums, else given back; then a jump on the
+     flags, no boolean made, which `fused-branch` found none reads."
+    (let ((t (t6-to base (fused-target rw b))))
+      (begin
+        (if (i64= r r-eq) #u (begin (ymov! y15 y-w) (yalu! a-or y15 y) (ytesti! y15 7) (ygive-if! q-ne)))
+        (yalu! a-cmp y-w y)
+        (let ((c (if (or (i64= r r-int-eq) (i64= r r-eq)) q-e q-l))
+              (not-c (if (or (i64= r r-int-eq) (i64= r r-eq)) q-ne q-ge)))
+          (ybc! (if (i64= (fix-val (slot-of rw (i64+ f-cell0 b))) ro-brancht) c not-c) t))
+        (set h-fused b)))))
+
 (define yop2-fast! (->* (i64 int) unit)
   (lambda (r y)
     "`RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
@@ -847,8 +862,13 @@
       (if (> r n) #u (begin (yreg-ld! y14 r) (yst! y11 (- -24 (* 8 (- r 1))) y14) (yfrees-stored! (+ r 1) n))))))
 
 (define-rec
+  (yfills-at! (->* (int int) unit)
+    (lambda (j m) (if (>= j m) #u (begin (yst! y-dsp (* 8 j) y13) (yfills-at! (+ j 1) m)))))
   (yfill-false! (->* (int) unit)
-    (lambda (m) (if (<= m 0) #u (begin (ypushed! y13) (yfill-false! (- m 1)))))))
+    (lambda (m)
+      "`m` slots of `rcx` (`#f`) pushed: stored at their offsets, the stack
+       moved once (C241), not a store and an `add` each."
+      (if (<= m 0) #u (begin (yfills-at! 0 m) (yalui! a-add y-dsp (* 8 m)))))))
 
 "Fixpt's convention for tier 5 (`--fixpt-calls`, C140): a callee leaves
  the point to return to where its `call` put it, on the machine stack,
@@ -1103,7 +1123,11 @@
            (let ((slot (i64->int (if (or (i64= op ro-stack) (i64= op ro-setstk)) (o 0) (o 1))))
                  (k (i64->int (o 0))))
              (begin
-               (ylea! y14 y-fp (* 8 slot)) (yalu! a-cmp y14 y-dsp) (ygive-if! q-ae)
+               (ylea! y14 y-fp (* 8 slot))
+               ;; Past the frame's top, given back; not checked where the frame
+               ;; `save` made holds the slot (C241: the code a compiler's, the
+               ;; frame's size known here), as at every access tier 6 made.
+               (if (and (>= (get h-link) 0) (< slot (get h-link))) #u (begin (yalu! a-cmp y14 y-dsp) (ygive-if! q-ae)))
                (cond ((i64= op ro-stack) (yld! y-w y14 0))
                      ((i64= op ro-setstk) (yst! y14 0 y-w))
                      ((i64= op ro-load) (begin (yld! y16 y14 0) (yreg-st! k y16)))
@@ -1115,6 +1139,10 @@
                    (ymov! y14 y-w) (yalui! a-and y14 7) (yalui! a-cmp y14 1) (ygive-if! q-ne)
                    (yld-v! y-w y-w (if (or (i64= r r-car) (i64= r r-pair-car)) -1 7)))
                  (yb! (get l-give)))))
+          ((and (i64= op ro-op2) (not (i64= (fused-branch rw nx n (o 0)) 0)))
+           (yfused! rw nx base (o 0) (yreg-of! (i64->int (o 1)) y16)))
+          ((and (i64= op ro-op2imm) (not (i64= (fused-branch rw nx n (o 0)) 0)))
+           (begin (yopnd! y16 kk 1) (yfused! rw nx base (o 0) y16)))
           ((i64= op ro-op2) (yop2-fast! (o 0) (yreg-of! (i64->int (o 1)) y16)))
           ((i64= op ro-op2imm) (begin (yopnd! y16 kk 1) (yop2-fast! (o 0) y16)))
           ((i64= op ro-field)
@@ -1199,6 +1227,8 @@
                (ybind! stack-way)
                (yroom!) (ypushed! y-w) (ylink-dropped!) (yleft!) (yb! (get l-pop-return)))))
           ((i64= op ro-branch) (yb! (to 1 (o 0))))
+          ;; A branch a comparison before it made (`yfused!`): nothing more.
+          ((i64= i (get h-fused)) (set h-fused -1))
           ((i64= op ro-branchf) (begin (yalui! a-cmp y-w 3) (ybc! q-e (to 1 (o 0)))))
           ((i64= op ro-brancht) (begin (yalui! a-cmp y-w 3) (ybc! q-ne (to 1 (o 0)))))
           ((i64= op ro-global-guard)

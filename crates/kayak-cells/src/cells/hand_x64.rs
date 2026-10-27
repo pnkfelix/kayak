@@ -676,6 +676,10 @@ pub fn q_l() -> Int {
     int_lit(12)
 }
 
+pub fn q_ge() -> Int {
+    int_lit(13)
+}
+
 // Arithmetic and shifts, as `x86-alu` and `x86-shift-imm` take them.
 pub fn a_add() -> Int {
     int_lit(0)
@@ -2155,6 +2159,39 @@ pub fn yopnd_x(d: Int, kk: i64, j: Int) -> () {
     yld_v_x(d, y_cur(), _minus(_minus(int_lit(-4), _star(int_lit(8), i64_to_int(kk))), _star(int_lit(8), _plus(j, int_lit(1)))))
 }
 
+/// Comparison `r` of `RESULT` and `y` and the branch `b` after it, as one
+/// (C241): their operands fixnums, else given back; then a jump on the
+/// flags, no boolean made, which `fused-branch` found none reads.
+pub fn yfused_x(rw: i64, b: i64, base: Int, r: i64, y: Int) -> () {
+    let t = t6_to(base, fused_target(rw, b));
+    if i64_eq(r, r_eq()) {
+        ()
+    } else {
+        ymov_x(y15(), y_w());
+        yalu_x(a_or(), y15(), y);
+        ytesti_x(y15(), int_lit(7));
+        ygive_if_x(q_ne())
+    };
+    yalu_x(a_cmp(), y_w(), y);
+    {
+        let (c, not_c) = (if (i64_eq(r, r_int_eq()) || i64_eq(r, r_eq())) {
+            q_e()
+        } else {
+            q_l()
+        }, if (i64_eq(r, r_int_eq()) || i64_eq(r, r_eq())) {
+            q_ne()
+        } else {
+            q_ge()
+        });
+        ybc_x(if i64_eq(fix_val(slot_of(rw, i64_plus(f_cell0(), b))), ro_brancht()) {
+            c
+        } else {
+            not_c
+        }, t)
+    };
+    set(h_fused(), b)
+}
+
 /// `RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
 /// them, or of another routine, given back.
 pub fn yop2_fast_x(r: i64, y: Int) -> () {
@@ -2220,15 +2257,26 @@ pub fn yfrees_stored_x(mut r: Int, mut n: Int) -> () {
     }
 }
 
-pub fn yfill_false_x(mut m: Int) -> () {
+pub fn yfills_at_x(mut j: Int, mut m: Int) -> () {
     loop {
-        if _lt_eq(m, int_lit(0)) {
+        if _gt_eq(j, m) {
             return ();
         } else {
-            ypushed_x(y13());
-            m = _minus(m, int_lit(1));
+            yst_x(y_dsp(), _star(int_lit(8), j), y13());
+            j = _plus(j, int_lit(1));
             continue;
         }
+    }
+}
+
+/// `m` slots of `rcx` (`#f`) pushed: stored at their offsets, the stack
+/// moved once (C241), not a store and an `add` each.
+pub fn yfill_false_x(m: Int) -> () {
+    if _lt_eq(m, int_lit(0)) {
+        ()
+    } else {
+        yfills_at_x(int_lit(0), m);
+        yalui_x(a_add(), y_dsp(), _star(int_lit(8), m))
     }
 }
 
@@ -2662,8 +2710,12 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
             o(int_lit(1))
         }), i64_to_int(o(int_lit(0))));
         ylea_x(y14(), y_fp(), _star(int_lit(8), slot));
-        yalu_x(a_cmp(), y14(), y_dsp());
-        ygive_if_x(q_ae());
+        if (_gt_eq(get(h_link()), int_lit(0)) && _lt(slot, get(h_link()))) {
+            ()
+        } else {
+            yalu_x(a_cmp(), y14(), y_dsp());
+            ygive_if_x(q_ae())
+        };
         if i64_eq(op, ro_stack()) {
             yld_x(y_w(), y14(), int_lit(0))
         } else if i64_eq(op, ro_setstk()) {
@@ -2690,6 +2742,11 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         } else {
             yb_x(get(l_give()))
         }
+    } else if (i64_eq(op, ro_op2()) && not(i64_eq(fused_branch(rw, nx, n, o(int_lit(0))), 0i64))) {
+        yfused_x(rw, nx, base, o(int_lit(0)), yreg_of_x(i64_to_int(o(int_lit(1))), y16()))
+    } else if (i64_eq(op, ro_op2imm()) && not(i64_eq(fused_branch(rw, nx, n, o(int_lit(0))), 0i64))) {
+        yopnd_x(y16(), kk, int_lit(1));
+        yfused_x(rw, nx, base, o(int_lit(0)), y16())
     } else if i64_eq(op, ro_op2()) {
         yop2_fast_x(o(int_lit(0)), yreg_of_x(i64_to_int(o(int_lit(1))), y16()))
     } else if i64_eq(op, ro_op2imm()) {
@@ -2831,6 +2888,8 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yb_x(get(l_pop_return()))
     } else if i64_eq(op, ro_branch()) {
         yb_x(to(int_lit(1), o(int_lit(0))))
+    } else if i64_eq(i, get(h_fused())) {
+        set(h_fused(), -1i64)
     } else if i64_eq(op, ro_branchf()) {
         yalui_x(a_cmp(), y_w(), int_lit(3));
         ybc_x(q_e(), to(int_lit(1), o(int_lit(0))))

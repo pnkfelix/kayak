@@ -2604,6 +2604,48 @@ pub fn h_6_len() -> Ref<FlatArray<i64>> {
     })
 }
 
+// A comparison and the branch on its boolean after it made one (C241;
+// Fixpt's `branch_on`, `direct/x64.rs`): only in tier 6's code, the branch
+// at `b` no block's first (none other comes to it), and both ways on, the
+// one after it and its target, an instruction that sets `RESULT` before
+// any reads it (Fixpt's `sets_first`), so that nothing reads the boolean.
+// The branch's instruction then makes nothing (`h-fused`).
+pub fn h_fused() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn sets_result_first_p(op: i64) -> bool {
+    (i64_eq(op, ro_const()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_stack()) || i64_eq(op, ro_global()) || i64_eq(op, ro_lexical()))
+}
+
+/// Branch `b`'s target.
+pub fn fused_target(rw: i64, b: i64) -> i64 {
+    i64_plus(i64_plus(b, 2i64), fix_val(slot_of(rw, i64_plus(f_cell0(), i64_plus(b, 1i64)))))
+}
+
+/// 1 if comparison `r` and the branch at `b` after it are to be made one,
+/// else 0.
+pub fn fused_branch(rw: i64, b: i64, n: i64, r: i64) -> i64 {
+    if (not(get(h_6())) || i64_gt_eq(b, n) || not((i64_eq(r, r_int_less()) || i64_eq(r, r_less()) || i64_eq(r, r_int_eq()) || i64_eq(r, r_eq())))) {
+        0i64
+    } else {
+        let op = fix_val(slot_of(rw, i64_plus(f_cell0(), b)));
+        if not((i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht()))) {
+            0i64
+        } else {
+            let (after, to) = (i64_plus(b, 2i64), fused_target(rw, b));
+            if (i64_lt(after, n) && i64_gt_eq(to, 0i64) && i64_lt(to, n) && i64_eq(flatarray_ref_i64(get(h_6_lead()), b), 0i64) && sets_result_first_p(fix_val(slot_of(rw, i64_plus(f_cell0(), after)))) && sets_result_first_p(fix_val(slot_of(rw, i64_plus(f_cell0(), to))))) {
+                1i64
+            } else {
+                0i64
+            }
+        }
+    }
+}
+
 /// The label instruction `t` is branched to at, its code's at `base`:
 /// for tier 5's code of a word with tier 6 code, a block's first's way
 /// in to tier 6, so that a loop left goes back in.
@@ -2921,8 +2963,12 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
             reg_of(i64_to_int(o(int_lit(0))))
         });
         add_const_x(x14(), x_fp(), _star(int_lit(8), slot));
-        cmp_x(x14(), x_dsp());
-        give_if_x(c_hs());
+        if (_gt_eq(get(h_link()), int_lit(0)) && _lt(slot, get(h_link()))) {
+            ()
+        } else {
+            cmp_x(x14(), x_dsp());
+            give_if_x(c_hs())
+        };
         if (i64_eq(op, ro_stack()) || i64_eq(op, ro_load())) {
             ldr_x(r, x14(), int_lit(0))
         } else {

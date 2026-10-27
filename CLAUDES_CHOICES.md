@@ -6797,3 +6797,27 @@ Then `perf inject --jit` and `perf annotate` show tier 6's instructions.
 - Source lines (`JIT_CODE_DEBUG_INFO`) next: kayak's compiler's listings
   to carry them.
 
+## C241. Tier 6's code: three of C240's costs gone (2026-10-27)
+
+The user, of C240's findings: "lets do those four clear changes". Three
+here, each measured alone on C239's runs (`tak 30 21 12`; `lists`, 60000
+rounds; tier 6, best of 3); the fourth, arguments in registers across
+calls, is the call protocol's, next.
+- **No bounds check on a slot `save`'s frame holds.** `stack`, `setstk`,
+  `load` and `store` checked each slot against the data stack's top; where
+  the word's `save m` made the frame (`h-link`, known at code generation)
+  and the slot is below `m`, no longer (tiers 5 and 6, both machines). The
+  register code is a compiler's, kayak's or Fixpt's, not a program's.
+  `tak` 103 ms to 89.
+- **A frame's slots made with one move of the stack** (x86_64; arm64's
+  were one store each already, post-indexed). 89 to 85.
+- **A comparison and the branch on it made one** (Fixpt's `branch_on`):
+  in tier 6's code, where the branch is no block's first and both ways
+  on begin with an instruction that sets `RESULT` before reading it
+  (Fixpt's `sets_first`), a `cmp` and a conditional jump, no boolean made
+  (`fused-branch`, `yfused!`; x86_64 only for now). `tak`'s code has no
+  `cmov` left; `lists` 404 to 381, `tak` unchanged (its calls dominate).
+- In all: `tak` 103 to 87 ms (Fixpt's native machine 36), `lists` 409 to
+  381 (241). Fuel is still counted at each block: counted once a call, it
+  would trip where tier 1's does not (departure 2's rule).
+
