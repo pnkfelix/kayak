@@ -6608,3 +6608,62 @@ call each other, and KFX makes a mutual tail call a Rust call: the engine
 has no proper tail call through a `tagcase`, against FX-26's, and against
 C64's "never recurses on the Rust stack" (departure 3). `TODO.md`.
 
+## C234. The pin at Fixpt 8c7111d: every procedure's code runs (2026-10-27)
+
+The user: "When you get a chance, you can pull in the latest Fixpt from
+this machine". Two commits past `f03cabe`: `ae7d767` (a REPL's form
+tried as you type leaves no file it loaded) and `8c7111d`, kayak's
+code-stubs request (C230, `docs/research/code-stubs.md`) done the same
+night. Fixpt's way, which kayak takes: the code area in two parts, below
+the state's `code-lo` every cellular word with the stub that enters
+`foreign` as its suffix, from it native code, so that code written to the
+older clause tests as it did; the clause `(code-always-runs)`, the older
+one still accepted; words only run left in the heap, words made again and
+again alike made once.
+- **Tier 1's code area in two parts** (`stub-lo`..`stub-hi`, then
+  `code-lo`..`code-hi`, half the pages each), each with its top and free
+  list, both swept; the mailbox's `code-lo` the native part's. The stub,
+  one word: `jmp [r15 + 288]; int3` on x86_64, `ldr x16, [x24, #288];
+  br x16` on arm64, Fixpt's `layout::stub` byte for byte.
+- **Words in the stubbed part** (`make-code-word!`): the listing's, the
+  undefined procedure's; made once and shared, marked by every collection
+  (`shared-words`): the continuation's closure's word, `vlambda`'s, the
+  adapters' by arity: roots each collection forwards (a code word so
+  marked; a heap word, where no native code runs, moved: first only
+  marked, which left `--indexes`' caches stale after a collection, 26
+  programs differing there until found). A callback's return word and the preemption
+  trampoline, only run, stay in the heap. Where no native code runs
+  (`--indexes`), in the heap as before.
+- **Escapes through native frames**, which `stubs.fx` makes (a
+  continuation taken outside made code, resumed by it): a continuation
+  records how many callbacks deep it was taken (`cont-depth`); resumed
+  deeper, a whole one is kept (`pending-k`, `pending-v`, roots) and the
+  callback's run stopped; its error unwinds the native frames by
+  kayak-jit's trap; `native-called!` reinstates it if it was taken at its
+  depth, else stops its own callback's run, so that an escape leaves any
+  number of native runs. Fixpt's `NativeExit::Throw`. Not covered: an
+  abort to a prompt outside the callback.
+- **`foreign` taking a native closure** (Fixpt's, for code of the older
+  clause): not needed on tier 1, whose native closures' code is always in
+  the native part, at or past `code-lo`.
+- **kayak's checker**: a native procedure that may abort or suspend was
+  refused for FX-26 too; now KFX's alone (`kfx-restricted`). **kayak's
+  compiler to cells**: a standard operation as a value of any arity, by
+  its type in the checker's table (`primitives`), not only those of a
+  list kept by hand (`bitwise-not`).
+- kayak-jit's declaration (Fixpt's, copied) now `(code-always-runs)`; its
+  test says so. Its layout test compared kayak's closure code field (2)
+  with Fixpt's `closure-code`, which is the bytecode VM's closure's (3
+  since `8c7111d`): now with `cellular-closure-word`, what it meant.
+- **The older clause accepted** by kayak's checker as by Fixpt's
+  (`NATIVE_CONVENTION_OLDER`): a `define-convention` of the older
+  `closures` clause in its place is the native one (`older-clauses`,
+  `newer-clause`); else KFX refused its own made-code programs. Their
+  golden Rust blessed; the five of arm64 (`made-*.rs`) still hold the older
+  `convention.fx` text, to be blessed on arm64.
+- **Tests**: Fixpt's `made-code-x86_64/stubs.fx` on tier 1 every way;
+  kayak's `made-code-x86_64/stubs-escapes.fx` (its three answers in one,
+  and a continuation resumed two callbacks deep), `(-42 42 42 42)` on
+  Fixpt's two machines and on tier 1 every way, Fixpt's words and
+  kayak's. Every other made-code program unchanged. arm64 not run.
+

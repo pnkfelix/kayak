@@ -9,7 +9,7 @@ use super::*;
 // the registers `cur k fp clo`. Each check where Fixpt makes it, each trap
 // its message, so a run ends as Fixpt's does. Not yet: prompts, marks,
 // continuations, native code, bignums.
-// fixpt-source: crates/fixpt-engine/src/cellular.rs@35c59a3
+// fixpt-source: crates/fixpt-engine/src/cellular.rs@8c7111d
 
 // The limits: values on the data stack, entries on the return stack.
 pub fn ds_limit() -> i64 {
@@ -353,6 +353,30 @@ pub fn stress_waited_x() -> () {
     }
 }
 
+// Callbacks from native code under way (`native-callback`), and an escape
+// under way: the continuation (0 for none) and its value, kept, roots of
+// the collector's, while the native frames are left.
+pub fn callback_depth() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn pending_k() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn pending_v() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
 pub fn stack_forwarded_x(mut a: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
@@ -373,6 +397,8 @@ pub fn collect_x() -> () {
     set(cur(), forward_x(get(cur())));
     set(clo(), forward_x(get(clo())));
     set(sched_state(), forward_x(get(sched_state())));
+    set(pending_k(), forward_x(get(pending_k())));
+    set(pending_v(), forward_x(get(pending_v())));
     collect_end_x();
     if get(gc_stress()) {
         stress_waited_x()
@@ -459,6 +485,12 @@ pub fn cont_shots() -> i64 {
     13i64
 }
 
+// How many callbacks deep it was taken (C234): one resumed deeper escapes
+// the native frames between, as Fixpt's `NativeExit::Throw`.
+pub fn cont_depth() -> i64 {
+    14i64
+}
+
 // Shots: many, once, spent.
 pub fn shots_many() -> i64 {
     0i64
@@ -518,7 +550,7 @@ pub fn vector_ref(v: i64, i: i64) -> i64 {
 pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {
     let d = vector_from_x(get(ds()), ds_from, get(dsp()));
     let r = vector_from_x(get(rs()), rs_from, get(rsp()));
-    let k = make_bloblet_x(k_continuation(), 12i64, 0i64, true, false);
+    let k = make_bloblet_x(k_continuation(), 13i64, 0i64, true, false);
     slot_set_x(k, cont_ds(), d);
     slot_set_x(k, cont_rs(), r);
     slot_set_x(k, cont_cur(), get(cur()));
@@ -531,17 +563,24 @@ pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {
     slot_set_x(k, cont_run(), fix(0i64));
     slot_set_x(k, cont_inner(), v_false());
     slot_set_x(k, cont_shots(), fix(shots_many()));
+    slot_set_x(k, cont_depth(), fix(get(callback_depth())));
     k
 }
 
 /// `k` as a closure, so that everything callable is one.
 pub fn continuation_closure_x(k: i64) -> i64 {
-    let (w, c) = (make_word_x(str_lit("continuation"), 5i64, r_docol()), make_bloblet_x(k_closure(), 2i64, 0i64, true, false));
-    slot_set_x(w, f_cell0(), fix(r_slot()));
-    slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
-    slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_free()));
-    slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(0i64));
-    slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(r_resume()));
+    let (w, c) = (if i64_eq(get(continuation_word()), 0i64) {
+        let w = make_code_word_x(str_lit("continuation"), 5i64, r_docol());
+        slot_set_x(w, f_cell0(), fix(r_slot()));
+        slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
+        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_free()));
+        slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(0i64));
+        slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(r_resume()));
+        set(continuation_word(), shared_x(w));
+        w
+    } else {
+        get(continuation_word())
+    }, make_bloblet_x(k_closure(), 2i64, 0i64, true, false));
     slot_set_x(c, f_word(), w);
     slot_set_x(c, f_free0(), k);
     c
@@ -671,6 +710,21 @@ pub fn reinstate_x(k: i64, v: i64, tail: bool) -> () {
     push_x(v)
 }
 
+/// Continuation `k` given `v`: reinstated, or, if it is a whole one taken
+/// fewer callbacks deep than this, an escape through the native frames
+/// between (C234): kept, and this callback's run stopped, its frames left
+/// by kayak-jit, `native-called!` going on with it.
+pub fn continued_x(k: i64, v: i64, tail: bool) -> i64 {
+    if (i64_eq(slot_of(k, cont_whole()), v_true()) && i64_gt(get(callback_depth()), fix_val(slot_of(k, cont_depth())))) {
+        set(pending_k(), k);
+        set(pending_v(), v);
+        halt_flow()
+    } else {
+        reinstate_x(k, v, tail);
+        next()
+    }
+}
+
 /// Whether `k` may be given a value: not if it is one-shot and was; a
 /// one-shot one spent.
 pub fn spend_x(k: i64) -> bool {
@@ -784,6 +838,18 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
                 push_x(v);
                 next()
             }
+        } else if not(i64_eq(get(pending_k()), 0i64)) {
+            // An escape through the native frames (C234): here, if the
+            // continuation was taken this many callbacks deep, else on out.
+            let (k, v) = (get(pending_k()), get(pending_v()));
+            if i64_gt(get(callback_depth()), fix_val(slot_of(k, cont_depth()))) {
+                halt_flow()
+            } else {
+                set(pending_k(), 0i64);
+                set(pending_v(), 0i64);
+                reinstate_x(k, v, false);
+                next()
+            }
         } else {
             trap_x(if i64_eq(status, 1i64) {
                 str_lit("evaluation step limit exceeded")
@@ -824,11 +890,10 @@ pub fn call_x(mut n: i64, mut count: i64, mut tail: bool) -> i64 {
                     let v = pop_x(n);
                     check_limits_x();
                     if spend_x(c) {
-                        reinstate_x(c, v, tail)
+                        return continued_x(c, v, tail);
                     } else {
-                        ()
-                    };
-                    return next();
+                        return next();
+                    }
                 }
             } else if (is_kind_p(c, k_native_closure()) && adapter_p(c)) {
                 push_x(slot_of(c, f_free0()));
@@ -1328,11 +1393,10 @@ pub fn routine_x(mut n: i64) -> i64 {
             } else {
                 check_limits_x();
                 if spend_x(k) {
-                    reinstate_x(k, v, true)
+                    return continued_x(k, v, true);
                 } else {
-                    ()
-                };
-                return next();
+                    return next();
+                }
             }
         } else if i64_eq(n, r_firstmark()) {
             let default = pop_x(n);
@@ -2163,6 +2227,7 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
     top_from_x(flatarray_ref_i64(r#box, 10i64));
     push_return_x();
     held_pushed_x(held, 0i64, nheld);
+    set(callback_depth(), i64_plus(get(callback_depth()), 1i64));
     if not(closure_p(c)) {
         trap_x(str_lit("native code: called no procedure tier 1 runs (C122)"))
     } else {
@@ -2190,7 +2255,8 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
             run_x(0i64)
         }
     };
-    let ok = (not(trapped_p()) && i64_gt(get(dsp()), i64_plus(dsp0, nheld)));
+    set(callback_depth(), i64_minus(get(callback_depth()), 1i64));
+    let ok = (not(trapped_p()) && i64_eq(get(pending_k()), 0i64) && i64_gt(get(dsp()), i64_plus(dsp0, nheld)));
     let v = if ok {
         ds_at(i64_minus(get(dsp()), 1i64))
     } else {

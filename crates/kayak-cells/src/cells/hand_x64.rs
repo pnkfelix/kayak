@@ -3335,9 +3335,20 @@ pub fn code_area_made_x(p: AddressCode, first: FlatArray<i64>, above: i64) -> ()
         } else {
             set(code(), c);
             set(code_vbase(), at);
-            set(code_lo(), lo);
-            set(code_top(), lo);
-            set(code_hi(), i64_plus(lo, n));
+            {
+                let mid = i64_plus(lo, i64_star(page, i64_quotient(i64_quotient(n, page), 2i64)));
+                set(stub_lo(), lo);
+                set(stub_top(), lo);
+                set(stub_hi(), mid);
+                set(code_lo(), mid);
+                set(code_top(), mid);
+                set(code_hi(), i64_plus(lo, n))
+            };
+            set(code_stub_word(), if string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target x86_64)")) {
+                -3746994885129404607i64
+            } else {
+                -3017691022109928688i64
+            });
             set(code_marks(), the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64)));
             set(code_distance(), d);
             set(code_on(), true)

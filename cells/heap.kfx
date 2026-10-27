@@ -6,7 +6,7 @@
  header, its fields below its suffix (field `k` at `p - k`, the trailer
  field 1, its payload the distance back to the header), its suffix's
  bytes. Collected by Coopt's collector's baseline, below (C122).
- fixpt-source: crates/fixpt-heap/src/heap.rs@f03cabe"
+ fixpt-source: crates/fixpt-heap/src/heap.rs@8c7111d"
 
 (define mem (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 4096 0)))
 "The next free index. Indices 0 to 7 are never an object's."
@@ -82,6 +82,16 @@
 (define code-top (ref i64 @c) (new 0))
 (define code-hi (ref i64 @c) (new 0))
 (define code-distance (ref i64 @c) (new 0))
+"The code area in two parts (C234; Fixpt's at 8c7111d,
+ `docs/research/code-stubs.md`): from `stub-lo` to `stub-hi`, what native
+ code calls that is not native code, each bloblet's suffix the stub that
+ enters `foreign` (`code-stub-word`, the machine's); from `code-lo` to
+ `code-hi`, native code. The state's `code-lo` is the native part's start,
+ so that code written to the older clause tests as it did."
+(define stub-lo (ref i64 @c) (new 0))
+(define stub-top (ref i64 @c) (new 0))
+(define stub-hi (ref i64 @c) (new 0))
+(define code-stub-word (ref i64 @c) (new 0))
 "Words reserved for code: committed only as they are touched."
 (define code-capacity i64 4194304)
 
@@ -97,6 +107,17 @@
 (define code-gray (ref (listof i64 @c) @c) (new nil))
 (define-datatype cblock (cblock i64 i64))
 (define code-free (ref (listof cblock @c) @c) (new nil))
+(define stub-free (ref (listof cblock @c) @c) (new nil))
+"Words made once and called again and again alike (Fixpt's
+ `Heap::shared_word`): roots of every collection's, forwarded (a code
+ word marked, so that none is freed while no closure holds it; a heap
+ word, where no native code runs, moved): a continuation's, `vlambda`'s,
+ the adapters' by arity (each a `cblock` of its arity and word); 0 until
+ made."
+(define continuation-word (ref i64 @c) (new 0))
+(define vlambda-word (ref i64 @c) (new 0))
+(define adapter-words (ref (listof cblock @c) @c) (new nil))
+(define shared! (subr cm (i64) i64) (lambda (w) w))
 (define code-fit-at (ref i64 @c) (new -1))
 "The native adapter's code (C230, prims.kfx's `adapter-code!`), made once
  into the code area and kept there by every collection (`collect-begin!`);
@@ -554,22 +575,25 @@
   (lambda (j n) (code-set! j (header-word k-bloblet 0 (i64* 8 (i64- n 1)) #f #f))))
 
 (define-rec
-  (code-swept! (subr cm (i64 i64 i64 (listof cblock @c)) unit)
-    (lambda (j run len frees)
+  (code-swept! (subr cm (i64 i64 i64 (listof cblock @c) bool) unit)
+    (lambda (j run len frees stubbed)
       "From `j` on, each code bloblet not marked freed, its mark cleared if
        it was; adjacent free blocks one (`run`, `len` words: the one being
-       made, 0 if none); a free run at the end the area's top again; the
-       free list `frees` made anew (Fixpt's sweep of its code area)."
-      (if (i64>= j (get code-top))
-          (begin (if (i64> len 0) (set code-top run) #u) (set code-free frees))
+       made, 0 if none); a free run at the end the part's top again; the
+       free list `frees` made anew (Fixpt's sweep of its code area); the
+       stubbed part's if `stubbed`, else the native part's."
+      (if (i64>= j (if stubbed (get stub-top) (get code-top)))
+          (begin
+            (if (i64> len 0) (if stubbed (set stub-top run) (set code-top run)) #u)
+            (if stubbed (set stub-free frees) (set code-free frees)))
           (let ((n (words-of (code-at j))))
             (if (i64= (flatarray-ref-i64 (get code-marks) j) 0)
-                (if (i64> len 0) (code-swept! (i64+ j n) run (i64+ len n) frees) (code-swept! (i64+ j n) j n frees))
+                (if (i64> len 0) (code-swept! (i64+ j n) run (i64+ len n) frees stubbed) (code-swept! (i64+ j n) j n frees stubbed))
                 (begin
                   (flatarray-set-i64! (get code-marks) j 0)
                   (if (i64> len 0)
-                      (begin (code-free-block! run len) (code-swept! (i64+ j n) 0 0 (cons (cblock run len) frees)))
-                      (code-swept! (i64+ j n) 0 0 frees)))))))))
+                      (begin (code-free-block! run len) (code-swept! (i64+ j n) 0 0 (cons (cblock run len) frees) stubbed))
+                      (code-swept! (i64+ j n) 0 0 frees stubbed)))))))))
 
 (define-rec
   (code-fit! (subr cm ((listof cblock @c) i64) (listof cblock @c))
@@ -587,14 +611,55 @@
 
 (define code-alloc! (subr cm (i64) i64)
   (lambda (n)
-    "`n` words of the code area: the first free block that fits, else past
-     its top; -1 if it is full."
+    "`n` words of the code area's native part: the first free block that
+     fits, else past its top; -1 if it is full."
     (begin
       (set code-fit-at -1)
       (set code-free (code-fit! (get code-free) n))
       (cond ((i64>= (get code-fit-at) 0) (get code-fit-at))
             ((i64> (i64+ (get code-top) n) (get code-hi)) -1)
             (else (let ((at (get code-top))) (begin (set code-top (i64+ at n)) at)))))))
+
+(define stub-alloc! (subr cm (i64) i64)
+  (lambda (n)
+    "`n` words of the code area's stubbed part, as `code-alloc!`."
+    (begin
+      (set code-fit-at -1)
+      (set stub-free (code-fit! (get stub-free) n))
+      (cond ((i64>= (get code-fit-at) 0) (get code-fit-at))
+            ((i64> (i64+ (get stub-top) n) (get stub-hi)) -1)
+            (else (let ((at (get stub-top))) (begin (set stub-top (i64+ at n)) at)))))))
+
+(define-rec
+  (code-zeroed! (subr cm (i64 i64) unit)
+    (lambda (j end) (if (i64>= j end) #u (begin (code-set! j 0) (code-zeroed! (i64+ j 1) end))))))
+
+(define make-code-word! (subr cm (string i64 i64) i64)
+  (lambda (name n entry)
+    "A word, as `make-word!` makes one, in the code area's stubbed part,
+     its suffix the stub (C234): one native code calls, a closure's; one
+     only run stays in the heap (Fixpt's `make_transient_word`). In the
+     heap where no native code runs."
+    (if (not (get code-on))
+        (make-word! name n entry)
+        (let* ((f (i64+ n 4)) (at (stub-alloc! (i64+ f 2))))
+          (if (i64< at 0)
+              (begin (trap! "words: the code area's stubbed part is full") (make-word! name n entry))
+              (let ((w (i64-or (i64+ (get code-vbase) (i64* 8 (i64+ (i64+ at f) 1))) t-bloblet)))
+                (begin
+                  (code-set! at (header-word k-code f 8 #t #t))
+                  (code-zeroed! (i64+ at 1) (i64+ at f))
+                  (code-set! (i64+ at f) (i64-or (i64-shl f 3) t-trailer))
+                  (code-set! (i64+ (i64+ at f) 1) (get code-stub-word))
+                  (code-flush (get code) (i64->int (i64+ (i64+ at f) 1)) 1)
+                  (slot-set! w f-entry (fix entry))
+                  (slot-set! w f-name (symbol! name))
+                  (slot-set! w f-twin v-false)
+                  w)))))))
+
+(define-rec
+  (adapters-forwarded! (subr cm ((listof cblock @c)) (listof cblock @c))
+    (lambda (ws) (if (null? ws) nil (tagcase (car ws) (cblock (n w) (cons (cblock n (forward! w)) (adapters-forwarded! (cdr ws)))))))))
 
 (define collect-begin! (subr cm () unit)
   (lambda ()
@@ -607,6 +672,9 @@
       (set to-top 8)
       (named-forwarded! 0)
       (set interned (forward! (get interned)))
+      (if (i64= (get continuation-word) 0) #u (set continuation-word (forward! (get continuation-word))))
+      (if (i64= (get vlambda-word) 0) #u (set vlambda-word (forward! (get vlambda-word))))
+      (set adapter-words (adapters-forwarded! (get adapter-words)))
       ;; The native adapter's code, which adapters made later share (C230).
       (if (i64= (get adapter-code) 0) #u (code-marked! (get adapter-code))))))
 
@@ -618,7 +686,7 @@
       (traced-all! 8)
       (weak-moved! (get weak-seen))
       (set weak-seen nil)
-      (if (get code-on) (code-swept! (get code-lo) 0 0 nil) #u)
+      (if (get code-on) (begin (code-swept! (get stub-lo) 0 0 nil #t) (code-swept! (get code-lo) 0 0 nil #f)) #u)
       (let ((old (get mem)))
         (begin
           (set mem (get other))

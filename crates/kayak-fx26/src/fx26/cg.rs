@@ -5400,6 +5400,36 @@ pub fn std_primitive(n: Str) -> Str {
     standard::standard_primitive(n)
 }
 
+// A standard operation's arity by its type, as the checker reads it
+// (`primitives`, check-defs.kfx): the parameters of its `subr`, under a
+// `poly` if it is one; -1 for none (C234: `bitwise-not` as a value, Fixpt's
+// `stubs.fx`).
+pub fn subr_params(mut t: &'static Sexp) -> i64 {
+    loop {
+        if head_is_p(t, str_lit("poly")) {
+            t = car(cdr(cdr(items(t))));
+            continue;
+        } else if head_is_p(t, str_lit("subr")) {
+            return size(items(car(cdr(cdr(items(t))))));
+        } else {
+            return -1i64;
+        }
+    }
+}
+
+pub fn std_arity_in(mut ps: Sexps, mut n: Str) -> i64 {
+    loop {
+        if null_p(ps) {
+            return -1i64;
+        } else if sym_is_p(car(items(car(ps))), n) {
+            return subr_params(second(items(car(ps))));
+        } else {
+            ps = cdr(ps);
+            continue;
+        }
+    }
+}
+
 // How many arguments a standard operation takes, as a value, or -1 if it
 // is not known here (Fixpt asks its runtime's table for the rest: not yet).
 pub fn c_arity(n: Str) -> i64 {
@@ -5414,7 +5444,7 @@ pub fn c_arity(n: Str) -> i64 {
     } else if std_eq_name_p(n) {
         2i64
     } else {
-        -1i64
+        std_arity_in(read_all(string_chars(primitives()), str_lit("kayak-rt's primitives"), 1i64), n)
     }
 }
 

@@ -11,7 +11,7 @@ use super::*;
 // header, its fields below its suffix (field `k` at `p - k`, the trailer
 // field 1, its payload the distance back to the header), its suffix's
 // bytes. Collected by Coopt's collector's baseline, below (C122).
-// fixpt-source: crates/fixpt-heap/src/heap.rs@f03cabe
+// fixpt-source: crates/fixpt-heap/src/heap.rs@8c7111d
 pub fn mem() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -202,6 +202,40 @@ pub fn code_distance() -> Ref<i64> {
     })
 }
 
+// The code area in two parts (C234; Fixpt's at 8c7111d,
+// `docs/research/code-stubs.md`): from `stub-lo` to `stub-hi`, what native
+// code calls that is not native code, each bloblet's suffix the stub that
+// enters `foreign` (`code-stub-word`, the machine's); from `code-lo` to
+// `code-hi`, native code. The state's `code-lo` is the native part's start,
+// so that code written to the older clause tests as it did.
+pub fn stub_lo() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn stub_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn stub_hi() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn code_stub_word() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
 // Words reserved for code: committed only as they are touched.
 pub fn code_capacity() -> i64 {
     4194304i64
@@ -250,6 +284,44 @@ pub fn code_free() -> Ref<List<&'static Cblock>> {
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<&'static Cblock>())
     })
+}
+
+pub fn stub_free() -> Ref<List<&'static Cblock>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cblock>())
+    })
+}
+
+// Words made once and called again and again alike (Fixpt's
+// `Heap::shared_word`): roots of every collection's, forwarded (a code
+// word marked, so that none is freed while no closure holds it; a heap
+// word, where no native code runs, moved): a continuation's, `vlambda`'s,
+// the adapters' by arity (each a `cblock` of its arity and word); 0 until
+// made.
+pub fn continuation_word() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn vlambda_word() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn adapter_words() -> Ref<List<&'static Cblock>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cblock>())
+    })
+}
+
+pub fn shared_x(w: i64) -> i64 {
+    w
 }
 
 pub fn code_fit_at() -> Ref<i64> {
@@ -1083,17 +1155,30 @@ pub fn code_free_block_x(j: i64, n: i64) -> () {
 
 /// From `j` on, each code bloblet not marked freed, its mark cleared if
 /// it was; adjacent free blocks one (`run`, `len` words: the one being
-/// made, 0 if none); a free run at the end the area's top again; the
-/// free list `frees` made anew (Fixpt's sweep of its code area).
-pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'static Cblock>) -> () {
+/// made, 0 if none); a free run at the end the part's top again; the
+/// free list `frees` made anew (Fixpt's sweep of its code area); the
+/// stubbed part's if `stubbed`, else the native part's.
+pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'static Cblock>, mut stubbed: bool) -> () {
     loop {
-        if i64_gt_eq(j, get(code_top())) {
+        if i64_gt_eq(j, if stubbed {
+            get(stub_top())
+        } else {
+            get(code_top())
+        }) {
             if i64_gt(len, 0i64) {
-                set(code_top(), run)
+                if stubbed {
+                    set(stub_top(), run)
+                } else {
+                    set(code_top(), run)
+                }
             } else {
                 ()
             };
-            return set(code_free(), frees);
+            if stubbed {
+                return set(stub_free(), frees);
+            } else {
+                return set(code_free(), frees);
+            }
         } else {
             let n = words_of(code_at(j));
             if i64_eq(flatarray_ref_i64(get(code_marks()), j), 0i64) {
@@ -1145,8 +1230,8 @@ pub fn code_fit_x(bs: List<&'static Cblock>, n: i64) -> List<&'static Cblock> {
     }
 }
 
-/// `n` words of the code area: the first free block that fits, else past
-/// its top; -1 if it is full.
+/// `n` words of the code area's native part: the first free block that
+/// fits, else past its top; -1 if it is full.
 pub fn code_alloc_x(n: i64) -> i64 {
     set(code_fit_at(), -1i64);
     set(code_free(), code_fit_x(get(code_free()), n));
@@ -1161,6 +1246,74 @@ pub fn code_alloc_x(n: i64) -> i64 {
     }
 }
 
+/// `n` words of the code area's stubbed part, as `code-alloc!`.
+pub fn stub_alloc_x(n: i64) -> i64 {
+    set(code_fit_at(), -1i64);
+    set(stub_free(), code_fit_x(get(stub_free()), n));
+    if i64_gt_eq(get(code_fit_at()), 0i64) {
+        get(code_fit_at())
+    } else if i64_gt(i64_plus(get(stub_top()), n), get(stub_hi())) {
+        -1i64
+    } else {
+        let at = get(stub_top());
+        set(stub_top(), i64_plus(at, n));
+        at
+    }
+}
+
+pub fn code_zeroed_x(mut j: i64, mut end: i64) -> () {
+    loop {
+        if i64_gt_eq(j, end) {
+            return ();
+        } else {
+            code_set_x(j, 0i64);
+            j = i64_plus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+/// A word, as `make-word!` makes one, in the code area's stubbed part,
+/// its suffix the stub (C234): one native code calls, a closure's; one
+/// only run stays in the heap (Fixpt's `make_transient_word`). In the
+/// heap where no native code runs.
+pub fn make_code_word_x(name: Str, n: i64, entry: i64) -> i64 {
+    if not(get(code_on())) {
+        make_word_x(name, n, entry)
+    } else {
+        let f = i64_plus(n, 4i64);
+        let at = stub_alloc_x(i64_plus(f, 2i64));
+        if i64_lt(at, 0i64) {
+            trap_x(str_lit("words: the code area's stubbed part is full"));
+            make_word_x(name, n, entry)
+        } else {
+            let w = i64_or(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(i64_plus(at, f), 1i64))), t_bloblet());
+            code_set_x(at, header_word(k_code(), f, 8i64, true, true));
+            code_zeroed_x(i64_plus(at, 1i64), i64_plus(at, f));
+            code_set_x(i64_plus(at, f), i64_or(i64_shl(f, int_lit(3)), t_trailer()));
+            code_set_x(i64_plus(i64_plus(at, f), 1i64), get(code_stub_word()));
+            code_flush(get(code()), i64_to_int(i64_plus(i64_plus(at, f), 1i64)), int_lit(1));
+            slot_set_x(w, f_entry(), fix(entry));
+            slot_set_x(w, f_name(), symbol_x(name));
+            slot_set_x(w, f_twin(), v_false());
+            w
+        }
+    }
+}
+
+pub fn adapters_forwarded_x(ws: List<&'static Cblock>) -> List<&'static Cblock> {
+    if null_p(ws) {
+        nil::<&'static Cblock>()
+    } else {
+        let tagcase_ = car(ws);
+        match *tagcase_ {
+            Cblock::Cblock(n, w) => {
+                kayak_rt::heap_cons(cblock(n, forward_x(w)), adapters_forwarded_x(cdr(ws)))
+            }
+        }
+    }
+}
+
 /// The other space made ready, as big as this one: the roots are then
 /// forwarded (`forward!`), then `collect-end!`.
 pub fn collect_begin_x() -> () {
@@ -1172,6 +1325,17 @@ pub fn collect_begin_x() -> () {
     set(to_top(), 8i64);
     named_forwarded_x(0i64);
     set(interned(), forward_x(get(interned())));
+    if i64_eq(get(continuation_word()), 0i64) {
+        ()
+    } else {
+        set(continuation_word(), forward_x(get(continuation_word())))
+    };
+    if i64_eq(get(vlambda_word()), 0i64) {
+        ()
+    } else {
+        set(vlambda_word(), forward_x(get(vlambda_word())))
+    };
+    set(adapter_words(), adapters_forwarded_x(get(adapter_words())));
     if i64_eq(get(adapter_code()), 0i64) {
         ()
     } else {
@@ -1186,7 +1350,8 @@ pub fn collect_end_x() -> () {
     weak_moved_x(get(weak_seen()));
     set(weak_seen(), nil::<i64>());
     if get(code_on()) {
-        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<&'static Cblock>())
+        code_swept_x(get(stub_lo()), 0i64, 0i64, nil::<&'static Cblock>(), true);
+        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<&'static Cblock>(), false)
     } else {
         ()
     };

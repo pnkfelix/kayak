@@ -281,7 +281,7 @@ pub fn undefined_closure() -> Ref<i64> {
 
 pub fn the_undefined() -> i64 {
     if i64_eq(get(undefined_closure()), 0i64) {
-        let w = make_word_x(str_lit("undefined"), 1i64, r_docol());
+        let w = make_code_word_x(str_lit("undefined"), 1i64, r_docol());
         let c = make_bloblet_x(k_closure(), 1i64, 0i64, true, false);
         slot_set_x(w, f_cell0(), fix(r_undefined()));
         slot_set_x(c, f_word(), w);
@@ -1276,7 +1276,7 @@ pub fn words_made_x(mut bs: List<&'static Block>) -> () {
                         if not(i64_eq(lookup(get(words()), n), 0i64)) {
                             match listing_error(string_append(str_lit("two words are named "), n)) {}
                         } else {
-                            let (w, rc) = (make_word_x(n, c, e), register_cells(is, 0i64));
+                            let (w, rc) = (make_code_word_x(n, c, e), register_cells(is, 0i64));
                             set(words(), kayak_rt::heap_cons(named_x(n, w), get(words())));
                             if i64_gt(rc, 0i64) {
                                 set(register_words(), kayak_rt::heap_cons(named_x(n, make_register_word_x(n, w, rc)), get(register_words())))

@@ -8,7 +8,7 @@ use super::*;
 // its immediates and its routines' names, which `layout.fx` does not
 // hold, written here after Fixpt's sources:
 // fixpt-source: crates/fixpt-heap/src/value.rs@7641962
-// fixpt-source: crates/fixpt-heap/src/layout.rs@7641962
+// fixpt-source: crates/fixpt-heap/src/layout.rs@8c7111d
 pub mod made__load__0__layout {
     use super::*;
 
@@ -257,11 +257,11 @@ pub mod made__load__0__layout {
     }
 
     pub fn closure_code() -> Int {
-        int_lit(2)
+        int_lit(3)
     }
 
     pub fn closure_extra0() -> Int {
-        int_lit(3)
+        int_lit(4)
     }
 
     pub fn frame_parent() -> Int {

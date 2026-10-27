@@ -136,7 +136,7 @@
 (define the-undefined (subr cm () i64)
   (lambda ()
     (if (i64= (get undefined-closure) 0)
-        (let* ((w (make-word! "undefined" 1 r-docol))
+        (let* ((w (make-code-word! "undefined" 1 r-docol))
                (c (make-bloblet! k-closure 1 0 #t #f)))
           (begin
             (slot-set! w f-cell0 (fix r-undefined))
@@ -644,7 +644,7 @@
               (block (n c e is)
                 (if (not (i64= (lookup (get words) n) 0))
                     (listing-error (string-append "two words are named " n))
-                    (let ((w (make-word! n c e)) (rc (register-cells is 0)))
+                    (let ((w (make-code-word! n c e)) (rc (register-cells is 0)))
                       (begin
                         (set words (cons (named! n w) (get words)))
                         (if (i64> rc 0) (set register-words (cons (named! n (make-register-word! n w rc)) (get register-words))) #u))))))

@@ -5082,9 +5082,13 @@
                      (ty-data (d xs)
                        (tagcase (car xs)
                          (ty-proc (es ps r)
-                           (cond ((or (escapes? es) (suspends? es))
-                                  (refuse v (string-append "a native procedure that may abort or suspend, which KFX does not have: " (show-ty s want))))
-                                 (else
+                           ;; One that may abort or suspend: FX-26's (Fixpt's
+                           ;; `stubs.fx`; tier 1 escapes its frames, C234), not
+                           ;; KFX's.
+                           (let ((s (if (or (escapes? es) (suspends? es))
+                                        (kfx-restricted v s (string-append "a native procedure that may abort or suspend, which KFX does not have: " (show-ty s want)))
+                                        s)))
+                             (begin
                                   (tagcase (synth v s (car args))
                                     (res (t es0 s0)
                                       (if (tagcase (walk s0 t) (ty-data (d2 ys) (string=? d2 "%bloblet")) (else other #f))

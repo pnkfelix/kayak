@@ -44,7 +44,10 @@ fn the_kinds_and_closure_fields_are_fixpts() {
     ] {
         assert_eq!(value(name), ours as i64, "{name}");
     }
-    assert_eq!(value("closure-code"), layout::CLOSURE_CODE as i64);
+    // A closure's code, cellular or native, at field 2: Fixpt's
+    // `cellular-closure-word` (its `closure-code` is the bytecode VM's
+    // closure's, field 3 since 8c7111d, C234).
+    assert_eq!(value("cellular-closure-word"), layout::CLOSURE_CODE as i64);
 }
 
 /// A field of the header `layout::header` makes: its bits, by Fixpt's

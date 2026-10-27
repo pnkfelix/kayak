@@ -11343,38 +11343,39 @@ pub mod expressions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Ty::TyProc(es, ps, r) => {
-                            if (escapes_p(es) || suspends_p(es)) {
-                                match refuse(v, string_append(str_lit("a native procedure that may abort or suspend, which KFX does not have: "), show_ty(s, want))) {}
+                            let s = if (escapes_p(es) || suspends_p(es)) {
+                                kfx_restricted(v, s, string_append(str_lit("a native procedure that may abort or suspend, which KFX does not have: "), show_ty(s, want)))
                             } else {
-                                let tagcase_ = synth(v, s, car(args));
-                                match *tagcase_ {
-                                    Res::Res(t, es0, s0) => {
-                                        if {
-                                            let tagcase_ = walk(s0, t);
-                                            match *tagcase_ {
-                                                Ty::TyData(d2, ys) => {
-                                                    string_eq_p(d2, str_lit("%bloblet"))
-                                                }
-                                                _ => {
-                                                    let other = tagcase_;
-                                                    false
-                                                }
+                                s
+                            };
+                            let tagcase_ = synth(v, s, car(args));
+                            match *tagcase_ {
+                                Res::Res(t, es0, s0) => {
+                                    if {
+                                        let tagcase_ = walk(s0, t);
+                                        match *tagcase_ {
+                                            Ty::TyData(d2, ys) => {
+                                                string_eq_p(d2, str_lit("%bloblet"))
                                             }
-                                        } {
-                                            res(want, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es0), note_fact(if i64_gt(size(ps), 4i64) {
-                                                kfx_restricted(v, s0, str_lit("a native procedure of more than four parameters, which KFX does not have yet (C116)"))
-                                            } else if (not(native_crossing_p(s0, r)) || any_p(lambda1s(move |t: &'static Ty| {
-                                                not(native_given_p(s0, t))
-                                            }), ps)) {
-                                                kfx_restricted(v, s0, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "), show_ty(s0, want)))
-                                            } else {
-                                                s0
-                                            }, cv_file(v), cv_pos(v), string_append(str_lit("native-types "), show_sexp(lst(map(lambda1s(move |p: &'static Ty| {
-                                                ty_sexp(v, s0, zonk(s0, p))
-                                            }), onto(ps, kayak_rt::heap_cons(r, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)))))
-                                        } else {
-                                            match refuse(v, string_append(str_lit("native-procedure of what is not a bloblet: "), show_ty(s0, t))) {}
+                                            _ => {
+                                                let other = tagcase_;
+                                                false
+                                            }
                                         }
+                                    } {
+                                        res(want, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es0), note_fact(if i64_gt(size(ps), 4i64) {
+                                            kfx_restricted(v, s0, str_lit("a native procedure of more than four parameters, which KFX does not have yet (C116)"))
+                                        } else if (not(native_crossing_p(s0, r)) || any_p(lambda1s(move |t: &'static Ty| {
+                                            not(native_given_p(s0, t))
+                                        }), ps)) {
+                                            kfx_restricted(v, s0, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "), show_ty(s0, want)))
+                                        } else {
+                                            s0
+                                        }, cv_file(v), cv_pos(v), string_append(str_lit("native-types "), show_sexp(lst(map(lambda1s(move |p: &'static Ty| {
+                                            ty_sexp(v, s0, zonk(s0, p))
+                                        }), onto(ps, kayak_rt::heap_cons(r, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)))))
+                                    } else {
+                                        match refuse(v, string_append(str_lit("native-procedure of what is not a bloblet: "), show_ty(s0, t))) {}
                                     }
                                 }
                             }

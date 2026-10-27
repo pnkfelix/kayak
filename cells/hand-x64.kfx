@@ -1533,7 +1533,19 @@
           (if (or (i64< at above) (i64= d -1))
               #u
               (begin
-                (set code c) (set code-vbase at) (set code-lo lo) (set code-top lo) (set code-hi (i64+ lo n))
+                (set code c) (set code-vbase at)
+                ;; Two parts (C234): the stubbed part the first half of the
+                ;; pages, native code the rest, from the state's `code-lo`.
+                (let ((mid (i64+ lo (i64* page (i64-quotient (i64-quotient n page) 2)))))
+                  (begin
+                    (set stub-lo lo) (set stub-top lo) (set stub-hi mid)
+                    (set code-lo mid) (set code-top mid) (set code-hi (i64+ lo n))))
+                (set code-stub-word
+                     (if (string=? (car (the (listof string @heap) (native-convention))) "(target x86_64)")
+                         ;; jmp [r15 + 288]; int3 (41 ff a7 20 01 00 00 cc)
+                         -3746994885129404607
+                         ;; ldr x16, [x24, #288]; br x16 (f9409310 d61f0200)
+                         -3017691022109928688))
                 (set code-marks (the (flatarrayof i64 @c) (make-flatarray-i64 code-capacity 0)))
                 (set code-distance d) (set code-on #t)))))))
 

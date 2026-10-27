@@ -11,7 +11,7 @@ use super::*;
 // takes, at least and at most; Fixpt's own numbers, later, with the
 // layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
 // and counted as not yet, never as an answer.
-// fixpt-source: crates/fixpt-runtime/src/prim.rs@f03cabe
+// fixpt-source: crates/fixpt-runtime/src/prim.rs@8c7111d
 
 // Each primitive: its name, how many arguments it takes, at least and at
 // most (-1: any), and its operation.
@@ -1809,15 +1809,48 @@ pub fn adapter_p(c: i64) -> bool {
     (i64_eq(w, v_false()) || i64_eq(w, get(adapter_code())))
 }
 
+pub fn adapter_word_of(mut ws: List<&'static Cblock>, mut n: i64) -> i64 {
+    loop {
+        if null_p(ws) {
+            return 0i64;
+        } else {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Cblock::Cblock(k, w) => {
+                    if i64_eq(k, n) {
+                        return w;
+                    } else {
+                        ws = cdr(ws);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The word of a cellular adapter of `n` arguments, `free 0; tailcall n`:
+/// one for each arity, shared (Fixpt's).
+pub fn adapter_word_x(n: i64) -> i64 {
+    let have = adapter_word_of(get(adapter_words()), n);
+    if not(i64_eq(have, 0i64)) {
+        have
+    } else {
+        let w = make_code_word_x(str_lit("adapter"), 4i64, r_docol());
+        slot_set_x(w, f_cell0(), fix(r_free()));
+        slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
+        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_tailcall()));
+        slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(n));
+        set(adapter_words(), kayak_rt::heap_cons(cblock(n, shared_x(w)), get(adapter_words())));
+        w
+    }
+}
+
 /// An adapter of `f` to the cellular convention, of `n` arguments: a
 /// closure over it whose word calls it, its free value 0, in a tail call
 /// (Fixpt's `cellular_adapter`).
 pub fn cellular_adapter_x(f: i64, n: i64) -> i64 {
-    let (w, c) = (make_word_x(str_lit("adapter"), 4i64, r_docol()), make_bloblet_x(k_closure(), 2i64, 0i64, true, false));
-    slot_set_x(w, f_cell0(), fix(r_free()));
-    slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
-    slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_tailcall()));
-    slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(n));
+    let (w, c) = (adapter_word_x(n), make_bloblet_x(k_closure(), 2i64, 0i64, true, false));
     slot_set_x(c, f_word(), w);
     slot_set_x(c, f_free0(), f);
     c
@@ -3083,12 +3116,18 @@ pub fn butlast(xs: List<i64>) -> List<i64> {
 /// word `rest; free 0; tailcall 1`. Its register code, which tier 1 does
 /// not run, is not made.
 pub fn vlambda_x(f: i64) -> i64 {
-    let w = make_word_x(str_lit("vlambda"), 5i64, r_docol());
-    slot_set_x(w, f_cell0(), fix(r_rest()));
-    slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(r_free()));
-    slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(0i64));
-    slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(r_tailcall()));
-    slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(1i64));
+    let w = if i64_eq(get(vlambda_word()), 0i64) {
+        let w = make_code_word_x(str_lit("vlambda"), 5i64, r_docol());
+        slot_set_x(w, f_cell0(), fix(r_rest()));
+        slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(r_free()));
+        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(0i64));
+        slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(r_tailcall()));
+        slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(1i64));
+        set(vlambda_word(), shared_x(w));
+        w
+    } else {
+        get(vlambda_word())
+    };
     let c = make_bloblet_x(k_closure(), 2i64, 0i64, true, false);
     slot_set_x(c, f_word(), w);
     slot_set_x(c, f_free0(), f);

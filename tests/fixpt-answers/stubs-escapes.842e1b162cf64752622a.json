@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stubs-escapes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"call-code : (subr (alloc @heap) () (listof int @heap)) ! pure",
+"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"sealed : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all))) () (bloblet (fields) @heap)) ! pure",
+"call-it : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () caller) ! pure",
+"call-k : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () k-caller) ! pure",
+"call-relay : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () relay) ! pure",
+"(-42 42 42 42) : (listof int @r.1) ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) (alloc @r.1) (goto @k) (comefrom @k) spin (io native) (read (globals call-code call-it call-k call-relay put-all sealed)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

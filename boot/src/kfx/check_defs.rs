@@ -146,6 +146,43 @@ pub fn type_params(v: &'static Cv, form: &'static Sexp) -> Strings {
     }
 }
 
+// Clauses a native convention held before, accepted in place of the one of
+// their role that it holds now, as Fixpt's checkers accept them
+// (`NATIVE_CONVENTION_OLDER`; C234): code written to them still runs.
+pub fn older_clauses() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("(closures (kind 41) (code-field 2) (first-free-field 3) (native-when-code-at-least code-lo))"), kayak_rt::nil())
+    })
+}
+
+pub fn clause_of_role(mut cs: Strings, mut role: Str) -> Str {
+    loop {
+        if null_p(cs) {
+            return str_lit("");
+        } else if has_prefix_p(car(cs), role) {
+            return car(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+/// `c`, or, if it is an older clause, the native convention's of its role.
+pub fn newer_clause(c: Str) -> Str {
+    if string_member_p(c, older_clauses()) {
+        let now = clause_of_role(the::<Strings>(native_convention()), str_lit("(closures "));
+        if string_eq_p(now, str_lit("")) {
+            c
+        } else {
+            now
+        }
+    } else {
+        c
+    }
+}
+
 /// `(define-convention name clause ...)` (C116, Fixpt's TODO §97): its
 /// name, if its clauses, each printed as Fixpt prints it, are in any
 /// order those of the native convention of the machine this runs on
@@ -166,7 +203,9 @@ pub fn declared_convention(v: &'static Cv, xs: Sexps) -> Str {
         }
     })) {
         match refuse(v, str_lit("(define-convention name clause ...)")) {}
-    } else if not(strings_eq_p(sorted_strings(map(&show_sexp, cdr(cdr(xs)))), sorted_strings(the::<Strings>(native_convention())))) {
+    } else if not(strings_eq_p(sorted_strings(map(lambda1s(move |c: Str| {
+        newer_clause(c)
+    }), map(&show_sexp, cdr(cdr(xs))))), sorted_strings(the::<Strings>(native_convention())))) {
         match refuse(v, string_append(str_lit("a convention not the native one, which alone this implementation supports: "), sym_name(second(xs)))) {}
     } else {
         sym_name(second(xs))

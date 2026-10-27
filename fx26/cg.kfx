@@ -1752,6 +1752,22 @@
 
 (define std-primitive (subr kfx (string) string) (lambda (n) (with standard (standard-primitive n))))
 
+"A standard operation's arity by its type, as the checker reads it
+ (`primitives`, check-defs.kfx): the parameters of its `subr`, under a
+ `poly` if it is one; -1 for none (C234: `bitwise-not` as a value, Fixpt's
+ `stubs.fx`)."
+(define-rec
+  (subr-params (subr kfx (sexp) i64)
+    (lambda (t)
+      (cond ((head-is? t "poly") (subr-params (car (cdr (cdr (items t))))))
+            ((head-is? t "subr") (size (items (car (cdr (cdr (items t)))))))
+            (else -1))))
+  (std-arity-in (subr kfx (sexps string) i64)
+    (lambda (ps n)
+      (cond ((null? ps) -1)
+            ((sym-is? (car (items (car ps))) n) (subr-params (second (items (car ps)))))
+            (else (std-arity-in (cdr ps) n))))))
+
 "How many arguments a standard operation takes, as a value, or -1 if it
  is not known here (Fixpt asks its runtime's table for the rest: not yet)."
 (define c-arity (subr kfx (string) i64)
@@ -1769,7 +1785,7 @@
                                    "marks-of" "call-with-composable-continuation" "call-with-oneshot-continuation" "first-mark"))
            2)
           ((std-eq-name? n) 2)
-          (else -1))))
+          (else (std-arity-in (read-all (string-chars primitives) "kayak-rt's primitives" 1) n)))))
 
 "The boolean on top negated."
 (define c-not (subr gen (code) unit) (lambda (c) (begin (c-lit c (l-bool #f)) (c-op c "eq"))))

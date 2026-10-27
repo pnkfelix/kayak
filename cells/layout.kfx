@@ -3,7 +3,7 @@
  its immediates and its routines' names, which `layout.fx` does not
  hold, written here after Fixpt's sources:
  fixpt-source: crates/fixpt-heap/src/value.rs@7641962
- fixpt-source: crates/fixpt-heap/src/layout.rs@7641962"
+ fixpt-source: crates/fixpt-heap/src/layout.rs@8c7111d"
 
 (define lay (load-module "fx26:layout.fx"))
 

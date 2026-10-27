@@ -252,11 +252,11 @@ pub mod made__load__0__layout {
     }
 
     pub fn closure_code() -> Int {
-        int_lit(2)
+        int_lit(3)
     }
 
     pub fn closure_extra0() -> Int {
-        int_lit(3)
+        int_lit(4)
     }
 
     pub fn frame_parent() -> Int {

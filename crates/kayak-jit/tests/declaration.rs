@@ -170,7 +170,10 @@ fn the_values_are_laid_out_as_declared() {
             layout::CLOSURE_CODE
         ),
     );
-    has("closures", "(native-when-code-at-least code-lo)");
+    // Every procedure's code runs (Fixpt 8c7111d, C234): tier 1's words
+    // carry the stub that enters `foreign`; code written to the older
+    // clause still tests against the state's `code-lo`, its native part.
+    has("closures", "(code-always-runs)");
 }
 
 #[test]

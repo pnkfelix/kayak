@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@f03cabe"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@8c7111d"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -770,16 +770,30 @@
      `Heap::adapted`)."
     (let ((w (slot-of c f-word))) (or (i64= w v-false) (i64= w (get adapter-code))))))
 
+(define-rec
+  (adapter-word-of (subr cm ((listof cblock @c) i64) i64)
+    (lambda (ws n) (if (null? ws) 0 (tagcase (car ws) (cblock (k w) (if (i64= k n) w (adapter-word-of (cdr ws) n))))))))
+(define adapter-word! (subr cm (i64) i64)
+  (lambda (n)
+    "The word of a cellular adapter of `n` arguments, `free 0; tailcall n`:
+     one for each arity, shared (Fixpt's)."
+    (let ((have (adapter-word-of (get adapter-words) n)))
+      (if (not (i64= have 0))
+          have
+          (let ((w (make-code-word! "adapter" 4 r-docol)))
+            (begin
+              (slot-set! w f-cell0 (fix r-free)) (slot-set! w (i64+ f-cell0 1) (fix 0))
+              (slot-set! w (i64+ f-cell0 2) (fix r-tailcall)) (slot-set! w (i64+ f-cell0 3) (fix n))
+              (set adapter-words (cons (cblock n (shared! w)) (get adapter-words)))
+              w))))))
+
 (define cellular-adapter! (subr cm (i64 i64) i64)
   (lambda (f n)
     "An adapter of `f` to the cellular convention, of `n` arguments: a
      closure over it whose word calls it, its free value 0, in a tail call
      (Fixpt's `cellular_adapter`)."
-    (let ((w (make-word! "adapter" 4 r-docol)) (c (make-bloblet! k-closure 2 0 #t #f)))
-      (begin
-        (slot-set! w f-cell0 (fix r-free)) (slot-set! w (i64+ f-cell0 1) (fix 0))
-        (slot-set! w (i64+ f-cell0 2) (fix r-tailcall)) (slot-set! w (i64+ f-cell0 3) (fix n))
-        (slot-set! c f-word w) (slot-set! c f-free0 f) c))))
+    (let ((w (adapter-word! n)) (c (make-bloblet! k-closure 2 0 #t #f)))
+      (begin (slot-set! c f-word w) (slot-set! c f-free0 f) c))))
 
 "Tier 1's syscalls (C224): each host name's type in canonical form, \"\"
  for none; Fixpt's three, as its runtime gives them, for now: no view of a
@@ -1396,13 +1410,18 @@
     "FX-26's `vlambda` (Fixpt's `%fx26-vlambda`): a closure over `f` of a
      word `rest; free 0; tailcall 1`. Its register code, which tier 1 does
      not run, is not made."
-    (let ((w (make-word! "vlambda" 5 r-docol)))
+    (let ((w (if (i64= (get vlambda-word) 0)
+                 (let ((w (make-code-word! "vlambda" 5 r-docol)))
+                   (begin
+                     (slot-set! w f-cell0 (fix r-rest))
+                     (slot-set! w (i64+ f-cell0 1) (fix r-free))
+                     (slot-set! w (i64+ f-cell0 2) (fix 0))
+                     (slot-set! w (i64+ f-cell0 3) (fix r-tailcall))
+                     (slot-set! w (i64+ f-cell0 4) (fix 1))
+                     (set vlambda-word (shared! w))
+                     w))
+                 (get vlambda-word))))
       (begin
-        (slot-set! w f-cell0 (fix r-rest))
-        (slot-set! w (i64+ f-cell0 1) (fix r-free))
-        (slot-set! w (i64+ f-cell0 2) (fix 0))
-        (slot-set! w (i64+ f-cell0 3) (fix r-tailcall))
-        (slot-set! w (i64+ f-cell0 4) (fix 1))
         (let ((c (make-bloblet! k-closure 2 0 #t #f))) (begin (slot-set! c f-word w) (slot-set! c f-free0 f) c))))))
 
 (define-rec
