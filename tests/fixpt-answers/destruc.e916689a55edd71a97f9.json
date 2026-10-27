@@ -1,0 +1,33 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"destruc.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define list-length : (subr (maxeff (read (globals list-length)) (read @heap) spin) (items) int) ! pure",
+"define append-to-tail! : (subr (maxeff (read @heap) (write @heap) spin) (items items) items) ! pure",
+"define destructive : (subr (maxeff (alloc @heap) (read (globals append-to-tail! list-length)) (read @heap) (write @heap) spin) (int int) rows) ! pure",
+"define items->datum : (subr (maxeff (read (globals items->datum)) (read @heap) spin) (items) datum) ! pure",
+"define result->datum : (subr (maxeff (read (globals items->datum result->datum)) (read @heap) spin) (rows) datum) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals append-to-tail! destructive input1 input2 list-length run)) (read @heap) (write @heap) spin) (int rows) rows) ! pure",
+"datum ! (maxeff (alloc @heap) (read (globals append-to-tail! destructive input1 input2 items->datum iterations list-length result->datum run)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -10249,18 +10249,7 @@ pub mod expressions {
                 });
                 match *tagcase_ {
                     Ty::TyData(d, parts) => {
-                        (string_eq_p(d, str_lit("%pairof")) && not({
-                            let tagcase_ = walk(s, car(cdr(parts)));
-                            match *tagcase_ {
-                                Ty::TyList(e, r) => {
-                                    true
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    false
-                                }
-                            }
-                        }))
+                        string_eq_p(d, str_lit("%pairof"))
                     }
                     _ => {
                         let other = tagcase_;
@@ -10268,9 +10257,11 @@ pub mod expressions {
                     }
                 }
             }) {
-                // Of a pair whose tail is no list, an expression's (C208; Fixpt's
-                // `made-code/leaves.fx`, `(car (read))`): its head or its tail. KFX's
-                // such pairs are taken apart where named (C68, C77).
+                // Of a pair, an expression's (C208; Fixpt's `made-code/leaves.fx`,
+                // `(car (read))`): its head or its tail, as FX-26's `car` and `cdr`
+                // take any pair, its tail a list or not (C257: a pair at a region of
+                // its own, its tail a list elsewhere, is no list). KFX's pairs whose
+                // tail is no list are taken apart where named (C68, C77).
                 let tagcase_ = synth(v, s, car(args));
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
@@ -10282,11 +10273,68 @@ pub mod expressions {
                                 } else {
                                     car(cdr(parts))
                                 };
+                                let s2 = if null_p(expected) {
+                                    s
+                                } else {
+                                    fits(v, s, part, car(expected))
+                                };
+                                return res(part, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, car(cdr(cdr(parts))))), kayak_rt::nil()), es), if general_pair_p(s2, walk_mu(s2, t)) {
+                                    kfx_restricted(v, s2, str_lit("a car or cdr of a pair whose tail is no list, not named, FX-26's (C208)"))
+                                } else {
+                                    s2
+                                });
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return match refuse(v, str_lit("a pair that is none")) {};
+                            }
+                        }
+                    }
+                }
+            } else if ((string_eq_p(h, str_lit("car")) || string_eq_p(h, str_lit("cdr"))) && i64_eq(size(args), 1i64) && not(null_p(found)) && prim_p(car(found)) && {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && null_p(chain_type(v, s, car(args))) && {
+                let t = {
+                    let tagcase_ = synth(v, s, car(args));
+                    match *tagcase_ {
+                        Res::Res(t, es, s2) => {
+                            walk_mu(s2, t)
+                        }
+                    }
+                };
+                (string_eq_p(shape_of(t), str_lit("union")) && not(null_p(pair_member(s, t))))
+            }) {
+                // Of a union with a pair member, an expression's (C256; FX-26's
+                // `car` and `cdr` take apart a union with a pair member, checked at
+                // run time: `scheme-bench/peval.fx`, `(car (the (union nil sxpair)
+                // no-pair))`): the pair member's head or tail. KFX's are taken
+                // apart where named (C77).
+                let tagcase_ = synth(v, s, car(args));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let ps = pair_member(s, walk_mu(s, t));
+                        let tagcase_ = car(ps);
+                        match *tagcase_ {
+                            Ty::TyData(d, parts) => {
+                                let part = if string_eq_p(h, str_lit("car")) {
+                                    car(parts)
+                                } else {
+                                    car(cdr(parts))
+                                };
                                 return res(part, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, car(cdr(cdr(parts))))), kayak_rt::nil()), es), kfx_restricted(v, if null_p(expected) {
                                     s
                                 } else {
                                     fits(v, s, part, car(expected))
-                                }, str_lit("a car or cdr of a pair whose tail is no list, not named, FX-26's (C208)")));
+                                }, str_lit("a car or cdr of a union's pair, not named, FX-26's (C256)")));
                             }
                             _ => {
                                 let other = tagcase_;
@@ -10361,23 +10409,30 @@ pub mod expressions {
                         false
                     }
                 }
-            }) && not(draft_hole_p(second(args))) && not(draft_hole_p(car(args))) && {
-                let tagcase_ = synth(v, s, second(args));
-                match *tagcase_ {
-                    Res::Res(t2, es2, s2) => {
-                        not(list_like_p(s2, t2))
-                    }
-                }
-            }) {
-                // A pair whose tail is no list, where none is expected: Fixpt's `cons`
-                // is `(t1 t2) -> (pairof t1 t2 r)` (C184; `bloblet/width-infer`), a
-                // list's only where its tail is one. At a region of its own.
+            }) && not(draft_hole_p(second(args))) && not(draft_hole_p(car(args)))) {
+                // A pair where none is expected: Fixpt's `cons` is `(t1 t2) ->
+                // (pairof t1 t2 r)` (C184; `bloblet/width-infer`), at a region of
+                // its own, its tail a list or not (C257: FX-26's implicit
+                // projection, `docs/fx26.md`; a list's region was its tail's,
+                // which a later use could not then choose apart).
                 let tagcase_ = synth(v, s, car(args));
                 match *tagcase_ {
                     Res::Res(t1, es1, s1) => {
                         let tagcase_ = synth(v, s1, second(args));
                         match *tagcase_ {
-                            Res::Res(t2, es2, s2) => {
+                            Res::Res(t2, es2, s2b) => {
+                                let s2 = {
+                                    let tagcase_ = walk(s2b, t2);
+                                    match *tagcase_ {
+                                        Ty::TyList(e, r) => {
+                                            fits(v, s2b, t1, e)
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            s2b
+                                        }
+                                    }
+                                };
                                 let pt = ty_data(str_lit("%pairof"), kayak_rt::heap_cons(t1, kayak_rt::heap_cons(t2, kayak_rt::heap_cons(ty_rconst(str_lit("%fresh")), kayak_rt::nil()))));
                                 return res(pt, effs_union(kayak_rt::heap_cons(str_lit("alloc:%fresh"), kayak_rt::nil()), effs_union(es1, es2)), if general_pair_p(s2, pt) {
                                     note_fact(s2, cv_file(v), cv_pos(v), str_lit("value-cons"))

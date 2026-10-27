@@ -1,0 +1,33 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"interned-across-collections.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define f : (subr pure () datum) ! pure",
+"define g : (subr pure () datum) ! pure",
+"define h : (subr pure () datum) ! pure",
+"define churn : (subr (maxeff (alloc @heap) (read (globals churn)) spin) (int (listof int @heap)) int) ! pure",
+"define bit : (subr pure (bool int) int) ! pure",
+"define f0 : datum ! (read (globals f))",
+"define g0 : datum ! (read (globals g))",
+"define h0 : datum ! (read (globals h))",
+"define z : int ! (maxeff (alloc @heap) (read (globals churn)) spin)",
+"int ! (read (globals bit f f0 g g0 h h0))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nqueens.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define append2 : (subr (maxeff (alloc @heap) (read (globals append2)) (read @heap) spin) (ints ints) ints) ! pure",
+"define nqueens : (subr (maxeff (alloc @heap) (read (globals append2)) (read @heap) spin) (int) int) ! pure",
+"define input : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals append2 input nqueens run)) (read @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals append2 input iterations nqueens run)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

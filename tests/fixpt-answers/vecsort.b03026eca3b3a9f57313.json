@@ -1,0 +1,40 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"vecsort.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define char<? : less ! pure",
+"define hash<? : less ! pure",
+"define merge!! : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (chars chars less) chars) ! pure",
+"define chars-length : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (chars) int) ! pure",
+"define sort!! : (subr (maxeff (alloc @heap) (read (globals chars-length merge!!)) (read @heap) (write @heap) spin) (chars less) chars) ! pure",
+"define vector->list : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (charv) chars) ! pure",
+"define list->vector : (subr (maxeff (alloc @heap) (read (globals chars-length)) (read @heap) (write @heap) spin) (chars) charv) ! pure",
+"define vector-sort : (subr (maxeff (alloc @heap) (read (globals chars-length list->vector merge!! sort!! vector->list)) (read @heap) (write @heap) spin) (less charv) charv) ! pure",
+"define hash-then-sort : (subr (maxeff (alloc @heap) (read (globals char<? chars-length hash<? list->vector merge!! sort!! vector->list vector-sort)) (read @heap) (write @heap) spin) (charv) charv) ! pure",
+"define all-characters : (subr (maxeff (alloc @heap) (read (globals chars-length list->vector)) (read @heap) (write @heap) spin) (char char) charv) ! pure",
+"define chars=? : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (charv charv) bool) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define chars : charv ! (maxeff (alloc @heap) (read (globals all-characters chars-length input1 input2 list->vector)) (read @heap) (write @heap) spin)",
+"define run : (subr (maxeff (alloc @heap) (read (globals char<? chars chars-length hash-then-sort hash<? list->vector merge!! run sort!! vector->list vector-sort)) (read @heap) (write @heap) spin) (int charv) charv) ! pure",
+"bool ! (maxeff (alloc @heap) (read (globals char<? chars chars-length chars=? hash-then-sort hash<? iterations list->vector merge!! run sort!! vector->list vector-sort)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

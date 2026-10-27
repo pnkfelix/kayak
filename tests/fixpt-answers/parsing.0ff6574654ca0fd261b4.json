@@ -1,0 +1,47 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"parsing.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define syms5 : (subr (alloc acyclic) (symbol symbol symbol symbol symbol) syms) ! pure",
+"define one-of? : (subr (maxeff (read (globals one-of?)) spin) (symbol syms) bool) ! pure",
+"define k-compound : syms ! (read (globals syms5))",
+"define k-simple : syms ! (read (globals syms5))",
+"define k-list : syms ! pure",
+"define k-abbrev : syms ! pure",
+"define k-datum-start : syms ! pure",
+"define k-list3 : syms ! (read (globals k-datum-start))",
+"define k-rparen-period : syms ! pure",
+"define k-valued : syms ! (read (globals syms5))",
+"define k-expected : syms ! pure",
+"define datum-nil : datum ! pure",
+"define sym-quasiquote : datum ! pure",
+"define sym-quote : datum ! pure",
+"define sym-unquote-splicing : datum ! pure",
+"define sym-unquote : datum ! pure",
+"define sym-eof : datum ! pure",
+"define no-chars : (arrayof char @heap) ! (alloc @heap)",
+"define error : (subr (maxeff (read (globals no-chars)) (read @heap)) (string) unit) ! pure",
+"define parse-string : (subr (maxeff (alloc @heap) (read (globals sym-eof)) (read @globals) (read @heap) (write @heap) spin) (string) datum) ! pure",
+"define parsing-benchmark : (subr (maxeff (alloc @heap) (read (globals datum-nil)) (read @globals) (read @heap) (write @heap) spin) (int string) datum) ! pure",
+"define input-string : string ! pure",
+"define iterations : int ! pure",
+"datum ! (maxeff (alloc @heap) (read (globals datum-nil input-string iterations parsing-benchmark)) (read @globals) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

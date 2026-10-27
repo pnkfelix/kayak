@@ -7208,3 +7208,45 @@ allocation's region from later uses where FX-26 makes one its arguments
 and what is expected leave unsaid fresh at the call (`docs/fx26.md`,
 "implicit projection"); and `peval`, kayak's `car` and kin of lists only.
 Both next.
+
+## C256. `car` and `cdr` of a union's pair; `scheme-bench/` compared (2026-10-27)
+
+The user, on kayak refusing `scheme-bench/peval.fx`: "Why is Kayak
+rejecting peval?"; then "Yes go ahead". FX-26's `car` and `cdr` take apart
+a union with a pair member, checked at run time (`docs/fx26.md`); kayak's
+did so of a named path (C77) and of a pair expression (C208), not of a
+union expression, `(car (the (union nil sxpair) no-pair))`. Now they do,
+FX-26's only for KFX (`kfx-restricted`). `peval` is accepted, and its
+answer, at 2 iterations, is Fixpt's. The checkers' comparison now takes
+Fixpt's ports of the R7RS benchmarks (`scheme-bench/`, from the clone):
+of its 53, kayak refused 13 (12 after C257); its tests had had no `car` of
+a union expression.
+
+## C257. `cons` as FX-26 types it: a pair at a region of its own (2026-10-27)
+
+The user, on the region cases of C254: kayak should be at FX-26's point
+("I'm pretty sure I want to keep on knowing the region at allocation
+time"). FX-26's `cons` is `(t1 t2) -> (pairof t1 t2 r)`, `r` from what is
+expected, else fresh at the call (implicit projection, `docs/fx26.md`);
+kayak's had been KFX's, a list at its tail's region, which a later use
+could not then choose apart: so kayak accepted programs FX-26 refuses
+(`kayak/checker/let-cons-region.fx`). A `cons` where nothing is expected
+is now a pair at a region of its own (`%fresh`), its tail a list or not
+(C184's case, which had been a tail that is no list's alone); and `car` and
+`cdr` take apart any pair an expression gives, its tail a list or not
+(C208's, likewise), so `(car (cons x tail))` keeps checking
+(`native/wide-frame.fx`). A tail that is a list is still of the head's
+type (KFX's lists are typed: the corpus's `(cons nil nil)` made Rust that
+did not build otherwise), only the pair's region of its own. Kayak's own KFX, which Fixpt accepts (C254),
+checks under it unchanged; the compiler makes itself again. In theory
+(the user asked whether kayak's typing had been sound but not principal):
+kayak's was the more general on regions and the less general on pairs,
+neither point containing the other; FX-26's is not principal by design
+(an unsaid region fresh at the call), and a reference is at FX-26's point
+on both.
+- **The comparison** takes kayak's own programs too
+  (`tests/fx26-kayak/`, new `checker/`: the region, `car` of the pair, the
+  knot of C255, `car` of a union's pair). Of 840 programs, Fixpt refuses
+  344, kayak each; of the 496 Fixpt accepts, kayak refuses 12 (all
+  `scheme-bench/`, for other gaps: a `typecase` of a union's local, `#\nul`,
+  `f64`'s arithmetic, recursive bloblet types and others).

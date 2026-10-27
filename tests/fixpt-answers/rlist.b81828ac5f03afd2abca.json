@@ -1,0 +1,58 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"rlist.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define half : (subr pure (int) int) ! pure",
+"define tree-val : (poly ((t type)) (subr pure ((mu %3 (sumof (leaf t) (node (productof (val t) (left %3) (right %3)))))) t)) ! pure",
+"define tree-map : (poly ((a type) (b type) (e effect)) (subr (maxeff (read (globals tree-map)) e spin) ((subr e (a) b) (mu %3 (sumof (leaf a) (node (productof (val a) (left %3) (right %3)))))) (mu %3 (sumof (leaf b) (node (productof (val b) (left %3) (right %3))))))) ! pure",
+"define tree-for-each : (poly ((a type) (e effect)) (subr (maxeff (read (globals tree-for-each)) e spin) ((subr e (a) unit) (mu %3 (sumof (leaf a) (node (productof (val a) (left %3) (right %3)))))) unit)) ! pure",
+"define tree-ref/a : (poly ((t type)) (subr (maxeff (read (globals half tree-ref/a tree-val)) spin) ((mu %3 (sumof (leaf t) (node (productof (val t) (left %3) (right %3))))) int int) t)) ! pure",
+"define tree-ref : (poly ((t type)) (subr (maxeff (read (globals half tree-ref/a tree-val)) spin) (int (mu %3 (sumof (leaf t) (node (productof (val t) (left %3) (right %3))))) int) t)) ! pure",
+"define ra:cons : (poly ((t type)) (subr pure (t (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic))) ! pure",
+"define ra:car+cdr : (poly ((t type)) (subr (read (globals half)) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) (pairof t (listof (pairof int (mu %6 (sumof (leaf t) (node (productof (val t) (left %6) (right %6))))) acyclic) acyclic) acyclic))) ! pure",
+"define ra:car : (poly ((t type)) (subr (read (globals half ra:car+cdr)) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) t)) ! pure",
+"define ra:cdr : (poly ((t type)) (subr (read (globals half ra:car+cdr)) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic))) ! pure",
+"define ra:list? : (poly ((t type)) (subr (maxeff (read (globals ra:list?)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) bool)) ! pure",
+"define ra:length : (poly ((t type)) (subr (maxeff (read (globals ra:list?)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) int)) ! pure",
+"define ra:append : (poly ((t type)) (subr (maxeff (read (globals half ra:append ra:car ra:car+cdr ra:cdr ra:cons)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic) (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic))) ! pure",
+"define ra:reverse : (poly ((t type)) (subr (maxeff (read (globals half ra:car ra:car+cdr ra:cdr ra:cons)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic))) ! pure",
+"define ra:list-tail : (poly ((t type)) (subr (maxeff (read (globals half ra:car+cdr ra:cdr ra:list-tail)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic) int) (listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic))) ! pure",
+"define ra:list-ref : (poly ((t type)) (subr (maxeff (read (globals half ra:list-ref tree-ref tree-ref/a tree-val)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic) int) t)) ! pure",
+"define ra:map : (poly ((a type) (b type) (e effect)) (subr (maxeff (read (globals ra:map tree-map)) e spin) ((subr e (a) b) (listof (pairof int (mu %5 (sumof (leaf a) (node (productof (val a) (left %5) (right %5))))) acyclic) acyclic)) (listof (pairof int (mu %5 (sumof (leaf b) (node (productof (val b) (left %5) (right %5))))) acyclic) acyclic))) ! pure",
+"define ra:for-each : (poly ((a type) (e effect)) (subr (maxeff (read (globals ra:for-each tree-for-each)) e spin) ((subr e (a) unit) (listof (pairof int (mu %5 (sumof (leaf a) (node (productof (val a) (left %5) (right %5))))) acyclic) acyclic)) unit)) ! pure",
+"define rlist->list : (poly ((t type)) (subr (maxeff (alloc @heap) (read (globals half ra:car ra:car+cdr ra:cdr rlist->list)) spin) ((listof (pairof int (mu %5 (sumof (leaf t) (node (productof (val t) (left %5) (right %5))))) acyclic) acyclic)) (listof t @heap))) ! pure",
+"define riota : (subr (maxeff (read (globals ra:cons)) spin) (int) (listof (pairof int (mu %4 (sumof (leaf int) (node (productof (val int) (left %4) (right %4))))) acyclic) acyclic)) ! pure",
+"define rconcatenate : (subr (maxeff (read (globals half ra:append ra:car ra:car+cdr ra:cdr ra:cons rconcatenate)) spin) ((listof (pairof int (mu %4 (sumof (leaf sets) (node (productof (val sets) (left %4) (right %4))))) acyclic) acyclic)) sets) ! pure",
+"define rtake : (subr (maxeff (read (globals half ra:cons ra:list-ref tree-ref tree-ref/a tree-val)) spin) (syms int) syms) ! pure",
+"define rdrop : (subr (maxeff (read (globals half ra:car+cdr ra:cdr ra:list-tail)) spin) (syms int) syms) ! pure",
+"define rfilter : (poly ((e effect)) (subr (maxeff (alloc @heap) (read (globals half ra:car ra:car+cdr ra:cdr ra:cons ra:for-each ra:reverse tree-for-each)) (read @heap) (write @heap) e spin) ((subr e (syms) bool) sets) sets)) ! pure",
+"define requal-symbol? : (subr pure (symbol symbol) bool) ! pure",
+"define requal? : (subr (maxeff (read (globals half ra:car ra:car+cdr ra:cdr ra:list? requal-symbol? requal?)) spin) (syms syms) bool) ! pure",
+"define rmember : (subr (maxeff (read (globals half ra:car ra:car+cdr ra:cdr ra:list? requal-symbol? requal? rmember)) spin) (syms sets) bool) ! pure",
+"define symbols : (subr (maxeff (read (globals ra:cons ra:map riota tree-map)) spin) (int) syms) ! pure",
+"define powerset : (subr (maxeff (read (globals half powerset ra:append ra:car ra:car+cdr ra:cdr ra:cons ra:map tree-map)) spin) (syms) sets) ! pure",
+"define permutations : (subr (maxeff (read (globals half permutations ra:append ra:car ra:car+cdr ra:cdr ra:cons ra:length ra:list-ref ra:list-tail ra:list? ra:map rconcatenate rdrop riota rtake tree-map tree-ref tree-ref/a tree-val)) spin) (syms) sets) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals half permutations powerset ra:append ra:car ra:car+cdr ra:cdr ra:cons ra:for-each ra:length ra:list-ref ra:list-tail ra:list? ra:map ra:reverse rconcatenate rdrop requal-symbol? requal? rfilter riota rlist->list rmember rtake symbols tree-for-each tree-map tree-ref tree-ref/a tree-val)) (read @heap) (write @heap) spin) (int) (listof (listof symbol @heap) @heap)) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals go half input1 permutations powerset ra:append ra:car ra:car+cdr ra:cdr ra:cons ra:for-each ra:length ra:list-ref ra:list-tail ra:list? ra:map ra:reverse rconcatenate rdrop requal-symbol? requal? rfilter riota rlist->list rmember rtake run symbols tree-for-each tree-map tree-ref tree-ref/a tree-val)) (read @heap) (write @heap) spin) (int (listof (listof symbol @heap) @heap)) (listof (listof symbol @heap) @heap)) ! pure",
+"(listof (listof symbol @heap) @heap) ! (maxeff (alloc @heap) (read (globals go half input1 iterations permutations powerset ra:append ra:car ra:car+cdr ra:cdr ra:cons ra:for-each ra:length ra:list-ref ra:list-tail ra:list? ra:map ra:reverse rconcatenate rdrop requal-symbol? requal? rfilter riota rlist->list rmember rtake run symbols tree-for-each tree-map tree-ref tree-ref/a tree-val)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

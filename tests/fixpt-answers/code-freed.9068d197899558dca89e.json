@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"code-freed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define here : bool ! pure",
+"define put-all : (subr (maxeff (read (globals put-all)) (read @heap) (write @heap) spin) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) () adds) ! pure",
+"define many : (subr (maxeff (alloc @heap) (io native) (read (globals adder many put-all)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"define kept : (listof adds @heap) ! (maxeff (alloc @heap) (io native) (read (globals adder here put-all)) (read @heap) (write @heap) spin)",
+"int ! (maxeff (alloc @heap) (io native) (read (globals adder here kept many put-all)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

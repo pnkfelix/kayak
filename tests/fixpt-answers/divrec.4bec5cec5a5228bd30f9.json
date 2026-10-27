@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"divrec.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define create-n : (subr (maxeff (alloc @heap) spin) (int) nils) ! pure",
+"define recursive-div2 : (subr (maxeff (alloc @heap) (read (globals recursive-div2)) (read @heap) spin) (nils) nils) ! pure",
+"define list-length : (subr (maxeff (read (globals list-length)) (read @heap) spin) (nils) int) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define ll : nils ! (maxeff (alloc @heap) (read (globals create-n input1)) spin)",
+"define run : (subr (maxeff (alloc @heap) (read (globals ll recursive-div2 run)) (read @heap) spin) (int nils) nils) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals iterations list-length ll recursive-div2 run)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

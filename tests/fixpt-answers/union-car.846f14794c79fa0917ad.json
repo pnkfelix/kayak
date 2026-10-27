@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"union-car.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (15 cells, cellular):",
+"     0: closure word first over 0",
+"     3: global! first",
+"     5: lit 7",
+"     7: lit #t",
+"     9: cons",
+"    10: global first",
+"    12: tcall 1",
+"    14: exit",
+"",
+"word first (4 cells, cellular):",
+"     0: slot 0",
+"     2: pair-car",
+"     3: return",
+"  its register code (7 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: op1 pair-car",
+"       6: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

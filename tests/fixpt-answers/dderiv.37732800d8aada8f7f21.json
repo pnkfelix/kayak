@@ -1,0 +1,55 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dderiv.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sym : (subr pure (string) datum) ! pure",
+"define is? : (subr pure (datum symbol) bool) ! pure",
+"define list2 : (subr pure (datum datum) datum) ! pure",
+"define list3 : (subr (read (globals list2)) (datum datum datum) datum) ! pure",
+"define list4 : (subr (read (globals list2 list3)) (datum datum datum datum) datum) ! pure",
+"define plus-sym : datum ! (read (globals sym))",
+"define minus-sym : datum ! (read (globals sym))",
+"define times-sym : datum ! (read (globals sym))",
+"define quotient-sym : datum ! (read (globals sym))",
+"define lookup : (subr (maxeff (read @heap) spin) (symbol plist) (union nil (pairof symbol method @heap))) ! pure",
+"define properties : (arrayof bucket @heap) ! (alloc @heap)",
+"define bucket-of : (subr pure (symbol) int) ! pure",
+"define hash-table-ref/default : (subr (maxeff (read (globals bucket-of properties)) (read @heap) spin) (symbol) plist) ! pure",
+"define hash-table-set! : (subr (maxeff (alloc @heap) (read (globals bucket-of properties)) (read @heap) (write @heap)) (symbol plist) unit) ! pure",
+"define get : (subr (maxeff (read (globals bucket-of hash-table-ref/default lookup properties)) (read @heap) spin) (symbol symbol method) method) ! pure",
+"define put : (subr (maxeff (alloc @heap) (read (globals bucket-of hash-table-ref/default hash-table-set! lookup properties)) (read @heap) (write @heap) spin) (symbol symbol method) unit) ! pure",
+"define no-method : method ! pure",
+"define dderiv : (subr (maxeff (alloc @heap) (read (globals bucket-of get hash-table-ref/default is? lookup no-method properties)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"define map-dderiv : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default is? lookup map-dderiv no-method properties)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"define map-quotient : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default is? list2 list3 lookup map-quotient no-method properties quotient-sym)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"define my+dderiv : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default is? lookup map-dderiv no-method plus-sym properties)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"define my-dderiv : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default is? lookup map-dderiv minus-sym no-method properties)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"define *dderiv : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default is? list2 list3 lookup map-quotient no-method plus-sym properties quotient-sym times-sym)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"define /dderiv : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default is? list2 list3 list4 lookup minus-sym no-method properties quotient-sym times-sym)) (read @globals) (read @heap) (write @heap) spin) (datum) datum) ! pure",
+"unit ! (maxeff (alloc @heap) (read (globals bucket-of hash-table-ref/default hash-table-set! lookup my+dderiv properties put)) (read @heap) (write @heap) spin)",
+"unit ! (maxeff (alloc @heap) (read (globals bucket-of hash-table-ref/default hash-table-set! lookup my-dderiv properties put)) (read @heap) (write @heap) spin)",
+"unit ! (maxeff (alloc @heap) (read (globals *dderiv bucket-of hash-table-ref/default hash-table-set! lookup properties put)) (read @heap) (write @heap) spin)",
+"unit ! (maxeff (alloc @heap) (read (globals /dderiv bucket-of hash-table-ref/default hash-table-set! lookup properties put)) (read @heap) (write @heap) spin)",
+"define input1 : datum ! (read (globals list2 list3 list4 sym))",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default input1 is? lookup no-method properties run)) (read @globals) (read @heap) (write @heap) spin) (int datum) datum) ! pure",
+"datum ! (maxeff (alloc @heap) (read (globals bucket-of dderiv get hash-table-ref/default input1 is? iterations lookup no-method properties run)) (read @globals) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

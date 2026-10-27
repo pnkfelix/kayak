@@ -1,0 +1,39 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"deriv.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sym : (subr pure (string) datum) ! pure",
+"define is? : (subr pure (datum symbol) bool) ! pure",
+"define list2 : (subr pure (datum datum) datum) ! pure",
+"define list3 : (subr (read (globals list2)) (datum datum datum) datum) ! pure",
+"define list4 : (subr (read (globals list2 list3)) (datum datum datum datum) datum) ! pure",
+"define plus-sym : datum ! (read (globals sym))",
+"define minus-sym : datum ! (read (globals sym))",
+"define times-sym : datum ! (read (globals sym))",
+"define quotient-sym : datum ! (read (globals sym))",
+"define deriv : (subr (maxeff (read (globals deriv is? list2 list3 list4 map-deriv map-quotient minus-sym plus-sym quotient-sym sym times-sym)) spin) (datum) datum) ! pure",
+"define map-deriv : (subr (maxeff (read (globals deriv is? list2 list3 list4 map-deriv map-quotient minus-sym plus-sym quotient-sym sym times-sym)) spin) (datum) datum) ! pure",
+"define map-quotient : (subr (maxeff (read (globals deriv is? list2 list3 list4 map-deriv map-quotient minus-sym plus-sym quotient-sym sym times-sym)) spin) (datum) datum) ! pure",
+"define input1 : datum ! (read (globals list2 list3 list4 sym))",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (read (globals deriv input1 is? list2 list3 list4 map-deriv map-quotient minus-sym plus-sym quotient-sym run sym times-sym)) spin) (int datum) datum) ! pure",
+"datum ! (maxeff (read (globals deriv input1 is? iterations list2 list3 list4 map-deriv map-quotient minus-sym plus-sym quotient-sym run sym times-sym)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

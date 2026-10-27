@@ -1,0 +1,44 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"list.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define iota : (subr (maxeff (alloc @heap) (read @heap) spin) (int) ints) ! pure",
+"define take : (subr (maxeff (alloc @heap) (read (globals take)) (read @heap) spin) (syms int) syms) ! pure",
+"define drop : (subr (maxeff (alloc @heap) (read (globals drop)) (read @heap) spin) (syms int) syms) ! pure",
+"define append2 : (subr (maxeff (alloc @heap) (read (globals append2)) (read @heap) spin) (syms syms) syms) ! pure",
+"define append-sets : (subr (maxeff (alloc @heap) (read (globals append-sets)) (read @heap) spin) (sets sets) sets) ! pure",
+"define syms-length : (subr (maxeff (alloc @heap) (read (globals syms-length)) (read @heap) spin) (syms) int) ! pure",
+"define syms=? : (subr (maxeff (alloc @heap) (read (globals syms=?)) (read @heap) spin) (syms syms) bool) ! pure",
+"define memq? : (subr (maxeff (alloc @heap) (read (globals memq?)) (read @heap) spin) (symbol syms) bool) ! pure",
+"define member-syms? : (subr (maxeff (alloc @heap) (read (globals member-syms? syms=?)) (read @heap) spin) (syms sets) bool) ! pure",
+"define lset-adjoin : (subr (maxeff (alloc @heap) (read (globals memq?)) (read @heap) spin) (syms symbol) syms) ! pure",
+"define any-same? : (subr (maxeff (alloc @heap) (read (globals any-same? syms=?)) (read @heap) spin) (sets syms) bool) ! pure",
+"define lset-union : (subr (maxeff (alloc @heap) (read (globals any-same? syms=?)) (read @heap) spin) (sets sets) sets) ! pure",
+"define concatenate : (subr (maxeff (alloc @heap) (read (globals append-sets)) (read @heap) spin) ((listof sets @heap)) sets) ! pure",
+"define symbols : (subr (maxeff (alloc @heap) (read (globals iota)) (read @heap) spin) (int) syms) ! pure",
+"define powerset : (subr (maxeff (alloc @heap) (read (globals any-same? lset-adjoin lset-union memq? powerset syms=?)) (read @heap) spin) (syms) sets) ! pure",
+"define permutations : (subr (maxeff (alloc @heap) (read (globals append-sets append2 concatenate drop iota permutations syms-length take)) (read @heap) spin) (syms) sets) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals any-same? append-sets append2 concatenate drop iota lset-adjoin lset-union member-syms? memq? permutations powerset symbols syms-length syms=? take)) (read @heap) spin) (int) sets) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals any-same? append-sets append2 concatenate drop go input1 iota lset-adjoin lset-union member-syms? memq? permutations powerset run symbols syms-length syms=? take)) (read @heap) spin) (int sets) sets) ! pure",
+"sets ! (maxeff (alloc @heap) (read (globals any-same? append-sets append2 concatenate drop go input1 iota iterations lset-adjoin lset-union member-syms? memq? permutations powerset run symbols syms-length syms=? take)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

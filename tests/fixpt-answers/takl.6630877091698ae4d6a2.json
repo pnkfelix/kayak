@@ -1,0 +1,36 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"takl.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define listn : (subr (maxeff (alloc @heap) (read (globals listn)) spin) (int) ints) ! pure",
+"define shorterp : (subr (maxeff (read (globals shorterp)) (read @heap) spin) (ints ints) bool) ! pure",
+"define mas : (subr (maxeff (read (globals mas shorterp)) (read @heap) spin) (ints ints ints) ints) ! pure",
+"define list-length : (subr (maxeff (read (globals list-length)) (read @heap) spin) (ints) int) ! pure",
+"define length1 : int ! pure",
+"define length2 : int ! pure",
+"define length3 : int ! pure",
+"define input1 : ints ! (maxeff (alloc @heap) (read (globals length1 listn)) spin)",
+"define input2 : ints ! (maxeff (alloc @heap) (read (globals length2 listn)) spin)",
+"define input3 : ints ! (maxeff (alloc @heap) (read (globals length3 listn)) spin)",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (read (globals input1 input2 input3 mas run shorterp)) (read @heap) spin) (int ints) ints) ! pure",
+"int ! (maxeff (read (globals input1 input2 input3 iterations list-length mas run shorterp)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

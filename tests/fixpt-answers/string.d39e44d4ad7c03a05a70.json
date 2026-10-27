@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"string.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define s : (ref string @heap) ! (alloc @heap)",
+"define grow : (subr (maxeff (read (globals s)) (read @heap) (write @heap)) () string) ! pure",
+"define trial : (subr (maxeff (read (globals grow s)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define my-try : (subr (maxeff (read (globals grow s trial)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (read (globals grow input1 my-try run s trial)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals grow input1 iterations my-try run s trial)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

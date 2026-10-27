@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"knot-native.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26-kayak/checker/knot-native.fx:4:19: a procedure kept in `@c` reads `@c`, so it could reach itself: it must say `spin`, and it is a hc",
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

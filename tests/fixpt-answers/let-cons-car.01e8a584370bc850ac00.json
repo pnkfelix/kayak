@@ -1,0 +1,56 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"let-cons-car.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word f over 0",
+"     3: global! f",
+"     5: lit ()",
+"     7: global f",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word f (12 cells, cellular):",
+"     0: lit 41",
+"     2: slot 0",
+"     4: cons",
+"     5: lit 1",
+"     7: slot 1",
+"     9: pair-car",
+"    10: int-add",
+"    11: return",
+"  its register code (29 cells, not compiled):",
+"       0: args 1",
+"       2: save 1",
+"       4: store 1 0",
+"       7: const 41",
+"       9: setreg 1",
+"      11: load 2 0",
+"      14: cellular cons 2",
+"      17: setreg 1",
+"      19: reg 1",
+"      21: op1 pair-car",
+"      23: op2imm int-add 1",
+"      26: pop 1",
+"      28: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

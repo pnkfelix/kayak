@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"graphs.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define bool=? : (subr pure (bool bool) bool) ! pure",
+"define fold : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (ints (subr (alloc @heap) (int ints) ints) ints) ints) ! pure",
+"define proc->vector : (poly ((t type)) (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int) t)) (arrayof t @heap))) ! pure",
+"define giota : (subr (maxeff (alloc @heap) spin) (int) ints) ! pure",
+"define gnatural-for-each : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int) unit)) unit) ! pure",
+"define natural-for-all? : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int) bool)) bool) ! pure",
+"define there-exists? : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) ((listof bvec @heap) (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (bvec) bool)) bool) ! pure",
+"define list-length : (subr (maxeff (read (globals list-length)) (read @heap) spin) (glist int) int) ! pure",
+"define fold-over-perm-tree : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (ints bfolder int tfolder bool) bool) ! pure",
+"define cmp-next-vertex : (subr (maxeff (read (globals bool=?)) (read @heap) spin) (gmat perm int int) symbol) ! pure",
+"define make-minimal? : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int) minimal) ! pure",
+"define make-reach? : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int graph) gmat) ! pure",
+"define fold-over-rdg : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int int rdg-folder glist) glist) ! pure",
+"define run-graphs : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree fold-over-rdg giota gnatural-for-each make-minimal? make-reach? natural-for-all? proc->vector there-exists?)) (read @heap) (write @heap) spin) (int) glist) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree fold-over-rdg giota gnatural-for-each input1 list-length make-minimal? make-reach? natural-for-all? proc->vector run run-graphs there-exists?)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals bool=? cmp-next-vertex fold fold-over-perm-tree fold-over-rdg giota gnatural-for-each input1 iterations list-length make-minimal? make-reach? natural-for-all? proc->vector run run-graphs there-exists?)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -1,0 +1,37 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"lseq.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define eof : int ! pure",
+"define greatest-fixnum : int ! pure",
+"define eof-object? : (subr (read (globals eof)) (int) bool) ! pure",
+"define make-iota-generator : (subr (alloc @heap) (int int int) gen) ! pure",
+"define make-range-generator : (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int int int) gen) ! pure",
+"define generator->lseq : (subr (maxeff (alloc @heap) (read (globals eof eof-object?)) (read @heap) (write @heap) spin) (gen) lseq) ! pure",
+"define lseq-car : (subr (read @heap) (lseq) int) ! pure",
+"define lseq-cdr : (subr (maxeff (alloc @heap) (read (globals eof eof-object?)) (read @heap) (write @heap) spin) (lseq) lseq) ! pure",
+"define pythagorean-triples-using-lazy-sequences : (subr (maxeff (alloc @heap) (read (globals eof eof-object? generator->lseq greatest-fixnum lseq-car lseq-cdr make-iota-generator make-range-generator)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals eof eof-object? generator->lseq greatest-fixnum lseq-car lseq-cdr make-iota-generator make-range-generator pythagorean-triples-using-lazy-sequences)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals eof eof-object? generator->lseq go greatest-fixnum input1 lseq-car lseq-cdr make-iota-generator make-range-generator pythagorean-triples-using-lazy-sequences run)) (read @heap) (write @heap) spin) (int ints) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals eof eof-object? generator->lseq go greatest-fixnum input1 iterations lseq-car lseq-cdr make-iota-generator make-range-generator pythagorean-triples-using-lazy-sequences run)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

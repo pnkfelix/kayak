@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"vector.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define empty : symv ! (alloc @heap)",
+"define copy-syms! : (subr (maxeff (alloc @heap) (read (globals copy-syms!)) (read @heap) (write @heap) spin) (symv int symv int int) unit) ! pure",
+"define copy-sets! : (subr (maxeff (alloc @heap) (read (globals copy-sets!)) (read @heap) (write @heap) spin) (setv int setv int int) unit) ! pure",
+"define append-subvectors2 : (subr (maxeff (alloc @heap) (read (globals copy-syms!)) (read @heap) (write @heap) spin) (symv int int symv int int) symv) ! pure",
+"define append-subvectors3 : (subr (maxeff (alloc @heap) (read (globals copy-syms!)) (read @heap) (write @heap) spin) (symv int symv int) symv) ! pure",
+"define concatenate-sets : (subr (maxeff (alloc @heap) (read (globals copy-sets! empty)) (read @heap) (write @heap) spin) ((listof setv @heap)) setv) ! pure",
+"define vector-append : (subr (maxeff (alloc @heap) (read (globals concatenate-sets copy-sets! empty)) (read @heap) (write @heap) spin) (setv setv) setv) ! pure",
+"define vector->list : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (setvv) (listof setv @heap)) ! pure",
+"define symv=? : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (symv symv) bool) ! pure",
+"define symbols : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (int) symv) ! pure",
+"define powerset : (subr (maxeff (alloc @heap) (read (globals append-subvectors2 concatenate-sets copy-sets! copy-syms! empty vector-append)) (read @heap) (write @heap) spin) (symv) setv) ! pure",
+"define permutations : (subr (maxeff (alloc @heap) (read (globals append-subvectors3 concatenate-sets copy-sets! copy-syms! empty vector->list)) (read @heap) (write @heap) spin) (symv) setv) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals append-subvectors2 append-subvectors3 concatenate-sets copy-sets! copy-syms! empty permutations powerset symbols symv=? vector->list vector-append)) (read @heap) (write @heap) spin) (int) setv) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals append-subvectors2 append-subvectors3 concatenate-sets copy-sets! copy-syms! empty go input1 permutations powerset run symbols symv=? vector->list vector-append)) (read @heap) (write @heap) spin) (int setv) setv) ! pure",
+"define lists : (subr (maxeff (alloc @heap) (read (globals lists)) (read @heap) (write @heap) spin) (setv int) (listof (listof symbol @heap) @heap)) ! pure",
+"(listof (listof symbol @heap) @heap) ! (maxeff (alloc @heap) (read (globals append-subvectors2 append-subvectors3 concatenate-sets copy-sets! copy-syms! empty go input1 iterations lists permutations powerset run symbols symv=? vector->list vector-append)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

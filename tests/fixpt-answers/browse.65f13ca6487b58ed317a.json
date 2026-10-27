@@ -1,0 +1,49 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"browse.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define lookup : (poly ((v type)) (subr (maxeff (read @heap) spin) (symbol (listof (pairof symbol v @heap) @heap)) (union nil (pairof symbol v @heap)))) ! pure",
+"define properties : (ref (listof (pairof symbol plist @heap) @heap) @heap) ! (alloc @heap)",
+"define get-property : (subr (maxeff (read (globals lookup properties)) (read @heap) spin) (symbol symbol) value) ! pure",
+"define put : (subr (maxeff (alloc @heap) (read (globals lookup properties)) (read @heap) (write @heap) spin) (symbol symbol value) unit) ! pure",
+"define *current-gensym* : (ref int @heap) ! (alloc @heap)",
+"define generate-symbol : (subr (maxeff (read (globals *current-gensym*)) (read @heap) (write @heap)) () symbol) ! pure",
+"define append-to-tail! : (subr (maxeff (read @heap) (write @heap) spin) (items items) items) ! pure",
+"define tree-copy-item : (subr (maxeff (alloc @heap) (read (globals tree-copy-item tree-copy-items)) (read @heap) spin) (item) item) ! pure",
+"define tree-copy-items : (subr (maxeff (alloc @heap) (read (globals tree-copy-item tree-copy-items)) (read @heap) spin) (items) items) ! pure",
+"define tree-copy : (subr (maxeff (alloc @heap) (read (globals tree-copy tree-copy-item tree-copy-items)) (read @heap) spin) (value) value) ! pure",
+"define *rand* : (ref int @heap) ! (alloc @heap)",
+"define init : (subr (maxeff (alloc @heap) (read (globals *current-gensym* generate-symbol lookup properties put tree-copy tree-copy-item tree-copy-items)) (read @heap) (write @heap) spin) (int int int value) (listof symbol @heap)) ! pure",
+"define browse-random : (subr (maxeff (read (globals *rand*)) (read @heap) (write @heap)) () int) ! pure",
+"define randomize : (subr (maxeff (alloc @heap) (read (globals *rand* browse-random)) (read @heap) (write @heap) spin) ((listof symbol @heap)) (listof symbol @heap)) ! pure",
+"define item-eq? : (subr pure (item item) bool) ! pure",
+"define is? : (subr pure (item symbol) bool) ! pure",
+"define assq : (subr (maxeff (read (globals assq)) (read @heap) spin) (symbol alist) (union nil (pairof symbol item @heap))) ! pure",
+"define item-list : (subr pure (item) items) ! pure",
+"define my-match : (subr (maxeff (alloc @heap) (read (globals append-to-tail! assq is? item-eq? item-list my-match)) (read @heap) (write @heap) spin) (items items alist) bool) ! pure",
+"define database : (listof symbol @heap) ! (maxeff (alloc @heap) (read (globals *current-gensym* *rand* browse-random generate-symbol init lookup properties put randomize tree-copy tree-copy-item tree-copy-items)) (read @heap) (write @heap) spin)",
+"define investigate : (subr (maxeff (alloc @heap) (read (globals append-to-tail! assq get-property is? item-eq? item-list lookup my-match properties)) (read @heap) (write @heap) spin) ((listof symbol @heap) value) unit) ! pure",
+"define browse : (subr (maxeff (alloc @heap) (read (globals append-to-tail! assq database get get-property investigate is? item-eq? item-list lookup my-match properties)) (read @heap) (write @heap) spin) (value) (listof symbol @heap)) ! pure",
+"define input1 : value ! (alloc @heap)",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals append-to-tail! assq browse database get get-property input1 investigate is? item-eq? item-list lookup my-match properties run)) (read @heap) (write @heap) spin) (int (listof symbol @heap)) (listof symbol @heap)) ! pure",
+"(listof symbol @heap) ! (maxeff (alloc @heap) (read (globals append-to-tail! assq browse database get get-property input1 investigate is? item-eq? item-list iterations lookup my-match properties run)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -1,0 +1,37 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"streams.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define bit : (subr pure (bool int) int) ! pure",
+"define kind-of : (subr pure (io-error) int) ! pure",
+"define buf : (bytevectorof @b) ! (alloc @b)",
+"define w : int ! (io stdout)",
+"define l : int ! (io stdin)",
+"define b : int ! (io stdin)",
+"define n0 : int ! (maxeff (io stdin) (read (globals buf)) (write @b))",
+"define n1 : int ! (maxeff (io stdin) (read (globals buf)) (write @b))",
+"define r : int ! (io stdin)",
+"define a : int ! (io args)",
+"define f : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"define d : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"define t : int ! (io terminal)",
+"int ! (read (globals a b d f l n0 n1 r t w))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

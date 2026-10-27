@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fib.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define fib : (subr (maxeff (read (globals fib)) spin) (int) int) ! pure",
+"define input : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (read (globals fib input run)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals fib input iterations run)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

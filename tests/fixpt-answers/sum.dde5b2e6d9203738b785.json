@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"sum.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sum-to : (subr spin (int) int) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (read (globals input1 run sum-to)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals input1 iterations run sum-to)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

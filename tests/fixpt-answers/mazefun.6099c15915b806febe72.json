@@ -1,0 +1,60 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"mazefun.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define foldr : (poly ((a type) (b type) (e effect)) (subr (maxeff (read @heap) e spin) ((subr e (a b) b) b (listof a @heap)) b)) ! pure",
+"define foldl : (poly ((a type) (b type) (e effect)) (subr (maxeff (read @heap) e spin) ((subr e (a b) a) a (listof b @heap)) a)) ! pure",
+"define for : (poly ((a type) (e effect)) (subr (maxeff (alloc @heap) e spin) (int int (subr e (int) a)) (listof a @heap))) ! pure",
+"define map : (poly ((a type) (b type) (e effect)) (subr (maxeff (alloc @heap) (read @heap) e spin) ((subr e (a) b) (listof a @heap)) (listof b @heap))) ! pure",
+"define append2 : (subr (maxeff (alloc @heap) (read (globals append2)) (read @heap) spin) ((listof pos @heap) (listof pos @heap)) (listof pos @heap)) ! pure",
+"define concat : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) ((listof (listof pos @heap) @heap)) (listof pos @heap)) ! pure",
+"define length : (poly ((a type)) (subr (maxeff (read @heap) spin) ((listof a @heap)) int)) ! pure",
+"define list-read : (poly ((a type)) (subr (maxeff (read (globals list-read)) (read @heap) spin) ((listof a @heap) int) a)) ! pure",
+"define list-write : (poly ((a type)) (subr (maxeff (alloc @heap) (read (globals list-write)) (read @heap) spin) ((listof a @heap) int a) (listof a @heap))) ! pure",
+"define list-remove-pos : (poly ((a type)) (subr (maxeff (alloc @heap) (read (globals list-remove-pos)) (read @heap) spin) ((listof a @heap) int) (listof a @heap))) ! pure",
+"define cell=? : (subr (read @heap) (pos pos) bool) ! pure",
+"define cell-member : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (pos (listof pos @heap)) bool) ! pure",
+"define duplicates? : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) ((listof pos @heap)) bool) ! pure",
+"define make-matrix : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (int int (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (int int) pos)) cave) ! pure",
+"define matrix-read : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (cave int int) pos) ! pure",
+"define matrix-write : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (cave int int pos) cave) ! pure",
+"define matrix-size : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (cave) (pairof int int @heap)) ! pure",
+"define matrix-map : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) ((subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (pos) symbol) cave) (listof (listof symbol @heap) @heap)) ! pure",
+"define initial-random : int ! pure",
+"define next-random : (subr pure (int) int) ! pure",
+"define shuffle-aux : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) ((listof pos @heap) int) (listof pos @heap)) ! pure",
+"define shuffle : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) ((listof pos @heap)) (listof pos @heap)) ! pure",
+"define even? : (subr pure (int) bool) ! pure",
+"define odd? : (subr pure (int) bool) ! pure",
+"define cave-to-maze : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (cave) (listof (listof symbol @heap) @heap)) ! pure",
+"define pierce : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (pos cave) cave) ! pure",
+"define neighboring-cavities : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (pos cave) (listof pos @heap)) ! pure",
+"define change-cavity-aux : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (cave pos pos pos) cave) ! pure",
+"define change-cavity : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (cave pos pos) cave) ! pure",
+"define try-to-pierce : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (pos cave) cave) ! pure",
+"define pierce-randomly : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) ((listof pos @heap) cave) cave) ! pure",
+"define make-maze : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random length list-read list-remove-pos list-write make-matrix map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (int int) (listof (listof symbol @heap) @heap)) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random input1 input2 length list-read list-remove-pos list-write make-matrix make-maze map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly run shuffle shuffle-aux try-to-pierce)) (read @heap) spin) (int (listof (listof symbol @heap) @heap)) (listof (listof symbol @heap) @heap)) ! pure",
+"(listof (listof symbol @heap) @heap) ! (maxeff (alloc @heap) (read (globals append2 cave-to-maze cell-member cell=? change-cavity change-cavity-aux concat duplicates? even? foldl foldr for initial-random input1 input2 iterations length list-read list-remove-pos list-write make-matrix make-maze map matrix-map matrix-read matrix-size matrix-write neighboring-cavities next-random odd? pierce pierce-randomly run shuffle shuffle-aux try-to-pierce)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"diviter.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define create-n : (subr (maxeff (alloc @heap) spin) (int) nils) ! pure",
+"define iterative-div2 : (subr (maxeff (alloc @heap) (read @heap) spin) (nils) nils) ! pure",
+"define list-length : (subr (maxeff (read (globals list-length)) (read @heap) spin) (nils) int) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define ll : nils ! (maxeff (alloc @heap) (read (globals create-n input1)) spin)",
+"define run : (subr (maxeff (alloc @heap) (read (globals iterative-div2 ll run)) (read @heap) spin) (int nils) nils) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals iterations iterative-div2 list-length ll run)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

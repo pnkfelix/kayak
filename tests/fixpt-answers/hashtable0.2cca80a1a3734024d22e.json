@@ -1,0 +1,53 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"hashtable0.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define serial : (ref int @heap) ! (alloc @heap)",
+"define make-key : (subr (maxeff (alloc @heap) (read (globals serial)) (read @heap) (write @heap) spin) (datum) key) ! pure",
+"define fixnum-key : (subr pure (int) key) ! pure",
+"define same-key? : (subr pure (key key) bool) ! pure",
+"define make-table : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) () table) ! pure",
+"define bucket-of : (subr pure (key int) int) ! pure",
+"define bucket-find : (subr (maxeff (alloc @heap) (read (globals bucket-find same-key?)) (read @heap) (write @heap) spin) (bucket key) entry) ! pure",
+"define hash-table-ref/default : (subr (maxeff (alloc @heap) (read (globals bucket-find bucket-of same-key?)) (read @heap) (write @heap) spin) (table key datum) datum) ! pure",
+"define hash-table-size : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (table) int) ! pure",
+"define rehash-bucket : (subr (maxeff (alloc @heap) (read (globals bucket-of rehash-bucket)) (read @heap) (write @heap) spin) (bucket (arrayof bucket @heap)) unit) ! pure",
+"define table-grow : (subr (maxeff (alloc @heap) (read (globals bucket-of rehash-bucket)) (read @heap) (write @heap) spin) (table) unit) ! pure",
+"define hash-table-set! : (subr (maxeff (alloc @heap) (read (globals bucket-find bucket-of rehash-bucket same-key? table-grow)) (read @heap) (write @heap) spin) (table key datum) unit) ! pure",
+"define make-eq-hash-table : maker ! pure",
+"define make-eqv-hash-table : maker ! pure",
+"define failures : (ref (listof int @heap) @heap) ! (alloc @heap)",
+"define report-failure! : (subr (maxeff (alloc @heap) (read (globals failures)) (read @heap) (write @heap) spin) (int) unit) ! pure",
+"define datum-nil : datum ! pure",
+"define sym-a : datum ! pure",
+"define sym-b : datum ! pure",
+"define sym-c : datum ! pure",
+"define sym-d : datum ! pure",
+"define sym-e : datum ! pure",
+"define eq-symbol? : (subr pure (datum datum) bool) ! pure",
+"define not-found? : (subr pure (datum) bool) ! pure",
+"define hash-table-eq-tests : (subr (maxeff (alloc @heap) (read (globals bucket-find bucket-of datum-nil eq-symbol? failures fixnum-key hash-table-ref/default hash-table-set! hash-table-size make-key make-table not-found? rehash-bucket report-failure! same-key? serial sym-a sym-b sym-c sym-d sym-e table-grow)) (read @heap) (write @heap) spin) (int maker) int) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals bucket-find bucket-of datum-nil eq-symbol? failures fixnum-key hash-table-eq-tests hash-table-ref/default hash-table-set! hash-table-size input1 input2 make-eq-hash-table make-eqv-hash-table make-key make-table not-found? rehash-bucket report-failure! run same-key? serial sym-a sym-b sym-c sym-d sym-e table-grow)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals bucket-find bucket-of datum-nil eq-symbol? failures fixnum-key hash-table-eq-tests hash-table-ref/default hash-table-set! hash-table-size input1 input2 iterations make-eq-hash-table make-eqv-hash-table make-key make-table not-found? rehash-bucket report-failure! run same-key? serial sym-a sym-b sym-c sym-d sym-e table-grow)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

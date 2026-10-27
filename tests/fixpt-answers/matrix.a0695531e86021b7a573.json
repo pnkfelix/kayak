@@ -1,0 +1,74 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"matrix.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define remainder : (subr pure (int int) int) ! pure",
+"define div : (subr pure (int int) int) ! pure",
+"define mod : (subr (read (globals remainder)) (int int) int) ! pure",
+"define expt : (subr (maxeff (read (globals expt)) spin) (int int) int) ! pure",
+"define even? : (subr pure (int) bool) ! pure",
+"define list-length : (poly ((t type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((listof t @heap)) int)) ! pure",
+"define map : (poly ((a type) (b type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (a) b) (listof a @heap)) (listof b @heap))) ! pure",
+"define map2 : (poly ((a type) (b type) (c type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (a b) c) (listof a @heap) (listof b @heap)) (listof c @heap))) ! pure",
+"define chez-box : (subr (alloc @heap) (row) (listof row @heap)) ! pure",
+"define chez-unbox : (subr (read @heap) ((listof row @heap)) row) ! pure",
+"define chez-set-box! : (subr (write @heap) ((listof row @heap) row) unit) ! pure",
+"define no-perm : (subr pure () pv) ! pure",
+"define a-perm : (subr pure ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (symbol) pv)) pv) ! pure",
+"define r-row : (subr pure (row) pv) ! pure",
+"define r-rows : (subr pure (mat) pv) ! pure",
+"define send-to : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (pv symbol) pv) ! pure",
+"define perm? : (subr pure (pv) bool) ! pure",
+"define pv-row : (subr pure (pv) row) ! pure",
+"define fold : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row mat) mat) mat) mat) ! pure",
+"define miota : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) row) ! pure",
+"define proc->vector : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int)) (arrayof int @heap)) ! pure",
+"define gen-perms : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat) pv) ! pure",
+"define zulu : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int) mat (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat) bool)) bool) ! pure",
+"define zebra : (subr (maxeff (alloc @heap) (read (globals miota)) (read @globals) (read @heap) (write @heap) spin) (pv (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int)) mat int) bool) ! pure",
+"define zunda : (subr (maxeff (alloc @heap) (read (globals list-length miota pv-row send-to zebra)) (read @globals) (read @heap) (write @heap) spin) (pv mat) bool) ! pure",
+"define maximal? : (subr (maxeff (alloc @heap) (read (globals gen-perms)) (read @globals) (read @heap) (write @heap) spin) (mat) bool) ! pure",
+"define all? : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row) bool) mat) bool) ! pure",
+"define extended-gcd : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int int) int)) int) ! pure",
+"define make-modular : (poly ((t type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) bool) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int)) t)) t))) ! pure",
+"define make-row-reduce : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) bool) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat) mat)) ! pure",
+"define make-in-row-space? : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) bool) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int int) int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) int)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row) bool))) ! pure",
+"define make-modular-row-reduce : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat) mat)) ! pure",
+"define make-modular-in-row-space? : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row) bool))) ! pure",
+"define find-prime : (subr (maxeff (alloc @heap) (read (globals chez-box)) (read @globals) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define det-upper-bound : (subr (maxeff (alloc @heap) (read (globals div even? expt)) (read @globals) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define fold-over-rows : (subr (maxeff (alloc @heap) (read (globals fold-over-rows)) (read @globals) (read @heap) (write @heap) spin) (int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row mat) mat) mat) mat) ! pure",
+"define fold-over-subs-of-size : (subr (maxeff (alloc @heap) (read (globals list-length)) (read @globals) (read @heap) (write @heap) spin) (mat int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat tests) tests) tests) tests) ! pure",
+"define remove-in-order : (subr (maxeff (alloc @heap) (read (globals fold)) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (row) bool) mat) mat) ! pure",
+"define a-mat : (subr pure (mat) entry) ! pure",
+"define ellipsis : (subr pure (string) entry) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals chez-box det-upper-bound div even? expt find-prime fold fold-over-rows make-modular-in-row-space?)) (read @globals) (read @heap) (write @heap) spin) (int int (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (mat state) state) state) state) ! pure",
+"define go-folder : (subr (maxeff (alloc @heap) (read (globals a-mat ellipsis list-length)) (read @globals) (read @heap) (write @heap) spin) (mat state) state) ! pure",
+"define really-go : (subr (maxeff (alloc @heap) (read (globals chez-box det-upper-bound div even? expt find-prime fold fold-over-rows go go-folder make-modular-in-row-space?)) (read @globals) (read @heap) (write @heap) spin) (int int) (listof entry @heap)) ! pure",
+"define row->datum : (subr (maxeff (alloc @heap) (read (globals row->datum)) (read @globals) (read @heap) (write @heap) spin) (row) datum) ! pure",
+"define mat->datum : (subr (maxeff (alloc @heap) (read (globals mat->datum row->datum)) (read @globals) (read @heap) (write @heap) spin) (mat) datum) ! pure",
+"define entries->datum : (subr (maxeff (alloc @heap) (read (globals entries->datum mat->datum row->datum)) (read @globals) (read @heap) (write @heap) spin) ((listof entry @heap)) datum) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals chez-box det-upper-bound div even? expt find-prime fold fold-over-rows go go-folder input1 input2 make-modular-in-row-space? really-go run)) (read @globals) (read @heap) (write @heap) spin) (int (listof entry @heap)) (listof entry @heap)) ! pure",
+"datum ! (maxeff (alloc @heap) (read (globals chez-box det-upper-bound div entries->datum even? expt find-prime fold fold-over-rows go go-folder input1 input2 iterations make-modular-in-row-space? mat->datum really-go row->datum run)) (read @globals) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

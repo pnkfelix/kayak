@@ -1,0 +1,47 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"puzzle.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define my-iota : (subr (maxeff (alloc @heap) spin) (int) ints) ! pure",
+"define size : int ! pure",
+"define classmax : int ! pure",
+"define typemax : int ! pure",
+"define *iii* : (ref int @heap) ! (alloc @heap)",
+"define *kount* : (ref int @heap) ! (alloc @heap)",
+"define *d* : int ! pure",
+"define *piececount* : ivec ! (maxeff (alloc @heap) (read (globals classmax)))",
+"define *class* : ivec ! (maxeff (alloc @heap) (read (globals typemax)))",
+"define *piecemax* : ivec ! (maxeff (alloc @heap) (read (globals typemax)))",
+"define *puzzle* : bvec ! (maxeff (alloc @heap) (read (globals size)))",
+"define *p* : (arrayof bvec @heap) ! (maxeff (alloc @heap) (read (globals typemax)))",
+"define fit : (subr (maxeff (read (globals *p* *piecemax* *puzzle*)) (read @heap) spin) (int int) bool) ! pure",
+"define place : (subr (maxeff (read (globals *class* *p* *piececount* *piecemax* *puzzle* size)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"define puzzle-remove : (subr (maxeff (read (globals *class* *p* *piececount* *piecemax* *puzzle*)) (read @heap) (write @heap) spin) (int int) unit) ! pure",
+"define trial : (subr (maxeff (alloc @heap) (comefrom @ret) (goto @ret) (read (globals *class* *kount* *p* *piececount* *piecemax* *puzzle* fit place puzzle-remove size trial typemax)) (read @heap) (write @heap) spin) (int) bool) ! pure",
+"define definePiece : (subr (maxeff (alloc @heap) (read (globals *class* *d* *iii* *p* *piecemax* typemax)) (read @heap) (write @heap) spin) (int int int int) unit) ! pure",
+"define start : (subr (maxeff (alloc @heap) (comefrom @ret) (goto @ret) (read (globals *class* *d* *iii* *kount* *p* *piececount* *piecemax* *puzzle* definePiece fit place puzzle-remove size trial typemax)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define init-p : (subr (maxeff (alloc @heap) (read (globals *p* my-iota size typemax)) (read @heap) (write @heap) spin) () unit) ! pure",
+"unit ! (maxeff (alloc @heap) (read (globals *p* init-p my-iota size typemax)) (read @heap) (write @heap) spin)",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (comefrom @ret) (goto @ret) (read (globals *class* *d* *iii* *kount* *p* *piececount* *piecemax* *puzzle* definePiece fit input1 place puzzle-remove run size start trial typemax)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (comefrom @ret) (goto @ret) (read (globals *class* *d* *iii* *kount* *p* *piececount* *piecemax* *puzzle* definePiece fit input1 iterations place puzzle-remove run size start trial typemax)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -1,0 +1,43 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"chudnovsky.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define ch-A : int ! pure",
+"define ch-B : int ! pure",
+"define ch-C : int ! pure",
+"define ch-C^3 : int ! (read (globals ch-C))",
+"define ch-D : int ! pure",
+"define expt : (subr (maxeff (read (globals expt)) spin) (int int) int) ! pure",
+"define ch-split : (subr (maxeff (alloc @heap) (read (globals ch-A ch-B ch-C^3 ch-split expt)) (read @heap) spin) (int int) ints) ! pure",
+"define powers-under : (subr (maxeff (alloc @heap) (read (globals powers-under)) spin) (int int ints) ints) ! pure",
+"define power-under : (subr (maxeff (read (globals power-under)) (read @heap) spin) (int int ints) int) ! pure",
+"define newton-sqrt : (subr (maxeff (read (globals newton-sqrt)) spin) (int int) int) ! pure",
+"define integer-sqrt : (subr (maxeff (alloc @heap) (read (globals newton-sqrt power-under powers-under)) (read @heap) spin) (int) int) ! pure",
+"define num-terms-of : (subr pure (int) int) ! pure",
+"define pi : (subr (maxeff (alloc @heap) (read (globals ch-A ch-B ch-C ch-C^3 ch-D ch-split expt integer-sqrt newton-sqrt num-terms-of power-under powers-under)) (read @heap) spin) (int) int) ! pure",
+"define pies : (subr (maxeff (alloc @heap) (read (globals ch-A ch-B ch-C ch-C^3 ch-D ch-split expt integer-sqrt newton-sqrt num-terms-of pi pies power-under powers-under)) (read @heap) spin) (int int int) ints) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define input3 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals ch-A ch-B ch-C ch-C^3 ch-D ch-split expt input1 input2 input3 integer-sqrt newton-sqrt num-terms-of pi pies power-under powers-under run)) (read @heap) spin) (int ints) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals ch-A ch-B ch-C ch-C^3 ch-D ch-split expt input1 input2 input3 integer-sqrt iterations newton-sqrt num-terms-of pi pies power-under powers-under run)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"generator.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define eof : int ! pure",
+"define greatest-fixnum : int ! pure",
+"define eof-object? : (subr (read (globals eof)) (int) bool) ! pure",
+"define make-iota-generator : (subr (alloc @heap) (int int int) gen) ! pure",
+"define make-range-generator : (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int int int) gen) ! pure",
+"define pythagorean-triples-using-generators : (subr (maxeff (alloc @heap) (read (globals eof eof-object? greatest-fixnum make-iota-generator make-range-generator)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals eof eof-object? greatest-fixnum make-iota-generator make-range-generator pythagorean-triples-using-generators)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals eof eof-object? go greatest-fixnum input1 make-iota-generator make-range-generator pythagorean-triples-using-generators run)) (read @heap) (write @heap) spin) (int ints) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals eof eof-object? go greatest-fixnum input1 iterations make-iota-generator make-range-generator pythagorean-triples-using-generators run)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

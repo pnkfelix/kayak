@@ -1,0 +1,39 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"listsort.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define all-characters : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (char char) chars) ! pure",
+"define char<? : less ! pure",
+"define hash<? : less ! pure",
+"define merge!! : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (chars chars less) chars) ! pure",
+"define chars-length : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (chars) int) ! pure",
+"define sort!! : (subr (maxeff (alloc @heap) (read (globals chars-length merge!!)) (read @heap) (write @heap) spin) (chars less) chars) ! pure",
+"define list-copy : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (chars) chars) ! pure",
+"define list-sort : (subr (maxeff (alloc @heap) (read (globals chars-length list-copy merge!! sort!!)) (read @heap) (write @heap) spin) (less chars) chars) ! pure",
+"define hash-then-sort : (subr (maxeff (alloc @heap) (read (globals char<? chars-length hash<? list-copy list-sort merge!! sort!!)) (read @heap) (write @heap) spin) (chars) chars) ! pure",
+"define chars=? : (subr (maxeff (alloc @heap) (read (globals chars=?)) (read @heap) (write @heap) spin) (chars chars) bool) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define chars : chars ! (maxeff (alloc @heap) (read (globals all-characters input1 input2)) (read @heap) (write @heap) spin)",
+"define run : (subr (maxeff (alloc @heap) (read (globals char<? chars chars-length hash-then-sort hash<? list-copy list-sort merge!! run sort!!)) (read @heap) (write @heap) spin) (int chars) chars) ! pure",
+"bool ! (maxeff (alloc @heap) (read (globals char<? chars chars-length chars=? hash-then-sort hash<? iterations list-copy list-sort merge!! run sort!!)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

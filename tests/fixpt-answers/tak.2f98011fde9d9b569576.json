@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tak.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define tak : (subr (maxeff (read (globals tak)) spin) (int int int) int) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define input3 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (read (globals input1 input2 input3 run tak)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals input1 input2 input3 iterations run tak)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

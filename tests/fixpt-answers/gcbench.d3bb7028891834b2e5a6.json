@@ -1,0 +1,40 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"gcbench.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make-empty-node : (subr (alloc @heap) () node) ! pure",
+"define make-node : (subr (alloc @heap) (node node) node) ! pure",
+"define expt2 : (subr (maxeff (read (globals expt2)) spin) (int) int) ! pure",
+"define tree-size : (subr (maxeff (read (globals expt2)) spin) (int) int) ! pure",
+"define num-iters : (subr (maxeff (read (globals expt2 tree-size)) spin) (int int) int) ! pure",
+"define populate : (subr (maxeff (alloc @heap) (read (globals make-empty-node populate)) (read @heap) (write @heap) spin) (int node) bool) ! pure",
+"define make-tree : (subr (maxeff (alloc @heap) (read (globals make-empty-node make-node make-tree)) spin) (int) node) ! pure",
+"define top-down : (subr (maxeff (alloc @heap) (read (globals make-empty-node populate top-down)) (read @heap) (write @heap) spin) (int int int) unit) ! pure",
+"define bottom-up : (subr (maxeff (alloc @heap) (read (globals bottom-up make-empty-node make-node make-tree)) spin) (int int int) unit) ! pure",
+"define time-construction : (subr (maxeff (alloc @heap) (read (globals bottom-up expt2 make-empty-node make-node make-tree num-iters populate top-down tree-size)) (read @heap) (write @heap) spin) (int int) unit) ! pure",
+"define construct-all : (subr (maxeff (alloc @heap) (read (globals bottom-up construct-all expt2 make-empty-node make-node make-tree num-iters populate time-construction top-down tree-size)) (read @heap) (write @heap) spin) (int int int) unit) ! pure",
+"define fill-array : (subr (maxeff (alloc @heap) (read (globals fill-array)) (write @heap) spin) ((arrayof (ref int @heap) @heap) int int) unit) ! pure",
+"define gcbench : (subr (maxeff (alloc @heap) (read (globals bottom-up construct-all expt2 fill-array make-empty-node make-node make-tree num-iters populate time-construction top-down tree-size)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals bottom-up construct-all expt2 fill-array gcbench input1 make-empty-node make-node make-tree num-iters populate run time-construction top-down tree-size)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals bottom-up construct-all expt2 fill-array gcbench input1 iterations make-empty-node make-node make-tree num-iters populate run time-construction top-down tree-size)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

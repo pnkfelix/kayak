@@ -165,17 +165,35 @@ def main():
     fixpt = fixptcache.binary()
     programs = fixptcache.PROGRAMS
     files = [p for _, p in fixptcache.programs()]
+    # And Fixpt's ports of the R7RS benchmarks (`scheme-bench/`), from the
+    # clone, when there is one (C256: `peval.fx` found `car` of a union
+    # refused; Fixpt's tests had no such program).
+    clone = os.environ.get("KAYAK_FIXPT_CLONE", os.path.join(ROOT, "..", "kayak-refs", "fixpt"))
+    bench = os.path.join(clone, "scheme-bench")
+    if fixpt and os.path.isdir(bench):
+        files += sorted(os.path.join(bench, f) for f in os.listdir(bench) if f.endswith(".fx"))
+    # And kayak's own programs (`tests/fx26-kayak/`, C257): those Fixpt
+    # refuses kayak must refuse too (`checker/`).
+    files += [p for _, p in fixptcache.kayak_programs()]
+
+    def label(p):
+        if p.startswith(bench + os.sep):
+            return "scheme-bench/" + os.path.basename(p)
+        if p.startswith(fixptcache.KAYAK_PROGRAMS + os.sep):
+            return "kayak/" + os.path.relpath(p, fixptcache.KAYAK_PROGRAMS)
+        return os.path.relpath(p, programs)
+
     if only:
-        files = [p for p in files if os.path.relpath(p, programs).startswith(only.rstrip("/") + "/")]
+        files = [p for p in files if label(p).startswith(only.rstrip("/") + "/")]
     results = fixptcache.parallel(lambda p: (p, compare(fixpt, p)), files)
     counts = collections.Counter(kind for _, (kind, _) in results)
     by_dir = collections.defaultdict(collections.Counter)
     for p, (kind, _) in results:
-        by_dir[os.path.relpath(p, programs).split(os.sep)[0]][kind] += 1
+        by_dir[label(p).split("/")[0]][kind] += 1
     if listing:
         for p, (kind, detail) in results:
             if kind == listing:
-                print(os.path.relpath(p, programs) + (":\n      " + detail if detail else ""))
+                print(label(p) + (":\n      " + detail if detail else ""))
     if whys:
         c = collections.Counter(why(d) for _, (kind, d) in results if kind == "refused")
         for m, n in c.most_common():
@@ -192,7 +210,7 @@ def main():
     if counts["ACCEPTED"]:
         for p, (kind, _) in results:
             if kind == "ACCEPTED":
-                print("compare-checkers: K1: kayak accepts " + os.path.relpath(p, programs))
+                print("compare-checkers: K1: kayak accepts " + label(p))
         sys.exit(1)
 
 

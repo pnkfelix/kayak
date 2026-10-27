@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"ilist.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define iiota : (subr (maxeff (alloc @heap) (read @heap) spin) (int) iints) ! pure",
+"define ilength : (subr (maxeff (alloc @heap) (read @heap) spin) (isyms) int) ! pure",
+"define itake : (subr (maxeff (alloc @heap) (read (globals itake)) (read @heap) spin) (isyms int) isyms) ! pure",
+"define idrop : (subr (maxeff (alloc @heap) (read (globals idrop)) (read @heap) spin) (isyms int) isyms) ! pure",
+"define iappend : (subr (maxeff (alloc @heap) (read (globals iappend)) (read @heap) spin) (isyms isyms) isyms) ! pure",
+"define iappend-sets : (subr (maxeff (alloc @heap) (read (globals iappend-sets)) (read @heap) spin) (isets isets) isets) ! pure",
+"define iconcatenate : (subr (maxeff (alloc @heap) (read (globals iappend-sets)) (read @heap) spin) (isetss) isets) ! pure",
+"define ilist? : (subr (maxeff (alloc @heap) (read @heap) spin) (isyms) bool) ! pure",
+"define iequal-symbol? : (subr pure (symbol symbol) bool) ! pure",
+"define iequal? : (subr (maxeff (alloc @heap) (read (globals iequal-symbol? iequal? ilist?)) (read @heap) spin) (isyms isyms) bool) ! pure",
+"define symbols : (subr (maxeff (alloc @heap) (read (globals iiota)) (read @heap) spin) (int) isyms) ! pure",
+"define powerset : (subr (maxeff (alloc @heap) (read (globals iappend-sets powerset)) (read @heap) spin) (isyms) isets) ! pure",
+"define permutations : (subr (maxeff (alloc @heap) (read (globals iappend iappend-sets iconcatenate idrop iiota ilength itake permutations)) (read @heap) spin) (isyms) isets) ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals iappend iappend-sets iconcatenate idrop iequal-symbol? iequal? iiota ilength ilist? itake permutations powerset symbols)) (read @heap) spin) (int) (listof (listof symbol @heap) @heap)) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals go iappend iappend-sets iconcatenate idrop iequal-symbol? iequal? iiota ilength ilist? input1 itake permutations powerset run symbols)) (read @heap) spin) (int (listof (listof symbol @heap) @heap)) (listof (listof symbol @heap) @heap)) ! pure",
+"(listof (listof symbol @heap) @heap) ! (maxeff (alloc @heap) (read (globals go iappend iappend-sets iconcatenate idrop iequal-symbol? iequal? iiota ilength ilist? input1 itake iterations permutations powerset run symbols)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

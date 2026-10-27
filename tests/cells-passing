@@ -81,6 +81,8 @@ higher-kinds/infer-generative.fx
 higher-kinds/okasaki-stack.fx
 higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
+kayak/checker/let-cons-car.fx
+kayak/checker/union-car.fx
 kayak/conventions/both-ways.fx
 kayak/datum/interned-across-collections.fx
 kayak/io/streams.fx

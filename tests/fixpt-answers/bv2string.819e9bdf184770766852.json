@@ -1,0 +1,42 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bv2string.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define utf8-continuation? : (subr pure (int) bool) ! pure",
+"define utf8-scalar : (subr (maxeff (read (globals utf8-continuation?)) (read @heap)) (bytevector int int int) int) ! pure",
+"define utf8-width : (subr pure (int) int) ! pure",
+"define utf8-decode : (subr (maxeff (alloc @heap) (read (globals utf8-continuation? utf8-decode utf8-scalar utf8-width)) (read @heap) spin) (bytevector int int chars) chars) ! pure",
+"define utf8->string : (subr (maxeff (alloc @heap) (read (globals utf8-continuation? utf8-decode utf8-scalar utf8-width)) (read @heap) spin) (bytevector) string) ! pure",
+"define utf8-encoded-width : (subr pure (int) int) ! pure",
+"define utf8-length : (subr (maxeff (read (globals utf8-encoded-width utf8-length)) spin) (string int int int) int) ! pure",
+"define utf8-encode : (subr (maxeff (read (globals utf8-encode)) (write @heap) spin) (string int int bytevector int) unit) ! pure",
+"define string->utf8 : (subr (maxeff (alloc @heap) (read (globals utf8-encode utf8-encoded-width utf8-length)) (write @heap) spin) (string) bytevector) ! pure",
+"define failed-tests : (ref strings @heap) ! (alloc @heap)",
+"define bool=? : (subr pure (bool bool) bool) ! pure",
+"define test : (subr (maxeff (alloc @heap) (read (globals bool=? failed-tests)) (read @heap) (write @heap)) (string bool bool) unit) ! pure",
+"define string-bytevector-tests : (subr (maxeff (alloc @heap) (read (globals bool=? failed-tests string->utf8 test utf8->string utf8-continuation? utf8-decode utf8-encode utf8-encoded-width utf8-length utf8-scalar utf8-width)) (read @heap) (write @heap) spin) (int int) unit) ! pure",
+"define strings-length : (subr (maxeff (read (globals strings-length)) (read @heap) spin) (strings int) int) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals bool=? failed-tests input1 input2 run string->utf8 string-bytevector-tests strings-length test utf8->string utf8-continuation? utf8-decode utf8-encode utf8-encoded-width utf8-length utf8-scalar utf8-width)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals bool=? failed-tests input1 input2 iterations run string->utf8 string-bytevector-tests strings-length test utf8->string utf8-continuation? utf8-decode utf8-encode utf8-encoded-width utf8-length utf8-scalar utf8-width)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

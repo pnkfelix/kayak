@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"ctak.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define ctak-aux : (subr (maxeff (comefrom @k) (goto @k) (read (globals ctak-aux)) spin) (kont int int int) int) ! pure",
+"define ctak : (subr (maxeff (comefrom @k) (goto @k) (read (globals ctak-aux)) spin) (int int int) int) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define input3 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (comefrom @k) (goto @k) (read (globals ctak ctak-aux input1 input2 input3 run)) spin) (int int) int) ! pure",
+"int ! (maxeff (comefrom @k) (goto @k) (read (globals ctak ctak-aux input1 input2 input3 iterations run)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

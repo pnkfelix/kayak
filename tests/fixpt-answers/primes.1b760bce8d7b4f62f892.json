@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"primes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define interval-list : (subr (maxeff (alloc @heap) (read (globals interval-list)) spin) (int int) ints) ! pure",
+"define sieve : (subr (maxeff (alloc @heap) (read (globals sieve)) (read @heap) spin) (ints) ints) ! pure",
+"define primes<= : (subr (maxeff (alloc @heap) (read (globals interval-list sieve)) (read @heap) spin) (int) ints) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals input1 interval-list primes<= run sieve)) (read @heap) spin) (int ints) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals input1 interval-list iterations primes<= run sieve)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

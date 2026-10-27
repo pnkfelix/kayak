@@ -4587,20 +4587,44 @@
                         (tagcase (car args) (lst (ys f l p) #t) (else other #f))
                         (null? (chain-type v s (car args)))
                         (tagcase (walk-mu s (tagcase (synth v s (car args)) (res (t es s2) (walk s2 t))))
-                          (ty-data (d parts) (and (string=? d "%pairof") (not (tagcase (walk s (car (cdr parts))) (ty-list (e r) #t) (else other #f)))))
+                          (ty-data (d parts) (string=? d "%pairof"))
                           (else other #f)))
-                   "Of a pair whose tail is no list, an expression's (C208; Fixpt's
-                    `made-code/leaves.fx`, `(car (read))`): its head or its tail. KFX's
-                    such pairs are taken apart where named (C68, C77)."
+                   "Of a pair, an expression's (C208; Fixpt's `made-code/leaves.fx`,
+                    `(car (read))`): its head or its tail, as FX-26's `car` and `cdr`
+                    take any pair, its tail a list or not (C257: a pair at a region of
+                    its own, its tail a list elsewhere, is no list). KFX's pairs whose
+                    tail is no list are taken apart where named (C68, C77)."
                    (tagcase (synth v s (car args))
                      (res (t es s)
                        (tagcase (walk-mu s t)
                          (ty-data (d parts)
-                           (let ((part (if (string=? h "car") (car parts) (car (cdr parts)))))
+                           (let* ((part (if (string=? h "car") (car parts) (car (cdr parts))))
+                                  (s2 (if (null? expected) s (fits v s part (car expected)))))
                              (res part (effs-union (list (string-append "read:" (region-string s (car (cdr (cdr parts)))))) es)
-                                  (kfx-restricted v (if (null? expected) s (fits v s part (car expected)))
-                                                  "a car or cdr of a pair whose tail is no list, not named, FX-26's (C208)"))))
+                                  (if (general-pair? s2 (walk-mu s2 t))
+                                      (kfx-restricted v s2 "a car or cdr of a pair whose tail is no list, not named, FX-26's (C208)")
+                                      s2))))
                          (else other (refuse v "a pair that is none"))))))
+                  ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? found)) (prim? (car found))
+                        (tagcase (car args) (lst (ys f l p) #t) (else other #f))
+                        (null? (chain-type v s (car args)))
+                        (let ((t (tagcase (synth v s (car args)) (res (t es s2) (walk-mu s2 t)))))
+                          (and (string=? (shape-of t) "union") (not (null? (pair-member s t))))))
+                   "Of a union with a pair member, an expression's (C256; FX-26's
+                    `car` and `cdr` take apart a union with a pair member, checked at
+                    run time: `scheme-bench/peval.fx`, `(car (the (union nil sxpair)
+                    no-pair))`): the pair member's head or tail. KFX's are taken
+                    apart where named (C77)."
+                   (tagcase (synth v s (car args))
+                     (res (t es s)
+                       (let ((ps (pair-member s (walk-mu s t))))
+                         (tagcase (car ps)
+                           (ty-data (d parts)
+                             (let ((part (if (string=? h "car") (car parts) (car (cdr parts)))))
+                               (res part (effs-union (list (string-append "read:" (region-string s (car (cdr (cdr parts)))))) es)
+                                    (kfx-restricted v (if (null? expected) s (fits v s part (car expected)))
+                                                    "a car or cdr of a union's pair, not named, FX-26's (C256)"))))
+                           (else other (refuse v "a pair that is none")))))))
                   ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? (local-pair v s (car args)))))
                    "Of a local known to be a pair (C68): its head or its tail, of any
                     type, not only a list's."
@@ -4629,16 +4653,21 @@
                      (else other (refuse v "a pair that is none"))))
                   ((and (string=? h "cons") (i64= (size args) 2) (not (null? found)) (prim? (car found))
                         (or (null? expected) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
-                        (not (draft-hole? (second args))) (not (draft-hole? (car args)))
-                        (tagcase (synth v s (second args)) (res (t2 es2 s2) (not (list-like? s2 t2)))))
-                   "A pair whose tail is no list, where none is expected: Fixpt's `cons`
-                    is `(t1 t2) -> (pairof t1 t2 r)` (C184; `bloblet/width-infer`), a
-                    list's only where its tail is one. At a region of its own."
+                        (not (draft-hole? (second args))) (not (draft-hole? (car args))))
+                   "A pair where none is expected: Fixpt's `cons` is `(t1 t2) ->
+                    (pairof t1 t2 r)` (C184; `bloblet/width-infer`), at a region of
+                    its own, its tail a list or not (C257: FX-26's implicit
+                    projection, `docs/fx26.md`; a list's region was its tail's,
+                    which a later use could not then choose apart)."
                    (tagcase (synth v s (car args))
                      (res (t1 es1 s1)
                        (tagcase (synth v s1 (second args))
-                         (res (t2 es2 s2)
-                           (let ((pt (ty-data "%pairof" (list t1 t2 (ty-rconst "%fresh")))))
+                         (res (t2 es2 s2b)
+                           ;; A tail that is a list: of the head's type, as any
+                           ;; list's (KFX's lists are typed, C257); the pair
+                           ;; at a region of its own.
+                           (let* ((s2 (tagcase (walk s2b t2) (ty-list (e r) (fits v s2b t1 e)) (else other s2b)))
+                                  (pt (ty-data "%pairof" (list t1 t2 (ty-rconst "%fresh")))))
                              (res pt (effs-union (list "alloc:%fresh") (effs-union es1 es2))
                                   (if (general-pair? s2 pt) (note-fact s2 (cv-file v) (cv-pos v) "value-cons") s2))))))))
                   ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))

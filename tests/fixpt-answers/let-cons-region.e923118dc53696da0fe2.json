@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"let-cons-region.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"g : (subr pure (ints) int) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26-kayak/checker/let-cons-region.fx:7:84: argument 1 is a (pairof int ints @r.1), where a ints is expected",
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

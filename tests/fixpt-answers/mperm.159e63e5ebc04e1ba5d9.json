@@ -1,0 +1,37 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"mperm.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define list-length : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (ints) int) ! pure",
+"define permutations : (subr (maxeff (alloc @heap) (read (globals list-length)) (read @heap) (write @heap) spin) (ints) perms) ! pure",
+"define sumlists : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (perms) int) ! pure",
+"define one..n : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"define m : int ! pure",
+"define n : int ! pure",
+"define k : int ! pure",
+"define ell : int ! pure",
+"define queue : (arrayof perms @heap) ! (maxeff (alloc @heap) (read (globals k)))",
+"define fill-queue : (subr (maxeff (alloc @heap) (read (globals fill-queue list-length n one..n permutations queue)) (read @heap) (write @heap) spin) (int int) unit) ! pure",
+"define flush-queue : (subr (maxeff (alloc @heap) (read (globals ell k queue)) (read @heap) (write @heap) spin) () unit) ! pure",
+"unit ! (maxeff (alloc @heap) (read (globals ell fill-queue k list-length n one..n permutations queue)) (read @heap) (write @heap) spin)",
+"define run : (subr (maxeff (alloc @heap) (read (globals ell fill-queue flush-queue k list-length n one..n permutations queue run)) (read @heap) (write @heap) spin) (int) (arrayof perms @heap)) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals ell fill-queue flush-queue k list-length m n one..n permutations queue run sumlists)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

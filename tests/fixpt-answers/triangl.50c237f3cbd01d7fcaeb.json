@@ -1,0 +1,39 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"triangl.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define list-length : (subr (maxeff (read (globals list-length)) spin) ((listof int acyclic)) int) ! pure",
+"define list->array : (subr (maxeff (alloc @heap) (read (globals list-length)) (read @heap) (write @heap) spin) ((listof int acyclic)) ivec) ! pure",
+"define array->list : (subr (maxeff (alloc @heap) (read @heap) spin) (ivec) ints) ! pure",
+"define *board* : ivec ! (maxeff (alloc @heap) (read (globals list->array list-length)) (read @heap) (write @heap) spin)",
+"define *sequence* : ivec ! (maxeff (alloc @heap) (read (globals list->array list-length)) (read @heap) (write @heap) spin)",
+"define *a* : ivec ! (maxeff (alloc @heap) (read (globals list->array list-length)) (read @heap) (write @heap) spin)",
+"define *b* : ivec ! (maxeff (alloc @heap) (read (globals list->array list-length)) (read @heap) (write @heap) spin)",
+"define *c* : ivec ! (maxeff (alloc @heap) (read (globals list->array list-length)) (read @heap) (write @heap) spin)",
+"define *answer* : (ref (listof ints @heap) @heap) ! (alloc @heap)",
+"define attempt : (subr (maxeff (alloc @heap) (read (globals *a* *answer* *b* *board* *c* *sequence* array->list attempt)) (read @heap) (write @heap) spin) (int int) bool) ! pure",
+"define test : (subr (maxeff (alloc @heap) (read (globals *a* *answer* *b* *board* *c* *sequence* array->list attempt)) (read @heap) (write @heap) spin) (int int) ints) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals *a* *answer* *b* *board* *c* *sequence* array->list attempt input1 input2 run test)) (read @heap) (write @heap) spin) (int ints) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals *a* *answer* *b* *board* *c* *sequence* array->list attempt input1 input2 iterations run test)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

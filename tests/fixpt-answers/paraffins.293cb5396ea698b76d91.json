@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"paraffins.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define H : (subr pure () radical) ! pure",
+"define C : (subr pure (radical radical radical) radical) ! pure",
+"define BCP : (subr pure (radical radical) paraffin) ! pure",
+"define CCP : (subr pure (radical radical radical radical) paraffin) ! pure",
+"define div : (subr pure (int int) int) ! pure",
+"define max : (subr pure (int int) int) ! pure",
+"define odd? : (subr pure (int) bool) ! pure",
+"define vector3 : (subr (maxeff (alloc @heap) (write @heap)) (int int int) (arrayof int @heap)) ! pure",
+"define vector4 : (subr (maxeff (alloc @heap) (write @heap)) (int int int int) (arrayof int @heap)) ! pure",
+"define three-partitions : (subr (maxeff (alloc @heap) (read (globals div vector3)) (write @heap) spin) (int) parts) ! pure",
+"define four-partitions : (subr (maxeff (alloc @heap) (read (globals div max vector4)) (write @heap) spin) (int) parts) ! pure",
+"define gen : (subr (maxeff (alloc @heap) (read (globals BCP C CCP H div four-partitions max odd? three-partitions vector3 vector4)) (read @heap) (write @heap) spin) (int) (arrayof pars @heap)) ! pure",
+"define length : (subr (maxeff (read @heap) spin) (pars) int) ! pure",
+"define nb : (subr (maxeff (alloc @heap) (read (globals BCP C CCP H div four-partitions gen length max odd? three-partitions vector3 vector4)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define input1 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals BCP C CCP H div four-partitions gen input1 length max nb odd? run three-partitions vector3 vector4)) (read @heap) (write @heap) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals BCP C CCP H div four-partitions gen input1 iterations length max nb odd? run three-partitions vector3 vector4)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

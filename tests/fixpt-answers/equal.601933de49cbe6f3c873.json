@@ -1,0 +1,64 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"equal.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define empty : (subr pure () obj) ! pure",
+"define sym : (subr pure (symbol) obj) ! pure",
+"define pr : (subr pure ((pairof obj obj @heap)) obj) ! pure",
+"define vec : (subr pure ((arrayof obj @heap)) obj) ! pure",
+"define obj-eqv? : (subr pure (obj obj) bool) ! pure",
+"define obj-pair? : (subr pure (obj) bool) ! pure",
+"define obj-vector? : (subr pure (obj) bool) ! pure",
+"define obj-cdr : (subr (read @heap) (obj) obj) ! pure",
+"define obj-set-cdr! : (subr (write @heap) (obj obj) unit) ! pure",
+"define obj-list-tail : (subr (maxeff (read (globals obj-cdr obj-list-tail)) (read @heap) spin) (obj int) obj) ! pure",
+"define obj-vector->list : (subr (maxeff (alloc @heap) (read (globals empty pr)) (read @heap) spin) (ovec) obj) ! pure",
+"define equal:bound-on-recursion : int ! pure",
+"define bounded-equal? : (subr (maxeff (read (globals bounded-equal? obj-eqv?)) (read @heap) spin) (obj obj int) int) ! pure",
+"define easy? : (subr (read (globals obj-eqv? obj-pair? obj-vector?)) (obj obj) bool) ! pure",
+"define memq : (poly ((k type)) (subr (maxeff (read @heap) spin) (k (listof k @heap)) bool)) ! pure",
+"define done? : (poly ((k type)) (subr (maxeff (read (globals memq)) (read @heap) (write @heap) spin) (k k (eqtable k (listof k @heap) @heap @heap)) bool)) ! pure",
+"define equate! : (poly ((k type)) (subr (maxeff (alloc @heap) (read (globals memq)) (read @heap) (write @heap) spin) (k k (eqtable k (listof k @heap) @heap @heap)) unit)) ! pure",
+"define equiv? : (subr (maxeff (alloc @heap) (read (globals done? easy? equate! memq obj-eqv? obj-pair? obj-vector?)) (read @heap) (write @heap) spin) (obj obj) bool) ! pure",
+"define equal? : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? equal:bound-on-recursion equate! equiv? memq obj-eqv? obj-pair? obj-vector?)) (read @heap) (write @heap) spin) (obj obj) bool) ! pure",
+"define make-test-list1 : (subr (maxeff (alloc @heap) (read (globals empty make-test-list1 pr)) spin) (int obj) obj) ! pure",
+"define make-test-tree1 : (subr (maxeff (alloc @heap) (read (globals empty make-test-list1 make-test-tree1 pr)) spin) (int) obj) ! pure",
+"define make-test-list2 : (poly ((e effect)) (subr (maxeff (alloc @heap) (read (globals empty pr)) e spin) (int (subr e () obj)) obj)) ! pure",
+"define make-test-tree2 : (subr (maxeff (alloc @heap) (read (globals empty make-test-list2 make-test-tree2 pr)) spin) (int) obj) ! pure",
+"define make-test-tree5 : (subr (maxeff (alloc @heap) (read (globals empty make-test-tree5 pr sym)) spin) (int) obj) ! pure",
+"define iterate : (poly ((e effect)) (subr (maxeff e spin) (int (subr e () bool)) bool)) ! pure",
+"define equality-benchmark0 : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equate! equiv? iterate memq obj-cdr obj-eqv? obj-list-tail obj-pair? obj-set-cdr! obj-vector->list obj-vector? pr sym)) (read @heap) (write @heap) spin) (int) bool) ! pure",
+"define equality-benchmark1 : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equate! equiv? iterate make-test-list1 make-test-tree1 memq obj-eqv? obj-pair? obj-vector? pr)) (read @heap) (write @heap) spin) (int) bool) ! pure",
+"define equality-benchmark2 : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equate! equiv? iterate make-test-list2 make-test-tree2 memq obj-eqv? obj-pair? obj-vector? pr)) (read @heap) (write @heap) spin) (int) bool) ! pure",
+"define equality-benchmark3 : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? equal:bound-on-recursion equal? equate! equiv? iterate memq obj-eqv? obj-pair? obj-vector? sym vec)) (read @heap) (write @heap) spin) (int) bool) ! pure",
+"define equality-benchmark4 : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equate! equiv? iterate make-test-list2 make-test-tree2 memq obj-eqv? obj-pair? obj-vector->list obj-vector? pr)) (read @heap) (write @heap) spin) (int) bool) ! pure",
+"define equality-benchmark5 : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equate! equiv? iterate make-test-tree5 memq obj-eqv? obj-pair? obj-vector? pr sym)) (read @heap) (write @heap) spin) (int int) bool) ! pure",
+"define equality-benchmarks : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equality-benchmark0 equality-benchmark1 equality-benchmark2 equality-benchmark3 equality-benchmark4 equality-benchmark5 equate! equiv? iterate make-test-list1 make-test-list2 make-test-tree1 make-test-tree2 make-test-tree5 memq obj-cdr obj-eqv? obj-list-tail obj-pair? obj-set-cdr! obj-vector->list obj-vector? pr sym vec)) (read @heap) (write @heap) spin) (int int int int int int) bool) ! pure",
+"define input0 : int ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define input3 : int ! pure",
+"define input4 : int ! pure",
+"define input5 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equality-benchmark0 equality-benchmark1 equality-benchmark2 equality-benchmark3 equality-benchmark4 equality-benchmark5 equality-benchmarks equate! equiv? input0 input1 input2 input3 input4 input5 iterate make-test-list1 make-test-list2 make-test-tree1 make-test-tree2 make-test-tree5 memq obj-cdr obj-eqv? obj-list-tail obj-pair? obj-set-cdr! obj-vector->list obj-vector? pr run sym vec)) (read @heap) (write @heap) spin) (int bool) bool) ! pure",
+"bool ! (maxeff (alloc @heap) (read (globals bounded-equal? done? easy? empty equal:bound-on-recursion equal? equality-benchmark0 equality-benchmark1 equality-benchmark2 equality-benchmark3 equality-benchmark4 equality-benchmark5 equality-benchmarks equate! equiv? input0 input1 input2 input3 input4 input5 iterate iterations make-test-list1 make-test-list2 make-test-tree1 make-test-tree2 make-test-tree5 memq obj-cdr obj-eqv? obj-list-tail obj-pair? obj-set-cdr! obj-vector->list obj-vector? pr run sym vec)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}

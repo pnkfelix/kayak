@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pi.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define expt : (subr (maxeff (read (globals expt)) spin) (int int) int) ! pure",
+"define square : (subr pure (int) int) ! pure",
+"define powers-under : (subr (maxeff (alloc @heap) (read (globals powers-under)) spin) (int int ints) ints) ! pure",
+"define power-under : (subr (maxeff (read (globals power-under)) (read @heap) spin) (int int ints) int) ! pure",
+"define newton-sqrt : (subr (maxeff (read (globals newton-sqrt)) spin) (int int) int) ! pure",
+"define isqrt : (subr (maxeff (alloc @heap) (read (globals newton-sqrt power-under powers-under)) (read @heap) spin) (int) int) ! pure",
+"define square-root : (subr (maxeff (alloc @heap) (read (globals isqrt newton-sqrt power-under powers-under)) (read @heap) spin) (int) int) ! pure",
+"define quartic-root : (subr (maxeff (alloc @heap) (read (globals isqrt newton-sqrt power-under powers-under square-root)) (read @heap) spin) (int) int) ! pure",
+"define pi-brent-salamin : (subr (maxeff (alloc @heap) (read (globals expt isqrt newton-sqrt power-under powers-under square square-root)) (read @heap) spin) (int) int) ! pure",
+"define pi-borwein2 : (subr (maxeff (alloc @heap) (read (globals expt isqrt newton-sqrt power-under powers-under quartic-root square square-root)) (read @heap) spin) (int) int) ! pure",
+"define pi-borwein4 : (subr (maxeff (alloc @heap) (read (globals expt isqrt newton-sqrt power-under powers-under quartic-root square square-root)) (read @heap) spin) (int) int) ! pure",
+"define pies : (subr (maxeff (alloc @heap) (read (globals expt isqrt newton-sqrt pi-borwein2 pi-borwein4 pi-brent-salamin pies power-under powers-under quartic-root square square-root)) (read @heap) spin) (int int int) results) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define input3 : int ! pure",
+"define iterations : int ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals expt input1 input2 input3 isqrt newton-sqrt pi-borwein2 pi-borwein4 pi-brent-salamin pies power-under powers-under quartic-root run square square-root)) (read @heap) spin) (int results) results) ! pure",
+"results ! (maxeff (alloc @heap) (read (globals expt input1 input2 input3 isqrt iterations newton-sqrt pi-borwein2 pi-borwein4 pi-brent-salamin pies power-under powers-under quartic-root run square square-root)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+]
+}
+]
+}
