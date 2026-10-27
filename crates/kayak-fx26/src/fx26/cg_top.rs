@@ -175,6 +175,8 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     set(cg_reg_codes(), nil::<&'static Rnamed>());
     set(cg_inlines(), nil::<&'static Rinline>());
     set(cg_unrolls(), nil::<&'static Rinline>());
+    set(cg_specials(), nil::<&'static Rspecial>());
+    set(cg_copies(), nil::<&'static Rcopy>());
     set(cg_consts(), nil::<&'static Rgconst>());
     set(cg_form_lambdas(), nil::<&'static Lword>());
     set(cg_standard_twins(), nil::<&'static Stwin>());

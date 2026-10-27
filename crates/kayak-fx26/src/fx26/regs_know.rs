@@ -664,6 +664,367 @@ pub fn r_inline_limit() -> i64 {
     20i64
 }
 
+// A global procedure to be specialized where called with a lambda (C260,
+// Fixpt's `c-special-of`): its name, parameters and body, how many globals
+// there were once it was defined, which of its parameters it only calls
+// and the arity it calls it with, and where its lambda is. The newest
+// first.
+pub enum Rspecial {
+    Rspecial(Str, Strings, &'static Cx, i64, i64, i64, i64),
+}
+
+pub fn rspecial(f0: Str, f1: Strings, f2: &'static Cx, f3: i64, f4: i64, f5: i64, f6: i64) -> &'static Rspecial {
+    kayak_rt::heap_alloc(Rspecial::Rspecial(f0, f1, f2, f3, f4, f5, f6))
+}
+
+pub fn cg_specials() -> Ref<List<&'static Rspecial>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rspecial>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Rspecial>())
+    })
+}
+
+pub fn r_special_limit() -> i64 {
+    60i64
+}
+
+pub fn rspecial_name(s: &'static Rspecial) -> Str {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Rspecial::Rspecial(n, ps, body, at, k, ar, la) => {
+            n
+        }
+    }
+}
+
+// How many globals there were once `n` was last defined, of the first
+// `lim` (-1: all); 0 if it was not.
+pub fn r_count_to(mut gs: Strings, mut n: Str, mut k: i64) -> i64 {
+    loop {
+        if null_p(gs) {
+            return 0i64;
+        } else if string_eq_p(car(gs), n) {
+            return k;
+        } else {
+            (gs, k) = (cdr(gs), i64_minus(k, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn r_defined_at(n: Str, lim: i64) -> i64 {
+    let gs = get(cg_globals());
+    let seen = if i64_lt(lim, 0i64) {
+        gs
+    } else {
+        drop_strings(gs, i64_minus(size(gs), lim))
+    };
+    r_count_to(seen, n, size(seen))
+}
+
+// The special `n` names, taking `k` arguments, where the globals are the
+// first `lim`: of its newest definition there, in a list; none if that is
+// not one (Fixpt drops a global's when it is defined again).
+pub fn r_special_named(mut xs: List<&'static Rspecial>, mut n: Str, mut k: i64, mut lim: i64) -> List<&'static Rspecial> {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static Rspecial>();
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Rspecial::Rspecial(m, ps, body, at, i, ar, la) => {
+                    (string_eq_p(m, n) && i64_eq(size(ps), k) && i64_eq(at, r_defined_at(n, lim)))
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+pub fn r_nth_cx(mut xs: Cxs, mut i: i64) -> &'static Cx {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn r_nth_name(mut xs: Strings, mut i: i64) -> Str {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+// Two arities found: the same one, or -2 if they differ or either failed;
+// -1 is none found yet.
+pub fn r_arity_merge(a: i64, b: i64) -> i64 {
+    if (i64_eq(a, -2i64) || i64_eq(b, -2i64)) {
+        -2i64
+    } else if i64_eq(a, -1i64) {
+        b
+    } else if i64_eq(b, -1i64) {
+        a
+    } else if i64_eq(a, b) {
+        a
+    } else {
+        -2i64
+    }
+}
+
+pub fn r_var_is_p(x: &'static Cx, p: Str) -> bool {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Cx::XVar(q, a) => {
+            string_eq_p(q, p)
+        }
+        _ => {
+            let y = tagcase_;
+            false
+        }
+    }
+}
+
+// Whether `p` is, in `x`, only called, or passed as itself as argument `k`
+// of `n` to a call of `f`, nothing binding either name again (Fixpt's
+// `c-call-only`): the arity it is called with (every call the same), -1 if
+// it is not called, -2 if not so.
+pub fn r_call_only(mut x: &'static Cx, mut p: Str, mut f: Str, mut k: i64, mut n: i64) -> i64 {
+    loop {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(m, a) => {
+                if string_eq_p(m, p) {
+                    return -2i64;
+                } else {
+                    return -1i64;
+                }
+            }
+            Cx::XApp(fun, args, a) => {
+                if r_var_is_p(fun, p) {
+                    return r_arity_merge(size(args), r_call_only_all(args, p, f, k, n));
+                } else if (r_var_is_p(fun, f) && i64_eq(size(args), n) && r_var_is_p(r_nth_cx(args, k), p)) {
+                    return r_call_only_but(args, p, f, k, n, 0i64);
+                } else {
+                    return r_arity_merge(r_call_only(fun, p, f, k, n), r_call_only_all(args, p, f, k, n));
+                }
+            }
+            Cx::XProj(y, a) => {
+                x = y;
+                continue;
+            }
+            Cx::XRegion(kind, r, body, a) => {
+                if (string_eq_p(r, p) || string_eq_p(r, f)) {
+                    return -2i64;
+                } else {
+                    x = body;
+                    continue;
+                }
+            }
+            Cx::XIf(t, th, el, a) => {
+                return r_arity_merge(r_call_only(t, p, f, k, n), r_arity_merge(r_call_only(th, p, f, k, n), r_call_only(el, p, f, k, n)));
+            }
+            Cx::XLet(bs, body, a) => {
+                return r_arity_merge(r_call_only_let(bs, p, f, k, n), r_call_only(body, p, f, k, n));
+            }
+            Cx::XBegin(es, a) => {
+                return r_call_only_all(es, p, f, k, n);
+            }
+            Cx::XBloblet(op, i, args, a) => {
+                return r_call_only_all(args, p, f, k, n);
+            }
+            Cx::XProduct(fs, a) => {
+                return r_call_only_all(c_bound_exps(fs), p, f, k, n);
+            }
+            Cx::XExtract(e, i, a) => {
+                x = e;
+                continue;
+            }
+            Cx::XSum(t, v, a) => {
+                x = v;
+                continue;
+            }
+            Cx::XTagcase(s, arms, els, kk, a) => {
+                return r_arity_merge(r_call_only(s, p, f, k, n), r_arity_merge(r_call_only_arms(arms, p, f, k, n), r_call_only_let(els, p, f, k, n)));
+            }
+            Cx::XLambda(ps, body, a) => {
+                return -2i64;
+            }
+            Cx::XRlambda(r, l, a) => {
+                return -2i64;
+            }
+            Cx::XLetrec(bs, body, a) => {
+                return -2i64;
+            }
+            Cx::XPrompt(t, body, h, a) => {
+                return -2i64;
+            }
+            Cx::XModule(its, a) => {
+                return -2i64;
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                return -2i64;
+            }
+            Cx::XReshape(y, ps, a) => {
+                return -2i64;
+            }
+            _ => {
+                let y = tagcase_;
+                return -1i64;
+            }
+        }
+    }
+}
+
+pub fn r_call_only_all(es: Cxs, p: Str, f: Str, k: i64, n: i64) -> i64 {
+    if null_p(es) {
+        -1i64
+    } else {
+        r_arity_merge(r_call_only(car(es), p, f, k, n), r_call_only_all(cdr(es), p, f, k, n))
+    }
+}
+
+pub fn r_call_only_but(mut es: Cxs, mut p: Str, mut f: Str, mut k: i64, mut n: i64, mut i: i64) -> i64 {
+    loop {
+        if null_p(es) {
+            return -1i64;
+        } else if i64_eq(i, k) {
+            (es, i) = (cdr(es), i64_plus(i, 1i64));
+            continue;
+        } else {
+            return r_arity_merge(r_call_only(car(es), p, f, k, n), r_call_only_but(cdr(es), p, f, k, n, i64_plus(i, 1i64)));
+        }
+    }
+}
+
+pub fn r_call_only_let(bs: Cbinds, p: Str, f: Str, k: i64, n: i64) -> i64 {
+    if null_p(bs) {
+        -1i64
+    } else {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Cbind::Cbind(m, x) => {
+                if (string_eq_p(m, p) || string_eq_p(m, f)) {
+                    -2i64
+                } else {
+                    r_arity_merge(r_call_only(x, p, f, k, n), r_call_only_let(cdr(bs), p, f, k, n))
+                }
+            }
+        }
+    }
+}
+
+pub fn r_call_only_arms(arms: List<&'static Carm>, p: Str, f: Str, k: i64, n: i64) -> i64 {
+    if null_p(arms) {
+        -1i64
+    } else {
+        let tagcase_ = car(arms);
+        match *tagcase_ {
+            Carm::Carm(t, whole, ns, body) => {
+                if (string_member_p(p, ns) || string_member_p(f, ns)) {
+                    -2i64
+                } else {
+                    r_arity_merge(r_call_only(body, p, f, k, n), r_call_only_arms(cdr(arms), p, f, k, n))
+                }
+            }
+        }
+    }
+}
+
+// The first parameter from the `k`th of `ps` that `body`, of procedure `f`
+// of `n` parameters, only calls, and its arity, in a list; none if none
+// is (Fixpt's `c-first-call-only`).
+pub enum Rfound {
+    Rfound(i64, i64),
+}
+
+pub fn rfound(f0: i64, f1: i64) -> &'static Rfound {
+    kayak_rt::heap_alloc(Rfound::Rfound(f0, f1))
+}
+
+pub fn r_first_call_only(mut ps: Strings, mut body: &'static Cx, mut f: Str, mut k: i64, mut n: i64) -> List<&'static Rfound> {
+    loop {
+        if null_p(ps) {
+            return nil::<&'static Rfound>();
+        } else {
+            let a = r_call_only(body, car(ps), f, k, n);
+            if i64_gt_eq(a, 0i64) {
+                return kayak_rt::heap_cons(rfound(k, a), kayak_rt::nil());
+            } else {
+                (ps, k) = (cdr(ps), i64_plus(k, 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+// A copy being made (C260): of which special, for the lambda of these
+// parameters and body, whose closure captures these names, which sees
+// these globals (-1: all).
+pub enum Rspec {
+    Rspec(&'static Rspecial, Strings, &'static Cx, Strings, i64),
+}
+
+pub fn rspec(f0: &'static Rspecial, f1: Strings, f2: &'static Cx, f3: Strings, f4: i64) -> &'static Rspec {
+    kayak_rt::heap_alloc(Rspec::Rspec(f0, f1, f2, f3, f4))
+}
+
+// The copies made: the procedure's name, where the lambda's body starts,
+// what its closure captures, the globals it sees, and the copy's word
+// (Fixpt's `c-spec-made`).
+pub enum Rcopy {
+    Rcopy(Str, i64, Strings, i64, Str),
+}
+
+pub fn rcopy(f0: Str, f1: i64, f2: Strings, f3: i64, f4: Str) -> &'static Rcopy {
+    kayak_rt::heap_alloc(Rcopy::Rcopy(f0, f1, f2, f3, f4))
+}
+
+pub fn cg_copies() -> Ref<List<&'static Rcopy>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rcopy>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Rcopy>())
+    })
+}
+
+// The copy's word made of procedure `n` for the lambda whose body starts at
+// `at`, capturing `fv`, seeing `genv`, in a list; none if none was.
+pub fn r_copy_of(mut cs: List<&'static Rcopy>, mut n: Str, mut at: i64, mut fv: Strings, mut genv: i64) -> Strings {
+    loop {
+        if null_p(cs) {
+            return nil::<Str>();
+        } else if {
+            let tagcase_ = car(cs);
+            match *tagcase_ {
+                Rcopy::Rcopy(m, b, cs2, g2, w) => {
+                    (string_eq_p(m, n) && i64_eq(b, at) && strings_eq_p(cs2, fv) && i64_eq(g2, genv))
+                }
+            }
+        } {
+            let tagcase_ = car(cs);
+            match *tagcase_ {
+                Rcopy::Rcopy(m, b, cs2, g2, w) => {
+                    return kayak_rt::heap_cons(w, kayak_rt::nil());
+                }
+            }
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
 // Global `n`'s inlining taking `k` arguments, one a body seeing `lim`
 // globals may use (made when no more were), in a list.
 pub fn r_inline_named(mut xs: List<&'static Rinline>, mut n: Str, mut k: i64, mut lim: i64) -> List<&'static Rinline> {
@@ -1400,7 +1761,7 @@ pub fn r_inline_op_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
 }
 
 // Whether a call of `f` is a plain `invoke` (no standard operation, no
-// procedure inlined).
+// procedure inlined or specialized).
 pub fn r_plain_callee_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
     let tagcase_ = f;
     match *tagcase_ {
@@ -1415,7 +1776,7 @@ pub fn r_plain_callee_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
                     let tagcase_ = car(l);
                     match *tagcase_ {
                         Loc::AtGlobal(c) => {
-                            null_p(r_inline_named(get(cg_inlines()), name, size(args), -1i64))
+                            (null_p(r_inline_named(get(cg_inlines()), name, size(args), -1i64)) && null_p(r_special_named(get(cg_specials()), name, size(args), -1i64)))
                         }
                         Loc::AtSlot(i) => {
                             true

@@ -80,7 +80,7 @@
         (set cg-standard-words nil)
         (set c-this-params -1)
         (set cg-twins nil) (set cg-defining nil) (set cg-lambda-at -1) (set cg-define-at nil)
-        (set cg-writes nil) (set cg-form-writes nil) (set cg-reg-codes nil) (set cg-inlines nil) (set cg-unrolls nil) (set cg-consts nil) (set cg-form-lambdas nil) (set cg-standard-twins nil)
+        (set cg-writes nil) (set cg-form-writes nil) (set cg-reg-codes nil) (set cg-inlines nil) (set cg-unrolls nil) (set cg-specials nil) (set cg-copies nil) (set cg-consts nil) (set cg-form-lambdas nil) (set cg-standard-twins nil)
         (if (c-tops (parse-tops forms) c #f) #u (c-lit c (l-unit)))
         (c-op c "exit")
         (c-assemble c "program")

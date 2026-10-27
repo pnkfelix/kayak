@@ -7305,3 +7305,42 @@ exactly (from 736), 9 differ (specialization, and C253's), none declined.
   takes for a call (`run/standard-refs.fx`): a value kept across it goes in
   the frame. Kayak's analysis now does the same (`r-inline-op?`), so the
   words agree; filed in `TODO.md` to ask.
+
+## C260. Specialization: a procedure copied for the lambda it is given (2026-10-27)
+
+The user's order's third: specialization (Fixpt's middle phase). Of the
+programs whose stack words were not Fixpt's, 4 were so for it alone:
+Fixpt's listing has a *copy* (`map1@lambda@705`), named by the register
+code of a call that gives `map1` a lambda. As Fixpt's
+`c-record-inline`, `c-call-only`, `c-make-copy`, `r-specialize` and
+`r-spec-lambda`:
+- **Noted**: a typed definition not small enough to inline (or calling
+  itself) but under 60 nodes, with a parameter it only calls (every call of
+  one arity) or passes on to itself as itself, nothing binding either name
+  again (`r-call-only`, `fx26/regs-know.kfx`): a *special*. Only its newest
+  definition's counts, as Fixpt drops one when its global is defined
+  again.
+- **Copies**: before a form's register code, its twins' bodies walked for
+  calls of a special given a lambda small enough to inline, of the arity
+  it is called with (`r-twins-copies!`, `regs-entry.kfx`); for each, once,
+  the procedure's body compiled again to a word named for it and the
+  lambda, and that word's register code made in the copy's context: where
+  the parameter is called, the lambda's body inlined, its parameters the
+  arguments and its captured values read from the parameter's closure;
+  where the procedure calls itself passing the parameter on, its own entry
+  (a label at the copy's start), behind a guard. The walk stands in for
+  Fixpt's plan (`compile-plan.fx`), which kayak otherwise does without: it
+  makes the copies the plan would in a form's own context, and register
+  code finds them (`cg-copies`), declining where there is none.
+- **The call**: the copy's closure made into a slot; the arguments; then
+  the copy called if the global has not been written since, else the
+  global (`r-specialized-call`). A leaf with one declines, and a special is
+  no plain callee to the analyses.
+
+Measured: the 4 programs' stack words Fixpt's (299 in all, from 295);
+register words Fixpt's exactly 910 (from 830), 7 differ (a module's member
+re-exported and inlined, 2; a global holding a constant list unrolled, 5:
+C252's remainder), none declined. `bench/closures` on tier 6: 220 million
+cycles, Fixpt's listing 218 (from 253); `native/captures` 312 to 311.
+Found: kayak keeps a global's inlining after it is defined again, which
+Fixpt drops (`c-push-global`); filed.

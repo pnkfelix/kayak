@@ -37,11 +37,16 @@ section below where it has one; here the order, and what each is.
    Fixpt's `r-collects` takes a `case`'s comparison for a call where a
    local of its name shadows it (the checker leaves its `(with #%fx …)`);
    kayak matches it, a question for Fixpt's team whether to keep.
-3. **Specialization** (Fixpt's middle phase: its plans and copies): a
-   procedure taking a lambda it only calls copied for the lambda given
-   (`map-add@lambda@730`); `bench/closures` 253 to 216 million cycles
-   behind on tier 6 for it (C253), and 2 register words differ by its
-   registry (C248).
+3. **Specialization**. Done (C260): a procedure taking a lambda it only
+   calls copied for the lambda given (`map-add@lambda@730`); the 4
+   programs with copies' stack words Fixpt's (299 in all), 910 register
+   words Fixpt's exactly, 7 differ (a module member re-exported, 2; a
+   global holding a constant list unrolled, 5: Fixpt's `c-reexport-inline!`
+   and its constant lists, both C252's remainder). `bench/closures` on
+   tier 6 220 million cycles, Fixpt's listing 218 (from 253). Found:
+   kayak keeps a global's inlining after it is defined again, where
+   Fixpt drops it (`c-push-global`); its specializations now follow
+   Fixpt's, its inlinings to do.
 4. **Compile memory and time**: kayak compiles 10-30x slower than Fixpt,
    mostly page faults: KFX's regions are never freed while a program runs
    (an 11 KB program 261 MB at peak; the KFX compiler compiled to cells by

@@ -267,6 +267,131 @@
 (define r-unroll-depth i64 16)
 (define r-inline-limit i64 20)
 
+;;; ------------------------------------------------------- specialization
+
+"A global procedure to be specialized where called with a lambda (C260,
+ Fixpt's `c-special-of`): its name, parameters and body, how many globals
+ there were once it was defined, which of its parameters it only calls
+ and the arity it calls it with, and where its lambda is. The newest
+ first."
+(define-datatype rspecial (rspecial string strings cx i64 i64 i64 i64))
+(define cg-specials (ref (listof rspecial acyclic) @g) (new nil))
+(define r-special-limit i64 60)
+(define rspecial-name (subr kfx (rspecial) string) (lambda (s) (tagcase s (rspecial (n ps body at k ar la) n))))
+
+"How many globals there were once `n` was last defined, of the first
+ `lim` (-1: all); 0 if it was not."
+(define-rec
+  (r-count-to (subr kfx (strings string i64) i64)
+    (lambda (gs n k) (cond ((null? gs) 0) ((string=? (car gs) n) k) (else (r-count-to (cdr gs) n (i64- k 1)))))))
+(define r-defined-at (subr gen (string i64) i64)
+  (lambda (n lim)
+    (let* ((gs (get cg-globals)) (seen (if (i64< lim 0) gs (drop-strings gs (i64- (size gs) lim)))))
+      (r-count-to seen n (size seen)))))
+
+"The special `n` names, taking `k` arguments, where the globals are the
+ first `lim`: of its newest definition there, in a list; none if that is
+ not one (Fixpt drops a global's when it is defined again)."
+(define-rec
+  (r-special-named (subr gen ((listof rspecial acyclic) string i64 i64) (listof rspecial acyclic))
+    (lambda (xs n k lim)
+      (cond ((null? xs) nil)
+            ((tagcase (car xs) (rspecial (m ps body at i ar la) (and (string=? m n) (i64= (size ps) k) (i64= at (r-defined-at n lim)))))
+             (list (car xs)))
+            (else (r-special-named (cdr xs) n k lim))))))
+
+(define-rec
+  (r-nth-cx (subr kfx (cxs i64) cx) (lambda (xs i) (if (i64= i 0) (car xs) (r-nth-cx (cdr xs) (i64- i 1)))))
+  (r-nth-name (subr kfx (strings i64) string) (lambda (xs i) (if (i64= i 0) (car xs) (r-nth-name (cdr xs) (i64- i 1))))))
+
+"Two arities found: the same one, or -2 if they differ or either failed;
+ -1 is none found yet."
+(define r-arity-merge (subr kfx (i64 i64) i64)
+  (lambda (a b) (cond ((or (i64= a -2) (i64= b -2)) -2) ((i64= a -1) b) ((i64= b -1) a) ((i64= a b) a) (else -2))))
+(define r-var-is? (subr kfx (cx string) bool) (lambda (x p) (tagcase x (x-var (q a) (string=? q p)) (else y #f))))
+
+"Whether `p` is, in `x`, only called, or passed as itself as argument `k`
+ of `n` to a call of `f`, nothing binding either name again (Fixpt's
+ `c-call-only`): the arity it is called with (every call the same), -1 if
+ it is not called, -2 if not so."
+(define-rec
+  (r-call-only (subr kfx (cx string string i64 i64) i64)
+    (lambda (x p f k n)
+      (tagcase x
+        (x-var (m a) (if (string=? m p) -2 -1))
+        (x-app (fun args a)
+          (cond ((r-var-is? fun p) (r-arity-merge (size args) (r-call-only-all args p f k n)))
+                ((and (r-var-is? fun f) (i64= (size args) n) (r-var-is? (r-nth-cx args k) p)) (r-call-only-but args p f k n 0))
+                (else (r-arity-merge (r-call-only fun p f k n) (r-call-only-all args p f k n)))))
+        (x-proj (y a) (r-call-only y p f k n))
+        (x-region (kind r body a) (if (or (string=? r p) (string=? r f)) -2 (r-call-only body p f k n)))
+        (x-if (t th el a) (r-arity-merge (r-call-only t p f k n) (r-arity-merge (r-call-only th p f k n) (r-call-only el p f k n))))
+        (x-let (bs body a) (r-arity-merge (r-call-only-let bs p f k n) (r-call-only body p f k n)))
+        (x-begin (es a) (r-call-only-all es p f k n))
+        (x-bloblet (op i args a) (r-call-only-all args p f k n))
+        (x-product (fs a) (r-call-only-all (c-bound-exps fs) p f k n))
+        (x-extract (e i a) (r-call-only e p f k n))
+        (x-sum (t v a) (r-call-only v p f k n))
+        (x-tagcase (s arms els kk a)
+          (r-arity-merge (r-call-only s p f k n) (r-arity-merge (r-call-only-arms arms p f k n) (r-call-only-let els p f k n))))
+        (x-lambda (ps body a) -2) (x-rlambda (r l a) -2) (x-letrec (bs body a) -2) (x-prompt (t body h a) -2)
+        (x-module (its a) -2) (x-with (m ns ks body a) -2) (x-reshape (y ps a) -2)
+        (else y -1))))
+  (r-call-only-all (subr kfx (cxs string string i64 i64) i64)
+    (lambda (es p f k n) (if (null? es) -1 (r-arity-merge (r-call-only (car es) p f k n) (r-call-only-all (cdr es) p f k n)))))
+  (r-call-only-but (subr kfx (cxs string string i64 i64 i64) i64)
+    (lambda (es p f k n i)
+      (cond ((null? es) -1)
+            ((i64= i k) (r-call-only-but (cdr es) p f k n (i64+ i 1)))
+            (else (r-arity-merge (r-call-only (car es) p f k n) (r-call-only-but (cdr es) p f k n (i64+ i 1)))))))
+  (r-call-only-let (subr kfx (cbinds string string i64 i64) i64)
+    (lambda (bs p f k n)
+      (if (null? bs)
+          -1
+          (tagcase (car bs)
+            (cbind (m x)
+              (if (or (string=? m p) (string=? m f)) -2 (r-arity-merge (r-call-only x p f k n) (r-call-only-let (cdr bs) p f k n))))))))
+  (r-call-only-arms (subr kfx ((listof carm acyclic) string string i64 i64) i64)
+    (lambda (arms p f k n)
+      (if (null? arms)
+          -1
+          (tagcase (car arms)
+            (carm (t whole ns body)
+              (if (or (string-member? p ns) (string-member? f ns))
+                  -2
+                  (r-arity-merge (r-call-only body p f k n) (r-call-only-arms (cdr arms) p f k n)))))))))
+
+"The first parameter from the `k`th of `ps` that `body`, of procedure `f`
+ of `n` parameters, only calls, and its arity, in a list; none if none
+ is (Fixpt's `c-first-call-only`)."
+(define-datatype rfound (rfound i64 i64))
+(define-rec
+  (r-first-call-only (subr kfx (strings cx string i64 i64) (listof rfound acyclic))
+    (lambda (ps body f k n)
+      (if (null? ps)
+          nil
+          (let ((a (r-call-only body (car ps) f k n)))
+            (if (i64>= a 0) (list (rfound k a)) (r-first-call-only (cdr ps) body f (i64+ k 1) n)))))))
+
+"A copy being made (C260): of which special, for the lambda of these
+ parameters and body, whose closure captures these names, which sees
+ these globals (-1: all)."
+(define-datatype rspec (rspec rspecial strings cx strings i64))
+"The copies made: the procedure's name, where the lambda's body starts,
+ what its closure captures, the globals it sees, and the copy's word
+ (Fixpt's `c-spec-made`)."
+(define-datatype rcopy (rcopy string i64 strings i64 string))
+(define cg-copies (ref (listof rcopy acyclic) @g) (new nil))
+"The copy's word made of procedure `n` for the lambda whose body starts at
+ `at`, capturing `fv`, seeing `genv`, in a list; none if none was."
+(define-rec
+  (r-copy-of (subr kfx ((listof rcopy acyclic) string i64 strings i64) strings)
+    (lambda (cs n at fv genv)
+      (cond ((null? cs) nil)
+            ((tagcase (car cs) (rcopy (m b cs2 g2 w) (and (string=? m n) (i64= b at) (strings=? cs2 fv) (i64= g2 genv))))
+             (tagcase (car cs) (rcopy (m b cs2 g2 w) (list w))))
+            (else (r-copy-of (cdr cs) n at fv genv))))))
+
 "Global `n`'s inlining taking `k` arguments, one a body seeing `lim`
  globals may use (made when no more were), in a list."
 (define-rec
@@ -488,7 +613,7 @@
       (else y #f))))
 
 "Whether a call of `f` is a plain `invoke` (no standard operation, no
- procedure inlined)."
+ procedure inlined or specialized)."
 (define r-plain-callee? (subr gen (cx cxs cenv) bool)
   (lambda (f args e)
     (tagcase f
@@ -497,8 +622,10 @@
             (let ((l (if (std-marked? name) nil (c-where e name))))
               (and (not (null? l))
                (tagcase (car l)
-                 ;; A global noted to be inlined is no plain callee (C252).
-                 (at-global (c) (null? (r-inline-named (get cg-inlines) name (size args) -1)))
+                 ;; A global noted to be inlined is no plain callee (C252),
+                 ;; nor one to be specialized (C260).
+                 (at-global (c) (and (null? (r-inline-named (get cg-inlines) name (size args) -1))
+                                     (null? (r-special-named (get cg-specials) name (size args) -1))))
                  (at-slot (i) #t) (at-free (i) #t) (else y #f))))))
       (else y #t))))
 

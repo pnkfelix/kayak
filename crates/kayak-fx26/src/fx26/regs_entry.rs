@@ -151,17 +151,23 @@ pub fn r_store_params(mut g: &'static Rgen, mut i: i64, mut n: i64, mut at: i64)
 }
 
 // The body as a leaf, or not, as `leaf` says, in a list; none if declined.
-// `assuming`: a fast version's, its assumptions into `assumed`.
-pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, folded: Renv, leaf: bool) -> List<&'static Rgen> {
+// `assuming`: a fast version's, its assumptions into `assumed`. `spec`: a
+// copy's, what it is specialized as (C260), one or none.
+pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, folded: Renv, spec: List<&'static Rspec>, leaf: bool) -> List<&'static Rgen> {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
             let n = size(ps);
-            let own_at = if null_p(me) {
+            let spec_at = if null_p(me) {
                 the::<i64>(0i64)
             } else {
                 the::<i64>(1i64)
             };
+            let own_at = i64_plus(spec_at, if null_p(spec) {
+                the::<i64>(0i64)
+            } else {
+                the::<i64>(1i64)
+            });
             let labels = i64_plus(own_at, if string_eq_p(own, str_lit("")) {
                 the::<i64>(0i64)
             } else {
@@ -171,11 +177,25 @@ pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings
                 the::<i64>(-1i64)
             } else {
                 own_at
-            }, kayak_rt::heap_new(the::<i64>(0i64)));
+            }, kayak_rt::heap_new(the::<i64>(0i64)), spec, kayak_rt::heap_new(nil::<&'static Rloc>()), spec_at);
             let g = rgen(kayak_rt::heap_new(nil::<&'static Ritem>()), leaf, kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(labels), me, the::<i64>(0i64), cx);
             r_opn(g, str_lit("args"), n);
             entry_pos_x(g, at, 0i64);
-            let env = onto(r_env_of(g, inner, leaf), folded);
+            let env = onto(r_env_of(g, inner, leaf), onto(folded, if null_p(spec) {
+                nil::<&'static Rbind>()
+            } else {
+                let tagcase_ = car(spec);
+                match *tagcase_ {
+                    Rspec::Rspec(sp, lps, lbody, fv, genv) => {
+                        let tagcase_ = sp;
+                        match *tagcase_ {
+                            Rspecial::Rspecial(sn, sps, sbody, sat, k, ar, la) => {
+                                kayak_rt::heap_cons(rbind(genv_name(), rl_seen(sat)), kayak_rt::nil())
+                            }
+                        }
+                    }
+                }
+            }));
             if leaf {
                 set(g_nreg(g), n)
             } else {
@@ -187,6 +207,17 @@ pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings
                 ()
             } else {
                 r_emit(g, ri_label(0i64))
+            };
+            if null_p(spec) {
+                ()
+            } else {
+                let l = r_where(env, rspec_param(car(spec)));
+                if null_p(l) {
+                    r_decline(g)
+                } else {
+                    set(x_spec_at(cx), l);
+                    r_emit(g, ri_label(spec_at))
+                }
             };
             if string_eq_p(own, str_lit("")) {
                 ()
@@ -215,18 +246,18 @@ pub fn twin_view(t: &'static Twin, assuming: bool, tail_leaves: bool) -> &'stati
 // A lambda's body in register code, in a list; none where declined. A leaf
 // if nothing in it calls; else, where its only calls are plain tail calls,
 // a leaf first, and if that declines (out of registers), not.
-pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, folded: Renv) -> List<&'static Rgen> {
+pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, folded: Renv, spec: List<&'static Rspec>) -> List<&'static Rgen> {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
             let n = size(ps);
             let leaf = (i64_lt_eq(n, register_regs()) && not(r_collects(twin_view(t, assuming, false), body, inner, me, true)));
             if (leaf || i64_gt(n, register_regs()) || r_collects(twin_view(t, assuming, true), body, inner, me, true)) {
-                r_register_body_as(t, assuming, assumed, folded, leaf)
+                r_register_body_as(t, assuming, assumed, folded, spec, leaf)
             } else {
-                let gs = r_register_body_as(t, assuming, assumed, folded, true);
+                let gs = r_register_body_as(t, assuming, assumed, folded, spec, true);
                 if null_p(gs) {
-                    r_register_body_as(t, assuming, assumed, folded, false)
+                    r_register_body_as(t, assuming, assumed, folded, spec, false)
                 } else {
                     gs
                 }
@@ -478,8 +509,8 @@ pub fn r_consts_named(t: &'static Twin) -> Renv {
     }
 }
 
-pub fn r_plain_code(t: &'static Twin) -> List<&'static Rcode> {
-    let gs = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()), nil::<&'static Rbind>());
+pub fn r_plain_code(t: &'static Twin, spec: List<&'static Rspec>) -> List<&'static Rcode> {
+    let gs = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()), nil::<&'static Rbind>(), spec);
     if null_p(gs) {
         nil::<&'static Rcode>()
     } else {
@@ -490,7 +521,7 @@ pub fn r_plain_code(t: &'static Twin) -> List<&'static Rcode> {
 // The body compiled assuming every global it calls itself through holds
 // what it held, behind a guard each; and, where one fails, as ever. Worth
 // it where the fast version is a leaf, or loops: else only the plain one.
-pub fn r_fast_code(t: &'static Twin) -> List<&'static Rcode> {
+pub fn r_fast_code(t: &'static Twin, spec: List<&'static Rspec>) -> List<&'static Rcode> {
     let consts = r_consts_named(t);
     let assumed = the::<Ref<Strings>>(kayak_rt::heap_new(the::<Strings>(reverse(map(lambda1s(move |b: &'static Rbind| {
         let tagcase_ = b;
@@ -500,12 +531,12 @@ pub fn r_fast_code(t: &'static Twin) -> List<&'static Rcode> {
             }
         }
     }), consts)))));
-    let fast = r_register_body(t, true, assumed, consts);
+    let fast = r_register_body(t, true, assumed, consts, spec);
     let assumptions = the::<Strings>(reverse(get(assumed)));
     if (null_p(assumptions) || null_p(fast) || not((g_leaf(car(fast)) || get(x_looped(g_ctx(car(fast))))))) {
-        r_plain_code(t)
+        r_plain_code(t, spec)
     } else {
-        let plain = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()), nil::<&'static Rbind>());
+        let plain = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()), nil::<&'static Rbind>(), spec);
         if null_p(plain) {
             nil::<&'static Rcode>()
         } else {
@@ -521,12 +552,13 @@ pub fn r_fast_code(t: &'static Twin) -> List<&'static Rcode> {
     }
 }
 
-// A twin's register code, noted under its word's name, unless declined.
-pub fn r_twin_made_x(t: &'static Twin) -> () {
+// A twin's register code, noted under its word's name, unless declined; a
+// copy's (`spec`) as specialized.
+pub fn r_twin_made_x(t: &'static Twin, spec: List<&'static Rspec>) -> () {
     let cs = if (r_fast_sound_p(t) && r_fast_may_pay_p(t)) {
-        r_fast_code(t)
+        r_fast_code(t, spec)
     } else {
-        r_plain_code(t)
+        r_plain_code(t, spec)
     };
     if null_p(cs) {
         ()
@@ -556,7 +588,7 @@ pub fn r_standard_word(name: Str, n: i64) -> List<&'static Rcode> {
             }
         }
     };
-    let cx = rctx(kayak_rt::heap_new(false), false, kayak_rt::heap_new(nil::<Str>()), kayak_rt::heap_new(false), str_lit(""), -1i64, -1i64, kayak_rt::heap_new(the::<i64>(0i64)));
+    let cx = rctx(kayak_rt::heap_new(false), false, kayak_rt::heap_new(nil::<Str>()), kayak_rt::heap_new(false), str_lit(""), -1i64, -1i64, kayak_rt::heap_new(the::<i64>(0i64)), nil::<&'static Rspec>(), kayak_rt::heap_new(nil::<&'static Rloc>()), -1i64);
     let g = rgen(kayak_rt::heap_new(nil::<&'static Ritem>()), not(callout), kayak_rt::heap_new(n), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), nil::<&'static This>(), the::<i64>(0i64), cx);
     r_opn(g, str_lit("args"), n);
     if callout {
@@ -667,7 +699,294 @@ pub fn r_twins_made_x(mut ts: List<&'static Twin>) -> () {
         if null_p(ts) {
             return ();
         } else {
-            r_twin_made_x(car(ts));
+            r_twin_made_x(car(ts), nil::<&'static Rspec>());
+            ts = cdr(ts);
+            continue;
+        }
+    }
+}
+
+// The names a scope binds.
+pub fn r_scope_names(e: Cenv) -> Strings {
+    if null_p(e) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = car(e);
+        match *tagcase_ {
+            Centry::Centry(n, l) => {
+                kayak_rt::heap_cons(n, r_scope_names(cdr(e)))
+            }
+        }
+    }
+}
+
+pub fn r_bind_names(bs: Cbinds) -> Strings {
+    map(lambda1s(move |b: &'static Cbind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Cbind::Cbind(n, x) => {
+                n
+            }
+        }
+    }), bs)
+}
+
+// Of the form's lambdas' words, the oldest made for the lambda of `ps` whose
+// body starts at `at` knowing no name of its own: the names its closure
+// captures, in a list.
+pub fn r_form_lambda_fv(ws: List<&'static Lword>, at: i64, ps: Strings) -> List<Strings> {
+    if null_p(ws) {
+        nil::<List<Str>>()
+    } else {
+        let older = r_form_lambda_fv(cdr(ws), at, ps);
+        if not(null_p(older)) {
+            older
+        } else if {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Lword::Lword(b, qs, o, w, cs) => {
+                    (i64_eq(b, at) && strings_eq_p(qs, ps) && null_p(o))
+                }
+            }
+        } {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Lword::Lword(b, qs, o, w, cs) => {
+                    kayak_rt::heap_cons(cs, kayak_rt::nil())
+                }
+            }
+        } else {
+            nil::<List<Str>>()
+        }
+    }
+}
+
+pub fn r_copy_twins_made_x(mut ts: List<&'static Twin>, mut spec: List<&'static Rspec>) -> () {
+    loop {
+        if null_p(ts) {
+            return ();
+        } else {
+            r_twin_made_x(car(ts), spec);
+            ts = cdr(ts);
+            continue;
+        }
+    }
+}
+
+// The copy of special `sp` for the lambda of `lps` and `lbody`, capturing
+// `fv`, made unless it was (C260, Fixpt's `c-make-copy`): its procedure's
+// body compiled again, named for the procedure and the lambda; then its
+// register code, specialized.
+pub fn r_make_copy_x(sp: &'static Rspecial, lps: Strings, lbody: &'static Cx, fv: Strings) -> () {
+    let tagcase_ = sp;
+    match *tagcase_ {
+        Rspecial::Rspecial(n, ps, body, genv, k, ar, at) => {
+            if not(null_p(r_copy_of(get(cg_copies()), n, cx_start(lbody), fv, -1i64))) {
+                ()
+            } else {
+                let lambdas = get(cg_form_lambdas());
+                set(c_word_name(), kayak_rt::heap_cons(string_append(n, string_append(str_lit("@lambda@"), i64_to_string(cx_start(lbody)))), kayak_rt::nil()));
+                set(cg_lambda_at(), at);
+                let tagcase_ = c_lambda_word(ps, body, nil::<&'static Centry>(), nil::<Str>());
+                match *tagcase_ {
+                    Cclosing::Cclosing(w, cfv) => {
+                        let (ts, ss) = (the::<List<&'static Twin>>(reverse(get(cg_twins()))), the::<List<&'static Stwin>>(reverse(get(cg_standard_twins()))));
+                        set(cg_twins(), nil::<&'static Twin>());
+                        set(cg_standard_twins(), nil::<&'static Stwin>());
+                        set(cg_form_lambdas(), lambdas);
+                        set(cg_copies(), kayak_rt::heap_cons(rcopy(n, cx_start(lbody), fv, -1i64, w), get(cg_copies())));
+                        r_copy_twins_made_x(ts, kayak_rt::heap_cons(rspec(sp, lps, lbody, fv, -1i64), kayak_rt::nil()));
+                        r_standard_twins_made_x(ss)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A call of `f` on `args`, where `bound` are local: if a special's, given a
+// lambda it may be specialized at, its copy made.
+pub fn r_copy_call_x(f: &'static Cx, args: Cxs, bound: Strings) -> () {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Cx::XVar(n, a) => {
+            if (std_marked_p(n) || string_member_p(n, bound) || not(string_member_p(n, get(cg_globals())))) {
+                ()
+            } else {
+                let sp = r_special_named(get(cg_specials()), n, size(args), -1i64);
+                if null_p(sp) {
+                    ()
+                } else {
+                    let tagcase_ = car(sp);
+                    match *tagcase_ {
+                        Rspecial::Rspecial(m, ps, body, at, k, ar, la) => {
+                            let tagcase_ = r_nth_cx(args, k);
+                            match *tagcase_ {
+                                Cx::XLambda(lps, lbody, b) => {
+                                    let fv = r_form_lambda_fv(get(cg_form_lambdas()), cx_start(lbody), lps);
+                                    if (i64_eq(size(lps), ar) && i64_gt_eq(r_room(lbody, r_inline_limit(), false), 0i64) && not(null_p(fv))) {
+                                        r_make_copy_x(car(sp), lps, lbody, car(fv))
+                                    } else {
+                                        ()
+                                    }
+                                }
+                                _ => {
+                                    let y = tagcase_;
+                                    ()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            ()
+        }
+    }
+}
+
+// The copies the calls in `x` make, `bound` local; a lambda's body is its
+// own word's, walked as such (Fixpt's plan's `p-call`).
+pub fn r_copies_in(mut x: &'static Cx, mut bound: Strings) -> () {
+    loop {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XApp(f, args, a) => {
+                r_copy_call_x(f, args, bound);
+                r_copies_all(args, bound);
+                x = f;
+                continue;
+            }
+            Cx::XRlambda(r, l, a) => {
+                x = r;
+                continue;
+            }
+            Cx::XProj(y, a) => {
+                x = y;
+                continue;
+            }
+            Cx::XRegion(k, r, body, a) => {
+                (x, bound) = (body, kayak_rt::heap_cons(r, bound));
+                continue;
+            }
+            Cx::XIf(t, th, el, a) => {
+                r_copies_in(t, bound);
+                r_copies_in(th, bound);
+                x = el;
+                continue;
+            }
+            Cx::XLet(bs, body, a) => {
+                r_copies_all(c_bound_exps(bs), bound);
+                (x, bound) = (body, onto(r_bind_names(bs), bound));
+                continue;
+            }
+            Cx::XLetrec(bs, body, a) => {
+                let b2 = onto(r_bind_names(bs), bound);
+                r_copies_all(c_bound_exps(bs), b2);
+                (x, bound) = (body, b2);
+                continue;
+            }
+            Cx::XBegin(es, a) => {
+                return r_copies_all(es, bound);
+            }
+            Cx::XBloblet(op, i, args, a) => {
+                return r_copies_all(args, bound);
+            }
+            Cx::XProduct(fs, a) => {
+                return r_copies_all(c_bound_exps(fs), bound);
+            }
+            Cx::XExtract(p, i, a) => {
+                x = p;
+                continue;
+            }
+            Cx::XSum(t, v, a) => {
+                x = v;
+                continue;
+            }
+            Cx::XTagcase(s, arms, els, k, a) => {
+                r_copies_in(s, bound);
+                r_copies_arms(arms, bound);
+                if null_p(els) {
+                    return ();
+                } else {
+                    let tagcase_ = car(els);
+                    match *tagcase_ {
+                        Cbind::Cbind(n, y) => {
+                            (x, bound) = (y, kayak_rt::heap_cons(n, bound));
+                            continue;
+                        }
+                    }
+                }
+            }
+            Cx::XPrompt(t, body, h, a) => {
+                r_copies_in(t, bound);
+                x = h;
+                continue;
+            }
+            Cx::XModule(its, a) => {
+                return r_copies_all(map(&cmem_value, its), onto(map(&cmem_name, its), bound));
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                r_copies_in(m, bound);
+                (x, bound) = (body, onto(ns, bound));
+                continue;
+            }
+            Cx::XReshape(y, ps, a) => {
+                x = y;
+                continue;
+            }
+            _ => {
+                let y = tagcase_;
+                return ();
+            }
+        }
+    }
+}
+
+pub fn r_copies_all(mut es: Cxs, mut bound: Strings) -> () {
+    loop {
+        if null_p(es) {
+            return ();
+        } else {
+            r_copies_in(car(es), bound);
+            es = cdr(es);
+            continue;
+        }
+    }
+}
+
+pub fn r_copies_arms(mut arms: List<&'static Carm>, mut bound: Strings) -> () {
+    loop {
+        if null_p(arms) {
+            return ();
+        } else {
+            let tagcase_ = car(arms);
+            match *tagcase_ {
+                Carm::Carm(t, whole, ns, body) => {
+                    r_copies_in(body, onto(ns, bound));
+                    arms = cdr(arms);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn r_twins_copies_x(mut ts: List<&'static Twin>) -> () {
+    loop {
+        if null_p(ts) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Twin::Twin(w, ps, body, inner, me, own, at) => {
+                        r_copies_in(body, r_scope_names(inner))
+                    }
+                }
+            };
             ts = cdr(ts);
             continue;
         }
@@ -681,16 +1000,13 @@ pub fn regs_form_twins_x() -> () {
     let ss = the::<List<&'static Stwin>>(reverse(get(cg_standard_twins())));
     set(cg_twins(), nil::<&'static Twin>());
     set(cg_standard_twins(), nil::<&'static Stwin>());
+    r_twins_copies_x(ts);
     r_twins_made_x(ts);
     r_standard_twins_made_x(ss);
     set(cg_form_lambdas(), nil::<&'static Lword>())
 }
 
-// After a typed definition of `n` as the lambda of `ps` and `body`: noted to
-// be inlined where called, if small (`r-room`), naming neither itself nor
-// `stay-cellular` (C252, Fixpt's `c-record-inline`); as it sees the
-// globals defined so far.
-pub fn r_note_inline_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
+pub fn r_note_inline_small_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
     if (not(c_mentions_p(body, str_lit("stay-cellular"))) && i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64)) {
         if not(c_mentions_p(body, n)) {
             set(cg_inlines(), kayak_rt::heap_cons(rinline(n, ps, body, size(get(cg_globals()))), get(cg_inlines())))
@@ -705,6 +1021,30 @@ pub fn r_note_inline_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
     } else {
         ()
     }
+}
+
+// After a typed definition of `n` as the lambda of `ps` and `body`: noted to
+// be inlined where called, if small (`r-room`), naming neither itself nor
+// `stay-cellular` (C252, Fixpt's `c-record-inline`); else, if not so large
+// and a parameter it only calls, specialized where called with a lambda
+// there (C260); as it sees the globals defined so far.
+pub fn r_note_inline_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
+    if (not(c_mentions_p(body, str_lit("stay-cellular"))) && not((i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64) && not(c_mentions_p(body, n)))) && i64_gt_eq(r_room(body, r_special_limit(), false), 0i64)) {
+        let found = r_first_call_only(ps, body, n, 0i64, size(ps));
+        if null_p(found) {
+            ()
+        } else {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Rfound::Rfound(k, ar) => {
+                    set(cg_specials(), kayak_rt::heap_cons(rspecial(n, ps, body, size(get(cg_globals())), k, ar, at), get(cg_specials())))
+                }
+            }
+        }
+    } else {
+        ()
+    };
+    r_note_inline_small_x(n, ps, body, at)
 }
 
 // After a top-level definition of `n` as `x`: whether `n` is a constant now

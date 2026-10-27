@@ -12,8 +12,10 @@
  loops, a leaf's tail calls. Stage 2 (C253): closures, `letrec`,
  `tagcase`, prompts, `apply`, `list`. Stage 3 (C259): regions and
  closures made in them, bloblets and blobrefs, flat sums' `tagcase`,
- modules, `with` and reshaping. Declined, as Fixpt's are: what a leaf
- cannot make without a frame, more registers than there are."
+ modules, `with` and reshaping. Stage 4 (C260): calls of a procedure
+ specialized at the lambda given, and a copy's own calls. Declined, as
+ Fixpt's are: what a leaf cannot make without a frame, more registers than
+ there are."
 
 ;;; ------------------------------------------------- the globals' writes
 
@@ -50,7 +52,9 @@
  it assumes hold what they held, newest first; whether a call of itself
  was made a loop; its definition's global, its arity and its start's
  label (\"\", -1, -1 if none)."
-(define-datatype rctx (rctx (ref bool @g) bool (ref strings @g) (ref bool @g) string i64 i64 (ref i64 @g)))
+;; In a copy (C260), what it is specialized as, where the parameter the
+;; lambda is is, and the label where the copy starts.
+(define-datatype rctx (rctx (ref bool @g) bool (ref strings @g) (ref bool @g) string i64 i64 (ref i64 @g) (listof rspec acyclic) (ref rlocs @g) i64))
 
 "What is being made: its items, newest first; whether a leaf; the next
  register and frame slot, and the most slots used; the labels; what the
@@ -67,15 +71,21 @@
 (define g-start (subr kfx (rgen) i64) (lambda (g) (tagcase g (rgen (xs leaf nr ns ms ls me st cx) st))))
 (define g-ctx (subr kfx (rgen) rctx) (lambda (g) (tagcase g (rgen (xs leaf nr ns ms ls me st cx) cx))))
 
-(define x-declined (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) d))))
-(define x-assuming (subr kfx (rctx) bool) (lambda (x) (tagcase x (rctx (d a as l o k s at) a))))
-(define x-assumed (subr kfx (rctx) (ref strings @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) as))))
-(define x-looped (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) l))))
-(define x-own (subr kfx (rctx) string) (lambda (x) (tagcase x (rctx (d a as l o k s at) o))))
-(define x-own-arity (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at) k))))
-(define x-own-start (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at) s))))
+(define x-declined (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) d))))
+(define x-assuming (subr kfx (rctx) bool) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) a))))
+(define x-assumed (subr kfx (rctx) (ref strings @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) as))))
+(define x-looped (subr kfx (rctx) (ref bool @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) l))))
+(define x-own (subr kfx (rctx) string) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) o))))
+(define x-own-arity (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) k))))
+(define x-own-start (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) s))))
 "The source position of the expression being compiled (C249), 0 if none."
-(define x-at (subr kfx (rctx) (ref i64 @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at) at))))
+(define x-at (subr kfx (rctx) (ref i64 @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) at))))
+
+"In a copy, the copy being made (one or none); where the parameter the
+ lambda is is (one or none); the label where the copy starts (C260)."
+(define x-spec (subr kfx (rctx) (listof rspec acyclic)) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) sp))))
+(define x-spec-at (subr kfx (rctx) (ref rlocs @g)) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) sa))))
+(define x-spec-start (subr kfx (rctx) i64) (lambda (x) (tagcase x (rctx (d a as l o k s at sp sa ss) ss))))
 
 "What the analyses are told of the body (`rview`)."
 (define g-view (subr kfx (rgen) rview)
@@ -434,6 +444,74 @@
 (define r-made-word (subr gen (strings cx cenv strings) (listof rmade acyclic))
   (lambda (ps body te own0)
     (r-made-in (get cg-form-lambdas) (cx-start body) ps (c-own-of ps own0) (c-captured (c-free body ps nil) te))))
+
+"Where a value is: the same register or frame slot."
+(define r-same-place? (subr kfx (rloc rloc) bool)
+  (lambda (x y)
+    (tagcase x
+      (rl-reg (i) (tagcase y (rl-reg (j) (i64= i j)) (else z #f)))
+      (rl-slot (i) (tagcase y (rl-slot (j) (i64= i j)) (else z #f)))
+      (else z #f))))
+"A copy's procedure's parameter the lambda is, and the arity it is called
+ with."
+(define rspec-param (subr kfx (rspec) string)
+  (lambda (c) (tagcase c (rspec (sp lps lbody fv genv) (tagcase sp (rspecial (n ps body at k ar la) (r-nth-name ps k)))))))
+(define rspec-arity (subr kfx (rspec) i64)
+  (lambda (c) (tagcase c (rspec (sp lps lbody fv genv) (tagcase sp (rspecial (n ps body at k ar la) ar))))))
+"Whether `x` is, in a copy, the parameter the lambda is, where it is (an
+ inlined body's, or the lambda's, does not see it) (Fixpt's
+ `r-spec-param?`)."
+(define r-spec-param? (subr gen (rgen renv cx) bool)
+  (lambda (g env x)
+    (let* ((cx (g-ctx g)) (sp (x-spec cx)) (at (get (x-spec-at cx))))
+      (and (not (null? sp)) (not (null? at))
+           (tagcase x
+             (x-var (m a)
+               (and (string=? m (rspec-param (car sp)))
+                    (let ((l (r-where env m))) (and (not (null? l)) (r-same-place? (car l) (car at))))))
+             (else y #f))))))
+"Whether `f`, in a copy, is its procedure's own global, called with the
+ parameter passed as itself (Fixpt's `r-spec-self?`)."
+(define r-spec-self? (subr gen (rgen renv cx cxs) bool)
+  (lambda (g env f args)
+    (let ((sp (x-spec (g-ctx g))))
+      (and (not (null? sp)) (not (null? (get (x-spec-at (g-ctx g)))))
+           (tagcase (car sp)
+             (rspec (s lps lbody fv genv)
+               (tagcase s
+                 (rspecial (n ps body at k ar la)
+                   (and (tagcase f
+                          (x-var (m a) (and (string=? m n) (let ((l (r-where env m))) (and (not (null? l)) (tagcase (car l) (rl-global (c) #t) (else y #f))))))
+                          (else y #f))
+                        (i64= (size args) (size ps))
+                        (r-spec-param? g env (r-nth-cx args k)))))))))))
+
+"A call of global `f` on `args` specialized (C260, Fixpt's
+ `r-specialized`): `f` a special seen here, given at the parameter it
+ only calls a lambda small enough to inline, of the arity it calls it
+ with: the special and the lambda, in a list."
+(define-datatype rcall (rcall rspecial cx))
+(define r-specialized (subr gen (renv cx cxs) (listof rcall acyclic))
+  (lambda (env f args)
+    (tagcase f
+      (x-var (n a)
+        (let ((l (if (std-marked? n) nil (r-where env n))))
+          (if (or (null? l) (not (tagcase (car l) (rl-global (c) #t) (else y #f))))
+              nil
+              (let ((sp (r-special-named (get cg-specials) n (size args) (r-genv env))))
+                (if (null? sp)
+                    nil
+                    (tagcase (car sp)
+                      (rspecial (m ps body at k ar la)
+                        (tagcase (r-nth-cx args k)
+                          (x-lambda (lps lbody b)
+                            (if (and (i64= (size lps) ar) (i64>= (r-room lbody r-inline-limit #f) 0)) (list (rcall (car sp) (r-nth-cx args k))) nil))
+                          (else y nil)))))))))
+      (else y nil))))
+
+(define-rec
+  (r-drop-bools (subr kfx ((listof bool acyclic) i64) (listof bool acyclic))
+    (lambda (bs k) (if (or (null? bs) (i64<= k 0)) bs (r-drop-bools (cdr bs) (i64- k 1))))))
 
 "A leaf's tail call's arguments, sorted: the moves of those in registers,
  or made into one, to REG1…REGn; and the simple ones, each with its
@@ -909,6 +987,12 @@
       (let ((n (size args)) (own (r-own-self g env f args)))
         (cond ((not (null? (r-join-of env f))) (r-jump g (car (r-join-of env f)) args env te tail))
               ((and tail (r-self-known? g f n te)) (r-loop g args env te))
+              ;; In a copy specialized at a lambda: the lambda called, or the
+              ;; procedure calling itself (C260).
+              ((and (r-spec-param? g env f) (i64= n (rspec-arity (car (x-spec (g-ctx g)))))) (r-spec-lambda g args env te tail))
+              ((r-spec-self? g env f args)
+               (r-self-guarded g (tagcase (car (x-spec (g-ctx g))) (rspec (s lps lbody fv genv) (rspecial-name s)))
+                               (x-spec-start (g-ctx g)) f args a env te tail))
               ((not (null? own)) (r-self-guarded g (car own) (x-own-start (g-ctx g)) f args a env te tail))
               (else
                (let ((name (r-standard-name env f)))
@@ -978,7 +1062,8 @@
       "A call: the arguments into REG1…REGn, the procedure in RESULT."
       (let* ((n (size args))
              (u (r-unrolled env f args))
-             (i (if (null? u) (r-inlined env f (size args)) u)))
+             (i (if (null? u) (r-inlined env f (size args)) u))
+             (sp (if (null? i) (r-specialized env f args) nil)))
         (cond ;; An inlined call, or an unrolled one (C252): in a fast
               ;; version, no call, so in a leaf too.
               ((not (null? i))
@@ -986,10 +1071,91 @@
                    (r-decline g)
                    (r-inline g (car i) (not (null? u)) f args a env te tail)))
               ((g-leaf g)
-               (if (and tail (i64< n register-regs)) (r-leaf-tail-call g f args a env te) (r-decline g)))
+               (if (and tail (i64< n register-regs) (null? sp)) (r-leaf-tail-call g f args a env te) (r-decline g)))
+              ((not (null? sp)) (r-specialize g (car sp) args env te tail))
               ((and (not tail) (r-self-known? g f n te))
                (begin (r-args g (r-exp-args args) env te nil) (r-opn g "invokeself" n)))
               (else (begin (r-args g (r-exp-args args) env te (list f)) (r-invoke g n tail (r-conv-at a))))))))
+
+  ;;; specialization (C260, Fixpt's `r-specialize`)
+  (r-specialize (subr gen (rgen rcall cxs renv cenv bool) unit)
+    (lambda (g c args env te tail)
+      "A call of a procedure specialized at the lambda it is given: the
+       copy made for the lambda (with the form's words, `regs-form-twins!`)
+       called, if the global still holds what it was made from."
+      (tagcase c
+        (rcall (sp lam)
+          (tagcase lam
+            (x-lambda (lps lbody b)
+              (let ((m (r-made-word lps lbody te nil)))
+                (if (null? m)
+                    (r-decline g)
+                    (tagcase (car m)
+                      (rmade (w fv)
+                        (let ((copy (r-copy-of (get cg-copies) (rspecial-name sp) (cx-start lbody) fv (r-genv env))))
+                          (if (null? copy) (r-decline g) (r-specialized-call g (rspecial-name sp) (car copy) args env te tail))))))))
+            (else y (r-decline g)))))))
+  (r-specialized-call (subr gen (rgen string string cxs renv cenv bool) unit)
+    (lambda (g cell copy args env te tail)
+      "The copy's closure made first, into a slot; then the arguments, the
+       lambda's closure among them; then, if the global has not been
+       written since, the copy called, else the global."
+      (let* ((regs (get (g-nreg g))) (slots (get (g-nslot g))) (s (r-slot g)) (n (size args)))
+        (begin
+          (r-ins g "lambda" (list (o-word copy) (o-int 0)))
+          (r-opn g "setstk" s)
+          (r-args g (r-exp-args args) env te nil)
+          (let ((call (r-new-label g)) (end (r-new-label g)))
+            (if (r-assume g cell)
+                (begin (r-opn g "stack" s) (r-invoke g n tail 0))
+                (begin (r-guard g cell call)
+                       (r-opn g "stack" s)
+                       (r-invoke g n tail 0)
+                       (if tail #u (r-emit g (ri-branch "branch" end)))
+                       (r-emit g (ri-label call))
+                       (r-ins g "global" (list (o-global cell)))
+                       (r-invoke g n tail 0)
+                       (r-emit g (ri-label end)))))
+          (r-restore g regs slots)))))
+  (r-spec-lambda (subr gen (rgen cxs renv cenv bool) unit)
+    (lambda (g args env te tail)
+      "In a copy, a call of the parameter the lambda is: the lambda's body,
+       its parameters bound to the arguments and the values its closure
+       captured to those fields of the parameter's value, where the globals
+       are those it saw."
+      (tagcase (car (x-spec (g-ctx g)))
+        (rspec (sp lps lbody captured lgenv)
+          (let* ((at (car (get (x-spec-at (g-ctx g)))))
+                 (regs (get (g-nreg g))) (slots (get (g-nslot g)))
+                 (body-collects (and (not (g-leaf g)) (r-collects (g-view g) lbody (r-locals captured (r-locals lps nil)) nil tail)))
+                 (flags (r-in-regs g args (size captured) te body-collects))
+                 (bound (r-spec-args g lps args env te flags))
+                 (all (r-spec-free g at captured 3 bound (r-drop-bools flags (size args)))))
+            (begin
+              (tagcase all
+                (rscope (e2 te2) (r-exp g lbody (onto e2 (cons (rbind genv-name (rl-seen lgenv)) (r-carried env nil))) te2 tail)))
+              (r-restore g regs slots)))))))
+  (r-spec-args (subr gen (rgen strings cxs renv cenv (listof bool acyclic)) rscope)
+    (lambda (g ps args env te flags)
+      "Each of the lambda's parameters bound to its argument, made and kept,
+       in order."
+      (if (or (null? ps) (null? args))
+          (rscope nil nil)
+          (let* ((l (r-value-loc g (car args) env te (car flags)))
+                 (rest (r-spec-args g (cdr ps) (cdr args) env te (cdr flags))))
+            (tagcase rest (rscope (e2 te2) (rscope (r-bind (car ps) l e2) (r-local te2 (car ps)))))))))
+  (r-spec-free (subr gen (rgen rloc strings i64 rscope (listof bool acyclic)) rscope)
+    (lambda (g at fv j sc flags)
+      "Each value the lambda's closure captured, from the parameter's value
+       at `at`, field `j` on, kept, in order."
+      (if (null? fv)
+          sc
+          (begin
+            (tagcase at (rl-reg (k) (r-opn g "reg" k)) (rl-slot (s) (r-opn g "stack" s)) (else y (r-decline g)))
+            (r-opn g "field" j)
+            (let ((l (r-keep g (car flags))))
+              (tagcase sc
+                (rscope (e2 te2) (r-spec-free g at (cdr fv) (i64+ j 1) (rscope (r-bind (car fv) l e2) (r-local te2 (car fv))) (cdr flags)))))))))
 
   (r-inline (subr gen (rgen rinline bool cx cxs i64 renv cenv bool) unit)
     (lambda (g i unrolled f args a env te tail)

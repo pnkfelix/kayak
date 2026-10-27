@@ -180,3 +180,17 @@ items in slots, the closures that name later items given them once made),
 constant listed as its cell is (`#word "NAME"`). Where kayak's stack words
 are Fixpt's: 830 register words Fixpt's exactly, 9 differ (specialization,
 and C253's), none declined.
+
+## Stage 4: specialization (C260)
+
+A typed global procedure too large to inline (but under 60 nodes) with a
+parameter it only calls (or passes to itself, as itself) is noted; where
+it is called with a small lambda there, its *copy* for that lambda
+(`map1@lambda@705`) is made with the form's words, as Fixpt's plan makes
+them: the procedure's body compiled again, its register code inlining the
+lambda's body where the parameter is called (its captured values read from
+the parameter's closure) and calling itself by its own entry. The call
+makes the copy's closure, then calls it if the global is unchanged, else
+the global. Made on a walk of the form's twins before their register code
+(`r-twins-copies!`), kayak's stand-in for Fixpt's plan, which kayak
+otherwise does without. 910 register words Fixpt's exactly, 7 differ.

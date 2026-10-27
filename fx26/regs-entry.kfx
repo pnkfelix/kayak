@@ -64,28 +64,38 @@
                    (r-store-params g (i64+ i 1) n at)))))))
 
 "The body as a leaf, or not, as `leaf` says, in a list; none if declined.
- `assuming`: a fast version's, its assumptions into `assumed`."
-(define r-register-body-as (subr gen (twin bool (ref strings @g) renv bool) (listof rgen acyclic))
-  (lambda (t assuming assumed folded leaf)
+ `assuming`: a fast version's, its assumptions into `assumed`. `spec`: a
+ copy's, what it is specialized as (C260), one or none."
+(define r-register-body-as (subr gen (twin bool (ref strings @g) renv (listof rspec acyclic) bool) (listof rgen acyclic))
+  (lambda (t assuming assumed folded spec leaf)
     (tagcase t
       (twin (w ps body inner me own at)
         (let* ((n (size ps))
-               (own-at (if (null? me) (the i64 0) (the i64 1)))
+               (spec-at (if (null? me) (the i64 0) (the i64 1)))
+               (own-at (i64+ spec-at (if (null? spec) (the i64 0) (the i64 1))))
                (labels (i64+ own-at (if (string=? own "") (the i64 0) (the i64 1))))
-               (cx (rctx (new #f) assuming assumed (new #f) own n (if (string=? own "") (the i64 -1) own-at) (new (the i64 0))))
+               (cx (rctx (new #f) assuming assumed (new #f) own n (if (string=? own "") (the i64 -1) own-at) (new (the i64 0))
+                         spec (new nil) spec-at))
                (g (rgen (new nil) leaf (new (the i64 0)) (new (the i64 0)) (new (the i64 0)) (new labels) me (the i64 0) cx)))
           (begin
             (r-opn g "args" n)
             ;; The entry's code, its frame made and its parameters stored,
             ;; the lambda's own, in its line table (C249).
             (entry-pos! g at 0)
-            (let ((env (onto (r-env-of g inner leaf) folded)))
+            ;; A copy sees the globals its procedure saw.
+            (let ((env (onto (r-env-of g inner leaf)
+                             (onto folded (if (null? spec) nil (tagcase (car spec) (rspec (sp lps lbody fv genv) (tagcase sp (rspecial (sn sps sbody sat k ar la) (list (rbind genv-name (rl-seen sat))))))))))))
               (begin
                 (if leaf (set (g-nreg g) n) (begin (entry-pos! g at 2) (r-emit g (ri-frame "save")) (r-store-params g 0 n at)))
                 ;; The body's starts: the procedure's own (0), for its loops,
                 ;; if it knows itself; its definition's, for its calls of
                 ;; itself.
                 (if (null? me) #u (r-emit g (ri-label 0)))
+                ;; A copy's start, where its parameter the lambda is is.
+                (if (null? spec)
+                    #u
+                    (let ((l (r-where env (rspec-param (car spec)))))
+                      (if (null? l) (r-decline g) (begin (set (x-spec-at cx) l) (r-emit g (ri-label spec-at))))))
                 (if (string=? own "") #u (r-emit g (ri-label own-at)))
                 (r-exp g body env inner #t)
                 (if (r-declined? g) nil (list g))))))))))
@@ -96,17 +106,17 @@
 "A lambda's body in register code, in a list; none where declined. A leaf
  if nothing in it calls; else, where its only calls are plain tail calls,
  a leaf first, and if that declines (out of registers), not."
-(define r-register-body (subr gen (twin bool (ref strings @g) renv) (listof rgen acyclic))
-  (lambda (t assuming assumed folded)
+(define r-register-body (subr gen (twin bool (ref strings @g) renv (listof rspec acyclic)) (listof rgen acyclic))
+  (lambda (t assuming assumed folded spec)
     (tagcase t
       (twin (w ps body inner me own at)
         (let* ((n (size ps))
                (leaf (and (i64<= n register-regs) (not (r-collects (twin-view t assuming #f) body inner me #t)))))
           (cond ((or leaf (i64> n register-regs) (r-collects (twin-view t assuming #t) body inner me #t))
-                 (r-register-body-as t assuming assumed folded leaf))
+                 (r-register-body-as t assuming assumed folded spec leaf))
                 (else
-                 (let ((gs (r-register-body-as t assuming assumed folded #t)))
-                   (if (null? gs) (r-register-body-as t assuming assumed folded #f) gs)))))))))
+                 (let ((gs (r-register-body-as t assuming assumed folded spec #t)))
+                   (if (null? gs) (r-register-body-as t assuming assumed folded spec #f) gs)))))))))
 
 (define r-assemble (subr gen (rgen) rcode)
   (lambda (g) (rcode (the ritems (reverse (get (g-items g)))) (get (g-mslot g)))))
@@ -217,29 +227,30 @@
       (twin (w ps body inner me own at)
         (r-consts-of (c-free body (map (lambda ((e centry)) (tagcase e (centry (n l) n))) inner) nil) nil)))))
 
-(define r-plain-code (subr gen (twin) (listof rcode acyclic))
-  (lambda (t) (let ((gs (r-register-body t #f (new nil) nil))) (if (null? gs) nil (list (r-assemble (car gs)))))))
+(define r-plain-code (subr gen (twin (listof rspec acyclic)) (listof rcode acyclic))
+  (lambda (t spec) (let ((gs (r-register-body t #f (new nil) nil spec))) (if (null? gs) nil (list (r-assemble (car gs)))))))
 
 "The body compiled assuming every global it calls itself through holds
  what it held, behind a guard each; and, where one fails, as ever. Worth
  it where the fast version is a leaf, or loops: else only the plain one."
-(define r-fast-code (subr gen (twin) (listof rcode acyclic))
-  (lambda (t)
+(define r-fast-code (subr gen (twin (listof rspec acyclic)) (listof rcode acyclic))
+  (lambda (t spec)
     (let* ((consts (r-consts-named t))
            ;; The constants it names folded, assumed first (C252).
            (assumed (the (ref strings @g) (new (the strings (reverse (map (lambda ((b rbind)) (tagcase b (rbind (n l) (after-prefix n "%const:")))) consts))))))
-           (fast (r-register-body t #t assumed consts))
+           (fast (r-register-body t #t assumed consts spec))
            (assumptions (the strings (reverse (get assumed)))))
       (if (or (null? assumptions) (null? fast)
               (not (or (g-leaf (car fast)) (get (x-looped (g-ctx (car fast)))))))
-          (r-plain-code t)
-          (let ((plain (r-register-body t #f (new nil) nil)))
+          (r-plain-code t spec)
+          (let ((plain (r-register-body t #f (new nil) nil spec)))
             (if (null? plain) nil (list (r-versions (car fast) (car plain) assumptions (tagcase t (twin (w ps body inner me own at) at))))))))))
 
-"A twin's register code, noted under its word's name, unless declined."
-(define r-twin-made! (subr gen (twin) unit)
-  (lambda (t)
-    (let ((cs (if (and (r-fast-sound? t) (r-fast-may-pay? t)) (r-fast-code t) (r-plain-code t))))
+"A twin's register code, noted under its word's name, unless declined; a
+ copy's (`spec`) as specialized."
+(define r-twin-made! (subr gen (twin (listof rspec acyclic)) unit)
+  (lambda (t spec)
+    (let ((cs (if (and (r-fast-sound? t) (r-fast-may-pay? t)) (r-fast-code t spec) (r-plain-code t spec))))
       (if (null? cs) #u (set cg-reg-codes (cons (rnamed (twin-word t) (car cs)) (get cg-reg-codes)))))))
 
 "A standard operation's word's register code (C253, Fixpt's
@@ -250,7 +261,7 @@
   (lambda (name n)
     (let* ((std (r-standard name n))
            (callout (tagcase std (s-prim (p) #t) (s-cellular (r) (string=? r "cons")) (else y #f)))
-           (cx (rctx (new #f) #f (new nil) (new #f) "" -1 -1 (new (the i64 0))))
+           (cx (rctx (new #f) #f (new nil) (new #f) "" -1 -1 (new (the i64 0)) nil (new nil) -1))
            (g (rgen (new nil) (not callout) (new n) (new (the i64 0)) (new (the i64 0)) (new (the i64 0)) nil (the i64 0) cx)))
       (begin
         (r-opn g "args" n)
@@ -285,7 +296,118 @@
 
 (define-rec
   (r-twins-made! (subr gen ((listof twin acyclic)) unit)
-    (lambda (ts) (if (null? ts) #u (begin (r-twin-made! (car ts)) (r-twins-made! (cdr ts)))))))
+    (lambda (ts) (if (null? ts) #u (begin (r-twin-made! (car ts) nil) (r-twins-made! (cdr ts)))))))
+
+;;; ------------------------------------------------------- specialization
+
+"The names a scope binds."
+(define-rec
+  (r-scope-names (subr kfx (cenv) strings) (lambda (e) (if (null? e) nil (tagcase (car e) (centry (n l) (cons n (r-scope-names (cdr e)))))))))
+(define r-bind-names (subr kfx (cbinds) strings) (lambda (bs) (map (lambda ((b cbind)) (tagcase b (cbind (n x) n))) bs)))
+
+"Of the form's lambdas' words, the oldest made for the lambda of `ps` whose
+ body starts at `at` knowing no name of its own: the names its closure
+ captures, in a list."
+(define-rec
+  (r-form-lambda-fv (subr kfx ((listof lword acyclic) i64 strings) (listof strings acyclic))
+    (lambda (ws at ps)
+      (if (null? ws)
+          nil
+          (let ((older (r-form-lambda-fv (cdr ws) at ps)))
+            (cond ((not (null? older)) older)
+                  ((tagcase (car ws) (lword (b qs o w cs) (and (i64= b at) (strings=? qs ps) (null? o))))
+                   (tagcase (car ws) (lword (b qs o w cs) (list cs))))
+                  (else nil)))))))
+
+(define-rec
+  (r-copy-twins-made! (subr gen ((listof twin acyclic) (listof rspec acyclic)) unit)
+    (lambda (ts spec) (if (null? ts) #u (begin (r-twin-made! (car ts) spec) (r-copy-twins-made! (cdr ts) spec))))))
+
+"The copy of special `sp` for the lambda of `lps` and `lbody`, capturing
+ `fv`, made unless it was (C260, Fixpt's `c-make-copy`): its procedure's
+ body compiled again, named for the procedure and the lambda; then its
+ register code, specialized."
+(define r-make-copy! (subr gen (rspecial strings cx strings) unit)
+  (lambda (sp lps lbody fv)
+    (tagcase sp
+      (rspecial (n ps body genv k ar at)
+        (if (not (null? (r-copy-of (get cg-copies) n (cx-start lbody) fv -1)))
+            #u
+            (let ((lambdas (get cg-form-lambdas)))
+              (begin
+                (set c-word-name (list (string-append n (string-append "@lambda@" (i64->string (cx-start lbody))))))
+                (set cg-lambda-at at)
+                (tagcase (c-lambda-word ps body nil nil)
+                  (cclosing (w cfv)
+                    (let ((ts (the (listof twin acyclic) (reverse (get cg-twins)))) (ss (the (listof stwin acyclic) (reverse (get cg-standard-twins)))))
+                      (begin
+                        (set cg-twins nil) (set cg-standard-twins nil) (set cg-form-lambdas lambdas)
+                        (set cg-copies (cons (rcopy n (cx-start lbody) fv -1 w) (get cg-copies)))
+                        (r-copy-twins-made! ts (list (rspec sp lps lbody fv -1)))
+                        (r-standard-twins-made! ss))))))))))))
+
+"A call of `f` on `args`, where `bound` are local: if a special's, given a
+ lambda it may be specialized at, its copy made."
+(define r-copy-call! (subr gen (cx cxs strings) unit)
+  (lambda (f args bound)
+    (tagcase f
+      (x-var (n a)
+        (if (or (std-marked? n) (string-member? n bound) (not (string-member? n (get cg-globals))))
+            #u
+            (let ((sp (r-special-named (get cg-specials) n (size args) -1)))
+              (if (null? sp)
+                  #u
+                  (tagcase (car sp)
+                    (rspecial (m ps body at k ar la)
+                      (tagcase (r-nth-cx args k)
+                        (x-lambda (lps lbody b)
+                          (let ((fv (r-form-lambda-fv (get cg-form-lambdas) (cx-start lbody) lps)))
+                            (if (and (i64= (size lps) ar) (i64>= (r-room lbody r-inline-limit #f) 0) (not (null? fv)))
+                                (r-make-copy! (car sp) lps lbody (car fv))
+                                #u)))
+                        (else y #u))))))))
+      (else y #u))))
+
+"The copies the calls in `x` make, `bound` local; a lambda's body is its
+ own word's, walked as such (Fixpt's plan's `p-call`)."
+(define-rec
+  (r-copies-in (subr gen (cx strings) unit)
+    (lambda (x bound)
+      (tagcase x
+        (x-app (f args a) (begin (r-copy-call! f args bound) (r-copies-all args bound) (r-copies-in f bound)))
+        (x-rlambda (r l a) (r-copies-in r bound))
+        (x-proj (y a) (r-copies-in y bound))
+        (x-region (k r body a) (r-copies-in body (cons r bound)))
+        (x-if (t th el a) (begin (r-copies-in t bound) (r-copies-in th bound) (r-copies-in el bound)))
+        (x-let (bs body a) (begin (r-copies-all (c-bound-exps bs) bound) (r-copies-in body (onto (r-bind-names bs) bound))))
+        (x-letrec (bs body a) (let ((b2 (onto (r-bind-names bs) bound))) (begin (r-copies-all (c-bound-exps bs) b2) (r-copies-in body b2))))
+        (x-begin (es a) (r-copies-all es bound))
+        (x-bloblet (op i args a) (r-copies-all args bound))
+        (x-product (fs a) (r-copies-all (c-bound-exps fs) bound))
+        (x-extract (p i a) (r-copies-in p bound))
+        (x-sum (t v a) (r-copies-in v bound))
+        (x-tagcase (s arms els k a)
+          (begin (r-copies-in s bound) (r-copies-arms arms bound)
+                 (if (null? els) #u (tagcase (car els) (cbind (n y) (r-copies-in y (cons n bound)))))))
+        (x-prompt (t body h a) (begin (r-copies-in t bound) (r-copies-in h bound)))
+        (x-module (its a) (r-copies-all (map cmem-value its) (onto (map cmem-name its) bound)))
+        (x-with (m ns ks body a) (begin (r-copies-in m bound) (r-copies-in body (onto ns bound))))
+        (x-reshape (y ps a) (r-copies-in y bound))
+        (else y #u))))
+  (r-copies-all (subr gen (cxs strings) unit)
+    (lambda (es bound) (if (null? es) #u (begin (r-copies-in (car es) bound) (r-copies-all (cdr es) bound)))))
+  (r-copies-arms (subr gen ((listof carm acyclic) strings) unit)
+    (lambda (arms bound)
+      (if (null? arms)
+          #u
+          (tagcase (car arms) (carm (t whole ns body) (begin (r-copies-in body (onto ns bound)) (r-copies-arms (cdr arms) bound))))))))
+(define-rec
+  (r-twins-copies! (subr gen ((listof twin acyclic)) unit)
+    (lambda (ts)
+      (if (null? ts)
+          #u
+          (begin (tagcase (car ts) (twin (w ps body inner me own at) (r-copies-in body (r-scope-names inner))))
+                 (r-twins-copies! (cdr ts)))))))
 
 "The form's twins, each its register code, in the order their words were
  made (Fixpt's `c-form-twins`)."
@@ -296,13 +418,12 @@
         ;; The standard operations' after the lambdas': no register code
         ;; depends on another's.
         (begin (set cg-twins nil) (set cg-standard-twins nil)
+               ;; The copies the form's calls make first (C260), as
+               ;; Fixpt's plan says them.
+               (r-twins-copies! ts)
                (r-twins-made! ts) (r-standard-twins-made! ss) (set cg-form-lambdas nil))))))
 
-"After a typed definition of `n` as the lambda of `ps` and `body`: noted to
- be inlined where called, if small (`r-room`), naming neither itself nor
- `stay-cellular` (C252, Fixpt's `c-record-inline`); as it sees the
- globals defined so far."
-(define r-note-inline! (subr gen (string strings cx i64) unit)
+(define r-note-inline-small! (subr gen (string strings cx i64) unit)
   (lambda (n ps body at)
     (if (and (not (c-mentions? body "stay-cellular")) (i64>= (r-room body r-inline-limit #f) 0))
         (cond ((not (c-mentions? body n))
@@ -314,6 +435,25 @@
                (set cg-unrolls (cons (rinline n ps body (size (get cg-globals))) (get cg-unrolls))))
               (else #u))
         #u)))
+
+"After a typed definition of `n` as the lambda of `ps` and `body`: noted to
+ be inlined where called, if small (`r-room`), naming neither itself nor
+ `stay-cellular` (C252, Fixpt's `c-record-inline`); else, if not so large
+ and a parameter it only calls, specialized where called with a lambda
+ there (C260); as it sees the globals defined so far."
+(define r-note-inline! (subr gen (string strings cx i64) unit)
+  (lambda (n ps body at)
+    (begin
+      (if (and (not (c-mentions? body "stay-cellular"))
+               (not (and (i64>= (r-room body r-inline-limit #f) 0) (not (c-mentions? body n))))
+               (i64>= (r-room body r-special-limit #f) 0))
+          (let ((found (r-first-call-only ps body n 0 (size ps))))
+            (if (null? found)
+                #u
+                (tagcase (car found)
+                  (rfound (k ar) (set cg-specials (cons (rspecial n ps body (size (get cg-globals)) k ar at) (get cg-specials)))))))
+          #u)
+      (r-note-inline-small! n ps body at))))
 
 "After a top-level definition of `n` as `x`: whether `n` is a constant now
  (C252, Fixpt's `c-note-constant!`)."

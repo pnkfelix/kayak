@@ -17,8 +17,10 @@ use super::*;
 // loops, a leaf's tail calls. Stage 2 (C253): closures, `letrec`,
 // `tagcase`, prompts, `apply`, `list`. Stage 3 (C259): regions and
 // closures made in them, bloblets and blobrefs, flat sums' `tagcase`,
-// modules, `with` and reshaping. Declined, as Fixpt's are: what a leaf
-// cannot make without a frame, more registers than there are.
+// modules, `with` and reshaping. Stage 4 (C260): calls of a procedure
+// specialized at the lambda given, and a copy's own calls. Declined, as
+// Fixpt's are: what a leaf cannot make without a frame, more registers than
+// there are.
 
 // How many times each global has been written once the forms compiled so
 // far have run, and the globals the form being compiled writes: what a
@@ -112,11 +114,11 @@ pub fn c_wrote_x(n: Str) -> () {
 // was made a loop; its definition's global, its arity and its start's
 // label ("", -1, -1 if none).
 pub enum Rctx {
-    Rctx(Ref<bool>, bool, Ref<Strings>, Ref<bool>, Str, i64, i64, Ref<i64>),
+    Rctx(Ref<bool>, bool, Ref<Strings>, Ref<bool>, Str, i64, i64, Ref<i64>, List<&'static Rspec>, Ref<Rlocs>, i64),
 }
 
-pub fn rctx(f0: Ref<bool>, f1: bool, f2: Ref<Strings>, f3: Ref<bool>, f4: Str, f5: i64, f6: i64, f7: Ref<i64>) -> &'static Rctx {
-    kayak_rt::heap_alloc(Rctx::Rctx(f0, f1, f2, f3, f4, f5, f6, f7))
+pub fn rctx(f0: Ref<bool>, f1: bool, f2: Ref<Strings>, f3: Ref<bool>, f4: Str, f5: i64, f6: i64, f7: Ref<i64>, f8: List<&'static Rspec>, f9: Ref<Rlocs>, f10: i64) -> &'static Rctx {
+    kayak_rt::heap_alloc(Rctx::Rctx(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10))
 }
 
 // What is being made: its items, newest first; whether a leaf; the next
@@ -214,7 +216,7 @@ pub fn g_ctx(g: &'static Rgen) -> &'static Rctx {
 pub fn x_declined(x: &'static Rctx) -> Ref<bool> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             d
         }
     }
@@ -223,7 +225,7 @@ pub fn x_declined(x: &'static Rctx) -> Ref<bool> {
 pub fn x_assuming(x: &'static Rctx) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             a
         }
     }
@@ -232,7 +234,7 @@ pub fn x_assuming(x: &'static Rctx) -> bool {
 pub fn x_assumed(x: &'static Rctx) -> Ref<Strings> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             r#as
         }
     }
@@ -241,7 +243,7 @@ pub fn x_assumed(x: &'static Rctx) -> Ref<Strings> {
 pub fn x_looped(x: &'static Rctx) -> Ref<bool> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             l
         }
     }
@@ -250,7 +252,7 @@ pub fn x_looped(x: &'static Rctx) -> Ref<bool> {
 pub fn x_own(x: &'static Rctx) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             o
         }
     }
@@ -259,7 +261,7 @@ pub fn x_own(x: &'static Rctx) -> Str {
 pub fn x_own_arity(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             k
         }
     }
@@ -268,7 +270,7 @@ pub fn x_own_arity(x: &'static Rctx) -> i64 {
 pub fn x_own_start(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             s
         }
     }
@@ -278,8 +280,37 @@ pub fn x_own_start(x: &'static Rctx) -> i64 {
 pub fn x_at(x: &'static Rctx) -> Ref<i64> {
     let tagcase_ = x;
     match *tagcase_ {
-        Rctx::Rctx(d, a, r#as, l, o, k, s, at) => {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
             at
+        }
+    }
+}
+
+// In a copy, the copy being made (one or none); where the parameter the
+// lambda is is (one or none); the label where the copy starts (C260).
+pub fn x_spec(x: &'static Rctx) -> List<&'static Rspec> {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
+            sp
+        }
+    }
+}
+
+pub fn x_spec_at(x: &'static Rctx) -> Ref<Rlocs> {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
+            sa
+        }
+    }
+}
+
+pub fn x_spec_start(x: &'static Rctx) -> i64 {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Rctx::Rctx(d, a, r#as, l, o, k, s, at, sp, sa, ss) => {
+            ss
         }
     }
 }
@@ -1337,6 +1368,218 @@ pub fn r_made_word(ps: Strings, body: &'static Cx, te: Cenv, own0: Strings) -> L
     r_made_in(get(cg_form_lambdas()), cx_start(body), ps, c_own_of(ps, own0), c_captured(c_free(body, ps, nil::<Str>()), te))
 }
 
+// Where a value is: the same register or frame slot.
+pub fn r_same_place_p(x: &'static Rloc, y: &'static Rloc) -> bool {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Rloc::RlReg(i) => {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Rloc::RlReg(j) => {
+                    i64_eq(i, j)
+                }
+                _ => {
+                    let z = tagcase_;
+                    false
+                }
+            }
+        }
+        Rloc::RlSlot(i) => {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Rloc::RlSlot(j) => {
+                    i64_eq(i, j)
+                }
+                _ => {
+                    let z = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let z = tagcase_;
+            false
+        }
+    }
+}
+
+// A copy's procedure's parameter the lambda is, and the arity it is called
+// with.
+pub fn rspec_param(c: &'static Rspec) -> Str {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Rspec::Rspec(sp, lps, lbody, fv, genv) => {
+            let tagcase_ = sp;
+            match *tagcase_ {
+                Rspecial::Rspecial(n, ps, body, at, k, ar, la) => {
+                    r_nth_name(ps, k)
+                }
+            }
+        }
+    }
+}
+
+pub fn rspec_arity(c: &'static Rspec) -> i64 {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Rspec::Rspec(sp, lps, lbody, fv, genv) => {
+            let tagcase_ = sp;
+            match *tagcase_ {
+                Rspecial::Rspecial(n, ps, body, at, k, ar, la) => {
+                    ar
+                }
+            }
+        }
+    }
+}
+
+// Whether `x` is, in a copy, the parameter the lambda is, where it is (an
+// inlined body's, or the lambda's, does not see it) (Fixpt's
+// `r-spec-param?`).
+pub fn r_spec_param_p(g: &'static Rgen, env: Renv, x: &'static Cx) -> bool {
+    let cx = g_ctx(g);
+    let sp = x_spec(cx);
+    let at = get(x_spec_at(cx));
+    (not(null_p(sp)) && not(null_p(at)) && {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(m, a) => {
+                (string_eq_p(m, rspec_param(car(sp))) && {
+                    let l = r_where(env, m);
+                    (not(null_p(l)) && r_same_place_p(car(l), car(at)))
+                })
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    })
+}
+
+// Whether `f`, in a copy, is its procedure's own global, called with the
+// parameter passed as itself (Fixpt's `r-spec-self?`).
+pub fn r_spec_self_p(g: &'static Rgen, env: Renv, f: &'static Cx, args: Cxs) -> bool {
+    let sp = x_spec(g_ctx(g));
+    (not(null_p(sp)) && not(null_p(get(x_spec_at(g_ctx(g))))) && {
+        let tagcase_ = car(sp);
+        match *tagcase_ {
+            Rspec::Rspec(s, lps, lbody, fv, genv) => {
+                let tagcase_ = s;
+                match *tagcase_ {
+                    Rspecial::Rspecial(n, ps, body, at, k, ar, la) => {
+                        ({
+                            let tagcase_ = f;
+                            match *tagcase_ {
+                                Cx::XVar(m, a) => {
+                                    (string_eq_p(m, n) && {
+                                        let l = r_where(env, m);
+                                        (not(null_p(l)) && {
+                                            let tagcase_ = car(l);
+                                            match *tagcase_ {
+                                                Rloc::RlGlobal(c) => {
+                                                    true
+                                                }
+                                                _ => {
+                                                    let y = tagcase_;
+                                                    false
+                                                }
+                                            }
+                                        })
+                                    })
+                                }
+                                _ => {
+                                    let y = tagcase_;
+                                    false
+                                }
+                            }
+                        } && i64_eq(size(args), size(ps)) && r_spec_param_p(g, env, r_nth_cx(args, k)))
+                    }
+                }
+            }
+        }
+    })
+}
+
+// A call of global `f` on `args` specialized (C260, Fixpt's
+// `r-specialized`): `f` a special seen here, given at the parameter it
+// only calls a lambda small enough to inline, of the arity it calls it
+// with: the special and the lambda, in a list.
+pub enum Rcall {
+    Rcall(&'static Rspecial, &'static Cx),
+}
+
+pub fn rcall(f0: &'static Rspecial, f1: &'static Cx) -> &'static Rcall {
+    kayak_rt::heap_alloc(Rcall::Rcall(f0, f1))
+}
+
+pub fn r_specialized(env: Renv, f: &'static Cx, args: Cxs) -> List<&'static Rcall> {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Cx::XVar(n, a) => {
+            let l = if std_marked_p(n) {
+                nil::<&'static Rloc>()
+            } else {
+                r_where(env, n)
+            };
+            if (null_p(l) || not({
+                let tagcase_ = car(l);
+                match *tagcase_ {
+                    Rloc::RlGlobal(c) => {
+                        true
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        false
+                    }
+                }
+            })) {
+                nil::<&'static Rcall>()
+            } else {
+                let sp = r_special_named(get(cg_specials()), n, size(args), r_genv(env));
+                if null_p(sp) {
+                    nil::<&'static Rcall>()
+                } else {
+                    let tagcase_ = car(sp);
+                    match *tagcase_ {
+                        Rspecial::Rspecial(m, ps, body, at, k, ar, la) => {
+                            let tagcase_ = r_nth_cx(args, k);
+                            match *tagcase_ {
+                                Cx::XLambda(lps, lbody, b) => {
+                                    if (i64_eq(size(lps), ar) && i64_gt_eq(r_room(lbody, r_inline_limit(), false), 0i64)) {
+                                        kayak_rt::heap_cons(rcall(car(sp), r_nth_cx(args, k)), kayak_rt::nil())
+                                    } else {
+                                        nil::<&'static Rcall>()
+                                    }
+                                }
+                                _ => {
+                                    let y = tagcase_;
+                                    nil::<&'static Rcall>()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            nil::<&'static Rcall>()
+        }
+    }
+}
+
+pub fn r_drop_bools(mut bs: List<bool>, mut k: i64) -> List<bool> {
+    loop {
+        if (null_p(bs) || i64_lt_eq(k, 0i64)) {
+            return bs;
+        } else {
+            (bs, k) = (cdr(bs), i64_minus(k, 1i64));
+            continue;
+        }
+    }
+}
+
 // A leaf's tail call's arguments, sorted: the moves of those in registers,
 // or made into one, to REG1…REGn; and the simple ones, each with its
 // register, made after the moves.
@@ -2320,6 +2563,17 @@ pub fn r_app(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te:
         r_jump(g, car(r_join_of(env, f)), args, env, te, tail)
     } else if (tail && r_self_known_p(g, f, n, te)) {
         r_loop(g, args, env, te)
+    } else if (r_spec_param_p(g, env, f) && i64_eq(n, rspec_arity(car(x_spec(g_ctx(g)))))) {
+        r_spec_lambda(g, args, env, te, tail)
+    } else if r_spec_self_p(g, env, f, args) {
+        r_self_guarded(g, {
+            let tagcase_ = car(x_spec(g_ctx(g)));
+            match *tagcase_ {
+                Rspec::Rspec(s, lps, lbody, fv, genv) => {
+                    rspecial_name(s)
+                }
+            }
+        }, x_spec_start(g_ctx(g)), f, args, a, env, te, tail)
     } else if not(null_p(own)) {
         r_self_guarded(g, car(own), x_own_start(g_ctx(g)), f, args, a, env, te, tail)
     } else {
@@ -2462,6 +2716,11 @@ pub fn r_call(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te
     } else {
         u
     };
+    let sp = if null_p(i) {
+        r_specialized(env, f, args)
+    } else {
+        nil::<&'static Rcall>()
+    };
     if not(null_p(i)) {
         if (not(x_assuming(g_ctx(g))) && g_leaf(g)) {
             r_decline(g)
@@ -2469,17 +2728,169 @@ pub fn r_call(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te
             r_inline(g, car(i), not(null_p(u)), f, args, a, env, te, tail)
         }
     } else if g_leaf(g) {
-        if (tail && i64_lt(n, register_regs())) {
+        if (tail && i64_lt(n, register_regs()) && null_p(sp)) {
             r_leaf_tail_call(g, f, args, a, env, te)
         } else {
             r_decline(g)
         }
+    } else if not(null_p(sp)) {
+        r_specialize(g, car(sp), args, env, te, tail)
     } else if (not(tail) && r_self_known_p(g, f, n, te)) {
         r_args(g, r_exp_args(args), env, te, nil::<&'static Cx>());
         r_opn(g, str_lit("invokeself"), n)
     } else {
         r_args(g, r_exp_args(args), env, te, kayak_rt::heap_cons(f, kayak_rt::nil()));
         r_invoke(g, n, tail, r_conv_at(a))
+    }
+}
+
+/// A call of a procedure specialized at the lambda it is given: the
+/// copy made for the lambda (with the form's words, `regs-form-twins!`)
+/// called, if the global still holds what it was made from.
+pub fn r_specialize(g: &'static Rgen, c: &'static Rcall, args: Cxs, env: Renv, te: Cenv, tail: bool) -> () {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Rcall::Rcall(sp, lam) => {
+            let tagcase_ = lam;
+            match *tagcase_ {
+                Cx::XLambda(lps, lbody, b) => {
+                    let m = r_made_word(lps, lbody, te, nil::<Str>());
+                    if null_p(m) {
+                        r_decline(g)
+                    } else {
+                        let tagcase_ = car(m);
+                        match *tagcase_ {
+                            Rmade::Rmade(w, fv) => {
+                                let copy = r_copy_of(get(cg_copies()), rspecial_name(sp), cx_start(lbody), fv, r_genv(env));
+                                if null_p(copy) {
+                                    r_decline(g)
+                                } else {
+                                    r_specialized_call(g, rspecial_name(sp), car(copy), args, env, te, tail)
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    r_decline(g)
+                }
+            }
+        }
+    }
+}
+
+/// The copy's closure made first, into a slot; then the arguments, the
+/// lambda's closure among them; then, if the global has not been
+/// written since, the copy called, else the global.
+pub fn r_specialized_call(g: &'static Rgen, cell: Str, copy: Str, args: Cxs, env: Renv, te: Cenv, tail: bool) -> () {
+    let regs = get(g_nreg(g));
+    let slots = get(g_nslot(g));
+    let s = r_slot(g);
+    let n = size(args);
+    r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(copy), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil())));
+    r_opn(g, str_lit("setstk"), s);
+    r_args(g, r_exp_args(args), env, te, nil::<&'static Cx>());
+    {
+        let (call, end) = (r_new_label(g), r_new_label(g));
+        if r_assume(g, cell) {
+            r_opn(g, str_lit("stack"), s);
+            r_invoke(g, n, tail, 0i64)
+        } else {
+            r_guard(g, cell, call);
+            r_opn(g, str_lit("stack"), s);
+            r_invoke(g, n, tail, 0i64);
+            if tail {
+                ()
+            } else {
+                r_emit(g, ri_branch(str_lit("branch"), end))
+            };
+            r_emit(g, ri_label(call));
+            r_ins(g, str_lit("global"), kayak_rt::heap_cons(o_global(cell), kayak_rt::nil()));
+            r_invoke(g, n, tail, 0i64);
+            r_emit(g, ri_label(end))
+        }
+    };
+    r_restore(g, regs, slots)
+}
+
+/// In a copy, a call of the parameter the lambda is: the lambda's body,
+/// its parameters bound to the arguments and the values its closure
+/// captured to those fields of the parameter's value, where the globals
+/// are those it saw.
+pub fn r_spec_lambda(g: &'static Rgen, args: Cxs, env: Renv, te: Cenv, tail: bool) -> () {
+    let tagcase_ = car(x_spec(g_ctx(g)));
+    match *tagcase_ {
+        Rspec::Rspec(sp, lps, lbody, captured, lgenv) => {
+            let at = car(get(x_spec_at(g_ctx(g))));
+            let regs = get(g_nreg(g));
+            let slots = get(g_nslot(g));
+            let body_collects = (not(g_leaf(g)) && r_collects(g_view(g), lbody, r_locals(captured, r_locals(lps, nil::<&'static Centry>())), nil::<&'static This>(), tail));
+            let flags = r_in_regs(g, args, size(captured), te, body_collects);
+            let bound = r_spec_args(g, lps, args, env, te, flags);
+            let all = r_spec_free(g, at, captured, 3i64, bound, r_drop_bools(flags, size(args)));
+            {
+                let tagcase_ = all;
+                match *tagcase_ {
+                    Rscope::Rscope(e2, te2) => {
+                        r_exp(g, lbody, onto(e2, kayak_rt::heap_cons(rbind(genv_name(), rl_seen(lgenv)), r_carried(env, nil::<&'static Rbind>()))), te2, tail)
+                    }
+                }
+            };
+            r_restore(g, regs, slots)
+        }
+    }
+}
+
+/// Each of the lambda's parameters bound to its argument, made and kept,
+/// in order.
+pub fn r_spec_args(g: &'static Rgen, ps: Strings, args: Cxs, env: Renv, te: Cenv, flags: List<bool>) -> &'static Rscope {
+    if (null_p(ps) || null_p(args)) {
+        rscope(nil::<&'static Rbind>(), nil::<&'static Centry>())
+    } else {
+        let l = r_value_loc(g, car(args), env, te, car(flags));
+        let rest = r_spec_args(g, cdr(ps), cdr(args), env, te, cdr(flags));
+        let tagcase_ = rest;
+        match *tagcase_ {
+            Rscope::Rscope(e2, te2) => {
+                rscope(r_bind(car(ps), l, e2), r_local(te2, car(ps)))
+            }
+        }
+    }
+}
+
+/// Each value the lambda's closure captured, from the parameter's value
+/// at `at`, field `j` on, kept, in order.
+pub fn r_spec_free(mut g: &'static Rgen, mut at: &'static Rloc, mut fv: Strings, mut j: i64, mut sc: &'static Rscope, mut flags: List<bool>) -> &'static Rscope {
+    loop {
+        if null_p(fv) {
+            return sc;
+        } else {
+            {
+                let tagcase_ = at;
+                match *tagcase_ {
+                    Rloc::RlReg(k) => {
+                        r_opn(g, str_lit("reg"), k)
+                    }
+                    Rloc::RlSlot(s) => {
+                        r_opn(g, str_lit("stack"), s)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        r_decline(g)
+                    }
+                }
+            };
+            r_opn(g, str_lit("field"), j);
+            let l = r_keep(g, car(flags));
+            let tagcase_ = sc;
+            match *tagcase_ {
+                Rscope::Rscope(e2, te2) => {
+                    (fv, j, sc, flags) = (cdr(fv), i64_plus(j, 1i64), rscope(r_bind(car(fv), l, e2), r_local(te2, car(fv))), cdr(flags));
+                    continue;
+                }
+            }
+        }
     }
 }
 
