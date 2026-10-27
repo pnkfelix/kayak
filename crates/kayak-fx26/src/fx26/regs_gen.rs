@@ -989,6 +989,152 @@ pub fn r_inline_env(params: Renv, env: Renv, name: Str, at: i64) -> Renv {
     onto(params, kayak_rt::heap_cons(rbind(genv_name(), rl_seen(at)), kayak_rt::heap_cons(rbind(inlining_name(name), rl_loop()), r_carried(env, nil::<&'static Rbind>()))))
 }
 
+// A closure's free values as operands, and the patches it needs.
+pub enum Rfree {
+    Rfree(Rargs, Rpatches),
+}
+
+pub fn rfree(f0: Rargs, f1: Rpatches) -> &'static Rfree {
+    kayak_rt::heap_alloc(Rfree::Rfree(f0, f1))
+}
+
+// A scope: a register environment and its stack one.
+pub enum Rscope {
+    Rscope(Renv, Cenv),
+}
+
+pub fn rscope(f0: Renv, f1: Cenv) -> &'static Rscope {
+    kayak_rt::heap_alloc(Rscope::Rscope(f0, f1))
+}
+
+// A join point's place: its parameters' places and its label.
+pub enum Rplace {
+    Rplace(Rlocs, i64),
+}
+
+pub fn rplace(f0: Rlocs, f1: i64) -> &'static Rplace {
+    kayak_rt::heap_alloc(Rplace::Rplace(f0, f1))
+}
+
+// The moves of each free value of `fv` (from the `j`th) in a register into
+// REGj+1, where it is not there already.
+pub fn r_reg_moves(fv: Strings, env: Renv, j: i64) -> Rmoves {
+    if null_p(fv) {
+        nil::<&'static Rmove>()
+    } else {
+        let (l, rest) = (r_where(env, car(fv)), r_reg_moves(cdr(fv), env, i64_plus(j, 1i64)));
+        if null_p(l) {
+            rest
+        } else {
+            let tagcase_ = car(l);
+            match *tagcase_ {
+                Rloc::RlReg(r) => {
+                    if i64_eq(r, i64_plus(j, 1i64)) {
+                        rest
+                    } else {
+                        kayak_rt::heap_cons(rmove(r, i64_plus(j, 1i64)), rest)
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    rest
+                }
+            }
+        }
+    }
+}
+
+// `env` with each parameter at its place.
+pub fn r_bind_places(mut env: Renv, mut ps: Strings, mut ls: Rlocs) -> Renv {
+    loop {
+        if (null_p(ps) || null_p(ls)) {
+            return env;
+        } else {
+            (env, ps, ls) = (r_bind(car(ps), car(ls), env), cdr(ps), cdr(ls));
+            continue;
+        }
+    }
+}
+
+// The join point `f` names, in a list: a local's.
+pub fn r_join_of(env: Renv, f: &'static Cx) -> Rlocs {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Cx::XVar(m, a) => {
+            let l = r_local_loc(env, m);
+            if null_p(l) {
+                nil::<&'static Rloc>()
+            } else {
+                let tagcase_ = car(l);
+                match *tagcase_ {
+                    Rloc::RlJoin(ps, label) => {
+                        l
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        nil::<&'static Rloc>()
+                    }
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            nil::<&'static Rloc>()
+        }
+    }
+}
+
+// The `letrec`'s names where its body sees them: a join point as itself,
+// any other in its slot; and to the stack compiler, a join point a loop.
+pub fn r_letrec_env(mut bs: Cbinds, mut at: List<i64>, mut places: List<List<&'static Rplace>>, mut env: Renv) -> Renv {
+    loop {
+        if null_p(bs) {
+            return env;
+        } else {
+            (bs, at, places, env) = (cdr(bs), cdr(at), cdr(places), {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        r_bind(n, if null_p(car(places)) {
+                            rl_slot(car(at))
+                        } else {
+                            let tagcase_ = car(car(places));
+                            match *tagcase_ {
+                                Rplace::Rplace(locs, label) => {
+                                    rl_join(locs, label)
+                                }
+                            }
+                        }, env)
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn r_letrec_te(mut bs: Cbinds, mut joins: List<bool>, mut te: Cenv) -> Cenv {
+    loop {
+        if null_p(bs) {
+            return te;
+        } else {
+            (bs, joins, te) = (cdr(bs), cdr(joins), {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        c_extend(n, if car(joins) {
+                            at_loop()
+                        } else {
+                            at_slot(-1i64)
+                        }, te)
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
 // A call's inlined parameters: where the body finds each, the body's scope,
 // and the arguments for the call where the guard fails.
 pub enum Rbound {
@@ -1016,6 +1162,7 @@ pub enum Rarg {
     AV(&'static Lit),
     ASlot(i64),
     ALexical(i64),
+    AThunk(&'static Cx),
 }
 
 pub fn a_e(f0: &'static Cx) -> &'static Rarg {
@@ -1034,6 +1181,10 @@ pub fn a_lexical(f0: i64) -> &'static Rarg {
     kayak_rt::heap_alloc(Rarg::ALexical(f0))
 }
 
+pub fn a_thunk(f0: &'static Cx) -> &'static Rarg {
+    kayak_rt::heap_alloc(Rarg::AThunk(f0))
+}
+
 pub type Rargs = List<&'static Rarg>;
 
 pub fn r_exp_args(es: Cxs) -> Rargs {
@@ -1047,6 +1198,9 @@ pub fn r_arg_simple_p(a: &'static Rarg) -> bool {
     match *tagcase_ {
         Rarg::AE(x) => {
             r_simple_p(x)
+        }
+        Rarg::AThunk(b) => {
+            false
         }
         _ => {
             let y = tagcase_;
@@ -1124,6 +1278,61 @@ pub fn rop_reg(f0: i64) -> &'static Roperands {
 
 pub fn rop_none() -> &'static Roperands {
     kayak_rt::heap_alloc(Roperands::RopNone())
+}
+
+// A sibling not made yet, given a closure as `#f`: its free value `j` to
+// be patched with what frame slot `s` will hold (C253).
+pub enum Rpatch {
+    Rpatch(i64, i64),
+}
+
+pub fn rpatch(f0: i64, f1: i64) -> &'static Rpatch {
+    kayak_rt::heap_alloc(Rpatch::Rpatch(f0, f1))
+}
+
+pub type Rpatches = List<&'static Rpatch>;
+
+// The word the stack code made of the lambda of `ps` and `body` that knows
+// itself as `own0`, seen in `te`, and the names its closure captures, in a
+// list; none if none (C253, Fixpt's `c-made-word`): of the form's words, the
+// oldest made for the same body, parameters, own name and captures.
+pub enum Rmade {
+    Rmade(Str, Strings),
+}
+
+pub fn rmade(f0: Str, f1: Strings) -> &'static Rmade {
+    kayak_rt::heap_alloc(Rmade::Rmade(f0, f1))
+}
+
+pub fn r_made_in(ws: List<&'static Lword>, at: i64, ps: Strings, own: Strings, fv: Strings) -> List<&'static Rmade> {
+    if null_p(ws) {
+        nil::<&'static Rmade>()
+    } else {
+        let older = r_made_in(cdr(ws), at, ps, own, fv);
+        if not(null_p(older)) {
+            older
+        } else if {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Lword::Lword(b, qs, o, w, cs) => {
+                    (i64_eq(b, at) && strings_eq_p(qs, ps) && strings_eq_p(o, own) && strings_eq_p(cs, fv))
+                }
+            }
+        } {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Lword::Lword(b, qs, o, w, cs) => {
+                    kayak_rt::heap_cons(rmade(w, cs), kayak_rt::nil())
+                }
+            }
+        } else {
+            nil::<&'static Rmade>()
+        }
+    }
+}
+
+pub fn r_made_word(ps: Strings, body: &'static Cx, te: Cenv, own0: Strings) -> List<&'static Rmade> {
+    r_made_in(get(cg_form_lambdas()), cx_start(body), ps, c_own_of(ps, own0), c_captured(c_free(body, ps, nil::<Str>()), te))
 }
 
 // A leaf's tail call's arguments, sorted: the moves of those in registers,
@@ -1319,7 +1528,52 @@ pub fn r_exp_at(g: &'static Rgen, x: &'static Cx, env: Renv, te: Cenv, tail: boo
                 r_done(g, tail)
             }
             Cx::XApp(f, args, a) => {
-                r_app(g, f, args, a, env, te, tail)
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Cx::XLambda(ps, body, b) => {
+                        if i64_eq(size(ps), size(args)) {
+                            r_let(g, map2(lambda2s(move |p: Str, y: &'static Cx| {
+                                cbind(p, y)
+                            }), ps, args), body, env, te, tail)
+                        } else {
+                            r_app(g, f, args, a, env, te, tail)
+                        }
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        r_app(g, f, args, a, env, te, tail)
+                    }
+                }
+            }
+            Cx::XLambda(ps, body, a) => {
+                r_lambda(g, ps, body, env, te, nil::<Str>(), tail);
+                r_done(g, tail)
+            }
+            Cx::XLetrec(bs, body, a) => {
+                if (g_leaf(g) && not(r_all_p(r_join_flags(bs, body, tail)))) {
+                    r_decline(g)
+                } else {
+                    r_letrec(g, bs, body, env, te, tail)
+                }
+            }
+            Cx::XTagcase(s, arms, els, k, a) => {
+                if i64_lt(k, 0i64) {
+                    r_tagcase(g, s, arms, els, env, te, tail)
+                } else {
+                    r_decline(g)
+                }
+            }
+            Cx::XSum(t, v, a) => {
+                r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(36))), kayak_rt::heap_cons(a_v(l_sym(t)), kayak_rt::heap_cons(a_e(v), kayak_rt::nil()))), env, te);
+                r_done(g, tail)
+            }
+            Cx::XProduct(fs, a) => {
+                r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), r_exp_args(c_bound_exps(fs))), env, te);
+                r_done(g, tail)
+            }
+            Cx::XPrompt(t, body, h, a) => {
+                r_call_out(g, str_lit("cellular"), str_lit("prompt"), kayak_rt::heap_cons(a_e(t), kayak_rt::heap_cons(a_e(h), kayak_rt::heap_cons(a_thunk(body), kayak_rt::nil()))), env, te);
+                r_done(g, tail)
             }
             _ => {
                 let y = tagcase_;
@@ -1505,7 +1759,9 @@ pub fn r_let(g: &'static Rgen, bs: Cbinds, body: &'static Cx, env: Renv, te: Cen
 
 pub fn r_app(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te: Cenv, tail: bool) -> () {
     let (n, own) = (size(args), r_own_self(g, env, f, args));
-    if (tail && r_self_known_p(g, f, n, te)) {
+    if not(null_p(r_join_of(env, f))) {
+        r_jump(g, car(r_join_of(env, f)), args, env, te, tail)
+    } else if (tail && r_self_known_p(g, f, n, te)) {
         r_loop(g, args, env, te)
     } else if not(null_p(own)) {
         r_self_guarded(g, car(own), x_own_start(g_ctx(g)), f, args, a, env, te, tail)
@@ -1522,9 +1778,12 @@ pub fn r_app(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te:
                 r_const_value(g, quoted_interned(car(cell)), tail)
             }
         } else if (tail && string_eq_p(name, str_lit("with-mark")) && i64_eq(n, 3i64)) {
-            r_decline(g)
+            r_args(g, r_exp_args(args), env, te, nil::<&'static Cx>());
+            r_leave(g);
+            r_ins(g, str_lit("cellular"), kayak_rt::heap_cons(o_prim(str_lit("withmark-tail")), kayak_rt::heap_cons(o_int(3i64), kayak_rt::nil())));
+            r_op0(g, str_lit("return"))
         } else if (string_eq_p(name, str_lit("apply")) && i64_eq(n, 2i64)) {
-            r_decline(g)
+            r_apply(g, args, env, te, tail)
         } else if not(null_p(r_identity_arg(env, name, args))) {
             r_exp(g, car(r_identity_arg(env, name, args)), env, te, tail)
         } else {
@@ -1626,6 +1885,9 @@ pub fn r_standard_app(g: &'static Rgen, name: Str, args: Cxs, env: Renv, te: Cen
         }
         Rstd::SSpecial(what) => {
             r_special(g, what, args, env, te)
+        }
+        Rstd::SList() => {
+            r_list(g, args, env, te)
         }
         _ => {
             let y = tagcase_;
@@ -1784,6 +2046,564 @@ pub fn r_inline_args(g: &'static Rgen, ps: Strings, args: Cxs, env: Renv, te: Ce
     }
 }
 
+/// A closure of a lambda into RESULT, its free values into REG1…REGn
+/// first: of the word the stack code made (`r-made-word`). A leaf makes
+/// one only as its value, in tail position. What it gives: for each
+/// sibling not made yet, the free value and the sibling's slot.
+pub fn r_lambda(g: &'static Rgen, ps: Strings, body: &'static Cx, env: Renv, te: Cenv, own: Strings, tail: bool) -> Rpatches {
+    if (g_leaf(g) && not(tail)) {
+        r_decline(g);
+        nil::<&'static Rpatch>()
+    } else {
+        let m = r_made_word(ps, body, te, own);
+        if null_p(m) {
+            r_decline(g);
+            nil::<&'static Rpatch>()
+        } else {
+            let tagcase_ = car(m);
+            match *tagcase_ {
+                Rmade::Rmade(w, fv) => {
+                    let n = size(fv);
+                    if i64_gt(n, register_regs()) {
+                        let tagcase_ = r_free_args(g, fv, env, 0i64);
+                        match *tagcase_ {
+                            Rfree::Rfree(r#as, ps2) => {
+                                r_args(g, r#as, env, te, nil::<&'static Cx>());
+                                r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                                ps2
+                            }
+                        }
+                    } else {
+                        let patches = r_free_into_regs(g, fv, env);
+                        r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                        patches
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn r_thunk(g: &'static Rgen, body: &'static Cx, env: Renv, te: Cenv) -> () {
+    r_lambda(g, nil::<Str>(), body, env, te, nil::<Str>(), false);
+    ()
+}
+
+/// The free values as a call-out's operands; a sibling not made yet as
+/// `#f`, to be patched.
+pub fn r_free_args(g: &'static Rgen, fv: Strings, env: Renv, j: i64) -> &'static Rfree {
+    if null_p(fv) {
+        rfree(nil::<&'static Rarg>(), nil::<&'static Rpatch>())
+    } else {
+        let tagcase_ = r_free_args(g, cdr(fv), env, i64_plus(j, 1i64));
+        match *tagcase_ {
+            Rfree::Rfree(r#as, ps) => {
+                let l = r_where(env, car(fv));
+                if null_p(l) {
+                    r_decline(g);
+                    rfree(r#as, ps)
+                } else {
+                    let tagcase_ = car(l);
+                    match *tagcase_ {
+                        Rloc::RlSlot(s) => {
+                            rfree(kayak_rt::heap_cons(a_slot(s), r#as), ps)
+                        }
+                        Rloc::RlFree(i) => {
+                            rfree(kayak_rt::heap_cons(a_lexical(i), r#as), ps)
+                        }
+                        Rloc::RlPending(s) => {
+                            rfree(kayak_rt::heap_cons(a_v(l_bool(false)), r#as), kayak_rt::heap_cons(rpatch(j, s), ps))
+                        }
+                        Rloc::RlConst(c) => {
+                            rfree(kayak_rt::heap_cons(a_v(rconst_lit(c)), r#as), ps)
+                        }
+                        _ => {
+                            let y = tagcase_;
+                            r_decline(g);
+                            rfree(r#as, ps)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn r_free_into_regs(g: &'static Rgen, fv: Strings, env: Renv) -> Rpatches {
+    r_emit_all(g, par_move_items(r_reg_moves(fv, env, 0i64), nil::<&'static Ritem>()));
+    r_free_regs(g, fv, env, 0i64)
+}
+
+/// Each free value into REGj+1, as `lambda` wants them (one in a
+/// register moved already); a sibling not made yet as `#f`, patched.
+pub fn r_free_regs(mut g: &'static Rgen, mut fv: Strings, mut env: Renv, mut j: i64) -> Rpatches {
+    loop {
+        if null_p(fv) {
+            return nil::<&'static Rpatch>();
+        } else {
+            let (l, k) = (r_where(env, car(fv)), i64_plus(j, 1i64));
+            if null_p(l) {
+                r_decline(g);
+                return nil::<&'static Rpatch>();
+            } else {
+                let tagcase_ = car(l);
+                match *tagcase_ {
+                    Rloc::RlReg(r) => {
+                        (fv, j) = (cdr(fv), k);
+                        continue;
+                    }
+                    Rloc::RlSlot(s) => {
+                        r_opnn(g, str_lit("load"), k, s);
+                        (fv, j) = (cdr(fv), k);
+                        continue;
+                    }
+                    Rloc::RlFree(i) => {
+                        r_lexical_into(g, i, k);
+                        (fv, j) = (cdr(fv), k);
+                        continue;
+                    }
+                    Rloc::RlPending(s) => {
+                        r_const_into(g, l_bool(false), k);
+                        return kayak_rt::heap_cons(rpatch(j, s), r_free_regs(g, cdr(fv), env, k));
+                    }
+                    Rloc::RlConst(c) => {
+                        r_const_into(g, rconst_lit(c), k);
+                        (fv, j) = (cdr(fv), k);
+                        continue;
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        r_decline(g);
+                        return nil::<&'static Rpatch>();
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Each closure made into its slot, a placeholder for a sibling not
+/// made yet; then each placeholder patched; a join point no closure,
+/// its calls jumps to its body, after the `letrec`'s.
+pub fn r_letrec(g: &'static Rgen, bs: Cbinds, body: &'static Cx, env: Renv, te: Cenv, tail: bool) -> () {
+    let slots = get(g_nslot(g));
+    let regs = get(g_nreg(g));
+    let joins = r_join_flags(bs, body, tail);
+    let at = r_letrec_slots(g, joins);
+    let made = r_letrec_make(g, bs, bs, at, 0i64, env, te, joins);
+    let te2 = r_letrec_te(bs, joins, te);
+    let places = {
+        r_letrec_patch(g, made, at);
+        r_join_places(g, bs, joins, te2)
+    };
+    let env2 = r_letrec_env(bs, at, places, env);
+    r_exp(g, body, env2, te2, tail);
+    r_join_bodies(g, bs, places, env2, te2, tail);
+    r_restore(g, regs, slots)
+}
+
+pub fn r_letrec_slots(g: &'static Rgen, joins: List<bool>) -> List<i64> {
+    if null_p(joins) {
+        nil::<i64>()
+    } else {
+        let s = if car(joins) {
+            the::<i64>(-1i64)
+        } else {
+            r_slot(g)
+        };
+        kayak_rt::heap_cons(s, r_letrec_slots(g, cdr(joins)))
+    }
+}
+
+pub fn r_letrec_make(g: &'static Rgen, all: Cbinds, bs: Cbinds, at: List<i64>, i: i64, env: Renv, te: Cenv, joins: List<bool>) -> List<Rpatches> {
+    if null_p(bs) {
+        nil::<List<&'static Rpatch>>()
+    } else if car(joins) {
+        kayak_rt::heap_cons(nil::<&'static Rpatch>(), r_letrec_make(g, all, cdr(bs), at, i64_plus(i, 1i64), env, te, cdr(joins)))
+    } else {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Cbind::Cbind(name, x) => {
+                let l = lambda_of(x);
+                let p = if null_p(l) {
+                    r_decline(g);
+                    nil::<&'static Rpatch>()
+                } else {
+                    let tagcase_ = car(l);
+                    match *tagcase_ {
+                        Lparts::Lparts(ps, lbody, region) => {
+                            if null_p(region) {
+                                let tagcase_ = r_sibling_env(all, at, i, 0i64, lbody, size(ps), env, te);
+                                match *tagcase_ {
+                                    Rscope::Rscope(e2, te2) => {
+                                        r_lambda(g, ps, lbody, e2, te2, kayak_rt::heap_cons(name, kayak_rt::nil()), false)
+                                    }
+                                }
+                            } else {
+                                r_decline(g);
+                                nil::<&'static Rpatch>()
+                            }
+                        }
+                    }
+                };
+                r_opn(g, str_lit("setstk"), r_nth_int(at, i));
+                kayak_rt::heap_cons(p, r_letrec_make(g, all, cdr(bs), at, i64_plus(i, 1i64), env, te, cdr(joins)))
+            }
+        }
+    }
+}
+
+/// Each sibling where the closure being made sees it: a loop, if it is
+/// this one and only called so in its body; else the slot it will be
+/// in, not made yet.
+pub fn r_sibling_env(mut bs: Cbinds, mut at: List<i64>, mut i: i64, mut k: i64, mut lbody: &'static Cx, mut n: i64, mut env: Renv, mut te: Cenv) -> &'static Rscope {
+    loop {
+        if null_p(bs) {
+            return rscope(env, te);
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Cbind::Cbind(sib, x) => {
+                    let (loops, s) = ((i64_eq(k, i) && c_loops_only(lbody, sib, n, true)), r_nth_int(at, k));
+                    (bs, k, env, te) = (cdr(bs), i64_plus(k, 1i64), r_bind(sib, if loops {
+                        rl_loop()
+                    } else {
+                        rl_pending(s)
+                    }, env), c_extend(sib, if loops {
+                        at_loop()
+                    } else {
+                        at_pending(s)
+                    }, te));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn r_letrec_patch(mut g: &'static Rgen, mut made: List<Rpatches>, mut at: List<i64>) -> () {
+    loop {
+        if null_p(made) {
+            return ();
+        } else {
+            r_patch_one(g, car(made), car(at));
+            (made, at) = (cdr(made), cdr(at));
+            continue;
+        }
+    }
+}
+
+pub fn r_patch_one(mut g: &'static Rgen, mut ps: Rpatches, mut slot: i64) -> () {
+    loop {
+        if null_p(ps) {
+            return ();
+        } else {
+            let tagcase_ = car(ps);
+            match *tagcase_ {
+                Rpatch::Rpatch(j, s) => {
+                    r_opnn(g, str_lit("load"), 1i64, s);
+                    r_opn(g, str_lit("stack"), slot);
+                    r_opnn(g, str_lit("setfield"), i64_plus(3i64, j), 1i64);
+                    ps = cdr(ps);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// Each join point's place: its parameters' places, registers where its
+/// body calls nothing (or in a leaf), so many as leave half of them,
+/// else frame slots; and its label. None for one that is not.
+pub fn r_join_places(g: &'static Rgen, bs: Cbinds, joins: List<bool>, named: Cenv) -> List<List<&'static Rplace>> {
+    if null_p(bs) {
+        nil::<List<&'static Rplace>>()
+    } else {
+        let here = the::<List<&'static Rplace>>(if car(joins) {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Cbind::Cbind(n, x) => {
+                    let tagcase_ = car(lambda_of(x));
+                    match *tagcase_ {
+                        Lparts::Lparts(ps, lbody, region) => {
+                            let regs = (g_leaf(g) || (not(r_collects(g_view(g), lbody, r_locals(ps, named), g_this(g), true)) && i64_lt_eq(i64_plus(get(g_nreg(g)), size(ps)), r_half_regs())));
+                            let locs = r_param_places(g, ps, regs);
+                            let label = r_new_label(g);
+                            the::<List<&'static Rplace>>(kayak_rt::heap_cons(rplace(locs, label), kayak_rt::nil()))
+                        }
+                    }
+                }
+            }
+        } else {
+            nil::<&'static Rplace>()
+        });
+        kayak_rt::heap_cons(here, r_join_places(g, cdr(bs), cdr(joins), named))
+    }
+}
+
+pub fn r_param_places(g: &'static Rgen, ps: Strings, regs: bool) -> Rlocs {
+    if null_p(ps) {
+        nil::<&'static Rloc>()
+    } else {
+        let l = if regs {
+            rl_reg(r_reg(g))
+        } else {
+            rl_slot(r_slot(g))
+        };
+        kayak_rt::heap_cons(l, r_param_places(g, cdr(ps), regs))
+    }
+}
+
+/// Each join point's body, after the `letrec`'s, which ends every path
+/// itself: where its calls go.
+pub fn r_join_bodies(mut g: &'static Rgen, mut bs: Cbinds, mut places: List<List<&'static Rplace>>, mut env: Renv, mut te: Cenv, mut tail: bool) -> () {
+    loop {
+        if null_p(bs) {
+            return ();
+        } else {
+            if null_p(car(places)) {
+                ()
+            } else {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        let tagcase_ = car(lambda_of(x));
+                        match *tagcase_ {
+                            Lparts::Lparts(ps, lbody, region) => {
+                                let tagcase_ = car(car(places));
+                                match *tagcase_ {
+                                    Rplace::Rplace(locs, label) => {
+                                        r_emit(g, ri_label(label));
+                                        r_exp(g, lbody, r_bind_places(env, ps, locs), r_locals(ps, te), tail)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            (bs, places) = (cdr(bs), cdr(places));
+            continue;
+        }
+    }
+}
+
+/// A join point's call: each argument made and kept (a register where no
+/// later argument calls), then each into its parameter's place, and a
+/// jump.
+pub fn r_jump(g: &'static Rgen, j: &'static Rloc, args: Cxs, env: Renv, te: Cenv, tail: bool) -> () {
+    let tagcase_ = j;
+    match *tagcase_ {
+        Rloc::RlJoin(params, label) => {
+            if (not(tail) || not(i64_eq(size(args), size(params)))) {
+                r_decline(g)
+            } else {
+                let regs = get(g_nreg(g));
+                let slots = get(g_nslot(g));
+                let made = r_jump_args(g, args, env, te, r_in_regs(g, args, 0i64, te, false));
+                r_jump_moves(g, made, params);
+                r_emit(g, ri_branch(str_lit("branch"), label));
+                r_restore(g, regs, slots)
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            r_decline(g)
+        }
+    }
+}
+
+pub fn r_jump_args(g: &'static Rgen, args: Cxs, env: Renv, te: Cenv, flags: List<bool>) -> Rlocs {
+    if null_p(args) {
+        nil::<&'static Rloc>()
+    } else {
+        let l = {
+            r_exp(g, car(args), env, te, false);
+            r_keep(g, car(flags))
+        };
+        kayak_rt::heap_cons(l, r_jump_args(g, cdr(args), env, te, cdr(flags)))
+    }
+}
+
+pub fn r_jump_moves(mut g: &'static Rgen, mut made: Rlocs, mut params: Rlocs) -> () {
+    loop {
+        if (null_p(made) || null_p(params)) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(made);
+                match *tagcase_ {
+                    Rloc::RlReg(a) => {
+                        let tagcase_ = car(params);
+                        match *tagcase_ {
+                            Rloc::RlReg(b) => {
+                                r_opnn(g, str_lit("movereg"), a, b)
+                            }
+                            Rloc::RlSlot(b) => {
+                                r_opn(g, str_lit("reg"), a);
+                                r_opn(g, str_lit("setstk"), b)
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                r_decline(g)
+                            }
+                        }
+                    }
+                    Rloc::RlSlot(a) => {
+                        let tagcase_ = car(params);
+                        match *tagcase_ {
+                            Rloc::RlReg(b) => {
+                                r_opnn(g, str_lit("load"), b, a)
+                            }
+                            Rloc::RlSlot(b) => {
+                                r_slot_move(g, a, b)
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                r_decline(g)
+                            }
+                        }
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        r_decline(g)
+                    }
+                }
+            };
+            (made, params) = (cdr(made), cdr(params));
+            continue;
+        }
+    }
+}
+
+/// The scrutinee kept; each arm's tag compared, the last's not when
+/// there is no `else` (a checked program covers every tag); the value,
+/// or its product's members, bound.
+pub fn r_tagcase(g: &'static Rgen, s: &'static Cx, arms: List<&'static Carm>, els: Cbinds, env: Renv, te: Cenv, tail: bool) -> () {
+    let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+    r_exp(g, s, env, te, false);
+    {
+        let sc = r_place_value(g);
+        let end = r_new_label(g);
+        r_arms(g, arms, null_p(els), sc, end, env, te, tail);
+        if null_p(els) {
+            ()
+        } else {
+            let tagcase_ = car(els);
+            match *tagcase_ {
+                Cbind::Cbind(n, x) => {
+                    r_exp(g, x, r_bind(n, sc, env), r_local(te, n), tail)
+                }
+            }
+        };
+        r_emit(g, ri_label(end))
+    };
+    r_restore(g, regs, slots)
+}
+
+pub fn r_arms(mut g: &'static Rgen, mut arms: List<&'static Carm>, mut no_else: bool, mut sc: &'static Rloc, mut end: i64, mut env: Renv, mut te: Cenv, mut tail: bool) -> () {
+    loop {
+        if null_p(arms) {
+            return ();
+        } else {
+            let tagcase_ = car(arms);
+            match *tagcase_ {
+                Carm::Carm(tag, whole, ns, body) => {
+                    let last = (no_else && null_p(cdr(arms)));
+                    let next = r_new_label(g);
+                    let regs = get(g_nreg(g));
+                    let slots = get(g_nslot(g));
+                    if last {
+                        ()
+                    } else {
+                        r_get(g, sc);
+                        r_opn(g, str_lit("field"), 2i64);
+                        r_op2imm(g, str_lit("eq"), l_sym(tag));
+                        r_emit(g, ri_branch(str_lit("branchf"), next))
+                    };
+                    {
+                        let bound = if whole {
+                            r_members(g, sc, ns, 0i64, body, nil::<&'static Rbind>())
+                        } else {
+                            r_get(g, sc);
+                            r_opn(g, str_lit("field"), 3i64);
+                            r_bind(car(ns), r_place_value(g), nil::<&'static Rbind>())
+                        };
+                        let in_order = the::<Renv>(reverse(bound));
+                        r_exp(g, body, r_bind_all(in_order, env), r_local_all(in_order, te), tail)
+                    };
+                    r_restore(g, regs, slots);
+                    if tail {
+                        ()
+                    } else {
+                        r_emit(g, ri_branch(str_lit("branch"), end))
+                    };
+                    r_emit(g, ri_label(next));
+                    arms = cdr(arms);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// A product's members the arm's body uses, each kept, newest first.
+pub fn r_members(mut g: &'static Rgen, mut sc: &'static Rloc, mut xs: Strings, mut j: i64, mut body: &'static Cx, mut acc: Renv) -> Renv {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else if not(c_mentions_p(body, car(xs))) {
+            (xs, j) = (cdr(xs), i64_plus(j, 1i64));
+            continue;
+        } else {
+            r_get(g, sc);
+            r_opn(g, str_lit("field"), 3i64);
+            r_opn(g, str_lit("field"), i64_plus(j, 2i64));
+            let l = r_place_value(g);
+            (xs, j, acc) = (cdr(xs), i64_plus(j, 1i64), r_bind(car(xs), l, acc));
+            continue;
+        }
+    }
+}
+
+/// `(apply f xs)`: `f` a `vsubr`, a closure over the procedure of one
+/// list, free value 0; that procedure called with `xs`, as the stack
+/// code calls it (no copy).
+pub fn r_apply(g: &'static Rgen, args: Cxs, env: Renv, te: Cenv, tail: bool) -> () {
+    if g_leaf(g) {
+        r_decline(g)
+    } else {
+        let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
+        r_args(g, r_exp_args(args), env, te, nil::<&'static Cx>());
+        {
+            let s = r_slot(g);
+            r_opn(g, str_lit("reg"), 1i64);
+            r_opn(g, str_lit("field"), 3i64);
+            r_opn(g, str_lit("setstk"), s);
+            r_opn(g, str_lit("reg"), 2i64);
+            r_opn(g, str_lit("setreg"), 1i64);
+            r_opn(g, str_lit("stack"), s);
+            r_invoke(g, 1i64, tail, 0i64)
+        };
+        r_restore(g, regs, slots)
+    }
+}
+
+/// `(list x …)`: every argument not simple, or in a register, made and
+/// kept first, in order; then the pairs made from the last, onto `nil`.
+pub fn r_list(g: &'static Rgen, args: Cxs, env: Renv, te: Cenv) -> () {
+    if g_leaf(g) {
+        r_decline(g)
+    } else {
+        let slots = get(g_nslot(g));
+        let r#as = r_exp_args(args);
+        let kept = r_args_hard(g, r#as, 0i64, -1i64, env, te, true);
+        r_const(g, l_nil());
+        r_args_list(g, r#as, kept, i64_minus(size(r#as), 1i64), 0i64, env, te);
+        set(g_nslot(g), slots)
+    }
+}
+
 /// The arguments into REG1…REGn, in order, then `f`, if a call's, into
 /// RESULT. An argument that is not simple is kept in the frame until all
 /// are made; a simple one is made last. Past `register-regs`, REG8 a
@@ -1844,6 +2664,9 @@ pub fn r_args_hard(g: &'static Rgen, args: Rargs, i: i64, direct: i64, env: Renv
                     Rarg::AE(x) => {
                         r_exp(g, x, env, te, false)
                     }
+                    Rarg::AThunk(b) => {
+                        r_thunk(g, b, env, te)
+                    }
                     _ => {
                         let y = tagcase_;
                         ()
@@ -1892,6 +2715,9 @@ pub fn r_arg_into(g: &'static Rgen, a: &'static Rarg, kept: i64, k: i64, env: Re
             }
             Rarg::ALexical(j) => {
                 r_lexical_into(g, j, k)
+            }
+            Rarg::AThunk(b) => {
+                ()
             }
         }
     }

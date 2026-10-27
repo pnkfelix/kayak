@@ -176,6 +176,8 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     set(cg_inlines(), nil::<&'static Rinline>());
     set(cg_unrolls(), nil::<&'static Rinline>());
     set(cg_consts(), nil::<&'static Rgconst>());
+    set(cg_form_lambdas(), nil::<&'static Lword>());
+    set(cg_standard_twins(), nil::<&'static Stwin>());
     if c_tops(parse_tops(forms), c, false) {
         ()
     } else {

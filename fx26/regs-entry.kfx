@@ -47,12 +47,20 @@
 (define-rec
   (r-store-params (subr gen (rgen i64 i64 i64) unit)
     (lambda (g i n at)
-      "Each store the lambda's letter for it (`entry-at`)."
+      "Each store the lambda's letter for it (`entry-at`). Past
+       `register-regs` parameters, the rest come as a list in the last
+       register, taken apart into the frame (C253)."
       (if (i64= i n)
           #u
           (let ((s (r-slot g)))
             (begin (entry-pos! g at (i64+ 3 (if (i64< i 3) i 3)))
-                   (r-opnn g "store" (i64+ i 1) s)
+                   (if (or (i64<= n register-regs) (i64< (i64+ i 1) register-regs))
+                       (r-opnn g "store" (i64+ i 1) s)
+                       (begin
+                         (r-opn g "reg" register-regs) (r-ins g "op1" (list (o-prim "pair-car"))) (r-opn g "setstk" s)
+                         (if (i64< (i64+ i 1) n)
+                             (begin (r-opn g "reg" register-regs) (r-ins g "op1" (list (o-prim "pair-cdr"))) (r-opn g "setreg" register-regs))
+                             #u)))
                    (r-store-params g (i64+ i 1) n at)))))))
 
 "The body as a leaf, or not, as `leaf` says, in a list; none if declined.
@@ -94,8 +102,7 @@
       (twin (w ps body inner me own at)
         (let* ((n (size ps))
                (leaf (and (i64<= n register-regs) (not (r-collects (twin-view t assuming #f) body inner me #t)))))
-          (cond ((i64> n register-regs) nil)
-                ((or leaf (r-collects (twin-view t assuming #t) body inner me #t))
+          (cond ((or leaf (i64> n register-regs) (r-collects (twin-view t assuming #t) body inner me #t))
                  (r-register-body-as t assuming assumed folded leaf))
                 (else
                  (let ((gs (r-register-body-as t assuming assumed folded #t)))
@@ -235,6 +242,47 @@
     (let ((cs (if (and (r-fast-sound? t) (r-fast-may-pay? t)) (r-fast-code t) (r-plain-code t))))
       (if (null? cs) #u (set cg-reg-codes (cons (rnamed (twin-word t) (car cs)) (get cg-reg-codes)))))))
 
+"A standard operation's word's register code (C253, Fixpt's
+ `r-standard-word`): its operands its parameters, in REG1…REGn already;
+ a call-out made in a frame. None for one done in several instructions,
+ or that takes control: the closure then has stack code only."
+(define r-standard-word (subr gen (string i64) (listof rcode acyclic))
+  (lambda (name n)
+    (let* ((std (r-standard name n))
+           (callout (tagcase std (s-prim (p) #t) (s-cellular (r) (string=? r "cons")) (else y #f)))
+           (cx (rctx (new #f) #f (new nil) (new #f) "" -1 -1 (new (the i64 0))))
+           (g (rgen (new nil) (not callout) (new n) (new (the i64 0)) (new (the i64 0)) (new (the i64 0)) nil (the i64 0) cx)))
+      (begin
+        (r-opn g "args" n)
+        (if callout (r-emit g (ri-frame "save")) #u)
+        (if (tagcase std
+              (s-op2 (r swap negate)
+                (begin (r-opn g "reg" (if swap 2 1)) (r-ins g "op2" (list (o-prim r) (o-int (if swap 1 2))))
+                       (if negate (r-negate g) #u) #t))
+              (s-op1 (r) (begin (r-opn g "reg" 1) (r-ins g "op1" (list (o-prim r))) #t))
+              (s-op2imm (r v) (begin (r-opn g "reg" 1) (r-op2imm g r v) #t))
+              (s-field (k) (begin (r-opn g "reg" 1) (r-opn g "field" k) #t))
+              (s-identity () (begin (r-opn g "reg" 1) #t))
+              (s-prim (p) (begin (r-ins g "prim" (list (o-prim p) (o-int n))) #t))
+              (s-pure (p) (begin (r-opn g "reg" 1)
+                                 (if (i64= n 1) (r-ins g "prim1" (list (o-prim p))) (r-ins g "prim2" (list (o-prim p) (o-int 2))))
+                                 #t))
+              (s-cellular (r) (if callout (begin (r-ins g "cellular" (list (o-prim r) (o-int n))) #t) #f))
+              (else y #f))
+            (begin (r-done g #t) (list (r-assemble g)))
+            nil)))))
+
+(define-rec
+  (r-standard-twins-made! (subr gen ((listof stwin acyclic)) unit)
+    (lambda (ts)
+      (if (null? ts)
+          #u
+          (begin
+            (tagcase (car ts)
+              (stwin (w op n)
+                (let ((cs (r-standard-word op n))) (if (null? cs) #u (set cg-reg-codes (cons (rnamed w (car cs)) (get cg-reg-codes)))))))
+            (r-standard-twins-made! (cdr ts)))))))
+
 (define-rec
   (r-twins-made! (subr gen ((listof twin acyclic)) unit)
     (lambda (ts) (if (null? ts) #u (begin (r-twin-made! (car ts)) (r-twins-made! (cdr ts)))))))
@@ -244,7 +292,11 @@
 (define regs-form-twins! (subr gen () unit)
   (lambda ()
     (let ((ts (the (listof twin acyclic) (reverse (get cg-twins)))))
-      (begin (set cg-twins nil) (r-twins-made! ts)))))
+      (let ((ss (the (listof stwin acyclic) (reverse (get cg-standard-twins)))))
+        ;; The standard operations' after the lambdas': no register code
+        ;; depends on another's.
+        (begin (set cg-twins nil) (set cg-standard-twins nil)
+               (r-twins-made! ts) (r-standard-twins-made! ss) (set cg-form-lambdas nil))))))
 
 "After a typed definition of `n` as the lambda of `ps` and `body`: noted to
  be inlined where called, if small (`r-room`), naming neither itself nor

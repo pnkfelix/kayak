@@ -7125,3 +7125,38 @@ globals in register code (68 of C248's 72 differences from Fixpt's).
   checker's note of a list nothing writes, Fixpt's `c-const-list`, pairs
   and symbols as constants), a module's member re-exported and inlined
   (`reexport-inlined.fx`).
+
+## C253. Register code, stage 2: closures, `letrec`, `tagcase` and more (2026-10-27)
+
+The user: "Yeah do 1, 2, then 3"; the third, stage 2 of
+`docs/research/register-code.md`.
+- **Closures**: the stack compiler notes, per form, each lambda's word
+  with its parameters, own name and captures (`cg-form-lambdas`); register
+  code closes over the oldest made for the same body (Fixpt's
+  `c-made-word`): its free values moved into REG1…REGn (in parallel, those
+  in registers), or past `register-regs` as a call-out's operands; a
+  sibling not made yet given as `#f`, to be patched.
+- **`letrec`**: each closure made into its slot, then each placeholder
+  patched (`setfield 3+j`); join points (Fixpt's `c-join-ok?`: a lambda
+  only called in tail position, there and in the `letrec`'s body, no
+  sibling mentioning it) no closure: their parameters in registers or
+  slots, their calls jumps, their bodies after the `letrec`'s.
+- **And**: `tagcase` (not of a flat sum), `apply` (as the stack code, no
+  copy), `list`, sums and products (`%make-frozen`), and those of
+  constants made when compiled, `#bloblet(…)` literals as Fixpt's
+  (`l-frozen`); prompts (the body a thunk); a lambda applied at once a
+  `let`; a mark in tail position; more parameters than registers; the
+  standard operations' words as values their own register code (Fixpt's
+  `r-standard-word`).
+- **`(the T e)` kept as a node** (an `x-proj`, no code): Fixpt's register
+  code sees its `e-the`, an expression not simple and a node counted; with
+  it kayak inlines what Fixpt inlines, and makes arguments in its order.
+  The stack code unchanged (292 programs' Fixpt's exactly, as before).
+- **Measured**: every program agrees on every `--regs` way; of the 292
+  programs whose stack words are Fixpt's, 733 register words Fixpt's
+  exactly (from 573), 9 differ, 94 declined (from 252). The 9: globals
+  holding constant lists (5), a module's member re-exported (2), Fixpt's
+  specialization's registry (2). Declined: bloblets, regions, modules,
+  `with` (stage 3). Tier 6, kayak's listings as Fixpt's: `loop` 85.6 to
+  85.2 million cycles (from 124); `closures` 253 to 216, Fixpt's
+  specializing `map-add` at the lambda it is given (stage 4).

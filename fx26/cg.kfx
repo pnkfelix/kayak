@@ -730,7 +730,10 @@
              "A conversion written (C230): as Fixpt's, `%fx26-convert` where the
               procedure is of another convention, an adapter."
              (converted-x (fact-text (get cg-convert-facts) f a "convention ") (parse-x (car (cdr (cdr xs)))) a))
-            ((string=? h "the") (parse-x (car (cdr (cdr xs)))))
+            ;; Kept as a node, as Fixpt's `e-the` (C253): no code, but what
+            ;; register code asks of an expression sees it, as Fixpt's does
+            ;; (not simple; a node counted).
+            ((string=? h "the") (x-proj (parse-x (car (cdr (cdr xs)))) a))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
             ((member-of? h process-heads)
              "A form of processes, a call of the scheduler's (C219), as Fixpt's
@@ -1352,7 +1355,10 @@
   (l-sym string)
   (l-pair lit lit)
   (l-word string)
-  (l-quoted i64))
+  (l-quoted i64)
+  ;; Frozen data made when compiled (C253): a sum, its tag and value, or a
+  ;; product, its fields; as Fixpt's listing writes it, a bloblet.
+  (l-frozen string (listof lit acyclic)))
 
 "An instruction's operand: a number, a literal, a word (by its name), a
  global (by its name), a runtime primitive (by its name)."
@@ -1490,7 +1496,12 @@
         (l-sym (s) (string-append "|" (string-append (lit-escaped s #\|) "|")))
         (l-pair (a d) (string-append "(" (string-append (lit-text a) (string-append " . " (string-append (lit-text d) ")")))))
         (l-word (w) (string-append "word " (shown-name w)))
-        (l-quoted (n) (string-append q-open (string-append (i64->string n) q-close)))))))
+        (l-quoted (n) (string-append q-open (string-append (i64->string n) q-close)))
+        (l-frozen (kind fs)
+          (string-append "#bloblet(" (string-append kind (string-append " (#trailer " (string-append (i64->string (i64+ 1 (size fs)))
+            (string-append (lits-text fs) ") #u8())")))))))))
+  (lits-text (subr kfx ((listof lit acyclic)) string)
+    (lambda (ls) (if (null? ls) "" (string-append " " (string-append (lit-text (car ls)) (lits-text (cdr ls))))))))
 
 (define item-size (subr kfx (item) i64)
   (lambda (i) (tagcase i (it-ins (r os) (i64+ 1 (size os))) (it-label (n) 0) (it-branch (n) 2) (it-zbranch (n) 2) (it-pos (p) 0))))
@@ -1772,6 +1783,18 @@
  the next lambda's, taken by it."
 (define-datatype twin (twin string strings cx cenv (listof this acyclic) string i64))
 (define cg-twins (ref (listof twin acyclic) @g) (new nil))
+"Each lambda's word the form being compiled made (C253, Fixpt's
+ `c-form-made`), for its register code to close over: where its body
+ starts, its parameters, the name it knows itself by, the word, and the
+ names its closure captures, in order. The newest first."
+(define-datatype lword (lword i64 strings strings string strings))
+(define cg-form-lambdas (ref (listof lword acyclic) @g) (new nil))
+"Each standard operation's word as a value the form made, to have
+ register code of its own (C253, Fixpt's `c-standard-twins`): the word,
+ the operation it applies (a `vsubr`'s, its operation of one list), and
+ how many it takes."
+(define-datatype stwin (stwin string string i64))
+(define cg-standard-twins (ref (listof stwin acyclic) @g) (new nil))
 (define cg-defining (ref strings @g) (new nil))
 (define cg-lambda-at (ref i64 @g) (new -1))
 
@@ -1922,7 +1945,11 @@
                   (else (begin (c-params-pushed body 0 n) (c-standard-on name n body))))
             (c-op body "return")
             (set cg-standard-words (cons name (get cg-standard-words)))
-            (c-assemble body name))))))
+            (let ((w (c-assemble body name)))
+              (begin
+                (set cg-standard-twins
+                     (cons (if (c-vsubr? name) (stwin w (c-vsubr-list-op name) 1) (stwin w name n)) (get cg-standard-twins)))
+                w)))))))
 
 "A standard operation as a value: a closure of its word over no values; a
  `vsubr`'s given to `%fx26-vlambda`."
@@ -2433,6 +2460,7 @@
           (let ((w (c-assemble body-code (c-word-symbol base named body))))
             (begin
               (set cg-twins (cons (twin w ps body inner me (if (null? defining) "" (car defining)) at) (get cg-twins)))
+              (set cg-form-lambdas (cons (lword (cx-start body) ps own w fv) (get cg-form-lambdas)))
               (set c-scope-name outer-scope)
               (cclosing w fv)))))))
 

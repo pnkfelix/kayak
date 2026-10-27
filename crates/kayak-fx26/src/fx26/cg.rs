@@ -3150,7 +3150,7 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         // procedure is of another convention, an adapter.
         converted_x(fact_text(get(cg_convert_facts()), f, a, str_lit("convention ")), parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("the")) {
-        parse_x(car(cdr(cdr(xs))))
+        x_proj(parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
     } else if member_of_p(h, process_heads()) {
@@ -4393,6 +4393,7 @@ pub enum Lit {
     LPair(&'static Lit, &'static Lit),
     LWord(Str),
     LQuoted(i64),
+    LFrozen(Str, List<&'static Lit>),
 }
 
 pub fn l_int(f0: Int) -> &'static Lit {
@@ -4437,6 +4438,10 @@ pub fn l_word(f0: Str) -> &'static Lit {
 
 pub fn l_quoted(f0: i64) -> &'static Lit {
     kayak_rt::heap_alloc(Lit::LQuoted(f0))
+}
+
+pub fn l_frozen(f0: Str, f1: List<&'static Lit>) -> &'static Lit {
+    kayak_rt::heap_alloc(Lit::LFrozen(f0, f1))
 }
 
 // An instruction's operand: a number, a literal, a word (by its name), a
@@ -4767,6 +4772,17 @@ pub fn lit_text(l: &'static Lit) -> Str {
         Lit::LQuoted(n) => {
             string_append(q_open(), string_append(i64_to_string(n), q_close()))
         }
+        Lit::LFrozen(kind, fs) => {
+            string_append(str_lit("#bloblet("), string_append(kind, string_append(str_lit(" (#trailer "), string_append(i64_to_string(i64_plus(1i64, size(fs))), string_append(lits_text(fs), str_lit(") #u8())"))))))
+        }
+    }
+}
+
+pub fn lits_text(ls: List<&'static Lit>) -> Str {
+    if null_p(ls) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" "), string_append(lit_text(car(ls)), lits_text(cdr(ls))))
     }
 }
 
@@ -5508,6 +5524,44 @@ pub fn cg_twins() -> Ref<List<&'static Twin>> {
     })
 }
 
+// Each lambda's word the form being compiled made (C253, Fixpt's
+// `c-form-made`), for its register code to close over: where its body
+// starts, its parameters, the name it knows itself by, the word, and the
+// names its closure captures, in order. The newest first.
+pub enum Lword {
+    Lword(i64, Strings, Strings, Str, Strings),
+}
+
+pub fn lword(f0: i64, f1: Strings, f2: Strings, f3: Str, f4: Strings) -> &'static Lword {
+    kayak_rt::heap_alloc(Lword::Lword(f0, f1, f2, f3, f4))
+}
+
+pub fn cg_form_lambdas() -> Ref<List<&'static Lword>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lword>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Lword>())
+    })
+}
+
+// Each standard operation's word as a value the form made, to have
+// register code of its own (C253, Fixpt's `c-standard-twins`): the word,
+// the operation it applies (a `vsubr`'s, its operation of one list), and
+// how many it takes.
+pub enum Stwin {
+    Stwin(Str, Str, i64),
+}
+
+pub fn stwin(f0: Str, f1: Str, f2: i64) -> &'static Stwin {
+    kayak_rt::heap_alloc(Stwin::Stwin(f0, f1, f2))
+}
+
+pub fn cg_standard_twins() -> Ref<List<&'static Stwin>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Stwin>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Stwin>())
+    })
+}
+
 pub fn cg_defining() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -5785,7 +5839,13 @@ pub fn c_standard_word(name: Str) -> Str {
         };
         c_op(body, str_lit("return"));
         set(cg_standard_words(), kayak_rt::heap_cons(name, get(cg_standard_words())));
-        c_assemble(body, name)
+        let w = c_assemble(body, name);
+        set(cg_standard_twins(), kayak_rt::heap_cons(if c_vsubr_p(name) {
+            stwin(w, c_vsubr_list_op(name), 1i64)
+        } else {
+            stwin(w, name, n)
+        }, get(cg_standard_twins())));
+        w
     }
 }
 
@@ -6838,6 +6898,7 @@ pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> 
     } else {
         car(defining)
     }, at), get(cg_twins())));
+    set(cg_form_lambdas(), kayak_rt::heap_cons(lword(cx_start(body), ps, own, w, fv), get(cg_form_lambdas())));
     set(c_scope_name(), outer_scope);
     cclosing(w, fv)
 }

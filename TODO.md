@@ -787,7 +787,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         register-code.md`): stage 1 done; inlining, unrolling and constant
         globals done (C252: 11 differences left, `loop` and `closures`
         behind on tier 6 for stage 2; not yet: globals holding constant
-        lists, a module's member re-exported and inlined); next, stage 2
+        lists, a module's member re-exported and inlined); stage 2 done
+        (C253: 733 Fixpt's exactly, 9 differ, 94 declined; `closures`
+        behind for Fixpt's specialization, stage 4); next, stage 3
         (closures, `letrec`, `tagcase`, `apply`, `list`), stage 3 (modules,
         regions, prompts, bloblets). Register code's line tables, tiers
         5-6's debug info: done (C249); `tak` on tier 6, 35% in its entry

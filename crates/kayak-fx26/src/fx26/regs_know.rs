@@ -973,6 +973,9 @@ pub fn r_same_const_p(c: &'static Rconst, d: &'static Rconst) -> bool {
                 }
             }
         }
+        Rconst::RcData(l) => {
+            false
+        }
     }
 }
 
@@ -1153,6 +1156,22 @@ pub fn r_known(mut env: Renv, mut x: &'static Cx) -> List<&'static Rconst> {
                 x = y;
                 continue;
             }
+            Cx::XSum(t, v, a) => {
+                let c = r_known(env, v);
+                if null_p(c) {
+                    return nil::<&'static Rconst>();
+                } else {
+                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit("sum"), kayak_rt::heap_cons(l_sym(t), kayak_rt::heap_cons(rconst_lit(car(c)), kayak_rt::nil())))), kayak_rt::nil());
+                }
+            }
+            Cx::XProduct(fs, a) => {
+                let vs = r_knowns(env, c_bound_exps(fs), nil::<&'static Rconst>());
+                if null_p(vs) {
+                    return nil::<&'static Rconst>();
+                } else {
+                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit("product"), map(&rconst_lit, car(vs)))), kayak_rt::nil());
+                }
+            }
             Cx::XApp(f, args, a) => {
                 let name = r_standard_name(env, f);
                 let decided = if r_test_name_p(name) {
@@ -1257,7 +1276,16 @@ pub fn r_test_operand(env: Renv, a: &'static Cx) -> Rlocs {
             }
         }
     } else {
-        kayak_rt::heap_cons(rl_const(car(k)), kayak_rt::nil())
+        let tagcase_ = car(k);
+        match *tagcase_ {
+            Rconst::RcData(l) => {
+                nil::<&'static Rloc>()
+            }
+            _ => {
+                let y = tagcase_;
+                kayak_rt::heap_cons(rl_const(car(k)), kayak_rt::nil())
+            }
+        }
     }
 }
 
@@ -1410,6 +1438,88 @@ pub fn r_plain_callee_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
     }
 }
 
+// Whether no binding of `bs` but the `i`th mentions `name`.
+pub fn r_unmentioned_p(bs: Cbinds, name: Str, i: i64, k: i64) -> bool {
+    (null_p(bs) || ((i64_eq(k, i) || {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Cbind::Cbind(n, x) => {
+                not(c_mentions_p(x, name))
+            }
+        }
+    }) && r_unmentioned_p(cdr(bs), name, i, i64_plus(k, 1i64))))
+}
+
+pub fn r_nth_bind(mut bs: Cbinds, mut i: i64) -> &'static Cbind {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(bs);
+        } else {
+            (bs, i) = (cdr(bs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+// Whether `letrec` binding `i` of `bs` is a join point (C253, Fixpt's
+// `c-join-ok?`): a lambda, of no region, whose body calls it only in tail
+// position, as the `letrec`'s body does, and that no sibling mentions; so
+// no closure is made of it, and its calls are jumps.
+pub fn r_join_ok_p(bs: Cbinds, body: &'static Cx, i: i64) -> bool {
+    let tagcase_ = r_nth_bind(bs, i);
+    match *tagcase_ {
+        Cbind::Cbind(name, x) => {
+            let l = lambda_of(x);
+            (not(null_p(l)) && {
+                let tagcase_ = car(l);
+                match *tagcase_ {
+                    Lparts::Lparts(ps, lbody, region) => {
+                        let n = size(ps);
+                        (null_p(region) && not(string_member_p(name, ps)) && c_loops_only(lbody, name, n, true) && c_loops_only(body, name, n, true) && r_unmentioned_p(bs, name, i, 0i64))
+                    }
+                }
+            })
+        }
+    }
+}
+
+// Each binding of `bs`: whether it is a join point (in tail position only).
+pub fn r_join_flags_from(bs: Cbinds, body: &'static Cx, tail: bool, i: i64, n: i64) -> List<bool> {
+    if i64_gt_eq(i, n) {
+        nil::<bool>()
+    } else {
+        kayak_rt::heap_cons((tail && r_join_ok_p(bs, body, i)), r_join_flags_from(bs, body, tail, i64_plus(i, 1i64), n))
+    }
+}
+
+pub fn r_join_flags(bs: Cbinds, body: &'static Cx, tail: bool) -> List<bool> {
+    r_join_flags_from(bs, body, tail, 0i64, size(bs))
+}
+
+pub fn r_all_p(fs: List<bool>) -> bool {
+    (null_p(fs) || (car(fs) && r_all_p(cdr(fs))))
+}
+
+// `te` with each of `bs`' names a loop, as a join point is to the stack
+// compiler.
+pub fn r_loop_names(mut te: Cenv, mut bs: Cbinds) -> Cenv {
+    loop {
+        if null_p(bs) {
+            return te;
+        } else {
+            (te, bs) = ({
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        c_extend(n, at_loop(), te)
+                    }
+                }
+            }, cdr(bs));
+            continue;
+        }
+    }
+}
+
 // `ps` bound as locals, onto `te`.
 pub fn r_locals(mut ps: Strings, mut te: Cenv) -> Cenv {
     loop {
@@ -1468,6 +1578,14 @@ pub fn r_collects(mut v: &'static Rview, mut x: &'static Cx, mut e: Cenv, mut me
             }
             Cx::XLambda(ps, body, a) => {
                 return not(tail);
+            }
+            Cx::XLetrec(bs, body, a) => {
+                if (tail && r_all_p(r_join_flags(bs, body, true))) {
+                    let inner = r_loop_names(e, bs);
+                    return (r_collects(v, body, inner, me, tail) || r_collects_joins(v, bs, inner, me));
+                } else {
+                    return true;
+                }
             }
             Cx::XIf(t, th, el, a) => {
                 return (r_collects(v, t, e, me, false) || r_collects(v, th, e, me, tail) || r_collects(v, el, e, me, tail));
@@ -1558,6 +1676,27 @@ pub fn r_call_is_free_p(v: &'static Rview, f: &'static Cx, n: i64, e: Cenv, tail
             }
         }
     })
+}
+
+/// Whether any of `bs`' lambdas' bodies, their parameters bound in `e`,
+/// calls or calls out.
+pub fn r_collects_joins(v: &'static Rview, bs: Cbinds, e: Cenv, me: Rthis) -> bool {
+    (not(null_p(bs)) && ({
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Cbind::Cbind(n, x) => {
+                let l = lambda_of(x);
+                (null_p(l) || {
+                    let tagcase_ = car(l);
+                    match *tagcase_ {
+                        Lparts::Lparts(ps, lbody, region) => {
+                            r_collects(v, lbody, r_locals(ps, e), me, true)
+                        }
+                    }
+                })
+            }
+        }
+    } || r_collects_joins(v, cdr(bs), e, me)))
 }
 
 pub fn r_collects_all(v: &'static Rview, es: Cxs, e: Cenv, me: Rthis) -> bool {

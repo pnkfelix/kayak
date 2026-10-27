@@ -17,6 +17,7 @@ pub enum Rconst {
     RcBool(bool),
     RcChar(char),
     RcNil(),
+    RcData(&'static Lit),
 }
 
 pub fn rc_int(f0: Int) -> &'static Rconst {
@@ -35,6 +36,10 @@ pub fn rc_nil() -> &'static Rconst {
     kayak_rt::heap_alloc(Rconst::RcNil())
 }
 
+pub fn rc_data(f0: &'static Lit) -> &'static Rconst {
+    kayak_rt::heap_alloc(Rconst::RcData(f0))
+}
+
 pub fn rconst_lit(c: &'static Rconst) -> &'static Lit {
     let tagcase_ = c;
     match *tagcase_ {
@@ -49,6 +54,9 @@ pub fn rconst_lit(c: &'static Rconst) -> &'static Lit {
         }
         Rconst::RcNil() => {
             l_nil()
+        }
+        Rconst::RcData(l) => {
+            l
         }
     }
 }
@@ -67,6 +75,7 @@ pub enum Rloc {
     RlConst(&'static Rconst),
     RlTest(Str, List<&'static Rloc>, bool),
     RlSeen(i64),
+    RlJoin(List<&'static Rloc>, i64),
 }
 
 pub fn rl_reg(f0: i64) -> &'static Rloc {
@@ -103,6 +112,10 @@ pub fn rl_test(f0: Str, f1: List<&'static Rloc>, f2: bool) -> &'static Rloc {
 
 pub fn rl_seen(f0: i64) -> &'static Rloc {
     kayak_rt::heap_alloc(Rloc::RlSeen(f0))
+}
+
+pub fn rl_join(f0: List<&'static Rloc>, f1: i64) -> &'static Rloc {
+    kayak_rt::heap_alloc(Rloc::RlJoin(f0, f1))
 }
 
 pub type Rlocs = List<&'static Rloc>;

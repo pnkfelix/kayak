@@ -341,7 +341,8 @@
         (rc-int (n) (tagcase d (rc-int (m) (= n m)) (else z #f)))
         (rc-bool (v) (tagcase d (rc-bool (w) (if v w (not w))) (else z #f)))
         (rc-char (v) (tagcase d (rc-char (w) (char=? v w)) (else z #f)))
-        (rc-nil () (tagcase d (rc-nil () #t) (else z #f)))))))
+        (rc-nil () (tagcase d (rc-nil () #t) (else z #f)))
+        (rc-data (l) #f)))))
 (define r-same-operand? (subr kfx (rloc rloc) bool)
   (lambda (x y)
     (tagcase x
@@ -396,6 +397,12 @@
                 (if (std-nil-name? (std-named n)) (list (rc-nil)) nil)
                 (tagcase (car l) (rl-const (c) (list c)) (else y nil)))))
         (x-proj (y a) (r-known env y))
+        ;; A sum or product of constants, made now, once (C253).
+        (x-sum (t v a)
+          (let ((c (r-known env v))) (if (null? c) nil (list (rc-data (l-frozen "sum" (list (l-sym t) (rconst-lit (car c)))))))))
+        (x-product (fs a)
+          (let ((vs (r-knowns env (c-bound-exps fs) nil)))
+            (if (null? vs) nil (list (rc-data (l-frozen "product" (map rconst-lit (car vs))))))))
         (x-app (f args a)
           (let* ((name (r-standard-name env f))
                  (decided (if (r-test-name? name) (r-known-test env x) nil)))
@@ -433,7 +440,8 @@
         (if (null? k)
             (let ((l (r-var-loc env a)))
               (if (null? l) nil (tagcase (car l) (rl-reg (i) l) (rl-slot (i) l) (rl-free (i) l) (else y nil))))
-            (list (rl-const (car k)))))))
+            ;; Frozen data is no test's operand.
+            (tagcase (car k) (rc-data (l) nil) (else y (list (rl-const (car k)))))))))
   (r-knowns (subr gen (renv cxs (listof rconst acyclic)) (listof (listof rconst acyclic) acyclic))
     (lambda (env es acc)
       (if (null? es)
@@ -491,6 +499,50 @@
                  (at-slot (i) #t) (at-free (i) #t) (else y #f))))))
       (else y #t))))
 
+"Whether no binding of `bs` but the `i`th mentions `name`."
+(define-rec
+  (r-unmentioned? (subr kfx (cbinds string i64 i64) bool)
+    (lambda (bs name i k)
+      (or (null? bs)
+          (and (or (i64= k i) (tagcase (car bs) (cbind (n x) (not (c-mentions? x name)))))
+               (r-unmentioned? (cdr bs) name i (i64+ k 1)))))))
+
+(define-rec
+  (r-nth-bind (subr kfx (cbinds i64) cbind) (lambda (bs i) (if (i64= i 0) (car bs) (r-nth-bind (cdr bs) (i64- i 1))))))
+
+"Whether `letrec` binding `i` of `bs` is a join point (C253, Fixpt's
+ `c-join-ok?`): a lambda, of no region, whose body calls it only in tail
+ position, as the `letrec`'s body does, and that no sibling mentions; so
+ no closure is made of it, and its calls are jumps."
+(define r-join-ok? (subr kfx (cbinds cx i64) bool)
+  (lambda (bs body i)
+    (tagcase (r-nth-bind bs i)
+      (cbind (name x)
+        (let ((l (lambda-of x)))
+          (and (not (null? l))
+               (tagcase (car l)
+                 (lparts (ps lbody region)
+                   (let ((n (size ps)))
+                     (and (null? region) (not (string-member? name ps))
+                          (c-loops-only lbody name n #t) (c-loops-only body name n #t)
+                          (r-unmentioned? bs name i 0)))))))))))
+
+"Each binding of `bs`: whether it is a join point (in tail position only)."
+(define-rec
+  (r-join-flags-from (subr kfx (cbinds cx bool i64 i64) (listof bool acyclic))
+    (lambda (bs body tail i n)
+      (if (i64>= i n) nil (cons (and tail (r-join-ok? bs body i)) (r-join-flags-from bs body tail (i64+ i 1) n))))))
+(define r-join-flags (subr kfx (cbinds cx bool) (listof bool acyclic))
+  (lambda (bs body tail) (r-join-flags-from bs body tail 0 (size bs))))
+(define-rec
+  (r-all? (subr kfx ((listof bool acyclic)) bool) (lambda (fs) (or (null? fs) (and (car fs) (r-all? (cdr fs)))))))
+
+"`te` with each of `bs`' names a loop, as a join point is to the stack
+ compiler."
+(define-rec
+  (r-loop-names (subr kfx (cenv cbinds) cenv)
+    (lambda (te bs) (if (null? bs) te (r-loop-names (tagcase (car bs) (cbind (n x) (c-extend n (at-loop) te))) (cdr bs))))))
+
 "`ps` bound as locals, onto `te`."
 (define-rec
   (r-locals (subr kfx (strings cenv) cenv) (lambda (ps te) (if (null? ps) te (r-locals (cdr ps) (c-extend (car ps) (at-slot -1) te))))))
@@ -513,6 +565,11 @@
         (x-int (n a) #f) (x-bool (b a) #f) (x-str (s a) #f) (x-char (ch a) #f) (x-float (f a) #f)
         (x-sym (s a) #f) (x-unit (a) #f)
         (x-lambda (ps body a) (not tail))
+        ;; Join points only: no closure made, and their calls are jumps.
+        (x-letrec (bs body a)
+          (if (and tail (r-all? (r-join-flags bs body #t)))
+              (let ((inner (r-loop-names e bs))) (or (r-collects v body inner me tail) (r-collects-joins v bs inner me)))
+              #t))
         (x-if (t th el a) (or (r-collects v t e me #f) (r-collects v th e me tail) (r-collects v el e me tail)))
         (x-let (bs body a)
           (or (r-collects-all v (c-bound-exps bs) e me) (r-collects v body e me tail)))
@@ -550,6 +607,16 @@
                                    (rinline (m ps body at)
                                      (not (r-collects v body (r-locals ps nil) nil tail))))))))))
              (else y #f)))))
+  (r-collects-joins (subr gen (rview cbinds cenv rthis) bool)
+    (lambda (v bs e me)
+      "Whether any of `bs`' lambdas' bodies, their parameters bound in `e`,
+       calls or calls out."
+      (and (not (null? bs))
+           (or (tagcase (car bs)
+                 (cbind (n x)
+                   (let ((l (lambda-of x)))
+                     (or (null? l) (tagcase (car l) (lparts (ps lbody region) (r-collects v lbody (r-locals ps e) me #t)))))))
+               (r-collects-joins v (cdr bs) e me)))))
   (r-collects-all (subr gen (rview cxs cenv rthis) bool)
     (lambda (v es e me) (and (not (null? es)) (or (r-collects v (car es) e me #f) (r-collects-all v (cdr es) e me)))))
   (r-collects-begin (subr gen (rview cxs cenv rthis bool) bool)

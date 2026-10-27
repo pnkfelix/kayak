@@ -7,10 +7,12 @@
 "A constant that needs no allocation when it runs, as register code may
  know one (Fixpt's `rconst`; its sums, products, symbols and lists not
  yet)."
-(define-datatype rconst (rc-int int) (rc-bool bool) (rc-char char) (rc-nil))
+(define-datatype rconst (rc-int int) (rc-bool bool) (rc-char char) (rc-nil)
+  ;; Frozen data made when compiled, a sum or a product of constants (C253).
+  (rc-data lit))
 
 (define rconst-lit (subr kfx (rconst) lit)
-  (lambda (c) (tagcase c (rc-int (n) (l-int n)) (rc-bool (v) (l-bool v)) (rc-char (ch) (l-char ch)) (rc-nil () (l-nil)))))
+  (lambda (c) (tagcase c (rc-int (n) (l-int n)) (rc-bool (v) (l-bool v)) (rc-char (ch) (l-char ch)) (rc-nil () (l-nil)) (rc-data (l) l))))
 
 "Where a name's value is: a register, a frame slot, a free value of the
  closure running, a global, the procedure itself (a loop), a `letrec`
@@ -28,7 +30,10 @@
   ;; No name's place either: how many of the globals a body sees, bound to
   ;; `%genv` where an inlined body's are the ones defined when it was
   ;; (C252).
-  (rl-seen i64))
+  (rl-seen i64)
+  ;; A `letrec`-bound procedure only called in tail position, a join point
+  ;; (C253): where its parameters are, and its label.
+  (rl-join (listof rloc acyclic) i64))
 (define-type rlocs (listof rloc acyclic))
 
 "What a body sees, said in its environment by names no program has

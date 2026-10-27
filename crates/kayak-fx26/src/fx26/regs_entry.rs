@@ -116,7 +116,9 @@ pub fn entry_pos_x(g: &'static Rgen, at: i64, k: i64) -> () {
 }
 
 // Parameters `i` on, of `n`, each into a frame slot of its own.
-/// Each store the lambda's letter for it (`entry-at`).
+/// Each store the lambda's letter for it (`entry-at`). Past
+/// `register-regs` parameters, the rest come as a list in the last
+/// register, taken apart into the frame (C253).
 pub fn r_store_params(mut g: &'static Rgen, mut i: i64, mut n: i64, mut at: i64) -> () {
     loop {
         if i64_eq(i, n) {
@@ -128,7 +130,20 @@ pub fn r_store_params(mut g: &'static Rgen, mut i: i64, mut n: i64, mut at: i64)
             } else {
                 3i64
             }));
-            r_opnn(g, str_lit("store"), i64_plus(i, 1i64), s);
+            if (i64_lt_eq(n, register_regs()) || i64_lt(i64_plus(i, 1i64), register_regs())) {
+                r_opnn(g, str_lit("store"), i64_plus(i, 1i64), s)
+            } else {
+                r_opn(g, str_lit("reg"), register_regs());
+                r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(str_lit("pair-car")), kayak_rt::nil()));
+                r_opn(g, str_lit("setstk"), s);
+                if i64_lt(i64_plus(i, 1i64), n) {
+                    r_opn(g, str_lit("reg"), register_regs());
+                    r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(str_lit("pair-cdr")), kayak_rt::nil()));
+                    r_opn(g, str_lit("setreg"), register_regs())
+                } else {
+                    ()
+                }
+            };
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -206,9 +221,7 @@ pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, 
         Twin::Twin(w, ps, body, inner, me, own, at) => {
             let n = size(ps);
             let leaf = (i64_lt_eq(n, register_regs()) && not(r_collects(twin_view(t, assuming, false), body, inner, me, true)));
-            if i64_gt(n, register_regs()) {
-                nil::<&'static Rgen>()
-            } else if (leaf || r_collects(twin_view(t, assuming, true), body, inner, me, true)) {
+            if (leaf || i64_gt(n, register_regs()) || r_collects(twin_view(t, assuming, true), body, inner, me, true)) {
                 r_register_body_as(t, assuming, assumed, folded, leaf)
             } else {
                 let gs = r_register_body_as(t, assuming, assumed, folded, true);
@@ -522,6 +535,133 @@ pub fn r_twin_made_x(t: &'static Twin) -> () {
     }
 }
 
+// A standard operation's word's register code (C253, Fixpt's
+// `r-standard-word`): its operands its parameters, in REG1…REGn already;
+// a call-out made in a frame. None for one done in several instructions,
+// or that takes control: the closure then has stack code only.
+pub fn r_standard_word(name: Str, n: i64) -> List<&'static Rcode> {
+    let std = r_standard(name, n);
+    let callout = {
+        let tagcase_ = std;
+        match *tagcase_ {
+            Rstd::SPrim(p) => {
+                true
+            }
+            Rstd::SCellular(r) => {
+                string_eq_p(r, str_lit("cons"))
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    };
+    let cx = rctx(kayak_rt::heap_new(false), false, kayak_rt::heap_new(nil::<Str>()), kayak_rt::heap_new(false), str_lit(""), -1i64, -1i64, kayak_rt::heap_new(the::<i64>(0i64)));
+    let g = rgen(kayak_rt::heap_new(nil::<&'static Ritem>()), not(callout), kayak_rt::heap_new(n), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), nil::<&'static This>(), the::<i64>(0i64), cx);
+    r_opn(g, str_lit("args"), n);
+    if callout {
+        r_emit(g, ri_frame(str_lit("save")))
+    } else {
+        ()
+    };
+    if {
+        let tagcase_ = std;
+        match *tagcase_ {
+            Rstd::SOp2(r, swap, negate) => {
+                r_opn(g, str_lit("reg"), if swap {
+                    2i64
+                } else {
+                    1i64
+                });
+                r_ins(g, str_lit("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(if swap {
+                    1i64
+                } else {
+                    2i64
+                }), kayak_rt::nil())));
+                if negate {
+                    r_negate(g)
+                } else {
+                    ()
+                };
+                true
+            }
+            Rstd::SOp1(r) => {
+                r_opn(g, str_lit("reg"), 1i64);
+                r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(r), kayak_rt::nil()));
+                true
+            }
+            Rstd::SOp2imm(r, v) => {
+                r_opn(g, str_lit("reg"), 1i64);
+                r_op2imm(g, r, v);
+                true
+            }
+            Rstd::SField(k) => {
+                r_opn(g, str_lit("reg"), 1i64);
+                r_opn(g, str_lit("field"), k);
+                true
+            }
+            Rstd::SIdentity() => {
+                r_opn(g, str_lit("reg"), 1i64);
+                true
+            }
+            Rstd::SPrim(p) => {
+                r_ins(g, str_lit("prim"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                true
+            }
+            Rstd::SPure(p) => {
+                r_opn(g, str_lit("reg"), 1i64);
+                if i64_eq(n, 1i64) {
+                    r_ins(g, str_lit("prim1"), kayak_rt::heap_cons(o_prim(p), kayak_rt::nil()))
+                } else {
+                    r_ins(g, str_lit("prim2"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())))
+                };
+                true
+            }
+            Rstd::SCellular(r) => {
+                if callout {
+                    r_ins(g, str_lit("cellular"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    } {
+        r_done(g, true);
+        kayak_rt::heap_cons(r_assemble(g), kayak_rt::nil())
+    } else {
+        nil::<&'static Rcode>()
+    }
+}
+
+pub fn r_standard_twins_made_x(mut ts: List<&'static Stwin>) -> () {
+    loop {
+        if null_p(ts) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Stwin::Stwin(w, op, n) => {
+                        let cs = r_standard_word(op, n);
+                        if null_p(cs) {
+                            ()
+                        } else {
+                            set(cg_reg_codes(), kayak_rt::heap_cons(rnamed(w, car(cs)), get(cg_reg_codes())))
+                        }
+                    }
+                }
+            };
+            ts = cdr(ts);
+            continue;
+        }
+    }
+}
+
 pub fn r_twins_made_x(mut ts: List<&'static Twin>) -> () {
     loop {
         if null_p(ts) {
@@ -538,8 +678,12 @@ pub fn r_twins_made_x(mut ts: List<&'static Twin>) -> () {
 // made (Fixpt's `c-form-twins`).
 pub fn regs_form_twins_x() -> () {
     let ts = the::<List<&'static Twin>>(reverse(get(cg_twins())));
+    let ss = the::<List<&'static Stwin>>(reverse(get(cg_standard_twins())));
     set(cg_twins(), nil::<&'static Twin>());
-    r_twins_made_x(ts)
+    set(cg_standard_twins(), nil::<&'static Stwin>());
+    r_twins_made_x(ts);
+    r_standard_twins_made_x(ss);
+    set(cg_form_lambdas(), nil::<&'static Lword>())
 }
 
 // After a typed definition of `n` as the lambda of `ps` and `body`: noted to

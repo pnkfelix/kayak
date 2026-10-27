@@ -157,3 +157,13 @@ globals folded in fast versions. What Fixpt keeps in globals set and
 restored around an inlined body is said in the register environment
 (`%genv`, `%inlining:G`, `%const:G`). 573 register words Fixpt's
 exactly, 11 differ. Next: stage 2.
+
+## Stage 2 (C253)
+
+Closures (the stack code's words, found per form), `letrec` with patches
+and join points, `tagcase`, `apply`, `list`, sums and products (constant
+ones as `#bloblet` literals), prompts, applied lambdas, tail marks, many
+parameters, the standard operations' words. `(the T e)` kept as a node,
+as Fixpt's register code sees it. 733 register words Fixpt's exactly, 9
+differ, 94 declined (bloblets, regions, modules: stage 3). `closures`'
+remaining gap is Fixpt's specialization (stage 4).

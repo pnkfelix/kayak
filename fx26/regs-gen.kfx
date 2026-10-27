@@ -338,6 +338,50 @@
   (lambda (params env name at)
     (onto params (cons (rbind genv-name (rl-seen at)) (cons (rbind (inlining-name name) (rl-loop)) (r-carried env nil))))))
 
+"A closure's free values as operands, and the patches it needs."
+(define-datatype rfree (rfree rargs rpatches))
+"A scope: a register environment and its stack one."
+(define-datatype rscope (rscope renv cenv))
+"A join point's place: its parameters' places and its label."
+(define-datatype rplace (rplace rlocs i64))
+
+"The moves of each free value of `fv` (from the `j`th) in a register into
+ REGj+1, where it is not there already."
+(define-rec
+  (r-reg-moves (subr gen (strings renv i64) rmoves)
+    (lambda (fv env j)
+      (if (null? fv)
+          nil
+          (let ((l (r-where env (car fv))) (rest (r-reg-moves (cdr fv) env (i64+ j 1))))
+            (if (null? l) rest (tagcase (car l) (rl-reg (r) (if (i64= r (i64+ j 1)) rest (cons (rmove r (i64+ j 1)) rest))) (else y rest))))))))
+
+"`env` with each parameter at its place."
+(define-rec
+  (r-bind-places (subr kfx (renv strings rlocs) renv)
+    (lambda (env ps ls) (if (or (null? ps) (null? ls)) env (r-bind-places (r-bind (car ps) (car ls) env) (cdr ps) (cdr ls))))))
+
+"The join point `f` names, in a list: a local's."
+(define r-join-of (subr kfx (renv cx) rlocs)
+  (lambda (env f)
+    (tagcase f
+      (x-var (m a) (let ((l (r-local-loc env m))) (if (null? l) nil (tagcase (car l) (rl-join (ps label) l) (else y nil)))))
+      (else y nil))))
+
+"The `letrec`'s names where its body sees them: a join point as itself,
+ any other in its slot; and to the stack compiler, a join point a loop."
+(define-rec
+  (r-letrec-env (subr kfx (cbinds (listof i64 acyclic) (listof (listof rplace acyclic) acyclic) renv) renv)
+    (lambda (bs at places env)
+      (if (null? bs)
+          env
+          (r-letrec-env (cdr bs) (cdr at) (cdr places)
+                        (tagcase (car bs)
+                          (cbind (n x)
+                            (r-bind n (if (null? (car places)) (rl-slot (car at)) (tagcase (car (car places)) (rplace (locs label) (rl-join locs label)))) env)))))))
+  (r-letrec-te (subr kfx (cbinds (listof bool acyclic) cenv) cenv)
+    (lambda (bs joins te)
+      (if (null? bs) te (r-letrec-te (cdr bs) (cdr joins) (tagcase (car bs) (cbind (n x) (c-extend n (if (car joins) (at-loop) (at-slot -1)) te))))))))
+
 "A call's inlined parameters: where the body finds each, the body's scope,
  and the arguments for the call where the guard fails."
 (define-datatype rbound (rbound renv cenv (listof rarg acyclic)))
@@ -348,10 +392,12 @@
 
 "An operand of a call or call-out: an expression, a constant, a frame
  slot's value, a free value of the closure running."
-(define-datatype rarg (a-e cx) (a-v lit) (a-slot i64) (a-lexical i64))
+(define-datatype rarg (a-e cx) (a-v lit) (a-slot i64) (a-lexical i64)
+  ;; A procedure of no arguments whose body is the expression (a prompt's).
+  (a-thunk cx))
 (define-type rargs (listof rarg acyclic))
 (define r-exp-args (subr kfx (cxs) rargs) (lambda (es) (map (lambda ((x cx)) (a-e x)) es)))
-(define r-arg-simple? (subr gen (rarg) bool) (lambda (a) (tagcase a (a-e (x) (r-simple? x)) (else y #t))))
+(define r-arg-simple? (subr gen (rarg) bool) (lambda (a) (tagcase a (a-e (x) (r-simple? x)) (a-thunk (b) #f) (else y #t))))
 (define r-arg-simple-here? (subr gen (rarg renv bool) bool)
   (lambda (a env many) (and (r-arg-simple? a) (or (not many) (tagcase a (a-e (x) (not (r-var-in-reg? env x))) (else y #t))))))
 (define-rec
@@ -362,6 +408,30 @@
 
 "`a` into RESULT and `b` into a register, or `b` as an immediate: which."
 (define-datatype roperands (rop-imm lit) (rop-reg i64) (rop-none))
+
+"A sibling not made yet, given a closure as `#f`: its free value `j` to
+ be patched with what frame slot `s` will hold (C253)."
+(define-datatype rpatch (rpatch i64 i64))
+(define-type rpatches (listof rpatch acyclic))
+
+"The word the stack code made of the lambda of `ps` and `body` that knows
+ itself as `own0`, seen in `te`, and the names its closure captures, in a
+ list; none if none (C253, Fixpt's `c-made-word`): of the form's words, the
+ oldest made for the same body, parameters, own name and captures."
+(define-datatype rmade (rmade string strings))
+(define-rec
+  (r-made-in (subr kfx ((listof lword acyclic) i64 strings strings strings) (listof rmade acyclic))
+    (lambda (ws at ps own fv)
+      (if (null? ws)
+          nil
+          (let ((older (r-made-in (cdr ws) at ps own fv)))
+            (cond ((not (null? older)) older)
+                  ((tagcase (car ws) (lword (b qs o w cs) (and (i64= b at) (strings=? qs ps) (strings=? o own) (strings=? cs fv))))
+                   (tagcase (car ws) (lword (b qs o w cs) (list (rmade w cs)))))
+                  (else nil)))))))
+(define r-made-word (subr gen (strings cx cenv strings) (listof rmade acyclic))
+  (lambda (ps body te own0)
+    (r-made-in (get cg-form-lambdas) (cx-start body) ps (c-own-of ps own0) (c-captured (c-free body ps nil) te))))
 
 "A leaf's tail call's arguments, sorted: the moves of those in registers,
  or made into one, to REG1…REGn; and the simple ones, each with its
@@ -444,7 +514,25 @@
               (x-begin (es a) (if (null? es) (r-const-value g (l-unit) tail) (r-begin g es env te tail)))
               (x-let (bs body a) (r-let g bs body env te tail))
               (x-extract (p i a) (begin (r-exp g p env te #f) (r-opn g "field" (i64+ i 2)) (r-done g tail)))
-              (x-app (f args a) (r-app g f args a env te tail))
+              ;; A lambda applied at once: a `let` (Fixpt's `c-applied-let`).
+              (x-app (f args a)
+                (tagcase f
+                  (x-lambda (ps body b)
+                    (if (i64= (size ps) (size args))
+                        (r-let g (map2 (lambda ((p string) (y cx)) (cbind p y)) ps args) body env te tail)
+                        (r-app g f args a env te tail)))
+                  (else y (r-app g f args a env te tail))))
+              (x-lambda (ps body a) (begin (r-lambda g ps body env te nil tail) (r-done g tail)))
+              (x-letrec (bs body a)
+                ;; A leaf makes no closure; join points it may have.
+                (if (and (g-leaf g) (not (r-all? (r-join-flags bs body tail)))) (r-decline g) (r-letrec g bs body env te tail)))
+              (x-tagcase (s arms els k a) (if (i64< k 0) (r-tagcase g s arms els env te tail) (r-decline g)))
+              (x-sum (t v a)
+                (begin (r-prim g "%make-frozen" (list (a-v (l-int 36)) (a-v (l-sym t)) (a-e v)) env te) (r-done g tail)))
+              (x-product (fs a)
+                (begin (r-prim g "%make-frozen" (cons (a-v (l-int 37)) (r-exp-args (c-bound-exps fs))) env te) (r-done g tail)))
+              (x-prompt (t body h a)
+                (begin (r-call-out g "cellular" "prompt" (list (a-e t) (a-e h) (a-thunk body)) env te) (r-done g tail)))
               (else y (r-decline g)))))))
 
   (r-var-value (subr gen (rgen rlocs string bool) unit)
@@ -541,7 +629,8 @@
   (r-app (subr gen (rgen cx cxs i64 renv cenv bool) unit)
     (lambda (g f args a env te tail)
       (let ((n (size args)) (own (r-own-self g env f args)))
-        (cond ((and tail (r-self-known? g f n te)) (r-loop g args env te))
+        (cond ((not (null? (r-join-of env f))) (r-jump g (car (r-join-of env f)) args env te tail))
+              ((and tail (r-self-known? g f n te)) (r-loop g args env te))
               ((not (null? own)) (r-self-guarded g (car own) (x-own-start (g-ctx g)) f args a env te tail))
               (else
                (let ((name (r-standard-name env f)))
@@ -554,8 +643,15 @@
                           (if (null? cell)
                               (begin (r-prim g "%fx26-intern-datum" (r-exp-args args) env te) (r-done g tail))
                               (r-const-value g (quoted-interned (car cell)) tail))))
-                       ((and tail (string=? name "with-mark") (i64= n 3)) (r-decline g))
-                       ((and (string=? name "apply") (i64= n 2)) (r-decline g))
+                       ;; In tail position a mark replaces this frame's (C253):
+                       ;; the arguments made, the frame left, and the
+                       ;; call-out, which calls the thunk as a tail call.
+                       ((and tail (string=? name "with-mark") (i64= n 3))
+                        (begin (r-args g (r-exp-args args) env te nil) (r-leave g)
+                               (r-ins g "cellular" (list (o-prim "withmark-tail") (o-int 3)))
+                               ;; Never reached: register code ends each path so.
+                               (r-op0 g "return")))
+                       ((and (string=? name "apply") (i64= n 2)) (r-apply g args env te tail))
                        ((not (null? (r-identity-arg env name args))) (r-exp g (car (r-identity-arg env name args)) env te tail))
                        (else (begin (r-standard-app g name args env te) (r-done g tail))))))))))
 
@@ -596,6 +692,7 @@
             (rop-reg (k) (begin (r-opnn g "setfield" 2 k) (r-unit g)))
             (else y (r-decline g))))
         (s-special (what) (r-special g what args env te))
+        (s-list () (r-list g args env te))
         (else y (r-decline g)))))
 
   (r-call (subr gen (rgen cx cxs i64 renv cenv bool) unit)
@@ -675,6 +772,280 @@
               (rbound (benv bte bargs)
                 (rbound (r-bind p here benv) (r-local bte p) (cons arg bargs))))))))
 
+  ;;; closures (C253)
+  (r-lambda (subr gen (rgen strings cx renv cenv strings bool) rpatches)
+    (lambda (g ps body env te own tail)
+      "A closure of a lambda into RESULT, its free values into REG1…REGn
+       first: of the word the stack code made (`r-made-word`). A leaf makes
+       one only as its value, in tail position. What it gives: for each
+       sibling not made yet, the free value and the sibling's slot."
+      (if (and (g-leaf g) (not tail))
+          (begin (r-decline g) nil)
+          (let ((m (r-made-word ps body te own)))
+            (if (null? m)
+                (begin (r-decline g) nil)
+                (tagcase (car m)
+                  (rmade (w fv)
+                    (let ((n (size fv)))
+                      (if (i64> n register-regs)
+                          (tagcase (r-free-args g fv env 0)
+                            (rfree (as ps2)
+                              (begin (r-args g as env te nil) (r-ins g "lambda" (list (o-word w) (o-int n))) ps2)))
+                          (let ((patches (r-free-into-regs g fv env)))
+                            (begin (r-ins g "lambda" (list (o-word w) (o-int n))) patches)))))))))))
+  (r-thunk (subr gen (rgen cx renv cenv) unit)
+    (lambda (g body env te) (begin (r-lambda g nil body env te nil #f) #u)))
+  (r-free-args (subr gen (rgen strings renv i64) rfree)
+    (lambda (g fv env j)
+      "The free values as a call-out's operands; a sibling not made yet as
+       `#f`, to be patched."
+      (if (null? fv)
+          (rfree nil nil)
+          (tagcase (r-free-args g (cdr fv) env (i64+ j 1))
+            (rfree (as ps)
+              (let ((l (r-where env (car fv))))
+                (if (null? l)
+                    (begin (r-decline g) (rfree as ps))
+                    (tagcase (car l)
+                      (rl-slot (s) (rfree (cons (a-slot s) as) ps))
+                      (rl-free (i) (rfree (cons (a-lexical i) as) ps))
+                      (rl-pending (s) (rfree (cons (a-v (l-bool #f)) as) (cons (rpatch j s) ps)))
+                      (rl-const (c) (rfree (cons (a-v (rconst-lit c)) as) ps))
+                      (else y (begin (r-decline g) (rfree as ps)))))))))))
+  (r-free-into-regs (subr gen (rgen strings renv) rpatches)
+    (lambda (g fv env) (begin (r-emit-all g (par-move-items (r-reg-moves fv env 0) nil)) (r-free-regs g fv env 0))))
+  (r-free-regs (subr gen (rgen strings renv i64) rpatches)
+    (lambda (g fv env j)
+      "Each free value into REGj+1, as `lambda` wants them (one in a
+       register moved already); a sibling not made yet as `#f`, patched."
+      (if (null? fv)
+          nil
+          (let ((l (r-where env (car fv))) (k (i64+ j 1)))
+            (if (null? l)
+                (begin (r-decline g) nil)
+                (tagcase (car l)
+                  (rl-reg (r) (r-free-regs g (cdr fv) env k))
+                  (rl-slot (s) (begin (r-opnn g "load" k s) (r-free-regs g (cdr fv) env k)))
+                  (rl-free (i) (begin (r-lexical-into g i k) (r-free-regs g (cdr fv) env k)))
+                  (rl-pending (s) (begin (r-const-into g (l-bool #f) k) (cons (rpatch j s) (r-free-regs g (cdr fv) env k))))
+                  (rl-const (c) (begin (r-const-into g (rconst-lit c) k) (r-free-regs g (cdr fv) env k)))
+                  (else y (begin (r-decline g) nil))))))))
+
+  ;;; letrec (C253)
+  (r-letrec (subr gen (rgen cbinds cx renv cenv bool) unit)
+    (lambda (g bs body env te tail)
+      "Each closure made into its slot, a placeholder for a sibling not
+       made yet; then each placeholder patched; a join point no closure,
+       its calls jumps to its body, after the `letrec`'s."
+      (let* ((slots (get (g-nslot g))) (regs (get (g-nreg g)))
+             (joins (r-join-flags bs body tail))
+             (at (r-letrec-slots g joins))
+             (made (r-letrec-make g bs bs at 0 env te joins))
+             (te2 (r-letrec-te bs joins te))
+             (places (begin (r-letrec-patch g made at) (r-join-places g bs joins te2)))
+             (env2 (r-letrec-env bs at places env)))
+        (begin
+          (r-exp g body env2 te2 tail)
+          (r-join-bodies g bs places env2 te2 tail)
+          (r-restore g regs slots)))))
+  (r-letrec-slots (subr gen (rgen (listof bool acyclic)) (listof i64 acyclic))
+    (lambda (g joins)
+      (if (null? joins) nil (let ((s (if (car joins) (the i64 -1) (r-slot g)))) (cons s (r-letrec-slots g (cdr joins)))))))
+  (r-letrec-make (subr gen (rgen cbinds cbinds (listof i64 acyclic) i64 renv cenv (listof bool acyclic)) (listof rpatches acyclic))
+    (lambda (g all bs at i env te joins)
+      (cond
+        ((null? bs) nil)
+        ((car joins) (cons nil (r-letrec-make g all (cdr bs) at (i64+ i 1) env te (cdr joins))))
+        (else
+         (tagcase (car bs)
+           (cbind (name x)
+             (let* ((l (lambda-of x))
+                    (p (if (null? l)
+                           (begin (r-decline g) nil)
+                           (tagcase (car l)
+                             (lparts (ps lbody region)
+                               (if (null? region)
+                                   (tagcase (r-sibling-env all at i 0 lbody (size ps) env te)
+                                     (rscope (e2 te2) (r-lambda g ps lbody e2 te2 (list name) #f)))
+                                   (begin (r-decline g) nil)))))))
+               (begin
+                 (r-opn g "setstk" (r-nth-int at i))
+                 (cons p (r-letrec-make g all (cdr bs) at (i64+ i 1) env te (cdr joins)))))))))))
+  (r-sibling-env (subr gen (cbinds (listof i64 acyclic) i64 i64 cx i64 renv cenv) rscope)
+    (lambda (bs at i k lbody n env te)
+      "Each sibling where the closure being made sees it: a loop, if it is
+       this one and only called so in its body; else the slot it will be
+       in, not made yet."
+      (if (null? bs)
+          (rscope env te)
+          (tagcase (car bs)
+            (cbind (sib x)
+              (let ((loops (and (i64= k i) (c-loops-only lbody sib n #t))) (s (r-nth-int at k)))
+                (r-sibling-env (cdr bs) at i (i64+ k 1) lbody n
+                               (r-bind sib (if loops (rl-loop) (rl-pending s)) env)
+                               (c-extend sib (if loops (at-loop) (at-pending s)) te))))))))
+  (r-letrec-patch (subr gen (rgen (listof rpatches acyclic) (listof i64 acyclic)) unit)
+    (lambda (g made at)
+      (if (null? made) #u (begin (r-patch-one g (car made) (car at)) (r-letrec-patch g (cdr made) (cdr at))))))
+  (r-patch-one (subr gen (rgen rpatches i64) unit)
+    (lambda (g ps slot)
+      (if (null? ps)
+          #u
+          (tagcase (car ps)
+            (rpatch (j s)
+              (begin (r-opnn g "load" 1 s) (r-opn g "stack" slot) (r-opnn g "setfield" (i64+ 3 j) 1)
+                     (r-patch-one g (cdr ps) slot)))))))
+  (r-join-places (subr gen (rgen cbinds (listof bool acyclic) cenv) (listof (listof rplace acyclic) acyclic))
+    (lambda (g bs joins named)
+      "Each join point's place: its parameters' places, registers where its
+       body calls nothing (or in a leaf), so many as leave half of them,
+       else frame slots; and its label. None for one that is not."
+      (if (null? bs)
+          nil
+          (let ((here (the (listof rplace acyclic) (if (car joins)
+                          (tagcase (car bs)
+                            (cbind (n x)
+                              (tagcase (car (lambda-of x))
+                                (lparts (ps lbody region)
+                                  (let* ((regs (or (g-leaf g)
+                                                   (and (not (r-collects (g-view g) lbody (r-locals ps named) (g-this g) #t))
+                                                        (i64<= (i64+ (get (g-nreg g)) (size ps)) r-half-regs))))
+                                         (locs (r-param-places g ps regs))
+                                         (label (r-new-label g)))
+                                    (the (listof rplace acyclic) (list (rplace locs label))))))))
+                          nil))))
+            (cons here (r-join-places g (cdr bs) (cdr joins) named))))))
+  (r-param-places (subr gen (rgen strings bool) rlocs)
+    (lambda (g ps regs)
+      (if (null? ps) nil (let ((l (if regs (rl-reg (r-reg g)) (rl-slot (r-slot g))))) (cons l (r-param-places g (cdr ps) regs))))))
+  (r-join-bodies (subr gen (rgen cbinds (listof (listof rplace acyclic) acyclic) renv cenv bool) unit)
+    (lambda (g bs places env te tail)
+      "Each join point's body, after the `letrec`'s, which ends every path
+       itself: where its calls go."
+      (if (null? bs)
+          #u
+          (begin
+            (if (null? (car places))
+                #u
+                (tagcase (car bs)
+                  (cbind (n x)
+                    (tagcase (car (lambda-of x))
+                      (lparts (ps lbody region)
+                        (tagcase (car (car places))
+                          (rplace (locs label)
+                            (begin (r-emit g (ri-label label))
+                                   (r-exp g lbody (r-bind-places env ps locs) (r-locals ps te) tail)))))))))
+            (r-join-bodies g (cdr bs) (cdr places) env te tail)))))
+  (r-jump (subr gen (rgen rloc cxs renv cenv bool) unit)
+    (lambda (g j args env te tail)
+      "A join point's call: each argument made and kept (a register where no
+       later argument calls), then each into its parameter's place, and a
+       jump."
+      (tagcase j
+        (rl-join (params label)
+          (if (or (not tail) (not (i64= (size args) (size params))))
+              (r-decline g)
+              (let* ((regs (get (g-nreg g))) (slots (get (g-nslot g)))
+                     (made (r-jump-args g args env te (r-in-regs g args 0 te #f))))
+                (begin (r-jump-moves g made params) (r-emit g (ri-branch "branch" label)) (r-restore g regs slots)))))
+        (else y (r-decline g)))))
+  (r-jump-args (subr gen (rgen cxs renv cenv (listof bool acyclic)) rlocs)
+    (lambda (g args env te flags)
+      (if (null? args)
+          nil
+          (let ((l (begin (r-exp g (car args) env te #f) (r-keep g (car flags)))))
+            (cons l (r-jump-args g (cdr args) env te (cdr flags)))))))
+  (r-jump-moves (subr gen (rgen rlocs rlocs) unit)
+    (lambda (g made params)
+      (if (or (null? made) (null? params))
+          #u
+          (begin
+            (tagcase (car made)
+              (rl-reg (a)
+                (tagcase (car params)
+                  (rl-reg (b) (r-opnn g "movereg" a b))
+                  (rl-slot (b) (begin (r-opn g "reg" a) (r-opn g "setstk" b)))
+                  (else y (r-decline g))))
+              (rl-slot (a)
+                (tagcase (car params)
+                  (rl-reg (b) (r-opnn g "load" b a))
+                  (rl-slot (b) (r-slot-move g a b))
+                  (else y (r-decline g))))
+              (else y (r-decline g)))
+            (r-jump-moves g (cdr made) (cdr params))))))
+
+  ;;; tagcase (C253)
+  (r-tagcase (subr gen (rgen cx (listof carm acyclic) cbinds renv cenv bool) unit)
+    (lambda (g s arms els env te tail)
+      "The scrutinee kept; each arm's tag compared, the last's not when
+       there is no `else` (a checked program covers every tag); the value,
+       or its product's members, bound."
+      (let ((regs (get (g-nreg g))) (slots (get (g-nslot g))))
+        (begin
+          (r-exp g s env te #f)
+          (let* ((sc (r-place-value g)) (end (r-new-label g)))
+            (begin
+              (r-arms g arms (null? els) sc end env te tail)
+              (if (null? els)
+                  #u
+                  (tagcase (car els) (cbind (n x) (r-exp g x (r-bind n sc env) (r-local te n) tail))))
+              (r-emit g (ri-label end))))
+          (r-restore g regs slots)))))
+  (r-arms (subr gen (rgen (listof carm acyclic) bool rloc i64 renv cenv bool) unit)
+    (lambda (g arms no-else sc end env te tail)
+      (if (null? arms)
+          #u
+          (tagcase (car arms)
+            (carm (tag whole ns body)
+              (let* ((last (and no-else (null? (cdr arms)))) (next (r-new-label g))
+                     (regs (get (g-nreg g))) (slots (get (g-nslot g))))
+                (begin
+                  (if last
+                      #u
+                      (begin (r-get g sc) (r-opn g "field" 2) (r-op2imm g "eq" (l-sym tag))
+                             (r-emit g (ri-branch "branchf" next))))
+                  (let* ((bound (if whole
+                                    (r-members g sc ns 0 body nil)
+                                    (begin (r-get g sc) (r-opn g "field" 3) (r-bind (car ns) (r-place-value g) nil))))
+                         (in-order (the renv (reverse bound))))
+                    (r-exp g body (r-bind-all in-order env) (r-local-all in-order te) tail))
+                  (r-restore g regs slots)
+                  (if tail #u (r-emit g (ri-branch "branch" end)))
+                  (r-emit g (ri-label next))
+                  (r-arms g (cdr arms) no-else sc end env te tail))))))))
+  (r-members (subr gen (rgen rloc strings i64 cx renv) renv)
+    (lambda (g sc xs j body acc)
+      "A product's members the arm's body uses, each kept, newest first."
+      (cond ((null? xs) acc)
+            ((not (c-mentions? body (car xs))) (r-members g sc (cdr xs) (i64+ j 1) body acc))
+            (else
+             (begin (r-get g sc) (r-opn g "field" 3) (r-opn g "field" (i64+ j 2))
+                    (let ((l (r-place-value g))) (r-members g sc (cdr xs) (i64+ j 1) body (r-bind (car xs) l acc))))))))
+
+  ;;; apply and list (C253)
+  (r-apply (subr gen (rgen cxs renv cenv bool) unit)
+    (lambda (g args env te tail)
+      "`(apply f xs)`: `f` a `vsubr`, a closure over the procedure of one
+       list, free value 0; that procedure called with `xs`, as the stack
+       code calls it (no copy)."
+      (if (g-leaf g)
+          (r-decline g)
+          (let ((regs (get (g-nreg g))) (slots (get (g-nslot g))))
+            (begin
+              (r-args g (r-exp-args args) env te nil)
+              (let ((s (r-slot g)))
+                (begin (r-opn g "reg" 1) (r-opn g "field" 3) (r-opn g "setstk" s) (r-opn g "reg" 2) (r-opn g "setreg" 1)
+                       (r-opn g "stack" s) (r-invoke g 1 tail 0)))
+              (r-restore g regs slots))))))
+  (r-list (subr gen (rgen cxs renv cenv) unit)
+    (lambda (g args env te)
+      "`(list x …)`: every argument not simple, or in a register, made and
+       kept first, in order; then the pairs made from the last, onto `nil`."
+      (if (g-leaf g)
+          (r-decline g)
+          (let* ((slots (get (g-nslot g))) (as (r-exp-args args)) (kept (r-args-hard g as 0 -1 env te #t)))
+            (begin (r-const g (l-nil)) (r-args-list g as kept (i64- (size as) 1) 0 env te) (set (g-nslot g) slots))))))
+
   (r-args (subr gen (rgen rargs renv cenv cxs) unit)
     (lambda (g args env te f)
       "The arguments into REG1…REGn, in order, then `f`, if a call's, into
@@ -714,7 +1085,7 @@
           (if (r-arg-simple-here? (car args) env many)
               (cons (the i64 -1) (r-args-hard g (cdr args) (i64+ i 1) direct env te many))
               (begin
-                (tagcase (car args) (a-e (x) (r-exp g x env te #f)) (else y #u))
+                (tagcase (car args) (a-e (x) (r-exp g x env te #f)) (a-thunk (b) (r-thunk g b env te)) (else y #u))
                 (let ((k (if (i64= i direct) (begin (r-opn g "setreg" (i64+ i 1)) (the i64 -2)) (r-keep-in-slot g))))
                   (cons k (r-args-hard g (cdr args) (i64+ i 1) direct env te many))))))))
 
@@ -734,7 +1105,8 @@
                (a-e (x) (r-into g x k env te))
                (a-v (v) (r-const-into g v k))
                (a-slot (s) (r-opnn g "load" k s))
-               (a-lexical (j) (r-lexical-into g j k)))))))
+               (a-lexical (j) (r-lexical-into g j k))
+               (a-thunk (b) #u))))))
 
   (r-args-list (subr gen (rgen rargs (listof i64 acyclic) i64 i64 renv cenv) unit)
     (lambda (g args kept i from env te)
