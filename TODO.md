@@ -728,7 +728,7 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         **Done** (C233) for the results, the standard streams' text and
         the input's read-ahead; left: `read-file`, `list-dir`, `args`,
         `write-file` (KFX data per call).
-     0a. **The engine's tail calls through `tagcase`** (found by C233):
+     0a. **Done** (C236). **The engine's tail calls through `tagcase`** (found by C233):
         `vm.kfx`'s `run` and `tagcase-step` call each other, a Rust call
         each time (KFX makes no mutual tail call a jump): a loop through a
         `tagcase` arm, 10M iterations 930 MB and 35 s, 40M an abort; Fixpt

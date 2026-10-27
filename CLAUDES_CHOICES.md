@@ -6686,3 +6686,24 @@ fault made differ, and only reading its output caught it.
 - Tested: a list given a program that is not there, `--bless` refused it
   (status 1, the list unchanged), `--bless-drop` dropped it.
 
+## C236. The engine's steps in one loop: proper tail calls through every helper (2026-10-27)
+
+The user, of the performance plan's first items: "go for it". Item 0a
+(found by C233): the engine's `run` (`fx26/vm.kfx`) and its helpers
+(`list-step`, `tagcase-step`, `apply-step`, `abort-to`, `gc-run`,
+`failed-at`) called each other in tail position, and KFX makes only a
+procedure's call of itself a jump: each helper's call of `run` was a Rust
+call, which LLVM made a jump or not as it chose. Through `apply-step` it
+did (a loop through an `if` ran flat); through `tagcase-step` it did not:
+10M turns of a loop through a `tagcase` arm 930 MB and 35 s, 40M an
+abort, the 1 GiB stack spent. Against FX-26's proper tail calls, and
+C64's "never recurses on the Rust stack".
+- Now each helper, where it called `run`, keeps the registers
+  (`next-step!`: `go-regs`, `go-on`) and returns; at each of `run`'s
+  calls of a helper, `run` goes on with them, a call of itself. 26 calls
+  so changed, 9 sites. No collection between the keeping and the taking.
+- Measured: 1M, 10M and 40M turns 33-34 MB each, 10M in 10.3 s (was 35);
+  the engine's `read-line` loop (C233's), 100k and 1M lines 34 MB each.
+  A test that would fail without it needs some 12M turns: left to the
+  space-efficiency tests (`TODO.md`), which measure memory.
+

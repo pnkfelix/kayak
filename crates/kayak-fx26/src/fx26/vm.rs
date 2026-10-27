@@ -627,16 +627,66 @@ pub fn preempt_at_x(k: i64) -> i64 {
     }
 }
 
+// Steps begun by `run`'s helpers (C236): each, where it would call `run`
+// again, keeps the registers here and returns, and `run` goes on with
+// them in its own loop, a call of itself in tail position, which KFX makes
+// a jump. A helper's call of `run` was a Rust call, which LLVM made a jump
+// or not as it chose: a loop through a `tagcase` arm grew the Rust stack
+// at each turn, 10 million turns 930 MB, 40 million the 1 GiB stack spent
+// (C233).
+pub fn go_on() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn go_regs() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(7i64, 0i64))
+    })
+}
+
+pub fn next_step_x(mode: i64, node: i64, env: i64, k: i64, val: i64, f: i64, args: i64) -> i64 {
+    let g = get(go_regs());
+    flatarray_set_i64_x(g, 0i64, mode);
+    flatarray_set_i64_x(g, 1i64, node);
+    flatarray_set_i64_x(g, 2i64, env);
+    flatarray_set_i64_x(g, 3i64, k);
+    flatarray_set_i64_x(g, 4i64, val);
+    flatarray_set_i64_x(g, 5i64, f);
+    flatarray_set_i64_x(g, 6i64, args);
+    set(go_on(), true);
+    0i64
+}
+
 pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64, mut f: i64, mut args: i64) -> i64 {
     loop {
         if get(engine_failed()) {
-            return failed_at(if i64_eq(mode, 0i64) {
+            let go_r = failed_at(if i64_eq(mode, 0i64) {
                 node
             } else {
                 -1i64
             }, env, k);
+            if get(go_on()) {
+                set(go_on(), false);
+                let g = get(go_regs());
+                (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                continue;
+            } else {
+                return go_r;
+            }
         } else if i64_lt(heap_room(), reserve()) {
-            return gc_run(mode, node, env, k, val, f, args, 0i64);
+            let go_r = gc_run(mode, node, env, k, val, f, args, 0i64);
+            if get(go_on()) {
+                set(go_on(), false);
+                let g = get(go_regs());
+                (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                continue;
+            } else {
+                return go_r;
+            }
         } else {
             if i64_eq(get(fuel()), 0i64) {
                 return park_x(mode, node, env, k, val, f, args);
@@ -665,7 +715,15 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         let w = flatarray_ref_i64(get(globals()), i);
                         if i64_eq(w, w_unbound()) {
                             unbound_global(i);
-                            return failed_at(node, env, k);
+                            let go_r = failed_at(node, env, k);
+                            if get(go_on()) {
+                                set(go_on(), false);
+                                let g = get(go_regs());
+                                (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                                continue;
+                            } else {
+                                return go_r;
+                            }
                         } else {
                             (mode, node, val, f, args) = (1i64, 0i64, w, 0i64, 0i64);
                             continue;
@@ -795,7 +853,15 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                             }
                         }
                     } else if i64_eq(kind, fk_list()) {
-                        return list_step(k, next, val);
+                        let go_r = list_step(k, next, val);
+                        if get(go_on()) {
+                            set(go_on(), false);
+                            let g = get(go_regs());
+                            (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                            continue;
+                        } else {
+                            return go_r;
+                        }
                     } else if i64_eq(kind, fk_letrec()) {
                         let e = frame_field(k, 2i64);
                         let pos = fixnum_value(frame_field(k, 1i64));
@@ -831,13 +897,29 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
                         if i64_lt(i, 0i64) {
                             failed_with_x(str_lit("the engine: extract of a field the product has not"));
-                            return failed_at(-1i64, 0i64, k);
+                            let go_r = failed_at(-1i64, 0i64, k);
+                            if get(go_on()) {
+                                set(go_on(), false);
+                                let g = get(go_regs());
+                                (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                                continue;
+                            } else {
+                                return go_r;
+                            }
                         } else {
                             (mode, node, k, val, f, args) = (1i64, 0i64, next, obj_ref(val, i64_plus(i, 1i64)), 0i64, 0i64);
                             continue;
                         }
                     } else if i64_eq(kind, fk_tagcase()) {
-                        return tagcase_step(k, next, val);
+                        let go_r = tagcase_step(k, next, val);
+                        if get(go_on()) {
+                            set(go_on(), false);
+                            let g = get(go_regs());
+                            (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                            continue;
+                        } else {
+                            return go_r;
+                        }
                     } else if i64_eq(kind, fk_ptag()) {
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
                         match *tagcase_ {
@@ -875,14 +957,38 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         (mode, node, env, k, val, f, args) = (0i64, code_index(frame_field(k, 0i64)), frame_field(k, 1i64), next, 0i64, 0i64, 0i64);
                         continue;
                     } else if i64_eq(kind, fk_abort()) {
-                        return abort_to(fixnum_value(frame_field(k, 0i64)), next, val);
+                        let go_r = abort_to(fixnum_value(frame_field(k, 0i64)), next, val);
+                        if get(go_on()) {
+                            set(go_on(), false);
+                            let g = get(go_regs());
+                            (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                            continue;
+                        } else {
+                            return go_r;
+                        }
                     } else {
                         failed_with_x(str_lit("the engine: a frame of no kind"));
-                        return failed_at(-1i64, 0i64, k);
+                        let go_r = failed_at(-1i64, 0i64, k);
+                        if get(go_on()) {
+                            set(go_on(), false);
+                            let g = get(go_regs());
+                            (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                            continue;
+                        } else {
+                            return go_r;
+                        }
                     }
                 }
             } else {
-                return apply_step(node, env, f, args, k);
+                let go_r = apply_step(node, env, f, args, k);
+                if get(go_on()) {
+                    set(go_on(), false);
+                    let g = get(go_regs());
+                    (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
+                    continue;
+                } else {
+                    return go_r;
+                }
             }
         }
     }
@@ -911,7 +1017,7 @@ pub fn gc_run(mode: i64, node: i64, env: i64, k: i64, val: i64, f: i64, args: i6
     flatarray_set_i64_x(r, 3i64, f);
     flatarray_set_i64_x(r, 4i64, args);
     collect_x(r, get(globals()), consts(), i64_plus(need, reserve()));
-    run(mode, node, flatarray_ref_i64(r, 0i64), flatarray_ref_i64(r, 1i64), flatarray_ref_i64(r, 2i64), flatarray_ref_i64(r, 3i64), flatarray_ref_i64(r, 4i64))
+    next_step_x(mode, node, flatarray_ref_i64(r, 0i64), flatarray_ref_i64(r, 1i64), flatarray_ref_i64(r, 2i64), flatarray_ref_i64(r, 3i64), flatarray_ref_i64(r, 4i64))
 }
 
 /// A value of a call's, a `let`'s or a product's parts: the next part, or
@@ -925,30 +1031,30 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
     match *tagcase_ {
         Node::NCall(at, count) => {
             if i64_lt(pos, count) {
-                run(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
                 let xs = reverse_words_x(got, w_nil());
-                run(2i64, nd, env, next, 0i64, pair_car(xs), pair_cdr(xs))
+                next_step_x(2i64, nd, env, next, 0i64, pair_car(xs), pair_cdr(xs))
             }
         }
         Node::NLet(at, count, body) => {
             if i64_lt(pos, count) {
-                run(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
                 let e = alloc_x(ob_env(), i64_plus(count, 1i64));
                 obj_set_x(e, 0i64, env);
                 fill_from_reversed_x(e, count, got);
-                run(0i64, body, e, next, 0i64, 0i64, 0i64)
+                next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
             }
         }
         Node::NProduct(labels, at, count) => {
             if i64_lt(pos, count) {
-                run(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
                 let p = alloc_x(ob_product(), i64_plus(count, 1i64));
                 obj_set_x(p, 0i64, fixnum(labels));
                 fill_from_reversed_x(p, count, got);
-                run(1i64, 0i64, env, next, p, 0i64, 0i64)
+                next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
             }
         }
         _ => {
@@ -975,7 +1081,7 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                 let e = alloc_x(ob_env(), 2i64);
                 obj_set_x(e, 0i64, env);
                 obj_set_x(e, 1i64, val);
-                run(0i64, default, e, next, 0i64, 0i64, 0i64)
+                next_step_x(0i64, default, e, next, 0i64, 0i64, 0i64)
             } else {
                 let tagcase_ = armx_at(found);
                 match *tagcase_ {
@@ -989,13 +1095,13 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                             let e = alloc_x(ob_env(), 2i64);
                             obj_set_x(e, 0i64, env);
                             obj_set_x(e, 1i64, whole);
-                            run(0i64, body, e, next, 0i64, 0i64, 0i64)
+                            next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         } else {
                             let n = i64_minus(obj_size(whole), 1i64);
                             let e = alloc_x(ob_env(), i64_plus(n, 1i64));
                             slots_copied_x(e, whole, 1i64, i64_plus(n, 1i64));
                             obj_set_x(e, 0i64, env);
-                            run(0i64, body, e, next, 0i64, 0i64, 0i64)
+                            next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         }
                     }
                 }
@@ -1036,7 +1142,7 @@ pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
         stopped_x(-1i64, 0i64, k)
     } else {
         let p = frame_after(k, n);
-        run(2i64, -1i64, 0i64, frame_next(p), 0i64, frame_field(p, 1i64), pair_x(v, w_nil()))
+        next_step_x(2i64, -1i64, 0i64, frame_next(p), 0i64, frame_field(p, 1i64), pair_x(v, w_nil()))
     }
 }
 
@@ -1051,13 +1157,13 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                     let e = alloc_x(ob_env(), 2i64);
                     obj_set_x(e, 0i64, obj_ref(f, 1i64));
                     obj_set_x(e, 1i64, args);
-                    run(0i64, body, e, k, 0i64, 0i64, 0i64)
+                    next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
                 } else {
                     let n = list_count(args, 0i64);
                     let e = alloc_x(ob_env(), i64_plus(n, 1i64));
                     obj_set_x(e, 0i64, obj_ref(f, 1i64));
                     args_env_x(e, 1i64, args, n);
-                    run(0i64, body, e, k, 0i64, 0i64, 0i64)
+                    next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
                 }
             }
             _ => {
@@ -1071,7 +1177,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         let p = alloc_x(ob_data(), i64_plus(n, 1i64));
         obj_set_x(p, 0i64, obj_ref(f, 0i64));
         args_env_x(p, 1i64, args, n);
-        run(1i64, 0i64, 0i64, k, p, 0i64, 0i64)
+        next_step_x(1i64, 0i64, 0i64, k, p, 0i64, 0i64)
     } else if is_obj_p(f, ob_cont()) {
         let top = obj_ref(f, 0i64);
         let n = fixnum_value(obj_ref(f, 1i64));
@@ -1083,7 +1189,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         if i64_lt(n, 0i64) {
             // A whole continuation (`cwcc`): the frames are never changed,
             // so the run goes on at them, the current ones dropped.
-            run(1i64, 0i64, 0i64, top, pair_car(args), 0i64, 0i64)
+            next_step_x(1i64, 0i64, 0i64, top, pair_car(args), 0i64, 0i64)
         } else if i64_lt(heap_room(), i64_plus(room, reserve())) {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
         } else if (truthy_p(obj_ref(f, 3i64)) && truthy_p(obj_ref(f, 2i64))) {
@@ -1095,14 +1201,14 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             failed_at(node, env, k)
         } else {
             obj_set_x(f, 2i64, w_true());
-            run(1i64, 0i64, 0i64, frames_copied_x(top, n, k), pair_car(args), 0i64, 0i64)
+            next_step_x(1i64, 0i64, 0i64, frames_copied_x(top, n, k), pair_car(args), 0i64, 0i64)
         }
     } else if is_imm_p(f, imm_prim()) {
         let op = immediate_value(f);
         if i64_eq(op, op_make_tag()) {
             let t = get(tags_made());
             set(tags_made(), i64_plus(t, 1i64));
-            run(1i64, 0i64, 0i64, k, immediate(imm_tag(), t), 0i64, 0i64)
+            next_step_x(1i64, 0i64, 0i64, k, immediate(imm_tag(), t), 0i64, 0i64)
         } else if i64_eq(op, op_with_mark()) {
             // The thunk called with the mark on the continuation: in place of
             // one of the key there, in tail position, as Scheme's.
@@ -1114,15 +1220,15 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             } else {
                 frame_x(fk_mark(), k, 2i64, key, v, 0i64, 0i64)
             };
-            run(2i64, -1i64, 0i64, k2, 0i64, thunk, w_nil())
+            next_step_x(2i64, -1i64, 0i64, k2, 0i64, thunk, w_nil())
         } else if i64_eq(op, op_first_mark()) {
-            run(1i64, 0i64, 0i64, k, first_mark_in(k, pair_car(args), pair_car(pair_cdr(args))), 0i64, 0i64)
+            next_step_x(1i64, 0i64, 0i64, k, first_mark_in(k, pair_car(args), pair_car(pair_cdr(args))), 0i64, 0i64)
         } else if i64_eq(op, op_current_marks()) {
             let need = i64_star(6i64, i64_plus(marks_count(k, pair_car(args), -1i64, 0i64), 1i64));
             if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                run(1i64, 0i64, 0i64, k, marks_in(k, pair_car(args), -1i64, w_nil()), 0i64, 0i64)
+                next_step_x(1i64, 0i64, 0i64, k, marks_in(k, pair_car(args), -1i64, w_nil()), 0i64, 0i64)
             }
         } else if i64_eq(op, op_marks_of()) {
             let c = pair_car(args);
@@ -1131,7 +1237,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                run(1i64, 0i64, 0i64, k, marks_in(obj_ref(c, 0i64), key, fixnum_value(obj_ref(c, 1i64)), w_nil()), 0i64, 0i64)
+                next_step_x(1i64, 0i64, 0i64, k, marks_in(obj_ref(c, 0i64), key, fixnum_value(obj_ref(c, 1i64)), w_nil()), 0i64, 0i64)
             }
         } else if i64_eq(op, op_apply()) {
             // `(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
@@ -1146,7 +1252,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             } else if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(xs, w_nil()), w_nil()))
+                next_step_x(2i64, -1i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(xs, w_nil()), w_nil()))
             }
         } else if i64_eq(op, op_abort()) {
             abort_to(tag_number(pair_car(args)), k, pair_car(pair_cdr(args)))
@@ -1168,7 +1274,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 } else {
                     w_false()
                 });
-                run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
+                next_step_x(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
             }
         } else if i64_eq(op, op_cwcc()) {
             // `(cwcc f)` (C220): `f` given the whole continuation, every
@@ -1178,7 +1284,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             obj_set_x(c, 1i64, fixnum(-1i64));
             obj_set_x(c, 2i64, w_false());
             obj_set_x(c, 3i64, w_false());
-            run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
+            next_step_x(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
         } else if i64_eq(op, op_suspend()) {
             let tag = tag_number(pair_car(args));
             let n = frames_to(k, tag, 0i64);
@@ -1191,7 +1297,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 obj_set_x(c, 1i64, fixnum(n));
                 obj_set_x(c, 2i64, w_false());
                 obj_set_x(c, 3i64, w_true());
-                run(2i64, -1i64, 0i64, frame_x(fk_abort(), k, 1i64, fixnum(tag), 0i64, 0i64, 0i64), 0i64, pair_car(pair_cdr(args)), pair_x(c, w_nil()))
+                next_step_x(2i64, -1i64, 0i64, frame_x(fk_abort(), k, 1i64, fixnum(tag), 0i64, 0i64, 0i64), 0i64, pair_car(pair_cdr(args)), pair_x(c, w_nil()))
             }
         } else {
             let need = op_need(op, args);
@@ -1202,7 +1308,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 if get(engine_failed()) {
                     failed_at(node, env, k)
                 } else {
-                    run(1i64, 0i64, 0i64, k, v, 0i64, 0i64)
+                    next_step_x(1i64, 0i64, 0i64, k, v, 0i64, 0i64)
                 }
             }
         }
