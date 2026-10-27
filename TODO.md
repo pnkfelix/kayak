@@ -784,8 +784,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         not bytes; a listing's relative path read from where kayak-cells
         runs (no lines if not found there).
      Register code from kayak's compiler (C248, `docs/research/
-        register-code.md`): stage 1 done; next, inlining and constant
-        globals (68 of the 72 differences from Fixpt's), then stage 2
+        register-code.md`): stage 1 done; inlining, unrolling and constant
+        globals done (C252: 11 differences left, `loop` and `closures`
+        behind on tier 6 for stage 2; not yet: globals holding constant
+        lists, a module's member re-exported and inlined); next, stage 2
         (closures, `letrec`, `tagcase`, `apply`, `list`), stage 3 (modules,
         regions, prompts, bloblets). Register code's line tables, tiers
         5-6's debug info: done (C249); `tak` on tier 6, 35% in its entry

@@ -66,6 +66,7 @@ pub enum Rloc {
     RlPending(i64),
     RlConst(&'static Rconst),
     RlTest(Str, List<&'static Rloc>, bool),
+    RlSeen(i64),
 }
 
 pub fn rl_reg(f0: i64) -> &'static Rloc {
@@ -100,7 +101,28 @@ pub fn rl_test(f0: Str, f1: List<&'static Rloc>, f2: bool) -> &'static Rloc {
     kayak_rt::heap_alloc(Rloc::RlTest(f0, f1, f2))
 }
 
+pub fn rl_seen(f0: i64) -> &'static Rloc {
+    kayak_rt::heap_alloc(Rloc::RlSeen(f0))
+}
+
 pub type Rlocs = List<&'static Rloc>;
+
+// What a body sees, said in its environment by names no program has
+// (C252): `%genv`, the globals it sees, as many as were defined (an
+// inlined body's, as when it was defined); `%const:G`, global `G`'s value
+// a fast version folds; `%inlining:G`, a procedure whose body is being
+// inlined, and so not inlined again inside it.
+pub fn genv_name() -> Str {
+    str_lit("%genv")
+}
+
+pub fn const_name(g: Str) -> Str {
+    string_append(str_lit("%const:"), g)
+}
+
+pub fn inlining_name(g: Str) -> Str {
+    string_append(str_lit("%inlining:"), g)
+}
 
 pub enum Rbind {
     Rbind(Str, &'static Rloc),

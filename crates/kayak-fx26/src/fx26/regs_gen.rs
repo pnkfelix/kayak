@@ -849,6 +849,166 @@ pub fn r_own_self(g: &'static Rgen, env: Renv, f: &'static Cx, args: Cxs) -> Str
     }
 }
 
+// A call of global `f` taking `k` arguments, inlined (C252): its noted
+// body, if `f` names one seen here, not already being inlined, in a list.
+pub fn r_inlined(env: Renv, f: &'static Cx, k: i64) -> List<&'static Rinline> {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Cx::XVar(n, a) => {
+            if std_marked_p(n) {
+                nil::<&'static Rinline>()
+            } else {
+                let l = r_where(env, n);
+                if (null_p(l) || not(null_p(r_local_loc(env, inlining_name(n))))) {
+                    nil::<&'static Rinline>()
+                } else {
+                    let tagcase_ = car(l);
+                    match *tagcase_ {
+                        Rloc::RlGlobal(c) => {
+                            r_inline_named(get(cg_inlines()), n, k, r_genv(env))
+                        }
+                        _ => {
+                            let y = tagcase_;
+                            nil::<&'static Rinline>()
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            nil::<&'static Rinline>()
+        }
+    }
+}
+
+// How many bindings of `env` are named `n`.
+pub fn r_count_named(mut env: Renv, mut n: Str, mut k: i64) -> i64 {
+    loop {
+        if null_p(env) {
+            return k;
+        } else {
+            (env, k) = (cdr(env), {
+                let tagcase_ = car(env);
+                match *tagcase_ {
+                    Rbind::Rbind(m, l) => {
+                        if string_eq_p(m, n) {
+                            i64_plus(k, 1i64)
+                        } else {
+                            k
+                        }
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+// Whether any of `args` is a constant list (`nil`, as kayak knows them).
+pub fn r_any_const_list_p(env: Renv, args: Cxs) -> bool {
+    (not(null_p(args)) && ({
+        let k = r_known(env, car(args));
+        (not(null_p(k)) && {
+            let tagcase_ = car(k);
+            match *tagcase_ {
+                Rconst::RcNil() => {
+                    true
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        })
+    } || r_any_const_list_p(env, cdr(args))))
+}
+
+// A call of global `f` on `args` unrolled (C252, Fixpt's `r-unrolled`):
+// `f` noted to be unrolled, seen here, not unrolled 16 deep here, called
+// with a constant list: its body, in a list.
+pub fn r_unrolled(env: Renv, f: &'static Cx, args: Cxs) -> List<&'static Rinline> {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Cx::XVar(n, a) => {
+            if std_marked_p(n) {
+                nil::<&'static Rinline>()
+            } else {
+                let l = r_where(env, n);
+                if (null_p(l) || not({
+                    let tagcase_ = car(l);
+                    match *tagcase_ {
+                        Rloc::RlGlobal(c) => {
+                            true
+                        }
+                        _ => {
+                            let y = tagcase_;
+                            false
+                        }
+                    }
+                }) || i64_gt_eq(r_count_named(env, inlining_name(n), 0i64), r_unroll_depth()) || not(r_any_const_list_p(env, args))) {
+                    nil::<&'static Rinline>()
+                } else {
+                    r_inline_named(get(cg_unrolls()), n, size(args), r_genv(env))
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            nil::<&'static Rinline>()
+        }
+    }
+}
+
+// An inlined body's environment: its parameters, `params`; what the body
+// around folds and inlines already (`%const:` and `%inlining:`, C252); the
+// globals it saw, `at` of them; and its own name, being inlined.
+pub fn r_carried(mut env: Renv, mut acc: Renv) -> Renv {
+    loop {
+        if null_p(env) {
+            return acc;
+        } else {
+            (env, acc) = (cdr(env), {
+                let tagcase_ = car(env);
+                match *tagcase_ {
+                    Rbind::Rbind(n, l) => {
+                        if (has_prefix_p(n, str_lit("%const:")) || has_prefix_p(n, str_lit("%inlining:"))) {
+                            kayak_rt::heap_cons(car(env), acc)
+                        } else {
+                            acc
+                        }
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn r_inline_env(params: Renv, env: Renv, name: Str, at: i64) -> Renv {
+    onto(params, kayak_rt::heap_cons(rbind(genv_name(), rl_seen(at)), kayak_rt::heap_cons(rbind(inlining_name(name), rl_loop()), r_carried(env, nil::<&'static Rbind>()))))
+}
+
+// A call's inlined parameters: where the body finds each, the body's scope,
+// and the arguments for the call where the guard fails.
+pub enum Rbound {
+    Rbound(Renv, Cenv, List<&'static Rarg>),
+}
+
+pub fn rbound(f0: Renv, f1: Cenv, f2: List<&'static Rarg>) -> &'static Rbound {
+    kayak_rt::heap_alloc(Rbound::Rbound(f0, f1, f2))
+}
+
+// What `g` makes, for a body where the procedure running is not known.
+pub fn r_unknowing(g: &'static Rgen) -> &'static Rgen {
+    let tagcase_ = g;
+    match *tagcase_ {
+        Rgen::Rgen(xs, leaf, nr, ns, ms, ls, me, st, cx) => {
+            rgen(xs, leaf, nr, ns, ms, ls, nil::<&'static This>(), st, cx)
+        }
+    }
+}
+
 // An operand of a call or call-out: an expression, a constant, a frame
 // slot's value, a free value of the closure running.
 pub enum Rarg {
@@ -1477,7 +1637,19 @@ pub fn r_standard_app(g: &'static Rgen, name: Str, args: Cxs, env: Renv, te: Cen
 /// A call: the arguments into REG1…REGn, the procedure in RESULT.
 pub fn r_call(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te: Cenv, tail: bool) -> () {
     let n = size(args);
-    if g_leaf(g) {
+    let u = r_unrolled(env, f, args);
+    let i = if null_p(u) {
+        r_inlined(env, f, size(args))
+    } else {
+        u
+    };
+    if not(null_p(i)) {
+        if (not(x_assuming(g_ctx(g))) && g_leaf(g)) {
+            r_decline(g)
+        } else {
+            r_inline(g, car(i), not(null_p(u)), f, args, a, env, te, tail)
+        }
+    } else if g_leaf(g) {
         if (tail && i64_lt(n, register_regs())) {
             r_leaf_tail_call(g, f, args, a, env, te)
         } else {
@@ -1489,6 +1661,126 @@ pub fn r_call(g: &'static Rgen, f: &'static Cx, args: Cxs, a: i64, env: Renv, te
     } else {
         r_args(g, r_exp_args(args), env, te, kayak_rt::heap_cons(f, kayak_rt::nil()));
         r_invoke(g, n, tail, r_conv_at(a))
+    }
+}
+
+/// A call of a small global procedure, inlined (C252, Fixpt's
+/// `r-inline`): the arguments made and kept (one a variable in the frame
+/// or the closure, or a constant, used where it is); then, if the global
+/// still holds a closure of the word its body was compiled to, the body,
+/// in a scope of its own where the parameters are the arguments and the
+/// globals those it saw; else the call. A redefinition writes the
+/// global: the call.
+pub fn r_inline(g: &'static Rgen, i: &'static Rinline, unrolled: bool, f: &'static Cx, args: Cxs, a: i64, env: Renv, te: Cenv, tail: bool) -> () {
+    let tagcase_ = i;
+    match *tagcase_ {
+        Rinline::Rinline(name, ps, body, at) => {
+            let regs = get(g_nreg(g));
+            let slots = get(g_nslot(g));
+            let bound = r_inline_args(g, ps, args, env, te);
+            let call = r_new_label(g);
+            let end = r_new_label(g);
+            let assumed = ((unrolled && not(null_p(r_local_loc(env, inlining_name(name))))) || r_assume(g, name));
+            if assumed {
+                ()
+            } else {
+                r_guard(g, name, call)
+            };
+            {
+                let tagcase_ = bound;
+                match *tagcase_ {
+                    Rbound::Rbound(benv, bte, bargs) => {
+                        r_exp(r_unknowing(g), body, r_inline_env(benv, env, name, at), bte, tail);
+                        if assumed {
+                            ()
+                        } else {
+                            if tail {
+                                ()
+                            } else {
+                                r_emit(g, ri_branch(str_lit("branch"), end))
+                            };
+                            r_emit(g, ri_label(call));
+                            r_args(g, bargs, env, te, kayak_rt::heap_cons(f, kayak_rt::nil()));
+                            r_invoke(g, size(args), tail, r_conv_at(a));
+                            r_emit(g, ri_label(end))
+                        }
+                    }
+                }
+            };
+            r_restore(g, regs, slots)
+        }
+    }
+}
+
+/// Each parameter bound to its argument, in order: where the body finds
+/// it, the body's scope, and the call's arguments where the guard
+/// fails.
+pub fn r_inline_args(g: &'static Rgen, ps: Strings, args: Cxs, env: Renv, te: Cenv) -> &'static Rbound {
+    if (null_p(ps) || null_p(args)) {
+        rbound(nil::<&'static Rbind>(), nil::<&'static Centry>(), nil::<&'static Rarg>())
+    } else {
+        let p = car(ps);
+        let x = car(args);
+        let k = r_known(env, x);
+        let l = if null_p(k) {
+            r_var_loc(env, x)
+        } else {
+            the::<Rlocs>(kayak_rt::heap_cons(rl_const(car(k)), kayak_rt::nil()))
+        };
+        let keeps = (not(null_p(l)) && {
+            let tagcase_ = car(l);
+            match *tagcase_ {
+                Rloc::RlSlot(s) => {
+                    true
+                }
+                Rloc::RlFree(j) => {
+                    true
+                }
+                Rloc::RlConst(c) => {
+                    true
+                }
+                Rloc::RlReg(r) => {
+                    x_assuming(g_ctx(g))
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        });
+        let kept = if keeps {
+            l
+        } else {
+            nil::<&'static Rloc>()
+        };
+        let here = if null_p(kept) {
+            r_exp(g, x, env, te, false);
+            r_keep(g, g_leaf(g))
+        } else {
+            car(kept)
+        };
+        let arg = if not(null_p(k)) {
+            a_v(rconst_lit(car(k)))
+        } else if null_p(kept) {
+            let tagcase_ = here;
+            match *tagcase_ {
+                Rloc::RlSlot(s) => {
+                    a_slot(s)
+                }
+                _ => {
+                    let y = tagcase_;
+                    a_e(x)
+                }
+            }
+        } else {
+            a_e(x)
+        };
+        let tagcase_ = r_inline_args(g, cdr(ps), cdr(args), env, te);
+        match *tagcase_ {
+            Rbound::Rbound(benv, bte, bargs) => {
+                rbound(r_bind(p, here, benv), r_local(bte, p), kayak_rt::heap_cons(arg, bargs))
+            }
+        }
     }
 }
 

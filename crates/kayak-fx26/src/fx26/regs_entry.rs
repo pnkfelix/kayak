@@ -137,7 +137,7 @@ pub fn r_store_params(mut g: &'static Rgen, mut i: i64, mut n: i64, mut at: i64)
 
 // The body as a leaf, or not, as `leaf` says, in a list; none if declined.
 // `assuming`: a fast version's, its assumptions into `assumed`.
-pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, leaf: bool) -> List<&'static Rgen> {
+pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, folded: Renv, leaf: bool) -> List<&'static Rgen> {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
@@ -160,7 +160,7 @@ pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings
             let g = rgen(kayak_rt::heap_new(nil::<&'static Ritem>()), leaf, kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(labels), me, the::<i64>(0i64), cx);
             r_opn(g, str_lit("args"), n);
             entry_pos_x(g, at, 0i64);
-            let env = r_env_of(g, inner, leaf);
+            let env = onto(r_env_of(g, inner, leaf), folded);
             if leaf {
                 set(g_nreg(g), n)
             } else {
@@ -200,7 +200,7 @@ pub fn twin_view(t: &'static Twin, assuming: bool, tail_leaves: bool) -> &'stati
 // A lambda's body in register code, in a list; none where declined. A leaf
 // if nothing in it calls; else, where its only calls are plain tail calls,
 // a leaf first, and if that declines (out of registers), not.
-pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>) -> List<&'static Rgen> {
+pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, folded: Renv) -> List<&'static Rgen> {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
@@ -209,11 +209,11 @@ pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>) 
             if i64_gt(n, register_regs()) {
                 nil::<&'static Rgen>()
             } else if (leaf || r_collects(twin_view(t, assuming, true), body, inner, me, true)) {
-                r_register_body_as(t, assuming, assumed, leaf)
+                r_register_body_as(t, assuming, assumed, folded, leaf)
             } else {
-                let gs = r_register_body_as(t, assuming, assumed, true);
+                let gs = r_register_body_as(t, assuming, assumed, folded, true);
                 if null_p(gs) {
-                    r_register_body_as(t, assuming, assumed, false)
+                    r_register_body_as(t, assuming, assumed, folded, false)
                 } else {
                     gs
                 }
@@ -426,8 +426,47 @@ pub fn r_fast_may_pay_p(t: &'static Twin) -> bool {
     }
 }
 
+// The constant globals `t`'s body names, in its free names' order, each
+// bound to its value as a fast version folds it (`%const:G`, C252; Fixpt's
+// `r-consts-named`).
+pub fn r_consts_of(mut ns: Strings, mut acc: Renv) -> Renv {
+    loop {
+        if null_p(ns) {
+            return reverse(acc);
+        } else {
+            let k = if string_member_p(car(ns), get(cg_globals())) {
+                rgconst_of(get(cg_consts()), car(ns))
+            } else {
+                nil::<&'static Rconst>()
+            };
+            (ns, acc) = (cdr(ns), if (null_p(k) || not(null_p(r_local_loc(acc, const_name(car(ns)))))) {
+                acc
+            } else {
+                kayak_rt::heap_cons(rbind(const_name(car(ns)), rl_const(car(k))), acc)
+            });
+            continue;
+        }
+    }
+}
+
+pub fn r_consts_named(t: &'static Twin) -> Renv {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Twin::Twin(w, ps, body, inner, me, own, at) => {
+            r_consts_of(c_free(body, map(lambda1s(move |e: &'static Centry| {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Centry::Centry(n, l) => {
+                        n
+                    }
+                }
+            }), inner), nil::<Str>()), nil::<&'static Rbind>())
+        }
+    }
+}
+
 pub fn r_plain_code(t: &'static Twin) -> List<&'static Rcode> {
-    let gs = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()));
+    let gs = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()), nil::<&'static Rbind>());
     if null_p(gs) {
         nil::<&'static Rcode>()
     } else {
@@ -439,13 +478,21 @@ pub fn r_plain_code(t: &'static Twin) -> List<&'static Rcode> {
 // what it held, behind a guard each; and, where one fails, as ever. Worth
 // it where the fast version is a leaf, or loops: else only the plain one.
 pub fn r_fast_code(t: &'static Twin) -> List<&'static Rcode> {
-    let assumed = the::<Ref<Strings>>(kayak_rt::heap_new(nil::<Str>()));
-    let fast = r_register_body(t, true, assumed);
+    let consts = r_consts_named(t);
+    let assumed = the::<Ref<Strings>>(kayak_rt::heap_new(the::<Strings>(reverse(map(lambda1s(move |b: &'static Rbind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Rbind::Rbind(n, l) => {
+                after_prefix(n, str_lit("%const:"))
+            }
+        }
+    }), consts)))));
+    let fast = r_register_body(t, true, assumed, consts);
     let assumptions = the::<Strings>(reverse(get(assumed)));
     if (null_p(assumptions) || null_p(fast) || not((g_leaf(car(fast)) || get(x_looped(g_ctx(car(fast))))))) {
         r_plain_code(t)
     } else {
-        let plain = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()));
+        let plain = r_register_body(t, false, kayak_rt::heap_new(nil::<Str>()), nil::<&'static Rbind>());
         if null_p(plain) {
             nil::<&'static Rcode>()
         } else {
@@ -493,5 +540,38 @@ pub fn regs_form_twins_x() -> () {
     let ts = the::<List<&'static Twin>>(reverse(get(cg_twins())));
     set(cg_twins(), nil::<&'static Twin>());
     r_twins_made_x(ts)
+}
+
+// After a typed definition of `n` as the lambda of `ps` and `body`: noted to
+// be inlined where called, if small (`r-room`), naming neither itself nor
+// `stay-cellular` (C252, Fixpt's `c-record-inline`); as it sees the
+// globals defined so far.
+pub fn r_note_inline_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
+    if (not(c_mentions_p(body, str_lit("stay-cellular"))) && i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64)) {
+        if not(c_mentions_p(body, n)) {
+            set(cg_inlines(), kayak_rt::heap_cons(rinline(n, ps, body, size(get(cg_globals()))), get(cg_inlines())))
+        } else if not((fact_at_p(get(cg_facts()), at, str_lit("suspends")) || {
+            let d = define_at(get(cg_define_at()), at);
+            (i64_gt_eq(d, 0i64) && fact_at_p(get(cg_facts()), d, str_lit("suspends")))
+        })) {
+            set(cg_unrolls(), kayak_rt::heap_cons(rinline(n, ps, body, size(get(cg_globals()))), get(cg_unrolls())))
+        } else {
+            ()
+        }
+    } else {
+        ()
+    }
+}
+
+// After a top-level definition of `n` as `x`: whether `n` is a constant now
+// (C252, Fixpt's `c-note-constant!`).
+pub fn r_note_constant_x(n: Str, x: &'static Cx) -> () {
+    let k = r_const_of(x);
+    set(cg_consts(), rgconsts_without(get(cg_consts()), n));
+    if null_p(k) {
+        ()
+    } else {
+        set(cg_consts(), kayak_rt::heap_cons(rgconst(n, car(k)), get(cg_consts())))
+    }
 }
 

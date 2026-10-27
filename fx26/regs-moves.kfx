@@ -24,8 +24,21 @@
   (rl-loop)
   (rl-pending i64)
   (rl-const rconst)
-  (rl-test string (listof rloc acyclic) bool))
+  (rl-test string (listof rloc acyclic) bool)
+  ;; No name's place either: how many of the globals a body sees, bound to
+  ;; `%genv` where an inlined body's are the ones defined when it was
+  ;; (C252).
+  (rl-seen i64))
 (define-type rlocs (listof rloc acyclic))
+
+"What a body sees, said in its environment by names no program has
+ (C252): `%genv`, the globals it sees, as many as were defined (an
+ inlined body's, as when it was defined); `%const:G`, global `G`'s value
+ a fast version folds; `%inlining:G`, a procedure whose body is being
+ inlined, and so not inlined again inside it."
+(define genv-name string "%genv")
+(define const-name (subr kfx (string) string) (lambda (g) (string-append "%const:" g)))
+(define inlining-name (subr kfx (string) string) (lambda (g) (string-append "%inlining:" g)))
 
 (define-datatype rbind (rbind string rloc))
 (define-type renv (listof rbind acyclic))

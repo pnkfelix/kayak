@@ -148,3 +148,12 @@ its cells.
   keeps its caller from being a leaf).
 - **Next**: inlining and constant globals (most of the differences, and
   `bench/helpers` and `bench/lists`' tier 6); then stage 2.
+
+## Inlining, unrolling, constant globals (C252)
+
+Small global procedures inlined behind guards, small self-calling ones
+unrolled where called with a constant list (`nil` only, yet), constant
+globals folded in fast versions. What Fixpt keeps in globals set and
+restored around an inlined body is said in the register environment
+(`%genv`, `%inlining:G`, `%const:G`). 573 register words Fixpt's
+exactly, 11 differ. Next: stage 2.

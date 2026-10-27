@@ -57,8 +57,8 @@
 
 "The body as a leaf, or not, as `leaf` says, in a list; none if declined.
  `assuming`: a fast version's, its assumptions into `assumed`."
-(define r-register-body-as (subr gen (twin bool (ref strings @g) bool) (listof rgen acyclic))
-  (lambda (t assuming assumed leaf)
+(define r-register-body-as (subr gen (twin bool (ref strings @g) renv bool) (listof rgen acyclic))
+  (lambda (t assuming assumed folded leaf)
     (tagcase t
       (twin (w ps body inner me own at)
         (let* ((n (size ps))
@@ -71,7 +71,7 @@
             ;; The entry's code, its frame made and its parameters stored,
             ;; the lambda's own, in its line table (C249).
             (entry-pos! g at 0)
-            (let ((env (r-env-of g inner leaf)))
+            (let ((env (onto (r-env-of g inner leaf) folded)))
               (begin
                 (if leaf (set (g-nreg g) n) (begin (entry-pos! g at 2) (r-emit g (ri-frame "save")) (r-store-params g 0 n at)))
                 ;; The body's starts: the procedure's own (0), for its loops,
@@ -88,18 +88,18 @@
 "A lambda's body in register code, in a list; none where declined. A leaf
  if nothing in it calls; else, where its only calls are plain tail calls,
  a leaf first, and if that declines (out of registers), not."
-(define r-register-body (subr gen (twin bool (ref strings @g)) (listof rgen acyclic))
-  (lambda (t assuming assumed)
+(define r-register-body (subr gen (twin bool (ref strings @g) renv) (listof rgen acyclic))
+  (lambda (t assuming assumed folded)
     (tagcase t
       (twin (w ps body inner me own at)
         (let* ((n (size ps))
                (leaf (and (i64<= n register-regs) (not (r-collects (twin-view t assuming #f) body inner me #t)))))
           (cond ((i64> n register-regs) nil)
                 ((or leaf (r-collects (twin-view t assuming #t) body inner me #t))
-                 (r-register-body-as t assuming assumed leaf))
+                 (r-register-body-as t assuming assumed folded leaf))
                 (else
-                 (let ((gs (r-register-body-as t assuming assumed #t)))
-                   (if (null? gs) (r-register-body-as t assuming assumed #f) gs)))))))))
+                 (let ((gs (r-register-body-as t assuming assumed folded #t)))
+                   (if (null? gs) (r-register-body-as t assuming assumed folded #f) gs)))))))))
 
 (define r-assemble (subr gen (rgen) rcode)
   (lambda (g) (rcode (the ritems (reverse (get (g-items g)))) (get (g-mslot g)))))
@@ -191,21 +191,42 @@
         (or (and (not (string=? own "")) (c-mentions? body own))
             (not (r-collects (twin-view t #t #f) body inner me #t)))))))
 
+"The constant globals `t`'s body names, in its free names' order, each
+ bound to its value as a fast version folds it (`%const:G`, C252; Fixpt's
+ `r-consts-named`)."
+(define-rec
+  (r-consts-of (subr gen (strings renv) renv)
+    (lambda (ns acc)
+      (if (null? ns)
+          (reverse acc)
+          (let ((k (if (string-member? (car ns) (get cg-globals)) (rgconst-of (get cg-consts) (car ns)) nil)))
+            (r-consts-of (cdr ns)
+                         (if (or (null? k) (not (null? (r-local-loc acc (const-name (car ns))))))
+                             acc
+                             (cons (rbind (const-name (car ns)) (rl-const (car k))) acc))))))))
+(define r-consts-named (subr gen (twin) renv)
+  (lambda (t)
+    (tagcase t
+      (twin (w ps body inner me own at)
+        (r-consts-of (c-free body (map (lambda ((e centry)) (tagcase e (centry (n l) n))) inner) nil) nil)))))
+
 (define r-plain-code (subr gen (twin) (listof rcode acyclic))
-  (lambda (t) (let ((gs (r-register-body t #f (new nil)))) (if (null? gs) nil (list (r-assemble (car gs)))))))
+  (lambda (t) (let ((gs (r-register-body t #f (new nil) nil))) (if (null? gs) nil (list (r-assemble (car gs)))))))
 
 "The body compiled assuming every global it calls itself through holds
  what it held, behind a guard each; and, where one fails, as ever. Worth
  it where the fast version is a leaf, or loops: else only the plain one."
 (define r-fast-code (subr gen (twin) (listof rcode acyclic))
   (lambda (t)
-    (let* ((assumed (the (ref strings @g) (new nil)))
-           (fast (r-register-body t #t assumed))
+    (let* ((consts (r-consts-named t))
+           ;; The constants it names folded, assumed first (C252).
+           (assumed (the (ref strings @g) (new (the strings (reverse (map (lambda ((b rbind)) (tagcase b (rbind (n l) (after-prefix n "%const:")))) consts))))))
+           (fast (r-register-body t #t assumed consts))
            (assumptions (the strings (reverse (get assumed)))))
       (if (or (null? assumptions) (null? fast)
               (not (or (g-leaf (car fast)) (get (x-looped (g-ctx (car fast)))))))
           (r-plain-code t)
-          (let ((plain (r-register-body t #f (new nil))))
+          (let ((plain (r-register-body t #f (new nil) nil)))
             (if (null? plain) nil (list (r-versions (car fast) (car plain) assumptions (tagcase t (twin (w ps body inner me own at) at))))))))))
 
 "A twin's register code, noted under its word's name, unless declined."
@@ -224,3 +245,29 @@
   (lambda ()
     (let ((ts (the (listof twin acyclic) (reverse (get cg-twins)))))
       (begin (set cg-twins nil) (r-twins-made! ts)))))
+
+"After a typed definition of `n` as the lambda of `ps` and `body`: noted to
+ be inlined where called, if small (`r-room`), naming neither itself nor
+ `stay-cellular` (C252, Fixpt's `c-record-inline`); as it sees the
+ globals defined so far."
+(define r-note-inline! (subr gen (string strings cx i64) unit)
+  (lambda (n ps body at)
+    (if (and (not (c-mentions? body "stay-cellular")) (i64>= (r-room body r-inline-limit #f) 0))
+        (cond ((not (c-mentions? body n))
+               (set cg-inlines (cons (rinline n ps body (size (get cg-globals))) (get cg-inlines))))
+              ;; Calling itself: unrolled, where its body neither suspends
+              ;; nor runs an effect not known (Fixpt's summary under 3).
+              ((not (or (fact-at? (get cg-facts) at "suspends")
+                        (let ((d (define-at (get cg-define-at) at))) (and (i64>= d 0) (fact-at? (get cg-facts) d "suspends")))))
+               (set cg-unrolls (cons (rinline n ps body (size (get cg-globals))) (get cg-unrolls))))
+              (else #u))
+        #u)))
+
+"After a top-level definition of `n` as `x`: whether `n` is a constant now
+ (C252, Fixpt's `c-note-constant!`)."
+(define r-note-constant! (subr gen (string cx) unit)
+  (lambda (n x)
+    (let ((k (r-const-of x)))
+      (begin
+        (set cg-consts (rgconsts-without (get cg-consts) n))
+        (if (null? k) #u (set cg-consts (cons (rgconst n (car k)) (get cg-consts))))))))

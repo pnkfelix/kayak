@@ -277,6 +277,75 @@
 
 ;;; ------------------------------------------------------------- operands
 
+"A call of global `f` taking `k` arguments, inlined (C252): its noted
+ body, if `f` names one seen here, not already being inlined, in a list."
+(define r-inlined (subr gen (renv cx i64) (listof rinline acyclic))
+  (lambda (env f k)
+    (tagcase f
+      (x-var (n a)
+        (if (std-marked? n)
+            nil
+            (let ((l (r-where env n)))
+              (if (or (null? l) (not (null? (r-local-loc env (inlining-name n)))))
+                  nil
+                  (tagcase (car l)
+                    (rl-global (c) (r-inline-named (get cg-inlines) n k (r-genv env)))
+                    (else y nil))))))
+      (else y nil))))
+
+"How many bindings of `env` are named `n`."
+(define-rec
+  (r-count-named (subr kfx (renv string i64) i64)
+    (lambda (env n k) (if (null? env) k (r-count-named (cdr env) n (tagcase (car env) (rbind (m l) (if (string=? m n) (i64+ k 1) k))))))))
+
+"Whether any of `args` is a constant list (`nil`, as kayak knows them)."
+(define-rec
+  (r-any-const-list? (subr gen (renv cxs) bool)
+    (lambda (env args)
+      (and (not (null? args))
+           (or (let ((k (r-known env (car args)))) (and (not (null? k)) (tagcase (car k) (rc-nil () #t) (else y #f))))
+               (r-any-const-list? env (cdr args)))))))
+
+"A call of global `f` on `args` unrolled (C252, Fixpt's `r-unrolled`):
+ `f` noted to be unrolled, seen here, not unrolled 16 deep here, called
+ with a constant list: its body, in a list."
+(define r-unrolled (subr gen (renv cx cxs) (listof rinline acyclic))
+  (lambda (env f args)
+    (tagcase f
+      (x-var (n a)
+        (if (std-marked? n)
+            nil
+            (let ((l (r-where env n)))
+              (if (or (null? l) (not (tagcase (car l) (rl-global (c) #t) (else y #f)))
+                      (i64>= (r-count-named env (inlining-name n) 0) r-unroll-depth)
+                      (not (r-any-const-list? env args)))
+                  nil
+                  (r-inline-named (get cg-unrolls) n (size args) (r-genv env))))))
+      (else y nil))))
+
+"An inlined body's environment: its parameters, `params`; what the body
+ around folds and inlines already (`%const:` and `%inlining:`, C252); the
+ globals it saw, `at` of them; and its own name, being inlined."
+(define-rec
+  (r-carried (subr kfx (renv renv) renv)
+    (lambda (env acc)
+      (if (null? env)
+          acc
+          (r-carried (cdr env)
+                     (tagcase (car env)
+                       (rbind (n l) (if (or (has-prefix? n "%const:") (has-prefix? n "%inlining:")) (cons (car env) acc) acc))))))))
+(define r-inline-env (subr kfx (renv renv string i64) renv)
+  (lambda (params env name at)
+    (onto params (cons (rbind genv-name (rl-seen at)) (cons (rbind (inlining-name name) (rl-loop)) (r-carried env nil))))))
+
+"A call's inlined parameters: where the body finds each, the body's scope,
+ and the arguments for the call where the guard fails."
+(define-datatype rbound (rbound renv cenv (listof rarg acyclic)))
+
+"What `g` makes, for a body where the procedure running is not known."
+(define r-unknowing (subr kfx (rgen) rgen)
+  (lambda (g) (tagcase g (rgen (xs leaf nr ns ms ls me st cx) (rgen xs leaf nr ns ms ls nil st cx)))))
+
 "An operand of a call or call-out: an expression, a constant, a frame
  slot's value, a free value of the closure running."
 (define-datatype rarg (a-e cx) (a-v lit) (a-slot i64) (a-lexical i64))
@@ -532,12 +601,79 @@
   (r-call (subr gen (rgen cx cxs i64 renv cenv bool) unit)
     (lambda (g f args a env te tail)
       "A call: the arguments into REG1…REGn, the procedure in RESULT."
-      (let ((n (size args)))
-        (cond ((g-leaf g)
+      (let* ((n (size args))
+             (u (r-unrolled env f args))
+             (i (if (null? u) (r-inlined env f (size args)) u)))
+        (cond ;; An inlined call, or an unrolled one (C252): in a fast
+              ;; version, no call, so in a leaf too.
+              ((not (null? i))
+               (if (and (not (x-assuming (g-ctx g))) (g-leaf g))
+                   (r-decline g)
+                   (r-inline g (car i) (not (null? u)) f args a env te tail)))
+              ((g-leaf g)
                (if (and tail (i64< n register-regs)) (r-leaf-tail-call g f args a env te) (r-decline g)))
               ((and (not tail) (r-self-known? g f n te))
                (begin (r-args g (r-exp-args args) env te nil) (r-opn g "invokeself" n)))
               (else (begin (r-args g (r-exp-args args) env te (list f)) (r-invoke g n tail (r-conv-at a))))))))
+
+  (r-inline (subr gen (rgen rinline bool cx cxs i64 renv cenv bool) unit)
+    (lambda (g i unrolled f args a env te tail)
+      "A call of a small global procedure, inlined (C252, Fixpt's
+       `r-inline`): the arguments made and kept (one a variable in the frame
+       or the closure, or a constant, used where it is); then, if the global
+       still holds a closure of the word its body was compiled to, the body,
+       in a scope of its own where the parameters are the arguments and the
+       globals those it saw; else the call. A redefinition writes the
+       global: the call."
+      (tagcase i
+        (rinline (name ps body at)
+          (let* ((regs (get (g-nreg g))) (slots (get (g-nslot g)))
+                 (bound (r-inline-args g ps args env te))
+                 (call (r-new-label g)) (end (r-new-label g))
+                 ;; Within its own unrolling, no guard: the outer one's holds.
+                 (assumed (or (and unrolled (not (null? (r-local-loc env (inlining-name name))))) (r-assume g name))))
+            (begin
+              (if assumed #u (r-guard g name call))
+              (tagcase bound
+                (rbound (benv bte bargs)
+                  (begin
+                    ;; The procedure running is not known in the body.
+                    (r-exp (r-unknowing g) body (r-inline-env benv env name at) bte tail)
+                    (if assumed
+                        #u
+                        (begin
+                          (if tail #u (r-emit g (ri-branch "branch" end)))
+                          (r-emit g (ri-label call))
+                          (r-args g bargs env te (list f))
+                          (r-invoke g (size args) tail (r-conv-at a))
+                          (r-emit g (ri-label end)))))))
+              (r-restore g regs slots)))))))
+
+  (r-inline-args (subr gen (rgen strings cxs renv cenv) rbound)
+    (lambda (g ps args env te)
+      "Each parameter bound to its argument, in order: where the body finds
+       it, the body's scope, and the call's arguments where the guard
+       fails."
+      (if (or (null? ps) (null? args))
+          (rbound nil nil nil)
+          (let* ((p (car ps)) (x (car args))
+                 (k (r-known env x))
+                 (l (if (null? k) (r-var-loc env x) (the rlocs (list (rl-const (car k))))))
+                 (keeps (and (not (null? l))
+                             (tagcase (car l)
+                               (rl-slot (s) #t) (rl-free (j) #t) (rl-const (c) #t)
+                               ;; In a fast version, where no call comes after
+                               ;; to clobber it.
+                               (rl-reg (r) (x-assuming (g-ctx g)))
+                               (else y #f))))
+                 (kept (if keeps l nil))
+                 (here (if (null? kept) (begin (r-exp g x env te #f) (r-keep g (g-leaf g))) (car kept)))
+                 (arg (cond ((not (null? k)) (a-v (rconst-lit (car k))))
+                            ((null? kept) (tagcase here (rl-slot (s) (a-slot s)) (else y (a-e x))))
+                            (else (a-e x)))))
+            (tagcase (r-inline-args g (cdr ps) (cdr args) env te)
+              (rbound (benv bte bargs)
+                (rbound (r-bind p here benv) (r-local bte p) (cons arg bargs))))))))
 
   (r-args (subr gen (rgen rargs renv cenv cxs) unit)
     (lambda (g args env te f)

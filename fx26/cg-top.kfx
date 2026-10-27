@@ -11,7 +11,7 @@
       (if (null? bs) #u
           (tagcase (car bs)
             (cbind (n x)
-              (begin (c-name-for! n x) (set cg-lambda-at (lambda-at x)) (c-exp x nil 0 c #f) (regs-form-twins!)
+              (begin (c-name-for! n x) (set cg-lambda-at (lambda-at x)) (c-exp x nil 0 c #f) (regs-form-twins!) (r-note-constant! n x)
                      (c-op1 c "global!" (o-global n)) (c-wrote! n) (c-rec-fill! (cdr bs) c))))))))
 
 "A global defined by a form not a lambda's, or by an untyped one: its
@@ -19,7 +19,7 @@
 (define c-define-value! (subr gen (string cx code) unit)
   (lambda (n x c)
     (begin (set cg-form-writes nil) (c-exp x nil 0 c #f) (regs-form-twins!)
-           (c-push-global! n) (c-op1 c "global!" (o-global n)) (c-wrote! n))))
+           (c-push-global! n) (r-note-constant! n x) (c-op1 c "global!" (o-global n)) (c-wrote! n))))
 
 "Each form in turn; the last expression's value is left on the stack.
  After each, the twins of the words it made, as Fixpt's form loop makes
@@ -40,7 +40,8 @@
                     (if typed
                         (begin (c-push-global! n) (set c-word-name (list n)) (set cg-defining (list n))
                                (set cg-lambda-at a) (set cg-form-writes (list n))
-                               (c-lambda ps body nil 0 c nil nil) (regs-form-twins!)
+                               (r-note-constant! n x)
+                               (c-lambda ps body nil 0 c nil nil) (regs-form-twins!) (r-note-inline! n ps body a)
                                (c-op1 c "global!" (o-global n)) (c-wrote! n))
                         (c-define-value! n x c)))
                   (else y (c-define-value! n x c)))
@@ -79,7 +80,7 @@
         (set cg-standard-words nil)
         (set c-this-params -1)
         (set cg-twins nil) (set cg-defining nil) (set cg-lambda-at -1) (set cg-define-at nil)
-        (set cg-writes nil) (set cg-form-writes nil) (set cg-reg-codes nil)
+        (set cg-writes nil) (set cg-form-writes nil) (set cg-reg-codes nil) (set cg-inlines nil) (set cg-unrolls nil) (set cg-consts nil)
         (if (c-tops (parse-tops forms) c #f) #u (c-lit c (l-unit)))
         (c-op c "exit")
         (c-assemble c "program")

@@ -249,14 +249,63 @@ pub fn r_standard(name: Str, n: i64) -> &'static Rstd {
 
 // Where `n` is to register code: a local of `env`; else a global defined
 // so far; else none (a standard name).
+
+// How many globals `env`'s body sees (`%genv`), -1 if all.
+pub fn r_genv(env: Renv) -> i64 {
+    let l = r_local_loc(env, genv_name());
+    if null_p(l) {
+        -1i64
+    } else {
+        let tagcase_ = car(l);
+        match *tagcase_ {
+            Rloc::RlSeen(k) => {
+                k
+            }
+            _ => {
+                let y = tagcase_;
+                -1i64
+            }
+        }
+    }
+}
+
+pub fn drop_strings(mut xs: Strings, mut k: i64) -> Strings {
+    loop {
+        if (null_p(xs) || i64_lt_eq(k, 0i64)) {
+            return xs;
+        } else {
+            (xs, k) = (cdr(xs), i64_minus(k, 1i64));
+            continue;
+        }
+    }
+}
+
+// Whether global `n` is one of the first `k` defined (-1: of all).
+pub fn r_global_seen_p(n: Str, k: i64) -> bool {
+    let gs = get(cg_globals());
+    string_member_p(n, if i64_lt(k, 0i64) {
+        gs
+    } else {
+        drop_strings(gs, i64_minus(size(gs), k))
+    })
+}
+
+// Where `n` is to register code: a local of `env`; else a global the body
+// sees, its value if a fast version folds it; else none (a standard
+// name).
 pub fn r_where(env: Renv, n: Str) -> Rlocs {
     let l = r_local_loc(env, n);
     if not(null_p(l)) {
         l
     } else if std_marked_p(n) {
         nil::<&'static Rloc>()
-    } else if string_member_p(n, get(cg_globals())) {
-        kayak_rt::heap_cons(rl_global(n), kayak_rt::nil())
+    } else if r_global_seen_p(n, r_genv(env)) {
+        let c = r_local_loc(env, const_name(n));
+        if null_p(c) {
+            kayak_rt::heap_cons(rl_global(n), kayak_rt::nil())
+        } else {
+            c
+        }
     } else {
         nil::<&'static Rloc>()
     }
@@ -574,6 +623,293 @@ pub fn r_fold(name: Str, vs: List<&'static Rconst>) -> List<&'static Rconst> {
         vs
     } else {
         nil::<&'static Rconst>()
+    }
+}
+
+// The globals noted to be inlined where called (C252, Fixpt's
+// `c-inlines`): a typed definition of a lambda whose body is small
+// (`r-room`), names itself not, nor `stay-cellular`: its name, parameters,
+// body, and how many globals were defined then, which its body sees. The
+// newest first.
+pub enum Rinline {
+    Rinline(Str, Strings, &'static Cx, i64),
+}
+
+pub fn rinline(f0: Str, f1: Strings, f2: &'static Cx, f3: i64) -> &'static Rinline {
+    kayak_rt::heap_alloc(Rinline::Rinline(f0, f1, f2, f3))
+}
+
+pub fn cg_inlines() -> Ref<List<&'static Rinline>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rinline>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Rinline>())
+    })
+}
+
+// Likewise those small but calling themselves, whose body neither
+// suspends nor runs an effect not known: unrolled where called with a
+// constant list (Fixpt's `c-unrolls`, `r-unrolled`).
+pub fn cg_unrolls() -> Ref<List<&'static Rinline>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rinline>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Rinline>())
+    })
+}
+
+pub fn r_unroll_depth() -> i64 {
+    16i64
+}
+
+pub fn r_inline_limit() -> i64 {
+    20i64
+}
+
+// Global `n`'s inlining taking `k` arguments, one a body seeing `lim`
+// globals may use (made when no more were), in a list.
+pub fn r_inline_named(mut xs: List<&'static Rinline>, mut n: Str, mut k: i64, mut lim: i64) -> List<&'static Rinline> {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static Rinline>();
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Rinline::Rinline(m, ps, body, at) => {
+                    (string_eq_p(m, n) && i64_eq(size(ps), k) && (i64_lt(lim, 0i64) || i64_lt_eq(at, lim)))
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+// The globals defined as constants (C252, Fixpt's `r-const-globals`):
+// each name and value, newest first.
+pub enum Rgconst {
+    Rgconst(Str, &'static Rconst),
+}
+
+pub fn rgconst(f0: Str, f1: &'static Rconst) -> &'static Rgconst {
+    kayak_rt::heap_alloc(Rgconst::Rgconst(f0, f1))
+}
+
+pub fn cg_consts() -> Ref<List<&'static Rgconst>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rgconst>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Rgconst>())
+    })
+}
+
+pub fn rgconst_of(mut xs: List<&'static Rgconst>, mut n: Str) -> List<&'static Rconst> {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static Rconst>();
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Rgconst::Rgconst(m, c) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Rgconst::Rgconst(m, c) => {
+                    return kayak_rt::heap_cons(c, kayak_rt::nil());
+                }
+            }
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+pub fn rgconsts_without(mut xs: List<&'static Rgconst>, mut n: Str) -> List<&'static Rgconst> {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static Rgconst>();
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Rgconst::Rgconst(m, c) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            xs = cdr(xs);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(car(xs), rgconsts_without(cdr(xs), n));
+        }
+    }
+}
+
+// The constant a top-level definition's value is (Fixpt's `c-const-of`):
+// a literal, or a constant global's (lists and modules' members not yet).
+pub fn r_const_of(mut x: &'static Cx) -> List<&'static Rconst> {
+    loop {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XInt(n, a) => {
+                return kayak_rt::heap_cons(rc_int(n), kayak_rt::nil());
+            }
+            Cx::XBool(v, a) => {
+                return kayak_rt::heap_cons(rc_bool(v), kayak_rt::nil());
+            }
+            Cx::XChar(v, a) => {
+                return kayak_rt::heap_cons(rc_char(v), kayak_rt::nil());
+            }
+            Cx::XProj(y, a) => {
+                x = y;
+                continue;
+            }
+            Cx::XVar(n, a) => {
+                if (not(std_marked_p(n)) && string_member_p(n, get(cg_globals()))) {
+                    return rgconst_of(get(cg_consts()), n);
+                } else {
+                    return nil::<&'static Rconst>();
+                }
+            }
+            _ => {
+                let y = tagcase_;
+                return nil::<&'static Rconst>();
+            }
+        }
+    }
+}
+
+// How many nodes are left of `n` once `x`'s are counted (Fixpt's `c-room`,
+// a `with` none): below 0 if more, or if it makes a closure.
+pub fn r_room(mut x: &'static Cx, mut n0: i64, mut w: bool) -> i64 {
+    loop {
+        let n = i64_minus(n0, 1i64);
+        if i64_lt(n, 0i64) {
+            return n;
+        } else {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Cx::XLambda(ps, body, a) => {
+                    return -1i64;
+                }
+                Cx::XRlambda(r, l, a) => {
+                    return -1i64;
+                }
+                Cx::XLetrec(bs, body, a) => {
+                    return -1i64;
+                }
+                Cx::XPrompt(t, body, h, a) => {
+                    return -1i64;
+                }
+                Cx::XModule(its, a) => {
+                    return -1i64;
+                }
+                Cx::XWith(m, ns, ks, body, a) => {
+                    if w {
+                        (x, n0) = (body, n);
+                        continue;
+                    } else {
+                        return -1i64;
+                    }
+                }
+                Cx::XApp(f, args, a) => {
+                    return r_room_all(args, {
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Cx::XVar(v, b) => {
+                                i64_minus(n, 1i64)
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                r_room(f, n, w)
+                            }
+                        }
+                    }, w);
+                }
+                Cx::XVar(v, a) => {
+                    if r_standard_value_name_p(std_named(v)) {
+                        return -1i64;
+                    } else {
+                        return n;
+                    }
+                }
+                Cx::XProj(body, a) => {
+                    (x, n0) = (body, n);
+                    continue;
+                }
+                Cx::XRegion(k, r, body, a) => {
+                    (x, n0) = (body, n);
+                    continue;
+                }
+                Cx::XIf(t, th, el, a) => {
+                    return r_room_if(el, r_room_if(th, r_room(t, n, w), w), w);
+                }
+                Cx::XLet(bs, body, a) => {
+                    return r_room_if(body, r_room_all(c_bound_exps(bs), n, w), w);
+                }
+                Cx::XBegin(es, a) => {
+                    return r_room_all(es, n, w);
+                }
+                Cx::XBloblet(op, i, args, a) => {
+                    return r_room_all(args, n, w);
+                }
+                Cx::XProduct(fs, a) => {
+                    return r_room_all(c_bound_exps(fs), n, w);
+                }
+                Cx::XExtract(p, i, a) => {
+                    (x, n0) = (p, n);
+                    continue;
+                }
+                Cx::XSum(t, v, a) => {
+                    (x, n0) = (v, n);
+                    continue;
+                }
+                Cx::XTagcase(s, arms, els, k, a) => {
+                    return r_room_if_all(c_bound_exps(els), r_room_all(map(lambda1s(move |m: &'static Carm| {
+                        let tagcase_ = m;
+                        match *tagcase_ {
+                            Carm::Carm(t2, p, ns, body) => {
+                                body
+                            }
+                        }
+                    }), arms), r_room(s, n, w), w), w);
+                }
+                _ => {
+                    let y = tagcase_;
+                    return n;
+                }
+            }
+        }
+    }
+}
+
+pub fn r_room_if(x: &'static Cx, n: i64, w: bool) -> i64 {
+    if i64_lt(n, 0i64) {
+        n
+    } else {
+        r_room(x, n, w)
+    }
+}
+
+pub fn r_room_all(mut es: Cxs, mut n: i64, mut w: bool) -> i64 {
+    loop {
+        if (null_p(es) || i64_lt(n, 0i64)) {
+            return n;
+        } else {
+            (es, n) = (cdr(es), r_room(car(es), n, w));
+            continue;
+        }
+    }
+}
+
+pub fn r_room_if_all(es: Cxs, n: i64, w: bool) -> i64 {
+    if i64_lt(n, 0i64) {
+        n
+    } else {
+        r_room_all(es, n, w)
     }
 }
 
@@ -1035,8 +1371,9 @@ pub fn r_inline_op_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
     }
 }
 
-// Whether a call of `f` is a plain `invoke` (no standard operation).
-pub fn r_plain_callee_p(f: &'static Cx, e: Cenv) -> bool {
+// Whether a call of `f` is a plain `invoke` (no standard operation, no
+// procedure inlined).
+pub fn r_plain_callee_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
     let tagcase_ = f;
     match *tagcase_ {
         Cx::XVar(name, a) => {
@@ -1050,7 +1387,7 @@ pub fn r_plain_callee_p(f: &'static Cx, e: Cenv) -> bool {
                     let tagcase_ = car(l);
                     match *tagcase_ {
                         Loc::AtGlobal(c) => {
-                            true
+                            null_p(r_inline_named(get(cg_inlines()), name, size(args), -1i64))
                         }
                         Loc::AtSlot(i) => {
                             true
@@ -1073,26 +1410,16 @@ pub fn r_plain_callee_p(f: &'static Cx, e: Cenv) -> bool {
     }
 }
 
-// Whether a call of global `f` with `n` arguments, in a fast version, is no
-// call: its own, in tail position, a loop.
-pub fn r_call_is_free_p(v: &'static Rview, f: &'static Cx, n: i64, e: Cenv, tail: bool) -> bool {
-    (rview_assuming(v) && tail && {
-        let tagcase_ = f;
-        match *tagcase_ {
-            Cx::XVar(name, a) => {
-                let l = if std_marked_p(name) {
-                    nil::<&'static Loc>()
-                } else {
-                    c_where(e, name)
-                };
-                (not(null_p(l)) && c_global_p(car(l)) && rview_own_is_p(v, name, n))
-            }
-            _ => {
-                let y = tagcase_;
-                false
-            }
+// `ps` bound as locals, onto `te`.
+pub fn r_locals(mut ps: Strings, mut te: Cenv) -> Cenv {
+    loop {
+        if null_p(ps) {
+            return te;
+        } else {
+            (ps, te) = (cdr(ps), c_extend(car(ps), at_slot(-1i64), te));
+            continue;
         }
-    })
+    }
 }
 
 pub fn r_bloblet_quiet_p(op: Str) -> bool {
@@ -1189,7 +1516,7 @@ pub fn r_collects(mut v: &'static Rview, mut x: &'static Cx, mut e: Cenv, mut me
                 let args_collect = r_collects_all(v, args, e, me);
                 let loop_call = (tail && r_self_call_p(f, args, e, me));
                 let inline = r_inline_op_p(f, args, e);
-                let leaves = (rview_tail_leaves(v) && tail && i64_lt(n, register_regs()) && r_plain_callee_p(f, e) && not(r_collects(v, f, e, me, false)));
+                let leaves = (rview_tail_leaves(v) && tail && i64_lt(n, register_regs()) && r_plain_callee_p(f, args, e) && not(r_collects(v, f, e, me, false)));
                 return (args_collect || not((loop_call || inline || leaves || r_call_is_free_p(v, f, n, e, tail))));
             }
             _ => {
@@ -1198,6 +1525,39 @@ pub fn r_collects(mut v: &'static Rview, mut x: &'static Cx, mut e: Cenv, mut me
             }
         }
     }
+}
+
+/// Whether a call of global `f` with `n` arguments, in a fast version,
+/// is no call: its own in tail position, a loop; or one inlined, whose
+/// body calls nothing (C252).
+pub fn r_call_is_free_p(v: &'static Rview, f: &'static Cx, n: i64, e: Cenv, tail: bool) -> bool {
+    (rview_assuming(v) && {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Cx::XVar(name, a) => {
+                let l = if std_marked_p(name) {
+                    nil::<&'static Loc>()
+                } else {
+                    c_where(e, name)
+                };
+                (not(null_p(l)) && c_global_p(car(l)) && ((tail && rview_own_is_p(v, name, n)) || {
+                    let i = r_inline_named(get(cg_inlines()), name, n, -1i64);
+                    (not(null_p(i)) && {
+                        let tagcase_ = car(i);
+                        match *tagcase_ {
+                            Rinline::Rinline(m, ps, body, at) => {
+                                not(r_collects(v, body, r_locals(ps, nil::<&'static Centry>()), nil::<&'static This>(), tail))
+                            }
+                        }
+                    })
+                }))
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    })
 }
 
 pub fn r_collects_all(v: &'static Rview, es: Cxs, e: Cenv, me: Rthis) -> bool {

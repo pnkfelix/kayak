@@ -132,12 +132,29 @@
 
 "Where `n` is to register code: a local of `env`; else a global defined
  so far; else none (a standard name)."
+"How many globals `env`'s body sees (`%genv`), -1 if all."
+(define r-genv (subr kfx (renv) i64)
+  (lambda (env) (let ((l (r-local-loc env genv-name))) (if (null? l) -1 (tagcase (car l) (rl-seen (k) k) (else y -1))))))
+
+(define-rec
+  (drop-strings (subr kfx (strings i64) strings) (lambda (xs k) (if (or (null? xs) (i64<= k 0)) xs (drop-strings (cdr xs) (i64- k 1))))))
+
+"Whether global `n` is one of the first `k` defined (-1: of all)."
+(define r-global-seen? (subr gen (string i64) bool)
+  (lambda (n k)
+    (let ((gs (get cg-globals)))
+      (string-member? n (if (i64< k 0) gs (drop-strings gs (i64- (size gs) k)))))))
+
+"Where `n` is to register code: a local of `env`; else a global the body
+ sees, its value if a fast version folds it; else none (a standard
+ name)."
 (define r-where (subr gen (renv string) rlocs)
   (lambda (env n)
     (let ((l (r-local-loc env n)))
       (cond ((not (null? l)) l)
             ((std-marked? n) nil)
-            ((string-member? n (get cg-globals)) (list (rl-global n)))
+            ((r-global-seen? n (r-genv env))
+             (let ((c (r-local-loc env (const-name n)))) (if (null? c) (list (rl-global n)) c)))
             (else nil)))))
 
 (define r-var-loc (subr gen (renv cx) rlocs)
@@ -235,6 +252,83 @@
                (else z nil)))
             ((and one (r-fits-fixed? name (car vs))) vs)
             (else nil)))))
+
+"The globals noted to be inlined where called (C252, Fixpt's
+ `c-inlines`): a typed definition of a lambda whose body is small
+ (`r-room`), names itself not, nor `stay-cellular`: its name, parameters,
+ body, and how many globals were defined then, which its body sees. The
+ newest first."
+(define-datatype rinline (rinline string strings cx i64))
+(define cg-inlines (ref (listof rinline acyclic) @g) (new nil))
+"Likewise those small but calling themselves, whose body neither
+ suspends nor runs an effect not known: unrolled where called with a
+ constant list (Fixpt's `c-unrolls`, `r-unrolled`)."
+(define cg-unrolls (ref (listof rinline acyclic) @g) (new nil))
+(define r-unroll-depth i64 16)
+(define r-inline-limit i64 20)
+
+"Global `n`'s inlining taking `k` arguments, one a body seeing `lim`
+ globals may use (made when no more were), in a list."
+(define-rec
+  (r-inline-named (subr kfx ((listof rinline acyclic) string i64 i64) (listof rinline acyclic))
+    (lambda (xs n k lim)
+      (cond ((null? xs) nil)
+            ((tagcase (car xs) (rinline (m ps body at) (and (string=? m n) (i64= (size ps) k) (or (i64< lim 0) (i64<= at lim)))))
+             (list (car xs)))
+            (else (r-inline-named (cdr xs) n k lim))))))
+
+"The globals defined as constants (C252, Fixpt's `r-const-globals`):
+ each name and value, newest first."
+(define-datatype rgconst (rgconst string rconst))
+(define cg-consts (ref (listof rgconst acyclic) @g) (new nil))
+(define-rec
+  (rgconst-of (subr kfx ((listof rgconst acyclic) string) (listof rconst acyclic))
+    (lambda (xs n) (cond ((null? xs) nil) ((tagcase (car xs) (rgconst (m c) (string=? m n))) (tagcase (car xs) (rgconst (m c) (list c)))) (else (rgconst-of (cdr xs) n)))))
+  (rgconsts-without (subr kfx ((listof rgconst acyclic) string) (listof rgconst acyclic))
+    (lambda (xs n) (cond ((null? xs) nil) ((tagcase (car xs) (rgconst (m c) (string=? m n))) (rgconsts-without (cdr xs) n)) (else (cons (car xs) (rgconsts-without (cdr xs) n)))))))
+
+"The constant a top-level definition's value is (Fixpt's `c-const-of`):
+ a literal, or a constant global's (lists and modules' members not yet)."
+(define-rec
+  (r-const-of (subr gen (cx) (listof rconst acyclic))
+    (lambda (x)
+      (tagcase x
+        (x-int (n a) (list (rc-int n))) (x-bool (v a) (list (rc-bool v))) (x-char (v a) (list (rc-char v)))
+        (x-proj (y a) (r-const-of y))
+        (x-var (n a) (if (and (not (std-marked? n)) (string-member? n (get cg-globals))) (rgconst-of (get cg-consts) n) nil))
+        (else y nil)))))
+
+"How many nodes are left of `n` once `x`'s are counted (Fixpt's `c-room`,
+ a `with` none): below 0 if more, or if it makes a closure."
+(define-rec
+  (r-room (subr gen (cx i64 bool) i64)
+    (lambda (x n0 w)
+      (let ((n (i64- n0 1)))
+        (if (i64< n 0)
+            n
+            (tagcase x
+              (x-lambda (ps body a) -1) (x-rlambda (r l a) -1) (x-letrec (bs body a) -1) (x-prompt (t body h a) -1) (x-module (its a) -1)
+              (x-with (m ns ks body a) (if w (r-room body n w) -1))
+              (x-app (f args a) (r-room-all args (tagcase f (x-var (v b) (i64- n 1)) (else y (r-room f n w))) w))
+              (x-var (v a) (if (r-standard-value-name? (std-named v)) -1 n))
+              (x-proj (body a) (r-room body n w))
+              (x-region (k r body a) (r-room body n w))
+              (x-if (t th el a) (r-room-if el (r-room-if th (r-room t n w) w) w))
+              (x-let (bs body a) (r-room-if body (r-room-all (c-bound-exps bs) n w) w))
+              (x-begin (es a) (r-room-all es n w))
+              (x-bloblet (op i args a) (r-room-all args n w))
+              (x-product (fs a) (r-room-all (c-bound-exps fs) n w))
+              (x-extract (p i a) (r-room p n w))
+              (x-sum (t v a) (r-room v n w))
+              (x-tagcase (s arms els k a)
+                (r-room-if-all (c-bound-exps els)
+                               (r-room-all (map (lambda ((m carm)) (tagcase m (carm (t2 p ns body) body))) arms) (r-room s n w) w)
+                               w))
+              (else y n))))))
+  (r-room-if (subr gen (cx i64 bool) i64) (lambda (x n w) (if (i64< n 0) n (r-room x n w))))
+  (r-room-all (subr gen (cxs i64 bool) i64)
+    (lambda (es n w) (if (or (null? es) (i64< n 0)) n (r-room-all (cdr es) (r-room (car es) n w) w))))
+  (r-room-if-all (subr gen (cxs i64 bool) i64) (lambda (es n w) (if (i64< n 0) n (r-room-all es n w)))))
 
 "Whether `name` is a comparison a test an `if` decides may be of."
 (define r-test-name? (subr kfx (string) bool)
@@ -382,27 +476,24 @@
                (s-identity () #t) (s-set () #t) (s-pure (p) #t) (else y #f))))
       (else y #f))))
 
-"Whether a call of `f` is a plain `invoke` (no standard operation)."
-(define r-plain-callee? (subr gen (cx cenv) bool)
-  (lambda (f e)
+"Whether a call of `f` is a plain `invoke` (no standard operation, no
+ procedure inlined)."
+(define r-plain-callee? (subr gen (cx cxs cenv) bool)
+  (lambda (f args e)
     (tagcase f
       (x-var (name a)
         (or (std-written? name)
             (let ((l (if (std-marked? name) nil (c-where e name))))
-              (and (not (null? l)) (tagcase (car l) (at-global (c) #t) (at-slot (i) #t) (at-free (i) #t) (else y #f))))))
+              (and (not (null? l))
+               (tagcase (car l)
+                 ;; A global noted to be inlined is no plain callee (C252).
+                 (at-global (c) (null? (r-inline-named (get cg-inlines) name (size args) -1)))
+                 (at-slot (i) #t) (at-free (i) #t) (else y #f))))))
       (else y #t))))
 
-"Whether a call of global `f` with `n` arguments, in a fast version, is no
- call: its own, in tail position, a loop."
-(define r-call-is-free? (subr gen (rview cx i64 cenv bool) bool)
-  (lambda (v f n e tail)
-    (and (rview-assuming v)
-         tail
-         (tagcase f
-           (x-var (name a)
-             (let ((l (if (std-marked? name) nil (c-where e name))))
-               (and (not (null? l)) (c-global? (car l)) (rview-own-is? v name n))))
-           (else y #f)))))
+"`ps` bound as locals, onto `te`."
+(define-rec
+  (r-locals (subr kfx (strings cenv) cenv) (lambda (ps te) (if (null? ps) te (r-locals (cdr ps) (c-extend (car ps) (at-slot -1) te))))))
 
 (define r-bloblet-quiet? (subr kfx (string) bool)
   (lambda (op) (string-member? op (list "bloblet-ref" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!"))))
@@ -439,9 +530,26 @@
                  (loop-call (and tail (r-self-call? f args e me)))
                  (inline (r-inline-op? f args e))
                  (leaves (and (rview-tail-leaves v) tail (i64< n register-regs)
-                              (r-plain-callee? f e) (not (r-collects v f e me #f)))))
+                              (r-plain-callee? f args e) (not (r-collects v f e me #f)))))
             (or args-collect (not (or loop-call inline leaves (r-call-is-free? v f n e tail))))))
         (else y #t))))
+  (r-call-is-free? (subr gen (rview cx i64 cenv bool) bool)
+    (lambda (v f n e tail)
+      "Whether a call of global `f` with `n` arguments, in a fast version,
+       is no call: its own in tail position, a loop; or one inlined, whose
+       body calls nothing (C252)."
+      (and (rview-assuming v)
+           (tagcase f
+             (x-var (name a)
+               (let ((l (if (std-marked? name) nil (c-where e name))))
+                 (and (not (null? l)) (c-global? (car l))
+                      (or (and tail (rview-own-is? v name n))
+                          (let ((i (r-inline-named (get cg-inlines) name n -1)))
+                            (and (not (null? i))
+                                 (tagcase (car i)
+                                   (rinline (m ps body at)
+                                     (not (r-collects v body (r-locals ps nil) nil tail))))))))))
+             (else y #f)))))
   (r-collects-all (subr gen (rview cxs cenv rthis) bool)
     (lambda (v es e me) (and (not (null? es)) (or (r-collects v (car es) e me #f) (r-collects-all v (cdr es) e me)))))
   (r-collects-begin (subr gen (rview cxs cenv rthis bool) bool)

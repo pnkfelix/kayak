@@ -7088,3 +7088,40 @@ entry's quick costs C250 measured.
   33.2% of the samples to 26.9%, the frame made 18.6% to 14.5% (its
   three stack bounds the most of it now), the guard 7.8% to 6.2%.
 - **arm64**: the same, made but not run here (TODO's arm64 items).
+
+## C252. Register code inlines small procedures, folds constant globals, unrolls (2026-10-27)
+
+The user: "Yeah do 1, 2, then 3"; the second, inlining and constant
+globals in register code (68 of C248's 72 differences from Fixpt's).
+- **Inlining** (Fixpt's `c-record-inline`, `r-inline`): a typed
+  definition of a lambda whose body is small (at most 20 nodes,
+  `r-room`), names neither itself nor `stay-cellular`, noted
+  (`cg-inlines`) as it sees the globals defined so far. A call of it with
+  its arity: the arguments made and kept (one a slot, a free value or a
+  constant used where it is); a guard on its global, unless a fast version
+  assumes it; the body in a scope of its own, its parameters the
+  arguments; where the guard fails, the call.
+- **Unrolling** (Fixpt's `c-note-unroll!`, `r-unrolled`): one small but
+  calling itself, whose definition neither suspends nor runs an effect
+  not known, inlined where called with a constant list, at most 16 deep,
+  no guard within its own. Kayak's constant lists are only `nil` yet.
+- **Constant globals** (Fixpt's `c-note-constant!`, `r-consts-named`): a
+  definition's value a literal, or a constant global's, noted
+  (`cg-consts`); a fast version folds those its body names, each assumed
+  (a guard at its start).
+- **Modular, as C248**: what Fixpt keeps in globals set and restored
+  around an inlined body (`c-genv`, `c-inlining`, `r-consts-now`) is said
+  in the register environment, by names no program has: `%genv` (the
+  globals a body sees), `%inlining:G`, `%const:G`; the analyses read it
+  there, as any binding.
+- **Measured**: of the 292 programs whose stack words are Fixpt's, 573
+  register words Fixpt's exactly (from 523), 11 differ (from 72), 252
+  declined (an inlined body declined declines its caller). Tier 6 on
+  kayak's listings as on Fixpt's: `fib` 59.8 to 59.8 million cycles,
+  `tak` 38.6 to 37.8, `lists` 136 to 133, `helpers` 86.3 to 85.7; `loop`
+  124 to 85 and `closures` 251 to 218 behind, for what stage 2 does
+  (closures, `letrec`).
+- **Not yet**: globals holding constant lists (`unrolled-lists.fx`: the
+  checker's note of a list nothing writes, Fixpt's `c-const-list`, pairs
+  and symbols as constants), a module's member re-exported and inlined
+  (`reexport-inlined.fx`).

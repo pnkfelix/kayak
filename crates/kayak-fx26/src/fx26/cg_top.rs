@@ -22,6 +22,7 @@ pub fn c_rec_fill_x(mut bs: Cbinds, mut c: Code) -> () {
                     set(cg_lambda_at(), lambda_at(x));
                     c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
                     regs_form_twins_x();
+                    r_note_constant_x(n, x);
                     c_op1(c, str_lit("global!"), o_global(n));
                     c_wrote_x(n);
                     bs = cdr(bs);
@@ -39,6 +40,7 @@ pub fn c_define_value_x(n: Str, x: &'static Cx, c: Code) -> () {
     c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
     regs_form_twins_x();
     c_push_global_x(n);
+    r_note_constant_x(n, x);
     c_op1(c, str_lit("global!"), o_global(n));
     c_wrote_x(n)
 }
@@ -69,8 +71,10 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
                                     set(cg_defining(), kayak_rt::heap_cons(n, kayak_rt::nil()));
                                     set(cg_lambda_at(), a);
                                     set(cg_form_writes(), kayak_rt::heap_cons(n, kayak_rt::nil()));
+                                    r_note_constant_x(n, x);
                                     c_lambda(ps, body, nil::<&'static Centry>(), 0i64, c, nil::<Str>(), nil::<&'static Cx>());
                                     regs_form_twins_x();
+                                    r_note_inline_x(n, ps, body, a);
                                     c_op1(c, str_lit("global!"), o_global(n));
                                     c_wrote_x(n)
                                 } else {
@@ -169,6 +173,9 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     set(cg_writes(), nil::<&'static Gwrites>());
     set(cg_form_writes(), nil::<Str>());
     set(cg_reg_codes(), nil::<&'static Rnamed>());
+    set(cg_inlines(), nil::<&'static Rinline>());
+    set(cg_unrolls(), nil::<&'static Rinline>());
+    set(cg_consts(), nil::<&'static Rgconst>());
     if c_tops(parse_tops(forms), c, false) {
         ()
     } else {
