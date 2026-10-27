@@ -619,7 +619,7 @@
             ((member-i64? v path) #f)
             ((member-i64? v (get done)) #t)
             (else
-             (let ((path (cons v path)))
+             (let ((path (the (listof i64 @c) (cons v path))))
                (if (if (is-pair? v)
                        (and (acyclic-from? (pair-car v) path done) (acyclic-from? (pair-cdr v) path done))
                        (fields-acyclic? v 1 path done))

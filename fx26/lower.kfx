@@ -634,11 +634,11 @@
                           (lower-form "let*" (cons (lst (cdr bs) "" 0 0) (cdr xs)) e (cons (list (binder-name (car (items (car bs))))) sc) gs)))))
             ((string=? h "letrec")
              (let* ((bs (items (car xs)))
-                    (inner (cons (map (lambda ((b sexp)) (binder-name (car (items b)))) bs) sc)))
+                    (inner (the scope (cons (map (lambda ((b sexp)) (binder-name (car (items b)))) bs) sc))))
                (i-letrec (map (lambda ((b sexp)) (named (binder-name (car (items b))) (lower (last (items b)) inner gs))) bs) (lower-body (cdr xs) inner gs))))
             ((string=? h "cond") (lower-cond xs sc gs))
             ((string=? h "case")
-             (let ((inner (cons (the strings (list (fresh-for "%case-key" e))) sc)))
+             (let ((inner (the scope (cons (the strings (list (fresh-for "%case-key" e))) sc))))
                (i-let (list (lower (car xs) sc gs)) (lower-case (cdr xs) inner gs))))
             ((member-of? h (list "blobref-at" "blobref+" "blobref-get" "blobref-set!" "blobref-index" "blobref-length" "blobref-variant!"))
              "A blobref's operation (C215), its layout the checker's facts here."
@@ -749,7 +749,7 @@
       (let* ((its (includes-first written))
              (names (module-item-names its gs #f))
              (given (module-item-names its gs #t))
-             (inner (cons names sc)))
+             (inner (the scope (cons names sc))))
         (i-letrec (module-values its inner gs)
                   (i-product given (map (lambda ((n string)) (i-local 0 (position-of n names 0))) given))))))
 

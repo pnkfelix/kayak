@@ -445,7 +445,7 @@ pub fn q_all_reached_x(mut ns: List<i64>) -> () {
 pub fn q_replaced(mut cs: Chars, mut run: Chars, mut acc: Strings) -> Str {
     loop {
         if null_p(cs) {
-            return strings_joined(reverse(kayak_rt::heap_cons(list_to_string(reverse(run)), acc)), str_lit(""));
+            return strings_joined(reverse(the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(run)), acc))), str_lit(""));
         } else if char_eq_p(car(cs), i64_to_char(1i64)) {
             return q_replaced_mark(cdr(cs), 0i64, kayak_rt::heap_cons(list_to_string(reverse(run)), acc));
         } else {

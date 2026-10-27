@@ -7160,3 +7160,35 @@ The user: "Yeah do 1, 2, then 3"; the third, stage 2 of
   `with` (stage 3). Tier 6, kayak's listings as Fixpt's: `loop` 85.6 to
   85.2 million cycles (from 124); `closures` 253 to 216, Fixpt's
   specializing `map-add` at the lambda it is given (stage 4).
+
+## C254. KFX a sublanguage of FX-26: Fixpt accepts each of kayak's KFX units (2026-10-27)
+
+The user, on Fixpt refusing kayak's engine's own source: "KFX is meant to
+be a sub language of FX26. I think when i said divergence was allowed, I
+meant that the generated code might differ. But surely any KFX program
+accepted by Kayak should likewise be accepted by Fixpt?"; then "Yes go
+ahead" to: a check of it, the sources fixed, kayak's checker aligned, and
+`car` and its kin given FX-26's types (`peval`).
+- **The check** (`scripts/fixpt-accepts.py`, in `check.sh` with a Fixpt
+  clone): for each KFX unit (`kfx/`, the compiler; `fx26/`, the engine;
+  `cells/`, tier 1), the prelude Fixpt runs KFX with and the unit's files
+  as one program, given to `fixpt check` (`--syscalls` for a runtime's
+  own; `fixpt run` checks and runs file by file, so a syscall Fixpt has
+  not stops it before the later files are checked); a refusal said at its
+  file and line. Under 4 s for the three.
+- **What Fixpt refused, now written as it wants** (35 lines, 8 files): a
+  `cons` or `list` whose type nothing around it says (a `let`'s binding, a
+  `map`'s lambda's value, an `if`'s arms), which FX-26 gives a region of its
+  own (`@r.N`), where an `acyclic` list or one at `@c` is wanted: its type
+  written (`(the scope …)`, `(the (listof i64 acyclic) …)`); and tier 2's
+  two kinds of machine code kept in `@c`, which they read (`hand-code`,
+  `address-code`), said to `spin`, as FX-26 has a procedure that could
+  reach itself say. The compiler, `kfx/`, Fixpt accepted already (the
+  fixpoint check runs it on Fixpt); `fx26/` and `cells/` it had never
+  checked.
+- **Not yet** (next): kayak's checker accepts what Fixpt refuses, in
+  FX-26 too (a `let`-bound `cons` given where an `acyclic` list is wanted:
+  FX-26's `cons` makes a `pairof` at a region of its own unless what is
+  expected says which; KFX's makes a list at its tail's); and its `car`,
+  `cdr`, `set-car!`, `set-cdr!` take only lists, where FX-26's take any
+  pair that may be `nil` (`scheme-bench/peval.fx`, refused).

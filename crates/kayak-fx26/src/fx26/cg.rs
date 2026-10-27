@@ -3509,7 +3509,7 @@ pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
                 parse_x(e)
             } else {
                 x_reshape(parse_x(e), map(lambda1s(move |w: Str| {
-                    kayak_rt::heap_cons(index_in(w, car(have), 0i64), kayak_rt::nil())
+                    the::<List<i64>>(kayak_rt::heap_cons(index_in(w, car(have), 0i64), kayak_rt::nil()))
                 }), split_words(want)), p)
             }
         }
@@ -3527,7 +3527,7 @@ pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
                 x
             } else {
                 x_reshape(x, map(lambda1s(move |w: Str| {
-                    kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil())
+                    the::<List<i64>>(kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil()))
                 }), split_words(want)), datum_pos(e))
             }
         }
@@ -3619,7 +3619,7 @@ pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
             x_module(own, a)
         } else {
             x_reshape(x_module(own, a), map(lambda1s(move |n: Str| {
-                kayak_rt::heap_cons(index_in(n, own_names, 0i64), kayak_rt::nil())
+                the::<List<i64>>(kayak_rt::heap_cons(index_in(n, own_names, 0i64), kayak_rt::nil()))
             }), given), a)
         }
     } else {
@@ -3635,15 +3635,15 @@ pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
         let shown = included_values(incs, false);
         let inside = map(&member_in_includes, own);
         let used = included_used(inside, inc_type, nil::<Str>());
-        let its = kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(lambda1s(move |n: Str| {
+        let its = the::<List<&'static Cmem>>(kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(lambda1s(move |n: Str| {
             cmem(n, x_extract(x_var(str_lit("%include"), at), index_in(n, inc_type, 0i64), at), 0i64, false, at)
-        }), used), inside));
-        let mine = kayak_rt::heap_cons(str_lit("%include"), own_names);
+        }), used), inside)));
+        let mine = the::<Strings>(kayak_rt::heap_cons(str_lit("%include"), own_names));
         set(cg_module_type(), onto(shown, given));
         x_reshape(x_module(its, a), onto(map(lambda1s(move |n: Str| {
-            kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, inc_type, 0i64), kayak_rt::nil()))
+            the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, inc_type, 0i64), kayak_rt::nil())))
         }), shown), map(lambda1s(move |n: Str| {
-            kayak_rt::heap_cons(index_in(n, mine, 0i64), kayak_rt::nil())
+            the::<List<i64>>(kayak_rt::heap_cons(index_in(n, mine, 0i64), kayak_rt::nil()))
         }), given)), a)
     }
 }
@@ -3665,7 +3665,7 @@ pub fn module_narrowed(x: &'static Cx, f: Str, a: i64) -> &'static Cx {
     } else {
         set(cg_module_type(), split_words(want));
         x_reshape(x, map(lambda1s(move |w: Str| {
-            kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil())
+            the::<List<i64>>(kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil()))
         }), split_words(want)), a)
     }
 }
@@ -3715,14 +3715,14 @@ pub fn parse_extend(e0: &'static Sexp, e1: &'static Sexp, a: i64) -> &'static Cx
         not(string_member_p(n, l0))
     }), l1);
     set(cg_module_type(), onto(l0, more));
-    x_reshape(x_module(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil())), a), onto(map(lambda1s(move |n: Str| {
+    x_reshape(x_module(the::<List<&'static Cmem>>(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(lambda1s(move |n: Str| {
         if string_member_p(n, l1) {
-            kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil()))
+            the::<List<i64>>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil())))
         } else {
-            kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, l0, 0i64), kayak_rt::nil()))
+            the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, l0, 0i64), kayak_rt::nil())))
         }
     }), l0), map(lambda1s(move |n: Str| {
-        kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil()))
+        the::<List<i64>>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil())))
     }), more)), a)
 }
 
@@ -3766,7 +3766,7 @@ pub fn include_paths(incs: List<&'static Cinc>, k: i64) -> Paths {
                 onto({
                     let n = size(included_layout(m));
                     map(lambda1s(move |i: i64| {
-                        kayak_rt::heap_cons(k, kayak_rt::heap_cons(i, kayak_rt::nil()))
+                        the::<List<i64>>(kayak_rt::heap_cons(k, kayak_rt::heap_cons(i, kayak_rt::nil())))
                     }), indices_from(0i64, n))
                 }, include_paths(cdr(incs), i64_plus(k, 1i64)))
             }
@@ -4691,7 +4691,7 @@ pub fn lit_escaped(s: Str, quote: char) -> Str {
         if (char_eq_p(ch, quote) || i64_eq(k, 92i64) || i64_lt(k, 32i64) || i64_gt(k, 126i64)) {
             string_chars(string_append(str_lit("\\x"), string_append(hex(k), str_lit(";"))))
         } else {
-            kayak_rt::heap_cons(ch, kayak_rt::nil())
+            the::<Chars>(kayak_rt::heap_cons(ch, kayak_rt::nil()))
         }
     }), string_chars(s))))
 }

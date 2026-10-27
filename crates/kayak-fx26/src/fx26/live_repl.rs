@@ -1197,7 +1197,7 @@ pub mod session {
                     if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ')) {
                         nil::<Str>()
                     } else {
-                        kayak_rt::heap_cons(n, kayak_rt::nil())
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     }
                 }
             }
@@ -1228,7 +1228,7 @@ pub mod session {
         let p = cut(d, from, at);
         let found = sorted_strings(deduped_names(concat(map(lambda1s(move |n: Str| {
             if has_prefix_p(n, p) {
-                kayak_rt::heap_cons(n, kayak_rt::nil())
+                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
             } else {
                 nil::<Str>()
             }
@@ -1345,7 +1345,7 @@ pub mod session {
             said_x({
                 let found = sorted_strings(deduped_names(concat(map(lambda1s(move |n: Str| {
                     if i64_gt_eq(int_to_i64(string_search(n, rest, int_lit(0))), 0i64) {
-                        kayak_rt::heap_cons(n, kayak_rt::nil())
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     } else {
                         nil::<Str>()
                     }
@@ -1556,7 +1556,7 @@ pub mod session {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
                     } else {
-                        kayak_rt::heap_cons(n, kayak_rt::nil())
+                        the::<List<i64>>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     }
                 }), ns))));
                 continue;
@@ -2515,7 +2515,7 @@ pub mod session {
             if quiet_effect_p(kayak_rt::heap_cons(a, kayak_rt::nil())) {
                 nil::<Str>()
             } else {
-                kayak_rt::heap_cons(a, kayak_rt::nil())
+                the::<Strings>(kayak_rt::heap_cons(a, kayak_rt::nil()))
             }
         }), es))
     }

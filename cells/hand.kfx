@@ -1725,7 +1725,9 @@
                 (words-compiled! (cdr ws) s rts)))))))
 
 (define-type hand-code
-  (subr (conv native) (maxeff (read @c) (write @c))
+  ;; `spin`: kept in `@c`, which it reads, it could reach itself, which
+  ;; FX-26 says so (C254).
+  (subr (conv native) (maxeff (read @c) (write @c) spin)
         ((flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c)) int))
 
 ;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.

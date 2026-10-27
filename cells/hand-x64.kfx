@@ -1567,7 +1567,7 @@
  operation that says it, so a native procedure of two instructions, made
  once for the machine this runs on, returns its argument, a flat array's
  suffix (tag 4), less its tag, as an `int` (a fixnum)."
-(define-type address-code (subr (conv native) (read @c) ((flatarrayof i64 @c)) int))
+(define-type address-code (subr (conv native) (maxeff (read @c) spin) ((flatarrayof i64 @c)) int))
 (define address-made (ref (listof address-code @c) @c) (new nil))
 
 (define address-code! (->* () (sumof (made-address address-code) (no-address string)))

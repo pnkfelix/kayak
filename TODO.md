@@ -823,6 +823,14 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      `word-set!` test every index for the code area (`code-on`, two
      compares; C226), on its hottest path: accessors of their own for the
      code area, or one reservation.
+   - **KFX a sublanguage of FX-26** (the user, C254): Fixpt accepts each
+     of kayak's KFX units, checked (`fixpt-accepts.py`). Next: kayak's
+     checker to refuse what Fixpt refuses (FX-26's `cons`, a `pairof` at a
+     region of its own unless expected; each call's unsolved region binder
+     a fresh region, Fixpt's `k-default-regions`), and FX-26's types for
+     `car`, `cdr`, `set-car!`, `set-cdr!` (any pair that may be `nil`;
+     `scheme-bench/peval.fx` refused); `scheme-bench/` in the checkers'
+     comparison.
    - **KFX's own object model** (the review's last item; the user: "these
      differences are reasonably motivated"): KFX may differ from FX-26 by
      refusing, as K1 allows (its continuations Rust futures, resumed once,

@@ -613,7 +613,7 @@
 
       (define known-names (subr running () strings)
         (lambda ()
-          (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (or (has-prefix? n "%") (has-char-in? n #\space)) nil (list n)))))
+          (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (or (has-prefix? n "%") (has-char-in? n #\space)) nil (the strings (list n))))))
                        (cv-binds (get repl-cv))))))
 
       (define-rec
@@ -629,7 +629,7 @@
            begins agree; if that adds nothing and there are several, they are
            said."
           (let* ((d (get draft)) (at (get cursor)) (from (name-start d at)) (p (cut d from at))
-                 (found (sorted-strings (deduped-names (concat (map (lambda ((n string)) (if (has-prefix? n p) (list n) nil)) (known-names))) nil))))
+                 (found (sorted-strings (deduped-names (concat (map (lambda ((n string)) (if (has-prefix? n p) (the strings (list n)) nil)) (known-names))) nil))))
             (cond ((or (string=? p "") (null? found)) #u)
                   (else
                    (let ((common (common-prefix (car found) (cdr found))))
@@ -707,7 +707,7 @@ an entry naming one that has not ended waits for it.")
                      (asked! (limited (get step-limit)))
                      (said! (if (i64< (get step-limit) 0) "no step limit" (string-append "an entry may take " (string-append (i64->string (get step-limit)) " steps"))) now)))
                   ((string=? w ",apropos")
-                   (said! (let ((found (sorted-strings (deduped-names (concat (map (lambda ((n string)) (if (i64>= (int->i64 (string-search n rest 0)) 0) (list n) nil)) (known-names))) nil))))
+                   (said! (let ((found (sorted-strings (deduped-names (concat (map (lambda ((n string)) (if (i64>= (int->i64 (string-search n rest 0)) 0) (the strings (list n)) nil)) (known-names))) nil))))
                             (if (null? found) "nothing" (words-of-at-most found 40)))
                           now))
                   ((string=? w ",quit") (set quitting #t))
@@ -829,7 +829,7 @@ an entry naming one that has not ended waits for it.")
                                          ((string=? defined "") line)
                                          (else (string-append defined (string-append "\n" line))))
                                    (and quiet expression (quiet-effect? effects))
-                                   (onto tops (concat (map (lambda ((n i64)) (if (i64= n -1) nil (list n))) ns)))))))))))
+                                   (onto tops (concat (map (lambda ((n i64)) (if (i64= n -1) nil (the (listof i64 acyclic) (list n)))) ns)))))))))))
 
       (define result-bound (subr running (cv sexp string) cv)
         (lambda (v form name)
@@ -1371,7 +1371,7 @@ an entry naming one that has not ended waits for it.")
       (define loud-atoms (subr kfx (strings) strings)
         (lambda (es)
           "The atoms of an effect that keep an entry from running beside others."
-          (concat (map (lambda ((a string)) (if (quiet-effect? (list a)) nil (list a))) es))))
+          (concat (map (lambda ((a string)) (if (quiet-effect? (list a)) nil (the strings (list a)))) es))))
 
       (define draft-runnable? (subr running () bool)
         (lambda ()

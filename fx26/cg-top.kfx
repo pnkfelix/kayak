@@ -176,7 +176,7 @@
   (q-replaced (subr gen (chars chars strings) string)
     (lambda (cs run acc)
       "`cs` with each mark written, `run` the plain characters not yet put."
-      (cond ((null? cs) (strings-joined (reverse (cons (list->string (reverse run)) acc)) ""))
+      (cond ((null? cs) (strings-joined (reverse (the strings (cons (list->string (reverse run)) acc))) ""))
             ((char=? (car cs) (i64->char 1)) (q-replaced-mark (cdr cs) 0 (cons (list->string (reverse run)) acc)))
             (else (q-replaced (cdr cs) (cons (car cs) run) acc)))))
   (q-replaced-mark (subr gen (chars i64 strings) string)

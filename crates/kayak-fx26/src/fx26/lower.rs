@@ -1185,16 +1185,16 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             }
         } else if string_eq_p(h, str_lit("letrec")) {
             let bs = items(car(xs));
-            let inner = kayak_rt::heap_cons(map(lambda1s(move |b: &'static Sexp| {
+            let inner = the::<Scope>(kayak_rt::heap_cons(map(lambda1s(move |b: &'static Sexp| {
                 binder_name(car(items(b)))
-            }), bs), sc);
+            }), bs), sc));
             return i_letrec(map(lambda1s(move |b: &'static Sexp| {
                 named(binder_name(car(items(b))), lower(last(items(b)), inner, gs))
             }), bs), lower_body(cdr(xs), inner, gs));
         } else if string_eq_p(h, str_lit("cond")) {
             return lower_cond(xs, sc, gs);
         } else if string_eq_p(h, str_lit("case")) {
-            let inner = kayak_rt::heap_cons(the::<Strings>(kayak_rt::heap_cons(fresh_for(str_lit("%case-key"), e), kayak_rt::nil())), sc);
+            let inner = the::<Scope>(kayak_rt::heap_cons(the::<Strings>(kayak_rt::heap_cons(fresh_for(str_lit("%case-key"), e), kayak_rt::nil())), sc));
             return i_let(kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::nil()), lower_case(cdr(xs), inner, gs));
         } else if member_of_p(h, kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil())))))))) {
             // A blobref's operation (C215), its layout the checker's facts here.
@@ -1385,7 +1385,7 @@ pub fn lower_module(written: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     let its = includes_first(written);
     let names = module_item_names(its, gs, false);
     let given = module_item_names(its, gs, true);
-    let inner = kayak_rt::heap_cons(names, sc);
+    let inner = the::<Scope>(kayak_rt::heap_cons(names, sc));
     i_letrec(module_values(its, inner, gs), i_product(given, map(lambda1s(move |n: Str| {
         i_local(0i64, position_of(n, names, 0i64))
     }), given)))

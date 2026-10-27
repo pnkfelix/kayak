@@ -53,6 +53,9 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
     # What kayak ported from Fixpt, each source at the pin (C121).
     python3 -I scripts/fixpt-drift.py --check
     python3 -I scripts/fx26-tests.py --check
+    # KFX is a sublanguage of FX-26: each of kayak's KFX units (the
+    # compiler, the engine, tier 1) Fixpt's checkers accept too (C254).
+    python3 -I scripts/fixpt-accepts.py
 fi
 # Those that kfx accepts, run both ways.
 python3 -I scripts/run-fixpt-programs.py

@@ -932,7 +932,7 @@
                                    (else (the (listof strings acyclic) (list (split-words had)))))))))
             (cond ((or (string=? want "") (null? have)) (parse-x e))
                   ((string=? want (put-sep-words (car have))) (parse-x e))
-                  (else (x-reshape (parse-x e) (map (lambda ((w string)) (list (index-in w (car have) 0))) (split-words want)) p)))))
+                  (else (x-reshape (parse-x e) (map (lambda ((w string)) (the (listof i64 acyclic) (list (index-in w (car have) 0)))) (split-words want)) p)))))
         (else other
           ;; An expression's module, of the layout it was made with (C216).
           (let* ((want (fact-text (get cg-module-facts) (datum-file e) (datum-pos e) "module-arg "))
@@ -943,7 +943,7 @@
                     ;; One made here is made of the type wanted (`module-narrowed`).
                     (head-is? e "module") (head-is? e "extend"))
                 x
-                (x-reshape x (map (lambda ((w string)) (list (index-in w have 0))) (split-words want)) (datum-pos e))))))))
+                (x-reshape x (map (lambda ((w string)) (the (listof i64 acyclic) (list (index-in w have 0)))) (split-words want)) (datum-pos e))))))))
 
   (module-fact? (subr gen (i64 string) bool)
     (lambda (a what)
@@ -991,21 +991,22 @@
               (begin (set cg-module-type given)
                      (if (string=? (put-sep-words own-names) (put-sep-words given))
                          (x-module own a)
-                         (x-reshape (x-module own a) (map (lambda ((n string)) (list (index-in n own-names 0))) given) a))))
+                         (x-reshape (x-module own a) (map (lambda ((n string)) (the (listof i64 acyclic) (list (index-in n own-names 0)))) given) a))))
             (else
               (let* ((at (tagcase (car incs) (cinc (m h p) p)))
                      (inc-type (included-values incs #t))
                      (shown (included-values incs #f))
                      (inside (map member-in-includes own))
                      (used (included-used inside inc-type nil))
-                     (its (cons (cmem "%include" (include-module incs at) 1 #f at)
-                                (onto (map (lambda ((n string)) (cmem n (x-extract (x-var "%include" at) (index-in n inc-type 0) at) 0 #f at)) used)
-                                      inside)))
-                     (mine (cons "%include" own-names)))
+                     (its (the (listof cmem acyclic)
+                               (cons (cmem "%include" (include-module incs at) 1 #f at)
+                                     (onto (map (lambda ((n string)) (cmem n (x-extract (x-var "%include" at) (index-in n inc-type 0) at) 0 #f at)) used)
+                                           inside))))
+                     (mine (the strings (cons "%include" own-names))))
                 (begin (set cg-module-type (onto shown given))
                        (x-reshape (x-module its a)
-                                  (onto (map (lambda ((n string)) (list 0 (index-in n inc-type 0))) shown)
-                                        (map (lambda ((n string)) (list (index-in n mine 0))) given))
+                                  (onto (map (lambda ((n string)) (the (listof i64 acyclic) (list 0 (index-in n inc-type 0)))) shown)
+                                        (map (lambda ((n string)) (the (listof i64 acyclic) (list (index-in n mine 0)))) given))
                                   a)))))))))
 
   (module-narrowed (subr gen (cx string i64) cx)
@@ -1020,7 +1021,7 @@
         (if (or (string=? want "") (string=? want (put-sep-words have)))
             x
             (begin (set cg-module-type (split-words want))
-                   (x-reshape x (map (lambda ((w string)) (list (index-in w have 0))) (split-words want)) a))))))
+                   (x-reshape x (map (lambda ((w string)) (the (listof i64 acyclic) (list (index-in w have 0)))) (split-words want)) a))))))
 
   (parse-extend (subr gen (sexp sexp i64) cx)
     (lambda (e0 e1 a)
@@ -1034,9 +1035,9 @@
              (more (filter (lambda ((n string)) (not (string-member? n l0))) l1)))
         (begin
           (set cg-module-type (onto l0 more))
-          (x-reshape (x-module (list (cmem "%extend" (parse-x e0) 1 #f a) (cmem "%extended" seen 1 #f a)) a)
-                     (onto (map (lambda ((n string)) (if (string-member? n l1) (list 1 (index-in n l1 0)) (list 0 (index-in n l0 0)))) l0)
-                           (map (lambda ((n string)) (list 1 (index-in n l1 0))) more))
+          (x-reshape (x-module (the (listof cmem acyclic) (list (cmem "%extend" (parse-x e0) 1 #f a) (cmem "%extended" seen 1 #f a))) a)
+                     (onto (map (lambda ((n string)) (if (string-member? n l1) (the (listof i64 acyclic) (list 1 (index-in n l1 0))) (the (listof i64 acyclic) (list 0 (index-in n l0 0))))) l0)
+                           (map (lambda ((n string)) (the (listof i64 acyclic) (list 1 (index-in n l1 0)))) more))
                      a)))))
 
   (include-module (subr gen ((listof cinc acyclic) i64) cx)
@@ -1062,7 +1063,7 @@
           nil
           (tagcase (car incs)
             (cinc (m h p)
-              (onto (let ((n (size (included-layout m)))) (map (lambda ((i i64)) (list k i)) (indices-from 0 n)))
+              (onto (let ((n (size (included-layout m)))) (map (lambda ((i i64)) (the (listof i64 acyclic) (list k i))) (indices-from 0 n)))
                     (include-paths (cdr incs) (i64+ k 1))))))))
 
   (included-values (subr gen ((listof cinc acyclic) bool) strings)
@@ -1467,7 +1468,7 @@
                      (let ((k (char->i64 ch)))
                        (if (or (char=? ch quote) (i64= k 92) (i64< k 32) (i64> k 126))
                            (string-chars (string-append "\\x" (string-append (hex k) ";")))
-                           (list ch))))
+                           (the chars (list ch)))))
                    (string-chars s))))))
 
 "A quoted datum made now and interned (C231; Fixpt's `c-quote-now`,

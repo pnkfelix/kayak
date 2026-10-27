@@ -1528,7 +1528,7 @@ pub fn acyclic_from_p(v: i64, path: List<i64>, done: Ref<List<i64>>) -> bool {
     } else if member_i64_p(v, get(done)) {
         true
     } else {
-        let path = kayak_rt::heap_cons(v, path);
+        let path = the::<List<i64>>(kayak_rt::heap_cons(v, path));
         if if is_pair_p(v) {
             (acyclic_from_p(pair_car(v), path, done) && acyclic_from_p(pair_cdr(v), path, done))
         } else {
