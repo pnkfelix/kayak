@@ -2071,6 +2071,110 @@ pub fn zeros_x(mut k: i64) -> () {
     }
 }
 
+// Names for the machine code tier 2 places, for profilers (C239; Fixpt's
+// `symbols.rs`): each compiled word's code, from its first cell's label to
+// its last's end (`word-spans`, the word's name with them), and the
+// machine's own before the first word's, given kayak-rt once the code is
+// sealed, at the place it runs (`last-sealed`), to write a perf map
+// (`KAYAK_PERF_MAP`).
+pub enum Span {
+    Span(Str, Int, Int),
+}
+
+pub fn span(f0: Str, f1: Int, f2: Int) -> &'static Span {
+    kayak_rt::heap_alloc(Span::Span(f0, f1, f2))
+}
+
+pub fn word_spans() -> Ref<List<&'static Span>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Span>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Span>())
+    })
+}
+
+pub fn _pctsyscall_available_colonnote_code() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall note-code (\"kayak:note-code/1\")"), str_lit("kayak:note-code/1"), str_lit("(subr (io sys) (int int string) unit)"));
+    true
+}
+
+pub fn note_code(x1: Int, x2: Int, x3: Str) -> () {
+    _pctsyscall_available_colonnote_code();
+    kayak_rt::syscall3(str_lit("syscall note-code (\"kayak:note-code/1\")"), str_lit("kayak:note-code/1"), str_lit("(subr (io sys) (int int string) unit)"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_colonlast_sealed() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn last_sealed() -> Int {
+    _pctsyscall_available_colonlast_sealed();
+    kayak_rt::syscall0(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"))
+}
+
+pub fn span_labelled_x(name: Str, lo: Int, hi: Int) -> () {
+    set(word_spans(), kayak_rt::heap_cons(span(name, lo, hi), get(word_spans())))
+}
+
+/// Word `w`'s compiled code to be named, its cells' labels from `base`.
+pub fn span_noted_x(w: i64, base: Int) -> () {
+    span_labelled_x(symbol_text(slot_of(w, f_name())), base, _plus(base, i64_to_int(cells_in(w, f_cell0()))))
+}
+
+/// Register word `rw`'s name, its cellular twin's, and the tier.
+pub fn register_name(rw: i64, tier: Str) -> Str {
+    string_append(symbol_text(slot_of(slot_of(rw, f_twin()), f_name())), tier)
+}
+
+pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<&'static Span>) -> () {
+    loop {
+        if null_p(ss) {
+            return ();
+        } else {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Span::Span(name, lo, hi) => {
+                    let (from, to) = (_star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo)))), _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(hi)))));
+                    note_code(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name));
+                    ss = cdr(ss);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn spans_first(mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<&'static Span>, mut least: Int) -> Int {
+    loop {
+        if null_p(ss) {
+            return least;
+        } else {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Span::Span(name, lo, hi) => {
+                    let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
+                    (ss, least) = (cdr(ss), if _lt(from, least) {
+                        from
+                    } else {
+                        least
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// The code just sealed, `bytes` long, named: `what` up to the first
+/// compiled word, each compiled word after; `ls` its labels' places, in
+/// units of `scale` bytes.
+pub fn code_named_x(ls: FlatArray<i64>, scale: Int, bytes: Int, what: Str) -> () {
+    let (at, ss) = (last_sealed(), get(word_spans()));
+    note_code(at, spans_first(ls, scale, ss, bytes), what);
+    spans_noted_x(at, ls, scale, ss);
+    set(word_spans(), nil::<&'static Span>())
+}
+
 /// Word `w` compiled; `rt` the label of its table of where to resume.
 pub fn word_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
     let n = int_to_i64(n_cells);
@@ -2081,6 +2185,7 @@ pub fn word_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
     set(hand_labels(), _plus(give_pre, int_lit(1)));
+    span_noted_x(w, base);
     starts_x(w, 0i64, n, at);
     set(l_give(), give);
     set(l_give_pre(), give_pre);
@@ -3277,6 +3382,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     reg_instructions_x(rw, 0i64, n, base, starts, resumes);
     bind_x(_plus(base, n_cells));
     b_x(give);
+    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells));
     resumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
     bind_x(give);
     addi_x(x_fuel(), x_fuel(), int_lit(1));
@@ -3285,7 +3391,10 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     bind_x(rgive);
     b_x(get(l_resume_give()));
     if direct {
-        t6_compiled_x(rw, n, base, starts)
+        let end = label_x();
+        t6_compiled_x(rw, n, base, starts);
+        bind_x(end);
+        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end)
     } else {
         ()
     };
@@ -3466,6 +3575,7 @@ pub fn hand_code_arm64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
             kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(string_append(str_lit("tier 2: instruction "), string_append(int_to_string(bad), str_lit(" does not encode")))))
         } else {
             let p = kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b));
+            code_named_x(ls, int_lit(4), _star(int_lit(4), count), str_lit("kayak tier 2: the machine"));
             set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
             kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(p))
         }

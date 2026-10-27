@@ -328,7 +328,21 @@ pub fn seal(kind: u8, fields: &[u64], fields_frozen: bool, suffix: &[u8]) -> Cod
         sys::put(code.suffix + 8 * i, u64::from_le_bytes(w));
     }
     sys::flush(code.entry(), suffix.len().max(4));
+    LAST_SEALED.set(code.entry());
     code
+}
+
+/// Where the code `seal` sealed last runs: for a runtime to name what it
+/// placed there, for profilers (kayak-rt's `kayak:last-sealed/1`, C239).
+static LAST_SEALED: SealedAt = SealedAt(std::sync::atomic::AtomicUsize::new(0));
+struct SealedAt(std::sync::atomic::AtomicUsize);
+impl SealedAt {
+    fn set(&self, at: usize) {
+        self.0.store(at, std::sync::atomic::Ordering::Relaxed)
+    }
+}
+pub fn last_sealed() -> usize {
+    LAST_SEALED.0.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 impl Code {

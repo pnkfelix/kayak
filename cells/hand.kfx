@@ -790,6 +790,57 @@
 (define-rec
   (zeros! (->* (i64) unit) (lambda (k) "`k` entries of 0." (if (i64<= k 0) #u (begin (d! (ins 0)) (zeros! (i64- k 1)))))))
 
+"Names for the machine code tier 2 places, for profilers (C239; Fixpt's
+ `symbols.rs`): each compiled word's code, from its first cell's label to
+ its last's end (`word-spans`, the word's name with them), and the
+ machine's own before the first word's, given kayak-rt once the code is
+ sealed, at the place it runs (`last-sealed`), to write a perf map
+ (`KAYAK_PERF_MAP`)."
+(define-datatype span (span string int int))
+(define word-spans (ref (listof span @c) @c) (new nil))
+(define-syscall note-code "kayak:note-code/1" (subr (io sys) (int int string) unit))
+(define-syscall last-sealed "kayak:last-sealed/1" (subr (io sys) () int))
+
+(define span-labelled! (->* (string int int) unit)
+  (lambda (name lo hi) (set word-spans (cons (span name lo hi) (get word-spans)))))
+(define span-noted! (->* (i64 int) unit)
+  (lambda (w base)
+    "Word `w`'s compiled code to be named, its cells' labels from `base`."
+    (span-labelled! (symbol-text (slot-of w f-name)) base (+ base (i64->int (cells-in w f-cell0))))))
+(define register-name (->* (i64 string) string)
+  (lambda (rw tier) "Register word `rw`'s name, its cellular twin's, and the tier." (string-append (symbol-text (slot-of (slot-of rw f-twin) f-name)) tier)))
+
+(define-rec
+  (spans-noted! (->* (int (flatarrayof i64 @c) int (listof span @c)) unit)
+    (lambda (at ls scale ss)
+      (if (null? ss)
+          #u
+          (tagcase (car ss)
+            (span (name lo hi)
+              (let ((from (* scale (i64->int (flatarray-ref-i64 ls (int->i64 lo)))))
+                    (to (* scale (i64->int (flatarray-ref-i64 ls (int->i64 hi))))))
+                (begin (note-code (+ at from) (- to from) (string-append "fx26 " name))
+                       (spans-noted! at ls scale (cdr ss)))))))))
+  (spans-first (->* ((flatarrayof i64 @c) int (listof span @c) int) int)
+    (lambda (ls scale ss least)
+      (if (null? ss)
+          least
+          (tagcase (car ss)
+            (span (name lo hi)
+              (let ((from (* scale (i64->int (flatarray-ref-i64 ls (int->i64 lo))))))
+                (spans-first ls scale (cdr ss) (if (< from least) from least)))))))))
+
+(define code-named! (->* ((flatarrayof i64 @c) int int string) unit)
+  (lambda (ls scale bytes what)
+    "The code just sealed, `bytes` long, named: `what` up to the first
+     compiled word, each compiled word after; `ls` its labels' places, in
+     units of `scale` bytes."
+    (let ((at (last-sealed)) (ss (get word-spans)))
+      (begin
+        (note-code at (spans-first ls scale ss bytes) what)
+        (spans-noted! at ls scale ss)
+        (set word-spans nil)))))
+
 (define word-compiled! (->* (i64 int int) unit)
   (lambda (w n-cells rt)
     "Word `w` compiled; `rt` the label of its table of where to resume."
@@ -800,6 +851,7 @@
            (machine-give (get l-give)) (machine-give-pre (get l-give-pre)))
       (begin
           (set hand-labels (+ give-pre 1))
+          (span-noted! w base)
           (starts! w 0 n at)
           (set l-give give) (set l-give-pre give-pre)
           (cells-compiled! w 0 n at base)
@@ -1496,11 +1548,14 @@
         (if direct (begin (t6-prepared! rw n) (set h-6-after (make-flatarray-i64 (i64+ n 1) 0))) #u)
         (reg-instructions! rw 0 n base starts resumes)
         (bind! (+ base n-cells)) (b! give)
+        (span-labelled! (register-name rw " (tier 5)") base (+ base n-cells))
         (resumes-emitted! 0 n base rbase rgive resumes)
         (bind! give) (addi! x-fuel x-fuel 1)
         (bind! give-pre) (b! machine-give-pre)
         (bind! rgive) (b! (get l-resume-give))
-        (if direct (t6-compiled! rw n base starts) #u)
+        (if direct
+            (let ((end (label!))) (begin (t6-compiled! rw n base starts) (bind! end) (span-labelled! (register-name rw " (tier 6)") (+ (get h-6-base) 2) end)))
+            #u)
         (set l-give machine-give) (set l-give-pre machine-give-pre)
         (data-label! rt)
         (d! (ins (* 8 (i64->int (i64+ f-cell0 n)))))
@@ -1613,4 +1668,5 @@
             (if (>= bad 0)
                 (sum failed (string-append "tier 2: instruction " (string-append (int->string bad) " does not encode")))
                 (let ((p (the hand-code (native-procedure (seal-code b)))))
-                  (begin (set hand-made (list p)) (sum made p)))))))))
+                  (begin (code-named! ls 4 (* 4 count) "kayak tier 2: the machine")
+                         (set hand-made (list p)) (sum made p)))))))))

@@ -9,3 +9,10 @@ license = "MIT OR Apache-2.0"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
+
+# For profiling (C239): the release build with line tables, so that `perf`
+# names the Rust's lines (tier 1's interpreter, kayak-jit's routines), the
+# normal build unslowed. `cargo build --profile profiling`.
+[profile.profiling]
+inherits = "release"
+debug = "line-tables-only"

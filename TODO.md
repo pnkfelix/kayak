@@ -751,7 +751,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      1. **Done** (C238; collections a quarter of the gap, not most). Heap sizing as Fixpt's (a nursery's worth to start, growth by what
         lives), measured against the table: cheap, likely most of
         `lists`' and `closures`' gap.
-     2. `perf` of `tak` and `lists` on tier 6, to apportion the rest.
+     2. **Done** (C239): `perf` of `tak` and `lists` on tier 6: at a
+        measurable size 2.8x and 1.7x behind (the short runs held kayak's
+        start-up), 93-95% in tier 6's own code. Next: a jitdump (code
+        bytes, then FX-26 lines) for `perf annotate` of it; and kayak's
+        start-up (tier 2's machine encoded at each start) on its own.
      3. The call protocol (values in registers across calls, frames on the
         machine stack), with the frame-flushing work (departures 1, 5, 6).
      4. Tier 1's own 2.5-3.5x (KFX's representation: bounds-checked flat

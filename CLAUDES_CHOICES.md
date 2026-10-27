@@ -6743,3 +6743,35 @@ touched), the first limit is 2^20 words, Fixpt's nursery's.
   collections; they were about a quarter of it. The rest is per
   allocation or per call: item 2, a profile, next.
 
+## C239. Machine code named for profilers; where tier 6's time goes (2026-10-27)
+
+The user, asked whether kayak supports `perf` and debug info for FX-26's
+compiled code: "we should do both of those things; I'm especially
+interested in what you can do for debuginfo support for FX26 itself". It
+did not: the native tiers' code ran in anonymous mappings, `perf`'s
+`[unknown]`.
+- **A perf map** (Fixpt's `symbols.rs`, `FIXPT_PERF_MAP`): two syscalls of
+  kayak-rt's, `kayak:note-code/1` (start, length, name: with
+  `KAYAK_PERF_MAP` set a line of `/tmp/perf-PID.map`) and
+  `kayak:last-sealed/1` (where the code KFX's `seal-code` sealed last
+  runs, kayak-jit's `last_sealed`). Tier 2, once its machine is sealed,
+  names it up to the first compiled word, and each compiled word from its
+  first cell's label to its last's: tier 4's `fx26 NAME`, tier 5's
+  `fx26 NAME (tier 5)`, tier 6's `fx26 NAME (tier 6)`, on x86_64 and
+  arm64 (labels in bytes and in instructions).
+- **A `profiling` Cargo profile**: the release build with line tables.
+- **The levels of debug info for FX-26**, agreed with the user: names (this);
+  jitdump with code bytes, then with source lines from line tables
+  kayak's compiler writes into its listings; a profile of tier 1 by FX-26
+  source line (`--profile`); the GDB JIT interface not now.
+- **Measured, the plan's item 2**: run long enough (`tak 30 21 12`;
+  `lists`' `rounds` 60000), tier 6 is 2.8x behind Fixpt's native machine
+  on `tak` (103 ms, 36) and 1.7x on `lists` (409 ms, 241), not 5x and
+  4.3x: the short benchmarks' times held kayak's start-up (the
+  reservations, tier 2's machine encoded at each start), which Fixpt's
+  "run alone" leaves out. And of those runs, 93% (`tak`) and 95% (`lists`:
+  `iota` 73%, `add-up` 22%) is in tier 6's own code: hand-backs to tier 1,
+  the collector and the runtime's Rust under 2% each. The gap is tier 6's
+  code's quality; which of its instructions, a jitdump (code bytes for
+  `perf annotate`) will say.
+

@@ -132,6 +132,24 @@ const SYSCALLS: &[Syscall] = &[
         canonical: "(subr (io sys) () string)",
         run: |_| crate::world::failure_detail().word(),
     },
+    // Names for the machine code a runtime places, for profilers (C239;
+    // Fixpt's `fixpt-native/src/symbols.rs`): with `KAYAK_PERF_MAP` set,
+    // each `start length name` a line of `/tmp/perf-PID.map`, which Linux's
+    // `perf report` reads; and where the code KFX's `seal-code` sealed
+    // last runs, to name what it placed there.
+    Syscall {
+        host: "kayak:note-code/1",
+        canonical: "(subr (io sys) (int int string) unit)",
+        run: |a| {
+            crate::world::code_noted(int(a[0]), int(a[1]), crate::Str::of_word(a[2]).as_str());
+            ().word()
+        },
+    },
+    Syscall {
+        host: "kayak:last-sealed/1",
+        canonical: "(subr (io sys) () int)",
+        run: |_| (kayak_jit::last_sealed() as i64).word(),
+    },
 ];
 
 /// What kayak-rt has under `host`: the syscall, if its type is `text`;

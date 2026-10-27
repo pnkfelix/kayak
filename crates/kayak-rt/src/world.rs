@@ -658,6 +658,29 @@ pub fn failure_detail() -> Str {
     FAILURE.with(|f| leak_string(f.borrow().as_ref().map_or(String::new(), |e| e.to_string())))
 }
 
+/// Machine code at `start`, `len` bytes, named `name`, for profilers
+/// (C239): with `KAYAK_PERF_MAP` set, a line of `/tmp/perf-PID.map`, the
+/// format `perf report` reads (`START LEN NAME`, both in hex), as Fixpt's
+/// `FIXPT_PERF_MAP`; else nothing.
+pub fn code_noted(start: i64, len: i64, name: &str) {
+    static MAP: Mutex<Option<std::fs::File>> = Mutex::new(None);
+    if std::env::var_os("KAYAK_PERF_MAP").is_none() || len <= 0 {
+        return;
+    }
+    let mut m = MAP.lock().unwrap_or_else(|p| p.into_inner());
+    if m.is_none() {
+        let path = format!("/tmp/perf-{}.map", std::process::id());
+        *m = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .ok();
+    }
+    if let Some(f) = m.as_mut() {
+        let _ = writeln!(f, "{start:x} {len:x} {name}");
+    }
+}
+
 /// The next byte, waiting for one; `eof` at the end.
 pub fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
     let mut i = arrived();

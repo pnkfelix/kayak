@@ -2125,6 +2125,7 @@ pub fn yword_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
     let at = the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64));
     let base = get(hand_labels());
     set(hand_labels(), _plus(base, _plus(n_cells, int_lit(1))));
+    span_noted_x(w, base);
     starts_x(w, 0i64, n, at);
     ycells_compiled_x(w, 0i64, n, at, base);
     ybind_x(_plus(base, n_cells));
@@ -3089,6 +3090,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     yreg_instructions_x(rw, 0i64, n, base, starts, resumes);
     ybind_x(_plus(base, n_cells));
     yb_x(_plus(get(h_gbase()), _star(int_lit(2), n_cells)));
+    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells));
     yresumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
     flatarray_set_i64_x(get(h_5_pushed()), n, if y_pushed_p() {
         1i64
@@ -3106,7 +3108,10 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     ybind_x(rgive);
     yb_x(get(l_resume_give()));
     if direct {
-        y6_compiled_x(rw, n, base, starts)
+        let end = label_x();
+        y6_compiled_x(rw, n, base, starts);
+        ybind_x(end);
+        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end)
     } else {
         ()
     };
@@ -3248,6 +3253,7 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         let b = the::<&'static Bloblet<()>>(make_bloblet(count, ()));
         let v = y_all_put_x(b, its, int_lit(0), ls);
         let p = kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b));
+        code_named_x(ls, int_lit(1), count, str_lit("kayak tier 2: the machine"));
         set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(p))
     }
