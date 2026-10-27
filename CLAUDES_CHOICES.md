@@ -6949,3 +6949,32 @@ code (C240 gave it the code, with names only).
   makes no register code yet. Columns: perf's injected ELF keeps lines
   only, so an expression's place within a line is `--profile`'s (C245),
   on tier 1.
+
+## C247. `KAYAK_JITDUMP=expr`: perf by expression (2026-10-27)
+
+The user, of C246's lines only: "I wonder if there's some insane hack
+like encoding the source L:C as a virtual-line … and then map the
+results back ourselves"; then that splitting by expression is often
+what is wanted, an opt-in, and that a value out of the file's lines
+might say it is encoded; and "surely KAYAK_JITDUMP=expr is a better
+opt-in signal?".
+- **The encoding**: a jitdump's line is 32 bits (perf's handling of it
+  signed, so under 2^31). With `KAYAK_JITDUMP=expr`, a record's line is
+  N + 2 + P, P the character position where the expression's code
+  begins and N the source's lines: past N + 1, so it says itself it is a
+  position, whatever reads it.
+- **The side file** the records name, `/tmp/jit-PID.NAME.expr` beside the
+  jitdump: the source's N lines, verbatim; a line saying so (`;;; kayak
+  expr (C247): the N lines above are PATH's; …`); then line N + 2 + P,
+  `LINE:COLUMN  TEXT` where a token may start at P, else empty. So
+  `perf annotate -l` shows each expression's text over its code with no
+  decoding, and a plain line (1..N) still reads as the source's.
+- **`scripts/perf-expr.py PERF_DATA [--lines] [-n COUNT]`**: runs `perf
+  report --sort srcline --full-source-path` and reads each line back as
+  `PATH:LINE:COLUMN` and the expression; `--lines` sums the expressions
+  of each source line, as plain `KAYAK_JITDUMP=1` would report. `lists`
+  on tier 4: `(add-up (cdr xs) …)` 11.6%, `(iota (- n 1) …)` 9.3%; by
+  line 41% and 39%.
+- **`docs/profiling.md`**: the four ways together (`--profile`, the perf
+  map, the jitdump, `expr`).
+- Not run by `check.sh`: it needs `perf` and its permissions.

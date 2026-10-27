@@ -663,40 +663,105 @@ pub fn failure_detail() -> Str {
 /// offset into `file`) each, the code from that address on the
 /// position's. With `KAYAK_JITDUMP` set, the positions made lines of
 /// `file` and a jitdump's debug-info record written before the code's;
-/// else as `code_noted`.
+/// else as `code_noted`. With `KAYAK_JITDUMP=expr` (C247), each
+/// expression's position a line of its own, of a side file (`side_file`).
 pub fn code_lines_noted(start: i64, len: i64, name: &str, file: &str, pairs: &[u64]) {
-    if len > 0 && std::env::var_os("KAYAK_JITDUMP").is_some() {
-        static STARTS: Mutex<Vec<(String, Vec<usize>)>> = Mutex::new(Vec::new());
-        let mut known = STARTS.lock().unwrap_or_else(|p| p.into_inner());
-        if !known.iter().any(|(f, _)| f == file) {
-            // Where each line starts, in characters, as the reader counts;
-            // none if the file cannot be read (the listing's path relative
-            // to another directory), so no lines rather than wrong ones.
-            let starts = std::fs::read_to_string(file).map_or(Vec::new(), |text| {
-                let mut starts = vec![0];
-                for (i, c) in text.chars().enumerate() {
-                    if c == '\n' {
-                        starts.push(i + 1);
+    let Some(mode) = std::env::var_os("KAYAK_JITDUMP") else {
+        return code_noted(start, len, name);
+    };
+    if len > 0 {
+        let exprs = mode == "expr";
+        // Each file's line starts, in characters, as the reader counts,
+        // and the path its records name; none if the file cannot be read
+        // (the listing's path relative to another directory), so no lines
+        // rather than wrong ones.
+        type Known = (String, Vec<usize>, String, u64);
+        static KNOWN: Mutex<Vec<Known>> = Mutex::new(Vec::new());
+        let mut known = KNOWN.lock().unwrap_or_else(|p| p.into_inner());
+        if !known.iter().any(|k| k.0 == file) {
+            let (starts, (path, n)) = match std::fs::read_to_string(file) {
+                Err(_) => (Vec::new(), (String::new(), 0)),
+                Ok(text) => {
+                    let mut starts = vec![0];
+                    for (i, c) in text.chars().enumerate() {
+                        if c == '\n' {
+                            starts.push(i + 1);
+                        }
+                    }
+                    let path = std::fs::canonicalize(file)
+                        .map_or(file.to_string(), |p| p.display().to_string());
+                    if exprs {
+                        (starts, side_file(&path, &text).unwrap_or_default())
+                    } else {
+                        (starts, (path, 0))
                     }
                 }
-                starts
-            });
-            known.push((file.to_string(), starts));
+            };
+            known.push((file.to_string(), starts, path, n));
         }
-        let starts = &known.iter().find(|(f, _)| f == file).expect("just noted").1;
-        if !starts.is_empty() {
+        let (_, starts, path, n) = known.iter().find(|k| k.0 == file).expect("just noted");
+        if !starts.is_empty() && !path.is_empty() {
             let lines: Vec<(u64, u32)> = pairs
                 .as_chunks::<2>()
                 .0
                 .iter()
-                .map(|&[at, pos]| (at, starts.partition_point(|&s| s <= pos as usize) as u32))
+                .map(|&[at, pos]| {
+                    if exprs {
+                        (at, (n + 2 + pos) as u32)
+                    } else {
+                        (at, starts.partition_point(|&s| s <= pos as usize) as u32)
+                    }
+                })
                 .collect();
-            let path =
-                std::fs::canonicalize(file).map_or(file.to_string(), |p| p.display().to_string());
-            kayak_jit::jitdump::debug_info(start as usize, &path, &lines);
+            kayak_jit::jitdump::debug_info(start as usize, path, &lines);
         }
     }
     code_noted(start, len, name);
+}
+
+/// `KAYAK_JITDUMP=expr`'s side file for source `path` (C247), so that
+/// a line of perf's tells an expression, not a whole line: its first N
+/// lines the source's (N `text`'s lines), then a line saying so, then
+/// line N + 2 + P for character position P: `LINE:COLUMN  TEXT`, the
+/// line from 1, the column from 0, the text from there to the line's end
+/// (cut at 60), where a token may start, else empty. So a line of N or
+/// less is the source's own, and one past N + 1 a position, which
+/// `scripts/perf-expr.py` reads back. At `/tmp/jit-PID.NAME.expr`,
+/// beside the jitdump. Its path and N; none if it cannot be written.
+fn side_file(path: &str, text: &str) -> Option<(String, u64)> {
+    let name = std::path::Path::new(path)
+        .file_name()?
+        .to_string_lossy()
+        .into_owned();
+    let side = format!("/tmp/jit-{}.{name}.expr", std::process::id());
+    let n = text.lines().count() as u64;
+    let mut out = String::with_capacity(4 * text.len());
+    for l in text.lines() {
+        out.push_str(l);
+        out.push('\n');
+    }
+    out.push_str(&format!(
+        ";;; kayak expr (C247): the {n} lines above are {path}'s; line {n} + 2 + P below, the expression at its character P\n"
+    ));
+    let cs: Vec<char> = text.chars().collect();
+    let (mut line, mut col) = (1, 0);
+    for (p, &c) in cs.iter().enumerate() {
+        let starts = p == 0 || cs[p - 1].is_whitespace() || "()[]'`,\"".contains(cs[p - 1]);
+        if starts && !c.is_whitespace() {
+            let rest: String = cs[p..].iter().take_while(|&&c| c != '\n').collect();
+            let cut: String = rest.chars().take(60).collect();
+            let more = if rest.chars().count() > 60 { "…" } else { "" };
+            out.push_str(&format!("{line}:{col}  {cut}{more}"));
+        }
+        out.push('\n');
+        if c == '\n' {
+            (line, col) = (line + 1, 0);
+        } else {
+            col += 1;
+        }
+    }
+    std::fs::write(&side, out).ok()?;
+    Some((side, n))
 }
 
 /// Machine code at `start`, `len` bytes, named `name`, for profilers

@@ -776,8 +776,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
         --sort srcline` show FX-26 lines. Left: tiers 5-6 run register
         code, which only Fixpt's listings have, and those have no line
         tables: lines there when kayak's compiler makes register code
-        (with a table of its own, instruction to position). Lines only:
-        perf's injected ELF has no columns. A word from a module file of
+        (with a table of its own, instruction to position). Columns:
+        `KAYAK_JITDUMP=expr` (C247), each expression a line of a side
+        file, read back by `scripts/perf-expr.py`. A word from a module file of
         its own is given the program's file; positions are characters,
         not bytes; a listing's relative path read from where kayak-cells
         runs (no lines if not found there).
