@@ -1746,6 +1746,19 @@
           "A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`."
           (put ")" (put-sep (lambda ((t sexp) acc) (put ">," (put-type c t (put "std::cell::Cell<" acc)))) " " ts (put "(" acc)))))
 
+      (heap-made? (subr kfx (ctx sexp) bool)
+        (lambda (c t)
+          "Whether a value of `t`, a datatype applied, is at no lifetime but
+           `'static`: its datatype has lived regions, and each is at none here
+           (C271)."
+          (tagcase t
+            (lst (xs f l p)
+              (let ((lived (lived-of c (sym-name (car xs)))))
+                (and (not (null? lived))
+                     (not (any? (lambda ((x string)) (not (string=? x "'static")))
+                                (lived-arguments c (cdr (items (car (items (car lived))))) (items (second (items (car lived)))) (cdr xs)))))))
+            (else other #f))))
+
       (lived-arguments (subr kfx (ctx sexps sexps sexps) strings)
         (lambda (c binders lived args)
           "A datatype's arguments at its lived regions (C270), as lifetimes: a
@@ -2443,6 +2456,14 @@
                  (acc (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t acc)))
             (put (if suspends "}))" "})") (put-nl n (put "}" (put-nl (i64+ n 1) acc)))))))
 
+      (put-placed-list (subr kfx (ctx string sexps sexps i64 chars) chars)
+        (lambda (c place pair xs n acc)
+          "In place `place`: a pair of `pair`'s car and cdr, or a list of `xs`."
+          (cond ((not (null? pair))
+                 (put ")" (put-exp c (second pair) n (value) (put ", " (put-exp c (car pair) n (value) (put ", " (put place (put "rcons(" acc))))))))
+                ((null? xs) (put "kayak_rt::nil()" acc))
+                (else (put ")" (put-placed-list c place nil (cdr xs) n (put ", " (put-exp c (car xs) n (value) (put ", " (put place (put "rcons(" acc)))))))))))
+
       (put-list (subr kfx (ctx sexps i64 chars) chars)
         (lambda (c xs n acc)
           (if (null? xs)
@@ -2481,6 +2502,16 @@
                         (acc (put-case-arms c (case-kind c e) (cdr xs) (i64+ n 1) t acc)))
                    (put "}" (put-nl n acc))))
                 ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
+                ((and (or (string=? h "cons") (string=? h "list")) (not (string=? (fact-with c e "rlist-in ") ""))
+                      (string=? (local-kind h (ctx-locals c)) ""))
+                 "A list made at a place's region, in it (C271), as `rcons` makes
+                  one."
+                 (put-placed-list c (mangle (fact-with c e "rlist-in ")) (if (string=? h "cons") xs nil) (if (string=? h "cons") nil xs) n acc))
+                ((and (not (string=? (fact-with c e "rdata-type ") "")) (string=? (local-kind h (ctx-locals c)) "")
+                      (heap-made? c (car (read-all (string-chars (fact-with c e "rdata-type ")) "" 1))))
+                 "A datatype's value at no region of a lifetime (C271): its heap
+                  twin, `TAG_heap`, in the heap's arena."
+                 (put ")" (put-joined c xs ", " n (put "(" (put (string-append (mangle h) "_heap") acc)))))
                 ((and (not (string=? (fact-with c e "rdata-in ") "")) (string=? (local-kind h (ctx-locals c)) "")
                       (let ((ws (split-words (fact-with c e "rdata-in "))))
                         (and (i64= (size ws) 2) (not (null? (lived-of c (second-string ws))))

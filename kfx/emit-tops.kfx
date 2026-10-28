@@ -449,6 +449,21 @@
                      (acc (put made acc))
                      (acc (put "(" acc))
                      (acc (put "))\n}\n\n" (put-fields c (cdr v) 0 #f acc)))
+                     (acc (if (null? lived)
+                              acc
+                              ;; Its heap twin (C271): at `'static`, in the heap's
+                              ;; arena, for a call at no region of a lifetime.
+                              (let* ((acc (put "pub fn " acc))
+                                     (acc (put (string-append (mangle tag) "_heap") acc))
+                                     (acc (put-generics-of params #t acc))
+                                     (acc (put "(" acc))
+                                     (acc (put-fields (in-heap c) (cdr v) 0 #t acc))
+                                     (acc (put ") -> &'static " acc))
+                                     (acc (put (string-append (camel d) (string-append "<" (string-append (words-of-sep (onto (map (lambda ((r string)) "'static") lived) (map camel params)) ", ") ">"))) acc))
+                                     (acc (put " {\n    kayak_rt::heap_alloc(" acc))
+                                     (acc (put made acc))
+                                     (acc (put "(" acc)))
+                                (put "))\n}\n\n" (put-fields c (cdr v) 0 #f acc)))))
                      (acc (if (not (i64= (size lived) 1))
                               acc
                               (let* ((acc (put "pub fn " acc))

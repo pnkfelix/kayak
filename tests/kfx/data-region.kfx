@@ -12,11 +12,12 @@
 
 "A tree of `n` leaves, `k` to `k + n - 1`, two levels deep, in the place
  `p` (named as its region, so that what is made at it is made in it)."
+"(Its `cons` and `list` made in the place too, C271.)"
 (define build (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p) i64 i64 (listof (rose i64 p) p)) (rose i64 p)))
   (lambda (p k n acc)
     (if (i64= n 0)
         (the (rose i64 p) (node acc))
-        (build p (i64+ k 1) (i64- n 1) (rcons p (the (rose i64 p) (node (rcons p (the (rose i64 p) (leaf k)) nil))) acc)))))
+        (build p (i64+ k 1) (i64- n 1) (cons (the (rose i64 p) (node (list (the (rose i64 p) (leaf k))))) acc)))))
 
 (define-rec
   (total (poly ((r region)) (subr (maxeff kfx (read r)) ((rose i64 r)) i64))

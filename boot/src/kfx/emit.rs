@@ -3294,6 +3294,25 @@ pub mod emitter {
         }), str_lit(" "), ts, put(str_lit("("), acc)))
     }
 
+    /// Whether a value of `t`, a datatype applied, is at no lifetime but
+    /// `'static`: its datatype has lived regions, and each is at none here
+    /// (C271).
+    pub fn heap_made_p(c: &'static Ctx, t: &'static Sexp) -> bool {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let lived = lived_of(c, sym_name(car(xs)));
+                (not(null_p(lived)) && not(any_p(lambda1s(move |x: Str| {
+                    not(string_eq_p(x, str_lit("'static")))
+                }), lived_arguments(c, cdr(items(car(items(car(lived))))), items(second(items(car(lived)))), cdr(xs)))))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
     /// A datatype's arguments at its lived regions (C270), as lifetimes: a
     /// place's, a region's of a lifetime; else `'static`, the heap's.
     pub fn lived_arguments(mut c: &'static Ctx, mut binders: Sexps, mut lived: Sexps, mut args: Sexps) -> Strings {
@@ -4416,6 +4435,17 @@ pub mod emitter {
         }, put_nl(n, put(str_lit("}"), put_nl(i64_plus(n, 1i64), acc))))
     }
 
+    /// In place `place`: a pair of `pair`'s car and cdr, or a list of `xs`.
+    pub fn put_placed_list(c: &'static Ctx, place: Str, pair: Sexps, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        if not(null_p(pair)) {
+            put(str_lit(")"), put_exp(c, second(pair), n, value(), put(str_lit(", "), put_exp(c, car(pair), n, value(), put(str_lit(", "), put(place, put(str_lit("rcons("), acc)))))))
+        } else if null_p(xs) {
+            put(str_lit("kayak_rt::nil()"), acc)
+        } else {
+            put(str_lit(")"), put_placed_list(c, place, nil::<&'static Sexp>(), cdr(xs), n, put(str_lit(", "), put_exp(c, car(xs), n, value(), put(str_lit(", "), put(place, put(str_lit("rcons("), acc)))))))
+        }
+    }
+
     pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
         if null_p(xs) {
             put(str_lit("kayak_rt::nil()"), acc)
@@ -4471,6 +4501,22 @@ pub mod emitter {
                 return put(str_lit("}"), put_nl(n, acc));
             } else if string_eq_p(h, str_lit("lambda")) {
                 return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
+            } else if ((string_eq_p(h, str_lit("cons")) || string_eq_p(h, str_lit("list"))) && not(string_eq_p(fact_with(c, e, str_lit("rlist-in ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A list made at a place's region, in it (C271), as `rcons` makes
+                // one.
+                return put_placed_list(c, mangle(fact_with(c, e, str_lit("rlist-in "))), if string_eq_p(h, str_lit("cons")) {
+                    xs
+                } else {
+                    nil::<&'static Sexp>()
+                }, if string_eq_p(h, str_lit("cons")) {
+                    nil::<&'static Sexp>()
+                } else {
+                    xs
+                }, n, acc);
+            } else if (not(string_eq_p(fact_with(c, e, str_lit("rdata-type ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && heap_made_p(c, car(read_all(string_chars(fact_with(c, e, str_lit("rdata-type "))), str_lit(""), 1i64)))) {
+                // A datatype's value at no region of a lifetime (C271): its heap
+                // twin, `TAG_heap`, in the heap's arena.
+                return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(string_append(mangle(h), str_lit("_heap")), acc))));
             } else if (not(string_eq_p(fact_with(c, e, str_lit("rdata-in ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && {
                 let ws = split_words(fact_with(c, e, str_lit("rdata-in ")));
                 (i64_eq(size(ws), 2i64) && not(null_p(lived_of(c, second_string(ws)))) && i64_eq(size(items(second(items(car(lived_of(c, second_string(ws))))))), 1i64))

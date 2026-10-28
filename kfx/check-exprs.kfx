@@ -2699,7 +2699,7 @@
                 ((and (string=? h "rlambda") (null? (scope-bind h v))) (rlambda-form v s e xs nil))
                 ((string=? h "proj") (proj-form v s xs))
                 ((string=? h "list")
-                 (if (null? xs)
+                 (list-placed v (if (null? xs)
                      (refuse v "a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")
                      (tagcase (if (head-is? (car xs) "error")
                                   (tagcase (fresh s) (res (m es s) (check v s (car xs) m)))
@@ -2708,7 +2708,7 @@
                          "Its first element's type, a `nat`'s an `int`: FX-26's is that
                           element's own `(nat v)`, which no other `nat` is."
                          ;; A `nat` element's list is of `nat`s, as Fixpt finds it (C159).
-                         (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))
+                         (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))) "list"))
                 ((control-form? h) (body-form v s h xs nil))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
                 ((and (blob-form? h) (null? (scope-bind h v))) (blob-form v s h xs nil))
@@ -2793,7 +2793,7 @@
                   member, its elements checked against its own."
                  (check v s e (car (member-of-shape (members-of (walk s expected)) "list"))))
                 ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
-                 (tagcase expected
+                 (list-placed v (tagcase expected
                    (ty-list (el r)
                      (tagcase (if (null? xs)
                                   (tagcase (walk s el)
@@ -2803,7 +2803,7 @@
                        (res (u es s)
                          (tagcase (region-of v s r)
                            (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
-                   (else other (check-by-synth v s e expected))))
+                   (else other (check-by-synth v s e expected))) "list"))
                 ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "quasiquote")
                      (string=? h "extract"))
                  (check-by-synth v s e expected))
@@ -4549,6 +4549,22 @@
           "The first of `ts` that is a place's region in scope: the place's name;
            \"\" if none."
           (if (null? ts) "" (let ((p (place-named v s (car ts)))) (if (string=? p "") (places-among v s (cdr ts)) p)))))
+      (list-placed (subr kfx (cv res string) res)
+        (lambda (v r h)
+          "A list made by the standard `cons` or `list` at a place's region in
+           scope (C271): noted, `rheld-cons` at the place's region, so that the
+           place holds its pairs, and `rlist-in` the place, so that they are made
+           there, as `rcons` makes them. Else nothing: in the heap."
+          (tagcase r
+            (res (t es s)
+              (tagcase (walk s t)
+                (ty-list (el at)
+                  (let ((place (place-named v s at)))
+                    (if (string=? place "")
+                        r
+                        (res t es (note-fact (note-types s (cv-file v) (cv-pos v) (string-append "rheld-cons@'" place) (list el))
+                                             (cv-file v) (cv-pos v) (string-append "rlist-in " place))))))
+                (else other r))))))
       (data-placed (subr kfx (cv res string) res)
         (lambda (v r h)
           "A datatype's value made by its constructor `h` at a place's region,
@@ -4567,7 +4583,9 @@
                         r
                         (let ((place (places-among v s args)))
                           (if (string=? place "")
-                              r
+                              ;; Its type, for the emitter to make it in the heap's
+                              ;; arena where it is at no region of a lifetime (C271).
+                              (res t es (note-types s (cv-file v) (cv-pos v) "rdata-type" (list t)))
                               (res t es (note-fact (note-types s (cv-file v) (cv-pos v) (string-append "rheld-data@'" place) (list t))
                                                    (cv-file v) (cv-pos v) (string-append "rdata-in " (string-append place (string-append " " d))))))))))
                 (else other r))))))
@@ -4581,7 +4599,10 @@
            the heap, as before."
           (if (not (and (string-member? h expressions-names-7)
                         (let ((b (scope-bind h v))) (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w "prim")))))))
-              (data-placed v r h)
+              (if (and (or (string=? h "cons") (string=? h "list"))
+                       (let ((b (scope-bind h v))) (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w "prim"))))))
+                  (list-placed v r h)
+                  (data-placed v r h))
               (tagcase r
                 (res (t es s)
                   (tagcase (walk s t)

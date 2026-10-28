@@ -5882,8 +5882,8 @@ pub mod expressions {
             } else if string_eq_p(h, str_lit("proj")) {
                 return proj_form(v, s, xs);
             } else if string_eq_p(h, str_lit("list")) {
-                if null_p(xs) {
-                    return match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {};
+                return list_placed(v, if null_p(xs) {
+                    match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {}
                 } else {
                     let tagcase_ = if head_is_p(car(xs), str_lit("error")) {
                         let tagcase_ = fresh(s);
@@ -5899,10 +5899,10 @@ pub mod expressions {
                         Res::Res(t, es0, s) => {
                             // Its first element's type, a `nat`'s an `int`: FX-26's is that
                             // element's own `(nat v)`, which no other `nat` is.
-                            return with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0);
+                            with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0)
                         }
                     }
-                }
+                }, str_lit("list"));
             } else if control_form_p(h) {
                 return body_form(v, s, h, xs, nil::<&'static Ty>());
             } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
@@ -6139,39 +6139,41 @@ pub mod expressions {
                 }
             }
         }) {
-            let tagcase_ = expected;
-            match *tagcase_ {
-                Ty::TyList(el, r) => {
-                    let tagcase_ = if null_p(xs) {
-                        let tagcase_ = walk(s, el);
-                        match *tagcase_ {
-                            Ty::TyMeta(k) => {
-                                match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {}
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                res(expected, nil::<Str>(), note_turbofish(s, cv_file(v), cv_pos(v), kayak_rt::heap_cons(el, kayak_rt::nil())))
-                            }
-                        }
-                    } else {
-                        elements(v, s, xs, el)
-                    };
-                    match *tagcase_ {
-                        Res::Res(u, es, s) => {
-                            let tagcase_ = region_of(v, s, r);
+            list_placed(v, {
+                let tagcase_ = expected;
+                match *tagcase_ {
+                    Ty::TyList(el, r) => {
+                        let tagcase_ = if null_p(xs) {
+                            let tagcase_ = walk(s, el);
                             match *tagcase_ {
-                                Res::Res(rr, rn, s) => {
-                                    res(expected, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, rr)), kayak_rt::nil()), es), s)
+                                Ty::TyMeta(k) => {
+                                    match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {}
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    res(expected, nil::<Str>(), note_turbofish(s, cv_file(v), cv_pos(v), kayak_rt::heap_cons(el, kayak_rt::nil())))
+                                }
+                            }
+                        } else {
+                            elements(v, s, xs, el)
+                        };
+                        match *tagcase_ {
+                            Res::Res(u, es, s) => {
+                                let tagcase_ = region_of(v, s, r);
+                                match *tagcase_ {
+                                    Res::Res(rr, rn, s) => {
+                                        res(expected, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, rr)), kayak_rt::nil()), es), s)
+                                    }
                                 }
                             }
                         }
                     }
+                    _ => {
+                        let other = tagcase_;
+                        check_by_synth(v, s, e, expected)
+                    }
                 }
-                _ => {
-                    let other = tagcase_;
-                    check_by_synth(v, s, e, expected)
-                }
-            }
+            }, str_lit("list"))
         } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("quote")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("extract"))) {
             check_by_synth(v, s, e, expected)
         } else {
@@ -10142,6 +10144,33 @@ pub mod expressions {
         }
     }
 
+    /// A list made by the standard `cons` or `list` at a place's region in
+    /// scope (C271): noted, `rheld-cons` at the place's region, so that the
+    /// place holds its pairs, and `rlist-in` the place, so that they are made
+    /// there, as `rcons` makes them. Else nothing: in the heap.
+    pub fn list_placed(v: &'static Cv, r: &'static Res, h: Str) -> &'static Res {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = walk(s, t);
+                match *tagcase_ {
+                    Ty::TyList(el, at) => {
+                        let place = place_named(v, s, at);
+                        if string_eq_p(place, str_lit("")) {
+                            r
+                        } else {
+                            res(t, es, note_fact(note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rheld-cons@'"), place), kayak_rt::heap_cons(el, kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("rlist-in "), place)))
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        r
+                    }
+                }
+            }
+        }
+    }
+
     /// A datatype's value made by its constructor `h` at a place's region,
     /// one of its arguments (C270): noted, `rheld-data` at the place's
     /// region, its type, so that the place holds such values, and `rdata-in`
@@ -10177,7 +10206,7 @@ pub mod expressions {
                         } else {
                             let place = places_among(v, s, args);
                             if string_eq_p(place, str_lit("")) {
-                                r
+                                res(t, es, note_types(s, cv_file(v), cv_pos(v), str_lit("rdata-type"), kayak_rt::heap_cons(t, kayak_rt::nil())))
                             } else {
                                 res(t, es, note_fact(note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rheld-data@'"), place), kayak_rt::heap_cons(t, kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("rdata-in "), string_append(place, string_append(str_lit(" "), d)))))
                             }
@@ -10210,7 +10239,21 @@ pub mod expressions {
                 }
             })
         })) {
-            data_placed(v, r, h)
+            if ((string_eq_p(h, str_lit("cons")) || string_eq_p(h, str_lit("list"))) && {
+                let b = scope_bind(h, v);
+                (not(null_p(b)) && {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            string_eq_p(w, str_lit("prim"))
+                        }
+                    }
+                })
+            }) {
+                list_placed(v, r, h)
+            } else {
+                data_placed(v, r, h)
+            }
         } else {
             let tagcase_ = r;
             match *tagcase_ {

@@ -17,6 +17,10 @@ pub fn leaf<'r, T: Copy + 'static>(f0: T) -> &'r Rose<'r, T> {
     kayak_rt::alloc(Rose::Leaf(f0))
 }
 
+pub fn leaf_heap<T: Copy + 'static>(f0: T) -> &'static Rose<'static, T> {
+    kayak_rt::heap_alloc(Rose::Leaf(f0))
+}
+
 pub fn leaf_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> &'r Rose<'r, T> {
     place_.arena().alloc(Rose::Leaf(f0))
 }
@@ -25,18 +29,24 @@ pub fn node<'r, T: Copy + 'static>(f0: ListAt<'r, &'r Rose<'r, T>>) -> &'r Rose<
     kayak_rt::alloc(Rose::Node(f0))
 }
 
+pub fn node_heap<T: Copy + 'static>(f0: List<&'static Rose<'static, T>>) -> &'static Rose<'static, T> {
+    kayak_rt::heap_alloc(Rose::Node(f0))
+}
+
 pub fn node_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, &'r Rose<'r, T>>) -> &'r Rose<'r, T> {
     place_.arena().alloc(Rose::Node(f0))
 }
 
 // A tree of `n` leaves, `k` to `k + n - 1`, two levels deep, in the place
 // `p` (named as its region, so that what is made at it is made in it).
+
+// (Its `cons` and `list` made in the place too, C271.)
 pub fn build<'p, Place_P: Holds<Cons<'p, &'p Rose<'p, i64>>> + Holds<Rose<'p, i64>>>(mut p: &'p Place_P, mut k: i64, mut n: i64, mut acc: ListAt<'p, &'p Rose<'p, i64>>) -> &'p Rose<'p, i64> {
     loop {
         if i64_eq(n, 0i64) {
             return the::<&'p Rose<'p, i64>>(node_in(p, acc));
         } else {
-            (k, n, acc) = (i64_plus(k, 1i64), i64_minus(n, 1i64), rcons(p, the::<&'p Rose<'p, i64>>(node_in(p, rcons(p, the::<&'p Rose<'p, i64>>(leaf_in(p, k)), nil::<&'p Rose<'p, i64>>()))), acc));
+            (k, n, acc) = (i64_plus(k, 1i64), i64_minus(n, 1i64), rcons(p, the::<&'p Rose<'p, i64>>(node_in(p, rcons(p, the::<&'p Rose<'p, i64>>(leaf_in(p, k)), kayak_rt::nil()))), acc));
             continue;
         }
     }
@@ -81,7 +91,7 @@ pub fn one_tree(k: i64) -> i64 {
 pub fn kept() -> &'static Rose<'static, i64> {
     static ONCE: std::sync::OnceLock<&'static Rose<'static, i64>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        node(kayak_rt::heap_cons(leaf(1i64), kayak_rt::heap_cons(leaf(2i64), kayak_rt::nil())))
+        node_heap(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())))
     })
 }
 

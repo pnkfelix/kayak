@@ -14,12 +14,20 @@ pub fn leaf<'r, T: Copy + 'static>(f0: T) -> &'r Rose<'r, T> {
     kayak_rt::alloc(Rose::Leaf(f0))
 }
 
+pub fn leaf_heap<T: Copy + 'static>(f0: T) -> &'static Rose<'static, T> {
+    kayak_rt::heap_alloc(Rose::Leaf(f0))
+}
+
 pub fn leaf_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> &'r Rose<'r, T> {
     place_.arena().alloc(Rose::Leaf(f0))
 }
 
 pub fn node<'r, T: Copy + 'static>(f0: ListAt<'r, &'r Rose<'r, T>>) -> &'r Rose<'r, T> {
     kayak_rt::alloc(Rose::Node(f0))
+}
+
+pub fn node_heap<T: Copy + 'static>(f0: List<&'static Rose<'static, T>>) -> &'static Rose<'static, T> {
+    kayak_rt::heap_alloc(Rose::Node(f0))
 }
 
 pub fn node_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, &'r Rose<'r, T>>) -> &'r Rose<'r, T> {
@@ -101,8 +109,8 @@ pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: &'static Both<A, B>) -> &'s
 }
 
 pub fn main() -> Str {
-    let kids = the::<List<&'static Rose<'static, i64>>>(kayak_rt::heap_cons(leaf(1i64), kayak_rt::heap_cons(leaf(2i64), kayak_rt::nil())));
-    let tree = the::<&'static Rose<'static, i64>>(node(kayak_rt::heap_cons(node(kids), kayak_rt::heap_cons(leaf(4i64), nil::<&'static Rose<'static, i64>>()))));
+    let kids = the::<List<&'static Rose<'static, i64>>>(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())));
+    let tree = the::<&'static Rose<'static, i64>>(node_heap(kayak_rt::heap_cons(node_heap(kids), kayak_rt::heap_cons(leaf_heap(4i64), nil::<&'static Rose<'static, i64>>()))));
     let xs = the::<Ints>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::heap_cons(9i64, kayak_rt::nil()))));
     let p = the::<&'static Both<Str, i64>>(both(str_lit("x"), 5i64));
     string_append(i64_to_string(total(tree)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil::<i64>())), -1i64)), string_append(str_lit(" "), {

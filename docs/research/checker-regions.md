@@ -1,6 +1,7 @@
 # The checker's work in regions that end
 
-Status: A done (C270, 2026-10-28); B next. After C261-C269. The user: "go for the larger
+Status: A done (C270, 2026-10-28), B's groundwork (C271); B by a module
+made per form (below). After C261-C269. The user: "go for the larger
 refactor. The reason to *have* arenas is to enable architectural choices
 like this."
 
@@ -72,3 +73,17 @@ The checker is some 15,500 lines of KFX (`kfx/check.kfx`,
 some 1,300 procedures. A is a contained change to the emitter and checker
 of KFX; B is a long one, done in steps that each keep every check
 passing.
+
+## B by a module made per form (the user's, 2026-10-28)
+
+The user: "Can we use module parameters to abstract over the place for a
+group of items?" Threading the place through each of the checker's
+procedures, and each call, is B's bulk. Instead: the checker one module
+made in a procedure of the form's place, its items closing over it, so
+that inside it `cons`, `list` and constructors find the place by name
+(C270, C271) and nothing gains a parameter. KFX has no such modules yet
+(its modules are Rust's `mod`s, C19, C24): a module made in a procedure,
+in Rust a generic struct holding what it closes over, its items methods.
+A module is one form, and the checker is four files: the user, "We may
+want to just allowlist putting it all in one file for now" — one file,
+over the size the others keep, by that decision.

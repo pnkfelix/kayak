@@ -7609,3 +7609,28 @@ one is kayak's to choose. KFX erased a datatype's regions (C17).
 - **Test**: `kfx/data-region.kfx`, a rose tree of a hundred leaves built in
   a place and summed, a thousand times, and one in the heap; Fixpt's
   answer. `families.rs` regenerated (its `rose` now at a lifetime).
+
+## C271. Datatypes' heap twins; `cons` and `list` in places (2026-10-28)
+
+The user, of the checker's work in places (`docs/research/checker-regions.md`,
+B): "Go with 1. I want to see the result." Two things B wants first:
+- **Heap twins**: a datatype with lived regions (C270) is made in the heap
+  by kayak-rt's `alloc`, a `Box` each, the heap's arenas holding only
+  `'static` types; the checker, whose types will be such datatypes, makes
+  millions. Each constructor has a twin, `TAG_heap`, at `'static`, in the
+  heap's arena; the checker notes a constructor's call's type
+  (`rdata-type`) where it is at no place in scope, and the emitter calls
+  the twin where that type's lived regions are all at `'static`.
+- **`cons` and `list` in places**: as C267's bytevectors and C270's
+  datatypes, the standard `cons` and `list` whose list is at a place's
+  region in scope, the place named as its region, note `rheld-cons` and
+  `rlist-in`, and are made in the place (`rcons`), so that code over a
+  place need not write `rcons` for each pair.
+- **Test**: `kfx/data-region.kfx`'s `build` now writes `cons` and `list`;
+  its tree, and the heap's (`kept`, by the twins), as before. No golden
+  file else changed but `families.rs`, its twins.
+- **Next, the user's question**: module parameters over the place, so that
+  a group of items shares it without each taking it: a module made in a
+  procedure, closing over its parameters, FX-26's and not yet KFX's (its
+  modules are Rust's `mod`s, C19, C24). Then the checker a module made per
+  form, of the form's place.
