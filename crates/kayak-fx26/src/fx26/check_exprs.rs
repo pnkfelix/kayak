@@ -6354,7 +6354,7 @@ pub mod expressions {
                         if not(mtype_p(walk(s, t))) {
                             match refuse(v, string_append(str_lit("a with of no module: a "), show_ty(s, t))) {}
                         } else {
-                            with_effs(found_then_fitted(v, body(mtype_opened(v, walk(s, t)), kfx_restricted(v, note_fact(note_fact(s, cv_file(v), cv_pos(v), str_lit("with-value")), cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s, t))))), str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")), cdr(xs), nil::<&'static Ty>()), expected), es)
+                            with_effs(found_then_fitted(v, body(mtype_opened(v, zonk(s, t)), kfx_restricted(v, note_fact(note_fact(s, cv_file(v), cv_pos(v), str_lit("with-value")), cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s, t))))), str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")), cdr(xs), nil::<&'static Ty>()), expected), es)
                         }
                     }
                 }

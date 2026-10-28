@@ -9375,7 +9375,9 @@ pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
             ty_ref(zonk(s, e), zonk(s, r))
         }
         Ty::TyProc(es, ps, r) => {
-            ty_proc(es, map(lambda1s(move |p: &'static Ty| {
+            ty_proc(map(lambda1s(move |a: Str| {
+                resolve_atom(s, a)
+            }), es), map(lambda1s(move |p: &'static Ty| {
                 zonk(s, p)
             }), ps), zonk(s, r))
         }

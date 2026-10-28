@@ -7634,3 +7634,17 @@ B): "Go with 1. I want to see the result." Two things B wants first:
   procedure, closing over its parameters, FX-26's and not yet KFX's (its
   modules are Rust's `mod`s, C19, C24). Then the checker a module made per
   form, of the form's place.
+
+## C272. A module value's procedures' effects at the place given (2026-10-28)
+
+The user: build modules made in procedures in KFX first (the checker
+then one, made per form of its place; `docs/research/checker-regions.md`).
+Its first test, a procedure over a place whose body is a module, opened by
+a `with` in a `letrena`, Fixpt accepts; kayak's checker refused it, the
+module's procedures' effects at an inference variable, `alloc:?0`, where
+their types said the place given. Two causes, both fixed: a `with` of a
+module value opened its type walked only at its top (`mtype-opened` of
+`walk`), its members' types not; and `zonk` resolved a procedure type's
+parameters and result but not its effect's region atoms (now each by
+`resolve-atom`). Test: `kayak/checker/module-place-effects.fx`, Fixpt's
+answer on the engine. The modules themselves, KFX's, next.

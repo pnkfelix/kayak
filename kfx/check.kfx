@@ -4079,7 +4079,10 @@
         (ty-tag (a h d r) (ty-tag (zonk s a) (zonk s h) d (zonk s r)))
         (ty-data (d args) (ty-data d (map (lambda ((x ty)) (zonk s x)) args)))
         (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
-        (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
+        ;; Its effect's region atoms too (C272): a module value's procedures,
+        ;; opened by a `with`, had kept an inference variable solved since,
+        ;; `alloc:?0`, where their types said the region.
+        (ty-proc (es ps r) (ty-proc (map (lambda ((a string)) (resolve-atom s a)) es) (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
         (else other other)))))
 
 (define region-ty (subr kfx (string) ty)

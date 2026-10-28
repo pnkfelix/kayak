@@ -2893,7 +2893,7 @@
                             (res (t es s)
                               (if (not (mtype? (walk s t)))
                                   (refuse v (string-append "a with of no module: a " (show-ty s t)))
-                                  (with-effs (found-then-fitted v (body (mtype-opened v (walk s t))
+                                  (with-effs (found-then-fitted v (body (mtype-opened v (zonk s t))
                                                                         (kfx-restricted v (note-fact (note-fact s (cv-file v) (cv-pos v) "with-value") (cv-file v) (cv-pos v) (string-append "with-spec " (words-of (mtype-value-names (walk s t)))))
                                                                                         "a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")
                                                                         (cdr xs) nil)

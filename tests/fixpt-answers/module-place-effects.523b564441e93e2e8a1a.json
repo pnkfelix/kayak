@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"module-place-effects.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define builder-in : (poly ((p place)) (subr (alloc p) ((place p)) (moduleof (val count-to (subr (maxeff (alloc p) (read p)) (int) (listof int p)))))) ! pure",
+"define probe2 : (subr (read (globals builder-in)) () int) ! pure",
+"int ! (read (globals builder-in probe2))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}
