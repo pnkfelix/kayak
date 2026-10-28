@@ -238,9 +238,11 @@ pieces into one string: a buffer sized once (`make-bytevector`), each
 piece's bytes copied in, `utf8->string` once. Sizing it wants each
 string's length in bytes, which FX-26 does not give (`string-length`
 counts characters): `string->utf8` gives it only by copying. A runtime
-whose strings are UTF-8 (Fixpt's, kayak-rt's) has the length at hand, so
-`kayak:string-utf8-length/1`, `(subr pure (string) int)`, would be the
-natural syscall. Under the rule, it is `(subr (io sys) (string) int)`, and
+whose strings are UTF-8 (kayak-rt's) has the length at hand; one whose
+strings are characters (Fixpt's) counts each one's width, without
+copying; so `kayak:string-utf8-length/1`, `(subr pure (string) int)`,
+would be the natural syscall. (Corrected after: this note had Fixpt's
+strings as UTF-8, which they are not.) Under the rule, it is `(subr (io sys) (string) int)`, and
 the join, and every procedure that joins strings, all `pure` today, would
 say `(io sys)`.
 

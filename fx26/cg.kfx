@@ -501,11 +501,13 @@
           ((string=? s "f32") "f32?") ((string=? s "box") "ref?") ((string=? s "sum") "sum?") ((string=? s "product") "product?")
           ((string=? s "vector") "vector?") (else "bytevector?"))))
 
+"Names `bloblet-form` tests against, made once (C264): a list written in place is
+ made at each call."
+(define bloblet-form-names strings (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-freeze" "bloblet-byte" "bloblet-set-byte!" "bloblet-bytes" "blobref-at" "blobref+" "blobref-owner" "blobref-offset" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!" "blobref-length"))
+
 (define bloblet-form? (subr kfx (string) bool)
   (lambda (h)
-    (string-member? h (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-freeze" "bloblet-byte"
-                            "bloblet-set-byte!" "bloblet-bytes" "blobref-at" "blobref+" "blobref-owner" "blobref-offset"
-                            "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!" "blobref-length"))))
+    (string-member? h bloblet-form-names)))
 
 "The scalar flat's layout code (`fixpt_heap::layout::FLAT_*`), or -1."
 (define flat-code (subr kfx (string) i64)
@@ -1859,21 +1861,35 @@
           (begin (set cg-primitive-forms (list fs)) fs))
         (car (get cg-primitive-forms)))))
 
+"The standard operations of one argument, made once (C264)."
+(define c-arity-one-names strings
+  (list "car" "cdr" "null?" "not" "new" "get" "char->integer" "integer->char" "string-length"
+    "char->string" "symbol->string" "string->symbol" "array-length" "current-marks" "cwcc"
+    ;; The shapes' tests (C217).
+    "int?" "string?" "bool?" "char?" "symbol?" "pair?" "procedure?" "f64?" "f32?" "ref?" "sum?"
+    "product?" "bytevector?" "vector?" "array?" "nat?"))
+
+"Names `c-arity` tests against, made once (C264): a list written in place is
+ made at each call."
+(define c-arity-names strings (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key"))
+
+"Names `c-arity` tests against, made once (C264): a list written in place is
+ made at each call."
+(define c-arity-names-2 strings (list "with-mark" "array-set!" "substring" "%sched"))
+
+"Names `c-arity` tests against, made once (C264): a list written in place is
+ made at each call."
+(define c-arity-names-3 strings (list "+" "-" "*" "<" ">" "<=" ">=" "=" "modulo" "quotient" "cons" "set-car!" "set-cdr!" "char=?" "string=?" "array-ref" "string-ref" "make-array" "abort-current-continuation" "escape" "set" "marks-of" "call-with-composable-continuation" "call-with-oneshot-continuation" "first-mark"))
+
 "How many arguments a standard operation takes, as a value, or -1 if it
  is not known here (Fixpt asks its runtime's table for the rest: not yet)."
 (define c-arity (subr gen (string) i64)
   (lambda (n)
-    (cond ((string-member? n (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key")) 0)
-          ((string-member? n (list "car" "cdr" "null?" "not" "new" "get" "char->integer" "integer->char" "string-length"
-                                   "char->string" "symbol->string" "string->symbol" "array-length" "current-marks" "cwcc"
-                                   ;; The shapes' tests (C217).
-                                   "int?" "string?" "bool?" "char?" "symbol?" "pair?" "procedure?" "f64?" "f32?" "ref?" "sum?"
-                                   "product?" "bytevector?" "vector?" "array?" "nat?"))
+    (cond ((string-member? n c-arity-names) 0)
+          ((string-member? n c-arity-one-names)
            1)
-          ((string-member? n (list "with-mark" "array-set!" "substring" "%sched")) 3)
-          ((string-member? n (list "+" "-" "*" "<" ">" "<=" ">=" "=" "modulo" "quotient" "cons" "set-car!" "set-cdr!" "char=?"
-                                   "string=?" "array-ref" "string-ref" "make-array" "abort-current-continuation" "escape" "set"
-                                   "marks-of" "call-with-composable-continuation" "call-with-oneshot-continuation" "first-mark"))
+          ((string-member? n c-arity-names-2) 3)
+          ((string-member? n c-arity-names-3)
            2)
           ((std-eq-name? n) 2)
           (else (std-arity-in (primitive-forms) n)))))
@@ -1884,6 +1900,10 @@
 "The index on top made the field it is in an array, whose elements are
  its fields from 2 on."
 (define c-array-index (subr gen (code) unit) (lambda (c) (begin (c-int c 2) (c-op c "int-add"))))
+
+"Names `c-standard-on` tests against, made once (C264): a list written in place is
+ made at each call."
+(define c-standard-on-names strings (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref" "list->vector" "substring" "string=?" "string->symbol" "symbol->string"))
 
 (define c-standard-on (subr gen (string i64 code) unit)
   (lambda (name n c)
@@ -1919,8 +1939,7 @@
            (begin (c-op c "swap") (c-array-index c) (c-op c "swap") (c-prim c "%bloblet-set!" 3) (c-unit-after c)))
           ((string=? name "apply") (begin (c-op c "swap") (c-field c 3) (c-op1 c "call" (o-int 1))))
           ((string=? name "array-length") (begin (c-prim c "%bloblet-fields" 1) (c-int c 1) (c-op c "int-sub")))
-          ((string-member? name (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref" "list->vector"
-                                      "substring" "string=?" "string->symbol" "symbol->string"))
+          ((string-member? name c-standard-on-names)
            (c-prim c name n))
           ;; A conversion (C230, `converted-x`): Fixpt's primitive itself.
           ((string=? name "%fx26-convert") (c-prim c name n))

@@ -133,10 +133,19 @@ pub fn r_fixed_width_op_p(n: Str) -> bool {
     (has_prefix_p(n, str_lit("%fx26-i8")) || has_prefix_p(n, str_lit("%fx26-u8")) || has_prefix_p(n, str_lit("%fx26-i32")) || has_prefix_p(n, str_lit("%fx26-u32")) || has_prefix_p(n, str_lit("%fx26-i64")) || has_prefix_p(n, str_lit("%fx26-u64")) || has_prefix_p(n, str_lit("%fx26-f64")) || has_prefix_p(n, str_lit("%fx26-f32")) || has_prefix_p(n, str_lit("%fx26-int->")))
 }
 
+// Names `r-never-collects` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_never_collects_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("%fx26-mul"), kayak_rt::heap_cons(str_lit("%fx26-quotient"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("%fx26-arithmetic-shift"), kayak_rt::heap_cons(str_lit("%bloblet-fields"), kayak_rt::heap_cons(str_lit("%fx26-string->f64"), kayak_rt::heap_cons(str_lit("%fx26-remainder"), kayak_rt::heap_cons(str_lit("%fx26-flatarray-ref"), kayak_rt::heap_cons(str_lit("%fx26-flatarray-length"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("%string-hash"), kayak_rt::heap_cons(str_lit("%symbol-hash"), kayak_rt::heap_cons(str_lit("%fx26-string-compare"), kayak_rt::heap_cons(str_lit("%fx26-symbol-compare"), kayak_rt::heap_cons(str_lit("%fx26-string<?"), kayak_rt::heap_cons(str_lit("%fx26-string<=?"), kayak_rt::heap_cons(str_lit("%fx26-string>?"), kayak_rt::heap_cons(str_lit("%fx26-string>=?"), kayak_rt::heap_cons(str_lit("%fx26-char<?"), kayak_rt::heap_cons(str_lit("%fx26-char<=?"), kayak_rt::heap_cons(str_lit("%fx26-char>?"), kayak_rt::heap_cons(str_lit("%fx26-char>=?"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("exact-integer?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("boolean?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("%fx26-procedure?"), kayak_rt::heap_cons(str_lit("%fx26-array?"), kayak_rt::heap_cons(str_lit("%fx26-f32?"), kayak_rt::heap_cons(str_lit("%fx26-box?"), kayak_rt::heap_cons(str_lit("%fx26-sum?"), kayak_rt::heap_cons(str_lit("%fx26-product?"), kayak_rt::heap_cons(str_lit("%fx26-suffix-ref-get"), kayak_rt::heap_cons(str_lit("%suffix-ref-owner"), kayak_rt::heap_cons(str_lit("%suffix-ref-offset"), kayak_rt::heap_cons(str_lit("%suffix-ref+"), kayak_rt::heap_cons(str_lit("%suffix-ref"), kayak_rt::heap_cons(str_lit("%fx26-flat-tag"), kayak_rt::heap_cons(str_lit("%fx26-flat-no-arm"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("%fx26-suffix-ref-length"), kayak_rt::heap_cons(str_lit("%fx26-suffix-fits"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-has?"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-count"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-delete!"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))
+    })
+}
+
 // Whether runtime primitive `name` never collects (Fixpt's
 // `never_collects`), so that register code calls it in line.
 pub fn r_never_collects_p(name: Str) -> bool {
-    (string_member_p(name, kayak_rt::heap_cons(str_lit("%fx26-mul"), kayak_rt::heap_cons(str_lit("%fx26-quotient"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("%fx26-arithmetic-shift"), kayak_rt::heap_cons(str_lit("%bloblet-fields"), kayak_rt::heap_cons(str_lit("%fx26-string->f64"), kayak_rt::heap_cons(str_lit("%fx26-remainder"), kayak_rt::heap_cons(str_lit("%fx26-flatarray-ref"), kayak_rt::heap_cons(str_lit("%fx26-flatarray-length"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("%string-hash"), kayak_rt::heap_cons(str_lit("%symbol-hash"), kayak_rt::heap_cons(str_lit("%fx26-string-compare"), kayak_rt::heap_cons(str_lit("%fx26-symbol-compare"), kayak_rt::heap_cons(str_lit("%fx26-string<?"), kayak_rt::heap_cons(str_lit("%fx26-string<=?"), kayak_rt::heap_cons(str_lit("%fx26-string>?"), kayak_rt::heap_cons(str_lit("%fx26-string>=?"), kayak_rt::heap_cons(str_lit("%fx26-char<?"), kayak_rt::heap_cons(str_lit("%fx26-char<=?"), kayak_rt::heap_cons(str_lit("%fx26-char>?"), kayak_rt::heap_cons(str_lit("%fx26-char>=?"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("exact-integer?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("boolean?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("%fx26-procedure?"), kayak_rt::heap_cons(str_lit("%fx26-array?"), kayak_rt::heap_cons(str_lit("%fx26-f32?"), kayak_rt::heap_cons(str_lit("%fx26-box?"), kayak_rt::heap_cons(str_lit("%fx26-sum?"), kayak_rt::heap_cons(str_lit("%fx26-product?"), kayak_rt::heap_cons(str_lit("%fx26-suffix-ref-get"), kayak_rt::heap_cons(str_lit("%suffix-ref-owner"), kayak_rt::heap_cons(str_lit("%suffix-ref-offset"), kayak_rt::heap_cons(str_lit("%suffix-ref+"), kayak_rt::heap_cons(str_lit("%suffix-ref"), kayak_rt::heap_cons(str_lit("%fx26-flat-tag"), kayak_rt::heap_cons(str_lit("%fx26-flat-no-arm"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("%fx26-suffix-ref-length"), kayak_rt::heap_cons(str_lit("%fx26-suffix-fits"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-has?"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-count"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-delete!"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))) || r_fixed_width_op_p(name))
+    (string_member_p(name, r_never_collects_names()) || r_fixed_width_op_p(name))
 }
 
 // Runtime primitive `p` as a call-out, when `n` is `k`; in line if it never
@@ -151,8 +160,26 @@ pub fn r_prim_std(p: Str, n: i64, k: i64) -> &'static Rstd {
     }
 }
 
+// Names `r-prim-name` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_prim_name_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil()))))))))))
+    })
+}
+
 pub fn r_prim_name_p(n: Str) -> bool {
-    string_member_p(n, kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil())))))))))))
+    string_member_p(n, r_prim_name_names())
+}
+
+// Names `r-standard` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_standard_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())))
+    })
 }
 
 // Standard operation `name` applied to `n` arguments, as register code
@@ -219,7 +246,7 @@ pub fn r_standard(name: Str, n: i64) -> &'static Rstd {
         s_apply()
     } else if string_eq_p(name, str_lit("list")) {
         s_list()
-    } else if (i64_eq(n, 0i64) && string_member_p(name, kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil()))))) {
+    } else if (i64_eq(n, 0i64) && string_member_p(name, r_standard_names())) {
         s_special(str_lit("make-box"))
     } else if (is(str_lit("set-car!"), 2i64) || is(str_lit("set-cdr!"), 2i64)) {
         s_special(name)
@@ -1274,9 +1301,18 @@ pub fn r_room_if_all(es: Cxs, n: i64, w: bool) -> i64 {
     }
 }
 
+// Names `r-test-name` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_test_name_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::nil()))))))))))
+    })
+}
+
 // Whether `name` is a comparison a test an `if` decides may be of.
 pub fn r_test_name_p(n: Str) -> bool {
-    string_member_p(n, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::nil())))))))))))
+    string_member_p(n, r_test_name_names())
 }
 
 pub fn r_same_const_p(c: &'static Rconst, d: &'static Rconst) -> bool {
@@ -1893,11 +1929,20 @@ pub fn r_locals(mut ps: Strings, mut te: Cenv) -> Cenv {
     }
 }
 
+// Names `r-bloblet-quiet` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_bloblet_quiet_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("%blobref-field"), kayak_rt::nil()))))))
+    })
+}
+
 // Whether bloblet form `op` itself never calls out: a field's read; a
 // blobref's read, write, element or variant, in line; a product's field
 // through a blobref (Fixpt's `extract`, C259).
 pub fn r_bloblet_quiet_p(op: Str) -> bool {
-    string_member_p(op, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("%blobref-field"), kayak_rt::nil())))))))
+    string_member_p(op, r_bloblet_quiet_names())
 }
 
 pub fn c_with_local(te: Cenv, n: Str) -> Cenv {

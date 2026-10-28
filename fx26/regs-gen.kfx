@@ -241,11 +241,15 @@
   (lambda (core x y) (and (not (null? core)) (not (r-same-exp? (car core) x)) (not (r-same-exp? (car core) y)))))
 (define r-free-operand? (subr gen (renv cx) bool) (lambda (env x) (or (r-simple? x) (not (null? (r-known env x))))))
 
+"Names `r-identity-arg` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-identity-arg-names strings (list "+" "-" "*"))
+
 "The operand an identity leaves (`x + 0`, `0 + x`, `x - 0`, `x * 1`,
  `1 * x`), in a list."
 (define r-identity-arg (subr gen (renv string cxs) cxs)
   (lambda (env name args)
-    (if (or (not (i64= (size args) 2)) (not (string-member? name (list "+" "-" "*"))))
+    (if (or (not (i64= (size args) 2)) (not (string-member? name r-identity-arg-names)))
         nil
         (let* ((x (car args)) (y (car (cdr args))) (a (r-known env x)) (b (r-known env y))
                (is (lambda ((c (listof rconst acyclic)) (n int)) (and (not (null? c)) (tagcase (car c) (rc-int (k) (= k n)) (else z #f))))))
@@ -569,6 +573,10 @@
                                   (cdr later) lbody nps))))))))))
 
 ;;; ---------------------------------------------------------- expressions
+
+"Names `r-standard-app` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-standard-app-names strings (list "int-add" "eq" "int-eq"))
 
 (define-rec
   (r-exp (subr gen (rgen cx renv cenv bool) unit)
@@ -1029,7 +1037,7 @@
                  (split (if (and (r-add-name? name) (or (r-adds? env x) (r-adds? env y))) (r-split-app env name args) nil))
                  (core (if (null? split) nil (tagcase (car split) (rsplit (c k) c))))
                  (literal (r-literal? x))
-                 (commutes (string-member? r (list "int-add" "eq" "int-eq")))
+                 (commutes (string-member? r r-standard-app-names))
                  (free-x (and swap (r-free-operand? env x)))
                  (free-y (and swap (not free-x) (r-free-operand? env y))))
             (begin

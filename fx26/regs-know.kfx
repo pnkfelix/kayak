@@ -50,22 +50,15 @@
         (has-prefix? n "%fx26-i64") (has-prefix? n "%fx26-u64") (has-prefix? n "%fx26-f64") (has-prefix? n "%fx26-f32")
         (has-prefix? n "%fx26-int->"))))
 
+"Names `r-never-collects` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-never-collects-names strings (list "%fx26-mul" "%fx26-quotient" "modulo" "%fx26-arithmetic-shift" "%bloblet-fields" "%fx26-string->f64" "%fx26-remainder" "%fx26-flatarray-ref" "%fx26-flatarray-length" "char->integer" "integer->char" "string-length" "string-ref" "%string-hash" "%symbol-hash" "%fx26-string-compare" "%fx26-symbol-compare" "%fx26-string<?" "%fx26-string<=?" "%fx26-string>?" "%fx26-string>=?" "%fx26-char<?" "%fx26-char<=?" "%fx26-char>?" "%fx26-char>=?" "null?" "pair?" "exact-integer?" "char?" "boolean?" "string?" "symbol?" "%fx26-procedure?" "%fx26-array?" "%fx26-f32?" "%fx26-box?" "%fx26-sum?" "%fx26-product?" "%fx26-suffix-ref-get" "%suffix-ref-owner" "%suffix-ref-offset" "%suffix-ref+" "%suffix-ref" "%fx26-flat-tag" "%fx26-flat-no-arm" "bytevector-length" "bytevector-u8-ref" "%fx26-suffix-ref-length" "%fx26-suffix-fits" "%fx26-eqtable-has?" "%fx26-eqtable-count" "%fx26-eqtable-delete!"))
+
 "Whether runtime primitive `name` never collects (Fixpt's
  `never_collects`), so that register code calls it in line."
 (define r-never-collects? (subr kfx (string) bool)
   (lambda (name)
-    (or (string-member? name
-                        (list "%fx26-mul" "%fx26-quotient" "modulo" "%fx26-arithmetic-shift" "%bloblet-fields"
-                              "%fx26-string->f64" "%fx26-remainder" "%fx26-flatarray-ref" "%fx26-flatarray-length"
-                              "char->integer" "integer->char" "string-length" "string-ref" "%string-hash" "%symbol-hash"
-                              "%fx26-string-compare" "%fx26-symbol-compare" "%fx26-string<?" "%fx26-string<=?"
-                              "%fx26-string>?" "%fx26-string>=?" "%fx26-char<?" "%fx26-char<=?" "%fx26-char>?" "%fx26-char>=?"
-                              "null?" "pair?" "exact-integer?" "char?" "boolean?" "string?" "symbol?" "%fx26-procedure?"
-                              "%fx26-array?" "%fx26-f32?" "%fx26-box?" "%fx26-sum?" "%fx26-product?" "%fx26-suffix-ref-get"
-                              "%suffix-ref-owner" "%suffix-ref-offset" "%suffix-ref+" "%suffix-ref" "%fx26-flat-tag"
-                              "%fx26-flat-no-arm" "bytevector-length" "bytevector-u8-ref" "%fx26-suffix-ref-length"
-                              "%fx26-suffix-fits"
-                              "%fx26-eqtable-has?" "%fx26-eqtable-count" "%fx26-eqtable-delete!"))
+    (or (string-member? name r-never-collects-names)
         (r-fixed-width-op? name))))
 
 "Runtime primitive `p` as a call-out, when `n` is `k`; in line if it never
@@ -76,10 +69,17 @@
           ((and (i64<= n 2) (r-never-collects? p)) (s-pure p))
           (else (s-prim p)))))
 
+"Names `r-prim-name` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-prim-name-names strings (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref" "substring" "string=?" "string->symbol" "symbol->string"))
+
 (define r-prim-name? (subr kfx (string) bool)
   (lambda (n)
-    (string-member? n (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref"
-                            "substring" "string=?" "string->symbol" "symbol->string"))))
+    (string-member? n r-prim-name-names)))
+
+"Names `r-standard` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-standard-names strings (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key"))
 
 "Standard operation `name` applied to `n` arguments, as register code
  does it (Fixpt's `r-standard`)."
@@ -115,7 +115,7 @@
             ((is "make-array" 2) (s-special "make-array"))
             ((is "apply" 2) (s-apply))
             ((string=? name "list") (s-list))
-            ((and (i64= n 0) (string-member? name (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key")))
+            ((and (i64= n 0) (string-member? name r-standard-names))
              (s-special "make-box"))
             ((or (is "set-car!" 2) (is "set-cdr!" 2)) (s-special name))
             ((string=? name "new") (r-prim-std "%make-box" n 1))
@@ -455,9 +455,13 @@
     (lambda (es n w) (if (or (null? es) (i64< n 0)) n (r-room-all (cdr es) (r-room (car es) n w) w))))
   (r-room-if-all (subr gen (cxs i64 bool) i64) (lambda (es n w) (if (i64< n 0) n (r-room-all es n w)))))
 
+"Names `r-test-name` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-test-name-names strings (list "<" ">" "<=" ">=" "=" "eq?" "symbol=?" "char=?" "null?" "pair?"))
+
 "Whether `name` is a comparison a test an `if` decides may be of."
 (define r-test-name? (subr kfx (string) bool)
-  (lambda (n) (string-member? n (list "<" ">" "<=" ">=" "=" "eq?" "symbol=?" "char=?" "null?" "pair?"))))
+  (lambda (n) (string-member? n r-test-name-names)))
 
 (define-rec
   (r-same-const? (subr kfx (rconst rconst) bool)
@@ -677,11 +681,15 @@
 (define-rec
   (r-locals (subr kfx (strings cenv) cenv) (lambda (ps te) (if (null? ps) te (r-locals (cdr ps) (c-extend (car ps) (at-slot -1) te))))))
 
+"Names `r-bloblet-quiet` tests against, made once (C264): a list written in place is
+ made at each call."
+(define r-bloblet-quiet-names strings (list "bloblet-ref" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!" "%blobref-field"))
+
 "Whether bloblet form `op` itself never calls out: a field's read; a
  blobref's read, write, element or variant, in line; a product's field
  through a blobref (Fixpt's `extract`, C259)."
 (define r-bloblet-quiet? (subr kfx (string) bool)
-  (lambda (op) (string-member? op (list "bloblet-ref" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!" "%blobref-field"))))
+  (lambda (op) (string-member? op r-bloblet-quiet-names)))
 
 (define c-with-local (subr kfx (cenv string) cenv) (lambda (te n) (c-extend n (at-slot -1) te)))
 

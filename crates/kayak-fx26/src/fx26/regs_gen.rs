@@ -768,10 +768,19 @@ pub fn r_free_operand_p(env: Renv, x: &'static Cx) -> bool {
     (r_simple_p(x) || not(null_p(r_known(env, x))))
 }
 
+// Names `r-identity-arg` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_identity_arg_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil())))
+    })
+}
+
 // The operand an identity leaves (`x + 0`, `0 + x`, `x - 0`, `x * 1`,
 // `1 * x`), in a list.
 pub fn r_identity_arg(env: Renv, name: Str, args: Cxs) -> Cxs {
-    if (not(i64_eq(size(args), 2i64)) || not(string_member_p(name, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil())))))) {
+    if (not(i64_eq(size(args), 2i64)) || not(string_member_p(name, r_identity_arg_names()))) {
         nil::<&'static Cx>()
     } else {
         let x = car(args);
@@ -1734,6 +1743,15 @@ pub fn r_module_own(mut n: Str, mut sc: &'static Rscope, mut later: Cenv, mut lb
     }
 }
 
+// Names `r-standard-app` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn r_standard_app_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("int-add"), kayak_rt::heap_cons(str_lit("eq"), kayak_rt::heap_cons(str_lit("int-eq"), kayak_rt::nil())))
+    })
+}
+
 /// `x`'s value into RESULT; in tail position, returned: where its code
 /// begins noted, and where the code after it, its parent's again,
 /// does (C249, as the stack code's).
@@ -2626,7 +2644,7 @@ pub fn r_standard_app(g: &'static Rgen, name: Str, args: Cxs, env: Renv, te: Cen
                 }
             };
             let literal = r_literal_p(x);
-            let commutes = string_member_p(r, kayak_rt::heap_cons(str_lit("int-add"), kayak_rt::heap_cons(str_lit("eq"), kayak_rt::heap_cons(str_lit("int-eq"), kayak_rt::nil()))));
+            let commutes = string_member_p(r, r_standard_app_names());
             let free_x = (swap && r_free_operand_p(env, x));
             let free_y = (swap && not(free_x) && r_free_operand_p(env, y));
             if r_deeper_p(core, x, y) {

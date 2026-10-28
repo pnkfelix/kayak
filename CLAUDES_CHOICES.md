@@ -7442,3 +7442,21 @@ a bunch of other changes". 26 commits, a fast-forward from `8c7111d`.
   (`crossing-overflow` as before); tier 1 425 agree (from 405), kayak's own
   words 407 (300 Fixpt's exactly), register words 911 Fixpt's exactly, 7
   differ; of 373 programs Fixpt refuses, kayak refuses all.
+
+## C264. Compile memory: names tested against made once (2026-10-27)
+
+The next of the heap (C261, C262): of 32 MB compiling `fixed-width-ops`,
+10.8 MB of lists of strings, most of them lists written in place in the
+predicates the analyses ask of every name (`r-never-collects?`,
+`r-prim-name?`, `r-test-name?`, `c-arity`, …), made again at each call,
+where a top-level list is made once (KFX keeps a top-level value that
+allocates, `once`). Thirteen hoisted to top-level definitions in
+`fx26/cg.kfx`, `regs-know.kfx` and `regs-gen.kfx`. Listings byte for
+byte as before; `fixed-width-ops` 80 ms and 55 MB at peak to 70 ms and
+47 MB, `case-tree` 70 ms and 45 MB to 60 ms and 41 MB. Not done in the
+compiler for every list written of literals: a list made once is shared,
+which a program writing it, or comparing by identity, would see.
+- **A correction**: the syscall amendment (C262, `docs/research/
+  syscalls.md`) had Fixpt's strings as UTF-8; they are characters (the
+  user). Fixpt's `kayak:string-utf8-length/1` counts each character's
+  width; kayak-rt's has the length at hand.

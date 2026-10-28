@@ -2685,8 +2685,17 @@ pub fn typecase_predicate(s: Str) -> Str {
     }
 }
 
+// Names `bloblet-form` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn bloblet_form_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil())))))))))))))))))
+    })
+}
+
 pub fn bloblet_form_p(h: Str) -> bool {
-    string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil()))))))))))))))))))
+    string_member_p(h, bloblet_form_names())
 }
 
 // The scalar flat's layout code (`fixpt_heap::layout::FLAT_*`), or -1.
@@ -5712,16 +5721,51 @@ pub fn primitive_forms() -> Sexps {
     }
 }
 
+// The standard operations of one argument, made once (C264).
+pub fn c_arity_one_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("f32?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))
+    })
+}
+
+// Names `c-arity` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn c_arity_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())))
+    })
+}
+
+// Names `c-arity` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn c_arity_names_2() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("%sched"), kayak_rt::nil()))))
+    })
+}
+
+// Names `c-arity` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn c_arity_names_3() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil())))))))))))))))))))))))))
+    })
+}
+
 // How many arguments a standard operation takes, as a value, or -1 if it
 // is not known here (Fixpt asks its runtime's table for the rest: not yet).
 pub fn c_arity(n: Str) -> i64 {
-    if string_member_p(n, kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())))) {
+    if string_member_p(n, c_arity_names()) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("f32?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))) {
+    } else if string_member_p(n, c_arity_one_names()) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("%sched"), kayak_rt::nil()))))) {
+    } else if string_member_p(n, c_arity_names_2()) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil())))))))))))))))))))))))))) {
+    } else if string_member_p(n, c_arity_names_3()) {
         2i64
     } else if std_eq_name_p(n) {
         2i64
@@ -5741,6 +5785,15 @@ pub fn c_not(c: Code) -> () {
 pub fn c_array_index(c: Code) -> () {
     c_int(c, 2i64);
     c_op(c, str_lit("int-add"))
+}
+
+// Names `c-standard-on` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn c_standard_on_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("list->vector"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil())))))))))))
+    })
 }
 
 pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
@@ -5822,7 +5875,7 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
         c_prim(c, str_lit("%bloblet-fields"), 1i64);
         c_int(c, 1i64);
         c_op(c, str_lit("int-sub"))
-    } else if string_member_p(name, kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("list->vector"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil())))))))))))) {
+    } else if string_member_p(name, c_standard_on_names()) {
         c_prim(c, name, n)
     } else if string_eq_p(name, str_lit("%fx26-convert")) {
         c_prim(c, name, n)
