@@ -31,6 +31,13 @@ for arg in "$@"; do
 done
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
+# Each step timed, to standard error: `time: N s  STEP`.
+now() { date +%s.%N; }
+step() {
+    t=$(now)
+    "$@" || return $?
+    printf 'time: %6.1f s  %s\n' "$(echo "$(now) - $t" | bc)" "$*" >&2
+}
 # Whether the directory kfx made, $1, is the kept $2: if not, the files that
 # differ said, prefixed `regen: `.
 same() {
@@ -45,7 +52,7 @@ differs=no
 crate() {
     rm -rf "$tmp/crate"
     mkdir "$tmp/crate"
-    ./target/release/kfx "$1" "$tmp/crate" || { echo "regen: kfx failed on $1; $2 is as it was" >&2; exit 1; }
+    step ./target/release/kfx "$1" "$tmp/crate" || { echo "regen: kfx failed on $1; $2 is as it was" >&2; exit 1; }
     if same "$tmp/crate" "$2"; then
         echo "regen: $2 is kfx's"
     elif [ $check = yes ]; then
@@ -60,7 +67,7 @@ crate() {
 crates() {
     crate cells/cells.unit crates/kayak-cells/src/cells
     crate fx26/fx26.unit crates/kayak-fx26/src/fx26
-    if [ $check = no ]; then cargo build --release --quiet -p kayak-cells -p kayak-fx26; fi
+    if [ $check = no ]; then step cargo build --release --quiet -p kayak-cells -p kayak-fx26; fi
 }
 if [ $check = yes ]; then
     cargo build --release --quiet -p kfx
@@ -89,7 +96,7 @@ restore() {
 generation=0
 while [ $generation -lt 4 ]; do
     generation=$((generation + 1))
-    cargo build --release --quiet -p kfx || restore $generation
+    step cargo build --release --quiet -p kfx || restore $generation
     rm -rf "$tmp/next"
     mkdir "$tmp/next" # kfx makes no directories (C50)
     # The memos a compile keeps (C54): scripts/fixpoint.sh compiles without
@@ -98,7 +105,7 @@ while [ $generation -lt 4 ]; do
     # generated code, so that one compiler never takes another's.
     compiler=$(cat boot/src/kfx/*.rs | shasum | cut -c1-16)
     find target -maxdepth 1 -name 'kfx-memos-*' ! -name "kfx-memos-$compiler" -delete
-    ./target/release/kfx --cache "target/kfx-memos-$compiler" kfx/kfx.unit "$tmp/next" || restore $generation
+    step ./target/release/kfx --cache "target/kfx-memos-$compiler" kfx/kfx.unit "$tmp/next" || restore $generation
     if diff -r -q "$tmp/next" boot/src/kfx > /dev/null; then
         echo "regen: the fixed point, after $((generation - 1)) new generation(s)"
         if [ $all = yes ]; then crates; fi
