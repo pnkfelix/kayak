@@ -84,6 +84,17 @@ section below where it has one; here the order, and what each is.
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).
 6. **arm64**: nothing of C241-C253 has run there (the Mac).
+6b. **Tiny slices, measured (2026-10-28)**: `preempt/allocating.fx`'s
+   `--slice 2` ways are the check's longest tests (`--compiled --slice 2`
+   116 s alone). At 25,000 iterations, slice 2: tier 1 runs 325M cells,
+   about 6,500 a loop iteration, `%sched` 28% of them, and collects 226
+   times (8 at slice 16). That is the scheduler's design, ported from
+   Fixpt: its interpreter has the same steep curve (13.8 s at slice 2,
+   0.8 s at 16; kayak's tier 1, 18 s). Tiers 2 and 4 are slower there
+   than tier 1 (27-28 s): each slice's fuel is so small that the hand
+   machine is entered 180M times (1.7M at slice 16), each entry a cell
+   or two. Not worth fixing for real slices (65,536 polls). Done instead:
+   the check's slices four or five, jittered (C280).
 7. **Checker completeness**: the 12 of `scheme-bench/` kayak refuses
    (`checks-summary checkers --list refused`, after the `checkers` tests run); the knot rule at a poly's
    instantiation; `set-car!`/`set-cdr!` of a union's pair; the 69 programs

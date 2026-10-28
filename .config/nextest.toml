@@ -3,3 +3,8 @@
 # one past ten stopped, a failure: nothing in the check should take so long.
 [profile.default]
 slow-timeout = { period = "120s", terminate-after = 5 }
+
+# Each run's tests and their times, for finding the slowest (C280):
+# target/nextest/default/junit.xml.
+[profile.default.junit]
+path = "junit.xml"

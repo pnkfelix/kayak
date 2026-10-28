@@ -19,7 +19,7 @@
 //! (`--hand`, `--compiled`, `--direct`, `--fixpt-calls`), with register
 //! code (`--regs`), and, but for Fixpt's benchmarks, with a collection at
 //! every safepoint (`--gc-stress`, C142), and, for a program that runs
-//! tasks, preempted at nearly every poll (`--slice`, C125); every way at
+//! tasks, preempted at most polls (`--slice 4 --slice-jitter 1`, C125, C280); every way at
 //! once, each giving the same answer.
 
 use kayak_checks::fixpt::{self, Ran};
@@ -441,16 +441,35 @@ fn ways(
             ways.push(strs(&["--compiled", "--gc-stress"]));
         }
         if tasks(path) {
-            ways.push(strs(&["--slice", "2", "--step-limit", "none"]));
-            // Register code at a slice of two never runs on: the
-            // trampoline's way back spends it (C129). Three.
-            ways.push(strs(&["--regs", "--slice", "3", "--step-limit", "none"]));
+            // Each slice four or five polls, jittered (C280): preempted at
+            // most polls, not in step with a loop's. (A slice of two, as
+            // Fixpt's tests have it, mostly measured the scheduler: C125,
+            // C129, TODO 6b.)
+            ways.push(strs(&[
+                "--slice",
+                "4",
+                "--slice-jitter",
+                "1",
+                "--step-limit",
+                "none",
+            ]));
+            ways.push(strs(&[
+                "--regs",
+                "--slice",
+                "4",
+                "--slice-jitter",
+                "1",
+                "--step-limit",
+                "none",
+            ]));
             if compiled {
                 ways.push(strs(&[
                     "--regs",
                     "--compiled",
                     "--slice",
-                    "3",
+                    "4",
+                    "--slice-jitter",
+                    "1",
                     "--step-limit",
                     "none",
                 ]));
@@ -460,7 +479,9 @@ fn ways(
                     "--regs",
                     "--direct",
                     "--slice",
-                    "3",
+                    "4",
+                    "--slice-jitter",
+                    "1",
                     "--step-limit",
                     "none",
                 ]));
@@ -471,7 +492,9 @@ fn ways(
                     "--direct",
                     "--fixpt-calls",
                     "--slice",
-                    "3",
+                    "4",
+                    "--slice-jitter",
+                    "1",
                     "--step-limit",
                     "none",
                 ]));
@@ -480,7 +503,9 @@ fn ways(
                 ways.push(strs(&[
                     "--compiled",
                     "--slice",
-                    "2",
+                    "4",
+                    "--slice-jitter",
+                    "1",
                     "--step-limit",
                     "none",
                 ]));

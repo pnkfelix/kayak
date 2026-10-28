@@ -48,6 +48,7 @@ And:
   --fixpt-calls        register code calling as Fixpt's does (x86_64)
   --step-limit N|none  at most N instructions (20000000; none, no limit)
   --slice N            a task's time slice, N polls (65536)
+  --slice-jitter J     each slice N to N+J polls, chosen deterministically
   --gc-stress          collect at every safepoint
   --gc-stats           how values are kept, collections, words copied,
                        the machine's entries, words compiled and those
@@ -238,6 +239,7 @@ and status 1.
                  (w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))
                  (u1 (set slice (option-of (cdr as) "--slice" 65536)))
+                 (u10 (set slice-jitter (option-of (cdr as) "--slice-jitter" 0)))
                  (u5 (set hand-direct (string-member? "--direct" as)))
                  (u6 (set hand-fixpt-calls (string-member? "--fixpt-calls" as)))
                  (u3 (set hand-on (or (string-member? "--hand" as) (string-member? "--compiled" as) (get hand-direct))))

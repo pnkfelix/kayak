@@ -7809,3 +7809,23 @@ counts are the same, but ties are in a different order. The first run's
 counts were two off: `root()` was `crates/kayak-checks/../..`, so the
 engine printed paths unlike those in Fixpt's answers kept. It is
 canonical now, as the Python's `abspath` was.
+
+## C280. A slice of four or five, jittered, for the preempted ways (2026-10-28)
+
+The check's longest tests were `preempt/allocating.fx`'s ways at a slice of
+two polls (three for register code): `--compiled --slice 2` took 116 s
+alone. Measured (TODO 6b), it was almost all the scheduler's own work, the
+same in Fixpt's interpreter, and the native tiers entered at every cell
+or two. The user: "what does 2 buy us, just getting extreme/pathological
+cases to arise". A tiny slice exists to preempt at every poll where a
+value could be lost across a preemption. Catching such a loss needs a
+preemption at that poll at least once, not at every poll, and a fixed
+slice may fall into step with a loop. So, the user's: "jitter between 4
+and 5". kayak-cells takes `--slice-jitter J`: each slice drawn from N to
+N+J polls by a fixed-seed linear congruential generator, as
+`--gc-stress`'s waits are (C142), each run the same. The ways that run
+tasks take `--slice 4 --slice-jitter 1`, stack code and register code
+alike: three for register code (C129) was only to escape the
+trampoline's way back, which four does too. At the full program,
+every such way now takes 16-24 s, its answer the same; a nextest JUnit
+file (target/nextest/default/junit.xml) gives each test's time.

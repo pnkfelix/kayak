@@ -1469,14 +1469,26 @@ pub fn reach_p() -> bool {
     (not(i64_eq(t, v_false())) && i64_gt_eq(find_marked(get(rsp()), prompt_mark(), t), 0i64))
 }
 
+/// The next slice's length: `slice`, jittered by up to `slice-jitter`.
+pub fn slice_now_x() -> i64 {
+    if i64_eq(get(slice_jitter()), 0i64) {
+        get(slice())
+    } else {
+        let x = i64_plus(i64_star(get(slice_seed()), 6364136223846793005i64), 1442695040888963407i64);
+        set(slice_seed(), x);
+        i64_plus(get(slice()), i64_remainder(i64_and(i64_shr(x, int_lit(33)), 2147483647i64), i64_plus(get(slice_jitter()), 1i64)))
+    }
+}
+
 /// A slice's end: the next slice given out of the reserve; the
 /// scheduler's `preempt`, if it would have another task run, else `#f`
 /// (Fixpt's `poll`).
 pub fn poll_due_x() -> i64 {
-    let take = if i64_lt(get(reserve()), get(slice())) {
+    let now = slice_now_x();
+    let take = if i64_lt(get(reserve()), now) {
         get(reserve())
     } else {
-        get(slice())
+        now
     };
     set(fuel(), take);
     set(reserve(), i64_minus(get(reserve()), take));

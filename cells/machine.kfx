@@ -799,12 +799,22 @@
 (define reach? (subr cm () bool)
   (lambda () (let ((t (sched-tag))) (and (not (i64= t v-false)) (i64>= (find-marked (get rsp) prompt-mark t) 0)))))
 
+(define slice-now! (subr cm () i64)
+  (lambda ()
+    "The next slice's length: `slice`, jittered by up to `slice-jitter`."
+    (if (i64= (get slice-jitter) 0)
+        (get slice)
+        (let ((x (i64+ (i64* (get slice-seed) 6364136223846793005) 1442695040888963407)))
+          (begin
+            (set slice-seed x)
+            (i64+ (get slice) (i64-remainder (i64-and (i64-shr x 33) 2147483647) (i64+ (get slice-jitter) 1))))))))
+
 (define poll-due! (subr cm () i64)
   (lambda ()
     "A slice's end: the next slice given out of the reserve; the
      scheduler's `preempt`, if it would have another task run, else `#f`
      (Fixpt's `poll`)."
-    (let ((take (if (i64< (get reserve) (get slice)) (get reserve) (get slice))))
+    (let* ((now (slice-now!)) (take (if (i64< (get reserve) now) (get reserve) now)))
       (begin
         (set fuel take)
         (set reserve (i64- (get reserve) take))

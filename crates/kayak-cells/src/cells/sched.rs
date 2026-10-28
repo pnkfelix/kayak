@@ -97,6 +97,25 @@ pub fn slice() -> Ref<i64> {
     })
 }
 
+// How much a slice may be longer (`--slice-jitter J`, C280): each slice
+// drawn from `slice` to `slice + J` polls, deterministically (a linear
+// congruential generator, its seed fixed), so that a test's preemptions
+// do not fall into step with a program's loop, and a run is the same each
+// time. 0, every slice `slice`.
+pub fn slice_jitter() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn slice_seed() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(88172645463325252i64)
+    })
+}
+
 // A region's number, as Fixpt's `%region-enter` gives one. Tier 1 keeps
 // a region's objects in the one heap: what a region frees is memory, never
 // an answer.
