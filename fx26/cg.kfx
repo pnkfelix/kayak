@@ -22,8 +22,8 @@
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
  fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
  fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@f03cabe
- fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@5731f52
- fixpt-source: crates/fixpt-fx26/src/parser.fx@5731f52"
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@6447f9b
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@6447f9b"
 
 "The generator's data lives at `@g`."
 (define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))

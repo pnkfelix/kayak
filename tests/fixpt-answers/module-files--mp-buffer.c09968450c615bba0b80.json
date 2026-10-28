@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"mp-buffer.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/module-files/mp-buffer.fx:3:2: unbound variable `module-parameters`",
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

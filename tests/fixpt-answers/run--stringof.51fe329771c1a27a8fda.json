@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stringof.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define joined : (subr pure (string string) string) ! pure",
+"define upcased! : (subr (maxeff (read (globals upcased!)) (read @s) (write @s) spin) ((stringof @s) int) unit) ! pure",
+"string ! (read (globals joined))",
+"bool ! (read (globals joined))",
+"string ! (maxeff (alloc @s) (read (globals upcased!)) (read @s) (write @s) spin)",
+"(listof char @r.1) ! (alloc @r.1)",
+"bool ! pure",
+"(bytevectorof @r.2) ! (maxeff (alloc @r.2) (read (globals joined)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

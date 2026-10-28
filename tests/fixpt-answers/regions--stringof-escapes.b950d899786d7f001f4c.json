@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stringof-escapes.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/stringof-escapes.fx:5:20: the value of `letregion r` would outlive its region: its type is (stringof r)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

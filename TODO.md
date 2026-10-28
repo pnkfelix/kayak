@@ -75,6 +75,11 @@ section below where it has one; here the order, and what each is.
    kayak has perf's (C246). Then KFX's own `load-module` of files, so that
    kayak's units say their layers' interfaces (`load-moduleof`,
    `restrict`), as the user suggested.
+   Since 6447f9b (C275): strings at a region, `(stringof r)` with
+   `make-string`, `rmake-string`, `string-set!`, `string-fill!`,
+   `string-copy`, `string-copy!` (next: the checker's strings in its
+   places, plan B); a module's expressions as its items; `module-parameters`
+   of modules.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).

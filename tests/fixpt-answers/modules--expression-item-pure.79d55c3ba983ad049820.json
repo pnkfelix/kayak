@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"expression-item-pure.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m-base : (moduleof (desc pt (productof (x int) (y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/expression-item-pure.fx:5:12: in `../module-files/mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

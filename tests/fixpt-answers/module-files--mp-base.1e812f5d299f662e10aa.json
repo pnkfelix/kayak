@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"mp-base.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"twice : (subr pure (int) int) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

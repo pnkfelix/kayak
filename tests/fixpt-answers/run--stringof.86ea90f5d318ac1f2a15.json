@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"stringof.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"joined : (subr pure (string string) string) ! pure",
+"upcased! : (subr (maxeff (read @s) (write @s) spin (read (globals upcased!))) ((stringof @s) int) unit) ! pure",
+"\"abcdéfg\" : string ! (read (globals joined))",
+"#t : bool ! (read (globals joined))",
+"\"HELLO, WORLD\" : string ! (maxeff (read @s) (write @s) (alloc @s) spin (read (globals upcased!)))",
+"(#\\b #\\c #\\b) : (listof char @r.1) ! (alloc @r.1)",
+"#t : bool ! pure",
+"#u8(195 169 33) : (bytevectorof @r.2) ! (maxeff (alloc @r.2) (read (globals joined)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

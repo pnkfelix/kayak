@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"module-parameters-modules.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m-base : (moduleof (desc pt (productof (x int) (y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
+"define m-buffer : (moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (productof (x int) (y int))))) ! (maxeff (alloc @c) (read (globals %shared:input:<programs>/modules/../module-files/mp-buffer.fx m-base)))",
+"define m-mixed : (moduleof (val cell (subr (alloc @q) (int) (ref int @q)))) ! (read (globals %shared:input:<programs>/modules/../module-files/mp-mixed.fx m-base))",
+"define seen-of : (subr (read @c) ((moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (productof (x int) (y int)))))) int) ! pure",
+"int ! (maxeff (alloc @q) (read (globals m-buffer m-mixed seen-of)) (read @c) (read @q))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+]
+}
+]
+}

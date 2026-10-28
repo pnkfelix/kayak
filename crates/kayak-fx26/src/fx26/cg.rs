@@ -27,8 +27,8 @@ use super::*;
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@f03cabe
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@5731f52
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@5731f52
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@6447f9b
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@6447f9b
 
 // The generator's data lives at `@g`.
 
@@ -924,6 +924,15 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("sleep-until")) => {
                         str_lit("%fx26-sleep-until")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-string")) => {
+                        str_lit("%fx26-make-string")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-set!")) => {
+                        str_lit("%fx26-string-set!")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-copy")) => {
+                        str_lit("%fx26-string-copy")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("i8-quotient")) => {
                         str_lit("%fx26-i8-quotient")
                     }
@@ -985,6 +994,9 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(12)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("rmake-string")) => {
+                        str_lit("%region-make-string")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("f64-truncate")) => {
                         str_lit("%fx26-f64-truncate")
                     }
@@ -1002,6 +1014,12 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector=?")) => {
                         str_lit("%fx26-bytevector=?")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-fill!")) => {
+                        str_lit("%fx26-string-fill!")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-copy!")) => {
+                        str_lit("%fx26-string-copy!")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("string->utf8")) => {
                         str_lit("%fx26-string->utf8")

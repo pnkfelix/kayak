@@ -7705,3 +7705,20 @@ changes; module values otherwise stay FX-26's alone (C170).
 Test: `tests/kfx/module-place.kfx`, with Fixpt's answer, 5050000. Next,
 B by this (`docs/research/checker-regions.md`): the checker one module
 made per form.
+
+## C275. The pin moved to 6447f9b: strings at a region (2026-10-28)
+
+The user: "FX26 can place strings now". I had said a place could hold
+no string. That was the old pin's FX-26, 5731f52; Fixpt's 41c0823f has
+`(stringof r)`, and `string` is `(stringof const)`. The pin moves to
+6447f9b, which also has a module's expressions as its items, and the
+`module-parameters` of modules. `built-in.py` takes the new primitives'
+names, and `fx26-tests.py` takes nine new programs. The drift: the
+runtime's new string primitives (`cells/prims.kfx`) and the parser's
+module items (`fx26/cg.kfx`). Neither is carried over yet, and their
+marks move. KFX's `stringof` comes next, for plan B.
+
+One thing I tested on both pins stands: a place's region takes no heap
+data by subsumption. `(rcons r 5 heap-list)` is refused where a
+`(listof int r)` is wanted, and so is a heap tree in a node at `r`. So
+plan B's per-form data meets the heap's scope only through copies.

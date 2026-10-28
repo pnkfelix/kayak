@@ -8,8 +8,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 1,
 "out": [
@@ -18,6 +17,19 @@
 "err": [
 "fixpt: <programs>/unions/typecase-else.fx:4:58: argument 1 is a (union string symbol), where a string is expected",
 ""
+]
+},
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/unions/typecase-else.fx:4:58: argument 1 is a (union string symbol), where a (stringof r) is expected",
+""
+],
+"by": [
+"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
 ]
 }
 ]
