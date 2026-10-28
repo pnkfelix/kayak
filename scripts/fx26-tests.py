@@ -34,7 +34,7 @@ def clone():
     if r.returncode != 0:
         sys.stderr.write(r.stderr)
         sys.exit("fx26-tests: no Fixpt clone at the pin (scripts/fixpt.sh)")
-    return os.path.dirname(os.path.dirname(os.path.dirname(r.stdout.strip())))
+    return os.environ.get("KAYAK_FIXPT_CLONE", os.path.join(ROOT, "..", "kayak-refs", "fixpt"))
 
 
 def theirs(c):

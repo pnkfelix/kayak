@@ -25,5 +25,19 @@ if [ -n "$(git -C "$clone" status --porcelain --untracked-files=no)" ]; then
     echo "fixpt.sh: the clone at $clone has changes of its own" >&2
     exit 1
 fi
-(cd "$clone" && cargo build --release --quiet -p fixpt-cli) >&2
-echo "$clone/target/release/fixpt"
+# Run from a copy of it in kayak's target/, built and copied under a lock,
+# the copy replaced only by a rename: cargo's build, even of nothing,
+# removes and links again target/release/fixpt, so that a run of it beside
+# another fixpt.sh (check.sh's stages at once) could find it missing.
+mkdir -p "$root/target/fixpt"
+bin=$root/target/fixpt/fixpt-$want
+perl -MFcntl=:flock -e '$^F = 255; open(my $l, ">", shift) or die "$!\n";
+    flock($l, LOCK_EX) or die "$!\n"; exec @ARGV or die "$!\n"' \
+    "$root/target/fixpt/lock" sh -c '
+    set -e
+    cd "$1" && cargo build --release --quiet -p fixpt-cli
+    if ! cmp -s target/release/fixpt "$2"; then
+        cp -p target/release/fixpt "$2.tmp"
+        mv -f "$2.tmp" "$2"
+    fi' fixpt.sh "$clone" "$bin" >&2
+echo "$bin"

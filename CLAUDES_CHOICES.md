@@ -7829,3 +7829,21 @@ alike: three for register code (C129) was only to escape the
 trampoline's way back, which four does too. At the full program,
 every such way now takes 16-24 s, its answer the same; a nextest JUnit
 file (target/nextest/default/junit.xml) gives each test's time.
+
+## C281. Fixpt run from a copy, built under a lock (2026-10-28)
+
+The first check on the Mac since 4413bbe6 failed in `corpus.py`: Fixpt's
+binary was not there, and was a moment later. Cargo's build of nothing
+still removes `target/release/fixpt` and links it again (its inode
+changes), and since 4413bbe6 the fixed point and the tests run beside the
+corpus, each calling `scripts/fixpt.sh`, each building: one's build could
+remove the binary as another ran it. `fixpt.sh` now builds under a lock
+(Perl's `flock`, which macOS and Linux both have, released if the holder
+dies) and prints a copy of the binary in kayak's own
+`target/fixpt/fixpt-PIN`, made with `cp -p` and put in place by a rename,
+and only when the build made other bytes: a run never finds it missing,
+and Fixpt's front-end cache, keyed by its executable's path and time,
+stays warm. Forty `fixpt.sh` at once while the binary ran 200 times: no
+failure. `fx26-tests.py` and `bench.py` found the clone three directories
+above the binary; they find it as `built-in.py` and `fixpt-drift.py` do,
+`KAYAK_FIXPT_CLONE` or `../kayak-refs/fixpt`.

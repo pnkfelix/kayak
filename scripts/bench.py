@@ -165,7 +165,7 @@ def main():
             sys.exit(__doc__)
         args = args[2:]
     fixpt = fixpt_binary()
-    clone = os.path.dirname(os.path.dirname(os.path.dirname(fixpt)))
+    clone = os.environ.get("KAYAK_FIXPT_CLONE", os.path.join(ROOT, "..", "kayak-refs", "fixpt"))
     originals = os.path.join(clone, "crates", "fixpt-fx26", "tests", "programs", "bench")
     names = sorted(f[:-3] for f in os.listdir(originals) if f.endswith(".fx"))
     os.makedirs(WORK, exist_ok=True)
