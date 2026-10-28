@@ -7670,3 +7670,38 @@ explain this". Three things, all fixed ("yeah fix it"):
   alone, where Rust's own hook had said the thread and where it panicked
   first (a hook of `main.rs`, for batch runs only: the REPL catches and
   says its own).
+
+## C274. Modules made in procedures of places (2026-10-28)
+
+The user: "Can we use module parameters to abstract over the place for a
+group of items?", then "lets try building the module feature first". KFX
+now has FX-26's module made in a procedure, where the procedure's
+parameters are places alone: a top-level `(define m (poly ((p place))
+(subr E ((place p)) (i p))) (lambda (p) (module item ...)))`. Its
+interface is `(define-type (i (p place)) (moduleof (val …) …))`. Its items
+are procedures, typed, and close over the place: a `cons`, `list` or
+constructor in one finds the place by name (C270, C271). Nothing else
+changes; module values otherwise stay FX-26's alone (C170).
+- **The checker** notes `module-maker` at such a definition, and lifts
+  C24's "no procedure gives a module back" for it. It keeps `%maker m` in
+  scope after it. A `let` binding of a maker's call keeps `%maker-value x
+  m`, and a `with` of that variable notes `with-maker x m`. A `with` of
+  any other module value is refused as before (C170). `restrict.kfx` lets
+  through a `moduleof` define-type whose head's parameters are all places
+  (`place-family?`).
+- **The Rust**: the interface is no trait but the struct `I<'p,
+  Place_P>(&'p Place_P)`, `Copy`. Its methods are the interface's values,
+  each delegating to `mod m`, where every item is a `fn` given `p: &'p
+  Place_P` first. The items' calls of each other are given `p` too, at
+  the source's positions, so the checker's facts still apply. The maker
+  `fn m(p) -> I<'p, Place_P>` makes one. Every one of these is bound to
+  hold what any item makes in the place: the maker's own `place-needs`,
+  summed over its whole body (C34). `(i r)` as a type is `I<'r, …>`, and
+  `(with x (f a))` is `x.f(a)`.
+- **Not yet**: a maker of more than one place, or of parameters other
+  than places; an item that is poly, fails or suspends; an item named
+  other than called, inside the module. Each gives kfx's error.
+
+Test: `tests/kfx/module-place.kfx`, with Fixpt's answer, 5050000. Next,
+B by this (`docs/research/checker-regions.md`): the checker one module
+made per form.

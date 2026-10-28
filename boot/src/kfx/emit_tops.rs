@@ -19,7 +19,7 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -369,6 +369,18 @@ pub mod writing {
     /// and a type, `Place_P`, bound to hold what the procedure makes there,
     /// by itself or by those it gives the place to; the types `Copy`.
     pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, lives: Strings, places: Strings, acc: Chars) -> Chars {
+        let maker = concat(map(lambda1s(move |k: Str| {
+            if has_prefix_p(k, str_lit("%maker-needs ")) {
+                the::<Strings>(kayak_rt::heap_cons(after_prefix(k, str_lit("%maker-needs ")), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), ctx_locals(c)));
+        let name = if null_p(maker) {
+            name
+        } else {
+            car(maker)
+        };
         let needs = all_facts_prefixed(c, string_append(str_lit("place-needs "), string_append(name, str_lit(" "))));
         let types = concat(map(lambda1s(move |b: &'static Sexp| {
             if sym_is_p(second(items(b)), str_lit("type")) {
@@ -1331,6 +1343,82 @@ pub mod writing {
         (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || module_def_p(e) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
     }
 
+    /// A module maker's module's items, each `(name type lambda)` (C274).
+    pub fn maker_defs(mut forms: Sexps) -> Sexps {
+        loop {
+            if null_p(forms) {
+                return nil::<&'static Sexp>();
+            } else if comment_p(car(forms)) {
+                forms = cdr(forms);
+                continue;
+            } else if (head_is_p(car(forms), str_lit("define")) && i64_eq(size(items(car(forms))), 4i64) && lambda_form_p(fourth(items(car(forms))))) {
+                return kayak_rt::heap_cons(lst(cdr(items(car(forms))), str_lit(""), 0i64, 0i64), maker_defs(cdr(forms)));
+            } else if head_is_p(car(forms), str_lit("define-rec")) {
+                return onto(cdr(items(car(forms))), maker_defs(cdr(forms)));
+            } else {
+                return error(str_lit("kfx: a module maker's item not a procedure's definition, typed, which KFX writes not yet (C274)"));
+            }
+        }
+    }
+
+    /// A module maker's item's type, given the maker's place `p` first (C274).
+    pub fn maker_item_type(p: Str, t: &'static Sexp) -> &'static Sexp {
+        let binder = lst(kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64);
+        let bs = if head_is_p(t, str_lit("poly")) {
+            items(second(items(t)))
+        } else {
+            nil::<&'static Sexp>()
+        };
+        let s = items(unpoly(t));
+        lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(binder, bs), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(s), kayak_rt::heap_cons(second(s), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), items(third(s))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(fourth(s), kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+    }
+
+    /// `e`, its calls of `names` given the place `p` first (C274).
+    pub fn place_given(p: Str, names: Strings, e: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, q) => {
+                if null_p(xs) {
+                    e
+                } else if sym_is_p(car(xs), str_lit("quote")) {
+                    e
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            string_member_p(n, names)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), map(lambda1s(move |x: &'static Sexp| {
+                        place_given(p, names, x)
+                    }), cdr(xs)))), f, l, q)
+                } else {
+                    lst(map(lambda1s(move |x: &'static Sexp| {
+                        place_given(p, names, x)
+                    }), xs), f, l, q)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                e
+            }
+        }
+    }
+
+    /// A module maker's item's lambda, given the maker's place `p` first, and
+    /// its calls of the maker's items (C274).
+    pub fn maker_item_lambda(p: Str, names: Strings, lam: &'static Sexp) -> &'static Sexp {
+        let ys = items(lam);
+        lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), items(second(ys))), str_lit(""), 0i64, 0i64), map(lambda1s(move |x: &'static Sexp| {
+            place_given(p, names, x)
+        }), cdr(cdr(ys))))), str_lit(""), 0i64, 0i64)
+    }
+
     pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
         put_shape_decls(program_shapes(c, forms), shows, uses_blobrefs_p(c), acc)
     }
@@ -1437,6 +1525,21 @@ pub mod writing {
             // A flat array or a keyed flat sum: a layout in a bloblet's suffix
             // (C31, C33), no value's type, and so no Rust type's.
             acc
+        } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof")) && {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // A module maker's interface (C274): the maker's struct, written
+            // with it.
+            acc
         } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
             put_trait(c, sym_name(second(xs)), third(xs), acc)
         } else if (string_eq_p(h, str_lit("define-type")) && {
@@ -1531,6 +1634,8 @@ pub mod writing {
             } else {
                 string_append(str_lit(" as "), mangle(x))
             }, put(value_path(c, sym_name(second(r)), y), put(str_lit("pub use "), acc))))
+        } else if maker_form_p(c, form) {
+            put_maker(c, xs, acc)
         } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
             if i64_eq(size(xs), 4i64) {
                 put_define(c, second(xs), third(xs), fourth(xs), acc)
@@ -1542,6 +1647,83 @@ pub mod writing {
         } else {
             acc
         }
+    }
+
+    /// A module maker (C274), `(define m (poly ((p place)) (subr E ((place
+    /// p)) (i p))) (lambda (p) (module item ...)))`: in Rust, a `mod m` of
+    /// its items, each a procedure given the place first, as the maker
+    /// is, their calls of each other given it too; the struct `I<'p,
+    /// Place_P>`, the place, whose methods are the items; and `m`, making
+    /// one. Each bound to hold what any item makes in the place: the
+    /// maker's `place-needs`.
+    pub fn put_maker(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+        let name = sym_name(second(xs));
+        let typ = third(xs);
+        let binders = items(second(items(typ)));
+        let lam = fourth(xs);
+        let ps = items(second(items(lam)));
+        let p = if (i64_eq(size(binders), 1i64) && i64_eq(size(ps), 1i64)) {
+            sym_name(car(ps))
+        } else {
+            error(string_append(str_lit("kfx: a module maker of other than one place, which KFX writes not yet (C274): "), name))
+        };
+        let iface_name = type_head_name(fourth(items(third(items(typ)))));
+        let iface = camel(iface_name);
+        let shown = concat(map(lambda1s(move |it: &'static Sexp| {
+            if head_is_p(it, str_lit("val")) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(it))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), {
+            let found = module_body(c, string_append(str_lit("%maker-iface "), iface_name));
+            if null_p(found) {
+                nil::<&'static Sexp>()
+            } else {
+                cdr(items(car(found)))
+            }
+        }));
+        let defs = maker_defs(cdr(items(third(items(lam)))));
+        let siblings = map(lambda1s(move |d: &'static Sexp| {
+            sym_name(car(items(d)))
+        }), defs);
+        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::nil()));
+        let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
+        let pt = string_append(str_lit("Place_"), camel(p));
+        let named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
+        let body = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
+            let ys = items(d);
+            put_define(c, car(ys), maker_item_type(p, second(ys)), maker_item_lambda(p, siblings, third(ys)), acc)
+        }), str_lit(""), defs, nil::<char>());
+        let acc = put(concat_strings(kayak_rt::heap_cons(str_lit("/// What "), kayak_rt::heap_cons(name, kayak_rt::heap_cons(str_lit(" makes (C274): its module's items, the place given.\n"), kayak_rt::heap_cons(str_lit("pub struct "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit("(pub &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(");\n\n"), kayak_rt::heap_cons(str_lit("impl<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit("> Clone for "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"), kayak_rt::heap_cons(str_lit("impl<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit("> Copy for "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {}\n\n"), kayak_rt::nil()))))))))))))))))))))))))), acc);
+        let acc = put_module_around(c, name, body, acc);
+        let acc = put(string_append(str_lit(" "), string_append(named, str_lit(" {\n"))), put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), put(str_lit("impl"), acc)));
+        let acc = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
+            let ys = items(d);
+            let t = unpoly(second(ys));
+            let params = items(second(items(third(ys))));
+            if (head_is_p(second(ys), str_lit("poly")) || not(head_is_p(t, str_lit("subr"))) || not(i64_eq(size(items(t)), 4i64)) || fallible_effect_p(c, second(items(t))) || suspending_effect_p(c, second(items(t)))) {
+                error(string_append(str_lit("kfx: a module maker's item poly, or failing, or suspending, which KFX writes not yet (C274): "), sym_name(car(ys))))
+            } else {
+                let acc = put(string_append(str_lit("    pub fn "), string_append(mangle(sym_name(car(ys))), str_lit("(self"))), acc);
+                let acc = if null_p(params) {
+                    acc
+                } else {
+                    put_params(cp, params, items(third(items(t))), false, put(str_lit(", "), acc))
+                };
+                let acc = put_type(cp, fourth(items(t)), put(str_lit(") -> "), acc));
+                let acc = put(concat_strings(kayak_rt::heap_cons(str_lit(" {\n        "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit("(self.0"), kayak_rt::nil())))))), acc);
+                put(str_lit(")\n    }\n"), put_sep(lambda2s(move |x: &'static Sexp, acc: Chars| {
+                    put(mangle(param_name(x)), put(str_lit(", "), acc))
+                }), str_lit(""), params, acc))
+            }
+        }), str_lit("\n"), filter(lambda1s(move |d: &'static Sexp| {
+            string_member_p(sym_name(car(items(d))), shown)
+        }), defs), acc);
+        let acc = put(str_lit("}\n\n"), acc);
+        let acc = put(string_append(str_lit("pub fn "), mangle(name)), acc);
+        let acc = put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), acc);
+        put(concat_strings(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(": &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n    "), kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(")\n}\n\n"), kayak_rt::nil())))))))))))))), acc)
     }
 
     /// A module's `include`s, each marked with the types one before it gave

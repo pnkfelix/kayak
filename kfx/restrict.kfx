@@ -123,6 +123,16 @@
         (restricted-all (subr kfx (sexps string i64) unit)
           (lambda (es file line) (if (null? es) #u (begin (restricted (car es) file line) (restricted-all (cdr es) file line))))))
 
+      (define place-family? (subr kfx (sexp) bool)
+        (lambda (head)
+          "Whether a type's head names a family of places alone, `(name (p
+           place) ...)` (C274)."
+          (tagcase head
+            (lst (xs f l p)
+              (and (not (null? (cdr xs)))
+                   (not (any? (lambda ((b sexp)) (not (and (i64= (size (items b)) 2) (sym-is? (second (items b)) "place")))) (cdr xs)))))
+            (else other #f))))
+
       (define-rec
         (moduleof-restricted (subr kfx (sexp) unit)
           (lambda (e)
@@ -133,7 +143,10 @@
               (lst (xs f l p)
                 (cond ((null? xs) #u)
                       ((and (sym-is? (car xs) "define-type") (i64= (size xs) 3) (head-is? (third xs) "moduleof")
-                            (not (and (trait-moduleof? (third xs)) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))))
+                            (not (and (trait-moduleof? (third xs)) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f))))
+                            ;; A module maker's interface, over places (C274): in
+                            ;; Rust the maker's struct, no trait.
+                            (not (place-family? (second xs))))
                        (restriction-refused f l "a module type KFX has not as a Rust trait: of an effect's description, or with parameters, FX-26's (C24, C170)"))
                       ((and (sym-is? (car xs) "define-type") (i64= (size xs) 3) (head-is? (third xs) "moduleof"))
                        (begin (map moduleof-restricted (cdr (items (third xs)))) #u))

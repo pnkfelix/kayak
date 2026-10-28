@@ -2457,9 +2457,38 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     }
 }
 
+// Whether a top-level form defines a module maker (C274): a procedure of
+// places whose body is a module, `(define NAME T (lambda (p ...) (module
+// ...)))`; its name, in a list.
+pub fn maker_named(form: &'static Sexp) -> Strings {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (head_is_p(form, str_lit("define")) && i64_eq(size(xs), 4i64) && head_is_p(fourth(xs), str_lit("lambda")) && i64_eq(size(items(fourth(xs))), 3i64) && head_is_p(third(items(fourth(xs))), str_lit("module"))) {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            } else {
+                nil::<Str>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 /// One top-level form; a lemma's checked as its procedure's type, then its
 /// proof (C185).
-pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+pub fn check_top_form(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -2480,6 +2509,17 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             let other = tagcase_;
             check_top_plain(v, form)
         }
+    }
+}
+
+/// One top-level form; a module maker's name kept, `%maker NAME` (C274),
+/// so that a `let` of its module, and a `with` of that, are KFX's.
+pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+    let (v2, m) = (check_top_form(v, form), maker_named(form));
+    if null_p(m) {
+        v2
+    } else {
+        with_binds(v2, kayak_rt::heap_cons(bind(string_append(str_lit("%maker "), car(m)), scheme(nil::<Str>(), ty_unit()), str_lit("no")), kayak_rt::nil()))
     }
 }
 

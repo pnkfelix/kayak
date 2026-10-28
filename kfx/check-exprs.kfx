@@ -2895,8 +2895,12 @@
                               (if (not (mtype? (walk s t)))
                                   (refuse v (string-append "a with of no module: a " (show-ty s t)))
                                   (with-effs (found-then-fitted v (body (mtype-opened v (zonk s t))
-                                                                        (kfx-restricted v (note-fact (note-fact s (cv-file v) (cv-pos v) "with-value") (cv-file v) (cv-pos v) (string-append "with-spec " (words-of (mtype-value-names (walk s t)))))
-                                                                                        "a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")
+                                                                        (let ((s (note-fact (note-fact s (cv-file v) (cv-pos v) "with-value") (cv-file v) (cv-pos v) (string-append "with-spec " (words-of (mtype-value-names (walk s t)))))))
+                                                                          ;; A module maker's module (C274): KFX's.
+                                                                          (if (and (not (string=? m "")) (not (null? (scope-bind (string-append "%maker-value " m) v))))
+                                                                              (note-fact s (cv-file v) (cv-pos v)
+                                                                                         (string-append "with-maker " (string-append m (string-append " " (tagcase (car (scope-bind (string-append "%maker-value " m) v)) (bind (n sc wher) wher))))))
+                                                                              (kfx-restricted v s "a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")))
                                                                         (cdr xs) nil)
                                                                 expected)
                                              es)))))
@@ -3275,7 +3279,16 @@
                 (tagcase (synth sees s (second b))
                   (res (t es s)
                     (with-effs (let-values v s (cdr bindings) forms expected
-                                           (cons (local v (name-of v (car b)) t) bound) sequential)
+                                           (let ((bound (the binds (cons (local v (name-of v (car b)) t) bound))))
+                                             ;; A module maker's module, kept so (C274), for a `with`:
+                                             ;; the maker's name kept with it.
+                                             (let ((maker (tagcase (second b)
+                                                            (lst (ys f l p) (if (null? ys) "" (tagcase (car ys) (sym (h f2 p2) (if (null? (scope-bind (string-append "%maker " h) v)) "" h)) (else other ""))))
+                                                            (else other ""))))
+                                               (if (string=? maker "")
+                                                   bound
+                                                   (the binds (cons (bind (string-append "%maker-value " (name-of v (car b))) (scheme nil (ty-unit)) maker) bound)))))
+                                           sequential)
                                es)))))))
 
       (module-escape (subr kfx (cv strings res) res)
@@ -4116,14 +4129,21 @@
               (if (not (i64= (size params) (size eps)))
                   (refuse v "a lambda of the wrong number of parameters")
                   (let* ((s (module-params-apart v params eps (check-written-params v s params eps)))
-                         (s (if (or (not (null? (module-spec v (walk s er)))) (mtype? (walk s er))
+                         (maker (and (top-lambda? v) (i64= (size forms) 1) (head-is? (car forms) "module") (mtype? (walk s er))
+                                     (not (null? eps))
+                                     (not (any? (lambda ((p ty)) (tagcase (walk s p) (ty-data (d args) (not (string=? d "%place"))) (else other #t))) eps))))
+                         ;; A module made in a procedure of places (C274): KFX's, a
+                         ;; Rust `mod` of procedures each given the places first.
+                         (s (if maker (note-fact s (cv-file v) (cv-pos v) "module-maker") s))
+                         (s (if (and (not maker) (or (not (null? (module-spec v (walk s er)))) (mtype? (walk s er))
                                     (and (any? (lambda ((p ty)) (or (not (null? (module-spec v (walk s p)))) (mtype? (walk s p)))) eps)
-                                         (not (top-lambda? v))))
+                                         (not (top-lambda? v)))))
                                 (kfx-restricted v s "a module parameter is a top-level procedure's, and no procedure gives a module back (C24)")
                                 s)))
                     (if #f
                         (refuse v "")
-                    (tagcase (let ((inner (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (closure-binds v params eps)))))
+                    (tagcase (let ((inner (with-binds v (onto (if maker (the binds (list (bind "%module-maker" (scheme nil (ty-unit)) "no"))) nil)
+                                                              (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (closure-binds v params eps))))))
                                ;; The body as a whole masked, as Fixpt masks a lambda's
                                ;; (C191): a `letrec`'s storage no name outside sees.
                                (masked-res inner (lst (cons (sym "begin" "" 0) forms) "" 0 0)
@@ -4351,7 +4371,10 @@
            all, each seeing those made before it. Its type a `moduleof` of what
            it gives, a hidden item not. Not KFX's, whose modules are Rust's,
            defined at the top level (C19)."
-          (let ((s (note-fact (kfx-restricted v s "a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)")
+          (let ((s (note-fact (if (null? (scope-bind "%module-maker" v))
+                                  (kfx-restricted v s "a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)")
+                                  ;; A module maker's (C274).
+                                  s)
                               (cv-file v) (cv-pos v) "module-value"))
                 (id (string-append "mt@" (i64->string (cv-pos v)))))
             (tagcase (mod-types v s its id #t nil nil)

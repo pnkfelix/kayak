@@ -1448,7 +1448,20 @@
                     (res (t es s)
                       (with-facts v (with expressions (settle-facts (if (proc-type? s t) (note-fact s (datum-file form) (datum-pos form) "procedure") s))))))))))
 
-(define check-top (subr kfx (cv sexp) cv)
+"Whether a top-level form defines a module maker (C274): a procedure of
+ places whose body is a module, `(define NAME T (lambda (p ...) (module
+ ...)))`; its name, in a list."
+(define maker-named (subr kfx (sexp) strings)
+  (lambda (form)
+    (tagcase form
+      (lst (xs f l p)
+        (if (and (head-is? form "define") (i64= (size xs) 4) (head-is? (fourth xs) "lambda")
+                 (i64= (size (items (fourth xs))) 3) (head-is? (third (items (fourth xs))) "module"))
+            (tagcase (second xs) (sym (n f2 p2) (the strings (list n))) (else other nil))
+            nil))
+      (else other nil))))
+
+(define check-top-form (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form; a lemma's checked as its procedure's type, then its
      proof (C185)."
@@ -1462,6 +1475,13 @@
               (lemma-proved (near v2 f l p) (name-of v (second xs)) (third xs) (fourth xs)))
             (check-top-plain v form))))
       (else other (check-top-plain v form)))))
+
+(define check-top (subr kfx (cv sexp) cv)
+  (lambda (v form)
+    "One top-level form; a module maker's name kept, `%maker NAME` (C274),
+     so that a `let` of its module, and a `with` of that, are KFX's."
+    (let ((v2 (check-top-form v form)) (m (maker-named form)))
+      (if (null? m) v2 (with-binds v2 (list (bind (string-append "%maker " (car m)) (scheme nil (ty-unit)) "no")))))))
 
 (define item-names (subr kfx (sexp) strings)
   (lambda (f)

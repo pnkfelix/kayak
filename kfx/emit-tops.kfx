@@ -186,7 +186,10 @@
           "A procedure given places' generics (C34): each place a lifetime, `'p`,
            and a type, `Place_P`, bound to hold what the procedure makes there,
            by itself or by those it gives the place to; the types `Copy`."
-          (let* ((needs (all-facts-prefixed c (string-append "place-needs " (string-append name " "))))
+          (let* ((maker (concat (map (lambda ((k string)) (if (has-prefix? k "%maker-needs ") (the strings (list (after-prefix k "%maker-needs "))) nil)) (ctx-locals c))))
+                 ;; A module maker's item, bound as the maker is (C274).
+                 (name (if (null? maker) name (car maker)))
+                 (needs (all-facts-prefixed c (string-append "place-needs " (string-append name " "))))
                  (types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (camel (sym-name (car (items b)))))) nil)) binders)))
                  (bounds (lambda ((p string))
                            (distinct-strings
@@ -778,6 +781,47 @@
         (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec") (module-def? e)
             (head-is? e "define-datatype") (head-is? e "define-type") (head-is? e "define-generative"))))
 
+    (define-rec
+      (maker-defs (subr kfx (sexps) sexps)
+        (lambda (forms)
+          "A module maker's module's items, each `(name type lambda)` (C274)."
+          (cond ((null? forms) nil)
+                ((comment? (car forms)) (maker-defs (cdr forms)))
+                ((and (head-is? (car forms) "define") (i64= (size (items (car forms))) 4) (lambda-form? (fourth (items (car forms)))))
+                 (cons (lst (cdr (items (car forms))) "" 0 0) (maker-defs (cdr forms))))
+                ((head-is? (car forms) "define-rec") (onto (cdr (items (car forms))) (maker-defs (cdr forms))))
+                (else (error "kfx: a module maker's item not a procedure's definition, typed, which KFX writes not yet (C274)"))))))
+
+    (define maker-item-type (subr kfx (string sexp) sexp)
+      (lambda (p t)
+        "A module maker's item's type, given the maker's place `p` first (C274)."
+        (let* ((binder (lst (list (sym p "" 0) (sym "place" "" 0)) "" 0 0))
+               (bs (if (head-is? t "poly") (items (second (items t))) nil))
+               (s (items (unpoly t))))
+          (lst (list (sym "poly" "" 0) (lst (cons binder bs) "" 0 0)
+                     (lst (list (car s) (second s) (lst (cons (lst (list (sym "place" "" 0) (sym p "" 0)) "" 0 0) (items (third s))) "" 0 0) (fourth s)) "" 0 0))
+               "" 0 0))))
+
+    (define-rec
+      (place-given (subr kfx (string strings sexp) sexp)
+        (lambda (p names e)
+          "`e`, its calls of `names` given the place `p` first (C274)."
+          (tagcase e
+            (lst (xs f l q)
+              (cond ((null? xs) e)
+                    ((sym-is? (car xs) "quote") e)
+                    ((tagcase (car xs) (sym (n f2 p2) (string-member? n names)) (else other #f))
+                     (lst (cons (car xs) (cons (sym p "" 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr xs)))) f l q))
+                    (else (lst (map (lambda ((x sexp)) (place-given p names x)) xs) f l q))))
+            (else other e)))))
+
+    (define maker-item-lambda (subr kfx (string strings sexp) sexp)
+      (lambda (p names lam)
+        "A module maker's item's lambda, given the maker's place `p` first, and
+         its calls of the maker's items (C274)."
+        (let ((ys (items lam)))
+          (lst (cons (car ys) (cons (lst (cons (sym p "" 0) (items (second ys))) "" 0 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr (cdr ys))))) "" 0 0))))
+
     (define put-shapes (subr kfx (ctx sexps bool chars) chars)
       (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows (uses-blobrefs? c) acc)))
 
@@ -823,6 +867,11 @@
                                  (tagcase (second (items (third xs))) (sym (n f p) #t) (else other #f)))))
                    "A flat array or a keyed flat sum: a layout in a bloblet's suffix
                     (C31, C33), no value's type, and so no Rust type's."
+                   acc)
+                  ((and (string=? h "define-type") (head-is? (third xs) "moduleof")
+                        (tagcase (second xs) (lst (ys f l p) #t) (else other #f)))
+                   "A module maker's interface (C274): the maker's struct, written
+                    with it."
                    acc)
                   ((and (string=? h "define-type") (head-is? (third xs) "moduleof"))
                    (put-trait c (sym-name (second xs)) (third xs) acc))
@@ -871,12 +920,70 @@
                           (x (sym-name (second xs))))
                      (put ";\n\n" (put (if (string=? x y) "" (string-append " as " (mangle x)))
                                        (put (value-path c (sym-name (second r)) y) (put "pub use " acc))))))
+                  ((maker-form? c form) (put-maker c xs acc))
                   ((or (string=? h "define") (string=? h "define*"))
                    (if (i64= (size xs) 4)
                        (put-define c (second xs) (third xs) (fourth xs) acc)
                        (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
                   ((string=? h "define-rec") (put-rec c (cdr xs) acc))
                   (else acc)))))
+
+      (put-maker (subr kfx (ctx sexps chars) chars)
+        (lambda (c xs acc)
+          "A module maker (C274), `(define m (poly ((p place)) (subr E ((place
+           p)) (i p))) (lambda (p) (module item ...)))`: in Rust, a `mod m` of
+           its items, each a procedure given the place first, as the maker
+           is, their calls of each other given it too; the struct `I<'p,
+           Place_P>`, the place, whose methods are the items; and `m`, making
+           one. Each bound to hold what any item makes in the place: the
+           maker's `place-needs`."
+          (let* ((name (sym-name (second xs)))
+                 (typ (third xs))
+                 (binders (items (second (items typ))))
+                 (lam (fourth xs))
+                 (ps (items (second (items lam))))
+                 (p (if (and (i64= (size binders) 1) (i64= (size ps) 1))
+                        (sym-name (car ps))
+                        (error (string-append "kfx: a module maker of other than one place, which KFX writes not yet (C274): " name))))
+                 (iface-name (type-head-name (fourth (items (third (items typ))))))
+                 (iface (camel iface-name))
+                 ;; Its interface's values, the struct's methods.
+                 (shown (concat (map (lambda ((it sexp)) (if (head-is? it "val") (the strings (list (sym-name (second (items it))))) nil))
+                                     (let ((found (module-body c (string-append "%maker-iface " iface-name)))) (if (null? found) nil (cdr (items (car found))))))))
+                 (defs (maker-defs (cdr (items (third (items lam))))))
+                 (siblings (map (lambda ((d sexp)) (sym-name (car (items d)))) defs))
+                 (c (with-locals c (list (string-append "%maker-needs " name))))
+                 (cp (with-locals c (list (string-append "%letrena " p) (string-append "%placeparam " p))))
+                 (pt (string-append "Place_" (camel p)))
+                 (named (concat-strings (list iface "<" (lifetime p) ", " pt ">")))
+                 (body (put-sep (lambda ((d sexp) (acc chars))
+                                  (let ((ys (items d)))
+                                    (put-define c (car ys) (maker-item-type p (second ys)) (maker-item-lambda p siblings (third ys)) acc)))
+                                "" defs nil))
+                 (acc (put (concat-strings (list "/// What " name " makes (C274): its module's items, the place given.\n"
+                                                 "pub struct " named "(pub &" (lifetime p) " " pt ");\n\n"
+                                                 "impl<" (lifetime p) ", " pt "> Clone for " named " {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"
+                                                 "impl<" (lifetime p) ", " pt "> Copy for " named " {}\n\n"))
+                           acc))
+                 (acc (put-module-around c name body acc))
+                 (acc (put (string-append " " (string-append named " {\n")) (put-place-generics c name binders nil (list p) (put "impl" acc))))
+                 (acc (put-sep (lambda ((d sexp) (acc chars))
+                                 (let* ((ys (items d))
+                                        (t (unpoly (second ys)))
+                                        (params (items (second (items (third ys))))))
+                                   (if (or (head-is? (second ys) "poly") (not (head-is? t "subr")) (not (i64= (size (items t)) 4))
+                                           (fallible-effect? c (second (items t))) (suspending-effect? c (second (items t))))
+                                       (error (string-append "kfx: a module maker's item poly, or failing, or suspending, which KFX writes not yet (C274): " (sym-name (car ys))))
+                                       (let* ((acc (put (string-append "    pub fn " (string-append (mangle (sym-name (car ys))) "(self")) acc))
+                                              (acc (if (null? params) acc (put-params cp params (items (third (items t))) #f (put ", " acc))))
+                                              (acc (put-type cp (fourth (items t)) (put ") -> " acc)))
+                                              (acc (put (concat-strings (list " {\n        " (mangle name) "::" (mangle (sym-name (car ys))) "(self.0")) acc)))
+                                         (put ")\n    }\n" (put-sep (lambda ((x sexp) (acc chars)) (put (mangle (param-name x)) (put ", " acc))) "" params acc))))))
+                               "\n" (filter (lambda ((d sexp)) (string-member? (sym-name (car (items d))) shown)) defs) acc))
+                 (acc (put "}\n\n" acc))
+                 (acc (put (string-append "pub fn " (mangle name)) acc))
+                 (acc (put-place-generics c name binders nil (list p) acc)))
+            (put (concat-strings (list "(" (mangle p) ": &" (lifetime p) " " pt ") -> " named " {\n    " iface "(" (mangle p) ")\n}\n\n")) acc))))
 
       (types-once (subr kfx (ctx sexps strings) sexps)
         (lambda (c forms given)

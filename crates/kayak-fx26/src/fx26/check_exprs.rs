@@ -6356,7 +6356,21 @@ pub mod expressions {
                         if not(mtype_p(walk(s, t))) {
                             match refuse(v, string_append(str_lit("a with of no module: a "), show_ty(s, t))) {}
                         } else {
-                            with_effs(found_then_fitted(v, body(mtype_opened(v, zonk(s, t)), kfx_restricted(v, note_fact(note_fact(s, cv_file(v), cv_pos(v), str_lit("with-value")), cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s, t))))), str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")), cdr(xs), nil::<&'static Ty>()), expected), es)
+                            with_effs(found_then_fitted(v, body(mtype_opened(v, zonk(s, t)), {
+                                let s = note_fact(note_fact(s, cv_file(v), cv_pos(v), str_lit("with-value")), cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s, t)))));
+                                if (not(string_eq_p(m, str_lit(""))) && not(null_p(scope_bind(string_append(str_lit("%maker-value "), m), v)))) {
+                                    note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("with-maker "), string_append(m, string_append(str_lit(" "), {
+                                        let tagcase_ = car(scope_bind(string_append(str_lit("%maker-value "), m), v));
+                                        match *tagcase_ {
+                                            Bind::Bind(n, sc, wher) => {
+                                                wher
+                                            }
+                                        }
+                                    }))))
+                                } else {
+                                    kfx_restricted(v, s, str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)"))
+                                }
+                            }, cdr(xs), nil::<&'static Ty>()), expected), es)
                         }
                     }
                 }
@@ -7366,7 +7380,43 @@ pub mod expressions {
             let tagcase_ = synth(sees, s, second(b));
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    with_effs(let_values(v, s, cdr(bindings), forms, expected, kayak_rt::heap_cons(local(v, name_of(v, car(b)), t), bound), sequential), es)
+                    with_effs(let_values(v, s, cdr(bindings), forms, expected, {
+                        let bound = the::<Binds>(kayak_rt::heap_cons(local(v, name_of(v, car(b)), t), bound));
+                        let maker = {
+                            let tagcase_ = second(b);
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f, l, p) => {
+                                    if null_p(ys) {
+                                        str_lit("")
+                                    } else {
+                                        let tagcase_ = car(ys);
+                                        match *tagcase_ {
+                                            Sexp::Sym(h, f2, p2) => {
+                                                if null_p(scope_bind(string_append(str_lit("%maker "), h), v)) {
+                                                    str_lit("")
+                                                } else {
+                                                    h
+                                                }
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                str_lit("")
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        };
+                        if string_eq_p(maker, str_lit("")) {
+                            bound
+                        } else {
+                            the::<Binds>(kayak_rt::heap_cons(bind(string_append(str_lit("%maker-value "), name_of(v, car(b))), scheme(nil::<Str>(), ty_unit()), maker), bound))
+                        }
+                    }, sequential), es)
                 }
             }
         }
@@ -9179,9 +9229,26 @@ pub mod expressions {
                         return match refuse(v, str_lit("a lambda of the wrong number of parameters")) {};
                     } else {
                         let s = module_params_apart(v, params, eps, check_written_params(v, s, params, eps));
-                        let s = if (not(null_p(module_spec(v, walk(s, er)))) || mtype_p(walk(s, er)) || (any_p(lambda1s(move |p: &'static Ty| {
+                        let maker = (top_lambda_p(v) && i64_eq(size(forms), 1i64) && head_is_p(car(forms), str_lit("module")) && mtype_p(walk(s, er)) && not(null_p(eps)) && not(any_p(lambda1s(move |p: &'static Ty| {
+                            let tagcase_ = walk(s, p);
+                            match *tagcase_ {
+                                Ty::TyData(d, args) => {
+                                    not(string_eq_p(d, str_lit("%place")))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    true
+                                }
+                            }
+                        }), eps)));
+                        let s = if maker {
+                            note_fact(s, cv_file(v), cv_pos(v), str_lit("module-maker"))
+                        } else {
+                            s
+                        };
+                        let s = if (not(maker) && (not(null_p(module_spec(v, walk(s, er)))) || mtype_p(walk(s, er)) || (any_p(lambda1s(move |p: &'static Ty| {
                             (not(null_p(module_spec(v, walk(s, p)))) || mtype_p(walk(s, p)))
-                        }), eps) && not(top_lambda_p(v)))) {
+                        }), eps) && not(top_lambda_p(v))))) {
                             kfx_restricted(v, s, str_lit("a module parameter is a top-level procedure's, and no procedure gives a module back (C24)"))
                         } else {
                             s
@@ -9190,7 +9257,11 @@ pub mod expressions {
                             return match refuse(v, str_lit("")) {};
                         } else {
                             let tagcase_ = {
-                                let inner = with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), closure_binds(v, params, eps)));
+                                let inner = with_binds(v, onto(if maker {
+                                    the::<Binds>(kayak_rt::heap_cons(bind(str_lit("%module-maker"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), kayak_rt::nil()))
+                                } else {
+                                    nil::<&'static Bind>()
+                                }, kayak_rt::heap_cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("no")), closure_binds(v, params, eps))));
                                 masked_res(inner, lst(kayak_rt::heap_cons(sym(str_lit("begin"), str_lit(""), 0i64), forms), str_lit(""), 0i64, 0i64), body(inner, s, forms, kayak_rt::heap_cons(er, kayak_rt::nil())))
                             };
                             match *tagcase_ {
@@ -9642,7 +9713,11 @@ pub mod expressions {
     /// it gives, a hidden item not. Not KFX's, whose modules are Rust's,
     /// defined at the top level (C19).
     pub fn module_expr(v: &'static Cv, s: &'static St, its: Sexps) -> &'static Res {
-        let (s, id) = (note_fact(kfx_restricted(v, s, str_lit("a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)")), cv_file(v), cv_pos(v), str_lit("module-value")), string_append(str_lit("mt@"), i64_to_string(cv_pos(v))));
+        let (s, id) = (note_fact(if null_p(scope_bind(str_lit("%module-maker"), v)) {
+            kfx_restricted(v, s, str_lit("a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)"))
+        } else {
+            s
+        }, cv_file(v), cv_pos(v), str_lit("module-value")), string_append(str_lit("mt@"), i64_to_string(cv_pos(v))));
         let tagcase_ = mod_types(v, s, its, id, true, nil::<&'static Ty>(), nil::<Str>());
         match *tagcase_ {
             Mres::Mres(w, items, es, s) => {

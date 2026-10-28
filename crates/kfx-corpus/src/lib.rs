@@ -318,6 +318,11 @@ pub mod module_params;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/module-place.rs"]
+pub mod module_place;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/module-poly-val.rs"]
 pub mod module_poly_val;
 
@@ -567,6 +572,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("module-aborting-val", module_aborting_val::main),
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),
+    ("module-place", module_place::main),
     ("module-poly-val", module_poly_val::main),
     ("module-strings", module_strings::main),
     ("modules", modules::main),

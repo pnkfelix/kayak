@@ -379,8 +379,16 @@
                                 mods
                                 (cons (typed (string-append "%lived " d) (lst (list (second (items form)) (lst (map (lambda ((r string)) (sym r "" 0)) lived) "" 0 0)) "" 0 0))
                                       mods)))))
+                    ((and (head-is? form "define-type") (head-is? (third (items form)) "moduleof")
+                          (tagcase (second (items form)) (lst (ys f l p) #t) (else other #f)))
+                     "A module maker's interface (C274): in Rust the maker's struct."
+                     (ctx ds ts ks ls xs fs fx ms es (cons (typed (string-append "%maker-iface " (type-head-name (second (items form)))) (third (items form))) mods)))
                     ((and (head-is? form "define-type") (head-is? (third (items form)) "moduleof"))
                      (ctx ds ts ks ls xs fs fx ms es (cons (typed (string-append "%moduleof " (sym-name (second (items form)))) (third (items form))) mods)))
+                    ((maker-form? c form)
+                     "A module maker (C274): its module's items, for a `with` of what
+                      it makes."
+                     (ctx ds ts ks ls xs fs fx ms es (cons (typed (string-append "%maker " (sym-name (second (items form)))) (third (items (fourth (items form))))) mods)))
                     ((and (head-is? form "define-type") (head-is? (third (items form)) "select")
                           (not (null? (module-body c (string-append "%abbreviation " (selected-name (third (items form))))))))
                      "An abbreviation of a module's family (C89): that family, expanded
@@ -699,12 +707,15 @@
 
       (define item-path (subr kfx (ctx string) string)
         (lambda (c s)
-          "A module's value, named in a `with`: `m::x`, called if a constant."
+          "A module's value, named in a `with`: `m::x`, called if a constant; a
+           module maker's value's, its method, `m.x` (C274)."
           (let ((m (opener (string-append "%item " s) (ctx-locals c))))
+            (if (string-member? (string-append "%maker-value " m) (ctx-locals c))
+                (string-append (mangle m) (string-append "." (mangle s)))
             (string-append (module-path c m)
                            (string-append "::"
                                           (string-append (mangle s)
-                                                         (if (string-member? s (item-constants (module-items c m))) "()" "")))))))
+                                                         (if (string-member? s (item-constants (module-items c m))) "()" ""))))))))
 
       (define-rec
         (innermost-fallible (subr kfx (strings) bool)
@@ -931,20 +942,31 @@
               (head-is? e "let") (head-is? e "let*") (head-is? e "begin") (head-is? e "letrec")
               (head-is? e "letregion") (head-is? e "letfreeze") (head-is? e "with"))))
 
+      (define opened-items (subr kfx (ctx sexp) sexps)
+        (lambda (c e)
+          "The items `(with m ...)` opens: a module's, or the module a maker
+           made `m` by's (C274)."
+          (let ((made (split-words (fact-said c e "with-maker "))))
+            (if (null? made)
+                (module-items c (sym-name (second (items e))))
+                (let ((found (module-body c (string-append "%maker " (car (cdr made))))))
+                  (if (null? found) nil (cdr (items (car found)))))))))
+
       (define with-opened (subr kfx (ctx sexp) ctx)
         (lambda (c e)
           "`c` in `(with m ...)`: `m`'s values and types, hiding what is outside."
           (let* ((m (sym-name (second (items e))))
-                 (forms (module-items c m)))
+                 (forms (opened-items c e)))
             (with-locals c (cons (string-append "%with " m)
-                                 (onto (map (lambda ((x string)) (string-append "%type " x)) (item-types forms))
-                                       (map (lambda ((x string)) (string-append "%item " x)) (item-values forms))))))))
+                                 (onto (if (not (string=? (fact-said c e "with-maker ") "")) (the strings (list (string-append "%maker-value " m))) nil)
+                                       (onto (map (lambda ((x string)) (string-append "%type " x)) (item-types forms))
+                                             (map (lambda ((x string)) (string-append "%item " x)) (item-values forms)))))))))
 
       (define opened-tail (subr kfx (ctx sexp tail) tail)
         (lambda (c e t)
           "`t` in `(with m ...)`: a procedure `m` gives, named as the one written,
            is not it, and a parameter `m` hides is not to be assigned."
-          (let ((names (item-values (module-items c (sym-name (second (items e)))))))
+          (let ((names (item-values (opened-items c e))))
             (tagcase t
               (returns (f ps live ok)
                 (if (string-member? f names) (returns f ps #f ok) (hide t names)))
@@ -1198,6 +1220,13 @@
       (lambda (c e what)
         "Whether the checker found `what` about the datum `e`."
         (ctx-fact? c (datum-file e) (datum-pos e) what)))
+
+    (define maker-form? (subr kfx (ctx sexp) bool)
+      (lambda (c form)
+        "Whether a top-level form defines a module maker (C274): the checker
+         found its lambda one, noted at the definition."
+        (and (head-is? form "define") (i64= (size (items form)) 4)
+             (fact-at? c form "module-maker"))))
 
     (define-rec
       (concat-strings (subr kfx (strings) string)
@@ -1594,6 +1623,13 @@
                      (put-type c (third xs) acc))
                     ((sym-is? (car xs) "poly")
                      (error "kfx: a poly type is only a definition's, at its top"))
+                    ((tagcase (car xs) (sym (n at-file at-pos) (not (null? (module-body c (string-append "%maker-iface " n))))) (else other #f))
+                     "A module maker's interface applied (C274): its struct, at the
+                      place's lifetime and type, `I<'p, Place_P>`."
+                     (let ((r (sym-name (second xs))))
+                       (put (concat-strings (list (camel (sym-name (car xs))) "<" (lifetime r) ", "
+                                                  (after-first-space (rev->string (put-type c (lst (list (sym "place" "" 0) (second xs)) "" 0 0) nil))) ">"))
+                            acc)))
                     ((head-is? (car xs) "select")
                      "A module's family applied by `select` (C89): `m..t` applied."
                      (let ((sel (items (car xs))))

@@ -1,0 +1,31 @@
+"Modules made in procedures (C274): a procedure over a place whose body is
+ a module of procedures, each closing over the place; its interface a
+ module type over the place."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type (builder (p place))
+  (moduleof (val count-to (subr (maxeff kfx (alloc p) (read p)) (i64) (listof i64 p)))
+            (val total (subr (maxeff kfx (read p)) ((listof i64 p)) i64))))
+
+(define builder-in (poly ((p place)) (subr (alloc p) ((place p)) (builder p)))
+  (lambda (p)
+    (module
+      (define-rec
+        (count-from (subr (maxeff kfx (alloc p) (read p)) (i64 i64 (listof i64 p)) (listof i64 p))
+          (lambda (k n acc) (if (i64> k n) acc (count-from (i64+ k 1) n (cons k acc))))))
+      (define count-to (subr (maxeff kfx (alloc p) (read p)) (i64) (listof i64 p))
+        (lambda (n) (count-from 1 n nil)))
+      (define-rec
+        (total (subr (maxeff kfx (read p)) ((listof i64 p)) i64)
+          (lambda (xs) (if (null? xs) 0 (i64+ (car xs) (total (cdr xs))))))))))
+
+(define-rec
+  (again (subr kfx (i64 i64) i64)
+    (lambda (k acc)
+      (if (i64= k 0)
+          acc
+          (again (i64- k 1) (i64+ acc (letrena r (let ((m (builder-in r))) (with m (total (count-to 100)))))))))))
+
+(define main (subr kfx () string)
+  (lambda () (i64->string (again 1000 0))))

@@ -802,8 +802,26 @@ pub mod emitter {
                             sym(r, str_lit(""), 0i64)
                         }), lived), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)
                     })
+                } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof")) && {
+                    let tagcase_ = second(items(form));
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // A module maker's interface (C274): in Rust the maker's struct.
+                    ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%maker-iface "), type_head_name(second(items(form)))), third(items(form))), mods))
                 } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
                     ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
+                } else if maker_form_p(c, form) {
+                    // A module maker (C274): its module's items, for a `with` of what
+                    // it makes.
+                    ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%maker "), sym_name(second(items(form)))), third(items(fourth(items(form))))), mods))
                 } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("select")) && not(null_p(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form)))))))) {
                     // An abbreviation of a module's family (C89): that family, expanded
                     // where applied, under this name too; no Rust alias.
@@ -1383,14 +1401,19 @@ pub mod emitter {
         }
     }
 
-    /// A module's value, named in a `with`: `m::x`, called if a constant.
+    /// A module's value, named in a `with`: `m::x`, called if a constant; a
+    /// module maker's value's, its method, `m.x` (C274).
     pub fn item_path(c: &'static Ctx, s: Str) -> Str {
         let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
-        string_append(module_path(c, m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
-            str_lit("()")
+        if string_member_p(string_append(str_lit("%maker-value "), m), ctx_locals(c)) {
+            string_append(mangle(m), string_append(str_lit("."), mangle(s)))
         } else {
-            str_lit("")
-        })))
+            string_append(module_path(c, m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
+                str_lit("()")
+            } else {
+                str_lit("")
+            })))
+        }
     }
 
     pub fn innermost_fallible(mut ls: Strings) -> bool {
@@ -1751,21 +1774,41 @@ pub mod emitter {
         (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("letfreeze")) || head_is_p(e, str_lit("with")))
     }
 
+    /// The items `(with m ...)` opens: a module's, or the module a maker
+    /// made `m` by's (C274).
+    pub fn opened_items(c: &'static Ctx, e: &'static Sexp) -> Sexps {
+        let made = split_words(fact_said(c, e, str_lit("with-maker ")));
+        if null_p(made) {
+            module_items(c, sym_name(second(items(e))))
+        } else {
+            let found = module_body(c, string_append(str_lit("%maker "), car(cdr(made))));
+            if null_p(found) {
+                nil::<&'static Sexp>()
+            } else {
+                cdr(items(car(found)))
+            }
+        }
+    }
+
     /// `c` in `(with m ...)`: `m`'s values and types, hiding what is outside.
     pub fn with_opened(c: &'static Ctx, e: &'static Sexp) -> &'static Ctx {
         let m = sym_name(second(items(e)));
-        let forms = module_items(c, m);
-        with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%with "), m), onto(map(lambda1s(move |x: Str| {
+        let forms = opened_items(c, e);
+        with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%with "), m), onto(if not(string_eq_p(fact_said(c, e, str_lit("with-maker ")), str_lit(""))) {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%maker-value "), m), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }, onto(map(lambda1s(move |x: Str| {
             string_append(str_lit("%type "), x)
         }), item_types(forms)), map(lambda1s(move |x: Str| {
             string_append(str_lit("%item "), x)
-        }), item_values(forms)))))
+        }), item_values(forms))))))
     }
 
     /// `t` in `(with m ...)`: a procedure `m` gives, named as the one written,
     /// is not it, and a parameter `m` hides is not to be assigned.
     pub fn opened_tail(c: &'static Ctx, e: &'static Sexp, t: &'static Tail) -> &'static Tail {
-        let names = item_values(module_items(c, sym_name(second(items(e)))));
+        let names = item_values(opened_items(c, e));
         let tagcase_ = t;
         match *tagcase_ {
             Tail::Returns(f, ps, live, ok) => {
@@ -2242,6 +2285,12 @@ pub mod emitter {
     /// Whether the checker found `what` about the datum `e`.
     pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
         ctx_fact_p(c, datum_file(e), datum_pos(e), what)
+    }
+
+    /// Whether a top-level form defines a module maker (C274): the checker
+    /// found its lambda one, noted at the definition.
+    pub fn maker_form_p(c: &'static Ctx, form: &'static Sexp) -> bool {
+        (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 4i64) && fact_at_p(c, form, str_lit("module-maker")))
     }
 
     pub fn concat_strings(xs: Strings) -> Str {
@@ -2972,6 +3021,22 @@ pub mod emitter {
                         continue;
                     } else if sym_is_p(car(xs), str_lit("poly")) {
                         return error(str_lit("kfx: a poly type is only a definition's, at its top"));
+                    } else if {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, at_file, at_pos) => {
+                                not(null_p(module_body(c, string_append(str_lit("%maker-iface "), n))))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        // A module maker's interface applied (C274): its struct, at the
+                        // place's lifetime and type, `I<'p, Place_P>`.
+                        let r = sym_name(second(xs));
+                        return put(concat_strings(kayak_rt::heap_cons(camel(sym_name(car(xs))), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(r), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(after_first_space(rev_to_string(put_type(c, lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()))), kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil()))))))), acc);
                     } else if head_is_p(car(xs), str_lit("select")) {
                         // A module's family applied by `select` (C89): `m..t` applied.
                         let sel = items(car(xs));

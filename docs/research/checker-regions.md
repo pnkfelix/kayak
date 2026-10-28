@@ -1,7 +1,8 @@
 # The checker's work in regions that end
 
 Status: A done (C270, 2026-10-28), B's groundwork (C271); B by a module
-made per form (below). After C261-C269. The user: "go for the larger
+made per form (below), whose modules made in procedures of places are
+KFX's now (C274). After C261-C269. The user: "go for the larger
 refactor. The reason to *have* arenas is to enable architectural choices
 like this."
 

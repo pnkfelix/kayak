@@ -300,6 +300,23 @@ pub mod restrictions {
         }
     }
 
+    /// Whether a type's head names a family of places alone, `(name (p
+    /// place) ...)` (C274).
+    pub fn place_family_p(head: &'static Sexp) -> bool {
+        let tagcase_ = head;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                (not(null_p(cdr(xs))) && not(any_p(lambda1s(move |b: &'static Sexp| {
+                    not((i64_eq(size(items(b)), 2i64) && sym_is_p(second(items(b)), str_lit("place"))))
+                }), cdr(xs))))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
     /// A module type other than a `define-type`'s, FX-26's first-class
     /// modules' (C170), which KFX has not: its module types are Rust
     /// traits, named (C24).
@@ -320,7 +337,7 @@ pub mod restrictions {
                             false
                         }
                     }
-                }))) {
+                })) && not(place_family_p(second(xs)))) {
                     match restriction_refused(f, l, str_lit("a module type KFX has not as a Rust trait: of an effect's description, or with parameters, FX-26's (C24, C170)")) {}
                 } else if (sym_is_p(car(xs), str_lit("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("moduleof"))) {
                     map(&moduleof_restricted, cdr(items(third(xs))));
