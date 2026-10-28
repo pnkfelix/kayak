@@ -14,3 +14,6 @@ kayak-rt = { path = "../kayak-rt" }
 # C103's REPL, its two threads and catching in Rust, to compare with C111's
 # in KFX processes.
 rust-repl = []
+# What the heap was given, by type, on standard error at the end (as
+# `boot/`'s): for measuring compile memory.
+heap-stats = ["kayak-rt/heap-stats"]

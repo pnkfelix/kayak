@@ -2891,14 +2891,29 @@ pub fn included_used(mut its: List<&'static Cmem>, mut xs: Strings, mut acc: Str
     }
 }
 
-pub fn put_sep_words(ss: Strings) -> Str {
+// Strings `ss` with `sep` between each two, or after each, in a list, to
+// be joined at once (`string-list-append`, C261): appending each onto the
+// rest copied the rest again for each.
+pub fn strings_between(ss: Strings, sep: Str) -> Strings {
     if null_p(ss) {
-        str_lit("")
+        nil::<Str>()
     } else if null_p(cdr(ss)) {
-        car(ss)
+        ss
     } else {
-        string_append(car(ss), string_append(str_lit(" "), put_sep_words(cdr(ss))))
+        kayak_rt::heap_cons(car(ss), kayak_rt::heap_cons(sep, strings_between(cdr(ss), sep)))
     }
+}
+
+pub fn strings_after(ss: Strings, sep: Str) -> Strings {
+    if null_p(ss) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(car(ss), kayak_rt::heap_cons(sep, strings_after(cdr(ss), sep)))
+    }
+}
+
+pub fn put_sep_words(ss: Strings) -> Str {
+    string_list_append(strings_between(ss, str_lit(" ")))
 }
 
 // An arm's label: a name, or a flat sum's number, as its digits (C221).
@@ -4891,11 +4906,7 @@ pub fn line(at: i64, text: Str) -> Str {
 }
 
 pub fn put_sep_lines(ss: Strings) -> Str {
-    if null_p(ss) {
-        str_lit("")
-    } else {
-        string_append(car(ss), string_append(str_lit("\n"), put_sep_lines(cdr(ss))))
-    }
+    string_list_append(strings_after(ss, str_lit("\n")))
 }
 
 pub fn opnd_text(o: &'static Opnd) -> Str {
@@ -7173,13 +7184,7 @@ pub fn entries_shown(mut es: List<&'static Tentry>, mut out: Strings) -> Strings
 }
 
 pub fn spaced(ss: Strings) -> Str {
-    if null_p(ss) {
-        str_lit("")
-    } else if null_p(cdr(ss)) {
-        car(ss)
-    } else {
-        string_append(car(ss), string_append(str_lit(" "), spaced(cdr(ss))))
-    }
+    put_sep_words(ss)
 }
 
 pub fn line_table(xs: Citems) -> Str {

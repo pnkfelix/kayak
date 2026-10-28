@@ -48,11 +48,16 @@ section below where it has one; here the order, and what each is.
    Fixpt drops it (`c-push-global`); its specializations now follow
    Fixpt's, its inlinings to do.
 4. **Compile memory and time**: kayak compiles 10-30x slower than Fixpt,
-   mostly page faults: KFX's regions are never freed while a program runs
-   (an 11 KB program 261 MB at peak; the KFX compiler compiled to cells by
-   kayak's FX-26 compiler, 55 GB). First measure which regions grow, then
-   options (per-definition work freed, arenas reused, regions that end),
-   to the user before building.
+   mostly page faults (an 11 KB program 256 MB at peak; the KFX compiler
+   compiled to cells by kayak's FX-26 compiler, 55 GB). Measured (C261),
+   at that size it is not regions kept but work done: the listing built
+   by appending each piece onto the rest (86 of the heap's 187 MB, now
+   joined at once, `string-list-append`: 179 MB, 240 ms), then the reader
+   (211K s-expressions for an 11 KB program, about 40 MB: what it reads to
+   find), `c-arity` making each name's characters (16 bytes each) at every
+   call, and the checker's mangling. Then the 55 GB case measured the same
+   way (`heap-stats`); options to the user before building anything
+   larger than a fix of this kind.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).

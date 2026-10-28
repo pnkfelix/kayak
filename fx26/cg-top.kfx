@@ -94,9 +94,11 @@
 "The listing: from `program`, each word reached, as `disasm.rs` walks
  them: the words a word names pushed in order, the last pushed next."
 (define-rec
-  (listing-from (subr gen (strings strings string) string)
+  (listing-from (subr gen (strings strings strings) string)
     (lambda (todo seen out)
-      (cond ((null? todo) out)
+      "`out` the listing so far, in pieces, the newest first, joined once at
+       the end (C261)."
+      (cond ((null? todo) (string-list-append (reverse out)))
             ((string-member? (car todo) seen) (listing-from (cdr todo) seen out))
             (else
              (let ((w (word-named (get cg-words) (car todo))))
@@ -111,7 +113,7 @@
                                       (if (null? rc) (wsaid "" nil) (tagcase (rcode-said (car rc)) (wsaid (t ns) (wsaid (string-append t (rcode-line-table (car rc))) ns)))))
                              (wsaid (rtext rnamed)
                                (listing-from (onto (reverse (onto named rnamed)) (cdr todo)) (cons name seen)
-                                             (string-append out (string-append "\nword " (string-append (shown-name name) (string-append " (" (string-append (i64->string (cells-of xs 0)) (string-append " cells, cellular):\n" (string-append text (string-append rtext (line-table xs)))))))))))))))))))))))
+                                             (onto (reverse (list "\nword " (shown-name name) " (" (i64->string (cells-of xs 0)) " cells, cellular):\n" text rtext (line-table xs))) out)))))))))))))))
 
 "The listing's quoted nodes written (`quoted-interned`): Fixpt's
  `literal.rs`, an object reached more than once labelled `#N=` where it
@@ -194,4 +196,4 @@
             (q-all-reached! (q-marks cs nil))
             (q-replaced cs nil nil))))))
 
-(define cells-listing (subr gen () string) (lambda () (labelled-listing (listing-from (list "program") nil ""))))
+(define cells-listing (subr gen () string) (lambda () (labelled-listing (listing-from (list "program") nil nil))))

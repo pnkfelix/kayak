@@ -223,10 +223,12 @@ pub fn word_named(mut ws: List<&'static Word>, mut n: Str) -> List<&'static Word
 
 // The listing: from `program`, each word reached, as `disasm.rs` walks
 // them: the words a word names pushed in order, the last pushed next.
-pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
+/// `out` the listing so far, in pieces, the newest first, joined once at
+/// the end (C261).
+pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Strings) -> Str {
     loop {
         if null_p(todo) {
-            return out;
+            return string_list_append(reverse(out));
         } else if string_member_p(car(todo), seen) {
             todo = cdr(todo);
             continue;
@@ -257,7 +259,7 @@ pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
                                 };
                                 match *tagcase_ {
                                     Wsaid::Wsaid(rtext, rnamed) => {
-                                        (todo, seen, out) = (onto(reverse(onto(named, rnamed)), cdr(todo)), kayak_rt::heap_cons(name, seen), string_append(out, string_append(str_lit("\nword "), string_append(shown_name(name), string_append(str_lit(" ("), string_append(i64_to_string(cells_of(xs, 0i64)), string_append(str_lit(" cells, cellular):\n"), string_append(text, string_append(rtext, line_table(xs))))))))));
+                                        (todo, seen, out) = (onto(reverse(onto(named, rnamed)), cdr(todo)), kayak_rt::heap_cons(name, seen), onto(reverse(kayak_rt::heap_cons(str_lit("\nword "), kayak_rt::heap_cons(shown_name(name), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(i64_to_string(cells_of(xs, 0i64)), kayak_rt::heap_cons(str_lit(" cells, cellular):\n"), kayak_rt::heap_cons(text, kayak_rt::heap_cons(rtext, kayak_rt::heap_cons(line_table(xs), kayak_rt::nil()))))))))), out));
                                         continue;
                                     }
                                 }
@@ -482,6 +484,6 @@ pub fn labelled_listing(text: Str) -> Str {
 }
 
 pub fn cells_listing() -> Str {
-    labelled_listing(listing_from(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), str_lit("")))
+    labelled_listing(listing_from(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), nil::<Str>()))
 }
 

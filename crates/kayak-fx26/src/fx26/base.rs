@@ -118,6 +118,33 @@ pub fn string_chars(s: Str) -> Chars {
     string_to_list(s)
 }
 
+// Strings `xs` joined, in order (C261): adjacent ones appended pairwise,
+// again and again, each round halving the list, so each character is
+// copied once a round, some log2(n) times; where appending each onto the
+// rest copies the rest again for each, n times. FX-26 has it as
+// `(apply string-append xs)`, which KFX has not (C71); in KFX, so that it
+// is the same on every engine.
+pub fn string_pairs(xs: Strings) -> Strings {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        xs
+    } else {
+        kayak_rt::heap_cons(string_append(car(xs), car(cdr(xs))), string_pairs(cdr(cdr(xs))))
+    }
+}
+
+pub fn string_list_append(mut xs: Strings) -> Str {
+    loop {
+        if null_p(xs) {
+            return str_lit("");
+        } else if null_p(cdr(xs)) {
+            return car(xs);
+        } else {
+            xs = string_pairs(xs);
+            continue;
+        }
+    }
+}
+
 pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
     loop {
         if i64_lt(i, n) {

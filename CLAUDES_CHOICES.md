@@ -7344,3 +7344,34 @@ C252's remainder), none declined. `bench/closures` on tier 6: 220 million
 cycles, Fixpt's listing 218 (from 253); `native/captures` 312 to 311.
 Found: kayak keeps a global's inlining after it is defined again, which
 Fixpt drops (`c-push-global`); filed.
+
+## C261. Compile memory: the listing joined at once (2026-10-27)
+
+The user: "Start work on compile time and memory, starting with fresh
+measurements". Compiling `native/fixed-width-ops.fx` (11 KB) to cells:
+310 ms, 256 MB at peak, 64K page faults (Fixpt: 10 ms in Rust, 31 ms in
+FX-26), as before. By type and by who allocated (the engine built with
+`heap-stats`, a feature now of `kayak-fx26` as of `boot/`; the sampler
+weighing by bytes, of any type with `KAYAK_HEAP_SAMPLE='*'`, every
+`KAYAK_HEAP_EVERY`th, `KAYAK_HEAP_DEPTH` frames): of the heap's 187 MB, 86
+MB strings, 83 of them the listing's, each piece appended onto the rest
+(`put-sep-lines`, `spaced`, `listing-from`), quadratic; then the reader
+(about 40 MB), `c-arity`'s characters of a name at each call, the
+checker's mangling. Not regions kept, at this size: work done.
+- **The user's way**, over a mutable string buffer, or KFX's `apply` of
+  FX-26's variadic `string-append` (KFX has no `vsubr`, a Rust closure
+  having its arity, C71; to be had by representing one as the procedure of
+  its list, as the engine does, should KFX want them): a function written
+  in KFX, `string-list-append` (`kfx/base.kfx`), the same on every engine.
+  It appends adjacent strings pairwise, each round halving the list: each
+  character copied some log2(n) times, where appending onto the rest
+  copied it n times; no list of characters (16 bytes each, on a heap never
+  freed).
+- **Used** by the listing: `put-sep-lines`, `put-sep-words` (and `spaced`)
+  join their pieces with their separators at once (`strings-after`,
+  `strings-between`), and `listing-from` keeps its words' text as pieces,
+  joined at the end. The listings byte for byte as before.
+- **Measured**: strings in the heap 86 MB to 5.4; `fixed-width-ops` 240 ms
+  and 179 MB at peak, `case-tree` 210 ms and 178 MB to 130 ms and 96 MB,
+  `captures` (a smaller listing) as before. What is left is filed
+  (`TODO.md`, the reader first).

@@ -50,5 +50,6 @@ fn run(args: Vec<String>) -> i64 {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let status = run(args);
+    kayak_rt::heap_stats_report();
     std::process::exit((status & 0xff) as i32);
 }

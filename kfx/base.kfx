@@ -62,6 +62,21 @@
      ASCII counts characters from its start (CLAUDES_CHOICES.md, C14)."
     (string->list s)))
 
+"Strings `xs` joined, in order (C261): adjacent ones appended pairwise,
+ again and again, each round halving the list, so each character is
+ copied once a round, some log2(n) times; where appending each onto the
+ rest copies the rest again for each, n times. FX-26 has it as
+ `(apply string-append xs)`, which KFX has not (C71); in KFX, so that it
+ is the same on every engine."
+(define-rec
+  (string-pairs (subr kfx (strings) strings)
+    (lambda (xs)
+      (cond ((or (null? xs) (null? (cdr xs))) xs)
+            (else (cons (string-append (car xs) (car (cdr xs))) (string-pairs (cdr (cdr xs)))))))))
+(define-rec
+  (string-list-append (subr kfx (strings) string)
+    (lambda (xs) (cond ((null? xs) "") ((null? (cdr xs)) (car xs)) (else (string-list-append (string-pairs xs)))))))
+
 (define put-from (subr kfx (string i64 i64 chars) chars)
   (lambda (s i n acc)
     (if (i64< i n) (put-from s (i64+ i 1) n (cons (string-ref-i64 s i) acc)) acc)))

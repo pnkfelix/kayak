@@ -12,7 +12,7 @@ mod on {
     static SAMPLES: Mutex<Option<HashMap<String, u64>>> = Mutex::new(None);
 
     pub fn note(name: &'static str, bytes: usize) {
-        sample(name);
+        sample(name, bytes);
         let mut t = TABLE.lock().unwrap_or_else(|e| e.into_inner());
         let e = t
             .get_or_insert_with(HashMap::new)
@@ -23,28 +23,51 @@ mod on {
     }
 
     /// With `KAYAK_HEAP_SAMPLE=TYPE`, every millionth allocation of the
-    /// type named so: the program's frames that made it, a line each.
-    fn sample(name: &'static str) {
+    /// type named so (`*`: of any) (every `KAYAK_HEAP_EVERY`th, if that is set): the
+    /// program's frames that made it (the KFX compiler's or the engine's,
+    /// `KAYAK_HEAP_DEPTH` of them, 4 if not set), a line each, with the
+    /// bytes the samples there were given.
+    fn sample(name: &'static str, bytes: usize) {
         use std::sync::atomic::{AtomicU64, Ordering};
         static WANTED: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
         static COUNT: AtomicU64 = AtomicU64::new(0);
         let Some(w) = WANTED.get_or_init(|| std::env::var("KAYAK_HEAP_SAMPLE").ok()) else {
             return;
         };
-        if name != w || COUNT.fetch_add(1, Ordering::Relaxed) % 1_000_000 != 0 {
+        static EVERY: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+        let every = *EVERY.get_or_init(|| {
+            std::env::var("KAYAK_HEAP_EVERY")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1_000_000)
+        });
+        if (w != "*" && name != w) || COUNT.fetch_add(1, Ordering::Relaxed) % every != 0 {
             return;
         }
         let bt = std::backtrace::Backtrace::force_capture().to_string();
         let frames: Vec<&str> = bt
             .lines()
             .map(str::trim)
-            .filter(|l| l.contains("kfx::kfx::") && !l.starts_with("at "))
+            .filter(|l| {
+                (l.contains("kfx::kfx::") || l.contains("kayak_fx26::fx26::"))
+                    && !l.starts_with("at ")
+            })
             .map(|l| l.split_once(": ").map_or(l, |(_, f)| f))
-            .take(4)
+            .take(depth())
             .collect();
         let key = frames.join(" < ");
         let mut t = SAMPLES.lock().unwrap_or_else(|e| e.into_inner());
-        *t.get_or_insert_with(HashMap::new).entry(key).or_insert(0) += 1;
+        *t.get_or_insert_with(HashMap::new).entry(key).or_insert(0) += bytes as u64;
+    }
+
+    fn depth() -> usize {
+        static DEPTH: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+        *DEPTH.get_or_init(|| {
+            std::env::var("KAYAK_HEAP_DEPTH")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(4)
+        })
     }
 
     pub fn report() {
@@ -52,7 +75,7 @@ mod on {
             let mut rows: Vec<_> = s.iter().collect();
             rows.sort_by(|a, b| b.1.cmp(a.1));
             for (k, n) in rows.iter().take(25) {
-                eprintln!("sample {n:>4}  {k}");
+                eprintln!("sample {:>8.1} MB  {k}", **n as f64 / 1e6);
             }
         }
         let t = TABLE.lock().unwrap_or_else(|e| e.into_inner());

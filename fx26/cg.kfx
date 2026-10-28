@@ -612,9 +612,17 @@
                            (onto (reverse (filter (lambda ((n string)) (and (string-member? n fv) (not (string-member? n acc)))) xs))
                                  acc)))))))
 
+"Strings `ss` with `sep` between each two, or after each, in a list, to
+ be joined at once (`string-list-append`, C261): appending each onto the
+ rest copied the rest again for each."
 (define-rec
-  (put-sep-words (subr kfx (strings) string)
-    (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (put-sep-words (cdr ss)))))))))
+  (strings-between (subr kfx (strings string) strings)
+    (lambda (ss sep) (cond ((null? ss) nil) ((null? (cdr ss)) ss) (else (cons (car ss) (cons sep (strings-between (cdr ss) sep))))))))
+(define-rec
+  (strings-after (subr kfx (strings string) strings)
+    (lambda (ss sep) (if (null? ss) nil (cons (car ss) (cons sep (strings-after (cdr ss) sep)))))))
+
+(define put-sep-words (subr kfx (strings) string) (lambda (ss) (string-list-append (strings-between ss " "))))
 
 
 "An arm's label: a name, or a flat sum's number, as its digits (C221)."
@@ -1533,9 +1541,7 @@
 
 (define line (subr kfx (i64 string) string) (lambda (at text) (string-append "  " (string-append (padded at) (string-append ": " text)))))
 
-(define-rec
-  (put-sep-lines (subr kfx (strings) string)
-    (lambda (ss) (if (null? ss) "" (string-append (car ss) (string-append "\n" (put-sep-lines (cdr ss))))))))
+(define put-sep-lines (subr kfx (strings) string) (lambda (ss) (string-list-append (strings-after ss "\n"))))
 
 (define opnd-text (subr kfx (opnd) string)
   (lambda (o)
@@ -2600,9 +2606,7 @@
       (if (null? es)
           out
           (entries-shown (cdr es) (cons (tagcase (car es) (tentry (a p) (string-append (i64->string a) (string-append ":" (i64->string p))))) out))))))
-(define-rec
-  (spaced (subr kfx (strings) string)
-    (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (spaced (cdr ss)))))))))
+(define spaced (subr kfx (strings) string) (lambda (ss) (put-sep-words ss)))
 (define line-table (subr gen (citems) string)
   (lambda (xs)
     (let ((es (entries-shown (table-entries xs 0 nil) nil)))
