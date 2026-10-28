@@ -4527,6 +4527,50 @@
                     (tagcase (check v s (third g) (bound-type v (sym-name (car g))))
                       (res (u es s2) (mod-rec-checked v s2 (cdr gs)))))))))
 
+      (place-named (subr kfx (cv st ty) string)
+        (lambda (v s rt)
+          "The place in scope whose region `rt` is, named as its region (C267,
+           C270): its name; \"\" if none."
+          (let* ((rn (region-string s rt))
+                 (place (if (has-prefix? rn "'") (after-prefix rn "'") ""))
+                 (b (if (string=? place "") nil (scope-bind place v))))
+            (if (and (not (null? b))
+                     (tagcase (car b)
+                       (bind (n sc w)
+                         (tagcase sc
+                           (scheme (tv pt)
+                             (tagcase (walk s pt)
+                               (ty-data (pd pargs) (and (string=? pd "%place") (not (null? pargs)) (string=? (region-string s (car pargs)) rn)))
+                               (else other #f)))))))
+                place
+                ""))))
+      (places-among (subr kfx (cv st tys) string)
+        (lambda (v s ts)
+          "The first of `ts` that is a place's region in scope: the place's name;
+           \"\" if none."
+          (if (null? ts) "" (let ((p (place-named v s (car ts)))) (if (string=? p "") (places-among v s (cdr ts)) p)))))
+      (data-placed (subr kfx (cv res string) res)
+        (lambda (v r h)
+          "A datatype's value made by its constructor `h` at a place's region,
+           one of its arguments (C270): noted, `rheld-data` at the place's
+           region, its type, so that the place holds such values, and `rdata-in`
+           the place and the datatype, so that it is made there if its datatype
+           keeps that region (the emitter's to say). Else nothing: in the heap."
+          (tagcase r
+            (res (t es s)
+              (tagcase (walk s t)
+                (ty-data (d args)
+                  (let ((vs (find-dt d (cv-dts v))))
+                    (if (or (null? vs) (null? args)
+                            (not (any? (lambda ((x variant)) (tagcase x (variant (tag fs) (string=? tag h)))) (car vs)))
+                            (let ((b (scope-bind h v))) (or (null? b) (tagcase (car b) (bind (n sc w) (not (string=? w "global")))))))
+                        r
+                        (let ((place (places-among v s args)))
+                          (if (string=? place "")
+                              r
+                              (res t es (note-fact (note-types s (cv-file v) (cv-pos v) (string-append "rheld-data@'" place) (list t))
+                                                   (cv-file v) (cv-pos v) (string-append "rdata-in " (string-append place (string-append " " d))))))))))
+                (else other r))))))
       (bytes-placed (subr kfx (cv res string) res)
         (lambda (v r h)
           "A bytevector made by the standard `make-bytevector`, `string->utf8`
@@ -4537,7 +4581,7 @@
            the heap, as before."
           (if (not (and (string-member? h expressions-names-7)
                         (let ((b (scope-bind h v))) (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w "prim")))))))
-              r
+              (data-placed v r h)
               (tagcase r
                 (res (t es s)
                   (tagcase (walk s t)

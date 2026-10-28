@@ -7581,3 +7581,31 @@ KFX compiler to cells, 2.72 s and 1.31 GB after C268):
   (`nset-added` now in `base.kfx`, beside the set).
 - **Measured**: the listing byte for byte as before; 2.72 s and 1.31 GB to
   2.57 s and 1.14 GB (Fixpt: 4.0 s, 0.49 GB).
+
+## C270. Datatypes in places (2026-10-28)
+
+The user: "go for the larger refactor. The reason to *have* arenas is to
+enable architectural choices like this" — the checker's work kept in
+regions that end. Its plan, `docs/research/checker-regions.md`: A,
+datatypes in places, in KFX; B, the checker's structures over a region,
+each form's work in a place of its own. This is A. FX-26 has datatypes
+with region parameters, and a value whose type mentions a region cannot
+leave it; its sums and products are in no region, so where kayak makes
+one is kayak's to choose. KFX erased a datatype's regions (C17).
+- **The emitter**: a top-level datatype's region parameters its variants
+  name (`lived-regions`; Rust has no unused lifetime, so the others are
+  erased as before, as are a module's datatypes') are its enum's
+  lifetimes, `Rose<'r, T>`, its fields at them; an application is `&'r
+  Rose<'r, T>` at a region of a lifetime, else `'static`
+  (`lived-arguments`; kept as `%lived NAME`). Its constructors are at the
+  lifetimes, made in the heap by kayak-rt's `alloc` (the heap's arenas hold
+  only `'static` types), and, with one lived region, have `_in` twins made
+  in a place's arena. Its `Show` likewise.
+- **The checker**: a constructor's call whose datatype is at a place's
+  region in scope (`place-named`, as C267's bytevectors) notes
+  `rheld-data@'p T` (the place, and a procedure given it, holds the enum,
+  C34) and `rdata-in p D`; the emitter calls the `_in` twin where `D` has
+  one lived region, and declares an arena only then.
+- **Test**: `kfx/data-region.kfx`, a rose tree of a hundred leaves built in
+  a place and summed, a thousand times, and one in the heap; Fixpt's
+  answer. `families.rs` regenerated (its `rose` now at a lifetime).

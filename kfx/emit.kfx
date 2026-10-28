@@ -88,6 +88,21 @@
 
 "The emitter's expressions and types are a module (C92): its helpers
  hidden, what writing the top level needs (emit-tops.kfx) given."
+"A top-level datatype's region parameters its variants name (C270): in
+ Rust, the enum's lifetimes, its values at them, made in a place where one
+ is at hand; those it names not (Rust has no unused lifetime) and a
+ module's datatypes' erased, as before."
+(define lived-regions (subr kfx (sexp) strings)
+  (lambda (form)
+    (let ((used (names-in-all (cdr (cdr (items form)))))
+          (binders (tagcase (second (items form)) (lst (xs f l p) (cdr xs)) (else other nil))))
+      (concat (map (lambda ((b sexp))
+                     (let ((bs (items b)))
+                       (if (and (i64>= (size bs) 2) (sym-is? (second bs) "region") (string-member? (sym-name (car bs)) used))
+                           (the strings (list (sym-name (car bs))))
+                           nil)))
+                   binders)))))
+
 (define emitter
   (module
     (hide
@@ -302,6 +317,12 @@
               (lst (xs f l p) (if (head-is? t "select") t (lst (map (lambda ((x sexp)) (qualified-types m names x)) xs) f l p)))
               (else other t)))))
 
+      (define lived-of (subr kfx (ctx string) sexps)
+        (lambda (c d)
+          "The datatype `d`'s head and its lived regions, in a list (C270); none
+           if its regions are erased."
+          (module-body c (string-append "%lived " d))))
+
       (define note-module-datatypes (subr kfx (string sexps ctx) ctx)
         (lambda (m forms c)
           "A module's datatypes, as the program names them, `m..d`, with their tags."
@@ -349,9 +370,15 @@
           (tagcase c
             (ctx (ds ts ks ls xs fs fx ms es mods)
               (cond ((head-is? form "define-datatype")
-                     (let ((d (type-head-name (second (items form)))))
+                     (let ((d (type-head-name (second (items form)))) (lived (lived-regions form)))
                        (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs fx
-                            (note-family (second (items form)) #t ms) es mods)))
+                            (note-family (second (items form)) #t ms) es
+                            ;; Its regions its variants name, lifetimes in Rust
+                            ;; (C270), kept with its head, for where it is applied.
+                            (if (null? lived)
+                                mods
+                                (cons (typed (string-append "%lived " d) (lst (list (second (items form)) (lst (map (lambda ((r string)) (sym r "" 0)) lived) "" 0 0)) "" 0 0))
+                                      mods)))))
                     ((and (head-is? form "define-type") (head-is? (third (items form)) "moduleof"))
                      (ctx ds ts ks ls xs fs fx ms es (cons (typed (string-append "%moduleof " (sym-name (second (items form)))) (third (items form))) mods)))
                     ((and (head-is? form "define-type") (head-is? (third (items form)) "select")
@@ -1578,10 +1605,14 @@
                        (family (n datatype kinds)
                          (if (and (not datatype) (or (string-member? "effect" kinds) (not (null? (module-body c (string-append "%expand " n))))))
                              (put-type c (family-expanded c t) acc)
-                         (let* ((acc (if datatype (put "&'static " acc) acc))
+                         (let* ((lived (if datatype (lived-of c n) nil))
+                                (dlives (if (null? lived) nil (lived-arguments c (cdr (items (car (items (car lived))))) (items (second (items (car lived)))) (cdr xs))))
+                                (acc (cond ((not datatype) acc)
+                                           ((null? dlives) (put "&'static " acc))
+                                           (else (put " " (put (car dlives) (put "&" acc))))))
                                 (acc (put (camel n) acc))
                                 (args (type-arguments (cdr xs) kinds))
-                                (lives (if (null? (module-body c (string-append "%abbreviation " n))) nil (region-arguments c (cdr xs) kinds)))
+                                (lives (if (null? (module-body c (string-append "%abbreviation " n))) dlives (region-arguments c (cdr xs) kinds)))
                                 (places (if (null? (module-body c (string-append "%abbreviation " n))) nil (used-place-arguments c n (cdr xs) kinds)))
                                 (parts (onto lives (onto (map (lambda ((t sexp)) (rev->string (put-type c t nil))) args) places))))
                            (if (null? parts) acc (put (string-append "<" (string-append (words-of-sep parts ", ") ">")) acc)))))))
@@ -1714,6 +1745,16 @@
         (lambda (c ts acc)
           "A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`."
           (put ")" (put-sep (lambda ((t sexp) acc) (put ">," (put-type c t (put "std::cell::Cell<" acc)))) " " ts (put "(" acc)))))
+
+      (lived-arguments (subr kfx (ctx sexps sexps sexps) strings)
+        (lambda (c binders lived args)
+          "A datatype's arguments at its lived regions (C270), as lifetimes: a
+           place's, a region's of a lifetime; else `'static`, the heap's."
+          (cond ((or (null? binders) (null? args)) nil)
+                ((any? (lambda ((r sexp)) (string=? (sym-name r) (sym-name (car (items (car binders)))))) lived)
+                 (cons (let ((l (region-lifetime c (car args)))) (if (string=? l "") "'static" l))
+                       (lived-arguments c (cdr binders) lived (cdr args))))
+                (else (lived-arguments c (cdr binders) lived (cdr args))))))
 
       (region-arguments (subr kfx (ctx sexps strings) strings)
         (lambda (c args kinds)
@@ -2440,6 +2481,16 @@
                         (acc (put-case-arms c (case-kind c e) (cdr xs) (i64+ n 1) t acc)))
                    (put "}" (put-nl n acc))))
                 ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
+                ((and (not (string=? (fact-with c e "rdata-in ") "")) (string=? (local-kind h (ctx-locals c)) "")
+                      (let ((ws (split-words (fact-with c e "rdata-in "))))
+                        (and (i64= (size ws) 2) (not (null? (lived-of c (second-string ws))))
+                             (i64= (size (items (second (items (car (lived-of c (second-string ws))))))) 1))))
+                 "A datatype's value made at a place's region, in it (C270):
+                  `TAG_in(place, ...)`, where the datatype has one lived region."
+                 (let ((place (car (split-words (fact-with c e "rdata-in ")))))
+                   (put ")" (if (null? xs)
+                                (put (mangle place) (put "(" (put (string-append (mangle h) "_in") acc)))
+                                (put-joined c xs ", " n (put ", " (put (mangle place) (put "(" (put (string-append (mangle h) "_in") acc)))))))))
                 ((and (string-member? h (list "make-bytevector" "string->utf8" "bytevector-copy"))
                       (not (string=? (fact-with c e "rbytes-in ") "")) (string=? (local-kind h (ctx-locals c)) ""))
                  "Bytes made at a place's region, in it (C267): `NAME_in(place, ...)`."
@@ -2777,7 +2828,11 @@
                                 (kind (car (split-at-char rest #\@)))
                                 (after (after-prefix rest (string-append kind "@")))
                                 (ws (read-all (string-chars after) "" 1)))
-                           (if (string=? (sym-name (car ws)) place)
+                           (if (and (string=? (sym-name (car ws)) place)
+                                    ;; A datatype's value only where it has lived regions,
+                                    ;; and so is made in the place (C270).
+                                    (or (not (string=? kind "data"))
+                                        (tagcase (second ws) (lst (ys f l p) (not (null? (lived-of c (sym-name (car ys)))))) (else other #f))))
                                (the strings (list (held-rust c kind (lifetime (after-prefix place "'")) (second ws))))
                                nil)))
                        (onto (all-facts-at c (datum-file x) (datum-pos x) "rheld-") (all-facts-at c (datum-file x) (datum-pos x) "rneed-"))))))
@@ -2788,6 +2843,10 @@
            a pair, `Cons<'r, T>`; a reference's cell; a bloblet."
           (cond ((string=? kind "cons") (string-append "Cons<" (string-append life (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
                 ((string=? kind "bytes") "BytesCells")
+                ((string=? kind "data")
+                 "A datatype's value (C270): its enum, at the place's lifetime, not
+                  a reference to one."
+                 (let ((r (rev->string (put-type c t nil)))) (after-prefix r (string-append "&" (string-append life " ")))))
                 ((string=? kind "ref") (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))
                 ((not (null? (typed-flat c t)))
                  (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))

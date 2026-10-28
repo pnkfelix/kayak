@@ -10082,6 +10082,116 @@ pub mod expressions {
         }
     }
 
+    /// The place in scope whose region `rt` is, named as its region (C267,
+    /// C270): its name; "" if none.
+    pub fn place_named(v: &'static Cv, s: &'static St, rt: &'static Ty) -> Str {
+        let rn = region_string(s, rt);
+        let place = if has_prefix_p(rn, str_lit("'")) {
+            after_prefix(rn, str_lit("'"))
+        } else {
+            str_lit("")
+        };
+        let b = if string_eq_p(place, str_lit("")) {
+            nil::<&'static Bind>()
+        } else {
+            scope_bind(place, v)
+        };
+        if (not(null_p(b)) && {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, pt) => {
+                            let tagcase_ = walk(s, pt);
+                            match *tagcase_ {
+                                Ty::TyData(pd, pargs) => {
+                                    (string_eq_p(pd, str_lit("%place")) && not(null_p(pargs)) && string_eq_p(region_string(s, car(pargs)), rn))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }) {
+            place
+        } else {
+            str_lit("")
+        }
+    }
+
+    /// The first of `ts` that is a place's region in scope: the place's name;
+    /// "" if none.
+    pub fn places_among(mut v: &'static Cv, mut s: &'static St, mut ts: Tys) -> Str {
+        loop {
+            if null_p(ts) {
+                return str_lit("");
+            } else {
+                let p = place_named(v, s, car(ts));
+                if string_eq_p(p, str_lit("")) {
+                    ts = cdr(ts);
+                    continue;
+                } else {
+                    return p;
+                }
+            }
+        }
+    }
+
+    /// A datatype's value made by its constructor `h` at a place's region,
+    /// one of its arguments (C270): noted, `rheld-data` at the place's
+    /// region, its type, so that the place holds such values, and `rdata-in`
+    /// the place and the datatype, so that it is made there if its datatype
+    /// keeps that region (the emitter's to say). Else nothing: in the heap.
+    pub fn data_placed(v: &'static Cv, r: &'static Res, h: Str) -> &'static Res {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = walk(s, t);
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        let vs = find_dt(d, cv_dts(v));
+                        if (null_p(vs) || null_p(args) || not(any_p(lambda1s(move |x: &'static Variant| {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Variant::Variant(tag, fs) => {
+                                    string_eq_p(tag, h)
+                                }
+                            }
+                        }), car(vs))) || {
+                            let b = scope_bind(h, v);
+                            (null_p(b) || {
+                                let tagcase_ = car(b);
+                                match *tagcase_ {
+                                    Bind::Bind(n, sc, w) => {
+                                        not(string_eq_p(w, str_lit("global")))
+                                    }
+                                }
+                            })
+                        }) {
+                            r
+                        } else {
+                            let place = places_among(v, s, args);
+                            if string_eq_p(place, str_lit("")) {
+                                r
+                            } else {
+                                res(t, es, note_fact(note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rheld-data@'"), place), kayak_rt::heap_cons(t, kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("rdata-in "), string_append(place, string_append(str_lit(" "), d)))))
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        r
+                    }
+                }
+            }
+        }
+    }
+
     /// A bytevector made by the standard `make-bytevector`, `string->utf8`
     /// or `bytevector-copy` at a place's region (C267): noted, `rheld-bytes`
     /// at the place's region, so that the place holds bytes, and
@@ -10100,7 +10210,7 @@ pub mod expressions {
                 }
             })
         })) {
-            r
+            data_placed(v, r, h)
         } else {
             let tagcase_ = r;
             match *tagcase_ {

@@ -1,0 +1,39 @@
+"Datatypes in a place (C270): a datatype with a region parameter, its
+ values made at a `letrena`'s place, or one a procedure is given, in the
+ place, and freed with it; at a region with no place, in the heap, as
+ before. A rose tree built in a region of its own, summed, a thousand
+ times over."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-datatype (rose (t type) (r region))
+  (leaf t)
+  (node (listof (rose t r) r)))
+
+"A tree of `n` leaves, `k` to `k + n - 1`, two levels deep, in the place
+ `p` (named as its region, so that what is made at it is made in it)."
+(define build (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p) i64 i64 (listof (rose i64 p) p)) (rose i64 p)))
+  (lambda (p k n acc)
+    (if (i64= n 0)
+        (the (rose i64 p) (node acc))
+        (build p (i64+ k 1) (i64- n 1) (rcons p (the (rose i64 p) (node (rcons p (the (rose i64 p) (leaf k)) nil))) acc)))))
+
+(define-rec
+  (total (poly ((r region)) (subr (maxeff kfx (read r)) ((rose i64 r)) i64))
+    (lambda (x) (tagcase x (leaf (n) n) (node (kids) (total-all kids)))))
+  (total-all (poly ((r region)) (subr (maxeff kfx (read r)) ((listof (rose i64 r) r)) i64))
+    (lambda (ks) (if (null? ks) 0 (i64+ (total (car ks)) (total-all (cdr ks)))))))
+
+"A tree made and summed in a region of its own."
+(define one-tree (subr kfx (i64) i64)
+  (lambda (k) (letrena r (total (build r k 100 nil)))))
+
+"And one made in the heap, at `acyclic`, as before."
+(define kept (rose i64 acyclic) (node (list (leaf 1) (leaf 2))))
+
+(define-rec
+  (again (subr kfx (i64 i64) i64)
+    (lambda (k acc) (if (i64= k 0) acc (again (i64- k 1) (i64+ acc (one-tree k)))))))
+
+(define main (subr kfx () string)
+  (lambda () (string-append (i64->string (again 1000 0)) (string-append " " (i64->string (total kept))))))

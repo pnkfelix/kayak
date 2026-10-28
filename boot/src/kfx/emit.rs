@@ -239,6 +239,34 @@ pub fn assign(f0: Strings, f1: Sexps) -> &'static Assign {
 
 // The emitter's expressions and types are a module (C92): its helpers
 // hidden, what writing the top level needs (emit-tops.kfx) given.
+
+// A top-level datatype's region parameters its variants name (C270): in
+// Rust, the enum's lifetimes, its values at them, made in a place where one
+// is at hand; those it names not (Rust has no unused lifetime) and a
+// module's datatypes' erased, as before.
+pub fn lived_regions(form: &'static Sexp) -> Strings {
+    let (used, binders) = (names_in_all(cdr(cdr(items(form)))), {
+        let tagcase_ = second(items(form));
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                cdr(xs)
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    });
+    concat(map(lambda1s(move |b: &'static Sexp| {
+        let bs = items(b);
+        if (i64_gt_eq(size(bs), 2i64) && sym_is_p(second(bs), str_lit("region")) && string_member_p(sym_name(car(bs)), used)) {
+            the::<Strings>(kayak_rt::heap_cons(sym_name(car(bs)), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders))
+}
+
 pub mod emitter {
     use super::*;
 
@@ -680,6 +708,12 @@ pub mod emitter {
         }
     }
 
+    /// The datatype `d`'s head and its lived regions, in a list (C270); none
+    /// if its regions are erased.
+    pub fn lived_of(c: &'static Ctx, d: Str) -> Sexps {
+        module_body(c, string_append(str_lit("%lived "), d))
+    }
+
     /// A module's datatypes, as the program names them, `m..d`, with their tags.
     pub fn note_module_datatypes(mut m: Str, mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
         loop {
@@ -760,8 +794,14 @@ pub mod emitter {
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 if head_is_p(form, str_lit("define-datatype")) {
-                    let d = type_head_name(second(items(form)));
-                    ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, fx, note_family(second(items(form)), true, ms), es, mods)
+                    let (d, lived) = (type_head_name(second(items(form))), lived_regions(form));
+                    ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, fx, note_family(second(items(form)), true, ms), es, if null_p(lived) {
+                        mods
+                    } else {
+                        kayak_rt::heap_cons(typed(string_append(str_lit("%lived "), d), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(lst(map(lambda1s(move |r: Str| {
+                            sym(r, str_lit(""), 0i64)
+                        }), lived), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)
+                    })
                 } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
                     ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
                 } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("select")) && not(null_p(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form)))))))) {
@@ -2958,15 +2998,27 @@ pub mod emitter {
                                     t = family_expanded(c, t);
                                     continue;
                                 } else {
-                                    let acc = if datatype {
+                                    let lived = if datatype {
+                                        lived_of(c, n)
+                                    } else {
+                                        nil::<&'static Sexp>()
+                                    };
+                                    let dlives = if null_p(lived) {
+                                        nil::<Str>()
+                                    } else {
+                                        lived_arguments(c, cdr(items(car(items(car(lived))))), items(second(items(car(lived)))), cdr(xs))
+                                    };
+                                    let acc = if not(datatype) {
+                                        acc
+                                    } else if null_p(dlives) {
                                         put(str_lit("&'static "), acc)
                                     } else {
-                                        acc
+                                        put(str_lit(" "), put(car(dlives), put(str_lit("&"), acc)))
                                     };
                                     let acc = put(camel(n), acc);
                                     let args = type_arguments(cdr(xs), kinds);
                                     let lives = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
-                                        nil::<Str>()
+                                        dlives
                                     } else {
                                         region_arguments(c, cdr(xs), kinds)
                                     };
@@ -3240,6 +3292,30 @@ pub mod emitter {
         put(str_lit(")"), put_sep(lambda2s(move |t: &'static Sexp, acc: List<char>| {
             put(str_lit(">,"), put_type(c, t, put(str_lit("std::cell::Cell<"), acc)))
         }), str_lit(" "), ts, put(str_lit("("), acc)))
+    }
+
+    /// A datatype's arguments at its lived regions (C270), as lifetimes: a
+    /// place's, a region's of a lifetime; else `'static`, the heap's.
+    pub fn lived_arguments(mut c: &'static Ctx, mut binders: Sexps, mut lived: Sexps, mut args: Sexps) -> Strings {
+        loop {
+            if (null_p(binders) || null_p(args)) {
+                return nil::<Str>();
+            } else if any_p(lambda1s(move |r: &'static Sexp| {
+                string_eq_p(sym_name(r), sym_name(car(items(car(binders)))))
+            }), lived) {
+                return kayak_rt::heap_cons({
+                    let l = region_lifetime(c, car(args));
+                    if string_eq_p(l, str_lit("")) {
+                        str_lit("'static")
+                    } else {
+                        l
+                    }
+                }, lived_arguments(c, cdr(binders), lived, cdr(args)));
+            } else {
+                (binders, args) = (cdr(binders), cdr(args));
+                continue;
+            }
+        }
     }
 
     /// An abbreviation's arguments for its regions, as lifetimes (C39): a
@@ -4395,6 +4471,18 @@ pub mod emitter {
                 return put(str_lit("}"), put_nl(n, acc));
             } else if string_eq_p(h, str_lit("lambda")) {
                 return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
+            } else if (not(string_eq_p(fact_with(c, e, str_lit("rdata-in ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && {
+                let ws = split_words(fact_with(c, e, str_lit("rdata-in ")));
+                (i64_eq(size(ws), 2i64) && not(null_p(lived_of(c, second_string(ws)))) && i64_eq(size(items(second(items(car(lived_of(c, second_string(ws))))))), 1i64))
+            }) {
+                // A datatype's value made at a place's region, in it (C270):
+                // `TAG_in(place, ...)`, where the datatype has one lived region.
+                let place = car(split_words(fact_with(c, e, str_lit("rdata-in "))));
+                return put(str_lit(")"), if null_p(xs) {
+                    put(mangle(place), put(str_lit("("), put(string_append(mangle(h), str_lit("_in")), acc)))
+                } else {
+                    put_joined(c, xs, str_lit(", "), n, put(str_lit(", "), put(mangle(place), put(str_lit("("), put(string_append(mangle(h), str_lit("_in")), acc)))))
+                });
             } else if (string_member_p(h, kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::nil())))) && not(string_eq_p(fact_with(c, e, str_lit("rbytes-in ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 // Bytes made at a place's region, in it (C267): `NAME_in(place, ...)`.
                 return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit(", "), put(mangle(fact_with(c, e, str_lit("rbytes-in "))), put(str_lit("("), put(string_append(mangle(h), str_lit("_in")), acc))))));
@@ -4905,7 +4993,18 @@ pub mod emitter {
             let kind = car(split_at_char(rest, '@'));
             let after = after_prefix(rest, string_append(kind, str_lit("@")));
             let ws = read_all(string_chars(after), str_lit(""), 1i64);
-            if string_eq_p(sym_name(car(ws)), place) {
+            if (string_eq_p(sym_name(car(ws)), place) && (not(string_eq_p(kind, str_lit("data"))) || {
+                let tagcase_ = second(ws);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        not(null_p(lived_of(c, sym_name(car(ys)))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })) {
                 the::<Strings>(kayak_rt::heap_cons(held_rust(c, kind, lifetime(after_prefix(place, str_lit("'"))), second(ws)), kayak_rt::nil()))
             } else {
                 nil::<Str>()
@@ -4920,6 +5019,11 @@ pub mod emitter {
             string_append(str_lit("Cons<"), string_append(life, string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
         } else if string_eq_p(kind, str_lit("bytes")) {
             str_lit("BytesCells")
+        } else if string_eq_p(kind, str_lit("data")) {
+            // A datatype's value (C270): its enum, at the place's lifetime, not
+            // a reference to one.
+            let r = rev_to_string(put_type(c, t, nil::<char>()));
+            after_prefix(r, string_append(str_lit("&"), string_append(life, str_lit(" "))))
         } else if string_eq_p(kind, str_lit("ref")) {
             string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
         } else if not(null_p(typed_flat(c, t))) {
