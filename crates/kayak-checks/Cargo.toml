@@ -1,0 +1,17 @@
+[package]
+name = "kayak-checks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# The checks `scripts/check.sh` ran as Python scripts, as tests that
+# `cargo nextest` schedules, one queue for all (C276). Each test binary
+# is its own harness (`kayak_checks::run`): nextest asks it for its tests
+# and runs each by name.
+
+[lints]
+workspace = true
+
+[[test]]
+name = "incremental"
+harness = false

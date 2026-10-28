@@ -7722,3 +7722,34 @@ One thing I tested on both pins stands: a place's region takes no heap
 data by subsumption. `(rcons r 5 heap-list)` is refused where a
 `(listof int r)` is wanted, and so is a heap tree in a node at `r`. So
 plan B's per-form data meets the heap's scope only through copies.
+
+## C276. The checks under cargo nextest; the incremental compiles first (2026-10-28)
+
+The user, after the check's steps were timed: "I want us to go straight to
+nextest." The Python scripts each ran their jobs as wide as the machine.
+But each step waited for its own slowest job, and the steps ran one after
+another, so there was no queue for the whole check. Now the check's tests
+are `cargo nextest` tests, one queue. They start with the incremental
+compiles, 427 s of the check's 460 s on its own track.
+- **The harness**: `crates/kayak-checks`, a test crate whose binaries are
+  `harness = false`, each `kayak_checks::run(tests)`. It speaks the part
+  of libtest's command line that nextest uses: `--list --format terse`,
+  and `NAME --exact`. Plain `cargo test` runs every test at once. It has
+  no dependency, since the workspace has none (no `libtest-mimic`).
+- **`tests/incremental.rs`** (was `scripts/incremental.py`): the same 31
+  edits, now as six chains, each its own test from its own copy and its
+  own memos. Those are each chosen file's edits, the module's items, a
+  `define-rec` item, and the edits across files. A chain's compiles stay
+  in order; the chains run at once. `KAYAK_CHECK_QUICK` gives
+  `--quick`'s fewer edits, and `KAYAK_CHECK_ALL` every file.
+- **`check.sh`**: `cargo nextest run --release --workspace` takes the
+  place of `cargo test` and of `incremental.py`, beside the fixed point.
+  The `unsafe-par` corpus run is nextest's too. `.config/nextest.toml`
+  calls a test slow at 2 minutes and stops it at 10.
+
+Measured: that track went from 427 s to 99 s, every test kept. The whole
+check stays at 460 s for now: the Python steps ahead of it run in turn,
+the two `cells-programs` runs 317 s of that. They come next, a test for
+each program, with the Fixpt answer cache (`fixptcache.py`) ported to
+Rust. Its JSON is to be written byte for byte as Python writes it, so that
+`tests/fixpt-answers/` stays the same while some checks are still Python.

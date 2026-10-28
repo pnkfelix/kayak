@@ -33,7 +33,7 @@ its front end's and checker's queries (`coopt-front`, `coopt-fx26`), its
    already, given the checker's facts and the context: the first query.
 5. **Coopt's verifier** (incremental equals from scratch, under random
    edits) caught every bug planted in its machinery but one. kayak takes
-   it first: `scripts/incremental.py`.
+   it first: `crates/kayak-checks/tests/incremental.rs` (was `scripts/incremental.py`).
 
 ## The first step (C54)
 

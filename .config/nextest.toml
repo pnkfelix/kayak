@@ -1,0 +1,5 @@
+# cargo nextest's settings for kayak's tests (C276): `scripts/check.sh`
+# runs the workspace's tests so. A test slow past two minutes is said, and
+# one past ten stopped, a failure: nothing in the check should take so long.
+[profile.default]
+slow-timeout = { period = "120s", terminate-after = 5 }

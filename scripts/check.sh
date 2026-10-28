@@ -29,7 +29,6 @@ step cargo fmt --all --check
 step python3 -I scripts/fx26-tests.py --reset
 step python3 -I scripts/io-programs.py
 step cargo clippy --release --workspace --all-targets --quiet -- -D warnings
-step cargo test --release --workspace --quiet
 step python3 -I scripts/corpus.py
 step python3 -I scripts/engine-programs.py
 step python3 -I scripts/repl-sessions.py
@@ -38,19 +37,19 @@ step python3 -I scripts/repl-sessions.py --rust-repl
 step cargo clippy --release -p kayak-fx26 --features rust-repl --target-dir target/rust-repl --quiet -- -D warnings
 # The corpus again with `par`'s shared branches at once (C102, C195): the
 # one run of kayak-sync's `unsafe`.
-step cargo test --release -p kfx-corpus --features kayak-rt/unsafe-par --target-dir target/unsafe-par --quiet
-# The bootstrap's fixed point (stage 0, Fixpt's runs, about 10 minutes) and
-# the incremental compiles use a few processors, each in a directory of its
-# own: beside the rest, which uses them all, their output kept and said when
-# they end. kfx built first, so that no stage builds it under another.
+step cargo nextest run --release -p kfx-corpus --features kayak-rt/unsafe-par --target-dir target/unsafe-par --hide-progress-bar --status-level fail
+# The bootstrap's fixed point (stage 0, Fixpt's runs) and the workspace's
+# tests under nextest (C276: the incremental compiles among them, chains at
+# once) run beside the rest, their output kept and said when they end. kfx
+# built first, so that no stage builds it under another.
 cargo build --release --quiet -p kfx
 logs=$(mktemp -d)
-fixpoint=; incremental=
+fixpoint=; tests=
 # Should a stage fail first, the two and everything they started stopped.
 killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
-trap 'for p in $fixpoint $incremental; do killed "$p"; done; rm -rf "$logs"' EXIT
+trap 'for p in $fixpoint $tests; do killed "$p"; done; rm -rf "$logs"' EXIT
 step scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
-step python3 -I scripts/incremental.py $quick > "$logs/incremental" 2>&1 & incremental=$!
+step env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
 # Fixpt's own programs (tests/fx26/programs) and its answers to them
 # (tests/fixpt-answers), kept in kayak (C132): with a clone at the pin, each
 # is checked to be the pin's, and an answer of another pin's asked again.
@@ -76,14 +75,14 @@ step python3 -I scripts/refused-fixpt-programs.py
 # accepts a program Fixpt's refuses; the rest is the measure of §30.
 step python3 -I scripts/compare-checkers.py --summary
 # The two beside the rest, in order.
-for job in fixpoint incremental; do
+for job in fixpoint tests; do
     eval pid=\$$job
     status=0
     wait "$pid" || status=$?
     cat "$logs/$job"
     [ $status = 0 ] || { echo "check: $job failed" >&2; exit 1; }
 done
-fixpoint=; incremental=
+fixpoint=; tests=
 # Every answer kept was asked for in this check: the rest dropped, and the
 # answers stamped as the pin's.
 if [ -n "$clone" ]; then

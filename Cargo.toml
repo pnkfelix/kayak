@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/kayak-rt", "crates/kayak-jit", "crates/kayak-sync", "crates/kfx-corpus", "crates/kfx-io", "crates/kayak-fx26", "crates/kayak-cells", "boot"]
+members = ["crates/kayak-rt", "crates/kayak-jit", "crates/kayak-sync", "crates/kfx-corpus", "crates/kfx-io", "crates/kayak-fx26", "crates/kayak-cells", "crates/kayak-checks", "boot"]
 
 [workspace.package]
 version = "0.1.0"

@@ -100,7 +100,8 @@ while [ $generation -lt 4 ]; do
     rm -rf "$tmp/next"
     mkdir "$tmp/next" # kfx makes no directories (C50)
     # The memos a compile keeps (C54): scripts/fixpoint.sh compiles without
-    # them, and scripts/incremental.py checks them against compiles without.
+    # them, and the incremental tests (crates/kayak-checks) check them
+    # against compiles without.
     # A memo is one compiler's: their file is named by the compiler's own
     # generated code, so that one compiler never takes another's.
     compiler=$(cat boot/src/kfx/*.rs | shasum | cut -c1-16)
