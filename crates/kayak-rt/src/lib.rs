@@ -527,7 +527,11 @@ pub fn string_eq_p(a: Str, b: Str) -> bool {
 
 #[inline]
 pub fn string_append(a: Str, b: Str) -> Str {
-    leak_string(format!("{a}{b}"))
+    // Sized once (C266): `format!` grew it as it wrote.
+    let mut s = String::with_capacity(a.text.len() + b.text.len());
+    s.push_str(a.text);
+    s.push_str(b.text);
+    leak_string(s)
 }
 
 /// `nat`s, which are `Int`s: a string's length in characters, a list's.

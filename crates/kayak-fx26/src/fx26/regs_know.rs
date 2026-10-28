@@ -309,12 +309,8 @@ pub fn drop_strings(mut xs: Strings, mut k: i64) -> Strings {
 
 // Whether global `n` is one of the first `k` defined (-1: of all).
 pub fn r_global_seen_p(n: Str, k: i64) -> bool {
-    let gs = get(cg_globals());
-    string_member_p(n, if i64_lt(k, 0i64) {
-        gs
-    } else {
-        drop_strings(gs, i64_minus(size(gs), k))
-    })
+    let f = global_first(n);
+    (i64_gt(f, 0i64) && (i64_lt(k, 0i64) || i64_lt_eq(f, k)))
 }
 
 // Where `n` is to register code: a local of `env`; else a global the body
@@ -401,13 +397,6 @@ pub fn sv(f0: Str, f1: bool) -> &'static Sv {
     kayak_rt::heap_alloc(Sv::Sv(f0, f1))
 }
 
-pub fn r_std_values() -> Ref<List<&'static Sv>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Sv>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Sv>())
-    })
-}
-
 pub fn sv_of(mut xs: List<&'static Sv>, mut n: Str) -> List<bool> {
     loop {
         if null_p(xs) {
@@ -433,13 +422,23 @@ pub fn sv_of(mut xs: List<&'static Sv>, mut n: Str) -> List<bool> {
     }
 }
 
+// The answers so far, by the name's hash (C266): a list of them all had been
+// searched for each name asked.
+pub fn r_std_table() -> Ref<Array<List<&'static Sv>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<List<&'static Sv>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_array(global_buckets(), the::<List<&'static Sv>>(nil::<&'static Sv>())))
+    })
+}
+
 pub fn r_standard_value_name_p(n: Str) -> bool {
-    let known = sv_of(get(r_std_values()), n);
+    let h = global_bucket(n);
+    let known = sv_of(array_ref(get(r_std_table()), h), n);
     if not(null_p(known)) {
         car(known)
     } else {
         let b = (c_vsubr_p(n) || i64_gt_eq(c_arity(n), 0i64));
-        set(r_std_values(), kayak_rt::heap_cons(sv(n, b), get(r_std_values())));
+        array_set_x(get(r_std_table()), h, kayak_rt::heap_cons(sv(n, b), array_ref(get(r_std_table()), h)));
         b
     }
 }
@@ -1156,7 +1155,7 @@ pub fn r_const_of(mut x: &'static Cx) -> List<&'static Rconst> {
                 continue;
             }
             Cx::XVar(n, a) => {
-                if (not(std_marked_p(n)) && string_member_p(n, get(cg_globals()))) {
+                if (not(std_marked_p(n)) && global_p(n)) {
                     return rgconst_of(get(cg_consts()), n);
                 } else {
                     return nil::<&'static Rconst>();

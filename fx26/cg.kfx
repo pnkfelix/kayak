@@ -231,6 +231,9 @@
 "Of those, the calls of a procedure of the native convention, which
  register code calls with no look (C248)."
 (define cg-native-calls (ref (listof i64 @g) @g) (new nil))
+"The checker's facts of calls, `call-fx` and `call-native`, picked out of
+ all of them once (C266): searched at every application parsed."
+(define cg-call-facts (ref facts @g) (new nil))
 (define-rec
   (cg-fx-call? (subr gen (i64 (listof i64 @g)) bool)
     (lambda (a xs) (cond ((null? xs) #f) ((i64= a (car xs)) #t) (else (cg-fx-call? a (cdr xs)))))))
@@ -809,8 +812,8 @@
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
             (else
              (begin
-               (if (fact-noted? (get cg-facts) f a "call-fx") (set cg-fx-calls (cons a (get cg-fx-calls))) #u)
-               (if (fact-noted? (get cg-facts) f a "call-native") (set cg-native-calls (cons a (get cg-native-calls))) #u)
+               (if (fact-noted? (get cg-call-facts) f a "call-fx") (set cg-fx-calls (cons a (get cg-fx-calls))) #u)
+               (if (fact-noted? (get cg-call-facts) f a "call-native") (set cg-native-calls (cons a (get cg-native-calls))) #u)
                (x-app (parse-x (car xs)) (parse-args (cdr xs)) a))))))
 
   (parse-bloblet (subr gen (string sexps string i64) cx)
@@ -1654,12 +1657,33 @@
 "The globals defined so far, the newest first."
 (define cg-globals (ref strings @g) (new nil))
 
+"The globals by name (C266): for each, how many there were once it was
+ first defined, in a table by its name's hash, so that whether a name is
+ a global, or one of the first so many, is found at once, where a walk of
+ `cg-globals` had been most of a large program's compile; and how many
+ there are."
+(define-datatype gfirst (gfirst string i64))
+(define-type gbucket (listof gfirst acyclic))
+(define global-buckets int 4096)
+(define cg-global-table (ref (arrayof gbucket @g) @g) (new (make-array global-buckets (the gbucket nil))))
+(define cg-global-count (ref i64 @g) (new 0))
+(define-rec
+  (gfirst-in (subr kfx (gbucket string) i64)
+    (lambda (bs n) (cond ((null? bs) 0) ((tagcase (car bs) (gfirst (m k) (string=? m n))) (tagcase (car bs) (gfirst (m k) k))) (else (gfirst-in (cdr bs) n))))))
+(define global-bucket (subr kfx (string) int) (lambda (n) (modulo (string-hash n) global-buckets)))
+"How many globals there were once `n` was first defined; 0 if it never was."
+(define global-first (subr gen (string) i64) (lambda (n) (gfirst-in (array-ref (get cg-global-table) (global-bucket n)) n)))
+(define global? (subr gen (string) bool) (lambda (n) (i64> (global-first n) 0)))
+(define globals-count (subr gen () i64) (lambda () (get cg-global-count)))
+(define globals-reset! (subr gen () unit)
+  (lambda () (begin (set cg-globals nil) (set cg-global-count 0) (set cg-global-table (make-array global-buckets (the gbucket nil))))))
+
 "Where `n` is: in the locals, else in the globals; none means standard."
 (define c-where (subr gen (cenv string) found)
   (lambda (e n)
     (let ((l (c-find e n)))
       (cond ((not (null? l)) l)
-            ((string-member? n (get cg-globals)) (list (at-global n)))
+            ((global? n) (list (at-global n)))
             (else nil)))))
 
 (define c-load (subr gen (code loc) unit)
@@ -2605,7 +2629,15 @@
 
 ;;; ------------------------------------------------------------ programs
 
-(define c-push-global! (subr gen (string) unit) (lambda (n) (set cg-globals (cons n (get cg-globals)))))
+(define c-push-global! (subr gen (string) unit)
+  (lambda (n)
+    (let ((k (i64+ (get cg-global-count) 1)))
+      (begin
+        (set cg-globals (cons n (get cg-globals)))
+        (set cg-global-count k)
+        (if (global? n)
+            #u
+            (let ((b (global-bucket n))) (array-set! (get cg-global-table) b (cons (gfirst n k) (array-ref (get cg-global-table) b)))))))))
 
 "The next lambda's word named for global `n`, when `x`, its definition, is
  a lambda."

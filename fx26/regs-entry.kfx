@@ -216,7 +216,7 @@
     (lambda (ns acc)
       (if (null? ns)
           (reverse acc)
-          (let ((k (if (string-member? (car ns) (get cg-globals)) (rgconst-of (get cg-consts) (car ns)) nil)))
+          (let ((k (if (global? (car ns)) (rgconst-of (get cg-consts) (car ns)) nil)))
             (r-consts-of (cdr ns)
                          (if (or (null? k) (not (null? (r-local-loc acc (const-name (car ns))))))
                              acc
@@ -352,7 +352,7 @@
   (lambda (f args bound)
     (tagcase f
       (x-var (n a)
-        (if (or (std-marked? n) (string-member? n bound) (not (string-member? n (get cg-globals))))
+        (if (or (std-marked? n) (string-member? n bound) (not (global? n)))
             #u
             (let ((sp (r-special-named (get cg-specials) n (size args) -1)))
               (if (null? sp)
@@ -427,12 +427,12 @@
   (lambda (n ps body at)
     (if (and (not (c-mentions? body "stay-cellular")) (i64>= (r-room body r-inline-limit #f) 0))
         (cond ((not (c-mentions? body n))
-               (set cg-inlines (cons (rinline n ps body (size (get cg-globals))) (get cg-inlines))))
+               (set cg-inlines (cons (rinline n ps body (globals-count)) (get cg-inlines))))
               ;; Calling itself: unrolled, where its body neither suspends
               ;; nor runs an effect not known (Fixpt's summary under 3).
               ((not (or (fact-at? (get cg-facts) at "suspends")
                         (let ((d (define-at (get cg-define-at) at))) (and (i64>= d 0) (fact-at? (get cg-facts) d "suspends")))))
-               (set cg-unrolls (cons (rinline n ps body (size (get cg-globals))) (get cg-unrolls))))
+               (set cg-unrolls (cons (rinline n ps body (globals-count)) (get cg-unrolls))))
               (else #u))
         #u)))
 
@@ -451,7 +451,7 @@
             (if (null? found)
                 #u
                 (tagcase (car found)
-                  (rfound (k ar) (set cg-specials (cons (rspecial n ps body (size (get cg-globals)) k ar at) (get cg-specials)))))))
+                  (rfound (k ar) (set cg-specials (cons (rspecial n ps body (globals-count) k ar at) (get cg-specials)))))))
           #u)
       (r-note-inline-small! n ps body at))))
 

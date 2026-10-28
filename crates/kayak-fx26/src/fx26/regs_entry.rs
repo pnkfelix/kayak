@@ -478,7 +478,7 @@ pub fn r_consts_of(mut ns: Strings, mut acc: Renv) -> Renv {
         if null_p(ns) {
             return reverse(acc);
         } else {
-            let k = if string_member_p(car(ns), get(cg_globals())) {
+            let k = if global_p(car(ns)) {
                 rgconst_of(get(cg_consts()), car(ns))
             } else {
                 nil::<&'static Rconst>()
@@ -810,7 +810,7 @@ pub fn r_copy_call_x(f: &'static Cx, args: Cxs, bound: Strings) -> () {
     let tagcase_ = f;
     match *tagcase_ {
         Cx::XVar(n, a) => {
-            if (std_marked_p(n) || string_member_p(n, bound) || not(string_member_p(n, get(cg_globals())))) {
+            if (std_marked_p(n) || string_member_p(n, bound) || not(global_p(n))) {
                 ()
             } else {
                 let sp = r_special_named(get(cg_specials()), n, size(args), -1i64);
@@ -1009,12 +1009,12 @@ pub fn regs_form_twins_x() -> () {
 pub fn r_note_inline_small_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
     if (not(c_mentions_p(body, str_lit("stay-cellular"))) && i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64)) {
         if not(c_mentions_p(body, n)) {
-            set(cg_inlines(), kayak_rt::heap_cons(rinline(n, ps, body, size(get(cg_globals()))), get(cg_inlines())))
+            set(cg_inlines(), kayak_rt::heap_cons(rinline(n, ps, body, globals_count()), get(cg_inlines())))
         } else if not((fact_at_p(get(cg_facts()), at, str_lit("suspends")) || {
             let d = define_at(get(cg_define_at()), at);
             (i64_gt_eq(d, 0i64) && fact_at_p(get(cg_facts()), d, str_lit("suspends")))
         })) {
-            set(cg_unrolls(), kayak_rt::heap_cons(rinline(n, ps, body, size(get(cg_globals()))), get(cg_unrolls())))
+            set(cg_unrolls(), kayak_rt::heap_cons(rinline(n, ps, body, globals_count()), get(cg_unrolls())))
         } else {
             ()
         }
@@ -1037,7 +1037,7 @@ pub fn r_note_inline_x(n: Str, ps: Strings, body: &'static Cx, at: i64) -> () {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Rfound::Rfound(k, ar) => {
-                    set(cg_specials(), kayak_rt::heap_cons(rspecial(n, ps, body, size(get(cg_globals())), k, ar, at), get(cg_specials())))
+                    set(cg_specials(), kayak_rt::heap_cons(rspecial(n, ps, body, globals_count(), k, ar, at), get(cg_specials())))
                 }
             }
         }

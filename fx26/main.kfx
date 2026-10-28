@@ -27,6 +27,9 @@
 
 (define say (subr (io stdout) (string) unit)
   (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
+"Each of `ss` written, in turn (C266)."
+(define-rec
+  (say-each (subr (maxeff (io stdout) (read @globals)) (strings) unit) (lambda (ss) (if (null? ss) #u (begin (say (car ss)) (say-each (cdr ss)))))))
 
 (define-rec
   (loads-read (subr driving (strings fileds) fileds)
@@ -183,7 +186,7 @@ and where the time went.
         ((string=? (car as) "--cells")
          (let* ((forms (with-processes (read-files (cdr as)))) (checked (check-program-as forms sys)))
            (tagcase checked
-             (verdict (found fs) (begin (compile-cells forms fs) (say (cells-listing)) 0)))))
+             (verdict (found fs) (begin (compile-cells forms fs) (say-each (cells-listing)) 0)))))
         (else
           (let* ((forms (with-processes (read-files paths)))
                  (checked (check-program-as forms sys))

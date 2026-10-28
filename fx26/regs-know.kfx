@@ -142,8 +142,7 @@
 "Whether global `n` is one of the first `k` defined (-1: of all)."
 (define r-global-seen? (subr gen (string i64) bool)
   (lambda (n k)
-    (let ((gs (get cg-globals)))
-      (string-member? n (if (i64< k 0) gs (drop-strings gs (i64- (size gs) k)))))))
+    (let ((f (global-first n))) (and (i64> f 0) (or (i64< k 0) (i64<= f k))))))
 
 "Where `n` is to register code: a local of `env`; else a global the body
  sees, its value if a fast version folds it; else none (a standard
@@ -177,17 +176,19 @@
  By name, wherever it is bound, as Fixpt asks; each name's answer kept,
  the arity's table being read whole (`c-arity`)."
 (define-datatype sv (sv string bool))
-(define r-std-values (ref (listof sv acyclic) @g) (new nil))
 (define-rec
   (sv-of (subr kfx ((listof sv acyclic) string) (listof bool acyclic))
     (lambda (xs n) (cond ((null? xs) nil) ((tagcase (car xs) (sv (m b) (string=? m n))) (tagcase (car xs) (sv (m b) (list b)))) (else (sv-of (cdr xs) n))))))
+"The answers so far, by the name's hash (C266): a list of them all had been
+ searched for each name asked."
+(define r-std-table (ref (arrayof (listof sv acyclic) @g) @g) (new (make-array global-buckets (the (listof sv acyclic) nil))))
 (define r-standard-value-name? (subr gen (string) bool)
   (lambda (n)
-    (let ((known (sv-of (get r-std-values) n)))
+    (let* ((h (global-bucket n)) (known (sv-of (array-ref (get r-std-table) h) n)))
       (if (not (null? known))
           (car known)
           (let ((b (or (c-vsubr? n) (i64>= (c-arity n) 0))))
-            (begin (set r-std-values (cons (sv n b) (get r-std-values))) b))))))
+            (begin (array-set! (get r-std-table) h (cons (sv n b) (array-ref (get r-std-table) h))) b))))))
 
 "Whether `x` needs no code of its own to be had: a constant, or a
  variable that is no standard operation's value."
@@ -420,7 +421,7 @@
       (tagcase x
         (x-int (n a) (list (rc-int n))) (x-bool (v a) (list (rc-bool v))) (x-char (v a) (list (rc-char v)))
         (x-proj (y a) (r-const-of y))
-        (x-var (n a) (if (and (not (std-marked? n)) (string-member? n (get cg-globals))) (rgconst-of (get cg-consts) n) nil))
+        (x-var (n a) (if (and (not (std-marked? n)) (global? n)) (rgconst-of (get cg-consts) n) nil))
         (else y nil)))))
 
 "How many nodes are left of `n` once `x`'s are counted (Fixpt's `c-room`,

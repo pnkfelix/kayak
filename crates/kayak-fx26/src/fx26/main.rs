@@ -55,6 +55,19 @@ pub fn say(s: Str) -> () {
     }
 }
 
+// Each of `ss` written, in turn (C266).
+pub fn say_each(mut ss: Strings) -> () {
+    loop {
+        if null_p(ss) {
+            return ();
+        } else {
+            say(car(ss));
+            ss = cdr(ss);
+            continue;
+        }
+    }
+}
+
 /// The files a program loads, and those they load, each read once (C88).
 pub fn loads_read(mut todo: Strings, mut done: Fileds) -> Fileds {
     loop {
@@ -279,7 +292,7 @@ pub fn engine_main() -> Int {
         match *tagcase_ {
             Verdict::Verdict(found, fs) => {
                 compile_cells(forms, fs);
-                say(cells_listing());
+                say_each(cells_listing());
                 int_lit(0)
             }
         }

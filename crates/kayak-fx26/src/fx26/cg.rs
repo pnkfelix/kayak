@@ -2056,6 +2056,15 @@ pub fn cg_native_calls() -> Ref<List<i64>> {
     })
 }
 
+// The checker's facts of calls, `call-fx` and `call-native`, picked out of
+// all of them once (C266): searched at every application parsed.
+pub fn cg_call_facts() -> Ref<Facts> {
+    kayak_rt::kept_constant!(ONCE: Ref<Facts>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Fact>())
+    })
+}
+
 pub fn cg_fx_call_p(mut a: i64, mut xs: List<i64>) -> bool {
     loop {
         if null_p(xs) {
@@ -3333,12 +3342,12 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         x_unit(a)
     } else {
-        if fact_noted_p(get(cg_facts()), f, a, str_lit("call-fx")) {
+        if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-fx")) {
             set(cg_fx_calls(), kayak_rt::heap_cons(a, get(cg_fx_calls())))
         } else {
             ()
         };
-        if fact_noted_p(get(cg_facts()), f, a, str_lit("call-native")) {
+        if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-native")) {
             set(cg_native_calls(), kayak_rt::heap_cons(a, get(cg_native_calls())))
         } else {
             ()
@@ -5216,12 +5225,93 @@ pub fn cg_globals() -> Ref<Strings> {
     })
 }
 
+// The globals by name (C266): for each, how many there were once it was
+// first defined, in a table by its name's hash, so that whether a name is
+// a global, or one of the first so many, is found at once, where a walk of
+// `cg-globals` had been most of a large program's compile; and how many
+// there are.
+pub enum Gfirst {
+    Gfirst(Str, i64),
+}
+
+pub fn gfirst(f0: Str, f1: i64) -> &'static Gfirst {
+    kayak_rt::heap_alloc(Gfirst::Gfirst(f0, f1))
+}
+
+pub type Gbucket = List<&'static Gfirst>;
+
+pub fn global_buckets() -> Int {
+    int_lit(4096)
+}
+
+pub fn cg_global_table() -> Ref<Array<Gbucket>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<Gbucket>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
+    })
+}
+
+pub fn cg_global_count() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn gfirst_in(mut bs: Gbucket, mut n: Str) -> i64 {
+    loop {
+        if null_p(bs) {
+            return 0i64;
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Gfirst::Gfirst(m, k) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Gfirst::Gfirst(m, k) => {
+                    return k;
+                }
+            }
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
+pub fn global_bucket(n: Str) -> Int {
+    modulo(string_hash(n), global_buckets())
+}
+
+// How many globals there were once `n` was first defined; 0 if it never was.
+pub fn global_first(n: Str) -> i64 {
+    gfirst_in(array_ref(get(cg_global_table()), global_bucket(n)), n)
+}
+
+pub fn global_p(n: Str) -> bool {
+    i64_gt(global_first(n), 0i64)
+}
+
+pub fn globals_count() -> i64 {
+    get(cg_global_count())
+}
+
+pub fn globals_reset_x() -> () {
+    set(cg_globals(), nil::<Str>());
+    set(cg_global_count(), 0i64);
+    set(cg_global_table(), make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
+}
+
 // Where `n` is: in the locals, else in the globals; none means standard.
 pub fn c_where(e: Cenv, n: Str) -> Found {
     let l = c_find(e, n);
     if not(null_p(l)) {
         l
-    } else if string_member_p(n, get(cg_globals())) {
+    } else if global_p(n) {
         kayak_rt::heap_cons(at_global(n), kayak_rt::nil())
     } else {
         nil::<&'static Loc>()
@@ -7180,7 +7270,15 @@ pub fn c_arms(mut arms: List<&'static Carm>, mut els: Cbinds, mut e: Cenv, mut d
 }
 
 pub fn c_push_global_x(n: Str) -> () {
-    set(cg_globals(), kayak_rt::heap_cons(n, get(cg_globals())))
+    let k = i64_plus(get(cg_global_count()), 1i64);
+    set(cg_globals(), kayak_rt::heap_cons(n, get(cg_globals())));
+    set(cg_global_count(), k);
+    if global_p(n) {
+        ()
+    } else {
+        let b = global_bucket(n);
+        array_set_x(get(cg_global_table()), b, kayak_rt::heap_cons(gfirst(n, k), array_ref(get(cg_global_table()), b)))
+    }
 }
 
 // The next lambda's word named for global `n`, when `x`, its definition, is

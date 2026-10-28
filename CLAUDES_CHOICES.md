@@ -7475,3 +7475,30 @@ its name is found, not for every word. Its listing byte for byte as
 before, as the corpus's: 6.6 s and 2.4 GB at peak. Next: the listing
 itself, 17 MB joined pairwise (some 20 copies of each byte at this size),
 better written out as made.
+
+## C266. Compile time: globals by name, the listing word by word (2026-10-27)
+
+The same measure (kayak's FX-26 compiler compiling the KFX compiler to
+cells), at 6.6 s and 2.4 GB after C265; Fixpt 4.0 s and 0.49 GB.
+- **The listing word by word**: `listing-from` gives each word's text, in
+  order, and `main` writes each in turn (`say-each`); quoted nodes'
+  labels (`labelled-listing`) counted across the words, then each word's
+  marks replaced, so no text of the whole listing is made (it had been,
+  and then its characters, and then joined again by appending each piece
+  to all before it, `strings-joined`, quadratic, now gone). 2.4 to 2.2 GB.
+- **Where the time was**: a profile (perf) had 16% in `fact-noted?`,
+  searching all the checker's facts at each application parsed for its
+  call's convention, and 12% in `r-where`, whether a name is one of the
+  first `k` globals by walking the list of them. The call facts are now
+  picked out once (`cg-call-facts`); the globals kept by name too, in a
+  table by the name's hash (`string-hash`, an array of buckets), each with
+  the count of globals at its first definition, so whether a name is a
+  global, or one of the first `k`, is one look (`global-first`,
+  `global?`, `globals-count`). The standard names' answers
+  (`r-standard-value-name?`) by hash likewise. kayak-rt's
+  `string-append` sized once (`format!` grew it as it wrote): every KFX
+  program's.
+- **Measured**: 3.65 s (2.1 user, 1.5 system) and 2.2 GB at peak, against
+  Fixpt's 4.0 s and 0.49 GB; the listing byte for byte as before, as the
+  corpus's. What is left is memory: 1.5 GB of heap kept, most of it the
+  listing's pieces and the checker's lists; the system time its pages.
