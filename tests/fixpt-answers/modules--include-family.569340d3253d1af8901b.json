@@ -7,22 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
-],
-"code": 0,
-"out": [
-"define boxes : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (val mk (subr pure (int) int))) ! pure",
-"define m : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (desc ib (pairof int int @heap)) (val mk (subr pure (int) int)) (val sum (subr (read @heap) ((pairof int int @heap)) int)) (val first (subr (read @heap) ((pairof int int @heap)) int))) ! (read (globals boxes))",
-"int ! (maxeff (alloc @heap) (read (globals m)) (read @heap))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-]
-},
-{
 "code": 0,
 "out": [
 "define boxes : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (val mk (subr pure (int) int))) ! pure",
@@ -35,6 +19,7 @@
 ""
 ],
 "by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }

@@ -26,6 +26,20 @@
 "by": [
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"! <programs>/made-code-x86_64/stubs.fx:37:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus x26) (field-k-before-code 8))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
 }
 ]
 }

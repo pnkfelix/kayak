@@ -7,25 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
-],
-"code": 0,
-"out": [
-"define dbl : (subr pure (int) int) ! pure",
-"define inc2 : (subr (read (globals dbl)) (int) int) ! pure",
-"define map2 : (subr (maxeff (alloc @l) (read (globals dbl inc2 map2)) (read @l) spin) (step (listof int @l)) (listof int @l)) ! pure",
-"define total : (subr (maxeff (read (globals total)) (read @l) spin) ((listof int @l) int) int) ! pure",
-"define test : (subr (maxeff (alloc @l) (read (globals dbl inc2 map2 total)) (read @l) spin) (int) int) ! pure",
-"int ! (maxeff (alloc @l) (read (globals dbl inc2 map2 test total)) (read @l) spin)",
-"; both checkers agree",
-""
-],
-"err": [
-""
-]
-},
-{
 "code": 0,
 "out": [
 "define dbl : (subr pure (int) int) ! pure",
@@ -41,6 +22,7 @@
 ""
 ],
 "by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }

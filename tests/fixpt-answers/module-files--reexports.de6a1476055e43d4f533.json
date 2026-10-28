@@ -7,22 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
-],
-"code": 1,
-"out": [
-"m : (moduleof (desc num int) (val bump (subr pure (num) num))) ! (read (globals %shared:<programs>/module-files/bump.fx))",
-"bump : (subr pure (num) num) ! (read (globals m))",
-""
-],
-"err": [
-"fixpt: <programs>/module-files/reexports.fx:6:37: `twice` is declared a (subr pure (num) num): a (subr pure (num) num) is expected here, and this is a (subr (read (globals bump)) (num) num)",
-"  beyond what is expected, it has (read (globals bump))",
-""
-]
-},
-{
 "code": 1,
 "out": [
 "m : (moduleof (desc num int) (val bump (subr pure (int) int))) ! (read (globals %shared:<programs>/module-files/bump.fx))",
@@ -35,6 +19,7 @@
 ""
 ],
 "by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }

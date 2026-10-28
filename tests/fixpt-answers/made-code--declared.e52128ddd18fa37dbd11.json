@@ -12,7 +12,6 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ],
 "code": 1,
@@ -22,6 +21,22 @@
 "err": [
 "fixpt: <programs>/made-code/declared.fx:32:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus (state delta)) (field-k-before-code 8))",
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
+"subtracter : (subr (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4))) () (subr (conv native) pure (int int) int)) ! pure",
+"\"(target arm64)\" : string ! pure",
+"42 : int ! (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4 subtracter)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }
 ]

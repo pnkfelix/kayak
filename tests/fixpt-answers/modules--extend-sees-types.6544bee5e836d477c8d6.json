@@ -7,22 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
-],
-"code": 0,
-"out": [
-"define a : (moduleof (desc touches (read @globals)) (desc n int) (val x n)) ! pure",
-"define b : (moduleof (desc touches (read @globals)) (desc n int) (val x n) (val f (subr (read @globals) () n))) ! (read (globals a))",
-"int ! (maxeff (read (globals b)) (read @globals))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-]
-},
-{
 "code": 0,
 "out": [
 "define a : (moduleof (desc touches (read @globals)) (desc n int) (val x int)) ! pure",
@@ -35,6 +19,7 @@
 ""
 ],
 "by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }

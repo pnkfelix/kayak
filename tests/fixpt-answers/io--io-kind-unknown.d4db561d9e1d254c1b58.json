@@ -7,19 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
-],
-"code": 1,
-"out": [
-""
-],
-"err": [
-"fixpt: <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`",
-""
-]
-},
-{
 "code": 1,
 "out": [
 ""
@@ -29,6 +16,7 @@
 ""
 ],
 "by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }

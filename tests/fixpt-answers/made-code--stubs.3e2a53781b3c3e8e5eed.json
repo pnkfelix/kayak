@@ -22,6 +22,26 @@
 "by": [
 "x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"call-code : (subr (alloc @heap) () (listof int @heap)) ! pure",
+"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
+"sealed : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all))) () (bloblet (fields) @heap)) ! pure",
+"call-it : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () caller) ! pure",
+"call-k : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () k-caller) ! pure",
+"-42 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code call-it put-all sealed)))",
+"42 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) (goto @k) (comefrom @k) spin (io native) (read (globals call-code call-k put-all sealed)))",
+"42 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code call-it put-all sealed)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
 }
 ]
 }
