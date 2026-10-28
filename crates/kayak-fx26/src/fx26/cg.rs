@@ -5068,7 +5068,20 @@ pub fn word_text(xs: Citems) -> Str {
 
 // Whether a word named `name`, as the listing names it, is listed: none,
 // one whose lines are `text`, or only others.
-pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut text: Str, mut k: i64) -> i64 {
+
+// Whether word `m` is listed as `name` (`shown-name`): it, or it then a
+// tab; compared in place, where `shown-name` made each name's characters,
+// at each word made, of every word made before it (C265).
+pub fn listed_as_p(m: Str, name: Str) -> bool {
+    (string_eq_p(m, name) || {
+        let n = string_length_i64(name);
+        (i64_gt(string_length_i64(m), n) && has_prefix_p(m, name) && char_eq_p(string_ref_i64(m, n), '\t'))
+    })
+}
+
+/// Its text, `ys`'s lines, made only where a word of its name is found
+/// (C265): it had been made for every word.
+pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut ys: Citems, mut k: i64) -> i64 {
     loop {
         if null_p(ws) {
             return k;
@@ -5076,7 +5089,7 @@ pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut text: Str, mut k:
             let tagcase_ = car(ws);
             match *tagcase_ {
                 Word::Word(m, xs) => {
-                    string_eq_p(shown_name(m), name)
+                    listed_as_p(m, name)
                 }
             }
         } {
@@ -5084,7 +5097,7 @@ pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut text: Str, mut k:
                 let tagcase_ = car(ws);
                 match *tagcase_ {
                     Word::Word(m, xs) => {
-                        string_eq_p(word_text(xs), text)
+                        string_eq_p(word_text(xs), word_text(ys))
                     }
                 }
             } {
@@ -5109,7 +5122,7 @@ pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut text: Str, mut k:
 // word; one not the same is named apart, `name~N`, so that it runs.
 pub fn c_assemble(c: Code, name: Str) -> Str {
     let xs = the::<Citems>(reverse(get(c)));
-    let k = c_named(get(cg_words()), name, word_text(xs), 0i64);
+    let k = c_named(get(cg_words()), name, xs, 0i64);
     let n = i64_to_string(size(get(cg_words())));
     let own = if i64_eq(k, 0i64) {
         name

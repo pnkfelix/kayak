@@ -1594,13 +1594,24 @@
 
 "Whether a word named `name`, as the listing names it, is listed: none,
  one whose lines are `text`, or only others."
+"Whether word `m` is listed as `name` (`shown-name`): it, or it then a
+ tab; compared in place, where `shown-name` made each name's characters,
+ at each word made, of every word made before it (C265)."
+(define listed-as? (subr kfx (string string) bool)
+  (lambda (m name)
+    (or (string=? m name)
+        (let ((n (string-length-i64 name)))
+          (and (i64> (string-length-i64 m) n) (has-prefix? m name) (char=? (string-ref-i64 m n) #\tab))))))
+
 (define-rec
-  (c-named (subr kfx ((listof word acyclic) string string i64) i64)
-    (lambda (ws name text k)
+  (c-named (subr kfx ((listof word acyclic) string citems i64) i64)
+    (lambda (ws name ys k)
+      "Its text, `ys`'s lines, made only where a word of its name is found
+       (C265): it had been made for every word."
       (cond ((null? ws) k)
-            ((tagcase (car ws) (word (m xs) (string=? (shown-name m) name)))
-             (if (tagcase (car ws) (word (m xs) (string=? (word-text xs) text))) 1 (c-named (cdr ws) name text 2)))
-            (else (c-named (cdr ws) name text k))))))
+            ((tagcase (car ws) (word (m xs) (listed-as? m name)))
+             (if (tagcase (car ws) (word (m xs) (string=? (word-text xs) (word-text ys)))) 1 (c-named (cdr ws) name ys 2)))
+            (else (c-named (cdr ws) name ys k))))))
 
 "A word assembled: made one of the program's, under `name`. Two words
  may have one name in Fixpt's listing (C144): an abstract type's two
@@ -1612,7 +1623,7 @@
 (define c-assemble (subr gen (code string) string)
   (lambda (c name)
     (let* ((xs (the citems (reverse (get c))))
-           (k (c-named (get cg-words) name (word-text xs) 0))
+           (k (c-named (get cg-words) name xs 0))
            (n (i64->string (size (get cg-words))))
            (own (cond ((i64= k 0) name)
                       ((i64= k 1) (string-append name (string-append "\t" n)))

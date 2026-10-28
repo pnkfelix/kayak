@@ -7460,3 +7460,18 @@ which a program writing it, or comparing by identity, would see.
   syscalls.md`) had Fixpt's strings as UTF-8; they are characters (the
   user). Fixpt's `kayak:string-utf8-length/1` counts each character's
   width; kayak-rt's has the length at hand.
+
+## C265. Compile memory: words named apart without their names' characters (2026-10-27)
+
+Measured again at the size that had been 55 GB: kayak's FX-26 compiler
+compiling the KFX compiler to cells (3,465 words, a 17 MB listing),
+18.3 s and 10.9 GB at peak after C261-C264 (Fixpt: 4.0 s, 0.49 GB). Of
+its heap's 6.6 GB, 4.9 GB were characters' lists, made by `c-named`,
+which, for each word assembled, walked every word made before it and
+made each one's name's characters (`shown-name`) to compare it: quadratic
+in the words. Now compared in place (`listed-as?`: the name, or the name
+then a tab); and the new word's text, its lines, made only where a word of
+its name is found, not for every word. Its listing byte for byte as
+before, as the corpus's: 6.6 s and 2.4 GB at peak. Next: the listing
+itself, 17 MB joined pairwise (some 20 copies of each byte at this size),
+better written out as made.
