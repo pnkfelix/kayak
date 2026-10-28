@@ -10,7 +10,8 @@
 #
 # With --all, then also the Rust kfx makes of the cellular machine and the
 # engine, kept in crates/kayak-cells/src/cells and crates/kayak-fx26/src/fx26
-# (what `cells-programs.py --bless` and `engine-programs.py --bless` write,
+# (the first checked by the `generated` test of crates/kayak-checks/tests/
+# cells.rs, the second what `engine-programs.py --bless` writes,
 # without running their programs), and those crates built.
 #
 # With --check, nothing is written: boot/'s compiler is built and run once,

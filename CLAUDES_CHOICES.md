@@ -7753,3 +7753,45 @@ the two `cells-programs` runs 317 s of that. They come next, a test for
 each program, with the Fixpt answer cache (`fixptcache.py`) ported to
 Rust. Its JSON is to be written byte for byte as Python writes it, so that
 `tests/fixpt-answers/` stays the same while some checks are still Python.
+
+## C277. The check on a snapshot of the working tree (2026-10-28)
+
+The user, of my threads waiting for each check to finish: "i just don't
+know about these". `check.sh` reads the sources as it goes, so an edit
+while it ran could pass a tree that was never whole; I had stopped
+editing while it ran, idle. `scripts/check-snapshot.sh` takes a snapshot
+of the working tree instead: every file `git add -A` would add, made a
+commit through an index of its own, the tree and its index untouched. It
+checks the snapshot out in ../kayak-snapshot, a worktree kept from run to
+run so that its `target/` builds incrementally, its Fixpt cache this
+tree's. It prints the directory (the user's: "make sure your script
+prints out the directory"), the snapshot and the log. When the check
+passes it brings back the Fixpt answers the check kept, and records the
+tree. `--same` says whether the working tree is that tree.
+`--commit < MSG` commits that tree on HEAD, the working tree left as it
+is. The script runs from a copy of itself, since `sh` reads a script as it
+goes; I learned that by editing it while its first run went on. That
+first run took 492 s, building its `target/` from nothing.
+
+## C278. Tier 1's programs under nextest (2026-10-28)
+
+C276's next step. `scripts/cells-programs.py`, both of its runs, is now
+`crates/kayak-checks/tests/cells.rs`: a test for each program and each
+words' source, `fixpt/NAME` and `ours/NAME`, its ways run at once within
+it, and `generated`, that kfx's Rust of cells/ is the Rust kept.
+`fixptcache.py` is ported to Rust beside it (`src/fixpt.rs`): the same
+keys, by a SHA-256 of its own (`src/sha256.rs`), and the same files, by a
+JSON of its own (`src/json.rs`) that writes as Python's `json.dumps(…,
+indent=0, ensure_ascii=False)` writes. A test requires every answer kept
+to read and write back byte for byte. Each test keeps what it found in
+target/kayak-checks/cells/. `checks-summary cells` counts that, says it
+as the script did, and fails on a program not run, one that differs, or
+one that no longer agrees. With `--bless`/`--bless-drop` it rewrites the
+passing lists (C235). The generated Rust is blessed by `regen.sh --all`.
+
+Measured against the Python, on the same tree: the same counts, Fixpt's
+words (432 agree; 5, 40, 391 not run) and kayak's own (410 agree, 303 of
+them Fixpt's exactly, 27 not generated yet; register words 918 and 8).
+Both runs together took 174 s, on a machine busy with a snapshot check;
+the Python's took 139 s and 178 s, one after the other. The longest test
+is `preempt/allocating.fx`, its slice ways.

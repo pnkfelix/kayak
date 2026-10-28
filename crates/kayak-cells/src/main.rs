@@ -1,7 +1,7 @@
 //! kayak-cells, tier 1 (`docs/research/native.md`, C122): Fixpt's cellular
 //! machine, written in KFX (`cells/`), run on the words of a listing
 //! Fixpt's compiler wrote. `cells/main.kfx`'s `cells-main`, on a big
-//! stack. Generated from `cells/` (`scripts/cells-programs.py --bless`);
+//! stack. Generated from `cells/` (`scripts/regen.sh --all`);
 //! this file is the only hand-written part.
 
 #[allow(warnings, clippy::all)]

@@ -42,13 +42,14 @@ step cargo nextest run --release -p kfx-corpus --features kayak-rt/unsafe-par --
 # tests under nextest (C276: the incremental compiles among them, chains at
 # once) run beside the rest, their output kept and said when they end. kfx
 # built first, so that no stage builds it under another.
-cargo build --release --quiet -p kfx
+cargo build --release --quiet --workspace
 logs=$(mktemp -d)
 fixpoint=; tests=
 # Should a stage fail first, the two and everything they started stopped.
 killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
 trap 'for p in $fixpoint $tests; do killed "$p"; done; rm -rf "$logs"' EXIT
 step scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
+rm -rf target/kayak-checks
 step env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
 # Fixpt's own programs (tests/fx26/programs) and its answers to them
 # (tests/fixpt-answers), kept in kayak (C132): with a clone at the pin, each
@@ -66,10 +67,6 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
 fi
 # Those that kfx accepts, run both ways.
 step python3 -I scripts/run-fixpt-programs.py
-# Tier 1, Fixpt's cellular machine in KFX, on Fixpt's own words (C122).
-step python3 -I scripts/cells-programs.py
-# The same with kayak's own words (C133): `kayak-fx26 --cells`.
-step python3 -I scripts/cells-programs.py --ours
 step python3 -I scripts/refused-fixpt-programs.py
 # The checkers compared, form by form (TODO §30): fails only if kayak's
 # accepts a program Fixpt's refuses; the rest is the measure of §30.
@@ -83,6 +80,10 @@ for job in fixpoint tests; do
     [ $status = 0 ] || { echo "check: $job failed" >&2; exit 1; }
 done
 fixpoint=; tests=
+# Tier 1, Fixpt's cellular machine in KFX, on Fixpt's own words (C122) and
+# on kayak's own (C133): what the tests found (crates/kayak-checks/tests/
+# cells.rs), counted.
+step cargo run --release --quiet -p kayak-checks --bin checks-summary -- cells
 # Every answer kept was asked for in this check: the rest dropped, and the
 # answers stamped as the pin's.
 if [ -n "$clone" ]; then
