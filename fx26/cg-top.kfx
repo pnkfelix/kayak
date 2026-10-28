@@ -1,4 +1,4 @@
-"cg-top.kfx: kayak's compiler to cells, its form loop and its listing (split from
+"cg-top.kfx: kayak's compiler to cells, its form loop and its quoted nodes (split from
  `cg.kfx`, C248): each top-level form's words, then its register twins
  (`regs-entry.kfx`), as Fixpt's `compile-twins.fx`; and the listing, each
  word's cells and its register code."
@@ -93,31 +93,6 @@
   (word-named (subr kfx ((listof word acyclic) string) (listof word acyclic))
     (lambda (ws n) (cond ((null? ws) nil) ((tagcase (car ws) (word (m xs) (string=? m n))) (list (car ws))) (else (word-named (cdr ws) n))))))
 
-"The listing: from `program`, each word reached, as `disasm.rs` walks
- them: the words a word names pushed in order, the last pushed next."
-(define-rec
-  (listing-from (subr gen (strings strings strings) strings)
-    (lambda (todo seen out)
-      "`out` the listing so far, a word's text each, the newest first; the
-       words' texts in order, to be written each in turn, not joined
-       (C266)."
-      (cond ((null? todo) (reverse out))
-            ((string-member? (car todo) seen) (listing-from (cdr todo) seen out))
-            (else
-             (let ((w (word-named (get cg-words) (car todo))))
-               (if (null? w)
-                   (listing-from (cdr todo) (cons (car todo) seen) out)
-                   (tagcase (car w)
-                     (word (name xs)
-                       (tagcase (lines-of-items xs 0 (places-of xs 0 nil) nil nil)
-                         (wsaid (text named)
-                           ;; Its register code after its cells (C248).
-                           (tagcase (let ((rc (reg-code-of (get cg-reg-codes) name)))
-                                      (if (null? rc) (wsaid "" nil) (tagcase (rcode-said (car rc)) (wsaid (t ns) (wsaid (string-append t (rcode-line-table (car rc))) ns)))))
-                             (wsaid (rtext rnamed)
-                               (listing-from (onto (reverse (onto named rnamed)) (cdr todo)) (cons name seen)
-                                             (cons (string-list-append (list "\nword " (shown-name name) " (" (i64->string (cells-of xs 0)) " cells, cellular):\n" text rtext (line-table xs))) out)))))))))))))))
-
 "The listing's quoted nodes written (`quoted-interned`): Fixpt's
  `literal.rs`, an object reached more than once labelled `#N=` where it
  is first written and named `#N#` after, numbered as written, across the
@@ -160,49 +135,3 @@
         (else y (lit-text l)))))
   (q-pair-text (subr gen ((listof lit acyclic)) string)
     (lambda (ps) (string-append "(" (string-append (q-written! (car ps)) (string-append " . " (string-append (q-written! (car (cdr ps))) ")")))))))
-(define-rec
-  (q-marks (subr kfx (chars (listof i64 acyclic)) (listof i64 acyclic))
-    (lambda (cs acc)
-      "The marks' numbers in `cs`, in order."
-      (cond ((null? cs) (reverse acc))
-            ((char=? (car cs) (i64->char 1)) (q-mark-number (cdr cs) 0 acc))
-            (else (q-marks (cdr cs) acc)))))
-  (q-mark-number (subr kfx (chars i64 (listof i64 acyclic)) (listof i64 acyclic))
-    (lambda (cs n acc)
-      (if (char=? (car cs) (i64->char 2))
-          (q-marks (cdr cs) (cons n acc))
-          (q-mark-number (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) acc)))))
-(define-rec
-  (q-all-reached! (subr gen ((listof i64 acyclic)) unit)
-    (lambda (ns) (if (null? ns) #u (begin (q-reached! (l-quoted (car ns))) (q-all-reached! (cdr ns)))))))
-(define-rec
-  (q-replaced (subr gen (chars chars strings) string)
-    (lambda (cs run acc)
-      "`cs` with each mark written, `run` the plain characters not yet put."
-      (cond ((null? cs) (string-list-append (reverse (the strings (cons (list->string (reverse run)) acc)))))
-            ((char=? (car cs) (i64->char 1)) (q-replaced-mark (cdr cs) 0 (cons (list->string (reverse run)) acc)))
-            (else (q-replaced (cdr cs) (cons (car cs) run) acc)))))
-  (q-replaced-mark (subr gen (chars i64 strings) string)
-    (lambda (cs n acc)
-      (if (char=? (car cs) (i64->char 2))
-          (q-replaced (cdr cs) nil (cons (q-written! (l-quoted n)) acc))
-          (q-replaced-mark (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) acc)))))
-(define-rec
-  (q-words-reached! (subr gen (strings) unit)
-    (lambda (ws) (if (null? ws) #u (begin (q-all-reached! (q-marks (string-chars (car ws)) nil)) (q-words-reached! (cdr ws))))))
-  (q-words-replaced (subr gen (strings) strings)
-    (lambda (ws) (if (null? ws) nil (cons (q-replaced (string-chars (car ws)) nil nil) (q-words-replaced (cdr ws)))))))
-"The words' texts with their quoted nodes written: each node's reaches
- counted across all of them, in order, then each word's marks replaced, a
- word at a time (C266): no text of the whole listing made."
-(define labelled-listing (subr gen (strings) strings)
-  (lambda (ws)
-    (if (null? (get cg-qnodes))
-        ws
-        (begin
-          (set cg-qreached nil) (set cg-qlabels nil) (set cg-qnext 0)
-          (q-words-reached! ws)
-          (q-words-replaced ws)))))
-
-"The listing, a word's text each, in order (C266)."
-(define cells-listing (subr gen () strings) (lambda () (labelled-listing (listing-from (list "program") nil nil))))

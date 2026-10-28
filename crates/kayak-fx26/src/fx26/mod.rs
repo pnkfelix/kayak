@@ -38,6 +38,8 @@ pub mod regs_entry;
 pub use regs_entry::*;
 pub mod cg_top;
 pub use cg_top::*;
+pub mod listing;
+pub use listing::*;
 pub mod heap;
 pub use heap::*;
 pub mod words;

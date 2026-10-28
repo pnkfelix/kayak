@@ -3,7 +3,7 @@
 use kayak_rt::*;
 use super::*;
 
-// cg-top.kfx: kayak's compiler to cells, its form loop and its listing (split from
+// cg-top.kfx: kayak's compiler to cells, its form loop and its quoted nodes (split from
 // `cg.kfx`, C248): each top-level form's words, then its register twins
 // (`regs-entry.kfx`), as Fixpt's `compile-twins.fx`; and the listing, each
 // word's cells and its register code.
@@ -229,58 +229,6 @@ pub fn word_named(mut ws: List<&'static Word>, mut n: Str) -> List<&'static Word
     }
 }
 
-// The listing: from `program`, each word reached, as `disasm.rs` walks
-// them: the words a word names pushed in order, the last pushed next.
-/// `out` the listing so far, a word's text each, the newest first; the
-/// words' texts in order, to be written each in turn, not joined
-/// (C266).
-pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Strings) -> Strings {
-    loop {
-        if null_p(todo) {
-            return reverse(out);
-        } else if string_member_p(car(todo), seen) {
-            todo = cdr(todo);
-            continue;
-        } else {
-            let w = word_named(get(cg_words()), car(todo));
-            if null_p(w) {
-                (todo, seen) = (cdr(todo), kayak_rt::heap_cons(car(todo), seen));
-                continue;
-            } else {
-                let tagcase_ = car(w);
-                match *tagcase_ {
-                    Word::Word(name, xs) => {
-                        let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
-                        match *tagcase_ {
-                            Wsaid::Wsaid(text, named) => {
-                                let tagcase_ = {
-                                    let rc = reg_code_of(get(cg_reg_codes()), name);
-                                    if null_p(rc) {
-                                        wsaid(str_lit(""), nil::<Str>())
-                                    } else {
-                                        let tagcase_ = rcode_said(car(rc));
-                                        match *tagcase_ {
-                                            Wsaid::Wsaid(t, ns) => {
-                                                wsaid(string_append(t, rcode_line_table(car(rc))), ns)
-                                            }
-                                        }
-                                    }
-                                };
-                                match *tagcase_ {
-                                    Wsaid::Wsaid(rtext, rnamed) => {
-                                        (todo, seen, out) = (onto(reverse(onto(named, rnamed)), cdr(todo)), kayak_rt::heap_cons(name, seen), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("\nword "), kayak_rt::heap_cons(shown_name(name), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(i64_to_string(cells_of(xs, 0i64)), kayak_rt::heap_cons(str_lit(" cells, cellular):\n"), kayak_rt::heap_cons(text, kayak_rt::heap_cons(rtext, kayak_rt::heap_cons(line_table(xs), kayak_rt::nil()))))))))), out));
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 // The listing's quoted nodes written (`quoted-interned`): Fixpt's
 // `literal.rs`, an object reached more than once labelled `#N=` where it
 // is first written and named `#N#` after, numbered as written, across the
@@ -404,107 +352,5 @@ pub fn q_written_x(l: &'static Lit) -> Str {
 
 pub fn q_pair_text(ps: List<&'static Lit>) -> Str {
     string_append(str_lit("("), string_append(q_written_x(car(ps)), string_append(str_lit(" . "), string_append(q_written_x(car(cdr(ps))), str_lit(")")))))
-}
-
-/// The marks' numbers in `cs`, in order.
-pub fn q_marks(mut cs: Chars, mut acc: List<i64>) -> List<i64> {
-    loop {
-        if null_p(cs) {
-            return reverse(acc);
-        } else if char_eq_p(car(cs), i64_to_char(1i64)) {
-            return q_mark_number(cdr(cs), 0i64, acc);
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn q_mark_number(mut cs: Chars, mut n: i64, mut acc: List<i64>) -> List<i64> {
-    loop {
-        if char_eq_p(car(cs), i64_to_char(2i64)) {
-            return q_marks(cdr(cs), kayak_rt::heap_cons(n, acc));
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn q_all_reached_x(mut ns: List<i64>) -> () {
-    loop {
-        if null_p(ns) {
-            return ();
-        } else {
-            q_reached_x(l_quoted(car(ns)));
-            ns = cdr(ns);
-            continue;
-        }
-    }
-}
-
-/// `cs` with each mark written, `run` the plain characters not yet put.
-pub fn q_replaced(mut cs: Chars, mut run: Chars, mut acc: Strings) -> Str {
-    loop {
-        if null_p(cs) {
-            return string_list_append(reverse(the::<Strings>(kayak_rt::heap_cons(list_to_string(reverse(run)), acc))));
-        } else if char_eq_p(car(cs), i64_to_char(1i64)) {
-            return q_replaced_mark(cdr(cs), 0i64, kayak_rt::heap_cons(list_to_string(reverse(run)), acc));
-        } else {
-            (cs, run) = (cdr(cs), kayak_rt::heap_cons(car(cs), run));
-            continue;
-        }
-    }
-}
-
-pub fn q_replaced_mark(mut cs: Chars, mut n: i64, mut acc: Strings) -> Str {
-    loop {
-        if char_eq_p(car(cs), i64_to_char(2i64)) {
-            return q_replaced(cdr(cs), nil::<char>(), kayak_rt::heap_cons(q_written_x(l_quoted(n)), acc));
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn q_words_reached_x(mut ws: Strings) -> () {
-    loop {
-        if null_p(ws) {
-            return ();
-        } else {
-            q_all_reached_x(q_marks(string_chars(car(ws)), nil::<i64>()));
-            ws = cdr(ws);
-            continue;
-        }
-    }
-}
-
-pub fn q_words_replaced(ws: Strings) -> Strings {
-    if null_p(ws) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(q_replaced(string_chars(car(ws)), nil::<char>(), nil::<Str>()), q_words_replaced(cdr(ws)))
-    }
-}
-
-// The words' texts with their quoted nodes written: each node's reaches
-// counted across all of them, in order, then each word's marks replaced, a
-// word at a time (C266): no text of the whole listing made.
-pub fn labelled_listing(ws: Strings) -> Strings {
-    if null_p(get(cg_qnodes())) {
-        ws
-    } else {
-        set(cg_qreached(), nil::<&'static Qseen>());
-        set(cg_qlabels(), nil::<&'static Qseen>());
-        set(cg_qnext(), 0i64);
-        q_words_reached_x(ws);
-        q_words_replaced(ws)
-    }
-}
-
-// The listing, a word's text each, in order (C266).
-pub fn cells_listing() -> Strings {
-    labelled_listing(listing_from(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), nil::<Str>()))
 }
 

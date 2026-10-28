@@ -7531,3 +7531,31 @@ bytevector in the heap, kept for the run, even at a `letrena`'s region.
   message's are): the REPL's `read-file` at a place's region, `(sumof
   (data (bytevectorof r)) …)`, had become `BytesAt<'r>` inside one, which
   rustc refuses. No program could have had a place's list there.
+
+## C268. The listing written in places that end (2026-10-27)
+
+The user's 1 and 2 for compile memory, by bytevectors (C267): the
+listing, 622 MB of the 1.49 GB heap compiling the KFX compiler to cells
+(its strings kept for the run, some 37 times the 17 MB it writes), is now
+written word by word into a buffer of bytes in a `letrena`'s place, which
+doubles in the place as it fills, made one string per word to be written
+out, and freed with the place. `fx26/listing.kfx`, after `cg-top.kfx`:
+- **Writers** (`w-str!`, `w-byte!`, `w-i64!`, `w-digits!`, `w-padded!`,
+  `w-name!`, `w-escaped!`, `w-lit!`, `w-opnd!`, `w-ins!`, `w-lines!`,
+  `w-rlines!`, `w-table!`, `w-word!`), each given the place, the buffer
+  and its length, as `lit-text`, `lines-of-items`, `rcode-said` and the
+  line tables write their text, byte for byte; literals and numbers
+  written as bytes, no string made of them (the string versions stay, for
+  the compiler's other uses: `word-text`, a word's name told apart).
+- **The walk** in two steps: the words listed, in order, from the names
+  their instructions give (`words-listed`, no text made); then, where
+  there are quoted nodes, their reaches counted across all of them in the
+  order the text writes them (`words-reached!`, a word's cells' literals,
+  then its register code's, each literal's parts), and each word written,
+  its quoted nodes' labels written as they come (`q-written!`), where
+  marks had been written and replaced in the text after.
+- **Measured**: the listing byte for byte as before (the corpus's, and the
+  KFX compiler's against the engine before, on the same sources); 3.65 s
+  and 2.2 GB at peak to 2.72 s and 1.31 GB (Fixpt: 4.0 s, 0.49 GB); the
+  heap 1.49 GB to 914 MB, its strings 335 MB to 29. What is left is the
+  checker's (lists of strings, 254 MB; characters' lists, 134 MB).

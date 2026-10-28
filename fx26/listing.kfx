@@ -1,0 +1,311 @@
+"listing.kfx: the listing, written (C268). Each word's text is written
+ into a buffer of bytes in a place of its own, a `letrena`'s, which
+ doubles as it fills; then made one string, given to be written out, and
+ the place freed: none of the text's pieces kept, where they had been
+ strings in the heap, kept for the run, some thirty times the listing's
+ size. As Fixpt's `disasm.rs` writes it, byte for byte as the strings had
+ (`lit-text`, `lines-of-items`, `rcode-said`, `line-table`, which other
+ uses keep)."
+
+;;; ------------------------------------------------------------- writing
+
+"Room for `k` more bytes in the buffer `b`, `n` of them used: a buffer
+ twice as large, in the place, the bytes so far copied in, where there is
+ not."
+(define w-room! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64) unit))
+  (lambda (p b n k)
+    (let ((have (int->i64 (bytevector-length (get b)))) (at (get n)))
+      (if (i64<= (i64+ at k) have)
+          #u
+          (let ((more (the (bytevectorof p) (make-bytevector (i64->int (i64* 2 (i64+ have k))) 0))))
+            (begin (bytevector-copy! more 0 (get b) 0 (i64->int at)) (set b more)))))))
+
+"The byte `k`."
+(define w-byte! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64) unit))
+  (lambda (p b n k)
+    (begin (w-room! p b n 1)
+           (bytevector-u8-set! (get b) (i64->int (get n)) (int->u8 (i64->int k)))
+           (set n (i64+ (get n) 1)))))
+
+"The string `s`'s bytes, by way of the place."
+(define w-str! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string) unit))
+  (lambda (p b n s)
+    (let* ((bs (the (bytevectorof p) (string->utf8 s))) (k (int->i64 (bytevector-length bs))))
+      (begin (w-room! p b n k)
+             (bytevector-copy! (get b) (i64->int (get n)) bs 0 (i64->int k))
+             (set n (i64+ (get n) k))))))
+
+"A digit's byte, of base 10 or 16 (lower case)."
+(define digit-byte (subr kfx (i64) i64) (lambda (d) (if (i64< d 10) (i64+ 48 d) (i64+ 87 d))))
+
+"`k`, not negative, in `base`."
+(define-rec
+  (w-digits! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64 i64) unit))
+    (lambda (p b n k base)
+      (begin (if (i64>= k base) (w-digits! p b n (i64-quotient k base) base) #u)
+             (w-byte! p b n (digit-byte (i64-remainder k base)))))))
+
+"`k` in decimal."
+(define w-i64! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64) unit))
+  (lambda (p b n k)
+    (if (i64< k 0)
+        (begin (w-byte! p b n 45) (w-digits! p b n (i64- 0 k) 10))
+        (w-digits! p b n k 10))))
+
+"How many decimal digits `k`, not negative, has."
+(define-rec
+  (digit-count (subr kfx (i64) i64) (lambda (k) (if (i64< k 10) 1 (i64+ 1 (digit-count (i64-quotient k 10)))))))
+
+"Spaces before `k` to make it `width` wide (`padded`, `rpadded`)."
+(define-rec
+  (w-spaces! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64) unit))
+    (lambda (p b n k) (if (i64<= k 0) #u (begin (w-byte! p b n 32) (w-spaces! p b n (i64- k 1)))))))
+(define w-padded! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64 i64) unit))
+  (lambda (p b n k width)
+    (begin (w-spaces! p b n (i64- width (if (i64< k 0) (i64+ 1 (digit-count (i64- 0 k))) (digit-count k))))
+           (w-i64! p b n k))))
+
+"A word's name as the listing names it (`shown-name`): to its tab, if it
+ has one."
+(define w-name! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string) unit))
+  (lambda (p b n w) (w-str! p b n (if (i64< (int->i64 (string-search w "\t" 0)) 0) w (shown-name w)))))
+
+"A string's characters, each not printable ASCII (and `quote` and `\\`)
+ by its code, `\\xHH;` (`lit-escaped`)."
+(define-rec
+  (w-escaped! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string i64 i64 i64) unit))
+    (lambda (p b n s quote i len)
+      (if (i64>= i len)
+          #u
+          (let ((k (char->i64 (string-ref-i64 s i))))
+            (begin
+              (if (or (i64= k quote) (i64= k 92) (i64< k 32) (i64> k 126))
+                  (begin (w-str! p b n "\\x") (w-digits! p b n k 16) (w-byte! p b n 59))
+                  (w-byte! p b n k))
+              (w-escaped! p b n s quote (i64+ i 1) len)))))))
+
+;;; ------------------------------------------------------------ the parts
+
+"A literal as `lit-text` writes it; a quoted node as its label says
+ (`q-written!`, the reaches counted first)."
+(define-rec
+  (w-lit! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) lit) unit))
+    (lambda (p b n l)
+      (tagcase l
+        (l-int (k) (w-str! p b n (int->string k)))
+        (l-bool (v) (w-str! p b n (if v "#t" "#f")))
+        (l-unit () (w-str! p b n "|#u|"))
+        (l-nil () (w-str! p b n "()"))
+        (l-str (s) (begin (w-byte! p b n 34) (w-escaped! p b n s 34 0 (string-length-i64 s)) (w-byte! p b n 34)))
+        (l-char (ch) (begin (w-str! p b n "#\\x") (w-digits! p b n (char->i64 ch) 16)))
+        (l-f64 (x) (begin (w-str! p b n "#f64x") (w-str! p b n (hex-bits x 16 nil))))
+        (l-sym (s) (begin (w-byte! p b n 124) (w-escaped! p b n s 124 0 (string-length-i64 s)) (w-byte! p b n 124)))
+        (l-pair (a d) (begin (w-byte! p b n 40) (w-lit! p b n a) (w-str! p b n " . ") (w-lit! p b n d) (w-byte! p b n 41)))
+        (l-word (w) (begin (w-str! p b n "word ") (w-name! p b n w)))
+        (l-quoted (k) (w-str! p b n (q-written! l)))
+        (l-frozen (kind fs)
+          (begin (w-str! p b n "#bloblet(") (w-str! p b n kind) (w-str! p b n " (#trailer ")
+                 (w-i64! p b n (i64+ 1 (size fs))) (w-lits! p b n fs) (w-str! p b n ") #u8())"))))))
+  (w-lits! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) (listof lit acyclic)) unit))
+    (lambda (p b n ls) (if (null? ls) #u (begin (w-byte! p b n 32) (w-lit! p b n (car ls)) (w-lits! p b n (cdr ls)))))))
+
+"An operand as the stack code's lines write it (`opnd-text`), and as
+ register code's do (`ropnd-text`: a word as its cell is shown)."
+(define w-opnd! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) opnd) unit))
+  (lambda (p b n o)
+    (tagcase o
+      (o-int (k) (w-i64! p b n k))
+      (o-lit (l) (w-lit! p b n l))
+      (o-word (w) (begin (w-str! p b n "word ") (w-name! p b n w)))
+      (o-global (g) (w-str! p b n g))
+      (o-prim (q) (w-str! p b n q)))))
+(define w-ropnd! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) opnd) unit))
+  (lambda (p b n o)
+    (tagcase o
+      (o-lit (l) (tagcase l
+                   (l-word (w) (begin (w-str! p b n "#word \"") (w-name! p b n w) (w-byte! p b n 34)))
+                   (else y (w-opnd! p b n o))))
+      (else y (w-opnd! p b n o)))))
+"Operands, a space before each."
+(define-rec
+  (w-opnds! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) (listof opnd acyclic) bool) unit))
+    (lambda (p b n os regs)
+      (if (null? os)
+          #u
+          (begin (w-byte! p b n 32)
+                 (if regs (w-ropnd! p b n (car os)) (w-opnd! p b n (car os)))
+                 (w-opnds! p b n (cdr os) regs))))))
+
+"An instruction's text (`ins-text`; register code's, `rop-text`, `regs`)."
+(define w-ins! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string (listof opnd acyclic) bool) unit))
+  (lambda (p b n r os regs)
+    (if (string=? r (if regs "lambda" "closure"))
+        (begin (w-str! p b n r) (w-byte! p b n 32) (w-opnd! p b n (car os)) (w-str! p b n " over ") (w-opnd! p b n (second-opnd os)))
+        (begin (w-str! p b n r) (w-opnds! p b n os regs)))))
+
+"A line's start: two spaces, where it is, `width` wide, a colon."
+(define w-at! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) i64 i64) unit))
+  (lambda (p b n at width) (begin (w-str! p b n "  ") (w-padded! p b n at width) (w-str! p b n ": "))))
+
+"A word's lines (`lines-of-items`), each then a newline."
+(define-rec
+  (w-lines! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) citems i64 (listof place acyclic)) unit))
+    (lambda (p b n xs at ps)
+      (if (null? xs)
+          #u
+          (let* ((x (car xs)) (next (i64+ at (item-size x))))
+            (begin
+              (tagcase x
+                (it-label (k) #u)
+                (it-pos (q) #u)
+                (it-branch (k) (begin (w-at! p b n at 4) (w-str! p b n "branch → ") (w-i64! p b n (place-at ps k)) (w-byte! p b n 10)))
+                (it-zbranch (k) (begin (w-at! p b n at 4) (w-str! p b n "0branch → ") (w-i64! p b n (place-at ps k)) (w-byte! p b n 10)))
+                (it-ins (r os) (begin (w-at! p b n at 4) (w-ins! p b n r os #f) (w-byte! p b n 10))))
+              (w-lines! p b n (cdr xs) next ps)))))))
+
+"Register code's lines (`rlines-of`), each then a newline."
+(define-rec
+  (w-rlines! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) ritems i64 (listof place acyclic) i64) unit))
+    (lambda (p b n xs at ps frame)
+      (if (null? xs)
+          #u
+          (let* ((x (car xs)) (next (i64+ at (ritem-size x))))
+            (begin
+              (tagcase x
+                (ri-label (k) #u)
+                (ri-pos (q) #u)
+                (ri-frame (name) (begin (w-at! p b n at 6) (w-str! p b n name) (w-byte! p b n 32) (w-i64! p b n frame) (w-byte! p b n 10)))
+                (ri-branch (name k)
+                  (begin (w-at! p b n at 6) (w-str! p b n name) (w-str! p b n " → ") (w-i64! p b n (place-at ps k)) (w-byte! p b n 10)))
+                (ri-guard (g w k)
+                  (begin (w-at! p b n at 6) (w-str! p b n "global-guard ") (w-str! p b n g) (w-str! p b n " written ") (w-i64! p b n w)
+                         (w-str! p b n " else → ") (w-i64! p b n (place-at ps k)) (w-byte! p b n 10)))
+                (ri-op (name os) (begin (w-at! p b n at 6) (w-ins! p b n name os #t) (w-byte! p b n 10))))
+              (w-rlines! p b n (cdr xs) next ps frame)))))))
+
+"A line table's entries, `CELL:POS`, apart by spaces, the oldest first."
+(define-rec
+  (w-entries! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) (listof tentry acyclic) bool) unit))
+    (lambda (p b n es first)
+      (if (null? es)
+          #u
+          (begin (if first #u (w-byte! p b n 32))
+                 (tagcase (car es) (tentry (a q) (begin (w-i64! p b n a) (w-byte! p b n 58) (w-i64! p b n q))))
+                 (w-entries! p b n (cdr es) #f))))))
+"A line table (`line-table`, `rcode-line-table`): `HEAD FILE ENTRIES`
+ and a newline; none if no entries, or no file."
+(define w-table! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string (listof tentry acyclic)) unit))
+  (lambda (p b n head es)
+    (if (or (null? es) (string=? (get cg-source) ""))
+        #u
+        (begin (w-str! p b n head) (w-str! p b n (get cg-source)) (w-byte! p b n 32)
+               (w-entries! p b n (reverse es) #t) (w-byte! p b n 10)))))
+
+"A word, as the listing writes it: its head, its lines, its register code
+ and its line table after them, then its line table."
+(define w-word! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string citems) unit))
+  (lambda (p b n name xs)
+    (begin
+      (w-str! p b n "\nword ") (w-name! p b n name) (w-str! p b n " (") (w-i64! p b n (cells-of xs 0)) (w-str! p b n " cells, cellular):\n")
+      (w-lines! p b n xs 0 (places-of xs 0 nil))
+      (let ((rc (reg-code-of (get cg-reg-codes) name)))
+        (if (null? rc)
+            #u
+            (tagcase (car rc)
+              (rcode (rs frame)
+                (begin
+                  (w-str! p b n "  its register code (") (w-i64! p b n (ritems-size rs 0)) (w-str! p b n " cells, not compiled):\n")
+                  (w-rlines! p b n rs 0 (rplaces-of rs 0 nil) frame)
+                  (w-table! p b n "; regs at " (rtable-entries rs 0 nil)))))))
+      (w-table! p b n "; at " (table-entries xs 0 nil)))))
+
+"A word's text, written in a place of its own, freed once it is made one
+ string."
+(define word-written (subr gen (string citems) string)
+  (lambda (name xs)
+    (letrena r
+      (let ((b (the (ref (bytevectorof r) r) (rnew r (the (bytevectorof r) (make-bytevector 4096 0)))))
+            (n (the (ref i64 r) (rnew r 0))))
+        (begin
+          (w-word! r b n name xs)
+          (tagcase (utf8->string (the (bytevectorof r) (bytevector-copy (get b) 0 (i64->int (get n)))))
+            (text t t)
+            (bad k "")))))))
+
+;;; ------------------------------------------------------------ the walk
+
+"The words a word's instructions name, in order: its cells', then its
+ register code's (`lines-of-items`' and `rlines-of`'s `named`)."
+(define-rec
+  (items-named (subr kfx (citems strings) strings)
+    (lambda (xs acc)
+      (if (null? xs) (reverse acc) (items-named (cdr xs) (tagcase (car xs) (it-ins (r os) (onto (reverse (words-said os)) acc)) (else y acc))))))
+  (ritems-named (subr kfx (ritems strings) strings)
+    (lambda (xs acc)
+      (if (null? xs) (reverse acc) (ritems-named (cdr xs) (tagcase (car xs) (ri-op (r os) (onto (reverse (words-said os)) acc)) (else y acc)))))))
+
+"The words listed, in order, from `program`, as `disasm.rs` walks them:
+ the words a word names pushed in order, the last pushed next."
+(define-rec
+  (words-listed (subr gen (strings strings (listof word acyclic)) (listof word acyclic))
+    (lambda (todo seen out)
+      (cond ((null? todo) (reverse out))
+            ((string-member? (car todo) seen) (words-listed (cdr todo) seen out))
+            (else
+             (let ((w (word-named (get cg-words) (car todo))))
+               (if (null? w)
+                   (words-listed (cdr todo) (cons (car todo) seen) out)
+                   (tagcase (car w)
+                     (word (name xs)
+                       (let ((rc (reg-code-of (get cg-reg-codes) name)))
+                         (words-listed (onto (reverse (onto (items-named xs nil)
+                                                              (if (null? rc) nil (tagcase (car rc) (rcode (rs frame) (ritems-named rs nil))))))
+                                             (cdr todo))
+                                       (cons name seen)
+                                       (cons (car w) out))))))))))))
+
+"Each quoted node's reaches counted, in the order the listing writes
+ them (`q-marks`' order): each word's cells' literals, then its register
+ code's, each literal's parts in order."
+(define-rec
+  (lit-reached! (subr gen (lit) unit)
+    (lambda (l)
+      (tagcase l
+        (l-quoted (k) (q-reached! l))
+        (l-pair (a d) (begin (lit-reached! a) (lit-reached! d)))
+        (l-frozen (kind fs) (lits-reached! fs))
+        (else y #u))))
+  (lits-reached! (subr gen ((listof lit acyclic)) unit)
+    (lambda (ls) (if (null? ls) #u (begin (lit-reached! (car ls)) (lits-reached! (cdr ls))))))
+  (opnds-reached! (subr gen ((listof opnd acyclic)) unit)
+    (lambda (os) (if (null? os) #u (begin (tagcase (car os) (o-lit (l) (lit-reached! l)) (else y #u)) (opnds-reached! (cdr os))))))
+  (items-reached! (subr gen (citems) unit)
+    (lambda (xs) (if (null? xs) #u (begin (tagcase (car xs) (it-ins (r os) (opnds-reached! os)) (else y #u)) (items-reached! (cdr xs))))))
+  (ritems-reached! (subr gen (ritems) unit)
+    (lambda (xs) (if (null? xs) #u (begin (tagcase (car xs) (ri-op (r os) (opnds-reached! os)) (else y #u)) (ritems-reached! (cdr xs))))))
+  (words-reached! (subr gen ((listof word acyclic)) unit)
+    (lambda (ws)
+      (if (null? ws)
+          #u
+          (tagcase (car ws)
+            (word (name xs)
+              (begin
+                (items-reached! xs)
+                (let ((rc (reg-code-of (get cg-reg-codes) name)))
+                  (if (null? rc) #u (tagcase (car rc) (rcode (rs frame) (ritems-reached! rs)))))
+                (words-reached! (cdr ws)))))))))
+
+(define-rec
+  (words-written (subr gen ((listof word acyclic)) strings)
+    (lambda (ws) (if (null? ws) nil (tagcase (car ws) (word (name xs) (let ((t (word-written name xs))) (cons t (words-written (cdr ws))))))))))
+
+"The listing, a word's text each, in order (C266, C268): the quoted
+ nodes' reaches counted across all the words first, then each written."
+(define cells-listing (subr gen () strings)
+  (lambda ()
+    (let ((ws (words-listed (list "program") nil nil)))
+      (begin
+        (if (null? (get cg-qnodes))
+            #u
+            (begin (set cg-qreached nil) (set cg-qlabels nil) (set cg-qnext 0) (words-reached! ws)))
+        (words-written ws)))))

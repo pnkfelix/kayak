@@ -21,6 +21,7 @@ regs-know.kfx
 regs-gen.kfx
 regs-entry.kfx
 cg-top.kfx
+listing.kfx
 heap.kfx
 words.kfx
 table.kfx
