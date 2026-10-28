@@ -85,7 +85,7 @@ section below where it has one; here the order, and what each is.
    registers across calls; each part measured by the line tables (C250).
 6. **arm64**: nothing of C241-C253 has run there (the Mac).
 7. **Checker completeness**: the 12 of `scheme-bench/` kayak refuses
-   (`compare-checkers.py --list refused`); the knot rule at a poly's
+   (`checks-summary checkers --list refused`, after the `checkers` tests run); the knot rule at a poly's
    instantiation; `set-car!`/`set-cdr!` of a union's pair; the 69 programs
    whose types print otherwise.
 8. **Register code's remaining differences from Fixpt's**: globals
@@ -625,7 +625,7 @@ Left:
 ## 30. The checker for FX-26 at large (the user, 2026-10-14: third; PLAN §9)
 
 PLAN §6.5 step 8, now first among the steps to kayak being the reference.
-The measure (C114): `scripts/compare-checkers.py`; the plan,
+The measure (C114): `crates/kayak-checks/tests/checkers.rs` (was `scripts/compare-checkers.py`); the plan,
 `docs/research/fx26-checker.md`. That day, of 357 programs Fixpt
 accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
 1. Printing as Fixpt prints, in `show-ty`: effects sorted, abbreviations
@@ -902,7 +902,7 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      through conventions (C255), `car`/`cdr` of a union's pair (C256),
      `cons` at a region of its own (C257); `scheme-bench/` and kayak's own
      programs in the checkers' comparison. Left: the 12 of `scheme-bench/`
-     kayak refuses (`compare-checkers.py --list refused`); the knot rule at
+     kayak refuses (`checks-summary checkers --list refused`, after the `checkers` tests run); the knot rule at
      a poly's instantiation, as Fixpt checks it there too; `set-car!` and
      `set-cdr!` of a union's pair.
    - **KFX's own object model** (the review's last item; the user: "these

@@ -3,6 +3,7 @@
 //!
 //! usage: checks-summary cells [--bless | --bless-drop] [--why] [--list]
 //!                             [--regs-differ] [--regs-declined]
+//!        checks-summary checkers [--list KIND] [--dir DIR] [--why] [--summary]
 //!
 //! `cells`: the tier 1 tests' findings (tests/cells.rs), in
 //! target/kayak-checks/cells/, for Fixpt's words and kayak's own. A
@@ -14,6 +15,14 @@
 //! Fixpt's exactly; --regs-differ and --regs-declined name the register
 //! words that differ from Fixpt's, and those Fixpt has and kayak declined
 //! (C259).
+//!
+//! `checkers`: kayak's checker against Fixpt's (tests/checkers.rs), in
+//! target/kayak-checks/checkers/: the programs of each kind by directory,
+//! and the line the check says (`--summary`: that line alone); `--list
+//! KIND`, the programs of KIND with the first line that differs or
+//! kayak's refusal; `--why`, kayak's refusals of what Fixpt accepts,
+//! counted by message; `--dir DIR`, only the programs under DIR. Fails if
+//! kayak accepts a program Fixpt refuses, or a program was not run.
 
 use kayak_checks::{fixpt, root};
 use std::collections::BTreeMap;
@@ -206,10 +215,188 @@ fn cells(flags: &[String]) -> i32 {
     status
 }
 
+const KINDS: [&str; 6] = ["same", "alike", "differ", "refused", "ACCEPTED", "both"];
+
+/// A refusal's kind: its place and particulars dropped.
+fn why(message: &str) -> String {
+    let mut m = message
+        .strip_prefix("kfx: ")
+        .or(message.strip_prefix("kayak-fx26: "))
+        .unwrap_or(message)
+        .to_string();
+    // `FILE:LINE: `
+    if let Some(tok) = m.split(char::is_whitespace).next()
+        && let Some(body) = tok.strip_suffix(':')
+        && let Some((x, n)) = body.rsplit_once(':')
+        && !x.is_empty()
+        && !n.is_empty()
+        && n.bytes().all(|c| c.is_ascii_digit())
+        && m[tok.len()..].starts_with(' ')
+    {
+        m = m[tok.len() + 1..].to_string();
+    }
+    // `in NAME: `
+    if let Some(rest) = m.strip_prefix("in ")
+        && let Some(i) = rest.find(':')
+        && i > 0
+        && rest[i + 1..].starts_with(' ')
+    {
+        m = rest[i + 2..].to_string();
+    }
+    // Each `…` quoted, and `named X`.
+    let mut out = String::new();
+    let mut rest = m.as_str();
+    while let Some(i) = rest.find('`') {
+        match rest[i + 1..].find('`') {
+            Some(j) => {
+                out.push_str(&rest[..i]);
+                out.push_str("`…`");
+                rest = &rest[i + 1 + j + 1..];
+            }
+            None => break,
+        }
+    }
+    out.push_str(rest);
+    let mut words: Vec<String> = Vec::new();
+    let mut named = false;
+    for w in out.split(' ') {
+        if named && !w.is_empty() {
+            words.push("X".into());
+            named = false;
+            continue;
+        }
+        named = w == "named";
+        words.push(w.to_string());
+    }
+    let m = words.join(" ");
+    let m = m.split_once(": ").map_or(m.as_str(), |x| x.0);
+    m.chars().take(90).collect()
+}
+
+fn checkers(flags: &[String]) -> i32 {
+    let mut listing = None;
+    let mut only = None;
+    let (mut whys, mut summary) = (false, false);
+    let mut i = 0;
+    while i < flags.len() {
+        match flags[i].as_str() {
+            "--list" if i + 1 < flags.len() && KINDS.contains(&flags[i + 1].as_str()) => {
+                listing = Some(flags[i + 1].clone());
+                i += 1;
+            }
+            "--dir" if i + 1 < flags.len() => {
+                only = Some(flags[i + 1].trim_end_matches('/').to_string() + "/");
+                i += 1;
+            }
+            "--why" => whys = true,
+            "--summary" => summary = true,
+            _ => {
+                eprintln!("checks-summary checkers: [--list KIND] [--dir DIR] [--why] [--summary]");
+                return 2;
+            }
+        }
+        i += 1;
+    }
+    let dir = root().join("target").join("kayak-checks").join("checkers");
+    let mut results = Vec::new();
+    let mut missing = 0;
+    for (label, _) in fixpt::checker_programs() {
+        if only
+            .as_ref()
+            .is_some_and(|d| !label.starts_with(d.as_str()))
+        {
+            continue;
+        }
+        match std::fs::read_to_string(dir.join(label.replace('/', "%"))) {
+            Ok(t) => {
+                let (k, d) = t.split_once('\n').unwrap_or((&t, ""));
+                results.push((label, k.to_string(), d.to_string()));
+            }
+            Err(_) => missing += 1,
+        }
+    }
+    let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+    let mut by_dir: BTreeMap<String, BTreeMap<String, usize>> = BTreeMap::new();
+    for (l, k, _) in &results {
+        *counts.entry(k.clone()).or_default() += 1;
+        *by_dir
+            .entry(l.split('/').next().unwrap().to_string())
+            .or_default()
+            .entry(k.clone())
+            .or_default() += 1;
+    }
+    if let Some(kind) = &listing {
+        for (l, k, d) in &results {
+            if k == kind {
+                if d.is_empty() {
+                    println!("{l}")
+                } else {
+                    println!("{l}:\n      {d}")
+                }
+            }
+        }
+    }
+    if whys {
+        let mut c: BTreeMap<String, usize> = BTreeMap::new();
+        for (_, k, d) in &results {
+            if k == "refused" {
+                *c.entry(why(d)).or_default() += 1;
+            }
+        }
+        let mut c: Vec<_> = c.into_iter().collect();
+        c.sort_by_key(|x| std::cmp::Reverse(x.1));
+        for (m, n) in c {
+            println!("{n:4}  {m}");
+        }
+    }
+    if listing.is_none() && !whys && !summary {
+        println!(
+            "{:<16}{}",
+            "directory",
+            KINDS.iter().map(|k| format!("{k:>9}")).collect::<String>()
+        );
+        for (d, cs) in &by_dir {
+            let cells: String = KINDS
+                .iter()
+                .map(|k| format!("{:>9}", cs.get(*k).map_or(String::new(), |n| n.to_string())))
+                .collect();
+            println!("{d:<16}{cells}");
+        }
+    }
+    let n = |k: &str| counts.get(k).copied().unwrap_or(0);
+    println!(
+        "compare-checkers: of {} programs Fixpt accepts, kayak's checker says the same of {}, alike of {}, \
+         differs on {}, refuses {}; of {} Fixpt refuses, kayak refuses {}, accepts {}",
+        n("same") + n("alike") + n("differ") + n("refused"),
+        n("same"),
+        n("alike"),
+        n("differ"),
+        n("refused"),
+        n("both") + n("ACCEPTED"),
+        n("both"),
+        n("ACCEPTED")
+    );
+    let mut status = 0;
+    if missing > 0 {
+        println!("compare-checkers: {missing} program(s) not run");
+        status = 1;
+    }
+    if n("ACCEPTED") > 0 {
+        for (l, k, _) in &results {
+            if k == "ACCEPTED" {
+                println!("compare-checkers: K1: kayak accepts {l}");
+            }
+        }
+        status = 1;
+    }
+    status
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let status = match args.first().map(String::as_str) {
         Some("cells") => cells(&args[1..]),
+        Some("checkers") => checkers(&args[1..]),
         _ => {
             eprintln!(
                 "usage: checks-summary cells [--bless | --bless-drop] [--why] [--list] [--regs-differ] [--regs-declined]"

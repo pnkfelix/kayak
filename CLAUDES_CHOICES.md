@@ -7795,3 +7795,17 @@ them Fixpt's exactly, 27 not generated yet; register words 918 and 8).
 Both runs together took 174 s, on a machine busy with a snapshot check;
 the Python's took 139 s and 178 s, one after the other. The longest test
 is `preempt/allocating.fx`, its slice ways.
+
+## C279. The checkers compared under nextest (2026-10-28)
+
+`scripts/compare-checkers.py` is now `crates/kayak-checks/tests/checkers.rs`:
+a test for each program, `checkers/NAME`, Fixpt's, its `scheme-bench/`
+and kayak's own. Each fails only on a K1 breach, kayak accepting what Fixpt
+refuses. `checks-summary checkers` takes the script's flags (`--list
+KIND`, `--why`, `--dir`, `--summary`). On the same tree, the same counts
+as the Python: of 535 programs Fixpt accepts, 405 the same, 90 differ, 40
+refused; of 386 it refuses, kayak accepts none. `--why`'s messages and
+counts are the same, but ties are in a different order. The first run's
+counts were two off: `root()` was `crates/kayak-checks/../..`, so the
+engine printed paths unlike those in Fixpt's answers kept. It is
+canonical now, as the Python's `abspath` was.

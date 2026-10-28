@@ -19,3 +19,7 @@ harness = false
 [[test]]
 name = "cells"
 harness = false
+
+[[test]]
+name = "checkers"
+harness = false

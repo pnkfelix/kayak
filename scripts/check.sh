@@ -68,9 +68,6 @@ fi
 # Those that kfx accepts, run both ways.
 step python3 -I scripts/run-fixpt-programs.py
 step python3 -I scripts/refused-fixpt-programs.py
-# The checkers compared, form by form (TODO §30): fails only if kayak's
-# accepts a program Fixpt's refuses; the rest is the measure of §30.
-step python3 -I scripts/compare-checkers.py --summary
 # The two beside the rest, in order.
 for job in fixpoint tests; do
     eval pid=\$$job
@@ -84,6 +81,10 @@ fixpoint=; tests=
 # on kayak's own (C133): what the tests found (crates/kayak-checks/tests/
 # cells.rs), counted.
 step cargo run --release --quiet -p kayak-checks --bin checks-summary -- cells
+# The checkers compared, form by form (TODO §30, tests/checkers.rs): fails
+# only if kayak's accepts a program Fixpt's refuses; the rest is the
+# measure of §30.
+step cargo run --release --quiet -p kayak-checks --bin checks-summary -- checkers --summary
 # Every answer kept was asked for in this check: the rest dropped, and the
 # answers stamped as the pin's.
 if [ -n "$clone" ]; then

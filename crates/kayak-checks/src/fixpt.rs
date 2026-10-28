@@ -156,6 +156,35 @@ pub fn kayak_programs() -> Vec<(String, PathBuf)> {
     out
 }
 
+/// The programs the checkers are compared on (tests/checkers.rs), each
+/// with its label: Fixpt's, its `scheme-bench/` from the clone when there
+/// is one (C256), and kayak's own (C257).
+pub fn checker_programs() -> Vec<(String, PathBuf)> {
+    let mut out = programs();
+    let clone = std::env::var_os("KAYAK_FIXPT_CLONE")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root().join("..").join("kayak-refs").join("fixpt"));
+    let bench = clone.join("scheme-bench");
+    if binary().is_some()
+        && let Ok(rd) = std::fs::read_dir(&bench)
+    {
+        let mut bs: Vec<PathBuf> = rd
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "fx"))
+            .collect();
+        bs.sort();
+        out.extend(bs.into_iter().map(|p| {
+            (
+                format!("scheme-bench/{}", p.file_name().unwrap().to_string_lossy()),
+                p,
+            )
+        }));
+    }
+    out.extend(kayak_programs());
+    out
+}
+
 fn answers_dir() -> PathBuf {
     root().join("tests").join("fixpt-answers")
 }

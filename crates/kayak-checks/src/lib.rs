@@ -105,7 +105,10 @@ pub fn run(tests: Vec<Test>) -> ! {
 
 /// The repository's root.
 pub fn root() -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."))
+    // Canonical: the paths the programs say are written so, as Python's
+    // scripts wrote them.
+    let r = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    std::fs::canonicalize(&r).unwrap_or(r)
 }
 
 /// A program built by `cargo build --release`, as `scripts/check.sh` has
