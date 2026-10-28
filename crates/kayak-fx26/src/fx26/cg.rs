@@ -5661,6 +5661,26 @@ pub fn std_arity_in(mut ps: Sexps, mut n: Str) -> i64 {
     }
 }
 
+// kayak-rt's primitives' table read, kept once read (C262): read again for
+// each name `c-arity` was asked of, each variable's name new to the
+// analyses, it was most of what the reader read in compiling a program.
+pub fn cg_primitive_forms() -> Ref<List<Sexps>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<Sexps>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<List<&'static Sexp>>())
+    })
+}
+
+pub fn primitive_forms() -> Sexps {
+    if null_p(get(cg_primitive_forms())) {
+        let fs = read_all(string_chars(primitives()), str_lit("kayak-rt's primitives"), 1i64);
+        set(cg_primitive_forms(), kayak_rt::heap_cons(fs, kayak_rt::nil()));
+        fs
+    } else {
+        car(get(cg_primitive_forms()))
+    }
+}
+
 // How many arguments a standard operation takes, as a value, or -1 if it
 // is not known here (Fixpt asks its runtime's table for the rest: not yet).
 pub fn c_arity(n: Str) -> i64 {
@@ -5675,7 +5695,7 @@ pub fn c_arity(n: Str) -> i64 {
     } else if std_eq_name_p(n) {
         2i64
     } else {
-        std_arity_in(read_all(string_chars(primitives()), str_lit("kayak-rt's primitives"), 1i64), n)
+        std_arity_in(primitive_forms(), n)
     }
 }
 

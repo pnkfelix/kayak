@@ -206,6 +206,63 @@ collector marks code bloblets in place, are kayak's, not part of this.
   `native-procedure`, `native-code?` as Fixpt's `fx-cells-rsinterp` has
   them, and Fixpt's `made-code-x86_64/*.fx` programs on tier 1.
 
+## Amendment proposed: no effect required (kayak's request, 2026-10-27)
+
+For Fixpt first, as the design was. **Drop the rule that a syscall's
+effect must hold `(io sys)`.** A syscall's effect becomes whatever its
+declaration says, within the atoms already allowed (reads, writes and
+allocations of the `poly`'s regions, `io` effects, `spin`, `nondet`), and
+none, `pure`, among them. Everything else stays: the crossing types, the
+region-only `poly`, the canonical form (which prints no atoms as `pure`
+already), the check at load, containment.
+
+**Why.** The rule was this design's own (its "so that every use of a
+syscall shows in the types of what uses it"), and it buys less than it
+costs:
+
+- *It adds no safety.* A syscall is trusted already, wholly: one declared
+  `(maxeff (io sys) (read r1))` is trusted not to write `r1`, not to
+  allocate, and to give what its type says. A host that breaks that
+  breaks the program whether or not `(io sys)` is there. The program and
+  the runtime coordinate on the type, by its canonical text, effect
+  included; a host function that does I/O says so, with `(io sys)` or
+  another `io` atom, as any other part of its type.
+- *Visibility it does not need to give*: only a runtime's own code may
+  declare a syscall, so each one is found by its declaration.
+- *It makes a pure host function impure to every caller.* The effect then
+  spreads through every procedure that reaches it, up to procedures that
+  are pure and used everywhere, which FX-26 gives no way to wrap.
+
+**The case that asks for it.** Kayak's compiler joins its listing's
+pieces into one string: a buffer sized once (`make-bytevector`), each
+piece's bytes copied in, `utf8->string` once. Sizing it wants each
+string's length in bytes, which FX-26 does not give (`string-length`
+counts characters): `string->utf8` gives it only by copying. A runtime
+whose strings are UTF-8 (Fixpt's, kayak-rt's) has the length at hand, so
+`kayak:string-utf8-length/1`, `(subr pure (string) int)`, would be the
+natural syscall. Under the rule, it is `(subr (io sys) (string) int)`, and
+the join, and every procedure that joins strings, all `pure` today, would
+say `(io sys)`.
+
+**What changes.**
+- In both checkers, the check of a declaration's effect no longer
+  requires `(io sys)`; the other atoms' rule is as it was. The message
+  that names it goes.
+- A call of a syscall has its declared type's effect, as now; a `pure`
+  one's call is pure to the compilers, which may move, share or drop it as
+  they do any pure call. The host must then be so (the coordination any
+  syscall's type asks for).
+- Tests: a `pure` syscall declared and called from a `pure` procedure
+  (accepted, and a runtime that gives it at that type loads); the same
+  syscall declared with `(io sys)` against a runtime that gives it `pure`
+  (load fails: the types differ, as any other difference).
+- `fx26.md`'s "its effect holds `(io sys)`, and only …" becomes "its
+  effect only …".
+
+**Not asked**: a `string-utf8-length` in FX-26 itself, a standard pure
+operation, which would serve every program, not only a runtime's; worth
+asking separately.
+
 ## Open questions
 
 - Whether `(io sys)` should be one atom or one per namespace

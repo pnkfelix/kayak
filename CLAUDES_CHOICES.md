@@ -7375,3 +7375,33 @@ checker's mangling. Not regions kept, at this size: work done.
   and 179 MB at peak, `case-tree` 210 ms and 178 MB to 130 ms and 96 MB,
   `captures` (a smaller listing) as before. What is left is filed
   (`TODO.md`, the reader first).
+
+## C262. Compile memory: the primitives' table read once; syscalls of no required effect, asked of Fixpt (2026-10-27)
+
+- **Where the reader's work went.** Of an 11 KB program's 211K
+  s-expressions, nearly all were kayak-rt's primitives' table (198 KB of
+  text, `kfx/check-defs.kfx`), read whole again by `c-arity` for each name
+  it was asked of that is no standard operation of its short lists: the
+  analyses ask of every variable (`r-standard-value-name?`, which keeps its
+  answers, but per name), so a program read the table once a distinct
+  name. Found with the sampler's new `KAYAK_HEAP_SKIP` (frames left out,
+  a recursion's, to see its caller). Now kept once read
+  (`cg-primitive-forms`, `c-arity` of the effect `gen`, as its callers
+  are). A top-level value would not have done: KFX computes one once only
+  where the checker found it so (`once`), else at each use. Listings byte
+  for byte as before; `fixed-width-ops` 240 ms and 179 MB at peak to 80 ms
+  and 55 MB (from 310 ms and 256 MB before C261), `case-tree` to 70 ms and
+  45 MB, `captures` 150 ms and 111 MB to 50 ms and 36 MB; the heap 108 MB to
+  32.
+- **A presized join, and what it wants.** The user asked whether KFX
+  wants a string buffer: it has one, FX-26's bytevectors (`make-bytevector`,
+  `bytevector-copy!`, `utf8->string`), but sizing it wants a string's
+  length in bytes, which FX-26 does not give. A syscall could
+  (`kayak:string-utf8-length/1`), but FX-26's syscalls must hold `(io sys)`
+  in their effect, a rule of kayak's own design, which would make the join
+  and every procedure joining strings say it. The user: the trust any
+  syscall asks for is unavoidable, the runtime and the program coordinating
+  on its type; so the rule buys nothing. Proposed to Fixpt (the amendment in
+  `docs/research/syscalls.md`): a syscall's effect what it declares, `pure`
+  among them. The presized join waits on it (the user: "We won't bother
+  with 2 until fixpt makes the requested change"; `TODO.md`).

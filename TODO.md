@@ -53,11 +53,17 @@ section below where it has one; here the order, and what each is.
    at that size it is not regions kept but work done: the listing built
    by appending each piece onto the rest (86 of the heap's 187 MB, now
    joined at once, `string-list-append`: 179 MB, 240 ms), then the reader
-   (211K s-expressions for an 11 KB program, about 40 MB: what it reads to
-   find), `c-arity` making each name's characters (16 bytes each) at every
-   call, and the checker's mangling. Then the 55 GB case measured the same
-   way (`heap-stats`); options to the user before building anything
+   reading kayak-rt's 198 KB primitives' table again for each new name
+   `c-arity` was asked of (C262, kept once read: 55 MB, 80 ms). Left: the
+   checker's mangling, lists of strings. Then the 55 GB case measured the
+   same way (`heap-stats`); options to the user before building anything
    larger than a fix of this kind.
+   Waiting on Fixpt: syscalls of no required effect (the amendment
+   proposed in `docs/research/syscalls.md`, the user's 2026-10-27); then a
+   `kayak:string-utf8-length/1`, `pure`, and `string-list-append` as one
+   buffer sized once (`make-bytevector`, `bytevector-copy!`,
+   `utf8->string`), not before (the user: "We won't bother with 2 until
+   fixpt makes the requested change").
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).

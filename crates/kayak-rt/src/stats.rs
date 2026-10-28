@@ -53,11 +53,20 @@ mod on {
                     && !l.starts_with("at ")
             })
             .map(|l| l.split_once(": ").map_or(l, |(_, f)| f))
+            .filter(|l| skip().is_none_or(|k| !l.contains(k.as_str())))
             .take(depth())
             .collect();
         let key = frames.join(" < ");
         let mut t = SAMPLES.lock().unwrap_or_else(|e| e.into_inner());
         *t.get_or_insert_with(HashMap::new).entry(key).or_insert(0) += bytes as u64;
+    }
+
+    /// With `KAYAK_HEAP_SKIP=TEXT`, frames whose names have it left out:
+    /// a recursion's, to see what called it.
+    fn skip() -> Option<&'static String> {
+        static SKIP: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+        SKIP.get_or_init(|| std::env::var("KAYAK_HEAP_SKIP").ok())
+            .as_ref()
     }
 
     fn depth() -> usize {

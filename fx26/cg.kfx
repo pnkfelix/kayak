@@ -1848,9 +1848,20 @@
             ((sym-is? (car (items (car ps))) n) (subr-params (second (items (car ps)))))
             (else (std-arity-in (cdr ps) n))))))
 
+"kayak-rt's primitives' table read, kept once read (C262): read again for
+ each name `c-arity` was asked of, each variable's name new to the
+ analyses, it was most of what the reader read in compiling a program."
+(define cg-primitive-forms (ref (listof sexps acyclic) @g) (new nil))
+(define primitive-forms (subr gen () sexps)
+  (lambda ()
+    (if (null? (get cg-primitive-forms))
+        (let ((fs (read-all (string-chars primitives) "kayak-rt's primitives" 1)))
+          (begin (set cg-primitive-forms (list fs)) fs))
+        (car (get cg-primitive-forms)))))
+
 "How many arguments a standard operation takes, as a value, or -1 if it
  is not known here (Fixpt asks its runtime's table for the rest: not yet)."
-(define c-arity (subr kfx (string) i64)
+(define c-arity (subr gen (string) i64)
   (lambda (n)
     (cond ((string-member? n (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key")) 0)
           ((string-member? n (list "car" "cdr" "null?" "not" "new" "get" "char->integer" "integer->char" "string-length"
@@ -1865,7 +1876,7 @@
                                    "marks-of" "call-with-composable-continuation" "call-with-oneshot-continuation" "first-mark"))
            2)
           ((std-eq-name? n) 2)
-          (else (std-arity-in (read-all (string-chars primitives) "kayak-rt's primitives" 1) n)))))
+          (else (std-arity-in (primitive-forms) n)))))
 
 "The boolean on top negated."
 (define c-not (subr gen (code) unit) (lambda (c) (begin (c-lit c (l-bool #f)) (c-op c "eq"))))
