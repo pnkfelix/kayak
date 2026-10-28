@@ -1,0 +1,55 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"plambda-synth.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (26 cells, cellular):",
+"     0: closure word lambda@253 over 0",
+"     3: global! id",
+"     5: closure word lambda@322 over 0",
+"     8: global! pick",
+"    10: lit 5",
+"    12: global id",
+"    14: tcall 1",
+"    16: lit #t",
+"    18: lit 37",
+"    20: global pick",
+"    22: tcall 2",
+"    24: int-add",
+"    25: exit",
+"",
+"word lambda@322 (3 cells, cellular):",
+"     0: slot 1",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 2",
+"       2: reg 2",
+"       4: return",
+"",
+"word lambda@253 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

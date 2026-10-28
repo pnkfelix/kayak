@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"plambda-synth.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"id : (poly ((t type)) (subr pure (t) t)) ! pure",
+"pick : (poly ((a type) (b type)) (subr pure (a b) b)) ! pure",
+"42 : int ! (read (globals id pick))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

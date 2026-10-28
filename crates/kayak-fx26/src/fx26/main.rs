@@ -43,6 +43,16 @@ pub fn read_text(path: Str) -> Str {
     }
 }
 
+// A failure as the engine says it (C273): the checker's and reader's, which
+// they share with kfx, say `kfx: ` first; the engine says its own.
+pub fn engine_said(m: Str) -> Str {
+    if has_prefix_p(m, str_lit("kfx: ")) {
+        after_prefix(m, str_lit("kfx: "))
+    } else {
+        m
+    }
+}
+
 pub fn say(s: Str) -> () {
     let tagcase_ = write_out(s);
     match *tagcase_ {

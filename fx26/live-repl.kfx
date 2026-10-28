@@ -1506,7 +1506,7 @@ an entry naming one that has not ended waits for it.")
               #u
               (begin
                 (set (extract (car es) state) st-refused)
-                (set (extract (car es) shown) message)
+                (set (extract (car es) shown) (engine-said message))
                 (set (extract (car es) ended) now))))))
 
     (define speculate! (subr running (i64) bool)

@@ -47,8 +47,27 @@ fn run(args: Vec<String>) -> i64 {
     status
 }
 
+/// A batch run's failure said as the engine's (C273): its message alone,
+/// `kayak-fx26: …`, where the checker and reader it shares with kfx say
+/// `kfx: …`, and Rust's own hook says the thread and where it panicked.
+/// The REPL catches its own and says them in its entries.
+fn say_failures() {
+    std::panic::set_hook(Box::new(|info| {
+        let p = info.payload();
+        let m = p
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| p.downcast_ref::<&str>().copied())
+            .unwrap_or("a failure");
+        eprintln!("kayak-fx26: {}", m.strip_prefix("kfx: ").unwrap_or(m));
+    }));
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if !(args.is_empty() || args == ["repl"]) {
+        say_failures();
+    }
     let status = run(args);
     kayak_rt::heap_stats_report();
     std::process::exit((status & 0xff) as i32);

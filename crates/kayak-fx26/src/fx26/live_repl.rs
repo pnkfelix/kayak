@@ -2707,7 +2707,7 @@ pub mod session {
             ()
         } else {
             set(car(es).6, st_refused());
-            set(car(es).8, message);
+            set(car(es).8, engine_said(message));
             set(car(es).11, now)
         }
     }

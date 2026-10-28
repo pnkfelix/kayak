@@ -5879,6 +5879,8 @@ pub mod expressions {
                 return vlambda_form(v, s, xs, nil::<&'static Ty>());
             } else if (string_eq_p(h, str_lit("rlambda")) && null_p(scope_bind(h, v))) {
                 return rlambda_form(v, s, e, xs, nil::<&'static Ty>());
+            } else if (string_eq_p(h, str_lit("plambda")) && null_p(scope_bind(h, v))) {
+                return plambda_synth(v, s, xs);
             } else if string_eq_p(h, str_lit("proj")) {
                 return proj_form(v, s, xs);
             } else if string_eq_p(h, str_lit("list")) {
@@ -10350,7 +10352,7 @@ pub mod expressions {
                     }
                 }
             }))) {
-                return match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))) {};
+                return match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which kayak's checker does not take here, or a call of a local named by that keyword")))) {};
             } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
                 return abort_call(v, s, args);
             } else if (null_p(found) && string_eq_p(h, str_lit("native-procedure"))) {
@@ -12164,6 +12166,118 @@ pub mod expressions {
                         match refuse(v, str_lit("a plambda's region escapes it, in a type found outside it")) {}
                     } else {
                         res(expected, es, s2)
+                    }
+                }
+            }
+        }
+    }
+
+    /// `(plambda (binders) body)` where nothing says its type: the body found
+    /// with the binders, rigid, in scope, its type closed over them, as
+    /// Fixpt finds it (C273: kayak's checker had taken a plambda only where
+    /// a poly type is expected, and refused this one); none of them may
+    /// escape into a type found outside it.
+    pub fn plambda_synth(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+        if not(i64_eq(size(xs), 2i64)) {
+            match refuse(v, str_lit("(plambda (binders) body)")) {}
+        } else {
+            let marks = concat(map(lambda1s(move |b: &'static Sexp| {
+                if distinct_binder_p(b) {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%distinct '"), sym_name(car(items(b)))), kayak_rt::nil()))
+                } else if ({
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            i64_eq(size(ys), 2i64)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && sym_is_p(second(items(b)), str_lit("place"))) {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%place '"), sym_name(car(items(b)))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), items(car(xs))));
+            let names = map(lambda1s(move |b: &'static Sexp| {
+                if (distinct_binder_p(b) || {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            i64_eq(size(ys), 2i64)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    let (k, n) = (second(items(b)), sym_name(car(items(b))));
+                    if sym_is_p(k, str_lit("region")) {
+                        string_append(str_lit("'"), n)
+                    } else if sym_is_p(k, str_lit("place")) {
+                        string_append(str_lit("'"), n)
+                    } else if sym_is_p(k, str_lit("size")) {
+                        string_append(str_lit("#"), n)
+                    } else if sym_is_p(k, str_lit("type")) {
+                        n
+                    } else if sym_is_p(k, str_lit("conv")) {
+                        binder_named(str_lit("conv"), n)
+                    } else if head_is_p(k, str_lit("=>")) {
+                        binder_named(kind_text(v, k), n)
+                    } else {
+                        match refuse(v, str_lit("a plambda binds regions, types and sizes")) {}
+                    }
+                } else {
+                    match refuse(v, str_lit("a plambda binds regions, types and sizes")) {}
+                }
+            }), items(car(xs)));
+            let s = if all_regions_p(names) {
+                s
+            } else {
+                kfx_restricted(v, s, str_lit("a plambda of types or sizes, which KFX has not yet: its Rust erases regions alone (C107)"))
+            };
+            if any_p(lambda1s(move |n: Str| {
+                string_member_p(n, cv_tvars(v))
+            }), names) {
+                match refuse(v, str_lit("a plambda's binder named as one in scope already")) {}
+            } else {
+                let before = st_next(s);
+                let tagcase_ = synth(with_tvars(v, onto(marks, names)), s, second(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s2) => {
+                        if any_p(lambda1s(move |k: i64| {
+                            any_p(lambda1s(move |n: Str| {
+                                mentions_p(s2, ty_meta(k), n)
+                            }), names)
+                        }), filter(lambda1s(move |k: i64| {
+                            i64_lt(k, before)
+                        }), concat(map(lambda1s(move |b: &'static Bind| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Bind::Bind(n, sc, w) => {
+                                    if string_eq_p(w, str_lit("local")) {
+                                        let tagcase_ = sc;
+                                        match *tagcase_ {
+                                            Scheme::Scheme(tv, u) => {
+                                                metas_of(u)
+                                            }
+                                        }
+                                    } else {
+                                        nil::<i64>()
+                                    }
+                                }
+                            }
+                        }), cv_binds(v))))) {
+                            match refuse(v, str_lit("a plambda's binder escapes it, in a type found outside it")) {}
+                        } else {
+                            let pos = cv_pos(v);
+                            res(ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
+                                ty_var(string_append(n, string_append(str_lit("@"), i64_to_string(pos))))
+                            }), names), kayak_rt::heap_cons(fold_renames(names, pos, zonk(s2, t)), kayak_rt::nil()))), es, s2)
+                        }
                     }
                 }
             }

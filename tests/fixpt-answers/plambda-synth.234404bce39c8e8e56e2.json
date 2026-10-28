@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"plambda-synth.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define id : (poly ((t type)) (subr pure (t) t)) ! pure",
+"define pick : (poly ((a type) (b type)) (subr pure (a b) b)) ! pure",
+"int ! (read (globals id pick))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

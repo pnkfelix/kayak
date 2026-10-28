@@ -2752,7 +2752,7 @@ pub mod tasks {
             ()
         } else {
             set(car(es).6, st_refused());
-            set(car(es).7, message);
+            set(car(es).7, engine_said(message));
             set(car(es).10, now)
         }
     }

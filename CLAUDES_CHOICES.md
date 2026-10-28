@@ -7648,3 +7648,25 @@ module value opened its type walked only at its top (`mtype-opened` of
 parameters and result but not its effect's region atoms (now each by
 `resolve-atom`). Test: `kayak/checker/module-place-effects.fx`, Fixpt's
 answer on the engine. The modules themselves, KFX's, next.
+
+## C273. A `plambda` where nothing says its type; the engine's failures its own (2026-10-28)
+
+The user, at the engine's REPL, `(plambda ((t type)) (lambda ((x t)) x))`
+refused "(plambda ...) is FX-26's form, which KFX does not have": "so
+explain this". Three things, all fixed ("yeah fix it"):
+- **A gap**: kayak's checker took a `plambda` only where a poly type is
+  expected (`plambda-form`, C107); elsewhere it fell to the call of a
+  name, which refuses a keyword. Now its body is found with its binders,
+  rigid, in scope, and its type is the poly of them (`plambda-synth`; its
+  binders renamed as a written poly type's are, `fold-renames`; none may
+  escape into a type found outside). Fixpt gives it `(poly ((t type))
+  (subr pure (t) t))`. Test: `kayak/checker/plambda-synth.fx`.
+- **The message** was KFX's, from when the checker was KFX's alone: a
+  refusal, not a restriction noted for kfx's pass, so the engine said it
+  too. Now "FX-26's form, which kayak's checker does not take here".
+- **The prefix**: the checker and the reader, shared with kfx, say `kfx: `
+  first. The engine's REPL now says a refusal without it
+  (`engine-said`), and its batch runs say a failure `kayak-fx26: …`
+  alone, where Rust's own hook had said the thread and where it panicked
+  first (a hook of `main.rs`, for batch runs only: the REPL catches and
+  says its own).
