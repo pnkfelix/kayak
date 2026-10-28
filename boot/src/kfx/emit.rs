@@ -2819,6 +2819,10 @@ pub mod emitter {
                     } else if (sym_is_p(car(xs), str_lit("identity")) && i64_eq(size(xs), 3i64)) {
                         // That keys have identity (C194): kayak-rt's `IdentityOf<K>`.
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("IdentityOf<"), acc)));
+                    } else if (sym_is_p(car(xs), str_lit("bytevectorof")) && i64_eq(size(xs), 2i64) && not(string_eq_p(region_lifetime(c, second(xs)), str_lit("")))) {
+                        // Bytes at a `letrena`'s region (C267): `BytesAt<'r>`, which may be
+                        // made there, freed with it; the heap's, `Bytes`, are `BytesAt<'static>`.
+                        return put(str_lit(">"), put(region_lifetime(c, second(xs)), put(str_lit("BytesAt<"), acc)));
                     } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                         return put(str_lit("Bytes"), acc);
                     } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
@@ -2913,7 +2917,11 @@ pub mod emitter {
                         if null_p(fs) {
                             return acc;
                         } else {
-                            return put(str_lit(">"), put_types(c, map(&second, fs), put(str_lit("<"), acc)));
+                            return put(str_lit(">"), put_types(if product {
+                                c
+                            } else {
+                                in_heap(c)
+                            }, map(&second, fs), put(str_lit("<"), acc)));
                         }
                     } else if (sym_is_p(car(xs), str_lit("poly")) && not(any_p(lambda1s(move |b: &'static Sexp| {
                         not(sym_is_p(second(items(b)), str_lit("region")))
@@ -4387,6 +4395,9 @@ pub mod emitter {
                 return put(str_lit("}"), put_nl(n, acc));
             } else if string_eq_p(h, str_lit("lambda")) {
                 return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
+            } else if (string_member_p(h, kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::nil())))) && not(string_eq_p(fact_with(c, e, str_lit("rbytes-in ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // Bytes made at a place's region, in it (C267): `NAME_in(place, ...)`.
+                return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit(", "), put(mangle(fact_with(c, e, str_lit("rbytes-in "))), put(str_lit("("), put(string_append(mangle(h), str_lit("_in")), acc))))));
             } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
             } else if process_call_p(h) {
@@ -4907,6 +4918,8 @@ pub mod emitter {
     pub fn held_rust(c: &'static Ctx, kind: Str, life: Str, t: &'static Sexp) -> Str {
         if string_eq_p(kind, str_lit("cons")) {
             string_append(str_lit("Cons<"), string_append(life, string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+        } else if string_eq_p(kind, str_lit("bytes")) {
+            str_lit("BytesCells")
         } else if string_eq_p(kind, str_lit("ref")) {
             string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
         } else if not(null_p(typed_flat(c, t))) {

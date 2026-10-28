@@ -1484,6 +1484,10 @@
                     ((and (sym-is? (car xs) "identity") (i64= (size xs) 3))
                      "That keys have identity (C194): kayak-rt's `IdentityOf<K>`."
                      (put ">" (put-type c (second xs) (put "IdentityOf<" acc))))
+                    ((and (sym-is? (car xs) "bytevectorof") (i64= (size xs) 2) (not (string=? (region-lifetime c (second xs)) "")))
+                     "Bytes at a `letrena`'s region (C267): `BytesAt<'r>`, which may be
+                      made there, freed with it; the heap's, `Bytes`, are `BytesAt<'static>`."
+                     (put ">" (put (region-lifetime c (second xs)) (put "BytesAt<" acc))))
                     ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
                     ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                      (put ">" (put-type c (second xs) (put "Array<" acc))))
@@ -1552,7 +1556,10 @@
                             (fs (map items (cdr xs)))
                             (acc (put (shape-name product (map (lambda ((f sexps)) (label-of (car f))) fs))
                                       (if product acc (put "&'static " acc)))))
-                       (if (null? fs) acc (put ">" (put-types c (map second fs) (put "<" acc))))))
+                       ;; A sum is the heap's, `&'static`: its parts at no
+                       ;; place's lifetime (a region's bytes there the heap's,
+                       ;; C267).
+                       (if (null? fs) acc (put ">" (put-types (if product c (in-heap c)) (map second fs) (put "<" acc))))))
                     ((and (sym-is? (car xs) "poly")
                           (not (any? (lambda ((b sexp)) (not (sym-is? (second (items b)) "region"))) (items (second xs)))))
                      "A type polymorphic in regions alone (rank 2, C107): its body's,
@@ -2433,6 +2440,11 @@
                         (acc (put-case-arms c (case-kind c e) (cdr xs) (i64+ n 1) t acc)))
                    (put "}" (put-nl n acc))))
                 ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
+                ((and (string-member? h (list "make-bytevector" "string->utf8" "bytevector-copy"))
+                      (not (string=? (fact-with c e "rbytes-in ") "")) (string=? (local-kind h (ctx-locals c)) ""))
+                 "Bytes made at a place's region, in it (C267): `NAME_in(place, ...)`."
+                 (put ")" (put-joined c xs ", " n
+                   (put ", " (put (mangle (fact-with c e "rbytes-in ")) (put "(" (put (string-append (mangle h) "_in") acc)))))))
                 ((and (string=? h "rlambda") (string=? (local-kind h (ctx-locals c)) "")) (put-lambda c e (items (second xs)) (cdr (cdr xs)) n acc))
                 ((process-call? h)
                  "A form of processes that is a call (C101): the runtime's, whatever
@@ -2775,6 +2787,7 @@
           "An arena's type, for a making of `kind` in a place of lifetime `life`:
            a pair, `Cons<'r, T>`; a reference's cell; a bloblet."
           (cond ((string=? kind "cons") (string-append "Cons<" (string-append life (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
+                ((string=? kind "bytes") "BytesCells")
                 ((string=? kind "ref") (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))
                 ((not (null? (typed-flat c t)))
                  (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))

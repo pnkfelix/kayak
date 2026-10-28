@@ -2672,7 +2672,7 @@
                 ((and (blob-form? h) (null? (scope-bind h v))) (blob-form v s h xs nil))
                 ((string=? h "and") (bools v s xs #t))
                 ((string=? h "or") (bools v s xs #f))
-                (else (synth-call v s h xs nil)))))
+                (else (bytes-placed v (synth-call v s h xs nil) h)))))
 
       (check-form (subr kfx (cv st sexp string sexps ty) res)
         (lambda (v s e h xs expected)
@@ -2765,7 +2765,7 @@
                 ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "quasiquote")
                      (string=? h "extract"))
                  (check-by-synth v s e expected))
-                (else (synth-call v s h xs (list expected))))))
+                (else (bytes-placed v (synth-call v s h xs (list expected)) h)))))
 
       (elements (subr kfx (cv st sexps ty) res)
         (lambda (v s xs el)
@@ -4484,6 +4484,39 @@
                     (refuse v "a module value's define-rec member is (name type value)")
                     (tagcase (check v s (third g) (bound-type v (sym-name (car g))))
                       (res (u es s2) (mod-rec-checked v s2 (cdr gs)))))))))
+
+      (bytes-placed (subr kfx (cv res string) res)
+        (lambda (v r h)
+          "A bytevector made by the standard `make-bytevector`, `string->utf8`
+           or `bytevector-copy` at a place's region (C267): noted, `rheld-bytes`
+           at the place's region, so that the place holds bytes, and
+           `rbytes-in` the place's name, so that it is made there and freed with
+           it. Where its region is no place known here, nothing: it is made in
+           the heap, as before."
+          (if (not (and (string-member? h (list "make-bytevector" "string->utf8" "bytevector-copy"))
+                        (let ((b (scope-bind h v))) (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w "prim")))))))
+              r
+              (tagcase r
+                (res (t es s)
+                  (tagcase (walk s t)
+                    (ty-data (d args)
+                      (if (or (not (string=? d "%bytes")) (null? args))
+                          r
+                          (let* ((rn (region-string s (car args)))
+                                 (place (if (has-prefix? rn "'") (after-prefix rn "'") ""))
+                                 (b (if (string=? place "") nil (scope-bind place v))))
+                            (if (and (not (null? b))
+                                     (tagcase (car b)
+                                       (bind (n sc w)
+                                         (tagcase sc
+                                           (scheme (tv pt)
+                                             (tagcase (walk s pt)
+                                               (ty-data (pd pargs) (and (string=? pd "%place") (not (null? pargs)) (string=? (region-string s (car pargs)) rn)))
+                                               (else other #f)))))))
+                                (res t es (note-fact (note-types s (cv-file v) (cv-pos v) (string-append "rheld-bytes@" rn) (list (ty-unit)))
+                                                     (cv-file v) (cv-pos v) (string-append "rbytes-in " place)))
+                                r))))
+                    (else other r)))))))
 
       (synth-call (subr kfx (cv st string sexps tys) res)
         (lambda (v s h args expected)

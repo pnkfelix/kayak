@@ -5816,7 +5816,7 @@ pub mod expressions {
             } else if string_eq_p(h, str_lit("or")) {
                 return bools(v, s, xs, false);
             } else {
-                return synth_call(v, s, h, xs, nil::<&'static Ty>());
+                return bytes_placed(v, synth_call(v, s, h, xs, nil::<&'static Ty>()), h);
             }
         }
     }
@@ -6077,7 +6077,7 @@ pub mod expressions {
         } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("quote")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("extract"))) {
             check_by_synth(v, s, e, expected)
         } else {
-            synth_call(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
+            bytes_placed(v, synth_call(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil())), h)
         }
     }
 
@@ -9977,6 +9977,84 @@ pub mod expressions {
                         Res::Res(u, es, s2) => {
                             (s, gs) = (s2, cdr(gs));
                             continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// A bytevector made by the standard `make-bytevector`, `string->utf8`
+    /// or `bytevector-copy` at a place's region (C267): noted, `rheld-bytes`
+    /// at the place's region, so that the place holds bytes, and
+    /// `rbytes-in` the place's name, so that it is made there and freed with
+    /// it. Where its region is no place known here, nothing: it is made in
+    /// the heap, as before.
+    pub fn bytes_placed(v: &'static Cv, r: &'static Res, h: Str) -> &'static Res {
+        if not((string_member_p(h, kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::nil())))) && {
+            let b = scope_bind(h, v);
+            (not(null_p(b)) && {
+                let tagcase_ = car(b);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        string_eq_p(w, str_lit("prim"))
+                    }
+                }
+            })
+        })) {
+            r
+        } else {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            if (not(string_eq_p(d, str_lit("%bytes"))) || null_p(args)) {
+                                r
+                            } else {
+                                let rn = region_string(s, car(args));
+                                let place = if has_prefix_p(rn, str_lit("'")) {
+                                    after_prefix(rn, str_lit("'"))
+                                } else {
+                                    str_lit("")
+                                };
+                                let b = if string_eq_p(place, str_lit("")) {
+                                    nil::<&'static Bind>()
+                                } else {
+                                    scope_bind(place, v)
+                                };
+                                if (not(null_p(b)) && {
+                                    let tagcase_ = car(b);
+                                    match *tagcase_ {
+                                        Bind::Bind(n, sc, w) => {
+                                            let tagcase_ = sc;
+                                            match *tagcase_ {
+                                                Scheme::Scheme(tv, pt) => {
+                                                    let tagcase_ = walk(s, pt);
+                                                    match *tagcase_ {
+                                                        Ty::TyData(pd, pargs) => {
+                                                            (string_eq_p(pd, str_lit("%place")) && not(null_p(pargs)) && string_eq_p(region_string(s, car(pargs)), rn))
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            false
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }) {
+                                    res(t, es, note_fact(note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rheld-bytes@"), rn), kayak_rt::heap_cons(ty_unit(), kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("rbytes-in "), place)))
+                                } else {
+                                    r
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            r
                         }
                     }
                 }

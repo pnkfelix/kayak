@@ -2591,7 +2591,7 @@ pub mod tasks {
         if string_eq_p(get(f.39), str_lit("")) {
             ()
         } else {
-            let tagcase_ = write_file(get(f.39), the::<Bytes>(string_to_utf8(rev_to_string(history_text(get(f.36), 500i64, nil::<char>())))));
+            let tagcase_ = write_file(get(f.39), the::<BytesAt<'r>>(string_to_utf8(rev_to_string(history_text(get(f.36), 500i64, nil::<char>())))));
             match *tagcase_ {
                 Sum_4done_6failed::Done(u) => {
                     ()

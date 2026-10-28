@@ -9,8 +9,8 @@
 //! (`standard-shape?`), so a program and kayak-rt name one type.
 
 use crate::{
-    Int, List, Show, Str, Void, fail, heap_alloc, heap_cons, i64_to_int, int_to_i64, leak_string,
-    nil,
+    Holds, Int, List, Show, Str, Void, fail, heap_alloc, heap_cons, i64_to_int, int_to_i64,
+    leak_string, nil,
 };
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -193,12 +193,18 @@ fn invalid_data(what: &str) -> IoError {
 
 // Bytevectors.
 
-/// `(bytevectorof R)`: bytes in a row, each a cell.
+/// `(bytevectorof R)`: bytes in a row, each a cell; at a `letrena`'s
+/// region, `BytesAt<'r>`, its cells in the region's arena, freed with it
+/// (C267); in the heap, `Bytes`, kept for the run.
 #[derive(Clone, Copy)]
-pub struct Bytes(pub &'static [Cell<u8>]);
+pub struct BytesAt<'r>(pub &'r [Cell<u8>]);
+pub type Bytes = BytesAt<'static>;
+
+/// What a region's arena holds of each bytevector made in it.
+pub type BytesCells = Box<[Cell<u8>]>;
 
 /// As Fixpt writes one, R7RS's `#u8(…)`.
-impl Show for Bytes {
+impl Show for BytesAt<'_> {
     fn show(&self, out: &mut String) {
         out.push_str("#u8(");
         for (i, c) in self.0.iter().enumerate() {
@@ -211,13 +217,20 @@ impl Show for Bytes {
     }
 }
 
+fn cells_of(v: Vec<u8>) -> BytesCells {
+    v.into_iter()
+        .map(Cell::new)
+        .collect::<Vec<_>>()
+        .into_boxed_slice()
+}
+
 fn bytes_of(v: Vec<u8>) -> Bytes {
-    Bytes(Box::leak(
-        v.into_iter()
-            .map(Cell::new)
-            .collect::<Vec<_>>()
-            .into_boxed_slice(),
-    ))
+    BytesAt(Box::leak(cells_of(v)))
+}
+
+/// Bytes kept in region `r`'s arena (C267).
+fn bytes_in<'r, R: Holds<BytesCells>>(r: &'r R, v: Vec<u8>) -> BytesAt<'r> {
+    BytesAt(r.arena().alloc(cells_of(v)))
 }
 
 fn index(n: Int, what: &str) -> usize {
@@ -227,7 +240,7 @@ fn index(n: Int, what: &str) -> usize {
     }
 }
 
-fn span(b: Bytes, start: Int, end: Int, what: &str) -> (usize, usize) {
+fn span(b: BytesAt<'_>, start: Int, end: Int, what: &str) -> (usize, usize) {
     let (s, e) = (index(start, what), index(end, what));
     if s > e || e > b.0.len() {
         fail(what)
@@ -235,7 +248,7 @@ fn span(b: Bytes, start: Int, end: Int, what: &str) -> (usize, usize) {
     (s, e)
 }
 
-fn to_vec(b: Bytes) -> Vec<u8> {
+fn to_vec(b: BytesAt<'_>) -> Vec<u8> {
     b.0.iter().map(Cell::get).collect()
 }
 
@@ -243,32 +256,48 @@ pub fn make_bytevector(n: Int, v: u8) -> Bytes {
     bytes_of(vec![v; index(n, "make-bytevector: a negative length")])
 }
 
-pub fn bytevector_length(b: Bytes) -> Int {
+/// The same, in region `r` (C267).
+pub fn make_bytevector_in<'r, R: Holds<BytesCells>>(r: &'r R, n: Int, v: u8) -> BytesAt<'r> {
+    bytes_in(r, vec![v; index(n, "make-bytevector: a negative length")])
+}
+
+pub fn bytevector_length(b: BytesAt<'_>) -> Int {
     i64_to_int(b.0.len() as i64)
 }
 
-pub fn bytevector_u8_ref(b: Bytes, i: Int) -> u8 {
+pub fn bytevector_u8_ref(b: BytesAt<'_>, i: Int) -> u8 {
     match b.0.get(index(i, "bytevector-u8-ref: index out of range")) {
         Some(c) => c.get(),
         None => fail("bytevector-u8-ref: index out of range"),
     }
 }
 
-pub fn bytevector_u8_set_x(b: Bytes, i: Int, v: u8) {
+pub fn bytevector_u8_set_x(b: BytesAt<'_>, i: Int, v: u8) {
     match b.0.get(index(i, "bytevector-u8-set!: index out of range")) {
         Some(c) => c.set(v),
         None => fail("bytevector-u8-set!: index out of range"),
     }
 }
 
-pub fn bytevector_copy(b: Bytes, start: Int, end: Int) -> Bytes {
+pub fn bytevector_copy(b: BytesAt<'_>, start: Int, end: Int) -> Bytes {
     let (s, e) = span(b, start, end, "bytevector-copy: a span that does not fit");
     bytes_of(b.0[s..e].iter().map(Cell::get).collect())
 }
 
+/// The same, in region `r` (C267).
+pub fn bytevector_copy_in<'r, R: Holds<BytesCells>>(
+    r: &'r R,
+    b: BytesAt<'_>,
+    start: Int,
+    end: Int,
+) -> BytesAt<'r> {
+    let (s, e) = span(b, start, end, "bytevector-copy: a span that does not fit");
+    bytes_in(r, b.0[s..e].iter().map(Cell::get).collect())
+}
+
 /// R7RS's: `to`, `at`, `from`, `start`, `end`; overlapping spans copied
 /// as if through a buffer.
-pub fn bytevector_copy_x(to: Bytes, at: Int, from: Bytes, start: Int, end: Int) {
+pub fn bytevector_copy_x(to: BytesAt<'_>, at: Int, from: BytesAt<'_>, start: Int, end: Int) {
     let (s, e) = span(
         from,
         start,
@@ -285,7 +314,7 @@ pub fn bytevector_copy_x(to: Bytes, at: Int, from: Bytes, start: Int, end: Int) 
     }
 }
 
-pub fn bytevector_eq_p(a: Bytes, b: Bytes) -> bool {
+pub fn bytevector_eq_p(a: BytesAt<'_>, b: BytesAt<'_>) -> bool {
     a.0.len() == b.0.len() && a.0.iter().zip(b.0).all(|(x, y)| x.get() == y.get())
 }
 
@@ -293,7 +322,12 @@ pub fn string_to_utf8(s: Str) -> Bytes {
     bytes_of(s.as_str().as_bytes().to_vec())
 }
 
-pub fn utf8_to_string(b: Bytes) -> &'static Sum_4text_3bad<Str, Int> {
+/// The same, in region `r` (C267).
+pub fn string_to_utf8_in<'r, R: Holds<BytesCells>>(r: &'r R, s: Str) -> BytesAt<'r> {
+    bytes_in(r, s.as_str().as_bytes().to_vec())
+}
+
+pub fn utf8_to_string(b: BytesAt<'_>) -> &'static Sum_4text_3bad<Str, Int> {
     match String::from_utf8(to_vec(b)) {
         Ok(s) => heap_alloc(Sum_4text_3bad::Text(leak_string(s))),
         Err(e) => heap_alloc(Sum_4text_3bad::Bad(i64_to_int(
@@ -815,7 +849,7 @@ pub fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
 /// have come, at most `end - start`, into `bv` from `start`; how many, or
 /// `eof`. None asked for, 0 at once.
 pub fn read_bytes(
-    bv: Bytes,
+    bv: BytesAt<'_>,
     start: Int,
     end: Int,
 ) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
@@ -1008,7 +1042,7 @@ pub fn list_dir(path: Str) -> &'static Sum_5names_6failed<List<Str>, IoError> {
 
 /// Replaces the file whole and atomically: written beside it, flushed to
 /// the disk, and renamed over it.
-pub fn write_file(path: Str, data: Bytes) -> &'static Sum_4done_6failed<(), IoError> {
+pub fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<(), IoError> {
     let path = std::path::Path::new(path.as_str());
     let mut beside = path.as_os_str().to_owned();
     beside.push(format!(".kayak-{}.tmp", std::process::id()));

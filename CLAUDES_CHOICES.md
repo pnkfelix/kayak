@@ -7502,3 +7502,32 @@ cells), at 6.6 s and 2.4 GB after C265; Fixpt 4.0 s and 0.49 GB.
   Fixpt's 4.0 s and 0.49 GB; the listing byte for byte as before, as the
   corpus's. What is left is memory: 1.5 GB of heap kept, most of it the
   listing's pieces and the checker's lists; the system time its pages.
+
+## C267. Bytevectors at a place's region, freed with it (2026-10-27)
+
+The user, on compile memory: regions that end and arenas reused (1 and
+2), then: "we can just do all this with bytevectors today then".
+FX-26's text in a region is a `(bytevectorof r)`; kayak-rt made every
+bytevector in the heap, kept for the run, even at a `letrena`'s region.
+- **kayak-rt**: `BytesAt<'r>`, a bytevector's cells for the region's
+  lifetime, `Bytes` the heap's (`BytesAt<'static>`); `make_bytevector_in`,
+  `string_to_utf8_in` and `bytevector_copy_in` make in a place's arena
+  (`Holds<BytesCells>`), freed when the place's `letrena` ends, as its
+  pairs and references are (C30, C34). The rest read and write either.
+- **The checker**: a call of the standard `make-bytevector`,
+  `string->utf8` or `bytevector-copy` whose result is at a place's region
+  (a `letrena`'s, or one a procedure is given, `(poly ((p place)) …)`,
+  the place named as its region) notes `rheld-bytes@'p`, so that the
+  place holds bytes (and a procedure given it says so, C34), and
+  `rbytes-in p`; else nothing, the bytes the heap's, as before.
+- **The emitter**: such a call is `NAME_in(p, …)`; `(bytevectorof r)` at a
+  region of a lifetime `BytesAt<'r>`; a place's arena of bytes holds
+  `BytesCells`.
+- **Test**: `kfx/bytes-region.kfx`, a text built in a buffer that doubles
+  in its place, a thousand times; Fixpt's answer. No golden file else
+  changed.
+- **A sum's parts the heap's**: a sum is `&'static` in Rust, so its parts
+  are typed with no place's lifetime (the emitter's `in-heap`, as a
+  message's are): the REPL's `read-file` at a place's region, `(sumof
+  (data (bytevectorof r)) …)`, had become `BytesAt<'r>` inside one, which
+  rustc refuses. No program could have had a place's list there.

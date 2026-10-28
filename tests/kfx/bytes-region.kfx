@@ -1,0 +1,46 @@
+"Bytevectors at a `letrena`'s region (C267): made there, by
+ `make-bytevector`, `string->utf8` and `bytevector-copy`, and freed with
+ it. A text built in a buffer that doubles, its bytes copied into the
+ next, a thousand times over; only the strings taken out of it kept."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+"`s`'s bytes put at `at` in `buf`, a buffer of the place `p`, made larger
+ (doubled, in the place) if they do not fit: the buffer they are in. (The
+ place given is named as its region is, so that what is made at the region
+ is made in it.)"
+(define put-bytes (poly ((p place))
+                    (subr (maxeff (alloc p) (read p) (write p)) ((place p) (bytevectorof p) int string) (bytevectorof p)))
+  (lambda (p buf at s)
+    (let* ((bs (the (bytevectorof p) (string->utf8 s)))
+           (n (bytevector-length bs))
+           (big (if (<= (+ at n) (bytevector-length buf))
+                    buf
+                    (let ((more (the (bytevectorof p) (make-bytevector (* 2 (+ at n)) 0))))
+                      (begin (bytevector-copy! more 0 buf 0 at) more)))))
+      (begin (bytevector-copy! big at bs 0 n) big))))
+
+"The words joined with spaces, made in a region of their own."
+(define joined (subr kfx ((listof string acyclic)) string)
+  (lambda (ws)
+    (letrena r
+      (letrec ((go (subr (maxeff (alloc r) (read r) (write r) (read @globals) spin)
+                     ((bytevectorof r) int (listof string acyclic)) string)
+                 (lambda (buf at xs)
+                   (if (null? xs)
+                       (tagcase (utf8->string (the (bytevectorof r) (bytevector-copy buf 0 at)))
+                         (text t t)
+                         (bad k "?"))
+                       (let ((b (put-bytes r buf at (car xs))))
+                         (go (put-bytes r b (+ at (bytevector-length (string->utf8 (car xs)))) " ")
+                             (+ at (+ 1 (bytevector-length (string->utf8 (car xs)))))
+                             (cdr xs)))))))
+        (go (the (bytevectorof r) (make-bytevector 4 0)) 0 ws)))))
+
+(define-rec
+  (again (subr kfx (int string) string)
+    (lambda (k last)
+      (if (= k 0) last (again (- k 1) (joined (list "héllo," "wörld" "of" "regions" (int->string k))))))))
+
+(define main (subr kfx () string)
+  (lambda () (again 1000 "")))
