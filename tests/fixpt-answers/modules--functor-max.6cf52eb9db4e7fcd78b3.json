@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"functor-max.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"int-order : (moduleof (desc t int) (val less (subr pure (t t) bool))) ! pure",
+"max-of : (subr pure (ordered (select $1 t) (select $1 t)) (select $1 t)) ! pure",
+"5 : int ! (read (globals int-order max-of))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

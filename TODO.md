@@ -58,12 +58,23 @@ section below where it has one; here the order, and what each is.
    checker's mangling, lists of strings. Then the 55 GB case measured the
    same way (`heap-stats`); options to the user before building anything
    larger than a fix of this kind.
-   Waiting on Fixpt: syscalls of no required effect (the amendment
-   proposed in `docs/research/syscalls.md`, the user's 2026-10-27); then a
-   `kayak:string-utf8-length/1`, `pure`, and `string-list-append` as one
-   buffer sized once (`make-bytevector`, `bytevector-copy!`,
-   `utf8->string`), not before (the user: "We won't bother with 2 until
-   fixpt makes the requested change").
+   Fixpt has made the change (5731f52, the pin since C263): syscalls of no
+   required effect, and `kayak:string-utf8-length/1`, which kayak-rt, the
+   engine and tier 1 now give too. Next: `string-list-append` as one buffer
+   sized once (`make-bytevector`, `bytevector-copy!`, `utf8->string`), its
+   pieces' sizes by the syscall, in the engine's own files (only a
+   runtime's code declares one).
+4b. **FX-26's features since the pin moved to 5731f52 (C263)**, which
+   kayak's checker refuses for now (so their programs are not in the
+   passing lists): `attempt` (refused wherever it heads a list, as Fixpt
+   reads it); `(io process)` and the six `process-*` primitives; `type-at`;
+   `load-moduleof`, `load-input-moduleof`, `load-typeof`,
+   `load-input-typeof`; `restrict`; a top-level `include`; a file's
+   abstract types one for every load of it. Fixpt's `gdb`/`lldb` support
+   (code named and its frames told, source lines) is not taken either;
+   kayak has perf's (C246). Then KFX's own `load-module` of files, so that
+   kayak's units say their layers' interfaces (`load-moduleof`,
+   `restrict`), as the user suggested.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).

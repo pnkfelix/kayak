@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-bools.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"all? : (subr pure (bools) bool) ! pure",
+"trues : (subr (maxeff spin (read (globals trues))) ((n : nat)) bools (ensures r (all? r))) ! pure",
+"(#t #t #t) : bools ! (maxeff spin (read (globals trues)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

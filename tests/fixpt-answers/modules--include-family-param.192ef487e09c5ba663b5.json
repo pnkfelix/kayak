@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-family-param.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"before : (moduleof (desc box (dlambda ((s type)) (productof (state (ref s @ed)) (name string))))) ! pure",
+"m : (moduleof (desc box (dlambda ((s type)) (productof (state (ref s @ed)) (name string)))) (desc thing (productof (n int))) (val take (subr pure ((productof (state (ref thing @ed)) (name string))) string))) ! (read (globals before))",
+"\"b\" : string ! (maxeff (alloc @ed) (read (globals m)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

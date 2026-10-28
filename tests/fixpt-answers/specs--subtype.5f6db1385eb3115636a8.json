@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"subtype.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"inc : (subr pure ((x : int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"use : (subr pure ((f : (subr pure ((x : int)) int (requires (< 5 x)) (ensures r (< 0 r))))) int (ensures r (< 0 r))) ! pure",
+"11 : int ! (read (globals inc use))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

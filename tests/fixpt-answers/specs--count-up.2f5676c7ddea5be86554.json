@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"count-up.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"count-up : (subr (maxeff spin (read (globals count-up))) ((n : int)) int (requires (<= 0 n)) (ensures r (= r n))) ! pure",
+"10 : int ! (maxeff spin (read (globals count-up)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

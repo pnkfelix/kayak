@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"restrict-unnamed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/restrict-unnamed.fx:6:11: `(select c ticket)`: `c` has no type `ticket`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

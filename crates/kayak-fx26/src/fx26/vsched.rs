@@ -23,7 +23,7 @@ use super::*;
 // group with its group, each group's handler, a failure caught, each
 // `race` group with the group it is inside, each task that waits with how
 // it stops, the wakers of the standard input.
-// fixpt-source: crates/fixpt-runtime/src/sched.rs@1925bca
+// fixpt-source: crates/fixpt-runtime/src/sched.rs@5731f52
 /// A failure, the engine's (C110).
 pub fn sched_refused_x(message: Str) -> i64 {
     failed_with_x(message);

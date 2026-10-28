@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-nested-wrong.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define empties : (subr pure (intss) int) ! pure",
+"define strip : (subr (maxeff (read (globals strip)) spin) ((xss : intss)) intss (ensures r (= (empties r) 0))) ! pure",
+"intss ! (maxeff (read (globals strip)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -11,7 +11,7 @@ use super::*;
 // takes, at least and at most; Fixpt's own numbers, later, with the
 // layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
 // and counted as not yet, never as an answer.
-// fixpt-source: crates/fixpt-runtime/src/prim.rs@8c7111d
+// fixpt-source: crates/fixpt-runtime/src/prim.rs@5731f52
 
 // Each primitive: its name, how many arguments it takes, at least and at
 // most (-1: any), and its operation.
@@ -1876,7 +1876,7 @@ pub fn cellular_adapter_x(f: i64, n: i64) -> i64 {
 }
 
 // Tier 1's syscalls (C224): each host name's type in canonical form, ""
-// for none; Fixpt's three, as its runtime gives them, for now: no view of a
+// for none; Fixpt's four, as its runtime gives them, for now: no view of a
 // flat array yet (-1), so nothing to flush.
 pub fn tier1_syscall_type(host: Str) -> Str {
     if string_eq_p(host, str_lit("code:exec-view/1")) {
@@ -1885,9 +1885,23 @@ pub fn tier1_syscall_type(host: Str) -> Str {
         str_lit("(subr (io sys) () int)")
     } else if string_eq_p(host, str_lit("code:flush/1")) {
         str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+    } else if string_eq_p(host, str_lit("kayak:string-utf8-length/1")) {
+        str_lit("(subr pure (string) int)")
     } else {
         str_lit("")
     }
+}
+
+// A string's length in UTF-8 bytes, as kayak-rt says (C263).
+
+pub fn _pctsyscall_available_colonhost_utf8_length() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit("kayak:string-utf8-length/1"), str_lit("(subr pure (string) int)"));
+    true
+}
+
+pub fn host_utf8_length(x1: Str) -> Int {
+    _pctsyscall_available_colonhost_utf8_length();
+    kayak_rt::syscall1(str_lit("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit("kayak:string-utf8-length/1"), str_lit("(subr pure (string) int)"), x1)
 }
 
 // The words in one page of this machine, as kayak-rt says (C225).
@@ -4292,6 +4306,8 @@ pub fn prim_apply_x(p: i64) -> i64 {
             fail_x(string_append(string_text(a), str_lit(": not available on this runtime")))
         } else if string_eq_p(host, str_lit("code:page-words/1")) {
             fix(tier1_page_words())
+        } else if string_eq_p(host, str_lit("kayak:string-utf8-length/1")) {
+            fix(int_to_i64(host_utf8_length(string_text(parg(3i64)))))
         } else if string_eq_p(host, str_lit("code:exec-view/1")) {
             fix(-1i64)
         } else {

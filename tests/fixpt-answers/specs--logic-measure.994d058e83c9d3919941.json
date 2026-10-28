@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"logic-measure.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"len : (subr pure (ints) int) ! pure",
+"twice-len : (subr (read (globals len)) ((xs : ints)) int (ensures r (= r (* 2 (len xs))))) ! pure",
+"6 : int ! (read (globals len twice-len))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

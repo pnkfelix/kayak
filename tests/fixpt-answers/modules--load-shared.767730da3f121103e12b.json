@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-shared.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define c : (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<programs>/modules/../module-files/shared-counter.fx))",
+"define u : (moduleof (val c (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int)))) (val bump (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<programs>/modules/../module-files/shared-twice.fx))",
+"int ! (read (globals c u))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

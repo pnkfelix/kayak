@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"alloc-in-line.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sum-from : (subr (maxeff (read (globals sum-from)) (read @h) spin) ((arrayof int @h) int int) int) ! pure",
+"define in-heap : (subr (maxeff (alloc @h) (read (globals in-heap sum-from)) (read @h) spin) (int int int) int) ! pure",
+"define in-region : (subr spin (int) int) ! pure",
+"(listof int @l) ! (maxeff (alloc @h) (alloc @l) (read (globals in-heap in-region sum-from)) (read @h) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

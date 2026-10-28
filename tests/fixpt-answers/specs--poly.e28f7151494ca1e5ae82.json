@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"poly.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define first : (poly ((t type)) (subr pure ((x : int) (y : t)) int (requires (< 0 x)) (ensures r (= r x)))) ! pure",
+"int ! (read (globals first))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

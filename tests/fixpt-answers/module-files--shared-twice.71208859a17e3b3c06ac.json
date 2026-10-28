@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shared-twice.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/module-files/shared-twice.fx:3:45: `bump` is declared a (subr pure (shared-counter.fx..t) int): a (subr pure (shared-counter.fx..t) int) is expected here, and this is a (subr (read (globals c)) (shared-counter.fx..t) int)",
+"  beyond what is expected, it has (read (globals c))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"trap.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"first : (subr (read @h) ((listof int @h)) int) ! pure",
+"safe-first : (subr (maxeff (read @h) nondet (read (globals first))) ((listof int @h)) int) ! pure",
+"107 : int ! (maxeff (read @h) (alloc @h) nondet (read (globals first safe-first)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

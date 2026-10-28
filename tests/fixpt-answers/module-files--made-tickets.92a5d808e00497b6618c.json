@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"made-tickets.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"#<cellular-closure 2 fields 0 bytes> : (poly ((ed region) (world effect)) (subr pure ((moduleof (abs %hidden:ticket type) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int)))) (moduleof (val next (subr (maxeff (read ed) (write ed)) () int))))) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

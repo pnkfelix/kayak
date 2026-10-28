@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"subtype.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define inc : (subr pure ((x : int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"define use : (subr pure ((f : (subr pure ((x : int)) int (requires (< 5 x)) (ensures r (< 0 r))))) int (ensures r (< 0 r))) ! pure",
+"int ! (read (globals inc use))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -27,8 +27,8 @@ use super::*;
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@f03cabe
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@f03cabe
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@f03cabe
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@5731f52
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@5731f52
 
 // The generator's data lives at `@g`.
 
@@ -508,6 +508,9 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("f32-neg")) => {
                         str_lit("%fx26-f32-neg")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("type-at")) => {
+                        str_lit("%fx26-type-at")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("int->i8")) => {
                         str_lit("%fx26-int->i8")
@@ -1109,6 +1112,12 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("terminal-size")) => {
                         str_lit("%fx26-terminal-size")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-start")) => {
+                        str_lit("%fx26-process-start")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-write")) => {
+                        str_lit("%fx26-process-write")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("i32-remainder")) => {
                         str_lit("%fx26-i32-remainder")
                     }
@@ -1151,6 +1160,15 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("flatarray-set!")) => {
                         str_lit("%fx26-flatarray-set!")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-output")) => {
+                        str_lit("%fx26-process-output")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-status")) => {
+                        str_lit("%fx26-process-status")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-signal")) => {
+                        str_lit("%fx26-process-signal")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("string-compare")) => {
                         str_lit("%fx26-string-compare")
@@ -1283,11 +1301,24 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(19)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-close-input")) => {
+                        str_lit("%fx26-process-close-input")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%string-append-list")) => {
                         str_lit("%fx26-string-append-list")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall-available?")) => {
                         str_lit("%fx26-syscall-available?")
+                    }
+                    _ => {
+                        str_lit("")
+                    }
+                }
+            }
+            case_ if kayak_rt::_eq(case_, int_lit(20)) => {
+                match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("set-register-twin-at")) => {
+                        str_lit("%set-register-twin")
                     }
                     _ => {
                         str_lit("")

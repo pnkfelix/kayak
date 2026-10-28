@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"arrow.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"twice : (poly ((t type)) (subr pure ((subr pure (t) t) t) t)) ! pure",
+"inc : (subr pure (int) int) ! pure",
+"adder : (subr pure (int) (subr pure (int) int)) ! pure",
+"is-int : (subr pure ((union int string)) (bool (then (shape 0 int)) (else))) ! pure",
+"same : (subr pure ((subr pure (int) int)) (subr pure (int) int)) ! pure",
+"pick : (subr pure ((union int string)) int) ! pure",
+"242 : int ! (read (globals adder inc pick same twice))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

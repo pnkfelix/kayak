@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"param-misnamed-select.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/param-misnamed-select.fx:4:23: `(c …)` applies `c`, but `(select c t)` after it names `c`: to name a parameter, write `(c : type)`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

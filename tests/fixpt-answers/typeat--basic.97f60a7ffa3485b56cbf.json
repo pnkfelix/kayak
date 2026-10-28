@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"basic.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"prog : string ! pure",
+"first-three : (subr spin (string) string) ! pure",
+"named : string ! pure",
+"\"45 52 int; 58 60 int; error 14 18; 123 124 f\" : string ! (maxeff spin (io fs-read) (read (globals first-three named prog)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

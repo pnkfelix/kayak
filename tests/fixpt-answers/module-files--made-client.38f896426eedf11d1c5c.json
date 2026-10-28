@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"made-client.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"(poly ((ed region) (world effect)) (subr pure ((moduleof (abs ticket type) (desc counter (productof (state (ref int ed)))) (val issued (ref int ed)) (val spawn (subr (alloc ed) (int) counter)) (val peek (subr (read ed) (counter) int)) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int))) (moduleof (desc buffer (productof (owner (productof (state (ref int ed)))) (t (select $1 ticket)))) (val make (subr (maxeff (alloc ed) (read ed) (write ed)) (int) (productof (owner (productof (state (ref int ed)))) (t (select $1 ticket))))) (val size (subr (read ed) ((productof (owner (productof (state (ref int ed)))) (t (select $1 ticket)))) int)))) (moduleof (val twice (subr (read ed) ((productof (owner (productof (state (ref int ed)))) (t (select $1 ticket)))) int)) (val ticket-of (subr pure ((productof (owner (productof (state (ref int ed)))) (t (select $1 ticket)))) int))))) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

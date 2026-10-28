@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"wrong-requires.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define clamp : (subr pure ((lo : int) (hi : int) (x : int)) int (requires (<= lo hi)) (ensures r (and (<= lo r) (<= r hi)))) ! pure",
+"define f : (subr (read (globals clamp)) (int) int) ! pure",
+"int ! (read (globals clamp f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

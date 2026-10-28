@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"load-moduleof-not-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/modules/load-moduleof-not-module.fx:3:23: what `../module-files/made-core.fx` makes, given these, is a (poly ((ed region) (world effect)) (subr (alloc ed) () (moduleof (abs ticket type) (desc counter (productof (state (ref int ed)))) (val issued (ref int ed)) (val spawn (subr (alloc ed) (int) counter)) (val peek (subr (read ed) (counter) int)) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int))))), not a module",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

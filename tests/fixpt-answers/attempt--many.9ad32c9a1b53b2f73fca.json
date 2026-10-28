@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"many.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"step : (subr nondet (int) int) ! pure",
+"loop : (subr (maxeff spin nondet (read (globals loop step))) (int int) int) ! pure",
+"1000 : int ! (maxeff spin nondet (read (globals loop step)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

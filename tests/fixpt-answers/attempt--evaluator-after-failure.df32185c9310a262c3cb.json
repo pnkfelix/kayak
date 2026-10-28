@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"evaluator-after-failure.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"(nat 3) ! pure",
+"define step : (subr nondet (int) int) ! pure",
+"define loop : (subr (maxeff (read (globals loop step)) nondet spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals loop step)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

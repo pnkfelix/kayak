@@ -282,7 +282,13 @@
           ((string=? host "code:page-words/1") "(subr (io sys) () int)")
           ((string=? host "code:flush/1")
            "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+          ;; A string's length in UTF-8 bytes (Fixpt 5731f52, C263).
+          ((string=? host "kayak:string-utf8-length/1") "(subr pure (string) int)")
           (else ""))))
+
+"A string's length in UTF-8 bytes, as kayak-rt says, the engine's own
+ syscall (C263)."
+(define-syscall host-utf8-length "kayak:string-utf8-length/1" (subr pure (string) int))
 
 "The words in one page of the machine this runs on, as kayak-rt says,
  asked as the engine's own syscall (C225)."
@@ -519,6 +525,8 @@
            (cond ((not (string=? (engine-syscall-type host) (word-string c)))
                   (refused-op! (string-append (word-string a) ": not available on this runtime")))
                  ((string=? host "code:page-words/1") (fixnum (engine-page-words)))
+                 ((string=? host "kayak:string-utf8-length/1")
+                  (fixnum (int->i64 (host-utf8-length (word-string (pair-car (pair-cdr r2)))))))
                  ((string=? host "code:exec-view/1") (fixnum -1))
                  (else w-unit))))
         ((i64= op 216) (fixnum 4)) ((i64= op 217) (fixnum 4)) ((i64= op 218) (fixnum 8))

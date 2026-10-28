@@ -1,0 +1,69 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"count-up.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word count-up over 0",
+"     3: global! count-up",
+"     5: lit 10",
+"     7: global count-up",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word count-up (23 cells, cellular):",
+"     0: slot 0",
+"     2: lit 0",
+"     4: int-eq",
+"     5: 0branch → 10",
+"     7: lit 0",
+"     9: return",
+"    10: lit 1",
+"    12: slot 0",
+"    14: lit 1",
+"    16: int-sub",
+"    17: global count-up",
+"    19: tcall 1",
+"    21: int-add",
+"    22: return",
+"  its register code (45 cells, not compiled):",
+"       0: args 1",
+"       2: save 1",
+"       4: store 1 0",
+"       7: stack 0",
+"       9: op2imm int-eq 0",
+"      12: branchf → 19",
+"      14: const 0",
+"      16: pop 1",
+"      18: return",
+"      19: stack 0",
+"      21: op2imm int-sub 1",
+"      24: setreg 1",
+"      26: global-guard count-up written 1 else → 34",
+"      30: invokeself 1",
+"      32: branch → 39",
+"      34: global count-up",
+"      36: invoke 1 1",
+"      39: op2imm int-add 1",
+"      42: pop 1",
+"      44: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

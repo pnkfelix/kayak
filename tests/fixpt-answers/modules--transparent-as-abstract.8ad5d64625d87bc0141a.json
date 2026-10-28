@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"transparent-as-abstract.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define n : (moduleof (desc t int) (val x t) (val bump (subr pure (t) t))) ! pure",
+"define peek : (subr pure (opaque) int) ! pure",
+"int ! (read (globals n peek))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

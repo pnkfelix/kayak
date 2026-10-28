@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"requires-more-than-nothing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"g : (subr pure ((x : int)) int (requires (< 0 x))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/specs/requires-more-than-nothing.fx:4:65: a (subr pure (int) int) is expected here, and this is a (subr pure ((x : int)) int (requires (< 0 x)))",
+"  it requires more, or ensures less, than is expected, as far as the prover can tell",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

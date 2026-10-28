@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"empties : (subr pure (intss) int) ! pure",
+"strip : (subr (maxeff spin (read (globals strip))) ((xss : intss)) intss (ensures r (= (empties r) 0))) ! pure",
+"((1 2) (3)) : intss ! (maxeff spin (read (globals strip)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

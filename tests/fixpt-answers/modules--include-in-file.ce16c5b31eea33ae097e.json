@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-in-file.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc cell (ref int @heap)) (val mk (subr (alloc @heap) () cell)) (val z (listof cell @heap))) ! (read (globals %shared:<programs>/modules/../module-files/include-in-file.fx))",
+"0 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

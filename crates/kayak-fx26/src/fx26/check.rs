@@ -3998,7 +3998,7 @@ pub fn parse_size(v: &'static Cv, tvars: Strings, z: &'static Sexp) -> &'static 
 }
 
 // Specifications (C162; Fixpt's `check-specs.fx`, `check-logic.fx`): a
-// procedure type's `(subr E ((x T) ...) R (requires P) (ensures r Q))`,
+// procedure type's `(subr E ((x : T) ...) R (requires P) (ensures r Q))`,
 // propositions of its `int`s, `nat`s and `bool`s, and of `pure` global
 // procedures' values. FX-26's checker reads them, prints them, and holds a
 // procedure to the one its type expected (behavioural subtyping, by a
@@ -4041,14 +4041,14 @@ pub fn logic_base_names() -> Strings {
     })
 }
 
-/// A procedure type's parameter's name, `(x T)`, or none (""): a list of
-/// two whose first is no type form's, keyword's, type's or base type's
-/// name, as FX-26's `k-param-name` has it.
+/// A procedure type's parameter's name, `(x : T)`, or none (""), as
+/// FX-26's `k-param-name` has it since Fixpt a8e6471: `(h T)` is always
+/// `h` applied.
 pub fn param_name_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> Str {
     let tagcase_ = p;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, pos) => {
-            if (i64_eq(size(xs), 2i64) && {
+            if (i64_eq(size(xs), 3i64) && {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(n, f2, p2) => {
@@ -4059,15 +4059,8 @@ pub fn param_name_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> S
                         false
                     }
                 }
-            }) {
-                let n = sym_name(car(xs));
-                if (string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, tvars) || any_p(lambda1s(move |t: Str| {
-                    (has_prefix_p(t, str_lit("^")) && string_eq_p(bare_binder(t), n))
-                }), tvars) || not(null_p(scope_bind(string_append(str_lit("%type "), n), v))) || dt_named_p(n, cv_dts(v)) || not(null_p(aliases_named(v, n)))) {
-                    str_lit("")
-                } else {
-                    n
-                }
+            } && sym_is_p(second(xs), str_lit(":"))) {
+                sym_name(car(xs))
             } else {
                 str_lit("")
             }
@@ -4083,7 +4076,7 @@ pub fn param_type_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> &
     if string_eq_p(param_name_written(v, tvars, p), str_lit("")) {
         p
     } else {
-        second(items(p))
+        third(items(p))
     }
 }
 
@@ -8337,7 +8330,7 @@ pub fn show_named(s: &'static St, ps: Tys, names: Strings) -> Str {
             if string_eq_p(n, str_lit("%none")) {
                 show_ty(s, car(ps))
             } else {
-                string_append(str_lit("("), string_append(n, string_append(str_lit(" "), string_append(show_ty(s, car(ps)), str_lit(")")))))
+                string_append(str_lit("("), string_append(n, string_append(str_lit(" : "), string_append(show_ty(s, car(ps)), str_lit(")")))))
             }
         }, if null_p(cdr(ps)) {
             str_lit("")

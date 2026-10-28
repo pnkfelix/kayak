@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"unnamed-params.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define plus3 : (subr pure ((nat 3) (d : int)) int (ensures r (= r (+ d 3)))) ! pure",
+"int ! (read (globals plus3))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

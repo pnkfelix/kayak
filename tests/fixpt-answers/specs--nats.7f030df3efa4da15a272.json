@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"nats.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (14 cells, cellular):",
+"     0: closure word plus over 0",
+"     3: global! plus",
+"     5: lit 3",
+"     7: lit 4",
+"     9: global plus",
+"    11: tcall 2",
+"    13: exit",
+"",
+"word plus (6 cells, cellular):",
+"     0: slot 0",
+"     2: slot 1",
+"     4: int-add",
+"     5: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 2",
+"       2: reg 1",
+"       4: op2 int-add 2",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

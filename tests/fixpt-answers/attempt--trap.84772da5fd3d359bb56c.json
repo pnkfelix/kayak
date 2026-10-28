@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"trap.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define first : (subr (read @h) ((listof int @h)) int) ! pure",
+"define safe-first : (subr (maxeff (read (globals first)) (read @h) nondet) ((listof int @h)) int) ! pure",
+"int ! (maxeff (alloc @h) (read (globals first safe-first)) (read @h) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

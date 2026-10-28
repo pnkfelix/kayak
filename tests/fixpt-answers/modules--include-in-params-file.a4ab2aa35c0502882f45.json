@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"include-in-params-file.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc cell (ref int @heap)) (val mk (subr (alloc @heap) () cell)) (val z (listof cell @heap))) ! (read (globals %shared:<programs>/modules/../module-files/include-cell.fx %shared:<programs>/modules/../module-files/include-in-params-file.fx))",
+"0 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

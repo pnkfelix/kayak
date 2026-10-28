@@ -1,0 +1,33 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"effects.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"c : counter ! (alloc @ed)",
+"bump! : (subr (maxeff (read @ed) (write @ed)) (counter) unit) ! pure",
+"clear! : (poly ((r region)) (subr (write r) ((ref int r)) unit)) ! pure",
+"bumper : (subr pure (counter) (subr (maxeff (read @ed) (read @globals) (write @ed)) () unit)) ! pure",
+"count-of : (subr (read @ed) (counter) int) ! pure",
+"other : (ref int @elsewhere) ! (alloc @elsewhere)",
+"poke! : (subr (maxeff (write @elsewhere) (read (globals other))) (counter) unit) ! pure",
+"reset! : (subr (maxeff (write @ed) (read (globals clear!))) (counter) unit) ! pure",
+"zero! : (subr (maxeff (write @ed) (read (globals clear!))) (counter) unit) ! pure",
+"same : (poly ((a type)) (subr pure (a) a)) ! pure",
+"again : (subr (read (globals same)) (counter) counter) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

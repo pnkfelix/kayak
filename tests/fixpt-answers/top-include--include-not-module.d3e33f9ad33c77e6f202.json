@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-not-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/top-include/include-not-module.fx:3:10: `include` includes a module, and `n` is a int",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

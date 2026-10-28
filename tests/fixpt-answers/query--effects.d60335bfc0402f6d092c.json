@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"effects.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define c : counter ! (alloc @ed)",
+"define bump! : (subr (maxeff (read @ed) (write @ed)) (counter) unit) ! pure",
+"define clear! : (poly ((r region)) (subr (write r) ((ref int r)) unit)) ! pure",
+"define bumper : (subr pure (counter) (subr (maxeff (read @ed) (read @globals) (write @ed)) () unit)) ! pure",
+"define count-of : (subr (read @ed) (counter) int) ! pure",
+"define other : (ref int @elsewhere) ! (alloc @elsewhere)",
+"define poke! : (subr (maxeff (read (globals other)) (write @elsewhere)) (counter) unit) ! pure",
+"define reset! : (subr (maxeff (read (globals clear!)) (write @ed)) (counter) unit) ! pure",
+"define zero! : (subr (maxeff (read (globals clear!)) (write @ed)) (counter) unit) ! pure",
+"define same : (poly ((a type)) (subr pure (a) a)) ! pure",
+"define again : (subr (read (globals same)) (counter) counter) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

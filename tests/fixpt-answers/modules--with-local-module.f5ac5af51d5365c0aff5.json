@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-local-module.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define outer : (moduleof (val f (subr pure () int))) ! pure",
+"int ! (read (globals outer))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

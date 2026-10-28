@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"latent-stronger.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"weaker : (subr pure ((i : int) (n : int)) bool (ensures r (implies r (<= i n)))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/specs/latent-stronger.fx:5:65: `less` is declared a (subr pure (int int) (bool (then (< 0 1)) (else))): a (subr pure (int int) (bool (then (< 0 1)) (else))) is expected here, and this is a (subr pure ((i : int) (n : int)) bool (ensures r (implies r (<= i n))))",
+"  it requires more, or ensures less, than is expected, as far as the prover can tell",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

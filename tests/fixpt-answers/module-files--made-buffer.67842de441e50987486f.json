@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"made-buffer.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"#<cellular-closure 2 fields 0 bytes> : (poly ((ed region) (world effect)) (subr pure ((moduleof (abs ticket type) (desc counter (productof (state (ref int ed)))) (val issued (ref int ed)) (val spawn (subr (alloc ed) (int) counter)) (val peek (subr (read ed) (counter) int)) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int)))) (moduleof (desc buffer (productof (owner (productof (state (ref int ed)))) (t (select $1 ticket)))) (val make (subr (maxeff (read ed) (write ed) (alloc ed)) (int) (productof (owner (productof (state (ref int ed)))) (t (select $1 ticket))))) (val size (subr (read ed) ((productof (owner (productof (state (ref int ed)))) (t (select $1 ticket)))) int))))) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

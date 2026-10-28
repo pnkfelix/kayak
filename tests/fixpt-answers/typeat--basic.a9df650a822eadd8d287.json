@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"basic.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define prog : string ! pure",
+"define first-three : (subr spin (string) string) ! pure",
+"define named : string ! pure",
+"string ! (maxeff (io fs-read) (read (globals first-three named prog)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

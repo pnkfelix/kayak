@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"not-an-int.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/specs/not-an-int.fx:3:55: `s` is not an `int`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

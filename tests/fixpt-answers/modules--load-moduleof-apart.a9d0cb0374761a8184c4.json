@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"load-moduleof-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/modules/load-moduleof-apart.fx:7:84: argument 2 is a (moduleof (desc buffer (productof (owner (productof (state (ref int @heap)))) (t c1..ticket))) (val make (subr (maxeff (read @heap) (write @heap) (alloc @heap)) (int) (productof (owner (productof (state (ref int @heap)))) (t c1..ticket)))) (val size (subr (read @heap) ((productof (owner (productof (state (ref int @heap)))) (t c1..ticket))) int))), where a (moduleof (desc buffer (productof (owner (productof (state (ref int @heap)))) (t c2..ticket))) (val make (subr (maxeff (read @heap) (write @heap) (alloc @heap)) (int) (productof (owner (productof (state (ref int @heap)))) (t c2..ticket)))) (val size (subr (read @heap) ((productof (owner (productof (state (ref int @heap)))) (t c2..ticket))) int))) is expected",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

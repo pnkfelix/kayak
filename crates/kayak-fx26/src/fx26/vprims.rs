@@ -502,9 +502,24 @@ pub fn engine_syscall_type(host: Str) -> Str {
         str_lit("(subr (io sys) () int)")
     } else if string_eq_p(host, str_lit("code:flush/1")) {
         str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+    } else if string_eq_p(host, str_lit("kayak:string-utf8-length/1")) {
+        str_lit("(subr pure (string) int)")
     } else {
         str_lit("")
     }
+}
+
+// A string's length in UTF-8 bytes, as kayak-rt says, the engine's own
+// syscall (C263).
+
+pub fn _pctsyscall_available_colonhost_utf8_length() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit("kayak:string-utf8-length/1"), str_lit("(subr pure (string) int)"));
+    true
+}
+
+pub fn host_utf8_length(x1: Str) -> Int {
+    _pctsyscall_available_colonhost_utf8_length();
+    kayak_rt::syscall1(str_lit("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit("kayak:string-utf8-length/1"), str_lit("(subr pure (string) int)"), x1)
 }
 
 // The words in one page of the machine this runs on, as kayak-rt says,
@@ -1001,6 +1016,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
             refused_op_x(string_append(word_string(a), str_lit(": not available on this runtime")))
         } else if string_eq_p(host, str_lit("code:page-words/1")) {
             fixnum(engine_page_words())
+        } else if string_eq_p(host, str_lit("kayak:string-utf8-length/1")) {
+            fixnum(int_to_i64(host_utf8_length(word_string(pair_car(pair_cdr(r2))))))
         } else if string_eq_p(host, str_lit("code:exec-view/1")) {
             fixnum(-1i64)
         } else {

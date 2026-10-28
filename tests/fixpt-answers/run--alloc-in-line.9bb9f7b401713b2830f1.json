@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"alloc-in-line.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"sum-from : (subr (maxeff (read @h) spin (read (globals sum-from))) ((arrayof int @h) int int) int) ! pure",
+"in-heap : (subr (maxeff (read @h) (alloc @h) spin (read (globals in-heap sum-from))) (int int int) int) ! pure",
+"in-region : (subr spin (int) int) ! pure",
+"(3080 924000 3080 924000) : (listof int @l) ! (maxeff (read @h) (alloc @h) (alloc @l) spin (read (globals in-heap in-region sum-from)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

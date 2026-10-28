@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 8c7111d. Written by scripts/built-in.py: edit that, not this."
+ 5731f52. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -1964,6 +1964,7 @@
          ((\"f32-max\") \"%fx26-f32-max\")
          ((\"f32-abs\") \"%fx26-f32-abs\")
          ((\"f32-neg\") \"%fx26-f32-neg\")
+         ((\"type-at\") \"%fx26-type-at\")
          ((\"int->i8\") \"%fx26-int->i8\")
          ((\"i8->int\") \"%fx26-i8->int\")
          ((\"int->u8\") \"%fx26-int->u8\")
@@ -2168,6 +2169,8 @@
          ((\"f32-infinite?\") \"%fx26-f32-infinite?\")
          ((\"flatarray-ref\") \"%fx26-flatarray-ref\")
          ((\"terminal-size\") \"%fx26-terminal-size\")
+         ((\"process-start\") \"%fx26-process-start\")
+         ((\"process-write\") \"%fx26-process-write\")
          ((\"i32-remainder\") \"%fx26-i32-remainder\")
          ((\"u32-remainder\") \"%fx26-u32-remainder\")
          ((\"i64-remainder\") \"%fx26-i64-remainder\")
@@ -2183,6 +2186,9 @@
        (case n
          ((\"make-flatarray\") \"%fx26-make-flatarray\")
          ((\"flatarray-set!\") \"%fx26-flatarray-set!\")
+         ((\"process-output\") \"%fx26-process-output\")
+         ((\"process-status\") \"%fx26-process-status\")
+         ((\"process-signal\") \"%fx26-process-signal\")
          ((\"string-compare\") \"%fx26-string-compare\")
          ((\"symbol-compare\") \"%fx26-symbol-compare\")
          ((\"certify-length\") \"%fx26-first\")
@@ -2230,8 +2236,13 @@
          (else \"\")))
       ((19)
        (case n
+         ((\"process-close-input\") \"%fx26-process-close-input\")
          ((\"%string-append-list\") \"%fx26-string-append-list\")
          ((\"%syscall-available?\") \"%fx26-syscall-available?\")
+         (else \"\")))
+      ((20)
+       (case n
+         ((\"set-register-twin-at\") \"%set-register-twin\")
          (else \"\")))
       ((22)
        (case n
@@ -2635,6 +2646,21 @@
           (fork-branch (lambda () ((proj (proj fill @par) a) ca (f))))
           (fork-branch (lambda () ((proj (proj fill @par) b) cb (g))))
           (product (1 ((proj (proj await @par) a) ca)) (2 ((proj (proj await @par) b) cb))))))))
+;; `f`'s value, `f` a task, a monitored group as a `race` branch is; should
+;; it fail, `(h message)` instead (`attempt`; Heist's, `FIXPT-CHANGES.md`
+;; F1). `f` is cancellable, so a failure half way leaves nothing another
+;; could see; `h` runs in the current task, after.
+(define attempt1 (poly ((a type)) (subr any ((subr any () a) (subr any (string) a)) a))
+  (plambda ((a type))
+    (lambda (f h)
+      (let* ((res (the (icell (outcome a) @par) (make-icell)))
+             (offer (lambda ((o (outcome a))) ((proj (proj offer-outcome @par) a) res o))))
+        (begin
+          (fork-race-branch (lambda () (offer (sum won (f))))
+                            (lambda ((m string)) (offer (sum lost m))))
+          (tagcase ((proj (proj await @par) (outcome a)) res)
+            (won v v)
+            (lost m (h m))))))))
 ")
 
 (define built-in-text (subr kfx (string) string)

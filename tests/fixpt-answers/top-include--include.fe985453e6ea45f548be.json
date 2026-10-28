@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
+"define zero : include-lib.fx..t ! (read (globals m))",
+"define value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
+"define both : (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)) ! (read (globals m))",
+"define first : (subr (read @heap) (pair-of-t) t) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals both first value zero)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-harness.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sorted? : (subr pure (ints) bool) ! pure",
+"define insert : (subr (maxeff (read (globals insert)) spin) ((e : int) (xs : ints)) ints (ensures r (implies (sorted? xs) (sorted? r)))) ! pure",
+"define insert-keeps-sorted : (subr (maxeff (read (globals insert sorted?)) spin) (int ints) unit) ! pure",
+"unit ! (maxeff (read (globals insert insert-keeps-sorted sorted?)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"handler-io.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define report : (subr (io stderr) (string) int) ! pure",
+"int ! (maxeff (io stderr) (read (globals report)) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

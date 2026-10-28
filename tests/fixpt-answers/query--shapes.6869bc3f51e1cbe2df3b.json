@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"shapes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure () t) ! pure",
+"take : (subr pure (t) unit) ! pure",
+"step : (subr pure (t) t) ! pure",
+"drain : (subr pure ((subr pure () t)) unit) ! pure",
+"lend : (subr pure ((subr pure ((subr pure () t)) unit)) unit) ! pure",
+"lend-step : (subr pure ((subr pure ((subr pure (t) t)) unit)) unit) ! pure",
+"lend-both : (subr pure ((subr pure ((subr pure () t) (subr pure (t) unit)) unit)) unit) ! pure",
+"unrelated : (subr pure (other) other) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

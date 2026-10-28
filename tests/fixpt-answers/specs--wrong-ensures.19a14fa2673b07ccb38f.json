@@ -1,0 +1,54 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"wrong-ensures.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word abs over 0",
+"     3: global! abs",
+"     5: lit -5",
+"     7: global abs",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word abs (16 cells, cellular):",
+"     0: slot 0",
+"     2: lit 0",
+"     4: int-less",
+"     5: 0branch → 10",
+"     7: slot 0",
+"     9: return",
+"    10: lit 0",
+"    12: slot 0",
+"    14: int-sub",
+"    15: return",
+"  its register code (18 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: op2imm int-less 0",
+"       7: branchf → 12",
+"       9: reg 1",
+"      11: return",
+"      12: const 0",
+"      14: op2 int-sub 1",
+"      17: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

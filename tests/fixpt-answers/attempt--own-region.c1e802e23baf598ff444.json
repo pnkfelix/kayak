@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"own-region.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"count : (subr (maxeff (read @h) spin) ((listof int @h)) int) ! pure",
+"3 : int ! (maxeff (read @h) (alloc @h) spin nondet (read (globals count)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"latent-and-ensures.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"less : (subr pure ((i : int) (n : int)) (bool (then (< 0 1)) (else (<= 1 0))) (ensures r (implies r (<= i n)))) ! pure",
+"below : (subr (read (globals less)) (nat nat) nat) ! pure",
+"7 : nat ! (read (globals below less))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

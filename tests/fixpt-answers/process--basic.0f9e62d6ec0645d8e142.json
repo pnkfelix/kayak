@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"basic.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define wait-for : (subr (maxeff (io clock) (io process) (read (globals wait-for)) spin) (int string) string) ! pure",
+"define bars : (subr spin (string) string) ! pure",
+"define script : string ! pure",
+"define ran : string ! (maxeff (io clock) (io process) (read (globals bars script wait-for)) spin)",
+"define missing : string ! (io process)",
+"string ! (read (globals missing ran))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

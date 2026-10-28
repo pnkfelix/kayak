@@ -53,7 +53,7 @@
    (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))
    (zero? (subr pure (int) (bool (then (= 0 (lit 0))) (else (not (= 0 (lit 0)))))))
    (cwcc (poly ((r region) (t type) (e effect)) (subr (maxeff (comefrom r) e) ((subr e ((subr (goto r) (t) void)) t)) t)))
-   (assume (subr pure ((p bool)) unit (ensures r p))) (assert (subr pure ((p bool)) unit (requires p))) (max (subr pure (int int) int)) (min (subr pure (int int) int))
+   (assume (subr pure ((p : bool)) unit (ensures r p))) (assert (subr pure ((p : bool)) unit (requires p))) (max (subr pure (int int) int)) (min (subr pure (int int) int))
    (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))
    (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))
    (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))
@@ -1239,7 +1239,7 @@
 (define syscall-crossing-message string
   "a syscall takes and gives only `int`, `i64`, `u64`, `bool`, `char`, `unit`, `string`, `(flatarrayof i64 r)` and `(bytevectorof r)`")
 (define syscall-effects-message string
-  "a syscall's effect holds `(io sys)`, and only reads, writes and allocations of its regions, other I/O, `spin` and `nondet`")
+  "a syscall's effect holds only reads, writes and allocations of its regions, I/O, `spin` and `nondet`")
 (define syscall-host-message string "a syscall's host name is a string, `namespace:name/version`")
 
 (define-rec
@@ -1302,8 +1302,10 @@
 
 (define syscall-effect (subr kfx (cv strings strings) string)
   (lambda (v tvars es)
-    (if (not (string-member? "io:sys" es))
-        (refuse v syscall-effects-message)
+    "Its atoms only, none `pure` (Fixpt 5731f52, kayak's request: no
+     `(io sys)` required)."
+    (if (null? es)
+        "pure"
         (let ((texts (strings-once (sorted-strings
                        (map (lambda ((a string))
                               (cond ((or (string=? a "spin") (string=? a "nondet")) a)

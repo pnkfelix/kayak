@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nats.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"plus : (subr pure ((m : nat) (n : int)) int (ensures r (<= n r))) ! pure",
+"7 : int ! (read (globals plus))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

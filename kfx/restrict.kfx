@@ -145,16 +145,11 @@
 
       (define param-named? (subr kfx (sexp strings) bool)
         (lambda (q types)
-          "Whether a procedure type's parameter is named, `(x T)`, as the
+          "Whether a procedure type's parameter is named, `(x : T)`, as the
            checker reads one (`param-name-written`)."
           (tagcase q
             (lst (ys f l p)
-              (and (i64= (size ys) 2)
-                   (tagcase (car ys)
-                     (sym (n f2 p2)
-                       (not (or (string-member? n logic-type-forms) (string-member? n logic-keywords)
-                                (string-member? n logic-base-names) (string-member? n types))))
-                     (else other #f))))
+              (and (i64= (size ys) 3) (tagcase (car ys) (sym (n f2 p2) #t) (else other #f)) (sym-is? (second ys) ":")))
             (else other #f))))
 
       (define-rec

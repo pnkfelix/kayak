@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"handler-io.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"report : (subr (io stderr) (string) int) ! pure",
+"0 : int ! (maxeff (io stderr) nondet (read (globals report)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

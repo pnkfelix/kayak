@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"in-process.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define answer : (icell int @c) ! (alloc @c)",
+"define w : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals answer)) nondet)",
+"unit ! (maxeff (read (globals w)) (send @p))",
+"int ! (maxeff (await @c) (read (globals answer)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

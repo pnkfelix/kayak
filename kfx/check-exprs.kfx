@@ -2562,6 +2562,11 @@
                  "FX-26's `race`, a form wherever it heads a list: refused, not a
                   call of what a program names `race` (C108)."
                  (race-form v s xs nil))
+                ((string=? h "attempt")
+                 "FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
+                  as `race` is: refused, kayak's checker not having it yet, and
+                  never a call of what a program names `attempt` (C263)."
+                 (refuse v "FX-26's `attempt`, which kayak's checker has not yet"))
                 ((string=? h "par") (par-form v s xs nil))
                 ((string=? h "pselect") (pselect-form v s xs nil))
                 ((string=? h "quote")

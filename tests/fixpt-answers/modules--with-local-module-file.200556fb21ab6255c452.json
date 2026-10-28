@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-local-module-file.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (val f (subr pure () int))) ! (read (globals %shared:<programs>/modules/../module-files/with-local-f.fx))",
+"5 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-in-params-file.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/module-files/include-in-params-file.fx:3:2: unbound variable `module-parameters`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

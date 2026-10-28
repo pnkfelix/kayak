@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"on-failure-type.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/attempt/on-failure-type.fx:3:12: `attempt`'s on-failure takes the failure's message, a string, but is (subr pure (int) int)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

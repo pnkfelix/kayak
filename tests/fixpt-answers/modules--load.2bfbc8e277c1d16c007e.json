@@ -8,8 +8,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -20,6 +19,21 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"define c : (moduleof (desc t counter.fx..t) (val zero counter.fx..t) (val inc (subr pure (counter.fx..t) counter.fx..t)) (val value (subr pure (counter.fx..t) int))) ! (read (globals %shared:<programs>/modules/../module-files/counter.fx))",
+"int ! (read (globals c))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
 ]
 }
 ]

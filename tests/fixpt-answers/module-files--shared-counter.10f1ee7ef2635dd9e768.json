@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"shared-counter.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"up-t : (subr pure (int) t) ! pure",
+"down-t : (subr pure (t) int) ! pure",
+"zero : t ! (read (globals up-t))",
+""
+],
+"err": [
+"fixpt: <programs>/module-files/shared-counter.fx:4:35: `value` is declared a (subr pure (t) int): a (subr pure (t) int) is expected here, and this is a (subr (read (globals down-t)) (t) int)",
+"  beyond what is expected, it has (read (globals down-t))",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

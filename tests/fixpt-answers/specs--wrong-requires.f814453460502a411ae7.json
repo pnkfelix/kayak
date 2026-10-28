@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"wrong-requires.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"clamp : (subr pure ((lo : int) (hi : int) (x : int)) int (requires (<= lo hi)) (ensures r (and (<= lo r) (<= r hi)))) ! pure",
+"f : (subr (read (globals clamp)) (int) int) ! pure",
+"0 : int ! (read (globals clamp f))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

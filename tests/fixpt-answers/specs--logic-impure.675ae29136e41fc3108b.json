@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-impure.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"first-pos? : (subr (read @heap) (ints) bool) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/specs/logic-impure.fx:6:52: `first-pos?` is called in a specification, so must be `pure`",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

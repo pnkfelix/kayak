@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-family-param.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define before : (moduleof (desc box (dlambda ((s type)) (productof (state (ref s @ed)) (name string))))) ! pure",
+"define m : (moduleof (desc box (dlambda ((s type)) (productof (state (ref s @ed)) (name string)))) (desc thing (productof (n int))) (val take (subr pure ((productof (state (ref thing @ed)) (name string))) string))) ! (read (globals before))",
+"string ! (maxeff (alloc @ed) (read (globals m)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

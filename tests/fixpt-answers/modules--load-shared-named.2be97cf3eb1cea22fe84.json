@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"load-shared-named.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"c : (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<programs>/modules/../module-files/shared-counter.fx))",
+"u : (moduleof (val c (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int)))) (val bump (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<programs>/modules/../module-files/shared-twice.fx))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/load-shared-named.fx:5:16: argument 1 is a int, where a shared-counter.fx..t is expected",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

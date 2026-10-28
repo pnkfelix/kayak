@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"error.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"work : (subr spin (int) string) ! pure",
+"1 : int ! (maxeff spin nondet (read (globals work)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

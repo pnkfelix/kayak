@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"restrict.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define first : (subr (maxeff (read @heap) (write @heap)) (tickets) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals %shared:<programs>/modules/../module-files/made-core.fx first)) (read @heap) (write @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

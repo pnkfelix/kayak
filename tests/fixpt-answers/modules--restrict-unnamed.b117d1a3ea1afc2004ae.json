@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"restrict-unnamed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"core-sig = (moduleof (abs ticket type) (desc counter (productof (state (ref int @heap)))) (val issued (ref int @heap)) (val spawn (subr (alloc @heap) (int) counter)) (val peek (subr (read @heap) (counter) int)) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int)))",
+"tickets = (moduleof (abs %hidden:ticket type) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int)))",
+"c : tickets ! (maxeff (alloc @heap) (read (globals %shared:<programs>/modules/../module-files/made-core.fx)))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/restrict-unnamed.fx:6:11: `(select c ticket)`: `c` has no type `ticket`",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

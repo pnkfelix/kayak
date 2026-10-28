@@ -1,0 +1,30 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-hidden.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
+"zero : include-lib.fx..t ! (read (globals m))",
+"value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
+"both : (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)) ! (read (globals m))",
+"t = (select m t)",
+"pair-of-t = (select m pair-of-t)",
+"touches = (select m touches)",
+""
+],
+"err": [
+"fixpt: <programs>/top-include/include-hidden.fx:5:1: unbound variable `secret`",
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

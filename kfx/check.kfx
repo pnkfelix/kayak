@@ -1796,7 +1796,7 @@
   (lambda (v tvars z) (let ((l (parse-size-lin v tvars z))) (if (null? l) size-finite (size-of-lin (car l))))))
 
 "Specifications (C162; Fixpt's `check-specs.fx`, `check-logic.fx`): a
- procedure type's `(subr E ((x T) ...) R (requires P) (ensures r Q))`,
+ procedure type's `(subr E ((x : T) ...) R (requires P) (ensures r Q))`,
  propositions of its `int`s, `nat`s and `bool`s, and of `pure` global
  procedures' values. FX-26's checker reads them, prints them, and holds a
  procedure to the one its type expected (behavioural subtyping, by a
@@ -1832,25 +1832,18 @@
 
 (define param-name-written (subr kfx (cv strings sexp) string)
   (lambda (v tvars p)
-    "A procedure type's parameter's name, `(x T)`, or none (\"\"): a list of
-     two whose first is no type form's, keyword's, type's or base type's
-     name, as FX-26's `k-param-name` has it."
+    "A procedure type's parameter's name, `(x : T)`, or none (\"\"), as
+     FX-26's `k-param-name` has it since Fixpt a8e6471: `(h T)` is always
+     `h` applied."
     (tagcase p
       (lst (xs f l pos)
-        (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f)))
-            (let ((n (sym-name (car xs))))
-              (if (or (string-member? n logic-type-forms) (string-member? n logic-keywords)
-                      (string-member? n logic-base-names) (string-member? n tvars)
-                      (any? (lambda ((t string)) (and (has-prefix? t "^") (string=? (bare-binder t) n))) tvars)
-                      (not (null? (scope-bind (string-append "%type " n) v)))
-                      (dt-named? n (cv-dts v)) (not (null? (aliases-named v n))))
-                  ""
-                  n))
+        (if (and (i64= (size xs) 3) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f)) (sym-is? (second xs) ":"))
+            (sym-name (car xs))
             ""))
       (else other ""))))
 
 (define param-type-written (subr kfx (cv strings sexp) sexp)
-  (lambda (v tvars p) (if (string=? (param-name-written v tvars p) "") p (second (items p)))))
+  (lambda (v tvars p) (if (string=? (param-name-written v tvars p) "") p (third (items p)))))
 
 (define logic-head (subr kfx (sexp) string)
   (lambda (x)
@@ -3679,7 +3672,7 @@
       (if (null? ps)
           ""
           (string-append (let ((n (if (null? names) "%none" (car names))))
-                           (if (string=? n "%none") (show-ty s (car ps)) (string-append "(" (string-append n (string-append " " (string-append (show-ty s (car ps)) ")"))))))
+                           (if (string=? n "%none") (show-ty s (car ps)) (string-append "(" (string-append n (string-append " : " (string-append (show-ty s (car ps)) ")"))))))
                          (if (null? (cdr ps)) "" (string-append " " (show-named s (cdr ps) (if (null? names) nil (cdr names)))))))))
   (show-fields (subr kfx (st strings tys) string)
     (lambda (s ls ts)

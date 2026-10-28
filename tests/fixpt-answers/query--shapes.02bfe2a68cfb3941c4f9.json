@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shapes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make : (subr pure () t) ! pure",
+"define take : (subr pure (t) unit) ! pure",
+"define step : (subr pure (t) t) ! pure",
+"define drain : (subr pure ((subr pure () t)) unit) ! pure",
+"define lend : (subr pure ((subr pure ((subr pure () t)) unit)) unit) ! pure",
+"define lend-step : (subr pure ((subr pure ((subr pure (t) t)) unit)) unit) ! pure",
+"define lend-both : (subr pure ((subr pure ((subr pure () t) (subr pure (t) unit)) unit)) unit) ! pure",
+"define unrelated : (subr pure (other) other) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

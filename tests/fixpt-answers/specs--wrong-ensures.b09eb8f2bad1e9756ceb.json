@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"wrong-ensures.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define abs : (subr pure ((x : int)) int (ensures r (<= 0 r))) ! pure",
+"int ! (read (globals abs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

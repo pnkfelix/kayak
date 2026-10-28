@@ -22,7 +22,7 @@ use super::*;
 // Tasks are numbers, the lowest free first; each has a quiet count and a
 // grace (Fixpt's `Regions::quiet`). Tier 1 keeps a region's objects in the
 // one heap, so a task's places are only numbers (`regions`).
-// fixpt-source: crates/fixpt-runtime/src/sched.rs@1925bca
+// fixpt-source: crates/fixpt-runtime/src/sched.rs@5731f52
 pub fn s_front() -> i64 {
     0i64
 }

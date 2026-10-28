@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@8c7111d"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@5731f52"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -806,7 +806,7 @@
       (begin (slot-set! c f-word w) (slot-set! c f-free0 f) c))))
 
 "Tier 1's syscalls (C224): each host name's type in canonical form, \"\"
- for none; Fixpt's three, as its runtime gives them, for now: no view of a
+ for none; Fixpt's four, as its runtime gives them, for now: no view of a
  flat array yet (-1), so nothing to flush."
 (define tier1-syscall-type (subr kfx (string) string)
   (lambda (host)
@@ -815,7 +815,12 @@
           ((string=? host "code:page-words/1") "(subr (io sys) () int)")
           ((string=? host "code:flush/1")
            "(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+          ;; A string's length in UTF-8 bytes (Fixpt 5731f52, C263).
+          ((string=? host "kayak:string-utf8-length/1") "(subr pure (string) int)")
           (else ""))))
+
+"A string's length in UTF-8 bytes, as kayak-rt says (C263)."
+(define-syscall host-utf8-length "kayak:string-utf8-length/1" (subr pure (string) int))
 
 "The words in one page of this machine, as kayak-rt says (C225)."
 (define-syscall page-words "code:page-words/1" (subr (io sys) () int))
@@ -1932,6 +1937,7 @@
            (cond ((not (string=? (tier1-syscall-type host) (string-text (parg 2))))
                   (fail! (string-append (string-text a) ": not available on this runtime")))
                  ((string=? host "code:page-words/1") (fix (tier1-page-words)))
+                 ((string=? host "kayak:string-utf8-length/1") (fix (int->i64 (host-utf8-length (string-text (parg 3))))))
                  ((string=? host "code:exec-view/1") (fix -1))
                  (else v-unit))))
         ((i64= op o-string-symbol) (if (is-kind? a k-string) (symbol! (string-text a)) (expected! "a string")))

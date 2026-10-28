@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"latent-and-ensures.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define less : (subr pure ((i : int) (n : int)) (bool (then (< 0 1)) (else (<= 1 0))) (ensures r (implies r (<= i n)))) ! pure",
+"define below : (subr (read (globals less)) (nat nat) nat) ! pure",
+"nat ! (read (globals below less))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

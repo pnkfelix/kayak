@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"negation.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"f : (subr pure ((x : int)) int (ensures r (= r (- 0 x)))) ! pure",
+"3 : int ! (read (globals f))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

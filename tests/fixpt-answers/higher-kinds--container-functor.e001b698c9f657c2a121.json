@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"container-functor.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"lists : container ! pure",
+"pair-up : (subr (maxeff (read @heap) (alloc @heap) spin) (container ((select $1 f) int)) ((select $1 f) (productof (l int) (r int)))) ! pure",
+"2 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals lists pair-up)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

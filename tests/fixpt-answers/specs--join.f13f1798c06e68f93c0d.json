@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"join.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define above-abs : (subr pure ((x : int)) int (ensures r (and (<= 1 r) (<= x (- r 1))))) ! pure",
+"int ! (read (globals above-abs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

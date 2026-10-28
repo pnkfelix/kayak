@@ -23,7 +23,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`",
+"! <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`, `process`",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +31,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@8c7111da0ca74b5e1377f6124e5f10eacfa509ac"
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
 ]
 }
 ]

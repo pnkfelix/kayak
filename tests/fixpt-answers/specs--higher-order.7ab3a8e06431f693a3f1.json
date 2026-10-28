@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"higher-order.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define twice : (subr pure ((f : (subr pure ((x : int)) int (requires (< 0 x)) (ensures r (< x r)))) (y : int)) int (requires (< 0 y)) (ensures r (< (+ y 1) r))) ! pure",
+"define inc : (subr pure ((x : int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"int ! (read (globals inc twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"basic.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"wait-for : (subr (maxeff spin (io clock) (io process) (read (globals wait-for))) (int string) string) ! pure",
+"bars : (subr spin (string) string) ! pure",
+"script : string ! pure",
+"ran : string ! (maxeff spin (io clock) (io process) (read (globals bars script wait-for)))",
+"missing : string ! (io process)",
+"\"a|b|err|got hi|exited 3; failed not-found\" : string ! (read (globals missing ran))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"wrong-ensures.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"abs : (subr pure ((x : int)) int (ensures r (<= 0 r))) ! pure",
+"-5 : int ! (read (globals abs))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

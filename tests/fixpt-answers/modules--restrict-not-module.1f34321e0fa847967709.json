@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"restrict-not-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/restrict-not-module.fx:2:22: `restrict` restricts a module's type, and this is a int",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

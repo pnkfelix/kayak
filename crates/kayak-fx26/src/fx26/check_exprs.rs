@@ -5584,6 +5584,11 @@ pub mod expressions {
                 // FX-26's `race`, a form wherever it heads a list: refused, not a
                 // call of what a program names `race` (C108).
                 return race_form(v, s, xs, nil::<&'static Ty>());
+            } else if string_eq_p(h, str_lit("attempt")) {
+                // FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
+                // as `race` is: refused, kayak's checker not having it yet, and
+                // never a call of what a program names `attempt` (C263).
+                return match refuse(v, str_lit("FX-26's `attempt`, which kayak's checker has not yet")) {};
             } else if string_eq_p(h, str_lit("par")) {
                 return par_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("pselect")) {

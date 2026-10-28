@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stateful-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"part : (moduleof (val one int)) ! (read (globals %shared:<programs>/module-files/pure-part.fx))",
+"cell : (ref int @heap) ! (alloc @heap)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

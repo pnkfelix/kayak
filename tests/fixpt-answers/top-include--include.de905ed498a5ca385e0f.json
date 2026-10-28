@@ -1,0 +1,32 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
+"zero : include-lib.fx..t ! (read (globals m))",
+"value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
+"both : (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)) ! (read (globals m))",
+"t = include-lib.fx..t",
+"pair-of-t = (pairof include-lib.fx..t include-lib.fx..t @heap)",
+"touches = (select m touches)",
+"first : (subr (read @heap) (pair-of-t) t) ! pure",
+"mine = (select m touches)",
+"42 : int ! (maxeff (read @heap) (alloc @heap) (read (globals both first value zero)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

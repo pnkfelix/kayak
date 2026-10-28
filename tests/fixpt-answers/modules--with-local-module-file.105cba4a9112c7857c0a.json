@@ -1,0 +1,75 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"with-local-module-file.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (29 cells, cellular):",
+"     0: closure word lambda@1001:102 over 0",
+"     3: lit 37",
+"     5: slot 0",
+"     7: prim %make-frozen 2",
+"    10: slot! 0",
+"    12: global! %shared:<programs>/modules/../module-files/with-local-f.fx",
+"    14: global %shared:<programs>/modules/../module-files/with-local-f.fx",
+"    16: global! m",
+"    18: global m",
+"    20: field 2",
+"    22: slot 0",
+"    24: slot! 0",
+"    26: tcall 0",
+"    28: exit",
+"",
+"word lambda@1001:102 (20 cells, cellular):",
+"     0: closure word lambda/m@1001:159 over 0",
+"     3: lit 37",
+"     5: slot 0",
+"     7: prim %make-frozen 2",
+"    10: slot! 0",
+"    12: slot 0",
+"    14: field 2",
+"    16: slot 1",
+"    18: ttailcall 0",
+"  its register code (35 cells, not compiled):",
+"       0: args 0",
+"       2: save 2",
+"       4: lambda word lambda/m@1001:159 over 0",
+"       8: setstk 0",
+"      10: const 37",
+"      12: setreg 1",
+"      14: load 2 0",
+"      17: prim %make-frozen 2",
+"      20: setstk 0",
+"      22: stack 0",
+"      24: field 2",
+"      26: setstk 1",
+"      28: stack 1",
+"      30: pop 2",
+"      32: tailinvoke 0 1",
+"",
+"word lambda/m@1001:159 (3 cells, cellular):",
+"     0: lit 5",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 0",
+"       2: const 5",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

@@ -7405,3 +7405,40 @@ checker's mangling. Not regions kept, at this size: work done.
   `docs/research/syscalls.md`): a syscall's effect what it declares, `pure`
   among them. The presized join waits on it (the user: "We won't bother
   with 2 until fixpt makes the requested change"; `TODO.md`).
+
+## C263. The pin at Fixpt 5731f52: named parameters `(x : T)`, syscalls of any effect (2026-10-27)
+
+The user: "Pull the updated Fixpt. It's made a lot of changes, so while
+you will get the syscall change you requested, you will also end up with
+a bunch of other changes". 26 commits, a fast-forward from `8c7111d`.
+- **Taken**:
+  - *A procedure type's parameter named `(x : T)`* (a8e6471): `(h T)` is
+    always `h` applied. Kayak's checker reads and prints them so
+    (`param-name-written`, `show-named`), its restriction pass too; its
+    primitives' table's `assert` and `assume` written so; the two
+    `kfx-stricter` programs migrated.
+  - *A syscall's effect what it says* (5731f52, kayak's request, C262):
+    kayak's checker no longer requires `(io sys)` (an effect of no atoms
+    printed `pure`, the message Fixpt's). `kayak:string-utf8-length/1`,
+    `(subr pure (string) int)`, as Fixpt's runtime and evaluator have it:
+    in kayak-rt's table, and the engine's and tier 1's, each asking
+    kayak-rt by a syscall of its own. Fixpt's `syscalls/pure.fx` and
+    `pure-declared-io.fx` give Fixpt's answers on the engine.
+  - *`attempt` a form wherever it heads a list* (b41a7fb): kayak's checker
+    refuses it, not having it yet, as Fixpt now reads
+    `scheme-bench/triangl.fx`'s own `attempt` (which kayak had accepted
+    and Fixpt now refuses: K1).
+- **Decided against, for now** (each mark moved to the pin, `TODO.md`
+  4b): the features Fixpt added for Heist (`attempt` itself, `(io
+  process)` and `process-*`, `type-at`, `load-moduleof` and its kin,
+  `restrict`, a top-level `include`, one abstract type for every load of a
+  file), whose programs kayak's checker refuses; Fixpt's `gdb`/`lldb`
+  support (`jitdebug::flush` before native code runs, `Heap::plausible`,
+  `%set-register-twin`'s places, which tier 1 does not have); the
+  scheduler's failed task kept quiet until its failure is taken, which
+  comes with `attempt`.
+- **Measured at the pin**: Fixpt accepts kayak's three units; 202 of
+  Fixpt's programs kfx accepts, all agreeing, and 232 beyond on the engine
+  (`crossing-overflow` as before); tier 1 425 agree (from 405), kayak's own
+  words 407 (300 Fixpt's exactly), register words 911 Fixpt's exactly, 7
+  differ; of 373 programs Fixpt refuses, kayak refuses all.

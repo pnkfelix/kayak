@@ -166,6 +166,13 @@ const SYSCALLS: &[Syscall] = &[
             Err(_) => fail("kayak:note-code-lines/1: a count out of bounds"),
         },
     },
+    // A string's length in UTF-8 bytes (Fixpt 5731f52, C263): pure, the
+    // length kayak-rt's strings have at hand.
+    Syscall {
+        host: "kayak:string-utf8-length/1",
+        canonical: "(subr pure (string) int)",
+        run: |a| (crate::Str::of_word(a[0]).as_str().len() as i64).word(),
+    },
     Syscall {
         host: "kayak:last-sealed/1",
         canonical: "(subr (io sys) () int)",

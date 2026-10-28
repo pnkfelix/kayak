@@ -1,0 +1,65 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"higher-order.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (19 cells, cellular):",
+"     0: closure word twice over 0",
+"     3: global! twice",
+"     5: closure word inc over 0",
+"     8: global! inc",
+"    10: global inc",
+"    12: lit 5",
+"    14: global twice",
+"    16: tcall 2",
+"    18: exit",
+"",
+"word inc (6 cells, cellular):",
+"     0: slot 0",
+"     2: lit 1",
+"     4: int-add",
+"     5: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: op2imm int-add 1",
+"       7: return",
+"",
+"word twice (10 cells, cellular):",
+"     0: slot 1",
+"     2: slot 0",
+"     4: tcall 1",
+"     6: slot 0",
+"     8: ttailcall 1",
+"  its register code (27 cells, not compiled):",
+"       0: args 2",
+"       2: save 2",
+"       4: store 1 0",
+"       7: store 2 1",
+"      10: load 1 1",
+"      13: stack 0",
+"      15: invoke 1 1",
+"      18: setreg 1",
+"      20: stack 0",
+"      22: pop 2",
+"      24: tailinvoke 1 1",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

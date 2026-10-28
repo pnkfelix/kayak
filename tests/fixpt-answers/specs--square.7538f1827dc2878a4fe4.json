@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"square.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"square : (subr pure ((x : int)) int (ensures r (<= 0 r))) ! pure",
+"9 : int ! (read (globals square))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@5731f52e13042d0bbcb253c5ea18a861effc55e7"
+]
+}
+]
+}

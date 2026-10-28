@@ -341,24 +341,24 @@ pub mod restrictions {
         }
     }
 
-    /// Whether a procedure type's parameter is named, `(x T)`, as the
+    /// Whether a procedure type's parameter is named, `(x : T)`, as the
     /// checker reads one (`param-name-written`).
     pub fn param_named_p(q: &'static Sexp, types: Strings) -> bool {
         let tagcase_ = q;
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
-                (i64_eq(size(ys), 2i64) && {
+                (i64_eq(size(ys), 3i64) && {
                     let tagcase_ = car(ys);
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
-                            not((string_member_p(n, logic_type_forms()) || string_member_p(n, logic_keywords()) || string_member_p(n, logic_base_names()) || string_member_p(n, types)))
+                            true
                         }
                         _ => {
                             let other = tagcase_;
                             false
                         }
                     }
-                })
+                } && sym_is_p(second(ys), str_lit(":")))
             }
             _ => {
                 let other = tagcase_;
