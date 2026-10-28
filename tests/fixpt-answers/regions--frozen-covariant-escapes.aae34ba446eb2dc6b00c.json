@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-covariant-escapes.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/frozen-covariant-escapes.fx:3:1: the value of `letrena p` would outlive its region: its type is (listof int (acyclic p))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

@@ -11,10 +11,10 @@
 "out": [
 "define var : (subr pure (symbol) term) ! pure",
 "define num : (subr pure (int) term) ! pure",
-"define app : (subr pure ((bloblet (fields symbol (listof term @heap)) @heap) (listof term @heap)) term) ! pure",
+"define app : (subr pure ((bloblet (fields symbol terms) @heap) terms) term) ! pure",
 "define rv : (subr pure (symbol) raw) ! pure",
 "define rn : (subr pure (int) raw) ! pure",
-"define ra : (subr pure (symbol (listof raw @heap)) raw) ! pure",
+"define ra : (subr pure (symbol raws) raw) ! pure",
 "define r0 : (subr (maxeff (alloc @heap) (read (globals ra))) (symbol) raw) ! pure",
 "define r1 : (subr (maxeff (alloc @heap) (read (globals ra))) (symbol raw) raw) ! pure",
 "define r2 : (subr (maxeff (alloc @heap) (read (globals ra))) (symbol raw raw) raw) ! pure",
@@ -77,7 +77,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

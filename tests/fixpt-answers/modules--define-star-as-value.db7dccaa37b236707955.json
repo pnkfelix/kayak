@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"define-star-as-value.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (desc cmd (subr (maxeff (read @globals) (read @heap)) () int)) (val hook (ref (listof (subr pure (int) cmd) acyclic) @heap))) ! (alloc @heap)",
+"define mk : (subr (maxeff (read (globals m)) (write @heap)) () (moduleof (val f (subr pure (int) (subr (maxeff (read @globals) (read @heap)) () int))) (val r unit))) ! pure",
+"define made : (moduleof (val f (subr pure (int) (subr (maxeff (read @globals) (read @heap)) () int))) (val r unit)) ! (maxeff (read (globals m mk)) (write @heap))",
+"int ! (maxeff (read (globals m)) (read @globals) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

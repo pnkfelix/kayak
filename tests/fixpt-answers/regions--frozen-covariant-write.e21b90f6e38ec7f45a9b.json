@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-covariant-write.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/frozen-covariant-write.fx:3:77: this writes frozen data, whose region is `const`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

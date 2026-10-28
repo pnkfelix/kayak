@@ -12,8 +12,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -24,6 +23,21 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"a : (moduleof (desc touches (read @globals)) (desc n int) (val x int)) ! pure",
+"b : (moduleof (desc touches (read @globals)) (desc n int) (val x int) (val f (subr (read @globals) () int))) ! (read (globals a))",
+"2 : int ! (maxeff (read @globals) (read (globals b)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

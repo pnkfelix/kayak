@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"frozen-place-walk.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"heap-list : (listof int acyclic) ! pure",
+"walk : (poly ((p place)) (subr (read (acyclic p)) ((listof int (acyclic p))) int)) ! pure",
+"5 : int ! (read (globals heap-list walk))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

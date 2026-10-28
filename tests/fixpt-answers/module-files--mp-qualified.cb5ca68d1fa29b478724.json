@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"mp-qualified.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/module-files/mp-qualified.fx:3:2: unbound variable `module-parameters`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

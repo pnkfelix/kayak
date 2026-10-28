@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"define-star-value-reads.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"x : int ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/define-star-value-reads.fx:4:61: `define*` `f` is a value another item uses as the module is made, at its type as written, and it reads (read (globals x)): write that in its type",
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

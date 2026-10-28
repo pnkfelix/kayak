@@ -8,8 +8,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -21,6 +20,22 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"r : (moduleof (desc num int) (val m (moduleof (desc num int) (val bump (subr pure (int) int)))) (val bump (subr pure (int) int)) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/reexports.fx))",
+"twice : (subr pure (int) int) ! (read (globals r))",
+"bump : (subr pure (int) int) ! (read (globals r))",
+"4 : int ! (read (globals bump twice))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

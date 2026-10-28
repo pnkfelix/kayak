@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"frozen-covariant-writable.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"heap-list : (listof int acyclic) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/regions/frozen-covariant-writable.fx:4:43: a (listof int r) is expected here, and this is a (listof int acyclic)",
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

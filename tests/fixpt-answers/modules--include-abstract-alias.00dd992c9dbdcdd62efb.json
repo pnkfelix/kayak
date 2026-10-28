@@ -8,8 +8,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -23,6 +22,24 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"define counter : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"define more : (moduleof (desc t counter..t) (val zero counter..t) (val next (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)) (val two counter..t)) ! (read (globals counter))",
+"define to-counter : (subr pure (counter..t) counter..t) ! pure",
+"define to-more : (subr pure (counter..t) counter..t) ! pure",
+"int ! (read (globals counter more to-counter to-more))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

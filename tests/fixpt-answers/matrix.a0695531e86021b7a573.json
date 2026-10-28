@@ -17,9 +17,9 @@
 "define list-length : (poly ((t type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((listof t @heap)) int)) ! pure",
 "define map : (poly ((a type) (b type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (a) b) (listof a @heap)) (listof b @heap))) ! pure",
 "define map2 : (poly ((a type) (b type) (c type)) (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (a b) c) (listof a @heap) (listof b @heap)) (listof c @heap))) ! pure",
-"define chez-box : (subr (alloc @heap) (row) (listof row @heap)) ! pure",
-"define chez-unbox : (subr (read @heap) ((listof row @heap)) row) ! pure",
-"define chez-set-box! : (subr (write @heap) ((listof row @heap) row) unit) ! pure",
+"define chez-box : (subr (alloc @heap) (row) mat) ! pure",
+"define chez-unbox : (subr (read @heap) (mat) row) ! pure",
+"define chez-set-box! : (subr (write @heap) (mat row) unit) ! pure",
 "define no-perm : (subr pure () pv) ! pure",
 "define a-perm : (subr pure ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (symbol) pv)) pv) ! pure",
 "define r-row : (subr pure (row) pv) ! pure",
@@ -67,7 +67,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

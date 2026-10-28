@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/modules/load-moduleof-apart.fx:7:84: argument 2 is a (moduleof (desc buffer (productof (owner (productof (state (ref int @heap)))) (t c1..ticket))) (val make (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int) (productof (owner (productof (state (ref int @heap)))) (t c1..ticket)))) (val size (subr (read @heap) ((productof (owner (productof (state (ref int @heap)))) (t c1..ticket))) int))), where a (moduleof (desc buffer (productof (owner (productof (state (ref int @heap)))) (t c2..ticket))) (val make (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int) (productof (owner (productof (state (ref int @heap)))) (t c2..ticket)))) (val size (subr (read @heap) ((productof (owner (productof (state (ref int @heap)))) (t c2..ticket))) int))) is expected",
+"! <programs>/modules/load-moduleof-apart.fx:7:84: argument 2 is a (moduleof (desc buffer (productof (owner (productof (state (ref int @heap)))) (t c1..ticket))) (val make (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))), where a (moduleof (desc buffer (productof (owner (productof (state (ref int @heap)))) (t c2..ticket))) (val make (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))) is expected",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

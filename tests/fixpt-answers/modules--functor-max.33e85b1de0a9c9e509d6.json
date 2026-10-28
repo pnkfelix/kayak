@@ -9,7 +9,7 @@
 {
 "code": 0,
 "out": [
-"int-order : (moduleof (desc t int) (val less (subr pure (t t) bool))) ! pure",
+"int-order : (moduleof (desc t int) (val less (subr pure (int int) bool))) ! pure",
 "max-of : (subr pure (ordered (select $1 t) (select $1 t)) (select $1 t)) ! pure",
 "5 : int ! (read (globals int-order max-of))",
 ""
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"define-star-as-value.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc cmd (subr (maxeff (read @heap) (read @globals)) () int)) (val hook (ref (listof (subr pure (int) cmd) acyclic) @heap))) ! (alloc @heap)",
+"mk : (subr (maxeff (write @heap) (read (globals m))) () (moduleof (val f (subr pure (int) (subr (maxeff (read @heap) (read @globals)) () int))) (val r unit))) ! pure",
+"made : (moduleof (val f (subr pure (int) (subr (maxeff (read @heap) (read @globals)) () int))) (val r unit)) ! (maxeff (write @heap) (read (globals m mk)))",
+"7 : int ! (maxeff (read @heap) (read @globals) (read (globals m)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

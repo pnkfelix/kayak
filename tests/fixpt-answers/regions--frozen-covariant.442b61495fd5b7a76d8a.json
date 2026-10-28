@@ -1,0 +1,33 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-covariant.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define heap-list : (listof int acyclic) ! pure",
+"define push : (poly ((p place)) (subr (alloc p) ((place p) (listof int acyclic)) (listof int (acyclic p)))) ! pure",
+"define total : (poly ((p place)) (subr (read (acyclic p)) ((listof int (acyclic p))) int)) ! pure",
+"int ! (read (globals heap-list push total))",
+"int ! (read (globals heap-list))",
+"define leaf : (poly ((r region)) (subr pure () (mu %3 (sumof (leaf (productof)) (node (productof (1 (listof int r)) (2 %3))))))) ! pure",
+"define node : (poly ((r region)) (subr pure ((listof int r) (mu %3 (sumof (leaf (productof)) (node (productof (1 (listof int r)) (2 %3)))))) (mu %3 (sumof (leaf (productof)) (node (productof (1 (listof int r)) (2 %3))))))) ! pure",
+"define heap-tree : (mu %1 (sumof (leaf (productof)) (node (productof (1 (listof int acyclic)) (2 %1))))) ! (read (globals heap-list leaf node))",
+"int ! (read (globals heap-list heap-tree node push total))",
+"int ! (read (globals heap-list))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

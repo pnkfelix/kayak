@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-covariant-writable.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/frozen-covariant-writable.fx:4:43: a (listof int r) is expected here, and this is a (listof int acyclic)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

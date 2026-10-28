@@ -8,8 +8,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -22,6 +21,23 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"define m : (moduleof (desc cell (productof (1 int))) (val cell (subr pure (int) cell))) ! pure",
+"define cell : (subr pure (int) cell) ! (read (globals m))",
+"define k : (subr pure ((moduleof (desc box int) (val box int))) int) ! pure",
+"int ! (read (globals cell k))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

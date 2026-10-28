@@ -12,8 +12,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -25,6 +24,22 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"f : (subr pure (ilist) int) ! pure",
+"g : (subr (read (globals f)) (ilist) int) ! pure",
+"h : (subr (read (globals f g)) (ilist) int) ! pure",
+"k : (subr pure ((mu %2 (subr pure (%2) int))) int) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

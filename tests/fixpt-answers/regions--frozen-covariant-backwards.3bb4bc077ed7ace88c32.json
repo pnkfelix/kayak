@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-covariant-backwards.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/frozen-covariant-backwards.fx:4:48: a (listof int acyclic) is expected here, and this is a (listof int (acyclic p))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
+]
+}
+]
+}

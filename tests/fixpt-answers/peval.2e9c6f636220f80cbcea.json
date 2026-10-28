@@ -87,7 +87,7 @@
 "define quote-nil : sx ! (maxeff (alloc @heap) (read (globals s-quote scons snil)))",
 "define nil-entry : sx ! (maxeff (alloc @heap) (read (globals scons snil)))",
 "define peval : (subr (maxeff (alloc @heap) (read (globals *primitives* add-binding alphatize arg-pattern beta-subst binding-frame bound-expr const-expr? const-value constant-fold-global current-num every? extract-constant for-each! get-last-pair map2 new-variable new-variables nil-entry not-a-pair not-constant not-constant? num-of passq peval quot quote-nil reduce-global ref-count remove-constant s-lambda s-let s-list s-plus s-quote s-times same-pair? sappend sassq sbool scaar scadar scaddar scadddr scaddr scadr scar scdar scdddr scddr scdr scons seq? sequal? sfalse sfalse? sfor-each simplify! slength slist-ref slist1 slist2 slist3 smap smemq snil snull? snumber? some? spair? sproduct sset-car! sset-cdr! ssum ssymbol? strue sym-is? sym-of the-probe)) (read @heap) (write @heap) spin) (sx sx) sx) ! pure",
-"define simplify! : (subr (maxeff (alloc @heap) (read (globals *primitives* add-binding alphatize arg-pattern beta-subst binding-frame bound-expr const-expr? const-value constant-fold-global current-num every? extract-constant for-each! get-last-pair map2 new-variable new-variables nil-entry not-a-pair not-constant not-constant? num-of passq peval quot quote-nil reduce-global ref-count remove-constant s-lambda s-let s-list s-plus s-quote s-times same-pair? sappend sassq sbool scaar scadar scaddar scadddr scaddr scadr scar scdar scdddr scddr scdr scons seq? sequal? sfalse sfalse? sfor-each simplify! slength slist-ref slist1 slist2 slist3 smap smemq snil snull? snumber? some? spair? sproduct sset-car! sset-cdr! ssum ssymbol? strue sym-is? sym-of the-probe)) (read @heap) (write @heap) spin) (sx) sx) ! pure",
+"define simplify! : prim ! pure",
 "define partial-evaluate : (subr (maxeff (alloc @heap) (read (globals *primitives* add-binding alphatize arg-pattern beta-subst binding-frame bound-expr const-expr? const-value constant-fold-global current-num every? extract-constant for-each! get-last-pair map2 new-variable new-variables nil-entry not-a-pair not-constant not-constant? num-of passq peval quot quote-nil reduce-global ref-count remove-constant s-lambda s-let s-list s-plus s-quote s-times same-pair? sappend sassq sbool scaar scadar scaddar scadddr scaddr scadr scar scdar scdddr scddr scdr scons seq? sequal? sfalse sfalse? sfor-each simplify! slength slist-ref slist1 slist2 slist3 smap smemq snil snull? snumber? some? spair? sproduct sset-car! sset-cdr! ssum ssymbol? strue sym-is? sym-of the-probe)) (read @heap) (write @heap) spin) (sx sx) sx) ! pure",
 "define delimiter? : (subr pure (char) bool) ! pure",
 "define skip-space : (subr (maxeff (read (globals skip-space)) (read @heap) (write @heap) spin) (string (ref int @heap)) unit) ! pure",
@@ -123,7 +123,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

@@ -9,7 +9,7 @@
 {
 "code": 0,
 "out": [
-"n : (moduleof (desc t int) (val x t) (val bump (subr pure (t) t))) ! pure",
+"n : (moduleof (desc t int) (val x int) (val bump (subr pure (int) int))) ! pure",
 "peek : (subr pure (opaque) int) ! pure",
 "6 : int ! (read (globals n peek))",
 ""
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

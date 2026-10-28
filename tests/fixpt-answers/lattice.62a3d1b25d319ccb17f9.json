@@ -10,14 +10,14 @@
 "code": 0,
 "out": [
 "define sym : (subr pure (symbol) elem) ! pure",
-"define seq : (subr pure ((listof elem @heap)) elem) ! pure",
+"define seq : (subr pure (elems) elem) ! pure",
 "define lexico : (subr pure (cmp) cmp) ! pure",
 "define make-lattice : (subr (alloc @heap) (elems cmp) lattice) ! pure",
 "define lattice->elements : (subr (read @heap) (lattice) elems) ! pure",
 "define lattice->cmp : (subr (read @heap) (lattice) cmp) ! pure",
 "define reverse! : (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) (elems) elems) ! pure",
 "define zulu-select : (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) (elem) bool) elems) elems) ! pure",
-"define select-map : (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((pairof elem elem @heap)) bool) (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((pairof elem elem @heap)) elem) (listof (pairof elem elem @heap) @heap)) elems) ! pure",
+"define select-map : (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((pairof elem elem @heap)) bool) (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((pairof elem elem @heap)) elem) pas) elems) ! pure",
 "define map-and : (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) ((subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) (elem) bool) elems) bool) ! pure",
 "define append2 : (subr (maxeff (alloc @heap) (read (globals append2)) (read @heap) spin) (elems elems) elems) ! pure",
 "define maps-1 : (subr (maxeff (alloc @heap) (read (globals append2 lattice->cmp lattice->elements map-and maps-1 maps-rest reverse! select-map seq sum-list zulu-select)) (read @heap) (write @heap) spin) (lattice lattice pas elem) elems) ! pure",
@@ -37,7 +37,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

@@ -9,11 +9,11 @@
 {
 "code": 0,
 "out": [
-"define m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
+"define m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) pair-of-t))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
 "define zero : include-lib.fx..t ! (read (globals m))",
 "define value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
 "define both : (subr (alloc @heap) (include-lib.fx..t) (pairof include-lib.fx..t include-lib.fx..t @heap)) ! (read (globals m))",
-"define first : (subr (read @heap) (pair-of-t) t) ! pure",
+"define first : (subr (read @heap) (pair-of-t) include-lib.fx..t) ! pure",
 "int ! (maxeff (alloc @heap) (read (globals both first value zero)) (read @heap))",
 "; both checkers agree",
 ""
@@ -22,7 +22,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

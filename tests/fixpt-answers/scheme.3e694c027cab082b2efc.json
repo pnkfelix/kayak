@@ -15,9 +15,9 @@
 "define ochar : (subr pure (char) obj) ! pure",
 "define ostr : (subr pure (string) obj) ! pure",
 "define osym : (subr pure (symbol) obj) ! pure",
-"define opair : (subr pure ((pairof obj obj @heap)) obj) ! pure",
+"define opair : (subr pure (cell) obj) ! pure",
 "define ovec : (subr pure ((arrayof obj @heap)) obj) ! pure",
-"define oproc : (subr pure ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (int obj obj obj obj) obj)) obj) ! pure",
+"define oproc : (subr pure (prim) obj) ! pure",
 "define obj-null : obj ! (read (globals onull))",
 "define obj-false : obj ! (read (globals obool))",
 "define obj-true : obj ! (read (globals obool))",
@@ -91,7 +91,7 @@
 "define args-from-2 : (subr (maxeff (alloc @heap) (read (globals obj-null ocons opair))) (int obj obj obj) obj) ! pure",
 "define args-from-3 : (subr (maxeff (alloc @heap) (read (globals obj-null ocons opair))) (int obj obj) obj) ! pure",
 "define arity-error : (subr (maxeff (read (globals no-objects oint scheme-error)) (read @heap)) (int) obj) ! pure",
-"define scheme-global-variables : (ref (listof cell @heap) @heap) ! (alloc @heap)",
+"define scheme-global-variables : (ref macros @heap) ! (alloc @heap)",
 "define scheme-global-var : (subr (maxeff (alloc @heap) (read (globals obj-null scheme-global-variables)) (read @globals) (read @heap) (write @heap) spin) (obj) cell) ! pure",
 "define scheme-global-var-ref : (subr (read @heap) (cell) obj) ! pure",
 "define scheme-global-var-set! : (subr (maxeff (read (globals obj-null)) (write @heap)) (cell obj) obj) ! pure",
@@ -154,7 +154,7 @@
 "define bindings->vals : (subr (maxeff (alloc @heap) (read (globals bindings->vals is-pair? no-objects obj-cadr obj-car obj-cdr scheme-error)) (read @heap) spin) (obj) objs) ! pure",
 "define bindings->steps : (subr (maxeff (alloc @heap) (read (globals bindings->steps is-pair? no-objects obj-caddr obj-car obj-cddr obj-cdr scheme-error)) (read @heap) spin) (obj) objs) ! pure",
 "define objs->obj : (subr (maxeff (alloc @heap) (read (globals obj-null objs->obj ocons opair)) (read @heap) spin) (objs) obj) ! pure",
-"define scheme-eval : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj) obj) ! pure",
+"define scheme-eval : code ! pure",
 "define macro-expand : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj env) obj) ! pure",
 "define comp-var : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj env) code) ! pure",
 "define comp-self-eval : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj env) code) ! pure",
@@ -221,10 +221,10 @@
 "define list-chars : (subr (maxeff (alloc @heap) (read (globals char-of list-chars no-objects scheme-error)) (read @heap) spin) (obj) (listof char @heap)) ! pure",
 "define repeat-char : (subr (maxeff (alloc @heap) (read (globals repeat-char)) spin) (int char) (listof char @heap)) ! pure",
 "define string-append-all : (subr (maxeff (read (globals no-objects scheme-error string-append-all string-of)) (read @heap) spin) (string obj) string) ! pure",
-"define p1 : (subr (read (globals oproc)) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj) obj)) obj) ! pure",
-"define p2 : (subr (read (globals oproc)) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj obj) obj)) obj) ! pure",
+"define p1 : (subr (read (globals oproc)) (code) obj) ! pure",
+"define p2 : (subr (read (globals oproc)) (case-code) obj) ! pure",
 "define p3 : (subr (read (globals oproc)) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj obj obj) obj)) obj) ! pure",
-"define pn : (subr (read (globals oproc)) ((subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (obj) obj)) obj) ! pure",
+"define pn : (subr (read (globals oproc)) (code) obj) ! pure",
 "define install-primitives : (subr (maxeff (alloc @heap) (read (globals char-down char-same cxr def-proc obj-null oproc osym p1 p2 p3 pn prim-char-compare prim-string-compare scheme-global-var scheme-global-var-set! scheme-global-variables unsupported)) (read @globals) (read @heap) (write @heap) spin) () unit) ! pure",
 "unit ! (maxeff (alloc @heap) (read (globals char-down char-same cxr def-proc install-primitives obj-null oproc osym p1 p2 p3 pn prim-char-compare prim-string-compare scheme-global-var scheme-global-var-set! scheme-global-variables unsupported)) (read @globals) (read @heap) (write @heap) spin)",
 "define read-obj : (subr (maxeff (alloc @heap) (read @globals) (read @heap) (write @heap) spin) (string (ref int @heap)) obj) ! pure",
@@ -241,7 +241,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]

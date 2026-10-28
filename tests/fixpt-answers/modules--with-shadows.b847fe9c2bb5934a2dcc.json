@@ -8,8 +8,7 @@
 "answers": [
 {
 "by": [
-"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048",
-"x86_64-linux@6447f9b0fe48a66bbbc46cdea22b2e5f23577ec2"
+"unknown@8f76d6556a5105761c66b17b56ca92e8e3dc9048"
 ],
 "code": 0,
 "out": [
@@ -25,6 +24,26 @@
 ],
 "err": [
 ""
+]
+},
+{
+"code": 0,
+"out": [
+"define a : (moduleof (desc n int) (desc touches (read @globals))) ! pure",
+"define b : (moduleof (desc n bool)) ! pure",
+"define one : int ! (read (globals a))",
+"define yes : bool ! (read (globals a b))",
+"define f : (subr (read @globals) () int) ! (read (globals a))",
+"define g : (moduleof (desc n bool) (val x bool)) ! (read (globals a))",
+"int ! (maxeff (read (globals f g one yes)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@55d130bdca042d7f740f81488d13f7be8db0dfa3"
 ]
 }
 ]
