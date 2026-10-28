@@ -545,6 +545,15 @@ pub fn unmarked(head: &'static Sexp) -> &'static Sexp {
     }
 }
 
+// Names `conversions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn conversions_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("="), kayak_rt::nil())))
+    })
+}
+
 /// A `define-generative`'s conversions, `up-t` from what it is made of and
 /// `down-t` back: a new type, distinct from its representation, as
 /// FX-26's top-level generative type is (not abstract: anyone may convert).
@@ -560,7 +569,7 @@ pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
     }), params));
     let repr = parse_type(with_tvars(v, params), params, third(xs));
     map2(lambda2s(move |p: Str, m: Str| {
-        if not(string_member_p(m, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("="), kayak_rt::nil()))))) {
+        if not(string_member_p(m, conversions_names())) {
             match refuse(v, string_append(str_lit("a variance mark is `+` or `-`: "), m)) {}
         } else if (not(string_eq_p(m, str_lit("="))) && any_p(lambda1s(move |q: Str| {
             not(string_eq_p(q, m))
@@ -4005,6 +4014,7 @@ pub fn letrec_items(forms: Sexps, bs: Binds) -> Mitems {
         }
     }), forms));
     let names = concat(map(&item_names, values));
+    let all = nset_of(names);
     map(lambda1s(move |f: &'static Sexp| {
         mitem(f, item_names(f), {
             let own = if module_def_p(f) {
@@ -4012,13 +4022,17 @@ pub fn letrec_items(forms: Sexps, bs: Binds) -> Mitems {
             } else {
                 nil::<Str>()
             };
-            let set = nset_of(concat(map(lambda1s(move |n: Str| {
-                if string_member_p(n, own) {
-                    nil::<Str>()
-                } else {
-                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                }
-            }), names)));
+            let set = if null_p(own) {
+                all
+            } else {
+                nset_of(concat(map(lambda1s(move |n: Str| {
+                    if string_member_p(n, own) {
+                        nil::<Str>()
+                    } else {
+                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                    }
+                }), names)))
+            };
             concat(map(lambda1s(move |e: &'static Sexp| {
                 refs_in(e, set, forms, bs)
             }), item_value(f)))
@@ -4185,25 +4199,6 @@ pub fn in_itree(mut x: Str, mut t: &'static Itree) -> Mitems {
                     t = r;
                     continue;
                 }
-            }
-        }
-    }
-}
-
-/// `s` with `x`, unbalanced: for what a walk has seen.
-pub fn nset_added(x: Str, s: &'static Nset) -> &'static Nset {
-    let tagcase_ = s;
-    match *tagcase_ {
-        Nset::Nempty() => {
-            nnode(nempty(), x, nempty())
-        }
-        Nset::Nnode(l, k, r) => {
-            if string_eq_p(x, k) {
-                s
-            } else if string_lt_p(x, k) {
-                nnode(nset_added(x, l), k, r)
-            } else {
-                nnode(l, k, nset_added(x, r))
             }
         }
     }

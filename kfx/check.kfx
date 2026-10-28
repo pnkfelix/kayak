@@ -139,8 +139,12 @@
        innermost, as `bind-onto` makes them."
       (if (null? bs) t (bix-adds (tagcase (car bs) (bind (n sc w) (bix-add t n (car bs)))) (cdr bs))))))
 
+"Names `marker` tests against, made once (C264): a list written in place is
+ made at each call."
+(define marker-names strings (list "%module" "%loaded" "%instance" "%toplambda"))
+
 (define marker? (subr kfx (string) bool)
-  (lambda (n) (string-member? n (list "%module" "%loaded" "%instance" "%toplambda"))))
+  (lambda (n) (string-member? n marker-names)))
 
 (define-rec
   (marks-adds (subr kfx (binds binds) binds)
@@ -250,7 +254,11 @@
     (lambda (cs n) (if (or (null? cs) (i64= n 0)) cs (drop-chars (cdr cs) (i64- n 1))))))
 
 (define after-prefix (subr kfx (string string) string)
-  (lambda (x p) (list->string (drop-chars (string->list x) (string-length-i64 p)))))
+  (lambda (x p)
+    "`x` after its first `p`'s length of characters (none if it has no
+     more): a substring, where the characters' list had been made (C269)."
+    (let ((k (string-length-i64 p)) (n (string-length-i64 x)))
+      (if (i64>= k n) "" (substring x (i64->int k) (i64->int n))))))
 
 (define-rec
   (chars-after-dots (subr kfx ((listof char acyclic)) (listof char acyclic))
@@ -605,10 +613,14 @@
                            (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))
               (detail string))")
 
+"Names `io-kind` tests against, made once (C264): a list written in place is
+ made at each call."
+(define io-kind-names strings (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native" "sys"))
+
 (define io-kind? (subr kfx (string) bool)
   (lambda (k)
     "The `io` effects' kinds, a fixed family (C49)."
-    (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native" "sys"))))
+    (string-member? k io-kind-names)))
 
 (define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) ds))))
 (define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) als))))
@@ -1179,12 +1191,16 @@
     "Whether `part` is in `s`: compared in place, making nothing."
     (has-from? s part 0)))
 
+"Names `rust-keyword-clash` tests against, made once (C264): a list written in place is
+ made at each call."
+(define rust-keyword-clash-names strings (list "self" "super" "crate"))
+
 (define rust-keyword-clash? (subr kfx (string) bool)
   (lambda (n)
     "Whether `n` is a Rust keyword no raw identifier may be, `self`, `super`,
      `crate`, or one as a type's name (`Self`): KFX names none so. The
      others are Rust's `r#loop` (C41)."
-    (or (string-member? n (list "self" "super" "crate"))
+    (or (string-member? n rust-keyword-clash-names)
         (string=? (camel n) "Self"))))
 
 (define rust-type-names (subr kfx () strings)
@@ -1213,19 +1229,27 @@
                                                  "make_continuation_prompt_tag" "nil" "cons" "bloblet_written"
                                                  "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3" "native_procedure4")))))))
 
+"Names `kfx-reserved` tests against, made once (C264): a list written in place is
+ made at each call."
+(define kfx-reserved-names strings (list "nil" "cons" "once" "alloc" "the" "unwind" "knot" "fail"))
+
 (define kfx-reserved? (subr kfx (string) bool)
   (lambda (n)
     "Whether `n` is spelled as a KFX name but is one kayak-rt or the emitter
      writes (`nil`, `cons`, ...): an FX-26 name, refused for KFX by the
      restriction pass wherever it is bound (C187)."
-    (string-member? n (list "nil" "cons" "once" "alloc" "the" "unwind" "knot" "fail"))))
+    (string-member? n kfx-reserved-names)))
+
+"Names `label-name` tests against, made once (C264): a list written in place is
+ made at each call."
+(define label-name-names strings (list "nil" "cons" "once" "alloc" "the" "unwind" "knot" "fail"))
 
 (define label-name? (subr kfx (string) bool)
   (lambda (n)
     "Whether `n` may be a product's or a sum's label: as a KFX name (C27),
      but those kayak-rt's functions have, which a Rust field or variant is
      apart from (`cons`, C116: Fixpt's `convention-types.fx`)."
-    (or (kfx-name? n) (string-member? n (list "nil" "cons" "once" "alloc" "the" "unwind" "knot" "fail")))))
+    (or (kfx-name? n) (string-member? n label-name-names))))
 
 "A knot through the store (FX-26's `no_knot`): a procedure kept in
  storage at a region, whose latent effect reads that region and does not
@@ -1851,12 +1875,16 @@
       (lst (xs f l p) (if (and (not (null? xs)) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f))) (sym-name (car xs)) ""))
       (else other ""))))
 
+"Names `effect-written` tests against, made once (C264): a list written in place is
+ made at each call."
+(define effect-written-names strings (list "pure" "spin" "nondet"))
+
 (define effect-written? (subr kfx (cv sexp) bool)
   (lambda (v e)
     "Whether `e`, a description's, is an effect: `pure`, an effect named, or
      an effect's form (C170)."
     (tagcase e
-      (sym (n f p) (or (string-member? n (list "pure" "spin" "nondet"))
+      (sym (n f p) (or (string-member? n effect-written-names)
                        (any? (lambda ((d effdef)) (tagcase d (effdef (m atoms) (string=? m n)))) (cv-effdefs v))))
       (lst (xs f l p) (string-member? (logic-head e) (list "maxeff" "read" "write" "alloc" "init" "await" "send" "receive" "goto" "comefrom" "io")))
       (else other #f))))
@@ -1899,8 +1927,12 @@
   (logic-nth (subr kfx (sexps i64) sexp)
     (lambda (xs i) (if (i64= i 0) (car xs) (logic-nth (cdr xs) (i64- i 1))))))
 
+"Names `logic-literal-symbol` tests against, made once (C264): a list written in place is
+ made at each call."
+(define logic-literal-symbol-names strings (list "#t" "#f" "#u"))
+
 (define logic-literal-symbol? (subr kfx (sexp) bool)
-  (lambda (x) (tagcase x (sym (n f p) (string-member? n (list "#t" "#f" "#u"))) (else other #f))))
+  (lambda (x) (tagcase x (sym (n f p) (string-member? n logic-literal-symbol-names)) (else other #f))))
 
 (define logic-int-ty? (subr kfx (ty) bool)
   (lambda (t) (tagcase t (ty-int () #t) (ty-nat () #t) (ty-data (d args) (string=? d "%natof")) (else other #f))))
@@ -1951,6 +1983,10 @@
               nil
               (tagcase (car b) (bind (n sc wher) (if (string=? wher "global") (tagcase sc (scheme (vs t) (the tys (list t)))) nil))))))))
 
+"Names `logic-term` tests against, made once (C264): a list written in place is
+ made at each call."
+(define logic-term-names strings (list "+" "-" "*"))
+
 (define-rec
   (logic-term (subr kfx (cv snames sexp) string)
     (lambda (v names x)
@@ -1969,7 +2005,7 @@
                         (else (refuse v (string-append "`" (string-append n "` is not an `int`"))))))))
           (lst (xs f l p)
             (let ((hd (logic-head x)))
-              (if (and (not (string-member? hd (list "+" "-" "*"))) (not (null? (logic-callee v xs))))
+              (if (and (not (string-member? hd logic-term-names)) (not (null? (logic-callee v xs))))
                   (logic-call v names xs #f)
                   (let ((args (map (lambda ((a sexp)) (logic-term v names a)) (if (null? xs) nil (cdr xs)))))
                     (cond ((and (string=? hd "+") (not (null? args))) (logic-folded "add" (car args) (cdr args)))
@@ -2428,6 +2464,10 @@
     (let ((ens (spec-ensures d)))
       (or (not (null? (latent-claims ens #t))) (not (null? (latent-claims ens #f)))))))
 
+"Names `logic-shown` tests against, made once (C264): a list written in place is
+ made at each call."
+(define logic-shown-names strings (list "shape" "acyclic" "natp" "length-is"))
+
 "Shown, as Fixpt's `k-show-spec`: a parameter by its name, else `$i`; the
  result by its, else `result`."
 (define-rec
@@ -2441,7 +2481,7 @@
                  (if (string=? n "%none") (string-append "$" (i64->string i)) n)))
               ((string=? hd "res") (if (string=? rn "%none") "result" rn))
               ((string=? hd "len") (string-append "(length " (string-append (logic-shown names rn (lst (list (sym "p" "" 0) (car xs)) "" 0 0)) ")")))
-              ((string-member? hd (list "shape" "acyclic" "natp" "length-is"))
+              ((string-member? hd logic-shown-names)
                (string-append "(" (string-append (cond ((string=? hd "natp") "nat") (else hd))
                  (string-append " " (string-append (logic-shown names rn (lst (list (sym "p" "" 0) (car xs)) "" 0 0))
                    (string-append (cond ((string=? hd "shape") (string-append " " (show-sexp (second xs))))
@@ -2633,6 +2673,18 @@
                 (else t)))
         (lst (ys f l p) (lst (map (lambda ((y sexp)) (dletrec-in bs y bound)) ys) f l p))
         (else other t)))))
+
+"Names `parse-type` tests against, made once (C264): a list written in place is
+ made at each call."
+(define parse-type-names strings (list "u8" "u16" "u32"))
+
+"Names `kind-text` tests against, made once (C264): a list written in place is
+ made at each call."
+(define kind-text-names strings (list "type" "region" "place" "effect" "size"))
+
+"Names `kind-text` tests against, made once (C264): a list written in place is
+ made at each call."
+(define kind-text-names-2 strings (list "region" "place" "effect" "size"))
 
 (define-rec
   (mu-member-shape (subr kfx (cv strings ty) string)
@@ -2902,7 +2954,7 @@
                  "A keyed flat sum, `(sumof u8 (0 F) (7 G))` (C33): a tag of the key's
                   width, the label stored as it is, then the variant."
                  (let ((key (sym-name (second xs))))
-                   (if (not (string-member? key (list "u8" "u16" "u32")))
+                   (if (not (string-member? key parse-type-names))
                        (refuse v "a flat sum's key is `u8`, `u16` or `u32`")
                        (ty-data "%flat-sum"
                                 (cons (ty-rconst key)
@@ -3127,11 +3179,11 @@
        arrow `(=> (kind ...) kind)` (C173), canonical."
       (let ((usage "a kind is `region`, `place`, `effect`, `type`, `data`, `sendable`, `flat`, `size`, `conv` or `(=> (kind …) kind)`"))
         (tagcase k
-          (sym (n f p) (if (string-member? n (list "type" "region" "place" "effect" "size")) n (refuse v usage)))
+          (sym (n f p) (if (string-member? n kind-text-names) n (refuse v usage)))
           (lst (xs f l p)
             (if (and (i64= (size xs) 3) (sym-is? (car xs) "=>") (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
                 (let ((ps (map (lambda ((x sexp)) (kind-text v x)) (items (second xs)))) (r (kind-text v (third xs))))
-                  (cond ((and (string=? r "effect") (any? (lambda ((q string)) (not (string-member? q (list "region" "place" "effect" "size")))) ps))
+                  (cond ((and (string=? r "effect") (any? (lambda ((q string)) (not (string-member? q kind-text-names-2))) ps))
                          (refuse v "a description function to an effect takes regions, places, effects, sizes and conventions"))
                         ((any? (lambda ((q string)) (string=? q "effect")) ps)
                          (refuse v "a description function given an effect, which kayak's checker has not yet (C173)"))
@@ -3383,6 +3435,10 @@
             (refuse v "two type variables named alike in Rust (camel-cased, as `a` and `a-`)")
             #u)))))
 
+"Names `poly-binders` tests against, made once (C264): a list written in place is
+ made at each call."
+(define poly-binders-names strings (list "data" "sendable" "flat"))
+
 (define poly-binders (subr kfx (cv sexp bool) strings)
   (lambda (v t own)
     "A definition's type's variables: a poly at its top, over types, and
@@ -3415,7 +3471,7 @@
                         "A convention binder (C205; Fixpt's conventions/poly.fx): `^conv^c`,
                          for `(subr (conv c) ...)`."
                         (binder-named "conv" (name-of v (car b))))
-                       ((tagcase (second b) (sym (k f p) (string-member? k (list "data" "sendable" "flat"))) (else other #f))
+                       ((tagcase (second b) (sym (k f p) (string-member? k poly-binders-names)) (else other #f))
                         "A type binder of a kind that says what it takes (C186; Fixpt's
                          `data`, `sendable`, `flat`): marked `^K^t`, as an arrow kind's
                          binder is, printed `(t K)`; what it stands for checked where
@@ -3466,6 +3522,10 @@
 
 (define parse-scheme (subr kfx (cv sexp) scheme)
   (lambda (v t) (parse-scheme-of v t #t)))
+
+"Names `desc-named` tests against, made once (C264): a list written in place is
+ made at each call."
+(define desc-named-names strings (list "int" "nat" "bool" "char" "string" "unit" "f64" "i64" "symbol"))
 
 (define-rec
   (size-lin (subr kfx (st ty) lins)
@@ -3635,7 +3695,7 @@
                  (text2 (cond ((and (string=? (mitem-kind x) "%desc") (string=? (mitem-name x) n)) text)
                               ((has-prefix? body "(")
                                (string-append (before-body text) (text-replaced (after-body text) body n)))
-                              ((string-member? body (list "int" "nat" "bool" "char" "string" "unit" "f64" "i64" "symbol"))
+                              ((string-member? body desc-named-names)
                                (string-append (before-body text) (token-replaced (after-body text) body n)))
                               (else text))))
             (desc-named s (cdr descs) x text2)))))
@@ -4273,12 +4333,24 @@
               (else nil)))
       (else other nil))))
 
+"Names `convention-given` tests against, made once (C264): a list written in place is
+ made at each call."
+(define convention-given-names strings (list "native" "cellular" "fx"))
+
 (define convention-given (subr kfx (cv sexp) ty)
   (lambda (v a)
     "A convention given for a binder (C205): `native`, `cellular`, `fx`."
     (tagcase a
-      (sym (n f p) (if (string-member? n (list "native" "cellular" "fx")) (ty-rconst n) (refuse v (string-append "a convention binder takes a convention, not " n))))
+      (sym (n f p) (if (string-member? n convention-given-names) (ty-rconst n) (refuse v (string-append "a convention binder takes a convention, not " n))))
       (else other (refuse v (string-append "a convention binder takes a convention, not " (show-sexp a)))))))
+
+"Names `fits-shapes` tests against, made once (C264): a list written in place is
+ made at each call."
+(define fits-shapes-names strings (list "i8" "u8" "i32" "u32" "u64"))
+
+"Names `fits-shapes-of` tests against, made once (C264): a list written in place is
+ made at each call."
+(define fits-shapes-of-names strings (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
 
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
@@ -4403,7 +4475,7 @@
              "`false` below `bool`."
              s)
             ((and (tagcase e (ty-int () #t) (else other #f))
-                  (tagcase a (ty-i64 () #t) (ty-data (d args) (and (null? args) (string-member? d (list "i8" "u8" "i32" "u32" "u64")))) (else other #f)))
+                  (tagcase a (ty-i64 () #t) (ty-data (d args) (and (null? args) (string-member? d fits-shapes-names))) (else other #f)))
              "A fixed-width integer below `int`, the integer it stands for (Fixpt's
               fx26.md, 2026-10-08, 2026-10-11; C183); KFX's Rust keeps them apart."
              (kfx-restricted v s (string-append "a " (string-append (show-ty s a) " where an int is expected, FX-26's, which KFX's Rust does not convert (C183)"))))
@@ -4535,7 +4607,7 @@
                       but one marked `+` or `-` (C188), one way."
                      (fits-variant v s xs ys (variance-marks v x)))
                     ((and (string=? x y)
-                          (or (string-member? x (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
+                          (or (string-member? x fits-shapes-of-names)
                               (and (string=? x "%pairof") (not (frozen-region? s (car (cdr (cdr xs))))))))
                      "Storage that can be written is invariant in what it holds, as
                       Fixpt's (C188, probing it: a reference, an array, an I-cell, an
@@ -4869,6 +4941,10 @@
         (ty-shape (p ls ts) (any? (lambda ((x ty)) (region-var-in? s x)) ts))
         (else other #f)))))
 
+"Names `only-called` tests against, made once (C264): a list written in place is
+ made at each call."
+(define only-called-names strings (list "lambda" "plambda" "rlambda" "letrec" "prompt" "module" "with" "quote" "define-rec" "vlambda"))
+
 "`cwcc`'s `spin` (C168; Fixpt's `k-may-spin?`): a continuation called after
  `cwcc` returns comes back to it as often as it is called; only a receiver
  `(lambda (k) ...)` whose `k` is only called, so can only leave while
@@ -4888,7 +4964,7 @@
         (sym (m f p) (not (string=? m k)))
         (lst (xs f l p)
           (cond ((null? xs) #t)
-                ((tagcase (car xs) (sym (h f2 p2) (string-member? h (list "lambda" "plambda" "rlambda" "letrec" "prompt" "module" "with" "quote" "define-rec" "vlambda"))) (else other #f))
+                ((tagcase (car xs) (sym (h f2 p2) (string-member? h only-called-names)) (else other #f))
                  (not (sexp-mentions? e k)))
                 ((sym-is? (car xs) k) (not (any? (lambda ((x sexp)) (not (only-called? x k))) (cdr xs))))
                 (else (not (any? (lambda ((x sexp)) (not (only-called? x k))) xs)))))
@@ -4995,17 +5071,25 @@
         (string=? name "blobref-owner") (string=? name "blobref-offset") (string=? name "blobref-get") (string=? name "blobref-set!")
         (string=? name "blobref-index") (string=? name "blobref-variant!") (string=? name "blobref-length"))))
 
+"Names `process-call` tests against, made once (C264): a list written in place is
+ made at each call."
+(define process-call-names strings (list "send" "receive" "icell-get" "icell-put!"))
+
 (define process-call? (subr kfx (string) bool)
   (lambda (h)
     "FX-26's forms of processes that are calls (C101): typed as procedures
      are, but a call headed by one is the form, whatever binds its name."
-    (string-member? h (list "send" "receive" "icell-get" "icell-put!"))))
+    (string-member? h process-call-names)))
+
+"Names `process-form` tests against, made once (C264): a list written in place is
+ made at each call."
+(define process-form-names strings (list "spawn" "par" "pselect"))
 
 (define process-form? (subr kfx (string) bool)
   (lambda (h)
     "FX-26's forms of processes and `par` (C101), each a form wherever it
      heads a list, whatever binds its name."
-    (or (process-call? h) (string-member? h (list "spawn" "par" "pselect")))))
+    (or (process-call? h) (string-member? h process-form-names))))
 
 (define bind-onto (subr kfx (binds binds) binds)
   (lambda (xs ys) (if (null? xs) ys (bind-onto (cdr xs) (cons (car xs) ys)))))
@@ -5429,15 +5513,18 @@
           (else (cons (car es) (masked-goto (cdr es) r))))))
 
 (define-rec
-  (names-in (subr kfx (sexp) strings)
-    (lambda (e)
-      "Every name in `e`, bound in it or not."
+  (names-in-onto (subr kfx (sexp strings) strings)
+    (lambda (e acc)
+      "Every name in `e`, bound in it or not, in order, onto `acc` (C269:
+       each list's names had been copied again at each list around it)."
       (tagcase e
-        (sym (n at-file at-pos) (list n))
-        (lst (xs src-file src-line src-pos) (names-in-all xs))
-        (else other nil))))
-  (names-in-all (subr kfx (sexps) strings)
-    (lambda (es) (if (null? es) nil (onto (names-in (car es)) (names-in-all (cdr es)))))))
+        (sym (n at-file at-pos) (cons n acc))
+        (lst (xs src-file src-line src-pos) (names-all-onto xs acc))
+        (else other acc))))
+  (names-all-onto (subr kfx (sexps strings) strings)
+    (lambda (es acc) (if (null? es) acc (names-in-onto (car es) (names-all-onto (cdr es) acc))))))
+(define names-in (subr kfx (sexp) strings) (lambda (e) (names-in-onto e nil)))
+(define names-in-all (subr kfx (sexps) strings) (lambda (es) (names-all-onto es nil)))
 
 (define reaches? (subr kfx (cv st sexp sexp string) bool)
   (lambda (v s body tag r)

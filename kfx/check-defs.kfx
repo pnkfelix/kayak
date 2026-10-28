@@ -493,6 +493,10 @@
         (lst (cons (car xs) (map (lambda ((b sexp)) (tagcase b (lst (ys f2 l2 p2) (if (i64= (size ys) 3) (lst (list (car ys) (second ys)) f2 l2 p2) b)) (else other b))) (cdr xs))) f l p))
       (else other head))))
 
+"Names `conversions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define conversions-names strings (list "+" "-" "="))
+
 (define conversions (subr kfx (cv sexps) binds)
   (lambda (v xs)
     "A `define-generative`'s conversions, `up-t` from what it is made of and
@@ -508,7 +512,7 @@
            (repr (parse-type (with-tvars v params) params (third xs))))
       (begin
         (map2 (lambda ((p string) (m string))
-                (cond ((not (string-member? m (list "+" "-" "="))) (refuse v (string-append "a variance mark is `+` or `-`: " m)))
+                (cond ((not (string-member? m conversions-names)) (refuse v (string-append "a variance mark is `+` or `-`: " m)))
                       ((and (not (string=? m "=")) (any? (lambda ((q string)) (not (string=? q m))) (polarities v repr p "+")))
                        (refuse v (string-append "`" (string-append p (string-append "` is declared " (string-append (if (string=? m "+") "covariant" "contravariant")
                                  ", and its representation does not bear that out"))))))
@@ -2203,11 +2207,15 @@
     "The value items: each its form, its names, the items it names, and
      whether it is procedures (made, not run, when its item is)."
     (let* ((values (concat (map (lambda ((f sexp)) (if (null? (item-value f)) nil (the sexps (list f)))) forms)))
-           (names (concat (map item-names values))))
+           (names (concat (map item-names values)))
+           ;; The names' set made once, for every item but a module, which
+           ;; leaves out its own (C269): made for each item, it had been
+           ;; quadratic in the items.
+           (all (nset-of names)))
       (map (lambda ((f sexp))
              (mitem f (item-names f)
                     (let ((own (if (module-def? f) (concat (map item-names (unhidden (module-written f)))) nil)))
-                      (let ((set (nset-of (concat (map (lambda ((n string)) (if (string-member? n own) nil (the strings (list n)))) names)))))
+                      (let ((set (if (null? own) all (nset-of (concat (map (lambda ((n string)) (if (string-member? n own) nil (the strings (list n)))) names))))))
                         (concat (map (lambda ((e sexp)) (refs-in e set forms bs)) (item-value f)))))
                     (and (or (head-is? f "define-rec") (head-is? f "define*") (i64= (size (items f)) 4))
                          (not (any? (lambda ((e sexp)) (not (lambda-form? e))) (item-value f))))))
@@ -2263,14 +2271,6 @@
       (tagcase t
         (ileaf () nil)
         (inode (l k it r) (cond ((string=? x k) (the mitems (list it))) ((string<? x k) (in-itree x l)) (else (in-itree x r))))))))
-
-(define-rec
-  (nset-added (subr kfx (string nset) nset)
-    (lambda (x s)
-      "`s` with `x`, unbalanced: for what a walk has seen."
-      (tagcase s
-        (nempty () (nnode (nempty) x (nempty)))
-        (nnode (l k r) (cond ((string=? x k) s) ((string<? x k) (nnode (nset-added x l) k r)) (else (nnode l k (nset-added x r)))))))))
 
 (define-rec
   (item-of (subr kfx (string mitems) mitems)

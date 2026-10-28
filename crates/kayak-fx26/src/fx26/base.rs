@@ -277,6 +277,25 @@ pub fn nset_of(xs: List<Str>) -> &'static Nset {
     tree_of(sorted, size(sorted))
 }
 
+/// `s` with `x`, unbalanced: for what a walk has seen.
+pub fn nset_added(x: Str, s: &'static Nset) -> &'static Nset {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Nset::Nempty() => {
+            nnode(nempty(), x, nempty())
+        }
+        Nset::Nnode(l, k, r) => {
+            if string_eq_p(x, k) {
+                s
+            } else if string_lt_p(x, k) {
+                nnode(nset_added(x, l), k, r)
+            } else {
+                nnode(l, k, nset_added(x, r))
+            }
+        }
+    }
+}
+
 pub fn in_nset_p(mut x: Str, mut s: &'static Nset) -> bool {
     loop {
         let tagcase_ = s;

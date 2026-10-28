@@ -352,8 +352,17 @@ pub fn bix_adds(mut t: &'static Bix, mut bs: Binds) -> &'static Bix {
     }
 }
 
+// Names `marker` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn marker_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("%module"), kayak_rt::heap_cons(str_lit("%loaded"), kayak_rt::heap_cons(str_lit("%instance"), kayak_rt::heap_cons(str_lit("%toplambda"), kayak_rt::nil()))))
+    })
+}
+
 pub fn marker_p(n: Str) -> bool {
-    string_member_p(n, kayak_rt::heap_cons(str_lit("%module"), kayak_rt::heap_cons(str_lit("%loaded"), kayak_rt::heap_cons(str_lit("%instance"), kayak_rt::heap_cons(str_lit("%toplambda"), kayak_rt::nil())))))
+    string_member_p(n, marker_names())
 }
 
 pub fn marks_adds(mut mk: Binds, mut bs: Binds) -> Binds {
@@ -558,8 +567,15 @@ pub fn drop_chars(mut cs: List<char>, mut n: i64) -> List<char> {
     }
 }
 
+/// `x` after its first `p`'s length of characters (none if it has no
+/// more): a substring, where the characters' list had been made (C269).
 pub fn after_prefix(x: Str, p: Str) -> Str {
-    list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
+    let (k, n) = (string_length_i64(p), string_length_i64(x));
+    if i64_gt_eq(k, n) {
+        str_lit("")
+    } else {
+        substring(x, i64_to_int(k), i64_to_int(n))
+    }
 }
 
 pub fn chars_after_dots(mut cs: List<char>) -> List<char> {
@@ -1158,9 +1174,18 @@ pub fn io_error_text() -> Str {
     str_lit("(productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit)\n                           (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))\n              (detail string))")
 }
 
+// Names `io-kind` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn io_kind_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("sys"), kayak_rt::nil())))))))))))
+    })
+}
+
 /// The `io` effects' kinds, a fixed family (C49).
 pub fn io_kind_p(k: Str) -> bool {
-    string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("sys"), kayak_rt::nil()))))))))))))
+    string_member_p(k, io_kind_names())
 }
 
 pub fn cv_dts(v: &'static Cv) -> Dts {
@@ -2581,11 +2606,20 @@ pub fn string_has_p(s: Str, part: Str) -> bool {
     has_from_p(s, part, 0i64)
 }
 
+// Names `rust-keyword-clash` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn rust_keyword_clash_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("super"), kayak_rt::heap_cons(str_lit("crate"), kayak_rt::nil())))
+    })
+}
+
 /// Whether `n` is a Rust keyword no raw identifier may be, `self`, `super`,
 /// `crate`, or one as a type's name (`Self`): KFX names none so. The
 /// others are Rust's `r#loop` (C41).
 pub fn rust_keyword_clash_p(n: Str) -> bool {
-    (string_member_p(n, kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("super"), kayak_rt::heap_cons(str_lit("crate"), kayak_rt::nil())))) || string_eq_p(camel(n), str_lit("Self")))
+    (string_member_p(n, rust_keyword_clash_names()) || string_eq_p(camel(n), str_lit("Self")))
 }
 
 /// The types Rust or kayak-rt has that the emitter writes: no KFX type and
@@ -2604,18 +2638,36 @@ pub fn kfx_name_p(n: Str) -> bool {
     }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("bloblet_written"), kayak_rt::heap_cons(str_lit("native_procedure0"), kayak_rt::heap_cons(str_lit("native_procedure1"), kayak_rt::heap_cons(str_lit("native_procedure2"), kayak_rt::heap_cons(str_lit("native_procedure3"), kayak_rt::heap_cons(str_lit("native_procedure4"), kayak_rt::nil()))))))))))))))))))))))))))))))
 }
 
+// Names `kfx-reserved` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn kfx_reserved_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::nil()))))))))
+    })
+}
+
 /// Whether `n` is spelled as a KFX name but is one kayak-rt or the emitter
 /// writes (`nil`, `cons`, ...): an FX-26 name, refused for KFX by the
 /// restriction pass wherever it is bound (C187).
 pub fn kfx_reserved_p(n: Str) -> bool {
-    string_member_p(n, kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::nil())))))))))
+    string_member_p(n, kfx_reserved_names())
+}
+
+// Names `label-name` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn label_name_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::nil()))))))))
+    })
 }
 
 /// Whether `n` may be a product's or a sum's label: as a KFX name (C27),
 /// but those kayak-rt's functions have, which a Rust field or variant is
 /// apart from (`cons`, C116: Fixpt's `convention-types.fx`).
 pub fn label_name_p(n: Str) -> bool {
-    (kfx_name_p(n) || string_member_p(n, kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::nil()))))))))))
+    (kfx_name_p(n) || string_member_p(n, label_name_names()))
 }
 
 // A knot through the store (FX-26's `no_knot`): a procedure kept in
@@ -4108,13 +4160,22 @@ pub fn logic_head(x: &'static Sexp) -> Str {
     }
 }
 
+// Names `effect-written` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn effect_written_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil())))
+    })
+}
+
 /// Whether `e`, a description's, is an effect: `pure`, an effect named, or
 /// an effect's form (C170).
 pub fn effect_written_p(v: &'static Cv, e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            (string_member_p(n, kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil())))) || any_p(lambda1s(move |d: &'static Effdef| {
+            (string_member_p(n, effect_written_names()) || any_p(lambda1s(move |d: &'static Effdef| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Effdef::Effdef(m, atoms) => {
@@ -4250,11 +4311,20 @@ pub fn logic_nth(mut xs: Sexps, mut i: i64) -> &'static Sexp {
     }
 }
 
+// Names `logic-literal-symbol` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn logic_literal_symbol_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("#t"), kayak_rt::heap_cons(str_lit("#f"), kayak_rt::heap_cons(str_lit("#u"), kayak_rt::nil())))
+    })
+}
+
 pub fn logic_literal_symbol_p(x: &'static Sexp) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            string_member_p(n, kayak_rt::heap_cons(str_lit("#t"), kayak_rt::heap_cons(str_lit("#f"), kayak_rt::heap_cons(str_lit("#u"), kayak_rt::nil()))))
+            string_member_p(n, logic_literal_symbol_names())
         }
         _ => {
             let other = tagcase_;
@@ -4409,6 +4479,15 @@ pub fn logic_callee(v: &'static Cv, xs: Sexps) -> Tys {
     }
 }
 
+// Names `logic-term` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn logic_term_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil())))
+    })
+}
+
 /// An integer of a specification: a literal, a name of an `int` or a
 /// `nat`, `(+ a ...)`, `(- a)`, `(- a b ...)`, `(* a ...)`, a logic
 /// function's value.
@@ -4447,7 +4526,7 @@ pub fn logic_term(v: &'static Cv, names: Snames, x: &'static Sexp) -> Str {
         }
         Sexp::Lst(xs, f, l, p) => {
             let hd = logic_head(x);
-            if (not(string_member_p(hd, kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil()))))) && not(null_p(logic_callee(v, xs)))) {
+            if (not(string_member_p(hd, logic_term_names())) && not(null_p(logic_callee(v, xs)))) {
                 logic_call(v, names, xs, false)
             } else {
                 let args = map(lambda1s(move |a: &'static Sexp| {
@@ -5428,6 +5507,15 @@ pub fn spec_claims_p(d: Str) -> bool {
     (not(null_p(latent_claims(ens, true))) || not(null_p(latent_claims(ens, false))))
 }
 
+// Names `logic-shown` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn logic_shown_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("shape"), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("natp"), kayak_rt::heap_cons(str_lit("length-is"), kayak_rt::nil()))))
+    })
+}
+
 // Shown, as Fixpt's `k-show-spec`: a parameter by its name, else `$i`; the
 // result by its, else `result`.
 pub fn logic_shown(mut names: Sexps, mut rn: Str, mut x: &'static Sexp) -> Str {
@@ -5466,7 +5554,7 @@ pub fn logic_shown(mut names: Sexps, mut rn: Str, mut x: &'static Sexp) -> Str {
             }
         } else if string_eq_p(hd, str_lit("len")) {
             return string_append(str_lit("(length "), string_append(logic_shown(names, rn, lst(kayak_rt::heap_cons(sym(str_lit("p"), str_lit(""), 0i64), kayak_rt::heap_cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), str_lit(")")));
-        } else if string_member_p(hd, kayak_rt::heap_cons(str_lit("shape"), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("natp"), kayak_rt::heap_cons(str_lit("length-is"), kayak_rt::nil()))))) {
+        } else if string_member_p(hd, logic_shown_names()) {
             return string_append(str_lit("("), string_append(if string_eq_p(hd, str_lit("natp")) {
                 str_lit("nat")
             } else {
@@ -5957,6 +6045,33 @@ pub fn dletrec_in(bs: Sexps, t: &'static Sexp, bound: Strings) -> &'static Sexp 
             t
         }
     }
+}
+
+// Names `parse-type` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn parse_type_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::nil())))
+    })
+}
+
+// Names `kind-text` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn kind_text_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::nil())))))
+    })
+}
+
+// Names `kind-text` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn kind_text_names_2() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::nil()))))
+    })
 }
 
 /// A union member's shape; a recursive abbreviation's own mention's, its
@@ -6474,7 +6589,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // A keyed flat sum, `(sumof u8 (0 F) (7 G))` (C33): a tag of the key's
                     // width, the label stored as it is, then the variant.
                     let key = sym_name(second(xs));
-                    if not(string_member_p(key, kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::nil()))))) {
+                    if not(string_member_p(key, parse_type_names())) {
                         return match refuse(v, str_lit("a flat sum's key is `u8`, `u16` or `u32`")) {};
                     } else {
                         return ty_data(str_lit("%flat-sum"), kayak_rt::heap_cons(ty_rconst(key), concat(map(lambda1s(move |g: &'static Sexp| {
@@ -7077,7 +7192,7 @@ pub fn kind_text(v: &'static Cv, k: &'static Sexp) -> Str {
     let tagcase_ = k;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            if string_member_p(n, kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::nil())))))) {
+            if string_member_p(n, kind_text_names()) {
                 n
             } else {
                 match refuse(v, usage) {}
@@ -7100,7 +7215,7 @@ pub fn kind_text(v: &'static Cv, k: &'static Sexp) -> Str {
                     kind_text(v, x)
                 }), items(second(xs))), kind_text(v, third(xs)));
                 if (string_eq_p(r, str_lit("effect")) && any_p(lambda1s(move |q: Str| {
-                    not(string_member_p(q, kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::nil()))))))
+                    not(string_member_p(q, kind_text_names_2()))
                 }), ps)) {
                     match refuse(v, str_lit("a description function to an effect takes regions, places, effects, sizes and conventions")) {}
                 } else if any_p(lambda1s(move |q: Str| {
@@ -7644,6 +7759,15 @@ pub fn type_binders_apart_kfx(v: &'static Cv, tvars: Strings, types: Strings) ->
     }
 }
 
+// Names `poly-binders` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn poly_binders_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))
+    })
+}
+
 /// A definition's type's variables: a poly at its top, over types, and
 /// regions, whose names begin with `'`; the program's `own`, held apart
 /// from its types (a primitive's not).
@@ -7682,7 +7806,7 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 let tagcase_ = second(b);
                 match *tagcase_ {
                     Sexp::Sym(k, f, p) => {
-                        string_member_p(k, kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil()))))
+                        string_member_p(k, poly_binders_names())
                     }
                     _ => {
                         let other = tagcase_;
@@ -7773,6 +7897,15 @@ pub fn parse_scheme_of(v: &'static Cv, t0: &'static Sexp, own: bool) -> &'static
 
 pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
     parse_scheme_of(v, t, true)
+}
+
+// Names `desc-named` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn desc_named_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::nil())))))))))
+    })
 }
 
 /// Size `t` as a linear expression, its variables named (`#n`, `?k`), an
@@ -8186,7 +8319,7 @@ pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut te
                 text
             } else if has_prefix_p(body, str_lit("(")) {
                 string_append(before_body(text), text_replaced(after_body(text), body, n))
-            } else if string_member_p(body, kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::nil())))))))))) {
+            } else if string_member_p(body, desc_named_names()) {
                 string_append(before_body(text), token_replaced(after_body(text), body, n))
             } else {
                 text
@@ -9783,12 +9916,21 @@ pub fn convention_ty(s: &'static St, t: &'static Ty) -> Tys {
     }
 }
 
+// Names `convention-given` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn convention_given_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("fx"), kayak_rt::nil())))
+    })
+}
+
 /// A convention given for a binder (C205): `native`, `cellular`, `fx`.
 pub fn convention_given(v: &'static Cv, a: &'static Sexp) -> &'static Ty {
     let tagcase_ = a;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            if string_member_p(n, kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("fx"), kayak_rt::nil())))) {
+            if string_member_p(n, convention_given_names()) {
                 ty_rconst(n)
             } else {
                 match refuse(v, string_append(str_lit("a convention binder takes a convention, not "), n)) {}
@@ -9799,6 +9941,24 @@ pub fn convention_given(v: &'static Cv, a: &'static Sexp) -> &'static Ty {
             match refuse(v, string_append(str_lit("a convention binder takes a convention, not "), show_sexp(a))) {}
         }
     }
+}
+
+// Names `fits-shapes` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn fits_shapes_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::nil())))))
+    })
+}
+
+// Names `fits-shapes-of` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn fits_shapes_of_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::nil()))))))))
+    })
 }
 
 /// That a value of type `actual` may stand where `expected` is: the two
@@ -10180,7 +10340,7 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 true
             }
             Ty::TyData(d, args) => {
-                (null_p(args) && string_member_p(d, kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::nil())))))))
+                (null_p(args) && string_member_p(d, fits_shapes_names()))
             }
             _ => {
                 let other = tagcase_;
@@ -10514,7 +10674,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         // (`generative/invariant.fx`; C183): each argument both ways;
                         // but one marked `+` or `-` (C188), one way.
                         fits_variant(v, s, xs, ys, variance_marks(v, x))
-                    } else if (string_eq_p(x, y) && (string_member_p(x, kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::nil()))))))))) || (string_eq_p(x, str_lit("%pairof")) && not(frozen_region_p(s, car(cdr(cdr(xs)))))))) {
+                    } else if (string_eq_p(x, y) && (string_member_p(x, fits_shapes_of_names()) || (string_eq_p(x, str_lit("%pairof")) && not(frozen_region_p(s, car(cdr(cdr(xs)))))))) {
                         // Storage that can be written is invariant in what it holds, as
                         // Fixpt's (C188, probing it: a reference, an array, an I-cell, an
                         // address, a bloblet, a mark key, a pair at a region that is not
@@ -11548,6 +11708,15 @@ pub fn region_var_in_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
+// Names `only-called` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn only_called_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::nil()))))))))))
+    })
+}
+
 // `cwcc`'s `spin` (C168; Fixpt's `k-may-spin?`): a continuation called after
 // `cwcc` returns comes back to it as often as it is called; only a receiver
 // `(lambda (k) ...)` whose `k` is only called, so can only leave while
@@ -11585,7 +11754,7 @@ pub fn only_called_p(e: &'static Sexp, k: Str) -> bool {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(h, f2, p2) => {
-                        string_member_p(h, kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::nil())))))))))))
+                        string_member_p(h, only_called_names())
                     }
                     _ => {
                         let other = tagcase_;
@@ -11785,16 +11954,34 @@ pub fn keyword_p(name: Str) -> bool {
     (string_eq_p(name, str_lit("lambda")) || string_eq_p(name, str_lit("plambda")) || string_eq_p(name, str_lit("proj")) || string_eq_p(name, str_lit("if")) || string_eq_p(name, str_lit("letrec")) || string_eq_p(name, str_lit("let")) || string_eq_p(name, str_lit("begin")) || string_eq_p(name, str_lit("define")) || string_eq_p(name, str_lit("define*")) || string_eq_p(name, str_lit("define-type")) || string_eq_p(name, str_lit("define-generative")) || string_eq_p(name, str_lit("subr")) || string_eq_p(name, str_lit("poly")) || string_eq_p(name, str_lit("ref")) || string_eq_p(name, str_lit("pairof")) || string_eq_p(name, str_lit("dletrec")) || string_eq_p(name, str_lit("void")) || string_eq_p(name, str_lit("pure")) || string_eq_p(name, str_lit("maxeff")) || string_eq_p(name, str_lit("read")) || string_eq_p(name, str_lit("write")) || string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("goto")) || string_eq_p(name, str_lit("comefrom")) || string_eq_p(name, str_lit("region")) || string_eq_p(name, str_lit("effect")) || string_eq_p(name, str_lit("type")) || string_eq_p(name, str_lit("prompt")) || string_eq_p(name, str_lit("prompt-tag")) || string_eq_p(name, str_lit("composable")) || string_eq_p(name, str_lit("mark-key")) || string_eq_p(name, str_lit("listof")) || string_eq_p(name, str_lit("cond")) || string_eq_p(name, str_lit("case")) || string_eq_p(name, str_lit("else")) || string_eq_p(name, str_lit("and")) || string_eq_p(name, str_lit("or")) || string_eq_p(name, str_lit("let*")) || string_eq_p(name, str_lit("define-effect")) || string_eq_p(name, str_lit("module-parameters")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("bloblet")) || string_eq_p(name, str_lit("fields")) || string_eq_p(name, str_lit("frozen")) || string_eq_p(name, str_lit("arrayof")) || string_eq_p(name, str_lit("icell")) || string_eq_p(name, str_lit("await")) || string_eq_p(name, str_lit("define-rec")) || string_eq_p(name, str_lit("letrena")) || string_eq_p(name, str_lit("letreap")) || string_eq_p(name, str_lit("rlambda")) || string_eq_p(name, str_lit("quote")) || string_eq_p(name, str_lit("productof")) || string_eq_p(name, str_lit("sumof")) || string_eq_p(name, str_lit("product")) || string_eq_p(name, str_lit("extract")) || string_eq_p(name, str_lit("sum")) || string_eq_p(name, str_lit("tagcase")) || string_eq_p(name, str_lit("module")) || string_eq_p(name, str_lit("moduleof")) || string_eq_p(name, str_lit("with")) || string_eq_p(name, str_lit("select")) || string_eq_p(name, str_lit("load-module")) || string_eq_p(name, str_lit("define-datatype")) || string_eq_p(name, str_lit("make-bloblet")) || string_eq_p(name, str_lit("bloblet-ref")) || string_eq_p(name, str_lit("bloblet-set!")) || string_eq_p(name, str_lit("bloblet-freeze")) || string_eq_p(name, str_lit("bloblet-byte")) || string_eq_p(name, str_lit("bloblet-set-byte!")) || string_eq_p(name, str_lit("bloblet-bytes")) || string_eq_p(name, str_lit("rmake-bloblet")) || string_eq_p(name, str_lit("dlambda")) || string_eq_p(name, str_lit("=>")) || string_eq_p(name, str_lit("blobref-at")) || string_eq_p(name, str_lit("blobref+")) || string_eq_p(name, str_lit("blobref-owner")) || string_eq_p(name, str_lit("blobref-offset")) || string_eq_p(name, str_lit("blobref-get")) || string_eq_p(name, str_lit("blobref-set!")) || string_eq_p(name, str_lit("blobref-index")) || string_eq_p(name, str_lit("blobref-variant!")) || string_eq_p(name, str_lit("blobref-length")))
 }
 
+// Names `process-call` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn process_call_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::nil()))))
+    })
+}
+
 /// FX-26's forms of processes that are calls (C101): typed as procedures
 /// are, but a call headed by one is the form, whatever binds its name.
 pub fn process_call_p(h: Str) -> bool {
-    string_member_p(h, kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::nil())))))
+    string_member_p(h, process_call_names())
+}
+
+// Names `process-form` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn process_form_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::nil())))
+    })
 }
 
 /// FX-26's forms of processes and `par` (C101), each a form wherever it
 /// heads a list, whatever binds its name.
 pub fn process_form_p(h: Str) -> bool {
-    (process_call_p(h) || string_member_p(h, kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::nil())))))
+    (process_call_p(h) || string_member_p(h, process_form_names()))
 }
 
 pub fn bind_onto(mut xs: Binds, mut ys: Binds) -> Binds {
@@ -12726,29 +12913,38 @@ pub fn masked_goto(mut es: Strings, mut r: Str) -> Strings {
     }
 }
 
-/// Every name in `e`, bound in it or not.
-pub fn names_in(e: &'static Sexp) -> Strings {
+/// Every name in `e`, bound in it or not, in order, onto `acc` (C269:
+/// each list's names had been copied again at each list around it).
+pub fn names_in_onto(e: &'static Sexp, acc: Strings) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, at_file, at_pos) => {
-            kayak_rt::heap_cons(n, kayak_rt::nil())
+            kayak_rt::heap_cons(n, acc)
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            names_in_all(xs)
+            names_all_onto(xs, acc)
         }
         _ => {
             let other = tagcase_;
-            nil::<Str>()
+            acc
         }
     }
 }
 
-pub fn names_in_all(es: Sexps) -> Strings {
+pub fn names_all_onto(es: Sexps, acc: Strings) -> Strings {
     if null_p(es) {
-        nil::<Str>()
+        acc
     } else {
-        onto(names_in(car(es)), names_in_all(cdr(es)))
+        names_in_onto(car(es), names_all_onto(cdr(es), acc))
     }
+}
+
+pub fn names_in(e: &'static Sexp) -> Strings {
+    names_in_onto(e, nil::<Str>())
+}
+
+pub fn names_in_all(es: Sexps) -> Strings {
+    names_all_onto(es, nil::<Str>())
 }
 
 /// Whether `body` may reach a tag of region `r` but `tag`: whether a

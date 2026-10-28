@@ -6,6 +6,96 @@ use super::*;
 // check-exprs.kfx: checking expressions (check.kfx), and what they need
 // of shapes and modules. Split from check.kfx.
 
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil()))))))))))))))))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_2() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::nil())))))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_3() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("cond"), kayak_rt::heap_cons(str_lit("and"), kayak_rt::heap_cons(str_lit("or"), kayak_rt::heap_cons(str_lit("when"), kayak_rt::heap_cons(str_lit("unless"), kayak_rt::heap_cons(str_lit("case"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("let*"), kayak_rt::heap_cons(str_lit("begin"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("extract"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("proj"), kayak_rt::nil()))))))))))))))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_4() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("spawn-monitored"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::heap_cons(str_lit("race"), kayak_rt::heap_cons(str_lit("tagcase"), kayak_rt::heap_cons(str_lit("typecase"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("letregion"), kayak_rt::heap_cons(str_lit("letrena"), kayak_rt::heap_cons(str_lit("letreap"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("quasiquote"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("convention"), kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::nil()))))))))))))))))))))))))))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_5() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("fx"), kayak_rt::nil())))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_6() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::nil()))))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_7() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::nil())))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_8() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("fields"), kayak_rt::heap_cons(str_lit("frozen"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::heap_cons(str_lit("=>"), kayak_rt::nil())))))))))))))))))))))))))))))))))))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_9() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil()))
+    })
+}
+
+// Names `expressions` tests against, made once (C264): a list written in place is
+// made at each call.
+pub fn expressions_names_10() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))
+    })
+}
+
 // The checking of expressions is a module (C92): its many helpers hidden,
 // what checking definitions needs (check-defs.kfx) given.
 pub mod expressions {
@@ -77,22 +167,30 @@ pub mod expressions {
         }
     }
 
-    /// `xs`, each once, in the order of its last.
-    pub fn distinct(mut xs: Strings) -> Strings {
+    /// Of `rs`, `xs` reversed, each not seen yet, onto `acc`.
+    pub fn distinct_from(mut rs: Strings, mut seen: &'static Nset, mut acc: Strings) -> Strings {
         loop {
-            if null_p(xs) {
-                return nil::<Str>();
-            } else if string_member_p(car(xs), cdr(xs)) {
-                xs = cdr(xs);
+            if null_p(rs) {
+                return acc;
+            } else if in_nset_p(car(rs), seen) {
+                rs = cdr(rs);
                 continue;
             } else {
-                return kayak_rt::heap_cons(car(xs), distinct(cdr(xs)));
+                (rs, seen, acc) = (cdr(rs), nset_added(car(rs), seen), kayak_rt::heap_cons(car(rs), acc));
+                continue;
             }
         }
     }
 
+    /// `xs`, each once, in the order of its last: from the last, by a set
+    /// of those seen (C269), where each had been looked for in all after
+    /// it.
+    pub fn distinct(xs: Strings) -> Strings {
+        distinct_from(reverse(xs), nempty(), nil::<Str>())
+    }
+
     pub fn blob_form_p(h: Str) -> bool {
-        string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil())))))))))))))))))
+        string_member_p(h, expressions_names())
     }
 
     pub fn list_ref_i64(mut ts: Tys, mut i: i64) -> &'static Ty {
@@ -3011,7 +3109,7 @@ pub mod expressions {
                                 let tagcase_ = car(xs);
                                 match *tagcase_ {
                                     Sexp::Sym(h, f2, p2) => {
-                                        (string_member_p(h, kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::nil())))))) && std_prim_p(v, h))
+                                        (string_member_p(h, expressions_names_2()) && std_prim_p(v, h))
                                     }
                                     _ => {
                                         let other = tagcase_;
@@ -4402,7 +4500,7 @@ pub mod expressions {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(h, f2, p2) => {
-                        (string_member_p(h, kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("cond"), kayak_rt::heap_cons(str_lit("and"), kayak_rt::heap_cons(str_lit("or"), kayak_rt::heap_cons(str_lit("when"), kayak_rt::heap_cons(str_lit("unless"), kayak_rt::heap_cons(str_lit("case"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("let*"), kayak_rt::heap_cons(str_lit("begin"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("extract"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("proj"), kayak_rt::nil()))))))))))))))) || not((keyword_p(h) || string_member_p(h, kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("spawn-monitored"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::heap_cons(str_lit("race"), kayak_rt::heap_cons(str_lit("tagcase"), kayak_rt::heap_cons(str_lit("typecase"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("letregion"), kayak_rt::heap_cons(str_lit("letrena"), kayak_rt::heap_cons(str_lit("letreap"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("quasiquote"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("convention"), kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::nil()))))))))))))))))))))))))))))))
+                        (string_member_p(h, expressions_names_3()) || not((keyword_p(h) || string_member_p(h, expressions_names_4()))))
                     }
                     _ => {
                         let other = tagcase_;
@@ -5553,7 +5651,7 @@ pub mod expressions {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
-                        string_member_p(n, kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("fx"), kayak_rt::nil()))))
+                        string_member_p(n, expressions_names_5())
                     }
                     _ => {
                         let other = tagcase_;
@@ -5946,7 +6044,7 @@ pub mod expressions {
             body_form(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
             letrena_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (blob_form_p(h) && string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::nil()))))) && null_p(scope_bind(h, v))) {
+        } else if (blob_form_p(h) && string_member_p(h, expressions_names_6()) && null_p(scope_bind(h, v))) {
             // Those made by the type expected; the rest are synthesized, then
             // compared with it, as any form is (C175: `blobref-offset`'s `int`
             // was taken where an `i64` was expected).
@@ -9991,7 +10089,7 @@ pub mod expressions {
     /// it. Where its region is no place known here, nothing: it is made in
     /// the heap, as before.
     pub fn bytes_placed(v: &'static Cv, r: &'static Res, h: Str) -> &'static Res {
-        if not((string_member_p(h, kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::nil())))) && {
+        if not((string_member_p(h, expressions_names_7()) && {
             let b = scope_bind(h, v);
             (not(null_p(b)) && {
                 let tagcase_ = car(b);
@@ -10087,7 +10185,7 @@ pub mod expressions {
                 return module_expr(v, s, args);
             } else if (string_eq_p(h, str_lit("extend")) && null_p(found) && i64_eq(size(args), 2i64)) {
                 return module_extend(v, s, args);
-            } else if (keyword_p(h) && not((string_member_p(h, kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("region"), kayak_rt::heap_cons(str_lit("effect"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("fields"), kayak_rt::heap_cons(str_lit("frozen"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::heap_cons(str_lit("=>"), kayak_rt::nil())))))))))))))))))))))))))))))))))))) && not(null_p(found)) && {
+            } else if (keyword_p(h) && not((string_member_p(h, expressions_names_8()) && not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {
                     Bind::Bind(n, sc, w) => {
@@ -10893,7 +10991,7 @@ pub mod expressions {
     /// where it is called (`mark-unlift N`, or `-fallible`, by the key's
     /// effect).
     pub fn mark_lifted(v: &'static Cv, h: Str, args: Sexps, r: &'static Res) -> &'static Res {
-        if (not(string_member_p(h, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil())))) || i64_lt(size(args), 2i64)) {
+        if (not(string_member_p(h, expressions_names_9())) || i64_lt(size(args), 2i64)) {
             r
         } else {
             let tagcase_ = r;
@@ -11155,7 +11253,7 @@ pub mod expressions {
             } else {
                 {
                     let kind = binder_kind(car(tvars));
-                    if string_member_p(kind, kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))) {
+                    if string_member_p(kind, expressions_names_10()) {
                         let tagcase_ = walk(s, ty_meta(k));
                         match *tagcase_ {
                             Ty::TyMeta(j) => {

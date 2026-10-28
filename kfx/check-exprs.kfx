@@ -1,6 +1,46 @@
 "check-exprs.kfx: checking expressions (check.kfx), and what they need
  of shapes and modules. Split from check.kfx."
 
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names strings (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-byte" "bloblet-set-byte!" "bloblet-bytes" "blobref-at" "blobref+" "blobref-owner" "blobref-offset" "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!" "blobref-length"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-2 strings (list "=" "<" "<=" ">" ">="))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-3 strings (list "if" "cond" "and" "or" "when" "unless" "case" "let" "let*" "begin" "product" "extract" "sum" "proj"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-4 strings (list "spawn" "spawn-monitored" "par" "pselect" "race" "tagcase" "typecase" "letrec" "letregion" "letrena" "letreap" "letfreeze" "with" "module" "prompt" "the" "lambda" "plambda" "rlambda" "vlambda" "quote" "quasiquote" "self" "convention" "make-bloblet" "rmake-bloblet"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-5 strings (list "native" "cellular" "fx"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-6 strings (list "make-bloblet" "rmake-bloblet" "blobref-at" "blobref+"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-7 strings (list "make-bytevector" "string->utf8" "bytevector-copy"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-8 strings (list "read" "write" "alloc" "goto" "comefrom" "region" "effect" "type" "pure" "maxeff" "void" "subr" "->" "->*" "poly" "ref" "pairof" "dletrec" "listof" "prompt-tag" "composable" "oneshot" "mark-key" "bloblet" "fields" "frozen" "arrayof" "icell" "productof" "sumof" "moduleof" "select" "else" "dlambda" "=>"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-9 strings (list "with-mark" "first-mark"))
+
+"Names `expressions` tests against, made once (C264): a list written in place is
+ made at each call."
+(define expressions-names-10 strings (list "data" "sendable" "flat"))
+
 "The checking of expressions is a module (C92): its many helpers hidden,
  what checking definitions needs (check-defs.kfx) given."
 (define expressions
@@ -28,18 +68,22 @@
                          r))))))
 
       (define-rec
-        (distinct (subr kfx (strings) strings)
-          (lambda (xs)
-            "`xs`, each once, in the order of its last."
-            (cond ((null? xs) nil)
-                  ((string-member? (car xs) (cdr xs)) (distinct (cdr xs)))
-                  (else (cons (car xs) (distinct (cdr xs))))))))
+        (distinct-from (subr kfx (strings nset strings) strings)
+          (lambda (rs seen acc)
+            "Of `rs`, `xs` reversed, each not seen yet, onto `acc`."
+            (cond ((null? rs) acc)
+                  ((in-nset? (car rs) seen) (distinct-from (cdr rs) seen acc))
+                  (else (distinct-from (cdr rs) (nset-added (car rs) seen) (cons (car rs) acc)))))))
+      (define distinct (subr kfx (strings) strings)
+        (lambda (xs)
+          "`xs`, each once, in the order of its last: from the last, by a set
+           of those seen (C269), where each had been looked for in all after
+           it."
+          (distinct-from (reverse xs) (nempty) nil)))
 
       (define blob-form? (subr kfx (string) bool)
         (lambda (h)
-          (string-member? h (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-byte" "bloblet-set-byte!"
-                                  "bloblet-bytes" "blobref-at" "blobref+" "blobref-owner" "blobref-offset" "blobref-get"
-                                  "blobref-set!" "blobref-index" "blobref-variant!" "blobref-length"))))
+          (string-member? h expressions-names)))
 
       (define-rec
         (list-ref-i64 (subr kfx (tys i64) ty)
@@ -1303,7 +1347,7 @@
                   ;; `(zero? a)`, as `(= a 0)` (Fixpt's type for it says so).
                   (size-facts-of-test v s (lst (list (sym "=" f p) (second xs) (num 0 f p)) f l p))
               (if (and (i64= (size xs) 3)
-                       (tagcase (car xs) (sym (h f2 p2) (and (string-member? h (list "=" "<" "<=" ">" ">=")) (std-prim? v h))) (else other #f)))
+                       (tagcase (car xs) (sym (h f2 p2) (and (string-member? h expressions-names-2) (std-prim? v h))) (else other #f)))
                   (let ((h (sym-name (car xs))) (a (linear-of v s (second xs))) (b (linear-of v s (third xs))))
                     (if (or (null? a) (null? b))
                         nil
@@ -1988,11 +2032,9 @@
             (lst (xs f l p)
               (tagcase (car xs)
                 (sym (h f2 p2)
-                  (or (string-member? h (list "if" "cond" "and" "or" "when" "unless" "case" "let" "let*" "begin" "product" "extract" "sum" "proj"))
+                  (or (string-member? h expressions-names-3)
                       (not (or (keyword? h)
-                               (string-member? h (list "spawn" "spawn-monitored" "par" "pselect" "race" "tagcase" "typecase" "letrec" "letregion"
-                                                       "letrena" "letreap" "letfreeze" "with" "module" "prompt" "the" "lambda" "plambda"
-                                                       "rlambda" "vlambda" "quote" "quasiquote" "self" "convention" "make-bloblet" "rmake-bloblet"))))))
+                               (string-member? h expressions-names-4)))))
                 (else other #t)))
             (else other #f))))
 
@@ -2546,7 +2588,7 @@
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs nil))
                 ((string=? h "self") (self-form v s xs))
                 ((and (string=? h "convention") (null? (scope-bind h v)) (i64= (size xs) 2)
-                      (tagcase (car xs) (sym (n f p) (string-member? n (list "native" "cellular" "fx"))) (else other #f)))
+                      (tagcase (car xs) (sym (n f p) (string-member? n expressions-names-5)) (else other #f)))
                  "`(convention C e)` (C181; Fixpt's native-conventions.md): procedure
                   `e` converted to convention `C`, explicitly; KFX has none."
                  (tagcase (synth v s (second xs))
@@ -2712,7 +2754,7 @@
                 ((string=? h "pselect") (pselect-form v s xs (list expected)))
                 ((control-form? h) (body-form v s h xs (list expected)))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs (list expected)))
-                ((and (blob-form? h) (string-member? h (list "make-bloblet" "rmake-bloblet" "blobref-at" "blobref+"))
+                ((and (blob-form? h) (string-member? h expressions-names-6)
                       (null? (scope-bind h v)))
                  "Those made by the type expected; the rest are synthesized, then
                   compared with it, as any form is (C175: `blobref-offset`'s `int`
@@ -4493,7 +4535,7 @@
            `rbytes-in` the place's name, so that it is made there and freed with
            it. Where its region is no place known here, nothing: it is made in
            the heap, as before."
-          (if (not (and (string-member? h (list "make-bytevector" "string->utf8" "bytevector-copy"))
+          (if (not (and (string-member? h expressions-names-7)
                         (let ((b (scope-bind h v))) (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w "prim")))))))
               r
               (tagcase r
@@ -4535,10 +4577,7 @@
                   ((and (string=? h "extend") (null? found) (i64= (size args) 2))
                    (module-extend v s args))
                   ((and (keyword? h)
-                        (not (and (string-member? h (list "read" "write" "alloc" "goto" "comefrom" "region" "effect" "type" "pure" "maxeff" "void"
-                                                          "subr" "->" "->*" "poly" "ref" "pairof" "dletrec" "listof" "prompt-tag" "composable"
-                                                          "oneshot" "mark-key" "bloblet" "fields" "frozen" "arrayof" "icell" "productof" "sumof"
-                                                          "moduleof" "select" "else" "dlambda" "=>"))
+                        (not (and (string-member? h expressions-names-8)
                                   (not (null? found))
                                   (tagcase (car found) (bind (n sc w) (or (string=? w "local") (string=? w "narrowed"))) (else other #f)))))
                    (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
@@ -4894,7 +4933,7 @@
            returns a `Result`), and `first-mark`'s value, there, run to its end
            where it is called (`mark-unlift N`, or `-fallible`, by the key's
            effect)."
-          (if (or (not (string-member? h (list "with-mark" "first-mark"))) (i64< (size args) 2))
+          (if (or (not (string-member? h expressions-names-9)) (i64< (size args) 2))
               r
               (tagcase r
                 (res (t es s)
@@ -5022,7 +5061,7 @@
               #u
               (begin
                 (let ((kind (binder-kind (car tvars))))
-                  (if (string-member? kind (list "data" "sendable" "flat"))
+                  (if (string-member? kind expressions-names-10)
                       (tagcase (walk s (ty-meta k))
                         (ty-meta (j) #u)
                         (else other (kind-holds v s (car tvars) (zonk s other))))

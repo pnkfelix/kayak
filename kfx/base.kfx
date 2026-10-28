@@ -146,6 +146,14 @@
   (lambda (xs) (let ((sorted (sorted-strings xs))) (tree-of sorted (size sorted)))))
 
 (define-rec
+  (nset-added (subr kfx (string nset) nset)
+    (lambda (x s)
+      "`s` with `x`, unbalanced: for what a walk has seen."
+      (tagcase s
+        (nempty () (nnode (nempty) x (nempty)))
+        (nnode (l k r) (cond ((string=? x k) s) ((string<? x k) (nnode (nset-added x l) k r)) (else (nnode l k (nset-added x r)))))))))
+
+(define-rec
   (in-nset? (subr kfx (string nset) bool)
     (lambda (x s)
       (tagcase s

@@ -7559,3 +7559,25 @@ out, and freed with the place. `fx26/listing.kfx`, after `cg-top.kfx`:
   and 2.2 GB at peak to 2.72 s and 1.31 GB (Fixpt: 4.0 s, 0.49 GB); the
   heap 1.49 GB to 914 MB, its strings 335 MB to 29. What is left is the
   checker's (lists of strings, 254 MB; characters' lists, 134 MB).
+
+## C269. Compile memory: the checker's cheap fixes (2026-10-28)
+
+The user: go for the larger refactor (the checker's data in regions that
+end), "But you can do cheap fixes first if you like". First, then, what
+the samples showed of the checker (kayak's FX-26 compiler compiling the
+KFX compiler to cells, 2.72 s and 1.31 GB after C268):
+- **Lists of names written in place made once**, as C264's: 31 in
+  `kfx/check.kfx`, `check-exprs.kfx` and `check-defs.kfx` (the shapes'
+  names, a fact's kinds, …), each a top-level definition.
+- **`after-prefix` a substring**, where it made the string's characters,
+  then dropped some (none if the string is no longer than the prefix,
+  as it was).
+- **`letrec-items`**: the set of a group's names made once, for every item
+  but a module (which leaves out its own); made for each item, it was
+  quadratic in the items, some 3,000 in the KFX compiler.
+- **`names-in` onto an accumulator**, where each list's names were copied
+  again at each list around it; **`distinct` by a set of those seen**,
+  from the last, where each name was looked for in all after it
+  (`nset-added` now in `base.kfx`, beside the set).
+- **Measured**: the listing byte for byte as before; 2.72 s and 1.31 GB to
+  2.57 s and 1.14 GB (Fixpt: 4.0 s, 0.49 GB).
