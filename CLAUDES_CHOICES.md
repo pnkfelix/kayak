@@ -7847,3 +7847,18 @@ stays warm. Forty `fixpt.sh` at once while the binary ran 200 times: no
 failure. `fx26-tests.py` and `bench.py` found the clone three directories
 above the binary; they find it as `built-in.py` and `fixpt-drift.py` do,
 `KAYAK_FIXPT_CLONE` or `../kayak-refs/fixpt`.
+
+## C282. The engine's corpus programs that ask `native-code?`, against Fixpt's evaluator (2026-10-28)
+
+On the Mac, `engine-programs.py` found `made-code` and `made-flat`
+differing: the engine said `interpreted 42`, NAME.out `native 42`. C222
+made the engine as Fixpt's evaluator, running no code a program makes
+(`native-code?` `#f`), and named `seal-code` and `native-procedure`, so
+these programs, refused before (not run yet), now run. NAME.out is
+Fixpt's default machine's answer, and on arm64 that machine runs made
+code; on x86_64 Linux, these arm64 programs say `interpreted` either
+way, so the two agreed there. As C222 did for `run-fixpt-programs.py`, a
+corpus program that asks `(native-code?)` is compared with Fixpt's
+evaluator (`--fx26-machine fx-ast-eval`): the prelude, its files, then
+`(main)`, as `corpus.py` asks, kept in tests/fixpt-answers
+(`tests--kfx--NAME--evaluator`). On the Mac: 87 of 93 agree, 0 differ.
