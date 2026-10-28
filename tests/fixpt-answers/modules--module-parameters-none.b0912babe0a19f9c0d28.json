@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"module-parameters-none.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m-a : (moduleof (val n (ref int @heap))) ! (maxeff (alloc @heap) (read (globals %shared:<programs>/modules/../module-files/mp-none.fx)))",
+"m-b : (moduleof (val get-n (subr (read @heap) () int))) ! (read (globals %shared:input:<programs>/modules/../module-files/mp-none-user.fx m-a))",
+"4 : int ! (maxeff (read @heap) (read (globals m-b)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+}
+]
+}

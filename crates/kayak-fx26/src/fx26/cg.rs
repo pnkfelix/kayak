@@ -28,7 +28,7 @@ use super::*;
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@f03cabe
 // fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@6447f9b
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@6447f9b
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@0c2e4dd
 
 // The generator's data lives at `@g`.
 

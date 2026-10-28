@@ -79,7 +79,8 @@ section below where it has one; here the order, and what each is.
    `make-string`, `rmake-string`, `string-set!`, `string-fill!`,
    `string-copy`, `string-copy!` (next: the checker's strings in its
    places, plan B); a module's expressions as its items; `module-parameters`
-   of modules.
+   of modules. Since 0c2e4dd: `(module-parameters ())`, a maker of none;
+   arm64's native makers and in-line allocation, and `lldb` (Fixpt's own).
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).

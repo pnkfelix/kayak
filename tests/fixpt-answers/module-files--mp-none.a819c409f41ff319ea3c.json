@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"mp-none.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/module-files/mp-none.fx:3:20: not an expression in the FX-26 kernel",
+""
+],
+"by": [
+"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+}
+]
+}

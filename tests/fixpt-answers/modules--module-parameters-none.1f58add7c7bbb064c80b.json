@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"module-parameters-none.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m-a : (moduleof (val n (ref int @heap))) ! (maxeff (alloc @heap) (read (globals %shared:<programs>/modules/../module-files/mp-none.fx)))",
+"define m-b : (moduleof (val get-n (subr (read @heap) () int))) ! (read (globals %shared:input:<programs>/modules/../module-files/mp-none-user.fx m-a))",
+"int ! (maxeff (read (globals m-b)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+}
+]
+}
