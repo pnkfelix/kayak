@@ -111,6 +111,10 @@ fn cells(flags: &[String]) -> i32 {
         let before: Vec<String> = std::fs::read_to_string(&list)
             .map(|t| t.split_whitespace().map(String::from).collect())
             .unwrap_or_default();
+        // Another machine's (C135): kept as it was there.
+        let elsewhere = by.get("elsewhere").cloned().unwrap_or_default();
+        agree.extend(before.iter().filter(|n| elsewhere.contains(n)).cloned());
+        agree.sort();
         let lost: Vec<&String> = before.iter().filter(|n| !agree.contains(n)).collect();
         if bless {
             if !lost.is_empty() && !has("--bless-drop") {
@@ -164,7 +168,7 @@ fn cells(flags: &[String]) -> i32 {
                 .count();
             if has("--list") {
                 for (n, f) in &found {
-                    if agree.contains(n) {
+                    if agree.contains(n) && f.kind == "agree" {
                         println!("{} {n}", if f.same { "same " } else { "other" });
                     }
                 }
@@ -172,7 +176,7 @@ fn cells(flags: &[String]) -> i32 {
             println!(
                 "cells-programs: kayak's own words: {} programs agree, {} differ, {} of them Fixpt's words exactly; \
                  {} the generator cannot yet",
-                agree.len(),
+                count("agree"),
                 count("differ"),
                 same_n,
                 count("gen-refuses")
@@ -203,13 +207,14 @@ fn cells(flags: &[String]) -> i32 {
         }
         println!(
             "cells-programs: {} of Fixpt's programs agree on tier 1, {} differ; not run: {} listings not exact, \
-             {} need what tier 1 has not yet, {} leave no value, {} Fixpt refuses",
-            agree.len(),
+             {} need what tier 1 has not yet, {} leave no value, {} Fixpt refuses; {} another machine's",
+            count("agree"),
             count("differ"),
             count("refused"),
             count("not-yet"),
             count("no-value"),
-            count("fixpt-refuses")
+            count("fixpt-refuses"),
+            count("elsewhere")
         );
     }
     status

@@ -7862,3 +7862,19 @@ corpus program that asks `(native-code?)` is compared with Fixpt's
 evaluator (`--fx26-machine fx-ast-eval`): the prelude, its files, then
 `(main)`, as `corpus.py` asks, kept in tests/fixpt-answers
 (`tests--kfx--NAME--evaluator`). On the Mac: 87 of 93 agree, 0 differ.
+
+## C283. Another machine's programs in tier 1's tests, kept as they were (2026-10-28)
+
+On the Mac, `kayak-checks::cells` failed on the nine programs that
+declare `define-convention x86_64-native` (`made-code-x86_64/`, Fixpt's
+and kayak's): Fixpt refuses another machine's convention (C135), so
+"fixpt-refuses", where tests/cells-passing, written on x86_64 Linux, has
+them agreeing. The Python checks skip such a program off its machine
+(`fixptcache.machine_of`); the Rust did not. `kayak_checks::fixpt` has
+`machine_of` and `elsewhere`, the same rule; such a test passes,
+writing the kind `elsewhere`, and `checks-summary` keeps a passing-list
+name of that kind as agreeing for the list (not dropped by `--bless`, not
+"no longer agrees"), counted apart ("N another machine's"), as
+`engine-programs.py` keeps `was & elsewhere`. On the Mac: 2719 tests
+passed; tier 1, 430 agree, 0 differ, 9 another machine's. Whether this
+is the right rule is TODO §17's, to look at with the user.

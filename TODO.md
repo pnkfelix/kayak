@@ -200,6 +200,16 @@ Escapes are done (`DONE.md`, C18). Left:
 
 ## 17. Small things noticed
 
+- **Another machine's programs in tier 1's tests, to look at together**
+  (the user, 2026-10-28, not high priority): C283 keeps a program that
+  declares another machine's convention as it was there, unrun, as C135
+  does for the corpus. The user is not certain that pinning such a
+  program to its convention's machine is best. To look at: whether tier 1,
+  which runs no native code of its own, could check such a program's
+  words on any machine (Fixpt refuses the convention elsewhere, so its
+  listing would have to be the other machine's, kept); or whether the
+  program should say which machines it is for some other way.
+
 - **K1 gaps a probe found, left** (2026-10-11):
   - a constant whose value fails and is never named does not fail in Rust
     (FX-26 makes it where it is defined; KFX at its first use, C21): a

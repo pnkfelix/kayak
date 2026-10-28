@@ -622,6 +622,11 @@ fn main() {
             let (name, path) = (name.clone(), path.clone());
             let was = kept.contains(&name);
             tests.push(Test::new(format!("{suite}/{name}"), move || {
+                // Another machine's (C135): what it was there, kept.
+                if fixpt::elsewhere(&path) {
+                    keep(suite, &name, &found("elsewhere", ""));
+                    return Ok(());
+                }
                 let f = one(&name, &path, suite == "ours");
                 keep(suite, &name, &f);
                 match f.kind {

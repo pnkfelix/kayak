@@ -103,6 +103,26 @@ pub fn platform() -> String {
     format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
 }
 
+/// The machine a program is of, as Rust's `target_arch` names it, if it
+/// declares a native convention (`define-convention`), whose `target`
+/// says which: Fixpt refuses another machine's (C135), so the program is
+/// checked only on its own (fixptcache.py's `machine_of`). None for any.
+pub fn machine_of(path: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let rest = text.split_once("(define-convention")?.1;
+    let target = rest.split_once("(target")?.1.trim_start();
+    let m: String = target
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+        .collect();
+    Some(if m == "arm64" { "aarch64".into() } else { m })
+}
+
+/// Whether a program is another machine's (`machine_of`).
+pub fn elsewhere(path: &Path) -> bool {
+    machine_of(path).is_some_and(|m| m != std::env::consts::ARCH)
+}
+
 fn me() -> String {
     format!("{}@{}", platform(), rev())
 }
