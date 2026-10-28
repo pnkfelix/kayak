@@ -27,6 +27,20 @@ esac
 step cargo fmt --all --check
 # Which of Fixpt's answers kept this check asks for (C132): none yet.
 step python3 -I scripts/fx26-tests.py --reset
+# The bootstrap's fixed point (stage 0, Fixpt's runs) and the workspace's
+# tests under nextest (C276: the incremental compiles among them, chains at
+# once) run beside the rest, started first, as they take longest and need
+# nothing the rest does; their output kept and said when they end. The
+# workspace built first, so that no stage builds it under another.
+cargo build --release --quiet --workspace
+logs=$(mktemp -d)
+fixpoint=; tests=
+# Should a stage fail first, the two and everything they started stopped.
+killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
+trap 'for p in $fixpoint $tests; do killed "$p"; done; rm -rf "$logs"' EXIT
+step scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
+rm -rf target/kayak-checks
+step env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
 step python3 -I scripts/io-programs.py
 step cargo clippy --release --workspace --all-targets --quiet -- -D warnings
 step python3 -I scripts/corpus.py
@@ -38,19 +52,6 @@ step cargo clippy --release -p kayak-fx26 --features rust-repl --target-dir targ
 # The corpus again with `par`'s shared branches at once (C102, C195): the
 # one run of kayak-sync's `unsafe`.
 step cargo nextest run --release -p kfx-corpus --features kayak-rt/unsafe-par --target-dir target/unsafe-par --hide-progress-bar --status-level fail
-# The bootstrap's fixed point (stage 0, Fixpt's runs) and the workspace's
-# tests under nextest (C276: the incremental compiles among them, chains at
-# once) run beside the rest, their output kept and said when they end. kfx
-# built first, so that no stage builds it under another.
-cargo build --release --quiet --workspace
-logs=$(mktemp -d)
-fixpoint=; tests=
-# Should a stage fail first, the two and everything they started stopped.
-killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
-trap 'for p in $fixpoint $tests; do killed "$p"; done; rm -rf "$logs"' EXIT
-step scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
-rm -rf target/kayak-checks
-step env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
 # Fixpt's own programs (tests/fx26/programs) and its answers to them
 # (tests/fixpt-answers), kept in kayak (C132): with a clone at the pin, each
 # is checked to be the pin's, and an answer of another pin's asked again.
