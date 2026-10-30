@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "f : (subr pure (int) int) ! pure",
@@ -24,6 +20,10 @@
 "err": [
 "fixpt: <programs>/redefine/knot.fx:6:1: calling `f` reads `f`, so `f` may reach itself through a global: its type must say `spin` (or, to call itself directly, it binds itself with a local `letrec`)",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

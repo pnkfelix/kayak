@@ -15,14 +15,14 @@
 "call-it : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () caller) ! pure",
 "call-k : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () k-caller) ! pure",
 "call-relay : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native) (read (globals call-code put-all sealed))) () relay) ! pure",
-"(-42 42 42 42) : (listof int @r.1) ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) (alloc @r.1) (goto @k) (comefrom @k) spin (io native) (read (globals call-code call-it call-k call-relay put-all sealed)))",
+"(-42 42 42 42) : (listof int acyclic) ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) (goto @k) (comefrom @k) spin (io native) (read (globals call-code call-it call-k call-relay put-all sealed)))",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

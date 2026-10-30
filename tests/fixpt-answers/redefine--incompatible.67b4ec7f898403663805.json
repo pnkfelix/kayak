@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "n : int ! pure",
@@ -24,6 +20,10 @@
 "err": [
 "fixpt: <programs>/redefine/incompatible.fx:5:1: `m` is broken, since `n` was redefined (a int is expected here, and this is a string): define it again to use it",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

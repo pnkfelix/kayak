@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "! <programs>/globals/written.fx:6:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
@@ -20,6 +16,10 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define x : i64 ! pure",
@@ -23,6 +19,27 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define x : i64 ! pure",
+"define big : u64 ! pure",
+"define neg : i64 ! pure",
+"define add : (subr pure (i64 i64) i64) ! pure",
+"(listof int acyclic) ! (read (globals add big neg x))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

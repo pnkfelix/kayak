@@ -1,0 +1,77 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"list-joined-with-nil.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (13 cells, cellular):",
+"     0: closure word f over 0",
+"     3: global! f",
+"     5: closure word g over 0",
+"     8: global! g",
+"    10: lit 0",
+"    12: exit",
+"",
+"word g (23 cells, cellular):",
+"     0: slot 0",
+"     2: lit 0",
+"     4: swap",
+"     5: int-less",
+"     6: 0branch → 15",
+"     8: slot 0",
+"    10: prim list 1",
+"    13: branch → 17",
+"    15: lit ()",
+"    17: slot 1",
+"    19: global f",
+"    21: ttailcall 1",
+"  its register code (52 cells, not compiled):",
+"       0: args 1",
+"       2: save 2",
+"       4: store 1 0",
+"       7: load 1 0",
+"      10: const 0",
+"      12: op2 int-less 1",
+"      15: branchf → 29",
+"      17: const ()",
+"      19: setreg 2",
+"      21: load 1 0",
+"      24: cellular cons 2",
+"      27: branch → 31",
+"      29: const ()",
+"      31: setstk 1",
+"      33: global-guard f written 1 else → 42",
+"      37: const 0",
+"      39: pop 2",
+"      41: return",
+"      42: load 1 1",
+"      45: global f",
+"      47: pop 2",
+"      49: tailinvoke 1 1",
+"",
+"word f (3 cells, cellular):",
+"     0: lit 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: const 0",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

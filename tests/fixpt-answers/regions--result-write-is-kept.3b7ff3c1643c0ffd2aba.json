@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"result-write-is-kept.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/result-write-is-kept.fx:9:5: a (subr (alloc r) (int) (listof int r)) is expected here, and this is a (subr (maxeff (alloc r) (write r)) (int) (listof int r))",
+"  beyond what is expected, it has (write r)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

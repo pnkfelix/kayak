@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "up-sink : (poly ((t type)) (subr pure ((subr pure (t) int)) (sink t))) ! pure",
@@ -26,6 +22,10 @@
 "err": [
 "fixpt: <programs>/generative/contravariant.fx:5:52: `c` is declared a (sink (sumof (a int) (b bool) (c char))): a (sink (sumof (a int) (b bool) (c char))) is expected here, and this is a (sink (sumof (a int) (b bool)))",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

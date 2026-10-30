@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "f : (subr pure (nat (listof int acyclic)) nat) ! pure",
@@ -21,6 +17,25 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"f : (subr pure (nat (listof int acyclic)) nat) ! pure",
+"g : (subr pure (nat nat) nat) ! pure",
+"h : (subr pure (nat) nat) ! pure",
+"(0 3 3) : (listof nat acyclic) ! (read (globals f g h))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

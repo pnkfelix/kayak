@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"result-write-at-acyclic.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/regions/result-write-at-acyclic.fx:12:32: this writes frozen data, whose region is `const`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 ""
@@ -22,6 +18,10 @@
 "err": [
 "fixpt: <programs>/sizes/flat-literal-not-to-end.fx:6:15: a (blobref blob (flat-arrayof i64 finite)) is expected here, and this is a (blobref blob (flat-arrayof i64 3))",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

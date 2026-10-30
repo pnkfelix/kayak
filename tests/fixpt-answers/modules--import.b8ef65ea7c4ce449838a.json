@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define shapes : (moduleof (desc point (productof (1 int) (2 int))) (desc touches (maxeff (read @heap) (write @heap))) (val origin point) (val bump (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit)) (val x-of (subr pure (point) int))) ! pure",
@@ -24,6 +20,10 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -169,13 +169,13 @@ pub mod cv {
 
     use super::made__input__4577__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 
-    pub fn cv_ch(t: Str, i: Int) -> Str {
-        substring(t, i, _plus(i, int_lit(1)))
+    pub fn cv_ch(t: Str, i: Int) -> char {
+        string_ref(t, i)
     }
 
     pub fn cv_atom_end(mut t: Str, mut i: Int) -> Int {
         loop {
-            if (_gt_eq(i, string_length(t)) || string_eq_p(cv_ch(t, i), str_lit(" ")) || string_eq_p(cv_ch(t, i), str_lit("(")) || string_eq_p(cv_ch(t, i), str_lit(")"))) {
+            if (_gt_eq(i, string_length(t)) || char_eq_p(cv_ch(t, i), ' ') || char_eq_p(cv_ch(t, i), '(') || char_eq_p(cv_ch(t, i), ')')) {
                 return i;
             } else {
                 i = _plus(i, int_lit(1));
@@ -198,7 +198,7 @@ pub mod cv {
     }
 
     pub fn cv_atom(a: Str) -> &'static CvSx {
-        let neg = (_gt(string_length(a), int_lit(1)) && string_eq_p(substring(a, int_lit(0), int_lit(1)), str_lit("-")));
+        let neg = (_gt(string_length(a), int_lit(1)) && char_eq_p(string_ref(a, int_lit(0)), '-'));
         let n = if _eq(string_length(a), int_lit(0)) {
             int_lit(-1)
         } else {
@@ -220,7 +220,7 @@ pub mod cv {
     pub fn cv_read_at(t: Str, i: Int) -> CvAt {
         if _gt_eq(i, string_length(t)) {
             Product_1x_2at(cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>()), i)
-        } else if string_eq_p(cv_ch(t, i), str_lit("(")) {
+        } else if char_eq_p(cv_ch(t, i), '(') {
             let r = cv_read_items(t, _plus(i, int_lit(1)));
             Product_1x_2at(cx_list(r.0), r.1)
         } else {
@@ -233,9 +233,9 @@ pub mod cv {
         loop {
             if _gt_eq(i, string_length(t)) {
                 return Product_2xs_2at(nil::<&'static made__load__0__fx26_convention::CvSx>(), i);
-            } else if string_eq_p(cv_ch(t, i), str_lit(")")) {
+            } else if char_eq_p(cv_ch(t, i), ')') {
                 return Product_2xs_2at(nil::<&'static made__load__0__fx26_convention::CvSx>(), _plus(i, int_lit(1)));
-            } else if string_eq_p(cv_ch(t, i), str_lit(" ")) {
+            } else if char_eq_p(cv_ch(t, i), ' ') {
                 i = _plus(i, int_lit(1));
                 continue;
             } else {
@@ -370,7 +370,7 @@ pub mod cv {
             int_lit(31)
         } else if string_eq_p(n, str_lit("pushed")) {
             int_lit(-2)
-        } else if (_gt(string_length(n), int_lit(1)) && string_eq_p(substring(n, int_lit(0), int_lit(1)), str_lit("x"))) {
+        } else if (_gt(string_length(n), int_lit(1)) && char_eq_p(string_ref(n, int_lit(0)), 'x')) {
             cv_digits(n, int_lit(1), int_lit(0))
         } else {
             cv_index(cv_x86_regs(), n, int_lit(0))

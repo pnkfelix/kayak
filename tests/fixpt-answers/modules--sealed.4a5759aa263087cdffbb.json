@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
@@ -24,6 +20,10 @@
 "err": [
 "fixpt: <programs>/modules/sealed.fx:10:15: unbound variable `inc`",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

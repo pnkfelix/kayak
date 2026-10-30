@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "reader-for : (poly ((n size)) (subr pure ((blobref blob (flat-arrayof f64 n))) (subr (read @heap) ((blobref blob (flat-arrayof f64 n))) f64))) ! pure",
@@ -23,6 +19,23 @@
 "err": [
 "fixpt: <programs>/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref (bloblet (fields) @heap) (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"reader-for : (poly ((n size)) (subr pure ((blobref blob (flat-arrayof f64 n))) (subr (read @heap) ((blobref blob (flat-arrayof f64 n))) f64))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref blob (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

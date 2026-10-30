@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "build : (poly ((p place) (r region p)) (subr (maxeff (alloc p) (alloc r)) ((place p) int) (listof int r))) ! pure",
@@ -19,6 +15,10 @@
 "err": [
 "fixpt: <programs>/regions/caller-region-outside.fx:8:31: `r` must not outlive `p`, and d could outlive a",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

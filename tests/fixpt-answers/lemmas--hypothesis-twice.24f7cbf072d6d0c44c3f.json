@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
@@ -24,6 +20,10 @@
 "err": [
 "fixpt: <programs>/lemmas/hypothesis-twice.fx:7:37: argument 1 is a b, where a a is expected",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

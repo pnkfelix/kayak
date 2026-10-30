@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "rr : (ref (listof (subr (read @s) () int) @r) @r) ! (alloc @r)",
@@ -24,6 +20,10 @@
 "err": [
 "fixpt: <programs>/regions/knot-through-two-regions.fx:6:15: argument 1 is a (subr (maxeff (read @s) (read @r) (read (globals ss))) () int), where a (subr (read @s) () int) is expected",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

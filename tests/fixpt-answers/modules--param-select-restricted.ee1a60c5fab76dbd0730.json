@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"param-select-restricted.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"core-sig = (moduleof (abs ticket type) (desc counter (productof (state (ref int @heap)))) (val issued (ref int @heap)) (val spawn (subr (alloc @heap) (int) counter)) (val peek (subr (read @heap) (counter) int)) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int)))",
+"tickets = (moduleof (abs %hidden:ticket type) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int)))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/param-select-restricted.fx:7:37: `c` has no type `ticket`",
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

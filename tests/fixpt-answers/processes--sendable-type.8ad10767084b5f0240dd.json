@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "answer : (poly ((m type)) (subr (init @r) ((productof (v m) (reply (icell m @r)))) unit)) ! pure",
@@ -19,6 +15,10 @@
 "err": [
 "fixpt: <programs>/processes/sendable-type.fx:12:7: a process's messages are copied to it, so they must be transmissible, and a (productof (v m) (reply (icell m @r))) is not: a `m`, which could be anything",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

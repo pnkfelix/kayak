@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "ev : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
@@ -22,6 +18,26 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"ev : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
+"od : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
+"count : (subr (maxeff (read @globals) spin) (int int) int) ! pure",
+"evens : (subr (maxeff (read @globals) spin (read (globals count))) (int) int) ! pure",
+"(500 1) : (listof int acyclic) ! (maxeff (read @globals) spin (read (globals count evens od)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

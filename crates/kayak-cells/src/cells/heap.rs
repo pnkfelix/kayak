@@ -10,7 +10,7 @@ use super::*;
 // header, its fields below its suffix (field `k` at `p - k`, the trailer
 // field 1, its payload the distance back to the header), its suffix's
 // bytes. Collected by Coopt's collector's baseline, below (C122).
-// fixpt-source: crates/fixpt-heap/src/heap.rs@5731f52
+// fixpt-source: crates/fixpt-heap/src/heap.rs@7038269
 pub fn mem() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {

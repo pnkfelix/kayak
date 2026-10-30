@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define c : (moduleof (val handle (poly ((a type) (h type) (e effect)) (subr e ((poly ((r region)) (subr (maxeff (goto r) e) ((escape-tag a h r)) a)) (subr e (h) a)) a))) (val with-handler (poly ((c type) (v type) (a type) (e effect) (eh effect)) (subr (maxeff e eh) ((subr eh (c) v) (poly ((k region)) (subr (maxeff (read k) e eh) ((mark-key (subr eh (c) v) k)) a))) a))) (val raise (poly ((k region)) (poly ((c type) (v type) (eh effect)) (subr (maxeff (read k) eh) ((mark-key (subr eh (c) v) k) c) v))))) ! (read (globals %shared:fx26:conditions.fx))",
@@ -27,6 +23,31 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define c : (moduleof (val handle (poly ((a type) (h type) (e effect)) (subr e ((poly ((r region)) (subr (maxeff (goto r) e) ((escape-tag a h r)) a)) (subr e (h) a)) a))) (val with-handler (poly ((c type) (v type) (a type) (e effect) (eh effect)) (subr (maxeff e eh) ((subr eh (c) v) (poly ((k region)) (subr (maxeff (read k) e eh) ((mark-key (subr eh (c) v) k)) a))) a))) (val raise (poly ((k region)) (poly ((c type) (v type) (eh effect)) (subr (maxeff (read k) eh) ((mark-key (subr eh (c) v) k) c) v))))) ! (read (globals %shared:fx26:conditions.fx))",
+"define handle : (poly ((a type) (h type) (e effect)) (subr e ((poly ((r region)) (subr (maxeff (goto r) e) ((escape-tag a h r)) a)) (subr e (h) a)) a)) ! (read (globals c))",
+"define with-handler : (poly ((c type) (v type) (a type) (e effect) (eh effect)) (subr (maxeff e eh) ((subr eh (c) v) (poly ((k region)) (subr (maxeff (read k) e eh) ((mark-key (subr eh (c) v) k)) a))) a)) ! (read (globals c))",
+"define raise : (poly ((k region)) (poly ((c type) (v type) (eh effect)) (subr (maxeff (read k) eh) ((mark-key (subr eh (c) v) k) c) v))) ! (read (globals c))",
+"define digit : (poly ((k region) (eh effect)) (subr (maxeff (read (globals raise)) (read k) eh) ((mark-key (subr eh (char) int) k) char) int)) ! pure",
+"define sum-over : (poly ((e effect)) (subr (maxeff (read (globals sum-over)) e spin) ((subr e (char) int) string int) int)) ! pure",
+"define lenient-sum : (subr (maxeff (read (globals digit raise sum-over with-handler)) spin) (string) int) ! pure",
+"define strict-sum : (subr (maxeff (read (globals digit handle raise sum-over with-handler)) spin) (string) int) ! pure",
+"(listof int acyclic) ! (maxeff (read (globals digit handle lenient-sum raise strict-sum sum-over with-handler)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

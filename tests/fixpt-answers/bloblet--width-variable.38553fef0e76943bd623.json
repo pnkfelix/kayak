@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"width-variable.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/bloblet/width-variable.fx:6:35: a one is expected here, and this is a (bloblet (fields int a) @b)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

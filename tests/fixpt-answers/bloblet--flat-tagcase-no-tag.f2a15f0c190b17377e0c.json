@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "b : o ! (alloc @b)",
@@ -20,6 +16,10 @@
 "err": [
 "fixpt: <programs>/bloblet/flat-tagcase-no-tag.fx:7:17: a (sumof (a (blobref o f64)) (b (blobref o i32))) has no tag `c`",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

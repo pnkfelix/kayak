@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "a : (icell int @c) ! (alloc @c)",
@@ -23,6 +19,10 @@
 "err": [
 "fixpt: <programs>/processes/pselect-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

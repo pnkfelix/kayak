@@ -1,0 +1,36 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"unplaced-lists-are-acyclic.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"map : (poly ((p place) (r region)) (subr (maxeff (read (acyclic p)) (alloc r) spin (read (globals map))) ((subr pure (int) int) (listof int (acyclic p))) (listof int r))) ! pure",
+"len : (subr (maxeff spin (read (globals len))) ((listof int acyclic)) int) ! pure",
+"inc : (subr pure (int) int) ! pure",
+"xs : (listof int acyclic) ! pure",
+"in-let : int ! (maxeff spin (read (globals inc len map xs)))",
+"in-if : int ! (maxeff spin (read (globals inc len map xs)))",
+"nested : int ! (maxeff spin (read (globals inc len map xs)))",
+"from-list : int ! (maxeff spin (read (globals inc len map)))",
+"one : (subr (maxeff spin (read (globals inc len map))) ((listof int acyclic)) int) ! pure",
+"18 : int ! (maxeff spin (read (globals from-list in-if in-let inc len map nested one xs)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

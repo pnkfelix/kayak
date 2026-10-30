@@ -23,8 +23,23 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"dep : (select user-file dep-sig) ! (read (globals %shared:<programs>/modules/../module-files/linked-dep.fx))",
+"user-file : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))) (val sigs (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))))) (val make (subr spin (dep-sig) (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int))))) ! (read (globals %shared:<programs>/modules/../module-files/linked-user.fx))",
+"user : (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int)) ! (maxeff spin (read (globals dep user-file)))",
+"17 : int ! (read (globals user))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

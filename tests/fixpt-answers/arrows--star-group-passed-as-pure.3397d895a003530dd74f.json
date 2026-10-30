@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "twice : (subr pure ((subr pure (int) int) int) int) ! pure",
@@ -24,6 +20,10 @@
 "fixpt: <programs>/arrows/star-group-passed-as-pure.fx:6:70: argument 1 is a (subr (maxeff spin (read (globals twice))) (int) int), where a (subr pure (int) int) is expected",
 "  beyond what is expected, it has (maxeff spin (read (globals twice)))",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

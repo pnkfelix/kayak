@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "up-t : (subr pure (int) t) ! pure",
@@ -26,6 +22,10 @@
 "fixpt: <programs>/module-files/counter.fx:6:31: `inc` is declared a (subr pure (t) t): a (subr pure (t) t) is expected here, and this is a (subr (read (globals down-t up-t)) (t) t)",
 "  beyond what is expected, it has (read (globals down-t up-t))",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

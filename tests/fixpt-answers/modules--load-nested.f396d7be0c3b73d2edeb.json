@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "n : (moduleof (val opt (moduleof (desc option (dlambda ((a type)) (sumof (none (productof)) (some (productof (1 a)))))) (val none (poly ((a type)) (subr pure () (sumof (none (productof)) (some (productof (1 a))))))) (val some (poly ((a type)) (subr pure (a) (sumof (none (productof)) (some (productof (1 a))))))) (val seven (sumof (none (productof)) (some (productof (1 int))))))) (val eight int)) ! (read (globals %shared:<programs>/modules/../module-files/nests.fx))",
@@ -23,6 +19,10 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "md : (subr pure (int int) int) ! pure",
@@ -23,6 +19,27 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"md : (subr pure (int int) int) ! pure",
+"qu : (subr pure (int int) int) ! pure",
+"mu : (subr pure (int int) int) ! pure",
+"sh : (subr pure (int int) int) ! pure",
+"big : int ! pure",
+"(1 2 -2 -1 0 0 3 -3 -3 1152921504606846976 12 -12 2305843009213693950 1152921504606846976 1152921504606846976 8 -20 3 -4 1152921504606846976 3541774862152233910272 -1 0) : (listof int acyclic) ! (read (globals big md mu qu sh))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

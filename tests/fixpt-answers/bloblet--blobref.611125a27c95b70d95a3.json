@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define b : pt ! (alloc @b)",
@@ -32,6 +28,36 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define b : pt ! (alloc @b)",
+"define x : (blobref pt f64) ! (read (globals b))",
+"define n : (blobref pt i32) ! (read (globals b))",
+"define m : (blobref pt i32) ! (read (globals n))",
+"define u : (blobref pt u32) ! (read (globals b))",
+"define f : (blobref pt f32) ! (read (globals u))",
+"define w : (blobref pt i64) ! (read (globals b))",
+"unit ! (maxeff (read (globals x)) (write @b))",
+"unit ! (maxeff (read (globals n)) (write @b))",
+"unit ! (maxeff (read (globals m)) (write @b))",
+"unit ! (maxeff (read (globals u)) (write @b))",
+"unit ! (maxeff (read (globals f)) (write @b))",
+"unit ! (maxeff (read (globals w)) (write @b))",
+"(listof int acyclic) ! (maxeff (read (globals f m n u w x)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

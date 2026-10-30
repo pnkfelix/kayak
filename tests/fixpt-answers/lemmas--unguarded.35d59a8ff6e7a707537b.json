@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
@@ -21,6 +17,10 @@
 "fixpt: <programs>/lemmas/unguarded.fx:4:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff spin (read (globals bad))) ((subr spin (a) b) (tree a)) (tree b))",
 "  beyond what is expected, it has (read (globals bad)); it may not end: no argument keeps shrinking around every loop of calls",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

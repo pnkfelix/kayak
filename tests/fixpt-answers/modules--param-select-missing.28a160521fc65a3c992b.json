@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"param-select-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/param-select-missing.fx:6:33: `c` has no type `x`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

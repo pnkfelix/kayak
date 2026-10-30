@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 ""
@@ -23,6 +19,10 @@
 "fixpt: <programs>/terminate/mutable-list.fx:2:50: `f` is declared a (subr (read @r) ((listof int @r)) int): a (subr (read @r) ((listof int @r)) int) is expected here, and this is a (subr (maxeff (read @r) spin (read (globals f))) ((listof int @r)) int)",
 "  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (a part of a list that may be written is no smaller: it may be cyclic)",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "counter : (ref int @c) ! (alloc @c)",
@@ -23,6 +19,10 @@
 "err": [
 "fixpt: <programs>/processes/share-ref.fx:4:25: `w` is declared a (addr int @w): a process may share nothing that can be written, and its body holds `counter`: a reference at @c, which can be written",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -24,8 +24,28 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define joined : (subr pure (string string) string) ! pure",
+"define upcased! : (subr (maxeff (read (globals upcased!)) (read @s) (write @s) spin) ((stringof @s) int) unit) ! pure",
+"string ! (read (globals joined))",
+"bool ! (read (globals joined))",
+"string ! (maxeff (alloc @s) (read (globals upcased!)) (read @s) (write @s) spin)",
+"(listof char acyclic) ! pure",
+"bool ! pure",
+"(bytevectorof @r.1) ! (maxeff (alloc @r.1) (read (globals joined)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define even-cell : (icell parity-test @k) ! (alloc @k)",
@@ -24,6 +20,28 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define even-cell : (icell parity-test @k) ! (alloc @k)",
+"define odd-cell : (icell parity-test @k) ! (alloc @k)",
+"unit ! (maxeff (init @k) (read (globals even-cell)))",
+"unit ! (maxeff (init @k) (read (globals odd-cell)))",
+"define parity : (subr spin (int) bool) ! pure",
+"(listof bool acyclic) ! (maxeff (await @k) (read (globals even-cell odd-cell parity)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

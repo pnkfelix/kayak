@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define sum-squares : (subr spin (int) int) ! pure",
@@ -27,6 +23,31 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define sum-squares : (subr spin (int) int) ! pure",
+"define fact : (subr spin (int) int) ! pure",
+"define hidden : (subr pure (int) int) ! pure",
+"define twice : (subr (maxeff (read (globals twice)) spin) ((subr (maxeff (read (globals twice)) spin) (int int) int) int int) int) ! pure",
+"define escapes : (subr (maxeff (read (globals twice)) spin) (int) int) ! pure",
+"define parity : (subr spin (int) int) ! pure",
+"define areas : (subr spin (int) int) ! pure",
+"define inner-same : (subr spin (int) int) ! pure",
+"(listof int acyclic) ! (maxeff (read (globals areas escapes fact hidden inner-same parity sum-squares twice)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"import-list-and-family.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (desc cmd (subr pure () unit)) (desc cmds (listof cmd acyclic)) (desc reply (dlambda ((s type)) (productof (state s) (cmds cmds)))) (desc msg (dlambda ((s type)) (subr pure (s) (productof (state s) (cmds cmds)))))) ! pure",
+"define n : (moduleof (desc msg (dlambda ((s type)) (subr pure (s) (productof (state s) (cmds (select m cmds)))))) (desc cmds (listof (select m cmd) acyclic))) ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

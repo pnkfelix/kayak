@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "b : o ! (alloc @b)",
@@ -24,6 +20,28 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"b : o ! (alloc @b)",
+"arr : (blobref o pts) ! (read (globals b))",
+"p1 : (blobref o pt) ! (read (globals arr))",
+"#u : unit ! (maxeff (write @b) (read (globals p1)))",
+"#u : unit ! (maxeff (write @b) (read (globals p1)))",
+"q0 : (blobref o q) ! (read (globals b))",
+"(24 32 40 7 4 8 16) : (listof int acyclic) ! (maxeff (read @b) (read (globals arr b p1 q0)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

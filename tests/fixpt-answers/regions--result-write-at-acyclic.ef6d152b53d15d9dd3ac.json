@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"result-write-at-acyclic.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"f : (poly ((r region)) (subr (maxeff (write r) (alloc r)) (int) (listof int r))) ! pure",
+"len : (subr pure ((listof int acyclic)) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/regions/result-write-at-acyclic.fx:12:32: this writes frozen data, whose region is `const`",
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

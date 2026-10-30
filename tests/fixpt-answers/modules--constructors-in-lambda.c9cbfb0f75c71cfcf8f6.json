@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define make : (subr pure () (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int)))) ! pure",
@@ -24,6 +20,28 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define make : (subr pure () (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int)))) ! pure",
+"define m : (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int))) ! (read (globals make))",
+"define circle : (subr pure (int) (select m shape)) ! (read (globals m))",
+"define square : (subr pure (int) (select m shape)) ! (read (globals m))",
+"define area : (subr pure ((select m shape)) int) ! (read (globals m))",
+"int ! (read (globals area circle square))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

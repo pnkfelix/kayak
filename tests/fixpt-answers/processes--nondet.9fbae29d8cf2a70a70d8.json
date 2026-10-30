@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 ""
@@ -23,6 +19,10 @@
 "fixpt: <programs>/processes/nondet.fx:5:3: `start` is declared a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)): a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
 "  beyond what is expected, it has nondet",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

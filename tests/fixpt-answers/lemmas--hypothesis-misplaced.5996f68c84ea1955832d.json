@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "up-two : (poly ((a type)) (subr pure ((productof (x a) (y a))) (two a))) ! pure",
@@ -25,6 +21,10 @@
 "fixpt: <programs>/lemmas/hypothesis-misplaced.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (two a)) (two b))): a (subr spin ((subr spin (a) b) (two a)) (two b)) is expected here, and this is a (subr (maxeff spin (read (globals down-two up-two))) ((subr spin (a) b) (two a)) (two b))",
 "  beyond what is expected, it has (read (globals down-two up-two))",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

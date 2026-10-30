@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "a64 : (moduleof (val arm-pow2 (subr pure (int) int)) (val arm-simm (subr pure (int int) int)) (val arm-f (subr pure (int int) int)) (val arm-sum (subr pure (int int) int)) (val arm-sum3 (subr pure (int int int) int)) (val arm-sum4 (subr pure (int int int int) int)) (val arm-reg (subr pure (int) int)) (val arm-check (subr pure (bool int) int)) (val arm-in? (subr pure (int int int) bool)) (val arm-reg-at (subr pure (int int) int)) (val arm-simm-at (subr pure (int int int) int)) (val arm-n-t (subr pure (int int int int) int)) (val arm-mem9 (subr pure (int int int int) int)) (val arm-ldr-post (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-ldr-pre (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-str-post (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-str-pre (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-ldur (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-stur (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-mem12 (subr pure (int int int int) int)) (val arm-ldr (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-str (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-ldr-lit (subr (maxeff (read @globals) spin) (int int) int)) (val arm-ldr-reg (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-pair (subr pure (int int int int int) int)) (val arm-stp-pre (subr (maxeff (read @globals) spin) (int int int int) int)) (val arm-ldp-post (subr (maxeff (read @globals) spin) (int int int int) int)) (val arm-stp (subr (maxeff (read @globals) spin) (int int int int) int)) (val arm-ldp (subr (maxeff (read @globals) spin) (int int int int) int)) (val arm-imm12 (subr pure (int int int int) int)) (val arm-add-imm (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-sub-imm (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-subs-imm (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-cmp-imm (subr (maxeff (read @globals) spin) (int int) int)) (val arm-reg3 (subr pure (int int int int) int)) (val arm-add (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-sub (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-adds (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-subs (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-orr (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-cmp (subr (maxeff (read @globals) spin) (int int) int)) (val arm-mov (subr (maxeff (read @globals) spin) (int int) int)) (val arm-low-mask (subr pure (int) int)) (val arm-and-low (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-tst-low (subr (maxeff (read @globals) spin) (int int) int)) (val arm-ubfx (subr (maxeff (read @globals) spin) (int int int int) int)) (val arm-shift-imm (subr pure (int int int int) int)) (val arm-asr-imm (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-lsr-imm (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-strb (subr (maxeff (read @globals) spin) (int int) int)) (val arm-csel (subr (maxeff (read @globals) spin) (int int int int) int)) (val arm-mov16 (subr pure (int int int int) int)) (val arm-movz (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-movk (subr (maxeff (read @globals) spin) (int int int) int)) (val arm-mov-imm64 (subr (maxeff (read @globals) (alloc @k) spin) (int int) (listof int @k))) (val arm-b (subr pure (int) int)) (val arm-bl (subr pure (int) int)) (val arm-b-cond (subr (maxeff (read @globals) spin) (int int) int)) (val arm-cbz (subr (maxeff (read @globals) spin) (int int) int)) (val arm-cbnz (subr (maxeff (read @globals) spin) (int int) int)) (val arm-br (subr pure (int) int)) (val arm-blr (subr pure (int) int)) (val arm-ret int)) ! (read (globals %shared:input:fx26:arm64.fx))",
@@ -19,6 +15,10 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

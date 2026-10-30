@@ -9,10 +9,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "\"prelude.fx: what KFX has that FX-26's standard environment has only at\\n `int`. KFX has no `int` (PLAN.md, section 2): it writes `i64`, whose\\n arithmetic wraps in FX-26 as in Rust.\\n\\n This file is FX-26, not KFX: it is where `int` meets `i64`. Fixpt reads\\n it before a KFX program (stage 0). The transpiler never sees it: each\\n name here is a function of kayak-rt, by the same mangling, and this file\\n is that function's meaning.\" : string ! pure",
@@ -35,6 +31,9 @@
 "err": [
 "fixpt: <tmp>/stage0.fx:67:4: argument 1 is a (pairof string (listof string @r.1) @r.1), where a (listof string acyclic) is expected",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
 }
 ]

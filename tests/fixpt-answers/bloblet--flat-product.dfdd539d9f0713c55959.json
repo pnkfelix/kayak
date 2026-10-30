@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define b : o ! (alloc @b)",
@@ -25,6 +21,29 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define b : o ! (alloc @b)",
+"define arr : (blobref o pts) ! (read (globals b))",
+"define p1 : (blobref o pt) ! (read (globals arr))",
+"unit ! (maxeff (read (globals p1)) (write @b))",
+"unit ! (maxeff (read (globals p1)) (write @b))",
+"define q0 : (blobref o q) ! (read (globals b))",
+"(listof int acyclic) ! (maxeff (read (globals arr b p1 q0)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

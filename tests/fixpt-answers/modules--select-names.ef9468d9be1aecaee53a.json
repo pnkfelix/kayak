@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"select-names.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (desc pt (productof (x int) (y int))) (val origin pt)) ! pure",
+"define f : (subr pure ((select m pt)) int) ! pure",
+"define n : (moduleof (desc pt (productof (x int) (y int))) (val g (subr pure (pt) pt))) ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

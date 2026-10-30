@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"select-names.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc pt (productof (x int) (y int))) (val origin pt)) ! pure",
+"f : (subr pure ((select m pt)) int) ! pure",
+"n : (moduleof (desc pt (productof (x int) (y int))) (val g (subr pure (pt) pt))) ! pure",
+"0 : int ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

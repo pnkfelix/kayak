@@ -24,8 +24,24 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"m-base : (moduleof (desc pt (productof (x int) (y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
+"m-buffer : (moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (select m-base pt)))) ! (maxeff (read @c) (write @c) (alloc @c) (read (globals %shared:input:<programs>/modules/../module-files/mp-buffer.fx m-base)))",
+"m-mixed : (moduleof (val cell (subr (alloc @q) (int) (ref int @q)))) ! (read (globals %shared:input:<programs>/modules/../module-files/mp-mixed.fx m-base))",
+"seen-of : (subr (read @c) ((moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (select m-base pt))))) int) ! pure",
+"57 : int ! (maxeff (read @q) (read @c) (alloc @q) (read (globals m-buffer m-mixed seen-of)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -1,5 +1,0 @@
-"Branches that mix a pair `cons` makes with a list, nothing expected: FX-26 types the pair a (pairof ...), which joins no (listof ...) (a K1 breach of KFX's, found 2026-10-16, C123)."
-(define-effect kfx (maxeff (read @globals) spin))
-(define f (subr kfx (bool (listof int acyclic)) (listof int acyclic))
-  (lambda (b xs) (let ((ys (if b xs (cons 1 xs)))) ys)))
-(define main (subr kfx () string) (lambda () (int->string (car (f #f (list 2))))))

@@ -36,8 +36,40 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define partition : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (vec int int less) int) ! pure",
+"define quick-1 : (subr (maxeff (alloc @heap) (read (globals partition)) (read @heap) (write @heap) spin) (vec less) vec) ! pure",
+"define m1 : int ! pure",
+"define m2 : int ! pure",
+"define a12 : int ! pure",
+"define a13n : int ! pure",
+"define a21 : int ! pure",
+"define a23n : int ! pure",
+"define seed : vec ! (maxeff (alloc @heap) (write @heap))",
+"define random-flonum : (subr (maxeff (alloc @heap) (read (globals a12 a13n a21 a23n m1 m2 seed)) (read @heap) (write @heap) spin) () int) ! pure",
+"define random : (subr (maxeff (alloc @heap) (read (globals a12 a13n a21 a23n m1 m2 random-flonum seed)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"define vector-copy : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (vec) vec) ! pure",
+"define sorted? : (subr (maxeff (alloc @heap) (read @heap) (write @heap) spin) (vec) bool) ! pure",
+"define input1 : int ! pure",
+"define input2 : int ! pure",
+"define less? : less ! pure",
+"define iterations : int ! pure",
+"define v : vec ! (maxeff (alloc @heap) (read (globals a12 a13n a21 a23n input1 input2 m1 m2 random random-flonum seed)) (read @heap) (write @heap) spin)",
+"define run : (subr (maxeff (alloc @heap) (read (globals less? partition quick-1 run v vector-copy)) (read @heap) (write @heap) spin) (int vec) vec) ! pure",
+"bool ! (maxeff (alloc @heap) (read (globals iterations less? partition quick-1 run sorted? v vector-copy)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

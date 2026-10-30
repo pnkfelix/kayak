@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "! <programs>/bloblet/blobref-not-flat.fx:3:53: a flat is `f64`, `f32`, `i32`, `u32`, `i64`, `u64`, `(productof (label flat) …)`, `(sumof [key] (label flat) …)`, `(arrayof flat n)`, or a variable of kind `flat`",
@@ -19,6 +15,10 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

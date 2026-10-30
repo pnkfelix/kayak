@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "counter : (moduleof (val cell (ref int @h)) (val inc (subr pure (int) int)) (val bump (subr (maxeff (read @h) (write @h)) () int)) (val ev? (subr pure (nat) bool)) (val od? (subr pure (nat) bool)) (val on (subr spin (int) int)) (val twice (poly ((t type)) (subr pure ((subr pure (t) t) t) t))) (val user (subr (maxeff (read @h) (write @h)) () int))) ! (alloc @h)",
@@ -23,6 +19,10 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

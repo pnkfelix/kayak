@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"result-write-is-kept.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/regions/result-write-is-kept.fx:9:5: a (subr (alloc r) (int) (listof int r)) is expected here, and this is a (subr (maxeff (write r) (alloc r)) (int) (listof int r))",
+"  beyond what is expected, it has (write r)",
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "x : i64 ! pure",
@@ -26,6 +22,26 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"x : i64 ! pure",
+"big : u64 ! pure",
+"neg : i64 ! pure",
+"add : (subr pure (i64 i64) i64) ! pure",
+"(3 9223372036854775805 18446744073709551615 -9223372036854775808) : (listof int acyclic) ! (read (globals add big neg x))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

@@ -23,8 +23,23 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc cmd (subr (maxeff (read @heap) (read @globals)) () int)) (val hook (ref (listof (subr pure (int) cmd) acyclic) @heap))) ! (alloc @heap)",
+"mk : (subr (maxeff (write @heap) (read (globals m))) () (moduleof (val f (subr pure (int) (select m cmd))) (val r unit))) ! pure",
+"made : (moduleof (val f (subr pure (int) (select m cmd))) (val r unit)) ! (maxeff (write @heap) (read (globals m mk)))",
+"7 : int ! (maxeff (read @heap) (read @globals) (read (globals m)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

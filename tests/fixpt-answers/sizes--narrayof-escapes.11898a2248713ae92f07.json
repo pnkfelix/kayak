@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "f : (poly ((s size)) (subr pure ((narrayof int s @heap)) (subr pure ((narrayof int s @heap)) (nat s)))) ! pure",
@@ -23,6 +19,10 @@
 "err": [
 "fixpt: <programs>/sizes/narrayof-escapes.fx:8:28: the size `s` cannot be `finite` here: `s` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

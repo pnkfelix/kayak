@@ -24,8 +24,28 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+"n : (subr (conv native) pure (int) int) ! (read (globals inc))",
+"c : (subr pure (int) int) ! (read (globals inc))",
+"call-n : (subr pure ((subr (conv native) pure (int) int)) int) ! pure",
+"call-c : (subr pure ((subr pure (int) int)) int) ! pure",
+"twice : (subr pure ((subr (conv fx) pure (int) int) int) int) ! pure",
+"m : (subr pure ((subr pure (int int) int) int) int) ! pure",
+"back : (subr pure (int) int) ! (read (globals n))",
+"(2 2 2 2 6 7 8 2 2 12 22 15) : (listof int acyclic) ! (read (globals back c call-c call-n inc m n twice))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

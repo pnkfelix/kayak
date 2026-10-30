@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define leaf : (poly ((t type) (r region)) (subr pure (t) (mu %3 (sumof (leaf (productof (1 t))) (node (productof (1 (listof %3 r)))))))) ! pure",
@@ -24,6 +20,28 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define leaf : (poly ((t type) (r region)) (subr pure (t) (mu %3 (sumof (leaf (productof (1 t))) (node (productof (1 (listof %3 r)))))))) ! pure",
+"define node : (poly ((t type) (r region)) (subr pure ((mu %3 (listof (sumof (leaf (productof (1 t))) (node (productof (1 %3)))) r))) (mu %3 (sumof (leaf (productof (1 t))) (node (productof (1 (listof %3 r)))))))) ! pure",
+"define total : (subr (read @globals) ((mu %2 (sumof (leaf (productof (1 int))) (node (productof (1 (listof %2 acyclic))))))) int) ! pure",
+"define total-all : (subr (read @globals) ((mu %2 (listof (sumof (leaf (productof (1 int))) (node (productof (1 %2)))) acyclic))) int) ! pure",
+"define kids : (mu %1 (listof (sumof (leaf (productof (1 int))) (node (productof (1 %1)))) acyclic)) ! (read (globals leaf))",
+"int ! (maxeff (read (globals kids node total)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

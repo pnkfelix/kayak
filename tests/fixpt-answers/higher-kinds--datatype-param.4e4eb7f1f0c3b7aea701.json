@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "define node : (poly ((f (=> (type) type)) (a type)) (subr pure (a (f (mu %4 (sumof (node (productof (1 a) (2 (f %4)))))))) (mu %3 (sumof (node (productof (1 a) (2 (f %3)))))))) ! pure",
@@ -22,6 +18,26 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define node : (poly ((f (=> (type) type)) (a type)) (subr pure (a (mu %3 (f (sumof (node (productof (1 a) (2 %3))))))) (mu %3 (sumof (node (productof (1 a) (2 (f %3)))))))) ! pure",
+"define leaf : (subr pure (int (mu %2 (listof (sumof (node (productof (1 int) (2 %2)))) @heap))) (mu %2 (sumof (node (productof (1 int) (2 (listof %2 @heap))))))) ! (read (globals node))",
+"define t : (mu %1 (sumof (node (productof (1 int) (2 (listof %1 @heap)))))) ! (maxeff (alloc @heap) (read (globals leaf)))",
+"int ! (maxeff (read (globals t)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

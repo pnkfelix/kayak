@@ -11,10 +11,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 1,
 "out": [
 "counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
@@ -23,6 +19,10 @@
 "err": [
 "fixpt: <programs>/modules/abstract-as-transparent.fx:11:12: a known is expected here, and this is a (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))",
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]

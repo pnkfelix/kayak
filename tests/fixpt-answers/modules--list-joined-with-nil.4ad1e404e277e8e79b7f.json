@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"list-joined-with-nil.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define f : (subr pure ((listof int acyclic)) int) ! pure",
+"define g : (subr (read (globals f)) (int) int) ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+]
+}
+]
+}

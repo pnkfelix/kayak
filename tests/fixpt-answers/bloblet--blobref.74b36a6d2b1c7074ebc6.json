@@ -7,10 +7,6 @@
 ],
 "answers": [
 {
-"by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-],
 "code": 0,
 "out": [
 "b : pt ! (alloc @b)",
@@ -31,6 +27,35 @@
 ],
 "err": [
 ""
+],
+"by": [
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"b : pt ! (alloc @b)",
+"x : (blobref pt f64) ! (read (globals b))",
+"n : (blobref pt i32) ! (read (globals b))",
+"m : (blobref pt i32) ! (read (globals n))",
+"u : (blobref pt u32) ! (read (globals b))",
+"f : (blobref pt f32) ! (read (globals u))",
+"w : (blobref pt i64) ! (read (globals b))",
+"#u : unit ! (maxeff (write @b) (read (globals x)))",
+"#u : unit ! (maxeff (write @b) (read (globals n)))",
+"#u : unit ! (maxeff (write @b) (read (globals m)))",
+"#u : unit ! (maxeff (write @b) (read (globals u)))",
+"#u : unit ! (maxeff (write @b) (read (globals f)))",
+"#u : unit ! (maxeff (write @b) (read (globals w)))",
+"(5 37 12 7 4000000000 -2 4) : (listof int acyclic) ! (maxeff (read @b) (read (globals f m n u w x)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
 ]
 }
 ]
