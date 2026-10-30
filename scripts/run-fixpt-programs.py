@@ -195,7 +195,9 @@ def fixpt_values_run(binary, path, text, machine=None):
             # the value the program says it gives stands for Fixpt's.
             return stated, None
         return None, "REFUSED: " + said[:200]
-    lines = [l for l in r.stdout.splitlines() if not l.startswith(";")]
+    # A type's definition Fixpt writes, `NAME = TYPE` (a module type a
+    # `define-type` names, C283), is no value.
+    lines = [l for l in r.stdout.splitlines() if not l.startswith(";") and not re.match(r"^[^\s\"]+ = ", l)]
     values = []
     for head, count in forms(text):
         taken, lines = lines[:count], lines[count:]

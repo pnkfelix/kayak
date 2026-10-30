@@ -2788,7 +2788,7 @@
     (lambda (e dir)
       (tagcase e
         (lst (xs f l p)
-          (if (and (or (head-is? e "load-module") (head-is? e "load-input")) (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+          (if (and (or (head-is? e "load-module") (head-is? e "load-input") (head-is? e "load-moduleof")) (i64> (size xs) 1) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
               ;; A module built in (C107) is read from no file.
               (tagcase (second xs) (str (s f2 p2) (if (built-in-path? s) nil (the strings (list (path-joined dir s))))) (else other nil))
               (concat (map (lambda ((x sexp)) (load-paths x dir)) xs))))
@@ -2800,7 +2800,7 @@
       "Whether `e` has a `load-module` in it: of a module built in, perhaps,
        which no file is read for (C107)."
       (tagcase e
-        (lst (xs f l p) (or (head-is? e "load-module") (head-is? e "load-input") (any? loads? xs)))
+        (lst (xs f l p) (or (head-is? e "load-module") (head-is? e "load-input") (head-is? e "load-moduleof") (any? loads? xs)))
         (else other #f)))))
 
 (define load-paths-all (subr kfx (sexps string) strings)

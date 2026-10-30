@@ -2978,6 +2978,10 @@
                                                                  (the tys (list (ty-rconst (i64->string (tagcase (car parts) (num (k f3 p3) k) (else other 0)))) f))
                                                                  (refuse v (string-append "a flat sum's variant is a flat: " (show-sexp t))))))))
                                                    (cdr (cdr xs)))))))))
+                ((and (sym-is? (car xs) "restrict") (i64> (size xs) 1))
+                 (restricted v (as-mtype v (parse-type v tvars (second xs)))
+                             (map (lambda ((n sexp)) (tagcase n (sym (m f p) m) (else other (refuse v "`restrict` names a module's names")))) (cdr (cdr xs)))
+                             (second xs)))
                 ((and (sym-is? (car xs) "%module-made") (i64= (size xs) 2))
                  "`(load-moduleof \"p\" ...)`, the load's module spliced (C283): the type
                   of that module as a value, as a module type by name is."
@@ -3339,14 +3343,88 @@
                              tvars (cdr ps) (i64+ i 1))))))))
   (as-mtype (subr kfx (cv ty) ty)
     (lambda (v t)
-      "A module type named by a `define-type` (C24), as a module value's."
+      "A module type named by a `define-type` (C24), as a module value's; a
+       load's, `(load-moduleof ...)`, its module's (C283)."
       (tagcase t
         (ty-data (d args)
           (if (has-prefix? d "%module ")
               (let ((found (find-alias (after-prefix d "%module ") (cv-aliases v))))
-                (if (null? found) t (tagcase (car found) (alias (n ps body) (parse-type v nil body)))))
-              t))
+                (cond ((not (null? found)) (tagcase (car found) (alias (n ps body) (parse-type v nil body))))
+                      ((has-prefix? (after-prefix d "%module ") "made--load--") (module-type-of v (after-prefix d "%module ")))
+                      (else t)))
+              ;; An abbreviation kept for printing (C164): what it stands for.
+              (if (and (has-prefix? d "%named ") (not (null? args))) (as-mtype v (car args)) t)))
         (else other t))))
+  (restricted (subr kfx (cv ty strings sexp) ty)
+    (lambda (v t names written)
+      "`(restrict T name ...)` (C283; Fixpt's, 2026-10-27): module type `T`
+       with only the values, effects and types named. An abstract type not
+       named stays, unnamed, `%hidden:t`, so that a value of it may be taken
+       and passed but the type not named; a description not named goes, its
+       type spelt out where a kept one uses it, as kayak's are."
+      (if (not (mtype? t))
+          (refuse v (string-append "`restrict` restricts a module's type, and this is a " (show-sexp written)))
+          (let ((have (map mitem-name (mtype-items t))))
+            (cond ((any? (lambda ((n string)) (not (string-member? n have))) names)
+                   (refuse v (string-append "the module gives no `" (string-append (car (filter (lambda ((n string)) (not (string-member? n have))) names)) "`"))))
+                  (else
+                   (ty-data "%mtype"
+                            (concat (map (lambda ((x ty))
+                                           (cond ((string-member? (mitem-name x) names) (the tys (list x)))
+                                                 ((string=? (mitem-kind x) "%abs")
+                                                  (tagcase x (ty-data (d args) (the tys (list (ty-data (string-append "%abs %hidden:" (mitem-name x)) args)))) (else other nil)))
+                                                 (else nil)))
+                                         (mtype-items t))))))))))
+  (module-type-of (subr kfx (cv string) ty)
+    (lambda (v m)
+      "The type of module `m`, defined at the top level, as a value (C170):
+       its generative types and datatypes abstract, `m..t`; its other
+       types described; its effects; its values."
+      (let* ((pre (string-append m " "))
+             ;; Its own, not its modules' given on (`m n t`, C203), which their
+             ;; own types say.
+             (types (the aliases (onto nil (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-aliases v)))))
+             (effs (the effdefs (onto nil (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (and (has-prefix? n pre) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-effdefs v)))))
+             (vals (the binds (onto nil (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%"))
+                                                                                                     (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-binds v))))))
+        (ty-data "%mtype" (newest-items (reverse (the tys
+          (onto (map (lambda ((a alias))
+                       (tagcase a
+                         (alias (n ps body)
+                           (let ((t (after-prefix n pre)))
+                             (if (tagcase body (sym (b f p) (and (or (string=? b (string-append m (string-append ".." t))) (has-prefix? b "made--load--"))
+                                                                 (dt-named? b (cv-dts v))))
+                                          (else other #f))
+                                 ;; Its own abstract type, or a loaded file's, which only it
+                                 ;; names (C172).
+                                 (ty-data (string-append "%abs " t) (list (ty-data (sym-name body) nil)))
+                                 (ty-data (string-append "%desc " t) (list (parse-type v nil body))))))))
+                     types)
+                (onto (map (lambda ((d effdef)) (tagcase d (effdef (n atoms) (ty-data (string-append "%edesc " (after-prefix n pre)) (list (ty-proc atoms nil (ty-unit)))))))
+                           effs)
+                      (map (lambda ((b bind))
+                             (tagcase b
+                               (bind (n sc w)
+                                 (ty-data (string-append "%val " (after-prefix n pre))
+                                          (list (if (and (tagcase sc (scheme (tv t) (tagcase t (ty-unit () #t) (else other #f))))
+                                                         (any? (lambda ((c bind)) (tagcase c (bind (m sc2 w2) (has-prefix? m (string-append n " "))))) (cv-binds v)))
+                                                    ;; A module in the module (C88).
+                                                    (module-type-of v n)
+                                                    (tagcase sc (scheme (tv t) t))))))))
+                           vals))))) nil)))))
+
+  (newest-items (subr kfx (tys strings) tys)
+    (lambda (ts seen)
+      "Items, the last of each kind and name only, in order (`ts` reversed)."
+      (if (null? ts)
+          nil
+          (let ((key (string-append (if (string=? (mitem-kind (car ts)) "%val") "v " "t ") (mitem-name (car ts)))))
+            (if (string-member? key seen)
+                (newest-items (cdr ts) seen)
+                (append-ty (newest-items (cdr ts) (cons key seen)) (car ts)))))))
+
+  (append-ty (subr kfx (tys ty) tys)
+    (lambda (ts t) (if (null? ts) (list t) (cons (car ts) (append-ty (cdr ts) t)))))
   (parse-params (subr kfx (cv strings sexps) tys)
     (lambda (v tvars ts)
       "A procedure type's parameters, each named or not (C162)."
@@ -4434,60 +4512,6 @@
                       (and (not (string=? pe "%heap")) (not (string=? pe "?"))
                            (newer-than? (string-append "%place " pe) (string-append "%place " pa) (cv-tvars v))))))))))
 
-"A top-level module's type as a value (C170), and its parts: here, before
- `fits`, which a load's module type, `(%module-made m)`, needs (C283)."
-(define-rec
-  (module-type-of (subr kfx (cv string) ty)
-    (lambda (v m)
-      "The type of module `m`, defined at the top level, as a value (C170):
-       its generative types and datatypes abstract, `m..t`; its other
-       types described; its effects; its values."
-      (let* ((pre (string-append m " "))
-             ;; Its own, not its modules' given on (`m n t`, C203), which their
-             ;; own types say.
-             (types (the aliases (onto nil (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-aliases v)))))
-             (effs (the effdefs (onto nil (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (and (has-prefix? n pre) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-effdefs v)))))
-             (vals (the binds (onto nil (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%"))
-                                                                                                     (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-binds v))))))
-        (ty-data "%mtype" (newest-items (reverse (the tys
-          (onto (map (lambda ((a alias))
-                       (tagcase a
-                         (alias (n ps body)
-                           (let ((t (after-prefix n pre)))
-                             (if (tagcase body (sym (b f p) (and (or (string=? b (string-append m (string-append ".." t))) (has-prefix? b "made--load--"))
-                                                                 (dt-named? b (cv-dts v))))
-                                          (else other #f))
-                                 ;; Its own abstract type, or a loaded file's, which only it
-                                 ;; names (C172).
-                                 (ty-data (string-append "%abs " t) (list (ty-data (sym-name body) nil)))
-                                 (ty-data (string-append "%desc " t) (list (parse-type v nil body))))))))
-                     types)
-                (onto (map (lambda ((d effdef)) (tagcase d (effdef (n atoms) (ty-data (string-append "%edesc " (after-prefix n pre)) (list (ty-proc atoms nil (ty-unit)))))))
-                           effs)
-                      (map (lambda ((b bind))
-                             (tagcase b
-                               (bind (n sc w)
-                                 (ty-data (string-append "%val " (after-prefix n pre))
-                                          (list (if (and (tagcase sc (scheme (tv t) (tagcase t (ty-unit () #t) (else other #f))))
-                                                         (any? (lambda ((c bind)) (tagcase c (bind (m sc2 w2) (has-prefix? m (string-append n " "))))) (cv-binds v)))
-                                                    ;; A module in the module (C88).
-                                                    (module-type-of v n)
-                                                    (tagcase sc (scheme (tv t) t))))))))
-                           vals))))) nil)))))
-
-  (newest-items (subr kfx (tys strings) tys)
-    (lambda (ts seen)
-      "Items, the last of each kind and name only, in order (`ts` reversed)."
-      (if (null? ts)
-          nil
-          (let ((key (string-append (if (string=? (mitem-kind (car ts)) "%val") "v " "t ") (mitem-name (car ts)))))
-            (if (string-member? key seen)
-                (newest-items (cdr ts) seen)
-                (append-ty (newest-items (cdr ts) (cons key seen)) (car ts)))))))
-
-  (append-ty (subr kfx (tys ty) tys)
-    (lambda (ts t) (if (null? ts) (list t) (cons (car ts) (append-ty (cdr ts) t))))))
-
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -4935,11 +4959,8 @@
     (lambda (v d)
       "The module type a `define-type` of a moduleof names (C24), as a module
        value's is (C170)."
-      (let ((found (find-alias (after-prefix d "%module ") (cv-aliases v))))
-        (cond ((not (null? found)) (tagcase (car found) (alias (n ps body) (parse-type v nil body))))
-              ;; A load's module, `(load-moduleof ...)` (C283): its type as a value.
-              ((has-prefix? (after-prefix d "%module ") "made--load--") (module-type-of v (after-prefix d "%module ")))
-              (else (ty-unit))))))
+      (let ((t (as-mtype v (ty-data d nil))))
+        (if (mtype? t) t (ty-unit)))))
   (mtype-fits (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       "A module of type `a` where one of `e` is wanted (C170; Fixpt's M4):

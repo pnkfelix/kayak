@@ -5286,7 +5286,7 @@ pub fn load_paths(e: &'static Sexp, dir: Str) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if ((head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input"))) && i64_eq(size(xs), 2i64) && {
+            if ((head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input")) || head_is_p(e, str_lit("load-moduleof"))) && i64_gt(size(xs), 1i64) && {
                 let tagcase_ = second(xs);
                 match *tagcase_ {
                     Sexp::Str(s, f2, p2) => {
@@ -5331,7 +5331,7 @@ pub fn loads_p(e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            (head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input")) || any_p(&loads_p, xs))
+            (head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input")) || head_is_p(e, str_lit("load-moduleof")) || any_p(&loads_p, xs))
         }
         _ => {
             let other = tagcase_;

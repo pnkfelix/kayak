@@ -713,7 +713,7 @@ pub mod expressions {
         match *tagcase_ {
             Ty::TyData(d, args) => {
                 if has_prefix_p(d, str_lit("%module made--load--")) {
-                    module_alias_type(v, d)
+                    as_mtype(v, t)
                 } else {
                     t
                 }
@@ -5803,7 +5803,11 @@ pub mod expressions {
                 let tagcase_ = check(v, s, second(xs), want);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        return res(t, es, s);
+                        return res(if mtype_p(as_mtype(v, want)) {
+                            want
+                        } else {
+                            t
+                        }, es, s);
                     }
                 }
             } else if string_eq_p(h, str_lit("prompt")) {

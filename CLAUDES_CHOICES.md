@@ -7995,3 +7995,23 @@ C171). That stays, and now takes what FX-26's files take:
   `load-moduleof-define-type.fx` are accepted, and run to Fixpt's values,
   4, 57, 10 and 1. `restrict` and `load-input` makers (a `plambda` of an
   effect) come next.
+
+## C284. `restrict`, and `the` sealing a module (2026-10-30)
+
+C283's next. `(restrict T name …)` (Fixpt's, 2026-10-27) is module type
+`T` with only the names given. kayak reads it where it is written
+(`restricted`, in `parse-type`'s group, as `module-type-of` and
+`as-mtype` now are, so that a load's module type, `made--load--K`, is a
+module type wherever one is read). It keeps the values, effects and types
+named. An abstract type not named stays as `%hidden:t`, so a value of it
+may be passed but the type not named. A description not named goes,
+since kayak's types spell theirs out. It refuses a name the module does
+not give, and a `restrict` of what is no module's type. `the` now seals
+a module to the type written, as FX-26's M4 has it: `(the T m)` is of
+`T`, its other names gone. Before, it was of `m`'s own type, so a
+restricted abstract type could still be named through it, a program
+Fixpt refuses (`restrict-unnamed.fx`). A form whose only load is a
+`load-moduleof` is spliced too, its file read. Fixpt's five `restrict`
+programs get its verdicts, and `restrict.fx` runs to its value. And
+`run-fixpt-programs.py` skips a line of Fixpt's `NAME = TYPE`, a module
+type a `define-type` names, which it had taken for a value.
