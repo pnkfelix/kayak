@@ -8015,3 +8015,35 @@ Fixpt refuses (`restrict-unnamed.fx`). A form whose only load is a
 programs get its verdicts, and `restrict.fx` runs to its value. And
 `run-fixpt-programs.py` skips a line of Fixpt's `NAME = TYPE`, a module
 type a `define-type` names, which it had taken for a value.
+
+## C285. Modules: local modules, shared loads, includes of loads, labels (2026-10-30)
+
+The rest of Fixpt's module programs kayak refused, one by one:
+- **A local module's names** (`with-local-module*.fx`): letrec*'s "made
+  before it" walk (`refs-in`) took a local module's `f`, opened by `with`,
+  for the enclosing module's `f`. A `let`'s module bindings are now known
+  to it as an item's module is. A `module` form's own items' names are its
+  own, not references to the outer items.
+- **A shared load read through `with`**: reading a shared load's module,
+  `made--load--K`, is no effect, since it is made once and never written,
+  as Fixpt's `%shared:` globals are. Renaming `(with c x)` to that module,
+  as `(select c t)` is (C118), was tried and dropped: where `c` is a load
+  given regions, its module is made per call, not shared, and the engine
+  failed on `loaded-select`. So `load-shared.fx`, which reads a load
+  through a module the file names, is still refused.
+- **`(include LOAD)`** (`include-in-*file.fx`): the load's module is
+  included by its name, which KFX's `include` takes.
+- **A label spelt as a type**: a module's type naming one of its own types
+  as a field's label, `(productof (cmds cmds))`, had its label qualified
+  with the type, `m..cmds`, and was refused as a label written twice.
+  `label-of` reads a label so qualified as its name, and the label check
+  goes through it. I did not find which path qualifies it.
+- **Effect binders** in a `plambda` nothing types (`plambda-synth`, C273):
+  `~e`, as a poly type's are.
+- **Not done**: a `load-input` maker whose loads are given its own
+  binders, `(plambda ((ed region) (world effect)) (lambda ((core
+  (load-moduleof "made-core.fx" ed world))) …))`. kayak's static splice
+  makes a load once at the top level, so it cannot be made at a region a
+  procedure is still abstract over; that needs parameterised module types,
+  not a splice. Nor a family another module gives, imported into a module
+  (`import-list-and-family.fx`). Both are in TODO 4b.

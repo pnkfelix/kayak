@@ -1811,9 +1811,17 @@
       (tagcase t
         (sym (n at-file at-pos) (if (string-member? n names) (sym (string-append m (string-append ".." n)) at-file at-pos) t))
         (lst (xs file line pos)
-          (if (head-is? t "select")
-              t
-              (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos)))
+          (cond ((head-is? t "select") t)
+                ((or (head-is? t "productof") (head-is? t "sumof"))
+                 "A field's label is no type (C285): its type alone qualified."
+                 (lst (cons (car xs)
+                            (map (lambda ((fd sexp))
+                                   (tagcase fd
+                                     (lst (ys f2 l2 p2) (if (i64= (size ys) 2) (lst (list (car ys) (qualify-type m names (second ys))) f2 l2 p2) (qualify-type m names fd)))
+                                     (else other (qualify-type m names fd))))
+                                 (cdr xs)))
+                      file line pos))
+                (else (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos))))
         (else other t)))))
 
 (define module-aliases (subr kfx (cv string strings sexps bool) aliases)
@@ -2208,7 +2216,25 @@
                      (inner (if (null? given) names (nset-without names given))))
                 (onto (if (in-nset? m names) (the strings (list m)) nil)
                       (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (cdr (cdr xs))))))
-              (concat (map (lambda ((x sexp)) (refs-in x names forms bs)) xs))))
+              (cond
+                ((and (or (head-is? e "let") (head-is? e "let*")) (not (null? (cdr xs))))
+                 "A module a local `let` binds (C285): known to a `with` of it in
+                  the body, as an item's is, so its names are its own."
+                 (let ((mods (concat (map (lambda ((b sexp))
+                                            (tagcase b
+                                              (lst (ys f2 l2 p2)
+                                                (if (and (i64= (size ys) 2) (head-is? (second ys) "module"))
+                                                    (the sexps (list (lst (list (sym "define" f2 p2) (car ys) (second ys)) f2 l2 p2)))
+                                                    nil))
+                                              (else other nil)))
+                                          (tagcase (second xs) (lst (ys f2 l2 p2) ys) (else other nil))))))
+                   (concat (map (lambda ((x sexp)) (refs-in x names (onto mods forms) bs)) (cdr xs)))))
+                ((head-is? e "module")
+                 "A module made here: its items' own names are its, not the outer
+                  items' (C285)."
+                 (let ((own (concat (map item-names (cdr xs)))))
+                   (concat (map (lambda ((x sexp)) (refs-in x (if (null? own) names (nset-without names own)) forms bs)) (cdr xs)))))
+                (else (concat (map (lambda ((x sexp)) (refs-in x names forms bs)) xs))))))
         (else other nil)))))
 
 (define standard-scope (subr kfx (cv strings) cv)
@@ -3163,7 +3189,12 @@
     (lambda (xs dir loaded chain known done defs f l p)
       "Each of `xs` spliced in turn, `done` those so far, reversed."
       (if (null? xs)
-          (let* ((its (the sexps (reverse done)))
+          (let* ((its0 (the sexps (reverse done)))
+                 ;; `(include LOAD)` (C285): the load's module included by its name,
+                 ;; as KFX includes a module, not the module that includes it.
+                 (its (if (and (not (null? its0)) (sym-is? (car its0) "include") (not (null? (cdr its0))))
+                          (the sexps (cons (car its0) (cons (included-name (second its0)) (cdr (cdr its0)))))
+                          its0))
                  (shared (shared-names its)))
             (spliced-to (lst (if (null? shared) its (map (lambda ((x sexp)) (selects-renamed x shared)) its)) f l p) defs known))
           (tagcase (spliced (car xs) dir loaded chain known)

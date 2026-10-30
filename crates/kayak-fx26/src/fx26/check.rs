@@ -733,12 +733,19 @@ pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
     }
 }
 
-/// A product's label or a sum's tag, as written: a name or a number.
+/// A product's label or a sum's tag, as written: a name or a number. A
+/// label is never a module's name for a type, `m..x` (C285): one so
+/// qualified with the module's types, as a type is, is `x`.
 pub fn label_of(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, at_file, at_pos) => {
-            n
+            let after = after_dots(n);
+            if string_eq_p(after, str_lit("")) {
+                n
+            } else {
+                after
+            }
         }
         Sexp::Num(k, f, p) => {
             i64_to_string(k)
@@ -6717,7 +6724,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             let tagcase_ = car(f);
                             match *tagcase_ {
                                 Sexp::Sym(n, at_file, at_pos) => {
-                                    not(label_name_p(n))
+                                    not(label_name_p(label_of(car(f))))
                                 }
                                 _ => {
                                     let other = tagcase_;

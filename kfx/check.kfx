@@ -345,8 +345,13 @@
 
 (define label-of (subr kfx (sexp) string)
   (lambda (e)
-    "A product's label or a sum's tag, as written: a name or a number."
-    (tagcase e (sym (n at-file at-pos) n) (num (k f p) (i64->string k)) (else other ""))))
+    "A product's label or a sum's tag, as written: a name or a number. A
+     label is never a module's name for a type, `m..x` (C285): one so
+     qualified with the module's types, as a type is, is `x`."
+    (tagcase e
+      (sym (n at-file at-pos) (let ((after (after-dots n))) (if (string=? after "") n after)))
+      (num (k f p) (i64->string k))
+      (else other ""))))
 
 (define escapes? (subr kfx (strings) bool)
   (lambda (es)
@@ -2996,7 +3001,7 @@
                            (and (sym-is? (car xs) "sumof")
                                 (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) #f) (else other #t))) fields)))
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
-                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) (not (label-name? n))) (else other #f))) fields)
+                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) (not (label-name? (label-of (car f))))) (else other #f))) fields)
                                (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
                                (repeated? (map (lambda ((f sexps)) (variant-name (label-of (car f)))) fields)))
                            (refuse v (string-append "a label appears twice in " (show-sexp t)))

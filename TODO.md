@@ -83,7 +83,12 @@ section below where it has one; here the order, and what each is.
    Heist's request): a `poly`'s region binder a call leaves unsolved, used
    only as a pair's region and only made and read there, is `(acyclic
    heap)`, not a region of its own: kayak's since C281, with frozen
-   covariance and masking's reads and writes. Also `.fasl`s, heap images, a native front end, and a
+   covariance and masking's reads and writes. Module parameters of every
+   kind, expressions as items, `load-moduleof`, `restrict`: kayak's since
+   C283-C285. Not yet: a `load-input` maker whose loads are given its own
+   binders (`modules/load-moduleof.fx`, `restrict-parameter.fx`, the
+   `made-*` files), which a static splice cannot make; a family imported
+   into another module (`import-list-and-family.fx`). Also `.fasl`s, heap images, a native front end, and a
    place's limits: Fixpt's own, nothing of kayak's ported.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in

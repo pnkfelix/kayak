@@ -6453,7 +6453,11 @@ pub mod expressions {
             })) {
                 match refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, or a module parameter, by its name: "), m)) {}
             } else {
-                with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil::<&'static Ty>()), expected), kayak_rt::heap_cons(string_append(str_lit("g:"), m), kayak_rt::nil()))
+                with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil::<&'static Ty>()), expected), if has_prefix_p(m, str_lit("made--load--")) {
+                    nil::<Str>()
+                } else {
+                    kayak_rt::heap_cons(string_append(str_lit("g:"), m), kayak_rt::nil())
+                })
             }
         } else if string_eq_p(h, str_lit("cond")) {
             cond_clauses(v, s, xs, expected)
@@ -12393,6 +12397,8 @@ pub mod expressions {
                         string_append(str_lit("#"), n)
                     } else if sym_is_p(k, str_lit("type")) {
                         n
+                    } else if sym_is_p(k, str_lit("effect")) {
+                        string_append(str_lit("~"), n)
                     } else if sym_is_p(k, str_lit("conv")) {
                         binder_named(str_lit("conv"), n)
                     } else if head_is_p(k, str_lit("=>")) {

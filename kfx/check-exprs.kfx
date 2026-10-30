@@ -2935,7 +2935,10 @@
                             (found-then-fitted v (body (with-binds w (module-type-values w spec)) s (cdr xs) nil) expected)))
                          ((or (null? found) (not (tagcase (car found) (bind (n sc wher) (string=? wher "module")))))
                           (refuse v (string-append "KFX's with opens a module defined at the top level, or a module parameter, by its name: " m)))
-                         (else (with-effs (found-then-fitted v (body (opened v m) s (cdr xs) nil) expected) (list (string-append "g:" m)))))))
+                         (else (with-effs (found-then-fitted v (body (opened v m) s (cdr xs) nil) expected)
+                                          ;; A shared load's module, made once and never written (C285;
+                                          ;; Fixpt's `%shared:` globals): reading it is no effect.
+                                          (if (has-prefix? m "made--load--") nil (list (string-append "g:" m))))))))
                 ((string=? h "cond") (cond-clauses v s xs expected))
                 ((string=? h "case")
                  "On a character, an integer, a string or a boolean, the data
@@ -5555,6 +5558,8 @@
                                                ((sym-is? k "place") (string-append "'" n))
                                                ((sym-is? k "size") (string-append "#" n))
                                                ((sym-is? k "type") n)
+                                               ;; An effect (C285): `~e`, as a poly type's effect binder is named.
+                                               ((sym-is? k "effect") (string-append "~" n))
                                                ((sym-is? k "conv") (binder-named "conv" n))
                                                ((head-is? k "=>") (binder-named (kind-text v k) n))
                                                (else (refuse v "a plambda binds regions, types and sizes"))))

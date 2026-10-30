@@ -3191,6 +3191,24 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
         Sexp::Lst(xs, file, line, pos) => {
             if head_is_p(t, str_lit("select")) {
                 t
+            } else if (head_is_p(t, str_lit("productof")) || head_is_p(t, str_lit("sumof"))) {
+                // A field's label is no type (C285): its type alone qualified.
+                lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |fd: &'static Sexp| {
+                    let tagcase_ = fd;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            if i64_eq(size(ys), 2i64) {
+                                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(qualify_type(m, names, second(ys)), kayak_rt::nil())), f2, l2, p2)
+                            } else {
+                                qualify_type(m, names, fd)
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            qualify_type(m, names, fd)
+                        }
+                    }
+                }), cdr(xs))), file, line, pos)
             } else {
                 lst(map(lambda1s(move |x: &'static Sexp| {
                     qualify_type(m, names, x)
@@ -3985,9 +4003,55 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                     refs_in(x, inner, forms, bs)
                 }), cdr(cdr(xs)))))
             } else {
-                concat(map(lambda1s(move |x: &'static Sexp| {
-                    refs_in(x, names, forms, bs)
-                }), xs))
+                if ((head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) && not(null_p(cdr(xs)))) {
+                    // A module a local `let` binds (C285): known to a `with` of it in
+                    // the body, as an item's is, so its names are its own.
+                    let mods = concat(map(lambda1s(move |b: &'static Sexp| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                if (i64_eq(size(ys), 2i64) && head_is_p(second(ys), str_lit("module"))) {
+                                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), f2, p2), kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), kayak_rt::nil()))), f2, l2, p2), kayak_rt::nil()))
+                                } else {
+                                    nil::<&'static Sexp>()
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    }), {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                ys
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    }));
+                    concat(map(lambda1s(move |x: &'static Sexp| {
+                        refs_in(x, names, onto(mods, forms), bs)
+                    }), cdr(xs)))
+                } else if head_is_p(e, str_lit("module")) {
+                    // A module made here: its items' own names are its, not the outer
+                    // items' (C285).
+                    let own = concat(map(&item_names, cdr(xs)));
+                    concat(map(lambda1s(move |x: &'static Sexp| {
+                        refs_in(x, if null_p(own) {
+                            names
+                        } else {
+                            nset_without(names, own)
+                        }, forms, bs)
+                    }), cdr(xs)))
+                } else {
+                    concat(map(lambda1s(move |x: &'static Sexp| {
+                        refs_in(x, names, forms, bs)
+                    }), xs))
+                }
             }
         }
         _ => {
@@ -6177,7 +6241,12 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
 pub fn spliced_each(mut xs: Sexps, mut dir: Str, mut loaded: Fileds, mut chain: Strings, mut known: Keyeds, mut done: Sexps, mut defs: Sexps, mut f: Str, mut l: i64, mut p: i64) -> &'static SplicedTo {
     loop {
         if null_p(xs) {
-            let its = the::<Sexps>(reverse(done));
+            let its0 = the::<Sexps>(reverse(done));
+            let its = if (not(null_p(its0)) && sym_is_p(car(its0), str_lit("include")) && not(null_p(cdr(its0)))) {
+                the::<Sexps>(kayak_rt::heap_cons(car(its0), kayak_rt::heap_cons(included_name(second(its0)), cdr(cdr(its0)))))
+            } else {
+                its0
+            };
             let shared = shared_names(its);
             return spliced_to(lst(if null_p(shared) {
                 its
