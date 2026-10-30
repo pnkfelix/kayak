@@ -426,6 +426,54 @@ pub fn bytes_copy_into_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> (
     }
 }
 
+// Strings at a region (C282), a character's code a word, as bytes are a
+// byte a word: made, written, filled and copied in place; a span checked as
+// a bytevector's is.
+pub fn string_made_x(n: i64, c: i64) -> i64 {
+    if i64_lt(n, 0i64) {
+        failed_with_x(str_lit("string length must be non-negative"));
+        0i64
+    } else {
+        filled_raw_x(ob_string(), n, char_to_i64(word_char(c)))
+    }
+}
+
+pub fn string_filled_x(mut s: i64, mut i: i64, mut n: i64, mut code: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            obj_set_x(s, i, code);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn string_copy_w_x(s: i64, start: i64, end: i64) -> i64 {
+    if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, obj_size(s))) {
+        failed_with_x(str_lit("string-copy: a span that does not fit"));
+        0i64
+    } else {
+        let p = alloc_x(ob_string(), i64_minus(end, start));
+        copied_range_x(p, s, start, 0i64, i64_minus(end, start));
+        p
+    }
+}
+
+pub fn string_copy_into_w_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> () {
+    let (s, e, t) = (fixnum_value(start), fixnum_value(end), fixnum_value(at));
+    if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, obj_size(from)) || i64_lt(t, 0i64)) {
+        failed_with_x(str_lit("string-copy!: a span that does not fit"))
+    } else if i64_gt(i64_plus(t, i64_minus(e, s)), obj_size(to)) {
+        failed_with_x(str_lit("string-copy!: the characters do not fit"))
+    } else if i64_gt(t, s) {
+        bytes_moved_back_x(to, t, from, s, i64_minus(e, 1i64))
+    } else {
+        bytes_moved_x(to, t, from, s, e)
+    }
+}
+
 // I/O: KFX's, in proportion to what is read and written.
 pub fn kfx_bytes_set_x(mut p: i64, mut bv: Bytes, mut i: i64, mut n: i64) -> () {
     loop {

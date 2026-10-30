@@ -198,6 +198,36 @@
             ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
             (else (bytes-moved! to t from s e))))))
 
+"Strings at a region (C282), a character's code a word, as bytes are a
+ byte a word: made, written, filled and copied in place; a span checked as
+ a bytevector's is."
+(define string-made! (subr hp (i64 i64) i64)
+  (lambda (n c)
+    (if (i64< n 0)
+        (begin (failed-with! "string length must be non-negative") 0)
+        (filled-raw! ob-string n (char->i64 (word-char c))))))
+
+(define-rec
+  (string-filled! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (s i n code) (if (i64>= i n) #u (begin (obj-set! s i code) (string-filled! s (i64+ i 1) n code))))))
+
+(define string-copy-w! (subr hp (i64 i64 i64) i64)
+  (lambda (s start end)
+    (if (or (i64< start 0) (i64< end start) (i64> end (obj-size s)))
+        (begin (failed-with! "string-copy: a span that does not fit") 0)
+        (let ((p (alloc! ob-string (i64- end start)))) (begin (copied-range! p s start 0 (i64- end start)) p)))))
+
+(define string-copy-into-w! (subr hp (i64 i64 i64 i64 i64) unit)
+  (lambda (to at from start end)
+    (let ((s (fixnum-value start)) (e (fixnum-value end)) (t (fixnum-value at)))
+      (cond ((or (i64< s 0) (i64< e s) (i64> e (obj-size from)) (i64< t 0))
+             (failed-with! "string-copy!: a span that does not fit"))
+            ((i64> (i64+ t (i64- e s)) (obj-size to))
+             (failed-with! "string-copy!: the characters do not fit"))
+            ;; The two may be one string, overlapping: as bytes' are.
+            ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
+            (else (bytes-moved! to t from s e))))))
+
 "I/O: KFX's, in proportion to what is read and written."
 (define-rec
   (kfx-bytes-set! (subr hp (i64 (bytevectorof @h) i64 i64) unit)

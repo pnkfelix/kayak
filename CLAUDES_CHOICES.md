@@ -7919,3 +7919,40 @@ first. All three are in the checker that kfx and the engine share.
   acyclic.fx` and `list-joined-with-nil.fx` give Fixpt's lines, and
   `kfx-stricter/branches-cons-list` and `fresh-list-region` are no longer
   stricter.
+
+## C282. Strings at a region, `(stringof r)`, in kayak's FX-26 (2026-10-30)
+
+Fixpt's 41c0823f, the user's: a string made, read and written at region
+`r`, as a bytevector is. `string` is `(stringof const)`. The user's "go
+for it", after C281.
+- **The checker**: `(stringof r)` is `%stringof` of its region, and
+  `(stringof const)` (or `acyclic`) is `string` itself. A `string` fits
+  where a `(stringof r)` is expected, `r` then `const`. A `(stringof r)`
+  fits where a `string` is only if `r` is frozen. `%stringof`'s region is
+  invariant. The readers (`string-length`, `string-ref`, `substring`,
+  `string=?`, `string->list`, `string->utf8`) take a string at any region,
+  pure at `const`, as Fixpt types them. `make-string`, `string-set!`,
+  `string-fill!`, `string-copy` and `string-copy!` are new primitives.
+  `rmake-string` is made as `rcons` is (`region-alloc-call`), at the place's
+  region if nothing says which.
+- **C281 mended**: a call's unsolved region binder was settled to
+  `acyclic` by `name-regions` before C281's rule saw it, so a storage
+  binder (a fresh string's, a bytevector's) could become frozen.
+  `name-regions` now keeps a region of its own for one the instance's type
+  uses as storage or writes (`not-only-data`, `%stringof` and `%bytes`
+  among its storage kinds). A cell nothing places is so kept fresh, where
+  it was `acyclic`; `unplaced?` refuses it at either, as before
+  (`kfx-stricter/unplaced-ref`, its effect otherwise lost).
+- **The engine's word VM**: six primitives at the end of `prim-list` (no
+  number moved), written by hand in `vprims.kfx` (`gen-vprims.py` is not
+  run again), a character's code a word, a span checked as a
+  bytevector's is.
+- **Tier 1**: Fixpt's runtime names (`%fx26-make-string`, …,
+  `%region-make-string`), in place on its strings, two code points a word;
+  the copy reads all of its span before it writes.
+- **KFX**: none of it (`restrict.kfx`). kayak-rt's `Str` cannot be
+  written, so KFX's `stringof` waits for plan B, which needs it.
+- `run/stringof.fx` gives Fixpt's values on the engine and on tier 1, of
+  Fixpt's words and of kayak's own. Its checks give Fixpt's lines, and
+  `regions/stringof-escapes.fx` and `write-a-string.fx` are refused where
+  Fixpt refuses them.

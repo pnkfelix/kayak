@@ -3494,6 +3494,8 @@ pub fn shape_of(mut t: &'static Ty) -> Str {
                     return str_lit("bloblet");
                 } else if string_eq_p(d, str_lit("%bytes")) {
                     return str_lit("bytevector");
+                } else if string_eq_p(d, str_lit("%stringof")) {
+                    return str_lit("string");
                 } else if string_eq_p(d, str_lit("%union")) {
                     return str_lit("union");
                 } else if string_eq_p(d, str_lit("datum")) {
@@ -4075,7 +4077,7 @@ pub type Snames = List<&'static Sname>;
 pub fn logic_type_forms() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -6283,6 +6285,28 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if (sym_is_p(car(xs), str_lit("flatlayout")) && i64_eq(size(xs), 2i64)) {
                     // A flat array's layout (C175): `(i64-flat)` and the others make one.
                     return ty_data(str_lit("%flatlayout"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::nil()));
+                } else if sym_is_p(car(xs), str_lit("stringof")) {
+                    // FX-26's strings at a region (C282; Fixpt's 41c0823f): `string` is
+                    // `(stringof const)`, and `(stringof acyclic)` is too.
+                    if i64_eq(size(xs), 2i64) {
+                        let r = parse_region(v, tvars, second(xs));
+                        let tagcase_ = r;
+                        match *tagcase_ {
+                            Ty::TyRconst(n) => {
+                                if (string_eq_p(n, str_lit("const")) || string_eq_p(n, str_lit("acyclic"))) {
+                                    return ty_string();
+                                } else {
+                                    return ty_data(str_lit("%stringof"), kayak_rt::heap_cons(r, kayak_rt::nil()));
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return ty_data(str_lit("%stringof"), kayak_rt::heap_cons(r, kayak_rt::nil()));
+                            }
+                        }
+                    } else {
+                        return match refuse(v, string_append(str_lit("(stringof R): "), show_sexp(t))) {};
+                    }
                 } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                     // FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
                     // in place.
@@ -8129,6 +8153,25 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%bytes")) {
                     return string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%stringof")) {
+                    // A string at a region (C282); at a frozen heap's, `string`, as Fixpt
+                    // writes `(stringof const)`.
+                    if {
+                        let tagcase_ = walk(s, car(args));
+                        match *tagcase_ {
+                            Ty::TyRconst(n) => {
+                                (string_eq_p(n, str_lit("const")) || string_eq_p(n, str_lit("acyclic")))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        return str_lit("string");
+                    } else {
+                        return string_append(str_lit("(stringof "), string_append(show_ty(s, car(args)), str_lit(")")));
+                    }
                 } else if string_eq_p(d, str_lit("%array")) {
                     return string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%union")) {
@@ -9972,7 +10015,7 @@ pub fn fits_shapes_names() -> Strings {
 pub fn fits_shapes_of_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::nil()))))))))
+        kayak_rt::heap_cons(str_lit("%stringof"), kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::nil())))))))))
     })
 }
 
@@ -10145,6 +10188,75 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
     if frozen_fits_p(v, s, a, e) {
         s
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyString() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%stringof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A `string`, `(stringof const)` (C282): where a string at a region is
+        // expected, that region `const`.
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                fits(v, s, ty_rconst(str_lit("const")), car(args))
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
+    } else if ({
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyString() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%stringof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A string at a region where a `string` is expected: frozen data alone.
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                fits(v, s, car(args), ty_rconst(str_lit("const")))
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
     } else if (generative_p(v, walk(s, a)) && generative_p(v, walk(s, e)) && not(string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e)))) && not(null_p(lemma_for(v, s, walk(s, a), walk(s, e), lemmas_of(cv_binds(v)))))) {
         // Two generative types a lemma relates (C185; Fixpt's `lemma.rs`): its
         // hypotheses, instantiated to fit, each shown, assuming what is
@@ -11999,7 +12111,7 @@ pub fn region_binders(mut tvars: Strings) -> Strings {
 pub fn storage_kinds() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("%flat-array"), kayak_rt::nil())))))))))
+        kayak_rt::heap_cons(str_lit("%stringof"), kayak_rt::heap_cons(str_lit("%bytes"), kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("%flat-array"), kayak_rt::nil())))))))))))
     })
 }
 
@@ -12058,6 +12170,9 @@ pub fn region_vars_of(r: &'static Ty) -> Strings {
             } else {
                 nil::<Str>()
             }
+        }
+        Ty::TyMeta(k) => {
+            the::<Strings>(kayak_rt::heap_cons(meta_name(k), kayak_rt::nil()))
         }
         Ty::TyData(d, args) => {
             concat(map(&region_vars_of, args))
@@ -12949,7 +13064,7 @@ pub fn heap_frozen(es: Strings) -> Strings {
 /// the regions the arguments and the type expected found, or `acyclic`;
 /// a place's, one whose frozen data the effect touches, `(acyclic ?k)`,
 /// the heap, its frozen data the heap's (C281).
-pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i64>) -> &'static Res {
+pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i64>, keep: Strings) -> &'static Res {
     if null_p(regions) {
         res(ty_unit(), es, s)
     } else {
@@ -12968,13 +13083,24 @@ pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i
                     s
                 }
             }
+        } else if string_member_p(k, keep) {
+            let tagcase_ = walk(s, ty_meta(car(regions)));
+            match *tagcase_ {
+                Ty::TyMeta(m) => {
+                    solve(s, m, ty_rconst(str_lit("%fresh")))
+                }
+                _ => {
+                    let other = tagcase_;
+                    s
+                }
+            }
         } else {
             s
         };
         let tagcase_ = region_of(v, s, ty_meta(car(regions)));
         match *tagcase_ {
             Res::Res(r, rn, s) => {
-                name_regions(v, s, heap_frozen(rename_atoms(es, k, region_string(s, r))), cdr(regions))
+                name_regions(v, s, heap_frozen(rename_atoms(es, k, region_string(s, r))), cdr(regions), keep)
             }
         }
     }

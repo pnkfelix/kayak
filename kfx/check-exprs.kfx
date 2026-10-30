@@ -49,11 +49,11 @@
       (define unplaced? (subr kfx (ty) bool)
         (lambda (t)
           "A cell or array whose region nothing named, and so was taken as
-           `acyclic`: FX-26's is a fresh region, KFX's would be no region, its
-           effects lost."
+           `acyclic`, or kept fresh since C282: FX-26's is a fresh region,
+           KFX's would be no region, its effects lost."
           (tagcase t
-            (ty-ref (e r) (tagcase r (ty-rconst (n) (string=? n "acyclic")) (else other #f)))
-            (ty-flat (e r) (tagcase r (ty-rconst (n) (string=? n "acyclic")) (else other #f)))
+            (ty-ref (e r) (tagcase r (ty-rconst (n) (or (string=? n "acyclic") (string=? n "%fresh"))) (else other #f)))
+            (ty-flat (e r) (tagcase r (ty-rconst (n) (or (string=? n "acyclic") (string=? n "%fresh"))) (else other #f)))
             (ty-tag (a h d r) (tagcase r (ty-rconst (n) (or (string=? n "acyclic") (string=? n "%fresh"))) (else other #f)))
             (else other #f))))
 
@@ -121,6 +121,7 @@
                                   (settled-sexp s (car args) #t)) "" 0 0))
                       ((string=? d "%blobref") (lst (cons (sym "blobref" "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0))
                       ((string=? d "%bytes") (lst (list (sym "bytevectorof" "" 0) (settled-sexp s (car args) #t)) "" 0 0))
+                      ((string=? d "%stringof") (lst (list (sym "stringof" "" 0) (settled-sexp s (car args) #t)) "" 0 0))
                       ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0))
                       ((string=? d "%place") (lst (list (sym "place" "" 0) (settled-sexp s (car args) #t)) "" 0 0))
@@ -1458,6 +1459,7 @@
                     ((or (conv-wrapper? d) (has-prefix? d "%spec ")) (ty-sexp v s (car args)))
                     ((string=? d "%blobref") (lst (cons (sym "blobref" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%bytes") (lst (list (sym "bytevectorof" "" 0) (ty-sexp v s (car args))) "" 0 0))
+                    ((string=? d "%stringof") (lst (list (sym "stringof" "" 0) (ty-sexp v s (car args))) "" 0 0))
                     ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%place") (lst (list (sym "place" "" 0) (ty-sexp v s (car args))) "" 0 0))
@@ -3590,6 +3592,7 @@
                           (tagcase (walk s (car expected))
                             (ty-list (e r) (walk s r))
                             (ty-ref (e r) (walk s r))
+                            (ty-data (d args) (if (and (string=? d "%stringof") (not (null? args))) (walk s (car args)) (ty-unit)))
                             (else other (ty-unit)))))
                 (p (tagcase (walk s place) (ty-var (n) n) (else other ""))))
             (tagcase said
@@ -3628,6 +3631,17 @@
                               (s (if (null? expected) s (fits v s made (car expected)))))
                          (res made (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at)))
                               (kfx-restricted v s "rmake-icell, FX-26's, which KFX has not yet (C187)")))))))
+                ((and (string=? h "rmake-string") (i64= (size args) 3))
+                 "`(rmake-string p n c)`: `n` of `c`, a string in a region within place
+                  `p` (C282; Fixpt's `(poly ((p place) (r region p)) ...)`), the
+                  place's own if nothing says which."
+                 (let* ((r (place-of v s (car args)))
+                        (at (region-within v s r expected))
+                        (made (ty-data "%stringof" (list at)))
+                        (s (if (null? expected) s (fits v s made (car expected)))))
+                   (tagcase (call-args v s (cdr args) (list (ty-int) (ty-char)) nil)
+                     (res (u es s)
+                       (res made (effs-union (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at))) es) s)))))
                 ((not (i64= (size args) (if (string=? h "rnew") 2 3)))
                  (refuse v (string-append h (cond ((string=? h "rcons") " takes a place and two values")
                                                   ((string=? h "rmake-array") " takes a place, a length and a value")
@@ -4890,7 +4904,7 @@
                   ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
                   ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
                   ((and (null? found) (string=? h "escape")) (escape-call v s args))
-                  ((and (null? found) (or (string=? h "rcons") (string=? h "rnew") (string=? h "rmake-array") (string=? h "rmake-icell"))) (region-alloc-call v s h args expected))
+                  ((and (null? found) (or (string=? h "rcons") (string=? h "rnew") (string=? h "rmake-array") (string=? h "rmake-icell") (string=? h "rmake-string"))) (region-alloc-call v s h args expected))
 
                   ((null? found)
                    (refuse v (string-append "nothing is named " h)))
@@ -5700,7 +5714,7 @@
                          (let ((s (if (null? expected)
                                       (freshened s0 r)
                                       (if (or (and (proc-type? s0 (car expected)) (not (lambda-given-result? s r ps args))) (bound-after? s r (car expected))) (fits v s0 r (car expected)) s0))))
-                          (tagcase (name-regions v s latent regions)
+                          (tagcase (name-regions v s latent regions (not-only-data (zonk s t)))
                             (res (u named s)
                               (if (any? (lambda ((x string)) (let ((y (resolve-atom s x))) (or (string=? y "write:acyclic") (string=? y "write:const") (and (or (has-prefix? y "write:") (has-prefix? y "init:")) (frozen-place? (atom-region y)))))) named)
                                   ;; A procedure that writes, at frozen data (C161): Fixpt's rule.

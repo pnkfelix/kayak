@@ -55,6 +55,9 @@
         ((i64= op 223) 24)
         ((i64= op 227) (i64+ (i64* 2 (obj-size (obj-ref a 2))) 16))
         ((i64>= op fixed-base) 8)
+        ;; Strings at a region (C282): their room, a word a character.
+        ((or (i64= op 250) (i64= op 255)) (i64+ (fixnum-value (if (i64= op 250) a (pair-car (pair-cdr args)))) 1))
+        ((i64= op 253) (i64+ (obj-size a) 1))
         (else 64)))))
 
 "What kayak-rt would fail at, beneath a primitive, said first as the
@@ -580,4 +583,11 @@
          (let ((off (fixnum-value (pair-car (pair-cdr r2)))))
            (begin (bytes-written! (blobref-bytes a) (blob-at a) (fixnum-value b) (word-int c))
                   (blobref! (obj-ref a 0) (i64+ (blob-at a) off) 0))))
+        ;; Strings at a region (C282), hand-written (gen-vprims.py has them not).
+        ((i64= op 250) (string-made! (fixnum-value a) b))
+        ((i64= op 255) (string-made! (fixnum-value b) c))
+        ((i64= op 251) (begin (element-set! a (fixnum-value b) (char->i64 (word-char c))) w-unit))
+        ((i64= op 252) (begin (string-filled! a 0 (obj-size a) (char->i64 (word-char b))) w-unit))
+        ((i64= op 253) (string-copy-w! a (fixnum-value b) (fixnum-value c)))
+        ((i64= op 254) (begin (string-copy-into-w! a b c (fourth-arg args) (fifth-arg args)) w-unit))
         (else (begin (failed-with! "the engine: a primitive of no number") 0))))))

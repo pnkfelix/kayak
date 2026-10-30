@@ -75,24 +75,30 @@ section below where it has one; here the order, and what each is.
    kayak has perf's (C246). Then KFX's own `load-module` of files, so that
    kayak's units say their layers' interfaces (`load-moduleof`,
    `restrict`), as the user suggested.
-   Since 6447f9b (C275): strings at a region, `(stringof r)` with
-   `make-string`, `rmake-string`, `string-set!`, `string-fill!`,
-   `string-copy`, `string-copy!` (next: the checker's strings in its
-   places, plan B); a module's expressions as its items; `module-parameters`
+   Since 6447f9b (C275): strings at a region, `(stringof r)`, kayak's
+   FX-26 has since C282 (KFX's waits for plan B, which needs it); a module's expressions as its items; `module-parameters`
    of modules. Since 0c2e4dd: `(module-parameters ())`, a maker of none;
    arm64's native makers and in-line allocation, and `lldb` (Fixpt's own).
    Since 7038269: a list nothing places is `acyclic` (Fixpt's e4af8997,
    Heist's request): a `poly`'s region binder a call leaves unsolved, used
    only as a pair's region and only made and read there, is `(acyclic
-   heap)`, not a region of its own. kayak's checker still makes it `%fresh`
-   (`regions-freshened`, a bare `cons`'s or `list`'s), so it refuses
-   `kfx-stricter/branches-cons-list` and `fresh-list-region`, which Fixpt
-   now accepts. Also `.fasl`s, heap images, a native front end, and a
+   heap)`, not a region of its own: kayak's since C281, with frozen
+   covariance and masking's reads and writes. Also `.fasl`s, heap images, a native front end, and a
    place's limits: Fixpt's own, nothing of kayak's ported.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).
 6. **arm64**: nothing of C241-C253 has run there (the Mac).
+6a. **A memo the incremental compile reuses wrongly (2026-10-30, C54)**:
+   `scripts/regen.sh`, with its memos (`kfx --cache`), made Rust that does
+   not build, where the same compile without them is the fixed point. The
+   compiler of 6fc82507, on the sources of the `stringof` change (C282),
+   with the memos it had kept: `check_exprs.rs` lacks `nil`'s turbofish
+   (`nil::<Str>()`) and `refuse`'s `match … {}` in 669 lines, facts the
+   forms have now that a memo made before did not. The memo file and the
+   sources' diff are in target/memo-repro/. The incremental tests' edits
+   do not make this case: find what the memo's key leaves out (a fact
+   outside the form's span the emission reads? the module's context?).
 6b. **Tiny slices, measured (2026-10-28)**: `preempt/allocating.fx`'s
    `--slice 2` ways are the check's longest tests (`--compiled --slice 2`
    116 s alone). At 25,000 iterations, slice 2: tier 1 runs 325M cells,

@@ -102,8 +102,8 @@ pub mod expressions {
     use super::*;
 
     /// A cell or array whose region nothing named, and so was taken as
-    /// `acyclic`: FX-26's is a fresh region, KFX's would be no region, its
-    /// effects lost.
+    /// `acyclic`, or kept fresh since C282: FX-26's is a fresh region,
+    /// KFX's would be no region, its effects lost.
     pub fn unplaced_p(t: &'static Ty) -> bool {
         let tagcase_ = t;
         match *tagcase_ {
@@ -111,7 +111,7 @@ pub mod expressions {
                 let tagcase_ = r;
                 match *tagcase_ {
                     Ty::TyRconst(n) => {
-                        string_eq_p(n, str_lit("acyclic"))
+                        (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("%fresh")))
                     }
                     _ => {
                         let other = tagcase_;
@@ -123,7 +123,7 @@ pub mod expressions {
                 let tagcase_ = r;
                 match *tagcase_ {
                     Ty::TyRconst(n) => {
-                        string_eq_p(n, str_lit("acyclic"))
+                        (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("%fresh")))
                     }
                     _ => {
                         let other = tagcase_;
@@ -262,6 +262,8 @@ pub mod expressions {
                     }), args)), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%bytes")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("bytevectorof"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%stringof")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("stringof"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%array")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%flat-array")) {
@@ -3375,6 +3377,8 @@ pub mod expressions {
                         }), args)), str_lit(""), 0i64, 0i64);
                     } else if string_eq_p(d, str_lit("%bytes")) {
                         return lst(kayak_rt::heap_cons(sym(str_lit("bytevectorof"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil())), str_lit(""), 0i64, 0i64);
+                    } else if string_eq_p(d, str_lit("%stringof")) {
+                        return lst(kayak_rt::heap_cons(sym(str_lit("stringof"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil())), str_lit(""), 0i64, 0i64);
                     } else if string_eq_p(d, str_lit("%array")) {
                         return lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
                     } else if string_eq_p(d, str_lit("%flat-array")) {
@@ -8095,6 +8099,13 @@ pub mod expressions {
                 Ty::TyRef(e, r) => {
                     walk(s, r)
                 }
+                Ty::TyData(d, args) => {
+                    if (string_eq_p(d, str_lit("%stringof")) && not(null_p(args))) {
+                        walk(s, car(args))
+                    } else {
+                        ty_unit()
+                    }
+                }
                 _ => {
                     let other = tagcase_;
                     ty_unit()
@@ -8167,6 +8178,24 @@ pub mod expressions {
                         fits(v, s, made, car(expected))
                     };
                     res(made, kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())), kfx_restricted(v, s, str_lit("rmake-icell, FX-26's, which KFX has not yet (C187)")))
+                }
+            }
+        } else if (string_eq_p(h, str_lit("rmake-string")) && i64_eq(size(args), 3i64)) {
+            // `(rmake-string p n c)`: `n` of `c`, a string in a region within place
+            // `p` (C282; Fixpt's `(poly ((p place) (r region p)) ...)`), the
+            // place's own if nothing says which.
+            let r = place_of(v, s, car(args));
+            let at = region_within(v, s, r, expected);
+            let made = ty_data(str_lit("%stringof"), kayak_rt::heap_cons(at, kayak_rt::nil()));
+            let s = if null_p(expected) {
+                s
+            } else {
+                fits(v, s, made, car(expected))
+            };
+            let tagcase_ = call_args(v, s, cdr(args), kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_char(), kayak_rt::nil())), nil::<i64>());
+            match *tagcase_ {
+                Res::Res(u, es, s) => {
+                    res(made, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())), es), s)
                 }
             }
         } else if not(i64_eq(size(args), if string_eq_p(h, str_lit("rnew")) {
@@ -10994,7 +11023,7 @@ pub mod expressions {
                 return make_tag_call(v, s, args, expected);
             } else if (null_p(found) && string_eq_p(h, str_lit("escape"))) {
                 return escape_call(v, s, args);
-            } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")) || string_eq_p(h, str_lit("rmake-array")) || string_eq_p(h, str_lit("rmake-icell")))) {
+            } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")) || string_eq_p(h, str_lit("rmake-array")) || string_eq_p(h, str_lit("rmake-icell")) || string_eq_p(h, str_lit("rmake-string")))) {
                 return region_alloc_call(v, s, h, args, expected);
             } else if null_p(found) {
                 return match refuse(v, string_append(str_lit("nothing is named "), h)) {};
@@ -12721,7 +12750,7 @@ pub mod expressions {
                                             s0
                                         }
                                     };
-                                    let tagcase_ = name_regions(v, s, latent, regions);
+                                    let tagcase_ = name_regions(v, s, latent, regions, not_only_data(zonk(s, t)));
                                     match *tagcase_ {
                                         Res::Res(u, named, s) => {
                                             if any_p(lambda1s(move |x: Str| {

@@ -111,6 +111,14 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         i64_plus(i64_star(2i64, obj_size(obj_ref(a, 2i64))), 16i64)
     } else if i64_gt_eq(op, fixed_base()) {
         8i64
+    } else if (i64_eq(op, 250i64) || i64_eq(op, 255i64)) {
+        i64_plus(fixnum_value(if i64_eq(op, 250i64) {
+            a
+        } else {
+            pair_car(pair_cdr(args))
+        }), 1i64)
+    } else if i64_eq(op, 253i64) {
+        i64_plus(obj_size(a), 1i64)
     } else {
         64i64
     }
@@ -1123,6 +1131,21 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         let off = fixnum_value(pair_car(pair_cdr(r2)));
         bytes_written_x(blobref_bytes(a), blob_at(a), fixnum_value(b), word_int(c));
         blobref_x(obj_ref(a, 0i64), i64_plus(blob_at(a), off), 0i64)
+    } else if i64_eq(op, 250i64) {
+        string_made_x(fixnum_value(a), b)
+    } else if i64_eq(op, 255i64) {
+        string_made_x(fixnum_value(b), c)
+    } else if i64_eq(op, 251i64) {
+        element_set_x(a, fixnum_value(b), char_to_i64(word_char(c)));
+        w_unit()
+    } else if i64_eq(op, 252i64) {
+        string_filled_x(a, 0i64, obj_size(a), char_to_i64(word_char(b)));
+        w_unit()
+    } else if i64_eq(op, 253i64) {
+        string_copy_w_x(a, fixnum_value(b), fixnum_value(c))
+    } else if i64_eq(op, 254i64) {
+        string_copy_into_w_x(a, b, c, fourth_arg(args), fifth_arg(args));
+        w_unit()
     } else {
         failed_with_x(str_lit("the engine: a primitive of no number"));
         0i64

@@ -1603,6 +1603,7 @@
               ((string=? d "symbol") "symbol")
               ((string=? d "%array") "bloblet")
               ((string=? d "%bytes") "bytevector")
+              ((string=? d "%stringof") "string")
               ((string=? d "%union") "union")
               ((string=? d "datum") "union")
               ((string=? d "vector") "vector")
@@ -1841,7 +1842,7 @@
         "nat" "nlist" "oneshot" "pairof" "place" "poly" "productof" "prompt-tag" "proves" "ref" "select" "subr"
         "sumof" "bool" "union" "->" "->*"
         ;; And those of KFX's types that FX-26 names as types of its base.
-        "addr" "blobref" "bytevectorof" "escape-tag" "flatarrayof" "flatlayout" "inbox" "vsubr" "eqtable" "identity"))
+        "addr" "blobref" "bytevectorof" "stringof" "escape-tag" "flatarrayof" "flatlayout" "inbox" "vsubr" "eqtable" "identity"))
 (define logic-keywords strings
   (list "lambda" "plambda" "proj" "if" "letrec" "let" "begin" "define" "define*" "define-type"
         "define-generative" "void" "pure" "maxeff" "read" "write" "alloc" "goto" "comefrom" "region" "effect"
@@ -2790,6 +2791,15 @@
                 ((and (sym-is? (car xs) "flatlayout") (i64= (size xs) 2))
                  "A flat array's layout (C175): `(i64-flat)` and the others make one."
                  (ty-data "%flatlayout" (list (parse-type v tvars (second xs)))))
+                ((sym-is? (car xs) "stringof")
+                 "FX-26's strings at a region (C282; Fixpt's 41c0823f): `string` is
+                  `(stringof const)`, and `(stringof acyclic)` is too."
+                 (if (i64= (size xs) 2)
+                     (let ((r (parse-region v tvars (second xs))))
+                       (tagcase r
+                         (ty-rconst (n) (if (or (string=? n "const") (string=? n "acyclic")) (ty-string) (ty-data "%stringof" (list r))))
+                         (else other (ty-data "%stringof" (list r)))))
+                     (refuse v (string-append "(stringof R): " (show-sexp t)))))
                 ((sym-is? (car xs) "bytevectorof")
                  "FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
                   in place."
@@ -3616,6 +3626,12 @@
                  (if (null? (cdr args)) (after-prefix d "%named ") (string-append "(" (string-append (after-prefix d "%named ") (string-append " " (string-append (show-tys s (cdr args)) ")"))))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
+                ((string=? d "%stringof")
+                 "A string at a region (C282); at a frozen heap's, `string`, as Fixpt
+                  writes `(stringof const)`."
+                 (if (tagcase (walk s (car args)) (ty-rconst (n) (or (string=? n "const") (string=? n "acyclic"))) (else other #f))
+                     "string"
+                     (string-append "(stringof " (string-append (show-ty s (car args)) ")"))))
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%union") (string-append "(union " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
@@ -4363,7 +4379,7 @@
 
 "Names `fits-shapes-of` tests against, made once (C264): a list written in place is
  made at each call."
-(define fits-shapes-of-names strings (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
+(define fits-shapes-of-names strings (list "%stringof" "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
 
 "Frozen data covariant in the order of lifetimes (C281; Fixpt's 55d130bd,
  kayak's request): data at `(const a)` fits where `(const b)` is expected,
@@ -4444,6 +4460,13 @@
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (cond ((frozen-fits? v s a e) s)
+            ((and (tagcase a (ty-string () #t) (else other #f)) (tagcase e (ty-data (d args) (string=? d "%stringof")) (else other #f)))
+             "A `string`, `(stringof const)` (C282): where a string at a region is
+              expected, that region `const`."
+             (tagcase e (ty-data (d args) (fits v s (ty-rconst "const") (car args))) (else other s)))
+            ((and (tagcase e (ty-string () #t) (else other #f)) (tagcase a (ty-data (d args) (string=? d "%stringof")) (else other #f)))
+             "A string at a region where a `string` is expected: frozen data alone."
+             (tagcase a (ty-data (d args) (fits v s (car args) (ty-rconst "const"))) (else other s)))
             ((and (generative? v (walk s a)) (generative? v (walk s e))
                   (not (string=? (show-ty s (zonk s a)) (show-ty s (zonk s e))))
                   (not (null? (lemma-for v s (walk s a) (walk s e) (lemmas-of (cv-binds v))))))
@@ -5081,7 +5104,7 @@
  other than `alloc` and `read`: a reference's, an array's, a bloblet's, a
  tag's, an I-cell's, one written. A region binder a call leaves unsolved
  that is not among them is `acyclic`."
-(define storage-kinds strings (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity" "%flat-array"))
+(define storage-kinds strings (list "%stringof" "%bytes" "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity" "%flat-array"))
 
 (define-rec
   (not-only-data (subr kfx (ty) strings)
@@ -5102,6 +5125,8 @@
     (lambda (r)
       (tagcase r
         (ty-var (n) (if (char=? (string-ref-i64 n 0) #\') (the strings (list n)) nil))
+        ;; Of an instance: its inference variable (`name-regions`).
+        (ty-meta (k) (the strings (list (meta-name k))))
         (ty-data (d args) (concat (map region-vars-of args)))
         (else other nil))))
   (written-regions (subr kfx (strings) strings)
@@ -5539,8 +5564,8 @@
                a))
          es)))
 
-(define name-regions (subr kfx (cv st strings (listof i64 acyclic)) res)
-  (lambda (v s es regions)
+(define name-regions (subr kfx (cv st strings (listof i64 acyclic) strings) res)
+  (lambda (v s es regions keep)
     "A call's latent effect, its regions' inference variables replaced by
      the regions the arguments and the type expected found, or `acyclic`;
      a place's, one whose frozen data the effect touches, `(acyclic ?k)`,
@@ -5549,10 +5574,13 @@
         (res (ty-unit) es s)
         (let* ((k (meta-name (car regions)))
                (place? (any? (lambda ((a string)) (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) k))) es))
-               (s (if place? (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "@heap"))) (else other s)) s)))
+               (s (cond (place? (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "@heap"))) (else other s)))
+                        ;; Storage, or written: a region of its own (C281, C282).
+                        ((string-member? k keep) (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "%fresh"))) (else other s)))
+                        (else s))))
           (tagcase (region-of v s (ty-meta (car regions)))
             (res (r rn s)
-              (name-regions v s (heap-frozen (rename-atoms es k (region-string s r))) (cdr regions))))))))
+              (name-regions v s (heap-frozen (rename-atoms es k (region-string s r))) (cdr regions) keep)))))))
 
 (define masked (subr kfx (strings string) strings)
   (lambda (es r)

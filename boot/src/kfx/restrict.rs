@@ -249,6 +249,19 @@ pub mod restrictions {
                     match restriction_refused(f, l, str_lit("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {}
                 } else if (sym_is_p(car(xs), str_lit("=>")) || sym_is_p(car(xs), str_lit("dlambda"))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {}
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            string_member_p(n, kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("make-string"), kayak_rt::heap_cons(str_lit("rmake-string"), kayak_rt::heap_cons(str_lit("string-set!"), kayak_rt::heap_cons(str_lit("string-fill!"), kayak_rt::heap_cons(str_lit("string-copy"), kayak_rt::heap_cons(str_lit("string-copy!"), kayak_rt::nil()))))))))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C282)"))) {}
                 } else if sym_is_p(car(xs), str_lit("composable")) {
                     match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
                 } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {
