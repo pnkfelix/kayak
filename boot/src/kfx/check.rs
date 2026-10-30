@@ -688,10 +688,6 @@ pub fn text_replaced(t: Str, from: Str, to: Str) -> Str {
     list_to_string(chars_with_replaced(string_chars(t), string_chars(from), string_chars(to), false, nil::<char>()))
 }
 
-pub fn token_replaced(t: Str, from: Str, to: Str) -> Str {
-    list_to_string(chars_with_replaced(string_chars(t), string_chars(from), string_chars(to), true, nil::<char>()))
-}
-
 /// What follows the first `..` of `x`.
 pub fn after_dots(x: Str) -> Str {
     list_to_string(chars_after_dots(string_chars(x)))
@@ -8128,13 +8124,6 @@ pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
 
 // Names `desc-named` tests against, made once (C264): a list written in place is
 // made at each call.
-pub fn desc_named_names() -> Strings {
-    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
-    once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::nil())))))))))
-    })
-}
-
 /// Size `t` as a linear expression, its variables named (`#n`, `?k`), an
 /// inference variable solved looked through; none if it is `finite`.
 pub fn size_lin(s: &'static St, t: &'static Ty) -> Lins {
@@ -8316,6 +8305,9 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                 } else if (has_prefix_p(d, str_lit("$")) && null_p(args)) {
                     // A dependent parameter's type (C170).
                     return string_append(str_lit("(select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), str_lit(")")))));
+                } else if (has_prefix_p(d, str_lit("$")) && string_has_p(d, str_lit(".."))) {
+                    // A dependent parameter's family, applied (C286): `((select $1 f) T ...)`, as Fixpt prints it.
+                    return string_append(str_lit("((select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), string_append(str_lit(") "), string_append(show_tys(s, args), str_lit(")")))))));
                 } else if null_p(args) {
                     return d;
                 } else if string_eq_p(d, str_lit("%mtype")) {
@@ -8347,7 +8339,10 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                 } else if has_prefix_p(d, str_lit("%named ")) {
                     // A type abbreviation, by its name (C164): its expansion first, then
                     // its arguments.
-                    if null_p(cdr(args)) {
+                    if (null_p(cdr(args)) && not(has_prefix_p(show_ty(s, car(args)), str_lit("(")))) {
+                        t = car(args);
+                        continue;
+                    } else if null_p(cdr(args)) {
                         return after_prefix(d, str_lit("%named "));
                     } else {
                         return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%named ")), string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))));
@@ -8541,7 +8536,9 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
 
 /// An item of a module type as printed: a type one of its descriptions
 /// describes by that description's name, as Fixpt's shared types are
-/// named (C172); a description's own body as it is.
+/// named (C172); a description's own body as it is. Not a base type,
+/// which no name abbreviates (C286; Fixpt's d0b239fa: `(define-type pos
+/// int)` names no `int`).
 pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut text: Str) -> Str {
     loop {
         if null_p(descs) {
@@ -8565,8 +8562,6 @@ pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut te
                 text
             } else if has_prefix_p(body, str_lit("(")) {
                 string_append(before_body(text), text_replaced(after_body(text), body, n))
-            } else if string_member_p(body, desc_named_names()) {
-                string_append(before_body(text), token_replaced(after_body(text), body, n))
             } else {
                 text
             };

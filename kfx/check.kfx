@@ -311,9 +311,6 @@
 (define text-replaced (subr kfx (string string string) string)
   (lambda (t from to) (list->string (chars-with-replaced (string-chars t) (string-chars from) (string-chars to) #f nil))))
 
-(define token-replaced (subr kfx (string string string) string)
-  (lambda (t from to) (list->string (chars-with-replaced (string-chars t) (string-chars from) (string-chars to) #t nil))))
-
 (define after-dots (subr kfx (string) string)
   (lambda (x) "What follows the first `..` of `x`." (list->string (chars-after-dots (string-chars x)))))
 
@@ -3622,8 +3619,6 @@
 
 "Names `desc-named` tests against, made once (C264): a list written in place is
  made at each call."
-(define desc-named-names strings (list "int" "nat" "bool" "char" "string" "unit" "f64" "i64" "symbol"))
-
 (define-rec
   (size-lin (subr kfx (st ty) lins)
     (lambda (s t)
@@ -3694,6 +3689,9 @@
                 ((string=? d "%effect") (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")))
                 ((string=? d "%app") (string-append "(" (string-append (show-ty s (car args)) (string-append " " (string-append (show-tys s (cdr args)) ")")))))
                 ((and (has-prefix? d "$") (null? args)) "A dependent parameter's type (C170)." (string-append "(select " (string-append (before-dots d) (string-append " " (string-append (after-dots d) ")")))))
+                ((and (has-prefix? d "$") (string-has? d ".."))
+                 "A dependent parameter's family, applied (C286): `((select $1 f) T ...)`, as Fixpt prints it."
+                 (string-append "((select " (string-append (before-dots d) (string-append " " (string-append (after-dots d) (string-append ") " (string-append (show-tys s args) ")")))))))
                 ((null? args) d)
                 ((string=? d "%mtype")
                  (let* ((its (onto (filter (lambda ((x ty)) (not (string=? (mitem-kind x) "%val"))) args)
@@ -3710,7 +3708,11 @@
                 ((has-prefix? d "%named ")
                  "A type abbreviation, by its name (C164): its expansion first, then
                   its arguments."
-                 (if (null? (cdr args)) (after-prefix d "%named ") (string-append "(" (string-append (after-prefix d "%named ") (string-append " " (string-append (show-tys s (cdr args)) ")"))))))
+                 (cond ((and (null? (cdr args)) (not (has-prefix? (show-ty s (car args)) "(")))
+                        ;; A base type, which no name abbreviates (C286; Fixpt's d0b239fa).
+                        (show-ty s (car args)))
+                       ((null? (cdr args)) (after-prefix d "%named "))
+                       (else (string-append "(" (string-append (after-prefix d "%named ") (string-append " " (string-append (show-tys s (cdr args)) ")")))))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
                 ((string=? d "%stringof")
@@ -3790,7 +3792,9 @@
     (lambda (s descs x text)
       "An item of a module type as printed: a type one of its descriptions
        describes by that description's name, as Fixpt's shared types are
-       named (C172); a description's own body as it is."
+       named (C172); a description's own body as it is. Not a base type,
+       which no name abbreviates (C286; Fixpt's d0b239fa: `(define-type pos
+       int)` names no `int`)."
       (if (null? descs)
           text
           (let* ((d (car descs)) (n (mitem-name d))
@@ -3798,8 +3802,6 @@
                  (text2 (cond ((and (string=? (mitem-kind x) "%desc") (string=? (mitem-name x) n)) text)
                               ((has-prefix? body "(")
                                (string-append (before-body text) (text-replaced (after-body text) body n)))
-                              ((string-member? body desc-named-names)
-                               (string-append (before-body text) (token-replaced (after-body text) body n)))
                               (else text))))
             (desc-named s (cdr descs) x text2)))))
   (before-body (subr kfx (string) string)

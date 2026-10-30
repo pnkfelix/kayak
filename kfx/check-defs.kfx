@@ -1405,7 +1405,11 @@
                                                                  (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) params)))
                                                             params)))
                                               (third xs)))))
-                       v))))
+                       ;; What it abbreviates, kept for printing a type by its name
+                       ;; (C286): read here, in its own scope, so never read again.
+                       (if (null? params)
+                           (with-binds v (list (bind (string-append "%shows " name) (scheme nil body) "mark")))
+                           v)))))
                 ((string=? h "define-datatype")
                  (let ((d (variants-dt v (head-name v (second xs)))))
                    (defined-once v (constructors d))))

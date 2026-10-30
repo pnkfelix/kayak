@@ -286,8 +286,64 @@ pub fn written_tvars(bs: Strings) -> Strings {
     }), bs)))
 }
 
+/// Every abbreviation in scope with parts to abbreviate, the newest first
+/// (C286; Fixpt's d0b239fa: "a type is shown by the innermost name in scope
+/// whose type it is, by structure, wherever it came from"): each kept as
+/// the checker read it, `%shows t` (a module's, `m %shows t`, by `(select
+/// m t)`), and `io-error`; not a family, not a base type (which has no
+/// `(`).
+pub fn scope_abbrevs(v: &'static Cv) -> Abbrevs {
+    onto(concat(map(lambda1s(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let at = if has_prefix_p(n, str_lit("%shows ")) {
+                    str_lit("")
+                } else {
+                    if string_has_p(n, str_lit(" %shows ")) {
+                        before_char(n, ' ')
+                    } else {
+                        str_lit("?")
+                    }
+                };
+                if string_eq_p(at, str_lit("?")) {
+                    nil::<&'static Abbrev>()
+                } else {
+                    let t = after_prefix(n, if string_eq_p(at, str_lit("")) {
+                        str_lit("%shows ")
+                    } else {
+                        string_append(at, str_lit(" %shows "))
+                    });
+                    let expansion = show_ty(new_state(), {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, u) => {
+                                u
+                            }
+                        }
+                    });
+                    let name = if string_eq_p(at, str_lit("")) {
+                        t
+                    } else {
+                        string_append(str_lit("(select "), string_append(at, string_append(str_lit(" "), string_append(t, str_lit(")")))))
+                    };
+                    if has_prefix_p(expansion, str_lit("(")) {
+                        the::<Abbrevs>(kayak_rt::heap_cons(abbrev(expansion, name), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Abbrev>()
+                    }
+                }
+            }
+        }
+    }), cv_binds(v))), the::<Abbrevs>(kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(io_error_text()), str_lit(""), 1i64)))), str_lit("io-error")), kayak_rt::nil())))
+}
+
+pub fn shown_abbreviated(v: &'static Cv, shown: Str) -> Str {
+    abbrevs_put(shown, scope_abbrevs(v))
+}
+
 /// A definition's type as printed: the checker's, each abbreviation its
-/// written type names by name (C164).
+/// written type names by name (C164), then each in scope (C286).
 pub fn written_shown(v: &'static Cv, written: &'static Sexp, t: &'static Ty) -> Str {
     if ({
         let tagcase_ = written;
@@ -301,9 +357,9 @@ pub fn written_shown(v: &'static Cv, written: &'static Sexp, t: &'static Ty) -> 
             }
         }
     } || written_mentions_p(written, kayak_rt::heap_cons(str_lit("%found"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::nil()))))))) {
-        show_ty(new_state(), t)
+        shown_abbreviated(v, show_ty(new_state(), t))
     } else {
-        abbrevs_put(show_ty(new_state(), t), abbrevs_in(parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(written_binders(v, written))), written_body(written))))
+        shown_abbreviated(v, abbrevs_put(show_ty(new_state(), t), abbrevs_in(parse_type(v, kayak_rt::heap_cons(str_lit("%keep-names"), written_tvars(written_binders(v, written))), written_body(written)))))
     }
 }
 
@@ -1389,7 +1445,7 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                let shown = show_ty(s, t);
+                let shown = shown_abbreviated(v, show_ty(s, t));
                 if string_has_p(shown, str_lit("%fresh")) {
                     kayak_rt::heap_cons(string_append(call_shown(v, all, form, list_to_string(chars_replaced(string_chars(shown), string_chars(str_lit("%fresh")), string_chars(str_lit("@r.1")), nil::<char>()))), string_append(str_lit(" ! "), show_effs(settled_effs(s, kayak_rt::heap_cons(str_lit("alloc:@r.1"), es))))), kayak_rt::nil())
                 } else {

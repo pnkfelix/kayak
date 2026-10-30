@@ -2353,7 +2353,11 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                             nil::<Str>()
                         }
                     }), params))), params))), third(xs)));
-                    v
+                    if null_p(params) {
+                        with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%shows "), name), scheme(nil::<Str>(), body), str_lit("mark")), kayak_rt::nil()))
+                    } else {
+                        v
+                    }
                 }
             } else if string_eq_p(h, str_lit("define-datatype")) {
                 let d = variants_dt(v, head_name(v, second(xs)));

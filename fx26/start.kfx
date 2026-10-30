@@ -114,14 +114,40 @@
      (C34)."
     (onto bs (concat (map (lambda ((b string)) (if (has-prefix? b "'") (the strings (list (string-append "%place " b))) nil)) bs)))))
 
+(define scope-abbrevs (subr kfx (cv) abbrevs)
+  (lambda (v)
+    "Every abbreviation in scope with parts to abbreviate, the newest first
+     (C286; Fixpt's d0b239fa: \"a type is shown by the innermost name in scope
+     whose type it is, by structure, wherever it came from\"): each kept as
+     the checker read it, `%shows t` (a module's, `m %shows t`, by `(select
+     m t)`), and `io-error`; not a family, not a base type (which has no
+     `(`)."
+    (onto (concat (map (lambda ((b bind))
+                         (tagcase b
+                           (bind (n sc w)
+                             (let ((at (if (has-prefix? n "%shows ") ""
+                                           (if (string-has? n " %shows ") (before-char n #\space) "?"))))
+                               (if (string=? at "?")
+                                   nil
+                                   (let* ((t (after-prefix n (if (string=? at "") "%shows " (string-append at " %shows "))))
+                                          (expansion (show-ty (new-state) (tagcase sc (scheme (tv u) u))))
+                                          (name (if (string=? at "") t (string-append "(select " (string-append at (string-append " " (string-append t ")")))))))
+                                     (if (has-prefix? expansion "(") (the abbrevs (list (abbrev expansion name))) nil)))))))
+                       (cv-binds v)))
+          (the abbrevs (list (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars io-error-text) "" 1)))) "io-error"))))))
+
+(define shown-abbreviated (subr kfx (cv string) string)
+  (lambda (v shown) (abbrevs-put shown (scope-abbrevs v))))
+
 (define written-shown (subr kfx (cv sexp ty) string)
   (lambda (v written t)
     "A definition's type as printed: the checker's, each abbreviation its
-     written type names by name (C164)."
+     written type names by name (C164), then each in scope (C286)."
     (if (or (tagcase written (lst (xs f l p) (null? xs)) (else other #f)) (written-mentions? written (list "%found" "->*" "select" "moduleof" "dlambda")))
-        (show-ty (new-state) t)
-        (abbrevs-put (show-ty (new-state) t)
-                     (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v written))) (written-body written)))))))
+        (shown-abbreviated v (show-ty (new-state) t))
+        (shown-abbreviated v
+          (abbrevs-put (show-ty (new-state) t)
+                       (abbrevs-in (parse-type v (cons "%keep-names" (written-tvars (written-binders v written))) (written-body written))))))))
 
 (define own-abstract (subr kfx (string ty) ty)
   (lambda (n t)
@@ -583,7 +609,7 @@
           (else
            (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
              (res (t es s)
-               (let ((shown (show-ty s t)))
+               (let ((shown (shown-abbreviated v (show-ty s t))))
                  (if (string-has? shown "%fresh")
                      ;; A list made at a fresh region (C36), as Fixpt names one, and makes it.
                      (list (string-append (call-shown v all form (list->string (chars-replaced (string-chars shown) (string-chars "%fresh") (string-chars "@r.1") nil)))

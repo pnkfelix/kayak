@@ -8047,3 +8047,28 @@ The rest of Fixpt's module programs kayak refused, one by one:
   procedure is still abstract over; that needs parameterised module types,
   not a splice. Nor a family another module gives, imported into a module
   (`import-list-and-family.fx`). Both are in TODO 4b.
+
+## C286. Types printed by the abbreviations in scope (2026-10-30)
+
+Fixpt's d0b239fa: "a type is shown by the innermost name in scope whose
+type it is, by structure, wherever it came from, if it has parts to
+abbreviate"; so `(define-type pos int)` names no `int`. kayak printed a
+name only where the source wrote one (C164), and named base types by their
+descriptions in module types (C172). Now:
+- Each parameterless `define-type` keeps the type the checker read for it,
+  in its own scope, as `%shows NAME` (`m %shows t` in a module), and the
+  engine's printer (`scope-abbrevs`) puts each name back for its
+  expansion, newest first, as C164's own were. A module's is printed
+  `(select m t)`, and `io-error` is a name in scope too. Reading each
+  abbreviation's body again when printing was tried first. That refused
+  12 programs, since a body read out of its scope may name an effect or
+  region not there, and KFX cannot catch a refusal.
+- A base type is printed as itself, never by a name: not by a
+  description in a module type (`desc-named`), nor by a `%named` the
+  source wrote.
+- A dependent parameter's family applied is `((select $1 f) T)`.
+Measured: of 541 programs Fixpt accepts, kayak's checker prints the same
+types for 423, where it did for 414; 88 still differ, mostly datatypes,
+which Fixpt prints as their `mu` structure (kayak by name), a module type
+named as a whole, the effects of shared loads (C283's splice), and nested
+`poly`s Fixpt keeps as written.
