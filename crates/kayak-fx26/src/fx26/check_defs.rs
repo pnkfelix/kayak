@@ -3061,6 +3061,13 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
                     } else {
                         constant_made(v, s, e, es, t)
                     });
+                    let s = if (has_prefix_p(name, str_lit("%run-")) && not(any_p(lambda1s(move |x: Str| {
+                        not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("read:"))))
+                    }), es))) {
+                        match refuse(v, str_lit("an expression among a module's items is run for what it does as the module is made, and this one only reads")) {}
+                    } else {
+                        s
+                    };
                     elab(with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), expressions::settle_facts(s)), kayak_rt::heap_cons(typed(name, written), kayak_rt::nil()))
                 }
             }
@@ -5401,8 +5408,10 @@ pub fn spliced_to(f0: &'static Sexp, f1: Sexps, f2: Keyeds) -> &'static SplicedT
 }
 
 /// What `e` loads: `(load-module "p")`, as a list of its path and no
-/// arguments; `((proj (load-module "p") r ...))`, of its path and its
-/// regions (a file of `module-parameters`); else nothing.
+/// arguments; a file of `module-parameters` made, of its path, the kinds'
+/// arguments, then the modules' (C283): `((proj (load-module "p") k
+/// ...) m ...)`, `((load-module "p") m ...)`, `((load-module "p"))`, a
+/// file of none; else nothing.
 pub fn load_of(e: &'static Sexp) -> Sexps {
     let tagcase_ = e;
     match *tagcase_ {
@@ -5420,7 +5429,20 @@ pub fn load_of(e: &'static Sexp) -> Sexps {
                 }
             }) {
                 kayak_rt::heap_cons(second(xs), kayak_rt::nil())
-            } else if (i64_eq(size(xs), 1i64) && head_is_p(car(xs), str_lit("proj")) && i64_gt(size(items(car(xs))), 1i64) && {
+            } else if (not(null_p(xs)) && head_is_p(car(xs), str_lit("load-module")) && i64_eq(size(items(car(xs))), 2i64) && {
+                let tagcase_ = second(items(car(xs)));
+                match *tagcase_ {
+                    Sexp::Str(s, f3, p3) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                kayak_rt::heap_cons(second(items(car(xs))), cdr(xs))
+            } else if (not(null_p(xs)) && head_is_p(car(xs), str_lit("proj")) && i64_gt(size(items(car(xs))), 1i64) && {
                 let tagcase_ = second(items(car(xs)));
                 match *tagcase_ {
                     Sexp::Lst(ys, f2, l2, p2) => {
@@ -5443,7 +5465,7 @@ pub fn load_of(e: &'static Sexp) -> Sexps {
                     }
                 }
             }) {
-                kayak_rt::heap_cons(second(items(second(items(car(xs))))), cdr(cdr(items(car(xs)))))
+                kayak_rt::heap_cons(second(items(second(items(car(xs))))), onto(cdr(cdr(items(car(xs)))), cdr(xs)))
             } else {
                 nil::<&'static Sexp>()
             }
@@ -5493,6 +5515,24 @@ pub fn file_tag(f: Str) -> Str {
             '-'
         }
     }), string_chars(stem(f))))))
+}
+
+/// The module a load's module includes, `(module (include n))`: `n`.
+pub fn included_name(m: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = m;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (head_is_p(m, str_lit("module")) && i64_eq(size(xs), 2i64) && head_is_p(second(xs), str_lit("include"))) {
+                second(items(second(xs)))
+            } else {
+                m
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            m
+        }
+    }
 }
 
 /// A load of a module already made: a module that includes it.
@@ -5586,37 +5626,223 @@ pub fn selects_renamed(e: &'static Sexp, shared: Keyeds) -> &'static Sexp {
     }
 }
 
-/// A loaded file's items: of a file of `module-parameters`, the rest, each
-/// of its regions the one given; of any other, all, given nothing.
-pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
-    if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
-        let params = items(second(items(car(forms))));
-        if (not(i64_eq(size(params), size(args))) || any_p(lambda1s(move |b: &'static Sexp| {
-            not(sym_is_p(second(items(b)), str_lit("region")))
-        }), params)) {
-            error(string_append(str_lit("kfx: "), string_append(path, str_lit(": module parameters KFX gives regions alone, as many as the file has"))))
+/// `e`, each name `from` in it `to`, a name or a type written (C283).
+pub fn substituted(e: &'static Sexp, from: Str, to: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_eq_p(n, from) {
+                to
+            } else {
+                e
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if head_is_p(e, str_lit("quote")) {
+                e
+            } else {
+                lst(map(lambda1s(move |x: &'static Sexp| {
+                    substituted(x, from, to)
+                }), xs), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
+pub fn substituted_all(mut es: Sexps, mut froms: Sexps, mut tos: Sexps) -> Sexps {
+    loop {
+        if (null_p(froms) || null_p(tos)) {
+            return es;
         } else {
-            renamed_all(cdr(forms), map(lambda1s(move |b: &'static Sexp| {
-                sym_name(car(items(b)))
-            }), params), map(lambda1s(move |a: &'static Sexp| {
-                let tagcase_ = a;
+            (es, froms, tos) = (map(lambda1s(move |e: &'static Sexp| {
+                substituted(e, sym_name(car(items(car(froms)))), car(tos))
+            }), es), cdr(froms), cdr(tos));
+            continue;
+        }
+    }
+}
+
+pub fn sexps_first(xs: Sexps, n: i64) -> Sexps {
+    if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(car(xs), sexps_first(cdr(xs), i64_minus(n, 1i64)))
+    }
+}
+
+pub fn sexps_after(mut xs: Sexps, mut n: i64) -> Sexps {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// A `module-parameters` binder of a kind, `(r region)`, `(t type)`, `(e
+/// effect)`; not a module's, `(m T)` or `(m T qualified)` (C283).
+pub fn kind_parameter_p(b: &'static Sexp) -> bool {
+    let tagcase_ = second(items(b));
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+// An expression among a module's items (C283; Fixpt's 6447f9b0, Heist's): a
+// form whose head is none an item's is run for what it does as the module
+// is made, in order, `(hide (define %run-N form))`, numbered from 0 in each
+// module, a `hide`'s among them.
+pub fn item_head_p(g: &'static Sexp) -> bool {
+    let tagcase_ = g;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            (null_p(xs) || {
+                let tagcase_ = car(xs);
                 match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        n
+                    Sexp::Sym(n, f2, p2) => {
+                        (has_prefix_p(n, str_lit("define")) || string_member_p(n, kayak_rt::heap_cons(str_lit("include"), kayak_rt::heap_cons(str_lit("import"), kayak_rt::heap_cons(str_lit("hide"), kayak_rt::heap_cons(str_lit("%loaded"), kayak_rt::heap_cons(str_lit("%instance"), kayak_rt::heap_cons(str_lit("module-parameters"), kayak_rt::heap_cons(str_lit("%use"), kayak_rt::nil())))))))))
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("?")
+                        false
                     }
                 }
-            }), args))
+            })
+        }
+        _ => {
+            let other = tagcase_;
+            true
+        }
+    }
+}
+
+pub enum ItemsRan {
+    ItemsRan(Sexps, i64),
+}
+
+pub fn items_ran(f0: Sexps, f1: i64) -> &'static ItemsRan {
+    kayak_rt::heap_alloc(ItemsRan::ItemsRan(f0, f1))
+}
+
+pub fn runs_from(its: Sexps, n: i64) -> &'static ItemsRan {
+    if null_p(its) {
+        items_ran(nil::<&'static Sexp>(), n)
+    } else {
+        let g = car(its);
+        if head_is_p(g, str_lit("hide")) {
+            let tagcase_ = runs_from(cdr(items(g)), n);
+            match *tagcase_ {
+                ItemsRan::ItemsRan(inner, n2) => {
+                    let tagcase_ = runs_from(cdr(its), n2);
+                    match *tagcase_ {
+                        ItemsRan::ItemsRan(rest, n3) => {
+                            items_ran(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(items(g)), inner), datum_file(g), 0i64, datum_pos(g)), rest), n3)
+                        }
+                    }
+                }
+            }
+        } else if item_head_p(g) {
+            let tagcase_ = runs_from(cdr(its), n);
+            match *tagcase_ {
+                ItemsRan::ItemsRan(rest, n2) => {
+                    items_ran(kayak_rt::heap_cons(g, rest), n2)
+                }
+            }
+        } else {
+            let f = datum_file(g);
+            let p = datum_pos(g);
+            let made = lst(kayak_rt::heap_cons(sym(str_lit("hide"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(string_append(str_lit("%run-"), i64_to_string(n)), f, p), kayak_rt::heap_cons(g, kayak_rt::nil()))), f, 0i64, p), kayak_rt::nil())), f, 0i64, p);
+            let tagcase_ = runs_from(cdr(its), i64_plus(n, 1i64));
+            match *tagcase_ {
+                ItemsRan::ItemsRan(rest, n2) => {
+                    items_ran(kayak_rt::heap_cons(made, rest), n2)
+                }
+            }
+        }
+    }
+}
+
+pub fn run_items(its: Sexps) -> Sexps {
+    let tagcase_ = runs_from(its, 0i64);
+    match *tagcase_ {
+        ItemsRan::ItemsRan(out, n) => {
+            out
+        }
+    }
+}
+
+/// A loaded file's items: of a file of `module-parameters`, the rest, each
+/// kind's binder the argument given, each module's the module given, its
+/// names included, hidden, unless it is `qualified` (C283; FX-26's
+/// `(plambda (kinds) (lambda (modules) (module (hide (include m) …) item
+/// …)))`); `(module-parameters ())`, a file of none. Of any other, all,
+/// given nothing.
+pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
+    if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
+        let params = items(second(items(car(forms))));
+        let kinds = filter(&kind_parameter_p, params);
+        let mods = filter(lambda1s(move |b: &'static Sexp| {
+            not(kind_parameter_p(b))
+        }), params);
+        if not(i64_eq(size(params), size(args))) {
+            error(string_append(str_lit("kfx: "), string_append(path, str_lit(": given other than its module parameters, as many as the file has"))))
+        } else {
+            let kargs = sexps_first(args, size(kinds));
+            let margs = sexps_after(args, size(kinds));
+            let its = substituted_all(substituted_all(cdr(forms), kinds, kargs), mods, margs);
+            let included = concat(map2(lambda2s(move |b: &'static Sexp, m: &'static Sexp| {
+                if (i64_eq(size(items(b)), 3i64) && sym_is_p(third(items(b)), str_lit("qualified"))) {
+                    nil::<&'static Sexp>()
+                } else {
+                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), str_lit(""), 0i64), kayak_rt::heap_cons(m, kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+                }
+            }), mods, margs));
+            if null_p(included) {
+                its
+            } else {
+                kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("hide"), str_lit(""), 0i64), included), str_lit(""), 0i64, 0i64), its)
+            }
         }
     } else {
         if null_p(args) {
             forms
         } else {
-            error(string_append(str_lit("kfx: "), string_append(path, str_lit(": given regions, and no module-parameters"))))
+            error(string_append(str_lit("kfx: "), string_append(path, str_lit(": given arguments, and no module-parameters"))))
         }
+    }
+}
+
+/// Of a loaded file of `module-parameters`, the names of the modules it is
+/// given, which it sees as well as the standard environment (C283).
+pub fn module_arguments(forms: Sexps, args: Sexps) -> Strings {
+    if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
+        let n = size(filter(&kind_parameter_p, items(second(items(car(forms))))));
+        concat(map(lambda1s(move |a: &'static Sexp| {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Sexp::Sym(m, f, p) => {
+                    the::<Strings>(kayak_rt::heap_cons(m, kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        }), sexps_after(args, n)))
+    } else {
+        nil::<Str>()
     }
 }
 
@@ -5711,7 +5937,9 @@ pub fn imports_in(e: &'static Sexp) -> &'static Sexp {
         Sexp::Lst(xs, f, l, p) => {
             if (head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("quasiquote"))) {
                 e
-            } else if (head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("hide"))) {
+            } else if head_is_p(e, str_lit("module")) {
+                lst(kayak_rt::heap_cons(car(xs), run_items(import_items(cdr(xs)))), f, l, p)
+            } else if head_is_p(e, str_lit("hide")) {
                 lst(kayak_rt::heap_cons(car(xs), import_items(cdr(xs))), f, l, p)
             } else if ((head_is_p(e, str_lit("->")) || head_is_p(e, str_lit("->*"))) && i64_eq(size(xs), 3i64)) {
                 lst(kayak_rt::heap_cons(sym(str_lit("subr"), f, p), kayak_rt::heap_cons(sym(if head_is_p(e, str_lit("->")) {
@@ -5820,6 +6048,33 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                             }
                         }
                     }
+                } else if (head_is_p(e, str_lit("load-moduleof")) && i64_gt(size(xs), 1i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Str(s, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // A load's module's type (C283; FX-26's `load-moduleof`): the load it
+                    // names made, as any load is, and its module named, `(%module-made
+                    // made--load--K)`.
+                    let as_load = if null_p(cdr(cdr(xs))) {
+                        lst(kayak_rt::heap_cons(sym(str_lit("load-module"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), f, l, p)
+                    } else {
+                        lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("proj"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("load-module"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), f, l, p), cdr(cdr(xs)))), f, l, p), kayak_rt::nil()), f, l, p)
+                    };
+                    let made = spliced(as_load, dir, loaded, chain, known);
+                    let tagcase_ = made;
+                    match *tagcase_ {
+                        SplicedTo::SplicedTo(x, d, k) => {
+                            return spliced_to(lst(kayak_rt::heap_cons(sym(str_lit("%module-made"), f, p), kayak_rt::heap_cons(included_name(x), kayak_rt::nil())), f, l, p), d, k);
+                        }
+                    }
                 } else if (null_p(load) && head_is_p(e, str_lit("proj")) && i64_gt(size(xs), 2i64) && head_is_p(second(xs), str_lit("load-module"))) {
                     // A file of module parameters given them, not called (C171): the
                     // procedure that makes the module, `(lambda () ((proj ...)))`.
@@ -5887,18 +6142,20 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                             return error(string_append(str_lit("kfx: cannot read "), path));
                         } else {
                             let forms = import_items(read_all(string_chars(car(found)), path, 1i64));
-                            let its = parameters_given(forms, args, path);
+                            let its = run_items(parameters_given(forms, args, path));
                             let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
                             let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
-                            let sees = map(lambda1s(move |k: &'static Keyed| {
+                            let sees = onto(map(lambda1s(move |k: &'static Keyed| {
                                 let tagcase_ = k;
                                 match *tagcase_ {
                                     Keyed::Keyed(kk, n) => {
                                         sym(n, f, p)
                                     }
                                 }
-                            }), spliced_known(inner));
-                            let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), if null_p(args) {
+                            }), spliced_known(inner)), map(lambda1s(move |m: Str| {
+                                sym(m, f, p)
+                            }), module_arguments(forms, args)));
+                            let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), if (null_p(args) && not((not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))))) {
                                 sees
                             } else {
                                 kayak_rt::heap_cons(sym(str_lit("%instance"), f, p), sees)

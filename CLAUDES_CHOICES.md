@@ -7956,3 +7956,42 @@ for it", after C281.
   Fixpt's words and of kayak's own. Its checks give Fixpt's lines, and
   `regions/stringof-escapes.fx` and `write-a-string.fx` are refused where
   Fixpt refuses them.
+
+## C283. Module parameters of every kind; expressions as module items (2026-10-30)
+
+FX-26's module features since 6447f9b (Heist's, 2026-10-28), in kayak's
+FX-26, the user's "go for it". kayak loads a file statically: each load,
+with what it is given, is one module spliced in, `made--load--K` (C116,
+C171). That stays, and now takes what FX-26's files take:
+- **Parameters of every kind**: `(module-parameters ((name kind) …))` and
+  modules, `(m T)`. A kind's binder is replaced by the argument given,
+  which may be a type written out, not only a name (`substituted`). A
+  module's binder is renamed to the module given, and that module's names
+  are included, hidden, unless it is `qualified`, as Fixpt's `(plambda
+  (kinds) (lambda (modules) (module (hide (include m) …) item …)))`. The
+  loaded file sees the modules it is given, as well as the standard
+  environment. The loads are `((proj (load-module "p") k …) m …)`,
+  `((load-module "p") m …)` and `((load-module "p"))`; the arguments are
+  kinds' then modules', which the file's own parameters tell apart.
+  `(module-parameters ())` is a maker of none, its state its own: any file
+  of `module-parameters` is an instance (`%instance`), whose making may
+  allocate.
+- **`load-moduleof`** as a type: the load it names, made as any load is,
+  and its module's type as a value (`(%module-made made--load--K)`, read
+  as `%module made--load--K`, opened by `module-type-of`, now in
+  check.kfx before `fits`). A procedure's parameter of that type is opened
+  by `with`, as a module value is (C170).
+- **An expression among a module's items** (`run-items`): run as the
+  module is made, `(hide (define %run-N form))`, numbered from 0 in each
+  module. One that only reads does nothing, and is refused as Fixpt
+  refuses it (`modules/expression-item-pure.fx`).
+- **Not the same as FX-26**: a load is made once where it is spliced, at
+  the top level, where FX-26 makes a maker's module at each call, its
+  state new. They differ only where one load is evaluated more than
+  once. A module parameter's type, `T`, is not checked against the
+  module given. kayak prints a load's module by its name, where Fixpt
+  prints its `moduleof`.
+- `modules/module-parameters-none.fx`, `-modules.fx`, `-qualified.fx` and
+  `load-moduleof-define-type.fx` are accepted, and run to Fixpt's values,
+  4, 57, 10 and 1. `restrict` and `load-input` makers (a `plambda` of an
+  effect) come next.

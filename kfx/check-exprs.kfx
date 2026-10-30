@@ -318,6 +318,14 @@
                                  nil))
                            its))))))
 
+      (define load-mtype (subr kfx (cv ty) ty)
+        (lambda (v t)
+          "A load's module type, `(load-moduleof ...)`, `%module made--load--K`, as
+           the module's type as a value (C283); any other type as it is."
+          (tagcase t
+            (ty-data (d args) (if (has-prefix? d "%module made--load--") (module-alias-type v d) t))
+            (else other t))))
+
       (define module-spec (subr kfx (cv ty) sexps)
         (lambda (v t)
           "The moduleof a module type names, as a list of one; or none."
@@ -2897,11 +2905,12 @@
                                                    expected))))
                          ((or (string=? m "")
                               (and (not (null? found))
-                                   (tagcase (car found) (bind (n sc wher) (and (not (string=? wher "module")) (tagcase sc (scheme (tv t) (mtype? (walk s t)))))))))
+                                   (tagcase (car found) (bind (n sc wher) (and (not (string=? wher "module")) (tagcase sc (scheme (tv t) (mtype? (load-mtype v (walk s t))))))))))
                           "A module value's (C170): the value a variable names, or one an
                            expression makes; FX-26's, not KFX's."
                           (tagcase (synth v s (car xs))
-                            (res (t es s)
+                            (res (t0 es s)
+                             (let ((t (load-mtype v (walk s t0))))
                               (if (not (mtype? (walk s t)))
                                   (refuse v (string-append "a with of no module: a " (show-ty s t)))
                                   (with-effs (found-then-fitted v (body (mtype-opened v (zonk s t))
@@ -2913,7 +2922,7 @@
                                                                               (kfx-restricted v s "a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")))
                                                                         (cdr xs) nil)
                                                                 expected)
-                                             es)))))
+                                             es))))))
                          ((and (not (null? found))
                                (tagcase (car found) (bind (n sc wher) (string=? wher "local")))
                                (not (null? (module-spec v (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) t))))))))
@@ -4340,57 +4349,6 @@
                                                           " is not known from the arguments before it: write it as (x T)")))
                                             s)))
                                     (cdr params) (cdr types)))))
-
-      (module-type-of (subr kfx (cv string) ty)
-        (lambda (v m)
-          "The type of module `m`, defined at the top level, as a value (C170):
-           its generative types and datatypes abstract, `m..t`; its other
-           types described; its effects; its values."
-          (let* ((pre (string-append m " "))
-                 ;; Its own, not its modules' given on (`m n t`, C203), which their
-                 ;; own types say.
-                 (types (the aliases (onto nil (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-aliases v)))))
-                 (effs (the effdefs (onto nil (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (and (has-prefix? n pre) (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-effdefs v)))))
-                 (vals (the binds (onto nil (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%"))
-                                                                                                         (not (has-char-in? (after-prefix n pre) #\space)))))) (cv-binds v))))))
-            (ty-data "%mtype" (newest-items (reverse (the tys
-              (onto (map (lambda ((a alias))
-                           (tagcase a
-                             (alias (n ps body)
-                               (let ((t (after-prefix n pre)))
-                                 (if (tagcase body (sym (b f p) (and (or (string=? b (string-append m (string-append ".." t))) (has-prefix? b "made--load--"))
-                                                                     (dt-named? b (cv-dts v))))
-                                              (else other #f))
-                                     ;; Its own abstract type, or a loaded file's, which only it
-                                     ;; names (C172).
-                                     (ty-data (string-append "%abs " t) (list (ty-data (sym-name body) nil)))
-                                     (ty-data (string-append "%desc " t) (list (parse-type v nil body))))))))
-                         types)
-                    (onto (map (lambda ((d effdef)) (tagcase d (effdef (n atoms) (ty-data (string-append "%edesc " (after-prefix n pre)) (list (ty-proc atoms nil (ty-unit)))))))
-                               effs)
-                          (map (lambda ((b bind))
-                                 (tagcase b
-                                   (bind (n sc w)
-                                     (ty-data (string-append "%val " (after-prefix n pre))
-                                              (list (if (and (tagcase sc (scheme (tv t) (tagcase t (ty-unit () #t) (else other #f))))
-                                                             (any? (lambda ((c bind)) (tagcase c (bind (m sc2 w2) (has-prefix? m (string-append n " "))))) (cv-binds v)))
-                                                        ;; A module in the module (C88).
-                                                        (module-type-of v n)
-                                                        (tagcase sc (scheme (tv t) t))))))))
-                               vals))))) nil)))))
-
-      (newest-items (subr kfx (tys strings) tys)
-        (lambda (ts seen)
-          "Items, the last of each kind and name only, in order (`ts` reversed)."
-          (if (null? ts)
-              nil
-              (let ((key (string-append (if (string=? (mitem-kind (car ts)) "%val") "v " "t ") (mitem-name (car ts)))))
-                (if (string-member? key seen)
-                    (newest-items (cdr ts) seen)
-                    (append-ty (newest-items (cdr ts) (cons key seen)) (car ts)))))))
-
-      (append-ty (subr kfx (tys ty) tys)
-        (lambda (ts t) (if (null? ts) (list t) (cons (car ts) (append-ty (cdr ts) t)))))
 
       (module-extend (subr kfx (cv st sexps) res)
         (lambda (v s args)

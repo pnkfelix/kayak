@@ -1295,7 +1295,7 @@ pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         if any_p(lambda1s(move |p: Str| {
             string_has_p(p, str_lit("%none"))
         }), parts) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : "), string_append(base_renamed(show_ty(new_state(), module_shown(v, m, expressions::module_type_of(v, m))), outer), string_append(str_lit(" ! "), if null_p(included) {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : "), string_append(base_renamed(show_ty(new_state(), module_shown(v, m, module_type_of(v, m))), outer), string_append(str_lit(" ! "), if null_p(included) {
                 str_lit("pure")
             } else {
                 string_append(str_lit("(read (globals "), string_append(words_of(included), str_lit("))")))

@@ -6663,6 +6663,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             }
                         }), cdr(cdr(xs))))));
                     }
+                } else if (sym_is_p(car(xs), str_lit("%module-made")) && i64_eq(size(xs), 2i64)) {
+                    // `(load-moduleof "p" ...)`, the load's module spliced (C283): the type
+                    // of that module as a value, as a module type by name is.
+                    return ty_data(string_append(str_lit("%module "), sym_name(second(xs))), nil::<&'static Ty>());
                 } else if ((sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) && any_p(lambda1s(move |x: &'static Sexp| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -10115,6 +10119,138 @@ pub fn frozen_fits_p(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static
     })
 }
 
+// A top-level module's type as a value (C170), and its parts: here, before
+// `fits`, which a load's module type, `(%module-made m)`, needs (C283).
+/// The type of module `m`, defined at the top level, as a value (C170):
+/// its generative types and datatypes abstract, `m..t`; its other
+/// types described; its effects; its values.
+pub fn module_type_of(v: &'static Cv, m: Str) -> &'static Ty {
+    let pre = string_append(m, str_lit(" "));
+    let types = the::<Aliases>(onto(nil::<&'static Alias>(), filter(lambda1s(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(n, ps, body) => {
+                (has_prefix_p(n, pre) && null_p(ps) && not(has_char_in_p(after_prefix(n, pre), ' ')))
+            }
+        }
+    }), cv_aliases(v))));
+    let effs = the::<Effdefs>(onto(nil::<&'static Effdef>(), filter(lambda1s(move |d: &'static Effdef| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Effdef::Effdef(n, atoms) => {
+                (has_prefix_p(n, pre) && not(has_char_in_p(after_prefix(n, pre), ' ')))
+            }
+        }
+    }), cv_effdefs(v))));
+    let vals = the::<Binds>(onto(nil::<&'static Bind>(), filter(lambda1s(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                (has_prefix_p(n, pre) && not(has_prefix_p(after_prefix(n, pre), str_lit("%"))) && not(has_char_in_p(after_prefix(n, pre), ' ')))
+            }
+        }
+    }), cv_binds(v))));
+    ty_data(str_lit("%mtype"), newest_items(reverse(the::<Tys>(onto(map(lambda1s(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(n, ps, body) => {
+                let t = after_prefix(n, pre);
+                if {
+                    let tagcase_ = body;
+                    match *tagcase_ {
+                        Sexp::Sym(b, f, p) => {
+                            ((string_eq_p(b, string_append(m, string_append(str_lit(".."), t))) || has_prefix_p(b, str_lit("made--load--"))) && dt_named_p(b, cv_dts(v)))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    ty_data(string_append(str_lit("%abs "), t), kayak_rt::heap_cons(ty_data(sym_name(body), nil::<&'static Ty>()), kayak_rt::nil()))
+                } else {
+                    ty_data(string_append(str_lit("%desc "), t), kayak_rt::heap_cons(parse_type(v, nil::<Str>(), body), kayak_rt::nil()))
+                }
+            }
+        }
+    }), types), onto(map(lambda1s(move |d: &'static Effdef| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Effdef::Effdef(n, atoms) => {
+                ty_data(string_append(str_lit("%edesc "), after_prefix(n, pre)), kayak_rt::heap_cons(ty_proc(atoms, nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()))
+            }
+        }
+    }), effs), map(lambda1s(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                ty_data(string_append(str_lit("%val "), after_prefix(n, pre)), kayak_rt::heap_cons(if ({
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            let tagcase_ = t;
+                            match *tagcase_ {
+                                Ty::TyUnit() => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }
+                    }
+                } && any_p(lambda1s(move |c: &'static Bind| {
+                    let tagcase_ = c;
+                    match *tagcase_ {
+                        Bind::Bind(m, sc2, w2) => {
+                            has_prefix_p(m, string_append(n, str_lit(" ")))
+                        }
+                    }
+                }), cv_binds(v))) {
+                    module_type_of(v, n)
+                } else {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            t
+                        }
+                    }
+                }, kayak_rt::nil()))
+            }
+        }
+    }), vals))))), nil::<Str>()))
+}
+
+/// Items, the last of each kind and name only, in order (`ts` reversed).
+pub fn newest_items(mut ts: Tys, mut seen: Strings) -> Tys {
+    loop {
+        if null_p(ts) {
+            return nil::<&'static Ty>();
+        } else {
+            let key = string_append(if string_eq_p(mitem_kind(car(ts)), str_lit("%val")) {
+                str_lit("v ")
+            } else {
+                str_lit("t ")
+            }, mitem_name(car(ts)));
+            if string_member_p(key, seen) {
+                ts = cdr(ts);
+                continue;
+            } else {
+                return append_ty(newest_items(cdr(ts), kayak_rt::heap_cons(key, seen)), car(ts));
+            }
+        }
+    }
+}
+
+pub fn append_ty(ts: Tys, t: &'static Ty) -> Tys {
+    if null_p(ts) {
+        kayak_rt::heap_cons(t, kayak_rt::nil())
+    } else {
+        kayak_rt::heap_cons(car(ts), append_ty(cdr(ts), t))
+    }
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
@@ -11481,15 +11617,17 @@ pub fn args_same(mut v: &'static Cv, mut s: &'static St, mut xs: Tys, mut ys: Ty
 /// value's is (C170).
 pub fn module_alias_type(v: &'static Cv, d: Str) -> &'static Ty {
     let found = find_alias(after_prefix(d, str_lit("%module ")), cv_aliases(v));
-    if null_p(found) {
-        ty_unit()
-    } else {
+    if not(null_p(found)) {
         let tagcase_ = car(found);
         match *tagcase_ {
             Alias::Alias(n, ps, body) => {
                 parse_type(v, nil::<Str>(), body)
             }
         }
+    } else if has_prefix_p(after_prefix(d, str_lit("%module ")), str_lit("made--load--")) {
+        module_type_of(v, after_prefix(d, str_lit("%module ")))
+    } else {
+        ty_unit()
     }
 }
 

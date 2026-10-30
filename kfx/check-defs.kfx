@@ -1736,8 +1736,14 @@
                              (refuse v "a definition with no type, of a type over a binder: write its type")
                              (with expressions (ty-sexp v s t))))
                 (s (if (lambda-form? e) s (constant-made v s e es t))))
+            (let ((s (if (and (has-prefix? name "%run-")
+                              (not (any? (lambda ((x string)) (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x) (has-prefix? x "read:")))) es)))
+                         ;; An expression among a module's items (C283): run for
+                         ;; what it does, as Fixpt has it; one that only reads, refused.
+                         (refuse v "an expression among a module's items is run for what it does as the module is made, and this one only reads")
+                         s)))
             (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (with expressions (settle-facts s)))
-                  (list (typed name written)))))))))))
+                  (list (typed name written))))))))))))
 
 "Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the
  top level, a Rust `mod`. Its items are a program's definitions, each
@@ -2830,18 +2836,23 @@
 (define load-of (subr kfx (sexp) sexps)
   (lambda (e)
     "What `e` loads: `(load-module \"p\")`, as a list of its path and no
-     arguments; `((proj (load-module \"p\") r ...))`, of its path and its
-     regions (a file of `module-parameters`); else nothing."
+     arguments; a file of `module-parameters` made, of its path, the kinds'
+     arguments, then the modules' (C283): `((proj (load-module \"p\") k
+     ...) m ...)`, `((load-module \"p\") m ...)`, `((load-module \"p\"))`, a
+     file of none; else nothing."
     (tagcase e
       (lst (xs f l p)
         (cond ((and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
                (list (second xs)))
-              ((and (i64= (size xs) 1) (head-is? (car xs) "proj") (i64> (size (items (car xs))) 1)
+              ((and (not (null? xs)) (head-is? (car xs) "load-module") (i64= (size (items (car xs))) 2)
+                    (tagcase (second (items (car xs))) (str (s f3 p3) #t) (else other #f)))
+               (cons (second (items (car xs))) (cdr xs)))
+              ((and (not (null? xs)) (head-is? (car xs) "proj") (i64> (size (items (car xs))) 1)
                     (tagcase (second (items (car xs)))
                       (lst (ys f2 l2 p2) (and (head-is? (second (items (car xs))) "load-module") (i64= (size ys) 2)
                                               (tagcase (second ys) (str (s f3 p3) #t) (else other #f))))
                       (else other #f)))
-               (cons (second (items (second (items (car xs))))) (cdr (cdr (items (car xs))))))
+               (cons (second (items (second (items (car xs))))) (onto (cdr (cdr (items (car xs)))) (cdr xs))))
               (else nil)))
       (else other nil))))
 
@@ -2856,6 +2867,13 @@
      each counted from 0, are not named alike."
     (rev->string (reverse (the chars (map (lambda ((c char)) (if (or (char-lower? c) (char-numeric? c)) c #\-))
                                           (string-chars (stem f))))))))
+
+(define included-name (subr kfx (sexp) sexp)
+  (lambda (m)
+    "The module a load's module includes, `(module (include n))`: `n`."
+    (tagcase m
+      (lst (xs f l p) (if (and (head-is? m "module") (i64= (size xs) 2) (head-is? (second xs) "include")) (second (items (second xs))) m))
+      (else other m))))
 
 (define included-module (subr kfx (string string i64 i64) sexp)
   (lambda (name f l p)
@@ -2899,20 +2917,109 @@
                 (lst (list (car xs) (sym (car to) f p) (third xs)) f l p))))
         (else other e)))))
 
+(define-rec
+  (substituted (subr kfx (sexp string sexp) sexp)
+    (lambda (e from to)
+      "`e`, each name `from` in it `to`, a name or a type written (C283)."
+      (tagcase e
+        (sym (n f p) (if (string=? n from) to e))
+        (lst (xs f l p) (if (head-is? e "quote") e (lst (map (lambda ((x sexp)) (substituted x from to)) xs) f l p)))
+        (else other e)))))
+
+(define-rec
+  (substituted-all (subr kfx (sexps sexps sexps) sexps)
+    (lambda (es froms tos)
+      (if (or (null? froms) (null? tos))
+          es
+          (substituted-all (map (lambda ((e sexp)) (substituted e (sym-name (car (items (car froms)))) (car tos))) es) (cdr froms) (cdr tos))))))
+
+(define-rec
+  (sexps-first (subr kfx (sexps i64) sexps)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) nil (cons (car xs) (sexps-first (cdr xs) (i64- n 1)))))))
+(define-rec
+  (sexps-after (subr kfx (sexps i64) sexps)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (sexps-after (cdr xs) (i64- n 1))))))
+
+(define kind-parameter? (subr kfx (sexp) bool)
+  (lambda (b)
+    "A `module-parameters` binder of a kind, `(r region)`, `(t type)`, `(e
+     effect)`; not a module's, `(m T)` or `(m T qualified)` (C283)."
+    (tagcase (second (items b)) (sym (n f p) #t) (else other #f))))
+
+"An expression among a module's items (C283; Fixpt's 6447f9b0, Heist's): a
+ form whose head is none an item's is run for what it does as the module
+ is made, in order, `(hide (define %run-N form))`, numbered from 0 in each
+ module, a `hide`'s among them."
+(define item-head? (subr kfx (sexp) bool)
+  (lambda (g)
+    (tagcase g
+      (lst (xs f l p)
+        (or (null? xs)
+            (tagcase (car xs)
+              (sym (n f2 p2) (or (has-prefix? n "define") (string-member? n (list "include" "import" "hide" "%loaded" "%instance" "module-parameters" "%use"))))
+              (else other #f))))
+      (else other #t))))
+
+(define-datatype items-ran (items-ran sexps i64))
+
+(define-rec
+  (runs-from (subr kfx (sexps i64) items-ran)
+    (lambda (its n)
+      (if (null? its)
+          (items-ran nil n)
+          (let ((g (car its)))
+            (cond ((head-is? g "hide")
+                   (tagcase (runs-from (cdr (items g)) n)
+                     (items-ran (inner n2)
+                       (tagcase (runs-from (cdr its) n2)
+                         (items-ran (rest n3) (items-ran (cons (lst (cons (car (items g)) inner) (datum-file g) 0 (datum-pos g)) rest) n3))))))
+                  ((item-head? g)
+                   (tagcase (runs-from (cdr its) n) (items-ran (rest n2) (items-ran (cons g rest) n2))))
+                  (else
+                   (let* ((f (datum-file g)) (p (datum-pos g))
+                          (made (lst (list (sym "hide" f p) (lst (list (sym "define" f p) (sym (string-append "%run-" (i64->string n)) f p) g) f 0 p)) f 0 p)))
+                     (tagcase (runs-from (cdr its) (i64+ n 1)) (items-ran (rest n2) (items-ran (cons made rest) n2)))))))))))
+
+(define run-items (subr kfx (sexps) sexps)
+  (lambda (its) (tagcase (runs-from its 0) (items-ran (out n) out))))
+
 (define parameters-given (subr kfx (sexps sexps string) sexps)
   (lambda (forms args path)
     "A loaded file's items: of a file of `module-parameters`, the rest, each
-     of its regions the one given; of any other, all, given nothing."
+     kind's binder the argument given, each module's the module given, its
+     names included, hidden, unless it is `qualified` (C283; FX-26's
+     `(plambda (kinds) (lambda (modules) (module (hide (include m) …) item
+     …)))`); `(module-parameters ())`, a file of none. Of any other, all,
+     given nothing."
     (if (and (not (null? forms)) (head-is? (car forms) "module-parameters"))
-        (let ((params (items (second (items (car forms))))))
-          (if (or (not (i64= (size params) (size args)))
-                  (any? (lambda ((b sexp)) (not (sym-is? (second (items b)) "region"))) params))
-              (error (string-append "kfx: " (string-append path ": module parameters KFX gives regions alone, as many as the file has")))
-              (renamed-all (cdr forms) (map (lambda ((b sexp)) (sym-name (car (items b)))) params)
-                           (map (lambda ((a sexp)) (tagcase a (sym (n f p) n) (else other "?"))) args))))
+        (let* ((params (items (second (items (car forms)))))
+               (kinds (filter kind-parameter? params))
+               (mods (filter (lambda ((b sexp)) (not (kind-parameter? b))) params)))
+          (if (not (i64= (size params) (size args)))
+              (error (string-append "kfx: " (string-append path ": given other than its module parameters, as many as the file has")))
+              (let* ((kargs (sexps-first args (size kinds)))
+                     (margs (sexps-after args (size kinds)))
+                     (its (substituted-all (substituted-all (cdr forms) kinds kargs) mods margs))
+                     (included (concat (map2 (lambda ((b sexp) (m sexp))
+                                               (if (and (i64= (size (items b)) 3) (sym-is? (third (items b)) "qualified"))
+                                                   nil
+                                                   (the sexps (list (lst (list (sym "include" "" 0) m) "" 0 0)))))
+                                             mods margs))))
+                (if (null? included)
+                    its
+                    (cons (lst (cons (sym "hide" "" 0) included) "" 0 0) its)))))
         (if (null? args)
             forms
-            (error (string-append "kfx: " (string-append path ": given regions, and no module-parameters")))))))
+            (error (string-append "kfx: " (string-append path ": given arguments, and no module-parameters")))))))
+
+(define module-arguments (subr kfx (sexps sexps) strings)
+  (lambda (forms args)
+    "Of a loaded file of `module-parameters`, the names of the modules it is
+     given, which it sees as well as the standard environment (C283)."
+    (if (and (not (null? forms)) (head-is? (car forms) "module-parameters"))
+        (let ((n (size (filter kind-parameter? (items (second (items (car forms))))))))
+          (concat (map (lambda ((a sexp)) (tagcase a (sym (m f p) (the strings (list m))) (else other nil))) (sexps-after args n))))
+        nil)))
 
 "FX-26's `(import m name ... (type name ...) (effect name ...))` (C119),
  expanded as it is read, as FX-26 expands it: each value `(define x (with m
@@ -2961,7 +3068,9 @@
       (tagcase e
         (lst (xs f l p)
           (cond ((or (head-is? e "quote") (head-is? e "quasiquote")) e)
-                ((or (head-is? e "module") (head-is? e "hide"))
+                ((head-is? e "module")
+                 (lst (cons (car xs) (run-items (import-items (cdr xs)))) f l p))
+                ((head-is? e "hide")
                  (lst (cons (car xs) (import-items (cdr xs))) f l p))
                 ((and (or (head-is? e "->") (head-is? e "->*")) (i64= (size xs) 3))
                  (lst (list (sym "subr" f p) (sym (if (head-is? e "->") "pure" "%found") f p) (imports-in (second xs)) (imports-in (third xs))) f l p))
@@ -3000,6 +3109,20 @@
                                        (made (lst (list (sym "define" f p) (sym name f p) (spliced-form inner)) f l p)))
                                   (spliced-to (sym name f p) (onto (spliced-defs inner) (list made))
                                               (cons (keyed key name) (spliced-known inner)))))))))))
+             ((and (head-is? e "load-moduleof") (i64> (size xs) 1) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+              "A load's module's type (C283; FX-26's `load-moduleof`): the load it
+               names made, as any load is, and its module named, `(%module-made
+               made--load--K)`."
+              ;; Its arguments as a load's, kinds' then modules', which the file's
+              ;; parameters tell apart (`parameters-given`); so the same key.
+              (let* ((as-load (if (null? (cdr (cdr xs)))
+                                  (lst (list (sym "load-module" f p) (second xs)) f l p)
+                                  (lst (list (lst (cons (sym "proj" f p) (cons (lst (list (sym "load-module" f p) (second xs)) f l p) (cdr (cdr xs)))) f l p))
+                                       f l p)))
+                     (made (spliced as-load dir loaded chain known)))
+                (tagcase made
+                  (spliced-to (x d k)
+                    (spliced-to (lst (list (sym "%module-made" f p) (included-name x)) f l p) d k)))))
              ((and (null? load) (head-is? e "proj") (i64> (size xs) 2) (head-is? (second xs) "load-module"))
               "A file of module parameters given them, not called (C171): the
                procedure that makes the module, `(lambda () ((proj ...)))`."
@@ -3021,13 +3144,14 @@
                               ((null? found) (error (string-append "kfx: cannot read " path)))
                               (else
                                (let* ((forms (import-items (read-all (string-chars (car found)) path 1)))
-                                      (its (parameters-given forms args path))
+                                      (its (run-items (parameters-given forms args path)))
                                       (inner (spliced-each its (directory-of path) loaded (cons path chain) known nil nil f l p))
                                       (name (string-append "made--load--" (string-append (i64->string (size (spliced-known inner))) (string-append "--" (file-tag f)))))
-                                      (sees (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (sym n f p)))) (spliced-known inner)))
+                                      (sees (onto (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (sym n f p)))) (spliced-known inner))
+                                                  (map (lambda ((m string)) (sym m f p)) (module-arguments forms args))))
                                       (made (lst (list (sym "define" f p) (sym name f p)
                                                        (lst (cons (sym "module" f p)
-                                                                  (cons (lst (cons (sym "%loaded" f p) (cons (str path f p) (if (null? args) sees (cons (sym "%instance" f p) sees)))) f l p)
+                                                                  (cons (lst (cons (sym "%loaded" f p) (cons (str path f p) (if (and (null? args) (not (and (not (null? forms)) (head-is? (car forms) "module-parameters")))) sees (cons (sym "%instance" f p) sees)))) f l p)
                                                                         (items (spliced-form inner))))
                                                             f l p))
                                                  f l p)))
