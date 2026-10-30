@@ -3991,6 +3991,12 @@
               (else t)))
       (else other t))))
 
+(define frozen-region-string (subr kfx (string string) string)
+  (lambda (kind place)
+    "Frozen data's region, `(acyclic 'p)`; the heap's, `acyclic` or `const`
+     (C281: a place nothing settled is the heap)."
+    (if (string=? place "@heap") kind (string-append "(" (string-append kind (string-append " " (string-append place ")")))))))
+
 (define-rec
   (region-string (subr kfx (st ty) string)
     (lambda (s r)
@@ -3998,8 +4004,8 @@
         (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k))
         (ty-data (d args)
           (if (string=? d "%frozen")
-              ;; Frozen into a place (C206): `(acyclic 'p)`.
-              (string-append "(" (string-append (region-string s (car args)) (string-append " " (string-append (region-string s (car (cdr args))) ")"))))
+              ;; Frozen into a place (C206): `(acyclic 'p)`; the heap's, `acyclic`.
+              (frozen-region-string (region-string s (car args)) (region-string s (car (cdr args))))
               "?"))
         (else other "?")))))
 
@@ -4058,10 +4064,14 @@
      the region found."
     (if (region-atom? x)
         (let ((r (atom-region x)))
-          (if (char=? (string-ref-i64 r 0) #\?)
-              (string-append (atom-kind x)
-                             (region-string s (ty-meta (meta-number r))))
-              x))
+          (cond ((char=? (string-ref-i64 r 0) #\?)
+                 (string-append (atom-kind x)
+                                (region-string s (ty-meta (meta-number r)))))
+                ((and (frozen-place? r) (char=? (string-ref-i64 (frozen-place-of r) 0) #\?))
+                 "Frozen data of a place not solved when the atom was made (C281)."
+                 (string-append (atom-kind x)
+                                (frozen-region-string (frozen-place-kind r) (region-string s (ty-meta (meta-number (frozen-place-of r)))))))
+                (else x)))
         x)))
 
 (define atoms-regions (subr kfx (st strings) strings)
@@ -4355,6 +4365,55 @@
  made at each call."
 (define fits-shapes-of-names strings (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
 
+"Frozen data covariant in the order of lifetimes (C281; Fixpt's 55d130bd,
+ kayak's request): data at `(const a)` fits where `(const b)` is expected,
+ and `(acyclic a)` where `(acyclic b)` or `(const b)` is, if place `a`
+ outlives place `b`; the heap, `acyclic` and `const`, outlives every
+ place. Only frozen regions: a writable one stays invariant, as `&mut`'s
+ lifetime does in Rust, where `&'static T` is an `&'a T`."
+(define frozen-at (subr kfx (st ty) strings)
+  (lambda (s r)
+    "A frozen region's kind and place, the heap's `%heap`; none for any other,
+     or one whose place is not solved yet."
+    (tagcase (walk s r)
+      (ty-rconst (n) (if (or (string=? n "acyclic") (string=? n "const")) (the strings (list n "%heap")) nil))
+      (ty-data (d args)
+        (if (and (string=? d "%frozen") (i64= (size args) 2))
+            (let ((k (tagcase (walk s (car args)) (ty-rconst (n) n) (else other "")))
+                  (p (tagcase (walk s (car (cdr args)))
+                       (ty-var (n) n)
+                       (ty-rconst (n) (if (string=? n "@heap") "%heap" ""))
+                       ;; Not solved yet: no place a given one may be said to outlive,
+                       ;; but the heap, which outlives every place.
+                       (ty-meta (m) "?")
+                       (else other ""))))
+              (if (or (string=? k "") (string=? p "")) nil (the strings (list k p))))
+            nil))
+      (else other nil))))
+
+(define-rec
+  (newer-than? (subr kfx (string string strings) bool)
+    (lambda (x y ls)
+      "Whether `x` comes before `y` in `ls`, the variables in scope newest
+       first: bound inside it."
+      (cond ((null? ls) #f)
+            ((string=? (car ls) y) #f)
+            ((string=? (car ls) x) (string-member? y (cdr ls)))
+            (else (newer-than? x y (cdr ls)))))))
+
+(define frozen-fits? (subr kfx (cv st ty ty) bool)
+  (lambda (v s a e)
+    "Whether region `a` fits where frozen region `e` is expected by covariance:
+     both frozen, `a`'s kind no weaker, its place outliving `e`'s."
+    (let ((fa (frozen-at s a)) (fe (frozen-at s e)))
+      (and (not (null? fa)) (not (null? fe))
+           (let ((ka (car fa)) (pa (car (cdr fa))) (ke (car fe)) (pe (car (cdr fe))))
+             (and (not (string=? pa "?"))
+                  (or (string=? ka ke) (and (string=? ka "acyclic") (string=? ke "const")))
+                  (or (string=? pa "%heap") (string=? pa pe)
+                      (and (not (string=? pe "%heap")) (not (string=? pe "?"))
+                           (newer-than? (string-append "%place " pe) (string-append "%place " pa) (cv-tvars v))))))))))
+
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -4384,7 +4443,8 @@
               (else other (fits-shapes v s a e)))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (cond ((and (generative? v (walk s a)) (generative? v (walk s e))
+      (cond ((frozen-fits? v s a e) s)
+            ((and (generative? v (walk s a)) (generative? v (walk s e))
                   (not (string=? (show-ty s (zonk s a)) (show-ty s (zonk s e))))
                   (not (null? (lemma-for v s (walk s a) (walk s e) (lemmas-of (cv-binds v))))))
              "Two generative types a lemma relates (C185; Fixpt's `lemma.rs`): its
@@ -5008,6 +5068,51 @@
              (any? (lambda ((p ty)) (and (sized? p "%nlist") (tagcase (sized-size p) (ty-var (m) (string=? m n)) (else other #f)))) ps)))
       (else other #f))))
 
+(define-rec
+  (region-binders (subr kfx (strings) strings)
+    (lambda (tvars)
+      "A scheme's region binders, in order, its binders' marks left out."
+      (cond ((or (null? tvars) (has-prefix? (car tvars) "%")) nil)
+            ((char=? (string-ref-i64 (car tvars) 0) #\') (cons (car tvars) (region-binders (cdr tvars))))
+            (else (region-binders (cdr tvars)))))))
+
+"Data alone, as Fixpt's `not_only_data_regions` (C281): the region
+ variables a type uses other than as a pair's region, or in an effect
+ other than `alloc` and `read`: a reference's, an array's, a bloblet's, a
+ tag's, an I-cell's, one written. A region binder a call leaves unsolved
+ that is not among them is `acyclic`."
+(define storage-kinds strings (list "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity" "%flat-array"))
+
+(define-rec
+  (not-only-data (subr kfx (ty) strings)
+    (lambda (t)
+      (tagcase t
+        (ty-list (e r) (not-only-data e))
+        (ty-ref (e r) (onto (region-vars-of r) (not-only-data e)))
+        (ty-flat (e r) (onto (region-vars-of r) (not-only-data e)))
+        (ty-tag (a h d r) (onto (onto (region-vars-of r) (written-regions d)) (onto (not-only-data a) (not-only-data h))))
+        (ty-proc (es ps r) (onto (written-regions es) (onto (not-only-data r) (concat (map not-only-data ps)))))
+        (ty-shape (p ls ts) (concat (map not-only-data ts)))
+        (ty-data (d args)
+          (cond ((string=? d "%pairof") (if (i64= (size args) 3) (onto (not-only-data (car args)) (not-only-data (car (cdr args)))) nil))
+                ((string-member? d storage-kinds) (concat (map (lambda ((x ty)) (onto (region-vars-of x) (not-only-data x))) args)))
+                (else (concat (map not-only-data args)))))
+        (else other nil))))
+  (region-vars-of (subr kfx (ty) strings)
+    (lambda (r)
+      (tagcase r
+        (ty-var (n) (if (char=? (string-ref-i64 n 0) #\') (the strings (list n)) nil))
+        (ty-data (d args) (concat (map region-vars-of args)))
+        (else other nil))))
+  (written-regions (subr kfx (strings) strings)
+    (lambda (es)
+      "The regions of effects `es`' atoms other than `alloc` and `read`."
+      (concat (map (lambda ((a string))
+                     (if (and (region-atom? a) (not (string-member? (atom-kind a) (list "alloc:" "read:"))))
+                         (the strings (list (atom-region a)))
+                         nil))
+                   es)))))
+
 "A scheme's instance: each variable an inference variable; those for
  regions are kept, so that a call's effect can name the regions found."
 (define-datatype inst (inst ty st (listof i64 acyclic) (listof i64 acyclic)))
@@ -5424,15 +5529,30 @@
       (ty-meta (k) (res (ty-rconst "acyclic") nil (solve s k (ty-rconst "acyclic"))))
       (else other (res other nil s)))))
 
+(define heap-frozen (subr kfx (strings) strings)
+  (lambda (es)
+    "Effects, an atom on frozen data of the heap place, `(acyclic @heap)`, on
+     the heap's, `acyclic` (C281)."
+    (map (lambda ((a string))
+           (if (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) "@heap"))
+               (string-append (atom-kind a) (frozen-place-kind (atom-region a)))
+               a))
+         es)))
+
 (define name-regions (subr kfx (cv st strings (listof i64 acyclic)) res)
   (lambda (v s es regions)
     "A call's latent effect, its regions' inference variables replaced by
-     the regions the arguments and the type expected found, or `acyclic`."
+     the regions the arguments and the type expected found, or `acyclic`;
+     a place's, one whose frozen data the effect touches, `(acyclic ?k)`,
+     the heap, its frozen data the heap's (C281)."
     (if (null? regions)
         (res (ty-unit) es s)
-        (tagcase (region-of v s (ty-meta (car regions)))
-          (res (r rn s)
-            (name-regions v s (rename-atoms es (meta-name (car regions)) (region-string s r)) (cdr regions)))))))
+        (let* ((k (meta-name (car regions)))
+               (place? (any? (lambda ((a string)) (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) k))) es))
+               (s (if place? (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "@heap"))) (else other s)) s)))
+          (tagcase (region-of v s (ty-meta (car regions)))
+            (res (r rn s)
+              (name-regions v s (heap-frozen (rename-atoms es k (region-string s r))) (cdr regions))))))))
 
 (define masked (subr kfx (strings string) strings)
   (lambda (es r)

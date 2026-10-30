@@ -804,8 +804,9 @@ pub mod expressions {
         })
     }
 
-    /// `s`, a list's region in `t` that nothing solved made fresh, as FX-26
-    /// makes it where it finds a value by itself.
+    /// `s`, a list's region in `t` that nothing solved made `acyclic`, as
+    /// FX-26 settles one where it finds a value by itself: a list nothing
+    /// places is made and never written (C281; Fixpt's e4af8997).
     pub fn freshened(mut s: &'static St, mut t: &'static Ty) -> &'static St {
         loop {
             let tagcase_ = walk(s, t);
@@ -815,7 +816,7 @@ pub mod expressions {
                     let tagcase_ = walk(s, r);
                     match *tagcase_ {
                         Ty::TyMeta(k) => {
-                            return solve(s, k, ty_rconst(str_lit("%fresh")));
+                            return solve(s, k, ty_rconst(str_lit("acyclic")));
                         }
                         _ => {
                             let other = tagcase_;
@@ -4430,8 +4431,9 @@ pub mod expressions {
 
     /// Compound expression `e`'s result, its effect masked (C182; FX-87's,
     /// Fixpt's `mask`): an atom on a region no name in `e` has a type that
-    /// mentions, kept only if it allocates, or transfers control, at a
-    /// region its value's type mentions. Globals, frozen data, effect
+    /// mentions, kept only if it reads, writes, allocates, or transfers
+    /// control, at a region its value's type mentions (C281; only
+    /// allocation, on a place's frozen data). Globals, frozen data, effect
     /// variables, a region not solved yet, never masked; nor anything
     /// where a name's type, or the value's, could hold storage it does not
     /// say (a type not known yet, a generative or abstract type).
@@ -4473,7 +4475,11 @@ pub mod expressions {
                     } else {
                         let kept = filter(lambda1s(move |a: Str| {
                             let x = resolve_atom(s, a);
-                            (not(maskable_atom_p(x)) || string_member_p(atom_region(x), seen) || (string_member_p(atom_region(x), out) && string_member_p(atom_kind(x), kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::heap_cons(str_lit("goto:"), kayak_rt::heap_cons(str_lit("comefrom:"), kayak_rt::nil()))))))
+                            (not(maskable_atom_p(x)) || string_member_p(atom_region(x), seen) || (string_member_p(atom_region(x), out) && string_member_p(atom_kind(x), if frozen_place_p(atom_region(x)) {
+                                kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::nil())
+                            } else {
+                                kayak_rt::heap_cons(str_lit("read:"), kayak_rt::heap_cons(str_lit("write:"), kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::heap_cons(str_lit("goto:"), kayak_rt::heap_cons(str_lit("comefrom:"), kayak_rt::nil())))))
+                            })))
                         }), es);
                         let dropped = filter(lambda1s(move |a: Str| {
                             not(string_member_p(a, kept))
@@ -5901,7 +5907,7 @@ pub mod expressions {
                         Res::Res(t, es0, s) => {
                             // Its first element's type, a `nat`'s an `int`: FX-26's is that
                             // element's own `(nat v)`, which no other `nat` is.
-                            with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0)
+                            with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("acyclic")))), es0)
                         }
                     }
                 }, str_lit("list"));
@@ -6233,8 +6239,6 @@ pub mod expressions {
     pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
         if not(well_formed_p(h, xs)) {
             match refuse(v, string_append(str_lit("a ("), string_append(h, str_lit(" ...) not of the form FX-26 has")))) {}
-        } else if (null_p(expected) && pairs_mixed_p(h, xs)) {
-            match refuse(v, string_append(str_lit("the branches are a pair `cons` makes, a (pairof ...), and what is not one: FX-26 joins no (pairof ...) with a (listof ...); write the type, (the (listof ...) ("), string_append(h, str_lit(" ...))")))) {}
         } else if (string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic"))) {
             confirm_form(v, s, h, xs, expected)
         } else if string_eq_p(h, str_lit("if")) {
@@ -6675,7 +6679,12 @@ pub mod expressions {
     pub fn arms(v: &'static Cv, s: &'static St, branches: Sexps, expected: Tys) -> &'static Res {
         let tagcase_ = body(v, s, kayak_rt::heap_cons(car(branches), kayak_rt::nil()), expected);
         match *tagcase_ {
-            Res::Res(t, es, s) => {
+            Res::Res(t0, es, s) => {
+                let t = if (null_p(expected) && not(null_p(cdr(branches)))) {
+                    pair_as_list(s, t0)
+                } else {
+                    t0
+                };
                 if null_p(cdr(branches)) {
                     res(t, es, s)
                 } else {
@@ -6686,6 +6695,39 @@ pub mod expressions {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// A pair whose tail is a list of its head's type at its own region, as
+    /// that list, where branches are joined (C281; Fixpt's 5b0d032a): so
+    /// `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was.
+    pub fn pair_as_list(s: &'static St, t: &'static Ty) -> &'static Ty {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(args), 3i64)) {
+                    let tagcase_ = walk(s, car(cdr(args)));
+                    match *tagcase_ {
+                        Ty::TyList(y, r) => {
+                            if (string_eq_p(show_ty(s, zonk(s, car(args))), show_ty(s, zonk(s, y))) && string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, r)))) {
+                                ty_list(y, r)
+                            } else {
+                                t
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            t
+                        }
+                    }
+                } else {
+                    t
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                t
             }
         }
     }
@@ -7979,6 +8021,63 @@ pub mod expressions {
         }
     }
 
+    /// Where a list is expected at a frozen region of the place given, `(acyclic
+    /// p)` or `(const p)`: that region, which `rcons` may make its pair at,
+    /// frozen as it is made, its allocation the place's (C281; Fixpt's
+    /// 55d130bd). Else `unit`, for none.
+    pub fn frozen_in_place(v: &'static Cv, s: &'static St, place: &'static Ty, expected: Tys) -> &'static Ty {
+        let (said, p) = (if null_p(expected) {
+            ty_unit()
+        } else {
+            let tagcase_ = walk(s, car(expected));
+            match *tagcase_ {
+                Ty::TyList(e, r) => {
+                    walk(s, r)
+                }
+                _ => {
+                    let other = tagcase_;
+                    ty_unit()
+                }
+            }
+        }, {
+            let tagcase_ = walk(s, place);
+            match *tagcase_ {
+                Ty::TyVar(n) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        });
+        let tagcase_ = said;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (string_eq_p(d, str_lit("%frozen")) && i64_eq(size(args), 2i64) && not(string_eq_p(p, str_lit(""))) && {
+                    let tagcase_ = walk(s, car(cdr(args)));
+                    match *tagcase_ {
+                        Ty::TyVar(n) => {
+                            string_eq_p(n, p)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    said
+                } else {
+                    ty_unit()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ty_unit()
+            }
+        }
+    }
+
     /// The region an allocation in `place` makes at (C40): the one the type
     /// expected says, if it is the place's or a region bound within it, a
     /// region binder `(r region p)` or one bound inside the place's
@@ -8109,7 +8208,27 @@ pub mod expressions {
             let tagcase_ = fresh(s);
             match *tagcase_ {
                 Res::Res(m, es0, s) => {
-                    let at = region_within(v, s, r, expected);
+                    let frozen = if string_eq_p(h, str_lit("rcons")) {
+                        frozen_in_place(v, s, r, expected)
+                    } else {
+                        ty_unit()
+                    };
+                    let at = if {
+                        let tagcase_ = frozen;
+                        match *tagcase_ {
+                            Ty::TyUnit() => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    } {
+                        frozen
+                    } else {
+                        region_within(v, s, r, expected)
+                    };
                     let made = if string_eq_p(h, str_lit("rcons")) {
                         ty_list(m, at)
                     } else {
@@ -8127,7 +8246,22 @@ pub mod expressions {
                     };
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
-                            res(made, effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())), es), note_types(s, cv_file(v), cv_pos(v), string_append(if string_eq_p(h, str_lit("rcons")) {
+                            res(made, effs_union(if {
+                                let tagcase_ = frozen;
+                                match *tagcase_ {
+                                    Ty::TyUnit() => {
+                                        false
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        true
+                                    }
+                                }
+                            } {
+                                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()))
+                            } else {
+                                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())))
+                            }, es), note_types(s, cv_file(v), cv_pos(v), string_append(if string_eq_p(h, str_lit("rcons")) {
                                 str_lit("rheld-cons@")
                             } else {
                                 str_lit("rheld-ref@")
@@ -10844,8 +10978,8 @@ pub mod expressions {
                                         }
                                     }
                                 };
-                                let pt = ty_data(str_lit("%pairof"), kayak_rt::heap_cons(t1, kayak_rt::heap_cons(t2, kayak_rt::heap_cons(ty_rconst(str_lit("%fresh")), kayak_rt::nil()))));
-                                return res(pt, effs_union(kayak_rt::heap_cons(str_lit("alloc:%fresh"), kayak_rt::nil()), effs_union(es1, es2)), if general_pair_p(s2, pt) {
+                                let pt = ty_data(str_lit("%pairof"), kayak_rt::heap_cons(t1, kayak_rt::heap_cons(t2, kayak_rt::heap_cons(ty_rconst(str_lit("acyclic")), kayak_rt::nil()))));
+                                return res(pt, effs_union(kayak_rt::heap_cons(str_lit("alloc:acyclic"), kayak_rt::nil()), effs_union(es1, es2)), if general_pair_p(s2, pt) {
                                     note_fact(s2, cv_file(v), cv_pos(v), str_lit("value-cons"))
                                 } else {
                                     s2
@@ -11039,7 +11173,7 @@ pub mod expressions {
                         let tagcase_ = named_instance(v, s, sc);
                         match *tagcase_ {
                             Inst::Inst(t, s, regions, effects) => {
-                                return cwcc_fresh_masked(v, h, wher, place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), kinds_held(v, sc, from, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                                return cwcc_fresh_masked(v, h, wher, place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, sc, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), kinds_held(v, sc, from, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                                     let tagcase_ = walk(s, car(expected));
                                     match *tagcase_ {
                                         Ty::TyMeta(k) => {
@@ -11327,38 +11461,76 @@ pub mod expressions {
     }
 
     /// A poly's call: a region binder its arguments and what its place
-    /// expects did not say made fresh, as FX-26 makes it (its
-    /// `default_regions`): a list made by `cons` and found by itself is at a
-    /// region of its own, not one a later use may choose.
-    pub fn regions_freshened(v: &'static Cv, h: Str, wher: Str, regions: List<i64>, r: &'static Res) -> &'static Res {
+    /// expects did not say, as FX-26 settles it (its `default_regions`):
+    /// `acyclic` where the poly only makes data there, pairs allocated and
+    /// read, built and never written (C281; Fixpt's e4af8997, Heist's
+    /// request); else a region of its own, `%fresh`, one a later use may
+    /// not choose.
+    pub fn regions_freshened(v: &'static Cv, h: Str, wher: Str, sc: &'static Scheme, regions: List<i64>, r: &'static Res) -> &'static Res {
         let tagcase_ = r;
         match *tagcase_ {
             Res::Res(t, es, s) => {
+                let binders = {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tvars, u) => {
+                            region_binders(tvars)
+                        }
+                    }
+                };
+                let keep = {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tvars, u) => {
+                            not_only_data(u)
+                        }
+                    }
+                };
+                let named = the::<Strings>(reverse(binders));
                 res(t, es, {
-                    let go__knot = knot::<&'static (dyn Fn(&'static St, List<i64>) -> &'static St + Send + Sync)>();
-                    let go = lambda2s(move |mut s: &'static St, mut ks: List<i64>| {
+                    let go__knot = knot::<&'static (dyn Fn(&'static St, List<i64>, Strings) -> &'static St + Send + Sync)>();
+                    let go = lambda3s(move |mut s: &'static St, mut ks: List<i64>, mut ns: Strings| {
                         loop {
                             if null_p(ks) {
                                 return s;
                             } else {
-                                (s, ks) = ({
+                                (s, ks, ns) = ({
                                     let tagcase_ = walk(s, ty_meta(car(ks)));
                                     match *tagcase_ {
                                         Ty::TyMeta(k) => {
-                                            solve(s, k, ty_rconst(str_lit("%fresh")))
+                                            solve(s, k, ty_rconst(if null_p(ns) {
+                                                str_lit("%fresh")
+                                            } else if {
+                                                let tagcase_ = sc;
+                                                match *tagcase_ {
+                                                    Scheme::Scheme(tvars, u) => {
+                                                        string_member_p(string_append(str_lit("%place "), car(ns)), tvars)
+                                                    }
+                                                }
+                                            } {
+                                                str_lit("@heap")
+                                            } else if string_member_p(car(ns), keep) {
+                                                str_lit("%fresh")
+                                            } else {
+                                                str_lit("acyclic")
+                                            }))
                                         }
                                         _ => {
                                             let other = tagcase_;
                                             s
                                         }
                                     }
-                                }, cdr(ks));
+                                }, cdr(ks), if null_p(ns) {
+                                    ns
+                                } else {
+                                    cdr(ns)
+                                });
                                 continue;
                             }
                         }
                     });
                     go__knot.set(go);
-                    go(s, regions)
+                    go(s, regions, named)
                 })
             }
         }

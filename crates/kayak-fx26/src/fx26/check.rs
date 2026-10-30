@@ -9187,6 +9187,16 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
     }
 }
 
+/// Frozen data's region, `(acyclic 'p)`; the heap's, `acyclic` or `const`
+/// (C281: a place nothing settled is the heap).
+pub fn frozen_region_string(kind: Str, place: Str) -> Str {
+    if string_eq_p(place, str_lit("@heap")) {
+        kind
+    } else {
+        string_append(str_lit("("), string_append(kind, string_append(str_lit(" "), string_append(place, str_lit(")")))))
+    }
+}
+
 pub fn region_string(s: &'static St, r: &'static Ty) -> Str {
     let tagcase_ = walk(s, r);
     match *tagcase_ {
@@ -9201,7 +9211,7 @@ pub fn region_string(s: &'static St, r: &'static Ty) -> Str {
         }
         Ty::TyData(d, args) => {
             if string_eq_p(d, str_lit("%frozen")) {
-                string_append(str_lit("("), string_append(region_string(s, car(args)), string_append(str_lit(" "), string_append(region_string(s, car(cdr(args))), str_lit(")")))))
+                frozen_region_string(region_string(s, car(args)), region_string(s, car(cdr(args))))
             } else {
                 str_lit("?")
             }
@@ -9329,6 +9339,9 @@ pub fn resolve_atom(s: &'static St, x: Str) -> Str {
         let r = atom_region(x);
         if char_eq_p(string_ref_i64(r, 0i64), '?') {
             string_append(atom_kind(x), region_string(s, ty_meta(meta_number(r))))
+        } else if (frozen_place_p(r) && char_eq_p(string_ref_i64(frozen_place_of(r), 0i64), '?')) {
+            // Frozen data of a place not solved when the atom was made (C281).
+            string_append(atom_kind(x), frozen_region_string(frozen_place_kind(r), region_string(s, ty_meta(meta_number(frozen_place_of(r))))))
         } else {
             x
         }
@@ -9963,6 +9976,102 @@ pub fn fits_shapes_of_names() -> Strings {
     })
 }
 
+// Frozen data covariant in the order of lifetimes (C281; Fixpt's 55d130bd,
+// kayak's request): data at `(const a)` fits where `(const b)` is expected,
+// and `(acyclic a)` where `(acyclic b)` or `(const b)` is, if place `a`
+// outlives place `b`; the heap, `acyclic` and `const`, outlives every
+// place. Only frozen regions: a writable one stays invariant, as `&mut`'s
+// lifetime does in Rust, where `&'static T` is an `&'a T`.
+/// A frozen region's kind and place, the heap's `%heap`; none for any other,
+/// or one whose place is not solved yet.
+pub fn frozen_at(s: &'static St, r: &'static Ty) -> Strings {
+    let tagcase_ = walk(s, r);
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            if (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const"))) {
+                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("%heap"), kayak_rt::nil())))
+            } else {
+                nil::<Str>()
+            }
+        }
+        Ty::TyData(d, args) => {
+            if (string_eq_p(d, str_lit("%frozen")) && i64_eq(size(args), 2i64)) {
+                let (k, p) = ({
+                    let tagcase_ = walk(s, car(args));
+                    match *tagcase_ {
+                        Ty::TyRconst(n) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }, {
+                    let tagcase_ = walk(s, car(cdr(args)));
+                    match *tagcase_ {
+                        Ty::TyVar(n) => {
+                            n
+                        }
+                        Ty::TyRconst(n) => {
+                            if string_eq_p(n, str_lit("@heap")) {
+                                str_lit("%heap")
+                            } else {
+                                str_lit("")
+                            }
+                        }
+                        Ty::TyMeta(m) => {
+                            str_lit("?")
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                });
+                if (string_eq_p(k, str_lit("")) || string_eq_p(p, str_lit(""))) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::heap_cons(k, kayak_rt::heap_cons(p, kayak_rt::nil())))
+                }
+            } else {
+                nil::<Str>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
+/// Whether `x` comes before `y` in `ls`, the variables in scope newest
+/// first: bound inside it.
+pub fn newer_than_p(mut x: Str, mut y: Str, mut ls: Strings) -> bool {
+    loop {
+        if null_p(ls) {
+            return false;
+        } else if string_eq_p(car(ls), y) {
+            return false;
+        } else if string_eq_p(car(ls), x) {
+            return string_member_p(y, cdr(ls));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// Whether region `a` fits where frozen region `e` is expected by covariance:
+/// both frozen, `a`'s kind no weaker, its place outliving `e`'s.
+pub fn frozen_fits_p(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> bool {
+    let (fa, fe) = (frozen_at(s, a), frozen_at(s, e));
+    (not(null_p(fa)) && not(null_p(fe)) && {
+        let (ka, pa, ke, pe) = (car(fa), car(cdr(fa)), car(fe), car(cdr(fe)));
+        (not(string_eq_p(pa, str_lit("?"))) && (string_eq_p(ka, ke) || (string_eq_p(ka, str_lit("acyclic")) && string_eq_p(ke, str_lit("const")))) && (string_eq_p(pa, str_lit("%heap")) || string_eq_p(pa, pe) || (not(string_eq_p(pe, str_lit("%heap"))) && not(string_eq_p(pe, str_lit("?"))) && newer_than_p(string_append(str_lit("%place "), pe), string_append(str_lit("%place "), pa), cv_tvars(v)))))
+    })
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
@@ -10034,7 +10143,9 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    if (generative_p(v, walk(s, a)) && generative_p(v, walk(s, e)) && not(string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e)))) && not(null_p(lemma_for(v, s, walk(s, a), walk(s, e), lemmas_of(cv_binds(v)))))) {
+    if frozen_fits_p(v, s, a, e) {
+        s
+    } else if (generative_p(v, walk(s, a)) && generative_p(v, walk(s, e)) && not(string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e)))) && not(null_p(lemma_for(v, s, walk(s, a), walk(s, e), lemmas_of(cv_binds(v)))))) {
         // Two generative types a lemma relates (C185; Fixpt's `lemma.rs`): its
         // hypotheses, instantiated to fit, each shown, assuming what is
         // being shown (a fact), so that a lemma used in its own hypotheses
@@ -11866,6 +11977,109 @@ pub fn finite_may_p(n: Str, t: &'static Ty) -> bool {
     }
 }
 
+/// A scheme's region binders, in order, its binders' marks left out.
+pub fn region_binders(mut tvars: Strings) -> Strings {
+    loop {
+        if (null_p(tvars) || has_prefix_p(car(tvars), str_lit("%"))) {
+            return nil::<Str>();
+        } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
+            return kayak_rt::heap_cons(car(tvars), region_binders(cdr(tvars)));
+        } else {
+            tvars = cdr(tvars);
+            continue;
+        }
+    }
+}
+
+// Data alone, as Fixpt's `not_only_data_regions` (C281): the region
+// variables a type uses other than as a pair's region, or in an effect
+// other than `alloc` and `read`: a reference's, an array's, a bloblet's, a
+// tag's, an I-cell's, one written. A region binder a call leaves unsolved
+// that is not among them is `acyclic`.
+pub fn storage_kinds() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("%flat-array"), kayak_rt::nil())))))))))
+    })
+}
+
+pub fn not_only_data(mut t: &'static Ty) -> Strings {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                return onto(region_vars_of(r), not_only_data(e));
+            }
+            Ty::TyFlat(e, r) => {
+                return onto(region_vars_of(r), not_only_data(e));
+            }
+            Ty::TyTag(a, h, d, r) => {
+                return onto(onto(region_vars_of(r), written_regions(d)), onto(not_only_data(a), not_only_data(h)));
+            }
+            Ty::TyProc(es, ps, r) => {
+                return onto(written_regions(es), onto(not_only_data(r), concat(map(&not_only_data, ps))));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return concat(map(&not_only_data, ts));
+            }
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%pairof")) {
+                    if i64_eq(size(args), 3i64) {
+                        return onto(not_only_data(car(args)), not_only_data(car(cdr(args))));
+                    } else {
+                        return nil::<Str>();
+                    }
+                } else if string_member_p(d, storage_kinds()) {
+                    return concat(map(lambda1s(move |x: &'static Ty| {
+                        onto(region_vars_of(x), not_only_data(x))
+                    }), args));
+                } else {
+                    return concat(map(&not_only_data, args));
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return nil::<Str>();
+            }
+        }
+    }
+}
+
+pub fn region_vars_of(r: &'static Ty) -> Strings {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            if char_eq_p(string_ref_i64(n, 0i64), '\'') {
+                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }
+        Ty::TyData(d, args) => {
+            concat(map(&region_vars_of, args))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
+/// The regions of effects `es`' atoms other than `alloc` and `read`.
+pub fn written_regions(es: Strings) -> Strings {
+    concat(map(lambda1s(move |a: Str| {
+        if (region_atom_p(a) && not(string_member_p(atom_kind(a), kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::heap_cons(str_lit("read:"), kayak_rt::nil()))))) {
+            the::<Strings>(kayak_rt::heap_cons(atom_region(a), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), es))
+}
+
 // A scheme's instance: each variable an inference variable; those for
 // regions are kept, so that a call's effect can name the regions found.
 pub enum Inst {
@@ -12719,16 +12933,48 @@ pub fn region_of(v: &'static Cv, s: &'static St, r: &'static Ty) -> &'static Res
     }
 }
 
+/// Effects, an atom on frozen data of the heap place, `(acyclic @heap)`, on
+/// the heap's, `acyclic` (C281).
+pub fn heap_frozen(es: Strings) -> Strings {
+    map(lambda1s(move |a: Str| {
+        if (region_atom_p(a) && frozen_place_p(atom_region(a)) && string_eq_p(frozen_place_of(atom_region(a)), str_lit("@heap"))) {
+            string_append(atom_kind(a), frozen_place_kind(atom_region(a)))
+        } else {
+            a
+        }
+    }), es)
+}
+
 /// A call's latent effect, its regions' inference variables replaced by
-/// the regions the arguments and the type expected found, or `acyclic`.
+/// the regions the arguments and the type expected found, or `acyclic`;
+/// a place's, one whose frozen data the effect touches, `(acyclic ?k)`,
+/// the heap, its frozen data the heap's (C281).
 pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i64>) -> &'static Res {
     if null_p(regions) {
         res(ty_unit(), es, s)
     } else {
+        let k = meta_name(car(regions));
+        let place_p = any_p(lambda1s(move |a: Str| {
+            (region_atom_p(a) && frozen_place_p(atom_region(a)) && string_eq_p(frozen_place_of(atom_region(a)), k))
+        }), es);
+        let s = if place_p {
+            let tagcase_ = walk(s, ty_meta(car(regions)));
+            match *tagcase_ {
+                Ty::TyMeta(m) => {
+                    solve(s, m, ty_rconst(str_lit("@heap")))
+                }
+                _ => {
+                    let other = tagcase_;
+                    s
+                }
+            }
+        } else {
+            s
+        };
         let tagcase_ = region_of(v, s, ty_meta(car(regions)));
         match *tagcase_ {
             Res::Res(r, rn, s) => {
-                name_regions(v, s, rename_atoms(es, meta_name(car(regions)), region_string(s, r)), cdr(regions))
+                name_regions(v, s, heap_frozen(rename_atoms(es, k, region_string(s, r))), cdr(regions))
             }
         }
     }

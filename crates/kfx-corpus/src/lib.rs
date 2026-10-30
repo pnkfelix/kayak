@@ -28,6 +28,11 @@ pub mod bloblets;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/branches-cons-list.rs"]
+pub mod branches_cons_list;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/bytes.rs"]
 pub mod bytes;
 
@@ -125,6 +130,11 @@ pub mod flat_sums;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/floats.rs"]
 pub mod floats;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/fresh-list-region.rs"]
+pub mod fresh_list_region;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -506,6 +516,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("bignum", bignum::main),
     ("bloblet-generic", bloblet_generic::main),
     ("bloblets", bloblets::main),
+    ("branches-cons-list", branches_cons_list::main),
     ("bytes", bytes::main),
     ("bytes-region", bytes_region::main),
     ("caller-place", caller_place::main),
@@ -526,6 +537,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("fixed", fixed::main),
     ("flat-sums", flat_sums::main),
     ("floats", floats::main),
+    ("fresh-list-region", fresh_list_region::main),
     ("frozen-shared", frozen_shared::main),
     ("generative", generative::main),
     ("hashes", hashes::main),

@@ -1,0 +1,6 @@
+"A list a call makes, found by itself: once at a region of its own, so not
+ acyclic, as FX-26 had it; since its e4af8997, `acyclic`, built and never
+ written, which is what a later use wants (C281)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define h (poly ((a type)) (subr pure ((listof a acyclic)) i64)) (lambda (fs) 0))
+(define main (subr kfx () string) (lambda () (i64->string (h (cons "x" nil)))))

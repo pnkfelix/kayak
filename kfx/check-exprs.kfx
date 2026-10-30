@@ -377,12 +377,13 @@
       (define-rec
         (freshened (subr kfx (st ty) st)
           (lambda (s t)
-            "`s`, a list's region in `t` that nothing solved made fresh, as FX-26
-             makes it where it finds a value by itself."
+            "`s`, a list's region in `t` that nothing solved made `acyclic`, as
+             FX-26 settles one where it finds a value by itself: a list nothing
+             places is made and never written (C281; Fixpt's e4af8997)."
             (tagcase (walk s t)
               (ty-list (e r)
                 (let ((s (freshened s e)))
-                  (tagcase (walk s r) (ty-meta (k) (solve s k (ty-rconst "%fresh"))) (else other s))))
+                  (tagcase (walk s r) (ty-meta (k) (solve s k (ty-rconst "acyclic"))) (else other s))))
               (ty-proc (es ps r) (freshened s r))
               (else other s)))))
 
@@ -1987,8 +1988,9 @@
         (lambda (v e r)
           "Compound expression `e`'s result, its effect masked (C182; FX-87's,
            Fixpt's `mask`): an atom on a region no name in `e` has a type that
-           mentions, kept only if it allocates, or transfers control, at a
-           region its value's type mentions. Globals, frozen data, effect
+           mentions, kept only if it reads, writes, allocates, or transfers
+           control, at a region its value's type mentions (C281; only
+           allocation, on a place's frozen data). Globals, frozen data, effect
            variables, a region not solved yet, never masked; nor anything
            where a name's type, or the value's, could hold storage it does not
            say (a type not known yet, a generative or abstract type)."
@@ -2015,7 +2017,14 @@
                                                    (or (not (maskable-atom? x))
                                                        (string-member? (atom-region x) seen)
                                                        (and (string-member? (atom-region x) out)
-                                                            (string-member? (atom-kind x) (list "alloc:" "goto:" "comefrom:"))))))
+                                                            ;; Reads and writes too, as Lucassen and Gifford's
+                                                            ;; rule keeps them (Fixpt's 61a2e792, C281): a write
+                                                            ;; dropped there could make `acyclic` data cyclic.
+                                                            ;; Only `alloc` on a place's frozen data.
+                                                            (string-member? (atom-kind x)
+                                                                            (if (frozen-place? (atom-region x))
+                                                                                (list "alloc:")
+                                                                                (list "read:" "write:" "alloc:" "goto:" "comefrom:")))))))
                                                es))
                                  (dropped (filter (lambda ((a string)) (not (string-member? a kept))) es)))
                             (if (null? dropped)
@@ -2709,7 +2718,8 @@
                          "Its first element's type, a `nat`'s an `int`: FX-26's is that
                           element's own `(nat v)`, which no other `nat` is."
                          ;; A `nat` element's list is of `nat`s, as Fixpt finds it (C159).
-                         (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))) "list"))
+                         ;; `acyclic`, as Fixpt's `list`, a poly's call, has it (C281).
+                         (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))) "list"))
                 ((control-form? h) (body-form v s h xs nil))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
                 ((and (blob-form? h) (null? (scope-bind h v))) (blob-form v s h xs nil))
@@ -2838,8 +2848,6 @@
            whose last parts give the value; `expected` is the type, if known."
           (cond ((not (well-formed? h xs))
                  (refuse v (string-append "a (" (string-append h " ...) not of the form FX-26 has"))))
-                ((and (null? expected) (pairs-mixed? h xs))
-                 (refuse v (string-append "the branches are a pair `cons` makes, a (pairof ...), and what is not one: FX-26 joins no (pairof ...) with a (listof ...); write the type, (the (listof ...) (" (string-append h " ...))"))))
                 ((or (string=? h "confirm-nat") (string=? h "confirm-length") (string=? h "acyclic"))
                  (confirm-form v s h xs expected))
                 ((string=? h "if")
@@ -3028,11 +3036,30 @@
           "Branches of one type: the first found, if none is expected, and the
            rest checked against it."
           (tagcase (body v s (list (car branches)) expected)
-            (res (t es s)
+            (res (t0 es s)
+              (let ((t (if (and (null? expected) (not (null? (cdr branches)))) (pair-as-list s t0) t0)))
               (if (null? (cdr branches))
                   (res t es s)
                   (tagcase (arms v s (cdr branches) (next-expected s t expected))
-                    (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))
+                    (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected))))))))))
+
+      (pair-as-list (subr kfx (st ty) ty)
+        (lambda (s t)
+          "A pair whose tail is a list of its head's type at its own region, as
+           that list, where branches are joined (C281; Fixpt's 5b0d032a): so
+           `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was."
+          (tagcase (walk s t)
+            (ty-data (d args)
+              (if (and (string=? d "%pairof") (i64= (size args) 3))
+                  (tagcase (walk s (car (cdr args)))
+                    (ty-list (y r)
+                      (if (and (string=? (show-ty s (zonk s (car args))) (show-ty s (zonk s y)))
+                               (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s r))))
+                          (ty-list y r)
+                          t))
+                    (else other t))
+                  t))
+            (else other t))))
 
       (vlambda-form (subr kfx (cv st sexps tys) res)
         (lambda (v s xs given)
@@ -3535,6 +3562,23 @@
                           (ty-data (d args) (if (string=? d "%place") (car args) (refuse v (string-append n " is no place"))))
                           (else other (refuse v (string-append n " is no place"))))))))))))
 
+      (frozen-in-place (subr kfx (cv st ty tys) ty)
+        (lambda (v s place expected)
+          "Where a list is expected at a frozen region of the place given, `(acyclic
+           p)` or `(const p)`: that region, which `rcons` may make its pair at,
+           frozen as it is made, its allocation the place's (C281; Fixpt's
+           55d130bd). Else `unit`, for none."
+          (let ((said (if (null? expected) (ty-unit)
+                          (tagcase (walk s (car expected)) (ty-list (e r) (walk s r)) (else other (ty-unit)))))
+                (p (tagcase (walk s place) (ty-var (n) n) (else other ""))))
+            (tagcase said
+              (ty-data (d args)
+                (if (and (string=? d "%frozen") (i64= (size args) 2) (not (string=? p ""))
+                         (tagcase (walk s (car (cdr args))) (ty-var (n) (string=? n p)) (else other #f)))
+                    said
+                    (ty-unit)))
+              (else other (ty-unit))))))
+
       (region-within (subr kfx (cv st ty tys) ty)
         (lambda (v s place expected)
           "The region an allocation in `place` makes at (C40): the one the type
@@ -3604,14 +3648,19 @@
                  (let ((r (place-of v s (car args))))
                    (tagcase (fresh s)
                      (res (m es0 s)
-                       (let* ((at (region-within v s r expected))
+                       (let* ((frozen (if (string=? h "rcons") (frozen-in-place v s r expected) (ty-unit)))
+                              (at (if (tagcase frozen (ty-unit () #f) (else other #t)) frozen (region-within v s r expected)))
                               (made (if (string=? h "rcons") (ty-list m at) (ty-ref m at)))
                               (s (if (null? expected) s (fits v s made (car expected)))))
                          (tagcase (if (string=? h "rcons")
                                       (call-args v s (cdr args) (list m (ty-list m at)) nil)
                                       (call-args v s (cdr args) (list m) nil))
                            (res (u es s)
-                             (res made (effs-union (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at))) es)
+                             (res made (effs-union (if (tagcase frozen (ty-unit () #f) (else other #t))
+                                                       ;; Made frozen in the place: an allocation in it (C281).
+                                                       (the strings (list (string-append "alloc:" (region-string s r))))
+                                                       (the strings (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at)))))
+                                                   es)
                                   (note-types s (cv-file v) (cv-pos v)
                                               (string-append (if (string=? h "rcons") "rheld-cons@" "rheld-ref@") (region-string s r))
                                               (list m)))))))))))))
@@ -4833,8 +4882,10 @@
                            ;; list's (KFX's lists are typed, C257); the pair
                            ;; at a region of its own.
                            (let* ((s2 (tagcase (walk s2b t2) (ty-list (e r) (fits v s2b t1 e)) (else other s2b)))
-                                  (pt (ty-data "%pairof" (list t1 t2 (ty-rconst "%fresh")))))
-                             (res pt (effs-union (list "alloc:%fresh") (effs-union es1 es2))
+                                  ;; `acyclic`, made and never written, as Fixpt's `cons`,
+                                  ;; a poly's call, has it (C281).
+                                  (pt (ty-data "%pairof" (list t1 t2 (ty-rconst "acyclic")))))
+                             (res pt (effs-union (list "alloc:acyclic") (effs-union es1 es2))
                                   (if (general-pair? s2 pt) (note-fact s2 (cv-file v) (cv-pos v) "value-cons") s2))))))))
                   ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
                   ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
@@ -4923,7 +4974,7 @@
                         (inst (t s regions effects)
                           (cwcc-fresh-masked v h wher
                           (place-needed v h wher sc from
-                          (regions-freshened v h wher regions
+                          (regions-freshened v h wher sc regions
                           (static-instance v h wher (binder-metas from (st-next s) (onto effects regions))
                           (kinds-held v sc from (poly-settled v h wher args (binder-metas from (st-next s) (onto effects regions)) (result-only? s t (binder-metas from (st-next s) (onto effects regions)))
                           (void-call v (and (string=? h "error") (string=? wher "prim"))
@@ -5062,22 +5113,34 @@
                   (refuse v (string-append "a call of " (string-append h " at a type over a region with a lifetime, where its Rust type parameter is 'static (C42)")))
                   r)))))
 
-      (regions-freshened (subr kfx (cv string string (listof i64 acyclic) res) res)
-        (lambda (v h wher regions r)
+      (regions-freshened (subr kfx (cv string string scheme (listof i64 acyclic) res) res)
+        (lambda (v h wher sc regions r)
           "A poly's call: a region binder its arguments and what its place
-           expects did not say made fresh, as FX-26 makes it (its
-           `default_regions`): a list made by `cons` and found by itself is at a
-           region of its own, not one a later use may choose."
+           expects did not say, as FX-26 settles it (its `default_regions`):
+           `acyclic` where the poly only makes data there, pairs allocated and
+           read, built and never written (C281; Fixpt's e4af8997, Heist's
+           request); else a region of its own, `%fresh`, one a later use may
+           not choose."
           (tagcase r
             (res (t es s)
-              (res t es
-                   (letrec ((go (subr kfx (st (listof i64 acyclic)) st)
-                                  (lambda (s ks)
-                                    (if (null? ks)
-                                        s
-                                        (go (tagcase (walk s (ty-meta (car ks))) (ty-meta (k) (solve s k (ty-rconst "%fresh"))) (else other s))
-                                            (cdr ks))))))
-                     (go s regions)))))))
+              (let* ((binders (tagcase sc (scheme (tvars u) (region-binders tvars))))
+                     (keep (tagcase sc (scheme (tvars u) (not-only-data u))))
+                     ;; `regions` the binders' variables, the last binder's first.
+                     (named (the strings (reverse binders))))
+                (res t es
+                     (letrec ((go (subr kfx (st (listof i64 acyclic) strings) st)
+                                    (lambda (s ks ns)
+                                      (if (null? ks)
+                                          s
+                                          (go (tagcase (walk s (ty-meta (car ks)))
+                                                (ty-meta (k) (solve s k (ty-rconst (cond ((null? ns) "%fresh")
+                                                                                         ;; A place nothing settles, the heap.
+                                                                                         ((tagcase sc (scheme (tvars u) (string-member? (string-append "%place " (car ns)) tvars))) "@heap")
+                                                                                         ((string-member? (car ns) keep) "%fresh")
+                                                                                         (else "acyclic")))))
+                                                (else other s))
+                                              (cdr ks) (if (null? ns) ns (cdr ns)))))))
+                       (go s regions named))))))))
 
       (place-needed (subr kfx (cv string string scheme i64 res) res)
         (lambda (v h wher sc from r)

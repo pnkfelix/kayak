@@ -7878,3 +7878,44 @@ name of that kind as agreeing for the list (not dropped by `--bless`, not
 `engine-programs.py` keeps `was & elsewhere`. On the Mac: 2719 tests
 passed; tier 1, 430 agree, 0 differ, 9 another machine's. Whether this
 is the right rule is TODO §17's, to look at with the user.
+||||||| parent of 6fc82507 (FX-26's three new typing rules, in kayak's checker (C281))
+
+## C281. FX-26's three new typing rules, in kayak's checker (2026-10-30)
+
+The user: kayak should follow FX-26's changes in its own FX-26 compiler,
+not only keep its ports from drifting; "Go for it", the typing rules
+first. All three are in the checker that kfx and the engine share.
+- **Masking keeps reads and writes on the result's regions** (Fixpt's
+  61a2e792, Heist's report). `masked-res` kept only `alloc`, `goto` and
+  `comefrom` on a region the value's type mentions. It now keeps `read`
+  and `write` there too (Lucassen and Gifford's rule); only `alloc` on a
+  place's frozen data. A procedure that ties what it makes into a cycle
+  must say `(write r)`, and is refused where it is used at `acyclic`
+  (`regions/result-write-is-kept.fx`, `result-write-at-acyclic.fx`,
+  Fixpt's verdicts).
+- **Frozen data covariant in the order of lifetimes** (55d130bd, kayak's
+  request). `fits` takes a frozen region where one is expected whose kind
+  is no stricter (`acyclic` fits `const`) and whose place it outlives. The
+  heap outlives every place, and a place outlives those bound inside it
+  (`frozen-fits?`, by the order of `%place` marks in scope). Writable
+  regions stay as they were. `rcons` makes its pair at a frozen region of
+  its own place when one is expected, the allocation the place's
+  (`frozen-in-place`). Fixpt's seven programs (`regions/frozen-covariant*`,
+  `terminate/frozen-place-walk`) get its verdicts; the two accepted give
+  its types, but for how a datatype is printed.
+- **A list nothing places is `acyclic`** (e4af8997, Heist's request). A
+  `poly`'s region binder a call leaves unsolved is `acyclic` where the
+  `poly` uses it only as a pair's region, allocated and read
+  (`not-only-data`, as Fixpt's `not_only_data_regions`); else, as before,
+  a region of its own (`%fresh`). A place binder nothing settles is the
+  heap, its frozen data `acyclic` (`name-regions`, `heap-frozen`). A
+  bare `cons`'s and `list`'s region, and a list's found by itself
+  (`freshened`), are `acyclic` too. C123's refusal of branches mixing a
+  `cons` pair with a list is gone: the pair, `acyclic` too, joins the
+  list (`fits`'s pair-below-list), and a first branch that is such a pair
+  is taken as that list (`pair-as-list`, as Fixpt's 5b0d032a shows one).
+  Still refused, where Fixpt accepts: a first branch whose tail is itself
+  a pair, `(if b (cons 1 (cons 2 nil)) xs)`. `modules/unplaced-lists-are-
+  acyclic.fx` and `list-joined-with-nil.fx` give Fixpt's lines, and
+  `kfx-stricter/branches-cons-list` and `fresh-list-region` are no longer
+  stricter.
