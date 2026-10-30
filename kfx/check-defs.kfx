@@ -1406,7 +1406,7 @@
                                                             params)))
                                               (third xs)))))
                        ;; What it abbreviates, kept for printing a type by its name
-                       ;; (C286): read here, in its own scope, so never read again.
+                       ;; (C289): read here, in its own scope, so never read again.
                        (if (null? params)
                            (with-binds v (list (bind (string-append "%shows " name) (scheme nil body) "mark")))
                            v)))))
@@ -1742,7 +1742,7 @@
                 (s (if (lambda-form? e) s (constant-made v s e es t))))
             (let ((s (if (and (has-prefix? name "%run-")
                               (not (any? (lambda ((x string)) (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x) (has-prefix? x "read:")))) es)))
-                         ;; An expression among a module's items (C283): run for
+                         ;; An expression among a module's items (C286): run for
                          ;; what it does, as Fixpt has it; one that only reads, refused.
                          (refuse v "an expression among a module's items is run for what it does as the module is made, and this one only reads")
                          s)))
@@ -1817,7 +1817,7 @@
         (lst (xs file line pos)
           (cond ((head-is? t "select") t)
                 ((or (head-is? t "productof") (head-is? t "sumof"))
-                 "A field's label is no type (C285): its type alone qualified."
+                 "A field's label is no type (C288): its type alone qualified."
                  (lst (cons (car xs)
                             (map (lambda ((fd sexp))
                                    (tagcase fd
@@ -2222,7 +2222,7 @@
                       (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (cdr (cdr xs))))))
               (cond
                 ((and (or (head-is? e "let") (head-is? e "let*")) (not (null? (cdr xs))))
-                 "A module a local `let` binds (C285): known to a `with` of it in
+                 "A module a local `let` binds (C288): known to a `with` of it in
                   the body, as an item's is, so its names are its own."
                  (let ((mods (concat (map (lambda ((b sexp))
                                             (tagcase b
@@ -2235,7 +2235,7 @@
                    (concat (map (lambda ((x sexp)) (refs-in x names (onto mods forms) bs)) (cdr xs)))))
                 ((head-is? e "module")
                  "A module made here: its items' own names are its, not the outer
-                  items' (C285)."
+                  items' (C288)."
                  (let ((own (concat (map item-names (cdr xs)))))
                    (concat (map (lambda ((x sexp)) (refs-in x (if (null? own) names (nset-without names own)) forms bs)) (cdr xs)))))
                 (else (concat (map (lambda ((x sexp)) (refs-in x names forms bs)) xs))))))
@@ -2867,7 +2867,7 @@
   (lambda (e)
     "What `e` loads: `(load-module \"p\")`, as a list of its path and no
      arguments; a file of `module-parameters` made, of its path, the kinds'
-     arguments, then the modules' (C283): `((proj (load-module \"p\") k
+     arguments, then the modules' (C286): `((proj (load-module \"p\") k
      ...) m ...)`, `((load-module \"p\") m ...)`, `((load-module \"p\"))`, a
      file of none; else nothing."
     (tagcase e
@@ -2950,7 +2950,7 @@
 (define-rec
   (substituted (subr kfx (sexp string sexp) sexp)
     (lambda (e from to)
-      "`e`, each name `from` in it `to`, a name or a type written (C283)."
+      "`e`, each name `from` in it `to`, a name or a type written (C286)."
       (tagcase e
         (sym (n f p) (if (string=? n from) to e))
         (lst (xs f l p) (if (head-is? e "quote") e (lst (map (lambda ((x sexp)) (substituted x from to)) xs) f l p)))
@@ -2973,10 +2973,10 @@
 (define kind-parameter? (subr kfx (sexp) bool)
   (lambda (b)
     "A `module-parameters` binder of a kind, `(r region)`, `(t type)`, `(e
-     effect)`; not a module's, `(m T)` or `(m T qualified)` (C283)."
+     effect)`; not a module's, `(m T)` or `(m T qualified)` (C286)."
     (tagcase (second (items b)) (sym (n f p) #t) (else other #f))))
 
-"An expression among a module's items (C283; Fixpt's 6447f9b0, Heist's): a
+"An expression among a module's items (C286; Fixpt's 6447f9b0, Heist's): a
  form whose head is none an item's is run for what it does as the module
  is made, in order, `(hide (define %run-N form))`, numbered from 0 in each
  module, a `hide`'s among them."
@@ -3017,7 +3017,7 @@
   (lambda (forms args path)
     "A loaded file's items: of a file of `module-parameters`, the rest, each
      kind's binder the argument given, each module's the module given, its
-     names included, hidden, unless it is `qualified` (C283; FX-26's
+     names included, hidden, unless it is `qualified` (C286; FX-26's
      `(plambda (kinds) (lambda (modules) (module (hide (include m) …) item
      …)))`); `(module-parameters ())`, a file of none. Of any other, all,
      given nothing."
@@ -3045,7 +3045,7 @@
 (define module-arguments (subr kfx (sexps sexps) strings)
   (lambda (forms args)
     "Of a loaded file of `module-parameters`, the names of the modules it is
-     given, which it sees as well as the standard environment (C283)."
+     given, which it sees as well as the standard environment (C286)."
     (if (and (not (null? forms)) (head-is? (car forms) "module-parameters"))
         (let ((n (size (filter kind-parameter? (items (second (items (car forms))))))))
           (concat (map (lambda ((a sexp)) (tagcase a (sym (m f p) (the strings (list m))) (else other nil))) (sexps-after args n))))
@@ -3140,7 +3140,7 @@
                                   (spliced-to (sym name f p) (onto (spliced-defs inner) (list made))
                                               (cons (keyed key name) (spliced-known inner)))))))))))
              ((and (head-is? e "load-moduleof") (i64> (size xs) 1) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
-              "A load's module's type (C283; FX-26's `load-moduleof`): the load it
+              "A load's module's type (C286; FX-26's `load-moduleof`): the load it
                names made, as any load is, and its module named, `(%module-made
                made--load--K)`."
               ;; Its arguments as a load's, kinds' then modules', which the file's
@@ -3194,7 +3194,7 @@
       "Each of `xs` spliced in turn, `done` those so far, reversed."
       (if (null? xs)
           (let* ((its0 (the sexps (reverse done)))
-                 ;; `(include LOAD)` (C285): the load's module included by its name,
+                 ;; `(include LOAD)` (C288): the load's module included by its name,
                  ;; as KFX includes a module, not the module that includes it.
                  (its (if (and (not (null? its0)) (sym-is? (car its0) "include") (not (null? (cdr its0))))
                           (the sexps (cons (car its0) (cons (included-name (second its0)) (cdr (cdr its0)))))

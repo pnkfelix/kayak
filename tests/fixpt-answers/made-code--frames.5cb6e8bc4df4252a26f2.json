@@ -24,19 +24,6 @@
 "err": [
 ""
 ]
-},
-{
-"by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
-],
-"code": 1,
-"out": [
-""
-],
-"err": [
-"fixpt: <programs>/made-code/frames.fx:33:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus (state delta)) (field-k-before-code 8))",
-""
-]
 }
 ]
 }

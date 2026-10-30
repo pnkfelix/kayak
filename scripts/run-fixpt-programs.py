@@ -196,7 +196,7 @@ def fixpt_values_run(binary, path, text, machine=None):
             return stated, None
         return None, "REFUSED: " + said[:200]
     # A type's definition Fixpt writes, `NAME = TYPE` (a module type a
-    # `define-type` names, C283), is no value.
+    # `define-type` names, C286), is no value.
     lines = [l for l in r.stdout.splitlines() if not l.startswith(";") and not re.match(r"^[^\s\"]+ = ", l)]
     values = []
     for head, count in forms(text):

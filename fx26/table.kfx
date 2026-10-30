@@ -193,7 +193,7 @@
         "%syscall-require" "%syscall-available?" "%syscall0" "%syscall1" "%syscall2" "%syscall3" "%syscall4"
         "%syscall5" "%syscall6"
         "read-byte" "read-bytes" "stdin-ready?" "terminal-raw" "terminal-restore" "terminal-size"
-        ;; Strings at a region (C282): written in place, a character's code a word.
+        ;; Strings at a region (C285): written in place, a character's code a word.
         "make-string" "string-set!" "string-fill!" "string-copy" "string-copy!" "rmake-string"))
 
 (define-rec

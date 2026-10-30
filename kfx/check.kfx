@@ -343,7 +343,7 @@
 (define label-of (subr kfx (sexp) string)
   (lambda (e)
     "A product's label or a sum's tag, as written: a name or a number. A
-     label is never a module's name for a type, `m..x` (C285): one so
+     label is never a module's name for a type, `m..x` (C288): one so
      qualified with the module's types, as a type is, is `x`."
     (tagcase e
       (sym (n at-file at-pos) (let ((after (after-dots n))) (if (string=? after "") n after)))
@@ -2794,7 +2794,7 @@
                  "A flat array's layout (C175): `(i64-flat)` and the others make one."
                  (ty-data "%flatlayout" (list (parse-type v tvars (second xs)))))
                 ((sym-is? (car xs) "stringof")
-                 "FX-26's strings at a region (C282; Fixpt's 41c0823f): `string` is
+                 "FX-26's strings at a region (C285; Fixpt's 41c0823f): `string` is
                   `(stringof const)`, and `(stringof acyclic)` is too."
                  (if (i64= (size xs) 2)
                      (let ((r (parse-region v tvars (second xs))))
@@ -2985,7 +2985,7 @@
                              (map (lambda ((n sexp)) (tagcase n (sym (m f p) m) (else other (refuse v "`restrict` names a module's names")))) (cdr (cdr xs)))
                              (second xs)))
                 ((and (sym-is? (car xs) "%module-made") (i64= (size xs) 2))
-                 "`(load-moduleof \"p\" ...)`, the load's module spliced (C283): the type
+                 "`(load-moduleof \"p\" ...)`, the load's module spliced (C286): the type
                   of that module as a value, as a module type by name is."
                  (ty-data (string-append "%module " (sym-name (second xs))) nil))
                 ((and (or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
@@ -3346,7 +3346,7 @@
   (as-mtype (subr kfx (cv ty) ty)
     (lambda (v t)
       "A module type named by a `define-type` (C24), as a module value's; a
-       load's, `(load-moduleof ...)`, its module's (C283)."
+       load's, `(load-moduleof ...)`, its module's (C286)."
       (tagcase t
         (ty-data (d args)
           (if (has-prefix? d "%module ")
@@ -3359,7 +3359,7 @@
         (else other t))))
   (restricted (subr kfx (cv ty strings sexp) ty)
     (lambda (v t names written)
-      "`(restrict T name ...)` (C283; Fixpt's, 2026-10-27): module type `T`
+      "`(restrict T name ...)` (C286; Fixpt's, 2026-10-27): module type `T`
        with only the values, effects and types named. An abstract type not
        named stays, unnamed, `%hidden:t`, so that a value of it may be taken
        and passed but the type not named; a description not named goes, its
@@ -3690,7 +3690,7 @@
                 ((string=? d "%app") (string-append "(" (string-append (show-ty s (car args)) (string-append " " (string-append (show-tys s (cdr args)) ")")))))
                 ((and (has-prefix? d "$") (null? args)) "A dependent parameter's type (C170)." (string-append "(select " (string-append (before-dots d) (string-append " " (string-append (after-dots d) ")")))))
                 ((and (has-prefix? d "$") (string-has? d ".."))
-                 "A dependent parameter's family, applied (C286): `((select $1 f) T ...)`, as Fixpt prints it."
+                 "A dependent parameter's family, applied (C289): `((select $1 f) T ...)`, as Fixpt prints it."
                  (string-append "((select " (string-append (before-dots d) (string-append " " (string-append (after-dots d) (string-append ") " (string-append (show-tys s args) ")")))))))
                 ((null? args) d)
                 ((string=? d "%mtype")
@@ -3709,14 +3709,14 @@
                  "A type abbreviation, by its name (C164): its expansion first, then
                   its arguments."
                  (cond ((and (null? (cdr args)) (not (has-prefix? (show-ty s (car args)) "(")))
-                        ;; A base type, which no name abbreviates (C286; Fixpt's d0b239fa).
+                        ;; A base type, which no name abbreviates (C289; Fixpt's d0b239fa).
                         (show-ty s (car args)))
                        ((null? (cdr args)) (after-prefix d "%named "))
                        (else (string-append "(" (string-append (after-prefix d "%named ") (string-append " " (string-append (show-tys s (cdr args)) ")")))))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
                 ((string=? d "%stringof")
-                 "A string at a region (C282); at a frozen heap's, `string`, as Fixpt
+                 "A string at a region (C285); at a frozen heap's, `string`, as Fixpt
                   writes `(stringof const)`."
                  (if (tagcase (walk s (car args)) (ty-rconst (n) (or (string=? n "const") (string=? n "acyclic"))) (else other #f))
                      "string"
@@ -3793,7 +3793,7 @@
       "An item of a module type as printed: a type one of its descriptions
        describes by that description's name, as Fixpt's shared types are
        named (C172); a description's own body as it is. Not a base type,
-       which no name abbreviates (C286; Fixpt's d0b239fa: `(define-type pos
+       which no name abbreviates (C289; Fixpt's d0b239fa: `(define-type pos
        int)` names no `int`)."
       (if (null? descs)
           text
@@ -4099,7 +4099,7 @@
 (define frozen-region-string (subr kfx (string string) string)
   (lambda (kind place)
     "Frozen data's region, `(acyclic 'p)`; the heap's, `acyclic` or `const`
-     (C281: a place nothing settled is the heap)."
+     (C284: a place nothing settled is the heap)."
     (if (string=? place "@heap") kind (string-append "(" (string-append kind (string-append " " (string-append place ")")))))))
 
 (define-rec
@@ -4173,7 +4173,7 @@
                  (string-append (atom-kind x)
                                 (region-string s (ty-meta (meta-number r)))))
                 ((and (frozen-place? r) (char=? (string-ref-i64 (frozen-place-of r) 0) #\?))
-                 "Frozen data of a place not solved when the atom was made (C281)."
+                 "Frozen data of a place not solved when the atom was made (C284)."
                  (string-append (atom-kind x)
                                 (frozen-region-string (frozen-place-kind r) (region-string s (ty-meta (meta-number (frozen-place-of r)))))))
                 (else x)))
@@ -4470,7 +4470,7 @@
  made at each call."
 (define fits-shapes-of-names strings (list "%stringof" "%array" "%icell" "%addr" "%inbox" "%bloblet" "%mark-key" "%eqtable" "%identity"))
 
-"Frozen data covariant in the order of lifetimes (C281; Fixpt's 55d130bd,
+"Frozen data covariant in the order of lifetimes (C284; Fixpt's 55d130bd,
  kayak's request): data at `(const a)` fits where `(const b)` is expected,
  and `(acyclic a)` where `(acyclic b)` or `(const b)` is, if place `a`
  outlives place `b`; the heap, `acyclic` and `const`, outlives every
@@ -4550,7 +4550,7 @@
     (lambda (v s a e)
       (cond ((frozen-fits? v s a e) s)
             ((and (tagcase a (ty-string () #t) (else other #f)) (tagcase e (ty-data (d args) (string=? d "%stringof")) (else other #f)))
-             "A `string`, `(stringof const)` (C282): where a string at a region is
+             "A `string`, `(stringof const)` (C285): where a string at a region is
               expected, that region `const`."
              (tagcase e (ty-data (d args) (fits v s (ty-rconst "const") (car args))) (else other s)))
             ((and (tagcase e (ty-string () #t) (else other #f)) (tagcase a (ty-data (d args) (string=? d "%stringof")) (else other #f)))
@@ -5188,7 +5188,7 @@
             ((char=? (string-ref-i64 (car tvars) 0) #\') (cons (car tvars) (region-binders (cdr tvars))))
             (else (region-binders (cdr tvars)))))))
 
-"Data alone, as Fixpt's `not_only_data_regions` (C281): the region
+"Data alone, as Fixpt's `not_only_data_regions` (C284): the region
  variables a type uses other than as a pair's region, or in an effect
  other than `alloc` and `read`: a reference's, an array's, a bloblet's, a
  tag's, an I-cell's, one written. A region binder a call leaves unsolved
@@ -5646,7 +5646,7 @@
 (define heap-frozen (subr kfx (strings) strings)
   (lambda (es)
     "Effects, an atom on frozen data of the heap place, `(acyclic @heap)`, on
-     the heap's, `acyclic` (C281)."
+     the heap's, `acyclic` (C284)."
     (map (lambda ((a string))
            (if (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) "@heap"))
                (string-append (atom-kind a) (frozen-place-kind (atom-region a)))
@@ -5658,13 +5658,13 @@
     "A call's latent effect, its regions' inference variables replaced by
      the regions the arguments and the type expected found, or `acyclic`;
      a place's, one whose frozen data the effect touches, `(acyclic ?k)`,
-     the heap, its frozen data the heap's (C281)."
+     the heap, its frozen data the heap's (C284)."
     (if (null? regions)
         (res (ty-unit) es s)
         (let* ((k (meta-name (car regions)))
                (place? (any? (lambda ((a string)) (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) k))) es))
                (s (cond (place? (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "@heap"))) (else other s)))
-                        ;; Storage, or written: a region of its own (C281, C282).
+                        ;; Storage, or written: a region of its own (C284, C285).
                         ((string-member? k keep) (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "%fresh"))) (else other s)))
                         (else s))))
           (tagcase (region-of v s (ty-meta (car regions)))

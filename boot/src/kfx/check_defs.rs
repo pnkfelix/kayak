@@ -3196,7 +3196,7 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
             if head_is_p(t, str_lit("select")) {
                 t
             } else if (head_is_p(t, str_lit("productof")) || head_is_p(t, str_lit("sumof"))) {
-                // A field's label is no type (C285): its type alone qualified.
+                // A field's label is no type (C288): its type alone qualified.
                 lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |fd: &'static Sexp| {
                     let tagcase_ = fd;
                     match *tagcase_ {
@@ -4008,7 +4008,7 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                 }), cdr(cdr(xs)))))
             } else {
                 if ((head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) && not(null_p(cdr(xs)))) {
-                    // A module a local `let` binds (C285): known to a `with` of it in
+                    // A module a local `let` binds (C288): known to a `with` of it in
                     // the body, as an item's is, so its names are its own.
                     let mods = concat(map(lambda1s(move |b: &'static Sexp| {
                         let tagcase_ = b;
@@ -4042,7 +4042,7 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                     }), cdr(xs)))
                 } else if head_is_p(e, str_lit("module")) {
                     // A module made here: its items' own names are its, not the outer
-                    // items' (C285).
+                    // items' (C288).
                     let own = concat(map(&item_names, cdr(xs)));
                     concat(map(lambda1s(move |x: &'static Sexp| {
                         refs_in(x, if null_p(own) {
@@ -5477,7 +5477,7 @@ pub fn spliced_to(f0: &'static Sexp, f1: Sexps, f2: Keyeds) -> &'static SplicedT
 
 /// What `e` loads: `(load-module "p")`, as a list of its path and no
 /// arguments; a file of `module-parameters` made, of its path, the kinds'
-/// arguments, then the modules' (C283): `((proj (load-module "p") k
+/// arguments, then the modules' (C286): `((proj (load-module "p") k
 /// ...) m ...)`, `((load-module "p") m ...)`, `((load-module "p"))`, a
 /// file of none; else nothing.
 pub fn load_of(e: &'static Sexp) -> Sexps {
@@ -5694,7 +5694,7 @@ pub fn selects_renamed(e: &'static Sexp, shared: Keyeds) -> &'static Sexp {
     }
 }
 
-/// `e`, each name `from` in it `to`, a name or a type written (C283).
+/// `e`, each name `from` in it `to`, a name or a type written (C286).
 pub fn substituted(e: &'static Sexp, from: Str, to: &'static Sexp) -> &'static Sexp {
     let tagcase_ = e;
     match *tagcase_ {
@@ -5754,7 +5754,7 @@ pub fn sexps_after(mut xs: Sexps, mut n: i64) -> Sexps {
 }
 
 /// A `module-parameters` binder of a kind, `(r region)`, `(t type)`, `(e
-/// effect)`; not a module's, `(m T)` or `(m T qualified)` (C283).
+/// effect)`; not a module's, `(m T)` or `(m T qualified)` (C286).
 pub fn kind_parameter_p(b: &'static Sexp) -> bool {
     let tagcase_ = second(items(b));
     match *tagcase_ {
@@ -5768,7 +5768,7 @@ pub fn kind_parameter_p(b: &'static Sexp) -> bool {
     }
 }
 
-// An expression among a module's items (C283; Fixpt's 6447f9b0, Heist's): a
+// An expression among a module's items (C286; Fixpt's 6447f9b0, Heist's): a
 // form whose head is none an item's is run for what it does as the module
 // is made, in order, `(hide (define %run-N form))`, numbered from 0 in each
 // module, a `hide`'s among them.
@@ -5853,7 +5853,7 @@ pub fn run_items(its: Sexps) -> Sexps {
 
 /// A loaded file's items: of a file of `module-parameters`, the rest, each
 /// kind's binder the argument given, each module's the module given, its
-/// names included, hidden, unless it is `qualified` (C283; FX-26's
+/// names included, hidden, unless it is `qualified` (C286; FX-26's
 /// `(plambda (kinds) (lambda (modules) (module (hide (include m) …) item
 /// …)))`); `(module-parameters ())`, a file of none. Of any other, all,
 /// given nothing.
@@ -5893,7 +5893,7 @@ pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
 }
 
 /// Of a loaded file of `module-parameters`, the names of the modules it is
-/// given, which it sees as well as the standard environment (C283).
+/// given, which it sees as well as the standard environment (C286).
 pub fn module_arguments(forms: Sexps, args: Sexps) -> Strings {
     if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
         let n = size(filter(&kind_parameter_p, items(second(items(car(forms))))));
@@ -6128,7 +6128,7 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                         }
                     }
                 }) {
-                    // A load's module's type (C283; FX-26's `load-moduleof`): the load it
+                    // A load's module's type (C286; FX-26's `load-moduleof`): the load it
                     // names made, as any load is, and its module named, `(%module-made
                     // made--load--K)`.
                     let as_load = if null_p(cdr(cdr(xs))) {

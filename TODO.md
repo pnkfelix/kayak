@@ -76,16 +76,16 @@ section below where it has one; here the order, and what each is.
    kayak's units say their layers' interfaces (`load-moduleof`,
    `restrict`), as the user suggested.
    Since 6447f9b (C275): strings at a region, `(stringof r)`, kayak's
-   FX-26 has since C282 (KFX's waits for plan B, which needs it); a module's expressions as its items; `module-parameters`
+   FX-26 has since C285 (KFX's waits for plan B, which needs it); a module's expressions as its items; `module-parameters`
    of modules. Since 0c2e4dd: `(module-parameters ())`, a maker of none;
    arm64's native makers and in-line allocation, and `lldb` (Fixpt's own).
    Since 7038269: a list nothing places is `acyclic` (Fixpt's e4af8997,
    Heist's request): a `poly`'s region binder a call leaves unsolved, used
    only as a pair's region and only made and read there, is `(acyclic
-   heap)`, not a region of its own: kayak's since C281, with frozen
+   heap)`, not a region of its own: kayak's since C284, with frozen
    covariance and masking's reads and writes. Module parameters of every
    kind, expressions as items, `load-moduleof`, `restrict`: kayak's since
-   C283-C285. Not yet: a `load-input` maker whose loads are given its own
+   C286-C288. Not yet: a `load-input` maker whose loads are given its own
    binders (`modules/load-moduleof.fx`, `restrict-parameter.fx`, the
    `made-*` files), which a static splice cannot make; a family imported
    into another module (`import-list-and-family.fx`). Also `.fasl`s, heap images, a native front end, and a
@@ -97,7 +97,7 @@ section below where it has one; here the order, and what each is.
 6a. **A memo the incremental compile reuses wrongly (2026-10-30, C54)**:
    `scripts/regen.sh`, with its memos (`kfx --cache`), made Rust that does
    not build, where the same compile without them is the fixed point. The
-   compiler of 6fc82507, on the sources of the `stringof` change (C282),
+   compiler of 6fc82507, on the sources of the `stringof` change (C285),
    with the memos it had kept: `check_exprs.rs` lacks `nil`'s turbofish
    (`nil::<Str>()`) and `refuse`'s `match … {}` in 669 lines, facts the
    forms have now that a memo made before did not. The memo file and the

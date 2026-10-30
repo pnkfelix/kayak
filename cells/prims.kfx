@@ -216,7 +216,7 @@
  compiler and `scheme-bench/peval.fx` on tier 1)."
 (define o-string-list i64 202)
 (define o-symbol-string i64 203)
-"Strings at a region (C282; Fixpt's 41c0823f): made, written, filled and
+"Strings at a region (C285; Fixpt's 41c0823f): made, written, filled and
  copied in place."
 (define o-make-string i64 204)
 (define o-region-make-string i64 205)
@@ -490,12 +490,12 @@
 
 (define str-blank! (subr cm (i64) i64)
   (lambda (n)
-    "A string of `n` code points, each 0, to be set (C282)."
+    "A string of `n` code points, each 0, to be set (C285)."
     (let ((v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f)))
       (begin (word-set! (address v) n) v))))
 (define str-set! (subr cm (i64 i64 i64) unit)
   (lambda (v i cp)
-    "Code point `i` of string `v` set to `cp`, in place (C282)."
+    "Code point `i` of string `v` set to `cp`, in place (C285)."
     (let* ((at (i64+ (address v) (i64+ 1 (i64-quotient i 2)))) (w (word-at at)))
       (word-set! at (if (i64= (i64-remainder i 2) 0)
                         (i64-or (i64-and w -4294967296) cp)

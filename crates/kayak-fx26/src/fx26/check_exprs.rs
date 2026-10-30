@@ -102,7 +102,7 @@ pub mod expressions {
     use super::*;
 
     /// A cell or array whose region nothing named, and so was taken as
-    /// `acyclic`, or kept fresh since C282: FX-26's is a fresh region,
+    /// `acyclic`, or kept fresh since C285: FX-26's is a fresh region,
     /// KFX's would be no region, its effects lost.
     pub fn unplaced_p(t: &'static Ty) -> bool {
         let tagcase_ = t;
@@ -707,7 +707,7 @@ pub mod expressions {
     }
 
     /// A load's module type, `(load-moduleof ...)`, `%module made--load--K`, as
-    /// the module's type as a value (C283); any other type as it is.
+    /// the module's type as a value (C286); any other type as it is.
     pub fn load_mtype(v: &'static Cv, t: &'static Ty) -> &'static Ty {
         let tagcase_ = t;
         match *tagcase_ {
@@ -827,7 +827,7 @@ pub mod expressions {
 
     /// `s`, a list's region in `t` that nothing solved made `acyclic`, as
     /// FX-26 settles one where it finds a value by itself: a list nothing
-    /// places is made and never written (C281; Fixpt's e4af8997).
+    /// places is made and never written (C284; Fixpt's e4af8997).
     pub fn freshened(mut s: &'static St, mut t: &'static Ty) -> &'static St {
         loop {
             let tagcase_ = walk(s, t);
@@ -4455,7 +4455,7 @@ pub mod expressions {
     /// Compound expression `e`'s result, its effect masked (C182; FX-87's,
     /// Fixpt's `mask`): an atom on a region no name in `e` has a type that
     /// mentions, kept only if it reads, writes, allocates, or transfers
-    /// control, at a region its value's type mentions (C281; only
+    /// control, at a region its value's type mentions (C284; only
     /// allocation, on a place's frozen data). Globals, frozen data, effect
     /// variables, a region not solved yet, never masked; nor anything
     /// where a name's type, or the value's, could hold storage it does not
@@ -6732,7 +6732,7 @@ pub mod expressions {
     }
 
     /// A pair whose tail is a list of its head's type at its own region, as
-    /// that list, where branches are joined (C281; Fixpt's 5b0d032a): so
+    /// that list, where branches are joined (C284; Fixpt's 5b0d032a): so
     /// `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was.
     pub fn pair_as_list(s: &'static St, t: &'static Ty) -> &'static Ty {
         let tagcase_ = walk(s, t);
@@ -8055,7 +8055,7 @@ pub mod expressions {
 
     /// Where a list is expected at a frozen region of the place given, `(acyclic
     /// p)` or `(const p)`: that region, which `rcons` may make its pair at,
-    /// frozen as it is made, its allocation the place's (C281; Fixpt's
+    /// frozen as it is made, its allocation the place's (C284; Fixpt's
     /// 55d130bd). Else `unit`, for none.
     pub fn frozen_in_place(v: &'static Cv, s: &'static St, place: &'static Ty, expected: Tys) -> &'static Ty {
         let (said, p) = (if null_p(expected) {
@@ -8210,7 +8210,7 @@ pub mod expressions {
             }
         } else if (string_eq_p(h, str_lit("rmake-string")) && i64_eq(size(args), 3i64)) {
             // `(rmake-string p n c)`: `n` of `c`, a string in a region within place
-            // `p` (C282; Fixpt's `(poly ((p place) (r region p)) ...)`), the
+            // `p` (C285; Fixpt's `(poly ((p place) (r region p)) ...)`), the
             // place's own if nothing says which.
             let r = place_of(v, s, car(args));
             let at = region_within(v, s, r, expected);
@@ -11390,7 +11390,7 @@ pub mod expressions {
     /// A poly's call: a region binder its arguments and what its place
     /// expects did not say, as FX-26 settles it (its `default_regions`):
     /// `acyclic` where the poly only makes data there, pairs allocated and
-    /// read, built and never written (C281; Fixpt's e4af8997, Heist's
+    /// read, built and never written (C284; Fixpt's e4af8997, Heist's
     /// request); else a region of its own, `%fresh`, one a later use may
     /// not choose.
     pub fn regions_freshened(v: &'static Cv, h: Str, wher: Str, sc: &'static Scheme, regions: List<i64>, r: &'static Res) -> &'static Res {

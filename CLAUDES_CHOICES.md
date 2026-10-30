@@ -7878,9 +7878,8 @@ name of that kind as agreeing for the list (not dropped by `--bless`, not
 `engine-programs.py` keeps `was & elsewhere`. On the Mac: 2719 tests
 passed; tier 1, 430 agree, 0 differ, 9 another machine's. Whether this
 is the right rule is TODO §17's, to look at with the user.
-||||||| parent of 6fc82507 (FX-26's three new typing rules, in kayak's checker (C281))
 
-## C281. FX-26's three new typing rules, in kayak's checker (2026-10-30)
+## C284. FX-26's three new typing rules, in kayak's checker (2026-10-30)
 
 The user: kayak should follow FX-26's changes in its own FX-26 compiler,
 not only keep its ports from drifting; "Go for it", the typing rules
@@ -7920,11 +7919,11 @@ first. All three are in the checker that kfx and the engine share.
   `kfx-stricter/branches-cons-list` and `fresh-list-region` are no longer
   stricter.
 
-## C282. Strings at a region, `(stringof r)`, in kayak's FX-26 (2026-10-30)
+## C285. Strings at a region, `(stringof r)`, in kayak's FX-26 (2026-10-30)
 
 Fixpt's 41c0823f, the user's: a string made, read and written at region
 `r`, as a bytevector is. `string` is `(stringof const)`. The user's "go
-for it", after C281.
+for it", after C284.
 - **The checker**: `(stringof r)` is `%stringof` of its region, and
   `(stringof const)` (or `acyclic`) is `string` itself. A `string` fits
   where a `(stringof r)` is expected, `r` then `const`. A `(stringof r)`
@@ -7935,8 +7934,8 @@ for it", after C281.
   `string-fill!`, `string-copy` and `string-copy!` are new primitives.
   `rmake-string` is made as `rcons` is (`region-alloc-call`), at the place's
   region if nothing says which.
-- **C281 mended**: a call's unsolved region binder was settled to
-  `acyclic` by `name-regions` before C281's rule saw it, so a storage
+- **C284 mended**: a call's unsolved region binder was settled to
+  `acyclic` by `name-regions` before C284's rule saw it, so a storage
   binder (a fresh string's, a bytevector's) could become frozen.
   `name-regions` now keeps a region of its own for one the instance's type
   uses as storage or writes (`not-only-data`, `%stringof` and `%bytes`
@@ -7957,7 +7956,7 @@ for it", after C281.
   `regions/stringof-escapes.fx` and `write-a-string.fx` are refused where
   Fixpt refuses them.
 
-## C283. Module parameters of every kind; expressions as module items (2026-10-30)
+## C286. Module parameters of every kind; expressions as module items (2026-10-30)
 
 FX-26's module features since 6447f9b (Heist's, 2026-10-28), in kayak's
 FX-26, the user's "go for it". kayak loads a file statically: each load,
@@ -7996,9 +7995,9 @@ C171). That stays, and now takes what FX-26's files take:
   4, 57, 10 and 1. `restrict` and `load-input` makers (a `plambda` of an
   effect) come next.
 
-## C284. `restrict`, and `the` sealing a module (2026-10-30)
+## C287. `restrict`, and `the` sealing a module (2026-10-30)
 
-C283's next. `(restrict T name …)` (Fixpt's, 2026-10-27) is module type
+C286's next. `(restrict T name …)` (Fixpt's, 2026-10-27) is module type
 `T` with only the names given. kayak reads it where it is written
 (`restricted`, in `parse-type`'s group, as `module-type-of` and
 `as-mtype` now are, so that a load's module type, `made--load--K`, is a
@@ -8016,7 +8015,7 @@ programs get its verdicts, and `restrict.fx` runs to its value. And
 `run-fixpt-programs.py` skips a line of Fixpt's `NAME = TYPE`, a module
 type a `define-type` names, which it had taken for a value.
 
-## C285. Modules: local modules, shared loads, includes of loads, labels (2026-10-30)
+## C288. Modules: local modules, shared loads, includes of loads, labels (2026-10-30)
 
 The rest of Fixpt's module programs kayak refused, one by one:
 - **A local module's names** (`with-local-module*.fx`): letrec*'s "made
@@ -8048,7 +8047,7 @@ The rest of Fixpt's module programs kayak refused, one by one:
   not a splice. Nor a family another module gives, imported into a module
   (`import-list-and-family.fx`). Both are in TODO 4b.
 
-## C286. Types printed by the abbreviations in scope (2026-10-30)
+## C289. Types printed by the abbreviations in scope (2026-10-30)
 
 Fixpt's d0b239fa: "a type is shown by the innermost name in scope whose
 type it is, by structure, wherever it came from, if it has parts to
@@ -8070,5 +8069,5 @@ descriptions in module types (C172). Now:
 Measured: of 541 programs Fixpt accepts, kayak's checker prints the same
 types for 423, where it did for 414; 88 still differ, mostly datatypes,
 which Fixpt prints as their `mu` structure (kayak by name), a module type
-named as a whole, the effects of shared loads (C283's splice), and nested
+named as a whole, the effects of shared loads (C286's splice), and nested
 `poly`s Fixpt keeps as written.

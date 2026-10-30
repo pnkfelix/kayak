@@ -730,7 +730,7 @@ pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
 }
 
 /// A product's label or a sum's tag, as written: a name or a number. A
-/// label is never a module's name for a type, `m..x` (C285): one so
+/// label is never a module's name for a type, `m..x` (C288): one so
 /// qualified with the module's types, as a type is, is `x`.
 pub fn label_of(e: &'static Sexp) -> Str {
     let tagcase_ = e;
@@ -6289,7 +6289,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // A flat array's layout (C175): `(i64-flat)` and the others make one.
                     return ty_data(str_lit("%flatlayout"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::nil()));
                 } else if sym_is_p(car(xs), str_lit("stringof")) {
-                    // FX-26's strings at a region (C282; Fixpt's 41c0823f): `string` is
+                    // FX-26's strings at a region (C285; Fixpt's 41c0823f): `string` is
                     // `(stringof const)`, and `(stringof acyclic)` is too.
                     if i64_eq(size(xs), 2i64) {
                         let r = parse_region(v, tvars, second(xs));
@@ -6680,7 +6680,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }), cdr(cdr(xs))), second(xs));
                 } else if (sym_is_p(car(xs), str_lit("%module-made")) && i64_eq(size(xs), 2i64)) {
-                    // `(load-moduleof "p" ...)`, the load's module spliced (C283): the type
+                    // `(load-moduleof "p" ...)`, the load's module spliced (C286): the type
                     // of that module as a value, as a module type by name is.
                     return ty_data(string_append(str_lit("%module "), sym_name(second(xs))), nil::<&'static Ty>());
                 } else if ((sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) && any_p(lambda1s(move |x: &'static Sexp| {
@@ -7600,7 +7600,7 @@ pub fn dep_scope(mut v: &'static Cv, mut tvars: Strings, mut ps: Sexps, mut i: i
 }
 
 /// A module type named by a `define-type` (C24), as a module value's; a
-/// load's, `(load-moduleof ...)`, its module's (C283).
+/// load's, `(load-moduleof ...)`, its module's (C286).
 pub fn as_mtype(mut v: &'static Cv, mut t: &'static Ty) -> &'static Ty {
     loop {
         let tagcase_ = t;
@@ -7637,7 +7637,7 @@ pub fn as_mtype(mut v: &'static Cv, mut t: &'static Ty) -> &'static Ty {
     }
 }
 
-/// `(restrict T name ...)` (C283; Fixpt's, 2026-10-27): module type `T`
+/// `(restrict T name ...)` (C286; Fixpt's, 2026-10-27): module type `T`
 /// with only the values, effects and types named. An abstract type not
 /// named stays, unnamed, `%hidden:t`, so that a value of it may be taken
 /// and passed but the type not named; a description not named goes, its
@@ -8306,7 +8306,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     // A dependent parameter's type (C170).
                     return string_append(str_lit("(select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), str_lit(")")))));
                 } else if (has_prefix_p(d, str_lit("$")) && string_has_p(d, str_lit(".."))) {
-                    // A dependent parameter's family, applied (C286): `((select $1 f) T ...)`, as Fixpt prints it.
+                    // A dependent parameter's family, applied (C289): `((select $1 f) T ...)`, as Fixpt prints it.
                     return string_append(str_lit("((select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), string_append(str_lit(") "), string_append(show_tys(s, args), str_lit(")")))))));
                 } else if null_p(args) {
                     return d;
@@ -8352,7 +8352,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                 } else if string_eq_p(d, str_lit("%bytes")) {
                     return string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%stringof")) {
-                    // A string at a region (C282); at a frozen heap's, `string`, as Fixpt
+                    // A string at a region (C285); at a frozen heap's, `string`, as Fixpt
                     // writes `(stringof const)`.
                     if {
                         let tagcase_ = walk(s, car(args));
@@ -8537,7 +8537,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
 /// An item of a module type as printed: a type one of its descriptions
 /// describes by that description's name, as Fixpt's shared types are
 /// named (C172); a description's own body as it is. Not a base type,
-/// which no name abbreviates (C286; Fixpt's d0b239fa: `(define-type pos
+/// which no name abbreviates (C289; Fixpt's d0b239fa: `(define-type pos
 /// int)` names no `int`).
 pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut text: Str) -> Str {
     loop {
@@ -9429,7 +9429,7 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
 }
 
 /// Frozen data's region, `(acyclic 'p)`; the heap's, `acyclic` or `const`
-/// (C281: a place nothing settled is the heap).
+/// (C284: a place nothing settled is the heap).
 pub fn frozen_region_string(kind: Str, place: Str) -> Str {
     if string_eq_p(place, str_lit("@heap")) {
         kind
@@ -9581,7 +9581,7 @@ pub fn resolve_atom(s: &'static St, x: Str) -> Str {
         if char_eq_p(string_ref_i64(r, 0i64), '?') {
             string_append(atom_kind(x), region_string(s, ty_meta(meta_number(r))))
         } else if (frozen_place_p(r) && char_eq_p(string_ref_i64(frozen_place_of(r), 0i64), '?')) {
-            // Frozen data of a place not solved when the atom was made (C281).
+            // Frozen data of a place not solved when the atom was made (C284).
             string_append(atom_kind(x), frozen_region_string(frozen_place_kind(r), region_string(s, ty_meta(meta_number(frozen_place_of(r))))))
         } else {
             x
@@ -10217,7 +10217,7 @@ pub fn fits_shapes_of_names() -> Strings {
     })
 }
 
-// Frozen data covariant in the order of lifetimes (C281; Fixpt's 55d130bd,
+// Frozen data covariant in the order of lifetimes (C284; Fixpt's 55d130bd,
 // kayak's request): data at `(const a)` fits where `(const b)` is expected,
 // and `(acyclic a)` where `(acyclic b)` or `(const b)` is, if place `a`
 // outlives place `b`; the heap, `acyclic` and `const`, outlives every
@@ -10409,7 +10409,7 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
             }
         }
     }) {
-        // A `string`, `(stringof const)` (C282): where a string at a region is
+        // A `string`, `(stringof const)` (C285): where a string at a region is
         // expected, that region `const`.
         let tagcase_ = e;
         match *tagcase_ {
@@ -12296,7 +12296,7 @@ pub fn region_binders(mut tvars: Strings) -> Strings {
     }
 }
 
-// Data alone, as Fixpt's `not_only_data_regions` (C281): the region
+// Data alone, as Fixpt's `not_only_data_regions` (C284): the region
 // variables a type uses other than as a pair's region, or in an effect
 // other than `alloc` and `read`: a reference's, an array's, a bloblet's, a
 // tag's, an I-cell's, one written. A region binder a call leaves unsolved
@@ -13242,7 +13242,7 @@ pub fn region_of(v: &'static Cv, s: &'static St, r: &'static Ty) -> &'static Res
 }
 
 /// Effects, an atom on frozen data of the heap place, `(acyclic @heap)`, on
-/// the heap's, `acyclic` (C281).
+/// the heap's, `acyclic` (C284).
 pub fn heap_frozen(es: Strings) -> Strings {
     map(lambda1s(move |a: Str| {
         if (region_atom_p(a) && frozen_place_p(atom_region(a)) && string_eq_p(frozen_place_of(atom_region(a)), str_lit("@heap"))) {
@@ -13256,7 +13256,7 @@ pub fn heap_frozen(es: Strings) -> Strings {
 /// A call's latent effect, its regions' inference variables replaced by
 /// the regions the arguments and the type expected found, or `acyclic`;
 /// a place's, one whose frozen data the effect touches, `(acyclic ?k)`,
-/// the heap, its frozen data the heap's (C281).
+/// the heap, its frozen data the heap's (C284).
 pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i64>, keep: Strings) -> &'static Res {
     if null_p(regions) {
         res(ty_unit(), es, s)

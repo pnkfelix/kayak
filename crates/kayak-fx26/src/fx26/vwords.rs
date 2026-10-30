@@ -426,7 +426,7 @@ pub fn bytes_copy_into_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> (
     }
 }
 
-// Strings at a region (C282), a character's code a word, as bytes are a
+// Strings at a region (C285), a character's code a word, as bytes are a
 // byte a word: made, written, filled and copied in place; a span checked as
 // a bytevector's is.
 pub fn string_made_x(n: i64, c: i64) -> i64 {

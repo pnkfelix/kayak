@@ -4,7 +4,7 @@ use kayak_rt::*;
 
 // Branches that mix a pair `cons` makes with a list, nothing expected. Once
 // refused, the pair at a region of its own (C123); since FX-26's e4af8997 a
-// list nothing places is `acyclic`, the pair too, and joins the list (C281).
+// list nothing places is `acyclic`, the pair too, and joins the list (C284).
 
 pub fn f(b: bool, xs: List<Int>) -> List<Int> {
     let ys = if b {

@@ -198,7 +198,7 @@
             ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
             (else (bytes-moved! to t from s e))))))
 
-"Strings at a region (C282), a character's code a word, as bytes are a
+"Strings at a region (C285), a character's code a word, as bytes are a
  byte a word: made, written, filled and copied in place; a span checked as
  a bytevector's is."
 (define string-made! (subr hp (i64 i64) i64)

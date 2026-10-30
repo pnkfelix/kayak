@@ -4,7 +4,7 @@ use kayak_rt::*;
 
 // A list a call makes, found by itself: once at a region of its own, so not
 // acyclic, as FX-26 had it; since its e4af8997, `acyclic`, built and never
-// written, which is what a later use wants (C281).
+// written, which is what a later use wants (C284).
 
 pub fn h<A: Copy + 'static>(fs: List<A>) -> i64 {
     0i64

@@ -287,7 +287,7 @@ pub fn written_tvars(bs: Strings) -> Strings {
 }
 
 /// Every abbreviation in scope with parts to abbreviate, the newest first
-/// (C286; Fixpt's d0b239fa: "a type is shown by the innermost name in scope
+/// (C289; Fixpt's d0b239fa: "a type is shown by the innermost name in scope
 /// whose type it is, by structure, wherever it came from"): each kept as
 /// the checker read it, `%shows t` (a module's, `m %shows t`, by `(select
 /// m t)`), and `io-error`; not a family, not a base type (which has no
@@ -343,7 +343,7 @@ pub fn shown_abbreviated(v: &'static Cv, shown: Str) -> Str {
 }
 
 /// A definition's type as printed: the checker's, each abbreviation its
-/// written type names by name (C164), then each in scope (C286).
+/// written type names by name (C164), then each in scope (C289).
 pub fn written_shown(v: &'static Cv, written: &'static Sexp, t: &'static Ty) -> Str {
     if ({
         let tagcase_ = written;

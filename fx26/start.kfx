@@ -117,7 +117,7 @@
 (define scope-abbrevs (subr kfx (cv) abbrevs)
   (lambda (v)
     "Every abbreviation in scope with parts to abbreviate, the newest first
-     (C286; Fixpt's d0b239fa: \"a type is shown by the innermost name in scope
+     (C289; Fixpt's d0b239fa: \"a type is shown by the innermost name in scope
      whose type it is, by structure, wherever it came from\"): each kept as
      the checker read it, `%shows t` (a module's, `m %shows t`, by `(select
      m t)`), and `io-error`; not a family, not a base type (which has no
@@ -142,7 +142,7 @@
 (define written-shown (subr kfx (cv sexp ty) string)
   (lambda (v written t)
     "A definition's type as printed: the checker's, each abbreviation its
-     written type names by name (C164), then each in scope (C286)."
+     written type names by name (C164), then each in scope (C289)."
     (if (or (tagcase written (lst (xs f l p) (null? xs)) (else other #f)) (written-mentions? written (list "%found" "->*" "select" "moduleof" "dlambda")))
         (shown-abbreviated v (show-ty (new-state) t))
         (shown-abbreviated v

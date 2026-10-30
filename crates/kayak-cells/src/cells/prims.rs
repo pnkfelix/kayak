@@ -821,7 +821,7 @@ pub fn o_symbol_string() -> i64 {
     203i64
 }
 
-// Strings at a region (C282; Fixpt's 41c0823f): made, written, filled and
+// Strings at a region (C285; Fixpt's 41c0823f): made, written, filled and
 // copied in place.
 pub fn o_make_string() -> i64 {
     204i64
@@ -1263,14 +1263,14 @@ pub fn str_ref(v: i64, i: i64) -> i64 {
     }
 }
 
-/// A string of `n` code points, each 0, to be set (C282).
+/// A string of `n` code points, each 0, to be set (C285).
 pub fn str_blank_x(n: i64) -> i64 {
     let v = make_bloblet_x(k_string(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64))), false, false);
     word_set_x(address(v), n);
     v
 }
 
-/// Code point `i` of string `v` set to `cp`, in place (C282).
+/// Code point `i` of string `v` set to `cp`, in place (C285).
 pub fn str_set_x(v: i64, i: i64, cp: i64) -> () {
     let at = i64_plus(address(v), i64_plus(1i64, i64_quotient(i, 2i64)));
     let w = word_at(at);

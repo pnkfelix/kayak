@@ -49,7 +49,7 @@
       (define unplaced? (subr kfx (ty) bool)
         (lambda (t)
           "A cell or array whose region nothing named, and so was taken as
-           `acyclic`, or kept fresh since C282: FX-26's is a fresh region,
+           `acyclic`, or kept fresh since C285: FX-26's is a fresh region,
            KFX's would be no region, its effects lost."
           (tagcase t
             (ty-ref (e r) (tagcase r (ty-rconst (n) (or (string=? n "acyclic") (string=? n "%fresh"))) (else other #f)))
@@ -321,7 +321,7 @@
       (define load-mtype (subr kfx (cv ty) ty)
         (lambda (v t)
           "A load's module type, `(load-moduleof ...)`, `%module made--load--K`, as
-           the module's type as a value (C283); any other type as it is."
+           the module's type as a value (C286); any other type as it is."
           (tagcase t
             (ty-data (d args) (if (has-prefix? d "%module made--load--") (as-mtype v t) t))
             (else other t))))
@@ -388,7 +388,7 @@
           (lambda (s t)
             "`s`, a list's region in `t` that nothing solved made `acyclic`, as
              FX-26 settles one where it finds a value by itself: a list nothing
-             places is made and never written (C281; Fixpt's e4af8997)."
+             places is made and never written (C284; Fixpt's e4af8997)."
             (tagcase (walk s t)
               (ty-list (e r)
                 (let ((s (freshened s e)))
@@ -1999,7 +1999,7 @@
           "Compound expression `e`'s result, its effect masked (C182; FX-87's,
            Fixpt's `mask`): an atom on a region no name in `e` has a type that
            mentions, kept only if it reads, writes, allocates, or transfers
-           control, at a region its value's type mentions (C281; only
+           control, at a region its value's type mentions (C284; only
            allocation, on a place's frozen data). Globals, frozen data, effect
            variables, a region not solved yet, never masked; nor anything
            where a name's type, or the value's, could hold storage it does not
@@ -2028,7 +2028,7 @@
                                                        (string-member? (atom-region x) seen)
                                                        (and (string-member? (atom-region x) out)
                                                             ;; Reads and writes too, as Lucassen and Gifford's
-                                                            ;; rule keeps them (Fixpt's 61a2e792, C281): a write
+                                                            ;; rule keeps them (Fixpt's 61a2e792, C284): a write
                                                             ;; dropped there could make `acyclic` data cyclic.
                                                             ;; Only `alloc` on a place's frozen data.
                                                             (string-member? (atom-kind x)
@@ -2664,7 +2664,7 @@
                 ((string=? h "the")
                  (let ((want (parse-type v (cv-tvars v) (car xs))))
                    (tagcase (check v s (second xs) want)
-                     ;; A module sealed (FX-26's M4; C283): of the type written,
+                     ;; A module sealed (FX-26's M4; C286): of the type written,
                      ;; its other names gone, its abstract types not named unnamed.
                      (res (t es s) (res (if (mtype? (as-mtype v want)) want t) es s)))))
                 ((string=? h "prompt") (prompt-form v s xs nil))
@@ -2730,7 +2730,7 @@
                          "Its first element's type, a `nat`'s an `int`: FX-26's is that
                           element's own `(nat v)`, which no other `nat` is."
                          ;; A `nat` element's list is of `nat`s, as Fixpt finds it (C159).
-                         ;; `acyclic`, as Fixpt's `list`, a poly's call, has it (C281).
+                         ;; `acyclic`, as Fixpt's `list`, a poly's call, has it (C284).
                          (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))) "list"))
                 ((control-form? h) (body-form v s h xs nil))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
@@ -2936,7 +2936,7 @@
                          ((or (null? found) (not (tagcase (car found) (bind (n sc wher) (string=? wher "module")))))
                           (refuse v (string-append "KFX's with opens a module defined at the top level, or a module parameter, by its name: " m)))
                          (else (with-effs (found-then-fitted v (body (opened v m) s (cdr xs) nil) expected)
-                                          ;; A shared load's module, made once and never written (C285;
+                                          ;; A shared load's module, made once and never written (C288;
                                           ;; Fixpt's `%shared:` globals): reading it is no effect.
                                           (if (has-prefix? m "made--load--") nil (list (string-append "g:" m))))))))
                 ((string=? h "cond") (cond-clauses v s xs expected))
@@ -3062,7 +3062,7 @@
       (pair-as-list (subr kfx (st ty) ty)
         (lambda (s t)
           "A pair whose tail is a list of its head's type at its own region, as
-           that list, where branches are joined (C281; Fixpt's 5b0d032a): so
+           that list, where branches are joined (C284; Fixpt's 5b0d032a): so
            `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was."
           (tagcase (walk s t)
             (ty-data (d args)
@@ -3582,7 +3582,7 @@
         (lambda (v s place expected)
           "Where a list is expected at a frozen region of the place given, `(acyclic
            p)` or `(const p)`: that region, which `rcons` may make its pair at,
-           frozen as it is made, its allocation the place's (C281; Fixpt's
+           frozen as it is made, its allocation the place's (C284; Fixpt's
            55d130bd). Else `unit`, for none."
           (let ((said (if (null? expected) (ty-unit)
                           (tagcase (walk s (car expected)) (ty-list (e r) (walk s r)) (else other (ty-unit)))))
@@ -3647,7 +3647,7 @@
                               (kfx-restricted v s "rmake-icell, FX-26's, which KFX has not yet (C187)")))))))
                 ((and (string=? h "rmake-string") (i64= (size args) 3))
                  "`(rmake-string p n c)`: `n` of `c`, a string in a region within place
-                  `p` (C282; Fixpt's `(poly ((p place) (r region p)) ...)`), the
+                  `p` (C285; Fixpt's `(poly ((p place) (r region p)) ...)`), the
                   place's own if nothing says which."
                  (let* ((r (place-of v s (car args)))
                         (at (region-within v s r expected))
@@ -3685,7 +3685,7 @@
                                       (call-args v s (cdr args) (list m) nil))
                            (res (u es s)
                              (res made (effs-union (if (tagcase frozen (ty-unit () #f) (else other #t))
-                                                       ;; Made frozen in the place: an allocation in it (C281).
+                                                       ;; Made frozen in the place: an allocation in it (C284).
                                                        (the strings (list (string-append "alloc:" (region-string s r))))
                                                        (the strings (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at)))))
                                                    es)
@@ -4860,7 +4860,7 @@
                            ;; at a region of its own.
                            (let* ((s2 (tagcase (walk s2b t2) (ty-list (e r) (fits v s2b t1 e)) (else other s2b)))
                                   ;; `acyclic`, made and never written, as Fixpt's `cons`,
-                                  ;; a poly's call, has it (C281).
+                                  ;; a poly's call, has it (C284).
                                   (pt (ty-data "%pairof" (list t1 t2 (ty-rconst "acyclic")))))
                              (res pt (effs-union (list "alloc:acyclic") (effs-union es1 es2))
                                   (if (general-pair? s2 pt) (note-fact s2 (cv-file v) (cv-pos v) "value-cons") s2))))))))
@@ -5095,7 +5095,7 @@
           "A poly's call: a region binder its arguments and what its place
            expects did not say, as FX-26 settles it (its `default_regions`):
            `acyclic` where the poly only makes data there, pairs allocated and
-           read, built and never written (C281; Fixpt's e4af8997, Heist's
+           read, built and never written (C284; Fixpt's e4af8997, Heist's
            request); else a region of its own, `%fresh`, one a later use may
            not choose."
           (tagcase r
@@ -5558,7 +5558,7 @@
                                                ((sym-is? k "place") (string-append "'" n))
                                                ((sym-is? k "size") (string-append "#" n))
                                                ((sym-is? k "type") n)
-                                               ;; An effect (C285): `~e`, as a poly type's effect binder is named.
+                                               ;; An effect (C288): `~e`, as a poly type's effect binder is named.
                                                ((sym-is? k "effect") (string-append "~" n))
                                                ((sym-is? k "conv") (binder-named "conv" n))
                                                ((head-is? k "=>") (binder-named (kind-text v k) n))
