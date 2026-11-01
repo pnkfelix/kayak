@@ -104,6 +104,7 @@
             ((is-pair? v) (string-append "(" (string-append (written (pair-car v)) (string-append (tail-written (pair-cdr v)) ")"))))
             ((is-kind? v k-string) (string-append "\"" (string-append (escaped (string-text v) 0 "") "\"")))
             ((is-kind? v k-symbol) (symbol-text v))
+            ((is-kind? v k-keyword) (string-append "#:" (symbol-text (slot-of v 2))))
             ((or (is-big? v) (is-flonum? v) (is-kind? v k-ratnum)) (number-text v))
             ((is-kind? v k-vector) (string-append "#(" (string-append (elements-written v 0 (obj-length v)) ")")))
             ((is-kind? v k-bytevector)

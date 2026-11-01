@@ -802,6 +802,12 @@ pub fn k_vector() -> i64 {
     int_to_i64(lay::kind_vector())
 }
 
+// A keyword (C294): frozen, its one field (slot 2) its name's symbol;
+// interned, one object for each name (Fixpt's `Heap::make_keyword`).
+pub fn k_keyword() -> i64 {
+    int_to_i64(lay::kind_keyword())
+}
+
 pub fn k_continuation() -> i64 {
     int_to_i64(lay::kind_cellular_continuation())
 }

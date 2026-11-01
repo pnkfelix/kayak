@@ -8194,3 +8194,20 @@ path not there and a path that is no link, run as Rust and by Fixpt.
 The other half, `process-exit` and `process-news` and their `pselect`
 arms, waits on what kayak has none of yet: the OS-process primitives,
 `process-start`, `process-output` and `process-status`.
+
+## C294. Keywords on tier 1 (2026-11-01)
+
+C291 left out tier 1. Now:
+- **The cellular machine** (cells/, Fixpt's in KFX) has Fixpt's keyword
+  object: a frozen bloblet of kind 48 (`k-keyword`), its one field, slot
+  2, its name's symbol, made by `keyword!` as Fixpt's `make_keyword`
+  makes one, and interned. `datum-hash` mixes 5 with the name's word, and
+  `datum-same?` compares names, as Fixpt's `intern.rs` does. Its
+  primitives are `%fx26-keyword?`, `%fx26-symbol->keyword` and
+  `%fx26-keyword->symbol` (ops 210-212). It prints as `#:name`.
+- **kayak's code generator** (cg.kfx) writes `#:n` as Fixpt's parsers
+  do, `(symbol->keyword 'n)`, the standard one, in quoted data and
+  quasiquotes too. A `typecase` arm `keyword` tests `keyword?`; any shape
+  the predicate table lacked had fallen through to `bytevector?`.
+Fixpt's four keyword programs agree on tier 1, Fixpt's words and
+kayak's alike.

@@ -224,6 +224,10 @@
 (define o-string-fill i64 207)
 (define o-string-copy i64 208)
 (define o-string-copy-into i64 209)
+"Keywords (C294)."
+(define o-keyword-p i64 210)
+(define o-symbol-keyword i64 211)
+(define o-keyword-symbol i64 212)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -339,6 +343,7 @@
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
          (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
+         (pdef "%fx26-keyword?" 1 1 o-keyword-p) (pdef "%fx26-symbol->keyword" 1 1 o-symbol-keyword) (pdef "%fx26-keyword->symbol" 1 1 o-keyword-symbol)
          (pdef "%fx26-write-out" 1 1 o-write-out) (pdef "%fx26-write-err" 1 1 o-write-err) (pdef "%fx26-exit" 1 1 o-exit)
          (pdef "%fx26-read-line" 0 0 o-read-line) (pdef "%fx26-read-byte" 0 0 o-read-byte) (pdef "%fx26-read-bytes" 3 3 o-read-bytes)
          (pdef "%fx26-stdin-ready?" 0 0 o-stdin-ready) (pdef "%fx26-terminal-raw" 0 0 o-terminal-raw)
@@ -984,6 +989,7 @@
           ((is-kind? o k-string) (words-hash (address o) 0 (str-words o) 2))
           ((is-kind? o k-flonum) (intern-mix 3 (word-at (address o))))
           ((is-kind? o k-vector) (elements-hash o 0 (eq-size o) 4))
+          ((is-kind? o k-keyword) (intern-mix 5 (slot-of o 2)))
           (else 0))))
 (define datum-same? (subr cm (i64 i64) bool)
   (lambda (o c)
@@ -996,6 +1002,8 @@
           ((and (is-kind? o k-flonum) (is-kind? c k-flonum)) (i64= (word-at (address o)) (word-at (address c))))
           ((and (is-kind? o k-vector) (is-kind? c k-vector))
            (and (i64= (eq-size o) (eq-size c)) (elements-same? o c 0 (eq-size o))))
+          ((or (is-kind? o k-keyword) (is-kind? c k-keyword))
+           (and (is-kind? o k-keyword) (is-kind? c k-keyword) (i64= (slot-of o 2) (slot-of c 2))))
           (else #f))))
 (define-rec
   (interned-chain! (subr cm (i64 i64) unit)
@@ -1060,7 +1068,7 @@
       (let ((c (cond ((is-pair? v)
                       (let* ((a (pair-car v)) (d (pair-cdr v)) (ia (intern-datum! a)) (id (intern-datum! d)))
                         (if (and (i64= ia a) (i64= id d)) v (cons! ia id))))
-                     ((or (is-kind? v k-string) (is-kind? v k-flonum)) v)
+                     ((or (is-kind? v k-string) (is-kind? v k-flonum) (is-kind? v k-keyword)) v)
                      ((is-kind? v k-vector)
                       (let ((w (make-bloblet! k-vector (eq-size v) 0 #t #f)))
                         (if (vector-interned! v w 0 #t) v w)))
@@ -1077,6 +1085,13 @@
                       (slot-set! t 3 (fix n))
                       (if (i64> n (i64* 2 (eq-size bs))) (interned-relinked! t (i64* 4 (eq-size bs))) #u)
                       c)))))))))
+
+(define keyword! (subr cm (i64) i64)
+  (lambda (sym)
+    "The keyword of name `sym`, a symbol (C294; Fixpt's `make_keyword`):
+     frozen, its name in slot 2, interned, so one object for each name."
+    (let ((k (make-bloblet! k-keyword 1 0 #t #f)))
+      (begin (slot-set! k 2 sym) (frozen-whole! k) (intern-datum! k)))))
 
 (define fixed-op! (subr cm (i64 i64) i64)
   (lambda (w s)
@@ -2192,6 +2207,9 @@
         ((i64= op o-sleep-until) (if (fixed-in? 4 a) (begin (sleep-until (int->i64 (int-of a))) v-unit) (expected! "an i64")))
         ((i64= op o-address-identity) (fix 0))
         ((i64= op o-intern-datum) (intern-datum! a))
+        ((i64= op o-keyword-p) (boolean (is-kind? a k-keyword)))
+        ((i64= op o-symbol-keyword) (if (is-kind? a k-symbol) (keyword! a) (expected! "a symbol")))
+        ((i64= op o-keyword-symbol) (if (is-kind? a k-keyword) (slot-of a 2) (expected! "a keyword")))
         ((and (i64>= op o-write-out) (i64<= op o-write-file)) (io-op! op a b (parg 2)))
         ((i64= op o-convert)
          "A procedure already of the convention itself; one of the other, an

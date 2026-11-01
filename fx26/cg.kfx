@@ -155,6 +155,10 @@
 "A standard name, whatever a program binds it to (Fixpt's `(with #%fx
  name)`, C221): what a quote builds with."
 (define std-var (subr kfx (string i64) cx) (lambda (n a) (x-var (string-append "#%fx:" n) a)))
+"A keyword, `#:n` (C294): as Fixpt's parsers write it, `symbol->keyword` of
+ the symbol `n`, in quoted data too."
+(define keyword-x (subr kfx (string i64) cx)
+  (lambda (n a) (x-app (std-var "symbol->keyword" a) (list (x-sym (after-prefix n "#:") a)) a)))
 "Written so, `(with #%fx n)` is marked apart (`#%fx!:`), as Fixpt keeps
  its `with`, which its register code takes for no operation done in line
  (C248)."
@@ -499,7 +503,7 @@
 (define typecase-predicate (subr kfx (string) string)
   (lambda (s)
     (cond ((string=? s "int") "int?") ((string=? s "char") "char?") ((string=? s "bool") "bool?") ((string=? s "nil") "null?")
-          ((string=? s "pair") "pair?") ((string=? s "string") "string?") ((string=? s "symbol") "symbol?")
+          ((string=? s "pair") "pair?") ((string=? s "string") "string?") ((string=? s "symbol") "symbol?") ((string=? s "keyword") "keyword?")
           ((string=? s "procedure") "procedure?") ((string=? s "bloblet") "array?") ((string=? s "f64") "f64?")
           ((string=? s "f32") "f32?") ((string=? s "box") "ref?") ((string=? s "sum") "sum?") ((string=? s "product") "product?")
           ((string=? s "vector") "vector?") (else "bytevector?"))))
@@ -712,6 +716,9 @@
           (cond ((string=? n "#t") (x-bool #t p))
                 ((string=? n "#f") (x-bool #f p))
                 ((string=? n "#u") (x-unit p))
+                ;; A keyword (C294): the standard `symbol->keyword` of its name,
+                ;; as Fixpt's parsers rewrite it.
+                ((keyword-name? n) (keyword-x n p))
                 ;; A module made in place (C90), made where it is named.
                 ((not (null? (made-module (get cg-made) n))) (car (made-module (get cg-made) n)))
                 (else (x-var n p))))
@@ -1228,7 +1235,7 @@
        as itself; a list of `cons` and `nil`, a dotted one's tail its last,
        a vector `list->vector` of its items' list, interned whole."
       (tagcase d
-        (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
+        (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) ((keyword-name? n) (keyword-x n a)) (else (x-sym n a))))
         (lst (ys f l p)
           (if (null? ys) (std-var "nil" a)
               (x-app (std-var "%quote" a) (list (quoted-item d a)) a)))
@@ -1244,7 +1251,7 @@
   (quoted-item (subr gen (sexp i64) cx)
     (lambda (d a)
       (tagcase d
-        (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
+        (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) ((keyword-name? n) (keyword-x n a)) (else (x-sym n a))))
         (lst (ys f l p)
           (if (and (not (null? ys)) (tagcase (car ys) (sym (n f2 p2) (string=? n "#vector")) (else other #f)))
               (x-app (std-var "list->vector" a) (list (quoted-list (cdr ys) a)) a)
@@ -1264,7 +1271,7 @@
             (parse-x (car u))
             (let ((built
                    (tagcase x
-                     (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
+                     (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) ((keyword-name? n) (keyword-x n a)) (else (x-sym n a))))
                      (lst (ys f l p)
                        (cond ((null? ys) (std-var "nil" a))
                              ((head-is? x "#vector")

@@ -33,6 +33,9 @@
 (define k-register-code i64 (int->i64 (with lay kind-register-code)))
 (define k-sum i64 (int->i64 (with lay kind-sum)))
 (define k-vector i64 (int->i64 (with lay kind-vector)))
+"A keyword (C294): frozen, its one field (slot 2) its name's symbol;
+ interned, one object for each name (Fixpt's `Heap::make_keyword`)."
+(define k-keyword i64 (int->i64 (with lay kind-keyword)))
 (define k-continuation i64 (int->i64 (with lay kind-cellular-continuation)))
 (define k-product i64 (int->i64 (with lay kind-product)))
 (define k-bytevector i64 (int->i64 (with lay kind-bytevector)))

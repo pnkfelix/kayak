@@ -198,6 +198,8 @@ pub fn written(v: i64) -> Str {
         string_append(str_lit("\""), string_append(escaped(string_text(v), 0i64, str_lit("")), str_lit("\"")))
     } else if is_kind_p(v, k_symbol()) {
         symbol_text(v)
+    } else if is_kind_p(v, k_keyword()) {
+        string_append(str_lit("#:"), symbol_text(slot_of(v, 2i64)))
     } else if (is_big_p(v) || is_flonum_p(v) || is_kind_p(v, k_ratnum())) {
         number_text(v)
     } else if is_kind_p(v, k_vector()) {

@@ -94,9 +94,8 @@ section below where it has one; here the order, and what each is.
    kayak's FX-26 has not yet; the ported sources' marks moved with none
    of them carried over (the runtime's, tier 1's and the code generator's
    parts of each to come with it):
-   - **Keywords** on tier 1 and in KFX: the checker and the engine have
-     them (C291); cg.kfx and the cellular machine's keyword object (kind
-     48) have not, nor kayak-rt (KFX refuses keyword values); nor the
+   - **Keywords** in KFX: the checker, the engine and tier 1 have them
+     (C291, C294); kayak-rt has not (KFX refuses keyword values); nor the
      reader `#:|a b|`.
    - **Joins**, beyond `list`'s elements (C292): any call's arguments
      instantiating one type binder bounded only from below by a sum
@@ -109,7 +108,9 @@ section below where it has one; here the order, and what each is.
      (`process-start`, `process-output`, `process-status`), then
      `process-exit`, `process-news` and their `pselect` arms (09dbb15f;
      `file-info` and `read-symlink` are C293's); `dump-heap!` (59114584).
-   - The runtime: a bloblet's values by their index (e2f3f0f6, §205).
+   - (Fixpt's e2f3f0f6, a bloblet's values by their index, §205, is its
+     Rust heap's accessors and a lint: nothing of FX-26's, nothing kayak
+     ports.)
    - Fixpt's re-architecture, "heap types" (`docs/research/heap-types.md`):
      types as interned heap data, one rep each, shared by both checkers.
 5. **The call protocol on tier 6** (performance item 3 below): the

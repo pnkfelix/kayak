@@ -1945,6 +1945,12 @@ pub fn std_var(n: Str, a: i64) -> &'static Cx {
     x_var(string_append(str_lit("#%fx:"), n), a)
 }
 
+// A keyword, `#:n` (C294): as Fixpt's parsers write it, `symbol->keyword` of
+// the symbol `n`, in quoted data too.
+pub fn keyword_x(n: Str, a: i64) -> &'static Cx {
+    x_app(std_var(str_lit("symbol->keyword"), a), kayak_rt::heap_cons(x_sym(after_prefix(n, str_lit("#:")), a), kayak_rt::nil()), a)
+}
+
 // Written so, `(with #%fx n)` is marked apart (`#%fx!:`), as Fixpt keeps
 // its `with`, which its register code takes for no operation done in line
 // (C248).
@@ -2785,6 +2791,8 @@ pub fn typecase_predicate(s: Str) -> Str {
         str_lit("string?")
     } else if string_eq_p(s, str_lit("symbol")) {
         str_lit("symbol?")
+    } else if string_eq_p(s, str_lit("keyword")) {
+        str_lit("keyword?")
     } else if string_eq_p(s, str_lit("procedure")) {
         str_lit("procedure?")
     } else if string_eq_p(s, str_lit("bloblet")) {
@@ -3257,6 +3265,8 @@ pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
                 x_bool(false, p)
             } else if string_eq_p(n, str_lit("#u")) {
                 x_unit(p)
+            } else if keyword_name_p(n) {
+                keyword_x(n, p)
             } else if not(null_p(made_module(get(cg_made()), n))) {
                 car(made_module(get(cg_made()), n))
             } else {
@@ -4271,6 +4281,8 @@ pub fn parse_quoted(d: &'static Sexp, a: i64) -> &'static Cx {
                 x_bool(true, a)
             } else if string_eq_p(n, str_lit("#f")) {
                 x_bool(false, a)
+            } else if keyword_name_p(n) {
+                keyword_x(n, a)
             } else {
                 x_sym(n, a)
             }
@@ -4318,6 +4330,8 @@ pub fn quoted_item(d: &'static Sexp, a: i64) -> &'static Cx {
                 x_bool(true, a)
             } else if string_eq_p(n, str_lit("#f")) {
                 x_bool(false, a)
+            } else if keyword_name_p(n) {
+                keyword_x(n, a)
             } else {
                 x_sym(n, a)
             }
@@ -4367,6 +4381,8 @@ pub fn quasi_in(x: &'static Sexp, depth: i64) -> &'static Cx {
                         x_bool(true, a)
                     } else if string_eq_p(n, str_lit("#f")) {
                         x_bool(false, a)
+                    } else if keyword_name_p(n) {
+                        keyword_x(n, a)
                     } else {
                         x_sym(n, a)
                     }
