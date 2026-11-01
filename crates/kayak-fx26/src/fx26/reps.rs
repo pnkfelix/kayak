@@ -33,12 +33,13 @@ pub fn rpbind(f0: Str, f1: i64, f2: i64) -> &'static Rpbind {
 pub type Rpbinds = List<&'static Rpbind>;
 
 // The export so far: the nodes made, newest first; the next slot; the holes'
-// names, newest first; whether a part of the type is no rep's (declined).
+// names, newest first; why a part of the type is no rep's (declined), the
+// first found, or none.
 pub enum Rx {
-    Rx(RpNodes, i64, Strings, bool),
+    Rx(RpNodes, i64, Strings, Str),
 }
 
-pub fn rx(f0: RpNodes, f1: i64, f2: Strings, f3: bool) -> &'static Rx {
+pub fn rx(f0: RpNodes, f1: i64, f2: Strings, f3: Str) -> &'static Rx {
     kayak_rt::heap_alloc(Rx::Rx(f0, f1, f2, f3))
 }
 
@@ -67,7 +68,7 @@ pub fn rxi(f0: &'static Rx, f1: i64) -> &'static Rxi {
 }
 
 pub fn rx_empty() -> &'static Rx {
-    rx(nil::<Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>>>(), 0i64, nil::<Str>(), false)
+    rx(nil::<Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>>>(), 0i64, nil::<Str>(), str_lit(""))
 }
 
 pub fn rx_reserve(x: &'static Rx) -> &'static Rxi {
@@ -90,11 +91,15 @@ pub fn rx_fill(x: &'static Rx, slot: i64, head: Str, set: bool, binders: Strings
     }
 }
 
-pub fn rx_declined(x: &'static Rx) -> &'static Rx {
+pub fn rx_declined(x: &'static Rx, why: Str) -> &'static Rx {
     let tagcase_ = x;
     match *tagcase_ {
         Rx::Rx(ns, k, hs, d) => {
-            rx(ns, k, hs, true)
+            rx(ns, k, hs, if string_eq_p(d, str_lit("")) {
+                why
+            } else {
+                d
+            })
         }
     }
 }
@@ -209,7 +214,7 @@ pub fn rx_region(s: &'static St, x: &'static Rx, sc: Rpbinds, r: &'static Ty) ->
     let tagcase_ = walk(s, r);
     match *tagcase_ {
         Ty::TyMeta(k) => {
-            rxa(rx_declined(x), rx_sym(str_lit("?")))
+            rxa(rx_declined(x, str_lit("a region not solved")), rx_sym(str_lit("?")))
         }
         _ => {
             let other = tagcase_;
@@ -253,7 +258,7 @@ pub fn rx_atom(x: &'static Rx, sc: Rpbinds, a: Str) -> &'static Rxa {
     } else if (has_prefix_p(a, str_lit("~")) && not(has_prefix_p(a, str_lit("~@"))) && not(string_eq_p(a, str_lit("~!")))) {
         rx_var(x, sc, a)
     } else {
-        rxa(rx_declined(x), rx_sym(str_lit("?")))
+        rxa(rx_declined(x, string_append(str_lit("the atom "), a)), rx_sym(str_lit("?")))
     }
 }
 
@@ -327,6 +332,51 @@ pub fn rx_binder_nodes(x: &'static Rx, ns: Strings) -> &'static Rxs {
     }
 }
 
+// kayak's types that are Fixpt's generative types (C301): each a named
+// constant applied to descriptions, as a datatype is.
+pub fn rp_generative_heads() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("%addr"), kayak_rt::heap_cons(str_lit("%inbox"), kayak_rt::heap_cons(str_lit("%blobref"), kayak_rt::heap_cons(str_lit("%stringof"), kayak_rt::heap_cons(str_lit("%bytes"), kayak_rt::heap_cons(str_lit("%eqtable"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::nil())))))))
+    })
+}
+
+pub fn rp_generative_name(d: Str) -> Str {
+    if string_eq_p(d, str_lit("%bytes")) {
+        str_lit("bytevectorof")
+    } else {
+        after_prefix(d, str_lit("%"))
+    }
+}
+
+pub fn rp_generative_head(n: Str) -> Str {
+    if string_eq_p(n, str_lit("bytevectorof")) {
+        str_lit("%bytes")
+    } else {
+        string_append(str_lit("%"), n)
+    }
+}
+
+/// Whether `t` is a region: a constant, a region variable (`'r`), frozen.
+pub fn rp_region_like_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            true
+        }
+        Ty::TyVar(n) => {
+            has_prefix_p(n, str_lit("'"))
+        }
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%frozen"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// Type `t`'s node, as an operand.
 pub fn rx_ty(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: &'static Ty) -> &'static Rxa {
     loop {
@@ -336,12 +386,15 @@ pub fn rx_ty(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: &'s
                 return rx_var(x, sc, n);
             }
             Ty::TyMeta(k) => {
-                return rxa(rx_declined(x), rx_sym(str_lit("?")));
+                return rxa(rx_declined(x, str_lit("a type not solved")), rx_sym(str_lit("?")));
             }
             Ty::TyData(d, args) => {
                 if has_prefix_p(d, str_lit("%named ")) {
                     t = car(args);
                     continue;
+                } else if (null_p(args) && not(null_p(scope_var(sc, d)))) {
+                    // A module type's abstract type, bound by its `moduleof`.
+                    return rx_var(x, sc, d);
                 } else {
                     let tagcase_ = rx_reserve(x);
                     match *tagcase_ {
@@ -375,6 +428,216 @@ pub fn rx_tys(s: &'static St, x: &'static Rx, sc: Rpbinds, ts: Tys) -> &'static 
                 match *tagcase_ {
                     Rxs::Rxs(x, r#as) => {
                         rxs(x, kayak_rt::heap_cons(a, r#as))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A named type's arguments as descriptions: `(d-region R)`, `(d-type T)`.
+pub fn rx_descs(s: &'static St, x: &'static Rx, sc: Rpbinds, ts: Tys) -> &'static Rxs {
+    if null_p(ts) {
+        rxs(x, nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>())
+    } else {
+        let tagcase_ = if rp_region_like_p(s, car(ts)) {
+            rx_region(s, x, sc, car(ts))
+        } else {
+            rx_ty(s, x, sc, car(ts))
+        };
+        match *tagcase_ {
+            Rxa::Rxa(x, a) => {
+                let tagcase_ = rx_node(x, if rp_region_like_p(s, car(ts)) {
+                    str_lit("d-region")
+                } else {
+                    str_lit("d-type")
+                }, false, the::<RpOperands>(kayak_rt::heap_cons(a, kayak_rt::nil())));
+                match *tagcase_ {
+                    Rxa::Rxa(x, d) => {
+                        let tagcase_ = rx_descs(s, x, sc, cdr(ts));
+                        match *tagcase_ {
+                            Rxs::Rxs(x, ds) => {
+                                rxs(x, kayak_rt::heap_cons(d, ds))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `(moduleof {t …} (binder type) … (descs d T …) (vals x T …))` at `slot`,
+/// its abstract types bound there.
+pub fn rx_moduleof(s: &'static St, x: &'static Rx, sc: Rpbinds, items: Tys, slot: i64) -> &'static Rx {
+    let abs = filter(lambda1s(move |it: &'static Ty| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Ty::TyData(k, r#as) => {
+                has_prefix_p(k, str_lit("%abs "))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }), items);
+    let names = map(lambda1s(move |it: &'static Ty| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Ty::TyData(k, r#as) => {
+                after_prefix(k, str_lit("%abs "))
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("?")
+            }
+        }
+    }), abs);
+    let consts = map(lambda1s(move |it: &'static Ty| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Ty::TyData(k, r#as) => {
+                let tagcase_ = car(r#as);
+                match *tagcase_ {
+                    Ty::TyData(c, bs) => {
+                        c
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("?")
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("?")
+            }
+        }
+    }), abs);
+    let sc2 = binders_in(sc, consts, slot, 0i64);
+    let part = lambda1s(move |prefix: Str| {
+        filter(lambda1s(move |it: &'static Ty| {
+            let tagcase_ = it;
+            match *tagcase_ {
+                Ty::TyData(k, r#as) => {
+                    has_prefix_p(k, prefix)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }), items)
+    });
+    let labels = lambda2s(move |its: Tys, prefix: Str| {
+        map(lambda1s(move |it: &'static Ty| {
+            let tagcase_ = it;
+            match *tagcase_ {
+                Ty::TyData(k, r#as) => {
+                    after_prefix(k, prefix)
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("?")
+                }
+            }
+        }), its)
+    });
+    let types = lambda1s(move |its: Tys| {
+        map(lambda1s(move |it: &'static Ty| {
+            let tagcase_ = it;
+            match *tagcase_ {
+                Ty::TyData(k, r#as) => {
+                    car(r#as)
+                }
+                _ => {
+                    let other = tagcase_;
+                    ty_void()
+                }
+            }
+        }), its)
+    });
+    let tagcase_ = rx_binder_nodes(x, map(lambda1s(move |n: Str| {
+        n
+    }), names));
+    match *tagcase_ {
+        Rxs::Rxs(x, bs) => {
+            let tagcase_ = rx_parts(s, x, sc2, labels(part(str_lit("%desc ")), str_lit("%desc ")), types(part(str_lit("%desc "))));
+            match *tagcase_ {
+                Rxs::Rxs(x, ds) => {
+                    let tagcase_ = rx_node(x, str_lit("descs"), false, ds);
+                    match *tagcase_ {
+                        Rxa::Rxa(x, dn) => {
+                            let tagcase_ = rx_parts(s, x, sc2, labels(part(str_lit("%val ")), str_lit("%val ")), types(part(str_lit("%val "))));
+                            match *tagcase_ {
+                                Rxs::Rxs(x, vs) => {
+                                    let tagcase_ = rx_node(x, str_lit("vals"), false, vs);
+                                    match *tagcase_ {
+                                        Rxa::Rxa(x, vn) => {
+                                            rx_fill(x, slot, str_lit("moduleof"), false, names, onto(bs, the::<RpOperands>(kayak_rt::heap_cons(dn, kayak_rt::heap_cons(vn, kayak_rt::nil())))))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A size: `(finite)`, or `(lin k (&terms (term v c) …))`, its terms a set.
+pub fn rx_size(s: &'static St, x: &'static Rx, sc: Rpbinds, z: &'static Ty) -> &'static Rxa {
+    let l = size_lin(s, z);
+    if null_p(l) {
+        rx_node(x, str_lit("finite"), false, the::<RpOperands>(nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()))
+    } else {
+        let tagcase_ = car(l);
+        match *tagcase_ {
+            Lin::Lin(k, ts) => {
+                let tagcase_ = rx_terms(x, sc, ts);
+                match *tagcase_ {
+                    Rxs::Rxs(x, r#as) => {
+                        let tagcase_ = rx_node(x, str_lit("terms"), true, r#as);
+                        match *tagcase_ {
+                            Rxa::Rxa(x, tn) => {
+                                rx_node(x, str_lit("lin"), false, the::<RpOperands>(kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(i64_to_int(k)))), kayak_rt::heap_cons(tn, kayak_rt::nil()))))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn rx_terms(x: &'static Rx, sc: Rpbinds, ts: List<&'static Lterm>) -> &'static Rxs {
+    if null_p(ts) {
+        rxs(x, nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>())
+    } else {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Lterm::Lterm(n, c) => {
+                let tagcase_ = if has_prefix_p(n, str_lit("?")) {
+                    rxa(rx_declined(x, str_lit("a size not solved")), rx_sym(str_lit("?")))
+                } else {
+                    rx_var(x, sc, n)
+                };
+                match *tagcase_ {
+                    Rxa::Rxa(x, v) => {
+                        let tagcase_ = rx_node(x, str_lit("term"), false, the::<RpOperands>(kayak_rt::heap_cons(v, kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(i64_to_int(c)))), kayak_rt::nil()))));
+                        match *tagcase_ {
+                            Rxa::Rxa(x, t) => {
+                                let tagcase_ = rx_terms(x, sc, cdr(ts));
+                                match *tagcase_ {
+                                    Rxs::Rxs(x, r#as) => {
+                                        rxs(x, kayak_rt::heap_cons(t, r#as))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -478,6 +741,29 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
             Ty::TyProc(es, ps, r) => {
                 return rx_subr(s, x, sc, str_lit("cellular"), es, ps, r, slot);
             }
+            Ty::TyTag(a, h, es, r) => {
+                let tagcase_ = rx_ty(s, x, sc, a);
+                match *tagcase_ {
+                    Rxa::Rxa(x, a2) => {
+                        let tagcase_ = rx_ty(s, x, sc, h);
+                        match *tagcase_ {
+                            Rxa::Rxa(x, h2) => {
+                                let tagcase_ = rx_effect(x, sc, es);
+                                match *tagcase_ {
+                                    Rxa::Rxa(x, e2) => {
+                                        let tagcase_ = rx_region(s, x, sc, r);
+                                        match *tagcase_ {
+                                            Rxa::Rxa(x, r2) => {
+                                                return rx_fill(x, slot, str_lit("prompt-tag"), false, the::<Strings>(nil::<Str>()), the::<RpOperands>(kayak_rt::heap_cons(a2, kayak_rt::heap_cons(h2, kayak_rt::heap_cons(e2, kayak_rt::heap_cons(r2, kayak_rt::nil()))))));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             Ty::TyRef(a, r) => {
                 let tagcase_ = rx_ty(s, x, sc, a);
                 match *tagcase_ {
@@ -551,7 +837,7 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                         }
                         _ => {
                             let other = tagcase_;
-                            return rx_declined(x);
+                            return rx_declined(x, str_lit("a part not a variable"));
                         }
                     }
                 } else if (string_eq_p(d, str_lit("%poly")) && not(null_p(args))) {
@@ -612,13 +898,101 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                         }
                         _ => {
                             let other = tagcase_;
-                            return rx_declined(x);
+                            return rx_declined(x, str_lit("a part not a variable"));
                         }
                     }
-                } else if (has_prefix_p(d, str_lit("%")) || has_char_in_p(d, ' ')) {
-                    return rx_declined(x);
+                } else if ((string_eq_p(d, str_lit("%bloblet")) || string_eq_p(d, str_lit("%fbloblet"))) && not(null_p(args))) {
+                    let tagcase_ = rx_region(s, x, sc, car(args));
+                    match *tagcase_ {
+                        Rxa::Rxa(x, r2) => {
+                            let tagcase_ = rx_tys(s, x, sc, cdr(args));
+                            match *tagcase_ {
+                                Rxs::Rxs(x, fs) => {
+                                    return rx_fill(x, slot, str_lit("bloblet"), false, the::<Strings>(nil::<Str>()), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(string_eq_p(d, str_lit("%fbloblet"))))), kayak_rt::heap_cons(r2, fs)));
+                                }
+                            }
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%natof")) && i64_eq(size(args), 1i64)) {
+                    let tagcase_ = rx_size(s, x, sc, car(args));
+                    match *tagcase_ {
+                        Rxa::Rxa(x, z) => {
+                            return rx_fill(x, slot, str_lit("nat"), false, the::<Strings>(nil::<Str>()), the::<RpOperands>(kayak_rt::heap_cons(z, kayak_rt::nil())));
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%nlist")) && i64_eq(size(args), 2i64)) {
+                    let tagcase_ = rx_ty(s, x, sc, car(args));
+                    match *tagcase_ {
+                        Rxa::Rxa(x, a2) => {
+                            let tagcase_ = rx_size(s, x, sc, car(cdr(args)));
+                            match *tagcase_ {
+                                Rxa::Rxa(x, z) => {
+                                    let tagcase_ = rx_node(x, str_lit("heap"), false, the::<RpOperands>(nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()));
+                                    match *tagcase_ {
+                                        Rxa::Rxa(x, r2) => {
+                                            return rx_fill(x, slot, str_lit("nlist"), false, the::<Strings>(nil::<Str>()), the::<RpOperands>(kayak_rt::heap_cons(a2, kayak_rt::heap_cons(z, kayak_rt::heap_cons(r2, kayak_rt::nil())))));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%narray")) && i64_eq(size(args), 3i64)) {
+                    let tagcase_ = rx_ty(s, x, sc, car(args));
+                    match *tagcase_ {
+                        Rxa::Rxa(x, a2) => {
+                            let tagcase_ = rx_size(s, x, sc, car(cdr(args)));
+                            match *tagcase_ {
+                                Rxa::Rxa(x, z) => {
+                                    let tagcase_ = rx_region(s, x, sc, car(cdr(cdr(args))));
+                                    match *tagcase_ {
+                                        Rxa::Rxa(x, r2) => {
+                                            return rx_fill(x, slot, str_lit("narrayof"), false, the::<Strings>(nil::<Str>()), the::<RpOperands>(kayak_rt::heap_cons(a2, kayak_rt::heap_cons(z, kayak_rt::heap_cons(r2, kayak_rt::nil())))));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%flat-array")) && i64_eq(size(args), 2i64)) {
+                    let tagcase_ = rx_ty(s, x, sc, car(args));
+                    match *tagcase_ {
+                        Rxa::Rxa(x, a2) => {
+                            let tagcase_ = rx_size(s, x, sc, flat_length(car(cdr(args))));
+                            match *tagcase_ {
+                                Rxa::Rxa(x, z) => {
+                                    let tagcase_ = rx_node(x, str_lit("d-type"), false, the::<RpOperands>(kayak_rt::heap_cons(a2, kayak_rt::nil())));
+                                    match *tagcase_ {
+                                        Rxa::Rxa(x, da) => {
+                                            let tagcase_ = rx_node(x, str_lit("d-size"), false, the::<RpOperands>(kayak_rt::heap_cons(z, kayak_rt::nil())));
+                                            match *tagcase_ {
+                                                Rxa::Rxa(x, dz) => {
+                                                    return rx_fill(x, slot, str_lit("named"), false, the::<Strings>(nil::<Str>()), the::<RpOperands>(kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Const(Product_11_12_13(str_lit("flat-arrayof"), int_lit(0), str_lit("generative/2"))))), kayak_rt::heap_cons(da, kayak_rt::heap_cons(dz, kayak_rt::nil())))));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%mtype")) && not(any_p(lambda1s(move |it: &'static Ty| {
+                    let tagcase_ = it;
+                    match *tagcase_ {
+                        Ty::TyData(k, r#as) => {
+                            has_prefix_p(k, str_lit("%edesc "))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }), args))) {
+                    return rx_moduleof(s, x, sc, args, slot);
+                } else if ((has_prefix_p(d, str_lit("%")) || has_char_in_p(d, ' ')) && not(string_member_p(d, rp_generative_heads()))) {
+                    return rx_declined(x, d);
                 } else {
-                    let tagcase_ = rx_tys(s, x, sc, args);
+                    let tagcase_ = rx_descs(s, x, sc, args);
                     match *tagcase_ {
                         Rxs::Rxs(x, r#as) => {
                             let kind = if null_p(args) {
@@ -626,14 +1000,18 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                             } else {
                                 string_append(str_lit("generative/"), i64_to_string(size(args)))
                             };
-                            return rx_fill(x, slot, str_lit("named"), false, the::<Strings>(nil::<Str>()), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Const(Product_11_12_13(d, int_lit(0), kind)))), r#as));
+                            return rx_fill(x, slot, str_lit("named"), false, the::<Strings>(nil::<Str>()), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Const(Product_11_12_13(if string_member_p(d, rp_generative_heads()) {
+                                rp_generative_name(d)
+                            } else {
+                                d
+                            }, int_lit(0), kind)))), r#as));
                         }
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                return rx_declined(x);
+                return rx_declined(x, str_lit("a type of no head yet"));
             }
         }
     }
@@ -726,6 +1104,17 @@ pub fn ty_names_p(t: &'static Ty, n: Str) -> bool {
     }
 }
 
+pub fn drop_n(mut xs: RpOperands, mut n: i64) -> RpOperands {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
 // What an import is in: the rep's nodes; its holes' names; the binders in
 // scope, each its node's slot and its names; the nodes being made.
 pub enum Ri {
@@ -765,7 +1154,12 @@ pub fn ri_ty(c: &'static Ri, a: RpOperand) -> &'static Ty {
                     }
                 }
                 Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
-                    ty_var(nth_symbol(ri_binder_names(bs, p.0), p.1))
+                    let n = nth_symbol(ri_binder_names(bs, p.0), p.1);
+                    if has_prefix_p(n, str_lit("rp..")) {
+                        ty_data(n, nil::<&'static Ty>())
+                    } else {
+                        ty_var(n)
+                    }
                 }
                 Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
                     ty_var(nth_symbol(hs, h))
@@ -784,6 +1178,127 @@ pub fn ri_tys(c: &'static Ri, r#as: RpOperands) -> Tys {
         nil::<&'static Ty>()
     } else {
         kayak_rt::heap_cons(ri_ty(c, car(r#as)), ri_tys(c, cdr(r#as)))
+    }
+}
+
+/// Descriptions back: `(d-region R)` a region, `(d-type T)` a type.
+pub fn ri_descs(c: &'static Ri, r#as: RpOperands) -> Tys {
+    if null_p(r#as) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(r#as);
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(k) => {
+                    let n = rp_node_at({
+                        let tagcase_ = c;
+                        match *tagcase_ {
+                            Ri::Ri(ns, hs, bs, busy) => {
+                                ns
+                            }
+                        }
+                    }, k);
+                    if null_p(n) {
+                        ty_void()
+                    } else {
+                        if string_eq_p(symbol_to_string(car(n).1), str_lit("d-region")) {
+                            ri_region(c, car(car(n).4))
+                        } else if string_eq_p(symbol_to_string(car(n).1), str_lit("d-size")) {
+                            ri_size(c, car(car(n).4))
+                        } else {
+                            ri_ty(c, car(car(n).4))
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    ty_void()
+                }
+            }
+        }, ri_descs(c, cdr(r#as)))
+    }
+}
+
+/// A size back: `finite`, or a linear one, by `size-of-lin`.
+pub fn ri_size(c: &'static Ri, a: RpOperand) -> &'static Ty {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ri::Ri(ns, hs, bs, busy) => {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(k) => {
+                    let n = rp_node_at(ns, k);
+                    if (null_p(n) || not(string_eq_p(symbol_to_string(car(n).1), str_lit("lin")))) {
+                        ty_data(str_lit("%finite"), nil::<&'static Ty>())
+                    } else {
+                        let args = car(n).4;
+                        let k0 = {
+                            let tagcase_ = car(args);
+                            match *tagcase_ {
+                                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Int(v) => {
+                                    v
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    int_lit(0)
+                                }
+                            }
+                        };
+                        let terms = {
+                            let tagcase_ = car(cdr(args));
+                            match *tagcase_ {
+                                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                                    car(rp_node_at(ns, j)).4
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()
+                                }
+                            }
+                        };
+                        size_of_lin(lin(int_to_i64(k0), map(lambda1s(move |t: RpOperand| {
+                            let tagcase_ = t;
+                            match *tagcase_ {
+                                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                                    let tn = car(rp_node_at(ns, j)).4;
+                                    lterm({
+                                        let tagcase_ = ri_ty(c, car(tn));
+                                        match *tagcase_ {
+                                            Ty::TyVar(v) => {
+                                                v
+                                            }
+                                            _ => {
+                                                let z = tagcase_;
+                                                str_lit("?")
+                                            }
+                                        }
+                                    }, {
+                                        let tagcase_ = car(cdr(tn));
+                                        match *tagcase_ {
+                                            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Int(v) => {
+                                                int_to_i64(v)
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                1i64
+                                            }
+                                        }
+                                    })
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    lterm(str_lit("?"), 1i64)
+                                }
+                            }
+                        }), terms)))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    ty_data(str_lit("%finite"), nil::<&'static Ty>())
+                }
+            }
+        }
     }
 }
 
@@ -984,7 +1499,14 @@ pub fn ri_node(c: &'static Ri, k: Int) -> &'static Ty {
                 let head = symbol_to_string(car(n).1);
                 let args = car(n).4;
                 let binders = car(n).3;
-                let c2 = ri(ns, hs, kayak_rt::heap_cons(Product_11_12(k, binders), bs), kayak_rt::heap_cons(k, busy));
+                let scoped = if string_eq_p(head, str_lit("moduleof")) {
+                    map(lambda1s(move |b: Symbol| {
+                        string_to_symbol(string_append(str_lit("rp.."), symbol_to_string(b)))
+                    }), binders)
+                } else {
+                    binders
+                };
+                let c2 = ri(ns, hs, kayak_rt::heap_cons(Product_11_12(k, scoped), bs), kayak_rt::heap_cons(k, busy));
                 let t = ri_made(c2, k, head, args, binders);
                 let m = string_append(str_lit("%m"), int_to_string(k));
                 if ty_names_p(t, m) {
@@ -1035,7 +1557,29 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
     } else if string_eq_p(head, str_lit("false")) {
         ty_data(str_lit("false"), nil::<&'static Ty>())
     } else if string_eq_p(head, str_lit("nat")) {
-        ty_nat()
+        let tagcase_ = car(args);
+        match *tagcase_ {
+            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                if string_eq_p(symbol_to_string(car(rp_node_at({
+                    let tagcase_ = c;
+                    match *tagcase_ {
+                        Ri::Ri(ns, hs, bs, busy) => {
+                            ns
+                        }
+                    }
+                }, j)).1), str_lit("finite")) {
+                    ty_nat()
+                } else {
+                    ty_data(str_lit("%natof"), kayak_rt::heap_cons(ri_size(c, car(args)), kayak_rt::nil()))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ty_nat()
+            }
+        }
+    } else if string_eq_p(head, str_lit("nlist")) {
+        ty_data(str_lit("%nlist"), kayak_rt::heap_cons(ri_ty(c, car(args)), kayak_rt::heap_cons(ri_size(c, car(cdr(args))), kayak_rt::nil())))
     } else if string_eq_p(head, str_lit("union")) {
         ty_data(str_lit("%union"), ri_tys(c, args))
     } else if string_eq_p(head, str_lit("subr")) {
@@ -1137,18 +1681,110 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
     } else if string_eq_p(head, str_lit("place")) {
         ty_data(str_lit("%place"), kayak_rt::heap_cons(ri_region(c, car(args)), kayak_rt::nil()))
     } else if string_eq_p(head, str_lit("narrayof")) {
-        ty_data(str_lit("%array"), kayak_rt::heap_cons(ri_ty(c, car(args)), kayak_rt::heap_cons(ri_region(c, car(cdr(cdr(args)))), kayak_rt::nil())))
-    } else if string_eq_p(head, str_lit("named")) {
-        let tagcase_ = car(args);
+        let tagcase_ = car(cdr(args));
         match *tagcase_ {
-            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Const(p) => {
-                ty_data(p.0, ri_tys(c, cdr(args)))
+            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                if string_eq_p(symbol_to_string(car(rp_node_at({
+                    let tagcase_ = c;
+                    match *tagcase_ {
+                        Ri::Ri(ns, hs, bs, busy) => {
+                            ns
+                        }
+                    }
+                }, j)).1), str_lit("finite")) {
+                    ty_data(str_lit("%array"), kayak_rt::heap_cons(ri_ty(c, car(args)), kayak_rt::heap_cons(ri_region(c, car(cdr(cdr(args)))), kayak_rt::nil())))
+                } else {
+                    ty_data(str_lit("%narray"), kayak_rt::heap_cons(ri_ty(c, car(args)), kayak_rt::heap_cons(ri_size(c, car(cdr(args))), kayak_rt::heap_cons(ri_region(c, car(cdr(cdr(args)))), kayak_rt::nil()))))
+                }
             }
             _ => {
                 let other = tagcase_;
                 ty_void()
             }
         }
+    } else if string_eq_p(head, str_lit("named")) {
+        let tagcase_ = car(args);
+        match *tagcase_ {
+            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Const(p) => {
+                if string_eq_p(p.0, str_lit("flat-arrayof")) {
+                    ty_data(str_lit("%flat-array"), ri_descs(c, cdr(args)))
+                } else {
+                    ty_data(if string_member_p(rp_generative_head(p.0), rp_generative_heads()) {
+                        rp_generative_head(p.0)
+                    } else {
+                        p.0
+                    }, ri_descs(c, cdr(args)))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ty_void()
+            }
+        }
+    } else if string_eq_p(head, str_lit("bloblet")) {
+        ty_data(if {
+            let tagcase_ = car(args);
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Flag(f) => {
+                    f
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            str_lit("%fbloblet")
+        } else {
+            str_lit("%bloblet")
+        }, kayak_rt::heap_cons(ri_region(c, car(cdr(args))), ri_tys(c, cdr(cdr(args)))))
+    } else if string_eq_p(head, str_lit("moduleof")) {
+        let n = size(binders);
+        let rest = drop_n(args, n);
+        let part_of = lambda2s(move |a: RpOperand, prefix: Str| {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                    map(lambda1s(move |pt: Product_11_12<Str, &'static Ty>| {
+                        ty_data(string_append(prefix, pt.0), kayak_rt::heap_cons(pt.1, kayak_rt::nil()))
+                    }), ri_parts(c, car(rp_node_at({
+                        let tagcase_ = c;
+                        match *tagcase_ {
+                            Ri::Ri(ns, hs, bs, busy) => {
+                                ns
+                            }
+                        }
+                    }, j)).4))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        });
+        ty_data(str_lit("%mtype"), onto(map(lambda1s(move |b: Symbol| {
+            ty_data(string_append(str_lit("%abs "), symbol_to_string(b)), kayak_rt::heap_cons(ty_data(string_append(str_lit("rp.."), symbol_to_string(b)), nil::<&'static Ty>()), kayak_rt::nil()))
+        }), binders), onto(part_of(car(rest), str_lit("%desc ")), part_of(car(cdr(rest)), str_lit("%val ")))))
+    } else if string_eq_p(head, str_lit("prompt-tag")) {
+        ty_tag(ri_ty(c, car(args)), ri_ty(c, car(cdr(args))), {
+            let tagcase_ = car(cdr(cdr(args)));
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                    ri_atoms(c, car(rp_node_at({
+                        let tagcase_ = c;
+                        match *tagcase_ {
+                            Ri::Ri(ns, hs, bs, busy) => {
+                                ns
+                            }
+                        }
+                    }, j)).4)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        }, ri_region(c, car(cdr(cdr(cdr(args))))))
     } else {
         ty_void()
     }
@@ -1168,7 +1804,7 @@ pub fn ty_rep(s: &'static St, t: &'static Ty) -> List<Bytes> {
             let tagcase_ = x;
             match *tagcase_ {
                 Rx::Rx(ns, k, hs, d) => {
-                    if d {
+                    if not(string_eq_p(d, str_lit(""))) {
                         nil::<Bytes>()
                     } else {
                         let tagcase_ = root;
@@ -1184,6 +1820,21 @@ pub fn ty_rep(s: &'static St, t: &'static Ty) -> List<Bytes> {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+// Why type `t` is declined: the first part a rep does not take, or none.
+pub fn ty_declined(s: &'static St, t: &'static Ty) -> Str {
+    let tagcase_ = rx_ty(s, rx_empty(), nil::<&'static Rpbind>(), t);
+    match *tagcase_ {
+        Rxa::Rxa(x, root) => {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Rx::Rx(ns, k, hs, d) => {
+                    d
                 }
             }
         }
@@ -1207,7 +1858,7 @@ pub fn scheme_rep_hex(s: &'static St, sc: &'static Scheme) -> Str {
             };
             let got = ty_rep(s, t2);
             if null_p(got) {
-                str_lit("declined")
+                string_append(str_lit("declined: "), ty_declined(s, t2))
             } else {
                 let h1 = rp_hex_of(car(got), int_lit(0));
                 let again = ty_rep(new_state(), rep_ty(car(got)));

@@ -8386,3 +8386,28 @@ Fixpt prints reps):
 - a region constant is its name as kayak writes it (`@a`).
 Declined so far: `addr`, module types, specifications, blobrefs,
 bloblets, `nlist`, prompt tags, and an effect variable applied.
+
+## C302. Types as reps: more of kayak's types (2026-11-01)
+
+The export takes more heads, the import each back:
+- **Fixpt's generative types**: kayak's `%addr`, `%inbox`, `%blobref`,
+  `%stringof`, `%bytes`, `%eqtable` and `%identity`. In Fixpt's type
+  language each is a named generative type, not a head of its own, so
+  each is a `named` constant applied to descriptions (`d-type`,
+  `d-region`, `d-size`). A datatype's arguments are descriptions too.
+- **Prompt tags**, `(prompt-tag A H E R)`.
+- **Module types**: `(moduleof {t …} (binder type) … (descs d T …) (vals
+  x T …))`, the abstract types bound by the node, as Fixpt binds them.
+  Imported, an abstract type is a constant `rp..t` again. Effect
+  descriptions and type constructors are declined for now.
+- **Bloblets**, `(bloblet frozen? R T …)`.
+- **Sizes**: `(finite)`, or `(lin k (&terms (term v c) …))`, the terms a
+  set; with them `(nat N)`, `nlist`, `narrayof`, and flat arrays as
+  Fixpt's generative `flat-arrayof`.
+`--reps` says why a type is declined: the first part found. Of the 1365
+definitions, 1249 come back as themselves; 116 are declined, none differ.
+Most of the rest are specifications (about 40), flat sums (20), `vsubr`,
+module values and effect descriptions. Two choices are kayak's until
+they can be compared with Fixpt's: an `nlist`'s region (kayak's has
+none, so `(heap)`), and a flat array's literal length, which comes back
+as a size where the emitter takes a literal (`flat-length`).
