@@ -8411,3 +8411,32 @@ module values and effect descriptions. Two choices are kayak's until
 they can be compared with Fixpt's: an `nlist`'s region (kayak's has
 none, so `(heap)`), and a flat array's literal length, which comes back
 as a size where the emitter takes a literal (`flat-length`).
+
+## C303. Types as reps: Fixpt's numbering, flat sums, specifications (2026-11-01)
+
+- **Constants keyed as Fixpt keys them.** A standard generative type's
+  key is made of its name and its number in Fixpt's `check.rs`, where
+  C301 and C302 used 0: `vsubr` 0, `flatlayout` 1, `flatarrayof` 2,
+  `identity` 3, `eqtable` 4, `blobref` 5, `flat-arrayof` 6,
+  `flat-keyed` 7, `bytevectorof` 8, `escape-tag` 9, `addr` 10, `inbox`
+  11, `process` 12, `event` 13, `stringof` 14, `sessionof` 15, `pending`
+  16, the evidence types 17-21. A program's own datatypes keep 0 until
+  kayak numbers them as Fixpt does, after the standard ones, in
+  definition order.
+- **Flat types**: `flatarrayof`; a keyed flat sum as `flat-keyed` of
+  its key's width (a size) and the sum, as Fixpt's `k-parse-flat-sum`
+  makes one; an unkeyed one a plain sum.
+- **`vsubr`**, of an effect and two types, and **`escape-tag`**.
+- **Specifications**: a `subr`'s fifth operand, `(spec {p … r} requires
+  ensures)`, after Fixpt's `rp-spec`, its formulas `true`, `false`,
+  `rel` (by name: `lt`, `le`, `eq`, `ne`), `holds`, `not`, `and`, `or`,
+  `implies`, over `lit`, `add`, `sub`, `mul` and `(atom NAME)`. A name is
+  `param`, `result`, `length`, `acyclic`, `nat`, `length-is`, `shape` (by
+  Fixpt's shape numbers) or `call`. kayak's own text is read
+  (`spec-parts`) and written back from the nodes on import.
+Of the 1365 definitions, 1334 come back as themselves; 31 are declined,
+none differ. Left: a module type by its abbreviation's name (`%module
+NAME`, whose expansion is the checker's environment's, which the export
+has not got), module types with effect descriptions, higher kinds
+(`dlambda`, `app`), composable continuations, and an effect variable
+applied.
