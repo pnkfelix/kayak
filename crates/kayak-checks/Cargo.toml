@@ -27,3 +27,7 @@ harness = false
 [[test]]
 name = "reps"
 harness = false
+
+[[test]]
+name = "stage"
+harness = false

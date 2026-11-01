@@ -8512,3 +8512,14 @@ The rest need evidence, sessions, or rules kayak's checker has not got.
 
 A slip found on the way: `%stage-run` first went into the primitives'
 list before the processes' (C295), renumbering them; it is last now.
+
+## C306. A test of `stage` on the engine (2026-11-01)
+
+`crates/kayak-checks/tests/stage.rs`: each of Fixpt's CLI's stage
+programs, run by Fixpt (`fixpt run`, which calls `main`) and by the
+engine (the program, then `(main)`, whose value the engine writes last
+and the test leaves off). The ones listed in `tests/stage-passing`
+(`sealed.fx`, `state.fx`, `tail-across.fx`) must print what Fixpt
+prints; the rest are kept as found, `same` or `differ` and both outputs,
+in `target/kayak-checks/stage`. Like the other passing lists, the list
+only grows.
