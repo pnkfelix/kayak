@@ -8309,3 +8309,26 @@ both with Fixpt's words and with kayak's.
 `attempt` agrees on tier 1 since C297: kayak's code generator expands it
 as the engine's lowering does (`process-expanded`). All eight of Fixpt's
 running `attempt/` programs agree there, its words and kayak's.
+
+## C299. Types as reps: the design (2026-11-01)
+
+The user chose Fixpt's "heap types" (its `heap-types.md`) before `stage`
+and sessions, so that those are built on reps from the start, not on
+text and then moved, as Fixpt's were. `docs/research/type-reps.md` maps
+it onto kayak:
+- Fixpt's `fixpt-reps` is taken whole, being of no type language (all
+  but its `heap.rs`, Fixpt's heap's), copied and checked at the pin, so
+  that kayak's reps are Fixpt's byte for byte.
+- `rep-of-nodes` and `rep-nodes`, standard FX-26 procedures, go into
+  kayak-rt, the engine and tier 1. kayak's checker, in KFX, calls them,
+  as Fixpt's FX-26 checker calls its runtime's.
+- kayak's `ty` maps to Fixpt's heads (its `reps.rs` table): a list is a
+  pair node whose tail is itself, `%mu` is a cycle, `%named` is seen
+  through, and an unsolved inference variable is declined.
+- The facts that carry a type carry its rep instead, for the emitter,
+  the lowering, tier 1's generator and the memos; then `stage` on reps.
+
+Two questions are left for the user: whether Fixpt should print reps
+(`fixpt check --reps`, Fixpt's change to make), so that the checkers'
+agreement can be by reps; and a copy of the crate against a path
+dependency on the clone.

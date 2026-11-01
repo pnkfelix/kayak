@@ -109,8 +109,10 @@ section below where it has one; here the order, and what each is.
    - (Fixpt's e2f3f0f6, a bloblet's values by their index, §205, is its
      Rust heap's accessors and a lint: nothing of FX-26's, nothing kayak
      ports.)
-   - Fixpt's re-architecture, "heap types" (`docs/research/heap-types.md`):
-     types as interned heap data, one rep each, shared by both checkers.
+   - Fixpt's re-architecture, "heap types": types as reps
+     (`docs/research/type-reps.md`, C299): the crate taken whole, the
+     standard `rep-of-nodes`/`rep-nodes`, kayak's export and import, the
+     facts by rep, then `stage` on reps.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).
