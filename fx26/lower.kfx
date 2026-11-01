@@ -69,7 +69,11 @@
   (lambda (w)
     (let ((h (tagcase (car (items w)) (sym (n f p) n) (else other ""))))
       (cond ((string=? h "icell-get") "cell-event") ((string=? h "receive") "mailbox-event")
-            ((string=? h "sleep-until") "clock-event") (else "stdin-event")))))
+            ((string=? h "sleep-until") "clock-event")
+            ;; Heist's F6 (C296).
+            ((string=? h "process-output") "process-output-event") ((string=? h "process-exit") "process-exit-event")
+            ((string=? h "process-news") "process-news-event")
+            (else "stdin-event")))))
 
 (define-rec
   (select-events (subr kfx (sexps i64) sexp)

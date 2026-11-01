@@ -1160,6 +1160,18 @@ struct ChildOutput {
 
 static CHILDREN: std::sync::Mutex<Vec<Child>> = std::sync::Mutex::new(Vec::new());
 
+/// What Fixpt's wake pipe says: news of a child, its output read or ended,
+/// or its end found, counted, for `process_wait` to see change.
+static CHILD_NEWS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Never called with `CHILDREN` held: a `pselect`'s waiters look again
+/// (`process::input_changed`), and the scheduler's lock is taken before
+/// `CHILDREN` where a waiter asks whether a child is ready.
+fn child_news() {
+    CHILD_NEWS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    crate::process::input_changed();
+}
+
 #[allow(non_camel_case_types)]
 pub enum Sum_7started_6failed<A0, A1> {
     Started(A0),
@@ -1232,18 +1244,42 @@ pub fn process_start(
                     Ok(0) | Err(_) => break,
                     Ok(n) => out.lock().unwrap().bytes.extend_from_slice(&buf[..n]),
                 }
+                child_news();
             }
             out.lock().unwrap().ended = true;
+            child_news();
         });
-        let mut children = CHILDREN.lock().unwrap();
-        children.push(Child {
-            child,
-            input,
-            output,
-            status: None,
-            seen_end: false,
+        let p = {
+            let mut children = CHILDREN.lock().unwrap();
+            children.push(Child {
+                child,
+                input,
+                output,
+                status: None,
+                seen_end: false,
+            });
+            children.len() - 1
+        };
+        // Its end, said too, as Fixpt's thread waiting with `WNOWAIT` says
+        // it: it may end after its output does, or before.
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(Duration::from_millis(2));
+                let ended = {
+                    let mut children = CHILDREN.lock().unwrap();
+                    let c = &mut children[p];
+                    if c.status.is_none() {
+                        c.status = c.child.try_wait().ok().flatten();
+                    }
+                    c.status.is_some()
+                };
+                if ended {
+                    child_news();
+                    break;
+                }
+            }
         });
-        Ok(children.len() as i64 - 1)
+        Ok(p as i64)
     })();
     heap_alloc(match started {
         Ok(p) => Sum_7started_6failed::Started(i64_to_int(p)),
@@ -1370,6 +1406,52 @@ pub fn process_news() -> Int {
         }
     }
     i64_to_int(-1)
+}
+
+/// Whether process `p` has output to take, text `process-output` gives
+/// (not only part of a character); or is no process (the scheduler's, F6).
+pub fn process_output_ready(p: i64) -> bool {
+    with_child(i64_to_int(p), true, |c| {
+        let out = c.output.lock().unwrap();
+        let n = out.bytes.len();
+        n > 0 && (out.ended || n > incomplete_tail(&out.bytes))
+    })
+}
+
+/// Whether process `p` has ended, its output all read, as `process-status`
+/// says, which then has seen it; or is no process.
+pub fn process_ended(p: i64) -> bool {
+    !matches!(
+        process_status(i64_to_int(p)),
+        Sum_7running_6exited_9signalled_7unknown::Running(())
+    )
+}
+
+/// Waits until a child has news (its output read, or ended, or its end
+/// found), or the standard input is ready if `stdin`, or the clock reaches
+/// `until` (-1: no limit): whether it has not run out (Fixpt's
+/// `wait_processes`, its wake pipe a count polled).
+pub fn process_wait(until: i64, stdin: bool) -> bool {
+    use std::sync::atomic::Ordering;
+    let seen = CHILD_NEWS.load(Ordering::SeqCst);
+    loop {
+        if stdin && stdin_ready_p() {
+            return true;
+        }
+        if CHILD_NEWS.load(Ordering::SeqCst) != seen {
+            return true;
+        }
+        let now = clock();
+        if until >= 0 && now >= until {
+            return false;
+        }
+        let step = if until >= 0 {
+            (until - now).min(1_000_000)
+        } else {
+            1_000_000
+        };
+        std::thread::sleep(Duration::from_nanos(step as u64));
+    }
 }
 
 /// `text` written to process `p`'s input.

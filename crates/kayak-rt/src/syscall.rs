@@ -81,6 +81,25 @@ const SYSCALLS: &[Syscall] = &[
         canonical: "(subr (io sys) (i64) bool)",
         run: |a| crate::world::stdin_wait(int(a[0])).word(),
     },
+    // Programs run beside this one, for a scheduler (C296; Heist's F6):
+    // whether process `p` has output to take; whether it has ended, its
+    // output all read; and a wait until one has news, the standard input is
+    // ready (if asked) or a deadline (-1: none) comes.
+    Syscall {
+        host: "io:process-output-ready/1",
+        canonical: "(subr (io sys) (i64) bool)",
+        run: |a| crate::world::process_output_ready(int(a[0])).word(),
+    },
+    Syscall {
+        host: "io:process-ended/1",
+        canonical: "(subr (io sys) (i64) bool)",
+        run: |a| crate::world::process_ended(int(a[0])).word(),
+    },
+    Syscall {
+        host: "io:process-wait/1",
+        canonical: "(subr (io sys) (i64 bool) bool)",
+        run: |a| crate::world::process_wait(int(a[0]), bool::of_word(a[1])).word(),
+    },
     // Text in a runtime's own words (C233): code points, one or two to a
     // word, written from a flat array's range to the standard output (1)
     // or error (2), 0 or -1; a line read and kept, how many code points

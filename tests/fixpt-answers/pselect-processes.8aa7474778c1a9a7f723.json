@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"pselect-processes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"drain : (subr (maxeff spin (io process) nondet (read (globals drain))) (int string) string) ! pure",
+"news : (subr (maxeff (io process) nondet) () int) ! pure",
+"run : (subr (maxeff spin (io process) nondet (read (globals drain news))) () string) ! pure",
+"\"0 one\\ntwo\\nexited 4\" : string ! (maxeff spin (io process) nondet (read (globals drain news run)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

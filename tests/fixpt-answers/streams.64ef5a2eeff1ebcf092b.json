@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"streams.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"bit : (subr pure (bool int) int) ! pure",
+"kind-of : (subr pure (io-error) int) ! pure",
+"buf : (bytevectorof @b) ! (alloc @b)",
+"w : int ! (io stdout)",
+"l : int ! (io stdin)",
+"b : int ! (io stdin)",
+"n0 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"n1 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"r : int ! (io stdin)",
+"a : int ! (io args)",
+"f : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"d : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"t : int ! (io terminal)",
+"; not in the native convention yet, so run as cellular code: `lambda@11` has no register code",
+"1023 : int ! (read (globals a b d f l n0 n1 r t w))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -4351,7 +4351,7 @@ pub mod expressions {
                     let tagcase_ = car(ys);
                     match *tagcase_ {
                         Sexp::Lst(ws, f3, l3, p3) => {
-                            ((i64_eq(size(ws), 2i64) && (sym_is_p(car(ws), str_lit("icell-get")) || sym_is_p(car(ws), str_lit("receive")) || sym_is_p(car(ws), str_lit("sleep-until")))) || (i64_eq(size(ws), 1i64) && sym_is_p(car(ws), str_lit("read-byte"))))
+                            ((i64_eq(size(ws), 2i64) && (sym_is_p(car(ws), str_lit("icell-get")) || sym_is_p(car(ws), str_lit("receive")) || sym_is_p(car(ws), str_lit("sleep-until")) || sym_is_p(car(ws), str_lit("process-output")) || sym_is_p(car(ws), str_lit("process-exit")))) || (i64_eq(size(ws), 1i64) && (sym_is_p(car(ws), str_lit("read-byte")) || sym_is_p(car(ws), str_lit("process-news")))))
                         }
                         _ => {
                             let other = tagcase_;
@@ -5670,7 +5670,7 @@ pub mod expressions {
         } else if any_p(lambda1s(move |a: &'static Sexp| {
             not(pselect_arm_p(a))
         }), xs) {
-            match refuse(v, str_lit("a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`")) {}
+            match refuse(v, str_lit("a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)`, `((read-byte) name body …)`, `((process-output p) name body …)`, `((process-exit p) name body …)` or `((process-news) name body …)`")) {}
         } else {
             with_effs(pselect_arms(v, s, xs, expected), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil()))
         }

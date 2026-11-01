@@ -5051,10 +5051,16 @@ pub mod emitter {
             let w = items(car(items(sexp_at(arms, k))));
             let deadline = sym_is_p(car(w), str_lit("sleep-until"));
             let acc = put(string_append(str_lit("let sel_"), string_append(i64_to_string(k), str_lit("__ = "))), acc);
-            put_nl(n1, put(str_lit(";"), if null_p(cdr(w)) {
+            put_nl(n1, put(str_lit(";"), if sym_is_p(car(w), str_lit("process-news")) {
+                put(str_lit("&kayak_rt::process::ProcessNews"), acc)
+            } else if null_p(cdr(w)) {
                 put(str_lit("&kayak_rt::process::Stdin"), acc)
             } else if deadline {
                 put(str_lit(")"), put_exp(c, second(w), n1, value(), put(str_lit("&kayak_rt::process::Deadline("), acc)))
+            } else if sym_is_p(car(w), str_lit("process-output")) {
+                put(str_lit(")"), put_exp(c, second(w), n1, value(), put(str_lit("&kayak_rt::process::ProcessOutput("), acc)))
+            } else if sym_is_p(car(w), str_lit("process-exit")) {
+                put(str_lit(")"), put_exp(c, second(w), n1, value(), put(str_lit("&kayak_rt::process::ProcessExit("), acc)))
             } else {
                 put_exp(c, second(w), n1, value(), acc)
             }))

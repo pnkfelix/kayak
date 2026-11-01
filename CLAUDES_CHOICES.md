@@ -8237,3 +8237,33 @@ engine; kfx refuses it, a constant with I/O. So
 Not yet: `pselect`'s arms `((process-output p) text …)`, `((process-exit
 p) how …)` and `((process-news) p …)`, which wait in the scheduler (Fixpt's
 events 46-54 and its wake pipe).
+
+## C296. `pselect` on programs run beside this one (2026-11-01)
+
+The rest of Heist's F6: the arms `((process-output p) text …)`, ready once
+`p` has output to take; `((process-exit p) how …)`, once it has ended,
+its output all read, so that an arm for its output sees all of it first;
+`((process-news) p …)`, once any process has news.
+- **The checker** takes the three arms.
+- **The engine** lowers them to the library's `process-output-event`,
+  `process-exit-event` and `process-news-event` (Fixpt's `processes.fx`
+  at the pin). The scheduler answers their `%sched` ops 46-54 as Fixpt's
+  `sched.rs` does, its state three slots longer (the output, end and news
+  waiters). When no task can run, `timers-wait!` waits for a child as
+  well as for the input and the timers. It does so through three
+  syscalls of kayak-rt's: `io:process-output-ready/1`,
+  `io:process-ended/1` and `io:process-wait/1`.
+- **KFX**: kayak-rt's `ProcessOutput`, `ProcessExit` and `ProcessNews`
+  are `Waitable`, each from outside the program, as the standard input
+  is, and the arms' values are taken by functions of the same names.
+- **Wakeups.** A child's news wakes `sync`'s waiters, and is counted for
+  the engine's wait, in place of Fixpt's wake pipe. The reader threads
+  report output and end-of-output. A thread for each child polls for its
+  exit, every 2 ms, where Fixpt's waits with `WNOWAIT`; both of those need
+  `unsafe`. The news is never reported with the children's table locked:
+  the scheduler takes its own lock before that one, when asking whether
+  a child is ready.
+`tests/kfx-io/pselect-processes.kfx` runs the same as Rust and by Fixpt;
+`tests/fx26-kayak/io/pselect-processes.fx` gets Fixpt's types, and on the
+engine its value, by hand: no check runs kayak's own FX-26 programs on
+the engine.

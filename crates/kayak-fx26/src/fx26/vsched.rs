@@ -86,6 +86,20 @@ pub fn s_stdin() -> i64 {
     16i64
 }
 
+// Heist's F6 (C296): the wakers waiting for a process's output, and for its
+// end, each `(p . waker)`; and those waiting for any process's news.
+pub fn s_output() -> i64 {
+    17i64
+}
+
+pub fn s_exit() -> i64 {
+    18i64
+}
+
+pub fn s_news() -> i64 {
+    19i64
+}
+
 // I-cells: whether full, the value, the waiters (newest first). Mailboxes:
 // messages, oldest first, then newest first, and the task waiting.
 pub fn ob_icell() -> i64 {
@@ -131,7 +145,7 @@ pub fn state_x() -> i64 {
     if sched_p() {
         flatarray_ref_i64(get(constants()), get(sched_at()))
     } else {
-        let s = vector_filled_x(alloc_x(ob_vector(), 17i64), 0i64, kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(fixnum(0i64), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(fixnum(0i64), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::nil()))))))))))))))))));
+        let s = vector_filled_x(alloc_x(ob_vector(), 20i64), 0i64, kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(fixnum(0i64), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(fixnum(0i64), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_false(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::heap_cons(w_nil(), kayak_rt::nil())))))))))))))))))))));
         set(sched_at(), add_constant_x(s));
         s
     }
@@ -581,6 +595,78 @@ pub fn stdin_wait(x1: i64) -> bool {
     kayak_rt::syscall1(str_lit("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit("io:stdin-wait/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
 }
 
+// Programs run beside this one (C296): whether one has output to take,
+// whether it has ended, its output all read; and a wait until one has news,
+// the input is ready (if asked) or a deadline comes (Fixpt's
+// `wait_processes`).
+
+pub fn _pctsyscall_available_colonprocess_output_ready_p() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit("io:process-output-ready/1"), str_lit("(subr (io sys) (i64) bool)"));
+    true
+}
+
+pub fn process_output_ready_p(x1: i64) -> bool {
+    _pctsyscall_available_colonprocess_output_ready_p();
+    kayak_rt::syscall1(str_lit("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit("io:process-output-ready/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+}
+
+pub fn _pctsyscall_available_colonprocess_ended_p() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall process-ended? (\"io:process-ended/1\")"), str_lit("io:process-ended/1"), str_lit("(subr (io sys) (i64) bool)"));
+    true
+}
+
+pub fn process_ended_p(x1: i64) -> bool {
+    _pctsyscall_available_colonprocess_ended_p();
+    kayak_rt::syscall1(str_lit("syscall process-ended? (\"io:process-ended/1\")"), str_lit("io:process-ended/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+}
+
+pub fn _pctsyscall_available_colonprocess_wait() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall process-wait (\"io:process-wait/1\")"), str_lit("io:process-wait/1"), str_lit("(subr (io sys) (i64 bool) bool)"));
+    true
+}
+
+pub fn process_wait(x1: i64, x2: bool) -> bool {
+    _pctsyscall_available_colonprocess_wait();
+    kayak_rt::syscall2(str_lit("syscall process-wait (\"io:process-wait/1\")"), str_lit("io:process-wait/1"), str_lit("(subr (io sys) (i64 bool) bool)"), x1, x2)
+}
+
+/// Process waiters `l`, each `(p . waker)`, parted: those whose process is
+/// ready (its output, if `output`, else its end), their wakers, and the
+/// rest, each list reversed, as `(waiting . woken)`.
+pub fn waiters_split(mut l: i64, mut output: bool, mut waiting: i64, mut woken: i64) -> i64 {
+    loop {
+        if not(is_pair_p(l)) {
+            return pair_x(waiting, woken);
+        } else {
+            let e = pair_car(l);
+            let p = fixnum_value(pair_car(e));
+            if if output {
+                process_output_ready_p(p)
+            } else {
+                process_ended_p(p)
+            } {
+                (l, woken) = (pair_cdr(l), pair_x(pair_cdr(e), woken));
+                continue;
+            } else {
+                (l, waiting) = (pair_cdr(l), pair_x(e, waiting));
+                continue;
+            }
+        }
+    }
+}
+
+/// The wakers of `slot` whose process is ready pushed, oldest first; the
+/// rest kept, in order (Fixpt's `timers_wait`).
+pub fn process_waiters_woken_x(slot: i64, output: bool) -> () {
+    let parted = waiters_split(sched_ref(slot), output, w_nil(), w_nil());
+    if is_pair_p(pair_cdr(parted)) {
+        sched_set_x(slot, reversed_onto_x(pair_car(parted), w_nil()));
+        wakers_pushed_x(pair_cdr(parted))
+    } else {
+        ()
+    }
+}
+
 pub fn stdin_wakers_pushed_x(l: i64) -> () {
     if is_pair_p(l) {
         stdin_wakers_pushed_x(pair_cdr(l));
@@ -597,11 +683,21 @@ pub fn stdin_wakers_pushed_x(l: i64) -> () {
 /// each timer due taken, its waker run, in the order of their times, and
 /// `#t` (Fixpt's `timers_wait`).
 pub fn timers_wait_x(sleep: bool) -> i64 {
-    let (ts, input) = (sched_ref(s_timers()), is_pair_p(sched_ref(s_stdin())));
-    if (not(is_pair_p(ts)) && not(input)) {
+    let ts = sched_ref(s_timers());
+    let input = is_pair_p(sched_ref(s_stdin()));
+    let news = is_pair_p(sched_ref(s_news()));
+    let processes = (news || is_pair_p(sched_ref(s_output())) || is_pair_p(sched_ref(s_exit())));
+    if (not(is_pair_p(ts)) && not(input) && not(processes)) {
         w_false()
     } else {
         if not(sleep) {
+            ()
+        } else if processes {
+            process_wait(if is_pair_p(ts) {
+                timers_earliest(ts, fixnum_max())
+            } else {
+                -1i64
+            }, input);
             ()
         } else if input {
             stdin_wait(if is_pair_p(ts) {
@@ -617,6 +713,19 @@ pub fn timers_wait_x(sleep: bool) -> i64 {
             let ws = sched_ref(s_stdin());
             sched_set_x(s_stdin(), w_nil());
             stdin_wakers_pushed_x(ws)
+        } else {
+            ()
+        };
+        if (news && i64_gt_eq(int_to_i64(process_news()), 0i64)) {
+            let ws = sched_ref(s_news());
+            sched_set_x(s_news(), w_nil());
+            stdin_wakers_pushed_x(ws)
+        } else {
+            ()
+        };
+        if processes {
+            process_waiters_woken_x(s_output(), true);
+            process_waiters_woken_x(s_exit(), false)
         } else {
             ()
         };
@@ -916,6 +1025,30 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         w_unit()
     } else if i64_eq(n, 45i64) {
         sched_set_x(s_stdin(), without_x(sched_ref(s_stdin()), 0i64, a));
+        w_unit()
+    } else if i64_eq(n, 46i64) {
+        bool_word(process_output_ready_p(fixnum_value(a)))
+    } else if i64_eq(n, 47i64) {
+        sched_cons_x(s_output(), pair_x(a, b));
+        w_unit()
+    } else if i64_eq(n, 48i64) {
+        sched_set_x(s_output(), without_x(sched_ref(s_output()), 2i64, a));
+        w_unit()
+    } else if i64_eq(n, 49i64) {
+        bool_word(process_ended_p(fixnum_value(a)))
+    } else if i64_eq(n, 50i64) {
+        sched_cons_x(s_exit(), pair_x(a, b));
+        w_unit()
+    } else if i64_eq(n, 51i64) {
+        sched_set_x(s_exit(), without_x(sched_ref(s_exit()), 2i64, a));
+        w_unit()
+    } else if i64_eq(n, 52i64) {
+        bool_word(i64_gt_eq(int_to_i64(process_news()), 0i64))
+    } else if i64_eq(n, 53i64) {
+        sched_cons_x(s_news(), a);
+        w_unit()
+    } else if i64_eq(n, 54i64) {
+        sched_set_x(s_news(), without_x(sched_ref(s_news()), 0i64, a));
         w_unit()
     } else if i64_eq(n, 40i64) {
         sched_cons_x(s_waiting(), pair_x(a, b));

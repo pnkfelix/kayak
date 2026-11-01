@@ -125,6 +125,12 @@ pub fn select_event(w: &'static Sexp) -> Str {
         str_lit("mailbox-event")
     } else if string_eq_p(h, str_lit("sleep-until")) {
         str_lit("clock-event")
+    } else if string_eq_p(h, str_lit("process-output")) {
+        str_lit("process-output-event")
+    } else if string_eq_p(h, str_lit("process-exit")) {
+        str_lit("process-exit-event")
+    } else if string_eq_p(h, str_lit("process-news")) {
+        str_lit("process-news-event")
     } else {
         str_lit("stdin-event")
     }

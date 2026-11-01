@@ -37,6 +37,11 @@
 (define s-parents i64 14)
 (define s-waiting i64 15)
 (define s-stdin i64 16)
+"Heist's F6 (C296): the wakers waiting for a process's output, and for its
+ end, each `(p . waker)`; and those waiting for any process's news."
+(define s-output i64 17)
+(define s-exit i64 18)
+(define s-news i64 19)
 
 "I-cells: whether full, the value, the waiters (newest first). Mailboxes:
  messages, oldest first, then newest first, and the task waiting."
@@ -58,9 +63,9 @@
     "The state's vector, made if there is none yet (Fixpt's `state`)."
     (if (sched?)
         (flatarray-ref-i64 (get constants) (get sched-at))
-        (let ((s (vector-filled! (alloc! ob-vector 17) 0
+        (let ((s (vector-filled! (alloc! ob-vector 20) 0
                                  (list w-nil w-nil w-false w-false (fixnum 0) w-nil w-nil w-false w-nil (fixnum 0)
-                                       w-false w-nil w-nil w-false w-nil w-nil w-nil))))
+                                       w-false w-nil w-nil w-false w-nil w-nil w-nil w-nil w-nil w-nil))))
           (begin (set sched-at (add-constant! s)) s)))))
 
 (define sched-ref (subr (maxeff vm loading) (i64) i64) (lambda (k) (obj-ref (state!) k)))
@@ -283,6 +288,36 @@
  clock reaches a deadline (-1: none): kayak-rt's (C232)."
 (define-syscall stdin-wait "io:stdin-wait/1" (subr (io sys) (i64) bool))
 
+"Programs run beside this one (C296): whether one has output to take,
+ whether it has ended, its output all read; and a wait until one has news,
+ the input is ready (if asked) or a deadline comes (Fixpt's
+ `wait_processes`)."
+(define-syscall process-output-ready? "io:process-output-ready/1" (subr (io sys) (i64) bool))
+(define-syscall process-ended? "io:process-ended/1" (subr (io sys) (i64) bool))
+(define-syscall process-wait "io:process-wait/1" (subr (io sys) (i64 bool) bool))
+
+(define-rec
+  (waiters-split (subr (maxeff vm loading) (i64 bool i64 i64) i64)
+    (lambda (l output waiting woken)
+      "Process waiters `l`, each `(p . waker)`, parted: those whose process is
+       ready (its output, if `output`, else its end), their wakers, and the
+       rest, each list reversed, as `(waiting . woken)`."
+      (if (not (is-pair? l))
+          (pair! waiting woken)
+          (let* ((e (pair-car l)) (p (fixnum-value (pair-car e))))
+            (if (if output (process-output-ready? p) (process-ended? p))
+                (waiters-split (pair-cdr l) output waiting (pair! (pair-cdr e) woken))
+                (waiters-split (pair-cdr l) output (pair! e waiting) woken)))))))
+
+(define process-waiters-woken! (subr (maxeff vm loading) (i64 bool) unit)
+  (lambda (slot output)
+    "The wakers of `slot` whose process is ready pushed, oldest first; the
+     rest kept, in order (Fixpt's `timers_wait`)."
+    (let ((parted (waiters-split (sched-ref slot) output w-nil w-nil)))
+      (if (is-pair? (pair-cdr parted))
+          (begin (sched-set! slot (reversed-onto! (pair-car parted) w-nil)) (wakers-pushed! (pair-cdr parted)))
+          #u))))
+
 (define-rec
   (stdin-wakers-pushed! (subr (maxeff vm loading) (i64) unit)
     (lambda (l) (if (is-pair? l) (begin (stdin-wakers-pushed! (pair-cdr l)) (queue-push! (pair-car l))) #u))))
@@ -295,16 +330,22 @@
      `sleep`), the input's wakers run if it is ready, oldest first, and
      each timer due taken, its waker run, in the order of their times, and
      `#t` (Fixpt's `timers_wait`)."
-    (let ((ts (sched-ref s-timers)) (input (is-pair? (sched-ref s-stdin))))
-      (cond ((and (not (is-pair? ts)) (not input)) w-false)
+    (let* ((ts (sched-ref s-timers)) (input (is-pair? (sched-ref s-stdin))) (news (is-pair? (sched-ref s-news)))
+           (processes (or news (is-pair? (sched-ref s-output)) (is-pair? (sched-ref s-exit)))))
+      (cond ((and (not (is-pair? ts)) (not input) (not processes)) w-false)
             (else
              (begin
                (cond ((not sleep) #u)
+                     (processes (begin (process-wait (if (is-pair? ts) (timers-earliest ts fixnum-max) -1) input) #u))
                      (input (begin (stdin-wait (if (is-pair? ts) (timers-earliest ts fixnum-max) -1)) #u))
                      (else (sleep-until (timers-earliest ts fixnum-max))))
                (if (and input (stdin-ready?))
                    (let ((ws (sched-ref s-stdin))) (begin (sched-set! s-stdin w-nil) (stdin-wakers-pushed! ws)))
                    #u)
+               (if (and news (i64>= (int->i64 (process-news)) 0))
+                   (let ((ws (sched-ref s-news))) (begin (sched-set! s-news w-nil) (stdin-wakers-pushed! ws)))
+                   #u)
+               (if processes (begin (process-waiters-woken! s-output #t) (process-waiters-woken! s-exit #f)) #u)
                (let ((now (clock)))
                  (begin
                    (sched-set! s-timers (without! ts 5 now))
@@ -470,6 +511,17 @@
       ((i64= n 43) (bool-word (stdin-ready?)))
       ((i64= n 44) (begin (sched-cons! s-stdin a) w-unit))
       ((i64= n 45) (begin (sched-set! s-stdin (without! (sched-ref s-stdin) 0 a)) w-unit))
+      ;; Heist's F6 (C296): a process's output ready, its end, any's news;
+      ;; a waker waiting for each, and taken back.
+      ((i64= n 46) (bool-word (process-output-ready? (fixnum-value a))))
+      ((i64= n 47) (begin (sched-cons! s-output (pair! a b)) w-unit))
+      ((i64= n 48) (begin (sched-set! s-output (without! (sched-ref s-output) 2 a)) w-unit))
+      ((i64= n 49) (bool-word (process-ended? (fixnum-value a))))
+      ((i64= n 50) (begin (sched-cons! s-exit (pair! a b)) w-unit))
+      ((i64= n 51) (begin (sched-set! s-exit (without! (sched-ref s-exit) 2 a)) w-unit))
+      ((i64= n 52) (bool-word (i64>= (int->i64 (process-news)) 0)))
+      ((i64= n 53) (begin (sched-cons! s-news a) w-unit))
+      ((i64= n 54) (begin (sched-set! s-news (without! (sched-ref s-news) 0 a)) w-unit))
       ((i64= n 40) (begin (sched-cons! s-waiting (pair! a b)) w-unit))
       ((i64= n 41) (begin (sched-set! s-waiting (without! (sched-ref s-waiting) 1 a)) w-unit))
       ((i64= n 42) (reaped!))

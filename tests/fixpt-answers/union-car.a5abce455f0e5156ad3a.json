@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"union-car.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"first : (subr (read @heap) ((union nil (pairof int bool @heap))) int) ! pure",
+"7 : int ! (maxeff (read @heap) (alloc @heap) (read (globals first)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -1,0 +1,35 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"both-ways.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+"n : (subr pure (int) int) ! (read (globals inc))",
+"c : (subr (conv cellular) pure (int) int) ! (read (globals inc))",
+"call-n : (subr pure ((subr pure (int) int)) int) ! pure",
+"call-c : (subr pure ((subr (conv cellular) pure (int) int)) int) ! pure",
+"twice : (subr pure ((subr (conv fx) pure (int) int) int) int) ! pure",
+"m : (subr pure ((subr pure (int int) int) int) int) ! pure",
+"back : (subr (conv cellular) pure (int) int) ! (read (globals n))",
+"(2 2 2 2 6 7 8 2 2 12 22 15) : (listof int acyclic) ! (read (globals back c call-c call-n inc m n twice))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

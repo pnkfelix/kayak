@@ -371,6 +371,55 @@ impl Waitable for Deadline {
 /// A deadline arm's value, once chosen: unit.
 pub fn sleep_until(_: &Deadline) {}
 
+/// `pselect`'s arms on programs run beside this one (C296; Heist's F6):
+/// `((process-output p) text …)`, ready once `p` has output to take;
+/// `((process-exit p) how …)`, once it has ended, its output all read;
+/// `((process-news) p …)`, once any has news. Each from outside the
+/// program, as the standard input is.
+pub struct ProcessOutput(pub crate::Int);
+pub struct ProcessExit(pub crate::Int);
+pub struct ProcessNews;
+
+impl Waitable for ProcessOutput {
+    fn ready(&self) -> bool {
+        crate::world::process_output_ready(crate::int_to_i64(self.0))
+    }
+    fn outside(&self) -> bool {
+        true
+    }
+}
+
+impl Waitable for ProcessExit {
+    fn ready(&self) -> bool {
+        crate::world::process_ended(crate::int_to_i64(self.0))
+    }
+    fn outside(&self) -> bool {
+        true
+    }
+}
+
+impl Waitable for ProcessNews {
+    fn ready(&self) -> bool {
+        crate::int_to_i64(crate::world::process_news()) >= 0
+    }
+    fn outside(&self) -> bool {
+        true
+    }
+}
+
+/// Each arm's value, once chosen.
+pub fn process_output(w: &ProcessOutput) -> crate::Str {
+    crate::world::process_output(w.0)
+}
+pub fn process_exit(
+    w: &ProcessExit,
+) -> &'static crate::world::Sum_6exited_9signalled_7unknown<crate::Int, crate::Int, ()> {
+    crate::world::process_exit(w.0)
+}
+pub fn process_news(_: &ProcessNews) -> crate::Int {
+    crate::world::process_news()
+}
+
 impl<T> Waitable for ICellBox<T> {
     fn ready(&self) -> bool {
         held(&self.value).is_some()

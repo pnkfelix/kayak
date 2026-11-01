@@ -2852,8 +2852,12 @@
                                  (let* ((w (items (car (items (sexp-at arms k)))))
                                         (deadline (sym-is? (car w) "sleep-until"))
                                         (acc (put (string-append "let sel_" (string-append (i64->string k) "__ = ")) acc)))
-                                   (put-nl n1 (put ";" (cond ((null? (cdr w)) (put "&kayak_rt::process::Stdin" acc))
+                                   (put-nl n1 (put ";" (cond ((sym-is? (car w) "process-news") (put "&kayak_rt::process::ProcessNews" acc))
+                                                             ((null? (cdr w)) (put "&kayak_rt::process::Stdin" acc))
                                                              (deadline (put ")" (put-exp c (second w) n1 (value) (put "&kayak_rt::process::Deadline(" acc))))
+                                                             ;; Programs run beside this one (C296): the number wrapped.
+                                                             ((sym-is? (car w) "process-output") (put ")" (put-exp c (second w) n1 (value) (put "&kayak_rt::process::ProcessOutput(" acc))))
+                                                             ((sym-is? (car w) "process-exit") (put ")" (put-exp c (second w) n1 (value) (put "&kayak_rt::process::ProcessExit(" acc))))
                                                              (else (put-exp c (second w) n1 (value) acc)))))))
                                "" ks acc))
                  (acc (put "match kayak_rt::process::sync(&[" acc))

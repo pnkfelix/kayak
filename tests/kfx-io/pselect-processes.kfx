@@ -1,0 +1,20 @@
+"`pselect` on programs run beside this one (C296; Heist's F6): an arm for
+ any process's news, then one for a process's output and one for its end,
+ its output all taken before its end is seen. Status 0."
+
+(define* drain (subr (maxeff (io process) nondet spin) (int string) string)
+  (lambda (p acc)
+    (pselect ((process-output p) text (drain p (string-append acc text)))
+             ((process-exit p) how (tagcase how (exited c (string-append acc (string-append "exited " (int->string c))))
+                                     (signalled s "signalled") (unknown u "unknown"))))))
+
+(define* news (subr (maxeff (io process) nondet) () int)
+  (lambda () (pselect ((process-news) q q))))
+
+(define main (subr (maxeff (io process) (io stdout) nondet (alloc @l) (read @l) (read @globals) spin) () int)
+  (lambda ()
+    (begin
+      (tagcase (process-start (the (listof string @l) (list "/bin/sh" "-c" "echo one; sleep 0.2; echo two; exit 4")) "")
+        (started p (let ((first (news))) (write-out (string-append (int->string first) (string-append " " (string-append (drain p "") "\n"))))))
+        (failed e (write-out "failed\n")))
+      0)))

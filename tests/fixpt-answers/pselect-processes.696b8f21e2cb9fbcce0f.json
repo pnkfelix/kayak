@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-processes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define drain : (subr (maxeff (io process) (read (globals drain)) nondet spin) (int string) string) ! pure",
+"define news : (subr (maxeff (io process) nondet) () int) ! pure",
+"define run : (subr (maxeff (io process) (read (globals drain news)) nondet spin) () string) ! pure",
+"string ! (maxeff (io process) (read (globals drain news run)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

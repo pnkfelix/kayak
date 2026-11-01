@@ -1942,8 +1942,9 @@
             (and (i64>= (size ys) 3)
                  (tagcase (second ys) (sym (n f2 p2) #t) (else other #f))
                  (tagcase (car ys)
-                   (lst (ws f3 l3 p3) (or (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive") (sym-is? (car ws) "sleep-until")))
-                                          (and (i64= (size ws) 1) (sym-is? (car ws) "read-byte"))))
+                   (lst (ws f3 l3 p3) (or (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive") (sym-is? (car ws) "sleep-until")
+                                                                   (sym-is? (car ws) "process-output") (sym-is? (car ws) "process-exit")))
+                                          (and (i64= (size ws) 1) (or (sym-is? (car ws) "read-byte") (sym-is? (car ws) "process-news")))))
                    (else other #f))))
           (else other #f))))
 
@@ -2602,7 +2603,7 @@
           (cond ((null? xs)
                  (refuse v "`(pselect ((icell-get i-cell) name body …) ((receive mailbox) name body …) …)`"))
                 ((any? (lambda ((a sexp)) (not (pselect-arm? a))) xs)
-                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`"))
+                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)`, `((read-byte) name body …)`, `((process-output p) name body …)`, `((process-exit p) name body …)` or `((process-news) name body …)`"))
                 (else (with-effs (pselect-arms v s xs expected) (list "nondet"))))))
 
       (synth-form (subr kfx (cv st sexp string sexps) res)
