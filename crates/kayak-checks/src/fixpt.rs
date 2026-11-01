@@ -202,6 +202,21 @@ pub fn checker_programs() -> Vec<(String, PathBuf)> {
         }));
     }
     out.extend(kayak_programs());
+    out.extend(stage_programs());
+    out
+}
+
+/// Fixpt's CLI's stage programs (C304; `fixpt-cli/tests/programs/stage`),
+/// kept in tests/fx26/stage, each as `cli-stage/NAME.fx`, sorted.
+pub fn stage_programs() -> Vec<(String, PathBuf)> {
+    let base = root().join("tests").join("fx26").join("stage");
+    let mut ps = Vec::new();
+    walk(&base, &mut ps);
+    let mut out: Vec<_> = ps
+        .into_iter()
+        .map(|p| (format!("cli-stage/{}", rel(&p, &base)), p))
+        .collect();
+    out.sort();
     out
 }
 

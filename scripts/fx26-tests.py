@@ -27,6 +27,12 @@ import fixptcache  # noqa: E402
 
 OUT = os.path.join(ROOT, "tests", "fx26", "programs")
 FROM = "crates/fixpt-fx26/tests/programs"
+# Each tree kept: Fixpt's programs, and its CLI's stage programs (C304),
+# whose answers its tests say inline (`fixpt-cli/tests/stage.rs`).
+TREES = [
+    (FROM, OUT),
+    ("crates/fixpt-cli/tests/programs/stage", os.path.join(ROOT, "tests", "fx26", "stage")),
+]
 
 
 def clone():
@@ -37,7 +43,7 @@ def clone():
     return os.environ.get("KAYAK_FIXPT_CLONE", os.path.join(ROOT, "..", "kayak-refs", "fixpt"))
 
 
-def theirs(c):
+def theirs(c, FROM=FROM):
     """The clone's files under FROM, at the pin (its index, not its
     untracked files): each path relative to FROM, and its bytes."""
     rev = open(os.path.join(ROOT, "FIXPT_REV")).read().strip()
@@ -51,7 +57,7 @@ def theirs(c):
     return files
 
 
-def ours():
+def ours(OUT=OUT):
     files = {}
     for d, _, fs in os.walk(OUT):
         for f in fs:
@@ -72,9 +78,17 @@ def main():
         return
     if args not in ([], ["--check"]):
         sys.exit(__doc__)
-    want = theirs(clone())
+    c = clone()
+    total = 0
+    for frm, out in TREES:
+        total += one_tree(c, frm, out, args)
+    print("fx26-tests: %d files %s, the pinned Fixpt's" % (total, "checked" if args == ["--check"] else "written"))
+
+
+def one_tree(c, frm, out, args):
+    want = theirs(c, frm)
     if args == ["--check"]:
-        have = ours()
+        have = ours(out)
         if have != want:
             gone = sorted(set(have) - set(want))
             new = sorted(set(want) - set(have))
@@ -82,16 +96,15 @@ def main():
             for what, ns in (("not Fixpt's", gone), ("missing", new), ("changed", changed)):
                 for n in ns[:10]:
                     print("fx26-tests: %s: %s" % (what, n))
-            sys.exit("fx26-tests: tests/fx26/programs/ is not the pinned Fixpt's (python3 -I scripts/fx26-tests.py)")
-        print("fx26-tests: %d files, the pinned Fixpt's" % len(want))
-        return
-    shutil.rmtree(OUT, ignore_errors=True)
+            sys.exit("fx26-tests: %s is not the pinned Fixpt's (python3 -I scripts/fx26-tests.py)" % os.path.relpath(out, ROOT))
+        return len(want)
+    shutil.rmtree(out, ignore_errors=True)
     for n, data in want.items():
-        p = os.path.join(OUT, n)
+        p = os.path.join(out, n)
         os.makedirs(os.path.dirname(p), exist_ok=True)
         with open(p, "wb") as g:
             g.write(data)
-    print("fx26-tests: %d files written, the pinned Fixpt's" % len(want))
+    return len(want)
 
 
 if __name__ == "__main__":

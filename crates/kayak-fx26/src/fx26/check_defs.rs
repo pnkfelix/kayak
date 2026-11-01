@@ -6763,10 +6763,58 @@ pub fn labels_unkeyworded(e: &'static Sexp) -> &'static Sexp {
     }
 }
 
+/// `(stage m E R code (p body …) (why else …) [(given g …)])` as Fixpt's
+/// parsers write it (C304): `(tagcase (%stage E R m code (product (1 g)
+/// …)) (ok p body …) (failed why else …))`, everywhere but in a
+/// quote. `%stage` a form of kayak's checker's own (`stage-form`), not
+/// Fixpt's poly procedure, whose inner `poly` kayak's `proj` would run
+/// together with its outer one.
+pub fn stage_expanded(e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let (ys, sy, sx) = (if (head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("quasiquote"))) {
+                xs
+            } else {
+                map(&stage_expanded, xs)
+            }, lambda1s(move |n: Str| {
+                sym(n, f, p)
+            }), lambda1s(move |zs: Sexps| {
+                lst(zs, f, l, p)
+            }));
+            if (head_is_p(e, str_lit("stage")) && (i64_eq(size(ys), 7i64) || i64_eq(size(ys), 8i64))) {
+                let m = second(ys);
+                let eff = third(ys);
+                let r = car(cdr(cdr(cdr(ys))));
+                let code = car(cdr(cdr(cdr(cdr(ys)))));
+                let ok = car(cdr(cdr(cdr(cdr(cdr(ys))))));
+                let bad = car(cdr(cdr(cdr(cdr(cdr(cdr(ys)))))));
+                let given = if i64_eq(size(ys), 8i64) {
+                    cdr(items(last(ys)))
+                } else {
+                    nil::<&'static Sexp>()
+                };
+                let fields = map2(lambda2s(move |g: &'static Sexp, k: i64| {
+                    sx(kayak_rt::heap_cons(num(k, i64_to_string(k), p), kayak_rt::heap_cons(g, kayak_rt::nil())))
+                }), given, counting(1i64, i64_plus(size(given), 1i64)));
+                sx(kayak_rt::heap_cons(sy(str_lit("tagcase")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%stage")), kayak_rt::heap_cons(eff, kayak_rt::heap_cons(r, kayak_rt::heap_cons(m, kayak_rt::heap_cons(code, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("product")), fields)), kayak_rt::nil()))))))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("ok")), items(ok))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("failed")), items(bad))), kayak_rt::nil())))))
+            } else {
+                lst(ys, f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
 /// Forms as `read-all` reads them, their labels unkeyworded (C291), for
 /// what reads a program but `with-loads`: the REPL's entries.
 pub fn program_read(cs: Chars, file: Str, line: i64) -> Sexps {
-    map(&labels_unkeyworded, read_all(cs, file, line))
+    map(lambda1s(move |f: &'static Sexp| {
+        stage_expanded(labels_unkeyworded(f))
+    }), read_all(cs, file, line))
 }
 
 /// A program's forms: what it loads spliced in (C88), and what its modules
@@ -6778,7 +6826,7 @@ pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
         input_expanded(f, directory_of(file), loaded)
     }), import_items(forms))));
     map(lambda1s(move |f: &'static Sexp| {
-        labels_unkeyworded(syscall_asked(flat_definition(f)))
+        stage_expanded(labels_unkeyworded(syscall_asked(flat_definition(f))))
     }), concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
         forms
     } else {

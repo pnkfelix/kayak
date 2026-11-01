@@ -442,21 +442,6 @@
     (lambda (xs k) (cond ((null? xs) "?") ((= k 0) (symbol->string (car xs))) (else (nth-symbol (cdr xs) (- k 1)))))))
 
 (define-rec
-  (ty-names? (subr kfx (ty string) bool)
-    (lambda (t n)
-      "Whether type `t` names variable `n`."
-      (tagcase t
-        (ty-var (m) (string=? m n))
-        (ty-list (e r) (or (ty-names? e n) (ty-names? r n)))
-        (ty-flat (e r) (or (ty-names? e n) (ty-names? r n)))
-        (ty-ref (e r) (or (ty-names? e n) (ty-names? r n)))
-        (ty-tag (a h es r) (or (ty-names? a n) (ty-names? h n) (ty-names? r n) (string-member? n es)))
-        (ty-proc (es ps r) (or (string-member? n es) (ty-names? r n) (any? (lambda ((p ty)) (ty-names? p n)) ps)))
-        (ty-shape (p ls ts) (any? (lambda ((x ty)) (ty-names? x n)) ts))
-        (ty-data (d args) (any? (lambda ((x ty)) (ty-names? x n)) args))
-        (else other #f)))))
-
-(define-rec
   (drop-n (subr kfx (rp-operands i64) rp-operands)
     (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (drop-n (cdr xs) (i64- n 1))))))
 

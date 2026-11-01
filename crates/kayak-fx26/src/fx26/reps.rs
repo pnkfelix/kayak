@@ -1483,47 +1483,6 @@ pub fn nth_symbol(mut xs: List<Symbol>, mut k: Int) -> Str {
     }
 }
 
-/// Whether type `t` names variable `n`.
-pub fn ty_names_p(t: &'static Ty, n: Str) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Ty::TyVar(m) => {
-            string_eq_p(m, n)
-        }
-        Ty::TyList(e, r) => {
-            (ty_names_p(e, n) || ty_names_p(r, n))
-        }
-        Ty::TyFlat(e, r) => {
-            (ty_names_p(e, n) || ty_names_p(r, n))
-        }
-        Ty::TyRef(e, r) => {
-            (ty_names_p(e, n) || ty_names_p(r, n))
-        }
-        Ty::TyTag(a, h, es, r) => {
-            (ty_names_p(a, n) || ty_names_p(h, n) || ty_names_p(r, n) || string_member_p(n, es))
-        }
-        Ty::TyProc(es, ps, r) => {
-            (string_member_p(n, es) || ty_names_p(r, n) || any_p(lambda1s(move |p: &'static Ty| {
-                ty_names_p(p, n)
-            }), ps))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                ty_names_p(x, n)
-            }), ts)
-        }
-        Ty::TyData(d, args) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                ty_names_p(x, n)
-            }), args)
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
 pub fn drop_n(mut xs: RpOperands, mut n: i64) -> RpOperands {
     loop {
         if (null_p(xs) || i64_lt_eq(n, 0i64)) {

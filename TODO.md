@@ -100,7 +100,9 @@ section below where it has one; here the order, and what each is.
    - **Joins**, beyond `list`'s elements (C292): any call's arguments
      instantiating one type binder bounded only from below by a sum
      (Fixpt's `sum_lower_only`, 39318012).
-   - **`stage`**, FX-26's `eval` (c7dbb0a4…); **evidence**,
+   - **`stage`** on the engine (the checker has it, C304: run the
+     staged check in a worker, as the REPL's, then lower and number the
+     code where the program runs), FX-26's `eval` (c7dbb0a4…); **evidence**,
      `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
      **sessions**, definitions that last (ca4955d6…);
      `session-conditions.fx`.

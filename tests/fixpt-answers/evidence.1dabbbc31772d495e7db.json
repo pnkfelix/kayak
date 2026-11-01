@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"evidence.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define api : (moduleof (val x int)) ! pure",
+"define line : (subr (io stdout) (string) unit) ! pure",
+"define within : (poly ((e effect)) (subr (maxeff (io stdout) (read (globals api line)) e spin stage) ((effectrep e) datum) unit)) ! pure",
+"define at : (poly ((t type)) (subr (maxeff (io stdout) (read (globals api line)) spin stage) ((typerep t) datum (subr pure (t) string)) unit)) ! pure",
+"define and-out : (poly ((e effect)) (subr pure ((effectrep e)) (effectrep (maxeff (io stdout) e)))) ! pure",
+"define main : (subr (maxeff (io stdout) (read (globals and-out api at line within)) spin stage) () int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -2565,6 +2565,38 @@
                     (race-branches v s xs (race-type v s xs) nil)
                     (race-branches v s xs (car expected) nil))))))
 
+      (stage-form (subr kfx (cv st sexps) res)
+        (lambda (v s xs)
+          "`stage`, as `(%stage E R m code given)` (C304; Fixpt's `%stage`):
+           `m` a module, by its name, `code` a datum; a `(sumof (ok (subr E () R)) (failed
+           stage-failure))`, of the effects of its parts and `stage` and
+           `spin`. `E` and `R` may not name a variable, as kayak takes no
+           evidence yet (Fixpt takes it given: stricter, not looser). Not
+           KFX's."
+          (let* ((es (parse-effect v (cv-tvars v) (car xs)))
+                 (r (parse-type v (cv-tvars v) (second xs)))
+                 (named (lambda ((t ty)) (tagcase t (ty-proc (es ps r) #f) (else other #f))))
+                 (s (kfx-restricted v s "`stage`, FX-26's, which KFX has not yet (C304)")))
+            (cond ((tagcase (third xs) (sym (n f p) #f) (else other #t))
+                   "Fixpt's rule: by its name, so that the stage's front end knows it."
+                   (refuse v "`stage` takes a module by its name"))
+                  ((or (any? (lambda ((a string)) (or (has-prefix? a "~") (string-member? (atom-region a) (cv-tvars v)))) es)
+                       (any? (lambda ((n string)) (ty-names? (walk s r) n)) (cv-tvars v)))
+                   (refuse v "a stage's effect and type name variables, whose evidence kayak takes not yet"))
+                  (else
+                   (tagcase (synth v s (third xs))
+                     (res (mt mes s)
+                       (if (not (or (mtype? (walk s mt)) (tagcase (walk s mt) (ty-data (d as) (has-prefix? d "%module ")) (else other #f))))
+                           (refuse v (string-append "a stage's module is a module, and this is a " (show-ty s mt)))
+                           (tagcase (check v s (car (cdr (cdr (cdr xs)))) (ty-data "datum" nil))
+                             (res (ct ces s)
+                               (tagcase (synth v s (car (cdr (cdr (cdr (cdr xs))))))
+                                 (res (gt ges s)
+                                   (res (ty-shape #f (list "ok" "failed")
+                                                  (list (ty-proc es nil r) (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
+                                        (effs-union (list "stage" "spin") (effs-union mes (effs-union ces ges)))
+                                        s)))))))))))))
+
       (attempt-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
           "`(attempt e on-failure)` (C297; Heist's F1, Fixpt's `synth_attempt`):
@@ -2661,6 +2693,7 @@
                  "FX-26's `race`, a form wherever it heads a list: refused, not a
                   call of what a program names `race` (C108)."
                  (race-form v s xs nil))
+                ((and (string=? h "%stage") (i64= (size xs) 5)) (stage-form v s xs))
                 ((string=? h "attempt")
                  "FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
                   as `race` is, never a call of what a program names `attempt`
@@ -2799,7 +2832,7 @@
         (lambda (v s e h xs expected)
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
-                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
+                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "%stage") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
                 ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
                 ((and (string=? h "the") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
                       (tagcase (parse-type v (cv-tvars v) (car xs)) (ty-data (d args) (string=? d "%array")) (else other #f)))

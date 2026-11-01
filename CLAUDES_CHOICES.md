@@ -8440,3 +8440,33 @@ NAME`, whose expansion is the checker's environment's, which the export
 has not got), module types with effect descriptions, higher kinds
 (`dlambda`, `app`), composable continuations, and an effect variable
 applied.
+
+## C304. `stage`, in the checker (2026-11-01)
+
+Part one of `stage` (Fixpt's `docs/fx26.md`, "Staging code"), now that
+types have reps:
+- **Fixpt's stage programs** (`fixpt-cli/tests/programs/stage`, whose
+  answers its tests write inline) are kept in `tests/fx26/stage`, by
+  `fx26-tests.py`, which keeps a list of trees now. The checkers'
+  comparison takes them, as `cli-stage/NAME`.
+- **The form**: `(stage m E R code (p body …) (why else …) [(given g
+  …)])` is written by the same pass as the keyword labels as Fixpt's
+  parsers write it, a `tagcase` over a call. But the call is of a form of
+  kayak's own, `(%stage E R m code given)`, not of Fixpt's poly procedure
+  `%stage`: kayak runs a `poly` in a `poly` together (C107), so its
+  `proj` could not instantiate the outer one alone.
+- **Its type** (`stage-form`): `m` a module, by its name, as Fixpt's
+  rule has it; `code` a `datum`; a `(sumof (ok (subr E () R)) (failed
+  stage-failure))`, of the effects of its parts and `stage` and `spin`.
+  `stage` is an effect atom, and `stage-failure` a standard type,
+  printed by its name, as `io-error` is.
+- **Evidence** is not taken yet. A stage whose `E` or `R` names a
+  variable is refused: stricter than Fixpt, which takes it given, never
+  looser.
+- KFX refuses `stage`.
+Of the 15 stage programs Fixpt accepts, kayak's checker says the same of
+4 (`stage.fx`, `kept.fx`, `sealed.fx`, `tail-across.fx`); the rest need
+evidence, sessions, or a module made where it is staged. Over 561
+programs Fixpt accepts, kayak's checker now says the same of 440, and of
+406 Fixpt refuses, it accepts none. The engine runs no stage yet: part
+two, with its check in a worker, as the REPL's (C111).

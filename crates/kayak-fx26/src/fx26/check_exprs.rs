@@ -5598,6 +5598,83 @@ pub mod expressions {
         }
     }
 
+    /// `stage`, as `(%stage E R m code given)` (C304; Fixpt's `%stage`):
+    /// `m` a module, by its name, `code` a datum; a `(sumof (ok (subr E () R)) (failed
+    /// stage-failure))`, of the effects of its parts and `stage` and
+    /// `spin`. `E` and `R` may not name a variable, as kayak takes no
+    /// evidence yet (Fixpt takes it given: stricter, not looser). Not
+    /// KFX's.
+    pub fn stage_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+        let es = parse_effect(v, cv_tvars(v), car(xs));
+        let r = parse_type(v, cv_tvars(v), second(xs));
+        let named = lambda1s(move |t: &'static Ty| {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    false
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        });
+        let s = kfx_restricted(v, s, str_lit("`stage`, FX-26's, which KFX has not yet (C304)"));
+        if {
+            let tagcase_ = third(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    false
+                }
+                _ => {
+                    let other = tagcase_;
+                    true
+                }
+            }
+        } {
+            // Fixpt's rule: by its name, so that the stage's front end knows it.
+            match refuse(v, str_lit("`stage` takes a module by its name")) {}
+        } else if (any_p(lambda1s(move |a: Str| {
+            (has_prefix_p(a, str_lit("~")) || string_member_p(atom_region(a), cv_tvars(v)))
+        }), es) || any_p(lambda1s(move |n: Str| {
+            ty_names_p(walk(s, r), n)
+        }), cv_tvars(v))) {
+            match refuse(v, str_lit("a stage's effect and type name variables, whose evidence kayak takes not yet")) {}
+        } else {
+            let tagcase_ = synth(v, s, third(xs));
+            match *tagcase_ {
+                Res::Res(mt, mes, s) => {
+                    if not((mtype_p(walk(s, mt)) || {
+                        let tagcase_ = walk(s, mt);
+                        match *tagcase_ {
+                            Ty::TyData(d, r#as) => {
+                                has_prefix_p(d, str_lit("%module "))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    })) {
+                        match refuse(v, string_append(str_lit("a stage's module is a module, and this is a "), show_ty(s, mt))) {}
+                    } else {
+                        let tagcase_ = check(v, s, car(cdr(cdr(cdr(xs)))), ty_data(str_lit("datum"), nil::<&'static Ty>()));
+                        match *tagcase_ {
+                            Res::Res(ct, ces, s) => {
+                                let tagcase_ = synth(v, s, car(cdr(cdr(cdr(cdr(xs))))));
+                                match *tagcase_ {
+                                    Res::Res(gt, ges, s) => {
+                                        res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), s)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// `(attempt e on-failure)` (C297; Heist's F1, Fixpt's `synth_attempt`):
     /// `e`'s value, or, should it fail, `(on-failure message)`. `e` is
     /// cancellable, as a `race` branch is, so that a failure half way leaves
@@ -5797,6 +5874,8 @@ pub mod expressions {
                 // FX-26's `race`, a form wherever it heads a list: refused, not a
                 // call of what a program names `race` (C108).
                 return race_form(v, s, xs, nil::<&'static Ty>());
+            } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 5i64)) {
+                return stage_form(v, s, xs);
             } else if string_eq_p(h, str_lit("attempt")) {
                 // FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
                 // as `race` is, never a call of what a program names `attempt`
@@ -6079,7 +6158,7 @@ pub mod expressions {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("spawn-monitored")) {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("%stage")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)

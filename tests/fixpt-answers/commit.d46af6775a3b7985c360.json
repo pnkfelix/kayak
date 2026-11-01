@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"commit.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define api : api-type ! pure",
+"define s : (sessionof api-type @heap) ! (maxeff (alloc @heap) (read (globals api)))",
+"define line : (subr (io stdout) (string) unit) ! pure",
+"define main : (subr (maxeff (io stdout) (read (globals line s)) (read @heap) (write @heap) spin stage) () int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -729,6 +729,47 @@ pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
     }
 }
 
+/// Whether type `t` names variable `n`.
+pub fn ty_names_p(t: &'static Ty, n: Str) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyVar(m) => {
+            string_eq_p(m, n)
+        }
+        Ty::TyList(e, r) => {
+            (ty_names_p(e, n) || ty_names_p(r, n))
+        }
+        Ty::TyFlat(e, r) => {
+            (ty_names_p(e, n) || ty_names_p(r, n))
+        }
+        Ty::TyRef(e, r) => {
+            (ty_names_p(e, n) || ty_names_p(r, n))
+        }
+        Ty::TyTag(a, h, es, r) => {
+            (ty_names_p(a, n) || ty_names_p(h, n) || ty_names_p(r, n) || string_member_p(n, es))
+        }
+        Ty::TyProc(es, ps, r) => {
+            (string_member_p(n, es) || ty_names_p(r, n) || any_p(lambda1s(move |p: &'static Ty| {
+                ty_names_p(p, n)
+            }), ps))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(lambda1s(move |x: &'static Ty| {
+                ty_names_p(x, n)
+            }), ts)
+        }
+        Ty::TyData(d, args) => {
+            any_p(lambda1s(move |x: &'static Ty| {
+                ty_names_p(x, n)
+            }), args)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// Whether a symbol as read is a keyword, `#:name` (C291; Fixpt's
 /// `docs/fx26.md`, "Keywords"): `#:` and a name after it, which is no
 /// number, as `#:12` is not.
@@ -1058,6 +1099,8 @@ pub fn atom_written(x: Str) -> Str {
         str_lit("spin")
     } else if string_eq_p(x, str_lit("nondet")) {
         str_lit("nondet")
+    } else if string_eq_p(x, str_lit("stage")) {
+        str_lit("stage")
     } else if string_eq_p(x, str_lit("@globals")) {
         str_lit("(read @globals)")
     } else if has_prefix_p(x, str_lit("io:")) {
@@ -1213,6 +1256,12 @@ pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) ->
 // kind, for a `tagcase`, and the system's words.
 pub fn io_error_text() -> Str {
     str_lit("(productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit)\n                           (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))\n              (detail string))")
+}
+
+// FX-26's standard type `stage-failure` (C304; Fixpt's `STAGE_FAILURE`):
+// why `stage` made no code, and where in its code.
+pub fn stage_failure_text() -> Str {
+    str_lit("(productof (kind (sumof (unread unit) (malformed unit) (refused unit) (stale unit))) (message string) (start int) (end int))")
 }
 
 // Names `io-kind` tests against, made once (C264): a list written in place is
@@ -1828,6 +1877,10 @@ pub fn parse_effect(mut v: &'static Cv, mut tvars: Strings, mut e: &'static Sexp
                     // That an answer may differ from run to run (C101): no region, so
                     // never masked, as `spin`.
                     return kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil());
+                } else if string_eq_p(s, str_lit("stage")) {
+                    // Making code the program can run (C304; Fixpt's `stage` atom):
+                    // no region, so never masked.
+                    return kayak_rt::heap_cons(str_lit("stage"), kayak_rt::nil());
                 } else if string_member_p(string_append(str_lit("~"), s), tvars) {
                     // A poly's effect binder (C46): an atom of its own, `~e`.
                     return kayak_rt::heap_cons(string_append(str_lit("~"), s), kayak_rt::nil());
@@ -4211,7 +4264,7 @@ pub fn logic_head(x: &'static Sexp) -> Str {
 pub fn effect_written_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::heap_cons(str_lit("stage"), kayak_rt::nil()))))
     })
 }
 
@@ -6224,6 +6277,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }
                 } else if (string_eq_p(s, str_lit("io-error")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
                     t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
+                    continue;
+                } else if (string_eq_p(s, str_lit("stage-failure")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
+                    t = car(read_all(string_chars(stage_failure_text()), str_lit(""), 1i64));
                     continue;
                 } else if dt_named_p(s, cv_dts(v)) {
                     let found = find_family(s, cv_dts(v));

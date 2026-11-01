@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stage.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define api : (moduleof (val x int) (val bump (subr pure (int) int)) (val say (subr (io stdout) (string) unit))) ! pure",
+"define failure : (subr pure (stage-failure) string) ! pure",
+"define number : (subr (maxeff (read (globals api failure)) spin stage) (datum) string) ! pure",
+"define many : (subr (maxeff (read (globals api many)) spin stage) (int string) string) ! pure",
+"define line : (subr (io stdout) (string) unit) ! pure",
+"define main : (subr (maxeff (io stdout) (read (globals api failure line many number)) spin stage) () int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

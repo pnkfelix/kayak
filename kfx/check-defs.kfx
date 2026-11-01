@@ -3498,11 +3498,38 @@
                   (else (lst ys f l p)))))
         (else other e)))))
 
+(define-rec
+  (stage-expanded (subr kfx (sexp) sexp)
+    (lambda (e)
+      "`(stage m E R code (p body …) (why else …) [(given g …)])` as Fixpt's
+       parsers write it (C304): `(tagcase (%stage E R m code (product (1 g)
+       …)) (ok p body …) (failed why else …))`, everywhere but in a
+       quote. `%stage` a form of kayak's checker's own (`stage-form`), not
+       Fixpt's poly procedure, whose inner `poly` kayak's `proj` would run
+       together with its outer one."
+      (tagcase e
+        (lst (xs f l p)
+          (let ((ys (if (or (head-is? e "quote") (head-is? e "quasiquote")) xs (map stage-expanded xs)))
+                (sy (lambda ((n string)) (sym n f p)))
+                (sx (lambda ((zs sexps)) (lst zs f l p))))
+            (if (and (head-is? e "stage") (or (i64= (size ys) 7) (i64= (size ys) 8)))
+                (let* ((m (second ys)) (eff (third ys)) (r (car (cdr (cdr (cdr ys))))) (code (car (cdr (cdr (cdr (cdr ys))))))
+                       (ok (car (cdr (cdr (cdr (cdr (cdr ys)))))))
+                       (bad (car (cdr (cdr (cdr (cdr (cdr (cdr ys))))))))
+                       (given (if (i64= (size ys) 8) (cdr (items (last ys))) nil))
+                       (fields (map2 (lambda ((g sexp) (k i64)) (sx (list (num k (i64->string k) p) g))) given (counting 1 (i64+ (size given) 1)))))
+                  (sx (list (sy "tagcase")
+                            (sx (list (sy "%stage") eff r m code (sx (cons (sy "product") fields))))
+                            (sx (cons (sy "ok") (items ok)))
+                            (sx (cons (sy "failed") (items bad))))))
+                (lst ys f l p))))
+        (else other e)))))
+
 (define program-read (subr kfx (chars string i64) sexps)
   (lambda (cs file line)
     "Forms as `read-all` reads them, their labels unkeyworded (C291), for
      what reads a program but `with-loads`: the REPL's entries."
-    (map labels-unkeyworded (read-all cs file line))))
+    (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded f))) (read-all cs file line))))
 
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)
@@ -3511,7 +3538,7 @@
      definition, one (C107); a `load-input` of a module, the module (C116);
      a module KFX's cannot be, a module value (C171)."
     (let ((forms (map as-module-value (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) (import-items forms))))))
-      (map (lambda ((f sexp)) (labels-unkeyworded (syscall-asked (flat-definition f))))
+      (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded (syscall-asked (flat-definition f)))))
            (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
                                     forms
                                     (spliced-tops forms (directory-of file) loaded nil))))))))

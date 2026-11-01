@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"unnamed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <kayak>/tests/fx26/stage/unnamed.fx:4:21: `stage` takes a module by its name",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

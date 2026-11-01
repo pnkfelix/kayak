@@ -340,6 +340,21 @@
             ((null? b) #f)
             (else (and (string=? (car a) (car b)) (strings=? (cdr a) (cdr b))))))))
 
+(define-rec
+  (ty-names? (subr kfx (ty string) bool)
+    (lambda (t n)
+      "Whether type `t` names variable `n`."
+      (tagcase t
+        (ty-var (m) (string=? m n))
+        (ty-list (e r) (or (ty-names? e n) (ty-names? r n)))
+        (ty-flat (e r) (or (ty-names? e n) (ty-names? r n)))
+        (ty-ref (e r) (or (ty-names? e n) (ty-names? r n)))
+        (ty-tag (a h es r) (or (ty-names? a n) (ty-names? h n) (ty-names? r n) (string-member? n es)))
+        (ty-proc (es ps r) (or (string-member? n es) (ty-names? r n) (any? (lambda ((p ty)) (ty-names? p n)) ps)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (ty-names? x n)) ts))
+        (ty-data (d args) (any? (lambda ((x ty)) (ty-names? x n)) args))
+        (else other #f)))))
+
 (define keyword-name? (subr kfx (string) bool)
   (lambda (n)
     "Whether a symbol as read is a keyword, `#:name` (C291; Fixpt's
@@ -551,6 +566,7 @@
                           (else r))))))
         (cond ((string=? x "spin") "spin")
               ((string=? x "nondet") "nondet")
+              ((string=? x "stage") "stage")
               ((string=? x "@globals") "(read @globals)")
               ((has-prefix? x "io:") (string-append "(io " (string-append (after-prefix x "io:") ")")))
               ((region-atom? x)
@@ -642,6 +658,11 @@
   "(productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit)
                            (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))
               (detail string))")
+
+"FX-26's standard type `stage-failure` (C304; Fixpt's `STAGE_FAILURE`):
+ why `stage` made no code, and where in its code."
+(define stage-failure-text string
+  "(productof (kind (sumof (unread unit) (malformed unit) (refused unit) (stale unit))) (message string) (start int) (end int))")
 
 "Names `io-kind` tests against, made once (C264): a list written in place is
  made at each call."
@@ -856,6 +877,10 @@
                  "That an answer may differ from run to run (C101): no region, so
                   never masked, as `spin`."
                  (list "nondet"))
+                ((string=? s "stage")
+                 "Making code the program can run (C304; Fixpt's `stage` atom):
+                  no region, so never masked."
+                 (list "stage"))
                 ((string-member? (string-append "~" s) tvars)
                  "A poly's effect binder (C46): an atom of its own, `~e`."
                  (list (string-append "~" s)))
@@ -1910,7 +1935,7 @@
 
 "Names `effect-written` tests against, made once (C264): a list written in place is
  made at each call."
-(define effect-written-names strings (list "pure" "spin" "nondet"))
+(define effect-written-names strings (list "pure" "spin" "nondet" "stage"))
 
 (define effect-written? (subr kfx (cv sexp) bool)
   (lambda (v e)
@@ -2774,6 +2799,8 @@
                  (tagcase (car (scope-bind (string-append "%type " s) v)) (bind (n sc w) (tagcase sc (scheme (tv u) u)))))
                 ((and (string=? s "io-error") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
                  (parse-type v tvars (car (read-all (string-chars io-error-text) "" 1))))
+                ((and (string=? s "stage-failure") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
+                 (parse-type v tvars (car (read-all (string-chars stage-failure-text) "" 1))))
                 ((dt-named? s (cv-dts v))
                  (let ((found (find-family s (cv-dts v))))
                    (typecase found

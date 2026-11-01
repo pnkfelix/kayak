@@ -134,7 +134,8 @@
                                           (name (if (string=? at "") t (string-append "(select " (string-append at (string-append " " (string-append t ")")))))))
                                      (if (has-prefix? expansion "(") (the abbrevs (list (abbrev expansion name))) nil)))))))
                        (cv-binds v)))
-          (the abbrevs (list (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars io-error-text) "" 1)))) "io-error"))))))
+          (the abbrevs (list (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars io-error-text) "" 1)))) "io-error")
+                             (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars stage-failure-text) "" 1)))) "stage-failure"))))))
 
 (define shown-abbreviated (subr kfx (cv string) string)
   (lambda (v shown) (abbrevs-put shown (scope-abbrevs v))))

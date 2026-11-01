@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"in-a-process.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define a : (icell int @c) ! (alloc @c)",
+"define b : (icell int @c) ! (alloc @c)",
+"define staging : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals a)) nondet spin stage)",
+"define looping : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals b)) nondet spin)",
+"unit ! (maxeff (read (globals staging)) (send @p))",
+"unit ! (maxeff (read (globals looping)) (send @p))",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (await @c) (io stdout) (read (globals a b)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}
