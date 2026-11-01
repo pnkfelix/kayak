@@ -2740,13 +2740,26 @@
                           element's own `(nat v)`, which no other `nat` is."
                          ;; A `nat` element's list is of `nat`s, as Fixpt finds it (C159).
                          ;; `acyclic`, as Fixpt's `list`, a poly's call, has it (C284).
-                         (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))) "list"))
+                         (let ((t (if (null? (sum-parts s t)) t (elements-joined v s t (cdr xs)))))
+                           (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0))))) "list"))
                 ((control-form? h) (body-form v s h xs nil))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
                 ((and (blob-form? h) (null? (scope-bind h v))) (blob-form v s h xs nil))
                 ((string=? h "and") (bools v s xs #t))
                 ((string=? h "or") (bools v s xs #f))
                 (else (bytes-placed v (synth-call v s h xs nil) h)))))
+
+      (elements-joined (subr kfx (cv st ty sexps) ty)
+        (lambda (v s t xs)
+          "A `list`'s element type, its first of a sum: each other element's
+           sum joined to it, as an `if`'s branches join (C292; Fixpt's
+           `sum_lower_only`, `(list (sum #:a 1) (sum #:b \"x\"))` a list of
+           `(sumof (a int) (b string))`). An element that is no sum, or no
+           join, is left to the list's check, which refuses it as before."
+          (if (null? xs)
+              t
+              (tagcase (synth v s (car xs))
+                (res (u es s2) (elements-joined v s2 (if (sum-joins? s2 t u) (sum-joined s2 t u) t) (cdr xs)))))))
 
       (check-form (subr kfx (cv st sexp string sexps ty) res)
         (lambda (v s e h xs expected)

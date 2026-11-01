@@ -5946,6 +5946,11 @@ pub mod expressions {
                         Res::Res(t, es0, s) => {
                             // Its first element's type, a `nat`'s an `int`: FX-26's is that
                             // element's own `(nat v)`, which no other `nat` is.
+                            let t = if null_p(sum_parts(s, t)) {
+                                t
+                            } else {
+                                elements_joined(v, s, t, cdr(xs))
+                            };
                             with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("acyclic")))), es0)
                         }
                     }
@@ -5962,6 +5967,31 @@ pub mod expressions {
                 return bools(v, s, xs, false);
             } else {
                 return bytes_placed(v, synth_call(v, s, h, xs, nil::<&'static Ty>()), h);
+            }
+        }
+    }
+
+    /// A `list`'s element type, its first of a sum: each other element's
+    /// sum joined to it, as an `if`'s branches join (C292; Fixpt's
+    /// `sum_lower_only`, `(list (sum #:a 1) (sum #:b "x"))` a list of
+    /// `(sumof (a int) (b string))`). An element that is no sum, or no
+    /// join, is left to the list's check, which refuses it as before.
+    pub fn elements_joined(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, mut xs: Sexps) -> &'static Ty {
+        loop {
+            if null_p(xs) {
+                return t;
+            } else {
+                let tagcase_ = synth(v, s, car(xs));
+                match *tagcase_ {
+                    Res::Res(u, es, s2) => {
+                        (s, t, xs) = (s2, if sum_joins_p(s2, t, u) {
+                            sum_joined(s2, t, u)
+                        } else {
+                            t
+                        }, cdr(xs));
+                        continue;
+                    }
+                }
             }
         }
     }

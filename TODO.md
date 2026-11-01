@@ -98,8 +98,9 @@ section below where it has one; here the order, and what each is.
      them (C291); cg.kfx and the cellular machine's keyword object (kind
      48) have not, nor kayak-rt (KFX refuses keyword values); nor the
      reader `#:|a b|`.
-   - **Joins**: branches of different sums join; arguments instantiating
-     one type binder join (fdb622df, 39318012).
+   - **Joins**, beyond `list`'s elements (C292): any call's arguments
+     instantiating one type binder bounded only from below by a sum
+     (Fixpt's `sum_lower_only`, 39318012).
    - **`stage`**, FX-26's `eval` (c7dbb0a4…); **evidence**,
      `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
      **sessions**, definitions that last (ca4955d6…);

@@ -13265,10 +13265,141 @@ pub fn found_then_fitted(v: &'static Cv, r: &'static Res, expected: Tys) -> &'st
     }
 }
 
-/// Branches found by themselves agree: the rest's type fits the first's.
+// A sum's variant, for joining (C292): its tag and payload.
+pub enum Tpart {
+    Tpart(Str, &'static Ty),
+}
+
+pub fn tpart(f0: Str, f1: &'static Ty) -> &'static Tpart {
+    kayak_rt::heap_alloc(Tpart::Tpart(f0, f1))
+}
+
+pub type Tparts = List<&'static Tpart>;
+
+/// A sum's tags and payloads, or none if `t` is no sum.
+pub fn sum_parts(s: &'static St, t: &'static Ty) -> Tparts {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            if p {
+                nil::<&'static Tpart>()
+            } else {
+                map2(lambda2s(move |l: Str, x: &'static Ty| {
+                    tpart(l, x)
+                }), ls, ts)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Tpart>()
+        }
+    }
+}
+
+pub fn tpart_tag(x: &'static Tpart) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Tpart::Tpart(l, t) => {
+            l
+        }
+    }
+}
+
+pub fn tpart_ty(x: &'static Tpart) -> &'static Ty {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Tpart::Tpart(l, t) => {
+            t
+        }
+    }
+}
+
+/// The variant tagged `l`, or none.
+pub fn tag_part(mut l: Str, mut xs: Tparts) -> Tparts {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static Tpart>();
+        } else if string_eq_p(tpart_tag(car(xs)), l) {
+            return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+pub fn tags_within_p(a: Tparts, b: Tparts) -> bool {
+    (null_p(a) || (not(null_p(tag_part(tpart_tag(car(a)), b))) && tags_within_p(cdr(a), b)))
+}
+
+/// Whether branches of types `t` and `rest` join as sums (C292; Fixpt's
+/// `branch_join`): both sums, `rest` with a tag `t` has not, or a tag
+/// both have whose payloads so join. Else the rest fits the first, as
+/// before.
+pub fn sum_joins_p(s: &'static St, t: &'static Ty, rest: &'static Ty) -> bool {
+    let (a, b) = (sum_parts(s, t), sum_parts(s, rest));
+    (not(null_p(a)) && not(null_p(b)) && (not(tags_within_p(b, a)) || any_p(lambda1s(move |y: &'static Tpart| {
+        let found = tag_part(tpart_tag(y), a);
+        (not(null_p(found)) && sum_joins_p(s, tpart_ty(car(found)), tpart_ty(y)))
+    }), b)))
+}
+
+/// Two sums' join: `rest`, if `t` is within it, tags and payloads; else `t`'s
+/// variants in order, then `rest`'s that `t` has not, a tag both have
+/// carrying its payloads' join.
+pub fn sum_joined(s: &'static St, t: &'static Ty, rest: &'static Ty) -> &'static Ty {
+    let (a, b) = (sum_parts(s, t), sum_parts(s, rest));
+    if (tags_within_p(a, b) && not(sum_joins_p(s, rest, t))) {
+        rest
+    } else {
+        let parts = onto(map(lambda1s(move |x: &'static Tpart| {
+            let found = tag_part(tpart_tag(x), b);
+            if (not(null_p(found)) && sum_joins_p(s, tpart_ty(x), tpart_ty(car(found)))) {
+                tpart(tpart_tag(x), sum_joined(s, tpart_ty(x), tpart_ty(car(found))))
+            } else {
+                x
+            }
+        }), a), filter(lambda1s(move |y: &'static Tpart| {
+            null_p(tag_part(tpart_tag(y), a))
+        }), b));
+        ty_shape(false, map(&tpart_tag, parts), map(&tpart_ty, parts))
+    }
+}
+
+/// Each tag both have: its payloads joined, or the narrower's fitted to
+/// the wider's.
+pub fn parts_joined(v: &'static Cv, s: &'static St, a: Tparts, b: Tparts, within: bool) -> &'static St {
+    if null_p(a) {
+        s
+    } else {
+        let x = car(a);
+        let found = tag_part(tpart_tag(x), b);
+        let s = if null_p(found) {
+            s
+        } else if sum_joins_p(s, tpart_ty(x), tpart_ty(car(found))) {
+            parts_joined(v, s, sum_parts(s, tpart_ty(x)), sum_parts(s, tpart_ty(car(found))), false)
+        } else if within {
+            fits(v, s, tpart_ty(x), tpart_ty(car(found)))
+        } else {
+            fits(v, s, tpart_ty(car(found)), tpart_ty(x))
+        };
+        parts_joined(v, s, cdr(a), b, within)
+    }
+}
+
+/// What two sums' join needs (C292).
+pub fn sum_join_state(v: &'static Cv, s: &'static St, t: &'static Ty, rest: &'static Ty) -> &'static St {
+    let (a, b) = (sum_parts(s, t), sum_parts(s, rest));
+    parts_joined(v, s, a, b, tags_within_p(a, b))
+}
+
+/// Branches found by themselves agree: the rest's type fits the first's;
+/// or, of sums, the two join (C292).
 pub fn join_state(v: &'static Cv, s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) -> &'static St {
     if (not(null_p(expected)) || void_p(s, t) || void_p(s, rest)) {
         s
+    } else if sum_joins_p(s, t, rest) {
+        sum_join_state(v, s, t, rest)
     } else {
         fits(v, s, rest, t)
     }
@@ -13280,6 +13411,10 @@ pub fn joined(s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) 
         car(expected)
     } else if void_p(s, t) {
         rest
+    } else if void_p(s, rest) {
+        t
+    } else if sum_joins_p(s, t, rest) {
+        sum_joined(s, t, rest)
     } else {
         t
     }

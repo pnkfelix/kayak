@@ -8148,3 +8148,29 @@ get its types and its values on the engine.
 of what kfx accepts: kfx took it only because it read a quoted `#:a` as a
 symbol of that name, which printed alike. It now refuses the keyword,
 and the engine runs the program beyond KFX, with Fixpt's value.
+
+## C292. Branches of different sums join (2026-11-01)
+
+TODO 4c's second item, Fixpt's fdb622df and 39318012 (`docs/fx26.md`,
+"Products and sums"). kayak's branches, with no type expected, had the
+first's type, and each other branch had to fit it (`join-state`). Now,
+where both are sums and the later has a tag the first lacks, or a tag
+both have whose payloads so differ, they join (`sum-joins?`,
+`sum-joined`, `sum-join-state`, check.kfx). The join is the later, if
+the first is within it; else the first's variants in order, then the
+later's new ones; a shared tag carries its payloads' join, or the
+narrower payload fitted to the wider. That is Fixpt's `branch_join`
+order. kayak fits structurally, by tags, where Fixpt asks `subtype`,
+since kayak's `fits` refuses rather than answers. `joined` and
+`join-state`, always called together, decide alike, so an `if`'s
+branches and a `tagcase`'s arms join; folded from the last arm, the
+variants come out in the same order.
+
+Arguments: a `list` whose first element is a sum has each other element
+synthesized and joined into its element type (`elements-joined`).
+Fixpt's rule is wider: any type binder bounded only from below by a sum
+(`sum_lower_only`). kayak's calls solve such a binder at the first
+argument, so the rest of the rule is TODO 4c's. KFX refuses both
+programs already, as a sum made with no type known (C183).
+`run/sum-join.fx` and `run/sum-join-args.fx` get Fixpt's types, and
+their values on the engine.

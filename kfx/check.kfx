@@ -5666,16 +5666,97 @@
         r
         (tagcase r (res (t es s) (res (car expected) es (fits v s t (car expected))))))))
 
+"A sum's variant, for joining (C292): its tag and payload."
+(define-datatype tpart (tpart string ty))
+(define-type tparts (listof tpart acyclic))
+
+(define sum-parts (subr kfx (st ty) tparts)
+  (lambda (s t)
+    "A sum's tags and payloads, or none if `t` is no sum."
+    (tagcase (walk s t)
+      (ty-shape (p ls ts) (if p nil (map2 (lambda ((l string) (x ty)) (tpart l x)) ls ts)))
+      (else other nil))))
+
+(define tpart-tag (subr kfx (tpart) string) (lambda (x) (tagcase x (tpart (l t) l))))
+(define tpart-ty (subr kfx (tpart) ty) (lambda (x) (tagcase x (tpart (l t) t))))
+
+(define-rec
+  (tag-part (subr kfx (string tparts) tparts)
+    (lambda (l xs)
+      "The variant tagged `l`, or none."
+      (cond ((null? xs) nil) ((string=? (tpart-tag (car xs)) l) (list (car xs))) (else (tag-part l (cdr xs)))))))
+
+(define-rec
+  (tags-within? (subr kfx (tparts tparts) bool)
+    (lambda (a b) (or (null? a) (and (not (null? (tag-part (tpart-tag (car a)) b))) (tags-within? (cdr a) b))))))
+
+(define-rec
+  (sum-joins? (subr kfx (st ty ty) bool)
+    (lambda (s t rest)
+      "Whether branches of types `t` and `rest` join as sums (C292; Fixpt's
+       `branch_join`): both sums, `rest` with a tag `t` has not, or a tag
+       both have whose payloads so join. Else the rest fits the first, as
+       before."
+      (let ((a (sum-parts s t)) (b (sum-parts s rest)))
+        (and (not (null? a)) (not (null? b))
+             (or (not (tags-within? b a))
+                 (any? (lambda ((y tpart))
+                         (let ((found (tag-part (tpart-tag y) a)))
+                           (and (not (null? found)) (sum-joins? s (tpart-ty (car found)) (tpart-ty y)))))
+                       b)))))))
+
+(define-rec
+  (sum-joined (subr kfx (st ty ty) ty)
+    (lambda (s t rest)
+      "Two sums' join: `rest`, if `t` is within it, tags and payloads; else `t`'s
+       variants in order, then `rest`'s that `t` has not, a tag both have
+       carrying its payloads' join."
+      (let ((a (sum-parts s t)) (b (sum-parts s rest)))
+        (if (and (tags-within? a b) (not (sum-joins? s rest t)))
+            rest
+            (let ((parts (onto (map (lambda ((x tpart))
+                                      (let ((found (tag-part (tpart-tag x) b)))
+                                        (if (and (not (null? found)) (sum-joins? s (tpart-ty x) (tpart-ty (car found))))
+                                            (tpart (tpart-tag x) (sum-joined s (tpart-ty x) (tpart-ty (car found))))
+                                            x)))
+                                    a)
+                               (filter (lambda ((y tpart)) (null? (tag-part (tpart-tag y) a))) b))))
+              (ty-shape #f (map tpart-tag parts) (map tpart-ty parts))))))))
+
+(define-rec
+  (parts-joined (subr kfx (cv st tparts tparts bool) st)
+    (lambda (v s a b within)
+      "Each tag both have: its payloads joined, or the narrower's fitted to
+       the wider's."
+      (if (null? a)
+          s
+          (let* ((x (car a)) (found (tag-part (tpart-tag x) b))
+                 (s (cond ((null? found) s)
+                          ((sum-joins? s (tpart-ty x) (tpart-ty (car found))) (parts-joined v s (sum-parts s (tpart-ty x)) (sum-parts s (tpart-ty (car found))) #f))
+                          (within (fits v s (tpart-ty x) (tpart-ty (car found))))
+                          (else (fits v s (tpart-ty (car found)) (tpart-ty x))))))
+            (parts-joined v s (cdr a) b within))))))
+
+(define sum-join-state (subr kfx (cv st ty ty) st)
+  (lambda (v s t rest)
+    "What two sums' join needs (C292)."
+    (let ((a (sum-parts s t)) (b (sum-parts s rest))) (parts-joined v s a b (tags-within? a b)))))
+
 (define join-state (subr kfx (cv st ty ty tys) st)
   (lambda (v s t rest expected)
-    "Branches found by themselves agree: the rest's type fits the first's."
-    (if (or (not (null? expected)) (void? s t) (void? s rest)) s (fits v s rest t))))
+    "Branches found by themselves agree: the rest's type fits the first's;
+     or, of sums, the two join (C292)."
+    (cond ((or (not (null? expected)) (void? s t) (void? s rest)) s)
+          ((sum-joins? s t rest) (sum-join-state v s t rest))
+          (else (fits v s rest t)))))
 
 (define joined (subr kfx (st ty ty tys) ty)
   (lambda (s t rest expected)
     "The type of branches, the first of type `t` and the rest of `rest`."
     (cond ((not (null? expected)) (car expected))
           ((void? s t) rest)
+          ((void? s rest) t)
+          ((sum-joins? s t rest) (sum-joined s t rest))
           (else t))))
 
 (define region-of (subr kfx (cv st ty) res)
