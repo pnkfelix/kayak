@@ -423,6 +423,11 @@ pub mod replay;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/reps.rs"]
+pub mod reps;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/rlambda.rs"]
 pub mod rlambda;
 
@@ -603,6 +608,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("region-alias", region_alias::main),
     ("region-poly", region_poly::main),
     ("replay", replay_main),
+    ("reps", reps::main),
     ("rlambda", rlambda::main),
     ("rust-keywords", rust_keywords::main),
     ("seeded", seeded_main),

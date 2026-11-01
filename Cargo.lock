@@ -25,10 +25,15 @@ name = "kayak-jit"
 version = "0.1.0"
 
 [[package]]
+name = "kayak-reps"
+version = "0.1.0"
+
+[[package]]
 name = "kayak-rt"
 version = "0.1.0"
 dependencies = [
  "kayak-jit",
+ "kayak-reps",
  "kayak-sync",
 ]
 

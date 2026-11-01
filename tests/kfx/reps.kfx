@@ -1,0 +1,58 @@
+"Types as reps (C300; `docs/research/type-reps.md`): FX-26's standard
+ `rep-of-nodes` and `rep-nodes`, by Fixpt's `fixpt-reps` taken whole, so
+ that each rep's binary form here is Fixpt's byte for byte, which the
+ corpus compares. `int`; a list of `int`, a pair whose tail is itself, made
+ one node, a cycle; a `poly` whose variable is bound, its name no part of
+ the rep; and back, the nodes' heads."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type operand (sumof (node int) (bound (productof (1 int) (2 int))) (hole int)
+                            (const (productof (1 string) (2 int) (3 string))) (sym symbol) (int int) (flag bool)))
+(define-type rnode (productof (1 int) (2 symbol) (3 bool) (4 (listof symbol acyclic)) (5 (listof operand acyclic))))
+
+(define hex-digit (subr kfx (int) string)
+  (lambda (d) (substring "0123456789abcdef" d (+ d 1))))
+
+(define-rec
+  (hex-from (subr (maxeff kfx (read @b)) ((bytevectorof @b) int) string)
+    (lambda (b i)
+      (if (>= i (bytevector-length b))
+          ""
+          (let ((k (u8->int (bytevector-u8-ref b i))))
+            (string-append (hex-digit (quotient k 16)) (string-append (hex-digit (remainder k 16)) (hex-from b (+ i 1)))))))))
+
+(define node (subr kfx (int symbol (listof symbol acyclic) (listof operand acyclic)) rnode)
+  (lambda (slot head binders args) (product (1 slot) (2 head) (3 #f) (4 binders) (5 args))))
+
+(define base (subr kfx (int symbol) rnode)
+  (lambda (slot name) (node slot 'base nil (list (the operand (sum sym name))))))
+
+"Each type's nodes: `int`; `(listof int heap)` as `(pairof int SELF (heap) #t)`;
+ `(poly ((x type)) (subr pure (x) x))`."
+(define int-nodes (listof rnode acyclic) (list (base 0 'int)))
+(define list-nodes (listof rnode acyclic)
+  (list (node 0 'pairof nil (list (the operand (sum node 1)) (the operand (sum node 0)) (the operand (sum node 2)) (the operand (sum flag #t))))
+        (base 1 'int)
+        (node 2 'heap nil nil)))
+(define poly-nodes (listof rnode acyclic)
+  (list (node 0 'poly (list 'x) (list (the operand (sum node 1)) (the operand (sum node 2))))
+        (node 1 'binder nil (list (the operand (sum sym 'type)) (the operand (sum flag #f))))
+        (node 2 'subr nil (list (the operand (sum sym 'native)) (the operand (sum node 3)) (the operand (sum node 4))
+                                (the operand (sum bound (product (1 0) (2 0))))))
+        (product (1 3) (2 '&effect) (3 #t) (4 nil) (5 nil))
+        (node 4 'params nil (list (the operand (sum bound (product (1 0) (2 0))))))))
+
+(define-rec
+  (heads (subr kfx ((listof rnode acyclic)) string)
+    (lambda (ns)
+      (if (null? ns) "" (string-append " " (string-append (symbol->string (extract (car ns) 2)) (heads (cdr ns))))))))
+
+(define shown (subr (maxeff kfx (alloc @b) (read @b)) ((listof rnode acyclic) int) string)
+  (lambda (ns root)
+    (let ((b (the (bytevectorof @b) (rep-of-nodes ns nil root))))
+      (string-append (hex-from b 0) (string-append " :" (string-append (heads (extract (rep-nodes b nil) 1)) "\n"))))))
+
+(define main (subr (maxeff kfx (alloc @b) (read @b)) () string)
+  (lambda ()
+    (string-append (shown int-nodes 0) (string-append (shown list-nodes 0) (shown poly-nodes 0)))))

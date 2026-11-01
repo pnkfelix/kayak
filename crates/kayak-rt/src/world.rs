@@ -257,7 +257,7 @@ fn cells_of(v: Vec<u8>) -> BytesCells {
         .into_boxed_slice()
 }
 
-fn bytes_of(v: Vec<u8>) -> Bytes {
+pub(crate) fn bytes_of(v: Vec<u8>) -> Bytes {
     BytesAt(Box::leak(cells_of(v)))
 }
 
@@ -281,7 +281,7 @@ fn span(b: BytesAt<'_>, start: Int, end: Int, what: &str) -> (usize, usize) {
     (s, e)
 }
 
-fn to_vec(b: BytesAt<'_>) -> Vec<u8> {
+pub(crate) fn to_vec(b: BytesAt<'_>) -> Vec<u8> {
     b.0.iter().map(Cell::get).collect()
 }
 

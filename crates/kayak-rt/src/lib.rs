@@ -22,6 +22,7 @@ pub mod marks;
 mod native;
 mod once;
 pub mod process;
+mod reps;
 mod show;
 mod stats;
 pub mod suspend;
@@ -47,6 +48,7 @@ pub use marks::{MarkKey, first_mark, make_continuation_mark_key, with_mark, with
 pub use native::*;
 pub use once::*;
 pub use process::{Addr, ICell, Inbox, icell_get, icell_put_x, make_icell};
+pub use reps::*;
 pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;

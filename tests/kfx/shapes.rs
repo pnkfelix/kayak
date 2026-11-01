@@ -16,10 +16,6 @@ pub enum Sum_6circle_4rect<A0, A1> {
     Rect(A1),
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Clone, Copy)]
-pub struct Product_11_12<A0, A1>(pub A0, pub A1);
-
 // FX-26's products and sums, structural: a generic Rust type for each list
 // of labels, `Product_x_y<A0, A1>` a tuple struct, `Sum_circle_rect<A0, A1>`
 // an enum whose values are references.

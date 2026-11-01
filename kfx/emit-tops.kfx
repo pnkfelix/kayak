@@ -564,6 +564,7 @@
                                     "S byte eof failed" "S count eof failed" "S done not-a-terminal failed" "S size not-a-terminal failed" "P rows columns"
                                     "S info failed" "S target failed" "S file directory symlink other" "P kind size modified mode"
                                     "S started failed" "S running exited signalled unknown" "S exited signalled unknown"
+                                    "P 1 2" "P 1 2 3" "P 1 2 3 4 5" "S node bound hole const sym int flag"
                                     "S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"))))
 
       (define shape-key (subr kfx (sexp) strings)

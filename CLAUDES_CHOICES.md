@@ -8332,3 +8332,25 @@ Two questions are left for the user: whether Fixpt should print reps
 (`fixpt check --reps`, Fixpt's change to make), so that the checkers'
 agreement can be by reps; and a copy of the crate against a path
 dependency on the clone.
+
+## C300. Types as reps, step 1: the crate and the procedures (2026-11-01)
+
+- **`crates/kayak-reps`** is Fixpt's `fixpt-reps`: its `lib.rs` (as
+  `fixpt/mod.rs`), `binary.rs`, `fill.rs` and `text.rs`, copied as they
+  are by `built-in.py` and checked at the pin, loaded from a root of
+  kayak's under `#[rustfmt::skip]`, since Fixpt's text is not rustfmt's.
+  Its `heap.rs` is kayak's own: Fixpt's tag and its
+  `FIXPT_VALIDATE_REPS` toggle, as a rep crosses kayak's runtimes as a
+  bytevector. Fixpt's 16 unit tests of the crate pass on the copy.
+- **`rep-of-nodes` and `rep-nodes`** are in kayak-rt (`reps.rs`), after
+  Fixpt's runtime's, typed as Fixpt's `standard.rs` types them. Their
+  shapes, `P 1 2`, `P 1 2 3`, `P 1 2 3 4 5` and `S node bound hole const
+  sym int flag`, are kayak-rt's, and so among the emitter's standard
+  shapes; `shapes.kfx`'s Rust no longer declares `P 1 2`.
+- **`tests/kfx/reps.kfx`** makes the reps of `int`, of `(listof int)` (a
+  pair whose tail is itself, a cycle) and of a `poly` with a bound
+  variable, and reads each back. The corpus compares its answer with
+  Fixpt's, which is made by Fixpt's own `fixpt-reps`: the binary forms
+  agree byte for byte.
+Not yet: the two procedures on the engine and on tier 1, which only an
+FX-26 program calling them needs (kayak's checker runs as Rust).
