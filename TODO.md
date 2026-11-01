@@ -66,8 +66,8 @@ section below where it has one; here the order, and what each is.
    runtime's code declares one).
 4b. **FX-26's features since the pin moved to 5731f52 (C263)**, which
    kayak's checker refuses for now (so their programs are not in the
-   passing lists): `attempt` on tier 1 and in KFX (the checker and the
-   engine have it, C297; the processes' primitives are C295's); `type-at`;
+   passing lists): `attempt` in KFX (the checker, the engine and tier 1
+   have it, C297; the processes' primitives are C295's and C298's); `type-at`;
    `load-moduleof`, `load-input-moduleof`, `load-typeof`,
    `load-input-typeof`; `restrict`; a top-level `include`; a file's
    abstract types one for every load of it. Fixpt's `gdb`/`lldb` support
@@ -104,11 +104,8 @@ section below where it has one; here the order, and what each is.
      `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
      **sessions**, definitions that last (ca4955d6…);
      `session-conditions.fx`.
-   - **I/O**: programs run beside this one on tier 1 (the cellular
-     machine has none of C295's primitives, nor C296's events); a child
-     in a session of its own, not only a group (needs `setsid`, so
-     `unsafe` or a helper); `dump-heap!` (59114584). Kayak's own FX-26
-     programs (tests/fx26-kayak) are run on the engine by no check.
+   - **I/O**: a child in a session of its own, not only a group (needs
+     `setsid`, so `unsafe` or a helper); `dump-heap!` (59114584).
    - (Fixpt's e2f3f0f6, a bloblet's values by their index, §205, is its
      Rust heap's accessors and a lint: nothing of FX-26's, nothing kayak
      ports.)

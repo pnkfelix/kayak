@@ -8292,3 +8292,20 @@ throughout. The three refusals say Fixpt's words.
 Also, kayak's own FX-26 programs (`tests/fx26-kayak`), which no check
 ran on the engine, run beside Fixpt's beyond KFX
 (`run-fixpt-programs.py`): all 14 agree.
+
+## C298. Programs run beside this one, on tier 1 (2026-11-01)
+
+The cellular machine has what C293, C295 and C296 gave the engine:
+- **Primitives** (ops 213-222): `file-info`, `read-symlink` and the eight
+  `process-*` primitives, by kayak-rt's own (cells/ is KFX). `file-info`'s
+  product is made by `frozen4!`, beside `frozen2!`.
+- **The scheduler** has the same three waiter slots (its state 20 long)
+  and `%sched` ops 46-54. Its `timers-wait!` waits on children through
+  the same syscalls, as the engine's does.
+- `(io process)` is in `cm`.
+`process/basic.fx` and `kayak/io/pselect-processes.fx` agree on tier 1,
+both with Fixpt's words and with kayak's.
+
+`attempt` agrees on tier 1 since C297: kayak's code generator expands it
+as the engine's lowering does (`process-expanded`). All eight of Fixpt's
+running `attempt/` programs agree there, its words and kayak's.

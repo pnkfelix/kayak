@@ -87,6 +87,20 @@ pub fn s_stdin() -> i64 {
     16i64
 }
 
+// Heist's F6 (C298): the wakers waiting for a process's output, and for its
+// end, each `(p . waker)`; and those waiting for any process's news.
+pub fn s_output() -> i64 {
+    17i64
+}
+
+pub fn s_exit() -> i64 {
+    18i64
+}
+
+pub fn s_news() -> i64 {
+    19i64
+}
+
 // A task's time slice, in polls: Fixpt's `SLICE`, or another (`--slice`,
 // as Fixpt's `FIXPT_SLICE`), so that a test may preempt at nearly every
 // poll.
@@ -157,7 +171,7 @@ pub fn state_x() -> i64 {
     if sched_p() {
         get(sched_state())
     } else {
-        let s = filled_x(make_bloblet_x(k_vector(), 17i64, 0i64, true, false), 0i64, kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::nil()))))))))))))))))));
+        let s = filled_x(make_bloblet_x(k_vector(), 20i64, 0i64, true, false), 0i64, kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::nil())))))))))))))))))))));
         set(sched_state(), s);
         s
     }
@@ -982,10 +996,82 @@ pub fn stdin_wait(x1: i64) -> bool {
     kayak_rt::syscall1(str_lit("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit("io:stdin-wait/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
 }
 
+// Programs run beside this one (C298): whether one has output to take,
+// whether it has ended, its output all read; and a wait until one has news,
+// the input is ready (if asked) or a deadline comes (Fixpt's
+// `wait_processes`).
+
+pub fn _pctsyscall_available_colonprocess_output_ready_p() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit("io:process-output-ready/1"), str_lit("(subr (io sys) (i64) bool)"));
+    true
+}
+
+pub fn process_output_ready_p(x1: i64) -> bool {
+    _pctsyscall_available_colonprocess_output_ready_p();
+    kayak_rt::syscall1(str_lit("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit("io:process-output-ready/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+}
+
+pub fn _pctsyscall_available_colonprocess_ended_p() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall process-ended? (\"io:process-ended/1\")"), str_lit("io:process-ended/1"), str_lit("(subr (io sys) (i64) bool)"));
+    true
+}
+
+pub fn process_ended_p(x1: i64) -> bool {
+    _pctsyscall_available_colonprocess_ended_p();
+    kayak_rt::syscall1(str_lit("syscall process-ended? (\"io:process-ended/1\")"), str_lit("io:process-ended/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+}
+
+pub fn _pctsyscall_available_colonprocess_wait() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall process-wait (\"io:process-wait/1\")"), str_lit("io:process-wait/1"), str_lit("(subr (io sys) (i64 bool) bool)"));
+    true
+}
+
+pub fn process_wait(x1: i64, x2: bool) -> bool {
+    _pctsyscall_available_colonprocess_wait();
+    kayak_rt::syscall2(str_lit("syscall process-wait (\"io:process-wait/1\")"), str_lit("io:process-wait/1"), str_lit("(subr (io sys) (i64 bool) bool)"), x1, x2)
+}
+
+/// Process waiters `l`, each `(p . waker)`, parted: those whose process is
+/// ready (its output, if `output`, else its end), their wakers, and the
+/// rest, each list reversed, as `(waiting . woken)`.
+pub fn waiters_split(mut l: i64, mut output: bool, mut waiting: i64, mut woken: i64) -> i64 {
+    loop {
+        if not(is_pair_p(l)) {
+            return cons_x(waiting, woken);
+        } else {
+            let e = pair_car(l);
+            let p = fix_val(pair_car(e));
+            if if output {
+                process_output_ready_p(p)
+            } else {
+                process_ended_p(p)
+            } {
+                (l, woken) = (pair_cdr(l), cons_x(pair_cdr(e), woken));
+                continue;
+            } else {
+                (l, waiting) = (pair_cdr(l), cons_x(e, waiting));
+                continue;
+            }
+        }
+    }
+}
+
 pub fn stdin_wakers_pushed_x(l: i64) -> () {
     if is_pair_p(l) {
         stdin_wakers_pushed_x(pair_cdr(l));
         queue_push_x(pair_car(l))
+    } else {
+        ()
+    }
+}
+
+/// The wakers of `slot` whose process is ready pushed, oldest first; the
+/// rest kept, in order (Fixpt's `timers_wait`).
+pub fn process_waiters_woken_x(slot: i64, output: bool) -> () {
+    let parted = waiters_split(st(slot), output, v_null(), v_null());
+    if is_pair_p(pair_cdr(parted)) {
+        st_set_x(slot, reversed_onto_x(pair_car(parted), v_null()));
+        wakers_pushed_x(pair_cdr(parted))
     } else {
         ()
     }
@@ -998,11 +1084,21 @@ pub fn stdin_wakers_pushed_x(l: i64) -> () {
 /// each timer due taken, its waker run, in the order of their times, and
 /// `#t` (Fixpt's `timers_wait`; C232).
 pub fn timers_wait_x(sleep: bool) -> i64 {
-    let (ts, input) = (st(s_timers()), is_pair_p(st(s_stdin())));
-    if (not(is_pair_p(ts)) && not(input)) {
+    let ts = st(s_timers());
+    let input = is_pair_p(st(s_stdin()));
+    let news = is_pair_p(st(s_news()));
+    let processes = (news || is_pair_p(st(s_output())) || is_pair_p(st(s_exit())));
+    if (not(is_pair_p(ts)) && not(input) && not(processes)) {
         v_false()
     } else {
         if not(sleep) {
+            ()
+        } else if processes {
+            process_wait(if is_pair_p(ts) {
+                timers_earliest(ts, fix_max())
+            } else {
+                -1i64
+            }, input);
             ()
         } else if input {
             stdin_wait(if is_pair_p(ts) {
@@ -1018,6 +1114,19 @@ pub fn timers_wait_x(sleep: bool) -> i64 {
             let ws = st(s_stdin());
             st_set_x(s_stdin(), v_null());
             stdin_wakers_pushed_x(ws)
+        } else {
+            ()
+        };
+        if (news && i64_gt_eq(int_to_i64(process_news()), 0i64)) {
+            let ws = st(s_news());
+            st_set_x(s_news(), v_null());
+            stdin_wakers_pushed_x(ws)
+        } else {
+            ()
+        };
+        if processes {
+            process_waiters_woken_x(s_output(), true);
+            process_waiters_woken_x(s_exit(), false)
         } else {
             ()
         };

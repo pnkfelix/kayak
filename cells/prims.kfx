@@ -228,6 +228,18 @@
 (define o-keyword-p i64 210)
 (define o-symbol-keyword i64 211)
 (define o-keyword-symbol i64 212)
+"What a path is (C293), and programs run beside this one (C295), on tier 1
+ (C298)."
+(define o-file-info i64 213)
+(define o-read-symlink i64 214)
+(define o-process-start i64 215)
+(define o-process-output i64 216)
+(define o-process-status i64 217)
+(define o-process-write i64 218)
+(define o-process-close-input i64 219)
+(define o-process-signal i64 220)
+(define o-process-exit i64 221)
+(define o-process-news i64 222)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -344,6 +356,11 @@
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
          (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
          (pdef "%fx26-keyword?" 1 1 o-keyword-p) (pdef "%fx26-symbol->keyword" 1 1 o-symbol-keyword) (pdef "%fx26-keyword->symbol" 1 1 o-keyword-symbol)
+         (pdef "%fx26-file-info" 1 1 o-file-info) (pdef "%fx26-read-symlink" 1 1 o-read-symlink)
+         (pdef "%fx26-process-start" 2 2 o-process-start) (pdef "%fx26-process-output" 1 1 o-process-output)
+         (pdef "%fx26-process-status" 1 1 o-process-status) (pdef "%fx26-process-write" 2 2 o-process-write)
+         (pdef "%fx26-process-close-input" 1 1 o-process-close-input) (pdef "%fx26-process-signal" 2 2 o-process-signal)
+         (pdef "%fx26-process-exit" 1 1 o-process-exit) (pdef "%fx26-process-news" 0 0 o-process-news)
          (pdef "%fx26-write-out" 1 1 o-write-out) (pdef "%fx26-write-err" 1 1 o-write-err) (pdef "%fx26-exit" 1 1 o-exit)
          (pdef "%fx26-read-line" 0 0 o-read-line) (pdef "%fx26-read-byte" 0 0 o-read-byte) (pdef "%fx26-read-bytes" 3 3 o-read-bytes)
          (pdef "%fx26-stdin-ready?" 0 0 o-stdin-ready) (pdef "%fx26-terminal-raw" 0 0 o-terminal-raw)
@@ -1446,6 +1463,18 @@
     (let ((b (make-bloblet! k-sum 2 0 #t #f)))
       (begin (slot-set! b 2 (symbol! tag)) (slot-set! b 3 v) (frozen-whole! b) b))))
 
+(define frozen4! (subr cm (i64 i64 i64 i64 i64) i64)
+  (lambda (k w x y z)
+    "`frozen2!` of four fields (C298)."
+    (let ((b (make-bloblet! k 4 0 #t #f)))
+      (begin (slot-set! b 2 w) (slot-set! b 3 x) (slot-set! b 4 y) (slot-set! b 5 z) (frozen-whole! b) b))))
+
+(define-rec
+  (heap-strings (subr cm (i64) (listof string @c))
+    (lambda (l)
+      "A list in the heap of strings as KFX's (C298), `process-start`'s words."
+      (if (is-pair? l) (cons (string-text (pair-car l)) (heap-strings (pair-cdr l))) nil))))
+
 (define frozen2! (subr cm (i64 i64 i64) i64)
   (lambda (k x y)
     "`frozen-of!` of two fields, `x` and `y`, with no list made of them (C148)."
@@ -1574,6 +1603,13 @@
     (lambda (kb v at i n)
       "Bytes `i` to `n` of KFX's `kb` into tier 1's `v`, from byte `at`."
       (if (i64>= i n) #u (begin (bv-set! v (i64+ at i) (int->i64 (u8->int (bytevector-u8-ref kb (i64->int i))))) (bytes-from-kfx! kb v at (i64+ i 1) n))))))
+(define process-how! (subr cm ((sumof (exited int) (signalled int) (unknown unit))) i64)
+  (lambda (h)
+    (tagcase h
+      (exited c (io-sum! "exited" (fix (int->i64 c))))
+      (signalled c (io-sum! "signalled" (fix (int->i64 c))))
+      (unknown u (io-sum! "unknown" v-unit)))))
+
 (define io-op! (subr cm (i64 i64 i64 i64) i64)
   (lambda (op a b c)
     (cond
@@ -1617,6 +1653,36 @@
              (names ns (io-sum! "names" (strings-list! ns)))
              (failed e (io-failed! e)))
            (expected! "a string")))
+      ((i64= op o-file-info)
+       (if (str? a)
+           (tagcase (file-info (string-text a))
+             (info i (io-sum! "info" (frozen4! k-product
+                                               (io-sum! (tagcase (extract i kind) (file u "file") (directory u "directory") (symlink u "symlink") (other u "other")) v-unit)
+                                               (fix (int->i64 (extract i size))) (fix (int->i64 (extract i modified))) (fix (int->i64 (extract i mode))))))
+             (failed e (io-failed! e)))
+           (expected! "a string")))
+      ((i64= op o-read-symlink)
+       (if (str? a)
+           (tagcase (read-symlink (string-text a)) (target t (io-sum! "target" (make-string! t))) (failed e (io-failed! e)))
+           (expected! "a string")))
+      ((i64= op o-process-start)
+       (if (str? b)
+           (tagcase (process-start (heap-strings a) (string-text b))
+             (started p (io-sum! "started" (fix (int->i64 p))))
+             (failed e (io-failed! e)))
+           (expected! "a string")))
+      ((i64= op o-process-output) (make-string! (process-output (i64->int (fix-val a)))))
+      ((i64= op o-process-status)
+       (tagcase (process-status (i64->int (fix-val a)))
+         (running u (io-sum! "running" v-unit))
+         (exited c (io-sum! "exited" (fix (int->i64 c))))
+         (signalled c (io-sum! "signalled" (fix (int->i64 c))))
+         (unknown u (io-sum! "unknown" v-unit))))
+      ((i64= op o-process-write) (if (str? b) (io-done! (process-write (i64->int (fix-val a)) (string-text b))) (expected! "a string")))
+      ((i64= op o-process-close-input) (begin (process-close-input (i64->int (fix-val a))) v-unit))
+      ((i64= op o-process-signal) (begin (process-signal (i64->int (fix-val a)) (i64->int (fix-val b))) v-unit))
+      ((i64= op o-process-exit) (process-how! (process-exit (i64->int (fix-val a)))))
+      ((i64= op o-process-news) (fix (int->i64 (process-news))))
       ((i64= op o-write-file)
        (cond ((not (str? a)) (expected! "a string"))
              ((not (is-kind? b k-bytevector)) (expected! "a bytevector"))
@@ -1684,6 +1750,17 @@
       ((i64= n 43) (boolean (stdin-ready?)))
       ((i64= n 44) (begin (st-cons! s-stdin a) v-unit))
       ((i64= n 45) (begin (st-set! s-stdin (without! (st s-stdin) 0 a)) v-unit))
+      ;; Heist's F6 (C298): a process's output ready, its end, any's news;
+      ;; a waker waiting for each, and taken back.
+      ((i64= n 46) (boolean (process-output-ready? (fix-val a))))
+      ((i64= n 47) (begin (st-cons! s-output (cons! a b)) v-unit))
+      ((i64= n 48) (begin (st-set! s-output (without! (st s-output) 2 a)) v-unit))
+      ((i64= n 49) (boolean (process-ended? (fix-val a))))
+      ((i64= n 50) (begin (st-cons! s-exit (cons! a b)) v-unit))
+      ((i64= n 51) (begin (st-set! s-exit (without! (st s-exit) 2 a)) v-unit))
+      ((i64= n 52) (boolean (i64>= (int->i64 (process-news)) 0)))
+      ((i64= n 53) (begin (st-cons! s-news a) v-unit))
+      ((i64= n 54) (begin (st-set! s-news (without! (st s-news) 0 a)) v-unit))
       ((i64= n 40) (begin (st-cons! s-waiting (cons! a b)) v-unit))
       ((i64= n 41) (begin (st-set! s-waiting (without! (st s-waiting) 1 a)) v-unit))
       ((i64= n 42) (reaped!))
@@ -2210,7 +2287,8 @@
         ((i64= op o-keyword-p) (boolean (is-kind? a k-keyword)))
         ((i64= op o-symbol-keyword) (if (is-kind? a k-symbol) (keyword! a) (expected! "a symbol")))
         ((i64= op o-keyword-symbol) (if (is-kind? a k-keyword) (slot-of a 2) (expected! "a keyword")))
-        ((and (i64>= op o-write-out) (i64<= op o-write-file)) (io-op! op a b (parg 2)))
+        ((or (and (i64>= op o-write-out) (i64<= op o-write-file)) (and (i64>= op o-file-info) (i64<= op o-process-news)))
+         (io-op! op a b (parg 2)))
         ((i64= op o-convert)
          "A procedure already of the convention itself; one of the other, an
           adapter (C230; Fixpt's `%fx26-convert`, `adapt`); anything else
