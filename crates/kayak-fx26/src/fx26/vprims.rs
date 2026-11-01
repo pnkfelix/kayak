@@ -109,6 +109,8 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         i64_plus(i64_plus(fixnum_value(a), 1i64), i64_plus(list_count(pair_cdr(args), 0i64), 2i64))
     } else if i64_eq(op, 207i64) {
         4096i64
+    } else if i64_eq(op, 269i64) {
+        65536i64
     } else if i64_eq(op, 212i64) {
         i64_plus(fixnum_value(b), 8i64)
     } else if i64_eq(op, 222i64) {
@@ -918,6 +920,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         exit_word_x(process_exit(word_int(a)))
     } else if i64_eq(op, 268i64) {
         int_word_x(process_news())
+    } else if i64_eq(op, 269i64) {
+        stage_run_x(a, b, pair_car(pair_cdr(pair_cdr(args))))
     } else if i64_eq(op, 139i64) {
         real_word_x(int_to_f64(word_int(a)))
     } else if (i64_eq(op, 140i64) && not(integral_p(word_real(a)))) {

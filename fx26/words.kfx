@@ -6,7 +6,9 @@
 (define-effect hp (maxeff (read @globals) spin (read @h) (write @h)))
 
 (define-effect vm (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
-                          (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit) (io sys) (io terminal) (io process)))
+                          (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit) (io sys) (io terminal) (io process)
+                          ;; A stage's check, a worker's (C305).
+                          (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet))
 
 
 "Integers: a fixnum if it fits, else a bignum, its sign and 32-bit limbs,

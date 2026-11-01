@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"session-conditions.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"defined a",
+"11",
+"redefines a: int to int",
+"not defined: `a` is defined already, and the redefinition was refused",
+"11",
+"redefines a: int to int",
+"defined a",
+"30",
+"escaped, redefining a",
+"30",
+"defined b",
+"32",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

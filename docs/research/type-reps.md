@@ -1,7 +1,9 @@
 # Types as reps, in kayak
 
 Status: design (2026-11-01, C299); step 1 done (C300); step 2 begun
-(C301-C303: 1334 of 1365 definitions round-trip, the rest declined). The user's direction: adopt Fixpt's
+(C301-C303: 1334 of 1365 definitions round-trip, the rest declined);
+step 3 deferred (the emitter works on type syntax, not `ty`); step 4,
+`stage` by rep, begun (C304, C305). The user's direction: adopt Fixpt's
 "heap types" (its `docs/research/heap-types.md`, steps 1 to 6 done at
 the pin 63b95ef) before `stage` and sessions, so that those are built on
 reps from the start rather than on text and then moved, as Fixpt's were

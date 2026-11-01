@@ -1483,6 +1483,17 @@ pub fn nth_symbol(mut xs: List<Symbol>, mut k: Int) -> Str {
     }
 }
 
+pub fn drop_sexps(mut xs: Sexps, mut n: i64) -> Sexps {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
 pub fn drop_n(mut xs: RpOperands, mut n: i64) -> RpOperands {
     loop {
         if (null_p(xs) || i64_lt_eq(n, 0i64)) {
@@ -1850,7 +1861,7 @@ pub fn ri_region(c: &'static Ri, a: RpOperand) -> &'static Ty {
 }
 
 pub fn ri_region_string(c: &'static Ri, a: RpOperand) -> Str {
-    region_string(new_state(), ri_region(c, a))
+    region_string(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), ri_region(c, a))
 }
 
 pub fn ri_atoms(c: &'static Ri, r#as: RpOperands) -> Strings {
@@ -2220,7 +2231,7 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
                     ty_flat(car(ds), car(cdr(ds)))
                 } else if string_eq_p(p.0, str_lit("flat-keyed")) {
                     let ds = ri_descs(c, cdr(args));
-                    let w = size_lin(new_state(), car(ds));
+                    let w = size_lin(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), car(ds));
                     let sm = car(cdr(ds));
                     ty_data(str_lit("%flat-sum"), kayak_rt::heap_cons(rp_key_of_width(if null_p(w) {
                         4i64
@@ -2342,39 +2353,178 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
 }
 
 // A rep, from its binary form, as a type of the checker's.
-pub fn rep_ty(b: Bytes) -> &'static Ty {
-    let got = rep_nodes(b, nil::<Str>());
-    ri_ty(ri(got.0, got.1, nil::<Product_11_12<Int, List<Symbol>>>(), nil::<Int>()), the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(int_lit(0)))))
+pub fn rep_ty<'r>(b: BytesAt<'r>) -> &'static Ty {
+    let got = (&rep_nodes)(b, nil::<Str>());
+    ri_ty(ri(got.0, got.1, nil::<Product_11_12<Int, List<Symbol>>>(), nil::<Int>()), the::<RpOperand>(alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(int_lit(0)))))
 }
 
-// Type `t` as a rep in its binary form, or none if a part is declined.
-pub fn ty_rep(s: &'static St, t: &'static Ty) -> List<Bytes> {
+// A type's export, its nodes made and not yet canonical (C305): what
+// `rep-of-nodes` takes, as text (`rp-nodes-text`) a fact may carry; or why
+// not, the first part declined.
+pub enum Rexp {
+    Rexp(RpNodes, Strings, Int, Str),
+}
+
+pub fn rexp(f0: RpNodes, f1: Strings, f2: Int, f3: Str) -> &'static Rexp {
+    kayak_rt::heap_alloc(Rexp::Rexp(f0, f1, f2, f3))
+}
+
+pub fn ty_export(s: &'static St, t: &'static Ty) -> &'static Rexp {
     let tagcase_ = rx_ty(s, rx_empty(), nil::<&'static Rpbind>(), t);
     match *tagcase_ {
         Rxa::Rxa(x, root) => {
             let tagcase_ = x;
             match *tagcase_ {
                 Rx::Rx(ns, k, hs, d) => {
-                    if not(string_eq_p(d, str_lit(""))) {
-                        nil::<Bytes>()
-                    } else {
-                        let tagcase_ = root;
-                        match *tagcase_ {
-                            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(slot) => {
-                                kayak_rt::heap_cons(the::<Bytes>(rep_of_nodes(ns, map(lambda1s(move |h: Str| {
-                                    string_to_symbol(h)
-                                }), reverse(hs)), slot)), kayak_rt::nil())
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                nil::<Bytes>()
-                            }
+                    let tagcase_ = root;
+                    match *tagcase_ {
+                        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(slot) => {
+                            rexp(ns, reverse(hs), slot, d)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            rexp(ns, reverse(hs), int_lit(0), if string_eq_p(d, str_lit("")) {
+                                str_lit("no node")
+                            } else {
+                                d
+                            })
                         }
                     }
                 }
             }
         }
     }
+}
+
+// Type `t` as a rep in its binary form, or none if a part is declined.
+pub fn ty_rep<'r>(s: &'static St, t: &'static Ty) -> ListAt<'r, BytesAt<'r>> {
+    let tagcase_ = ty_export(s, t);
+    match *tagcase_ {
+        Rexp::Rexp(ns, hs, root, d) => {
+            if not(string_eq_p(d, str_lit(""))) {
+                nil::<BytesAt<'r>>()
+            } else {
+                kayak_rt::cons(the::<BytesAt<'r>>(rep_of_nodes(ns, map(lambda1s(move |h: Str| {
+                    string_to_symbol(h)
+                }), hs), root)), kayak_rt::nil())
+            }
+        }
+    }
+}
+
+// A node list as text (C305), for a fact: `(ROOT (HOLE …) NODE …)`, a node
+// `(SLOT HEAD SET (BINDER …) (ARG …))`, each argument as its sum's tag and
+// its payload, every name written as a string, so that no name breaks the
+// reading.
+pub fn rp_quoted(n: Str) -> Str {
+    string_append(str_lit("\""), string_append(n, str_lit("\"")))
+}
+
+pub fn rp_words(ws: Strings) -> Str {
+    if null_p(ws) {
+        str_lit("")
+    } else if null_p(cdr(ws)) {
+        car(ws)
+    } else {
+        string_append(car(ws), string_append(str_lit(" "), rp_words(cdr(ws))))
+    }
+}
+
+pub fn rp_arg_text(a: RpOperand) -> Str {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(k) => {
+            string_append(str_lit("(node "), string_append(int_to_string(k), str_lit(")")))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
+            string_append(str_lit("(bound "), string_append(int_to_string(p.0), string_append(str_lit(" "), string_append(int_to_string(p.1), str_lit(")")))))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
+            string_append(str_lit("(hole "), string_append(int_to_string(h), str_lit(")")))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Const(p) => {
+            string_append(str_lit("(const "), string_append(rp_quoted(p.0), string_append(str_lit(" "), string_append(int_to_string(p.1), string_append(str_lit(" "), string_append(rp_quoted(p.2), str_lit(")")))))))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Sym(n) => {
+            string_append(str_lit("(sym "), string_append(rp_quoted(symbol_to_string(n)), str_lit(")")))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Int(k) => {
+            string_append(str_lit("(int "), string_append(int_to_string(k), str_lit(")")))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Flag(f) => {
+            if f {
+                str_lit("(flag #t)")
+            } else {
+                str_lit("(flag #f)")
+            }
+        }
+    }
+}
+
+pub fn rp_node_text(n: RpNode) -> Str {
+    string_append(str_lit("("), string_append(int_to_string(n.0), string_append(str_lit(" "), string_append(rp_quoted(symbol_to_string(n.1)), string_append(if n.2 {
+        str_lit(" #t (")
+    } else {
+        str_lit(" #f (")
+    }, string_append(rp_words(map(lambda1s(move |b: Symbol| {
+        rp_quoted(symbol_to_string(b))
+    }), n.3)), string_append(str_lit(") ("), string_append(rp_words(map(&rp_arg_text, n.4)), str_lit("))")))))))))
+}
+
+pub fn rp_nodes_text(ns: RpNodes, hs: Strings, root: Int) -> Str {
+    string_append(str_lit("("), string_append(int_to_string(root), string_append(str_lit(" ("), string_append(rp_words(map(&rp_quoted, hs)), string_append(str_lit(") "), string_append(rp_words(map(&rp_node_text, ns)), str_lit(")")))))))
+}
+
+// The text back (C305): the nodes, the holes' names, the root.
+pub fn sexp_string(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Str(t, f, p) => {
+            t
+        }
+        Sexp::Sym(t, f, p) => {
+            t
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn rp_arg_of(e: &'static Sexp) -> RpOperand {
+    let xs = items(e);
+    let h = sym_name(car(xs));
+    let k = lambda1s(move |i: i64| {
+        i64_to_int(sexp_int(car(drop_sexps(cdr(xs), i))))
+    });
+    if string_eq_p(h, str_lit("node")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(k(0i64))))
+    } else if string_eq_p(h, str_lit("bound")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Bound(Product_11_12(k(0i64), k(1i64)))))
+    } else if string_eq_p(h, str_lit("hole")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(k(0i64))))
+    } else if string_eq_p(h, str_lit("const")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Const(Product_11_12_13(sexp_string(second(xs)), k(1i64), sexp_string(car(cdr(cdr(cdr(xs)))))))))
+    } else if string_eq_p(h, str_lit("sym")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(string_to_symbol(sexp_string(second(xs))))))
+    } else if string_eq_p(h, str_lit("int")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(k(0i64))))
+    } else {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(string_eq_p(sym_name(second(xs)), str_lit("#t")))))
+    }
+}
+
+pub fn rp_node_of(e: &'static Sexp) -> RpNode {
+    let xs = items(e);
+    Product_11_12_13_14_15(i64_to_int(sexp_int(car(xs))), string_to_symbol(sexp_string(second(xs))), string_eq_p(sym_name(third(xs)), str_lit("#t")), map(lambda1s(move |b: &'static Sexp| {
+        string_to_symbol(sexp_string(b))
+    }), items(car(cdr(cdr(cdr(xs)))))), map(&rp_arg_of, items(car(cdr(cdr(cdr(cdr(xs))))))))
+}
+
+pub fn rp_nodes_of_text(text: Str) -> &'static Rexp {
+    let xs = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
+    rexp(map(&rp_node_of, cdr(cdr(xs))), map(&sexp_string, items(second(xs))), i64_to_int(sexp_int(car(xs))), str_lit(""))
 }
 
 // Why type `t` is declined: the first part a rep does not take, or none.
@@ -2407,12 +2557,12 @@ pub fn scheme_rep_hex(s: &'static St, sc: &'static Scheme) -> Str {
                     ty_var(n)
                 }), tvars), kayak_rt::heap_cons(t, kayak_rt::nil())))
             };
-            let got = ty_rep(s, t2);
+            let got = (&ty_rep)(s, t2);
             if null_p(got) {
                 string_append(str_lit("declined: "), ty_declined(s, t2))
             } else {
                 let h1 = rp_hex_of(car(got), int_lit(0));
-                let again = ty_rep(new_state(), rep_ty(car(got)));
+                let again = (&ty_rep)(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), (&rep_ty)(car(got)));
                 if null_p(again) {
                     string_append(h1, str_lit(" differs: declined again"))
                 } else if string_eq_p(rp_hex_of(car(again), int_lit(0)), h1) {

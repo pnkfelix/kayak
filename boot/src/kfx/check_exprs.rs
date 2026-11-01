@@ -5664,7 +5664,16 @@ pub mod expressions {
                                 let tagcase_ = synth(v, s, car(cdr(cdr(cdr(cdr(xs))))));
                                 match *tagcase_ {
                                     Res::Res(gt, ges, s) => {
-                                        res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), s)
+                                        let tagcase_ = ty_export(s, ty_proc(nil::<Str>(), kayak_rt::heap_cons(mt, kayak_rt::nil()), ty_proc(es, nil::<&'static Ty>(), r)));
+                                        match *tagcase_ {
+                                            Rexp::Rexp(ns, hs, root, why) => {
+                                                if not(string_eq_p(why, str_lit(""))) {
+                                                    match refuse(v, string_append(str_lit("a stage's type has a part a rep does not take yet: "), why)) {}
+                                                } else {
+                                                    res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("stage-rep "), rp_nodes_text(ns, hs, root))))
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

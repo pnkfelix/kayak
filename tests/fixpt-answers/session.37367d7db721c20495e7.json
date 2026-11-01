@@ -1,0 +1,40 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"session.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"defined a",
+"33",
+"defined f",
+"120",
+"defined g",
+"a: int to string, used by g",
+"fresh",
+"not defined: `a` is defined already, and the redefinition was refused",
+"12",
+"defined a",
+"101",
+"defined twice",
+"3",
+"not defined: the session changed since this definition was checked: check it again",
+"refused: a int is expected here, and this is a string",
+"refused: argument 1 is a int, where a (union nil (pairof ? ? r)) is expected",
+"defined a",
+"refused: `g` is broken, since `a` was redefined (a int is expected here, and this is a string): define it again to use it",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

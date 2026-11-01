@@ -139,6 +139,7 @@
       (set io-error-labels (label-ids! (list "kind" "detail")))
       (set size-labels (label-ids! (list "rows" "columns")))
       (set info-labels (label-ids! (list "kind" "size" "modified" "mode")))
+      (set stage-failure-labels (label-ids! (list "kind" "message" "start" "end")))
       (if (and (i64= op-make-tag (list-position "make-continuation-prompt-tag" prim-list 0))
                (i64= op-abort (list-position "abort-current-continuation" prim-list 0))
                (i64= op-capture (list-position "call-with-composable-continuation" prim-list 0))

@@ -1,0 +1,129 @@
+"vstage.kfx: `stage` on the engine (C305; Fixpt's `docs/fx26.md`,
+ \"Staging code\"): the code a program gives, a datum, checked as the
+ program runs against what the checker noted at the stage, a rep, and made
+ a procedure; or why not, a value. The check runs in a worker first, as
+ the REPL's do (C111): the checker refuses by failing, which fails the
+ worker alone, its refusal sent back. Once it passes, it is checked again
+ here, for the facts its lowering reads, lowered and numbered, and made a
+ closure over the module, which its frame holds."
+
+"The datum's positions, each list's its own, so that what the checker
+ notes of a part (a `with`'s, C213) the lowering finds."
+(define stage-pos (ref i64 @h) (new 0))
+(define stage-file string "<stage>")
+
+(define stage-at! (subr hp () i64)
+  (lambda () (let ((p (get stage-pos))) (begin (set stage-pos (i64+ p 1)) p))))
+
+(define-rec
+  (word-sexp (subr hp (i64) sexp)
+    (lambda (w)
+      "A datum's word as the reader would have read it."
+      (cond ((fixnum? w) (num (fixnum-value w) (i64->string (fixnum-value w)) (stage-at!)))
+            ((i64= w w-true) (sym "#t" stage-file (stage-at!)))
+            ((i64= w w-false) (sym "#f" stage-file (stage-at!)))
+            ((i64= w w-unit) (sym "#u" stage-file (stage-at!)))
+            ((i64= w w-nil) (lst nil stage-file 1 (stage-at!)))
+            ((keyword-word? w) (sym (string-append "#:" (name-of-number (i64- (immediate-value w) keyword-bias))) stage-file (stage-at!)))
+            ((is-imm? w imm-symbol) (sym (name-of-number (immediate-value w)) stage-file (stage-at!)))
+            ((is-imm? w imm-char) (chr (word-char w) stage-file (stage-at!)))
+            ((is-obj? w ob-string) (str (word-string w) stage-file (stage-at!)))
+            ((is-obj? w ob-big) (big (int->string (word-int w)) stage-file (stage-at!)))
+            ((is-obj? w ob-real) (real (f64->string (word-real w)) stage-file (stage-at!)))
+            ((is-pair? w) (let ((p (stage-at!))) (lst (pair-sexps w) stage-file 1 p)))
+            (else (sym "%unread" stage-file (stage-at!))))))
+  (pair-sexps (subr hp (i64) sexps)
+    (lambda (w)
+      (cond ((i64= w w-nil) nil)
+            ((is-pair? w) (let ((a (word-sexp (pair-car w)))) (cons a (pair-sexps (pair-cdr w)))))
+            (else (list (sym "." stage-file (stage-at!)) (word-sexp w)))))))
+
+"What the staged code is checked as: `(lambda (stage-module) (lambda ()
+ (with stage-module CODE)))`, against `(subr pure (M) (subr E () R))`."
+(define staged-thunk (subr hp (sexp) sexp)
+  (lambda (code)
+    (let ((s (lambda ((n string)) (sym n stage-file (stage-at!))))
+          (l (lambda ((xs sexps)) (lst xs stage-file 1 (stage-at!)))))
+      (l (list (s "lambda") (l nil) (l (list (s "with") (s "stage-module") code)))))))
+
+(define staged-program (subr hp (sexp) sexp)
+  (lambda (thunk)
+    (let ((s (lambda ((n string)) (sym n stage-file (stage-at!))))
+          (l (lambda ((xs sexps)) (lst xs stage-file 1 (stage-at!)))))
+      (l (list (s "lambda") (l (list (s "stage-module"))) thunk)))))
+
+"The checker's environment a stage's code is checked in: the standard
+ one alone, nothing of the program's but the module given."
+(define stage-cv (subr kfx () cv)
+  (lambda ()
+    (let ((empty (cv nil nil nil nil "a type" nil "staged code" 0 nil nil 0 (bempty) nil)))
+      (with-binds empty (prim-binds empty)))))
+
+"The check: its state, whose facts the lowering reads; a refusal fails."
+(define stage-checked (subr kfx (sexp ty) st)
+  (lambda (prog t)
+    (tagcase ((with expressions check) (at (stage-cv) "staged code" nil) (new-state) prog t) (res (u es s) s))))
+
+(define stage-verdict (subr kfx (sexp ty) string)
+  (lambda (prog t) (begin (stage-checked prog t) "")))
+
+(define-rec
+  (begins-with? (subr kfx (chars chars) bool)
+    (lambda (cs pat) (or (null? pat) (and (not (null? cs)) (char=? (car cs) (car pat)) (begins-with? (cdr cs) (cdr pat)))))))
+
+(define-rec
+  (after-said (subr kfx (chars chars) chars)
+    (lambda (cs pat)
+      "What follows the first `in staged code: ` of a refusal; all of it if none."
+      (cond ((null? cs) nil)
+            ((begins-with? cs pat) (drop-chars cs (size pat)))
+            (else (after-said (cdr cs) pat))))))
+
+(define* stage-refused (subr pure (string) string) (lambda (m) (if (string=? m "") "refused" m)))
+
+(define refusal-said (subr kfx (string) string)
+  (lambda (m)
+    "A refusal as its words alone: what the checker says after where."
+    (let ((said (list->string (after-said (string-chars m) (string-chars "in staged code: ")))))
+      (if (string=? said "") m said))))
+
+(define* stage-worked (subr (maxeff (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet spin (read @globals)) (sexp ty) string)
+  (lambda (prog t)
+    "The check by a worker, whose watcher, a relay of one message, puts what
+     it is sent where this waits: `` if it passed, else the refusal."
+    (let* ((out (the (icell string @q) (make-icell)))
+           (relay (the (addr string @q) (spawn (box string r) (icell-put! out (receive box))))))
+      (begin
+        (the (addr unit @w) (spawn-monitored relay stage-refused (box unit r) (send relay (stage-verdict prog t))))
+        (icell-get out)))))
+
+"The labels of `stage-failure`'s product, made at loading."
+(define stage-failure-labels (ref i64 @h) (new -1))
+
+(define stage-failure-word! (subr (maxeff hp (alloc @h)) (string) i64)
+  (lambda (m)
+    "`(sum failed (product (kind (sum refused #u)) (message m) (start 0) (end 0)))`:
+     the place in the code no refusal of kayak's says yet."
+    (let* ((k (sum-word! "refused" w-unit)) (msg (string-word! m)) (p (alloc! ob-product 5)))
+      (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
+             (obj-set! p 3 (fixnum 0)) (obj-set! p 4 (fixnum 0)) (sum-word! "failed" p)))))
+
+(define stage-run! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 i64 i64) i64)
+  (lambda (m code rep)
+    "`(%stage-run m code rep)`: `(sum ok THUNK)`, the code made a procedure
+     over module `m`; or `(sum failed WHY)`."
+    (let* ((t ((proj rep-ty @h) (word-kfx-bytes rep)))
+           (thunk (staged-thunk (word-sexp code)))
+           (prog (staged-program thunk))
+           (why (stage-worked prog t)))
+      (if (not (string=? why ""))
+          (stage-failure-word! (refusal-said why))
+          (let* ((s (stage-checked prog t))
+                 (gs (with-entries (tagcase s (st (sbs k fs ns) fs))))
+                 (body (lower thunk (list (list "stage-module")) gs))
+                 (l (number! body))
+                 (e (alloc! ob-env 2))
+                 (p (alloc! ob-proc 2)))
+            (begin (obj-set! e 0 w-nil) (obj-set! e 1 m)
+                   (obj-set! p 0 (code-word l)) (obj-set! p 1 e)
+                   (sum-word! "ok" p)))))))

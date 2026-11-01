@@ -8470,3 +8470,45 @@ evidence, sessions, or a module made where it is staged. Over 561
 programs Fixpt accepts, kayak's checker now says the same of 440, and of
 406 Fixpt refuses, it accepts none. The engine runs no stage yet: part
 two, with its check in a worker, as the REPL's (C111).
+
+## C305. `stage` on the engine, by rep (2026-11-01)
+
+The user chose "rep from start": the stage's type crosses to run time as
+a rep, never as text. kayak's checker and lowering are `kfx`, which may
+not allocate, and a rep is a bytevector `rep-of-nodes` allocates. So the
+work is split as Fixpt splits it, the checker exporting and the runtime
+making the rep canonical:
+- **The checker exports.** `stage-form` exports what the code is checked
+  as, `(subr pure (M) (subr E () R))`, as nodes (`ty-export`, which is
+  pure), and notes them as a fact, `stage-rep`, in a text of the nodes
+  (`rp-nodes-text`: every name a string, so that none breaks the
+  reading). A type a rep does not take is refused, as Fixpt refuses one
+  (`NO_REP`). `reps.kfx` now comes right after `check.kfx` in both units.
+- **Loading makes the rep.** The lowering writes `stage` as a call of
+  the primitive `%stage-run` (op 269) with a literal `v-rep` of that
+  text. Numbering, where the engine allocates, reads the nodes back
+  (`rp-nodes-of-text`) and makes the rep: a bytevector constant.
+- **The run** (`fx26/vstage.kfx`):
+  - It imports the rep (`rep-ty`, region-polymorphic now) and turns the
+    code's datum back into what the reader would have read, each list at
+    a position of its own.
+  - It checks `(lambda (stage-module) (lambda () (with stage-module
+    CODE)))` against the type, first in a monitored worker, as the REPL
+    checks (C111). The checker refuses by failing, which fails the
+    worker alone, and the refusal comes back as `(sum failed …)` of a
+    `stage-failure` (`refused`, the checker's words, places 0 0).
+  - If it passes, it is checked again where the program runs, for the
+    facts its lowering reads (a `with`'s, C213), and the thunk is lowered
+    in a frame binding `stage-module`, numbered, and made a closure over
+    the module, which its frame holds: `(sum ok THUNK)`.
+  The engine's `vm` effect has the worker's atoms.
+Of Fixpt's stage programs, on the engine: `sealed.fx`, `state.fx` and
+`tail-across.fx` print what Fixpt's run prints. `stage.fx` and `kept.fx`
+do too, but for their refusals' words and places, which are kayak's
+checker's (`a string is here, where a int is expected` for Fixpt's
+`argument 1 is a string, where a int is expected`) and 0 0. Matching
+those is a decision of its own (kayak's checker's messages throughout).
+The rest need evidence, sessions, or rules kayak's checker has not got.
+
+A slip found on the way: `%stage-run` first went into the primitives'
+list before the processes' (C295), renumbering them; it is last now.

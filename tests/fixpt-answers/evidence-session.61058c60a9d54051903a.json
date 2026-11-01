@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"evidence-session.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"defined a",
+"12",
+"refused: a (subr pure () int) is expected here, and this is a (subr (io stdout) () int)",
+"  beyond what is expected, it has (io stdout)",
+"out",
+"11",
+"b",
+"defined b",
+"13",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

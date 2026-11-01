@@ -261,6 +261,7 @@ pub fn load_x(gs: Strings) -> () {
     set(io_error_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil()))));
     set(size_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("rows"), kayak_rt::heap_cons(str_lit("columns"), kayak_rt::nil()))));
     set(info_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("size"), kayak_rt::heap_cons(str_lit("modified"), kayak_rt::heap_cons(str_lit("mode"), kayak_rt::nil()))))));
+    set(stage_failure_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("message"), kayak_rt::heap_cons(str_lit("start"), kayak_rt::heap_cons(str_lit("end"), kayak_rt::nil()))))));
     if (i64_eq(op_make_tag(), list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)) && i64_eq(op_abort(), list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)) && i64_eq(op_capture(), list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)) && i64_eq(op_capture_once(), list_position(str_lit("call-with-oneshot-continuation"), prim_list(), 0i64)) && i64_eq(op_cwcc(), list_position(str_lit("cwcc"), prim_list(), 0i64)) && i64_eq(op_suspend(), list_position(str_lit("abort-with-continuation"), prim_list(), 0i64)) && i64_eq(op_apply(), list_position(str_lit("apply"), prim_list(), 0i64))) {
         ()
     } else {

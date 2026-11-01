@@ -442,6 +442,10 @@
     (lambda (xs k) (cond ((null? xs) "?") ((= k 0) (symbol->string (car xs))) (else (nth-symbol (cdr xs) (- k 1)))))))
 
 (define-rec
+  (drop-sexps (subr kfx (sexps i64) sexps)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (drop-sexps (cdr xs) (i64- n 1))))))
+
+(define-rec
   (drop-n (subr kfx (rp-operands i64) rp-operands)
     (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (drop-n (cdr xs) (i64- n 1))))))
 
@@ -560,7 +564,7 @@
                             (else (ty-void)))))))
             (else other (ri-ty c a)))))))
   (ri-region-string (subr kfx (ri rp-operand) string)
-    (lambda (c a) (region-string (new-state) (ri-region c a))))
+    (lambda (c a) (region-string (st nil 0 nil nil) (ri-region c a))))
   (ri-atoms (subr kfx (ri rp-operands) strings)
     (lambda (c as) (if (null? as) nil (cons (ri-atom c (car as)) (ri-atoms c (cdr as))))))
   (ri-atom (subr kfx (ri rp-operand) string)
@@ -656,7 +660,7 @@
                               ((string=? (extract p 1) "flatarrayof")
                                (let ((ds (ri-descs c (cdr args)))) (ty-flat (car ds) (car (cdr ds)))))
                               ((string=? (extract p 1) "flat-keyed")
-                               (let* ((ds (ri-descs c (cdr args))) (w (size-lin (new-state) (car ds))) (sm (car (cdr ds))))
+                               (let* ((ds (ri-descs c (cdr args))) (w (size-lin (st nil 0 nil nil) (car ds))) (sm (car (cdr ds))))
                                  (ty-data "%flat-sum"
                                           (cons (rp-key-of-width (if (null? w) 4 (tagcase (car w) (lin (k ts) k))))
                                                 (tagcase sm
@@ -689,23 +693,89 @@
               (else (ty-void)))))))
 
 "A rep, from its binary form, as a type of the checker's."
-(define rep-ty (subr (maxeff kfx (read @heap)) ((bytevectorof @heap)) ty)
-  (lambda (b)
-    (let ((got (rep-nodes b nil)))
-      (ri-ty (ri (extract got 1) (extract got 2) nil nil) (the rp-operand (sum node 0))))))
+(define rep-ty (poly ((r region)) (subr (maxeff kfx (read r)) ((bytevectorof r)) ty))
+  (plambda ((r region))
+    (lambda (b)
+      (let ((got ((proj rep-nodes r) b nil)))
+        (ri-ty (ri (extract got 1) (extract got 2) nil nil) (the rp-operand (sum node 0)))))))
 
-"Type `t` as a rep in its binary form, or none if a part is declined."
-(define ty-rep (subr (maxeff kfx (alloc @heap)) (st ty) (listof (bytevectorof @heap) acyclic))
+"A type's export, its nodes made and not yet canonical (C305): what
+ `rep-of-nodes` takes, as text (`rp-nodes-text`) a fact may carry; or why
+ not, the first part declined."
+(define-datatype rexp (rexp rp-nodes strings int string))
+
+(define ty-export (subr kfx (st ty) rexp)
   (lambda (s t)
     (tagcase (rx-ty s rx-empty nil t)
       (rxa (x root)
         (tagcase x
           (rx (ns k hs d)
-            (if (not (string=? d ""))
-                nil
-                (tagcase root
-                  (node slot (list (the (bytevectorof @heap) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) (reverse hs)) slot))))
-                  (else other nil)))))))))
+            (tagcase root
+              (node slot (rexp ns (reverse hs) slot d))
+              (else other (rexp ns (reverse hs) 0 (if (string=? d "") "no node" d))))))))))
+
+"Type `t` as a rep in its binary form, or none if a part is declined."
+(define ty-rep (poly ((r region)) (subr (maxeff kfx (alloc r)) (st ty) (listof (bytevectorof r) acyclic)))
+  (plambda ((r region))
+    (lambda (s t)
+      (tagcase (ty-export s t)
+        (rexp (ns hs root d)
+          (if (not (string=? d ""))
+              nil
+              (list (the (bytevectorof r) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root)))))))))
+
+"A node list as text (C305), for a fact: `(ROOT (HOLE …) NODE …)`, a node
+ `(SLOT HEAD SET (BINDER …) (ARG …))`, each argument as its sum's tag and
+ its payload, every name written as a string, so that no name breaks the
+ reading."
+(define rp-quoted (subr kfx (string) string) (lambda (n) (string-append "\"" (string-append n "\""))))
+(define-rec
+  (rp-words (subr kfx (strings) string)
+    (lambda (ws) (cond ((null? ws) "") ((null? (cdr ws)) (car ws)) (else (string-append (car ws) (string-append " " (rp-words (cdr ws)))))))))
+(define rp-arg-text (subr kfx (rp-operand) string)
+  (lambda (a)
+    (tagcase a
+      (node k (string-append "(node " (string-append (int->string k) ")")))
+      (bound p (string-append "(bound " (string-append (int->string (extract p 1)) (string-append " " (string-append (int->string (extract p 2)) ")")))))
+      (hole h (string-append "(hole " (string-append (int->string h) ")")))
+      (const p (string-append "(const " (string-append (rp-quoted (extract p 1)) (string-append " " (string-append (int->string (extract p 2))
+                 (string-append " " (string-append (rp-quoted (extract p 3)) ")")))))))
+      (sym n (string-append "(sym " (string-append (rp-quoted (symbol->string n)) ")")))
+      (int k (string-append "(int " (string-append (int->string k) ")")))
+      (flag f (if f "(flag #t)" "(flag #f)")))))
+(define rp-node-text (subr kfx (rp-node) string)
+  (lambda (n)
+    (string-append "(" (string-append (int->string (extract n 1)) (string-append " " (string-append (rp-quoted (symbol->string (extract n 2)))
+      (string-append (if (extract n 3) " #t (" " #f (") (string-append (rp-words (map (lambda ((b symbol)) (rp-quoted (symbol->string b))) (extract n 4)))
+        (string-append ") (" (string-append (rp-words (map rp-arg-text (extract n 5))) "))"))))))))))
+(define rp-nodes-text (subr kfx (rp-nodes strings int) string)
+  (lambda (ns hs root)
+    (string-append "(" (string-append (int->string root) (string-append " (" (string-append (rp-words (map rp-quoted hs))
+      (string-append ") " (string-append (rp-words (map rp-node-text ns)) ")"))))))))
+
+"The text back (C305): the nodes, the holes' names, the root."
+(define sexp-string (subr kfx (sexp) string) (lambda (e) (tagcase e (str (t f p) t) (sym (t f p) t) (else other ""))))
+(define rp-arg-of (subr kfx (sexp) rp-operand)
+  (lambda (e)
+    (let* ((xs (items e)) (h (sym-name (car xs))) (k (lambda ((i i64)) (i64->int (sexp-int (car (drop-sexps (cdr xs) i)))))))
+      (cond ((string=? h "node") (the rp-operand (sum node (k 0))))
+            ((string=? h "bound") (the rp-operand (sum bound (product (1 (k 0)) (2 (k 1))))))
+            ((string=? h "hole") (the rp-operand (sum hole (k 0))))
+            ((string=? h "const") (the rp-operand (sum const (product (1 (sexp-string (second xs))) (2 (k 1)) (3 (sexp-string (car (cdr (cdr (cdr xs))))))))))
+            ((string=? h "sym") (the rp-operand (sum sym (string->symbol (sexp-string (second xs))))))
+            ((string=? h "int") (the rp-operand (sum int (k 0))))
+            (else (the rp-operand (sum flag (string=? (sym-name (second xs)) "#t"))))))))
+(define rp-node-of (subr kfx (sexp) rp-node)
+  (lambda (e)
+    (let ((xs (items e)))
+      (product (1 (i64->int (sexp-int (car xs)))) (2 (string->symbol (sexp-string (second xs))))
+               (3 (string=? (sym-name (third xs)) "#t"))
+               (4 (map (lambda ((b sexp)) (string->symbol (sexp-string b))) (items (car (cdr (cdr (cdr xs)))))))
+               (5 (map rp-arg-of (items (car (cdr (cdr (cdr (cdr xs))))))))))))
+(define rp-nodes-of-text (subr kfx (string) rexp)
+  (lambda (text)
+    (let ((xs (items (car (read-all (string-chars text) "" 1)))))
+      (rexp (map rp-node-of (cdr (cdr xs))) (map sexp-string (items (second xs))) (i64->int (sexp-int (car xs))) ""))))
 
 "Why type `t` is declined: the first part a rep does not take, or none."
 (define ty-declined (subr kfx (st ty) string)
@@ -720,10 +790,10 @@
     (tagcase sc
       (scheme (tvars t)
         (let* ((t2 (if (null? tvars) t (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var n)) tvars) (list t)))))
-               (got (ty-rep s t2)))
+               (got ((proj ty-rep @heap) s t2)))
           (if (null? got)
               (string-append "declined: " (ty-declined s t2))
-              (let* ((h1 (rp-hex-of (car got) 0)) (again (ty-rep (new-state) (rep-ty (car got)))))
+              (let* ((h1 (rp-hex-of (car got) 0)) (again ((proj ty-rep @heap) (st nil 0 nil nil) ((proj rep-ty @heap) (car got)))))
                 (cond ((null? again) (string-append h1 " differs: declined again"))
                       ((string=? (rp-hex-of (car again) 0) h1) (string-append h1 " same"))
                       (else (string-append h1 (string-append " differs " (rp-hex-of (car again) 0))))))))))))

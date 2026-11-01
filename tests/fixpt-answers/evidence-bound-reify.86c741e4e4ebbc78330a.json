@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"evidence-bound-reify.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/evidence-bound-reify.fx:5:38: `reify-effect` makes exact evidence, so it is given exact evidence, and this is a bound of `e`",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

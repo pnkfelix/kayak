@@ -230,14 +230,6 @@
 
 "I/O: KFX's, in proportion to what is read and written."
 (define-rec
-  (kfx-bytes-set! (subr hp (i64 (bytevectorof @h) i64 i64) unit)
-    (lambda (p bv i n) (if (i64>= i n) #u (begin (obj-set! p i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (kfx-bytes-set! p bv (i64+ i 1) n))))))
-
-(define kfx-bytes-word! (subr hp ((bytevectorof @h)) i64)
-  (lambda (bv)
-    (let* ((n (int->i64 (bytevector-length bv))) (p (alloc! ob-bytes n))) (begin (kfx-bytes-set! p bv 0 n) p))))
-
-(define-rec
   (word-bytes-set! (subr hp ((bytevectorof @h) i64 i64 i64) unit)
     (lambda (bv p i n) (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (obj-ref p i)))) (word-bytes-set! bv p (i64+ i 1) n))))))
 

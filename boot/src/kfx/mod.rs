@@ -8,6 +8,8 @@ pub mod names;
 pub use names::*;
 pub mod check;
 pub use check::*;
+pub mod reps;
+pub use reps::*;
 pub mod terminate;
 pub use terminate::*;
 pub mod check_exprs;

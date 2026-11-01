@@ -4,6 +4,7 @@ base.kfx
 read.kfx
 names.kfx
 check.kfx
+reps.kfx
 terminate.kfx
 check-exprs.kfx
 built-in.kfx

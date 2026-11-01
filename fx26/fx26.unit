@@ -6,11 +6,11 @@
 ../kfx/read.kfx
 ../kfx/names.kfx
 ../kfx/check.kfx
+../kfx/reps.kfx
 ../kfx/terminate.kfx
 ../kfx/check-exprs.kfx
 ../kfx/built-in.kfx
 ../kfx/check-defs.kfx
-../kfx/reps.kfx
 ../kfx/regs-isa.kfx
 ir.kfx
 prims.kfx
@@ -28,6 +28,7 @@ words.kfx
 table.kfx
 vwords.kfx
 vsched.kfx
+vstage.kfx
 vprims.kfx
 vm.kfx
 vshow.kfx

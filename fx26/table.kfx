@@ -201,7 +201,9 @@
         "file-info" "read-symlink"
         ;; Programs run beside this one (C295).
         "process-start" "process-output" "process-status" "process-write" "process-close-input"
-        "process-signal" "process-exit" "process-news"))
+        "process-signal" "process-exit" "process-news"
+        ;; `stage` (C305).
+        "%stage-run"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)
@@ -229,6 +231,14 @@
 
 (define-effect numbering (maxeff loading (read @h) (write @h)))
 
+(define-rec
+  (kfx-bytes-set! (subr hp (i64 (bytevectorof @h) i64 i64) unit)
+    (lambda (p bv i n) (if (i64>= i n) #u (begin (obj-set! p i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (kfx-bytes-set! p bv (i64+ i 1) n))))))
+
+(define kfx-bytes-word! (subr hp ((bytevectorof @h)) i64)
+  (lambda (bv)
+    (let* ((n (int->i64 (bytevector-length bv))) (p (alloc! ob-bytes n))) (begin (kfx-bytes-set! p bv 0 n) p))))
+
 (define literal-word! (subr numbering (val) i64)
   (lambda (v)
     "A literal's word, its object made in the heap if it is one."
@@ -247,6 +257,12 @@
       (v-prim (n a) (immediate imm-prim (prim-number n)))
       (v-ctor (t n) (let ((p (alloc! ob-ctor 2))) (begin (obj-set! p 0 (fixnum (intern! t))) (obj-set! p 1 (fixnum n)) p)))
       (v-tag (n) (immediate imm-tag n))
+      (v-rep (text)
+        "A rep (C305): its nodes, which the checker noted, made canonical here,
+         where the engine allocates, its binary form a bytevector."
+        (tagcase (rp-nodes-of-text text)
+          (rexp (ns hs root d)
+            (kfx-bytes-word! (the (bytevectorof @h) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
       (else other (begin (failed-with! "the engine: a literal it cannot make") 0)))))
 
 "Quoted data, interned (C79): each pair and atom of a quote made once,

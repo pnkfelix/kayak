@@ -104,6 +104,7 @@ pub enum Val {
     VTag(i64),
     VCont(List<&'static Frame>, Ref<bool>, bool),
     VDatum(&'static Sexp),
+    VRep(Str),
 }
 
 pub fn v_int(f0: Int) -> &'static Val {
@@ -192,6 +193,10 @@ pub fn v_cont(f0: List<&'static Frame>, f1: Ref<bool>, f2: bool) -> &'static Val
 
 pub fn v_datum(f0: &'static Sexp) -> &'static Val {
     kayak_rt::heap_alloc(Val::VDatum(f0))
+}
+
+pub fn v_rep(f0: Str) -> &'static Val {
+    kayak_rt::heap_alloc(Val::VRep(f0))
 }
 
 pub type Vals = List<&'static Val>;

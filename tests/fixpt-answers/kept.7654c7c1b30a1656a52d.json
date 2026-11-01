@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"kept.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"refused: a int is expected here, and this is a string",
+"refused: unbound variable `y`",
+"3",
+"refused: unbound variable `y`",
+"refused: a int is expected here, and this is a (moduleof (val x int) (val bump (subr pure (int) int)))",
+"42",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

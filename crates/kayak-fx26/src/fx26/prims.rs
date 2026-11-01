@@ -146,6 +146,8 @@ pub fn prim_arity(n: Str) -> i64 {
         2i64
     } else if string_eq_p(n, str_lit("process-news")) {
         0i64
+    } else if string_eq_p(n, str_lit("%stage-run")) {
+        3i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::heap_cons(str_lit("rcons"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::nil())))))) {
         3i64
     } else if string_eq_p(n, str_lit("rnew")) {

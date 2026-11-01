@@ -475,25 +475,6 @@ pub fn string_copy_into_w_x(to: i64, at: i64, from: i64, start: i64, end: i64) -
 }
 
 // I/O: KFX's, in proportion to what is read and written.
-pub fn kfx_bytes_set_x(mut p: i64, mut bv: Bytes, mut i: i64, mut n: i64) -> () {
-    loop {
-        if i64_gt_eq(i, n) {
-            return ();
-        } else {
-            obj_set_x(p, i, int_to_i64(u8_to_int(bytevector_u8_ref(bv, i64_to_int(i)))));
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
-}
-
-pub fn kfx_bytes_word_x(bv: Bytes) -> i64 {
-    let n = int_to_i64(bytevector_length(bv));
-    let p = alloc_x(ob_bytes(), n);
-    kfx_bytes_set_x(p, bv, 0i64, n);
-    p
-}
-
 pub fn word_bytes_set_x(mut bv: Bytes, mut p: i64, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {

@@ -1155,6 +1155,10 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
     loop {
         if string_eq_p(h, str_lit("the")) {
             return lower(second(xs), sc, gs);
+        } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 5i64)) {
+            // `stage` (C305): `(%stage-run m code REP)`, its type's rep, which the
+            // checker noted as nodes, made a constant at loading.
+            return i_call(i_lit(v_prim(str_lit("%stage-run"), 3i64)), kayak_rt::heap_cons(lower(third(xs), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(xs)))), sc, gs), kayak_rt::heap_cons(i_lit(v_rep(words_of(fact_at(key_of(e), str_lit("stage-rep "), gs)))), kayak_rt::nil()))));
         } else if (string_eq_p(h, str_lit("convention")) && i64_eq(size(xs), 2i64)) {
             // `(convention C e)`: `e`, the engine's procedures one convention (C181).
             return lower(second(xs), sc, gs);
@@ -1663,7 +1667,7 @@ pub fn with_entries(fs: Facts) -> Strings {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%with-at "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), after_prefix(what, str_lit("with-spec "))))))), kayak_rt::nil()))
                 } else if any_p(lambda1s(move |k: Str| {
                     has_prefix_p(what, k)
-                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::nil())))))))) {
+                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::heap_cons(str_lit("stage-rep "), kayak_rt::nil()))))))))) {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%fact "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), what))))), kayak_rt::nil()))
                 } else {
                     nil::<Str>()

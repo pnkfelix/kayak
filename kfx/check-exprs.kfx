@@ -2592,10 +2592,16 @@
                              (res (ct ces s)
                                (tagcase (synth v s (car (cdr (cdr (cdr (cdr xs))))))
                                  (res (gt ges s)
-                                   (res (ty-shape #f (list "ok" "failed")
-                                                  (list (ty-proc es nil r) (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
-                                        (effs-union (list "stage" "spin") (effs-union mes (effs-union ces ges)))
-                                        s)))))))))))))
+                                   (tagcase (ty-export s (ty-proc nil (list mt) (ty-proc es nil r)))
+                                     (rexp (ns hs root why)
+                                       (if (not (string=? why ""))
+                                           (refuse v (string-append "a stage's type has a part a rep does not take yet: " why))
+                                           (res (ty-shape #f (list "ok" "failed")
+                                                          (list (ty-proc es nil r) (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
+                                                (effs-union (list "stage" "spin") (effs-union mes (effs-union ces ges)))
+                                                ;; What the code is checked as, `(subr pure (M) (subr E () R))`,
+                                                ;; its nodes, for the engine's loading to make its rep (C305).
+                                                (note-fact s (cv-file v) (cv-pos v) (string-append "stage-rep " (rp-nodes-text ns hs root)))))))))))))))))))
 
       (attempt-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
