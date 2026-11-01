@@ -467,6 +467,41 @@
       (target t (sum-word! "target" (string-word! t)))
       (failed e (sum-word! "failed" (io-error-word! e))))))
 
+"Programs run beside this one (C295): what `process-start` and
+ `process-output` answer, asked when their room is, made after; the rest
+ small, made at once."
+(define pending-started (ref (sumof (started int) (failed io-error)) @h) (new (sum started (the int 0))))
+(define pending-output (ref string @h) (new ""))
+
+(define-rec
+  (word-strings (subr (maxeff (read @globals) spin (read @h)) (i64) strings)
+    (lambda (w) (if (i64= w w-nil) nil (cons (word-string (pair-car w)) (word-strings (pair-cdr w)))))))
+
+(define started-room! (subr (maxeff hp (alloc @h) (io process)) (i64 i64) i64)
+  (lambda (argv dir)
+    (begin (set pending-started (process-start (the strings (word-strings argv)) (word-string dir)))
+           (tagcase (get pending-started) (started p 16) (failed e (failure-room e))))))
+(define started-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-started)
+      (started p (sum-word! "started" (int-word! p)))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+(define output-room! (subr (maxeff hp (alloc @h) (io process)) (i64) i64)
+  (lambda (p) (begin (set pending-output (process-output (word-int p))) (i64+ 8 (string-length-i64 (get pending-output))))))
+(define status-word! (subr (maxeff hp (alloc @h)) ((sumof (running unit) (exited int) (signalled int) (unknown unit))) i64)
+  (lambda (s)
+    (tagcase s
+      (running u (sum-word! "running" w-unit))
+      (exited c (sum-word! "exited" (int-word! c)))
+      (signalled c (sum-word! "signalled" (int-word! c)))
+      (unknown u (sum-word! "unknown" w-unit)))))
+(define exit-word! (subr (maxeff hp (alloc @h)) ((sumof (exited int) (signalled int) (unknown unit))) i64)
+  (lambda (s)
+    (tagcase s
+      (exited c (sum-word! "exited" (int-word! c)))
+      (signalled c (sum-word! "signalled" (int-word! c)))
+      (unknown u (sum-word! "unknown" w-unit)))))
+
 (define file-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin

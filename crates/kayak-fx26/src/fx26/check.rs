@@ -1220,7 +1220,7 @@ pub fn io_error_text() -> Str {
 pub fn io_kind_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("sys"), kayak_rt::nil())))))))))))
+        kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::heap_cons(str_lit("sys"), kayak_rt::heap_cons(str_lit("process"), kayak_rt::nil()))))))))))))
     })
 }
 

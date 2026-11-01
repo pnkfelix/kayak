@@ -198,7 +198,10 @@
         ;; Keywords (C291).
         "keyword?" "symbol->keyword" "keyword->symbol"
         ;; What a path is (C293).
-        "file-info" "read-symlink"))
+        "file-info" "read-symlink"
+        ;; Programs run beside this one (C295).
+        "process-start" "process-output" "process-status" "process-write" "process-close-input"
+        "process-signal" "process-exit" "process-news"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

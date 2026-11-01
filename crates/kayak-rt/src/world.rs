@@ -1138,6 +1138,275 @@ pub fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<()
     written(r)
 }
 
+/// Programs run beside this one (C295; Heist's F4 and F6, Fixpt's
+/// `World::process_start` and the rest): by number, their standard output
+/// and error one pipe, read by a thread of their own, so that asking never
+/// waits. Without `unsafe`, as kayak-rt is: a process group of its own
+/// (Fixpt's is a session, without a terminal), its signal sent by `kill`,
+/// and its end found by polling.
+struct Child {
+    child: std::process::Child,
+    input: Option<std::process::ChildStdin>,
+    output: std::sync::Arc<std::sync::Mutex<ChildOutput>>,
+    status: Option<std::process::ExitStatus>,
+    seen_end: bool,
+}
+
+#[derive(Default)]
+struct ChildOutput {
+    bytes: Vec<u8>,
+    ended: bool,
+}
+
+static CHILDREN: std::sync::Mutex<Vec<Child>> = std::sync::Mutex::new(Vec::new());
+
+#[allow(non_camel_case_types)]
+pub enum Sum_7started_6failed<A0, A1> {
+    Started(A0),
+    Failed(A1),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_7running_6exited_9signalled_7unknown<A0, A1, A2, A3> {
+    Running(A0),
+    Exited(A1),
+    Signalled(A2),
+    Unknown(A3),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_6exited_9signalled_7unknown<A0, A1, A2> {
+    Exited(A0),
+    Signalled(A1),
+    Unknown(A2),
+}
+
+show_sum!(Sum_7started_6failed<A0, A1> { Started => "started", Failed => "failed" });
+show_sum!(Sum_7running_6exited_9signalled_7unknown<A0, A1, A2, A3> {
+    Running => "running", Exited => "exited", Signalled => "signalled", Unknown => "unknown"
+});
+show_sum!(Sum_6exited_9signalled_7unknown<A0, A1, A2> { Exited => "exited", Signalled => "signalled", Unknown => "unknown" });
+
+/// Program `argv`'s first started with the rest as arguments, in `dir`
+/// (this one's, if empty): its number.
+pub fn process_start(
+    argv: crate::ListAt<'_, Str>,
+    dir: Str,
+) -> &'static Sum_7started_6failed<Int, IoError> {
+    use std::os::unix::process::CommandExt as _;
+    let mut words = Vec::new();
+    let mut l = argv;
+    while let Some(c) = l {
+        words.push(c.car.as_str().to_string());
+        l = c.cdr;
+    }
+    let started = (|| {
+        let Some((program, args)) = words.split_first() else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "no program named",
+            ));
+        };
+        let (reader, writer) = std::io::pipe()?;
+        let mut command = std::process::Command::new(program);
+        command
+            .args(args)
+            .stdin(std::process::Stdio::piped())
+            .stdout(writer.try_clone()?)
+            .stderr(writer)
+            .process_group(0);
+        if !dir.as_str().is_empty() {
+            command.current_dir(dir.as_str());
+        }
+        let mut child = command.spawn()?;
+        drop(command);
+        let input = child.stdin.take();
+        let output = std::sync::Arc::new(std::sync::Mutex::new(ChildOutput::default()));
+        let out = output.clone();
+        std::thread::spawn(move || {
+            use std::io::Read as _;
+            let mut reader = reader;
+            let mut buf = [0u8; 8192];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => out.lock().unwrap().bytes.extend_from_slice(&buf[..n]),
+                }
+            }
+            out.lock().unwrap().ended = true;
+        });
+        let mut children = CHILDREN.lock().unwrap();
+        children.push(Child {
+            child,
+            input,
+            output,
+            status: None,
+            seen_end: false,
+        });
+        Ok(children.len() as i64 - 1)
+    })();
+    heap_alloc(match started {
+        Ok(p) => Sum_7started_6failed::Started(i64_to_int(p)),
+        Err(e) => Sum_7started_6failed::Failed(io_error(&e)),
+    })
+}
+
+/// How many bytes at the end of `bytes` begin a UTF-8 character not yet
+/// whole (Fixpt's `incomplete_tail`).
+fn incomplete_tail(bytes: &[u8]) -> usize {
+    for back in 1..=bytes.len().min(3) {
+        let b = bytes[bytes.len() - back];
+        if b & 0xC0 != 0x80 {
+            let need = if b >= 0xF0 {
+                4
+            } else if b >= 0xE0 {
+                3
+            } else if b >= 0xC0 {
+                2
+            } else {
+                1
+            };
+            return if need > back { back } else { 0 };
+        }
+    }
+    0
+}
+
+fn with_child<R>(p: Int, none: R, f: impl FnOnce(&mut Child) -> R) -> R {
+    let mut children = CHILDREN.lock().unwrap();
+    match usize::try_from(int_to_i64(p))
+        .ok()
+        .and_then(|p| children.get_mut(p))
+    {
+        Some(c) => f(c),
+        None => none,
+    }
+}
+
+/// What process `p` has written since last asked, as text: a character
+/// cut by the read waits for the rest, bytes not UTF-8 U+FFFD.
+pub fn process_output(p: Int) -> Str {
+    leak_string(with_child(p, String::new(), |c| {
+        let mut out = c.output.lock().unwrap();
+        let bytes = std::mem::take(&mut out.bytes);
+        let keep = if out.ended {
+            0
+        } else {
+            incomplete_tail(&bytes)
+        };
+        let (text, rest) = bytes.split_at(bytes.len() - keep);
+        out.bytes = rest.to_vec();
+        String::from_utf8_lossy(text).into_owned()
+    }))
+}
+
+/// How `c` ended, once it has exited and its output has all been read;
+/// else none.
+fn ended(c: &mut Child) -> Option<(Option<i32>, Option<i32>)> {
+    use std::os::unix::process::ExitStatusExt as _;
+    if c.status.is_none() {
+        c.status = c.child.try_wait().ok().flatten();
+    }
+    match c.status {
+        Some(s) if c.output.lock().unwrap().ended => Some((s.code(), s.signal())),
+        _ => None,
+    }
+}
+
+/// Whether process `p` runs: until it has exited and its output has all
+/// been read, so that a last `process-output` after gives the rest.
+pub fn process_status(
+    p: Int,
+) -> &'static Sum_7running_6exited_9signalled_7unknown<(), Int, Int, ()> {
+    type S = Sum_7running_6exited_9signalled_7unknown<(), Int, Int, ()>;
+    heap_alloc(with_child(p, S::Unknown(()), |c| match ended(c) {
+        None => S::Running(()),
+        Some(how) => {
+            c.seen_end = true;
+            match how {
+                (Some(code), _) => S::Exited(i64_to_int(code.into())),
+                (None, Some(sig)) => S::Signalled(i64_to_int(sig.into())),
+                (None, None) => S::Unknown(()),
+            }
+        }
+    }))
+}
+
+/// How process `p` ended, waiting until it has and its reader has read
+/// all it wrote (F6).
+pub fn process_exit(p: Int) -> &'static Sum_6exited_9signalled_7unknown<Int, Int, ()> {
+    type S = Sum_6exited_9signalled_7unknown<Int, Int, ()>;
+    loop {
+        let how = with_child(p, Some(None), |c| {
+            ended(c).map(|how| {
+                c.seen_end = true;
+                Some(how)
+            })
+        });
+        match how {
+            None => std::thread::sleep(std::time::Duration::from_millis(1)),
+            Some(None) => return heap_alloc(S::Unknown(())),
+            Some(Some((Some(code), _))) => return heap_alloc(S::Exited(i64_to_int(code.into()))),
+            Some(Some((None, Some(sig)))) => {
+                return heap_alloc(S::Signalled(i64_to_int(sig.into())));
+            }
+            Some(Some((None, None))) => return heap_alloc(S::Unknown(())),
+        }
+    }
+}
+
+/// The first process with news (F6): output to take, or an end the
+/// program has not seen; -1 if none has.
+pub fn process_news() -> Int {
+    let mut children = CHILDREN.lock().unwrap();
+    for (p, c) in children.iter_mut().enumerate() {
+        let ready = {
+            let out = c.output.lock().unwrap();
+            let n = out.bytes.len();
+            n > 0 && (out.ended || n > incomplete_tail(&out.bytes))
+        };
+        if ready || (!c.seen_end && ended(c).is_some()) {
+            return i64_to_int(p as i64);
+        }
+    }
+    i64_to_int(-1)
+}
+
+/// `text` written to process `p`'s input.
+pub fn process_write(p: Int, text: Str) -> &'static Sum_4done_6failed<(), IoError> {
+    use std::io::Write as _;
+    let broken = || {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::BrokenPipe,
+            "the process's input is closed",
+        ))
+    };
+    written(with_child(p, broken(), |c| match c.input.as_mut() {
+        Some(input) => input
+            .write_all(text.as_str().as_bytes())
+            .and_then(|()| input.flush()),
+        None => broken(),
+    }))
+}
+
+/// Process `p`'s input closed: it reads its end.
+pub fn process_close_input(p: Int) {
+    with_child(p, (), |c| c.input = None)
+}
+
+/// Signal `sig` sent to process `p`'s group, unless it has ended.
+pub fn process_signal(p: Int, sig: Int) {
+    with_child(p, (), |c| {
+        if c.status.is_none() {
+            let _ = std::process::Command::new("kill")
+                .arg(format!("-{}", int_to_i64(sig)))
+                .arg("--")
+                .arg(format!("-{}", c.child.id()))
+                .status();
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

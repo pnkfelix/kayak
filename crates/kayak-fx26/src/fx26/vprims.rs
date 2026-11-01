@@ -99,6 +99,10 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         info_room_x(a)
     } else if i64_eq(op, 260i64) {
         link_room_x(a)
+    } else if i64_eq(op, 261i64) {
+        started_room_x(a, b)
+    } else if i64_eq(op, 262i64) {
+        output_room_x(a)
     } else if i64_eq(op, 175i64) {
         i64_plus(list_count(a, 0i64), 1i64)
     } else if i64_eq(op, 187i64) {
@@ -896,6 +900,24 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         file_info_word_x()
     } else if i64_eq(op, 260i64) {
         read_symlink_word_x()
+    } else if i64_eq(op, 261i64) {
+        started_word_x()
+    } else if i64_eq(op, 262i64) {
+        string_word_x(get(pending_output()))
+    } else if i64_eq(op, 263i64) {
+        status_word_x(process_status(word_int(a)))
+    } else if i64_eq(op, 264i64) {
+        written_word_x(process_write(word_int(a), word_string(b)))
+    } else if i64_eq(op, 265i64) {
+        process_close_input(word_int(a));
+        w_unit()
+    } else if i64_eq(op, 266i64) {
+        process_signal(word_int(a), word_int(b));
+        w_unit()
+    } else if i64_eq(op, 267i64) {
+        exit_word_x(process_exit(word_int(a)))
+    } else if i64_eq(op, 268i64) {
+        int_word_x(process_news())
     } else if i64_eq(op, 139i64) {
         real_word_x(int_to_f64(word_int(a)))
     } else if (i64_eq(op, 140i64) && not(integral_p(word_real(a)))) {

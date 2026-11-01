@@ -8211,3 +8211,29 @@ C291 left out tier 1. Now:
   the predicate table lacked had fallen through to `bytevector?`.
 Fixpt's four keyword programs agree on tier 1, Fixpt's words and
 kayak's alike.
+
+## C295. Programs run beside this one (2026-11-01)
+
+Heist's F4 and F6, in Fixpt since before the pin: `process-start`,
+`-output`, `-status`, `-write`, `-close-input` and `-signal`, and F6's
+`process-exit` and `process-news`. They are typed as Fixpt's standard
+environment types them, with `(io process)` an I/O atom.
+- **kayak-rt** (`world.rs`): a table of children, each one's standard
+  output and error a single pipe that a thread of its own reads, so that
+  asking never waits. This is Fixpt's `World`, less what needs `unsafe`,
+  which kayak-rt denies: a process group of its own where Fixpt makes a
+  session (the child keeps the terminal); a signal sent by `kill`; an end
+  found by polling `try_wait`, where Fixpt's thread waits with
+  `WNOWAIT`. A process has ended once it has exited and its output has
+  all been read; `process-exit` waits for that.
+- **The engine**: ops 261-268. `process-start` and `process-output`
+  answer when their room is reckoned, the rest at once; `vm` and `eng`
+  have `(io process)`.
+Fixpt's `process/basic.fx` gets Fixpt's types and its value on the
+engine; kfx refuses it, a constant with I/O. So
+`tests/kfx-io/processes.kfx` runs the same as Rust and by Fixpt, with
+`process-exit` and `process-news` too.
+
+Not yet: `pselect`'s arms `((process-output p) text …)`, `((process-exit
+p) how …)` and `((process-news) p …)`, which wait in the scheduler (Fixpt's
+events 46-54 and its wake pipe).

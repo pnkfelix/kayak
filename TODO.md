@@ -104,10 +104,12 @@ section below where it has one; here the order, and what each is.
      `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
      **sessions**, definitions that last (ca4955d6…);
      `session-conditions.fx`.
-   - **I/O**: the OS-process primitives, which kayak has none of
-     (`process-start`, `process-output`, `process-status`), then
-     `process-exit`, `process-news` and their `pselect` arms (09dbb15f;
-     `file-info` and `read-symlink` are C293's); `dump-heap!` (59114584).
+   - **I/O**: `pselect`'s arms on processes, `((process-output p) …)`,
+     `((process-exit p) …)`, `((process-news) …)`, which wait in the
+     scheduler (09dbb15f; the primitives are C295's, `file-info` and
+     `read-symlink` C293's); a child in a session of its own, not only a
+     group (needs `setsid`, so `unsafe` or a helper); `dump-heap!`
+     (59114584).
    - (Fixpt's e2f3f0f6, a bloblet's values by their index, §205, is its
      Rust heap's accessors and a lint: nothing of FX-26's, nothing kayak
      ports.)

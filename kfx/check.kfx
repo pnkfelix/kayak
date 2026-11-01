@@ -645,7 +645,7 @@
 
 "Names `io-kind` tests against, made once (C264): a list written in place is
  made at each call."
-(define io-kind-names strings (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native" "sys"))
+(define io-kind-names strings (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native" "sys" "process"))
 
 (define io-kind? (subr kfx (string) bool)
   (lambda (k)

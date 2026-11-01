@@ -1128,6 +1128,94 @@ pub fn read_symlink_word_x() -> i64 {
     }
 }
 
+// Programs run beside this one (C295): what `process-start` and
+// `process-output` answer, asked when their room is, made after; the rest
+// small, made at once.
+pub fn pending_started() -> Ref<&'static Sum_7started_6failed<Int, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_7started_6failed<Int, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_7started_6failed::<Int, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Started(the::<Int>(int_lit(0)))))
+    })
+}
+
+pub fn pending_output() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
+}
+
+pub fn word_strings(w: i64) -> Strings {
+    if i64_eq(w, w_nil()) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(word_string(pair_car(w)), word_strings(pair_cdr(w)))
+    }
+}
+
+pub fn started_room_x(argv: i64, dir: i64) -> i64 {
+    set(pending_started(), process_start(the::<Strings>(word_strings(argv)), word_string(dir)));
+    let tagcase_ = get(pending_started());
+    match *tagcase_ {
+        Sum_7started_6failed::Started(p) => {
+            16i64
+        }
+        Sum_7started_6failed::Failed(e) => {
+            failure_room(e)
+        }
+    }
+}
+
+pub fn started_word_x() -> i64 {
+    let tagcase_ = get(pending_started());
+    match *tagcase_ {
+        Sum_7started_6failed::Started(p) => {
+            sum_word_x(str_lit("started"), int_word_x(p))
+        }
+        Sum_7started_6failed::Failed(e) => {
+            sum_word_x(str_lit("failed"), io_error_word_x(e))
+        }
+    }
+}
+
+pub fn output_room_x(p: i64) -> i64 {
+    set(pending_output(), process_output(word_int(p)));
+    i64_plus(8i64, string_length_i64(get(pending_output())))
+}
+
+pub fn status_word_x(s: &'static Sum_7running_6exited_9signalled_7unknown<(), Int, Int, ()>) -> i64 {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Sum_7running_6exited_9signalled_7unknown::Running(u) => {
+            sum_word_x(str_lit("running"), w_unit())
+        }
+        Sum_7running_6exited_9signalled_7unknown::Exited(c) => {
+            sum_word_x(str_lit("exited"), int_word_x(c))
+        }
+        Sum_7running_6exited_9signalled_7unknown::Signalled(c) => {
+            sum_word_x(str_lit("signalled"), int_word_x(c))
+        }
+        Sum_7running_6exited_9signalled_7unknown::Unknown(u) => {
+            sum_word_x(str_lit("unknown"), w_unit())
+        }
+    }
+}
+
+pub fn exit_word_x(s: &'static Sum_6exited_9signalled_7unknown<Int, Int, ()>) -> i64 {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Sum_6exited_9signalled_7unknown::Exited(c) => {
+            sum_word_x(str_lit("exited"), int_word_x(c))
+        }
+        Sum_6exited_9signalled_7unknown::Signalled(c) => {
+            sum_word_x(str_lit("signalled"), int_word_x(c))
+        }
+        Sum_6exited_9signalled_7unknown::Unknown(u) => {
+            sum_word_x(str_lit("unknown"), w_unit())
+        }
+    }
+}
+
 pub fn file_room_x(path: i64) -> i64 {
     set(pending_file(), read_file(word_string(path)));
     let tagcase_ = get(pending_file());

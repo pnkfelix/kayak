@@ -1,0 +1,39 @@
+"Programs run beside this one (C295; Heist's F4 and F6): one started,
+ given input, its output (standard output and error, one stream) read
+ until it ends, and how it ended, by `process-status` and by
+ `process-exit`; one that cannot start; and `process-news`, which has
+ none once both are seen. Status 0."
+
+(define* wait-for (subr (maxeff (io process) (io clock) spin) (int string) string)
+  (lambda (p acc)
+    (let ((more (string-append acc (process-output p))))
+      (tagcase (process-status p)
+        (exited c (string-append more (string-append "exited " (int->string c))))
+        (signalled s (string-append more (string-append "signalled " (int->string s))))
+        (unknown u (string-append more "unknown"))
+        (running u (begin (sleep-until (i64+ (clock) 1000000)) (wait-for p more)))))))
+
+(define script string "printf 'a\\nb\\n'; echo err >&2; read x; echo got $x; exit 3")
+
+(define ended (subr (io process) (int) string)
+  (lambda (p)
+    (tagcase (process-exit p)
+      (exited c (string-append "exited " (int->string c)))
+      (signalled s (string-append "signalled " (int->string s)))
+      (unknown u "unknown"))))
+
+(define main (subr (maxeff (io process) (io clock) (io stdout) (alloc @l) (read @l) (read @globals) spin) () int)
+  (lambda ()
+    (begin
+      (tagcase (process-start (the (listof string @l) (list "/bin/sh" "-c" script)) "")
+        (started p (begin
+                     (process-write p "hi\n")
+                     (process-close-input p)
+                     (write-out (string-append (wait-for p "") "\n"))
+                     (write-out (string-append "then " (string-append (ended p) "\n")))))
+        (failed e (write-out "failed\n")))
+      (tagcase (process-start (the (listof string @l) (list "/no/such/program")) "")
+        (started p (write-out "started\n"))
+        (failed e (write-out (tagcase (extract e kind) (not-found u "failed not-found\n") (else y "failed other\n")))))
+      (write-out (string-append "news " (string-append (int->string (process-news)) "\n")))
+      0)))
