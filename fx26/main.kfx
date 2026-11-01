@@ -19,7 +19,7 @@
   (lambda (message status)
     (begin (write-err (string-append "kayak-fx26: " (string-append message "\n"))) (exit status))))
 
-(define read-text (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+(define read-text (subr (maxeff (read @globals) spin (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
   (lambda (path)
     (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
       (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
@@ -34,7 +34,7 @@
   (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
 "Each of `ss` written, in turn (C266)."
 (define-rec
-  (say-each (subr (maxeff (io stdout) (read @globals)) (strings) unit) (lambda (ss) (if (null? ss) #u (begin (say (car ss)) (say-each (cdr ss)))))))
+  (say-each (subr (maxeff (io stdout) (read @globals) spin) (strings) unit) (lambda (ss) (if (null? ss) #u (begin (say (car ss)) (say-each (cdr ss)))))))
 
 (define-rec
   (loads-read (subr driving (strings fileds) fileds)

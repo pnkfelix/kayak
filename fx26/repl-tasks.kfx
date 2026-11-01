@@ -2120,7 +2120,7 @@ an entry naming one that has not ended waits for it.")
 
     "A definition checked again by a worker (C202): the environment after
      it, or none if it is refused."
-    (define recheck-of (subr (maxeff working (read @globals)) (cv sexp) (listof cv acyclic))
+    (define recheck-of (subr (maxeff working (read @globals) spin) (cv sexp) (listof cv acyclic))
       (lambda (v form)
         (tagcase (worked (recheck v form))
           (rechecked (v2) (the (listof cv acyclic) (list v2)))

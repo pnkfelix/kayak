@@ -50,7 +50,7 @@
       (else other (fail-with (string-append "cannot write " path) 1)))))
 
 "The same, done directly, for the log itself."
-(define read-text-now (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+(define read-text-now (subr (maxeff (read @globals) spin (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
   (lambda (path)
     (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
       (data b
@@ -59,7 +59,7 @@
           (bad k (fail-with (string-append "cannot read " (string-append path ": it is not UTF-8")) 1))))
       (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-(define write-text-now (subr (maxeff (read @globals) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (string string) unit)
+(define write-text-now (subr (maxeff (read @globals) spin (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (string string) unit)
   (lambda (path text)
     (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
       (done u #u)

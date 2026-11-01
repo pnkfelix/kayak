@@ -3,6 +3,6 @@
 
 (define u (load-module "loads/uses-cell.fx"))
 
-(define main (subr (maxeff (read @globals) (alloc @t) (read @t) (write @t)) () string)
+(define main (subr (maxeff (read @globals) spin (alloc @t) (read @t) (write @t)) () string)
   (lambda ()
     (i64->string (with u (bump (fresh))))))

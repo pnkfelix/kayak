@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-effects.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define effects : (moduleof (desc touches (maxeff (read @globals) spin)) (desc n int)) ! pure",
+"define m : (moduleof (desc touches (maxeff (read @globals) spin)) (desc n int) (val get (subr (maxeff (read @globals) spin) () int))) ! (read (globals effects))",
+"int ! (maxeff (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -9,9 +9,9 @@
 {
 "code": 0,
 "out": [
-"define m : (moduleof (desc pt (productof (x int) (y int))) (val origin pt)) ! pure",
+"define m : (moduleof (desc pt (productof (#:x int) (#:y int))) (val origin pt)) ! pure",
 "define f : (subr pure ((select m pt)) int) ! pure",
-"define n : (moduleof (desc pt (productof (x int) (y int))) (val g (subr pure (pt) pt))) ! pure",
+"define n : (moduleof (desc pt (productof (#:x int) (#:y int))) (val g (subr pure (pt) pt))) ! pure",
 "int ! pure",
 "; both checkers agree",
 ""
@@ -20,7 +20,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

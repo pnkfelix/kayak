@@ -17,8 +17,21 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/expression-item-pure.fx:5:12: in `../module-files/mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

@@ -20,8 +20,23 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"up-nest : (poly ((a type)) (subr pure ((sumof (#:none unit) (#:more (productof (#:hd a) (#:tl (nest (productof (#:l a) (#:r a)))))))) (nest a))) ! pure",
+"down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (#:none unit) (#:more (productof (#:hd a) (#:tl (nest (productof (#:l a) (#:r a))))))))) ! pure",
+"n : (nest int) ! (read (globals up-nest))",
+""
+],
+"err": [
+"fixpt: <programs>/generative/nested.fx:7:1: calling `size` may read any global, `size` too, so `size` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

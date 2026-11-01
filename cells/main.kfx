@@ -22,7 +22,7 @@
   (lambda (message status)
     (begin (write-err (string-append "kayak-cells: " (string-append message "\n"))) (exit status))))
 
-(define read-text (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+(define read-text (subr (maxeff (read @globals) spin (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
   (lambda (path)
     (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
       (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))

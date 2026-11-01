@@ -1,0 +1,41 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"keywords-printed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (27 cells, cellular):",
+"     0: lit |a|",
+"     2: prim %fx26-symbol->keyword 1",
+"     5: lit |b|",
+"     7: lit |c|",
+"     9: prim %fx26-symbol->keyword 1",
+"    12: lit ()",
+"    14: cons",
+"    15: lit \"d\"",
+"    17: lit ()",
+"    19: cons",
+"    20: cons",
+"    21: cons",
+"    22: cons",
+"    23: prim %fx26-intern-datum 1",
+"    26: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -16,11 +16,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/bloblet/width-variable.fx:6:35: a one is expected here, and this is a (bloblet (fields int a) @b)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/bloblet/width-variable.fx:6:35: a one is expected here, and this is a (bloblet (fields int a) @b)",
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

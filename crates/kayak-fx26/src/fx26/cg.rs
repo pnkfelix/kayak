@@ -22,13 +22,13 @@ use super::*;
 // lifting. Bloblets and floats: C152. Register code, each lambda's word's
 // twin, the `regs-*.kfx` files' (C248), from the twins noted here
 // (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
-// fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@d28cc6d
+// fixpt-source: crates/fixpt-fx26/src/compile.fx@63b95ef
+// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@63b95ef
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@7038269
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@7038269
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@0c2e4dd
+// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@63b95ef
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@63b95ef
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@63b95ef
 
 // The generator's data lives at `@g`.
 
@@ -391,6 +391,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("modulo")) => {
                         str_lit("modulo")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%stage")) => {
+                        str_lit("%fx26-stage")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("i8-and")) => {
                         str_lit("%fx26-i8-and")
                     }
@@ -603,6 +606,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("product?")) => {
                         str_lit("%fx26-product?")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("keyword?")) => {
+                        str_lit("%fx26-keyword?")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("quotient")) => {
                         str_lit("%fx26-quotient")
                     }
@@ -714,6 +720,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("symbol=?")) => {
                         str_lit("eq?")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("rep-cell")) => {
+                        str_lit("%fx26-rep-cell")
+                    }
                     _ => {
                         str_lit("")
                     }
@@ -768,6 +777,9 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("read-file")) => {
                         str_lit("%fx26-read-file")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("file-info")) => {
+                        str_lit("%fx26-file-info")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("remainder")) => {
                         str_lit("%fx26-remainder")
@@ -826,6 +838,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall6")) => {
                         str_lit("%fx26-syscall")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("rep-nodes")) => {
+                        str_lit("%fx26-rep-nodes")
+                    }
                     _ => {
                         str_lit("")
                     }
@@ -841,6 +856,9 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("read-bytes")) => {
                         str_lit("%fx26-read-bytes")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("type-bound")) => {
+                        str_lit("%fx26-evidence-bound")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("write-file")) => {
                         str_lit("%fx26-write-file")
@@ -884,6 +902,12 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-pair")) => {
                         str_lit("%fx26-pair-cell")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("dump-heap!")) => {
+                        str_lit("%fx26-dump-heap")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-rep")) => {
+                        str_lit("%fx26-reify-rep")
+                    }
                     _ => {
                         str_lit("")
                     }
@@ -923,6 +947,9 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("sleep-until")) => {
                         str_lit("%fx26-sleep-until")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-type")) => {
+                        str_lit("%fx26-reify-type")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("make-string")) => {
                         str_lit("%fx26-make-string")
@@ -1012,6 +1039,24 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("native-code?")) => {
                         str_lit("%fx26-native-code?")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%stage-check")) => {
+                        str_lit("%fx26-stage-check")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("effect-bound")) => {
+                        str_lit("%fx26-evidence-bound")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-session")) => {
+                        str_lit("%fx26-make-session")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-exit")) => {
+                        str_lit("%fx26-process-exit")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-news")) => {
+                        str_lit("%fx26-process-news")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("read-symlink")) => {
+                        str_lit("%fx26-read-symlink")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector=?")) => {
                         str_lit("%fx26-bytevector=?")
                     }
@@ -1090,6 +1135,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("wglobal-name")) => {
                         str_lit("%fx26-global-name")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("rep-of-nodes")) => {
+                        str_lit("%fx26-rep-of-nodes")
+                    }
                     _ => {
                         str_lit("")
                     }
@@ -1129,6 +1177,12 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("terminal-size")) => {
                         str_lit("%fx26-terminal-size")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-effect")) => {
+                        str_lit("%fx26-reify-effect")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-region")) => {
+                        str_lit("%fx26-reify-region")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("process-start")) => {
                         str_lit("%fx26-process-start")
@@ -1178,6 +1232,12 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("flatarray-set!")) => {
                         str_lit("%fx26-flatarray-set!")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-check")) => {
+                        str_lit("%fx26-session-check")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-ready")) => {
+                        str_lit("%fx26-session-ready")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("process-output")) => {
                         str_lit("%fx26-process-output")
@@ -1234,6 +1294,12 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("certify-acyclic")) => {
                         str_lit("%fx26-identity")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol->keyword")) => {
+                        str_lit("%fx26-symbol->keyword")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("keyword->symbol")) => {
+                        str_lit("%fx26-keyword->symbol")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-delete!")) => {
                         str_lit("%fx26-eqtable-delete!")
                     }
@@ -1284,6 +1350,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("native-convention")) => {
                         str_lit("%fx26-native-convention")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("session-redefines")) => {
+                        str_lit("%fx26-session-redefines")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-length")) => {
                         str_lit("bytevector-length")
                     }
@@ -1303,6 +1372,9 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(18)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-make")) => {
+                        str_lit("%fx26-make-session")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-u8-set!")) => {
                         str_lit("%fx26-bytevector-u8-set!")
                     }
@@ -1319,6 +1391,15 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(19)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-check")) => {
+                        str_lit("%fx26-session-eval-check")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-ready")) => {
+                        str_lit("%fx26-session-eval-ready")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-committed!")) => {
+                        str_lit("%fx26-session-committed!")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("process-close-input")) => {
                         str_lit("%fx26-process-close-input")
                     }
@@ -1355,8 +1436,21 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(23)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-redefines")) => {
+                        str_lit("%fx26-session-redefines")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("runtime-primitive-arity")) => {
                         str_lit("%runtime-primitive-arity")
+                    }
+                    _ => {
+                        str_lit("")
+                    }
+                }
+            }
+            case_ if kayak_rt::_eq(case_, int_lit(24)) => {
+                match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-committed!")) => {
+                        str_lit("%fx26-session-committed!")
                     }
                     _ => {
                         str_lit("")

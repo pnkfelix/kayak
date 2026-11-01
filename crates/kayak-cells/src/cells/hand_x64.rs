@@ -29,7 +29,7 @@ use super::*;
 // word runs, calls by `call` and `ret` (C137).
 // - Tier 6 (`--direct`): register code as native procedures beside tier
 // 5's, leaving for it where it would give back (C138).
-// fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4caffc2
+// fixpt-source: crates/fixpt-native/src/cellular/x64.rs@63b95ef
 pub mod made__load__0__fx26_x86_64 {
     use super::*;
 

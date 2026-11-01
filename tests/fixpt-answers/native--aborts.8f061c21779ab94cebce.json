@@ -27,8 +27,31 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define t : (prompt-tag int int (maxeff (read @globals) spin) @z) ! (alloc @z)",
+"define raise : (subr (maxeff (goto @z) (read (globals t))) (int) void) ! pure",
+"define in-cellular : (subr (maxeff (goto @z) (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (goto @z) (read @globals) spin)",
+"define raise-cellular : (subr (maxeff (goto @z) (read (globals t)) spin) (int) int) ! pure",
+"define mid : (subr (maxeff (goto @z) (read @globals) spin) (int) int) ! pure",
+"define in-native : (subr (maxeff (goto @z) (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (goto @z) (read @globals) spin)",
+"define deep : (subr (maxeff (goto @z) (read @globals) spin) (int int) int) ! pure",
+"define many : (subr (maxeff (goto @z) (read @globals) spin) (int int) int) ! pure",
+"int ! (maxeff (goto @z) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

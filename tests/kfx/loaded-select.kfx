@@ -3,5 +3,5 @@
 
 (define areas ((proj (load-module "loads/areas.fx") @globals)))
 
-(define main (subr (read @globals) () string)
+(define main (subr (maxeff (read @globals) spin) () string)
   (lambda () (int->string (with areas (area (square 7))))))

@@ -22,8 +22,22 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"p : (blobref o (productof (#:x f64) (#:y f64))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/bloblet/flat-no-field.fx:6:1: a (blobref o (productof (#:x f64) (#:y f64))) has no `z` laid out",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

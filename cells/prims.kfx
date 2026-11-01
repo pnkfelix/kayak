@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@7038269"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@63b95ef"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -868,7 +868,7 @@
   (poly ((r region)) (subr (maxeff (io sys) (write r)) ((flatarrayof i64 r) int int) unit)))
 (define-syscall failure-kind "io:failure-kind/1" (subr (io sys) () int))
 (define-syscall failure-detail "io:failure-detail/1" (subr (io sys) () string))
-(define tier1-page-words (subr (maxeff (read @globals) (io sys)) () i64)
+(define tier1-page-words (subr (maxeff (read @globals) spin (io sys)) () i64)
   (lambda () (int->i64 (page-words))))
 
 "`list->string`'s (C220): whether a proper list's elements are all

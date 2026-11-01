@@ -25,8 +25,29 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"heap-list : (listof int acyclic) ! pure",
+"push : (poly ((p place)) (subr (alloc p) ((place p) (listof int acyclic)) (listof int (acyclic p)))) ! pure",
+"total : (poly ((p place)) (subr (read (acyclic p)) ((listof int (acyclic p))) int)) ! pure",
+"11 : int ! (read (globals heap-list push total))",
+"0 : int ! (read (globals heap-list))",
+"leaf : (poly ((r region)) (subr pure () (mu %3 (sumof (#:leaf (productof)) (#:node (productof (1 (listof int r)) (2 %3))))))) ! pure",
+"node : (poly ((r region)) (subr pure ((listof int r) (mu %3 (sumof (#:leaf (productof)) (#:node (productof (1 (listof int r)) (2 %3)))))) (mu %3 (sumof (#:leaf (productof)) (#:node (productof (1 (listof int r)) (2 %3))))))) ! pure",
+"heap-tree : (mu %1 (sumof (#:leaf (productof)) (#:node (productof (1 (listof int acyclic)) (2 %1))))) ! (read (globals heap-list leaf node))",
+"11 : int ! (read (globals heap-list heap-tree node push total))",
+"0 : int ! (read (globals heap-list))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

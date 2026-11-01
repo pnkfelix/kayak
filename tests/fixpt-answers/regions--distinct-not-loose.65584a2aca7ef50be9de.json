@@ -21,8 +21,21 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"inner : tight ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/regions/distinct-not-loose.fx:8:21: `outer` is declared a loose: `r1` is distinct, and r1 may be r2, given for `r2`",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

@@ -19,8 +19,23 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+"up-gbox : (poly ((t type)) (subr pure ((productof (#:v t))) (gbox t))) ! pure",
+"down-gbox : (poly ((t type)) (subr pure ((gbox t)) (productof (#:v t)))) ! pure",
+"3 : int ! (read (globals down-gbox id up-gbox))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

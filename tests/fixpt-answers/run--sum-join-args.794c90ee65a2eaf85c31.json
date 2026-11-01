@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"sum-join-args.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define x : (sumof (#:b string)) ! pure",
+"define xs : (listof (sumof (#:a int) (#:b string) (#:c bool)) acyclic) ! (read (globals x))",
+"define score : (subr pure ((sumof (#:a int) (#:b string) (#:c bool))) int) ! pure",
+"define total : (subr (maxeff (read (globals score total)) spin) ((listof (sumof (#:a int) (#:b string) (#:c bool)) acyclic)) int) ! pure",
+"int ! (maxeff (read (globals score total xs)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

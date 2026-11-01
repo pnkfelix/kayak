@@ -22,7 +22,7 @@
              (filed (ref (listof (filed u l) l) l))
              (steps (ref i64 l))))
 
-(define make-world-loop (poly ((u effect) (l region)) (subr (maxeff (read @globals) (alloc l)) () (world-loop u l)))
+(define make-world-loop (poly ((u effect) (l region)) (subr (maxeff (read @globals) spin (alloc l)) () (world-loop u l)))
   (plambda ((u effect) (l region))
     (lambda ()
       (product (loop ((proj make-loop u l)))

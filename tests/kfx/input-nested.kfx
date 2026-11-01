@@ -3,5 +3,5 @@
 
 (define p (load-input "loads/pair-input.fx"))
 
-(define main (subr (read @globals) () string)
+(define main (subr (maxeff (read @globals) spin) () string)
   (lambda () (i64->string (with p (i64+ (extract (made) fst) (extract (made) snd))))))

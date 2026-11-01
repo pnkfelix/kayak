@@ -2,7 +2,7 @@
  and an ivar hands a value from one task to another. The tasks' own
  effect, `u`, is what they do to the log, at @a."
 (define-effect kfx (maxeff (read @globals) spin))
-(define-effect app (maxeff (read @globals) (read @a) (write @a) (alloc @a)))
+(define-effect app (maxeff (read @globals) spin (read @a) (write @a) (alloc @a)))
 
 (define log (ref (listof string @a) @a) (new nil))
 

@@ -18,8 +18,22 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"before : (moduleof (desc box (dlambda ((s type)) (productof (#:state (ref s @ed)) (#:name string))))) ! pure",
+"m : (moduleof (desc box (dlambda ((s type)) (productof (#:state (ref s @ed)) (#:name string)))) (desc thing (productof (#:n int))) (val take (subr pure ((productof (#:state (ref thing @ed)) (#:name string))) string))) ! (read (globals before))",
+"\"b\" : string ! (maxeff (alloc @ed) (read (globals m)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

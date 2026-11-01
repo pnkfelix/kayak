@@ -6,4 +6,4 @@
 (define-type shape (select base shape))
 (define area (subr pure (shape) int)
   (lambda (s) (tagcase s (dot (x) 0) (box (w h) (* w h)))))
-(define square (subr (read @globals) (int) shape) (lambda (n) (with base (make-box n n))))
+(define square (subr (maxeff (read @globals) spin) (int) shape) (lambda (n) (with base (make-box n n))))

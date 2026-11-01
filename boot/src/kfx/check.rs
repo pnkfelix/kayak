@@ -803,6 +803,19 @@ pub fn global_atom_p(x: Str) -> bool {
     (i64_gt(string_length_i64(x), 1i64) && char_eq_p(string_ref_i64(x, 0i64), 'g') && char_eq_p(string_ref_i64(x, 1i64), ':'))
 }
 
+/// An effect that reads `@globals` absorbs its reads of single globals,
+/// which say nothing more within it (C290; Fixpt's 34f7fe7e,
+/// `k-absorbed`).
+pub fn absorbed(es: Strings) -> Strings {
+    if string_member_p(str_lit("@globals"), es) {
+        filter(lambda1s(move |a: Str| {
+            not(has_prefix_p(a, str_lit("g:")))
+        }), es)
+    } else {
+        es
+    }
+}
+
 /// Whether effect `a` is within `b`: a read of one global is within a
 /// read of all of them, and an I-cell's fill within a write of its region
 /// (C101: FX's `init`, told apart from a write by `par` alone).
@@ -1040,8 +1053,10 @@ pub fn atom_written(x: Str) -> Str {
 
 /// An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
 /// globals read gathered, `(read (globals f g))`; its atoms, and the
-/// globals' names, in order, as Fixpt writes them (TODO §30).
+/// globals' names, in order, as Fixpt writes them (TODO §30); those
+/// `@globals` absorbs not written (C290).
 pub fn show_effs(es: Strings) -> Str {
+    let es = absorbed(es);
     let globals = sorted_strings(concat(map(lambda1s(move |x: Str| {
         if global_atom_p(x) {
             the::<Strings>(kayak_rt::heap_cons(after_prefix(x, str_lit("g:")), kayak_rt::nil()))

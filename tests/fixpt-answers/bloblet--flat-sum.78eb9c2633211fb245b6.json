@@ -40,7 +40,7 @@
 "arr : (blobref o (flat-arrayof shape 2)) ! (read (globals b))",
 "c : (blobref o f64) ! (maxeff (read @b) (write @b) (read (globals arr)))",
 "#u : unit ! (maxeff (write @b) (read (globals c)))",
-"sq : (blobref o (productof (w i32) (h i32))) ! (maxeff (read @b) (write @b) (read (globals arr)))",
+"sq : (blobref o (productof (#:w i32) (#:h i32))) ! (maxeff (read @b) (write @b) (read (globals arr)))",
 "#u : unit ! (maxeff (write @b) (read (globals sq)))",
 "#u : unit ! (maxeff (write @b) (read (globals sq)))",
 "what : (subr (read @b) ((blobref o shape)) int) ! pure",
@@ -53,7 +53,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

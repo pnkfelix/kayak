@@ -33,11 +33,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/bloblet/width-frozen-data.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (frozen int (ref int @b)) @b)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/bloblet/width-frozen-data.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (frozen int (ref int @b)) @b)",
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

@@ -23,4 +23,4 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [2K[8] ! evaluation failed: car of nil
 [2K!   in inner (<fx26:1>:1), 2 calls
 [2K!   in middle (<fx26:2>:1)
-[Jfx26> [5A[2K[7] ⠇ running 0.1 s[5B[Jfx26> [5A[2K[7] ⠏ running 0.1 s[5B[Jfx26> [5A[2K[7] 0 : i64 ! (maxeff (read (globals spin)) (read @globals) spin)  (0.1 s)[5B[Jfx26> 
+[Jfx26> [5A[2K[7] ⠇ running 0.1 s[5B[Jfx26> [5A[2K[7] ⠏ running 0.1 s[5B[Jfx26> [5A[2K[7] 0 : i64 ! (maxeff (read @globals) spin)  (0.1 s)[5B[Jfx26> 

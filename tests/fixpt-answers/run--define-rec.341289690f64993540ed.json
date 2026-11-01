@@ -33,15 +33,15 @@
 "ev : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
 "od : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
 "count : (subr (maxeff (read @globals) spin) (int int) int) ! pure",
-"evens : (subr (maxeff (read @globals) spin (read (globals count))) (int) int) ! pure",
-"(500 1) : (listof int acyclic) ! (maxeff (read @globals) spin (read (globals count evens od)))",
+"evens : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"(500 1) : (listof int acyclic) ! (maxeff (read @globals) spin)",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

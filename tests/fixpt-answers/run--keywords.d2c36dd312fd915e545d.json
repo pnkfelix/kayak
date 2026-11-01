@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"keywords.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define kind : (subr pure (datum) string) ! pure",
+"define first : (subr (read (globals kind)) (datum) string) ! pure",
+"define named : (subr pure (symbol) keyword) ! pure",
+"string ! (read (globals first kind named))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

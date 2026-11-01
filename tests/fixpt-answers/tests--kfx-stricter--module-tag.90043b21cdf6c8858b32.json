@@ -55,7 +55,7 @@
 "abort-with-continuation : (poly ((v type) (a type) (h type) (d effect) (r region) (e effect)) (subr (maxeff (alloc r) (goto r) (comefrom r) e) ((prompt-tag a h d r) (subr e ((subr (maxeff (read r) (write r) (goto r) (comefrom r) d) (v) a)) h)) v)) ! pure",
 "\"A module's datatype whose tag the program's has too: FX-26's tags are\\n the sum's, found by its type; KFX's emitter finds a datatype by its tag,\\n so each tag names one (C19).\" : string ! pure",
 "pt : (subr pure (i64 i64) point) ! pure",
-"m : (moduleof (desc place (sumof (pt (productof (1 i64))))) (val pt (subr pure (i64) place))) ! pure",
+"m : (moduleof (desc place (sumof (#:pt (productof (1 i64))))) (val pt (subr pure (i64) place))) ! pure",
 "#<sum pt> : (select m place) ! (read (globals m))",
 ""
 ],
@@ -63,7 +63,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

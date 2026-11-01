@@ -90,6 +90,26 @@ section below where it has one; here the order, and what each is.
    `made-*` files), which a static splice cannot make; a family imported
    into another module (`import-list-and-family.fx`). Also `.fasl`s, heap images, a native front end, and a
    place's limits: Fixpt's own, nothing of kayak's ported.
+4c. **FX-26's features since the pin moved to 63b95ef (C290)**, which
+   kayak's FX-26 has not yet; the ported sources' marks moved with none
+   of them carried over (the runtime's, tier 1's and the code generator's
+   parts of each to come with it):
+   - **Keywords**, `#:name` (42c1b40d): a value of its own, interned, its
+     type `keyword`, a datum's shape; tags and labels written as keywords
+     (7885d18c); types printing labels as keywords, `(productof (#:n
+     int))` (b526aba2), so that the checkers' comparison now differs
+     wherever a product or sum is printed.
+   - **Joins**: branches of different sums join; arguments instantiating
+     one type binder join (fdb622df, 39318012).
+   - **`stage`**, FX-26's `eval` (c7dbb0a4…); **evidence**,
+     `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
+     **sessions**, definitions that last (ca4955d6…);
+     `session-conditions.fx`.
+   - **I/O**: `file-info`, `read-symlink`, `process-exit`, `process-news`
+     and their `pselect` arms (09dbb15f); `dump-heap!` (59114584).
+   - The runtime: a bloblet's values by their index (e2f3f0f6, §205).
+   - Fixpt's re-architecture, "heap types" (`docs/research/heap-types.md`):
+     types as interned heap data, one rep each, shared by both checkers.
 5. **The call protocol on tier 6** (performance item 3 below): the
    entry's stack bounds, the frame's header word, values kept in
    registers across calls; each part measured by the line tables (C250).

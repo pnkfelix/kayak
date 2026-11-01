@@ -3,5 +3,5 @@
 
 (define u (load-module "loads/uses-family.fx"))
 
-(define main (subr (read @globals) () string)
+(define main (subr (maxeff (read @globals) spin) () string)
   (lambda () (with u (extract (swap (made)) fst))))

@@ -18,7 +18,7 @@
 
 (define flag (subr pure (bool) string) (lambda (b) (if b "t" "f")))
 
-(define orders (subr (read @globals) () string)
+(define orders (subr (maxeff (read @globals) spin) () string)
   (lambda ()
     (string-append (flag (char<? #\a #\b)) (string-append (flag (char>=? #\a #\b))
       (string-append (flag (string<? "apple" "apples")) (string-append (flag (string>? "b" "abc"))
@@ -29,7 +29,7 @@
 (define greet (subr pure (symbol) string)
   (lambda (s) (if (symbol=? s 'hello) "hi" (symbol->string s))))
 
-(define symbols (subr (read @globals) () string)
+(define symbols (subr (maxeff (read @globals) spin) () string)
   (lambda ()
     (string-append (greet 'hello) (string-append " " (string-append (greet (string->symbol "other"))
       (string-append " " (int->string (symbol-compare 'a 'b))))))))

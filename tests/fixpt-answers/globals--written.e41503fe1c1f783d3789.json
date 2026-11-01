@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"written.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"limit : int ! pure",
+"below : (subr (read (globals limit)) (int) bool) ! pure",
+"clamp : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/globals/written.fx:7:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
+"  beyond what is expected, it has (read (globals below limit))",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

@@ -21,8 +21,21 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"f : (poly ((g (=> (type) type)) (s size)) (subr pure ((nat s) (g (nat s))) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/higher-kinds/finite-through-app.fx:7:2: the size `s` cannot be `finite` here: `s` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

@@ -54,8 +54,8 @@
 
 "A group of two, reading globals and no more: no `spin`."
 (define-rec
-  (ev? (subr (read @globals) (int) bool) (lambda (n) (if (<= n 0) #t (od? (- n 1)))))
-  (od? (subr (read @globals) (int) bool) (lambda (n) (if (<= n 0) #f (ev? (- n 1))))))
+  (ev? (subr (maxeff (read @globals) spin) (int) bool) (lambda (n) (if (<= n 0) #t (od? (- n 1)))))
+  (od? (subr (maxeff (read @globals) spin) (int) bool) (lambda (n) (if (<= n 0) #f (ev? (- n 1))))))
 
 (define main (subr kfx () string)
   (lambda ()

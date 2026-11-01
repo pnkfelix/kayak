@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"sum-join-args.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"x : (sumof (#:b string)) ! pure",
+"xs : (listof (sumof (#:a int) (#:b string) (#:c bool)) acyclic) ! (read (globals x))",
+"score : (subr pure ((sumof (#:a int) (#:b string) (#:c bool))) int) ! pure",
+"total : (subr (maxeff spin (read (globals score total))) ((listof (sumof (#:a int) (#:b string) (#:c bool)) acyclic)) int) ! pure",
+"113 : int ! (maxeff spin (read (globals score total xs)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

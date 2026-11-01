@@ -13,7 +13,7 @@
 (define* clamp-both (subr pure (i64 i64) i64)
   (lambda (a b) (i64+ (clamp a) (clamp b))))
 
-(define main (subr (read @globals) () string)
+(define main (subr (maxeff (read @globals) spin) () string)
   (lambda ()
     (string-append (i64->string (clamp 99))
       (string-append " " (string-append (i64->string (clamp -99))

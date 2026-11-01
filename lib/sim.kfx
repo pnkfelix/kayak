@@ -20,7 +20,7 @@
         (begin (set s x3) (u64* x3 2685821657736338717))))))
 
 "A number from 0 below `n`, `n` above 0."
-(define below! (poly ((l region)) (subr (maxeff (read @globals) (read l) (write l)) ((seed l) i64) i64))
+(define below! (poly ((l region)) (subr (maxeff (read @globals) spin (read l) (write l)) ((seed l) i64) i64))
   (plambda ((l region))
     (lambda (s n)
       (int->i64 (u64->int (u64-remainder (u64-shr ((proj next-random! l) s) 33) (int->u64 (i64->int n))))))))

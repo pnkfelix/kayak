@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-tagcase-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/bloblet/flat-tagcase-apart.fx:7:21: `p` carries a (blobref o (productof (#:x i32) (#:y i32))), which cannot be taken apart into 2 name(s)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

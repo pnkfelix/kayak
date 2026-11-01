@@ -22,8 +22,26 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define u : (prompt-tag int int (maxeff (comefrom @p) (goto @p) (read @globals) spin) @p) ! (alloc @p)",
+"define grab-c : (subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) () int) ! pure",
+"define under-n : (subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) ((subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) () int)) int) ! pure",
+"define climb-c : (subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) ((subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) () int) int) int) ! pure",
+"define times : (subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) (int int) int) ! pure",
+"int ! (maxeff (comefrom @p) (goto @p) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

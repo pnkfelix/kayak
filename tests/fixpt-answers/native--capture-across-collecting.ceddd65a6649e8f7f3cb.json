@@ -27,8 +27,27 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"u : (prompt-tag int int (maxeff (read @globals) (goto @p) (comefrom @p) spin) @p) ! (alloc @p)",
+"; not in the native convention yet, so `grab-c` runs as cellular code: `grab-c`: it calls `stay-cellular`",
+"grab-c : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int) ! pure",
+"under-n : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) ((subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"; not in the native convention yet, so `climb-c` runs as cellular code: `climb-c`: it calls `stay-cellular`",
+"climb-c : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) ((subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"times : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) (int int) int) ! pure",
+"220 : int ! (maxeff (read @globals) (goto @p) (comefrom @p) spin)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

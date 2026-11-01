@@ -9,9 +9,9 @@
 {
 "code": 0,
 "out": [
-"m : (moduleof (desc pt (productof (x int) (y int))) (val origin pt)) ! pure",
+"m : (moduleof (desc pt (productof (#:x int) (#:y int))) (val origin pt)) ! pure",
 "f : (subr pure ((select m pt)) int) ! pure",
-"n : (moduleof (desc pt (productof (x int) (y int))) (val g (subr pure (pt) pt))) ! pure",
+"n : (moduleof (desc pt (productof (#:x int) (#:y int))) (val g (subr pure (pt) pt))) ! pure",
 "0 : int ! pure",
 ""
 ],
@@ -19,7 +19,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

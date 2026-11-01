@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"absorbed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/globals/absorbed.fx:8:1: calling `calm` may read any global, `calm` too, so `calm` may reach itself through a global: its type must say `spin`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

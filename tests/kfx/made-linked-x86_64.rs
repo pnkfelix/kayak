@@ -157,7 +157,7 @@ pub mod made__load__0__fx26_convention {
     pub type CvRead = &'static Sum_2ok_7refused<Convention, Str>;
 }
 
-pub mod made__input__4573__convention_types {
+pub mod made__input__4586__convention_types {
     use super::*;
 
     pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
@@ -166,7 +166,7 @@ pub mod made__input__4573__convention_types {
 pub mod cv {
     use super::*;
 
-    use super::made__input__4573__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
+    use super::made__input__4586__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 
     pub fn cv_ch(t: Str, i: Int) -> char {
         string_ref(t, i)
@@ -248,7 +248,7 @@ pub mod cv {
     pub fn cx_items(x: &'static CvSx) -> CvSxs {
         let tagcase_ = x;
         match *tagcase_ {
-            made__input__4573__convention_types::CvSx::CxList(xs) => {
+            made__input__4586__convention_types::CvSx::CxList(xs) => {
                 xs
             }
             _ => {
@@ -261,7 +261,7 @@ pub mod cv {
     pub fn cx_name_of(x: &'static CvSx) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
-            made__input__4573__convention_types::CvSx::CxName(n) => {
+            made__input__4586__convention_types::CvSx::CxName(n) => {
                 n
             }
             _ => {
@@ -274,7 +274,7 @@ pub mod cv {
     pub fn cx_int_of(x: &'static CvSx) -> Int {
         let tagcase_ = x;
         match *tagcase_ {
-            made__input__4573__convention_types::CvSx::CxInt(n) => {
+            made__input__4586__convention_types::CvSx::CxInt(n) => {
                 n
             }
             _ => {
@@ -884,7 +884,7 @@ pub mod made__load__1__fx26_x86_64 {
     }
 }
 
-pub mod made__input__4723__x86_64_types {
+pub mod made__input__4736__x86_64_types {
     use super::*;
 
     pub use super::made__load__1__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
@@ -893,7 +893,7 @@ pub mod made__input__4723__x86_64_types {
 pub mod x86 {
     use super::*;
 
-    use super::made__input__4723__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
+    use super::made__input__4736__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
     pub fn x86_b1(a: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, nil::<Int>())

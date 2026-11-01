@@ -18,8 +18,22 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"lists : container ! pure",
+"pair-up : (subr (maxeff (read @heap) (alloc @heap) spin) (container ((select $1 f) int)) ((select $1 f) (productof (#:l int) (#:r int)))) ! pure",
+"2 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals lists pair-up)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

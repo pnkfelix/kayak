@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"keyword-datatype.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define circle : (subr pure (int) shape) ! pure",
+"define rect : (subr pure (int int) shape) ! pure",
+"define area : (subr pure (shape) int) ! pure",
+"define made : (subr pure ((subr pure (int) shape) int) shape) ! pure",
+"int ! (read (globals area circle made rect))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

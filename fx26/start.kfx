@@ -741,7 +741,7 @@
                  names))))
 
 (define-rec
-  (rerun (subr (maxeff kfx working (read @globals)) (cv sexps defns strings) rerun-out)
+  (rerun (subr (maxeff kfx working (read @globals) spin) (cv sexps defns strings) rerun-out)
     (lambda (v all us lines)
       (if (null? us)
           (rerun-out v lines)
@@ -753,7 +753,7 @@
                     (rerun (car got) all (cdr us) (onto lines (form-lines (car got) all form)))))))))))
 
 (define-rec
-  (lines-redefining (subr (maxeff kfx working (read @globals)) (cv sexps sexps defns) strings)
+  (lines-redefining (subr (maxeff kfx working (read @globals) spin) (cv sexps sexps defns) strings)
     (lambda (v all forms ds)
       "`lines-checked`, under redefinition: `ds`, the definitions so far."
       (if (null? forms)

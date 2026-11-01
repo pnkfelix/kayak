@@ -27,7 +27,7 @@
 {
 "code": 0,
 "out": [
-"m : (moduleof (desc tree (sumof (leaf (productof)) (node (productof (1 (select m tree)) (2 (select m tree)))))) (desc forest (listof tree acyclic)) (desc pair-of (productof (1 tree) (2 forest))) (val size (subr pure (tree) int)) (val leaf (subr pure () tree)) (val node (subr pure (tree tree) tree))) ! pure",
+"m : (moduleof (desc tree (sumof (#:leaf (productof)) (#:node (productof (1 (select m tree)) (2 (select m tree)))))) (desc forest (listof tree acyclic)) (desc pair-of (productof (1 tree) (2 forest))) (val size (subr pure (tree) int)) (val leaf (subr pure () tree)) (val node (subr pure (tree tree) tree))) ! pure",
 "1 : int ! (read (globals m))",
 ""
 ],
@@ -35,7 +35,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

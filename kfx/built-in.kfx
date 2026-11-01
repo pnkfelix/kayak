@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 7038269. Written by scripts/built-in.py: edit that, not this."
+ 63b95ef. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -1406,6 +1406,7 @@
 (define kind-native-frame int 45)
 (define kind-icell int 46)
 (define kind-mailbox int 47)
+(define kind-keyword int 48)
 (define kind-extension int 255)
 
 ;;; A closure's fields, and an environment frame's, by negative offset.
@@ -1925,6 +1926,7 @@
          ((\"%quote\") \"%fx26-intern-datum\")
          ((\"array?\") \"%fx26-array?\")
          ((\"modulo\") \"modulo\")
+         ((\"%stage\") \"%fx26-stage\")
          ((\"i8-and\") \"%fx26-i8-and\")
          ((\"i8-xor\") \"%fx26-i8-xor\")
          ((\"i8-shl\") \"%fx26-i8-shl\")
@@ -1997,6 +1999,7 @@
       ((8)
        (case n
          ((\"product?\") \"%fx26-product?\")
+         ((\"keyword?\") \"%fx26-keyword?\")
          ((\"quotient\") \"%fx26-quotient\")
          ((\"char-in?\") \"%fx26-char-in?\")
          ((\"string=?\") \"string=?\")
@@ -2034,6 +2037,7 @@
          ((\"string>?\") \"%fx26-string>?\")
          ((\"acyclic?\") \"%fx26-acyclic?\")
          ((\"symbol=?\") \"eq?\")
+         ((\"rep-cell\") \"%fx26-rep-cell\")
          (else \"\")))
       ((9)
        (case n
@@ -2053,6 +2057,7 @@
          ((\"read-byte\") \"%fx26-read-byte\")
          ((\"seal-code\") \"%fx26-seal-code\")
          ((\"read-file\") \"%fx26-read-file\")
+         ((\"file-info\") \"%fx26-file-info\")
          ((\"remainder\") \"%fx26-remainder\")
          ((\"string<=?\") \"%fx26-string<=?\")
          ((\"string>=?\") \"%fx26-string>=?\")
@@ -2072,12 +2077,14 @@
          ((\"%syscall4\") \"%fx26-syscall\")
          ((\"%syscall5\") \"%fx26-syscall\")
          ((\"%syscall6\") \"%fx26-syscall\")
+         ((\"rep-nodes\") \"%fx26-rep-nodes\")
          (else \"\")))
       ((10)
        (case n
          ((\"procedure?\") \"%fx26-procedure?\")
          ((\"string-ref\") \"string-ref\")
          ((\"read-bytes\") \"%fx26-read-bytes\")
+         ((\"type-bound\") \"%fx26-evidence-bound\")
          ((\"write-file\") \"%fx26-write-file\")
          ((\"datum-list\") \"%fx26-list-copy\")
          ((\"length-is?\") \"%fx26-length-is?\")
@@ -2092,6 +2099,8 @@
          ((\"wcell-word\") \"%fx26-identity\")
          ((\"wcell-self\") \"%default-object\")
          ((\"wcell-pair\") \"%fx26-pair-cell\")
+         ((\"dump-heap!\") \"%fx26-dump-heap\")
+         ((\"%reify-rep\") \"%fx26-reify-rep\")
          (else \"\")))
       ((11)
        (case n
@@ -2106,6 +2115,7 @@
          ((\"f32-finite?\") \"%fx26-f32-finite?\")
          ((\"f32->string\") \"%fx26-f32->string\")
          ((\"sleep-until\") \"%fx26-sleep-until\")
+         ((\"%reify-type\") \"%fx26-reify-type\")
          ((\"make-string\") \"%fx26-make-string\")
          ((\"string-set!\") \"%fx26-string-set!\")
          ((\"string-copy\") \"%fx26-string-copy\")
@@ -2136,6 +2146,12 @@
          ((\"stdin-ready?\") \"%fx26-stdin-ready?\")
          ((\"terminal-raw\") \"%fx26-terminal-raw\")
          ((\"native-code?\") \"%fx26-native-code?\")
+         ((\"%stage-check\") \"%fx26-stage-check\")
+         ((\"effect-bound\") \"%fx26-evidence-bound\")
+         ((\"make-session\") \"%fx26-make-session\")
+         ((\"process-exit\") \"%fx26-process-exit\")
+         ((\"process-news\") \"%fx26-process-news\")
+         ((\"read-symlink\") \"%fx26-read-symlink\")
          ((\"bytevector=?\") \"%fx26-bytevector=?\")
          ((\"string-fill!\") \"%fx26-string-fill!\")
          ((\"string-copy!\") \"%fx26-string-copy!\")
@@ -2162,6 +2178,7 @@
          ((\"wcell-symbol\") \"%fx26-identity\")
          ((\"wcell-global\") \"%fx26-identity\")
          ((\"wglobal-name\") \"%fx26-global-name\")
+         ((\"rep-of-nodes\") \"%fx26-rep-of-nodes\")
          (else \"\")))
       ((13)
        (case n
@@ -2176,6 +2193,8 @@
          ((\"f32-infinite?\") \"%fx26-f32-infinite?\")
          ((\"flatarray-ref\") \"%fx26-flatarray-ref\")
          ((\"terminal-size\") \"%fx26-terminal-size\")
+         ((\"%reify-effect\") \"%fx26-reify-effect\")
+         ((\"%reify-region\") \"%fx26-reify-region\")
          ((\"process-start\") \"%fx26-process-start\")
          ((\"process-write\") \"%fx26-process-write\")
          ((\"i32-remainder\") \"%fx26-i32-remainder\")
@@ -2193,6 +2212,8 @@
        (case n
          ((\"make-flatarray\") \"%fx26-make-flatarray\")
          ((\"flatarray-set!\") \"%fx26-flatarray-set!\")
+         ((\"%session-check\") \"%fx26-session-check\")
+         ((\"%session-ready\") \"%fx26-session-ready\")
          ((\"process-output\") \"%fx26-process-output\")
          ((\"process-status\") \"%fx26-process-status\")
          ((\"process-signal\") \"%fx26-process-signal\")
@@ -2212,6 +2233,8 @@
          ((\"bytevector-copy\") \"%fx26-bytevector-copy\")
          ((\"string-downcase\") \"%fx26-string-downcase\")
          ((\"certify-acyclic\") \"%fx26-identity\")
+         ((\"symbol->keyword\") \"%fx26-symbol->keyword\")
+         ((\"keyword->symbol\") \"%fx26-keyword->symbol\")
          ((\"eqtable-delete!\") \"%fx26-eqtable-delete!\")
          (else \"\")))
       ((16)
@@ -2230,6 +2253,7 @@
       ((17)
        (case n
          ((\"native-convention\") \"%fx26-native-convention\")
+         ((\"session-redefines\") \"%fx26-session-redefines\")
          ((\"bytevector-length\") \"bytevector-length\")
          ((\"bytevector-u8-ref\") \"bytevector-u8-ref\")
          ((\"set-register-twin\") \"%set-register-twin\")
@@ -2237,12 +2261,16 @@
          (else \"\")))
       ((18)
        (case n
+         ((\"%session-eval-make\") \"%fx26-make-session\")
          ((\"bytevector-u8-set!\") \"%fx26-bytevector-u8-set!\")
          ((\"datum-list->vector\") \"list->vector\")
          ((\"datum-proper-list?\") \"%fx26-list?\")
          (else \"\")))
       ((19)
        (case n
+         ((\"%session-eval-check\") \"%fx26-session-eval-check\")
+         ((\"%session-eval-ready\") \"%fx26-session-eval-ready\")
+         ((\"%session-committed!\") \"%fx26-session-committed!\")
          ((\"process-close-input\") \"%fx26-process-close-input\")
          ((\"%string-append-list\") \"%fx26-string-append-list\")
          ((\"%syscall-available?\") \"%fx26-syscall-available?\")
@@ -2257,7 +2285,12 @@
          (else \"\")))
       ((23)
        (case n
+         ((\"%session-eval-redefines\") \"%fx26-session-redefines\")
          ((\"runtime-primitive-arity\") \"%runtime-primitive-arity\")
+         (else \"\")))
+      ((24)
+       (case n
+         ((\"%session-eval-committed!\") \"%fx26-session-committed!\")
          (else \"\")))
       (else \"\")))))
 ")
@@ -2556,6 +2589,30 @@
                            (lambda (w)
                              (begin ((proj %sched i64 thunk unit) 18 t w)
                                     (lambda () ((proj %sched thunk unit unit) 20 w #u)))))))))
+;; Heist's F6: ready once process `p` has output to take (46-48); once it
+;; has ended and its output is all taken (49-51), so that an arm for its
+;; output sees all of it before one for its end.
+(define process-output-event (subr sched (int) event)
+  (lambda (p)
+    (the event (list (cons (lambda () ((proj %sched int unit bool) 46 p #u))
+                           (lambda (w)
+                             (begin ((proj %sched int thunk unit) 47 p w)
+                                    (lambda () ((proj %sched thunk unit unit) 48 w #u)))))))))
+(define process-exit-event (subr sched (int) event)
+  (lambda (p)
+    (the event (list (cons (lambda () ((proj %sched int unit bool) 49 p #u))
+                           (lambda (w)
+                             (begin ((proj %sched int thunk unit) 50 p w)
+                                    (lambda () ((proj %sched thunk unit unit) 51 w #u)))))))))
+;; Ready once any process has news: output to take, or an end the program
+;; has not seen (52-54). Its operand is unit, as `((process-news) p …)`
+;; has none.
+(define process-news-event (subr sched (unit) event)
+  (lambda (u)
+    (the event (list (cons (lambda () ((proj %sched unit unit bool) 52 #u #u))
+                           (lambda (w)
+                             (begin ((proj %sched thunk unit unit) 53 w #u)
+                                    (lambda () ((proj %sched thunk unit unit) 54 w #u)))))))))
 ;; Ready once a read of the standard input would not wait: a byte has
 ;; come, or it is at its end (43-45; `TODO.md` §95). Its operand is unit,
 ;; as a `pselect` arm `((read-byte) b body …)` has none.

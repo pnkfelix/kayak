@@ -382,6 +382,15 @@
     "A read of one global, `g:name`; not a `goto:`."
     (and (i64> (string-length-i64 x) 1) (char=? (string-ref-i64 x 0) #\g) (char=? (string-ref-i64 x 1) #\:))))
 
+(define absorbed (subr kfx (strings) strings)
+  (lambda (es)
+    "An effect that reads `@globals` absorbs its reads of single globals,
+     which say nothing more within it (C290; Fixpt's 34f7fe7e,
+     `k-absorbed`)."
+    (if (string-member? "@globals" es)
+        (filter (lambda ((a string)) (not (has-prefix? a "g:"))) es)
+        es)))
+
 (define effs-within? (subr kfx (strings strings) bool)
   (lambda (a b)
     "Whether effect `a` is within `b`: a read of one global is within a
@@ -540,8 +549,10 @@
   (lambda (es)
     "An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
      globals read gathered, `(read (globals f g))`; its atoms, and the
-     globals' names, in order, as Fixpt writes them (TODO §30)."
-    (let* ((globals (sorted-strings (concat (map (lambda ((x string)) (if (global-atom? x) (the strings (list (after-prefix x "g:"))) nil)) es))))
+     globals' names, in order, as Fixpt writes them (TODO §30); those
+     `@globals` absorbs not written (C290)."
+    (let* ((es (absorbed es))
+           (globals (sorted-strings (concat (map (lambda ((x string)) (if (global-atom? x) (the strings (list (after-prefix x "g:"))) nil)) es))))
            (others (concat (map (lambda ((x string)) (if (or (global-atom? x) (string=? x "~!")) nil (the strings (list (atom-written x))))) es)))
            (parts (sorted-strings (if (null? globals) others (onto others (list (string-append "(read (globals " (string-append (words-of globals) "))"))))))))
       (cond ((null? parts) "pure")

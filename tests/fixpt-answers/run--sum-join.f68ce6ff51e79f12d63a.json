@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"sum-join.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define pick : (subr pure (bool) (sumof (#:a int) (#:b string))) ! pure",
+"define which : (subr pure ((sumof (#:a int) (#:b string))) int) ! pure",
+"define nested : (subr pure (int) (sumof (#:p (sumof (#:q int) (#:r bool))))) ! pure",
+"define deep : (subr pure ((sumof (#:p (sumof (#:q int) (#:r bool))))) int) ! pure",
+"int ! (read (globals deep nested pick which))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

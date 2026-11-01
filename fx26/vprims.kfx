@@ -296,7 +296,7 @@
 "The words in one page of the machine this runs on, as kayak-rt says,
  asked as the engine's own syscall (C225)."
 (define-syscall host-page-words "code:page-words/1" (subr (io sys) () int))
-(define engine-page-words (subr (maxeff (read @globals) (io sys)) () i64)
+(define engine-page-words (subr (maxeff (read @globals) spin (io sys)) () i64)
   (lambda () (int->i64 (host-page-words))))
 
 (define apply-op (subr vm (i64 i64) i64)

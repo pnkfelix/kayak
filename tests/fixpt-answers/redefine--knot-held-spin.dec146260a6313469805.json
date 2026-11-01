@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"knot-held-spin.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define tbl : box ! pure",
+"define f : (subr (maxeff (read @globals) spin) () int) ! pure",
+"define tbl : box ! (read (globals f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

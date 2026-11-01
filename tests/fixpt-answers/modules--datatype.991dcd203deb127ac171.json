@@ -24,8 +24,24 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"geometry : (moduleof (desc shape (sumof (#:circle (productof (1 int))) (#:rect (productof (1 int) (2 int))))) (val circle (subr pure (int) shape)) (val rect (subr pure (int int) shape)) (val area (subr pure (shape) int))) ! pure",
+"rect : (subr pure (int int) shape) ! (read (globals geometry))",
+"area : (subr pure (shape) int) ! (read (globals geometry))",
+"big : (subr pure (shape) bool) ! pure",
+"13 : int ! (read (globals area big geometry rect))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

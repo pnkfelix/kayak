@@ -625,9 +625,60 @@ pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
     }
 }
 
+/// Whether effect `es` may read a member of `group`, or any global, and says
+/// no `spin`.
+pub fn reads_unspun_p(group: Strings, es: Strings) -> bool {
+    (not(string_member_p(str_lit("spin"), es)) && (string_member_p(str_lit("@globals"), es) || any_p(lambda1s(move |n: Str| {
+        string_member_p(string_append(str_lit("g:"), n), es)
+    }), group)))
+}
+
+/// Whether type `t` holds, as data, a procedure that may read a member of
+/// `group`, or any global, and does not say `spin` (C290).
+pub fn held_knot_p(mut group: Strings, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                return reads_unspun_p(group, es);
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    held_knot_p(group, x)
+                }), ts);
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    held_knot_p(group, x)
+                }), args);
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
 /// A global whose latent effect reads itself, or a member of its group,
 /// may reach itself through the store: its type says `spin`, as FX-26's
-/// must (`no_reaching_itself`).
+/// must (`no_reaching_itself`). So does one that reads `@globals`, which
+/// may read it, at its first definition as at any other; and a procedure a
+/// global holds without being one, a product's field, a list's element, a
+/// module's value, which may read that global (C290; Fixpt's b9ed7daf,
+/// 7906bc63): else, defined again, it ties Landin's knot.
 pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -> &'static Cv {
     let tagcase_ = sc;
     match *tagcase_ {
@@ -635,17 +686,19 @@ pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -
             let tagcase_ = t;
             match *tagcase_ {
                 Ty::TyProc(es, ps, r) => {
-                    if (not(string_member_p(str_lit("spin"), es)) && any_p(lambda1s(move |n: Str| {
-                        string_member_p(string_append(str_lit("g:"), n), es)
-                    }), group)) {
-                        match refuse(v, string_append(str_lit("calling it reads "), string_append(words_of(group), str_lit(": it may reach itself through a global, so its type must say spin")))) {}
+                    if reads_unspun_p(group, es) {
+                        match refuse(v, string_append(str_lit("calling "), string_append(words_of(group), str_lit(" may read any global, itself too, so it may reach itself through a global: its type must say spin")))) {}
                     } else {
                         v
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    v
+                    if held_knot_p(group, as_mtype(v, t)) {
+                        match refuse(v, string_append(words_of(group), str_lit(" holds a procedure that may read it, so defined again it may reach itself through a global: that procedure's type must say spin"))) {}
+                    } else {
+                        v
+                    }
                 }
             }
         }
@@ -1084,7 +1137,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                             }
                         };
                         if effs_within_p(es, effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
-                            let sc = scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r));
+                            let sc = scheme(tvars, ty_proc(absorbed(effs_union(global_reads(es), declared)), ps, r));
                             let w = with_binds(no_reaching_itself(v, kayak_rt::heap_cons(name, kayak_rt::nil()), sc), kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
                             with_facts(with_place_needs(with_facts(w, fs), name, sc, size(cv_facts(w)), src_file, src_pos), onto(if suspends_p(es) {
                                 the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, str_lit("suspends")), kayak_rt::nil()))

@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-shadows.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"a : (moduleof (desc n int) (desc touches (maxeff (read @globals) spin))) ! pure",
+"b : (moduleof (desc n bool)) ! pure",
+"one : int ! (read (globals a))",
+"yes : bool ! (read (globals a b))",
+"f : (subr (maxeff (read @globals) spin) () int) ! (read (globals a))",
+"g : (moduleof (desc n bool) (val x bool)) ! (read (globals a))",
+"3 : int ! (maxeff (read @globals) spin)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

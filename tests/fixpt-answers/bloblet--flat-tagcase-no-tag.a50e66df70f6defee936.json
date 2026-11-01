@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-tagcase-no-tag.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (#:a f64) (#:b i32))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-tagcase-no-tag.fx:7:17: a (sumof (#:a (blobref o f64)) (#:b (blobref o i32))) has no tag `c`",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

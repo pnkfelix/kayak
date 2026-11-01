@@ -30,7 +30,7 @@
 
 "Whether this machine runs made code, and the leaf's sum, or the answer
  it would give."
-(define main (subr (maxeff (read @globals) (read @heap) (alloc @heap) (write @heap) (io native)) () string)
+(define main (subr (maxeff (read @globals) spin (read @heap) (alloc @heap) (write @heap) (io native)) () string)
   (lambda ()
     (string-append (if (here?) "native " "interpreted ")
                    (int->string (if (here?) ((adder) 20 22) 42)))))

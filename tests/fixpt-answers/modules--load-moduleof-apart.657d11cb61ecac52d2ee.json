@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-moduleof-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/load-moduleof-apart.fx:7:84: argument 2 is a (moduleof (desc buffer (productof (#:owner (select c1 counter)) (#:t c1..ticket))) (val make (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))), where a (moduleof (desc buffer (productof (#:owner (select c1 counter)) (#:t c2..ticket))) (val make (subr (maxeff (alloc @heap) (read @heap) (write @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))) is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

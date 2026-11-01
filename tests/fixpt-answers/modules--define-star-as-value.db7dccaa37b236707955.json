@@ -29,7 +29,7 @@
 "define m : (moduleof (desc cmd (subr (maxeff (read @globals) (read @heap)) () int)) (val hook (ref (listof (subr pure (int) cmd) acyclic) @heap))) ! (alloc @heap)",
 "define mk : (subr (maxeff (read (globals m)) (write @heap)) () (moduleof (val f (subr pure (int) (select m cmd))) (val r unit))) ! pure",
 "define made : (moduleof (val f (subr pure (int) (select m cmd))) (val r unit)) ! (maxeff (read (globals m mk)) (write @heap))",
-"int ! (maxeff (read (globals m)) (read @globals) (read @heap))",
+"int ! (maxeff (read @globals) (read @heap))",
 "; both checkers agree",
 ""
 ],
@@ -37,7 +37,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

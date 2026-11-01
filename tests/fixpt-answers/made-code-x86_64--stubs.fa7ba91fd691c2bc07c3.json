@@ -7,27 +7,6 @@
 ],
 "answers": [
 {
-"code": 0,
-"out": [
-"define call-code : (subr (alloc @heap) () (listof int @heap)) ! pure",
-"define put-all : (subr (maxeff (read (globals put-all)) (read @heap) (write @heap) spin) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
-"define sealed : (subr (maxeff (alloc @heap) (io native) (read (globals call-code put-all)) (read @heap) (write @heap) spin) () (bloblet (fields) @heap)) ! pure",
-"define call-it : (subr (maxeff (alloc @heap) (io native) (read (globals call-code put-all sealed)) (read @globals) (read @heap) (write @heap) spin) () caller) ! pure",
-"define call-k : (subr (maxeff (alloc @heap) (io native) (read (globals call-code put-all sealed)) (read @globals) (read @heap) (write @heap) spin) () k-caller) ! pure",
-"int ! (maxeff (alloc @heap) (io native) (read (globals call-code call-it put-all sealed)) (read @globals) (read @heap) (write @heap) spin)",
-"int ! (maxeff (alloc @heap) (comefrom @k) (goto @k) (io native) (read (globals call-code call-k put-all sealed)) (read @globals) (read @heap) (write @heap) spin)",
-"int ! (maxeff (alloc @heap) (io native) (read (globals call-code call-it put-all sealed)) (read @globals) (read @heap) (write @heap) spin)",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
-]
-},
-{
 "code": 1,
 "out": [
 "! <programs>/made-code-x86_64/stubs.fx:37:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus x26) (field-k-before-code 8))",

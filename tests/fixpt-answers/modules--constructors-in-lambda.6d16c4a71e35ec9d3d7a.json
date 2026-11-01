@@ -27,8 +27,8 @@
 {
 "code": 0,
 "out": [
-"make : (subr pure () (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int)))) ! pure",
-"m : (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int))) ! (read (globals make))",
+"make : (subr pure () (moduleof (desc shape (sumof (#:circle (productof (1 int))) (#:square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int)))) ! pure",
+"m : (moduleof (desc shape (sumof (#:circle (productof (1 int))) (#:square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int))) ! (read (globals make))",
 "circle : (subr pure (int) (select m shape)) ! (read (globals m))",
 "square : (subr pure (int) (select m shape)) ! (read (globals m))",
 "area : (subr pure ((select m shape)) int) ! (read (globals m))",
@@ -39,7 +39,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

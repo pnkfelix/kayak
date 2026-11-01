@@ -1,7 +1,7 @@
 "show.kfx: a value written as Fixpt's `write` writes it (C122), so that
  tier 1's answers are compared with Fixpt's as text. Shared structure is
  not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
- fixpt-source: crates/fixpt-runtime/src/print.rs@7641962"
+ fixpt-source: crates/fixpt-runtime/src/print.rs@63b95ef"
 
 (define hex-digit (subr kfx (i64) string)
   (lambda (d) (char->string (string-ref-i64 "0123456789abcdef" d))))

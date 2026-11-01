@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-ast-eval",
+"--step-limit",
+"none",
+"eval",
+"--raw",
+"stage0.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"made 24 24 1000000"
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}

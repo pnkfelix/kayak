@@ -8071,3 +8071,38 @@ types for 423, where it did for 414; 88 still differ, mostly datatypes,
 which Fixpt prints as their `mu` structure (kayak by name), a module type
 named as a whole, the effects of shared loads (C286's splice), and nested
 `poly`s Fixpt keeps as written.
+
+## C290. The pin moved to 63b95ef; reading `@globals` says `spin` (2026-11-01)
+
+The user: "Update Fixpt from GitHub, then start work on adapting Kayak to
+match the new functionality in its FX26 language and library." 67
+commits, among them two that make Fixpt refuse what it took. So Fixpt
+refused all three of kayak's KFX units, which KFX ⊂ FX-26 forbids:
+- **Reading `@globals` says `spin`** (b9ed7daf). The exemption of a
+  first definition is dropped: a procedure that may read any global may
+  read itself. kayak's `no-reaching-itself` now requires it, and the
+  units' effects are mended by Fixpt's own `scripts/add-spin.py`, 27
+  files, the corpus's among them.
+- **A procedure a global holds without being one** (7906bc63): a
+  product's field, a list's element, a reference's contents, a module's
+  value, whose latent effect may read that global or `@globals`, says
+  `spin`. Else the global, defined again, ties Landin's knot. kayak
+  refuses such a global's first definition, its type read through its
+  module type (`held-knot?`).
+- **`@globals` absorbs single globals' reads** (34f7fe7e): `define*`
+  drops them where it finds `@globals`, and an effect is printed without
+  them (`absorbed`).
+Fixpt's seven programs on these (`redefine/knot-held*`,
+`knot-effect-var*`, `globals/absorbed.fx`) get its verdicts, and Fixpt
+accepts kayak's three units again. The other changes since 7038269 are
+TODO 4c's, the ported sources' drift marks moved (their changes are the
+features 4c lists).
+
+Fixpt now refuses three of its own programs, unchanged since it last ran
+them: `generative/nested.fx`, `recursive/parametric-rose.fx` and
+`terminate/invariant-bound.fx`. Each reads `@globals` without saying
+`spin`. kayak refuses them too, so they leave
+`tests/engine-fixpt-passing`; this is the decision `--bless-drop` asks
+for (C235), not a lost program. That list had not been blessed since
+C235 and now holds the 207 it agrees on. The REPL's sessions print
+effects absorbed, `(maxeff (read @globals) spin)`.

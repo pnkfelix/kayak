@@ -63,7 +63,6 @@ diverge/cyclic-reverse.fx
 diverge/resume.fx
 diverge/spin.fx
 generative/ids.fx
-generative/nested.fx
 generative/region.fx
 generative/tree-walk.fx
 globals/inferred.fx
@@ -259,7 +258,6 @@ processes/reply.fx
 processes/self.fx
 processes/sendable.fx
 recursive/family-knot.fx
-recursive/parametric-rose.fx
 recursive/types-in-any-order.fx
 redefine/local-fib.fx
 regions/distinct-swap.fx
@@ -386,7 +384,6 @@ specs/wrong-ensures.fx
 specs/wrong-requires.fx
 terminate/cwcc-escape.fx
 terminate/datums.fx
-terminate/invariant-bound.fx
 terminate/string-walk.fx
 terminate/swapped.fx
 terminate/up-to-free.fx

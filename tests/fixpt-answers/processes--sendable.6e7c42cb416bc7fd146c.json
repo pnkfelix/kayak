@@ -22,8 +22,26 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define answer : (poly ((m sendable)) (subr (init @r) ((productof (#:v m) (#:reply (icell m @r)))) unit)) ! pure",
+"define make-echo : (poly ((m sendable)) (subr (maxeff (alloc @e) (init @r) (read (globals answer)) nondet spin) () (addr (productof (#:v m) (#:reply (icell m @r))) @e))) ! pure",
+"define echo : (addr (productof (#:v int) (#:reply (icell int @r))) @e) ! (maxeff (alloc @e) (init @r) (read (globals answer make-echo)) nondet spin)",
+"define c : (icell int @r) ! (alloc @r)",
+"unit ! (maxeff (read (globals c echo)) (send @e))",
+"int ! (maxeff (await @r) (read (globals c)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

@@ -21,8 +21,21 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"o : (moduleof (desc option (dlambda ((a type)) (sumof (#:none (productof)) (#:some (productof (1 a)))))) (val none (poly ((a type)) (subr pure () (sumof (#:none (productof)) (#:some (productof (1 a))))))) (val some (poly ((a type)) (subr pure (a) (sumof (#:none (productof)) (#:some (productof (1 a))))))) (val seven (sumof (#:none (productof)) (#:some (productof (1 int)))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/option.fx))",
+"7 : int ! (read (globals o))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

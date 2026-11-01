@@ -5,7 +5,7 @@
 (define shapes
   (module
     (define-type point (productof (x i64) (y i64)))
-    (define-effect touches (maxeff (read @globals)))
+    (define-effect touches (maxeff (read @globals) spin))
     (define origin point (product (x 0) (y 0)))
     (define shift (subr touches (point i64) point)
       (lambda (p d) (product (x (i64+ (extract p x) d)) (y (extract p y)))))
@@ -21,6 +21,6 @@
 
 (define mover (subr touches (point) point) (lambda (p) (shift p 2)))
 
-(define main (subr (read @globals) () string)
+(define main (subr (maxeff (read @globals) spin) () string)
   (lambda ()
     (i64->string (i64+ (with shapes (x-of (mover origin))) (with m (reach far))))))

@@ -19,8 +19,23 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@703826943b3b44fc909b5856719da677f2085afd"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"at : (blobref o u32) ! (read (globals b))",
+"pair : (blobref o (productof (#:x f64) (#:y f64))) ! (read (globals at))",
+""
+],
+"err": [
+"! evaluation failed: suffix ref: a flat of 16 bytes at byte 8 runs past the end of the suffix",
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
 ]
 }
 ]

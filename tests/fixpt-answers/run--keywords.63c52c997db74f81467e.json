@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"keywords.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"kind : (subr pure (datum) string) ! pure",
+"first : (subr (read (globals kind)) (datum) string) ! pure",
+"named : (subr pure (symbol) keyword) ! pure",
+"\"#:sorted 'sorted #:a 'b same symbol\" : string ! (read (globals first kind named))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+]
+}
+]
+}
