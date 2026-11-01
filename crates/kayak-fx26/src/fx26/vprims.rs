@@ -95,6 +95,10 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         file_room_x(a)
     } else if i64_eq(op, 134i64) {
         dir_room_x(a)
+    } else if i64_eq(op, 259i64) {
+        info_room_x(a)
+    } else if i64_eq(op, 260i64) {
+        link_room_x(a)
     } else if i64_eq(op, 175i64) {
         i64_plus(list_count(a, 0i64), 1i64)
     } else if i64_eq(op, 187i64) {
@@ -888,6 +892,10 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         written_word_x(write_file(word_string(a), word_kfx_bytes(b)))
     } else if i64_eq(op, 134i64) {
         list_dir_word_x(a)
+    } else if i64_eq(op, 259i64) {
+        file_info_word_x()
+    } else if i64_eq(op, 260i64) {
+        read_symlink_word_x()
     } else if i64_eq(op, 139i64) {
         real_word_x(int_to_f64(word_int(a)))
     } else if (i64_eq(op, 140i64) && not(integral_p(word_real(a)))) {

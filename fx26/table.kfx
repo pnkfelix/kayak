@@ -196,7 +196,9 @@
         ;; Strings at a region (C285): written in place, a character's code a word.
         "make-string" "string-set!" "string-fill!" "string-copy" "string-copy!" "rmake-string"
         ;; Keywords (C291).
-        "keyword?" "symbol->keyword" "keyword->symbol"))
+        "keyword?" "symbol->keyword" "keyword->symbol"
+        ;; What a path is (C293).
+        "file-info" "read-symlink"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

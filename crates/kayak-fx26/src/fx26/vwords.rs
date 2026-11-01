@@ -1032,6 +1032,102 @@ pub fn size_word_x() -> i64 {
     }
 }
 
+// `file-info` and `read-symlink` (C293), as `terminal-size`: asked when
+// their room is, made after.
+pub fn pending_info() -> Ref<&'static Sum_4info_6failed<Product_4kind_4size_8modified_4mode<&'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>, Int, Int, Int>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4info_6failed<Product_4kind_4size_8modified_4mode<&'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>, Int, Int, Int>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_4info_6failed::<Product_4kind_4size_8modified_4mode<&'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>, Int, Int, Int>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Info(Product_4kind_4size_8modified_4mode(kayak_rt::heap_alloc(Sum_4file_9directory_7symlink_5other::<(), (), (), ()>::Other(())), int_lit(0), int_lit(0), int_lit(0)))))
+    })
+}
+
+pub fn pending_target() -> Ref<&'static Sum_6target_6failed<Str, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_6target_6failed<Str, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_6target_6failed::<Str, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Target(str_lit(""))))
+    })
+}
+
+// The labels of `file-info`'s product, made at loading.
+pub fn info_labels() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn info_room_x(path: i64) -> i64 {
+    set(pending_info(), file_info(word_string(path)));
+    let tagcase_ = get(pending_info());
+    match *tagcase_ {
+        Sum_4info_6failed::Info(i) => {
+            32i64
+        }
+        Sum_4info_6failed::Failed(e) => {
+            failure_room(e)
+        }
+    }
+}
+
+pub fn file_info_word_x() -> i64 {
+    let tagcase_ = get(pending_info());
+    match *tagcase_ {
+        Sum_4info_6failed::Info(i) => {
+            let (k, x) = (sum_word_x({
+                let tagcase_ = i.0;
+                match *tagcase_ {
+                    Sum_4file_9directory_7symlink_5other::File(u) => {
+                        str_lit("file")
+                    }
+                    Sum_4file_9directory_7symlink_5other::Directory(u) => {
+                        str_lit("directory")
+                    }
+                    Sum_4file_9directory_7symlink_5other::Symlink(u) => {
+                        str_lit("symlink")
+                    }
+                    Sum_4file_9directory_7symlink_5other::Other(u) => {
+                        str_lit("other")
+                    }
+                }
+            }, w_unit()), alloc_x(ob_product(), 5i64));
+            obj_set_x(x, 0i64, fixnum(get(info_labels())));
+            obj_set_x(x, 1i64, k);
+            obj_set_x(x, 2i64, int_word_x(i.1));
+            obj_set_x(x, 3i64, int_word_x(i.2));
+            obj_set_x(x, 4i64, int_word_x(i.3));
+            sum_word_x(str_lit("info"), x)
+        }
+        Sum_4info_6failed::Failed(e) => {
+            sum_word_x(str_lit("failed"), io_error_word_x(e))
+        }
+    }
+}
+
+pub fn link_room_x(path: i64) -> i64 {
+    set(pending_target(), read_symlink(word_string(path)));
+    let tagcase_ = get(pending_target());
+    match *tagcase_ {
+        Sum_6target_6failed::Target(t) => {
+            i64_plus(32i64, string_length_i64(t))
+        }
+        Sum_6target_6failed::Failed(e) => {
+            failure_room(e)
+        }
+    }
+}
+
+pub fn read_symlink_word_x() -> i64 {
+    let tagcase_ = get(pending_target());
+    match *tagcase_ {
+        Sum_6target_6failed::Target(t) => {
+            sum_word_x(str_lit("target"), string_word_x(t))
+        }
+        Sum_6target_6failed::Failed(e) => {
+            sum_word_x(str_lit("failed"), io_error_word_x(e))
+        }
+    }
+}
+
 pub fn file_room_x(path: i64) -> i64 {
     set(pending_file(), read_file(word_string(path)));
     let tagcase_ = get(pending_file());

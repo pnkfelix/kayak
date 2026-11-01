@@ -105,8 +105,10 @@ section below where it has one; here the order, and what each is.
      `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
      **sessions**, definitions that last (ca4955d6…);
      `session-conditions.fx`.
-   - **I/O**: `file-info`, `read-symlink`, `process-exit`, `process-news`
-     and their `pselect` arms (09dbb15f); `dump-heap!` (59114584).
+   - **I/O**: the OS-process primitives, which kayak has none of
+     (`process-start`, `process-output`, `process-status`), then
+     `process-exit`, `process-news` and their `pselect` arms (09dbb15f;
+     `file-info` and `read-symlink` are C293's); `dump-heap!` (59114584).
    - The runtime: a bloblet's values by their index (e2f3f0f6, §205).
    - Fixpt's re-architecture, "heap types" (`docs/research/heap-types.md`):
      types as interned heap data, one rep each, shared by both checkers.

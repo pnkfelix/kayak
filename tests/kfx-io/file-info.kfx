@@ -1,0 +1,38 @@
+"What a path is (C293; Fixpt's 09dbb15f): `file-info` of a file written,
+ of the directory, and of a path that is not there; `read-symlink` of a
+ path that is no link. A file's size is its bytes; its time and mode say
+ only that they are there, as they depend on the clock and the umask."
+
+(define put (subr (maxeff (io fs-write) (alloc @b) (read @b)) (string string) unit)
+  (lambda (path text)
+    (tagcase (write-file path (the (bytevectorof @b) (string->utf8 text)))
+      (done u #u)
+      (failed e #u))))
+
+(define kind-name (subr pure ((sumof (file unit) (directory unit) (symlink unit) (other unit))) string)
+  (lambda (k) (tagcase k (file u "file") (directory u "directory") (symlink u "symlink") (other u "other"))))
+
+(define said (subr (maxeff (io fs-read) (read @globals) spin) (string) string)
+  (lambda (path)
+    (tagcase (file-info path)
+      (info i (string-append (kind-name (extract i kind))
+                (string-append " " (string-append (int->string (extract i size))
+                  (string-append (if (> (extract i modified) 0) " modified" " never")
+                    (if (> (extract i mode) 0) " with a mode" " no mode"))))))
+      (failed e (tagcase (extract e kind) (not-found u "not found") (else other "failed"))))))
+
+(define link (subr (io fs-read) (string) string)
+  (lambda (path)
+    (tagcase (read-symlink path)
+      (target t (string-append "a link to " t))
+      (failed e "no link"))))
+
+(define main (subr (maxeff (io fs-read) (io fs-write) (io stdout) (alloc @b) (read @b) (read @globals) spin) () int)
+  (lambda ()
+    (begin
+      (put "a.txt" "four")
+      (write-out (string-append (said "a.txt") "\n"))
+      (write-out (string-append (said ".") "\n"))
+      (write-out (string-append (said "nothing-here") "\n"))
+      (write-out (string-append (link "a.txt") "\n"))
+      0)))

@@ -196,6 +196,8 @@
    (args (poly ((r region)) (subr (maxeff (io args) (alloc r)) () (listof string r))))
    (read-file (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (data (bytevectorof r)) (failed io-error)))))
    (list-dir (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (names (listof string r)) (failed io-error)))))
+   (file-info (subr (io fs-read) (string) (sumof (info (productof (kind (sumof (file unit) (directory unit) (symlink unit) (other unit))) (size int) (modified int) (mode int))) (failed io-error))))
+   (read-symlink (subr (io fs-read) (string) (sumof (target string) (failed io-error))))
    (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))
    (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))
    (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))

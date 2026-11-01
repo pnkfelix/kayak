@@ -435,6 +435,38 @@
       (not-a-terminal u (sum-word! "not-a-terminal" w-unit))
       (failed e (sum-word! "failed" (io-error-word! e))))))
 
+"`file-info` and `read-symlink` (C293), as `terminal-size`: asked when
+ their room is, made after."
+(define pending-info
+  (ref (sumof (info (productof (kind (sumof (file unit) (directory unit) (symlink unit) (other unit))) (size int) (modified int) (mode int)))
+              (failed io-error))
+       @h)
+  (new (sum info (product (kind (sum other #u)) (size 0) (modified 0) (mode 0)))))
+(define pending-target (ref (sumof (target string) (failed io-error)) @h) (new (sum target "")))
+"The labels of `file-info`'s product, made at loading."
+(define info-labels (ref i64 @h) (new -1))
+
+(define info-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+  (lambda (path)
+    (begin (set pending-info (file-info (word-string path))) (tagcase (get pending-info) (info i 32) (failed e (failure-room e))))))
+(define file-info-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-info)
+      (info i (let ((k (sum-word! (tagcase (extract i kind) (file u "file") (directory u "directory") (symlink u "symlink") (other u "other")) w-unit))
+                    (x (alloc! ob-product 5)))
+                (begin (obj-set! x 0 (fixnum (get info-labels))) (obj-set! x 1 k) (obj-set! x 2 (int-word! (extract i size)))
+                       (obj-set! x 3 (int-word! (extract i modified))) (obj-set! x 4 (int-word! (extract i mode))) (sum-word! "info" x))))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+(define link-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+  (lambda (path)
+    (begin (set pending-target (read-symlink (word-string path)))
+           (tagcase (get pending-target) (target t (i64+ 32 (string-length-i64 t))) (failed e (failure-room e))))))
+(define read-symlink-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-target)
+      (target t (sum-word! "target" (string-word! t)))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+
 (define file-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin

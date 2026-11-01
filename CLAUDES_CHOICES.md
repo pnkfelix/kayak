@@ -8174,3 +8174,23 @@ argument, so the rest of the rule is TODO 4c's. KFX refuses both
 programs already, as a sum made with no type known (C183).
 `run/sum-join.fx` and `run/sum-join-args.fx` get Fixpt's types, and
 their values on the engine.
+
+## C293. What a path is: `file-info` and `read-symlink` (2026-11-01)
+
+Half of TODO 4c's I/O item, Fixpt's 09dbb15f (Heist's F5), in every part
+of kayak:
+- **Types**, the checker's primitives: Fixpt's own.
+- **KFX**: kayak-rt's `file_info` (`lstat`, a link not followed: kind,
+  size, modification time in seconds, the mode's permission bits) and
+  `read_symlink`, after Fixpt's `world.rs`. Their four shapes are
+  declared there, and are the emitter's standard shapes.
+- **The engine**: ops 259 and 260, as `terminal-size`'s are: the answer
+  asked for when its room is reckoned, made after (`info-room!`,
+  `file-info-word!`, `link-room!`, `read-symlink-word!`); the product's
+  labels made at loading.
+`tests/kfx-io/file-info.kfx` asks of a file it wrote, the directory, a
+path not there and a path that is no link, run as Rust and by Fixpt.
+
+The other half, `process-exit` and `process-news` and their `pselect`
+arms, waits on what kayak has none of yet: the OS-process primitives,
+`process-start`, `process-output` and `process-status`.

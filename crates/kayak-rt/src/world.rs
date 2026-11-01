@@ -84,6 +84,30 @@ pub enum Sum_5names_6failed<A0, A1> {
 }
 
 #[allow(non_camel_case_types)]
+pub enum Sum_4info_6failed<A0, A1> {
+    Info(A0),
+    Failed(A1),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_6target_6failed<A0, A1> {
+    Target(A0),
+    Failed(A1),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_4file_9directory_7symlink_5other<A0, A1, A2, A3> {
+    File(A0),
+    Directory(A1),
+    Symlink(A2),
+    Other(A3),
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_4kind_4size_8modified_4mode<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
+
+#[allow(non_camel_case_types)]
 pub enum Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<
     A0,
     A1,
@@ -129,6 +153,9 @@ show_sum!(Sum_5count_3eof_6failed<A0, A1, A2> { Count => "count", Eof => "eof", 
 show_sum!(Sum_4done_14not_a_terminal_6failed<A0, A1, A2> { Done => "done", NotATerminal => "not-a-terminal", Failed => "failed" });
 show_sum!(Sum_4size_14not_a_terminal_6failed<A0, A1, A2> { Size => "size", NotATerminal => "not-a-terminal", Failed => "failed" });
 show_sum!(Sum_5names_6failed<A0, A1> { Names => "names", Failed => "failed" });
+show_sum!(Sum_4info_6failed<A0, A1> { Info => "info", Failed => "failed" });
+show_sum!(Sum_6target_6failed<A0, A1> { Target => "target", Failed => "failed" });
+show_sum!(Sum_4file_9directory_7symlink_5other<A0, A1, A2, A3> { File => "file", Directory => "directory", Symlink => "symlink", Other => "other" });
 show_sum!(Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<A0, A1, A2, A3, A4, A5, A6, A7> {
     NotFound => "not-found", PermissionDenied => "permission-denied", AlreadyExists => "already-exists",
     NotADirectory => "not-a-directory", IsADirectory => "is-a-directory", BrokenPipe => "broken-pipe",
@@ -138,6 +165,12 @@ show_sum!(Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_
 impl<A0, A1> Show for Product_4kind_6detail<A0, A1> {
     fn show(&self, out: &mut String) {
         out.push_str("#<product of 2>");
+    }
+}
+
+impl<A0, A1, A2, A3> Show for Product_4kind_4size_8modified_4mode<A0, A1, A2, A3> {
+    fn show(&self, out: &mut String) {
+        out.push_str("#<product of 4>");
     }
 }
 
@@ -1037,6 +1070,52 @@ pub fn list_dir(path: Str) -> &'static Sum_5names_6failed<List<Str>, IoError> {
             )
         }
         Err(e) => Sum_5names_6failed::Failed(io_error(&e)),
+    })
+}
+
+/// `file-info`'s kind of file.
+pub type FileKind = &'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>;
+
+/// `file-info`'s answer: the path itself (`lstat`, a link not followed),
+/// its kind, size, modification time in seconds and permission bits, as
+/// Fixpt's `file_info` (C293).
+pub type FileInfo = Product_4kind_4size_8modified_4mode<FileKind, Int, Int, Int>;
+
+pub fn file_info(path: Str) -> &'static Sum_4info_6failed<FileInfo, IoError> {
+    use std::os::unix::fs::MetadataExt;
+    type K = Sum_4file_9directory_7symlink_5other<(), (), (), ()>;
+    heap_alloc(match std::fs::symlink_metadata(path.as_str()) {
+        Ok(m) => {
+            let t = m.file_type();
+            let kind: FileKind = heap_alloc(if t.is_symlink() {
+                K::Symlink(())
+            } else if t.is_dir() {
+                K::Directory(())
+            } else if t.is_file() {
+                K::File(())
+            } else {
+                K::Other(())
+            });
+            Sum_4info_6failed::Info(Product_4kind_4size_8modified_4mode(
+                kind,
+                i64_to_int(m.len() as i64),
+                i64_to_int(m.mtime()),
+                i64_to_int((m.mode() & 0o7777) as i64),
+            ))
+        }
+        Err(e) => Sum_4info_6failed::Failed(io_error(&e)),
+    })
+}
+
+/// The target of the symbolic link `path` names, as written; one not UTF-8
+/// an `invalid-data` failure (Fixpt's `read_symlink`).
+pub fn read_symlink(path: Str) -> &'static Sum_6target_6failed<Str, IoError> {
+    heap_alloc(match std::fs::read_link(path.as_str()) {
+        Ok(t) => match t.into_os_string().into_string() {
+            Ok(t) => Sum_6target_6failed::Target(leak_string(t)),
+            Err(_) => Sum_6target_6failed::Failed(invalid_data("a target that is not UTF-8")),
+        },
+        Err(e) => Sum_6target_6failed::Failed(io_error(&e)),
     })
 }
 
