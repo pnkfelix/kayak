@@ -1809,6 +1809,64 @@ pub fn check_command(paths: Strings) -> Int {
     int_lit(0)
 }
 
+pub fn rep_lines_of(v: &'static Cv, ns: Strings) -> Strings {
+    if null_p(ns) {
+        nil::<Str>()
+    } else {
+        let b = scope_bind(car(ns), v);
+        kayak_rt::heap_cons(if null_p(b) {
+            string_append(car(ns), str_lit(" none"))
+        } else {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(m, sc, w) => {
+                    string_append(car(ns), string_append(str_lit(" "), scheme_rep_hex(new_state(), sc)))
+                }
+            }
+        }, rep_lines_of(v, cdr(ns)))
+    }
+}
+
+// `--reps FILE` (C301): each definition's type as a rep, as kayak's checker
+// exports it, a line each, `NAME HEX`, or `NAME declined`.
+pub fn reps_lines(v: &'static Cv, forms: Sexps) -> Strings {
+    if null_p(forms) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = check_tops(v, kayak_rt::heap_cons(car(forms), kayak_rt::nil()), nil::<&'static Typed>());
+        match *tagcase_ {
+            Elab::Elab(v2, found) => {
+                onto(rep_lines_of(v2, defined_names_of(car(forms))), reps_lines(v2, cdr(forms)))
+            }
+        }
+    }
+}
+
+pub fn reps_command(paths: Strings) -> Int {
+    let forms = read_files(paths);
+    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+    let named = {
+        let tagcase_ = start;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
+            }
+        }
+    };
+    let typed = {
+        let tagcase_ = named;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
+            }
+        }
+    };
+    let v = with_binds(typed, kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), prim_binds(typed)));
+    say(lines_text(reps_lines(v, forms)));
+    int_lit(0)
+}
+
 pub fn main() -> Int {
     let r#as = the::<Strings>(args());
     if (null_p(r#as) || string_eq_p(car(r#as), str_lit("repl"))) {
@@ -1817,6 +1875,8 @@ pub fn main() -> Int {
         (&tasks::scripted_x)(car(cdr(r#as)))
     } else if (string_eq_p(car(r#as), str_lit("--check")) && not(null_p(cdr(r#as)))) {
         check_command(cdr(r#as))
+    } else if (string_eq_p(car(r#as), str_lit("--reps")) && not(null_p(cdr(r#as)))) {
+        reps_command(cdr(r#as))
     } else {
         engine_main()
     }

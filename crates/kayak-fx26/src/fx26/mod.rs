@@ -16,6 +16,8 @@ pub mod built_in;
 pub use built_in::*;
 pub mod check_defs;
 pub use check_defs::*;
+pub mod reps;
+pub use reps::*;
 pub mod regs_isa;
 pub use regs_isa::*;
 pub mod ir;

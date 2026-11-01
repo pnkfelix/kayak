@@ -23,3 +23,7 @@ harness = false
 [[test]]
 name = "checkers"
 harness = false
+
+[[test]]
+name = "reps"
+harness = false

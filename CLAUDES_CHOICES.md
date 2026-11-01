@@ -8354,3 +8354,35 @@ dependency on the clone.
   agree byte for byte.
 Not yet: the two procedures on the engine and on tier 1, which only an
 FX-26 program calling them needs (kayak's checker runs as Rust).
+
+## C301. Types as reps, step 2: kayak's export and import (2026-11-01)
+
+`kfx/reps.kfx`, in the engine's unit (after the checker), after Fixpt's
+`check-reps.fx` and its `reps.rs` table of heads:
+- **The export** threads its state as a value (`rx`: the nodes made, the
+  next slot, the holes, whether a part was declined), not in global
+  references as Fixpt's does, since kayak's checker keeps no global state.
+  It covers base types, `void`, `nil`, `false`, unions, variables (bound
+  by their binder and place, else holes), `subr` (its convention, its
+  effect as a set of atoms, its parameters, its result), `poly` and its
+  binders, `ref`, lists (a pair, maybe `nil`, whose tail is itself),
+  `%pairof`, products and sums, `%mu` (its node a cycle), `icell`,
+  `mark-key`, `place`, arrays, `%named` (seen through), and a datatype or
+  generative type as a constant by its name. Regions and effect atoms
+  are as Fixpt writes them. Anything else is declined.
+- **The import** (`rep-ty`) is the reverse. A node met again while it is
+  being made becomes a recursive type's variable, its node then a `%mu`.
+- **`kayak-fx26 --reps FILE`** writes each definition's rep in hex, and
+  whether, imported and exported again, it is the same rep.
+- **The test** (`crates/kayak-checks/tests/reps.rs`, one per program,
+  Fixpt's and kayak's own) fails on any `differs`. Of the 1365
+  definitions, 1035 come back as themselves and 330 are declined; none
+  differ.
+Where kayak's reps may not be Fixpt's (which cannot be compared until
+Fixpt prints reps):
+- a datatype's constant is keyed by its name and 0, and has no `gendef`
+  node;
+- a plain `subr` says `cellular`, Fixpt's checker's default;
+- a region constant is its name as kayak writes it (`@a`).
+Declined so far: `addr`, module types, specifications, blobrefs,
+bloblets, `nlist`, prompt tags, and an effect variable applied.

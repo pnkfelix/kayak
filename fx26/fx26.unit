@@ -10,6 +10,7 @@
 ../kfx/check-exprs.kfx
 ../kfx/built-in.kfx
 ../kfx/check-defs.kfx
+../kfx/reps.kfx
 ../kfx/regs-isa.kfx
 ir.kfx
 prims.kfx

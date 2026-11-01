@@ -1,0 +1,424 @@
+"reps.kfx: the checker's types as reps (C301; `docs/research/type-reps.md`,
+ after Fixpt's `check-reps.fx` and its `reps.rs` table of heads): a type's
+ nodes, given the runtime, which makes the rep canonical (`rep-of-nodes`,
+ Fixpt's `fixpt-reps` taken whole). The export is a value threaded through
+ the walk, as the checker's state is, not a global."
+
+"A node as `rep-of-nodes` takes it: its slot, its head, whether it is a set,
+ its binders' names, its operands."
+(define-type rp-operand
+  (sumof (node int) (bound (productof (1 int) (2 int))) (hole int)
+         (const (productof (1 string) (2 int) (3 string))) (sym symbol) (int int) (flag bool)))
+(define-type rp-operands (listof rp-operand acyclic))
+(define-type rp-node (productof (1 int) (2 symbol) (3 bool) (4 (listof symbol acyclic)) (5 rp-operands)))
+(define-type rp-nodes (listof rp-node acyclic))
+
+"A variable in scope where the walk is: its name, its binder's slot and its
+ place there; a recursive type's (`%mu`) place -1, its name the node of the
+ slot."
+(define-datatype rpbind (rpbind string i64 i64))
+(define-type rpbinds (listof rpbind acyclic))
+
+"The export so far: the nodes made, newest first; the next slot; the holes'
+ names, newest first; whether a part of the type is no rep's (declined)."
+(define-datatype rx (rx rp-nodes i64 strings bool))
+(define-datatype rxa (rxa rx rp-operand))
+(define-datatype rxs (rxs rx rp-operands))
+(define-datatype rxi (rxi rx i64))
+
+(define rx-empty rx (rx nil 0 nil #f))
+
+(define rx-reserve (subr kfx (rx) rxi)
+  (lambda (x) (tagcase x (rx (ns k hs d) (rxi (rx ns (i64+ k 1) hs d) k)))))
+
+(define rx-fill (subr kfx (rx i64 string bool strings rp-operands) rx)
+  (lambda (x slot head set binders args)
+    (tagcase x
+      (rx (ns k hs d)
+        (rx (cons (product (1 (i64->int slot)) (2 (string->symbol head)) (3 set) (4 (map (lambda ((b string)) (string->symbol b)) binders)) (5 args)) ns)
+            k hs d)))))
+
+(define rx-declined (subr kfx (rx) rx)
+  (lambda (x) (tagcase x (rx (ns k hs d) (rx ns k hs #t)))))
+
+(define rx-node (subr kfx (rx string bool rp-operands) rxa)
+  (lambda (x head set args)
+    "A node of no binders, as an operand."
+    (tagcase (rx-reserve x)
+      (rxi (x slot) (rxa (rx-fill x slot head set nil args) (the rp-operand (sum node (i64->int slot))))))))
+
+(define rx-sym (subr kfx (string) rp-operand)
+  (lambda (s) (the rp-operand (sum sym (string->symbol s)))))
+
+(define-rec
+  (index-from-end (subr kfx (strings string i64) i64)
+    (lambda (xs n i)
+      "`n`'s place in `xs`, which is newest first, counted from its oldest; -1."
+      (cond ((null? xs) -1) ((string=? (car xs) n) (i64- (size xs) 1)) (else (index-from-end (cdr xs) n i))))))
+
+(define rx-hole (subr kfx (rx string) rxa)
+  (lambda (x n)
+    "A variable free in the type: a hole, one for each name."
+    (tagcase x
+      (rx (ns k hs d)
+        (let ((at (index-from-end hs n 0)))
+          (if (i64>= at 0)
+              (rxa x (the rp-operand (sum hole (i64->int at))))
+              (rxa (rx ns k (cons n hs) d) (the rp-operand (sum hole (i64->int (size hs)))))))))))
+
+(define-rec
+  (scope-var (subr kfx (rpbinds string) rpbinds)
+    (lambda (sc n)
+      (cond ((null? sc) nil)
+            ((tagcase (car sc) (rpbind (m slot pos) (string=? m n))) (list (car sc)))
+            (else (scope-var (cdr sc) n))))))
+
+(define rx-var (subr kfx (rx rpbinds string) rxa)
+  (lambda (x sc n)
+    "Variable `n`: bound, by its binder and place; a recursive type's, its
+     node; else a hole."
+    (let ((found (scope-var sc n)))
+      (if (null? found)
+          (rx-hole x n)
+          (tagcase (car found)
+            (rpbind (m slot pos)
+              (if (i64< pos 0)
+                  (rxa x (the rp-operand (sum node (i64->int slot))))
+                  (rxa x (the rp-operand (sum bound (product (1 (i64->int slot)) (2 (i64->int pos)))))))))))))
+
+"Regions, as `reps.rs` writes them: `(heap)`, `(rconst a)`, `(frozen
+ acyclic? [place])`, `(global g)`, `(globals)`, or a variable."
+(define rx-region-named (subr kfx (rx rpbinds string) rxa)
+  (lambda (x sc r)
+    (cond ((string=? r "@heap") (rx-node x "heap" #f (the rp-operands nil)))
+          ((string=? r "acyclic") (rx-node x "frozen" #f (the rp-operands (list (the rp-operand (sum flag #t))))))
+          ((string=? r "const") (rx-node x "frozen" #f (the rp-operands (list (the rp-operand (sum flag #f))))))
+          ((frozen-place? r)
+           (tagcase (rx-var x sc (frozen-place-of r))
+             (rxa (x p) (rx-node x "frozen" #f (the rp-operands (list (the rp-operand (sum flag (string=? (frozen-place-kind r) "acyclic"))) p))))))
+          ((or (has-prefix? r "'") (has-prefix? r "?")) (rx-var x sc r))
+          (else (rx-node x "rconst" #f (the rp-operands (list (rx-sym r))))))))
+
+(define rx-region (subr kfx (st rx rpbinds ty) rxa)
+  (lambda (s x sc r)
+    (tagcase (walk s r)
+      (ty-meta (k) (rxa (rx-declined x) (rx-sym "?")))
+      (else other (rx-region-named x sc (region-string s other))))))
+
+"An effect: a set of its atoms (`reps.rs`), in no order of the checker's."
+(define rx-atom (subr kfx (rx rpbinds string) rxa)
+  (lambda (x sc a)
+    (cond ((string=? a "spin") (rx-node x "spin" #f (the rp-operands nil)))
+          ((string=? a "nondet") (rx-node x "nondet" #f (the rp-operands nil)))
+          ((string=? a "stage") (rx-node x "stage" #f (the rp-operands nil)))
+          ((string=? a "@globals") (tagcase (rx-node x "globals" #f (the rp-operands nil)) (rxa (x g) (rx-node x "read" #f (the rp-operands (list g))))))
+          ((global-atom? a)
+           (tagcase (rx-node x "global" #f (the rp-operands (list (rx-sym (after-prefix a "g:"))))) (rxa (x g) (rx-node x "read" #f (the rp-operands (list g))))))
+          ((has-prefix? a "io:") (rx-node x "io" #f (the rp-operands (list (rx-sym (after-prefix a "io:"))))))
+          ((region-atom? a)
+           (let ((kind (atom-kind a)))
+             (tagcase (rx-region-named x sc (atom-region a))
+               (rxa (x r) (rx-node x (substring-of kind (i64- (string-length-i64 kind) 1)) #f (the rp-operands (list r)))))))
+          ((and (has-prefix? a "~") (not (has-prefix? a "~@")) (not (string=? a "~!"))) (rx-var x sc a))
+          (else (rxa (rx-declined x) (rx-sym "?"))))))
+
+(define-rec
+  (rx-atoms (subr kfx (rx rpbinds strings) rxs)
+    (lambda (x sc es)
+      (if (null? es)
+          (rxs x nil)
+          (tagcase (rx-atom x sc (car es))
+            (rxa (x a) (tagcase (rx-atoms x sc (cdr es)) (rxs (x as) (rxs x (cons a as))))))))))
+
+(define rx-effect (subr kfx (rx rpbinds strings) rxa)
+  (lambda (x sc es) (tagcase (rx-atoms x sc es) (rxs (x as) (rx-node x "effect" #t as)))))
+
+(define base-type-names strings
+  (list "symbol" "keyword" "datum" "vector" "f32" "i8" "u8" "i16" "u16" "i32" "u32" "u64"))
+
+(define-rec
+  (binders-in (subr kfx (rpbinds strings i64 i64) rpbinds)
+    (lambda (sc ns slot pos)
+      "Binders `ns` of node `slot` in scope, from place `pos`."
+      (if (null? ns) sc (binders-in (cons (rpbind (car ns) slot pos) sc) (cdr ns) slot (i64+ pos 1))))))
+
+(define-rec
+  (rx-binder-nodes (subr kfx (rx strings) rxs)
+    (lambda (x ns)
+      "Each binder's node: `(binder KIND distinct)`."
+      (if (null? ns)
+          (rxs x nil)
+          (tagcase (rx-node x (binder-kind (car ns)) #f nil)
+            (rxa (x k)
+              (tagcase (rx-node x "binder" #f (the rp-operands (list k (the rp-operand (sum flag (has-suffix? (car ns) "%d"))))))
+                (rxa (x b) (tagcase (rx-binder-nodes x (cdr ns)) (rxs (x bs) (rxs x (cons b bs))))))))))))
+
+(define-rec
+  (rx-ty (subr kfx (st rx rpbinds ty) rxa)
+    (lambda (s x sc t)
+      "Type `t`'s node, as an operand."
+      (tagcase (walk s t)
+        (ty-var (n) (rx-var x sc n))
+        (ty-meta (k) (rxa (rx-declined x) (rx-sym "?")))
+        (ty-data (d args)
+          (if (has-prefix? d "%named ")
+              (rx-ty s x sc (car args))
+              (tagcase (rx-reserve x) (rxi (x slot) (rxa (rx-ty-at s x sc (walk s t) slot) (the rp-operand (sum node (i64->int slot))))))))
+        (else other (tagcase (rx-reserve x) (rxi (x slot) (rxa (rx-ty-at s x sc other slot) (the rp-operand (sum node (i64->int slot))))))))))
+  (rx-tys (subr kfx (st rx rpbinds tys) rxs)
+    (lambda (s x sc ts)
+      (if (null? ts)
+          (rxs x nil)
+          (tagcase (rx-ty s x sc (car ts))
+            (rxa (x a) (tagcase (rx-tys s x sc (cdr ts)) (rxs (x as) (rxs x (cons a as)))))))))
+  (rx-parts (subr kfx (st rx rpbinds strings tys) rxs)
+    (lambda (s x sc ls ts)
+      "A product's or sum's parts: each label, then its type."
+      (if (or (null? ls) (null? ts))
+          (rxs x nil)
+          (tagcase (rx-ty s x sc (car ts))
+            (rxa (x a) (tagcase (rx-parts s x sc (cdr ls) (cdr ts)) (rxs (x as) (rxs x (cons (rx-sym (car ls)) (cons a as))))))))))
+  (rx-subr (subr kfx (st rx rpbinds string strings tys ty i64) rx)
+    (lambda (s x sc conv es ps r slot)
+      "`(subr C E (params P …) R)` at `slot`."
+      (tagcase (rx-node x conv #f (the rp-operands nil))
+        (rxa (x c)
+          (tagcase (rx-effect x sc es)
+            (rxa (x e)
+              (tagcase (rx-tys s x sc ps)
+                (rxs (x as)
+                  (tagcase (rx-node x "params" #f as)
+                    (rxa (x p)
+                      (tagcase (rx-ty s x sc r)
+                        (rxa (x q) (rx-fill x slot "subr" #f (the strings nil) (the rp-operands (list c e p q)))))))))))))))
+  (rx-ty-at (subr kfx (st rx rpbinds ty i64) rx)
+    (lambda (s x sc t slot)
+      "Node `slot`, type `t`'s, filled. A datatype's or generative type's value is
+       a constant by its name (kayak's key for now, C301), applied to its
+       arguments; a part a rep does not take yet is declined."
+      (let ((base (lambda ((n string)) (rx-fill x slot "base" #f (the strings nil) (the rp-operands (list (rx-sym n))))))
+            (one (lambda ((head string) (args rp-operands)) (rx-fill x slot head #f (the strings nil) args))))
+        (tagcase t
+          (ty-int () (base "int"))
+          (ty-i64 () (base "i64"))
+          (ty-f64 () (base "f64"))
+          (ty-bool () (base "bool"))
+          (ty-char () (base "char"))
+          (ty-unit () (base "unit"))
+          (ty-string () (base "string"))
+          (ty-void () (one "void" (the rp-operands nil)))
+          (ty-nat () (tagcase (rx-node x "finite" #f (the rp-operands nil)) (rxa (x z) (rx-fill x slot "nat" #f (the strings nil) (the rp-operands (list z))))))
+          (ty-proc (es ps r) (rx-subr s x sc "cellular" es ps r slot))
+          (ty-ref (a r) (tagcase (rx-ty s x sc a) (rxa (x a2) (tagcase (rx-region s x sc r) (rxa (x r2) (rx-fill x slot "ref" #f (the strings nil) (the rp-operands (list a2 r2))))))))
+          (ty-list (e r) (tagcase (rx-ty s x sc e) (rxa (x e2) (tagcase (rx-region s x sc r) (rxa (x r2) (rx-fill x slot "pairof" #f (the strings nil) (the rp-operands (list e2 (the rp-operand (sum node (i64->int slot))) r2 (the rp-operand (sum flag #t))))))))))
+          (ty-shape (p ls ts) (tagcase (rx-parts s x sc ls ts) (rxs (x as) (rx-fill x slot (if p "productof" "sumof") #f (the strings nil) as))))
+          (ty-data (d args)
+            (cond ((string=? d "nil") (one "nil" (the rp-operands nil)))
+                  ((string=? d "false") (one "false" (the rp-operands nil)))
+                  ((string-member? d base-type-names) (base d))
+                  ((string=? d "%union") (tagcase (rx-tys s x sc args) (rxs (x as) (rx-fill x slot "union" #f (the strings nil) as))))
+                  ((and (string=? d "%pairof") (i64= (size args) 3)) (tagcase (rx-tys s x sc (list (car args) (car (cdr args)))) (rxs (x as) (tagcase (rx-region s x sc (car (cdr (cdr args)))) (rxa (x r2) (rx-fill x slot "pairof" #f (the strings nil) (onto as (the rp-operands (list r2 (the rp-operand (sum flag #f)))))))))))
+                  ((and (string=? d "%mu") (i64= (size args) 2)) (tagcase (car args) (ty-var (n) (rx-ty-at s x (cons (rpbind n slot -1) sc) (walk s (car (cdr args))) slot)) (else other (rx-declined x))))
+                  ((and (string=? d "%poly") (not (null? args))) (let* ((ns (poly-binders-of args)) (sc2 (binders-in sc ns slot 0))) (tagcase (rx-binder-nodes x ns) (rxs (x bs) (tagcase (rx-ty s x sc2 (last args)) (rxa (x b) (rx-fill x slot "poly" #f ns (onto bs (the rp-operands (list b))))))))))
+                  ((and (or (string=? d "%icell") (string=? d "%mark-key")) (i64= (size args) 2)) (tagcase (rx-ty s x sc (car args)) (rxa (x a2) (tagcase (rx-region s x sc (car (cdr args))) (rxa (x r2) (rx-fill x slot (after-prefix d "%") #f (the strings nil) (the rp-operands (list a2 r2))))))))
+                  ((and (string=? d "%place") (i64= (size args) 1)) (tagcase (rx-region s x sc (car args)) (rxa (x r2) (rx-fill x slot "place" #f (the strings nil) (the rp-operands (list r2))))))
+                  ((and (string=? d "%array") (i64= (size args) 2)) (tagcase (rx-ty s x sc (car args)) (rxa (x a2) (tagcase (rx-node x "finite" #f (the rp-operands nil)) (rxa (x z) (tagcase (rx-region s x sc (car (cdr args))) (rxa (x r2) (rx-fill x slot "narrayof" #f (the strings nil) (the rp-operands (list a2 z r2))))))))))
+                  ((and (or (string=? d "%cellular") (string=? d "%fx") (string=? d "%native")) (i64= (size args) 1)) (tagcase (walk s (car args)) (ty-proc (es ps r) (rx-subr s x sc (after-prefix d "%") es ps r slot)) (else other (rx-declined x))))
+                  ((or (has-prefix? d "%") (has-char-in? d #\space)) (rx-declined x))
+                  (else (tagcase (rx-tys s x sc args) (rxs (x as) (let ((kind (if (null? args) "type" (string-append "generative/" (i64->string (size args)))))) (rx-fill x slot "named" #f (the strings nil) (cons (the rp-operand (sum const (product (1 d) (2 0) (3 kind)))) as))))))))
+          (else other (rx-declined x)))))))
+
+(define rp-hex-digits string "0123456789abcdef")
+
+(define-rec
+  (rp-hex-of (subr (maxeff kfx (read @heap)) ((bytevectorof @heap) int) string)
+    (lambda (b i)
+      "Bytes `b` from `i` on, two hexadecimal digits each."
+      (if (>= i (bytevector-length b))
+          ""
+          (let ((k (u8->int (bytevector-u8-ref b i))))
+            (string-append (substring rp-hex-digits (quotient k 16) (+ (quotient k 16) 1))
+              (string-append (substring rp-hex-digits (remainder k 16) (+ (remainder k 16) 1)) (rp-hex-of b (+ i 1)))))))))
+
+"Importing: a rep's nodes, as `rep-nodes` gives them, back to a type of the
+ checker's (C301). Each node by its slot; a bound variable by its binder's
+ name at its place; a hole by its name; a node met again while it is being
+ made, a recursive type's variable, `%mN`, its node then a `%mu`."
+(define-type rp-in (productof (1 rp-nodes) (2 (listof symbol acyclic))))
+
+(define-rec
+  (rp-node-at (subr kfx (rp-nodes int) rp-nodes)
+    (lambda (ns k) (cond ((null? ns) nil) ((= (extract (car ns) 1) k) (list (car ns))) (else (rp-node-at (cdr ns) k))))))
+
+(define-rec
+  (nth-symbol (subr kfx ((listof symbol acyclic) int) string)
+    (lambda (xs k) (cond ((null? xs) "?") ((= k 0) (symbol->string (car xs))) (else (nth-symbol (cdr xs) (- k 1)))))))
+
+(define-rec
+  (ty-names? (subr kfx (ty string) bool)
+    (lambda (t n)
+      "Whether type `t` names variable `n`."
+      (tagcase t
+        (ty-var (m) (string=? m n))
+        (ty-list (e r) (or (ty-names? e n) (ty-names? r n)))
+        (ty-flat (e r) (or (ty-names? e n) (ty-names? r n)))
+        (ty-ref (e r) (or (ty-names? e n) (ty-names? r n)))
+        (ty-tag (a h es r) (or (ty-names? a n) (ty-names? h n) (ty-names? r n) (string-member? n es)))
+        (ty-proc (es ps r) (or (string-member? n es) (ty-names? r n) (any? (lambda ((p ty)) (ty-names? p n)) ps)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (ty-names? x n)) ts))
+        (ty-data (d args) (any? (lambda ((x ty)) (ty-names? x n)) args))
+        (else other #f)))))
+
+"What an import is in: the rep's nodes; its holes' names; the binders in
+ scope, each its node's slot and its names; the nodes being made."
+(define-datatype ri (ri rp-nodes (listof symbol acyclic) (listof (productof (1 int) (2 (listof symbol acyclic))) acyclic) (listof int acyclic)))
+
+(define-rec
+  (ri-binder-names (subr kfx ((listof (productof (1 int) (2 (listof symbol acyclic))) acyclic) int) (listof symbol acyclic))
+    (lambda (bs slot) (cond ((null? bs) nil) ((= (extract (car bs) 1) slot) (extract (car bs) 2)) (else (ri-binder-names (cdr bs) slot))))))
+
+(define-rec
+  (ri-ty (subr kfx (ri rp-operand) ty)
+    (lambda (c a)
+      (tagcase c
+        (ri (ns hs bs busy)
+          (tagcase a
+            (node k (if (any? (lambda ((b int)) (= b k)) busy) (ty-var (string-append "%m" (int->string k))) (ri-node c k)))
+            (bound p (ty-var (nth-symbol (ri-binder-names bs (extract p 1)) (extract p 2))))
+            (hole h (ty-var (nth-symbol hs h)))
+            (else other (ty-void)))))))
+  (ri-tys (subr kfx (ri rp-operands) tys)
+    (lambda (c as) (if (null? as) nil (cons (ri-ty c (car as)) (ri-tys c (cdr as))))))
+  (ri-region (subr kfx (ri rp-operand) ty)
+    (lambda (c a)
+      (tagcase c
+        (ri (ns hs bs busy)
+          (tagcase a
+            (node k
+              (let ((n (rp-node-at ns k)))
+                (if (null? n)
+                    (ty-void)
+                    (let ((head (symbol->string (extract (car n) 2))) (args (extract (car n) 5)))
+                      (cond ((string=? head "heap") (ty-rconst "@heap"))
+                            ((string=? head "rconst") (tagcase (car args) (sym s (ty-rconst (symbol->string s))) (else other (ty-void))))
+                            ((string=? head "frozen")
+                             (let ((kind (tagcase (car args) (flag f (if f "acyclic" "const")) (else other "const"))))
+                               (if (null? (cdr args)) (ty-rconst kind) (ty-data "%frozen" (list (ty-rconst kind) (ri-ty c (car (cdr args))))))))
+                            (else (ty-void)))))))
+            (else other (ri-ty c a)))))))
+  (ri-region-string (subr kfx (ri rp-operand) string)
+    (lambda (c a) (region-string (new-state) (ri-region c a))))
+  (ri-atoms (subr kfx (ri rp-operands) strings)
+    (lambda (c as) (if (null? as) nil (cons (ri-atom c (car as)) (ri-atoms c (cdr as))))))
+  (ri-atom (subr kfx (ri rp-operand) string)
+    (lambda (c a)
+      (tagcase c
+        (ri (ns hs bs busy)
+          (tagcase a
+            (node k
+              (let ((n (rp-node-at ns k)))
+                (if (null? n)
+                    "?"
+                    (let ((head (symbol->string (extract (car n) 2))) (args (extract (car n) 5)))
+                      (cond ((or (string=? head "spin") (string=? head "nondet") (string=? head "stage")) head)
+                            ((string=? head "io") (tagcase (car args) (sym s (string-append "io:" (symbol->string s))) (else other "?")))
+                            ((and (string=? head "read") (tagcase (car args) (node j (let ((m (rp-node-at ns j))) (and (not (null? m)) (string=? (symbol->string (extract (car m) 2)) "globals")))) (else other #f)))
+                             "@globals")
+                            ((and (string=? head "read") (tagcase (car args) (node j (let ((m (rp-node-at ns j))) (and (not (null? m)) (string=? (symbol->string (extract (car m) 2)) "global")))) (else other #f)))
+                             (tagcase (car args)
+                               (node j (tagcase (car (extract (car (rp-node-at ns j)) 5)) (sym g (string-append "g:" (symbol->string g))) (else other "?")))
+                               (else other "?")))
+                            (else (string-append head (string-append ":" (ri-region-string c (car args))))))))))
+            (else other (tagcase (ri-ty c a) (ty-var (v) v) (else z "?"))))))))
+  (ri-parts (subr kfx (ri rp-operands) (listof (productof (1 string) (2 ty)) acyclic))
+    (lambda (c as)
+      (if (or (null? as) (null? (cdr as)))
+          nil
+          (cons (product (1 (tagcase (car as) (sym s (symbol->string s)) (else other "?"))) (2 (ri-ty c (car (cdr as)))))
+                (ri-parts c (cdr (cdr as)))))))
+  (ri-node (subr kfx (ri int) ty)
+    (lambda (c k)
+      (tagcase c
+        (ri (ns hs bs busy)
+          (let ((n (rp-node-at ns k)))
+            (if (null? n)
+                (ty-void)
+                (let* ((head (symbol->string (extract (car n) 2))) (args (extract (car n) 5)) (binders (extract (car n) 4))
+                       (c2 (ri ns hs (cons (product (1 k) (2 binders)) bs) (cons k busy)))
+                       (t (ri-made c2 k head args binders))
+                       (m (string-append "%m" (int->string k))))
+                  (if (ty-names? t m) (ty-data "%mu" (list (ty-var m) t)) t))))))))
+  (ri-made (subr kfx (ri int string rp-operands (listof symbol acyclic)) ty)
+    (lambda (c k head args binders)
+      (let ((base-of (lambda ((n string))
+                       (cond ((string=? n "int") (ty-int)) ((string=? n "i64") (ty-i64)) ((string=? n "f64") (ty-f64))
+                             ((string=? n "bool") (ty-bool)) ((string=? n "char") (ty-char)) ((string=? n "unit") (ty-unit))
+                             ((string=? n "string") (ty-string)) (else (ty-data n nil))))))
+        (cond ((string=? head "base") (tagcase (car args) (sym s (base-of (symbol->string s))) (else other (ty-void))))
+              ((string=? head "void") (ty-void))
+              ((string=? head "nil") (ty-data "nil" nil))
+              ((string=? head "false") (ty-data "false" nil))
+              ((string=? head "nat") (ty-nat))
+              ((string=? head "union") (ty-data "%union" (ri-tys c args)))
+              ((string=? head "subr")
+               (let* ((conv (tagcase (car args) (node j (symbol->string (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 2))) (else other "cellular")))
+                      (es (tagcase (car (cdr args)) (node j (ri-atoms c (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 5))) (else other nil)))
+                      (ps (tagcase (car (cdr (cdr args))) (node j (ri-tys c (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 5))) (else other nil)))
+                      (p (ty-proc es ps (ri-ty c (car (cdr (cdr (cdr args))))))))
+                 (if (string=? conv "cellular") p (ty-data (string-append "%" conv) (list p)))))
+              ((string=? head "poly")
+               (ty-data "%poly" (onto (map (lambda ((b symbol)) (ty-var (symbol->string b))) binders) (list (ri-ty c (last args))))))
+              ((string=? head "ref") (ty-ref (ri-ty c (car args)) (ri-region c (car (cdr args)))))
+              ((string=? head "pairof")
+               (if (tagcase (car (cdr args)) (node j (= j k)) (else other #f))
+                   (ty-list (ri-ty c (car args)) (ri-region c (car (cdr (cdr args)))))
+                   (ty-data "%pairof" (list (ri-ty c (car args)) (ri-ty c (car (cdr args))) (ri-region c (car (cdr (cdr args))))))))
+              ((or (string=? head "productof") (string=? head "sumof"))
+               (let ((ps (ri-parts c args)))
+                 (ty-shape (string=? head "productof") (map (lambda ((p (productof (1 string) (2 ty)))) (extract p 1)) ps)
+                           (map (lambda ((p (productof (1 string) (2 ty)))) (extract p 2)) ps))))
+              ((or (string=? head "icell") (string=? head "mark-key"))
+               (ty-data (string-append "%" head) (list (ri-ty c (car args)) (ri-region c (car (cdr args))))))
+              ((string=? head "place") (ty-data "%place" (list (ri-region c (car args)))))
+              ((string=? head "narrayof") (ty-data "%array" (list (ri-ty c (car args)) (ri-region c (car (cdr (cdr args)))))))
+              ((string=? head "named")
+               (tagcase (car args)
+                 (const p (ty-data (extract p 1) (ri-tys c (cdr args))))
+                 (else other (ty-void))))
+              (else (ty-void)))))))
+
+"A rep, from its binary form, as a type of the checker's."
+(define rep-ty (subr (maxeff kfx (read @heap)) ((bytevectorof @heap)) ty)
+  (lambda (b)
+    (let ((got (rep-nodes b nil)))
+      (ri-ty (ri (extract got 1) (extract got 2) nil nil) (the rp-operand (sum node 0))))))
+
+"Type `t` as a rep in its binary form, or none if a part is declined."
+(define ty-rep (subr (maxeff kfx (alloc @heap)) (st ty) (listof (bytevectorof @heap) acyclic))
+  (lambda (s t)
+    (tagcase (rx-ty s rx-empty nil t)
+      (rxa (x root)
+        (tagcase x
+          (rx (ns k hs d)
+            (if d
+                nil
+                (tagcase root
+                  (node slot (list (the (bytevectorof @heap) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) (reverse hs)) slot))))
+                  (else other nil)))))))))
+
+"A definition's scheme as a rep, its binary form in hexadecimal, and whether
+ it comes back as itself: imported, and exported again, the same rep
+ (`same`) or not (`differs`, and the second); or `declined` if a part of it
+ is no rep's yet. Its variables a `poly`'s binders."
+(define scheme-rep-hex (subr (maxeff kfx (alloc @heap) (read @heap)) (st scheme) string)
+  (lambda (s sc)
+    (tagcase sc
+      (scheme (tvars t)
+        (let* ((t2 (if (null? tvars) t (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var n)) tvars) (list t)))))
+               (got (ty-rep s t2)))
+          (if (null? got)
+              "declined"
+              (let* ((h1 (rp-hex-of (car got) 0)) (again (ty-rep (new-state) (rep-ty (car got)))))
+                (cond ((null? again) (string-append h1 " differs: declined again"))
+                      ((string=? (rp-hex-of (car again) 0) h1) (string-append h1 " same"))
+                      (else (string-append h1 (string-append " differs " (rp-hex-of (car again) 0))))))))))))
