@@ -595,7 +595,7 @@
            (map (lambda ((g sexp)) (bound-line v (sym-name (car (items g))) (if (i64= (size (items g)) 3) (second (items g)) no-form) "pure"))
                 (cdr (items form))))
           ((head-is? form "define-datatype")
-           (map (lambda ((g sexp)) (bound-line v (sym-name (car (items g))) no-form "pure")) (cdr (cdr (items form)))))
+           (map (lambda ((g sexp)) (bound-line v (label-of (car (items g))) no-form "pure")) (cdr (cdr (items form)))))
           ((head-is? form "define-generative")
            "Its conversions; a family's in a `poly` of its parameters, as written
             (C179: Fixpt prints `(poly ((a type)) (subr pure (...) (tree a)))`)."

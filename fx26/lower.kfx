@@ -563,6 +563,8 @@
               ((string=? n "#t") (i-lit (v-bool #t)))
               ((string=? n "#f") (i-lit (v-bool #f)))
               ((string=? n "#u") (i-lit (v-unit)))
+              ;; A keyword (C291): itself, the symbol so named its literal (table.kfx).
+              ((keyword-name? n) (i-lit (v-symbol (string->symbol n))))
               ((i64>= (position-of n gs 0) 0) (i-global (position-of n gs 0) n))
               ((or (string=? n "nil") (string=? n "no-pair")) (i-lit (v-nil)))
               ((and (i64>= (prim-arity (prim-alias n)) 0) (string=? (standard-written n) ""))

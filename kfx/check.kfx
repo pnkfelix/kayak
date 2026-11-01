@@ -340,13 +340,30 @@
             ((null? b) #f)
             (else (and (string=? (car a) (car b)) (strings=? (cdr a) (cdr b))))))))
 
+(define keyword-name? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether a symbol as read is a keyword, `#:name` (C291; Fixpt's
+     `docs/fx26.md`, \"Keywords\"): `#:` and a name after it, which is no
+     number, as `#:12` is not."
+    (and (has-prefix? n "#:") (i64> (string-length-i64 n) 2) (not (char-numeric? (string-ref-i64 n 2))))))
+
+(define tag-of (subr kfx (cv sexp) string)
+  (lambda (v e)
+    "A tag where a name is expected, a variant's or an arm's: a name, or a
+     keyword (C291), whose tag is its name."
+    (let ((n (name-of v e))) (if (keyword-name? n) (after-prefix n "#:") n))))
+
 (define label-of (subr kfx (sexp) string)
   (lambda (e)
-    "A product's label or a sum's tag, as written: a name or a number. A
-     label is never a module's name for a type, `m..x` (C288): one so
-     qualified with the module's types, as a type is, is `x`."
+    "A product's label or a sum's tag, as written: a name, a keyword
+     (C291), whose label is its name, or a number. A label is never a
+     module's name for a type, `m..x` (C288): one so qualified with the
+     module's types, as a type is, is `x`."
     (tagcase e
-      (sym (n at-file at-pos) (let ((after (after-dots n))) (if (string=? after "") n after)))
+      (sym (n at-file at-pos)
+        (if (keyword-name? n)
+            (after-prefix n "#:")
+            (let ((after (after-dots n))) (if (string=? after "") n after))))
       (num (k f p) (i64->string k))
       (else other ""))))
 
@@ -1614,6 +1631,7 @@
               ((string=? d "nil") "nil")
               ((string=? d "%pairof") "pair")
               ((string=? d "symbol") "symbol")
+              ((string=? d "keyword") "keyword")
               ((string=? d "%array") "bloblet")
               ((string=? d "%bytes") "bytevector")
               ((string=? d "%stringof") "string")
@@ -1640,12 +1658,13 @@
             (else other (cons (car ts) (union-members (cdr ts)))))))))
 
 "`datum` (C77), FX-26's union of what a reader reads, `(union int f64
- char bool string symbol nil (pairof datum datum acyclic) vector)`: a
- name, its members found when they are wanted, since it mentions itself.
- FX-26's has `bytevector` too, which KFX's has not yet."
+ char bool string symbol keyword nil (pairof datum datum acyclic)
+ vector)`, its keywords C291's: a name, its members found when they are
+ wanted, since it mentions itself. FX-26's has `bytevector` too, which
+ KFX's has not yet."
 (define datum-members (subr kfx () tys)
   (lambda ()
-    (list (ty-int) (ty-f64) (ty-char) (ty-bool) (ty-string) (ty-data "symbol" nil) (ty-data "nil" nil)
+    (list (ty-int) (ty-f64) (ty-char) (ty-bool) (ty-string) (ty-data "symbol" nil) (ty-data "keyword" nil) (ty-data "nil" nil)
           (ty-data "%pairof" (list (ty-data "datum" nil) (ty-data "datum" nil) (ty-rconst "acyclic")))
           (ty-data "vector" nil))))
 
@@ -1866,7 +1885,7 @@
         "define-convention"))
 (define logic-base-names strings
   (list "int" "nat" "i64" "u64" "i32" "u32" "i16" "u16" "i8" "u8" "f64" "f32" "bool" "char" "unit" "string"
-        "symbol" "datum" "void" "false" "nil"))
+        "symbol" "keyword" "datum" "void" "false" "nil"))
 
 (define param-name-written (subr kfx (cv strings sexp) string)
   (lambda (v tvars p)
@@ -2151,7 +2170,7 @@
  `ensures` of the result, `(and (implies r (and P ...)) (implies (not r)
  (and Q ...)))`."
 (define latent-shapes strings
-  (list "int" "f64" "f32" "char" "bool" "nil" "pair" "string" "symbol" "procedure" "bloblet" "box" "sum"
+  (list "int" "f64" "f32" "char" "bool" "nil" "pair" "string" "symbol" "keyword" "procedure" "bloblet" "box" "sum"
         "product" "vector" "bytevector"))
 
 (define latent-param (subr kfx (cv sexp i64) string)
@@ -2731,6 +2750,7 @@
                 ((fixed-width? s) (ty-data s nil))
                 ((string=? s "f32") (ty-data s nil))
                 ((string=? s "symbol") (ty-data s nil))
+                ((string=? s "keyword") (ty-data s nil))
                 ((string=? s "false") (ty-data s nil))
                 ((string=? s "nil") (ty-data s nil))
                 ((or (string=? s "datum") (string=? s "vector")) (ty-data s nil))
@@ -3628,6 +3648,17 @@
 (define parse-scheme (subr kfx (cv sexp) scheme)
   (lambda (v t) (parse-scheme-of v t #t)))
 
+(define-rec
+  (digits-only? (subr kfx (chars) bool)
+    (lambda (cs) (or (null? cs) (and (char-numeric? (car cs)) (digits-only? (cdr cs)))))))
+
+(define show-label (subr kfx (string) string)
+  (lambda (l)
+    "A product's or sum's label as a type shows it (C291; Fixpt's
+     `show_label`): a keyword, `#:name`; a number, which no keyword is,
+     bare."
+    (if (and (not (string=? l "")) (digits-only? (string-chars l))) l (string-append "#:" l))))
+
 "Names `desc-named` tests against, made once (C264): a list written in place is
  made at each call."
 (define-rec
@@ -3775,12 +3806,12 @@
                  (string-append "(flat-arrayof " (string-append (show-ty s (car args))
                    (string-append " " (string-append (tagcase (car (cdr args)) (ty-rconst (k) k) (else other (show-size s (car (cdr args))))) ")")))))
                 ((and (string=? d "%flat-sum") (unkeyed? args))
-                 (string-append "(sumof" (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append l (string-append " " (string-append (show-ty s x) ")")))))))
+                 (string-append "(sumof" (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append (show-label l) (string-append " " (string-append (show-ty s x) ")")))))))
                                                                           (flat-sum-variants args)))
                                                         ")")))
                 ((string=? d "%flat-sum")
                  (string-append "(sumof " (string-append (show-ty s (car args))
-                   (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append l (string-append " " (string-append (show-ty s x) ")")))))))
+                   (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append (show-label l) (string-append " " (string-append (show-ty s x) ")")))))))
                                                        (flat-sum-variants args)))
                                   ")"))))
                 ((string=? d "%place") (string-append "(place " (string-append (show-tys s args) ")")))
@@ -3854,7 +3885,7 @@
     (lambda (s ls ts)
       (if (or (null? ls) (null? ts))
           ""
-          (string-append " (" (string-append (car ls) (string-append " " (string-append (show-ty s (car ts))
+          (string-append " (" (string-append (show-label (car ls)) (string-append " " (string-append (show-ty s (car ts))
             (string-append ")" (show-fields s (cdr ls) (cdr ts))))))))))
   (show-tys (subr kfx (st tys) string)
     (lambda (s ts)
@@ -5279,9 +5310,10 @@
 
 "The names in scope"
 
-(define keyword? (subr kfx (string) bool)
+(define form-keyword? (subr kfx (string) bool)
   (lambda (name)
-    "FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS)."
+    "FX-26's forms' keywords, which name nothing (fixpt's top.rs,
+     KEYWORDS): not `keyword?`, FX-26's test of a keyword value (C291)."
     (or (string=? name "lambda") (string=? name "plambda") (string=? name "proj") (string=? name "if")
         (string=? name "letrec") (string=? name "let") (string=? name "begin") (string=? name "define")
         (string=? name "define*") (string=? name "define-type") (string=? name "define-generative") (string=? name "subr")

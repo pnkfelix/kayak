@@ -1420,7 +1420,7 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         }), cdr(items(form)))
     } else if head_is_p(form, str_lit("define-datatype")) {
         map(lambda1s(move |g: &'static Sexp| {
-            bound_line(v, sym_name(car(items(g))), no_form(), str_lit("pure"))
+            bound_line(v, label_of(car(items(g))), no_form(), str_lit("pure"))
         }), cdr(cdr(items(form))))
     } else if head_is_p(form, str_lit("define-generative")) {
         // Its conversions; a family's in a `poly` of its parameters, as written

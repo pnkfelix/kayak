@@ -8106,3 +8106,45 @@ them: `generative/nested.fx`, `recursive/parametric-rose.fx` and
 for (C235), not a lost program. That list had not been blessed since
 C235 and now holds the 207 it agrees on. The REPL's sessions print
 effects absorbed, `(maxeff (read @globals) spin)`.
+
+## C291. Keywords, in the checker and the engine (2026-11-01)
+
+TODO 4c's first item, Fixpt's 42c1b40d, 7885d18c and b526aba2
+(`docs/fx26.md`, "Keywords"):
+- **Read as they are.** kayak's reader already reads `#:name` as a
+  symbol of that name; `keyword-name?` tells one (`#:` and a name that is
+  no number).
+- **Labels and tags written as keywords are their names.** One pass,
+  `labels-unkeyworded`, in `with-loads` and in the REPL's `program-read`,
+  writes the label or tag of a product, `productof`, `extract`, sum,
+  `sumof`, `tagcase` arm and datatype variant as its name, everywhere but
+  in a quote. So the checker, the engine and KFX's emitter after it see
+  one spelling, and only a keyword that is a value stays one. The
+  checker's `label-of` and `tag-of` strip `#:` too, for what is read back
+  from facts.
+- **The checker**: a keyword's type is `keyword`, a `datum`'s shape of its
+  own (`keyword?`, a `typecase` arm), quoted as itself; `symbol->keyword`
+  and `keyword->symbol`. A bare `'()` is `nil`, as Fixpt's `quoted`
+  takes it, where kayak had refused it. KFX's own `keyword?` (FX-26's
+  form names) is now `form-keyword?`, as the primitive took its name.
+- **Types print their labels as keywords**, `(productof (#:n int))`, a
+  number bare (`show-label`, Fixpt's `show_label`), flat sums' too.
+- **The engine**: a keyword is a symbol's immediate, its name's number
+  past `keyword-bias` (2^40). That is the f32 trick (C220), since all
+  eight immediate kinds are taken. So one word for each name, and `eq?`
+  is word equality. `symbol?` excludes keywords; ops 256-258 are
+  `keyword?`, `symbol->keyword` and `keyword->symbol`; a `v-symbol`
+  literal named `#:n` is the keyword, which is how `#:n` is lowered; it
+  prints as `#:n`.
+- **KFX refuses them** (restrict.kfx): a keyword value and the three
+  procedures, until kayak-rt has a keyword. Labels written as keywords
+  KFX takes, since the pass leaves none for its emitter.
+- **Not yet**: tier 1 (cg.kfx and the cellular machine's keyword object,
+  kind 48), so the cells tests of Fixpt's four keyword programs are
+  "cannot" yet; `#:|a b|`.
+Fixpt's `run/keywords*.fx`, `keyword-tags.fx` and `keyword-datatype.fx`
+get its types and its values on the engine.
+`run/keywords-printed.fx` leaves `tests/engine-fixpt-passing`, the list
+of what kfx accepts: kfx took it only because it read a quoted `#:a` as a
+symbol of that name, which printed alike. It now refuses the keyword,
+and the engine runs the program beyond KFX, with Fixpt's value.

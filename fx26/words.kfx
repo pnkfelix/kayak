@@ -90,6 +90,14 @@
 (define bool-word (subr kfx (bool) i64) (lambda (b) (if b w-true w-false)))
 (define truthy? (subr kfx (i64) bool) (lambda (w) (not (i64= w w-false))))
 (define symbol-word (subr kfx (i64) i64) (lambda (n) (immediate imm-symbol n)))
+
+"Keywords (C291): a symbol's immediate, its name's number past
+ `keyword-bias`, as `f32`s are a special one past the machine's own; one
+ word for each name, as Fixpt interns them, so `eq?` tells them apart."
+(define keyword-bias i64 1099511627776)
+(define keyword-word (subr kfx (i64) i64) (lambda (n) (immediate imm-symbol (i64+ n keyword-bias))))
+(define keyword-word? (subr kfx (i64) bool)
+  (lambda (w) (and (immediate? w) (i64= (immediate-kind w) imm-symbol) (i64>= (immediate-value w) keyword-bias))))
 (define is-imm? (subr kfx (i64 i64) bool) (lambda (w kind) (and (immediate? w) (i64= (immediate-kind w) kind))))
 
 "`f32`s (C220): an immediate, as Fixpt's, a special one past the

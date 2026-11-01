@@ -194,7 +194,9 @@
         "%syscall5" "%syscall6"
         "read-byte" "read-bytes" "stdin-ready?" "terminal-raw" "terminal-restore" "terminal-size"
         ;; Strings at a region (C285): written in place, a character's code a word.
-        "make-string" "string-set!" "string-fill!" "string-copy" "string-copy!" "rmake-string"))
+        "make-string" "string-set!" "string-fill!" "string-copy" "string-copy!" "rmake-string"
+        ;; Keywords (C291).
+        "keyword?" "symbol->keyword" "keyword->symbol"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)
@@ -230,7 +232,10 @@
       (v-real (x) (real-word! x))
       (v-char (c) (char-word c))
       (v-string (s) (string-word! s))
-      (v-symbol (s) (symbol-word (intern! (symbol->string s))))
+      (v-symbol (s)
+        (let ((n (symbol->string s)))
+          "A symbol named `#:n` is the keyword (C291), as lowering writes one."
+          (if (keyword-name? n) (keyword-word (intern! (after-prefix n "#:"))) (symbol-word (intern! n)))))
       (v-bool (b) (bool-word b))
       (v-unit () w-unit)
       (v-nil () w-nil)
@@ -272,6 +277,7 @@
                                         (cd (quoted-constant! (lst (cdr ys) f l p))))
                                    (pair! (constant-at ca) (constant-at cd))))))
                         (sym (n f p) (cond ((string=? n "#t") (bool-word #t)) ((string=? n "#f") (bool-word #f))
+                                           ((keyword-name? n) (keyword-word (intern! (after-prefix n "#:"))))
                                            (else (symbol-word (intern! n)))))
                         (else other (tagcase (lower d nil nil) (i-lit (v) (literal-word! v)) (else other2 w-unit)))))
                    (i (add-constant! w)))

@@ -45,6 +45,8 @@
                        (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
                       ((string-member? n (list "current-marks" "marks-of"))
                        (restriction-refused file line (string-append n ", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)")))
+                      ((or (keyword-name? n) (string-member? n (list "keyword?" "symbol->keyword" "keyword->symbol")))
+                       (restriction-refused file line (string-append n ", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)")))
                       ((string=? n "list")
                        (restriction-refused file line "list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)"))
                       ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "assume" "assert"

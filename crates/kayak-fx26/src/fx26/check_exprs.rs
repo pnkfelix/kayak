@@ -1260,6 +1260,8 @@ pub mod expressions {
                     Sexp::Sym(n, at_file, at_pos) => {
                         if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
                             string_eq_p(kind, str_lit("bool"))
+                        } else if keyword_name_p(n) {
+                            string_eq_p(kind, str_lit("keyword"))
                         } else {
                             string_eq_p(kind, str_lit("symbol"))
                         }
@@ -1512,6 +1514,8 @@ pub mod expressions {
             str_lit("char")
         } else if string_eq_p(p, str_lit("symbol?")) {
             str_lit("symbol")
+        } else if string_eq_p(p, str_lit("keyword?")) {
+            str_lit("keyword")
         } else if string_eq_p(p, str_lit("array?")) {
             str_lit("bloblet")
         } else if string_eq_p(p, str_lit("procedure?")) {
@@ -4529,7 +4533,7 @@ pub mod expressions {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(h, f2, p2) => {
-                        (string_member_p(h, expressions_names_3()) || not((keyword_p(h) || string_member_p(h, expressions_names_4()))))
+                        (string_member_p(h, expressions_names_3()) || not((form_keyword_p(h) || string_member_p(h, expressions_names_4()))))
                     }
                     _ => {
                         let other = tagcase_;
@@ -4680,6 +4684,10 @@ pub mod expressions {
             res(ty_bool(), nil::<Str>(), s)
         } else if string_eq_p(name, str_lit("#u")) {
             res(ty_unit(), nil::<Str>(), s)
+        } else if keyword_name_p(name) {
+            // A keyword (C291): itself, as a number is, FX-26's; kayak's
+            // Rust has none yet.
+            res(ty_data(str_lit("keyword"), nil::<&'static Ty>()), nil::<Str>(), kfx_restricted(v, s, str_lit("a keyword, FX-26's, which KFX has not yet (C291)")))
         } else if ((string_eq_p(name, str_lit("append")) || string_eq_p(name, str_lit("string-append"))) && std_prim_p(v, name)) {
             // As a value, Fixpt's `vsubr` (C188); FX-26's.
             let tagcase_ = variadic_standard(s, name);
@@ -5731,6 +5739,8 @@ pub mod expressions {
                         Sexp::Sym(n, f, p) => {
                             if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
                                 return res(ty_bool(), nil::<Str>(), s);
+                            } else if keyword_name_p(n) {
+                                return res(ty_data(str_lit("keyword"), nil::<&'static Ty>()), nil::<Str>(), kfx_restricted(v, s, str_lit("a keyword, FX-26's, which KFX has not yet (C291)")));
                             } else {
                                 return res(ty_data(str_lit("symbol"), nil::<&'static Ty>()), nil::<Str>(), s);
                             }
@@ -5753,7 +5763,9 @@ pub mod expressions {
                         Sexp::Lst(ys, f, l, p) => {
                             // A quoted list (C77): a `datum`, built where it is written.
                             if null_p(ys) {
-                                return match refuse(v, str_lit("a quote of (), which FX-26 takes as a nil of any type: write nil")) {};
+                                // A bare `'()` is `nil`, an empty list of any type, as Fixpt's
+                                // `quoted` has it (C291).
+                                return synth(v, s, sym(str_lit("nil"), f, p));
                             } else if not(quotable_p(car(xs))) {
                                 return match refuse(v, str_lit("a quoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
                             } else {
@@ -7033,8 +7045,8 @@ pub mod expressions {
             }
         })) {
             match refuse(v, str_lit("a typecase's arm is (shape name body)")) {}
-        } else if not(string_member_p(sym_name(car(arm)), kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil())))))))))))))))))) {
-            match refuse(v, string_append(str_lit("a shape a typecase tests is int, char, bool, nil, pair, string, symbol, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not "), sym_name(car(arm)))) {}
+        } else if not(string_member_p(sym_name(car(arm)), kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("keyword"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil()))))))))))))))))))) {
+            match refuse(v, string_append(str_lit("a shape a typecase tests is int, char, bool, nil, pair, string, symbol, keyword, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not "), sym_name(car(arm)))) {}
         } else {
             let ms = union_local(v, s, x);
             let shape = sym_name(car(arm));
@@ -7305,7 +7317,7 @@ pub mod expressions {
                 }))) {}
             } else {
                 let arm = items(car(tagged));
-                let tag = name_of(v, car(arm));
+                let tag = tag_of(v, car(arm));
                 if string_eq_p(tag, str_lit("else")) {
                     if null_p(cdr(tagged)) {
                         let sum_whole = {
@@ -10476,7 +10488,7 @@ pub mod expressions {
                 return module_expr(v, s, args);
             } else if (string_eq_p(h, str_lit("extend")) && null_p(found) && i64_eq(size(args), 2i64)) {
                 return module_extend(v, s, args);
-            } else if (keyword_p(h) && not((string_member_p(h, expressions_names_8()) && not(null_p(found)) && {
+            } else if (form_keyword_p(h) && not((string_member_p(h, expressions_names_8()) && not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {
                     Bind::Bind(n, sc, w) => {
@@ -11694,7 +11706,7 @@ pub mod expressions {
                     return str_lit("a reference, which can be written");
                 }
                 Ty::TyData(d, args) => {
-                    if (string_eq_p(d, str_lit("datum")) || string_eq_p(d, str_lit("nil")) || string_eq_p(d, str_lit("false")) || string_eq_p(d, str_lit("symbol")) || string_eq_p(d, str_lit("i8")) || string_eq_p(d, str_lit("u8")) || string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32"))) {
+                    if (string_eq_p(d, str_lit("datum")) || string_eq_p(d, str_lit("nil")) || string_eq_p(d, str_lit("false")) || string_eq_p(d, str_lit("symbol")) || string_eq_p(d, str_lit("keyword")) || string_eq_p(d, str_lit("i8")) || string_eq_p(d, str_lit("u8")) || string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32"))) {
                         return str_lit("");
                     } else if string_eq_p(d, str_lit("%union")) {
                         return or_else_all(v, s, args, seen);

@@ -3,7 +3,7 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [Jfx26> (define-type t (sumof (x int) (y int)))
 [2K[1] 
 [Jfx26> [Jfx26> (define v (the t (sum x 3)))
-[2K[2] v : (sumof (x int) (y int)) ! pure
+[2K[2] v : (sumof (#:x int) (#:y int)) ! pure
 [Jfx26> [Jfx26> (+ 1 
 [2margument 2 of + wants int[0m[1A[11C[Jfx26> (car 
 [2margument 1 of car wants (listof t 'r)[0m[1A[11C[Jfx26> (cons 1 

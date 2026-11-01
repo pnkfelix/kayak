@@ -182,6 +182,21 @@ pub fn symbol_word(n: i64) -> i64 {
     immediate(imm_symbol(), n)
 }
 
+// Keywords (C291): a symbol's immediate, its name's number past
+// `keyword-bias`, as `f32`s are a special one past the machine's own; one
+// word for each name, as Fixpt interns them, so `eq?` tells them apart.
+pub fn keyword_bias() -> i64 {
+    1099511627776i64
+}
+
+pub fn keyword_word(n: i64) -> i64 {
+    immediate(imm_symbol(), i64_plus(n, keyword_bias()))
+}
+
+pub fn keyword_word_p(w: i64) -> bool {
+    (immediate_p(w) && i64_eq(immediate_kind(w), imm_symbol()) && i64_gt_eq(immediate_value(w), keyword_bias()))
+}
+
 pub fn is_imm_p(w: i64, kind: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_kind(w), kind))
 }

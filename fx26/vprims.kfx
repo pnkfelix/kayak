@@ -432,7 +432,7 @@
         ((i64= op 114) (bool-word (is-obj? a ob-string)))
         ((i64= op 115) (bool-word (is-imm? a imm-bool)))
         ((i64= op 116) (bool-word (is-imm? a imm-char)))
-        ((i64= op 117) (bool-word (or (is-imm? a imm-symbol) (i64= a w-unit))))
+        ((i64= op 117) (bool-word (or (and (is-imm? a imm-symbol) (not (keyword-word? a))) (i64= a w-unit))))
         ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-flatx) (is-obj? a ob-bloblet))))
         ((i64= op 119) (bool-word (or (is-obj? a ob-proc) (is-obj? a ob-ctor) (is-obj? a ob-cont) (is-imm? a imm-prim))))
         ((i64= op 120) (bool-word (is-obj? a ob-real)))
@@ -586,6 +586,10 @@
         ;; Strings at a region (C285), hand-written (gen-vprims.py has them not).
         ((i64= op 250) (string-made! (fixnum-value a) b))
         ((i64= op 255) (string-made! (fixnum-value b) c))
+        ;; Keywords (C291): a symbol's number past `keyword-bias`.
+        ((i64= op 256) (bool-word (keyword-word? a)))
+        ((i64= op 257) (keyword-word (immediate-value a)))
+        ((i64= op 258) (symbol-word (i64- (immediate-value a) keyword-bias)))
         ((i64= op 251) (begin (element-set! a (fixnum-value b) (char->i64 (word-char c))) w-unit))
         ((i64= op 252) (begin (string-filled! a 0 (obj-size a) (char->i64 (word-char b))) w-unit))
         ((i64= op 253) (string-copy-w! a (fixnum-value b) (fixnum-value c)))

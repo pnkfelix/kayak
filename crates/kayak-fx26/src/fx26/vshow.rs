@@ -63,6 +63,8 @@ pub fn show_word(w: i64) -> Str {
             str_lit("#u")
         } else if i64_eq(kind, imm_nil()) {
             str_lit("()")
+        } else if keyword_word_p(w) {
+            string_append(str_lit("#:"), name_of_number(i64_minus(immediate_value(w), keyword_bias())))
         } else if i64_eq(kind, imm_symbol()) {
             name_of_number(immediate_value(w))
         } else if i64_eq(kind, imm_tag()) {

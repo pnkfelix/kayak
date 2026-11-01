@@ -562,7 +562,7 @@
                               (num (k text pos) (string=? kind "int"))
                               (big (text f p) (string=? kind "int"))
                               (str (t at-file at-pos) (string=? kind "string"))
-                              (sym (n at-file at-pos) (if (or (string=? n "#t") (string=? n "#f")) (string=? kind "bool") (string=? kind "symbol")))
+                              (sym (n at-file at-pos) (cond ((or (string=? n "#t") (string=? n "#f")) (string=? kind "bool")) ((keyword-name? n) (string=? kind "keyword")) (else (string=? kind "symbol"))))
                               (else other #f))))
                      xs))))
 
@@ -674,7 +674,7 @@
       (define tested-shape (subr kfx (string) string)
         (lambda (p)
           (cond ((string=? p "int?") "int") ((string=? p "string?") "string") ((string=? p "bool?") "bool")
-                ((string=? p "char?") "char") ((string=? p "symbol?") "symbol") ((string=? p "array?") "bloblet")
+                ((string=? p "char?") "char") ((string=? p "symbol?") "symbol") ((string=? p "keyword?") "keyword") ((string=? p "array?") "bloblet")
                 ((string=? p "procedure?") "procedure") ((string=? p "null?") "nil") ((string=? p "pair?") "pair")
                 ((string=? p "f64?") "f64") ((string=? p "ref?") "box") ((string=? p "sum?") "sum")
                 ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector") ((string=? p "vector?") "vector") ((string=? p "f32?") "f32")
@@ -2052,7 +2052,7 @@
               (tagcase (car xs)
                 (sym (h f2 p2)
                   (or (string-member? h expressions-names-3)
-                      (not (or (keyword? h)
+                      (not (or (form-keyword? h)
                                (string-member? h expressions-names-4)))))
                 (else other #t)))
             (else other #f))))
@@ -2113,6 +2113,10 @@
         (lambda (v s name at-pos)
           (cond ((or (string=? name "#t") (string=? name "#f")) (res (ty-bool) nil s))
                 ((string=? name "#u") (res (ty-unit) nil s))
+                ((keyword-name? name)
+                 "A keyword (C291): itself, as a number is, FX-26's; kayak's
+                  Rust has none yet."
+                 (res (ty-data "keyword" nil) nil (kfx-restricted v s "a keyword, FX-26's, which KFX has not yet (C291)")))
                 ((and (or (string=? name "append") (string=? name "string-append")) (std-prim? v name))
                  "As a value, Fixpt's `vsubr` (C188); FX-26's."
                  (tagcase (variadic-standard s name)
@@ -2636,7 +2640,9 @@
                  (if (not (i64= (size xs) 1))
                      (refuse v "a quote of one datum")
                      (tagcase (car xs)
-                       (sym (n f p) (if (or (string=? n "#t") (string=? n "#f")) (res (ty-bool) nil s) (res (ty-data "symbol" nil) nil s)))
+                       (sym (n f p) (cond ((or (string=? n "#t") (string=? n "#f")) (res (ty-bool) nil s))
+                                          ((keyword-name? n) (res (ty-data "keyword" nil) nil (kfx-restricted v s "a keyword, FX-26's, which KFX has not yet (C291)")))
+                                          (else (res (ty-data "symbol" nil) nil s))))
                        (num (k f p) (res (ty-int) nil s))
                        (big (t f p) (res (ty-int) nil s))
                        (real (x f p) (res (ty-f64) nil s))
@@ -2644,7 +2650,10 @@
                        (chr (c f p) (res (ty-char) nil s))
                        (lst (ys f l p)
                          "A quoted list (C77): a `datum`, built where it is written."
-                         (cond ((null? ys) (refuse v "a quote of (), which FX-26 takes as a nil of any type: write nil"))
+                         (cond ((null? ys)
+                                "A bare `'()` is `nil`, an empty list of any type, as Fixpt's
+                                 `quoted` has it (C291)."
+                                (synth v s (sym "nil" f p)))
                                ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item"))
                                (else (res (ty-data "datum" nil) nil s))))
                        (else other (refuse v "a quoted datum KFX does not read")))))
@@ -3156,9 +3165,9 @@
                   ((not (and (i64= (size arm) 3) (tagcase (car arm) (sym (n f p) #t) (else other #f))
                              (tagcase (second arm) (sym (n f p) #t) (else other #f))))
                    (refuse v "a typecase's arm is (shape name body)"))
-                  ((not (string-member? (sym-name (car arm)) (list "int" "char" "bool" "nil" "pair" "string" "symbol" "procedure" "bloblet"
+                  ((not (string-member? (sym-name (car arm)) (list "int" "char" "bool" "nil" "pair" "string" "symbol" "keyword" "procedure" "bloblet"
                                                                    "f64" "f32" "box" "sum" "product" "vector" "bytevector")))
-                   (refuse v (string-append "a shape a typecase tests is int, char, bool, nil, pair, string, symbol, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not " (sym-name (car arm)))))
+                   (refuse v (string-append "a shape a typecase tests is int, char, bool, nil, pair, string, symbol, keyword, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not " (sym-name (car arm)))))
                   (else
                    (let* ((ms (union-local v s x))
                           (shape (sym-name (car arm)))
@@ -3258,7 +3267,7 @@
               (if (draft-hole? (car tagged))
                   (refuse-named v s (string-append "the hole: " (arms-wanted s vs (tagcase whole (ty-shape (p ls ts) "name") (else other "(name …)")))))
               (let* ((arm (items (car tagged)))
-                     (tag (name-of v (car arm))))
+                     (tag (tag-of v (car arm))))
                 (if (string=? tag "else")
                     (if (null? (cdr tagged))
                         (let* ((sum-whole (tagcase (walk s whole) (ty-shape (p ls ts) (and (not p) (i64< (size vs) (size ls)) (not (null? vs)))) (else other #f)))
@@ -4691,7 +4700,7 @@
                    (module-expr v s args))
                   ((and (string=? h "extend") (null? found) (i64= (size args) 2))
                    (module-extend v s args))
-                  ((and (keyword? h)
+                  ((and (form-keyword? h)
                         (not (and (string-member? h expressions-names-8)
                                   (not (null? found))
                                   (tagcase (car found) (bind (n sc w) (or (string=? w "local") (string=? w "narrowed"))) (else other #f)))))
@@ -5225,7 +5234,7 @@
               (ty-proc (es ps r) "a procedure")
               (ty-ref (e r) "a reference, which can be written")
               (ty-data (d args)
-                (cond ((or (string=? d "datum") (string=? d "nil") (string=? d "false") (string=? d "symbol")
+                (cond ((or (string=? d "datum") (string=? d "nil") (string=? d "false") (string=? d "symbol") (string=? d "keyword")
                            (string=? d "i8") (string=? d "u8") (string=? d "i32") (string=? d "u32") (string=? d "u64") (string=? d "f32"))
                        "")
                       ((string=? d "%union") (or-else-all v s args seen))

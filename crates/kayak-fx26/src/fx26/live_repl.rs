@@ -1368,7 +1368,7 @@ pub mod session {
     pub fn typed_only_x(text: Str, now: i64) -> () {
         set(commands(), i64_plus(get(commands()), 1i64));
         set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit(""), false, now), get(entries())));
-        let forms = read_all(string_chars(text), str_lit("<,type>"), 1i64);
+        let forms = program_read(string_chars(text), str_lit("<,type>"), 1i64);
         if null_p(forms) {
             refused_x(str_lit("nothing to type"), now)
         } else {
@@ -1468,7 +1468,7 @@ pub mod session {
         } else {
             asked_x(entry_given(k, text, label, timed))
         };
-        let forms = read_all(string_chars(text), if string_eq_p(label, str_lit("")) {
+        let forms = program_read(string_chars(text), if string_eq_p(label, str_lit("")) {
             string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
         } else {
             label
@@ -2258,7 +2258,7 @@ pub mod session {
             set(hole_at(), -1i64)
         } else {
             let typed = trimmed_end(cut(text, 0i64, kept));
-            let inner = read_all(string_chars(string_append(cut(text, car(open), kept), str_lit(")"))), str_lit("<hint>"), 1i64);
+            let inner = program_read(string_chars(string_append(cut(text, car(open), kept), str_lit(")"))), str_lit("<hint>"), 1i64);
             let xs = if null_p(inner) {
                 nil::<&'static Sexp>()
             } else {
@@ -2273,7 +2273,7 @@ pub mod session {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(op, f, p) => {
-                        if keyword_p(op) {
+                        if form_keyword_p(op) {
                             str_lit("")
                         } else {
                             op
@@ -2294,7 +2294,7 @@ pub mod session {
         if string_eq_p(text, str_lit("")) {
             ()
         } else {
-            checked_all(get(repl_cv()), read_all(string_chars(text), str_lit("<draft>"), 1i64));
+            checked_all(get(repl_cv()), program_read(string_chars(text), str_lit("<draft>"), 1i64));
             ()
         }
     }
@@ -2494,7 +2494,7 @@ pub mod session {
         set(spec_type(), r#type);
         set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
         set(spec_state(), 2i64);
-        let forms = read_all(string_chars(text), str_lit("<draft>"), 1i64);
+        let forms = program_read(string_chars(text), str_lit("<draft>"), 1i64);
         if null_p(forms) {
             ()
         } else {
@@ -2786,7 +2786,7 @@ pub mod session {
                     } else {
                         1i64
                     });
-                    speculated_forms_x(read_all(string_chars(closed), str_lit("<draft>"), 1i64), finished)
+                    speculated_forms_x(program_read(string_chars(closed), str_lit("<draft>"), 1i64), finished)
                 }
             }
         }

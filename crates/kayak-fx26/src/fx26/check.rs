@@ -729,18 +729,41 @@ pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
     }
 }
 
-/// A product's label or a sum's tag, as written: a name or a number. A
-/// label is never a module's name for a type, `m..x` (C288): one so
-/// qualified with the module's types, as a type is, is `x`.
+/// Whether a symbol as read is a keyword, `#:name` (C291; Fixpt's
+/// `docs/fx26.md`, "Keywords"): `#:` and a name after it, which is no
+/// number, as `#:12` is not.
+pub fn keyword_name_p(n: Str) -> bool {
+    (has_prefix_p(n, str_lit("#:")) && i64_gt(string_length_i64(n), 2i64) && not(char_numeric_p(string_ref_i64(n, 2i64))))
+}
+
+/// A tag where a name is expected, a variant's or an arm's: a name, or a
+/// keyword (C291), whose tag is its name.
+pub fn tag_of(v: &'static Cv, e: &'static Sexp) -> Str {
+    let n = name_of(v, e);
+    if keyword_name_p(n) {
+        after_prefix(n, str_lit("#:"))
+    } else {
+        n
+    }
+}
+
+/// A product's label or a sum's tag, as written: a name, a keyword
+/// (C291), whose label is its name, or a number. A label is never a
+/// module's name for a type, `m..x` (C288): one so qualified with the
+/// module's types, as a type is, is `x`.
 pub fn label_of(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, at_file, at_pos) => {
-            let after = after_dots(n);
-            if string_eq_p(after, str_lit("")) {
-                n
+            if keyword_name_p(n) {
+                after_prefix(n, str_lit("#:"))
             } else {
-                after
+                let after = after_dots(n);
+                if string_eq_p(after, str_lit("")) {
+                    n
+                } else {
+                    after
+                }
             }
         }
         Sexp::Num(k, f, p) => {
@@ -3508,6 +3531,8 @@ pub fn shape_of(mut t: &'static Ty) -> Str {
                     return str_lit("pair");
                 } else if string_eq_p(d, str_lit("symbol")) {
                     return str_lit("symbol");
+                } else if string_eq_p(d, str_lit("keyword")) {
+                    return str_lit("keyword");
                 } else if string_eq_p(d, str_lit("%array")) {
                     return str_lit("bloblet");
                 } else if string_eq_p(d, str_lit("%bytes")) {
@@ -3566,11 +3591,12 @@ pub fn union_members(ts: Tys) -> Tys {
 }
 
 // `datum` (C77), FX-26's union of what a reader reads, `(union int f64
-// char bool string symbol nil (pairof datum datum acyclic) vector)`: a
-// name, its members found when they are wanted, since it mentions itself.
-// FX-26's has `bytevector` too, which KFX's has not yet.
+// char bool string symbol keyword nil (pairof datum datum acyclic)
+// vector)`, its keywords C291's: a name, its members found when they are
+// wanted, since it mentions itself. FX-26's has `bytevector` too, which
+// KFX's has not yet.
 pub fn datum_members() -> Tys {
-    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit("symbol"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("nil"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_rconst(str_lit("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit("vector"), nil::<&'static Ty>()), kayak_rt::nil())))))))))
+    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit("symbol"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("keyword"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("nil"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_rconst(str_lit("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit("vector"), nil::<&'static Ty>()), kayak_rt::nil()))))))))))
 }
 
 /// A union's members; `datum`'s; or none.
@@ -4109,7 +4135,7 @@ pub fn logic_keywords() -> Strings {
 pub fn logic_base_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("i16"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("datum"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::nil())))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("i64"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("i16"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("unit"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("keyword"), kayak_rt::heap_cons(str_lit("datum"), kayak_rt::heap_cons(str_lit("void"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::nil()))))))))))))))))))))))
     })
 }
 
@@ -4836,7 +4862,7 @@ pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static
 pub fn latent_shapes() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil()))))))))))))))))
+        kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("keyword"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil())))))))))))))))))
     })
 }
 
@@ -6150,6 +6176,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_eq_p(s, str_lit("f32")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("symbol")) {
+                    return ty_data(s, nil::<&'static Ty>());
+                } else if string_eq_p(s, str_lit("keyword")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("false")) {
                     return ty_data(s, nil::<&'static Ty>());
@@ -8137,6 +8165,21 @@ pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
     parse_scheme_of(v, t, true)
 }
 
+pub fn digits_only_p(cs: Chars) -> bool {
+    (null_p(cs) || (char_numeric_p(car(cs)) && digits_only_p(cdr(cs))))
+}
+
+/// A product's or sum's label as a type shows it (C291; Fixpt's
+/// `show_label`): a keyword, `#:name`; a number, which no keyword is,
+/// bare.
+pub fn show_label(l: Str) -> Str {
+    if (not(string_eq_p(l, str_lit(""))) && digits_only_p(string_chars(l))) {
+        l
+    } else {
+        string_append(str_lit("#:"), l)
+    }
+}
+
 // Names `desc-named` tests against, made once (C264): a list written in place is
 // made at each call.
 /// Size `t` as a linear expression, its variables named (`#n`, `?k`), an
@@ -8492,7 +8535,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                         let tagcase_ = f;
                         match *tagcase_ {
                             Fvar::Fvar(l, x) => {
-                                string_append(str_lit(" ("), string_append(l, string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
+                                string_append(str_lit(" ("), string_append(show_label(l), string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
                             }
                         }
                     }), flat_sum_variants(args))), str_lit(")")));
@@ -8501,7 +8544,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                         let tagcase_ = f;
                         match *tagcase_ {
                             Fvar::Fvar(l, x) => {
-                                string_append(str_lit(" ("), string_append(l, string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
+                                string_append(str_lit(" ("), string_append(show_label(l), string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
                             }
                         }
                     }), flat_sum_variants(args))), str_lit(")"))));
@@ -8737,7 +8780,7 @@ pub fn show_fields(s: &'static St, ls: Strings, ts: Tys) -> Str {
     if (null_p(ls) || null_p(ts)) {
         str_lit("")
     } else {
-        string_append(str_lit(" ("), string_append(car(ls), string_append(str_lit(" "), string_append(show_ty(s, car(ts)), string_append(str_lit(")"), show_fields(s, cdr(ls), cdr(ts)))))))
+        string_append(str_lit(" ("), string_append(show_label(car(ls)), string_append(str_lit(" "), string_append(show_ty(s, car(ts)), string_append(str_lit(")"), show_fields(s, cdr(ls), cdr(ts)))))))
     }
 }
 
@@ -12488,8 +12531,9 @@ pub fn named_instance(v: &'static Cv, s: &'static St, sc: &'static Scheme) -> &'
 }
 
 // The names in scope
-/// FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS).
-pub fn keyword_p(name: Str) -> bool {
+/// FX-26's forms' keywords, which name nothing (fixpt's top.rs,
+/// KEYWORDS): not `keyword?`, FX-26's test of a keyword value (C291).
+pub fn form_keyword_p(name: Str) -> bool {
     (string_eq_p(name, str_lit("lambda")) || string_eq_p(name, str_lit("plambda")) || string_eq_p(name, str_lit("proj")) || string_eq_p(name, str_lit("if")) || string_eq_p(name, str_lit("letrec")) || string_eq_p(name, str_lit("let")) || string_eq_p(name, str_lit("begin")) || string_eq_p(name, str_lit("define")) || string_eq_p(name, str_lit("define*")) || string_eq_p(name, str_lit("define-type")) || string_eq_p(name, str_lit("define-generative")) || string_eq_p(name, str_lit("subr")) || string_eq_p(name, str_lit("poly")) || string_eq_p(name, str_lit("ref")) || string_eq_p(name, str_lit("pairof")) || string_eq_p(name, str_lit("dletrec")) || string_eq_p(name, str_lit("void")) || string_eq_p(name, str_lit("pure")) || string_eq_p(name, str_lit("maxeff")) || string_eq_p(name, str_lit("read")) || string_eq_p(name, str_lit("write")) || string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("goto")) || string_eq_p(name, str_lit("comefrom")) || string_eq_p(name, str_lit("region")) || string_eq_p(name, str_lit("effect")) || string_eq_p(name, str_lit("type")) || string_eq_p(name, str_lit("prompt")) || string_eq_p(name, str_lit("prompt-tag")) || string_eq_p(name, str_lit("composable")) || string_eq_p(name, str_lit("mark-key")) || string_eq_p(name, str_lit("listof")) || string_eq_p(name, str_lit("cond")) || string_eq_p(name, str_lit("case")) || string_eq_p(name, str_lit("else")) || string_eq_p(name, str_lit("and")) || string_eq_p(name, str_lit("or")) || string_eq_p(name, str_lit("let*")) || string_eq_p(name, str_lit("define-effect")) || string_eq_p(name, str_lit("module-parameters")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("bloblet")) || string_eq_p(name, str_lit("fields")) || string_eq_p(name, str_lit("frozen")) || string_eq_p(name, str_lit("arrayof")) || string_eq_p(name, str_lit("icell")) || string_eq_p(name, str_lit("await")) || string_eq_p(name, str_lit("define-rec")) || string_eq_p(name, str_lit("letrena")) || string_eq_p(name, str_lit("letreap")) || string_eq_p(name, str_lit("rlambda")) || string_eq_p(name, str_lit("quote")) || string_eq_p(name, str_lit("productof")) || string_eq_p(name, str_lit("sumof")) || string_eq_p(name, str_lit("product")) || string_eq_p(name, str_lit("extract")) || string_eq_p(name, str_lit("sum")) || string_eq_p(name, str_lit("tagcase")) || string_eq_p(name, str_lit("module")) || string_eq_p(name, str_lit("moduleof")) || string_eq_p(name, str_lit("with")) || string_eq_p(name, str_lit("select")) || string_eq_p(name, str_lit("load-module")) || string_eq_p(name, str_lit("define-datatype")) || string_eq_p(name, str_lit("make-bloblet")) || string_eq_p(name, str_lit("bloblet-ref")) || string_eq_p(name, str_lit("bloblet-set!")) || string_eq_p(name, str_lit("bloblet-freeze")) || string_eq_p(name, str_lit("bloblet-byte")) || string_eq_p(name, str_lit("bloblet-set-byte!")) || string_eq_p(name, str_lit("bloblet-bytes")) || string_eq_p(name, str_lit("rmake-bloblet")) || string_eq_p(name, str_lit("dlambda")) || string_eq_p(name, str_lit("=>")) || string_eq_p(name, str_lit("blobref-at")) || string_eq_p(name, str_lit("blobref+")) || string_eq_p(name, str_lit("blobref-owner")) || string_eq_p(name, str_lit("blobref-offset")) || string_eq_p(name, str_lit("blobref-get")) || string_eq_p(name, str_lit("blobref-set!")) || string_eq_p(name, str_lit("blobref-index")) || string_eq_p(name, str_lit("blobref-variant!")) || string_eq_p(name, str_lit("blobref-length")))
 }
 

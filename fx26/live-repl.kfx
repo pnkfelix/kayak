@@ -720,7 +720,7 @@ an entry naming one that has not ended waits for it.")
           (begin
             (set commands (i64+ (get commands) 1))
             (set entries (cons (make-entry (i64- 0 (get commands)) text "" "" #t nil st-checking nil "" #f now) (get entries)))
-            (let ((forms (read-all (string-chars text) "<,type>" 1)))
+            (let ((forms (program-read (string-chars text) "<,type>" 1)))
               (if (null? forms)
                   (refused! "nothing to type" now)
                   (let ((shown (form-type (get repl-cv) (car forms))))
@@ -782,7 +782,7 @@ an entry naming one that has not ended waits for it.")
               ;; The machine is given it before it is checked here: it is
               ;; numbered there too, refused or not.
               (if (get machine-side) #u (asked! (entry-given k text label timed)))
-              (let* ((forms (read-all (string-chars text) (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1))
+              (let* ((forms (program-read (string-chars text) (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1))
                      (made (entry-forms k forms "" "" #t nil)))
                 (tagcase made
                   (made-entry (typed defined quiet tops)
@@ -1209,7 +1209,7 @@ an entry naming one that has not ended waits for it.")
           (if (or (null? open) (quoted-at? text (car open)))
               (begin (set hole-texts nil) (set hole-at -1))
               (let* ((typed (trimmed-end (cut text 0 kept)))
-                     (inner (read-all (string-chars (string-append (cut text (car open) kept) ")")) "<hint>" 1))
+                     (inner (program-read (string-chars (string-append (cut text (car open) kept) ")")) "<hint>" 1))
                      (xs (if (null? inner) nil (items (car inner)))))
                 (begin
                   ;; Bare; a filler after the hole in every list; in one list around it alone.
@@ -1218,13 +1218,13 @@ an entry naming one that has not ended waits for it.")
                                               (each-filled (string-append typed " %hole") 1 (size open)))))
                   (set hole-at (i64+ (string-length-i64 typed) 1))
                   (set hole-place (size xs))
-                  (set hole-op (if (null? xs) "" (tagcase (car xs) (sym (op f p) (if (keyword? op) "" op)) (else other "")))))))))
+                  (set hole-op (if (null? xs) "" (tagcase (car xs) (sym (op f p) (if (form-keyword? op) "" op)) (else other "")))))))))
 
       (define hole-tried! (subr running (string) unit)
         (lambda (text)
           "A text with a hole checked: the checker refuses at the hole, saying
            what goes there (`speculation-refused!`), or at a list around it."
-          (if (string=? text "") #u (begin (checked-all (get repl-cv) (read-all (string-chars text) "<draft>" 1)) #u))))
+          (if (string=? text "") #u (begin (checked-all (get repl-cv) (program-read (string-chars text) "<draft>" 1)) #u))))
 
       (define hint-words (subr running (string string) string)
         (lambda (what argument)
@@ -1360,7 +1360,7 @@ an entry naming one that has not ended waits for it.")
             (set spec-marks (list (get node-count) (get kid-count) (get armx-count) (get constant-count)))
             ;; Ended until it starts: the tables given back even if lowering fails.
             (set spec-state 2)
-            (let ((forms (read-all (string-chars text) "<draft>" 1)))
+            (let ((forms (program-read (string-chars text) "<draft>" 1)))
               (if (null? forms)
                   #u
                   (let ((ns (numbered-or-failed! (lower-tops (list (car forms)) (get repl-globals)))))
@@ -1557,7 +1557,7 @@ an entry naming one that has not ended waits for it.")
                       (holes-set! d kept open)
                       ;; Holes next, unless this is finished or refused for what is.
                       (set spec-phase (if (or finished (null? (get hole-texts))) 4 1))
-                      (speculated-forms! (read-all (string-chars closed) "<draft>" 1) finished)))))))))
+                      (speculated-forms! (program-read (string-chars closed) "<draft>" 1) finished)))))))))
 
     (define speculation-refused! (subr running (string i64) unit)
       (lambda (message now)

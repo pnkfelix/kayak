@@ -830,7 +830,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 116i64) {
         bool_word(is_imm_p(a, imm_char()))
     } else if i64_eq(op, 117i64) {
-        bool_word((is_imm_p(a, imm_symbol()) || i64_eq(a, w_unit())))
+        bool_word(((is_imm_p(a, imm_symbol()) && not(keyword_word_p(a))) || i64_eq(a, w_unit())))
     } else if i64_eq(op, 118i64) {
         bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flat()) || is_obj_p(a, ob_flatx()) || is_obj_p(a, ob_bloblet())))
     } else if i64_eq(op, 119i64) {
@@ -1135,6 +1135,12 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         string_made_x(fixnum_value(a), b)
     } else if i64_eq(op, 255i64) {
         string_made_x(fixnum_value(b), c)
+    } else if i64_eq(op, 256i64) {
+        bool_word(keyword_word_p(a))
+    } else if i64_eq(op, 257i64) {
+        keyword_word(immediate_value(a))
+    } else if i64_eq(op, 258i64) {
+        symbol_word(i64_minus(immediate_value(a), keyword_bias()))
     } else if i64_eq(op, 251i64) {
         element_set_x(a, fixnum_value(b), char_to_i64(word_char(c)));
         w_unit()

@@ -87,6 +87,8 @@
           ((string-member? n (list "make-string" "string-fill!")) 2)
           ((string-member? n (list "string-set!" "string-copy" "rmake-string")) 3)
           ((string=? n "string-copy!") 5)
+          ;; Keywords (C291).
+          ((string-member? n (list "keyword?" "symbol->keyword" "keyword->symbol")) 1)
           ((string-member? n (list "substring" "array-set!" "string-search" "rcons" "rmake-array")) 3)
           ((string=? n "rnew") 2)
           ((string-member? n (list "%make-bloblet" "bloblet-bytes" "bloblet-freeze" "blobref-owner" "blobref-offset")) 1)

@@ -33,6 +33,7 @@
                      ((i64= kind imm-bool) (if (truthy? w) "#t" "#f"))
                      ((i64= kind imm-unit) "#u")
                      ((i64= kind imm-nil) "()")
+                     ((keyword-word? w) (string-append "#:" (name-of-number (i64- (immediate-value w) keyword-bias))))
                      ((i64= kind imm-symbol) (name-of-number (immediate-value w)))
                      ((i64= kind imm-tag) "#<prompt-tag>")
                      (else "#<closure>"))))

@@ -167,7 +167,7 @@ run/fails-substring.fx
 run/generative.fx
 run/icells.fx
 run/int-fast.fx
-run/keywords-printed.fx
+run/keyword-datatype.fx
 run/leaf-closures.fx
 run/letregion.fx
 run/lifted-loop.fx

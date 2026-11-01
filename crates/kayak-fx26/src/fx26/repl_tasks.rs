@@ -1143,7 +1143,7 @@ pub mod tasks {
         let tagcase_ = j;
         match *tagcase_ {
             Job::CheckEntry(v, gs, k, text, label) => {
-                let forms = read_all(string_chars(text), if string_eq_p(label, str_lit("")) {
+                let forms = program_read(string_chars(text), if string_eq_p(label, str_lit("")) {
                     string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
                 } else {
                     label
@@ -1151,7 +1151,7 @@ pub mod tasks {
                 entry_checked(v, gs, k, forms, str_lit(""), str_lit(""), true, concat(map(&named_results, forms)))
             }
             Job::TypeOf(v, text) => {
-                let forms = read_all(string_chars(text), str_lit("<,type>"), 1i64);
+                let forms = program_read(string_chars(text), str_lit("<,type>"), 1i64);
                 if null_p(forms) {
                     error(str_lit("nothing to type"));
                     shown_done(str_lit(""))
@@ -1160,7 +1160,7 @@ pub mod tasks {
                 }
             }
             Job::Try(v, gs, text, finished) => {
-                let forms = read_all(string_chars(text), str_lit("<draft>"), 1i64);
+                let forms = program_read(string_chars(text), str_lit("<draft>"), 1i64);
                 let v2 = checked_all(v, forms);
                 if (not(finished) || null_p(forms)) {
                     tried_none()
@@ -1180,7 +1180,7 @@ pub mod tasks {
                 }
             }
             Job::HoleItems(text) => {
-                let inner = read_all(string_chars(text), str_lit("<hint>"), 1i64);
+                let inner = program_read(string_chars(text), str_lit("<hint>"), 1i64);
                 let xs = if null_p(inner) {
                     nil::<&'static Sexp>()
                 } else {
@@ -1192,7 +1192,7 @@ pub mod tasks {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Sexp::Sym(op, f, p) => {
-                            if keyword_p(op) {
+                            if form_keyword_p(op) {
                                 str_lit("")
                             } else {
                                 op
@@ -1525,7 +1525,7 @@ pub mod tasks {
     pub fn m_given_x(k: i64, text: Str, label: Str, timed: bool, typed: Str, defined: Str, quiet: bool, needs: List<i64>, now: i64) -> () {
         m_spec_dropped_x();
         set(repl_count(), k);
-        let forms = read_all(string_chars(text), if string_eq_p(label, str_lit("")) {
+        let forms = program_read(string_chars(text), if string_eq_p(label, str_lit("")) {
             string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
         } else {
             label
@@ -1546,7 +1546,7 @@ pub mod tasks {
         set(m_spec_type(), r#type);
         set(m_spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
         set(m_spec_state(), 2i64);
-        let forms = read_all(string_chars(text), str_lit("<draft>"), 1i64);
+        let forms = program_read(string_chars(text), str_lit("<draft>"), 1i64);
         if null_p(forms) {
             ()
         } else {

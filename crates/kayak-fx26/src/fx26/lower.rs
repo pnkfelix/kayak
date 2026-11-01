@@ -1062,6 +1062,8 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
         i_lit(v_bool(false))
     } else if string_eq_p(n, str_lit("#u")) {
         i_lit(v_unit())
+    } else if keyword_name_p(n) {
+        i_lit(v_symbol(string_to_symbol(n)))
     } else if i64_gt_eq(position_of(n, gs, 0i64), 0i64) {
         i_global(position_of(n, gs, 0i64), n)
     } else if (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair"))) {

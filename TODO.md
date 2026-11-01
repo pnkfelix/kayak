@@ -94,11 +94,10 @@ section below where it has one; here the order, and what each is.
    kayak's FX-26 has not yet; the ported sources' marks moved with none
    of them carried over (the runtime's, tier 1's and the code generator's
    parts of each to come with it):
-   - **Keywords**, `#:name` (42c1b40d): a value of its own, interned, its
-     type `keyword`, a datum's shape; tags and labels written as keywords
-     (7885d18c); types printing labels as keywords, `(productof (#:n
-     int))` (b526aba2), so that the checkers' comparison now differs
-     wherever a product or sum is printed.
+   - **Keywords** on tier 1 and in KFX: the checker and the engine have
+     them (C291); cg.kfx and the cellular machine's keyword object (kind
+     48) have not, nor kayak-rt (KFX refuses keyword values); nor the
+     reader `#:|a b|`.
    - **Joins**: branches of different sums join; arguments instantiating
      one type binder join (fdb622df, 39318012).
    - **`stage`**, FX-26's `eval` (c7dbb0a4…); **evidence**,
