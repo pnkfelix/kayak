@@ -8267,3 +8267,28 @@ its output all read, so that an arm for its output sees all of it first;
 `tests/fx26-kayak/io/pselect-processes.fx` gets Fixpt's types, and on the
 engine its value, by hand: no check runs kayak's own FX-26 programs on
 the engine.
+
+## C297. `attempt` (2026-11-01)
+
+Heist's F1, in Fixpt since b41a7fb, which kayak's checker had refused
+wherever it heads a list (C263). `(attempt e on-failure)` is `e`'s
+value, or, should `e` fail, `(on-failure message)`.
+- **The checker** (`attempt-form`, after Fixpt's `synth_attempt`): `e`
+  is cancellable, as a `race` branch is, so its effect has no write,
+  fill, send, I/O or control out of it; `on-failure` is a procedure of
+  one string; its result fits `e`'s type; the effect is theirs and
+  `nondet`. Checked by synthesis where a type is expected, as `race`.
+- **The engine** lowers it as Fixpt's parser does, `((with lib attempt1)
+  (lambda () e) on-failure)`. The library's `attempt1` runs `e` as a
+  race branch and offers its outcome, which the engine's scheduler had
+  for `race` already.
+- **KFX** refuses it, as it does `race`; tier 1's code generator has it
+  not yet.
+Fixpt's `attempt/` programs: the eight that run give its values on the
+engine, and seven of them its types too. `evaluator-after-failure.fx`
+differs only by printing `nat` for Fixpt's `(nat 3)`, which kayak does
+throughout. The three refusals say Fixpt's words.
+
+Also, kayak's own FX-26 programs (`tests/fx26-kayak`), which no check
+ran on the engine, run beside Fixpt's beyond KFX
+(`run-fixpt-programs.py`): all 14 agree.

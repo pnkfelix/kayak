@@ -5598,6 +5598,84 @@ pub mod expressions {
         }
     }
 
+    /// `(attempt e on-failure)` (C297; Heist's F1, Fixpt's `synth_attempt`):
+    /// `e`'s value, or, should it fail, `(on-failure message)`. `e` is
+    /// cancellable, as a `race` branch is, so that a failure half way leaves
+    /// nothing another could see; `on-failure` a procedure of the message,
+    /// a string, run after, whose result fits `e`'s type. Its effect both
+    /// theirs and `nondet`. Not KFX's yet.
+    pub fn attempt_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+        if not(i64_eq(size(xs), 2i64)) {
+            match refuse(v, str_lit("`(attempt expression on-failure)`")) {}
+        } else {
+            let s = kfx_restricted(v, s, str_lit("`(attempt e on-failure)` is FX-26's form, which KFX does not have yet"));
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let es = map(lambda1s(move |a: Str| {
+                        resolve_atom(s, a)
+                    }), es);
+                    let seen = any_of(lambda1s(move |a: Str| {
+                        (has_prefix_p(a, str_lit("write:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("goto:")) || has_prefix_p(a, str_lit("comefrom:")) || has_prefix_p(a, str_lit("~")))
+                    }), es);
+                    if not(null_p(seen)) {
+                        match refuse(v, string_append(str_lit("an `attempt`'s body may be stopped half way, so it must do nothing another could see, and this one has "), show_effs(seen))) {}
+                    } else {
+                        let tagcase_ = synth(v, s, second(xs));
+                        match *tagcase_ {
+                            Res::Res(ht, hes, s) => {
+                                let tagcase_ = walk(s, ht);
+                                match *tagcase_ {
+                                    Ty::TyProc(les, ps, r) => {
+                                        if (not(i64_eq(size(ps), 1i64)) || {
+                                            let tagcase_ = walk(s, car(ps));
+                                            match *tagcase_ {
+                                                Ty::TyString() => {
+                                                    false
+                                                }
+                                                Ty::TyMeta(k) => {
+                                                    false
+                                                }
+                                                Ty::TyData(d, r#as) => {
+                                                    not(string_eq_p(d, str_lit("%stringof")))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    true
+                                                }
+                                            }
+                                        }) {
+                                            match refuse(v, string_append(str_lit("`attempt`'s on-failure takes the failure's message, a string, but is "), show_ty(s, ht))) {}
+                                        } else {
+                                            let s = fits(v, s, ty_string(), car(ps));
+                                            let u = if void_p(s, r) {
+                                                t
+                                            } else if void_p(s, t) {
+                                                r
+                                            } else {
+                                                t
+                                            };
+                                            let s = if (void_p(s, r) || void_p(s, t)) {
+                                                s
+                                            } else {
+                                                fits(v, s, r, t)
+                                            };
+                                            res(u, effs_union(kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil()), effs_union(es, effs_union(hes, les))), s)
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        match refuse(v, string_append(str_lit("`attempt`'s on-failure takes the failure's message, a string, but is "), show_ty(s, ht))) {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// A `race`'s type, the first of its branches' not `void` (one that
     /// fails only loses).
     pub fn race_type(mut v: &'static Cv, mut s: &'static St, mut xs: Sexps) -> &'static Ty {
@@ -5721,9 +5799,9 @@ pub mod expressions {
                 return race_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("attempt")) {
                 // FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
-                // as `race` is: refused, kayak's checker not having it yet, and
-                // never a call of what a program names `attempt` (C263).
-                return match refuse(v, str_lit("FX-26's `attempt`, which kayak's checker has not yet")) {};
+                // as `race` is, never a call of what a program names `attempt`
+                // (C263, C297).
+                return attempt_form(v, s, xs);
             } else if string_eq_p(h, str_lit("par")) {
                 return par_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("pselect")) {
@@ -6001,7 +6079,7 @@ pub mod expressions {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("spawn-monitored")) {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)

@@ -414,7 +414,9 @@ def main():
     print("run-fixpt-programs: %d of Fixpt's programs kfx accepts; %d agree, %d differ, %d skipped"
           % (len(accepted), agree, len(differ), len(skipped)))
     engine_failed = engine_runs(accepted, fixpt, listing, bless)
-    beyond_runs(refused, fixpt, listing)
+    # Kayak's own FX-26 programs (tests/fx26-kayak) too, which no other
+    # check runs on the engine (C296).
+    beyond_runs(refused + [("", rel, path) for rel, path in fixptcache.kayak_programs()], fixpt, listing)
     sys.exit(1 if differ or engine_failed else 0)
 
 

@@ -2565,6 +2565,39 @@
                     (race-branches v s xs (race-type v s xs) nil)
                     (race-branches v s xs (car expected) nil))))))
 
+      (attempt-form (subr kfx (cv st sexps) res)
+        (lambda (v s xs)
+          "`(attempt e on-failure)` (C297; Heist's F1, Fixpt's `synth_attempt`):
+           `e`'s value, or, should it fail, `(on-failure message)`. `e` is
+           cancellable, as a `race` branch is, so that a failure half way leaves
+           nothing another could see; `on-failure` a procedure of the message,
+           a string, run after, whose result fits `e`'s type. Its effect both
+           theirs and `nondet`. Not KFX's yet."
+          (if (not (i64= (size xs) 2))
+              (refuse v "`(attempt expression on-failure)`")
+              (let ((s (kfx-restricted v s "`(attempt e on-failure)` is FX-26's form, which KFX does not have yet")))
+                (tagcase (synth v s (car xs))
+                  (res (t es s)
+                    (let* ((es (map (lambda ((a string)) (resolve-atom s a)) es))
+                           (seen (any-of (lambda ((a string)) (or (has-prefix? a "write:") (has-prefix? a "init:") (has-prefix? a "send:")
+                                                                  (has-prefix? a "io:") (has-prefix? a "goto:") (has-prefix? a "comefrom:")
+                                                                  (has-prefix? a "~")))
+                                         es)))
+                      (if (not (null? seen))
+                          (refuse v (string-append "an `attempt`'s body may be stopped half way, so it must do nothing another could see, and this one has " (show-effs seen)))
+                          (tagcase (synth v s (second xs))
+                            (res (ht hes s)
+                              (tagcase (walk s ht)
+                                (ty-proc (les ps r)
+                                  (if (or (not (i64= (size ps) 1))
+                                          (tagcase (walk s (car ps)) (ty-string () #f) (ty-meta (k) #f) (ty-data (d as) (not (string=? d "%stringof"))) (else other #t)))
+                                      (refuse v (string-append "`attempt`'s on-failure takes the failure's message, a string, but is " (show-ty s ht)))
+                                      (let* ((s (fits v s (ty-string) (car ps)))
+                                             (u (cond ((void? s r) t) ((void? s t) r) (else t)))
+                                             (s (if (or (void? s r) (void? s t)) s (fits v s r t))))
+                                        (res u (effs-union (list "nondet") (effs-union es (effs-union hes les))) s))))
+                                (else other (refuse v (string-append "`attempt`'s on-failure takes the failure's message, a string, but is " (show-ty s ht)))))))))))))))
+
       (race-type (subr kfx (cv st sexps) ty)
         (lambda (v s xs)
           "A `race`'s type, the first of its branches' not `void` (one that
@@ -2630,9 +2663,9 @@
                  (race-form v s xs nil))
                 ((string=? h "attempt")
                  "FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
-                  as `race` is: refused, kayak's checker not having it yet, and
-                  never a call of what a program names `attempt` (C263)."
-                 (refuse v "FX-26's `attempt`, which kayak's checker has not yet"))
+                  as `race` is, never a call of what a program names `attempt`
+                  (C263, C297)."
+                 (attempt-form v s xs))
                 ((string=? h "par") (par-form v s xs nil))
                 ((string=? h "pselect") (pselect-form v s xs nil))
                 ((string=? h "quote")
@@ -2766,7 +2799,7 @@
         (lambda (v s e h xs expected)
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
-                ((or (string=? h "self") (string=? h "race") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
+                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
                 ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
                 ((and (string=? h "the") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
                       (tagcase (parse-type v (cv-tvars v) (car xs)) (ty-data (d args) (string=? d "%array")) (else other #f)))

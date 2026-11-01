@@ -32,7 +32,7 @@
 ;; them (its processes.rs): each a call of the scheduler's, `fx26:processes.fx`,
 ;; loaded as the global `%processes`.
 (define process-heads strings
-  (list "spawn" "spawn-monitored" "send" "receive" "self" "par" "race" "pselect" "icell-get" "icell-put!"))
+  (list "spawn" "spawn-monitored" "send" "receive" "self" "par" "race" "pselect" "icell-get" "icell-put!" "attempt"))
 
 (define lib-op (subr kfx (string) sexp)
   (lambda (name) (sx (list (sy "with") (sy "%processes") (sy name)))))
@@ -117,6 +117,9 @@
                (sx (list (sy "let") (sx (list (sx (list (sy "%par") (par-tree (map (lambda ((b sexp)) (second (items b))) bs) #t)))))
                          (par-lets (map (lambda ((b sexp)) (car (items b))) bs) (cdr args))))))
             ((string=? h "race") (race-tree args #t))
+            ;; `(attempt e h)` (C297): `((with lib attempt1) (lambda () e) h)`, as
+            ;; Fixpt's parser makes it.
+            ((string=? h "attempt") (sx (list (lib-op "attempt1") (thunk-of (car args)) (second args))))
             (else
              (sx (list (sy "let") (sx (select-binds args 0))
                        (sx (list (sy "let") (sx (list (sx (list (sy "%sel") (sx (list (lib-op "sync") (select-events args 0)))))))

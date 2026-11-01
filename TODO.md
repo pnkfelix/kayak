@@ -66,8 +66,8 @@ section below where it has one; here the order, and what each is.
    runtime's code declares one).
 4b. **FX-26's features since the pin moved to 5731f52 (C263)**, which
    kayak's checker refuses for now (so their programs are not in the
-   passing lists): `attempt` (refused wherever it heads a list, as Fixpt
-   reads it); `(io process)` and the six `process-*` primitives; `type-at`;
+   passing lists): `attempt` on tier 1 and in KFX (the checker and the
+   engine have it, C297; the processes' primitives are C295's); `type-at`;
    `load-moduleof`, `load-input-moduleof`, `load-typeof`,
    `load-input-typeof`; `restrict`; a top-level `include`; a file's
    abstract types one for every load of it. Fixpt's `gdb`/`lldb` support
