@@ -39,8 +39,6 @@
 "What `run` gives when the run failed (C110): `engine-failure` says how."
 (define w-failed i64 94)
 (define parked-at (subr kfx (i64) i64) (lambda (slot) (i64+ 8 (i64* slot 8))))
-(define globals (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
-(define global-name-table (ref (arrayof string @h) @h) (new (make-array 1 "")))
 (define tags-made (ref i64 @h) (new 0))
 
 "Frames: a `frame` object, its next frame first, then its kind, then its
@@ -173,13 +171,6 @@
 (define op-current-marks i64 172)
 (define op-marks-of i64 173)
 (define op-apply i64 168)
-
-(define-rec
-  (label-position (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) i64)
-    (lambda (start n l i)
-      (cond ((i64>= i n) -1)
-            ((i64= (kid-at (i64+ start i)) l) i)
-            (else (label-position start n l (i64+ i 1)))))))
 
 (define-rec
   (arm-found (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)

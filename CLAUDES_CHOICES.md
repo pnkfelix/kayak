@@ -8610,3 +8610,43 @@ Fixpt's session programs now check as Fixpt checks them, but for how a
 module's type is printed: by its abbreviation in Fixpt (`api : api-type`),
 kayak writing it out. Over 561 programs Fixpt accepts, 443 the same,
 none Fixpt refuses accepted. The engine runs no session yet.
+
+## C310. Sessions, on the engine (2026-11-01)
+
+Part two of Fixpt's sessions, after its `sessions.rs` lowered (its
+`rs-scheme-vm` path), in `fx26/vstage.kfx`:
+- **A session** is `#(m index)`; its state, made at its first use, when
+  the module's type is known from the step's rep: the checker's
+  environment (the standard one, `stage-module`, and each of `m`'s values
+  defined as `(define x (with stage-module x))`), its globals, and its
+  definitions' forms. Its globals are the machine's, past the program's
+  (`session-global!` grows the arrays), each lowered by its name where it
+  is its name's newest, the program's unnamed, so that staged code sees
+  only the session's. A pending definition is `#(session index)`, its
+  name, form, type and generation kept here.
+- **The checker in a session** (its `%session` mark): reading a global is
+  no effect of the code's, as Fixpt's `globals_effects` off; a definition
+  may be defined again at another type (`%reruns`, C202's). A definition
+  written with no type is checked as the REPL checks one
+  (`check-untyped`).
+- **`session-check`**: an expression checked at `(subr E () R)` and made
+  the procedure that evaluates it; a definition checked as it is, its
+  initializer, unless a `lambda`, within `E`, then pending. Each check by
+  a worker first, as `stage`'s (C305).
+- **`%session-ready`**: stale (another session's, committed already, or
+  the session changed since), refused (`refuse` of a name defined), or
+  committed: at a type every use can take, the global assigned; else a new
+  one, `shadow` leaving the users with the old, `rerun` checking each
+  again (C202's `users-of`), each that checks run again at its global, the
+  rest broken, a use refused as Fixpt says it ("`g` is broken, since `a`
+  was redefined (WHY): define it again to use it", the checker's
+  `%broken-why`). Then `(sum go p)`, `p` the procedure that runs them.
+  `session-redefines` gives the name, both types and the direct users.
+- C202's helpers moved from `start.kfx` to `vstage.kfx`, and `globals`,
+  `global-name-table` and `label-position` from `vm.kfx`, as KFX has no
+  forward references.
+- `fx26:session-conditions.fx` built in (`scripts/built-in.py`).
+`commit.fx` and `session-conditions.fx` run as Fixpt runs them;
+`session.fx`, `session-knot.fx` and `evidence-session.fx` but for the
+checker's words in refusals (kayak's, not Fixpt's). Not yet: sessions in
+the REPL (its globals' list does not know a session's), tier 1, KFX.

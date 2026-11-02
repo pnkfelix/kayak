@@ -928,6 +928,16 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         reify_run_x(a, b, pair_car(pair_cdr(pair_cdr(args))))
     } else if (i64_eq(op, 271i64) || i64_eq(op, 272i64)) {
         a
+    } else if i64_eq(op, 273i64) {
+        make_session_word_x(a)
+    } else if i64_eq(op, 274i64) {
+        session_run_x(a, b, pair_car(pair_cdr(pair_cdr(args))), fourth_arg(args), fifth_arg(args))
+    } else if i64_eq(op, 275i64) {
+        redefines_word_x(a, b)
+    } else if i64_eq(op, 276i64) {
+        ready_word_x(a, b, pair_car(pair_cdr(pair_cdr(args))))
+    } else if i64_eq(op, 277i64) {
+        committed_word_x(a, b)
     } else if i64_eq(op, 139i64) {
         real_word_x(int_to_f64(word_int(a)))
     } else if (i64_eq(op, 140i64) && not(integral_p(word_real(a)))) {

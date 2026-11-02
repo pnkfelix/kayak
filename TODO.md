@@ -104,10 +104,10 @@ section below where it has one; here the order, and what each is.
      rep): a refusal's words and places as Fixpt's; tier 1 and KFX;
      evidence and bounds (C307, C308; `evidence-region.fx` waits on a
      module allocating at `@a` passed to a call, which Fixpt masks);
-     **sessions**: the checker has them (C309); the engine (each
-     session's checker environment and definitions, shadow/refuse/rerun,
-     staleness, broken users), then `session-conditions.fx`; a module's
-     type printed by its abbreviation (`api : api-type`) as Fixpt prints it.
+     **sessions**: the checker and the engine have them (C309, C310);
+     not yet in the REPL (a session's globals past the REPL's list, which
+     does not know them), tier 1 or KFX; a module's type printed by its
+     abbreviation (`api : api-type`) as Fixpt prints it.
    - **A race in Fixpt's `process/basic.fx`** (seen once, 2026-11-01,
      under `--regs --compiled --gc-stress` with the check's load): its
      `wait-for` returns on `exited` without a last `process-output`, so

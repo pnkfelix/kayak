@@ -1,3 +1,5 @@
+cli-stage/commit.fx
 cli-stage/sealed.fx
+cli-stage/session-conditions.fx
 cli-stage/state.fx
 cli-stage/tail-across.fx

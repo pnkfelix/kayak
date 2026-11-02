@@ -1159,6 +1159,10 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             // `stage` (C305): `(%stage-run m code REP)`, its type's rep, which the
             // checker noted as nodes, made a constant at loading.
             return i_call(i_lit(v_prim(str_lit("%stage-run"), 5i64)), kayak_rt::heap_cons(lower(third(xs), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(xs)))), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(cdr(xs))))), sc, gs), kayak_rt::heap_cons(i_lit(v_rep(words_of(fact_at(key_of(e), str_lit("stage-rep "), gs)))), kayak_rt::heap_cons(i_lit(v_string(words_of(fact_at(key_of(e), str_lit("stage-given "), gs)))), kayak_rt::nil()))))));
+        } else if (string_eq_p(h, str_lit("%session-check")) && i64_eq(size(xs), 5i64)) {
+            // `session-check` (C310): `(%session-run s code given REP names)`, as
+            // `%stage-run`.
+            return i_call(i_lit(v_prim(str_lit("%session-run"), 5i64)), kayak_rt::heap_cons(lower(third(xs), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(xs)))), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(cdr(xs))))), sc, gs), kayak_rt::heap_cons(i_lit(v_rep(words_of(fact_at(key_of(e), str_lit("stage-rep "), gs)))), kayak_rt::heap_cons(i_lit(v_string(words_of(fact_at(key_of(e), str_lit("stage-given "), gs)))), kayak_rt::nil()))))));
         } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && not(null_p(xs))) {
             // Evidence (C307): `(%reify GIVEN REP names)`, its rep filled where the
             // program runs from the evidence given.

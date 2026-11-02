@@ -142,13 +142,21 @@ pub fn stage_refused(m: Str) -> Str {
     }
 }
 
-/// A refusal as its words alone: what the checker says after where.
+/// A refusal as its words alone: what the checker says after where, `in
+/// staged code: `, or a definition's, `<stage>:LINE: in NAME: `.
 pub fn refusal_said(m: Str) -> Str {
     let said = list_to_string(after_said(string_chars(m), string_chars(str_lit("in staged code: "))));
-    if string_eq_p(said, str_lit("")) {
-        m
-    } else {
+    if not(string_eq_p(said, str_lit(""))) {
         said
+    } else if not(null_p(after_said(string_chars(m), string_chars(str_lit("<stage>:"))))) {
+        let past = after_said(after_said(string_chars(m), string_chars(str_lit(": in "))), string_chars(str_lit(": ")));
+        if null_p(past) {
+            m
+        } else {
+            list_to_string(past)
+        }
+    } else {
+        m
     }
 }
 
@@ -593,6 +601,896 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
         obj_set_x(p, 0i64, code_word(l));
         obj_set_x(p, 1i64, e);
         sum_word_x(str_lit("ok"), p)
+    }
+}
+
+// Sessions (C310; Fixpt's `docs/fx26.md`, "Sessions", and its
+// `sessions.rs`, lowered): definitions that last between pieces of code a
+// program stages against a module. A session's state is the checker's
+// environment of the standard one and the session's own definitions, its
+// globals, past the program's, and its definitions' forms, which the
+// redefinition rules of the `--check` driver (C202) read: a definition
+// again at a type its users can take assigns its global; at another,
+// `shadow` makes it a new one, what used the old keeping it, and `rerun`
+// checks the users again, each that checks run again, the rest broken.
+// The session, a vector `#(m index)`, names its state by its index here,
+// made at its first use, when the module's type is known: a global holding
+// `m`, and one for each of `m`'s values, which the session's own may
+// shadow. A pending definition is `#(session index)`, its index among
+// `pendings`. Reading a session's global is reading the session, which its
+// forms' types say (`(read r)`), not part of the code's `E`: the checker's
+// `%session` mark (`naming-effs`).
+pub enum Defn {
+    Defn(Strings, &'static Sexp),
+}
+
+pub fn defn(f0: Strings, f1: &'static Sexp) -> &'static Defn {
+    kayak_rt::heap_alloc(Defn::Defn(f0, f1))
+}
+
+pub type Defns = List<&'static Defn>;
+
+pub enum RerunOut {
+    RerunOut(&'static Cv, Strings),
+}
+
+pub fn rerun_out(f0: &'static Cv, f1: Strings) -> &'static RerunOut {
+    kayak_rt::heap_alloc(RerunOut::RerunOut(f0, f1))
+}
+
+pub fn defn_names(d: &'static Defn) -> Strings {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Defn::Defn(ns, f) => {
+            ns
+        }
+    }
+}
+
+/// The globals a top-level form defines: a `define`'s, a `define*`'s, a
+/// `define-rec`'s.
+pub fn defined_names_of(f: &'static Sexp) -> Strings {
+    if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt_eq(size(items(f)), 3i64) && not(module_def_p(f))) {
+        kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
+    } else if head_is_p(f, str_lit("define-rec")) {
+        map(lambda1s(move |g: &'static Sexp| {
+            binder_name(car(items(g)))
+        }), cdr(items(f)))
+    } else {
+        nil::<Str>()
+    }
+}
+
+/// Whether a global of `names`, defined before, is now at a type its uses
+/// may not take.
+pub fn rerun_needed_p(old: &'static Cv, new: &'static Cv, names: Strings) -> bool {
+    any_p(lambda1s(move |n: Str| {
+        let (a, b) = (scope_bind(n, old), scope_bind(n, new));
+        (not(null_p(a)) && not(null_p(b)) && {
+            let tagcase_ = car(a);
+            match *tagcase_ {
+                Bind::Bind(n1, sa, wa) => {
+                    ((string_eq_p(wa, str_lit("global")) || string_eq_p(wa, str_lit("broken"))) && {
+                        let tagcase_ = car(b);
+                        match *tagcase_ {
+                            Bind::Bind(n2, sb, wb) => {
+                                not((string_eq_p(scheme_text(sa), scheme_text(sb)) || narrower_effect_p(sb, sa)))
+                            }
+                        }
+                    })
+                }
+            }
+        })
+    }), names)
+}
+
+/// The definitions among `ds` that use a name of `used`, and those that
+/// use theirs, oldest first.
+pub fn users_of(mut ds: Defns, mut used: Strings) -> Defns {
+    loop {
+        if null_p(ds) {
+            return nil::<&'static Defn>();
+        } else if {
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Defn::Defn(ns, f) => {
+                    any_p(lambda1s(move |n: Str| {
+                        string_member_p(n, used)
+                    }), names_in(f))
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(ds), users_of(cdr(ds), onto(defn_names(car(ds)), used)));
+        } else {
+            ds = cdr(ds);
+            continue;
+        }
+    }
+}
+
+pub fn broken_binds(v: &'static Cv, names: Strings) -> Binds {
+    concat(map(lambda1s(move |n: Str| {
+        let b = scope_bind(n, v);
+        if null_p(b) {
+            nil::<&'static Bind>()
+        } else {
+            let tagcase_ = car(b);
+            match *tagcase_ {
+                Bind::Bind(m, sc, w) => {
+                    the::<Binds>(kayak_rt::heap_cons(bind(n, sc, str_lit("broken")), kayak_rt::nil()))
+                }
+            }
+        }
+    }), names))
+}
+
+// The machine's globals and their names, and where a product keeps a
+// label (vm.kfx's, here since a session makes globals, C310).
+pub fn globals() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn global_name_table() -> Ref<Array<Str>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_array(int_lit(1), str_lit("")))
+    })
+}
+
+pub fn label_position(mut start: i64, mut n: i64, mut l: i64, mut i: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, n) {
+            return -1i64;
+        } else if i64_eq(kid_at(i64_plus(start, i)), l) {
+            return i;
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+// A session's global: a name and its index.
+pub enum Sglobal {
+    Sglobal(Str, i64),
+}
+
+pub fn sglobal(f0: Str, f1: i64) -> &'static Sglobal {
+    kayak_rt::heap_alloc(Sglobal::Sglobal(f0, f1))
+}
+
+pub type Sglobals = List<&'static Sglobal>;
+
+// A session's state: its checker's environment, its globals (the newest
+// first), its definitions (the oldest first) and how many commits it has
+// had.
+pub enum Sess {
+    Sess(&'static Cv, Sglobals, Defns, i64),
+}
+
+pub fn sess(f0: &'static Cv, f1: Sglobals, f2: Defns, f3: i64) -> &'static Sess {
+    kayak_rt::heap_alloc(Sess::Sess(f0, f1, f2, f3))
+}
+
+pub type Sesss = List<&'static Sess>;
+
+// A pending definition: its session's index, the generation it was checked
+// at, its name, its form, its type, and whether it was committed.
+pub enum Pend {
+    Pend(i64, i64, Str, &'static Sexp, &'static Ty, bool),
+}
+
+pub fn pend(f0: i64, f1: i64, f2: Str, f3: &'static Sexp, f4: &'static Ty, f5: bool) -> &'static Pend {
+    kayak_rt::heap_alloc(Pend::Pend(f0, f1, f2, f3, f4, f5))
+}
+
+pub type Pends = List<&'static Pend>;
+
+pub fn sessions() -> Ref<Sesss> {
+    kayak_rt::kept_constant!(ONCE: Ref<Sesss>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Sess>())
+    })
+}
+
+pub fn pendings() -> Ref<Pends> {
+    kayak_rt::kept_constant!(ONCE: Ref<Pends>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Pend>())
+    })
+}
+
+// The next session global's index, the first past the program's once known.
+pub fn session_next() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+// The labels of `session-redefinition`'s product, made at loading.
+pub fn redefinition_labels() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn nth_sess(mut ss: Sesss, mut i: i64) -> &'static Sess {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(ss);
+        } else {
+            (ss, i) = (cdr(ss), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn sess_replaced(ss: Sesss, i: i64, x: &'static Sess) -> Sesss {
+    if i64_eq(i, 0i64) {
+        kayak_rt::heap_cons(x, cdr(ss))
+    } else {
+        kayak_rt::heap_cons(car(ss), sess_replaced(cdr(ss), i64_minus(i, 1i64), x))
+    }
+}
+
+pub fn nth_pend(mut ps: Pends, mut i: i64) -> &'static Pend {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(ps);
+        } else {
+            (ps, i) = (cdr(ps), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn pend_replaced(ps: Pends, i: i64, x: &'static Pend) -> Pends {
+    if i64_eq(i, 0i64) {
+        kayak_rt::heap_cons(x, cdr(ps))
+    } else {
+        kayak_rt::heap_cons(car(ps), pend_replaced(cdr(ps), i64_minus(i, 1i64), x))
+    }
+}
+
+/// The index of the session's global named `n`, the newest; -1 if none.
+pub fn sglobal_of(mut gl: Sglobals, mut n: Str) -> i64 {
+    loop {
+        if null_p(gl) {
+            return -1i64;
+        } else if {
+            let tagcase_ = car(gl);
+            match *tagcase_ {
+                Sglobal::Sglobal(m, i) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(gl);
+            match *tagcase_ {
+                Sglobal::Sglobal(m, i) => {
+                    return i;
+                }
+            }
+        } else {
+            gl = cdr(gl);
+            continue;
+        }
+    }
+}
+
+/// The name of the session's global `i` if it is its name's newest; ``
+/// if not, or none.
+pub fn sglobal_name(mut gl: Sglobals, mut all: Sglobals, mut i: i64) -> Str {
+    loop {
+        if null_p(gl) {
+            return str_lit("");
+        } else if {
+            let tagcase_ = car(gl);
+            match *tagcase_ {
+                Sglobal::Sglobal(m, j) => {
+                    i64_eq(i, j)
+                }
+            }
+        } {
+            let tagcase_ = car(gl);
+            match *tagcase_ {
+                Sglobal::Sglobal(m, j) => {
+                    if i64_eq(sglobal_of(all, m), i) {
+                        return m;
+                    } else {
+                        return str_lit("");
+                    }
+                }
+            }
+        } else {
+            gl = cdr(gl);
+            continue;
+        }
+    }
+}
+
+/// The globals' names a session's code is lowered with: the program's
+/// unnamed, which it cannot see; the session's, each by its name where
+/// it is its name's newest; then the facts' entries (`with-entries`).
+pub fn session_gs(gl: Sglobals, fs: Facts) -> Strings {
+    onto(map(lambda1s(move |i: i64| {
+        sglobal_name(gl, gl, i)
+    }), counting(0i64, get(session_next()))), with_entries(fs))
+}
+
+/// A new global, named `n`, of value `w`: past the program's, the globals'
+/// array and their names' grown if need be.
+pub fn session_global_x(n: Str, w: i64) -> i64 {
+    let i = if i64_lt(get(session_next()), 0i64) {
+        flatarray_length_i64(get(globals()))
+    } else {
+        get(session_next())
+    };
+    let old = get(globals());
+    let names = get(global_name_table());
+    set(session_next(), i64_plus(i, 1i64));
+    if i64_lt(i, flatarray_length_i64(old)) {
+        ()
+    } else {
+        let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(i64_plus(i, 1i64), 2i64), w_unbound()));
+        words_copied_x(old, bigger, 0i64, flatarray_length_i64(old));
+        set(globals(), bigger)
+    };
+    if i64_lt(i, int_to_i64(array_length(names))) {
+        ()
+    } else {
+        let more = the::<Array<Str>>(make_array(i64_to_int(i64_star(i64_plus(i, 1i64), 2i64)), str_lit("")));
+        names_copied_x(names, more, 0i64, int_to_i64(array_length(names)));
+        set(global_name_table(), more)
+    };
+    array_set_x(get(global_name_table()), i64_to_int(i), n);
+    flatarray_set_i64_x(get(globals()), i, w);
+    i
+}
+
+/// Module value `m`'s value named `n` (a product's field, as `extract`
+/// finds it).
+pub fn module_field(m: i64, n: Str) -> i64 {
+    let i = label_position(fixnum_value(obj_ref(m, 0i64)), i64_minus(obj_size(m), 1i64), intern_x(n), 0i64);
+    if i64_lt(i, 0i64) {
+        w_unbound()
+    } else {
+        obj_ref(m, i64_plus(i, 1i64))
+    }
+}
+
+pub fn session_marks() -> Binds {
+    kayak_rt::heap_cons(bind(str_lit("%session"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()))
+}
+
+/// A session's definition checked, as the REPL checks a form: one written
+/// with no type, its type found (`check-untyped`).
+pub fn session_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+    if untyped_p(form) {
+        let tagcase_ = check_untyped(v, form);
+        match *tagcase_ {
+            Elab::Elab(v2, more) => {
+                at(v2, str_lit("staged code"), nil::<Str>())
+            }
+        }
+    } else {
+        check_top(v, form)
+    }
+}
+
+/// `m`'s values each defined in the session, `(define x (with
+/// stage-module x))`, its global holding `m`'s.
+pub fn seeded(mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings) -> &'static Sess {
+    loop {
+        if null_p(ns) {
+            return sess(v, gl, nil::<&'static Defn>(), 0i64);
+        } else {
+            let n = car(ns);
+            let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
+            let v2 = session_top(v, form);
+            let i = session_global_x(n, module_field(m, n));
+            (v, gl, ns) = (v2, kayak_rt::heap_cons(sglobal(n, i), gl), cdr(ns));
+            continue;
+        }
+    }
+}
+
+/// The index of session `sw`'s state, made first if it has none, of
+/// module type `mt`.
+pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
+    let k = fixnum_value(obj_ref(sw, 1i64));
+    if i64_gt_eq(k, 0i64) {
+        k
+    } else {
+        let m = obj_ref(sw, 0i64);
+        let v = with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks()));
+        let gm = session_global_x(str_lit("stage-module"), m);
+        let vals = map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
+            string_eq_p(mitem_kind(x), str_lit("%val"))
+        }), mtype_items(mt)));
+        let made = seeded(v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals);
+        let k2 = size(get(sessions()));
+        set(sessions(), onto(get(sessions()), kayak_rt::heap_cons(made, kayak_rt::nil())));
+        obj_set_x(sw, 1i64, fixnum(k2));
+        k2
+    }
+}
+
+/// `(make-session m)`: `#(m -1)`, its state made at its first use.
+pub fn make_session_word_x(m: i64) -> i64 {
+    let s = alloc_x(ob_vector(), 2i64);
+    obj_set_x(s, 0i64, m);
+    obj_set_x(s, 1i64, fixnum(-1i64));
+    s
+}
+
+// A check by a worker, as `stage-worked`'s: `` if it passed, else the
+// refusal. `kind` 0, `form` an expression checked against `t`; 1, a
+// top-level form.
+pub fn session_verdict(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind: i64) -> Str {
+    if i64_eq(kind, 0i64) {
+        (&expressions::check)(at(v, str_lit("staged code"), nil::<Str>()), new_state(), form, t);
+        ()
+    } else {
+        session_top(v, form);
+        ()
+    };
+    str_lit("")
+}
+
+pub fn session_worked(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind: i64) -> Str {
+    let out = the::<ICell<Str>>(make_icell());
+    let relay = the::<Addr<Str>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Str>| {
+        let _ = {
+            struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
+            impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<Str>, r#box: Inbox<Str>) -> () {
+                kayak_rt::process::icell_put_x(out, kayak_rt::process::receive(r#box))
+            }
+            let r__arena = Region_R::default();
+            letrena__r(&r__arena, out, r#box)
+        };
+    }));
+    the::<Addr<()>>(kayak_rt::process::spawn_monitored(relay, &stage_refused, move |r#box: kayak_rt::Inbox<()>| {
+        let _ = {
+            struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
+            impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind: i64) -> () {
+                kayak_rt::process::send(relay, session_verdict(v, form, t, kind))
+            }
+            let r__arena = Region_R::default();
+            letrena__r(&r__arena, relay, v, form, t, kind)
+        };
+    }));
+    kayak_rt::process::icell_get(out)
+}
+
+/// `(sum failed (product (kind (sum KIND #u)) (message m) (start 0) (end 0)))`.
+pub fn stage_failed_word_x(kind: Str, m: Str) -> i64 {
+    let k = sum_word_x(kind, w_unit());
+    let msg = string_word_x(m);
+    let p = alloc_x(ob_product(), 5i64);
+    obj_set_x(p, 0i64, fixnum(get(stage_failure_labels())));
+    obj_set_x(p, 1i64, k);
+    obj_set_x(p, 2i64, msg);
+    obj_set_x(p, 3i64, fixnum(0i64));
+    obj_set_x(p, 4i64, fixnum(0i64));
+    sum_word_x(str_lit("failed"), p)
+}
+
+/// Procedure `lam`, lowered at the top, a closure over nothing.
+pub fn thunk_word_x(lam: &'static Ir) -> i64 {
+    let l = number_x(lam);
+    let e = alloc_x(ob_env(), 2i64);
+    let p = alloc_x(ob_proc(), 2i64);
+    obj_set_x(e, 0i64, w_nil());
+    obj_set_x(e, 1i64, w_unit());
+    obj_set_x(p, 0i64, code_word(l));
+    obj_set_x(p, 1i64, e);
+    p
+}
+
+pub fn session_scope() -> Scope {
+    kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("%session"), kayak_rt::nil()), kayak_rt::nil())
+}
+
+pub fn session_thunk(e: &'static Sexp) -> &'static Sexp {
+    lst(kayak_rt::heap_cons(sym(str_lit("lambda"), stage_file(), stage_at_x()), kayak_rt::heap_cons(lst(nil::<&'static Sexp>(), stage_file(), 1i64, stage_at_x()), kayak_rt::heap_cons(e, kayak_rt::nil()))), stage_file(), 1i64, stage_at_x())
+}
+
+/// An expression in session `k`: `(sum ok (sum expression p))`, `p` the
+/// procedure that evaluates it, checked at `t`, `(subr E () R)`; or why
+/// not.
+pub fn session_expression_x(k: i64, st: &'static Sess, code: &'static Sexp, t: &'static Ty) -> i64 {
+    let tagcase_ = st;
+    match *tagcase_ {
+        Sess::Sess(v, gl, ds, g) => {
+            let thunk = session_thunk(code);
+            let why = session_worked(v, thunk, t, 0i64);
+            if not(string_eq_p(why, str_lit(""))) {
+                stage_failure_word_x(refusal_said(why))
+            } else {
+                let s = {
+                    let tagcase_ = (&expressions::check)(at(v, str_lit("staged code"), nil::<Str>()), new_state(), thunk, t);
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            s
+                        }
+                    }
+                };
+                let gs = session_gs(gl, onto({
+                    let tagcase_ = s;
+                    match *tagcase_ {
+                        St::St(sbs, n, fs, ns) => {
+                            fs
+                        }
+                    }
+                }, cv_facts(v)));
+                let p = thunk_word_x(lower(thunk, session_scope(), gs));
+                sum_word_x(str_lit("ok"), sum_word_x(str_lit("expression"), p))
+            }
+        }
+    }
+}
+
+/// `(define name init)` or `(define name type init)`: its name and its
+/// initializer; none if neither.
+pub fn definition_parts(code: &'static Sexp) -> Sexps {
+    let xs = items(code);
+    if ((i64_eq(size(xs), 3i64) || i64_eq(size(xs), 4i64)) && {
+        let tagcase_ = second(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(last(xs), kayak_rt::nil()))
+    } else {
+        nil::<&'static Sexp>()
+    }
+}
+
+/// A definition in session `k`, checked against it as it is, its
+/// initializer, unless a `lambda`, within `E` (`t` is `(subr E () R)`):
+/// `(sum ok (sum definition d))`, `d` pending; or why not.
+pub fn session_define_x(sw: i64, k: i64, st: &'static Sess, code: &'static Sexp, t: &'static Ty) -> i64 {
+    let tagcase_ = st;
+    match *tagcase_ {
+        Sess::Sess(v, gl, ds, g) => {
+            let parts = definition_parts(code);
+            if null_p(parts) {
+                stage_failed_word_x(str_lit("malformed"), str_lit("a definition is `(define name init)` or `(define name type init)`"))
+            } else {
+                let name = sym_name(car(parts));
+                let init = second(parts);
+                let why = session_worked(v, code, t, 1i64);
+                if not(string_eq_p(why, str_lit(""))) {
+                    stage_failure_word_x(refusal_said(why))
+                } else {
+                    let v2 = session_top(v, code);
+                    let found = scope_bind(name, v2);
+                    let dt = if null_p(found) {
+                        ty_unit()
+                    } else {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                let tagcase_ = sc;
+                                match *tagcase_ {
+                                    Scheme::Scheme(tvs, u) => {
+                                        u
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    let es = {
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                es
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    };
+                    let bounded = if head_is_p(init, str_lit("lambda")) {
+                        str_lit("")
+                    } else {
+                        session_worked(v, session_thunk(init), ty_proc(es, nil::<&'static Ty>(), dt), 0i64)
+                    };
+                    if not(string_eq_p(bounded, str_lit(""))) {
+                        stage_failure_word_x(refusal_said(bounded))
+                    } else {
+                        let i = size(get(pendings()));
+                        let d = alloc_x(ob_vector(), 2i64);
+                        set(pendings(), onto(get(pendings()), kayak_rt::heap_cons(pend(k, g, name, code, dt, false), kayak_rt::nil())));
+                        obj_set_x(d, 0i64, sw);
+                        obj_set_x(d, 1i64, fixnum(i));
+                        sum_word_x(str_lit("ok"), sum_word_x(str_lit("definition"), d))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `(%session-run s code given rep names)`, `session-check`'s: the code an
+/// expression or a definition, checked in session `s` against `rep`,
+/// `(subr pure (M) (subr E () R))`, filled from the evidence given.
+pub fn session_run_x(sw: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
+    let whole = (&rep_ty)(rep_filled_x(rep, given, word_string(names)));
+    let mt = {
+        let tagcase_ = whole;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                car(ps)
+            }
+            _ => {
+                let other = tagcase_;
+                whole
+            }
+        }
+    };
+    let t = {
+        let tagcase_ = whole;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                r
+            }
+            _ => {
+                let other = tagcase_;
+                whole
+            }
+        }
+    };
+    let k = session_state_x(sw, mt);
+    let st = nth_sess(get(sessions()), k);
+    let c = word_sexp(code);
+    if head_is_p(c, str_lit("define")) {
+        session_define_x(sw, k, st, c, t)
+    } else {
+        session_expression_x(k, st, c, t)
+    }
+}
+
+pub fn pending_of(d: i64) -> &'static Pend {
+    nth_pend(get(pendings()), fixnum_value(obj_ref(d, 1i64)))
+}
+
+/// The names the definitions among `ds` define that use `n`, not
+/// defining it themselves.
+pub fn direct_users(ds: Defns, n: Str) -> Strings {
+    if null_p(ds) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = car(ds);
+        match *tagcase_ {
+            Defn::Defn(ns, f) => {
+                onto(if (string_member_p(n, names_in(f)) && not(string_member_p(n, ns))) {
+                    ns
+                } else {
+                    nil::<Str>()
+                }, direct_users(cdr(ds), n))
+            }
+        }
+    }
+}
+
+/// `(session-redefines s d)`: `(sum fresh #u)`, or `(sum redefines r)`, `r`
+/// the name, its type and the new one, and the session's definitions
+/// that use it.
+pub fn redefines_word_x(sw: i64, d: i64) -> i64 {
+    let tagcase_ = pending_of(d);
+    match *tagcase_ {
+        Pend::Pend(k, g, name, form, dt, used) => {
+            let st = nth_sess(get(sessions()), k);
+            let found = {
+                let tagcase_ = st;
+                match *tagcase_ {
+                    Sess::Sess(v, gl, ds, g2) => {
+                        scope_bind(name, v)
+                    }
+                }
+            };
+            if (null_p(found) || {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        not((string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("broken"))))
+                    }
+                }
+            }) {
+                sum_word_x(str_lit("fresh"), w_unit())
+            } else {
+                let old = {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tvs, u) => {
+                                    show_ty(new_state(), u)
+                                }
+                            }
+                        }
+                    }
+                };
+                let users = {
+                    let tagcase_ = st;
+                    match *tagcase_ {
+                        Sess::Sess(v, gl, ds, g2) => {
+                            direct_users(ds, name)
+                        }
+                    }
+                };
+                let p = alloc_x(ob_product(), 5i64);
+                obj_set_x(p, 0i64, fixnum(get(redefinition_labels())));
+                obj_set_x(p, 1i64, string_word_x(name));
+                obj_set_x(p, 2i64, string_word_x(old));
+                obj_set_x(p, 3i64, string_word_x(show_ty(new_state(), dt)));
+                obj_set_x(p, 4i64, strings_word_x(users));
+                sum_word_x(str_lit("redefines"), p)
+            }
+        }
+    }
+}
+
+// What a commit runs: each definition, its global and its form.
+pub enum Runs {
+    Runs(i64, &'static Sexp),
+}
+
+pub fn runs(f0: i64, f1: &'static Sexp) -> &'static Runs {
+    kayak_rt::heap_alloc(Runs::Runs(f0, f1))
+}
+
+pub type Runss = List<&'static Runs>;
+
+pub enum RerunMade {
+    RerunMade(&'static Cv, Sglobals, Runss),
+}
+
+pub fn rerun_made(f0: &'static Cv, f1: Sglobals, f2: Runss) -> &'static RerunMade {
+    kayak_rt::heap_alloc(RerunMade::RerunMade(f0, f1, f2))
+}
+
+/// Each user in turn checked again: each that checks run again, at its
+/// global; each that does not broken, as Fixpt says it.
+pub fn session_reruns(mut v: &'static Cv, mut gl: Sglobals, mut us: Defns, mut redefined: Str, mut made: Runss) -> &'static RerunMade {
+    loop {
+        if null_p(us) {
+            return rerun_made(v, gl, made);
+        } else {
+            let tagcase_ = car(us);
+            match *tagcase_ {
+                Defn::Defn(ns, form) => {
+                    let why = session_worked(v, form, ty_unit(), 1i64);
+                    if string_eq_p(why, str_lit("")) {
+                        (v, us, made) = (session_top(v, form), cdr(us), onto(made, map(lambda1s(move |n: Str| {
+                            runs(sglobal_of(gl, n), form)
+                        }), ns)));
+                        continue;
+                    } else {
+                        (v, us) = (with_binds(v, onto(broken_binds(v, ns), map(lambda1s(move |n: Str| {
+                            bind(string_append(str_lit("%broken-why "), n), scheme(nil::<Str>(), ty_unit()), string_append(str_lit("since `"), string_append(redefined, string_append(str_lit("` was redefined ("), string_append(refusal_said(why), str_lit(")"))))))
+                        }), ns))), cdr(us));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn decision_tag(w: i64) -> Str {
+    if is_obj_p(w, ob_sum()) {
+        name_of_number(fixnum_value(obj_ref(w, 0i64)))
+    } else {
+        str_lit("")
+    }
+}
+
+/// A form run by a commit: its global given its initializer's value.
+pub fn run_ir(gs: Strings, r: &'static Runs) -> &'static Ir {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Runs::Runs(i, form) => {
+            let xs = items(form);
+            i_define(i, named(sym_name(second(xs)), lower(last(xs), kayak_rt::heap_cons(nil::<Str>(), session_scope()), gs)))
+        }
+    }
+}
+
+/// `(%session-ready s d decision)`: `d` committed as `decision` says, then
+/// `(sum go p)`, `p` the procedure that runs the definition, and what
+/// runs again, for the program to call; or why not.
+pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
+    let tagcase_ = pending_of(d);
+    match *tagcase_ {
+        Pend::Pend(k, g, name, form, dt, used) => {
+            let st = nth_sess(get(sessions()), k);
+            let tagcase_ = st;
+            match *tagcase_ {
+                Sess::Sess(v, gl, ds, g2) => {
+                    let found = scope_bind(name, v);
+                    let existed = (not(null_p(found)) && {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("broken")))
+                            }
+                        }
+                    });
+                    let how = decision_tag(decision);
+                    if not(i64_eq(obj_ref(d, 0i64), sw)) {
+                        stage_failed_word_x(str_lit("stale"), str_lit("this definition was checked against another session"))
+                    } else if used {
+                        stage_failed_word_x(str_lit("stale"), str_lit("this definition was committed already"))
+                    } else if not(i64_eq(g, g2)) {
+                        stage_failed_word_x(str_lit("stale"), str_lit("the session changed since this definition was checked: check it again"))
+                    } else if (existed && string_eq_p(how, str_lit("refuse"))) {
+                        stage_failed_word_x(str_lit("refused"), string_append(str_lit("`"), string_append(name, str_lit("` is defined already, and the redefinition was refused"))))
+                    } else {
+                        let v2 = session_top(v, form);
+                        let needed = (existed && rerun_needed_p(v, v2, kayak_rt::heap_cons(name, kayak_rt::nil())));
+                        let i = if (existed && not(needed)) {
+                            sglobal_of(gl, name)
+                        } else {
+                            session_global_x(name, w_unbound())
+                        };
+                        let gl2 = if (existed && not(needed)) {
+                            gl
+                        } else {
+                            kayak_rt::heap_cons(sglobal(name, i), gl)
+                        };
+                        let kept = filter(lambda1s(move |x: &'static Defn| {
+                            not(string_member_p(name, defn_names(x)))
+                        }), ds);
+                        let again = if (needed && string_eq_p(how, str_lit("rerun"))) {
+                            session_reruns(v2, gl2, users_of(kept, kayak_rt::heap_cons(name, kayak_rt::nil())), name, nil::<&'static Runs>())
+                        } else {
+                            rerun_made(v2, gl2, nil::<&'static Runs>())
+                        };
+                        let tagcase_ = again;
+                        match *tagcase_ {
+                            RerunMade::RerunMade(v3, gl3, more) => {
+                                let gs = session_gs(gl3, cv_facts(v3));
+                                let body = i_seq(onto(map(lambda1s(move |r: &'static Runs| {
+                                    run_ir(gs, r)
+                                }), kayak_rt::heap_cons(runs(i, form), more)), kayak_rt::heap_cons(i_lit(v_unit()), kayak_rt::nil())));
+                                let p = thunk_word_x(i_lambda(0i64, body, str_lit(""), str_lit("")));
+                                set(sessions(), sess_replaced(get(sessions()), k, sess(v3, gl3, onto(kept, kayak_rt::heap_cons(defn(kayak_rt::heap_cons(name, kayak_rt::nil()), form), kayak_rt::nil())), i64_plus(g2, 1i64))));
+                                set(pendings(), pend_replaced(get(pendings()), fixnum_value(obj_ref(d, 1i64)), pend(k, g, name, form, dt, true)));
+                                sum_word_x(str_lit("go"), p)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `(%session-committed! s d)`: `(sum defined NAME)`.
+pub fn committed_word_x(sw: i64, d: i64) -> i64 {
+    let tagcase_ = pending_of(d);
+    match *tagcase_ {
+        Pend::Pend(k, g, name, form, dt, used) => {
+            sum_word_x(str_lit("defined"), string_word_x(name))
+        }
     }
 }
 

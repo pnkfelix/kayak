@@ -2148,7 +2148,7 @@
                                   (refuse (at-offset v at-pos) (string-append "`" (string-append name "`, a poly whose binder is distinct, named but not called nor projected, which kayak's checker does not take yet (C204)"))))
                                  ((string=? wher "broken")
                                   "A global broken by a redefinition of what it used (C202)."
-                                  (refuse (at-offset v at-pos) (string-append "`" (string-append name "` is broken: since what it used was defined again, at another type, it does not check"))))
+                                  (refuse (at-offset v at-pos) (broken-said v name)))
                                  ((string=? wher "unmade")
                                   (refuse v (string-append "`" (string-append name "` here is the module's own item, made after this, not the one bound outside it"))))
                                  ((string=? wher "module")
@@ -2162,7 +2162,7 @@
                                                                      (kfx-restricted v s (string-append "a module parameter, or a procedure of one, a Rust generic fn, named as a value: " name))
                                                                      s)
                                                                  name found (process-marks (cv-tvars v))) sc)
-                                 (inst (t s regions effects) (res (lengths-named name t) (naming-effs s name wher t (cv-group v)) s)))))))))))))
+                                 (inst (t s regions effects) (res (lengths-named name t) (session-effs v (naming-effs s name wher t (cv-group v))) s)))))))))))))
 
       (quasi-items (subr kfx (cv st sexps i64) res)
         (lambda (v s ds depth)
@@ -3157,7 +3157,7 @@
                          (else (with-effs (found-then-fitted v (body (opened v m) s (cdr xs) nil) expected)
                                           ;; A shared load's module, made once and never written (C288;
                                           ;; Fixpt's `%shared:` globals): reading it is no effect.
-                                          (if (has-prefix? m "made--load--") nil (list (string-append "g:" m))))))))
+                                          (if (has-prefix? m "made--load--") nil (session-effs v (list (string-append "g:" m)))))))))
                 ((string=? h "cond") (cond-clauses v s xs expected))
                 ((string=? h "case")
                  "On a character, an integer, a string or a boolean, the data
@@ -4230,7 +4230,7 @@
                     (if (and (string=? n "%sched") (string=? wher "prim") (not (has-prefix? (cv-file v) "fx26:")))
                         (refuse v "%sched is named only by a module file built in")
                     (if (string=? wher "broken")
-                        (refuse v (string-append "`" (string-append n "` is broken: since what it used was defined again, at another type, it does not check")))
+                        (refuse v (broken-said v n))
                     (tagcase sc
                       (scheme (tvars t)
                         (cond
@@ -4274,7 +4274,7 @@
                                                                  (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs))
                                                  t)
                                   #u)
-                              (res (projected v (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs) t) (naming-effs s n wher t (cv-group v))
+                              (res (projected v (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs) t) (session-effs v (naming-effs s n wher t (cv-group v)))
                                    (let ((s (if (null? (tagcase (car xs) (sym (n2 f2 p2) (scope-bind n2 v)) (else other nil)))
                                                 ;; A control primitive's, no binding of the program's (C105).
                                                 (note-fact s (cv-file v) (cv-pos v) "control")
@@ -4905,7 +4905,7 @@
                            (scope-bind h v))))
             (cond ((and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "broken"))))
                    "A call of a global broken by a redefinition (C202)."
-                   (refuse v (string-append "`" (string-append h "` is broken: since what it used was defined again, at another type, it does not check"))))
+                   (refuse v (broken-said v h)))
                   ((and (or (string=? h "module") (string=? h "%module-value")) (null? found))
                    (module-expr v s args))
                   ((and (string=? h "extend") (null? found) (i64= (size args) 2))
@@ -5180,7 +5180,7 @@
                                          (effs-union
                                            (if (string=? wher "prim") (cwcc-spin h args) nil)
                                            (effs-union
-                                           (if (string=? wher "global") (list (string-append "g:" h)) nil)
+                                           (session-effs v (if (string=? wher "global") (list (string-append "g:" h)) nil))
                                            (if (or (string=? wher "rec")
                                                    (and (or (string=? wher "local") (string=? wher "narrowed")) (self-applicable? v s t))
                                                    (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))

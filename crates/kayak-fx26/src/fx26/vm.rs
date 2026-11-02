@@ -80,20 +80,6 @@ pub fn parked_at(slot: i64) -> i64 {
     i64_plus(8i64, i64_star(slot, 8i64))
 }
 
-pub fn globals() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
-    })
-}
-
-pub fn global_name_table() -> Ref<Array<Str>> {
-    kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_array(int_lit(1), str_lit("")))
-    })
-}
-
 pub fn tags_made() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -398,19 +384,6 @@ pub fn op_marks_of() -> i64 {
 
 pub fn op_apply() -> i64 {
     168i64
-}
-
-pub fn label_position(mut start: i64, mut n: i64, mut l: i64, mut i: i64) -> i64 {
-    loop {
-        if i64_gt_eq(i, n) {
-            return -1i64;
-        } else if i64_eq(kid_at(i64_plus(start, i)), l) {
-            return i;
-        } else {
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
 }
 
 pub fn arm_found(mut start: i64, mut n: i64, mut tag: i64) -> i64 {

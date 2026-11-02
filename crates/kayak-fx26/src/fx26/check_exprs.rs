@@ -4755,7 +4755,7 @@ pub mod expressions {
                             match refuse(at_offset(v, at_pos), string_append(str_lit("`"), string_append(name, str_lit("`, a poly whose binder is distinct, named but not called nor projected, which kayak's checker does not take yet (C204)")))) {}
                         } else if string_eq_p(wher, str_lit("broken")) {
                             // A global broken by a redefinition of what it used (C202).
-                            match refuse(at_offset(v, at_pos), string_append(str_lit("`"), string_append(name, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {}
+                            match refuse(at_offset(v, at_pos), broken_said(v, name)) {}
                         } else if string_eq_p(wher, str_lit("unmade")) {
                             match refuse(v, string_append(str_lit("`"), string_append(name, str_lit("` here is the module's own item, made after this, not the one bound outside it")))) {}
                         } else if string_eq_p(wher, str_lit("module")) {
@@ -4795,7 +4795,7 @@ pub mod expressions {
                             }, name, found, process_marks(cv_tvars(v))), sc);
                             match *tagcase_ {
                                 Inst::Inst(t, s, regions, effects) => {
-                                    res(lengths_named(name, t), naming_effs(s, name, wher, t, cv_group(v)), s)
+                                    res(lengths_named(name, t), session_effs(v, naming_effs(s, name, wher, t, cv_group(v))), s)
                                 }
                             }
                         }
@@ -6940,7 +6940,7 @@ pub mod expressions {
                 with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil::<&'static Ty>()), expected), if has_prefix_p(m, str_lit("made--load--")) {
                     nil::<Str>()
                 } else {
-                    kayak_rt::heap_cons(string_append(str_lit("g:"), m), kayak_rt::nil())
+                    session_effs(v, kayak_rt::heap_cons(string_append(str_lit("g:"), m), kayak_rt::nil()))
                 })
             }
         } else if string_eq_p(h, str_lit("cond")) {
@@ -9531,7 +9531,7 @@ pub mod expressions {
                                 return match refuse(v, str_lit("%sched is named only by a module file built in")) {};
                             } else {
                                 if string_eq_p(wher, str_lit("broken")) {
-                                    return match refuse(v, string_append(str_lit("`"), string_append(n, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {};
+                                    return match refuse(v, broken_said(v, n)) {};
                                 } else {
                                     let tagcase_ = sc;
                                     match *tagcase_ {
@@ -9617,7 +9617,7 @@ pub mod expressions {
                                                     };
                                                     return res(projected(v, filter(lambda1s(move |b: Str| {
                                                         not(has_prefix_p(b, str_lit("%")))
-                                                    }), tvars), cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
+                                                    }), tvars), cdr(xs), t), session_effs(v, naming_effs(s, n, wher, t, cv_group(v))), {
                                                         let s = if null_p({
                                                             let tagcase_ = car(xs);
                                                             match *tagcase_ {
@@ -10955,7 +10955,7 @@ pub mod expressions {
                 }
             }) {
                 // A call of a global broken by a redefinition (C202).
-                return match refuse(v, string_append(str_lit("`"), string_append(h, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))) {};
+                return match refuse(v, broken_said(v, h)) {};
             } else if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) && null_p(found)) {
                 return module_expr(v, s, args);
             } else if (string_eq_p(h, str_lit("extend")) && null_p(found) && i64_eq(size(args), 2i64)) {
@@ -11603,11 +11603,11 @@ pub mod expressions {
                                     cwcc_spin(h, args)
                                 } else {
                                     nil::<Str>()
-                                }, effs_union(if string_eq_p(wher, str_lit("global")) {
+                                }, effs_union(session_effs(v, if string_eq_p(wher, str_lit("global")) {
                                     kayak_rt::heap_cons(string_append(str_lit("g:"), h), kayak_rt::nil())
                                 } else {
                                     nil::<Str>()
-                                }, if (string_eq_p(wher, str_lit("rec")) || ((string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("narrowed"))) && self_applicable_p(v, s, t)) || (string_member_p(h, cv_group(v)) && (string_eq_p(wher, str_lit("global")) || string_eq_p(wher, str_lit("item"))))) {
+                                }), if (string_eq_p(wher, str_lit("rec")) || ((string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("narrowed"))) && self_applicable_p(v, s, t)) || (string_member_p(h, cv_group(v)) && (string_eq_p(wher, str_lit("global")) || string_eq_p(wher, str_lit("item"))))) {
                                     kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
                                 } else {
                                     nil::<Str>()

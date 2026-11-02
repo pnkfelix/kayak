@@ -5630,6 +5630,23 @@
             ((string=? (car names) n) (car calls))
             (else (calls-of (cdr names) (cdr calls) n))))))
 
+(define session-effs (subr kfx (cv strings) strings)
+  (lambda (v es)
+    "In a session's checker (its `%session` mark, C310), reading a global
+     is reading the session, which its forms' types say, as Fixpt's
+     `globals_effects` off has it: no global's read."
+    (if (null? (scope-bind "%session" v)) es (filter (lambda ((a string)) (not (has-prefix? a "g:"))) es))))
+
+(define broken-said (subr kfx (cv string) string)
+  (lambda (v n)
+    "Why global `n`, broken by a redefinition of what it used (C202), is
+     refused: as Fixpt says it where a session's commit (C310) noted why
+     (`%broken-why n`)."
+    (let ((why (scope-bind (string-append "%broken-why " n) v)))
+      (if (null? why)
+          (string-append "`" (string-append n "` is broken: since what it used was defined again, at another type, it does not check"))
+          (tagcase (car why) (bind (m sc w) (string-append "`" (string-append n (string-append "` is broken, " (string-append w ": define it again to use it"))))))))))
+
 (define naming-effs (subr kfx (st string string ty strings) strings)
   (lambda (s name wher t group)
     "What naming a name does: a global is read; a member of the group being

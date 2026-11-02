@@ -13183,6 +13183,36 @@ pub fn calls_of(mut names: Strings, mut calls: List<Strings>, mut n: Str) -> Str
     }
 }
 
+/// In a session's checker (its `%session` mark, C310), reading a global
+/// is reading the session, which its forms' types say, as Fixpt's
+/// `globals_effects` off has it: no global's read.
+pub fn session_effs(v: &'static Cv, es: Strings) -> Strings {
+    if null_p(scope_bind(str_lit("%session"), v)) {
+        es
+    } else {
+        filter(lambda1s(move |a: Str| {
+            not(has_prefix_p(a, str_lit("g:")))
+        }), es)
+    }
+}
+
+/// Why global `n`, broken by a redefinition of what it used (C202), is
+/// refused: as Fixpt says it where a session's commit (C310) noted why
+/// (`%broken-why n`).
+pub fn broken_said(v: &'static Cv, n: Str) -> Str {
+    let why = scope_bind(string_append(str_lit("%broken-why "), n), v);
+    if null_p(why) {
+        string_append(str_lit("`"), string_append(n, str_lit("` is broken: since what it used was defined again, at another type, it does not check")))
+    } else {
+        let tagcase_ = car(why);
+        match *tagcase_ {
+            Bind::Bind(m, sc, w) => {
+                string_append(str_lit("`"), string_append(n, string_append(str_lit("` is broken, "), string_append(w, str_lit(": define it again to use it")))))
+            }
+        }
+    }
+}
+
 /// What naming a name does: a global is read; a member of the group being
 /// defined, named as a value, may be called by whoever is given it, and so
 /// loop: `spin`, as FX-26 has it. A global defined before cannot be, since

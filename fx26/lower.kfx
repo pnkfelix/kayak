@@ -624,6 +624,14 @@
                            (lower (car (cdr (cdr (cdr (cdr xs))))) sc gs)
                            (i-lit (v-rep (words-of (fact-at (key-of e) "stage-rep " gs))))
                            (i-lit (v-string (words-of (fact-at (key-of e) "stage-given " gs)))))))
+            ((and (string=? h "%session-check") (i64= (size xs) 5))
+             "`session-check` (C310): `(%session-run s code given REP names)`, as
+              `%stage-run`."
+             (i-call (i-lit (v-prim "%session-run" 5))
+                     (list (lower (third xs) sc gs) (lower (car (cdr (cdr (cdr xs)))) sc gs)
+                           (lower (car (cdr (cdr (cdr (cdr xs))))) sc gs)
+                           (i-lit (v-rep (words-of (fact-at (key-of e) "stage-rep " gs))))
+                           (i-lit (v-string (words-of (fact-at (key-of e) "stage-given " gs)))))))
             ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region")) (not (null? xs)))
              "Evidence (C307): `(%reify GIVEN REP names)`, its rep filled where the
               program runs from the evidence given."

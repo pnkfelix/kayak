@@ -152,6 +152,14 @@ pub fn prim_arity(n: Str) -> i64 {
         3i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("effect-bound"), kayak_rt::heap_cons(str_lit("type-bound"), kayak_rt::nil()))) {
         1i64
+    } else if string_eq_p(n, str_lit("make-session")) {
+        1i64
+    } else if string_eq_p(n, str_lit("%session-run")) {
+        5i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("session-redefines"), kayak_rt::heap_cons(str_lit("%session-committed!"), kayak_rt::nil()))) {
+        2i64
+    } else if string_eq_p(n, str_lit("%session-ready")) {
+        3i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::heap_cons(str_lit("rcons"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::nil())))))) {
         3i64
     } else if string_eq_p(n, str_lit("rnew")) {

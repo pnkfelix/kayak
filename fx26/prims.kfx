@@ -96,6 +96,11 @@
           ((string=? n "%stage-run") 5)
           ((string=? n "%reify") 3)
           ((string-member? n (list "effect-bound" "type-bound")) 1)
+          ;; Sessions (C310).
+          ((string=? n "make-session") 1)
+          ((string=? n "%session-run") 5)
+          ((string-member? n (list "session-redefines" "%session-committed!")) 2)
+          ((string=? n "%session-ready") 3)
           ((string-member? n (list "substring" "array-set!" "string-search" "rcons" "rmake-array")) 3)
           ((string=? n "rnew") 2)
           ((string-member? n (list "%make-bloblet" "bloblet-bytes" "bloblet-freeze" "blobref-owner" "blobref-offset")) 1)

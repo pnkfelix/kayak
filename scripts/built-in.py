@@ -44,6 +44,8 @@ MODULES = [
     # The scheduler of processes and `par`, in FX-26 (C218): what the
     # forms of processes call, as Fixpt's parser makes them.
     ("fx26:processes.fx", "crates/fixpt-fx26/src/processes.fx"),
+    # Sessions in the condition-raising style (C310): `commit!`.
+    ("fx26:session-conditions.fx", "crates/fixpt-fx26/src/session-conditions.fx"),
 ]
 CONVENTION = "crates/fixpt-runtime/src/native-arm64.conv"
 CONVENTION_OUT = os.path.join(ROOT, "crates", "kayak-jit", "src", "native-arm64.conv")

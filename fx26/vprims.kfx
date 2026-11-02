@@ -481,6 +481,12 @@
         ((i64= op 270) (reify-run! a b (pair-car (pair-cdr (pair-cdr args)))))
         ;; A bound (C308): the evidence it is made of, its rep.
         ((or (i64= op 271) (i64= op 272)) a)
+        ;; Sessions (C310).
+        ((i64= op 273) (make-session-word! a))
+        ((i64= op 274) (session-run! a b (pair-car (pair-cdr (pair-cdr args))) (fourth-arg args) (fifth-arg args)))
+        ((i64= op 275) (redefines-word! a b))
+        ((i64= op 276) (ready-word! a b (pair-car (pair-cdr (pair-cdr args)))))
+        ((i64= op 277) (committed-word! a b))
         ((i64= op 139) (real-word! (int->f64 (word-int a))))
         ((and (i64= op 140) (not (integral? (word-real a)))) (refused-op! "f64->int: not an integer"))
         ((i64= op 140) (int-word! (f64->int (word-real a))))
