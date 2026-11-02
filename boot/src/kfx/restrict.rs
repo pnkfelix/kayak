@@ -94,6 +94,8 @@ pub mod restrictions {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
                 } else if (keyword_name_p(n) || string_member_p(n, kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("symbol->keyword"), kayak_rt::heap_cons(str_lit("keyword->symbol"), kayak_rt::nil()))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {}
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("effect-bound"), kayak_rt::heap_cons(str_lit("type-bound"), kayak_rt::nil()))) {
+                    match restriction_refused(file, line, string_append(n, str_lit(", FX-26's evidence, which KFX has not yet (C308)"))) {}
                 } else if string_eq_p(n, str_lit("%stage")) {
                     match restriction_refused(file, line, str_lit("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {}
                 } else if string_eq_p(n, str_lit("list")) {

@@ -5598,13 +5598,52 @@ pub mod expressions {
         }
     }
 
+    /// Whether variable `n` stands in `t` only where checking against less is
+    /// safe (C308; Fixpt's `stands_in`): itself where `t` gives, a frozen
+    /// list's elements, a procedure's result, a product's or sum's parts;
+    /// never where `t` takes or is compared exactly.
+    pub fn stands_safe_p(mut s: &'static St, mut t: &'static Ty, mut n: Str, mut positive: bool) -> bool {
+        loop {
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    return (not(string_eq_p(m, n)) || positive);
+                }
+                Ty::TyList(e, r) => {
+                    if frozen_region_p(s, r) {
+                        t = e;
+                        continue;
+                    } else {
+                        return not(ty_names_p(walk(s, e), n));
+                    }
+                }
+                Ty::TyProc(es, ps, r) => {
+                    return (not(any_p(lambda1s(move |p: &'static Ty| {
+                        ty_names_p(walk(s, p), n)
+                    }), ps)) && stands_safe_p(s, r, n, positive));
+                }
+                Ty::TyShape(p, ls, ts) => {
+                    return all_safe_p(s, ts, n, positive);
+                }
+                _ => {
+                    let other = tagcase_;
+                    return not(ty_names_p(other, n));
+                }
+            }
+        }
+    }
+
+    pub fn all_safe_p(s: &'static St, ts: Tys, n: Str, positive: bool) -> bool {
+        (null_p(ts) || (stands_safe_p(s, car(ts), n, positive) && all_safe_p(s, cdr(ts), n, positive)))
+    }
+
     /// The variable evidence of type `t` is of, or none: an `(effectrep v)`'s,
     /// a `(typerep v)`'s, a `(regionrep v)`'s, `v` a variable.
     pub fn evidence_of(s: &'static St, t: &'static Ty) -> Str {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
             Ty::TyData(d, r#as) => {
-                if (string_eq_p(d, str_lit("%effectrep")) && not(null_p(r#as))) {
+                if ((string_eq_p(d, str_lit("%effectrep")) || string_eq_p(d, str_lit("%effectbound"))) && not(null_p(r#as))) {
                     let tagcase_ = car(r#as);
                     match *tagcase_ {
                         Ty::TyProc(es, ps, r) => {
@@ -5619,7 +5658,7 @@ pub mod expressions {
                             str_lit("")
                         }
                     }
-                } else if ((string_eq_p(d, str_lit("%typerep")) || string_eq_p(d, str_lit("%regionrep"))) && not(null_p(r#as))) {
+                } else if ((string_eq_p(d, str_lit("%typerep")) || string_eq_p(d, str_lit("%regionrep")) || string_eq_p(d, str_lit("%typebound"))) && not(null_p(r#as))) {
                     let tagcase_ = walk(s, car(r#as));
                     match *tagcase_ {
                         Ty::TyVar(n) => {
@@ -5657,6 +5696,35 @@ pub mod expressions {
         }
     }
 
+    /// The variables `(given …)` has a bound of (C308), not exact evidence.
+    pub fn evidence_bounds(s: &'static St, g: &'static Ty) -> Strings {
+        let tagcase_ = walk(s, g);
+        match *tagcase_ {
+            Ty::TyShape(p, ls, ts) => {
+                concat(map(lambda1s(move |t: &'static Ty| {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyData(d, r#as) => {
+                            if (string_eq_p(d, str_lit("%effectbound")) || string_eq_p(d, str_lit("%typebound"))) {
+                                the::<Strings>(kayak_rt::heap_cons(evidence_of(s, t), kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }), ts))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
     /// The variables with no evidence given, but regions: a region a
     /// variable names, given none, is a region of its own, named afresh
     /// where the program runs (Fixpt's rule).
@@ -5664,6 +5732,12 @@ pub mod expressions {
         filter(lambda1s(move |h: Str| {
             (not(string_member_p(h, covered)) && not(has_prefix_p(h, str_lit("'"))))
         }), holes)
+    }
+
+    /// Fixpt's words for a bound where less is not safe.
+    pub fn bound_unsafe(n: Str) -> Str {
+        let w = written_binder(n);
+        string_append(str_lit("`stage` is given a bound of `"), string_append(w, string_append(str_lit("`, which may be of less than `"), string_append(w, string_append(str_lit("` is: `"), string_append(w, str_lit("` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence")))))))
     }
 
     /// Fixpt's words for a variable with no evidence.
@@ -5709,6 +5783,8 @@ pub mod expressions {
                     Rexp::Rexp(ns, hs, root, why) => {
                         if not(string_eq_p(why, str_lit(""))) {
                             match refuse(v, string_append(str_lit("evidence of a part a rep does not take yet: "), why)) {}
+                        } else if not(null_p(evidence_bounds(s, gt))) {
+                            match refuse(v, string_append(str_lit("`reify-"), string_append(kind, string_append(str_lit("` makes exact evidence, so it is given exact evidence, and this is a bound of `"), string_append(written_binder(car(evidence_bounds(s, gt))), str_lit("`")))))) {}
                         } else if not(null_p(evidence_missing(hs, evidence_covered(s, gt)))) {
                             match refuse(v, evidence_wanted(string_append(str_lit("reify-"), kind), car(evidence_missing(hs, evidence_covered(s, gt))))) {}
                         } else {
@@ -5788,6 +5864,12 @@ pub mod expressions {
                                                     match refuse(v, string_append(str_lit("a stage's type has a part a rep does not take yet: "), why)) {}
                                                 } else if not(null_p(evidence_missing(hs, evidence_covered(s, gt)))) {
                                                     match refuse(v, evidence_wanted(str_lit("stage"), car(evidence_missing(hs, evidence_covered(s, gt))))) {}
+                                                } else if any_p(lambda1s(move |n: Str| {
+                                                    (ty_names_p(walk(s, mt), n) || not(stands_safe_p(s, r, n, true)))
+                                                }), evidence_bounds(s, gt)) {
+                                                    match refuse(v, bound_unsafe(car(filter(lambda1s(move |n: Str| {
+                                                        (ty_names_p(walk(s, mt), n) || not(stands_safe_p(s, r, n, true)))
+                                                    }), evidence_bounds(s, gt))))) {}
                                                 } else {
                                                     res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("stage-rep "), rp_nodes_text(ns, hs, root))), cv_file(v), cv_pos(v), string_append(str_lit("stage-given "), words_of(evidence_covered(s, gt)))))
                                                 }
@@ -6731,7 +6813,7 @@ pub mod expressions {
                                 } else {
                                     kfx_restricted(v, s, str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)"))
                                 }
-                            }, cdr(xs), nil::<&'static Ty>()), expected), es)
+                            }, cdr(xs), expected), expected), es)
                         }
                     }
                 }

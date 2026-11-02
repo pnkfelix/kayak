@@ -203,7 +203,7 @@
         "process-start" "process-output" "process-status" "process-write" "process-close-input"
         "process-signal" "process-exit" "process-news"
         ;; `stage` (C305).
-        "%stage-run" "%reify"))
+        "%stage-run" "%reify" "effect-bound" "type-bound"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

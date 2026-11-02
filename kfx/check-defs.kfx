@@ -206,6 +206,8 @@
    (process-signal (subr (io process) (int int) unit))
    (process-exit (subr (io process) (int) (sumof (exited int) (signalled int) (unknown unit))))
    (process-news (subr (io process) () int))
+   (effect-bound (poly ((e effect)) (subr pure ((effectrep e)) (effectbound e))))
+   (type-bound (poly ((t type)) (subr pure ((typerep t)) (typebound t))))
    (rep-nodes (poly ((s region)) (subr (read s) ((bytevectorof s) (listof string acyclic)) (productof (1 (listof (productof (1 int) (2 symbol) (3 bool) (4 (listof symbol acyclic)) (5 (listof (sumof (node int) (bound (productof (1 int) (2 int))) (hole int) (const (productof (1 string) (2 int) (3 string))) (sym symbol) (int int) (flag bool)) acyclic))) acyclic)) (2 (listof symbol acyclic))))))
    (rep-of-nodes (poly ((r region)) (subr (alloc r) ((listof (productof (1 int) (2 symbol) (3 bool) (4 (listof symbol acyclic)) (5 (listof (sumof (node int) (bound (productof (1 int) (2 int))) (hole int) (const (productof (1 string) (2 int) (3 string))) (sym symbol) (int int) (flag bool)) acyclic))) acyclic) (listof symbol acyclic) int) (bytevectorof r))))
    (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))

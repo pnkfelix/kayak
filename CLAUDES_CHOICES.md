@@ -8558,3 +8558,29 @@ stdout))` given `pure`'s. `evidence-region.fx`'s evidence checks, but
 kayak refuses a module that `main` makes at `@a`, where Fixpt does not
 count that allocation against `main`: a checker difference of its own.
 Bounds (`effectbound`, `typebound`) are not taken yet.
+
+## C308. Evidence bounds (2026-11-01)
+
+Fixpt's 265a166b: evidence of at most an effect or a type.
+- **The types** `(effectbound e)` and `(typebound t)`, Fixpt's
+  generative 20 and 21, are covariant: evidence of less stands for more.
+- **`effect-bound` and `type-bound`** make a bound of exact evidence. In
+  kayak's checker, a bound of an effect not solved yet, where one of a
+  known effect is wanted, is solved to that one, the most it may be, so
+  that the exact evidence it is made of may be of it. Without that, the
+  call's result, checked first, solved the variable to the least, `pure`.
+  On the engine (ops 271, 272) a bound is its evidence's rep.
+- **The rule, Fixpt's, in its words** (`stands-safe?`): a variable given
+  a bound may stand only where checking against less is safe: not in `M`;
+  in `R` only where `R` gives what it is, a frozen list's elements, a
+  procedure's result, a product's or sum's parts, never a parameter's
+  type or a reference's. "`stage` is given a bound of `t`, which may be of
+  less than `t` is: …". A `reify-…` takes exact evidence only.
+- **Found on the way**: kayak's checker synthesized a `with` of a module
+  value's body with nothing expected, then fitted it, so a lambda there
+  without its parameters' types was refused. Fixpt gives the body what is
+  expected, and now kayak does too (one more of Fixpt's programs the same,
+  442 of 561).
+`evidence-bound.fx` runs as Fixpt's but for one refusal's words;
+`evidence-bound-taken.fx`, `-reify.fx` and `-region.fx` are refused as
+Fixpt refuses them.

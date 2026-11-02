@@ -6655,6 +6655,11 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // Evidence of an effect (C307; Fixpt's `docs/fx26.md`, "Evidence"):
                     // the effect a procedure's latent one holds, as `vsubr`'s does.
                     return ty_data(str_lit("%effectrep"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()));
+                } else if (sym_is_p(car(xs), str_lit("effectbound")) && i64_eq(size(xs), 2i64)) {
+                    // A bound (C308; Fixpt's 20, 21): evidence of at most an effect, a type.
+                    return ty_data(str_lit("%effectbound"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()));
+                } else if (sym_is_p(car(xs), str_lit("typebound")) && i64_eq(size(xs), 2i64)) {
+                    return ty_data(str_lit("%typebound"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::nil()));
                 } else if (sym_is_p(car(xs), str_lit("typerep")) && i64_eq(size(xs), 2i64)) {
                     return ty_data(str_lit("%typerep"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::nil()));
                 } else if (sym_is_p(car(xs), str_lit("regionrep")) && i64_eq(size(xs), 2i64)) {
@@ -8502,8 +8507,12 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%escape-tag")) {
                     return string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")));
-                } else if string_eq_p(d, str_lit("%effectrep")) {
-                    return string_append(str_lit("(effectrep "), string_append({
+                } else if (string_eq_p(d, str_lit("%effectrep")) || string_eq_p(d, str_lit("%effectbound"))) {
+                    return string_append(if string_eq_p(d, str_lit("%effectrep")) {
+                        str_lit("(effectrep ")
+                    } else {
+                        str_lit("(effectbound ")
+                    }, string_append({
                         let tagcase_ = car(args);
                         match *tagcase_ {
                             Ty::TyProc(es, ps, r) => {
@@ -8515,7 +8524,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                             }
                         }
                     }, str_lit(")")));
-                } else if (string_eq_p(d, str_lit("%typerep")) || string_eq_p(d, str_lit("%regionrep"))) {
+                } else if (string_eq_p(d, str_lit("%typerep")) || string_eq_p(d, str_lit("%regionrep")) || string_eq_p(d, str_lit("%typebound"))) {
                     return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_ty(s, car(args)), str_lit(")")))));
                 } else if string_eq_p(d, str_lit("%nlist")) {
                     return string_append(str_lit("(nlist "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), str_lit(")")))));
@@ -11143,7 +11152,7 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     } else if (string_eq_p(x, str_lit("%effectrep")) && not(null_p(xs))) {
                         // Evidence of an effect (C307; Fixpt's generative type 17): invariant,
                         // so that evidence says exactly what it is of.
-                        let two = same_effs(s, {
+                        let xe = {
                             let tagcase_ = car(xs);
                             match *tagcase_ {
                                 Ty::TyProc(es, ps, r) => {
@@ -11154,7 +11163,8 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                                     nil::<Str>()
                                 }
                             }
-                        }, {
+                        };
+                        let raw = {
                             let tagcase_ = car(ys);
                             match *tagcase_ {
                                 Ty::TyProc(es, ps, r) => {
@@ -11165,12 +11175,84 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                                     nil::<Str>()
                                 }
                             }
+                        };
+                        let lone = (not(null_p(raw)) && null_p(cdr(raw)) && effect_meta_p(car(raw)) && {
+                            let tagcase_ = walk(s, ty_meta(meta_number(after_prefix(car(raw), str_lit("~")))));
+                            match *tagcase_ {
+                                Ty::TyMeta(k) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
                         });
+                        let two = if lone {
+                            kayak_rt::heap_cons(solve(s, meta_number(after_prefix(car(raw), str_lit("~"))), effect_row(xe)), kayak_rt::nil())
+                        } else {
+                            same_effs(s, xe, raw)
+                        };
                         if null_p(two) {
                             mismatch(v, s, a, e)
                         } else {
                             car(two)
                         }
+                    } else if (string_eq_p(x, str_lit("%effectbound")) && not(null_p(xs)) && {
+                        let raw = {
+                            let tagcase_ = car(xs);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        };
+                        (not(null_p(raw)) && null_p(cdr(raw)) && effect_meta_p(car(raw)) && {
+                            let tagcase_ = walk(s, ty_meta(meta_number(after_prefix(car(raw), str_lit("~")))));
+                            match *tagcase_ {
+                                Ty::TyMeta(k) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        })
+                    }) {
+                        // A bound of an effect not solved yet, where one of an effect is
+                        // wanted: of that one, the most it may be, so that the exact
+                        // evidence it is made of may be of it (C308).
+                        solve(s, meta_number(after_prefix(car({
+                            let tagcase_ = car(xs);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        }), str_lit("~"))), effect_row({
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        }))
+                    } else if ((string_eq_p(x, str_lit("%effectbound")) || string_eq_p(x, str_lit("%typebound"))) && not(null_p(xs))) {
+                        // A bound (C308): covariant, so evidence of less stands for more.
+                        fits(v, s, car(xs), car(ys))
                     } else if ((string_eq_p(x, str_lit("%typerep")) || string_eq_p(x, str_lit("%regionrep"))) && not(null_p(xs))) {
                         // Evidence of a type or a region (Fixpt's 19 and 18): invariant.
                         fits(v, fits(v, s, car(xs), car(ys)), car(ys), car(xs))

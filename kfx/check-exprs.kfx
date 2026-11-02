@@ -2565,15 +2565,30 @@
                     (race-branches v s xs (race-type v s xs) nil)
                     (race-branches v s xs (car expected) nil))))))
 
+      (stands-safe? (subr kfx (st ty string bool) bool)
+        (lambda (s t n positive)
+          "Whether variable `n` stands in `t` only where checking against less is
+           safe (C308; Fixpt's `stands_in`): itself where `t` gives, a frozen
+           list's elements, a procedure's result, a product's or sum's parts;
+           never where `t` takes or is compared exactly."
+          (tagcase (walk s t)
+            (ty-var (m) (or (not (string=? m n)) positive))
+            (ty-list (e r) (if (frozen-region? s r) (stands-safe? s e n positive) (not (ty-names? (walk s e) n))))
+            (ty-proc (es ps r) (and (not (any? (lambda ((p ty)) (ty-names? (walk s p) n)) ps)) (stands-safe? s r n positive)))
+            (ty-shape (p ls ts) (all-safe? s ts n positive))
+            (else other (not (ty-names? other n))))))
+      (all-safe? (subr kfx (st tys string bool) bool)
+        (lambda (s ts n positive) (or (null? ts) (and (stands-safe? s (car ts) n positive) (all-safe? s (cdr ts) n positive)))))
+
       (evidence-of (subr kfx (st ty) string)
         (lambda (s t)
           "The variable evidence of type `t` is of, or none: an `(effectrep v)`'s,
            a `(typerep v)`'s, a `(regionrep v)`'s, `v` a variable."
           (tagcase (walk s t)
             (ty-data (d as)
-              (cond ((and (string=? d "%effectrep") (not (null? as)))
+              (cond ((and (or (string=? d "%effectrep") (string=? d "%effectbound")) (not (null? as)))
                      (tagcase (car as) (ty-proc (es ps r) (if (and (not (null? es)) (null? (cdr es)) (has-prefix? (car es) "~")) (car es) "")) (else other "")))
-                    ((and (or (string=? d "%typerep") (string=? d "%regionrep")) (not (null? as)))
+                    ((and (or (string=? d "%typerep") (string=? d "%regionrep") (string=? d "%typebound")) (not (null? as)))
                      (tagcase (walk s (car as)) (ty-var (n) n) (else other "")))
                     (else "")))
             (else other ""))))
@@ -2583,12 +2598,31 @@
           "The variables `(given …)`'s product has evidence of, in its order."
           (tagcase (walk s g) (ty-shape (p ls ts) (map (lambda ((t ty)) (evidence-of s t)) ts)) (else other nil))))
 
+      (evidence-bounds (subr kfx (st ty) strings)
+        (lambda (s g)
+          "The variables `(given …)` has a bound of (C308), not exact evidence."
+          (tagcase (walk s g)
+            (ty-shape (p ls ts)
+              (concat (map (lambda ((t ty))
+                             (tagcase (walk s t)
+                               (ty-data (d as) (if (or (string=? d "%effectbound") (string=? d "%typebound")) (the strings (list (evidence-of s t))) nil))
+                               (else other nil)))
+                           ts)))
+            (else other nil))))
+
       (evidence-missing (subr kfx (strings strings) strings)
         (lambda (holes covered)
           "The variables with no evidence given, but regions: a region a
            variable names, given none, is a region of its own, named afresh
            where the program runs (Fixpt's rule)."
           (filter (lambda ((h string)) (and (not (string-member? h covered)) (not (has-prefix? h "'")))) holes)))
+
+      (bound-unsafe (subr kfx (string) string)
+        (lambda (n)
+          "Fixpt's words for a bound where less is not safe."
+          (let ((w (written-binder n)))
+            (string-append "`stage` is given a bound of `" (string-append w (string-append "`, which may be of less than `" (string-append w
+              (string-append "` is: `" (string-append w "` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence")))))))))
 
       (evidence-wanted (subr kfx (string string) string)
         (lambda (form n)
@@ -2618,6 +2652,9 @@
                 (tagcase (evidence-export s kind t)
                   (rexp (ns hs root why)
                     (cond ((not (string=? why "")) (refuse v (string-append "evidence of a part a rep does not take yet: " why)))
+                          ((not (null? (evidence-bounds s gt)))
+                           (refuse v (string-append "`reify-" (string-append kind (string-append "` makes exact evidence, so it is given exact evidence, and this is a bound of `"
+                                                                                          (string-append (written-binder (car (evidence-bounds s gt))) "`"))))))
                           ((not (null? (evidence-missing hs (evidence-covered s gt))))
                            (refuse v (evidence-wanted (string-append "reify-" kind) (car (evidence-missing hs (evidence-covered s gt))))))
                           (else
@@ -2658,6 +2695,8 @@
                                          (refuse v (string-append "a stage's type has a part a rep does not take yet: " why)))
                                         ((not (null? (evidence-missing hs (evidence-covered s gt))))
                                          (refuse v (evidence-wanted "stage" (car (evidence-missing hs (evidence-covered s gt))))))
+                                        ((any? (lambda ((n string)) (or (ty-names? (walk s mt) n) (not (stands-safe? s r n #t)))) (evidence-bounds s gt))
+                                         (refuse v (bound-unsafe (car (filter (lambda ((n string)) (or (ty-names? (walk s mt) n) (not (stands-safe? s r n #t)))) (evidence-bounds s gt))))))
                                         (else
                                            (res (ty-shape #f (list "ok" "failed")
                                                           (list (ty-proc es nil r) (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
@@ -3084,7 +3123,9 @@
                                                                               (note-fact s (cv-file v) (cv-pos v)
                                                                                          (string-append "with-maker " (string-append m (string-append " " (tagcase (car (scope-bind (string-append "%maker-value " m) v)) (bind (n sc wher) wher))))))
                                                                               (kfx-restricted v s "a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")))
-                                                                        (cdr xs) nil)
+                                                                        ;; The type expected given the body (C308): a lambda there
+                                                                        ;; takes its parameters' types from it, as Fixpt's does.
+                                                                        (cdr xs) expected)
                                                                 expected)
                                              es))))))
                          ((and (not (null? found))

@@ -47,6 +47,8 @@
                        (restriction-refused file line (string-append n ", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)")))
                       ((or (keyword-name? n) (string-member? n (list "keyword?" "symbol->keyword" "keyword->symbol")))
                        (restriction-refused file line (string-append n ", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)")))
+                      ((string-member? n (list "effect-bound" "type-bound"))
+                       (restriction-refused file line (string-append n ", FX-26's evidence, which KFX has not yet (C308)")))
                       ((string=? n "%stage")
                        (restriction-refused file line "`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)"))
                       ((string=? n "list")

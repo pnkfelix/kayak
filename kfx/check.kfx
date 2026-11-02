@@ -2983,6 +2983,11 @@
                  "Evidence of an effect (C307; Fixpt's `docs/fx26.md`, \"Evidence\"):
                   the effect a procedure's latent one holds, as `vsubr`'s does."
                  (ty-data "%effectrep" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)))))
+                ((and (sym-is? (car xs) "effectbound") (i64= (size xs) 2))
+                 "A bound (C308; Fixpt's 20, 21): evidence of at most an effect, a type."
+                 (ty-data "%effectbound" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)))))
+                ((and (sym-is? (car xs) "typebound") (i64= (size xs) 2))
+                 (ty-data "%typebound" (list (parse-type v tvars (second xs)))))
                 ((and (sym-is? (car xs) "typerep") (i64= (size xs) 2))
                  (ty-data "%typerep" (list (parse-type v tvars (second xs)))))
                 ((and (sym-is? (car xs) "regionrep") (i64= (size xs) 2))
@@ -3803,9 +3808,9 @@
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
-                ((string=? d "%effectrep")
-                 (string-append "(effectrep " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")) ")")))
-                ((or (string=? d "%typerep") (string=? d "%regionrep"))
+                ((or (string=? d "%effectrep") (string=? d "%effectbound"))
+                 (string-append (if (string=? d "%effectrep") "(effectrep " "(effectbound ") (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")) ")")))
+                ((or (string=? d "%typerep") (string=? d "%regionrep") (string=? d "%typebound"))
                  (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-ty s (car args)) ")")))))
                 ((string=? d "%nlist") (string-append "(nlist " (string-append (show-ty s (car args)) (string-append " " (string-append (show-size s (car (cdr args))) ")")))))
                 ((string=? d "%narray")
@@ -4822,9 +4827,27 @@
                     ((and (string=? x "%effectrep") (not (null? xs)))
                      "Evidence of an effect (C307; Fixpt's generative type 17): invariant,
                       so that evidence says exactly what it is of."
-                     (let ((two (same-effs s (tagcase (car xs) (ty-proc (es ps r) es) (else other nil))
-                                             (tagcase (car ys) (ty-proc (es ps r) es) (else other nil)))))
+                     (let* ((xe (tagcase (car xs) (ty-proc (es ps r) es) (else other nil)))
+                            (raw (tagcase (car ys) (ty-proc (es ps r) es) (else other nil)))
+                            (lone (and (not (null? raw)) (null? (cdr raw)) (effect-meta? (car raw))
+                                       (tagcase (walk s (ty-meta (meta-number (after-prefix (car raw) "~")))) (ty-meta (k) #t) (else other #f))))
+                            (two (if lone
+                                     ;; The expected an inference variable alone, not solved: it is the actual.
+                                     (list (solve s (meta-number (after-prefix (car raw) "~")) (effect-row xe)))
+                                     (same-effs s xe raw))))
                        (if (null? two) (mismatch v s a e) (car two))))
+                    ((and (string=? x "%effectbound") (not (null? xs))
+                          (let ((raw (tagcase (car xs) (ty-proc (es ps r) es) (else other nil))))
+                            (and (not (null? raw)) (null? (cdr raw)) (effect-meta? (car raw))
+                                 (tagcase (walk s (ty-meta (meta-number (after-prefix (car raw) "~")))) (ty-meta (k) #t) (else other #f)))))
+                     "A bound of an effect not solved yet, where one of an effect is
+                      wanted: of that one, the most it may be, so that the exact
+                      evidence it is made of may be of it (C308)."
+                     (solve s (meta-number (after-prefix (car (tagcase (car xs) (ty-proc (es ps r) es) (else other nil))) "~"))
+                            (effect-row (tagcase (car ys) (ty-proc (es ps r) es) (else other nil)))))
+                    ((and (or (string=? x "%effectbound") (string=? x "%typebound")) (not (null? xs)))
+                     "A bound (C308): covariant, so evidence of less stands for more."
+                     (fits v s (car xs) (car ys)))
                     ((and (or (string=? x "%typerep") (string=? x "%regionrep")) (not (null? xs)))
                      "Evidence of a type or a region (Fixpt's 19 and 18): invariant."
                      (fits v (fits v s (car xs) (car ys)) (car ys) (car xs)))
