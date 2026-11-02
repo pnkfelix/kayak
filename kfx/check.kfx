@@ -664,6 +664,13 @@
 (define stage-failure-text string
   "(productof (kind (sumof (unread unit) (malformed unit) (refused unit) (stale unit))) (message string) (start int) (end int))")
 
+"FX-26's standard types of sessions (C309; Fixpt's `SESSION_DECISION`,
+ `SESSION_REDEFINITION`): what a redefinition does, and what one would
+ change."
+(define session-decision-text string "(sumof (shadow unit) (refuse unit) (rerun unit))")
+(define session-redefinition-text string
+  "(productof (name string) (old string) (new string) (users (listof string acyclic)))")
+
 "Names `io-kind` tests against, made once (C264): a list written in place is
  made at each call."
 (define io-kind-names strings (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal" "native" "sys" "process"))
@@ -2801,6 +2808,10 @@
                  (parse-type v tvars (car (read-all (string-chars io-error-text) "" 1))))
                 ((and (string=? s "stage-failure") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
                  (parse-type v tvars (car (read-all (string-chars stage-failure-text) "" 1))))
+                ((and (string=? s "session-decision") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
+                 (parse-type v tvars (car (read-all (string-chars session-decision-text) "" 1))))
+                ((and (string=? s "session-redefinition") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
+                 (parse-type v tvars (car (read-all (string-chars session-redefinition-text) "" 1))))
                 ((dt-named? s (cv-dts v))
                  (let ((found (find-family s (cv-dts v))))
                    (typecase found
@@ -2983,6 +2994,14 @@
                  "Evidence of an effect (C307; Fixpt's `docs/fx26.md`, \"Evidence\"):
                   the effect a procedure's latent one holds, as `vsubr`'s does."
                  (ty-data "%effectrep" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)))))
+                ((and (sym-is? (car xs) "sessionof") (i64= (size xs) 3))
+                 "A session (C309; Fixpt's generative 15): definitions that last,
+                  checked against a module of type `M`, kept at region `r`."
+                 (ty-data "%sessionof" (list (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))
+                ((and (sym-is? (car xs) "pending") (i64= (size xs) 3))
+                 "A definition checked in a session, to commit (Fixpt's 16): its
+                  initializer's effect `E`, the session's region."
+                 (ty-data "%pending" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)) (parse-mutable-region v tvars (third xs)))))
                 ((and (sym-is? (car xs) "effectbound") (i64= (size xs) 2))
                  "A bound (C308; Fixpt's 20, 21): evidence of at most an effect, a type."
                  (ty-data "%effectbound" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)))))
@@ -3808,6 +3827,11 @@
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
+                ((string=? d "%sessionof")
+                 (string-append "(sessionof " (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args))) ")")))))
+                ((string=? d "%pending")
+                 (string-append "(pending " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
+                   (string-append " " (string-append (show-ty s (car (cdr args))) ")")))))
                 ((or (string=? d "%effectrep") (string=? d "%effectbound"))
                  (string-append (if (string=? d "%effectrep") "(effectrep " "(effectbound ") (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")) ")")))
                 ((or (string=? d "%typerep") (string=? d "%regionrep") (string=? d "%typebound"))
@@ -4836,6 +4860,12 @@
                                      (list (solve s (meta-number (after-prefix (car raw) "~")) (effect-row xe)))
                                      (same-effs s xe raw))))
                        (if (null? two) (mismatch v s a e) (car two))))
+                    ((and (string=? x "%sessionof") (i64= (size xs) 2))
+                     "A session (C309): invariant, as Fixpt's (no variance marked)."
+                     (fits v (fits v (fits v (fits v s (car xs) (car ys)) (car ys) (car xs)) (car (cdr xs)) (car (cdr ys))) (car (cdr ys)) (car (cdr xs))))
+                    ((and (string=? x "%pending") (i64= (size xs) 2))
+                     "A pending definition (C309): covariant in its effect, as Fixpt's."
+                     (fits v (fits v (fits v s (car xs) (car ys)) (car (cdr xs)) (car (cdr ys))) (car (cdr ys)) (car (cdr xs))))
                     ((and (string=? x "%effectbound") (not (null? xs))
                           (let ((raw (tagcase (car xs) (ty-proc (es ps r) es) (else other nil))))
                             (and (not (null? raw)) (null? (cdr raw)) (effect-meta? (car raw))

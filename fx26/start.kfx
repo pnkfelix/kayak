@@ -135,7 +135,9 @@
                                      (if (has-prefix? expansion "(") (the abbrevs (list (abbrev expansion name))) nil)))))))
                        (cv-binds v)))
           (the abbrevs (list (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars io-error-text) "" 1)))) "io-error")
-                             (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars stage-failure-text) "" 1)))) "stage-failure"))))))
+                             (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars stage-failure-text) "" 1)))) "stage-failure")
+                             (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars session-decision-text) "" 1)))) "session-decision")
+                             (abbrev (show-ty (new-state) (parse-type v nil (car (read-all (string-chars session-redefinition-text) "" 1)))) "session-redefinition"))))))
 
 (define shown-abbreviated (subr kfx (cv string) string)
   (lambda (v shown) (abbrevs-put shown (scope-abbrevs v))))

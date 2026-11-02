@@ -2663,32 +2663,42 @@
                                 (note-fact (note-fact s (cv-file v) (cv-pos v) (string-append "reify-rep " (rp-nodes-text ns hs root)))
                                            (cv-file v) (cv-pos v) (string-append "reify-given " (words-of (evidence-covered s gt))))))))))))))
 
-      (stage-form (subr kfx (cv st sexps) res)
-        (lambda (v s xs)
+      (stage-form (subr kfx (cv st sexps bool) res)
+        (lambda (v s xs session)
           "`stage`, as `(%stage E R m code given)` (C304; Fixpt's `%stage`):
            `m` a module, by its name, `code` a datum; a `(sumof (ok (subr E () R)) (failed
            stage-failure))`, of the effects of its parts and `stage` and
            `spin`. A variable it names, free in `M`, `E` or `R`, must be given
            its evidence, `(given g …)`, each `g` an `(effectrep v)`, a
            `(typerep v)` or a `(regionrep v)` (C307; Fixpt's rule, its
-           words). Not KFX's."
+           words). Not KFX's. With `session` (C309), `(%session-check E R s code
+           given)`: `s` a `(sessionof M r)`, and what is made an expression's
+           procedure or a definition pending, `(sumof (expression (subr E ()
+           R)) (definition (pending E r)))`, of effect `(read r)` too."
           (let* ((es (parse-effect v (cv-tvars v) (car xs)))
                  (r (parse-type v (cv-tvars v) (second xs)))
                  (named (lambda ((t ty)) (tagcase t (ty-proc (es ps r) #f) (else other #f))))
                  (s (kfx-restricted v s "`stage`, FX-26's, which KFX has not yet (C304)")))
-            (cond ((tagcase (third xs) (sym (n f p) #f) (else other #t))
+            (cond ((and (not session) (tagcase (third xs) (sym (n f p) #f) (else other #t)))
                    "Fixpt's rule: by its name, so that the stage's front end knows it."
                    (refuse v "`stage` takes a module by its name"))
                   (else
                    (tagcase (synth v s (third xs))
-                     (res (mt mes s)
+                     (res (mt0 mes s)
+                       (let* ((st (walk s mt0))
+                              (of-session (tagcase st (ty-data (d as) (and (string=? d "%sessionof") (i64= (size as) 2))) (else other #f)))
+                              (mt (if (and session of-session) (tagcase st (ty-data (d as) (car as)) (else other st)) mt0))
+                              (sr (if (and session of-session) (tagcase st (ty-data (d as) (car (cdr as))) (else other (ty-rconst "@heap"))) (ty-rconst "@heap"))))
+                       (if (and session (not of-session))
+                           (refuse v (string-append "`session-check` takes a session, and this is a " (show-ty s mt0)))
                        (if (not (or (mtype? (walk s mt)) (tagcase (walk s mt) (ty-data (d as) (has-prefix? d "%module ")) (else other #f))))
                            (refuse v (string-append "a stage's module is a module, and this is a " (show-ty s mt)))
                            (tagcase (check v s (car (cdr (cdr (cdr xs)))) (ty-data "datum" nil))
                              (res (ct ces s)
                                (tagcase (synth v s (car (cdr (cdr (cdr (cdr xs))))))
                                  (res (gt ges s)
-                                   (tagcase (ty-export s (ty-proc nil (list mt) (ty-proc es nil r)))
+                                   (tagcase (ty-export s (ty-proc nil (list (tagcase (walk s mt) (ty-data (d as) (if (has-prefix? d "%module ") (module-alias-type v d) mt)) (else other mt)))
+                                                                  (ty-proc es nil r)))
                                      (rexp (ns hs root why)
                                        (cond
                                         ((not (string=? why ""))
@@ -2699,12 +2709,17 @@
                                          (refuse v (bound-unsafe (car (filter (lambda ((n string)) (or (ty-names? (walk s mt) n) (not (stands-safe? s r n #t)))) (evidence-bounds s gt))))))
                                         (else
                                            (res (ty-shape #f (list "ok" "failed")
-                                                          (list (ty-proc es nil r) (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
-                                                (effs-union (list "stage" "spin") (effs-union mes (effs-union ces ges)))
+                                                          (list (if session
+                                                                    (ty-shape #f (list "expression" "definition")
+                                                                              (list (ty-proc es nil r) (ty-data "%pending" (list (ty-proc es nil (ty-unit)) sr))))
+                                                                    (ty-proc es nil r))
+                                                                (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
+                                                (effs-union (if session (list "stage" "spin" (string-append "read:" (region-string s sr))) (list "stage" "spin"))
+                                                            (effs-union mes (effs-union ces ges)))
                                                 ;; What the code is checked as, `(subr pure (M) (subr E () R))`,
                                                 ;; its nodes, for the engine's loading to make its rep (C305).
                                                 (note-fact (note-fact s (cv-file v) (cv-pos v) (string-append "stage-rep " (rp-nodes-text ns hs root)))
-                                                           (cv-file v) (cv-pos v) (string-append "stage-given " (words-of (evidence-covered s gt)))))))))))))))))))))
+                                                           (cv-file v) (cv-pos v) (string-append "stage-given " (words-of (evidence-covered s gt)))))))))))))))))))))))
 
       (attempt-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
@@ -2802,7 +2817,8 @@
                  "FX-26's `race`, a form wherever it heads a list: refused, not a
                   call of what a program names `race` (C108)."
                  (race-form v s xs nil))
-                ((and (string=? h "%stage") (i64= (size xs) 5)) (stage-form v s xs))
+                ((and (string=? h "%stage") (i64= (size xs) 5)) (stage-form v s xs #f))
+                ((and (string=? h "%session-check") (i64= (size xs) 5)) (stage-form v s xs #t))
                 ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region"))
                       (or (i64= (size xs) 1) (i64= (size xs) 2)))
                  (reify-form v s (after-prefix h "reify-") xs))
@@ -2944,7 +2960,7 @@
         (lambda (v s e h xs expected)
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
-                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "%stage") (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
+                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "%stage") (string=? h "%session-check") (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
                 ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
                 ((and (string=? h "the") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
                       (tagcase (parse-type v (cv-tvars v) (car xs)) (ty-data (d args) (string=? d "%array")) (else other #f)))

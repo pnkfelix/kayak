@@ -5802,8 +5802,11 @@ pub mod expressions {
     /// `spin`. A variable it names, free in `M`, `E` or `R`, must be given
     /// its evidence, `(given g …)`, each `g` an `(effectrep v)`, a
     /// `(typerep v)` or a `(regionrep v)` (C307; Fixpt's rule, its
-    /// words). Not KFX's.
-    pub fn stage_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+    /// words). Not KFX's. With `session` (C309), `(%session-check E R s code
+    /// given)`: `s` a `(sessionof M r)`, and what is made an expression's
+    /// procedure or a definition pending, `(sumof (expression (subr E ()
+    /// R)) (definition (pending E r)))`, of effect `(read r)` too.
+    pub fn stage_form(v: &'static Cv, s: &'static St, xs: Sexps, session: bool) -> &'static Res {
         let es = parse_effect(v, cv_tvars(v), car(xs));
         let r = parse_type(v, cv_tvars(v), second(xs));
         let named = lambda1s(move |t: &'static Ty| {
@@ -5819,7 +5822,7 @@ pub mod expressions {
             }
         });
         let s = kfx_restricted(v, s, str_lit("`stage`, FX-26's, which KFX has not yet (C304)"));
-        if {
+        if (not(session) && {
             let tagcase_ = third(xs);
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
@@ -5830,48 +5833,116 @@ pub mod expressions {
                     true
                 }
             }
-        } {
+        }) {
             // Fixpt's rule: by its name, so that the stage's front end knows it.
             match refuse(v, str_lit("`stage` takes a module by its name")) {}
         } else {
             let tagcase_ = synth(v, s, third(xs));
             match *tagcase_ {
-                Res::Res(mt, mes, s) => {
-                    if not((mtype_p(walk(s, mt)) || {
-                        let tagcase_ = walk(s, mt);
+                Res::Res(mt0, mes, s) => {
+                    let st = walk(s, mt0);
+                    let of_session = {
+                        let tagcase_ = st;
                         match *tagcase_ {
                             Ty::TyData(d, r#as) => {
-                                has_prefix_p(d, str_lit("%module "))
+                                (string_eq_p(d, str_lit("%sessionof")) && i64_eq(size(r#as), 2i64))
                             }
                             _ => {
                                 let other = tagcase_;
                                 false
                             }
                         }
-                    })) {
-                        match refuse(v, string_append(str_lit("a stage's module is a module, and this is a "), show_ty(s, mt))) {}
-                    } else {
-                        let tagcase_ = check(v, s, car(cdr(cdr(cdr(xs)))), ty_data(str_lit("datum"), nil::<&'static Ty>()));
+                    };
+                    let mt = if (session && of_session) {
+                        let tagcase_ = st;
                         match *tagcase_ {
-                            Res::Res(ct, ces, s) => {
-                                let tagcase_ = synth(v, s, car(cdr(cdr(cdr(cdr(xs))))));
-                                match *tagcase_ {
-                                    Res::Res(gt, ges, s) => {
-                                        let tagcase_ = ty_export(s, ty_proc(nil::<Str>(), kayak_rt::heap_cons(mt, kayak_rt::nil()), ty_proc(es, nil::<&'static Ty>(), r)));
-                                        match *tagcase_ {
-                                            Rexp::Rexp(ns, hs, root, why) => {
-                                                if not(string_eq_p(why, str_lit(""))) {
-                                                    match refuse(v, string_append(str_lit("a stage's type has a part a rep does not take yet: "), why)) {}
-                                                } else if not(null_p(evidence_missing(hs, evidence_covered(s, gt)))) {
-                                                    match refuse(v, evidence_wanted(str_lit("stage"), car(evidence_missing(hs, evidence_covered(s, gt))))) {}
-                                                } else if any_p(lambda1s(move |n: Str| {
-                                                    (ty_names_p(walk(s, mt), n) || not(stands_safe_p(s, r, n, true)))
-                                                }), evidence_bounds(s, gt)) {
-                                                    match refuse(v, bound_unsafe(car(filter(lambda1s(move |n: Str| {
+                            Ty::TyData(d, r#as) => {
+                                car(r#as)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                st
+                            }
+                        }
+                    } else {
+                        mt0
+                    };
+                    let sr = if (session && of_session) {
+                        let tagcase_ = st;
+                        match *tagcase_ {
+                            Ty::TyData(d, r#as) => {
+                                car(cdr(r#as))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                ty_rconst(str_lit("@heap"))
+                            }
+                        }
+                    } else {
+                        ty_rconst(str_lit("@heap"))
+                    };
+                    if (session && not(of_session)) {
+                        match refuse(v, string_append(str_lit("`session-check` takes a session, and this is a "), show_ty(s, mt0))) {}
+                    } else {
+                        if not((mtype_p(walk(s, mt)) || {
+                            let tagcase_ = walk(s, mt);
+                            match *tagcase_ {
+                                Ty::TyData(d, r#as) => {
+                                    has_prefix_p(d, str_lit("%module "))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        })) {
+                            match refuse(v, string_append(str_lit("a stage's module is a module, and this is a "), show_ty(s, mt))) {}
+                        } else {
+                            let tagcase_ = check(v, s, car(cdr(cdr(cdr(xs)))), ty_data(str_lit("datum"), nil::<&'static Ty>()));
+                            match *tagcase_ {
+                                Res::Res(ct, ces, s) => {
+                                    let tagcase_ = synth(v, s, car(cdr(cdr(cdr(cdr(xs))))));
+                                    match *tagcase_ {
+                                        Res::Res(gt, ges, s) => {
+                                            let tagcase_ = ty_export(s, ty_proc(nil::<Str>(), kayak_rt::heap_cons({
+                                                let tagcase_ = walk(s, mt);
+                                                match *tagcase_ {
+                                                    Ty::TyData(d, r#as) => {
+                                                        if has_prefix_p(d, str_lit("%module ")) {
+                                                            module_alias_type(v, d)
+                                                        } else {
+                                                            mt
+                                                        }
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        mt
+                                                    }
+                                                }
+                                            }, kayak_rt::nil()), ty_proc(es, nil::<&'static Ty>(), r)));
+                                            match *tagcase_ {
+                                                Rexp::Rexp(ns, hs, root, why) => {
+                                                    if not(string_eq_p(why, str_lit(""))) {
+                                                        match refuse(v, string_append(str_lit("a stage's type has a part a rep does not take yet: "), why)) {}
+                                                    } else if not(null_p(evidence_missing(hs, evidence_covered(s, gt)))) {
+                                                        match refuse(v, evidence_wanted(str_lit("stage"), car(evidence_missing(hs, evidence_covered(s, gt))))) {}
+                                                    } else if any_p(lambda1s(move |n: Str| {
                                                         (ty_names_p(walk(s, mt), n) || not(stands_safe_p(s, r, n, true)))
-                                                    }), evidence_bounds(s, gt))))) {}
-                                                } else {
-                                                    res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("stage-rep "), rp_nodes_text(ns, hs, root))), cv_file(v), cv_pos(v), string_append(str_lit("stage-given "), words_of(evidence_covered(s, gt)))))
+                                                    }), evidence_bounds(s, gt)) {
+                                                        match refuse(v, bound_unsafe(car(filter(lambda1s(move |n: Str| {
+                                                            (ty_names_p(walk(s, mt), n) || not(stands_safe_p(s, r, n, true)))
+                                                        }), evidence_bounds(s, gt))))) {}
+                                                    } else {
+                                                        res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(if session {
+                                                            ty_shape(false, kayak_rt::heap_cons(str_lit("expression"), kayak_rt::heap_cons(str_lit("definition"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(ty_data(str_lit("%pending"), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(sr, kayak_rt::nil()))), kayak_rt::nil())))
+                                                        } else {
+                                                            ty_proc(es, nil::<&'static Ty>(), r)
+                                                        }, kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(if session {
+                                                            kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, sr)), kayak_rt::nil())))
+                                                        } else {
+                                                            kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()))
+                                                        }, effs_union(mes, effs_union(ces, ges))), note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("stage-rep "), rp_nodes_text(ns, hs, root))), cv_file(v), cv_pos(v), string_append(str_lit("stage-given "), words_of(evidence_covered(s, gt)))))
+                                                    }
                                                 }
                                             }
                                         }
@@ -6085,7 +6156,9 @@ pub mod expressions {
                 // call of what a program names `race` (C108).
                 return race_form(v, s, xs, nil::<&'static Ty>());
             } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 5i64)) {
-                return stage_form(v, s, xs);
+                return stage_form(v, s, xs, false);
+            } else if (string_eq_p(h, str_lit("%session-check")) && i64_eq(size(xs), 5i64)) {
+                return stage_form(v, s, xs, true);
             } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && (i64_eq(size(xs), 1i64) || i64_eq(size(xs), 2i64))) {
                 return reify_form(v, s, after_prefix(h, str_lit("reify-")), xs);
             } else if string_eq_p(h, str_lit("attempt")) {
@@ -6370,7 +6443,7 @@ pub mod expressions {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("spawn-monitored")) {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("%stage")) || string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("%stage")) || string_eq_p(h, str_lit("%session-check")) || string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)

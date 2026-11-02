@@ -96,6 +96,8 @@ pub mod restrictions {
                     match restriction_refused(file, line, string_append(n, str_lit(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("effect-bound"), kayak_rt::heap_cons(str_lit("type-bound"), kayak_rt::nil()))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's evidence, which KFX has not yet (C308)"))) {}
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-session"), kayak_rt::heap_cons(str_lit("session-redefines"), kayak_rt::heap_cons(str_lit("%session-ready"), kayak_rt::heap_cons(str_lit("%session-committed!"), kayak_rt::heap_cons(str_lit("%session-check"), kayak_rt::nil())))))) {
+                    match restriction_refused(file, line, string_append(n, str_lit(", FX-26's sessions, which KFX has not yet (C309)"))) {}
                 } else if string_eq_p(n, str_lit("%stage")) {
                     match restriction_refused(file, line, str_lit("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {}
                 } else if string_eq_p(n, str_lit("list")) {

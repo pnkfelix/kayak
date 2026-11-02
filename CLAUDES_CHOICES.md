@@ -8584,3 +8584,29 @@ Fixpt's 265a166b: evidence of at most an effect or a type.
 `evidence-bound.fx` runs as Fixpt's but for one refusal's words;
 `evidence-bound-taken.fx`, `-reify.fx` and `-region.fx` are refused as
 Fixpt refuses them.
+
+## C309. Sessions, in the checker (2026-11-01)
+
+Part one of Fixpt's sessions (`docs/fx26.md`, "Sessions"), the checker's,
+as C304 was `stage`'s:
+- **The types** `(sessionof M r)`, invariant, and `(pending E r)`,
+  covariant in `E`, Fixpt's generative 15 and 16; and the standard types
+  `session-decision` and `session-redefinition`, printed by their names.
+- **The procedures** `make-session`, `session-redefines`,
+  `%session-ready` and `%session-committed!`, typed as Fixpt's
+  `standard.rs` types them.
+- **The forms**, written as Fixpt's parsers write them, by the pass that
+  writes `stage`: `session-check` as a `tagcase` over kayak's own form
+  `%session-check`, typed as `stage` is, but with its `s` a session, and
+  what it makes an expression's procedure or a definition pending,
+  `(sumof (expression (subr E () R)) (definition (pending E r)))`, with
+  effect `(read r)` too. `(session-commit! s d decision)` becomes
+  `%session-ready`, which gives the initializer for the program to run,
+  then `%session-committed!`, as Fixpt's parser writes it.
+- A module type named by an abbreviation (`%module NAME`) is expanded
+  before its export, so a stage's or session's type takes it.
+- KFX refuses sessions.
+Fixpt's session programs now check as Fixpt checks them, but for how a
+module's type is printed: by its abbreviation in Fixpt (`api : api-type`),
+kayak writing it out. Over 561 programs Fixpt accepts, 443 the same,
+none Fixpt refuses accepted. The engine runs no session yet.

@@ -335,7 +335,7 @@ pub fn scope_abbrevs(v: &'static Cv) -> Abbrevs {
                 }
             }
         }
-    }), cv_binds(v))), the::<Abbrevs>(kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(io_error_text()), str_lit(""), 1i64)))), str_lit("io-error")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(stage_failure_text()), str_lit(""), 1i64)))), str_lit("stage-failure")), kayak_rt::nil()))))
+    }), cv_binds(v))), the::<Abbrevs>(kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(io_error_text()), str_lit(""), 1i64)))), str_lit("io-error")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(stage_failure_text()), str_lit(""), 1i64)))), str_lit("stage-failure")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(session_decision_text()), str_lit(""), 1i64)))), str_lit("session-decision")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(session_redefinition_text()), str_lit(""), 1i64)))), str_lit("session-redefinition")), kayak_rt::nil()))))))
 }
 
 pub fn shown_abbreviated(v: &'static Cv, shown: Str) -> Str {

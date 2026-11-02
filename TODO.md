@@ -102,10 +102,17 @@ section below where it has one; here the order, and what each is.
      (Fixpt's `sum_lower_only`, 39318012).
    - **`stage`** (the checker and the engine have it, C304, C305, by
      rep): a refusal's words and places as Fixpt's; tier 1 and KFX;
-     **evidence**,
-     `reify-effect`/`-region`/`-type` and bounds (bb731ac1, 265a166b);
-     **sessions**, definitions that last (ca4955d6…);
-     `session-conditions.fx`.
+     evidence and bounds (C307, C308; `evidence-region.fx` waits on a
+     module allocating at `@a` passed to a call, which Fixpt masks);
+     **sessions**: the checker has them (C309); the engine (each
+     session's checker environment and definitions, shadow/refuse/rerun,
+     staleness, broken users), then `session-conditions.fx`; a module's
+     type printed by its abbreviation (`api : api-type`) as Fixpt prints it.
+   - **A race in Fixpt's `process/basic.fx`** (seen once, 2026-11-01,
+     under `--regs --compiled --gc-stress` with the check's load): its
+     `wait-for` returns on `exited` without a last `process-output`, so
+     what the child wrote between the two is lost (`got hi`). kayak's
+     `process-status` is Fixpt's rule; the program is Fixpt's to fix.
    - **I/O**: a child in a session of its own, not only a group (needs
      `setsid`, so `unsafe` or a helper); `dump-heap!` (59114584).
    - (Fixpt's e2f3f0f6, a bloblet's values by their index, §205, is its

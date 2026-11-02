@@ -1264,6 +1264,17 @@ pub fn stage_failure_text() -> Str {
     str_lit("(productof (kind (sumof (unread unit) (malformed unit) (refused unit) (stale unit))) (message string) (start int) (end int))")
 }
 
+// FX-26's standard types of sessions (C309; Fixpt's `SESSION_DECISION`,
+// `SESSION_REDEFINITION`): what a redefinition does, and what one would
+// change.
+pub fn session_decision_text() -> Str {
+    str_lit("(sumof (shadow unit) (refuse unit) (rerun unit))")
+}
+
+pub fn session_redefinition_text() -> Str {
+    str_lit("(productof (name string) (old string) (new string) (users (listof string acyclic)))")
+}
+
 // Names `io-kind` tests against, made once (C264): a list written in place is
 // made at each call.
 pub fn io_kind_names() -> Strings {
@@ -6281,6 +6292,12 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if (string_eq_p(s, str_lit("stage-failure")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
                     t = car(read_all(string_chars(stage_failure_text()), str_lit(""), 1i64));
                     continue;
+                } else if (string_eq_p(s, str_lit("session-decision")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
+                    t = car(read_all(string_chars(session_decision_text()), str_lit(""), 1i64));
+                    continue;
+                } else if (string_eq_p(s, str_lit("session-redefinition")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
+                    t = car(read_all(string_chars(session_redefinition_text()), str_lit(""), 1i64));
+                    continue;
                 } else if dt_named_p(s, cv_dts(v)) {
                     let found = find_family(s, cv_dts(v));
                     return if sum_p(found) {
@@ -6655,6 +6672,14 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // Evidence of an effect (C307; Fixpt's `docs/fx26.md`, "Evidence"):
                     // the effect a procedure's latent one holds, as `vsubr`'s does.
                     return ty_data(str_lit("%effectrep"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()));
+                } else if (sym_is_p(car(xs), str_lit("sessionof")) && i64_eq(size(xs), 3i64)) {
+                    // A session (C309; Fixpt's generative 15): definitions that last,
+                    // checked against a module of type `M`, kept at region `r`.
+                    return ty_data(str_lit("%sessionof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("pending")) && i64_eq(size(xs), 3i64)) {
+                    // A definition checked in a session, to commit (Fixpt's 16): its
+                    // initializer's effect `E`, the session's region.
+                    return ty_data(str_lit("%pending"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("effectbound")) && i64_eq(size(xs), 2i64)) {
                     // A bound (C308; Fixpt's 20, 21): evidence of at most an effect, a type.
                     return ty_data(str_lit("%effectbound"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()));
@@ -8507,6 +8532,21 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%escape-tag")) {
                     return string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%sessionof")) {
+                    return string_append(str_lit("(sessionof "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), str_lit(")")))));
+                } else if string_eq_p(d, str_lit("%pending")) {
+                    return string_append(str_lit("(pending "), string_append({
+                        let tagcase_ = car(args);
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                show_effs(es)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("?")
+                            }
+                        }
+                    }, string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), str_lit(")")))));
                 } else if (string_eq_p(d, str_lit("%effectrep")) || string_eq_p(d, str_lit("%effectbound"))) {
                     return string_append(if string_eq_p(d, str_lit("%effectrep")) {
                         str_lit("(effectrep ")
@@ -11198,6 +11238,12 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         } else {
                             car(two)
                         }
+                    } else if (string_eq_p(x, str_lit("%sessionof")) && i64_eq(size(xs), 2i64)) {
+                        // A session (C309): invariant, as Fixpt's (no variance marked).
+                        fits(v, fits(v, fits(v, fits(v, s, car(xs), car(ys)), car(ys), car(xs)), car(cdr(xs)), car(cdr(ys))), car(cdr(ys)), car(cdr(xs)))
+                    } else if (string_eq_p(x, str_lit("%pending")) && i64_eq(size(xs), 2i64)) {
+                        // A pending definition (C309): covariant in its effect, as Fixpt's.
+                        fits(v, fits(v, fits(v, s, car(xs), car(ys)), car(cdr(xs)), car(cdr(ys))), car(cdr(ys)), car(cdr(xs)))
                     } else if (string_eq_p(x, str_lit("%effectbound")) && not(null_p(xs)) && {
                         let raw = {
                             let tagcase_ = car(xs);
