@@ -1158,7 +1158,18 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 5i64)) {
             // `stage` (C305): `(%stage-run m code REP)`, its type's rep, which the
             // checker noted as nodes, made a constant at loading.
-            return i_call(i_lit(v_prim(str_lit("%stage-run"), 3i64)), kayak_rt::heap_cons(lower(third(xs), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(xs)))), sc, gs), kayak_rt::heap_cons(i_lit(v_rep(words_of(fact_at(key_of(e), str_lit("stage-rep "), gs)))), kayak_rt::nil()))));
+            return i_call(i_lit(v_prim(str_lit("%stage-run"), 5i64)), kayak_rt::heap_cons(lower(third(xs), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(xs)))), sc, gs), kayak_rt::heap_cons(lower(car(cdr(cdr(cdr(cdr(xs))))), sc, gs), kayak_rt::heap_cons(i_lit(v_rep(words_of(fact_at(key_of(e), str_lit("stage-rep "), gs)))), kayak_rt::heap_cons(i_lit(v_string(words_of(fact_at(key_of(e), str_lit("stage-given "), gs)))), kayak_rt::nil()))))));
+        } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && not(null_p(xs))) {
+            // Evidence (C307): `(%reify GIVEN REP names)`, its rep filled where the
+            // program runs from the evidence given.
+            let given = if null_p(cdr(xs)) {
+                nil::<&'static Sexp>()
+            } else {
+                cdr(items(second(xs)))
+            };
+            return i_call(i_lit(v_prim(str_lit("%reify"), 3i64)), kayak_rt::heap_cons(lower(lst(kayak_rt::heap_cons(sym(str_lit("product"), str_lit(""), 0i64), map2(lambda2s(move |x: &'static Sexp, k: i64| {
+                lst(kayak_rt::heap_cons(num(k, i64_to_string(k), 0i64), kayak_rt::heap_cons(x, kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+            }), given, counting(1i64, i64_plus(size(given), 1i64)))), str_lit(""), 0i64, 0i64), sc, gs), kayak_rt::heap_cons(i_lit(v_rep(words_of(fact_at(key_of(e), str_lit("reify-rep "), gs)))), kayak_rt::heap_cons(i_lit(v_string(words_of(fact_at(key_of(e), str_lit("reify-given "), gs)))), kayak_rt::nil()))));
         } else if (string_eq_p(h, str_lit("convention")) && i64_eq(size(xs), 2i64)) {
             // `(convention C e)`: `e`, the engine's procedures one convention (C181).
             return lower(second(xs), sc, gs);
@@ -1667,7 +1678,7 @@ pub fn with_entries(fs: Facts) -> Strings {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%with-at "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), after_prefix(what, str_lit("with-spec "))))))), kayak_rt::nil()))
                 } else if any_p(lambda1s(move |k: Str| {
                     has_prefix_p(what, k)
-                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::heap_cons(str_lit("stage-rep "), kayak_rt::nil()))))))))) {
+                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::heap_cons(str_lit("stage-rep "), kayak_rt::heap_cons(str_lit("stage-given "), kayak_rt::heap_cons(str_lit("reify-rep "), kayak_rt::heap_cons(str_lit("reify-given "), kayak_rt::nil())))))))))))) {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%fact "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), what))))), kayak_rt::nil()))
                 } else {
                     nil::<Str>()

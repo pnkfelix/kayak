@@ -6651,6 +6651,14 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
                         ty_var(at_pos(n))
                     }), names), kayak_rt::heap_cons(renamed, kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("effectrep")) && i64_eq(size(xs), 2i64)) {
+                    // Evidence of an effect (C307; Fixpt's `docs/fx26.md`, "Evidence"):
+                    // the effect a procedure's latent one holds, as `vsubr`'s does.
+                    return ty_data(str_lit("%effectrep"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::nil()));
+                } else if (sym_is_p(car(xs), str_lit("typerep")) && i64_eq(size(xs), 2i64)) {
+                    return ty_data(str_lit("%typerep"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::nil()));
+                } else if (sym_is_p(car(xs), str_lit("regionrep")) && i64_eq(size(xs), 2i64)) {
+                    return ty_data(str_lit("%regionrep"), kayak_rt::heap_cons(parse_region(v, tvars, second(xs)), kayak_rt::nil()));
                 } else if (sym_is_p(car(xs), str_lit("escape-tag")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
                     // prompt tag is aborted to, never captured with, so it bounds nothing
@@ -8494,6 +8502,21 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%escape-tag")) {
                     return string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%effectrep")) {
+                    return string_append(str_lit("(effectrep "), string_append({
+                        let tagcase_ = car(args);
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                show_effs(es)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("?")
+                            }
+                        }
+                    }, str_lit(")")));
+                } else if (string_eq_p(d, str_lit("%typerep")) || string_eq_p(d, str_lit("%regionrep"))) {
+                    return string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_ty(s, car(args)), str_lit(")")))));
                 } else if string_eq_p(d, str_lit("%nlist")) {
                     return string_append(str_lit("(nlist "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_size(s, car(cdr(args))), str_lit(")")))));
                 } else if string_eq_p(d, str_lit("%narray")) {
@@ -11117,6 +11140,40 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         }
                     } else if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
                         mismatch(v, s, a, e)
+                    } else if (string_eq_p(x, str_lit("%effectrep")) && not(null_p(xs))) {
+                        // Evidence of an effect (C307; Fixpt's generative type 17): invariant,
+                        // so that evidence says exactly what it is of.
+                        let two = same_effs(s, {
+                            let tagcase_ = car(xs);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        }, {
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        });
+                        if null_p(two) {
+                            mismatch(v, s, a, e)
+                        } else {
+                            car(two)
+                        }
+                    } else if ((string_eq_p(x, str_lit("%typerep")) || string_eq_p(x, str_lit("%regionrep"))) && not(null_p(xs))) {
+                        // Evidence of a type or a region (Fixpt's 19 and 18): invariant.
+                        fits(v, fits(v, s, car(xs), car(ys)), car(ys), car(xs))
                     } else if (string_eq_p(x, str_lit("%poly")) && any_p(lambda1s(move |p: bool| {
                         p
                     }), map2(lambda2s(move |a: Str, b: Str| {

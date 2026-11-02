@@ -2979,6 +2979,14 @@
                                              (fold-renames names pos body))))
                    (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (at-pos n))) names)
                                           (list renamed)))))
+                ((and (sym-is? (car xs) "effectrep") (i64= (size xs) 2))
+                 "Evidence of an effect (C307; Fixpt's `docs/fx26.md`, \"Evidence\"):
+                  the effect a procedure's latent one holds, as `vsubr`'s does."
+                 (ty-data "%effectrep" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)))))
+                ((and (sym-is? (car xs) "typerep") (i64= (size xs) 2))
+                 (ty-data "%typerep" (list (parse-type v tvars (second xs)))))
+                ((and (sym-is? (car xs) "regionrep") (i64= (size xs) 2))
+                 (ty-data "%regionrep" (list (parse-region v tvars (second xs)))))
                 ((and (sym-is? (car xs) "escape-tag") (i64= (size xs) 4))
                  "FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
                   prompt tag is aborted to, never captured with, so it bounds nothing
@@ -3795,6 +3803,10 @@
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
+                ((string=? d "%effectrep")
+                 (string-append "(effectrep " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?")) ")")))
+                ((or (string=? d "%typerep") (string=? d "%regionrep"))
+                 (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-ty s (car args)) ")")))))
                 ((string=? d "%nlist") (string-append "(nlist " (string-append (show-ty s (car args)) (string-append " " (string-append (show-size s (car (cdr args))) ")")))))
                 ((string=? d "%narray")
                  (string-append "(narrayof " (string-append (show-ty s (car args)) (string-append " " (string-append (show-size s (car (cdr args)))
@@ -4807,6 +4819,15 @@
                          (kfx-restricted v (fits-all v s (fields-first xs (size ys)) ys)
                                          "a bloblet of more fields where one of fewer is expected, FX-26's width, which KFX has not yet (C167)")))
                     ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
+                    ((and (string=? x "%effectrep") (not (null? xs)))
+                     "Evidence of an effect (C307; Fixpt's generative type 17): invariant,
+                      so that evidence says exactly what it is of."
+                     (let ((two (same-effs s (tagcase (car xs) (ty-proc (es ps r) es) (else other nil))
+                                             (tagcase (car ys) (ty-proc (es ps r) es) (else other nil)))))
+                       (if (null? two) (mismatch v s a e) (car two))))
+                    ((and (or (string=? x "%typerep") (string=? x "%regionrep")) (not (null? xs)))
+                     "Evidence of a type or a region (Fixpt's 19 and 18): invariant."
+                     (fits v (fits v s (car xs) (car ys)) (car ys) (car xs)))
                     ((and (string=? x "%poly")
                           (any? (lambda ((p bool)) p)
                                 (map2 (lambda ((a string) (b string)) (and (has-suffix? a "%d") (not (has-suffix? b "%d"))))

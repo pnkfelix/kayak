@@ -2565,14 +2565,76 @@
                     (race-branches v s xs (race-type v s xs) nil)
                     (race-branches v s xs (car expected) nil))))))
 
+      (evidence-of (subr kfx (st ty) string)
+        (lambda (s t)
+          "The variable evidence of type `t` is of, or none: an `(effectrep v)`'s,
+           a `(typerep v)`'s, a `(regionrep v)`'s, `v` a variable."
+          (tagcase (walk s t)
+            (ty-data (d as)
+              (cond ((and (string=? d "%effectrep") (not (null? as)))
+                     (tagcase (car as) (ty-proc (es ps r) (if (and (not (null? es)) (null? (cdr es)) (has-prefix? (car es) "~")) (car es) "")) (else other "")))
+                    ((and (or (string=? d "%typerep") (string=? d "%regionrep")) (not (null? as)))
+                     (tagcase (walk s (car as)) (ty-var (n) n) (else other "")))
+                    (else "")))
+            (else other ""))))
+
+      (evidence-covered (subr kfx (st ty) strings)
+        (lambda (s g)
+          "The variables `(given …)`'s product has evidence of, in its order."
+          (tagcase (walk s g) (ty-shape (p ls ts) (map (lambda ((t ty)) (evidence-of s t)) ts)) (else other nil))))
+
+      (evidence-missing (subr kfx (strings strings) strings)
+        (lambda (holes covered)
+          "The variables with no evidence given, but regions: a region a
+           variable names, given none, is a region of its own, named afresh
+           where the program runs (Fixpt's rule)."
+          (filter (lambda ((h string)) (and (not (string-member? h covered)) (not (has-prefix? h "'")))) holes)))
+
+      (evidence-wanted (subr kfx (string string) string)
+        (lambda (form n)
+          "Fixpt's words for a variable with no evidence."
+          (let* ((kind (cond ((has-prefix? n "~") "effect") ((has-prefix? n "'") "region") (else "type")))
+                 (w (written-binder n)))
+            (string-append "`" (string-append form (string-append "`'s code is checked, as the program runs, against `" (string-append w
+              (string-append "`, a variable: give it its evidence, a `(" (string-append kind (string-append "rep " (string-append w
+                (string-append ")` (`reify-" (string-append kind "`), in `(given …)`")))))))))))))
+
+      (reify-form (subr kfx (cv st string sexps) res)
+        (lambda (v s kind xs)
+          "`(reify-effect E (given g …))`, and `reify-type`, `reify-region` (C307;
+           Fixpt's): evidence of what it is given, an `(effectrep E)` (a
+           `(typerep T)`, a `(regionrep R)`), made where the program runs from
+           the evidence of each variable it names. Not KFX's."
+          (let* ((d (car xs))
+                 (t (cond ((string=? kind "effect") (ty-proc (parse-effect v (cv-tvars v) d) nil (ty-unit)))
+                          ((string=? kind "region") (parse-region v (cv-tvars v) d))
+                          (else (parse-type v (cv-tvars v) d))))
+                 (given (if (null? (cdr xs)) nil (cdr (items (second xs)))))
+                 (g (lst (cons (sym "product" "" 0) (map2 (lambda ((x sexp) (k i64)) (lst (list (num k (i64->string k) 0) x) "" 0 (cv-pos v))) given (counting 1 (i64+ (size given) 1))))
+                         "" 0 (cv-pos v)))
+                 (s (kfx-restricted v s (string-append "`reify-" (string-append kind "`, FX-26's, which KFX has not yet (C307)")))))
+            (tagcase (synth v s g)
+              (res (gt ges s)
+                (tagcase (evidence-export s kind t)
+                  (rexp (ns hs root why)
+                    (cond ((not (string=? why "")) (refuse v (string-append "evidence of a part a rep does not take yet: " why)))
+                          ((not (null? (evidence-missing hs (evidence-covered s gt))))
+                           (refuse v (evidence-wanted (string-append "reify-" kind) (car (evidence-missing hs (evidence-covered s gt))))))
+                          (else
+                           (res (ty-data (string-append "%" (string-append kind "rep")) (list t))
+                                ges
+                                (note-fact (note-fact s (cv-file v) (cv-pos v) (string-append "reify-rep " (rp-nodes-text ns hs root)))
+                                           (cv-file v) (cv-pos v) (string-append "reify-given " (words-of (evidence-covered s gt))))))))))))))
+
       (stage-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
           "`stage`, as `(%stage E R m code given)` (C304; Fixpt's `%stage`):
            `m` a module, by its name, `code` a datum; a `(sumof (ok (subr E () R)) (failed
            stage-failure))`, of the effects of its parts and `stage` and
-           `spin`. `E` and `R` may not name a variable, as kayak takes no
-           evidence yet (Fixpt takes it given: stricter, not looser). Not
-           KFX's."
+           `spin`. A variable it names, free in `M`, `E` or `R`, must be given
+           its evidence, `(given g …)`, each `g` an `(effectrep v)`, a
+           `(typerep v)` or a `(regionrep v)` (C307; Fixpt's rule, its
+           words). Not KFX's."
           (let* ((es (parse-effect v (cv-tvars v) (car xs)))
                  (r (parse-type v (cv-tvars v) (second xs)))
                  (named (lambda ((t ty)) (tagcase t (ty-proc (es ps r) #f) (else other #f))))
@@ -2580,9 +2642,6 @@
             (cond ((tagcase (third xs) (sym (n f p) #f) (else other #t))
                    "Fixpt's rule: by its name, so that the stage's front end knows it."
                    (refuse v "`stage` takes a module by its name"))
-                  ((or (any? (lambda ((a string)) (or (has-prefix? a "~") (string-member? (atom-region a) (cv-tvars v)))) es)
-                       (any? (lambda ((n string)) (ty-names? (walk s r) n)) (cv-tvars v)))
-                   (refuse v "a stage's effect and type name variables, whose evidence kayak takes not yet"))
                   (else
                    (tagcase (synth v s (third xs))
                      (res (mt mes s)
@@ -2594,14 +2653,19 @@
                                  (res (gt ges s)
                                    (tagcase (ty-export s (ty-proc nil (list mt) (ty-proc es nil r)))
                                      (rexp (ns hs root why)
-                                       (if (not (string=? why ""))
-                                           (refuse v (string-append "a stage's type has a part a rep does not take yet: " why))
+                                       (cond
+                                        ((not (string=? why ""))
+                                         (refuse v (string-append "a stage's type has a part a rep does not take yet: " why)))
+                                        ((not (null? (evidence-missing hs (evidence-covered s gt))))
+                                         (refuse v (evidence-wanted "stage" (car (evidence-missing hs (evidence-covered s gt))))))
+                                        (else
                                            (res (ty-shape #f (list "ok" "failed")
                                                           (list (ty-proc es nil r) (parse-type v (cv-tvars v) (sym "stage-failure" "" 0))))
                                                 (effs-union (list "stage" "spin") (effs-union mes (effs-union ces ges)))
                                                 ;; What the code is checked as, `(subr pure (M) (subr E () R))`,
                                                 ;; its nodes, for the engine's loading to make its rep (C305).
-                                                (note-fact s (cv-file v) (cv-pos v) (string-append "stage-rep " (rp-nodes-text ns hs root)))))))))))))))))))
+                                                (note-fact (note-fact s (cv-file v) (cv-pos v) (string-append "stage-rep " (rp-nodes-text ns hs root)))
+                                                           (cv-file v) (cv-pos v) (string-append "stage-given " (words-of (evidence-covered s gt)))))))))))))))))))))
 
       (attempt-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
@@ -2700,6 +2764,9 @@
                   call of what a program names `race` (C108)."
                  (race-form v s xs nil))
                 ((and (string=? h "%stage") (i64= (size xs) 5)) (stage-form v s xs))
+                ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region"))
+                      (or (i64= (size xs) 1) (i64= (size xs) 2)))
+                 (reify-form v s (after-prefix h "reify-") xs))
                 ((string=? h "attempt")
                  "FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
                   as `race` is, never a call of what a program names `attempt`
@@ -2838,7 +2905,7 @@
         (lambda (v s e h xs expected)
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
-                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "%stage") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
+                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "%stage") (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
                 ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
                 ((and (string=? h "the") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
                       (tagcase (parse-type v (cv-tvars v) (car xs)) (ty-data (d args) (string=? d "%array")) (else other #f)))

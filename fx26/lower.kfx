@@ -619,9 +619,19 @@
             ((and (string=? h "%stage") (i64= (size xs) 5))
              "`stage` (C305): `(%stage-run m code REP)`, its type's rep, which the
               checker noted as nodes, made a constant at loading."
-             (i-call (i-lit (v-prim "%stage-run" 3))
+             (i-call (i-lit (v-prim "%stage-run" 5))
                      (list (lower (third xs) sc gs) (lower (car (cdr (cdr (cdr xs)))) sc gs)
-                           (i-lit (v-rep (words-of (fact-at (key-of e) "stage-rep " gs)))))))
+                           (lower (car (cdr (cdr (cdr (cdr xs))))) sc gs)
+                           (i-lit (v-rep (words-of (fact-at (key-of e) "stage-rep " gs))))
+                           (i-lit (v-string (words-of (fact-at (key-of e) "stage-given " gs)))))))
+            ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region")) (not (null? xs)))
+             "Evidence (C307): `(%reify GIVEN REP names)`, its rep filled where the
+              program runs from the evidence given."
+             (let ((given (if (null? (cdr xs)) nil (cdr (items (second xs))))))
+               (i-call (i-lit (v-prim "%reify" 3))
+                       (list (lower (lst (cons (sym "product" "" 0) (map2 (lambda ((x sexp) (k i64)) (lst (list (num k (i64->string k) 0) x) "" 0 0)) given (counting 1 (i64+ (size given) 1)))) "" 0 0) sc gs)
+                             (i-lit (v-rep (words-of (fact-at (key-of e) "reify-rep " gs))))
+                             (i-lit (v-string (words-of (fact-at (key-of e) "reify-given " gs))))))))
             ((and (string=? h "convention") (i64= (size xs) 2))
              "`(convention C e)`: `e`, the engine's procedures one convention (C181)."
              (lower (second xs) sc gs))
@@ -914,7 +924,7 @@
                      (fact (file pos what)
                        (cond ((has-prefix? what "with-spec ")
                               (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec ")))))))))
-                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase " "syscall " "stage-rep "))
+                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase " "syscall " "stage-rep " "stage-given " "reify-rep " "reify-given "))
                               ;; A flat's layout where it is read (C215).
                               (the strings (list (string-append "%fact " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " what))))))))
                              (else nil)))))

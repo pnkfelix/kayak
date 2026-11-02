@@ -55,6 +55,7 @@
         ((i64= op 187) (i64+ (i64+ (fixnum-value a) 1) (i64+ (list-count (pair-cdr args) 0) 2)))
         ((i64= op 207) 4096)
         ((i64= op 269) 65536)
+        ((i64= op 270) 65536)
         ((i64= op 212) (i64+ (fixnum-value b) 8))
         ((i64= op 222) 8192)
         ((i64= op 223) 24)
@@ -476,7 +477,8 @@
         ((i64= op 267) (exit-word! (process-exit (word-int a))))
         ((i64= op 268) (int-word! (process-news)))
         ;; `stage` (C305).
-        ((i64= op 269) (stage-run! a b (pair-car (pair-cdr (pair-cdr args)))))
+        ((i64= op 269) (stage-run! a b (pair-car (pair-cdr (pair-cdr args))) (fourth-arg args) (fifth-arg args)))
+        ((i64= op 270) (reify-run! a b (pair-car (pair-cdr (pair-cdr args)))))
         ((i64= op 139) (real-word! (int->f64 (word-int a))))
         ((and (i64= op 140) (not (integral? (word-real a)))) (refused-op! "f64->int: not an integer"))
         ((i64= op 140) (int-word! (f64->int (word-real a))))

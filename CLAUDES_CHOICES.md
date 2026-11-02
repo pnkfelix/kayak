@@ -8523,3 +8523,38 @@ and the test leaves off). The ones listed in `tests/stage-passing`
 prints; the rest are kept as found, `same` or `differ` and both outputs,
 in `target/kayak-checks/stage`. Like the other passing lists, the list
 only grows.
+
+## C307. Evidence (2026-11-01)
+
+Fixpt's `docs/fx26.md`, "Evidence": `stage` within a `plambda`, checked
+against its variables as they were instantiated.
+- **The types** `(effectrep e)`, `(typerep t)` and `(regionrep r)`,
+  Fixpt's generative types 17-19, are invariant. An `effectrep` holds its
+  effect as a procedure's latent one, as `vsubr`'s does, and two of them
+  fit only if their effects are the same (`same-effs`).
+- **`(reify-effect E (given g …))`**, `reify-type` and `reify-region`
+  (`reify-form`) make evidence of what they are given. The checker
+  exports `(evidence X)` as nodes and notes them, with the names of the
+  variables the `given` is evidence of, in order.
+- **The rule, Fixpt's, in its words**: a variable free in what a `stage`
+  is checked as (its `M`, `E` or `R`), or in what a `reify-…` is of, must
+  be given evidence, or "`stage`'s code is checked, as the program runs,
+  against `e`, a variable: give it its evidence, a `(effectrep e)`
+  (`reify-effect`), in `(given …)`". The variables are the export's
+  holes. A region needs none: one a variable names, given none, is a
+  region of its own, `%region-N`, named afresh where the program runs.
+- **Where the program runs** (`vstage.kfx`), a rep's holes are filled
+  from the evidence given: each hole becomes what its evidence is of, a
+  hole among an effect's atoms that effect's atoms, spliced into the set,
+  as Fixpt's `fixpt_reps::fill` does. The nodes are joined by renumbering
+  each piece of evidence's past the type's own. Then the rep is made
+  canonical, and a set's members are kept each once (Fixpt's
+  `fill::dedup`). A `reify-…` (`%reify`, op 270) gives that rep;
+  `%stage-run` imports it.
+`evidence.fx` gets Fixpt's lines from the checker, and on the engine
+prints what Fixpt prints but for its two refusals' words (kayak's
+checker's). That includes evidence made of evidence: `(maxeff e (io
+stdout))` given `pure`'s. `evidence-region.fx`'s evidence checks, but
+kayak refuses a module that `main` makes at `@a`, where Fixpt does not
+count that allocation against `main`: a checker difference of its own.
+Bounds (`effectbound`, `typebound`) are not taken yet.

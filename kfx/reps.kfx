@@ -714,6 +714,23 @@
               (node slot (rexp ns (reverse hs) slot d))
               (else other (rexp ns (reverse hs) 0 (if (string=? d "") "no node" d))))))))))
 
+"Evidence as nodes (C307; Fixpt's `k-evidence-rep`): its root an
+ `evidence` node of what it is of, an effect (a type `t`'s latent one,
+ `kind` \"effect\"), a type, or a region."
+(define evidence-export (subr kfx (st string ty) rexp)
+  (lambda (s kind t)
+    (tagcase (cond ((string=? kind "effect") (rx-effect rx-empty nil (tagcase t (ty-proc (es ps r) es) (else other nil))))
+                   ((string=? kind "region") (rx-region s rx-empty nil t))
+                   (else (rx-ty s rx-empty nil t)))
+      (rxa (x of)
+        (tagcase (rx-node x "evidence" #f (the rp-operands (list of)))
+          (rxa (x root)
+            (tagcase x
+              (rx (ns k hs d)
+                (tagcase root
+                  (node slot (rexp ns (reverse hs) slot d))
+                  (else other (rexp ns (reverse hs) 0 "no node")))))))))))
+
 "Type `t` as a rep in its binary form, or none if a part is declined."
 (define ty-rep (poly ((r region)) (subr (maxeff kfx (alloc r)) (st ty) (listof (bytevectorof r) acyclic)))
   (plambda ((r region))

@@ -203,10 +203,372 @@ pub fn stage_failure_word_x(m: Str) -> i64 {
     sum_word_x(str_lit("failed"), p)
 }
 
-/// `(%stage-run m code rep)`: `(sum ok THUNK)`, the code made a procedure
-/// over module `m`; or `(sum failed WHY)`.
-pub fn stage_run_x(m: i64, code: i64, rep: i64) -> i64 {
-    let t = (&rep_ty)(word_kfx_bytes(rep));
+// Evidence (C307; Fixpt's `docs/fx26.md`, "Evidence", and its
+// `fixpt_reps::fill`): a rep's holes filled from the evidence given for
+// the variables they stand for, each piece of evidence a rep whose root is
+// an `evidence` node of what it is of. A hole becomes that; one among an
+// effect's atoms, its atoms, spliced into the set. Then canonical again,
+// and a set's members each once.
+pub enum Rpe {
+    Rpe(Str, RpNodes, List<Symbol>),
+}
+
+pub fn rpe(f0: Str, f1: RpNodes, f2: List<Symbol>) -> &'static Rpe {
+    kayak_rt::heap_alloc(Rpe::Rpe(f0, f1, f2))
+}
+
+pub fn rp_max_slot(mut ns: RpNodes, mut m: Int) -> Int {
+    loop {
+        if null_p(ns) {
+            return m;
+        } else {
+            (ns, m) = (cdr(ns), if _gt(car(ns).0, m) {
+                car(ns).0
+            } else {
+                m
+            });
+            continue;
+        }
+    }
+}
+
+pub fn rp_index_in(mut xs: Strings, mut n: Str, mut i: Int) -> Int {
+    loop {
+        if null_p(xs) {
+            return int_lit(-1);
+        } else if string_eq_p(car(xs), n) {
+            return i;
+        } else {
+            (xs, i) = (cdr(xs), _plus(i, int_lit(1)));
+            continue;
+        }
+    }
+}
+
+/// An evidence's operand, its nodes `off` past, its holes by name in `all`.
+pub fn rp_moved(a: RpOperand, off: Int, own: List<Symbol>, all: Strings) -> RpOperand {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+            the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(_plus(j, off))))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
+            the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Bound(Product_11_12(_plus(p.0, off), p.1))))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
+            the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(rp_index_in(all, nth_symbol(own, h), int_lit(0)))))
+        }
+        _ => {
+            let other = tagcase_;
+            a
+        }
+    }
+}
+
+pub fn rp_evidence_at(mut es: List<&'static Rpe>, mut n: Str) -> List<&'static Rpe> {
+    loop {
+        if null_p(es) {
+            return nil::<&'static Rpe>();
+        } else if {
+            let tagcase_ = car(es);
+            match *tagcase_ {
+                Rpe::Rpe(m, ns, hs) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(es), kayak_rt::nil());
+        } else {
+            es = cdr(es);
+            continue;
+        }
+    }
+}
+
+// Each evidence placed: its offset, and its root's operand moved.
+pub enum Rpp {
+    Rpp(Str, Int, RpNodes, List<Symbol>),
+}
+
+pub fn rpp(f0: Str, f1: Int, f2: RpNodes, f3: List<Symbol>) -> &'static Rpp {
+    kayak_rt::heap_alloc(Rpp::Rpp(f0, f1, f2, f3))
+}
+
+pub fn rp_placed(es: List<&'static Rpe>, off: Int) -> List<&'static Rpp> {
+    if null_p(es) {
+        nil::<&'static Rpp>()
+    } else {
+        let tagcase_ = car(es);
+        match *tagcase_ {
+            Rpe::Rpe(n, ns, hs) => {
+                kayak_rt::heap_cons(rpp(n, off, ns, hs), rp_placed(cdr(es), _plus(off, _plus(rp_max_slot(ns, int_lit(0)), int_lit(1)))))
+            }
+        }
+    }
+}
+
+pub fn rp_placed_at(mut ps: List<&'static Rpp>, mut n: Str) -> List<&'static Rpp> {
+    loop {
+        if null_p(ps) {
+            return nil::<&'static Rpp>();
+        } else if {
+            let tagcase_ = car(ps);
+            match *tagcase_ {
+                Rpp::Rpp(m, off, ns, hs) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(ps), kayak_rt::nil());
+        } else {
+            ps = cdr(ps);
+            continue;
+        }
+    }
+}
+
+/// What evidence is of: its root's one operand, moved.
+pub fn rp_of_evidence(p: &'static Rpp, all: Strings) -> RpOperand {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Rpp::Rpp(n, off, ns, hs) => {
+            let root = rp_node_at(ns, int_lit(0));
+            if null_p(root) {
+                the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(int_lit(0))))
+            } else {
+                rp_moved(car(car(root).4), off, hs, all)
+            }
+        }
+    }
+}
+
+/// A node's operands, each filled hole what its evidence is of; in a set,
+/// a set's members spliced.
+pub fn rp_filled_args(r#as: RpOperands, set: bool, holes: List<Symbol>, ps: List<&'static Rpp>, all: Strings, ns_all: RpNodes) -> RpOperands {
+    if null_p(r#as) {
+        nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()
+    } else {
+        let rest = rp_filled_args(cdr(r#as), set, holes, ps, all, ns_all);
+        let tagcase_ = car(r#as);
+        match *tagcase_ {
+            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
+                let found = rp_placed_at(ps, nth_symbol(holes, h));
+                if null_p(found) {
+                    kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(rp_index_in(all, nth_symbol(holes, h), int_lit(0))))), rest)
+                } else {
+                    let of = rp_of_evidence(car(found), all);
+                    let tagcase_ = of;
+                    match *tagcase_ {
+                        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                            let n = rp_node_at(ns_all, j);
+                            if (set && not(null_p(n)) && car(n).2) {
+                                onto(car(n).4, rest)
+                            } else {
+                                kayak_rt::heap_cons(of, rest)
+                            }
+                        }
+                        _ => {
+                            let z = tagcase_;
+                            kayak_rt::heap_cons(of, rest)
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                kayak_rt::heap_cons(car(r#as), rest)
+            }
+        }
+    }
+}
+
+/// Rep `main`'s nodes, its holes filled from evidence `es`.
+pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
+    let tagcase_ = main;
+    match *tagcase_ {
+        Rexp::Rexp(ns, hs, root, d) => {
+            let ps = rp_placed(es, _plus(rp_max_slot(ns, int_lit(0)), int_lit(1)));
+            let left = filter(lambda1s(move |h: Str| {
+                null_p(rp_placed_at(ps, h))
+            }), hs);
+            let theirs = concat(map(lambda1s(move |p: &'static Rpp| {
+                let tagcase_ = p;
+                match *tagcase_ {
+                    Rpp::Rpp(n, off, ens, ehs) => {
+                        map(lambda1s(move |y: Symbol| {
+                            symbol_to_string(y)
+                        }), ehs)
+                    }
+                }
+            }), ps));
+            let all = onto(left, filter(lambda1s(move |h: Str| {
+                not(string_member_p(h, left))
+            }), theirs));
+            let moved = concat(map(lambda1s(move |p: &'static Rpp| {
+                let tagcase_ = p;
+                match *tagcase_ {
+                    Rpp::Rpp(n, off, ens, ehs) => {
+                        map(lambda1s(move |x: RpNode| {
+                            Product_11_12_13_14_15(_plus(x.0, off), x.1, x.2, x.3, map(lambda1s(move |a: RpOperand| {
+                                rp_moved(a, off, ehs, all)
+                            }), x.4))
+                        }), ens)
+                    }
+                }
+            }), ps));
+            let holes = map(lambda1s(move |h: Str| {
+                string_to_symbol(h)
+            }), hs);
+            let mine = map(lambda1s(move |x: RpNode| {
+                Product_11_12_13_14_15(x.0, x.1, x.2, x.3, rp_filled_args(x.4, x.2, holes, ps, all, moved))
+            }), ns);
+            rexp(onto(mine, moved), all, root, d)
+        }
+    }
+}
+
+pub fn rp_same_p(a: RpOperand, b: RpOperand) -> bool {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(k) => {
+                    _eq(j, k)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(j) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(k) => {
+                    _eq(j, k)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(q) => {
+                    (_eq(p.0, q.0) && _eq(p.1, q.1))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+// A canonical rep's nodes, a set's members each once (Fixpt's `fill::dedup`).
+pub fn rp_once(mut r#as: RpOperands) -> RpOperands {
+    loop {
+        if null_p(r#as) {
+            return nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>();
+        } else if any_p(lambda1s(move |b: RpOperand| {
+            rp_same_p(car(r#as), b)
+        }), cdr(r#as)) {
+            r#as = cdr(r#as);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(car(r#as), rp_once(cdr(r#as)));
+        }
+    }
+}
+
+// Evidence's words given: each a rep's binary form, the variable it is for
+// named, in the order `names` says.
+pub fn evidence_given(prod: i64, names: Strings, i: i64) -> List<&'static Rpe> {
+    if null_p(names) {
+        nil::<&'static Rpe>()
+    } else {
+        let got = (&rep_nodes)(word_kfx_bytes(obj_ref(prod, i)), nil::<Str>());
+        kayak_rt::heap_cons(rpe(car(names), got.0, got.1), evidence_given(prod, cdr(names), i64_plus(i, 1i64)))
+    }
+}
+
+// A region a variable names, given no evidence: one of its own, named
+// afresh, `%region-N`, never another (Fixpt's rule).
+pub fn fresh_regions() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn fresh_evidence_x(mut holes: Strings, mut named: Strings) -> List<&'static Rpe> {
+    loop {
+        if null_p(holes) {
+            return nil::<&'static Rpe>();
+        } else if (not(has_prefix_p(car(holes), str_lit("'"))) || string_member_p(car(holes), named)) {
+            holes = cdr(holes);
+            continue;
+        } else {
+            let k = get(fresh_regions());
+            set(fresh_regions(), i64_plus(k, 1i64));
+            return kayak_rt::heap_cons(rpe(car(holes), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(0), symbol_lit(str_lit("evidence")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(int_lit(1)))), kayak_rt::nil())), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(1), symbol_lit(str_lit("rconst")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(string_to_symbol(string_append(str_lit("%region-"), i64_to_string(k)))))), kayak_rt::nil())), kayak_rt::nil())), nil::<Symbol>()), fresh_evidence_x(cdr(holes), named));
+        }
+    }
+}
+
+/// Rep `rep`'s binary form, its holes filled from the evidence `given`
+/// holds, for the variables `names` names: canonical, each set's members
+/// once.
+pub fn rep_filled_x(rep: i64, given: i64, names: Str) -> Bytes {
+    let got = (&rep_nodes)(word_kfx_bytes(rep), nil::<Str>());
+    let main = rexp(got.0, map(lambda1s(move |y: Symbol| {
+        symbol_to_string(y)
+    }), got.1), int_lit(0), str_lit(""));
+    let named = spaced_words(names);
+    let es = onto(evidence_given(given, named, 1i64), fresh_evidence_x(map(lambda1s(move |y: Symbol| {
+        symbol_to_string(y)
+    }), got.1), named));
+    let canonical = lambda1s(move |r: &'static Rexp| {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Rexp::Rexp(ns, hs, root, d) => {
+                the::<Bytes>(rep_of_nodes(ns, map(lambda1s(move |h: Str| {
+                    string_to_symbol(h)
+                }), hs), root))
+            }
+        }
+    });
+    let b = canonical(rp_filled(main, es));
+    let again = (&rep_nodes)(b, nil::<Str>());
+    canonical(rexp(map(lambda1s(move |x: RpNode| {
+        if x.2 {
+            Product_11_12_13_14_15(x.0, x.1, true, x.3, rp_once(x.4))
+        } else {
+            x
+        }
+    }), again.0), map(lambda1s(move |y: Symbol| {
+        symbol_to_string(y)
+    }), again.1), int_lit(0), str_lit("")))
+}
+
+// `(%reify given REP names)`: evidence, its rep filled.
+pub fn reify_run_x(given: i64, rep: i64, names: i64) -> i64 {
+    kfx_bytes_word_x(rep_filled_x(rep, given, word_string(names)))
+}
+
+/// `(%stage-run m code given rep names)`: `(sum ok THUNK)`, the code made a
+/// procedure over module `m`, checked against `rep` filled from the
+/// evidence given (C307); or `(sum failed WHY)`.
+pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
+    let t = (&rep_ty)(rep_filled_x(rep, given, word_string(names)));
     let thunk = staged_thunk(word_sexp(code));
     let prog = staged_program(thunk);
     let why = stage_worked(prog, t);

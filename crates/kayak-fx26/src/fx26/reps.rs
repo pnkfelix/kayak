@@ -2396,6 +2396,54 @@ pub fn ty_export(s: &'static St, t: &'static Ty) -> &'static Rexp {
     }
 }
 
+// Evidence as nodes (C307; Fixpt's `k-evidence-rep`): its root an
+// `evidence` node of what it is of, an effect (a type `t`'s latent one,
+// `kind` "effect"), a type, or a region.
+pub fn evidence_export(s: &'static St, kind: Str, t: &'static Ty) -> &'static Rexp {
+    let tagcase_ = if string_eq_p(kind, str_lit("effect")) {
+        rx_effect(rx_empty(), nil::<&'static Rpbind>(), {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    es
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        })
+    } else if string_eq_p(kind, str_lit("region")) {
+        rx_region(s, rx_empty(), nil::<&'static Rpbind>(), t)
+    } else {
+        rx_ty(s, rx_empty(), nil::<&'static Rpbind>(), t)
+    };
+    match *tagcase_ {
+        Rxa::Rxa(x, of) => {
+            let tagcase_ = rx_node(x, str_lit("evidence"), false, the::<RpOperands>(kayak_rt::heap_cons(of, kayak_rt::nil())));
+            match *tagcase_ {
+                Rxa::Rxa(x, root) => {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Rx::Rx(ns, k, hs, d) => {
+                            let tagcase_ = root;
+                            match *tagcase_ {
+                                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(slot) => {
+                                    rexp(ns, reverse(hs), slot, d)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    rexp(ns, reverse(hs), int_lit(0), str_lit("no node"))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Type `t` as a rep in its binary form, or none if a part is declined.
 pub fn ty_rep<'r>(s: &'static St, t: &'static Ty) -> ListAt<'r, BytesAt<'r>> {
     let tagcase_ = ty_export(s, t);

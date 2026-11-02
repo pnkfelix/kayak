@@ -5598,12 +5598,135 @@ pub mod expressions {
         }
     }
 
+    /// The variable evidence of type `t` is of, or none: an `(effectrep v)`'s,
+    /// a `(typerep v)`'s, a `(regionrep v)`'s, `v` a variable.
+    pub fn evidence_of(s: &'static St, t: &'static Ty) -> Str {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, r#as) => {
+                if (string_eq_p(d, str_lit("%effectrep")) && not(null_p(r#as))) {
+                    let tagcase_ = car(r#as);
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            if (not(null_p(es)) && null_p(cdr(es)) && has_prefix_p(car(es), str_lit("~"))) {
+                                car(es)
+                            } else {
+                                str_lit("")
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                } else if ((string_eq_p(d, str_lit("%typerep")) || string_eq_p(d, str_lit("%regionrep"))) && not(null_p(r#as))) {
+                    let tagcase_ = walk(s, car(r#as));
+                    match *tagcase_ {
+                        Ty::TyVar(n) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                } else {
+                    str_lit("")
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
+    /// The variables `(given …)`'s product has evidence of, in its order.
+    pub fn evidence_covered(s: &'static St, g: &'static Ty) -> Strings {
+        let tagcase_ = walk(s, g);
+        match *tagcase_ {
+            Ty::TyShape(p, ls, ts) => {
+                map(lambda1s(move |t: &'static Ty| {
+                    evidence_of(s, t)
+                }), ts)
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    /// The variables with no evidence given, but regions: a region a
+    /// variable names, given none, is a region of its own, named afresh
+    /// where the program runs (Fixpt's rule).
+    pub fn evidence_missing(holes: Strings, covered: Strings) -> Strings {
+        filter(lambda1s(move |h: Str| {
+            (not(string_member_p(h, covered)) && not(has_prefix_p(h, str_lit("'"))))
+        }), holes)
+    }
+
+    /// Fixpt's words for a variable with no evidence.
+    pub fn evidence_wanted(form: Str, n: Str) -> Str {
+        let kind = if has_prefix_p(n, str_lit("~")) {
+            str_lit("effect")
+        } else if has_prefix_p(n, str_lit("'")) {
+            str_lit("region")
+        } else {
+            str_lit("type")
+        };
+        let w = written_binder(n);
+        string_append(str_lit("`"), string_append(form, string_append(str_lit("`'s code is checked, as the program runs, against `"), string_append(w, string_append(str_lit("`, a variable: give it its evidence, a `("), string_append(kind, string_append(str_lit("rep "), string_append(w, string_append(str_lit(")` (`reify-"), string_append(kind, str_lit("`), in `(given …)`")))))))))))
+    }
+
+    /// `(reify-effect E (given g …))`, and `reify-type`, `reify-region` (C307;
+    /// Fixpt's): evidence of what it is given, an `(effectrep E)` (a
+    /// `(typerep T)`, a `(regionrep R)`), made where the program runs from
+    /// the evidence of each variable it names. Not KFX's.
+    pub fn reify_form(v: &'static Cv, s: &'static St, kind: Str, xs: Sexps) -> &'static Res {
+        let d = car(xs);
+        let t = if string_eq_p(kind, str_lit("effect")) {
+            ty_proc(parse_effect(v, cv_tvars(v), d), nil::<&'static Ty>(), ty_unit())
+        } else if string_eq_p(kind, str_lit("region")) {
+            parse_region(v, cv_tvars(v), d)
+        } else {
+            parse_type(v, cv_tvars(v), d)
+        };
+        let given = if null_p(cdr(xs)) {
+            nil::<&'static Sexp>()
+        } else {
+            cdr(items(second(xs)))
+        };
+        let g = lst(kayak_rt::heap_cons(sym(str_lit("product"), str_lit(""), 0i64), map2(lambda2s(move |x: &'static Sexp, k: i64| {
+            lst(kayak_rt::heap_cons(num(k, i64_to_string(k), 0i64), kayak_rt::heap_cons(x, kayak_rt::nil())), str_lit(""), 0i64, cv_pos(v))
+        }), given, counting(1i64, i64_plus(size(given), 1i64)))), str_lit(""), 0i64, cv_pos(v));
+        let s = kfx_restricted(v, s, string_append(str_lit("`reify-"), string_append(kind, str_lit("`, FX-26's, which KFX has not yet (C307)"))));
+        let tagcase_ = synth(v, s, g);
+        match *tagcase_ {
+            Res::Res(gt, ges, s) => {
+                let tagcase_ = evidence_export(s, kind, t);
+                match *tagcase_ {
+                    Rexp::Rexp(ns, hs, root, why) => {
+                        if not(string_eq_p(why, str_lit(""))) {
+                            match refuse(v, string_append(str_lit("evidence of a part a rep does not take yet: "), why)) {}
+                        } else if not(null_p(evidence_missing(hs, evidence_covered(s, gt)))) {
+                            match refuse(v, evidence_wanted(string_append(str_lit("reify-"), kind), car(evidence_missing(hs, evidence_covered(s, gt))))) {}
+                        } else {
+                            res(ty_data(string_append(str_lit("%"), string_append(kind, str_lit("rep"))), kayak_rt::heap_cons(t, kayak_rt::nil())), ges, note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("reify-rep "), rp_nodes_text(ns, hs, root))), cv_file(v), cv_pos(v), string_append(str_lit("reify-given "), words_of(evidence_covered(s, gt)))))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// `stage`, as `(%stage E R m code given)` (C304; Fixpt's `%stage`):
     /// `m` a module, by its name, `code` a datum; a `(sumof (ok (subr E () R)) (failed
     /// stage-failure))`, of the effects of its parts and `stage` and
-    /// `spin`. `E` and `R` may not name a variable, as kayak takes no
-    /// evidence yet (Fixpt takes it given: stricter, not looser). Not
-    /// KFX's.
+    /// `spin`. A variable it names, free in `M`, `E` or `R`, must be given
+    /// its evidence, `(given g …)`, each `g` an `(effectrep v)`, a
+    /// `(typerep v)` or a `(regionrep v)` (C307; Fixpt's rule, its
+    /// words). Not KFX's.
     pub fn stage_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
         let es = parse_effect(v, cv_tvars(v), car(xs));
         let r = parse_type(v, cv_tvars(v), second(xs));
@@ -5634,12 +5757,6 @@ pub mod expressions {
         } {
             // Fixpt's rule: by its name, so that the stage's front end knows it.
             match refuse(v, str_lit("`stage` takes a module by its name")) {}
-        } else if (any_p(lambda1s(move |a: Str| {
-            (has_prefix_p(a, str_lit("~")) || string_member_p(atom_region(a), cv_tvars(v)))
-        }), es) || any_p(lambda1s(move |n: Str| {
-            ty_names_p(walk(s, r), n)
-        }), cv_tvars(v))) {
-            match refuse(v, str_lit("a stage's effect and type name variables, whose evidence kayak takes not yet")) {}
         } else {
             let tagcase_ = synth(v, s, third(xs));
             match *tagcase_ {
@@ -5669,8 +5786,10 @@ pub mod expressions {
                                             Rexp::Rexp(ns, hs, root, why) => {
                                                 if not(string_eq_p(why, str_lit(""))) {
                                                     match refuse(v, string_append(str_lit("a stage's type has a part a rep does not take yet: "), why)) {}
+                                                } else if not(null_p(evidence_missing(hs, evidence_covered(s, gt)))) {
+                                                    match refuse(v, evidence_wanted(str_lit("stage"), car(evidence_missing(hs, evidence_covered(s, gt))))) {}
                                                 } else {
-                                                    res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("stage-rep "), rp_nodes_text(ns, hs, root))))
+                                                    res(ty_shape(false, kayak_rt::heap_cons(str_lit("ok"), kayak_rt::heap_cons(str_lit("failed"), kayak_rt::nil())), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), r), kayak_rt::heap_cons(parse_type(v, cv_tvars(v), sym(str_lit("stage-failure"), str_lit(""), 0i64)), kayak_rt::nil()))), effs_union(kayak_rt::heap_cons(str_lit("stage"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())), effs_union(mes, effs_union(ces, ges))), note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("stage-rep "), rp_nodes_text(ns, hs, root))), cv_file(v), cv_pos(v), string_append(str_lit("stage-given "), words_of(evidence_covered(s, gt)))))
                                                 }
                                             }
                                         }
@@ -5885,6 +6004,8 @@ pub mod expressions {
                 return race_form(v, s, xs, nil::<&'static Ty>());
             } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 5i64)) {
                 return stage_form(v, s, xs);
+            } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && (i64_eq(size(xs), 1i64) || i64_eq(size(xs), 2i64))) {
+                return reify_form(v, s, after_prefix(h, str_lit("reify-")), xs);
             } else if string_eq_p(h, str_lit("attempt")) {
                 // FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
                 // as `race` is, never a call of what a program names `attempt`
@@ -6167,7 +6288,7 @@ pub mod expressions {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("spawn-monitored")) {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("%stage")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("%stage")) || string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)

@@ -108,11 +108,182 @@
       (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
              (obj-set! p 3 (fixnum 0)) (obj-set! p 4 (fixnum 0)) (sum-word! "failed" p)))))
 
-(define stage-run! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 i64 i64) i64)
-  (lambda (m code rep)
-    "`(%stage-run m code rep)`: `(sum ok THUNK)`, the code made a procedure
-     over module `m`; or `(sum failed WHY)`."
-    (let* ((t ((proj rep-ty @h) (word-kfx-bytes rep)))
+"Evidence (C307; Fixpt's `docs/fx26.md`, \"Evidence\", and its
+ `fixpt_reps::fill`): a rep's holes filled from the evidence given for
+ the variables they stand for, each piece of evidence a rep whose root is
+ an `evidence` node of what it is of. A hole becomes that; one among an
+ effect's atoms, its atoms, spliced into the set. Then canonical again,
+ and a set's members each once."
+(define-datatype rpe (rpe string rp-nodes (listof symbol acyclic)))
+
+(define-rec
+  (rp-max-slot (subr kfx (rp-nodes int) int)
+    (lambda (ns m) (if (null? ns) m (rp-max-slot (cdr ns) (if (> (extract (car ns) 1) m) (extract (car ns) 1) m))))))
+
+(define-rec
+  (rp-index-in (subr kfx (strings string int) int)
+    (lambda (xs n i) (cond ((null? xs) -1) ((string=? (car xs) n) i) (else (rp-index-in (cdr xs) n (+ i 1)))))))
+
+(define rp-moved (subr kfx (rp-operand int (listof symbol acyclic) strings) rp-operand)
+  (lambda (a off own all)
+    "An evidence's operand, its nodes `off` past, its holes by name in `all`."
+    (tagcase a
+      (node j (the rp-operand (sum node (+ j off))))
+      (bound p (the rp-operand (sum bound (product (1 (+ (extract p 1) off)) (2 (extract p 2))))))
+      (hole h (the rp-operand (sum hole (rp-index-in all (nth-symbol own h) 0))))
+      (else other a))))
+
+(define-rec
+  (rp-evidence-at (subr kfx ((listof rpe acyclic) string) (listof rpe acyclic))
+    (lambda (es n) (cond ((null? es) nil) ((tagcase (car es) (rpe (m ns hs) (string=? m n))) (list (car es))) (else (rp-evidence-at (cdr es) n))))))
+
+"Each evidence placed: its offset, and its root's operand moved."
+(define-datatype rpp (rpp string int rp-nodes (listof symbol acyclic)))
+
+(define-rec
+  (rp-placed (subr kfx ((listof rpe acyclic) int) (listof rpp acyclic))
+    (lambda (es off)
+      (if (null? es)
+          nil
+          (tagcase (car es)
+            (rpe (n ns hs) (cons (rpp n off ns hs) (rp-placed (cdr es) (+ off (+ (rp-max-slot ns 0) 1))))))))))
+
+(define-rec
+  (rp-placed-at (subr kfx ((listof rpp acyclic) string) (listof rpp acyclic))
+    (lambda (ps n) (cond ((null? ps) nil) ((tagcase (car ps) (rpp (m off ns hs) (string=? m n))) (list (car ps))) (else (rp-placed-at (cdr ps) n))))))
+
+(define rp-of-evidence (subr kfx (rpp strings) rp-operand)
+  (lambda (p all)
+    "What evidence is of: its root's one operand, moved."
+    (tagcase p
+      (rpp (n off ns hs)
+        (let ((root (rp-node-at ns 0)))
+          (if (null? root)
+              (the rp-operand (sum int 0))
+              (rp-moved (car (extract (car root) 5)) off hs all)))))))
+
+(define-rec
+  (rp-filled-args (subr kfx (rp-operands bool (listof symbol acyclic) (listof rpp acyclic) strings rp-nodes) rp-operands)
+    (lambda (as set holes ps all ns-all)
+      "A node's operands, each filled hole what its evidence is of; in a set,
+       a set's members spliced."
+      (if (null? as)
+          nil
+          (let ((rest (rp-filled-args (cdr as) set holes ps all ns-all)))
+            (tagcase (car as)
+              (hole h
+                (let ((found (rp-placed-at ps (nth-symbol holes h))))
+                  (if (null? found)
+                      (cons (the rp-operand (sum hole (rp-index-in all (nth-symbol holes h) 0))) rest)
+                      (let ((of (rp-of-evidence (car found) all)))
+                        (tagcase of
+                          (node j
+                            (let ((n (rp-node-at ns-all j)))
+                              (if (and set (not (null? n)) (extract (car n) 3))
+                                  (onto (extract (car n) 5) rest)
+                                  (cons of rest))))
+                          (else z (cons of rest)))))))
+              (else other (cons (car as) rest))))))))
+
+(define rp-filled (subr kfx (rexp (listof rpe acyclic)) rexp)
+  (lambda (main es)
+    "Rep `main`'s nodes, its holes filled from evidence `es`."
+    (tagcase main
+      (rexp (ns hs root d)
+        (let* ((ps (rp-placed es (+ (rp-max-slot ns 0) 1)))
+               (left (filter (lambda ((h string)) (null? (rp-placed-at ps h))) hs))
+               (theirs (concat (map (lambda ((p rpp)) (tagcase p (rpp (n off ens ehs) (map (lambda ((y symbol)) (symbol->string y)) ehs)))) ps)))
+               (all (onto left (filter (lambda ((h string)) (not (string-member? h left))) theirs)))
+               (moved (concat (map (lambda ((p rpp))
+                                      (tagcase p
+                                        (rpp (n off ens ehs)
+                                          (map (lambda ((x rp-node))
+                                                 (product (1 (+ (extract x 1) off)) (2 (extract x 2)) (3 (extract x 3)) (4 (extract x 4))
+                                                          (5 (map (lambda ((a rp-operand)) (rp-moved a off ehs all)) (extract x 5)))))
+                                               ens))))
+                                    ps)))
+               (holes (map (lambda ((h string)) (string->symbol h)) hs))
+               (mine (map (lambda ((x rp-node))
+                            (product (1 (extract x 1)) (2 (extract x 2)) (3 (extract x 3)) (4 (extract x 4))
+                                     (5 (rp-filled-args (extract x 5) (extract x 3) holes ps all moved))))
+                          ns)))
+          (rexp (onto mine moved) all root d))))))
+
+(define rp-same? (subr kfx (rp-operand rp-operand) bool)
+  (lambda (a b)
+    (tagcase a
+      (node j (tagcase b (node k (= j k)) (else other #f)))
+      (hole j (tagcase b (hole k (= j k)) (else other #f)))
+      (bound p (tagcase b (bound q (and (= (extract p 1) (extract q 1)) (= (extract p 2) (extract q 2)))) (else other #f)))
+      (else other #f))))
+
+"A canonical rep's nodes, a set's members each once (Fixpt's `fill::dedup`)."
+(define-rec
+  (rp-once (subr kfx (rp-operands) rp-operands)
+    (lambda (as)
+      (cond ((null? as) nil)
+            ((any? (lambda ((b rp-operand)) (rp-same? (car as) b)) (cdr as)) (rp-once (cdr as)))
+            (else (cons (car as) (rp-once (cdr as))))))))
+
+"Evidence's words given: each a rep's binary form, the variable it is for
+ named, in the order `names` says."
+(define-rec
+  (evidence-given (subr (maxeff hp (alloc @h)) (i64 strings i64) (listof rpe acyclic))
+    (lambda (prod names i)
+      (if (null? names)
+          nil
+          (let ((got ((proj rep-nodes @h) (word-kfx-bytes (obj-ref prod i)) nil)))
+            (cons (rpe (car names) (extract got 1) (extract got 2)) (evidence-given prod (cdr names) (i64+ i 1))))))))
+
+"A region a variable names, given no evidence: one of its own, named
+ afresh, `%region-N`, never another (Fixpt's rule)."
+(define fresh-regions (ref i64 @h) (new 0))
+
+(define-rec
+  (fresh-evidence! (subr hp (strings strings) (listof rpe acyclic))
+    (lambda (holes named)
+      (cond ((null? holes) nil)
+            ((or (not (has-prefix? (car holes) "'")) (string-member? (car holes) named)) (fresh-evidence! (cdr holes) named))
+            (else
+             (let ((k (get fresh-regions)))
+               (begin
+                 (set fresh-regions (i64+ k 1))
+                 (cons (rpe (car holes)
+                            (list (product (1 0) (2 'evidence) (3 #f) (4 nil) (5 (list (the rp-operand (sum node 1)))))
+                                  (product (1 1) (2 'rconst) (3 #f) (4 nil)
+                                           (5 (list (the rp-operand (sum sym (string->symbol (string-append "%region-" (i64->string k)))))))))
+                            nil)
+                       (fresh-evidence! (cdr holes) named)))))))))
+
+(define rep-filled! (subr (maxeff hp (alloc @h)) (i64 i64 string) (bytevectorof @h))
+  (lambda (rep given names)
+    "Rep `rep`'s binary form, its holes filled from the evidence `given`
+     holds, for the variables `names` names: canonical, each set's members
+     once."
+    (let* ((got ((proj rep-nodes @h) (word-kfx-bytes rep) nil))
+           (main (rexp (extract got 1) (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) 0 ""))
+           (named (spaced-words names))
+           (es (onto (evidence-given given named 1)
+                     (fresh-evidence! (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) named)))
+           (canonical (lambda ((r rexp))
+                   (tagcase r
+                     (rexp (ns hs root d) (the (bytevectorof @h) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
+           (b (canonical (rp-filled main es)))
+           (again ((proj rep-nodes @h) b nil)))
+      (canonical (rexp (map (lambda ((x rp-node)) (if (extract x 3) (product (1 (extract x 1)) (2 (extract x 2)) (3 #t) (4 (extract x 4)) (5 (rp-once (extract x 5)))) x))
+                       (extract again 1))
+                  (map (lambda ((y symbol)) (symbol->string y)) (extract again 2)) 0 "")))))
+
+"`(%reify given REP names)`: evidence, its rep filled."
+(define reify-run! (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
+  (lambda (given rep names) (kfx-bytes-word! (rep-filled! rep given (word-string names)))))
+
+(define stage-run! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 i64 i64 i64 i64) i64)
+  (lambda (m code given rep names)
+    "`(%stage-run m code given rep names)`: `(sum ok THUNK)`, the code made a
+     procedure over module `m`, checked against `rep` filled from the
+     evidence given (C307); or `(sum failed WHY)`."
+    (let* ((t ((proj rep-ty @h) (rep-filled! rep given (word-string names))))
            (thunk (staged-thunk (word-sexp code)))
            (prog (staged-program thunk))
            (why (stage-worked prog t)))
@@ -127,3 +298,4 @@
             (begin (obj-set! e 0 w-nil) (obj-set! e 1 m)
                    (obj-set! p 0 (code-word l)) (obj-set! p 1 e)
                    (sum-word! "ok" p)))))))
+
