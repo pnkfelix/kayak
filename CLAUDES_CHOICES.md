@@ -8747,3 +8747,32 @@ The checkers: the same of 450 (443), refuses 23 (24), none Fixpt refuses
 accepted. Stage programs as Fixpt prints them: 17 of 21. Left:
 `generative.fx`, `in-a-process.fx` (the checker's), and `kept.fx`,
 `session.fx` (`+`'s wording, C312, and `car`'s type as printed).
+
+## C314. The pin moved to Fixpt 19b31f1 (2026-11-03)
+
+29 commits, both of `docs/requests/fixpt-parity.md`'s requests among
+them (82fedd92: `+` and `-` name the argument that is wrong; 19b31f10:
+`process/basic.fx` takes the output once more). Each drifted source:
+- **`sched.rs`** (3e026d63): op 55, `attempt-within`'s deadline, the clock
+  `a` milliseconds on, carried over to both schedulers (`cells/prims.kfx`,
+  `fx26/vsched.kfx`); `fx26:processes.fx`, copied whole, defines
+  `attempt-within1` with it.
+- **`parser-exps.fx`** (d144eeb5): `stage`'s and `session-check`'s `E` read
+  as `(maxeff E)`, so that an effect a `with` gives, or a `select`, is one;
+  carried over to kayak's `stage-expanded` (`stage/named-effect.fx` as
+  Fixpt's). Its `attempt-within` form (3e026d63): not yet, TODO.
+- **516abc8e** (a compiled word's code in a code bloblet of its own, the
+  machine keeping none: `cellular.rs`, `cellular/x64.rs`, `layout.rs`,
+  `disasm.rs`, `fixpt-engine/src/cellular.rs`) and **6c46d762** (arm64's
+  register code): decided against for now. They are Fixpt's machine's
+  code management, made so that sessions' code no longer fills it; kayak's
+  compiled tiers run no session yet. Before they do (TODO), this is to
+  port.
+New programs kayak's checker does not take yet (refused, Fixpt accepting):
+`attempt/within-*`, `stage/session-types.fx` (a module's type describing
+a type of parameters, `dlambda`, which the module defines, Heist's §211,
+3), and others among the 11 new. Checkers: 454 the same of 572; none
+Fixpt refuses accepted; 126 of 409 refusals in Fixpt's words. Stage
+programs as Fixpt prints them: 19 of 23. The corpus's `made-encoded` and
+`made-flat`, which load `fx26:arm64.fx` (grown upstream, §81), blessed:
+their Rust has the encoder's new operations, their answers the same.

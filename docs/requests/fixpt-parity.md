@@ -1,8 +1,9 @@
 # A request to the Fixpt team: two small fixes, found comparing with kayak
 
-Status: drafted 2026-11-03 for the user to take to the Fixpt team.
-Checked against Fixpt 63b95ef (kayak's pin) and again against
-`origin/main` at dd369934: neither is fixed there.
+Status: drafted 2026-11-03 for the user to take to the Fixpt team; both
+landed in Fixpt the same day (82fedd92, 19b31f10; kayak's pin, C314).
+When drafted, checked against Fixpt 63b95ef (kayak's pin then) and
+`origin/main` at dd369934, neither yet fixed.
 
 ---
 

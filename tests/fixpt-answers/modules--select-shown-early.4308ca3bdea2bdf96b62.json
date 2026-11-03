@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"select-shown-early.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/select-shown-early.fx:9:4: argument 1 is a cell, where a int is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

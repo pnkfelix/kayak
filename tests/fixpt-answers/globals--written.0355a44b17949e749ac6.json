@@ -19,12 +19,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/globals/written.fx:7:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
+"fixpt: <programs>/globals/written.fx:7:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
 "  beyond what is expected, it has (read (globals below limit))",
 ""
 ],
 "by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

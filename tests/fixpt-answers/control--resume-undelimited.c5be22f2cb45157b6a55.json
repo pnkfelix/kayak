@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"resume-undelimited.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"ask : (poly ((r region)) (subr (maxeff (goto r) (comefrom r)) ((prompt-tag int (composable int int (read @globals) r) (read @globals) r)) int)) ! pure",
+"user : (poly ((r region)) (subr (maxeff (goto r) (comefrom r) (read (globals ask))) ((prompt-tag int (composable int int (read @globals) r) (read @globals) r)) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/control/resume-undelimited.fx:26:20: `handle` is declared a (subr (maxeff (read @globals) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int): a (subr (maxeff (read @globals) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int) is expected here, and this is a (subr (maxeff (read @globals) (goto @ev) (comefrom @ev) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int)",
+"  beyond what is expected, it has (maxeff (goto @ev) (comefrom @ev))",
+"  a `prompt` masks the control on its tag's region only where no free variable of its body names that region but the tag (a continuation resumed under it does); a `letregion` that makes the region masks it",
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

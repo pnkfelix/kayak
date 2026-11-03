@@ -7,6 +7,8 @@ cli-stage/evidence.fx
 cli-stage/evidence-missing.fx
 cli-stage/evidence-region.fx
 cli-stage/evidence-session.fx
+cli-stage/kept.fx
+cli-stage/named-effect.fx
 cli-stage/not-a-module.fx
 cli-stage/sealed.fx
 cli-stage/session-conditions.fx

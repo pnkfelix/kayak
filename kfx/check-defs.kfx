@@ -3551,7 +3551,10 @@
                                     (sx (list (sy "go") (sy "%run") (sx (list (sy "begin") (sx (list (sy "%run"))) (sx (list (sy "%session-committed!") (sy "%session") (sy "%pending")))))))
                                     (sx (list (sy "failed") (sy "%why") (sx (list (sy "sum") (sy "failed") (sy "%why")))))))))))
              ((and (or (head-is? e "stage") (head-is? e "session-check")) (or (i64= (size ys) 7) (i64= (size ys) 8)))
-                (let* ((m (second ys)) (eff (third ys)) (r (car (cdr (cdr (cdr ys))))) (code (car (cdr (cdr (cdr (cdr ys))))))
+                ;; `E` as `(maxeff E)`, read as an effect, so that a name a `with` or a
+                ;; module's parameter gives, or a `select`, is its effect, not a type
+                ;; (Fixpt's d144eeb5, `stage/named-effect.fx`).
+                (let* ((m (second ys)) (eff (sx (list (sy "maxeff") (third ys)))) (r (car (cdr (cdr (cdr ys))))) (code (car (cdr (cdr (cdr (cdr ys))))))
                        (ok (car (cdr (cdr (cdr (cdr (cdr ys)))))))
                        (bad (car (cdr (cdr (cdr (cdr (cdr (cdr ys))))))))
                        (given (if (i64= (size ys) 8) (cdr (items (last ys))) nil))

@@ -6,7 +6,7 @@ use super::*;
 // show.kfx: a value written as Fixpt's `write` writes it (C122), so that
 // tier 1's answers are compared with Fixpt's as text. Shared structure is
 // not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
-// fixpt-source: crates/fixpt-runtime/src/print.rs@63b95ef
+// fixpt-source: crates/fixpt-runtime/src/print.rs@19b31f1
 pub fn hex_digit(d: i64) -> Str {
     char_to_string(string_ref_i64(str_lit("0123456789abcdef"), d))
 }

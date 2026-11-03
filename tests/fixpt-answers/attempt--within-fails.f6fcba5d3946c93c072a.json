@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"within-fails.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"first : (subr (read @h) ((listof int @h)) int) ! pure",
+"-1 : int ! (maxeff (read @h) nondet (read (globals first)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

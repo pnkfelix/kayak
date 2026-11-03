@@ -24,24 +24,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"up-t : (subr pure (int) t) ! pure",
-"down-t : (subr pure (t) int) ! pure",
-"zero : t ! (read (globals up-t))",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/module-files/shared-counter.fx:4:35: `value` is declared a (subr pure (t) int): a (subr pure (t) int) is expected here, and this is a (subr (read (globals down-t)) (t) int)",
-"  beyond what is expected, it has (read (globals down-t))",
-""
-],
-"by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

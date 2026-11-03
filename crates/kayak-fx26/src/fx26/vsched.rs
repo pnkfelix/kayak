@@ -23,7 +23,7 @@ use super::*;
 // group with its group, each group's handler, a failure caught, each
 // `race` group with the group it is inside, each task that waits with how
 // it stops, the wakers of the standard input.
-// fixpt-source: crates/fixpt-runtime/src/sched.rs@63b95ef
+// fixpt-source: crates/fixpt-runtime/src/sched.rs@19b31f1
 /// A failure, the engine's (C110).
 pub fn sched_refused_x(message: Str) -> i64 {
     failed_with_x(message);
@@ -1050,6 +1050,12 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
     } else if i64_eq(n, 54i64) {
         sched_set_x(s_news(), without_x(sched_ref(s_news()), 0i64, a));
         w_unit()
+    } else if i64_eq(n, 55i64) {
+        int_word_x(i64_to_int(i64_plus(clock(), i64_star(if i64_lt(int_to_i64(word_int(a)), 0i64) {
+            0i64
+        } else {
+            int_to_i64(word_int(a))
+        }, 1000000i64))))
     } else if i64_eq(n, 40i64) {
         sched_cons_x(s_waiting(), pair_x(a, b));
         w_unit()

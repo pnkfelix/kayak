@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@63b95ef"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@19b31f1"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -1761,6 +1761,9 @@
       ((i64= n 52) (boolean (i64>= (int->i64 (process-news)) 0)))
       ((i64= n 53) (begin (st-cons! s-news a) v-unit))
       ((i64= n 54) (begin (st-set! s-news (without! (st s-news) 0 a)) v-unit))
+      ;; `attempt-within`'s deadline (Fixpt's 3e026d63): the clock `a`
+      ;; milliseconds from now.
+      ((i64= n 55) (int-value! (i64->int (i64+ (clock) (i64* (if (i64< (int->i64 (int-of a)) 0) 0 (int->i64 (int-of a))) 1000000)))))
       ((i64= n 40) (begin (st-cons! s-waiting (cons! a b)) v-unit))
       ((i64= n 41) (begin (st-set! s-waiting (without! (st s-waiting) 1 a)) v-unit))
       ((i64= n 42) (reaped!))

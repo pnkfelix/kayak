@@ -31,11 +31,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref blob (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
+"fixpt: <programs>/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref blob (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
 ""
 ],
 "by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

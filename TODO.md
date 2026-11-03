@@ -111,12 +111,12 @@ section below where it has one; here the order, and what each is.
      `show-ty` in check.kfx); types printed alike (`car`'s parameter,
      inference variables `?` against kayak's `?1`); the tail
      (`target/kayak-checks/checkers`, `both`).
-   - **For Fixpt's team**: `(+ 1 "x")` and `(- 1 "x")` are refused as "a
-     int is expected here, and this is a string", where every other call
-     says "argument 2 is a string, where a int is expected" (its general
-     rule, `k-app-arg`; `+` and `-` are typed by its rule of sizes). kayak
-     says the latter for them too (the user's, 2026-11-03). Written up,
-     with the race in `process/basic.fx`, in `docs/requests/fixpt-parity.md`.
+   - **From Fixpt 19b31f1** (C314): the form `attempt-within` (a time
+     budget, 3e026d63; the scheduler's op 55 is in); a module's type
+     describing a type of parameters it defines (`dlambda`,
+     `stage/session-types.fx`); Fixpt's 516abc8e, a compiled word's code
+     kept in its own bloblet, to port before sessions run on the compiled
+     tiers; arm64's register code (6c46d762).
    - **Sessions never give memory back** (the user's concern, 2026-11-03):
      a session's globals are renamed into one flat table (C311, as
      Fixpt's lowered path), so nothing of a session is reclaimed when

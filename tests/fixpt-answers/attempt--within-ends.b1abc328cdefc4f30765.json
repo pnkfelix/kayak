@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"within-ends.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sum-to : (subr (maxeff (read (globals sum-to)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals sum-to)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

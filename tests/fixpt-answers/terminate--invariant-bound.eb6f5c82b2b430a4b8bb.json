@@ -33,11 +33,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/terminate/invariant-bound.fx:7:1: calling `down` may read any global, `down` too, so `down` may reach itself through a global: its type must say `spin`",
+"fixpt: <programs>/terminate/invariant-bound.fx:7:1: calling `down` may read any global, `down` too, so `down` may reach itself through a global: its type must say `spin`",
 ""
 ],
 "by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

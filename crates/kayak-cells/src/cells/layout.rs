@@ -8,7 +8,7 @@ use super::*;
 // its immediates and its routines' names, which `layout.fx` does not
 // hold, written here after Fixpt's sources:
 // fixpt-source: crates/fixpt-heap/src/value.rs@7038269
-// fixpt-source: crates/fixpt-heap/src/layout.rs@63b95ef
+// fixpt-source: crates/fixpt-heap/src/layout.rs@19b31f1
 pub mod made__load__0__layout {
     use super::*;
 

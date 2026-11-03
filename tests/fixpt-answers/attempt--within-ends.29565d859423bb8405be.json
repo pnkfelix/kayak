@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"within-ends.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"sum-to : (subr (maxeff spin (read (globals sum-to))) (int int) int) ! pure",
+"15 : int ! (maxeff spin nondet (read (globals sum-to)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

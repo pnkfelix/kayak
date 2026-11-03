@@ -23,20 +23,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"m : (moduleof (abs t type) (val z t)) ! pure",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/include-abstract-opaque.fx:5:12: a int is expected here, and this is a m..t",
-""
-],
-"by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
-]
 }
 ]
 }

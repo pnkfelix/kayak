@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"within-writes.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"x : (ref int @x) ! (alloc @x)",
+""
+],
+"err": [
+"fixpt: <programs>/attempt/within-writes.fx:4:21: an `attempt`'s body may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

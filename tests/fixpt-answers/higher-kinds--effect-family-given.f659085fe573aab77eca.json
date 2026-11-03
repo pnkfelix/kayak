@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"effect-family-given.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define run : (poly ((e effect)) (subr e ((subr e () int)) int)) ! pure",
+"define go : (subr (maxeff (alloc @h) (read (globals run)) (read @h) (write @h)) () int) ! pure",
+"int ! (maxeff (alloc @h) (read (globals go run)) (read @h) (write @h))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

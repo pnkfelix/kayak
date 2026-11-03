@@ -11,7 +11,7 @@ use super::*;
 // takes, at least and at most; Fixpt's own numbers, later, with the
 // layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
 // and counted as not yet, never as an answer.
-// fixpt-source: crates/fixpt-runtime/src/prim.rs@63b95ef
+// fixpt-source: crates/fixpt-runtime/src/prim.rs@19b31f1
 
 // Each primitive: its name, how many arguments it takes, at least and at
 // most (-1: any), and its operation.
@@ -3915,6 +3915,12 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
     } else if i64_eq(n, 54i64) {
         st_set_x(s_news(), without_x(st(s_news()), 0i64, a));
         v_unit()
+    } else if i64_eq(n, 55i64) {
+        int_value_x(i64_to_int(i64_plus(clock(), i64_star(if i64_lt(int_to_i64(int_of(a)), 0i64) {
+            0i64
+        } else {
+            int_to_i64(int_of(a))
+        }, 1000000i64))))
     } else if i64_eq(n, 40i64) {
         st_cons_x(s_waiting(), cons_x(a, b));
         v_unit()

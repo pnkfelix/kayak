@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"poly-in-itself.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define leaf : cmd ! pure",
+"define count : cmd ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals count leaf)) (read @heap) spin) () int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals count leaf run)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

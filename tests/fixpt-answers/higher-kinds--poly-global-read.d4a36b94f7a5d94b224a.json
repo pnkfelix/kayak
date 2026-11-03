@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"poly-global-read.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define base : code ! pure",
+"define go : (subr (maxeff (alloc @heap) (read (globals base)) (read @heap)) () int) ! pure",
+"define again : code ! (read (globals base))",
+"define go2 : (subr (maxeff (alloc @heap) (read (globals again)) (read @heap)) () int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals again base go go2)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

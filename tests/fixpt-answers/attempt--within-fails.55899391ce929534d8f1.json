@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"within-fails.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define first : (subr (read @h) ((listof int @h)) int) ! pure",
+"int ! (maxeff (read (globals first)) (read @h) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

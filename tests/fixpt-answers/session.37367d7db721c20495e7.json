@@ -23,17 +23,17 @@
 "defined twice",
 "3",
 "not defined: the session changed since this definition was checked: check it again",
-"refused: a int is expected here, and this is a string",
+"refused: argument 2 is a string, where a int is expected",
 "refused: argument 1 is a int, where a (union nil (pairof ? ? r)) is expected",
 "defined a",
-"refused: `g` is broken, since `a` was redefined (a int is expected here, and this is a string): define it again to use it",
+"refused: `g` is broken, since `a` was redefined (argument 2 is a string, where a int is expected): define it again to use it",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

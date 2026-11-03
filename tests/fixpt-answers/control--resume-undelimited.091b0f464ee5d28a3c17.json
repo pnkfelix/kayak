@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"resume-undelimited.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/control/resume-undelimited.fx:26:20: `handle` is declared a (subr (maxeff (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int): a (subr (maxeff (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int) is expected here, and this is a (subr (maxeff (comefrom @ev) (goto @ev) (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int)",
+"  beyond what is expected, it has (maxeff (comefrom @ev) (goto @ev))",
+"  a `prompt` masks the control on its tag's region only where no free variable of its body names that region but the tag (a continuation resumed under it does); a `letregion` that makes the region masks it",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

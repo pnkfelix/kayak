@@ -33,11 +33,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/generative/opaque.fx:3:50: a int is expected here, and this is a ty-id",
+"fixpt: <programs>/generative/opaque.fx:3:50: argument 1 is a ty-id, where a int is expected",
 ""
 ],
 "by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

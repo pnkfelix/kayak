@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"deep-handler.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"ask : (poly ((r region)) (subr (maxeff (goto r) (comefrom r)) ((prompt-tag int (composable int int (read @globals) r) (read @globals) r)) int)) ! pure",
+"user : (poly ((r region)) (subr (maxeff (goto r) (comefrom r) (read (globals ask))) ((prompt-tag int (composable int int (read @globals) r) (read @globals) r)) int)) ! pure",
+"turn : (subr (maxeff (read @globals) spin) () int) ! pure",
+"20 : int ! (maxeff (read @globals) spin nondet)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

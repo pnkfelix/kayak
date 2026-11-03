@@ -22,22 +22,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"c : (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-counter.fx))",
-"u : (moduleof (val c (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int)))) (val bump (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-twice.fx))",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/load-shared-named.fx:5:16: argument 1 is a int, where a shared-counter.fx..t is expected",
-""
-],
-"by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

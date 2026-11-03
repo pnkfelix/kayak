@@ -10,7 +10,7 @@ use super::*;
 // cut short (`…`), two words share a name, or the compilers disagree:
 // those are refused. Each word's register code (`its register code`) is
 // read into a register word, its twin under `--regs` (C129).
-// fixpt-source: crates/fixpt-runtime/src/disasm.rs@63b95ef
+// fixpt-source: crates/fixpt-runtime/src/disasm.rs@19b31f1
 pub fn listing_error(why: Str) -> Void {
     error(string_append(str_lit("kayak-cells: the listing: "), why))
 }
@@ -405,7 +405,7 @@ pub fn global_named(name: Str) -> i64 {
 // `eq?` here. A labelled pair is made before what is in it, so that a
 // cycle through pairs is too; one through a vector or other bloblet is
 // refused (not yet).
-// fixpt-source: crates/fixpt-runtime/src/literal.rs@63b95ef
+// fixpt-source: crates/fixpt-runtime/src/literal.rs@19b31f1
 pub enum Lab {
     Lab(i64, i64),
 }

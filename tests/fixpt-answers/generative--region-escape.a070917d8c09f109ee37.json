@@ -22,22 +22,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"up-stack : (poly ((t type) (r region)) (subr pure ((listof t r)) (stack t r))) ! pure",
-"down-stack : (poly ((t type) (r region)) (subr pure ((stack t r)) (listof t r))) ! pure",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/generative/region-escape.fx:4:14: the value of `letregion l` would outlive its region: its type is (stack int l)",
-""
-],
-"by": [
-"x86_64-linux@63b95ef0790e668d0da9c7105de082e2d076e449"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
 ]
 }
 ]

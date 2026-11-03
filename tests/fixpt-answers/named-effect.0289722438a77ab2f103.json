@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"named-effect.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"11",
+"12",
+"refused: a (subr (maxeff (read @heap) spin) () int) is expected here, and this is a (subr (io stdout) () int)",
+"  beyond what is expected, it has (io stdout)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

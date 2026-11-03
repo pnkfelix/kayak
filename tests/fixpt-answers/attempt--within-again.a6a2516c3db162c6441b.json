@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"within-again.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"forever : (subr (maxeff spin (read (globals forever))) (int) int) ! pure",
+"twice : (subr spin (int) int) ! pure",
+"8 : int ! (maxeff spin nondet (read (globals forever twice)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

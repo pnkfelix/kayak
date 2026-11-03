@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"within-spins.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define forever : (subr (maxeff (read (globals forever)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals forever)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}
