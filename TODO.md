@@ -115,7 +115,8 @@ section below where it has one; here the order, and what each is.
      int is expected here, and this is a string", where every other call
      says "argument 2 is a string, where a int is expected" (its general
      rule, `k-app-arg`; `+` and `-` are typed by its rule of sizes). kayak
-     says the latter for them too (the user's, 2026-11-03).
+     says the latter for them too (the user's, 2026-11-03). Written up,
+     with the race in `process/basic.fx`, in `docs/requests/fixpt-parity.md`.
    - **Sessions never give memory back** (the user's concern, 2026-11-03):
      a session's globals are renamed into one flat table (C311, as
      Fixpt's lowered path), so nothing of a session is reclaimed when
