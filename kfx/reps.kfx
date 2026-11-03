@@ -154,6 +154,22 @@
               (tagcase (rx-node x "binder" #f (the rp-operands (list k (the rp-operand (sum flag (has-suffix? (car ns) "%d"))))))
                 (rxa (x b) (tagcase (rx-binder-nodes x (cdr ns)) (rxs (x bs) (rxs x (cons b bs))))))))))))
 
+"A module type's descriptions, in the order written (C315): a type's,
+ `%desc d`, and an effect's, `%edesc e`, the latter a description function
+ giving it (`%effdesc`)."
+(define desc-of? (subr kfx (ty) bool)
+  (lambda (it) (tagcase it (ty-data (k as) (or (has-prefix? k "%desc ") (has-prefix? k "%edesc "))) (else other #f))))
+
+(define desc-labels (subr kfx (tys) strings)
+  (lambda (items)
+    (map (lambda ((it ty)) (tagcase it (ty-data (k as) (if (has-prefix? k "%desc ") (after-prefix k "%desc ") (after-prefix k "%edesc "))) (else other "?")))
+         (filter desc-of? items))))
+
+(define desc-types (subr kfx (tys) tys)
+  (lambda (items)
+    (map (lambda ((it ty)) (tagcase it (ty-data (k as) (if (has-prefix? k "%desc ") (car as) (ty-data "%effdesc" (list (car as))))) (else other (ty-void))))
+         (filter desc-of? items))))
+
 "kayak's types that are Fixpt's generative types (C301): each a named
  constant applied to descriptions, as a datatype is."
 (define rp-generative-heads strings (list "%addr" "%inbox" "%blobref" "%stringof" "%bytes" "%eqtable" "%identity" "%escape-tag"))
@@ -310,7 +326,9 @@
              (types (lambda ((its tys)) (map (lambda ((it ty)) (tagcase it (ty-data (k as) (car as)) (else other (ty-void)))) its))))
         (tagcase (rx-binder-nodes x (map (lambda ((n string)) n) names))
           (rxs (x bs)
-            (tagcase (rx-parts s x sc2 (labels (part "%desc ") "%desc ") (types (part "%desc ")))
+            ;; Descriptions of types and of effects alike, in the order written
+            ;; (C315), an effect's as a description function giving it.
+            (tagcase (rx-parts s x sc2 (desc-labels items) (desc-types items))
               (rxs (x ds)
                 (tagcase (rx-node x "descs" #f ds)
                   (rxa (x dn)
@@ -396,6 +414,24 @@
                   ((string=? d "%union") (tagcase (rx-tys s x sc args) (rxs (x as) (rx-fill x slot "union" #f (the strings nil) as))))
                   ((and (string=? d "%pairof") (i64= (size args) 3)) (tagcase (rx-tys s x sc (list (car args) (car (cdr args)))) (rxs (x as) (tagcase (rx-region s x sc (car (cdr (cdr args)))) (rxa (x r2) (rx-fill x slot "pairof" #f (the strings nil) (onto as (the rp-operands (list r2 (the rp-operand (sum flag #f)))))))))))
                   ((and (string=? d "%mu") (i64= (size args) 2)) (tagcase (car args) (ty-var (n) (rx-ty-at s x (cons (rpbind n slot -1) sc) (walk s (car (cdr args))) slot)) (else other (rx-declined x "a part not a variable"))))
+                  ((and (string=? d "%dlambda") (not (null? args)))
+                   "A description function (C315): `(dlambda {x …} (binder k) … (d-type
+                    T))`, its parameters bound there, as Fixpt's `Ty::Lam`."
+                   (let* ((ns (poly-binders-of args)) (sc2 (binders-in sc ns slot 0)))
+                     (tagcase (rx-binder-nodes x ns)
+                       (rxs (x bs)
+                         (tagcase (rx-ty s x sc2 (last args))
+                           (rxa (x b)
+                             (tagcase (rx-node x "d-type" #f (the rp-operands (list b)))
+                               (rxa (x db) (rx-fill x slot "dlambda" #f ns (onto bs (the rp-operands (list db))))))))))))
+                  ((and (string=? d "%effdesc") (i64= (size args) 1))
+                   "A module's description of an effect (C315): a description function
+                    of no parameters giving it, `(dlambda {} (d-effect E))`, as Fixpt's
+                    `effect_desc`."
+                   (tagcase (rx-effect x sc (tagcase (car args) (ty-proc (es ps r) es) (else other nil)))
+                     (rxa (x e)
+                       (tagcase (rx-node x "d-effect" #f (the rp-operands (list e)))
+                         (rxa (x de) (rx-fill x slot "dlambda" #f (the strings nil) (the rp-operands (list de))))))))
                   ((and (string=? d "%poly") (not (null? args))) (let* ((ns (poly-binders-of args)) (sc2 (binders-in sc ns slot 0))) (tagcase (rx-binder-nodes x ns) (rxs (x bs) (tagcase (rx-ty s x sc2 (last args)) (rxa (x b) (rx-fill x slot "poly" #f ns (onto bs (the rp-operands (list b))))))))))
                   ((and (or (string=? d "%icell") (string=? d "%mark-key")) (i64= (size args) 2)) (tagcase (rx-ty s x sc (car args)) (rxa (x a2) (tagcase (rx-region s x sc (car (cdr args))) (rxa (x r2) (rx-fill x slot (after-prefix d "%") #f (the strings nil) (the rp-operands (list a2 r2))))))))
                   ((and (string=? d "%place") (i64= (size args) 1)) (tagcase (rx-region s x sc (car args)) (rxa (x r2) (rx-fill x slot "place" #f (the strings nil) (the rp-operands (list r2))))))
@@ -410,7 +446,7 @@
                   ((and (string=? d "%flat-sum") (not (null? args))) (tagcase (rx-parts s x sc (map (lambda ((f fvar)) (tagcase f (fvar (l t) l))) (flat-sum-variants args)) (map (lambda ((f fvar)) (tagcase f (fvar (l t) t))) (flat-sum-variants args))) (rxs (x as) (tagcase (rx-node x "sumof" #f as) (rxa (x sm) (tagcase (rx-size s x sc (size-of-lin (lin (rp-key-width (car args)) nil))) (rxa (x z) (tagcase (rx-node x "d-size" #f (the rp-operands (list z))) (rxa (x dz) (tagcase (rx-node x "d-type" #f (the rp-operands (list sm))) (rxa (x dsm) (rx-fill x slot "named" #f (the strings nil) (the rp-operands (list (rp-const "flat-keyed" 2) dz dsm))))))))))))))
                   ((and (string=? d "%vsubr") (i64= (size args) 3)) (tagcase (rx-effect x sc (tagcase (car args) (ty-proc (es ps r) es) (else other nil))) (rxa (x e) (tagcase (rx-node x "d-effect" #f (the rp-operands (list e))) (rxa (x de) (tagcase (rx-descs s x sc (cdr args)) (rxs (x ds) (rx-fill x slot "named" #f (the strings nil) (cons (rp-const "vsubr" 3) (cons de ds))))))))))
                   ((and (has-prefix? d "%spec ") (not (null? args))) (tagcase (walk s (car args)) (ty-proc (es ps r) (rx-subr-spec s x sc "cellular" es ps r slot d)) (ty-data (c cs) (if (and (or (string=? c "%fx") (string=? c "%cellular") (string=? c "%native")) (not (null? cs))) (tagcase (walk s (car cs)) (ty-proc (es ps r) (rx-subr-spec s x sc (after-prefix c "%") es ps r slot d)) (else other (rx-declined x "a specified type of no procedure"))) (rx-declined x "a specified type of no procedure"))) (else other (rx-declined x "a specified type of no procedure"))))
-                  ((and (string=? d "%mtype") (not (any? (lambda ((it ty)) (tagcase it (ty-data (k as) (has-prefix? k "%edesc ")) (else other #t))) args))) (rx-moduleof s x sc args slot))
+                  ((string=? d "%mtype") (rx-moduleof s x sc args slot))
                   ((and (or (has-prefix? d "%") (has-char-in? d #\space)) (not (string-member? d rp-generative-heads))) (rx-declined x d))
                   (else (tagcase (rx-descs s x sc args) (rxs (x as) (let ((kind (if (null? args) "type" (string-append "generative/" (i64->string (size args)))))) (rx-fill x slot "named" #f (the strings nil) (cons (rp-const (if (string-member? d rp-generative-heads) (rp-generative-name d) d) (size args)) as))))))))
           (else other (rx-declined x "a type of no head yet")))))))
@@ -680,12 +716,25 @@
                (let* ((n (size binders)) (rest (drop-n args n))
                       (part-of (lambda ((a rp-operand) (prefix string))
                                  (tagcase a
-                                   (node j (map (lambda ((pt (productof (1 string) (2 ty)))) (ty-data (string-append prefix (extract pt 1)) (list (extract pt 2))))
+                                   (node j (map (lambda ((pt (productof (1 string) (2 ty))))
+                                                  ;; An effect's description back as one (C315).
+                                                  (tagcase (extract pt 2)
+                                                    (ty-data (k as) (if (string=? k "%effdesc")
+                                                                        (ty-data (string-append "%edesc " (extract pt 1)) as)
+                                                                        (ty-data (string-append prefix (extract pt 1)) (list (extract pt 2)))))
+                                                    (else other (ty-data (string-append prefix (extract pt 1)) (list (extract pt 2))))))
                                                 (ri-parts c (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 5))))
                                    (else other nil)))))
                  (ty-data "%mtype"
                           (onto (map (lambda ((b symbol)) (ty-data (string-append "%abs " (symbol->string b)) (list (ty-data (string-append "rp.." (symbol->string b)) nil)))) binders)
                                 (onto (part-of (car rest) "%desc ") (part-of (car (cdr rest)) "%val "))))))
+              ((string=? head "dlambda")
+               "A description function back (C315): of no parameters and an
+                effect, a module's description of an effect (`%effdesc`)."
+               (let ((body (car (ri-descs c (drop-n args (size binders))))))
+                 (if (and (null? binders) (tagcase body (ty-proc (es ps r) #t) (else other #f)))
+                     (ty-data "%effdesc" (list body))
+                     (ty-data "%dlambda" (onto (map (lambda ((b symbol)) (ty-var (symbol->string b))) binders) (list body))))))
               ((string=? head "prompt-tag")
                (ty-tag (ri-ty c (car args)) (ri-ty c (car (cdr args)))
                        (tagcase (car (cdr (cdr args))) (node j (ri-atoms c (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 5))) (else other nil))

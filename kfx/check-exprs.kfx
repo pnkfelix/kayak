@@ -2728,6 +2728,35 @@
                                                 (note-fact (note-fact s (cv-file v) (cv-pos v) (string-append "stage-rep " (rp-nodes-text ns hs root)))
                                                            (cv-file v) (cv-pos v) (string-append "stage-given " (words-of (evidence-covered s gt)))))))))))))))))))))))
 
+      (attempt-within-form (subr kfx (cv st sexps) res)
+        (lambda (v s xs)
+          "`(attempt-within ms e on-failure on-timeout)` (C315; Fixpt's 3e026d63,
+           `k-attempt-within-te`): `attempt`'s, but `e` cancelled once `ms`
+           milliseconds, an `int`, have passed, and `(on-timeout)` the value:
+           the wider of its type and the `attempt`'s, the effect all theirs,
+           `nondet` too, never `(io clock)`. Not KFX's yet."
+          (if (not (i64= (size xs) 4))
+              (refuse v "`(attempt-within milliseconds expression on-failure on-timeout)`")
+              (tagcase (attempt-form v s (list (second xs) (third xs)))
+                (res (t es s)
+                  (tagcase (synth v s (car xs))
+                    (res (mt mes s)
+                      (let ((s (if (tagcase (walk s mt) (ty-int () #t) (ty-nat () #t) (ty-meta (k) #t) (ty-data (d as) (string=? d "%natof")) (else other #f))
+                                   (tagcase (walk s mt) (ty-meta (k) (solve s k (ty-int))) (else other s))
+                                   (refuse v (string-append "a int is expected here, and this is a " (show-ty s mt))))))
+                        (tagcase (synth v s (fourth xs))
+                          (res (ot oes s)
+                            (tagcase (walk s ot)
+                              (ty-proc (les ps r)
+                                (if (not (null? ps))
+                                    (refuse v (string-append "`attempt-within`'s on-timeout takes nothing, but is " (show-ty s ot)))
+                                    ;; Its value fitted to the `attempt`'s, as `attempt-form`
+                                    ;; fits the handler's (Fixpt takes the wider either way).
+                                    (let* ((u (cond ((void? s r) t) ((void? s t) r) (else t)))
+                                           (s (if (or (void? s r) (void? s t)) s (fits v s r t))))
+                                      (res u (effs-union es (effs-union mes (effs-union oes les))) s))))
+                              (else other (refuse v (string-append "`attempt-within`'s on-timeout takes nothing, but is " (show-ty s ot)))))))))))))))
+
       (attempt-form (subr kfx (cv st sexps) res)
         (lambda (v s xs)
           "`(attempt e on-failure)` (C297; Heist's F1, Fixpt's `synth_attempt`):
@@ -2829,6 +2858,7 @@
                 ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region"))
                       (or (i64= (size xs) 1) (i64= (size xs) 2)))
                  (reify-form v s (after-prefix h "reify-") xs))
+                ((string=? h "attempt-within") (attempt-within-form v s xs))
                 ((string=? h "attempt")
                  "FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
                   as `race` is, never a call of what a program names `attempt`
@@ -2967,7 +2997,7 @@
         (lambda (v s e h xs expected)
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
                 ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
-                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "%stage") (string=? h "%session-check") (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
+                ((or (string=? h "self") (string=? h "race") (string=? h "attempt") (string=? h "attempt-within") (string=? h "%stage") (string=? h "%session-check") (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region") (and (string=? h "convention") (null? (scope-bind h v)))) (check-by-synth v s e expected))
                 ((and (string=? h "proj") (null? (scope-bind h v))) (check-by-synth v s e expected))
                 ((and (string=? h "the") (i64= (size xs) 2) (sized? (walk s expected) "%narray")
                       (tagcase (parse-type v (cv-tvars v) (car xs)) (ty-data (d args) (string=? d "%array")) (else other #f)))

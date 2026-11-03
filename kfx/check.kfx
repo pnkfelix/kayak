@@ -497,11 +497,11 @@
 (define crossing-atom? (subr kfx (strings string) bool)
   (lambda (bound a)
     "Whether atom `a` is one a process may have that is seen outside it:
-     a send, a fill or an await, I/O, `spin`, `nondet`, reading globals'
-     bindings or data frozen in the heap, allocating at a region that is
-     no place (a constant, or the heap); or anything on a binder in
-     `bound`, which a caller gives (`crossing_atom`)."
-    (or (string=? a "spin") (string=? a "nondet") (string=? a "@globals") (string=? a "~!")
+     a send, a fill or an await, I/O, `spin`, `nondet`, `stage` (C315),
+     reading globals' bindings or data frozen in the heap, allocating at a
+     region that is no place (a constant, or the heap); or anything on a
+     binder in `bound`, which a caller gives (`crossing_atom`)."
+    (or (string=? a "spin") (string=? a "nondet") (string=? a "stage") (string=? a "@globals") (string=? a "~!")
         (global-atom? a) (has-prefix? a "io:")
         (has-prefix? a "send:") (has-prefix? a "init:") (has-prefix? a "await:")
         (string=? a "read:acyclic") (string=? a "read:%fresh") (string=? a "read:const")
@@ -1971,7 +1971,9 @@
                                       (tagcase (second ys) (sym (n f p) #t) (lst (ns f l p) (not (any? (lambda ((z sexp)) (tagcase z (sym (m f2 p2) #f) (else other #t))) ns))) (else other #f)))
                                  (and (sym-is? (car ys) "desc") (tagcase (second ys) (sym (n f p) #t) (else other #f))
                                       (not (string-member? (logic-head (third ys)) (list "maxeff" "read" "write" "alloc" "init" "await" "send" "receive" "goto" "comefrom" "io")))
-                                      (not (sym-is? (third ys) "pure")))
+                                      (not (sym-is? (third ys) "pure"))
+                                      ;; A type function described (C315): FX-26's alone.
+                                      (not (head-is? (third ys) "dlambda")))
                                  (and (sym-is? (car ys) "val") (tagcase (second ys) (sym (n f p) #t) (else other #f))))))))
                (cdr (items m))))))
 
@@ -3240,7 +3242,9 @@
                      (cons (ty-data (string-append "%edesc " n) (list (ty-proc atoms nil (ty-unit))))
                            (parse-moduleof (with-type-binds v nil (list (effdef n atoms))) tvars (cdr its) id))))
                   ((and (string=? hd "desc") (not (string=? n "")))
-                   (let ((u (parse-type v tvars (third ys))))
+                   ;; A description may be a type function, `(dlambda ...)` (C315;
+                   ;; Fixpt's `stage/session-types.fx`).
+                   (let ((u (parse-type v (if (head-is? (third ys) "dlambda") (cons "%fun-ok" tvars) tvars) (third ys))))
                      (cons (ty-data (string-append "%desc " n) (list u))
                            (parse-moduleof (with-type-binds v (list (type-bind n u)) nil) tvars (cdr its) id))))
                   ((and (string=? hd "val") (not (string=? n "")))

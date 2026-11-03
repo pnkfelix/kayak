@@ -2304,6 +2304,22 @@
                                               (else other nil)))
                                           (tagcase (second xs) (lst (ys f2 l2 p2) ys) (else other nil))))))
                    (concat (map (lambda ((x sexp)) (refs-in x names (onto mods forms) bs)) (cdr xs)))))
+                ((and (or (head-is? e "lambda") (head-is? e "letrec")) (not (null? (cdr xs))))
+                 "A name a `lambda` or a `letrec` binds is its own, not an item's,
+                  where it is bound (C315; Fixpt's free variables: `stage/
+                  generative.fx`'s `(define total (letrec ((total ...)) total))`)."
+                 (let* ((binders (tagcase (second xs) (lst (ys f2 l2 p2) ys) (else other nil)))
+                        (bound (concat (map (lambda ((b sexp))
+                                              (tagcase b
+                                                (sym (n f2 p2) (the strings (list n)))
+                                                (lst (ys f2 l2 p2) (if (null? ys) nil (tagcase (car ys) (sym (n f3 p3) (the strings (list n))) (else other nil))))
+                                                (else other nil)))
+                                            binders)))
+                        (inner (if (null? bound) names (nset-without names bound))))
+                   (if (head-is? e "lambda")
+                       (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (cdr (cdr xs))))
+                       (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (onto (concat (map (lambda ((b sexp)) (tagcase b (lst (ys f2 l2 p2) (cdr ys)) (else other nil))) binders))
+                                                                                        (cdr (cdr xs))))))))
                 ((head-is? e "module")
                  "A module made here: its items' own names are its, not the outer
                   items' (C288)."

@@ -101,22 +101,22 @@ section below where it has one; here the order, and what each is.
      instantiating one type binder bounded only from below by a sum
      (Fixpt's `sum_lower_only`, 39318012).
    - **`stage`**, evidence and **sessions** (the checker, the engine and
-     the REPL have them, C304-C313): not yet tier 1 (the next step, a
-     design first) or KFX (not needed there). Stage programs Fixpt's way:
-     `generative.fx` (a module's item kayak calls made too late) and
-     `in-a-process.fx` (`stage` in a process) are the checker's to fix.
+     the REPL have them, C304-C315): not yet the compiled tiers (the next
+     step, a design first) or KFX (not needed there).
    - **Refusals in Fixpt's words** (C312; 122 of 406 so far): Fixpt's
      termination reasons after a `spin` mismatch ("; it may not end:
      …"); the storage knot's "and it is a T" (no type printer before
      `show-ty` in check.kfx); types printed alike (`car`'s parameter,
      inference variables `?` against kayak's `?1`); the tail
      (`target/kayak-checks/checkers`, `both`).
-   - **From Fixpt 19b31f1** (C314): the form `attempt-within` (a time
-     budget, 3e026d63; the scheduler's op 55 is in); a module's type
-     describing a type of parameters it defines (`dlambda`,
-     `stage/session-types.fx`); Fixpt's 516abc8e, a compiled word's code
-     kept in its own bloblet, to port before sessions run on the compiled
-     tiers; arm64's register code (6c46d762).
+   - **From Fixpt 19b31f1** (C314): Fixpt's 516abc8e, a compiled word's
+     code kept in its own bloblet, to port before sessions run on the
+     compiled tiers; arm64's register code (6c46d762). (`attempt-within`
+     and `dlambda` descriptions done, C315.)
+   - **Exporting a new item from check-exprs.kfx's `expressions` module**
+     (`mtype-opened`, at C315) broke the bootstrap's second generation:
+     the Rust it emitted did not build (`expected &Res, found Void`, 382
+     errors). Not looked into.
    - **Sessions never give memory back** (the user's concern, 2026-11-03):
      a session's globals are renamed into one flat table (C311, as
      Fixpt's lowered path), so nothing of a session is reclaimed when

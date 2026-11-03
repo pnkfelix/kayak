@@ -4139,6 +4139,75 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                     concat(map(lambda1s(move |x: &'static Sexp| {
                         refs_in(x, names, onto(mods, forms), bs)
                     }), cdr(xs)))
+                } else if ((head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("letrec"))) && not(null_p(cdr(xs)))) {
+                    // A name a `lambda` or a `letrec` binds is its own, not an item's,
+                    // where it is bound (C315; Fixpt's free variables: `stage/
+                    // generative.fx`'s `(define total (letrec ((total ...)) total))`).
+                    let binders = {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                ys
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    };
+                    let bound = concat(map(lambda1s(move |b: &'static Sexp| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                            }
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                if null_p(ys) {
+                                    nil::<Str>()
+                                } else {
+                                    let tagcase_ = car(ys);
+                                    match *tagcase_ {
+                                        Sexp::Sym(n, f3, p3) => {
+                                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            nil::<Str>()
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    }), binders));
+                    let inner = if null_p(bound) {
+                        names
+                    } else {
+                        nset_without(names, bound)
+                    };
+                    if head_is_p(e, str_lit("lambda")) {
+                        concat(map(lambda1s(move |x: &'static Sexp| {
+                            refs_in(x, inner, forms, bs)
+                        }), cdr(cdr(xs))))
+                    } else {
+                        concat(map(lambda1s(move |x: &'static Sexp| {
+                            refs_in(x, inner, forms, bs)
+                        }), onto(concat(map(lambda1s(move |b: &'static Sexp| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f2, l2, p2) => {
+                                    cdr(ys)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<&'static Sexp>()
+                                }
+                            }
+                        }), binders)), cdr(cdr(xs)))))
+                    }
                 } else if head_is_p(e, str_lit("module")) {
                     // A module made here: its items' own names are its, not the outer
                     // items' (C288).

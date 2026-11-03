@@ -54,7 +54,7 @@ pub fn member_of_p(x: Str, xs: Strings) -> bool {
 pub fn process_heads() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("spawn-monitored"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("race"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::heap_cons(str_lit("attempt"), kayak_rt::nil())))))))))))
+        kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("spawn-monitored"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("self"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("race"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::heap_cons(str_lit("attempt"), kayak_rt::heap_cons(str_lit("attempt-within"), kayak_rt::nil()))))))))))))
     })
 }
 
@@ -208,6 +208,8 @@ pub fn process_expanded(e: &'static Sexp) -> &'static Sexp {
         race_tree(args, true)
     } else if string_eq_p(h, str_lit("attempt")) {
         sx(kayak_rt::heap_cons(lib_op(str_lit("attempt1")), kayak_rt::heap_cons(thunk_of(car(args)), kayak_rt::heap_cons(second(args), kayak_rt::nil()))))
+    } else if string_eq_p(h, str_lit("attempt-within")) {
+        sx(kayak_rt::heap_cons(lib_op(str_lit("attempt-within1")), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(thunk_of(second(args)), kayak_rt::heap_cons(third(args), kayak_rt::heap_cons(fourth(args), kayak_rt::nil()))))))
     } else {
         sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(select_binds(args, 0i64)), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%sel")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(lib_op(str_lit("sync")), kayak_rt::heap_cons(select_events(args, 0i64), kayak_rt::nil()))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(select_arms(args, 0i64), kayak_rt::nil())))), kayak_rt::nil()))))
     }

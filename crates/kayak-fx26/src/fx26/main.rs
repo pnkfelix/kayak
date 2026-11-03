@@ -320,7 +320,9 @@ pub fn engine_main() -> Int {
         run_tops(ns, with_main);
         if with_main {
             let i = position_of(str_lit("main"), gs, 0i64);
-            if i64_lt(i, 0i64) {
+            if (i64_lt(i, 0i64) && running) {
+                int_lit(0)
+            } else if i64_lt(i, 0i64) {
                 match fail_with(str_lit("no main"), int_lit(1)) {};
                 int_lit(1)
             } else {

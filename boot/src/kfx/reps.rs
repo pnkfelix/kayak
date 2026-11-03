@@ -332,6 +332,60 @@ pub fn rx_binder_nodes(x: &'static Rx, ns: Strings) -> &'static Rxs {
     }
 }
 
+// A module type's descriptions, in the order written (C315): a type's,
+// `%desc d`, and an effect's, `%edesc e`, the latter a description function
+// giving it (`%effdesc`).
+pub fn desc_of_p(it: &'static Ty) -> bool {
+    let tagcase_ = it;
+    match *tagcase_ {
+        Ty::TyData(k, r#as) => {
+            (has_prefix_p(k, str_lit("%desc ")) || has_prefix_p(k, str_lit("%edesc ")))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn desc_labels(items: Tys) -> Strings {
+    map(lambda1s(move |it: &'static Ty| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Ty::TyData(k, r#as) => {
+                if has_prefix_p(k, str_lit("%desc ")) {
+                    after_prefix(k, str_lit("%desc "))
+                } else {
+                    after_prefix(k, str_lit("%edesc "))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("?")
+            }
+        }
+    }), filter(&desc_of_p, items))
+}
+
+pub fn desc_types(items: Tys) -> Tys {
+    map(lambda1s(move |it: &'static Ty| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Ty::TyData(k, r#as) => {
+                if has_prefix_p(k, str_lit("%desc ")) {
+                    car(r#as)
+                } else {
+                    ty_data(str_lit("%effdesc"), kayak_rt::heap_cons(car(r#as), kayak_rt::nil()))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ty_void()
+            }
+        }
+    }), filter(&desc_of_p, items))
+}
+
 // kayak's types that are Fixpt's generative types (C301): each a named
 // constant applied to descriptions, as a datatype is.
 pub fn rp_generative_heads() -> Strings {
@@ -845,7 +899,7 @@ pub fn rx_moduleof(s: &'static St, x: &'static Rx, sc: Rpbinds, items: Tys, slot
     }), names));
     match *tagcase_ {
         Rxs::Rxs(x, bs) => {
-            let tagcase_ = rx_parts(s, x, sc2, labels(part(str_lit("%desc ")), str_lit("%desc ")), types(part(str_lit("%desc "))));
+            let tagcase_ = rx_parts(s, x, sc2, desc_labels(items), desc_types(items));
             match *tagcase_ {
                 Rxs::Rxs(x, ds) => {
                     let tagcase_ = rx_node(x, str_lit("descs"), false, ds);
@@ -1143,6 +1197,53 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                             return rx_declined(x, str_lit("a part not a variable"));
                         }
                     }
+                } else if (string_eq_p(d, str_lit("%dlambda")) && not(null_p(args))) {
+                    // A description function (C315): `(dlambda {x …} (binder k) … (d-type
+                    // T))`, its parameters bound there, as Fixpt's `Ty::Lam`.
+                    let ns = poly_binders_of(args);
+                    let sc2 = binders_in(sc, ns, slot, 0i64);
+                    let tagcase_ = rx_binder_nodes(x, ns);
+                    match *tagcase_ {
+                        Rxs::Rxs(x, bs) => {
+                            let tagcase_ = rx_ty(s, x, sc2, last(args));
+                            match *tagcase_ {
+                                Rxa::Rxa(x, b) => {
+                                    let tagcase_ = rx_node(x, str_lit("d-type"), false, the::<RpOperands>(kayak_rt::heap_cons(b, kayak_rt::nil())));
+                                    match *tagcase_ {
+                                        Rxa::Rxa(x, db) => {
+                                            return rx_fill(x, slot, str_lit("dlambda"), false, ns, onto(bs, the::<RpOperands>(kayak_rt::heap_cons(db, kayak_rt::nil()))));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%effdesc")) && i64_eq(size(args), 1i64)) {
+                    // A module's description of an effect (C315): a description function
+                    // of no parameters giving it, `(dlambda {} (d-effect E))`, as Fixpt's
+                    // `effect_desc`.
+                    let tagcase_ = rx_effect(x, sc, {
+                        let tagcase_ = car(args);
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                es
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    });
+                    match *tagcase_ {
+                        Rxa::Rxa(x, e) => {
+                            let tagcase_ = rx_node(x, str_lit("d-effect"), false, the::<RpOperands>(kayak_rt::heap_cons(e, kayak_rt::nil())));
+                            match *tagcase_ {
+                                Rxa::Rxa(x, de) => {
+                                    return rx_fill(x, slot, str_lit("dlambda"), false, the::<Strings>(nil::<Str>()), the::<RpOperands>(kayak_rt::heap_cons(de, kayak_rt::nil())));
+                                }
+                            }
+                        }
+                    }
                 } else if (string_eq_p(d, str_lit("%poly")) && not(null_p(args))) {
                     let ns = poly_binders_of(args);
                     let sc2 = binders_in(sc, ns, slot, 0i64);
@@ -1396,18 +1497,7 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                             return rx_declined(x, str_lit("a specified type of no procedure"));
                         }
                     }
-                } else if (string_eq_p(d, str_lit("%mtype")) && not(any_p(lambda1s(move |it: &'static Ty| {
-                    let tagcase_ = it;
-                    match *tagcase_ {
-                        Ty::TyData(k, r#as) => {
-                            has_prefix_p(k, str_lit("%edesc "))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            true
-                        }
-                    }
-                }), args))) {
+                } else if string_eq_p(d, str_lit("%mtype")) {
                     return rx_moduleof(s, x, sc, args, slot);
                 } else if ((has_prefix_p(d, str_lit("%")) || has_char_in_p(d, ' ')) && not(string_member_p(d, rp_generative_heads()))) {
                     return rx_declined(x, d);
@@ -2308,7 +2398,20 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
             match *tagcase_ {
                 Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
                     map(lambda1s(move |pt: Product_11_12<Str, &'static Ty>| {
-                        ty_data(string_append(prefix, pt.0), kayak_rt::heap_cons(pt.1, kayak_rt::nil()))
+                        let tagcase_ = pt.1;
+                        match *tagcase_ {
+                            Ty::TyData(k, r#as) => {
+                                if string_eq_p(k, str_lit("%effdesc")) {
+                                    ty_data(string_append(str_lit("%edesc "), pt.0), r#as)
+                                } else {
+                                    ty_data(string_append(prefix, pt.0), kayak_rt::heap_cons(pt.1, kayak_rt::nil()))
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                ty_data(string_append(prefix, pt.0), kayak_rt::heap_cons(pt.1, kayak_rt::nil()))
+                            }
+                        }
                     }), ri_parts(c, car(rp_node_at({
                         let tagcase_ = c;
                         match *tagcase_ {
@@ -2327,6 +2430,28 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
         ty_data(str_lit("%mtype"), onto(map(lambda1s(move |b: Symbol| {
             ty_data(string_append(str_lit("%abs "), symbol_to_string(b)), kayak_rt::heap_cons(ty_data(string_append(str_lit("rp.."), symbol_to_string(b)), nil::<&'static Ty>()), kayak_rt::nil()))
         }), binders), onto(part_of(car(rest), str_lit("%desc ")), part_of(car(cdr(rest)), str_lit("%val ")))))
+    } else if string_eq_p(head, str_lit("dlambda")) {
+        // A description function back (C315): of no parameters and an
+        // effect, a module's description of an effect (`%effdesc`).
+        let body = car(ri_descs(c, drop_n(args, size(binders))));
+        if (null_p(binders) && {
+            let tagcase_ = body;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            ty_data(str_lit("%effdesc"), kayak_rt::heap_cons(body, kayak_rt::nil()))
+        } else {
+            ty_data(str_lit("%dlambda"), onto(map(lambda1s(move |b: Symbol| {
+                ty_var(symbol_to_string(b))
+            }), binders), kayak_rt::heap_cons(body, kayak_rt::nil())))
+        }
     } else if string_eq_p(head, str_lit("prompt-tag")) {
         ty_tag(ri_ty(c, car(args)), ri_ty(c, car(cdr(args))), {
             let tagcase_ = car(cdr(cdr(args)));

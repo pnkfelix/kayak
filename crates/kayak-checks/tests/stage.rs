@@ -1,8 +1,8 @@
 //! `stage` on the engine (C305, C306): each of Fixpt's CLI's stage
 //! programs (tests/fx26/stage), run by Fixpt (`fixpt run`, its `main`)
-//! and by the engine (the program, then `(main)`, whose value the engine
-//! writes last), or both refusing it as it is checked, in the same words
-//! (C312). A test each, `stage/NAME`; it fails if a program in
+//! and by the engine (`kayak-fx26 --run`, the same, its `main`'s value the
+//! exit status, C315), or both refusing it as it is checked, in the same
+//! words (C312). A test each, `stage/NAME`; it fails if a program in
 //! tests/stage-passing no longer prints what Fixpt prints. What each found
 //! is kept in target/kayak-checks/stage: `same`, or `differ` and both.
 
@@ -50,17 +50,16 @@ fn main() {
                             .map(|l| fixpt::after_place(l, 3))
                     });
                 std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
-                let with_main = out.join(format!("{}.fx", label.replace('/', "%")));
-                let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-                std::fs::write(&with_main, format!("{text}\n(main)\n"))
-                    .map_err(|e| e.to_string())?;
+                // Run as Fixpt's `run` runs it (C315): the program, then its
+                // `main`, if it has one, whose value is the exit status.
                 let r = fixpt::run(
-                    Command::new(release_bin("kayak-fx26")).arg(&with_main),
+                    Command::new(release_bin("kayak-fx26"))
+                        .arg("--run")
+                        .arg(&path),
                     Some(LIMIT),
                 );
-                let mut lines: Vec<&str> = r.stdout.lines().collect();
-                lines.pop();
-                let ours = lines.iter().map(|l| format!("{l}\n")).collect::<String>();
+                let ours = r.stdout.clone();
+                let theirs_code = asked.as_ref().and_then(|r| r.code);
                 let same = match &refused {
                     Some(words) => {
                         r.code != Some(0)
@@ -71,7 +70,7 @@ fn main() {
                                 .as_deref()
                                 == Some(words.as_str())
                     }
-                    None => r.code == Some(0) && ours == theirs,
+                    None => r.code == theirs_code && ours == theirs,
                 };
                 std::fs::write(
                     out.join(label.replace('/', "%")),

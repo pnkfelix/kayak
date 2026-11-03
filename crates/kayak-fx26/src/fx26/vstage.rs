@@ -1215,6 +1215,54 @@ pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut 
     }
 }
 
+/// `v` with module type `mt`'s types and effects in scope, as a `with` of
+/// the module opens them (`mtype-opened`, C315): each abstract type and
+/// description a type of its name, each effect description an effect.
+pub fn module_types_opened(v: &'static Cv, mt: &'static Ty) -> &'static Cv {
+    with_type_binds(v, concat(map(lambda1s(move |x: &'static Ty| {
+        if (string_eq_p(mitem_kind(x), str_lit("%desc")) || string_eq_p(mitem_kind(x), str_lit("%abs"))) {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    the::<Binds>(kayak_rt::heap_cons(type_bind(mitem_name(x), car(args)), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Bind>()
+                }
+            }
+        } else {
+            nil::<&'static Bind>()
+        }
+    }), mtype_items(mt))), concat(map(lambda1s(move |x: &'static Ty| {
+        if string_eq_p(mitem_kind(x), str_lit("%edesc")) {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    the::<Effdefs>(kayak_rt::heap_cons(effdef(mitem_name(x), {
+                        let tagcase_ = car(args);
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                es
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    }), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Effdef>()
+                }
+            }
+        } else {
+            nil::<&'static Effdef>()
+        }
+    }), mtype_items(mt))))
+}
+
 /// The index of session `sw`'s state, made first if it has none, of
 /// module type `mt`.
 pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
@@ -1224,7 +1272,11 @@ pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
     } else {
         let k2 = size(get(sessions()));
         let m = obj_ref(sw, 0i64);
-        let v = with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks()));
+        let rp_abs = data_names_with(str_lit("rp.."), mt);
+        let mt = data_renamed(rp_abs, map(lambda1s(move |n: Str| {
+            string_append(str_lit("stage-module.."), after_prefix(n, str_lit("rp..")))
+        }), rp_abs), mt);
+        let v = module_types_opened(with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks())), mt);
         let gm = session_global_x(k2, str_lit("stage-module"), m);
         let vals = map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
             string_eq_p(mitem_kind(x), str_lit("%val"))

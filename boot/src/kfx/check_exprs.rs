@@ -5983,6 +5983,93 @@ pub mod expressions {
         }
     }
 
+    /// `(attempt-within ms e on-failure on-timeout)` (C315; Fixpt's 3e026d63,
+    /// `k-attempt-within-te`): `attempt`'s, but `e` cancelled once `ms`
+    /// milliseconds, an `int`, have passed, and `(on-timeout)` the value:
+    /// the wider of its type and the `attempt`'s, the effect all theirs,
+    /// `nondet` too, never `(io clock)`. Not KFX's yet.
+    pub fn attempt_within_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+        if not(i64_eq(size(xs), 4i64)) {
+            match refuse(v, str_lit("`(attempt-within milliseconds expression on-failure on-timeout)`")) {}
+        } else {
+            let tagcase_ = attempt_form(v, s, kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::nil())));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let tagcase_ = synth(v, s, car(xs));
+                    match *tagcase_ {
+                        Res::Res(mt, mes, s) => {
+                            let s = if {
+                                let tagcase_ = walk(s, mt);
+                                match *tagcase_ {
+                                    Ty::TyInt() => {
+                                        true
+                                    }
+                                    Ty::TyNat() => {
+                                        true
+                                    }
+                                    Ty::TyMeta(k) => {
+                                        true
+                                    }
+                                    Ty::TyData(d, r#as) => {
+                                        string_eq_p(d, str_lit("%natof"))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            } {
+                                let tagcase_ = walk(s, mt);
+                                match *tagcase_ {
+                                    Ty::TyMeta(k) => {
+                                        solve(s, k, ty_int())
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        s
+                                    }
+                                }
+                            } else {
+                                match refuse(v, string_append(str_lit("a int is expected here, and this is a "), show_ty(s, mt))) {}
+                            };
+                            let tagcase_ = synth(v, s, fourth(xs));
+                            match *tagcase_ {
+                                Res::Res(ot, oes, s) => {
+                                    let tagcase_ = walk(s, ot);
+                                    match *tagcase_ {
+                                        Ty::TyProc(les, ps, r) => {
+                                            if not(null_p(ps)) {
+                                                match refuse(v, string_append(str_lit("`attempt-within`'s on-timeout takes nothing, but is "), show_ty(s, ot))) {}
+                                            } else {
+                                                let u = if void_p(s, r) {
+                                                    t
+                                                } else if void_p(s, t) {
+                                                    r
+                                                } else {
+                                                    t
+                                                };
+                                                let s = if (void_p(s, r) || void_p(s, t)) {
+                                                    s
+                                                } else {
+                                                    fits(v, s, r, t)
+                                                };
+                                                res(u, effs_union(es, effs_union(mes, effs_union(oes, les))), s)
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            match refuse(v, string_append(str_lit("`attempt-within`'s on-timeout takes nothing, but is "), show_ty(s, ot))) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// `(attempt e on-failure)` (C297; Heist's F1, Fixpt's `synth_attempt`):
     /// `e`'s value, or, should it fail, `(on-failure message)`. `e` is
     /// cancellable, as a `race` branch is, so that a failure half way leaves
@@ -6188,6 +6275,8 @@ pub mod expressions {
                 return stage_form(v, s, xs, true);
             } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && (i64_eq(size(xs), 1i64) || i64_eq(size(xs), 2i64))) {
                 return reify_form(v, s, after_prefix(h, str_lit("reify-")), xs);
+            } else if string_eq_p(h, str_lit("attempt-within")) {
+                return attempt_within_form(v, s, xs);
             } else if string_eq_p(h, str_lit("attempt")) {
                 // FX-26's `attempt` (Fixpt b41a7fb), a form wherever it heads a list,
                 // as `race` is, never a call of what a program names `attempt`
@@ -6470,7 +6559,7 @@ pub mod expressions {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("spawn-monitored")) {
             spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
-        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("%stage")) || string_eq_p(h, str_lit("%session-check")) || string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race")) || string_eq_p(h, str_lit("attempt")) || string_eq_p(h, str_lit("attempt-within")) || string_eq_p(h, str_lit("%stage")) || string_eq_p(h, str_lit("%session-check")) || string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region")) || (string_eq_p(h, str_lit("convention")) && null_p(scope_bind(h, v)))) {
             check_by_synth(v, s, e, expected)
         } else if (string_eq_p(h, str_lit("proj")) && null_p(scope_bind(h, v))) {
             check_by_synth(v, s, e, expected)

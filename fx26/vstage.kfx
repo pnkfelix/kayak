@@ -603,6 +603,23 @@
                  (i (session-global! k n (module-field m n))))
             (seeded k v2 (cons (sglobal n i) gl) m (cdr ns)))))))
 
+(define module-types-opened (subr kfx (cv ty) cv)
+  (lambda (v mt)
+    "`v` with module type `mt`'s types and effects in scope, as a `with` of
+     the module opens them (`mtype-opened`, C315): each abstract type and
+     description a type of its name, each effect description an effect."
+    (with-type-binds v
+      (concat (map (lambda ((x ty))
+                     (if (or (string=? (mitem-kind x) "%desc") (string=? (mitem-kind x) "%abs"))
+                         (tagcase x (ty-data (d args) (the binds (list (type-bind (mitem-name x) (car args))))) (else other nil))
+                         nil))
+                   (mtype-items mt)))
+      (concat (map (lambda ((x ty))
+                     (if (string=? (mitem-kind x) "%edesc")
+                         (tagcase x (ty-data (d args) (the effdefs (list (effdef (mitem-name x) (tagcase (car args) (ty-proc (es ps r) es) (else other nil)))))) (else other nil))
+                         nil))
+                   (mtype-items mt))))))
+
 (define session-state! (subr (maxeff hp (alloc @h)) (i64 ty) i64)
   (lambda (sw mt)
     "The index of session `sw`'s state, made first if it has none, of
@@ -612,7 +629,14 @@
           k
           (let* ((k2 (size (get sessions)))
                  (m (obj-ref sw 0))
-                 (v (with-binds (stage-cv) (cons (bind "stage-module" (scheme nil mt) "global") (session-marks))))
+                 ;; The module's types and effects in scope too, as a `with` of it
+                 ;; opens them (C315; Fixpt's `stage/session-types.fx`), its abstract
+                 ;; types named for it, `stage-module..t`, as Fixpt names them.
+                 (rp-abs (data-names-with "rp.." mt))
+                 (mt (data-renamed rp-abs (map (lambda ((n string)) (string-append "stage-module.." (after-prefix n "rp.."))) rp-abs) mt))
+                 (v (module-types-opened
+                     (with-binds (stage-cv) (cons (bind "stage-module" (scheme nil mt) "global") (session-marks)))
+                     mt))
                  (gm (session-global! k2 "stage-module" m))
                  (vals (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) (mtype-items mt))))
                  (made (seeded k2 v (list (sglobal "stage-module" gm)) m vals)))

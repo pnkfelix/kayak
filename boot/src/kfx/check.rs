@@ -979,12 +979,12 @@ pub fn maskable_atom_p(a: Str) -> bool {
 }
 
 /// Whether atom `a` is one a process may have that is seen outside it:
-/// a send, a fill or an await, I/O, `spin`, `nondet`, reading globals'
-/// bindings or data frozen in the heap, allocating at a region that is
-/// no place (a constant, or the heap); or anything on a binder in
-/// `bound`, which a caller gives (`crossing_atom`).
+/// a send, a fill or an await, I/O, `spin`, `nondet`, `stage` (C315),
+/// reading globals' bindings or data frozen in the heap, allocating at a
+/// region that is no place (a constant, or the heap); or anything on a
+/// binder in `bound`, which a caller gives (`crossing_atom`).
 pub fn crossing_atom_p(bound: Strings, a: Str) -> bool {
-    (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet")) || string_eq_p(a, str_lit("@globals")) || string_eq_p(a, str_lit("~!")) || global_atom_p(a) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("await:")) || string_eq_p(a, str_lit("read:acyclic")) || string_eq_p(a, str_lit("read:%fresh")) || string_eq_p(a, str_lit("read:const")) || string_member_p(a, bound) || (has_prefix_p(a, str_lit("alloc:")) && {
+    (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet")) || string_eq_p(a, str_lit("stage")) || string_eq_p(a, str_lit("@globals")) || string_eq_p(a, str_lit("~!")) || global_atom_p(a) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("await:")) || string_eq_p(a, str_lit("read:acyclic")) || string_eq_p(a, str_lit("read:%fresh")) || string_eq_p(a, str_lit("read:const")) || string_member_p(a, bound) || (has_prefix_p(a, str_lit("alloc:")) && {
         let r = after_prefix(a, str_lit("alloc:"));
         (has_prefix_p(r, str_lit("@")) || string_eq_p(r, str_lit("acyclic")) || string_eq_p(r, str_lit("%fresh")))
     }) || (region_atom_p(a) && string_member_p(atom_region(a), bound)))
@@ -4359,7 +4359,7 @@ pub fn trait_moduleof_p(m: &'static Sexp) -> bool {
                     false
                 }
             }
-        } && not(string_member_p(logic_head(third(ys)), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("io"), kayak_rt::nil()))))))))))))) && not(sym_is_p(third(ys), str_lit("pure")))) || (sym_is_p(car(ys), str_lit("val")) && {
+        } && not(string_member_p(logic_head(third(ys)), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("io"), kayak_rt::nil()))))))))))))) && not(sym_is_p(third(ys), str_lit("pure"))) && not(head_is_p(third(ys), str_lit("dlambda")))) || (sym_is_p(car(ys), str_lit("val")) && {
             let tagcase_ = second(ys);
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
@@ -7292,7 +7292,11 @@ pub fn parse_moduleof(v: &'static Cv, tvars: Strings, its: Sexps, id: Str) -> Ty
             let atoms = parse_effect(v, tvars, third(ys));
             kayak_rt::heap_cons(ty_data(string_append(str_lit("%edesc "), n), kayak_rt::heap_cons(ty_proc(atoms, nil::<&'static Ty>(), ty_unit()), kayak_rt::nil())), parse_moduleof(with_type_binds(v, nil::<&'static Bind>(), kayak_rt::heap_cons(effdef(n, atoms), kayak_rt::nil())), tvars, cdr(its), id))
         } else if (string_eq_p(hd, str_lit("desc")) && not(string_eq_p(n, str_lit("")))) {
-            let u = parse_type(v, tvars, third(ys));
+            let u = parse_type(v, if head_is_p(third(ys), str_lit("dlambda")) {
+                kayak_rt::heap_cons(str_lit("%fun-ok"), tvars)
+            } else {
+                tvars
+            }, third(ys));
             kayak_rt::heap_cons(ty_data(string_append(str_lit("%desc "), n), kayak_rt::heap_cons(u, kayak_rt::nil())), parse_moduleof(with_type_binds(v, kayak_rt::heap_cons(type_bind(n, u), kayak_rt::nil()), nil::<&'static Effdef>()), tvars, cdr(its), id))
         } else if (string_eq_p(hd, str_lit("val")) && not(string_eq_p(n, str_lit("")))) {
             kayak_rt::heap_cons(ty_data(string_append(str_lit("%val "), n), kayak_rt::heap_cons(parse_type(v, tvars, third(ys)), kayak_rt::nil())), parse_moduleof(v, tvars, cdr(its), id))

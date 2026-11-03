@@ -8776,3 +8776,37 @@ Fixpt refuses accepted; 126 of 409 refusals in Fixpt's words. Stage
 programs as Fixpt prints them: 19 of 23. The corpus's `made-encoded` and
 `made-flat`, which load `fx26:arm64.fx` (grown upstream, §81), blessed:
 their Rust has the encoder's new operations, their answers the same.
+
+## C315. The checker's gaps the stage programs showed (2026-11-03)
+
+The user's, before the compiled tiers: the stage programs kayak did not
+run as Fixpt runs them, for its checker.
+- **A name a `lambda` or a `letrec` binds is its own** where it is bound,
+  not a module's item of that name (`refs-in`): `generative.fx`'s
+  `(define total (letrec ((total …)) total))` was refused as made from
+  itself.
+- **`stage` may cross into a process** (`crossing-atom?`), as Fixpt's
+  `crossing_atom` has it: `in-a-process.fx`.
+- **A module type may describe a type function** (`(desc pair-of
+  (dlambda …))`): such a `moduleof` is FX-26's, not a KFX trait, and its
+  description is read as a function. Reps (`kfx/reps.kfx`) carry a
+  `dlambda`, its parameters bound as a `poly`'s, and a module's effect
+  description as Fixpt's `effect_desc` has it, `(dlambda {} (d-effect
+  E))`, among the descriptions in the order written. A session's checker
+  has its module's types and effects in scope (`module-types-opened`),
+  its abstract types named `stage-module..t`, as Fixpt's: so
+  `session-types.fx`. (Exporting `mtype-opened` from the `expressions`
+  module broke the bootstrap's second generation, its Rust not building;
+  not looked into, the opening written in vstage.kfx instead.)
+- **`attempt-within`** (Fixpt's 3e026d63): lowered to
+  `fx26:processes.fx`'s `attempt-within1` as Fixpt's parser writes it
+  (op 55, C314); checked as `attempt` is, `ms` an `int`, `on-timeout`
+  taking nothing, its value fitted to the body's, the effects all theirs
+  (Fixpt takes the wider of the two types; kayak fits the timeout's to
+  the body's, the same where they are one type). `attempt/within-*` check
+  and run as Fixpt's, on the engine and tier 1.
+- **`kayak-fx26 --run` of a program with no `main`** runs it and exits 0,
+  as Fixpt's `run`; the stage test runs each program so, comparing its
+  output and status, rather than appending `(main)`.
+Checkers: 461 the same of 572 (454), refuses 22 (29); stage programs:
+22 of 23 as Fixpt prints them, `session.fx` but for `car`'s type printed.
