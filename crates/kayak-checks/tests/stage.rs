@@ -1,7 +1,8 @@
 //! `stage` on the engine (C305, C306): each of Fixpt's CLI's stage
 //! programs (tests/fx26/stage), run by Fixpt (`fixpt run`, its `main`)
 //! and by the engine (the program, then `(main)`, whose value the engine
-//! writes last). A test each, `stage/NAME`; it fails if a program in
+//! writes last), or both refusing it as it is checked, in the same words
+//! (C312). A test each, `stage/NAME`; it fails if a program in
 //! tests/stage-passing no longer prints what Fixpt prints. What each found
 //! is kept in target/kayak-checks/stage: `same`, or `differ` and both.
 
@@ -29,14 +30,25 @@ fn main() {
                     "run".into(),
                     path.to_string_lossy().into_owned(),
                 ];
-                let theirs = fixpt::ask(
+                let asked = fixpt::ask(
                     fixpt::binary().as_deref(),
                     &args,
                     std::slice::from_ref(&path),
                     Some(LIMIT),
                 )
-                .map(|r| r.stdout)
-                .unwrap_or_default();
+                .ok();
+                let theirs = asked.as_ref().map(|r| r.stdout.clone()).unwrap_or_default();
+                // Refused as it is checked (C312): its words, past `fixpt: ` and
+                // its place.
+                let refused = asked
+                    .as_ref()
+                    .filter(|r| !r.ok() && r.stdout.is_empty())
+                    .and_then(|r| {
+                        r.stderr
+                            .lines()
+                            .find_map(|l| l.strip_prefix("fixpt: "))
+                            .map(|l| fixpt::after_place(l, 3))
+                    });
                 std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
                 let with_main = out.join(format!("{}.fx", label.replace('/', "%")));
                 let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -49,13 +61,31 @@ fn main() {
                 let mut lines: Vec<&str> = r.stdout.lines().collect();
                 lines.pop();
                 let ours = lines.iter().map(|l| format!("{l}\n")).collect::<String>();
-                let same = r.code == Some(0) && ours == theirs;
+                let same = match &refused {
+                    Some(words) => {
+                        r.code != Some(0)
+                            && r.stderr
+                                .lines()
+                                .find(|l| l.starts_with("kayak-fx26:"))
+                                .map(fixpt::kayak_words)
+                                .as_deref()
+                                == Some(words.as_str())
+                    }
+                    None => r.code == Some(0) && ours == theirs,
+                };
                 std::fs::write(
                     out.join(label.replace('/', "%")),
                     if same {
                         "same\n".to_string()
                     } else {
-                        format!("differ\nFixpt:\n{theirs}kayak:\n{}{}", r.stdout, r.stderr)
+                        format!(
+                            "differ\nFixpt:\n{theirs}{}kayak:\n{}{}",
+                            refused
+                                .map(|w| format!("refused: {w}\n"))
+                                .unwrap_or_default(),
+                            r.stdout,
+                            r.stderr
+                        )
                     },
                 )
                 .map_err(|e| e.to_string())?;

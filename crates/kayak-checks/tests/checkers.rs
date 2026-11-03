@@ -13,7 +13,8 @@
 //!   differ     both accept, a line differs even so;
 //!   refused    Fixpt accepts, kayak refuses: what kayak's checker lacks;
 //!   ACCEPTED   Fixpt refuses, kayak accepts: a K1 breach;
-//!   both       both refuse (their messages not compared yet).
+//!   said       both refuse, in the same words (C312), places aside;
+//!   both       both refuse, in other words: both kept.
 
 use kayak_checks::fixpt;
 use kayak_checks::{Test, release_bin, root};
@@ -23,8 +24,10 @@ use std::time::Duration;
 
 const LIMIT: Duration = Duration::from_secs(60);
 
-/// Fixpt's lines, or none if it refuses (or fails, or takes too long).
-fn fixpt_says(path: &Path) -> Option<Vec<String>> {
+/// Fixpt's lines, or its refusal's words (its `! FILE:LINE:COL: ` and
+/// what follows, each line after it indented), `` if it fails or takes
+/// too long.
+fn fixpt_says(path: &Path) -> Result<Vec<String>, String> {
     let args = vec![
         "--dialect".into(),
         "fx26".into(),
@@ -37,18 +40,24 @@ fn fixpt_says(path: &Path) -> Option<Vec<String>> {
         &[path.to_path_buf()],
         Some(LIMIT),
     )
-    .ok()?;
+    .map_err(|_| String::new())?;
     let lines: Vec<&str> = r.stdout.lines().collect();
-    if !r.ok() || lines.iter().any(|l| l.starts_with("! ")) {
-        return None;
+    if let Some(at) = lines.iter().position(|l| l.starts_with("! ")) {
+        let first = fixpt::after_place(&lines[at][2..], 3);
+        let rest = lines[at + 1..]
+            .iter()
+            .take_while(|l| l.starts_with("  "))
+            .map(|l| format!("\n{l}"));
+        return Err(std::iter::once(first).chain(rest).collect());
     }
-    Some(
-        lines
-            .into_iter()
-            .filter(|l| !l.is_empty() && !l.starts_with(';'))
-            .map(String::from)
-            .collect(),
-    )
+    if !r.ok() {
+        return Err(String::new());
+    }
+    Ok(lines
+        .into_iter()
+        .filter(|l| !l.is_empty() && !l.starts_with(';'))
+        .map(String::from)
+        .collect())
 }
 
 /// kayak's lines, or its refusal.
@@ -67,13 +76,31 @@ fn kayak_says(path: &Path) -> Result<Vec<String>, String> {
             .filter(|l| !l.is_empty())
             .map(String::from)
             .collect()),
-        Some(_) => Err(r
-            .stderr
-            .lines()
-            .find(|l| l.starts_with("kfx:") || l.starts_with("kayak-fx26:"))
-            .or(r.stderr.trim().lines().last())
-            .unwrap_or("fails")
-            .to_string()),
+        Some(_) => {
+            // The refusal's line, and the lines after it indented (a
+            // mismatch's effect, C312).
+            let lines: Vec<&str> = r.stderr.lines().collect();
+            match lines
+                .iter()
+                .position(|l| l.starts_with("kfx:") || l.starts_with("kayak-fx26:"))
+            {
+                Some(at) => Err(std::iter::once(lines[at].to_string())
+                    .chain(
+                        lines[at + 1..]
+                            .iter()
+                            .take_while(|l| l.starts_with("  "))
+                            .map(|l| format!("\n{l}")),
+                    )
+                    .collect()),
+                None => Err(r
+                    .stderr
+                    .trim()
+                    .lines()
+                    .last()
+                    .unwrap_or("fails")
+                    .to_string()),
+            }
+        }
     }
 }
 
@@ -158,11 +185,21 @@ fn sorted_effects(text: &str) -> String {
 fn compare(path: &Path) -> (&'static str, String) {
     let f = fixpt_says(path);
     let k = kayak_says(path);
-    let Some(f) = f else {
-        return match k {
-            Err(_) => ("both", String::new()),
-            Ok(_) => ("ACCEPTED", "kayak accepts what Fixpt refuses".into()),
-        };
+    let f = match f {
+        Ok(f) => f,
+        Err(theirs) => {
+            return match k {
+                Err(ours) if fixpt::kayak_words(&ours) == theirs => ("said", String::new()),
+                Err(ours) => (
+                    "both",
+                    format!(
+                        "Fixpt: {theirs}\n      kayak: {}",
+                        fixpt::kayak_words(&ours)
+                    ),
+                ),
+                Ok(_) => ("ACCEPTED", "kayak accepts what Fixpt refuses".into()),
+            };
+        }
     };
     let k = match k {
         Err(why) => return ("refused", why),

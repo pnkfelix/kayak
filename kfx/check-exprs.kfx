@@ -1987,7 +1987,7 @@
                         (res (ht hes hs)
                           (cwcc-masked v head (cdr xs)
                           (mark-lifted v (if (head-is? head "proj") (proj-base v head) "") (cdr xs)
-                          (void-call v #f #f (synth-call-of v s hr (cdr xs) nil nil
+                          (void-call v #f #f (synth-call-of (arguing v) s hr (cdr xs) nil nil
                                                             (effs-union
                                                               (if (head-is? head "proj") (cwcc-spin (proj-base v head) (cdr xs)) nil)
                                                               (if (or (and (head-is? head "proj") (or (std-prim? v (proj-base v head)) (not (poly-takes-procedure? v hs (projected-name head)))))
@@ -2134,7 +2134,7 @@
                 (else
                  (let ((found (scope-bind name v)))
                    (if (null? found)
-                       (refuse (at-offset v at-pos) (string-append "nothing is named " name))
+                       (refuse (at-offset v at-pos) (unbound-said name))
                        (tagcase (car found)
                          (bind (n sc wher)
                            (cond ((and (not (string=? wher "local")) (not (string=? wher "module")) (tagcase sc (scheme (tv t) (tagcase t (ty-unit () #t) (else other #f))))
@@ -2231,7 +2231,7 @@
             (if (and (string=? (shape-of x) "union") (not (string=? (literal-shape e) "")))
                 (let ((m (member-of-shape (members-of x) (literal-shape e))))
                   (if (null? m)
-                      (refuse-named v s (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))
+                      (refuse-named v s (expected-said s (said-of v (place-key e)) (literal-type e) x))
                       (check v s e (car m))))
             (tagcase e
               (num (k num-file num-pos)
@@ -2253,7 +2253,7 @@
                              (cond ((i64< k 0) (refuse v (string-append (i64->string k) " is no nat")))
                                    ((and (not (null? z)) (size-shown? v s (lin-add (car z) (lin k nil) -1)) (size-shown? v s (lin-add (lin k nil) (car z) -1)))
                                     (res x nil (note-fact s num-file num-pos "int")))
-                                   (else (refuse-named v s (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))))))
+                                   (else (refuse-named v s (expected-said s (said-of v (place-key e)) (literal-type e) x))))))
                           ((and (string=? d "i32") (not (i64< k -2147483648)) (not (i64> k 2147483647)))
                            (res x nil (note-fact s num-file num-pos "fixed i32")))
                           ((and (string=? d "u32") (not (i64< k 0)) (not (i64> k 4294967295)))
@@ -2265,9 +2265,8 @@
                           ((and (string=? d "i8") (not (i64< k -128)) (not (i64> k 127)))
                            (res x nil (note-fact s num-file num-pos "fixed i8")))
                           ((fixed-width? d) (refuse v (string-append (i64->string k) (string-append " is not a " d))))
-                          (else (refuse-named v s (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected"))))))
-                  (else other (refuse v (string-append "a literal is here, where a "
-                                                       (string-append (show-ty s x) " is expected"))))))
+                          (else (refuse-named v s (expected-said s (said-of v (place-key e)) (literal-type e) x)))))
+                  (else other (refuse-named v s (expected-said s (said-of v (place-key e)) (literal-type e) x)))))
               (big (text f p)
                 "A literal past an i64: an `int`, or a `nat` if not negative."
                 (tagcase x
@@ -2280,7 +2279,7 @@
                                  (and (i64= (string-length-i64 text) 20) (digits-at-most? (string-chars text) (string-chars "18446744073709551615")))))
                         (res x nil (note-fact s f p "fixed u64"))
                         (refuse v (string-append text (string-append " is not a " d)))))
-                  (else other (refuse-named v s (string-append "a literal past an i64 is here, where a " (string-append (show-ty s x) " is expected"))))))
+                  (else other (refuse-named v s (expected-said s (said-of v (place-key e)) (literal-type e) x)))))
               (lst (xs src-file src-line src-pos)
                 (let ((v (near v src-file src-line src-pos)))
                   (tagcase (car xs)
@@ -2357,7 +2356,7 @@
                            (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-had " (words-of (mtype-value-names (walk s0 t)))))
                            s0)))
               (res expected es
-                   (let ((s (coerced v (fits v s t expected) (datum-file e) (datum-pos e) t expected)))
+                   (let ((s (coerced v (fits (fitting v (place-key e) t expected) s t expected) (datum-file e) (datum-pos e) t expected)))
                      (tagcase (walk-mu s t)
                        (ty-proc (pes ps r)
                          (tagcase (walk s expected)
@@ -2679,9 +2678,9 @@
                  (r (parse-type v (cv-tvars v) (second xs)))
                  (named (lambda ((t ty)) (tagcase t (ty-proc (es ps r) #f) (else other #f))))
                  (s (kfx-restricted v s "`stage`, FX-26's, which KFX has not yet (C304)")))
-            (cond ((and (not session) (tagcase (third xs) (sym (n f p) #f) (else other #t)))
+            (cond ((tagcase (third xs) (sym (n f p) #f) (else other #t))
                    "Fixpt's rule: by its name, so that the stage's front end knows it."
-                   (refuse v "`stage` takes a module by its name"))
+                   (refuse v (if session "`session-check` takes a session by its name" "`stage` takes a module by its name")))
                   (else
                    (tagcase (synth v s (third xs))
                      (res (mt0 mes s)
@@ -2690,9 +2689,9 @@
                               (mt (if (and session of-session) (tagcase st (ty-data (d as) (car as)) (else other st)) mt0))
                               (sr (if (and session of-session) (tagcase st (ty-data (d as) (car (cdr as))) (else other (ty-rconst "@heap"))) (ty-rconst "@heap"))))
                        (if (and session (not of-session))
-                           (refuse v (string-append "`session-check` takes a session, and this is a " (show-ty s mt0)))
+                           (refuse v (string-append "`session-check` takes a session, not a " (show-ty s mt0)))
                        (if (not (or (mtype? (walk s mt)) (tagcase (walk s mt) (ty-data (d as) (has-prefix? d "%module ")) (else other #f))))
-                           (refuse v (string-append "a stage's module is a module, and this is a " (show-ty s mt)))
+                           (refuse v (if session "a session's module type" (string-append "`stage` takes a module, not a " (show-ty s mt))))
                            (tagcase (check v s (car (cdr (cdr (cdr xs)))) (ty-data "datum" nil))
                              (res (ct ces s)
                                (tagcase (synth v s (car (cdr (cdr (cdr (cdr xs))))))
@@ -4452,8 +4451,8 @@
                                           (note-fact s (cv-file v) (cv-pos v)
                                                      (string-append "param-types " (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s (zonk s p))) eps) "" 0 0)))))))
                               (res expected nil (synced-lambda v (noted-lambda v s ees) ees params forms)))
-                            (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
-                                      (string-append " is not within " (show-effs ees))))))))))))
+                            (refuse v (expected-said s (said-of v (string-append (cv-file v) (string-append ":" (i64->string (cv-pos v)))))
+                                                     (ty-proc es eps r) expected)))))))))
             ;; A lambda where a procedure of any convention is expected (C116):
             ;; KFX's own, as any procedure of KFX's is.
             (ty-data (d args)
@@ -4914,7 +4913,11 @@
                         (not (and (string-member? h expressions-names-8)
                                   (not (null? found))
                                   (tagcase (car found) (bind (n sc w) (or (string=? w "local") (string=? w "narrowed"))) (else other #f)))))
-                   (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which kayak's checker does not take here, or a call of a local named by that keyword"))))
+                   (if (null? found)
+                       ;; A form's keyword where no form is: a name bound nowhere, as Fixpt says it
+                       ;; (C312); in staged code, written as Fixpt writes it, at the keyword, just past the list's start.
+                       (refuse (if (string=? (cv-file v) "<stage>") (at-offset v (i64+ (cv-pos v) 1)) v) (unbound-said h))
+                       (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which kayak's checker does not take here, or a call of a local named by that keyword")))))
                   ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
                   ((and (null? found) (string=? h "native-procedure")) (native-call v s args expected))
                   ((and (string=? h "seal-code") (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "prim"))))
@@ -5089,7 +5092,7 @@
                   ((and (null? found) (or (string=? h "rcons") (string=? h "rnew") (string=? h "rmake-array") (string=? h "rmake-icell") (string=? h "rmake-string"))) (region-alloc-call v s h args expected))
 
                   ((null? found)
-                   (refuse v (string-append "nothing is named " h)))
+                   (refuse v (unbound-said h)))
                   ((and (or (string=? h "+") (string=? h "-")) (prim? (car found)) (i64= (size args) 2) (not (null? expected))
                         (sized? (walk s (car expected)) "%natof"))
                    "A sum or a difference where `(nat s)` is wanted: shown to be `s` (C158)."
@@ -5176,7 +5179,7 @@
                           (void-call v (and (string=? h "error") (string=? wher "prim"))
                                      (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
                           (mark-lifted v (if (string=? wher "prim") h "") args
-                          (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil (head-unboxed v s h wher t)) args regions expected
+                          (poly-self-application v sc t (knot-free-call v (synth-call-of (arguing v) s (res t nil (head-unboxed v s h wher t)) args regions expected
                                          (effs-union
                                            (if (string=? wher "prim") (cwcc-spin h args) nil)
                                            (effs-union
@@ -5882,8 +5885,8 @@
               (tagcase (vsubr-as-proc (composable-as-proc s (dep-substituted v s (walk-mu s t) args)) (size args))
                 (ty-proc (latent ps r)
                   (cond ((and (not (i64= (size ps) (size args))) (not (any? draft-hole? args)))
-                         (refuse v (string-append "a call of the wrong number of arguments: "
-                                                  (show-sexps args))))
+                         ;; As Fixpt's `k-fail-arg-count` says it (C312).
+                         (refuse v (string-append "expected " (string-append (i64->string (size ps)) (string-append " argument(s), got " (i64->string (size args)))))))
                         ;; A REPL's hole among the arguments (C97): those before it
                         ;; checked, against as many parameters; none may follow all.
                         ((i64> (size args) (size ps))
@@ -6013,6 +6016,11 @@
                                 (datum-file arg) (datum-pos arg)
                                 (string-append "module-arg " (spec-value-words (car (module-spec v t))))))))))
 
+      (said-as-argument (subr kfx (cv cv sexp i64) cv)
+        (lambda (at v arg k)
+          "`v`, argument `k`'s, said so where the call `at` is is by the general rule."
+          (if (argued? at) (saying v arg (string-append "argument " (i64->string k))) v)))
+
       (call-args-pass (subr kfx (cv st sexps tys bool i64s i64) res)
         (lambda (v s args ps later fixed k)
           "The arguments `deferred?` says are `later`'s; the first is argument
@@ -6028,7 +6036,7 @@
                                   found by itself, as FX-26 finds it (a literal an `int`, a
                                   control form's branches of one type, a `list` at a fresh
                                   region); a lambda, told its parameters, is checked."
-                                 (check-by-synth (in-draft (if (draft-hole? (car args)) (said-in v (string-append "argument " (i64->string k))) v) (car args)) s (car args) (car ps)))
-                                (else (check (in-draft (if (draft-hole? (car args)) (said-in v (string-append "argument " (i64->string k))) v) (car args)) s (car args) (car ps))))
+                                 (check-by-synth (said-as-argument v (in-draft (if (draft-hole? (car args)) (said-in v (string-append "argument " (i64->string k))) v) (car args)) (car args) k) s (car args) (car ps)))
+                                (else (check (said-as-argument v (in-draft (if (draft-hole? (car args)) (said-in v (string-append "argument " (i64->string k))) v) (car args)) (car args) k) s (car args) (car ps))))
                    (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed (i64+ k 1)) es))))
                 (else (call-args-pass v s (cdr args) (cdr ps) later fixed (i64+ k 1)))))))))

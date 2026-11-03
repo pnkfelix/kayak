@@ -220,7 +220,9 @@ fn cells(flags: &[String]) -> i32 {
     status
 }
 
-const KINDS: [&str; 6] = ["same", "alike", "differ", "refused", "ACCEPTED", "both"];
+const KINDS: [&str; 7] = [
+    "same", "alike", "differ", "refused", "ACCEPTED", "said", "both",
+];
 
 /// A refusal's kind: its place and particulars dropped.
 fn why(message: &str) -> String {
@@ -371,14 +373,15 @@ fn checkers(flags: &[String]) -> i32 {
     let n = |k: &str| counts.get(k).copied().unwrap_or(0);
     println!(
         "compare-checkers: of {} programs Fixpt accepts, kayak's checker says the same of {}, alike of {}, \
-         differs on {}, refuses {}; of {} Fixpt refuses, kayak refuses {}, accepts {}",
+         differs on {}, refuses {}; of {} Fixpt refuses, kayak refuses {} ({} in Fixpt's words), accepts {}",
         n("same") + n("alike") + n("differ") + n("refused"),
         n("same"),
         n("alike"),
         n("differ"),
         n("refused"),
-        n("both") + n("ACCEPTED"),
-        n("both"),
+        n("said") + n("both") + n("ACCEPTED"),
+        n("said") + n("both"),
+        n("said"),
         n("ACCEPTED")
     );
     let mut status = 0;

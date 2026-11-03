@@ -213,6 +213,9 @@
                              ;; into it, so that the REPL can tell whether the error is about
                              ;; what has been finished (live-repl.kfx, C96).
                              ((string=? file "<draft>") (string-append "<draft>@" (string-append (i64->string at) ": ")))
+                             ;; Staged code (C312): where, as an offset, which the engine says
+                             ;; as Fixpt does, its place in the code written.
+                             ((string=? file "<stage>") (string-append "<stage>@" (string-append (i64->string at) ": ")))
                              (else (string-append file (string-append ":" (string-append (i64->string line) ": ")))))
           (string-append "in " (string-append here (string-append ": " message))))))))
 
@@ -1411,8 +1414,10 @@
     (let ((found (knot-in v res t nil #f nil)))
       (if (null? found)
           t
-          (refuse v (string-append "a procedure kept in " (string-append (car found) (string-append " reads " (string-append (car found)
-                    ", so it could reach itself: it must say spin")))))))))
+          ;; As Fixpt's `k-knot-message` says it (C312), but for its type, which
+          ;; no printer here before `show-ty` says.
+          (refuse v (string-append "a procedure kept in `" (string-append (car found) (string-append "` reads `" (string-append (car found)
+                    "`, so it could reach itself: it must say `spin`")))))))))
 
 "Flats (C31): what a blobref points to, raw bytes in a bloblet's suffix,
  laid out as C lays them out: a scalar at its size, a product's fields in
@@ -4629,6 +4634,40 @@
                       (and (not (string=? pe "%heap")) (not (string=? pe "?"))
                            (newer-than? (string-append "%place " pe) (string-append "%place " pa) (cv-tvars v))))))))))
 
+"A mismatch said as Fixpt says it (C312; its `check-expect.fx`): \"a W is
+ expected here, and this is a G\", W and G the whole types at the
+ expression (its `%fitting` mark), and, procedures, a second line: the
+ atoms of G's effect W's does not cover. Where the expression is an
+ argument, \"argument N is a G, where a W is expected\"; a definition's
+ initializer, \"`x` is declared a D: \" first (its `%saying` mark)."
+(define said-of (subr kfx (cv string) string)
+  (lambda (v key) (let ((b (scope-bind (string-append "%saying " key) v))) (if (null? b) "" (tagcase (car b) (bind (n sc w) w))))))
+
+(define effect-beyond (subr kfx (st ty ty) string)
+  (lambda (s got want)
+    (tagcase (walk s got)
+      (ty-proc (ge gp gr)
+        (tagcase (walk s want)
+          (ty-proc (we wp wr)
+            (let ((out (filter (lambda ((a string)) (null? (fit-effs s (list a) we))) ge)))
+              (if (null? out) "" (string-append "\n  beyond what is expected, it has " (show-effs out)))))
+          (else other "")))
+      (else other ""))))
+
+(define literal-type (subr kfx (sexp) ty)
+  (lambda (e)
+    "A literal's type, as a mismatch says it."
+    (tagcase e (str (t f p) (ty-string)) (chr (c f p) (ty-char)) (real (t f p) (ty-f64)) (sym (n f p) (ty-bool)) (else other (ty-int)))))
+
+(define expected-said (subr kfx (st string ty ty) string)
+  (lambda (s ctx got want)
+    (let ((g (show-ty s got)) (w (show-ty s want)))
+      (string-append
+        (if (has-prefix? ctx "argument ")
+            (string-append ctx (string-append " is a " (string-append g (string-append ", where a " (string-append w " is expected")))))
+            (string-append ctx (string-append "a " (string-append w (string-append " is expected here, and this is a " g)))))
+        (effect-beyond s got want)))))
+
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -5223,8 +5262,16 @@
                                (mismatch v s a e))))))))))))
   (mismatch (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (refuse-named v s (string-append "a " (string-append (show-ty s a)
-                (string-append " is here, where a " (string-append (show-ty s e) " is expected"))))))))
+      (let ((f (scope-bind "%fitting" v)))
+        (if (null? f)
+            (refuse-named v s (expected-said s "" a e))
+            (tagcase (car f)
+              (bind (n sc ctx)
+                (tagcase sc
+                  (scheme (tv t)
+                    (tagcase t
+                      (ty-proc (es ps r) (refuse-named v s (expected-said s ctx (car ps) r)))
+                      (else other (refuse-named v s (expected-said s ctx a e)))))))))))))
 
 (define-rec
   (var-count (subr kfx (string ty) i64)
@@ -5513,7 +5560,7 @@
     "`v`, its refusals said at `e`, if `e` is in a REPL's draft: where an
      argument is refused, underlined (C97). Elsewhere `v`, so that no fact's
      place changes."
-    (if (string=? (datum-file e) "<draft>") (at-offset v (datum-pos e)) v)))
+    (if (or (string=? (datum-file e) "<draft>") (string=? (datum-file e) "<stage>")) (at-offset v (datum-pos e)) v)))
 
 (define operator-char? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "?!<>=+*/%" c)))
@@ -5570,6 +5617,47 @@
           (if (not (null? clash))
               (refuse v (string-append "two names that are one in Rust: " (car clash)))
               (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv (bind-onto more bs) ds als es here group file line fs tv at (bix-adds ix more) (marks-adds mk more)))))))))
+
+(define place-key (subr kfx (sexp) string)
+  (lambda (e) (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e))))))
+
+(define saying (subr kfx (cv sexp string) cv)
+  (lambda (v e what)
+    "`v` where `e` is checked as `what` says (C312): `argument N`, or a
+     definition's `\`x\` is declared a D: `."
+    (with-binds v (list (bind (string-append "%saying " (place-key e)) (scheme nil (ty-unit)) what)))))
+
+(define saying-here (subr kfx (cv string) cv)
+  (lambda (v what)
+    "`saying`, of the expression `v` is at."
+    (with-binds v (list (bind (string-append "%saying " (string-append (cv-file v) (string-append ":" (i64->string (cv-pos v))))) (scheme nil (ty-unit)) what)))))
+
+(define here-key (subr kfx (cv) string)
+  (lambda (v) (string-append (cv-file v) (string-append ":" (i64->string (cv-pos v))))))
+
+(define arguing (subr kfx (cv) cv)
+  (lambda (v)
+    "`v` at a call by the general rule, whose arguments a mismatch says as
+     \"argument N\" (Fixpt's `k-app-arg`, C312). Every call by the general
+     rule, `+` and `-` too, which Fixpt's rule of sizes says only as \"a
+     W is expected here\": the user's, kayak's the better words there, a
+     note for Fixpt (TODO.md)."
+    (with-binds v (list (bind "%arguing" (scheme nil (ty-unit)) (here-key v))))))
+
+(define argued? (subr kfx (cv) bool)
+  (lambda (v) (let ((b (scope-bind "%arguing" v))) (and (not (null? b)) (tagcase (car b) (bind (n sc w) (string=? w (here-key v))))))))
+
+(define declared-said (subr kfx (cv ty) string)
+  (lambda (v t)
+    "What a refusal at a definition's initializer says first, as Fixpt's
+     `k-declared-error`: \"`x` is declared a T: \"."
+    (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (string-append "`" (string-append here (string-append "` is declared a " (string-append (show-ty (st nil 0 nil nil) t) ": "))))))))
+
+(define fitting (subr kfx (cv string ty ty) cv)
+  (lambda (v key got want)
+    "`v` where `got`, the type of the expression at `key`, is fitted to
+     `want`: what `mismatch` says (C312)."
+    (with-binds v (list (bind "%fitting" (scheme nil (ty-proc nil (list got) want)) (said-of v key))))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -5629,6 +5717,11 @@
       (cond ((or (null? names) (null? calls)) nil)
             ((string=? (car names) n) (car calls))
             (else (calls-of (cdr names) (cdr calls) n))))))
+
+(define unbound-said (subr kfx (string) string)
+  (lambda (n)
+    "A name bound nowhere, as Fixpt says it (C312)."
+    (string-append "unbound variable `" (string-append n "`"))))
 
 (define session-effs (subr kfx (cv strings) strings)
   (lambda (v es)

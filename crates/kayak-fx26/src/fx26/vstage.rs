@@ -12,12 +12,15 @@ use super::*;
 // here, for the facts its lowering reads, lowered and numbered, and made a
 // closure over the module, which its frame holds.
 
-// The datum's positions, each list's its own, so that what the checker
-// notes of a part (a `with`'s, C213) the lowering finds.
+// The datum's positions (C312): each part's its offset in the code as it
+// is written, as Fixpt places a refusal in it, past a base each code has
+// its own, so that what the checker notes of one part of one code, a
+// session's kept, is no other's. What kayak writes around the code has
+// negative positions, each its own (`stage-at!`).
 pub fn stage_pos() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
+        kayak_rt::heap_new(-1i64)
     })
 }
 
@@ -25,52 +28,193 @@ pub fn stage_file() -> Str {
     str_lit("<stage>")
 }
 
+pub fn stage_off() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn stage_base() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub enum Span {
+    Span(i64, i64),
+}
+
+pub fn span(f0: i64, f1: i64) -> &'static Span {
+    kayak_rt::heap_alloc(Span::Span(f0, f1))
+}
+
+pub fn stage_spans() -> Ref<List<&'static Span>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Span>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Span>())
+    })
+}
+
 pub fn stage_at_x() -> i64 {
     let p = get(stage_pos());
-    set(stage_pos(), i64_plus(p, 1i64));
+    set(stage_pos(), i64_minus(p, 1i64));
     p
 }
 
-/// A datum's word as the reader would have read it.
-pub fn word_sexp(w: i64) -> &'static Sexp {
-    if fixnum_p(w) {
-        num(fixnum_value(w), i64_to_string(fixnum_value(w)), stage_at_x())
-    } else if i64_eq(w, w_true()) {
-        sym(str_lit("#t"), stage_file(), stage_at_x())
-    } else if i64_eq(w, w_false()) {
-        sym(str_lit("#f"), stage_file(), stage_at_x())
-    } else if i64_eq(w, w_unit()) {
-        sym(str_lit("#u"), stage_file(), stage_at_x())
-    } else if i64_eq(w, w_nil()) {
-        lst(nil::<&'static Sexp>(), stage_file(), 1i64, stage_at_x())
-    } else if keyword_word_p(w) {
-        sym(string_append(str_lit("#:"), name_of_number(i64_minus(immediate_value(w), keyword_bias()))), stage_file(), stage_at_x())
-    } else if is_imm_p(w, imm_symbol()) {
-        sym(name_of_number(immediate_value(w)), stage_file(), stage_at_x())
-    } else if is_imm_p(w, imm_char()) {
-        chr(word_char(w), stage_file(), stage_at_x())
-    } else if is_obj_p(w, ob_string()) {
-        str(word_string(w), stage_file(), stage_at_x())
-    } else if is_obj_p(w, ob_big()) {
-        big(int_to_string(word_int(w)), stage_file(), stage_at_x())
-    } else if is_obj_p(w, ob_real()) {
-        real(f64_to_string(word_real(w)), stage_file(), stage_at_x())
-    } else if is_pair_p(w) {
-        let p = stage_at_x();
-        lst(pair_sexps(w), stage_file(), 1i64, p)
+pub fn stage_past_x(n: i64) -> i64 {
+    let p = get(stage_off());
+    set(stage_off(), i64_plus(p, n));
+    p
+}
+
+pub fn size_of_written(cs: List<char>) -> i64 {
+    if null_p(cs) {
+        0i64
+    } else if (char_eq_p(car(cs), '"') || char_eq_p(car(cs), '\\') || char_eq_p(car(cs), '\n') || char_eq_p(car(cs), '\t')) {
+        i64_plus(2i64, size_of_written(cdr(cs)))
     } else {
-        sym(str_lit("%unread"), stage_file(), stage_at_x())
+        i64_plus(1i64, size_of_written(cdr(cs)))
     }
 }
 
-pub fn pair_sexps(w: i64) -> Sexps {
+/// A string's length written, quoted, `"`, `\` and a newline escaped.
+pub fn written_length(cs: List<char>) -> i64 {
+    i64_plus(2i64, size_of_written(cs))
+}
+
+pub fn char_length(c: char) -> i64 {
+    if char_eq_p(c, ' ') {
+        7i64
+    } else if char_eq_p(c, '\n') {
+        9i64
+    } else if char_eq_p(c, '\t') {
+        5i64
+    } else {
+        3i64
+    }
+}
+
+/// A datum's word as the reader would have read it, each part placed.
+pub fn word_sexp(w: i64) -> &'static Sexp {
+    let p = get(stage_off());
+    let x = if fixnum_p(w) {
+        stage_past_x(string_length_i64(i64_to_string(fixnum_value(w))));
+        num(fixnum_value(w), i64_to_string(fixnum_value(w)), p)
+    } else if i64_eq(w, w_true()) {
+        stage_past_x(2i64);
+        sym(str_lit("#t"), stage_file(), p)
+    } else if i64_eq(w, w_false()) {
+        stage_past_x(2i64);
+        sym(str_lit("#f"), stage_file(), p)
+    } else if i64_eq(w, w_unit()) {
+        stage_past_x(2i64);
+        sym(str_lit("#u"), stage_file(), p)
+    } else if i64_eq(w, w_nil()) {
+        stage_past_x(2i64);
+        lst(nil::<&'static Sexp>(), stage_file(), 1i64, p)
+    } else if keyword_word_p(w) {
+        let n = string_append(str_lit("#:"), name_of_number(i64_minus(immediate_value(w), keyword_bias())));
+        stage_past_x(string_length_i64(n));
+        sym(n, stage_file(), p)
+    } else if is_imm_p(w, imm_symbol()) {
+        let n = name_of_number(immediate_value(w));
+        stage_past_x(string_length_i64(n));
+        sym(n, stage_file(), p)
+    } else if is_imm_p(w, imm_char()) {
+        stage_past_x(char_length(word_char(w)));
+        chr(word_char(w), stage_file(), p)
+    } else if is_obj_p(w, ob_string()) {
+        stage_past_x(written_length(string_chars(word_string(w))));
+        str(word_string(w), stage_file(), p)
+    } else if is_obj_p(w, ob_big()) {
+        let t = int_to_string(word_int(w));
+        stage_past_x(string_length_i64(t));
+        big(t, stage_file(), p)
+    } else if is_obj_p(w, ob_real()) {
+        let t = f64_to_string(word_real(w));
+        stage_past_x(string_length_i64(t));
+        real(t, stage_file(), p)
+    } else if is_pair_p(w) {
+        stage_past_x(1i64);
+        let xs = pair_sexps(w, true);
+        stage_past_x(1i64);
+        lst(xs, stage_file(), 1i64, p)
+    } else {
+        stage_past_x(7i64);
+        sym(str_lit("%unread"), stage_file(), p)
+    };
+    set(stage_spans(), kayak_rt::heap_cons(span(p, get(stage_off())), get(stage_spans())));
+    x
+}
+
+pub fn pair_sexps(w: i64, first: bool) -> Sexps {
     if i64_eq(w, w_nil()) {
         nil::<&'static Sexp>()
     } else if is_pair_p(w) {
+        if first {
+            ()
+        } else {
+            stage_past_x(1i64);
+            ()
+        };
         let a = word_sexp(pair_car(w));
-        kayak_rt::heap_cons(a, pair_sexps(pair_cdr(w)))
+        kayak_rt::heap_cons(a, pair_sexps(pair_cdr(w), false))
     } else {
-        kayak_rt::heap_cons(sym(str_lit("."), stage_file(), stage_at_x()), kayak_rt::heap_cons(word_sexp(w), kayak_rt::nil()))
+        stage_past_x(3i64);
+        kayak_rt::heap_cons(sym(str_lit("."), stage_file(), -1i64), kayak_rt::heap_cons(word_sexp(w), kayak_rt::nil()))
+    }
+}
+
+/// The code `w`, a datum, placed past a base of its own.
+pub fn code_sexp_x(w: i64) -> &'static Sexp {
+    set(stage_base(), get(stage_off()));
+    set(stage_spans(), nil::<&'static Span>());
+    let x = word_sexp(w);
+    stage_past_x(1i64);
+    x
+}
+
+/// Where the part placed at `p` ends; -1 if no part is.
+pub fn span_end(mut ss: List<&'static Span>, mut p: i64) -> i64 {
+    loop {
+        if null_p(ss) {
+            return -1i64;
+        } else if {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Span::Span(a, z) => {
+                    i64_eq(a, p)
+                }
+            }
+        } {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Span::Span(a, z) => {
+                    return z;
+                }
+            }
+        } else {
+            ss = cdr(ss);
+            continue;
+        }
+    }
+}
+
+/// The place a refusal at `p` is in the code: its part's, from the code's
+/// start; the whole code where kayak's own (wrapping it) is refused.
+pub fn code_span(p: i64) -> &'static Span {
+    let whole = span(0i64, i64_minus(span_end(get(stage_spans()), get(stage_base())), get(stage_base())));
+    if i64_lt(p, 0i64) {
+        whole
+    } else {
+        let z = span_end(get(stage_spans()), p);
+        if i64_lt(z, 0i64) {
+            whole
+        } else {
+            span(i64_minus(p, get(stage_base())), i64_minus(z, get(stage_base())))
+        }
     }
 }
 
@@ -148,7 +292,7 @@ pub fn refusal_said(m: Str) -> Str {
     let said = list_to_string(after_said(string_chars(m), string_chars(str_lit("in staged code: "))));
     if not(string_eq_p(said, str_lit(""))) {
         said
-    } else if not(null_p(after_said(string_chars(m), string_chars(str_lit("<stage>:"))))) {
+    } else if not(null_p(after_said(string_chars(m), string_chars(str_lit("<stage>@"))))) {
         let past = after_said(after_said(string_chars(m), string_chars(str_lit(": in "))), string_chars(str_lit(": ")));
         if null_p(past) {
             m
@@ -209,6 +353,57 @@ pub fn stage_failure_word_x(m: Str) -> i64 {
     obj_set_x(p, 3i64, fixnum(0i64));
     obj_set_x(p, 4i64, fixnum(0i64));
     sum_word_x(str_lit("failed"), p)
+}
+
+/// `(sum failed (product (kind (sum KIND #u)) (message m) (start a) (end z)))`.
+pub fn stage_failed_at_word_x(kind: Str, m: Str, a: i64, z: i64) -> i64 {
+    let k = sum_word_x(kind, w_unit());
+    let msg = string_word_x(m);
+    let p = alloc_x(ob_product(), 5i64);
+    obj_set_x(p, 0i64, fixnum(get(stage_failure_labels())));
+    obj_set_x(p, 1i64, k);
+    obj_set_x(p, 2i64, msg);
+    obj_set_x(p, 3i64, fixnum(a));
+    obj_set_x(p, 4i64, fixnum(z));
+    sum_word_x(str_lit("failed"), p)
+}
+
+pub fn stage_failed_word_x(kind: Str, m: Str) -> i64 {
+    stage_failed_at_word_x(kind, m, 0i64, 0i64)
+}
+
+pub fn place_digits(mut cs: List<char>, mut n: i64) -> i64 {
+    loop {
+        if (null_p(cs) || not(char_numeric_p(car(cs)))) {
+            return n;
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+/// Where in the code a refusal is, its `<stage>@N`; -1, the code itself,
+/// if it says none.
+pub fn refusal_place(m: Str) -> i64 {
+    let cs = after_said(string_chars(m), string_chars(str_lit("<stage>@")));
+    if null_p(cs) {
+        -1i64
+    } else if char_eq_p(car(cs), '-') {
+        -1i64
+    } else {
+        place_digits(cs, 0i64)
+    }
+}
+
+/// A refusal of the code, its words and where it is (C312).
+pub fn refused_word_x(why: Str) -> i64 {
+    let tagcase_ = code_span(refusal_place(why));
+    match *tagcase_ {
+        Span::Span(a, z) => {
+            stage_failed_at_word_x(str_lit("refused"), refusal_said(why), a, z)
+        }
+    }
 }
 
 // Evidence (C307; Fixpt's `docs/fx26.md`, "Evidence", and its
@@ -577,11 +772,11 @@ pub fn reify_run_x(given: i64, rep: i64, names: i64) -> i64 {
 /// evidence given (C307); or `(sum failed WHY)`.
 pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
     let t = (&rep_ty)(rep_filled_x(rep, given, word_string(names)));
-    let thunk = staged_thunk(word_sexp(code));
+    let thunk = staged_thunk(code_sexp_x(code));
     let prog = staged_program(thunk);
     let why = stage_worked(prog, t);
     if not(string_eq_p(why, str_lit(""))) {
-        stage_failure_word_x(refusal_said(why))
+        refused_word_x(why)
     } else {
         let s = stage_checked(prog, t);
         let gs = with_entries({
@@ -1076,19 +1271,6 @@ pub fn session_worked(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind:
     kayak_rt::process::icell_get(out)
 }
 
-/// `(sum failed (product (kind (sum KIND #u)) (message m) (start 0) (end 0)))`.
-pub fn stage_failed_word_x(kind: Str, m: Str) -> i64 {
-    let k = sum_word_x(kind, w_unit());
-    let msg = string_word_x(m);
-    let p = alloc_x(ob_product(), 5i64);
-    obj_set_x(p, 0i64, fixnum(get(stage_failure_labels())));
-    obj_set_x(p, 1i64, k);
-    obj_set_x(p, 2i64, msg);
-    obj_set_x(p, 3i64, fixnum(0i64));
-    obj_set_x(p, 4i64, fixnum(0i64));
-    sum_word_x(str_lit("failed"), p)
-}
-
 /// Procedure `lam`, lowered at the top, a closure over nothing.
 pub fn thunk_word_x(lam: &'static Ir) -> i64 {
     let l = number_x(lam);
@@ -1119,7 +1301,7 @@ pub fn session_expression_x(k: i64, st: &'static Sess, code: &'static Sexp, t: &
             let thunk = session_thunk(code);
             let why = session_worked(v, thunk, t, 0i64);
             if not(string_eq_p(why, str_lit(""))) {
-                stage_failure_word_x(refusal_said(why))
+                refused_word_x(why)
             } else {
                 let s = {
                     let tagcase_ = (&expressions::check)(at(v, str_lit("staged code"), nil::<Str>()), new_state(), thunk, t);
@@ -1181,7 +1363,7 @@ pub fn session_define_x(sw: i64, k: i64, st: &'static Sess, code: &'static Sexp,
                 let init = second(parts);
                 let why = session_worked(v, code, t, 1i64);
                 if not(string_eq_p(why, str_lit(""))) {
-                    stage_failure_word_x(refusal_said(why))
+                    refused_word_x(why)
                 } else {
                     let v2 = session_top(v, code);
                     let found = scope_bind(name, v2);
@@ -1218,7 +1400,7 @@ pub fn session_define_x(sw: i64, k: i64, st: &'static Sess, code: &'static Sexp,
                         session_worked(v, session_thunk(init), ty_proc(es, nil::<&'static Ty>(), dt), 0i64)
                     };
                     if not(string_eq_p(bounded, str_lit(""))) {
-                        stage_failure_word_x(refusal_said(bounded))
+                        refused_word_x(bounded)
                     } else {
                         let i = size(get(pendings()));
                         let d = alloc_x(ob_vector(), 2i64);
@@ -1264,7 +1446,7 @@ pub fn session_run_x(sw: i64, code: i64, given: i64, rep: i64, names: i64) -> i6
     };
     let k = session_state_x(sw, mt);
     let st = nth_sess(get(sessions()), k);
-    let c = word_sexp(code);
+    let c = code_sexp_x(code);
     if head_is_p(c, str_lit("define")) {
         session_define_x(sw, k, st, c, t)
     } else {

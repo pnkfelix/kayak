@@ -623,6 +623,43 @@ pub fn ask(
     Ok(ran_of(&new))
 }
 
+/// `text` past its place, `FILE:LINE[:COL]: `, the file's name taken as
+/// what precedes the first `:` followed by a digit; `parts` the place's
+/// parts at most (3, a column; 2, none). As it is if it has none.
+pub fn after_place(text: &str, parts: usize) -> String {
+    let b: Vec<char> = text.chars().collect();
+    let Some(i) =
+        (0..b.len().saturating_sub(1)).find(|&i| b[i] == ':' && b[i + 1].is_ascii_digit())
+    else {
+        return text.to_string();
+    };
+    let mut j = i;
+    for _ in 1..parts {
+        if j < b.len() && b[j] == ':' && b.get(j + 1).is_some_and(char::is_ascii_digit) {
+            j += 1;
+            while j < b.len() && b[j].is_ascii_digit() {
+                j += 1;
+            }
+        }
+    }
+    let rest: String = b[j..].iter().collect();
+    rest.strip_prefix(": ").unwrap_or(&rest).to_string()
+}
+
+/// A refusal of kayak's as its words alone: past `kayak-fx26: ` (or
+/// `kfx: `), its place, and what it was in (`in NAME: `).
+pub fn kayak_words(line: &str) -> String {
+    let l = line
+        .strip_prefix("kayak-fx26: ")
+        .or_else(|| line.strip_prefix("kfx: "))
+        .unwrap_or(line);
+    let rest = after_place(l, 2);
+    match rest.strip_prefix("in ").and_then(|r| r.split_once(": ")) {
+        Some((_, words)) => words.to_string(),
+        None => rest,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::temporaries;

@@ -8680,3 +8680,42 @@ Now:
 Found, not done: `(with m x)` of a module value at the REPL fails in the
 engine (`nothing is named x`), its exports not among the REPL's globals;
 so before this too.
+
+## C312. Refusals in Fixpt's words (2026-11-03)
+
+The user's item 2: refusals said as Fixpt says them, where Fixpt's words
+are the better or the same; where kayak's are better, kayak keeps them
+and Fixpt is asked (the user's, the same day: "each play off each other,
+with a usual assumption being that if there is ambiguity, then Fixpt is
+probably right").
+- **Measured**: the checkers' comparison (`tests/checkers.rs`) compares
+  both refusals' words, places aside, `said` where they agree; the stage
+  test compares a program both refuse as it is checked by its words.
+  Over the 406 programs Fixpt refuses: 46 in Fixpt's words before, 122
+  now. Of the 21 stage programs, 16 print what Fixpt prints (5 before).
+- **A mismatch** (Fixpt's `check-expect.fx`): "a W is expected here, and
+  this is a G", the whole types at the expression (kayak's `%fitting`
+  mark, which `check-by-synth` gives `fits`), and for procedures a second
+  line, "  beyond what is expected, it has E". As an argument of a call by
+  the general rule (`%arguing`, `%saying`): "argument N is a G, where a W
+  is expected"; a definition's initializer: "`x` is declared a D: " first;
+  a literal's, its type (`literal-type`); a lambda whose effect exceeds
+  the one expected, said so too.
+- **Others**: "unbound variable `x`" (a keyword where no form is, too);
+  "expected N argument(s), got M"; the knots' (`no-reaching-itself`,
+  `no-knot`) as Fixpt's `check-program.fx` words them; `stage` and
+  `session-check` taking a module or session by its name, as `infer.rs`'s
+  `note_staged`.
+- **A staged refusal's place** (`start`, `end`): the code's parts placed by
+  their offsets in the code as written (`code-sexp!`, each code past a
+  base of its own so that a session's kept facts stay apart); the checker
+  says `<stage>@N`, as a REPL draft's `<draft>@N`; a refusal of what kayak
+  wraps around the code is the whole code's, as Fixpt's.
+- **Kept kayak's, a note for Fixpt** (TODO.md): `(+ 1 "x")` and `-`, which
+  Fixpt's rule of sizes says as "a int is expected here, and this is a
+  string" where its general rule says "argument 2 is a string, where a int
+  is expected". kayak says the latter for every call.
+- **Not yet**: Fixpt's "; it may not end: WHY" after a `spin` mismatch
+  (its termination checker's reasons); the storage knot's "and it is a
+  T"; types printed alike (`car`'s `(union nil (pairof ? ? r))`, kayak's
+  `(listof ?1 ?0)`); the long tail, each a message of its own.

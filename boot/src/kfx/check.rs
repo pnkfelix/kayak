@@ -506,6 +506,8 @@ pub fn refusal_text(v: &'static Cv, message: Str) -> Str {
                 str_lit("")
             } else if string_eq_p(file, str_lit("<draft>")) {
                 string_append(str_lit("<draft>@"), string_append(i64_to_string(at), str_lit(": ")))
+            } else if string_eq_p(file, str_lit("<stage>")) {
+                string_append(str_lit("<stage>@"), string_append(i64_to_string(at), str_lit(": ")))
             } else {
                 string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), str_lit(": "))))
             }, string_append(str_lit("in "), string_append(here, string_append(str_lit(": "), message))))
@@ -2951,7 +2953,7 @@ pub fn no_knot(v: &'static Cv, res: &'static (dyn Fn(Str) -> Str + Send + Sync),
     if null_p(found) {
         t
     } else {
-        match refuse(v, string_append(str_lit("a procedure kept in "), string_append(car(found), string_append(str_lit(" reads "), string_append(car(found), str_lit(", so it could reach itself: it must say spin")))))) {}
+        match refuse(v, string_append(str_lit("a procedure kept in `"), string_append(car(found), string_append(str_lit("` reads `"), string_append(car(found), str_lit("`, so it could reach itself: it must say `spin`")))))) {}
     }
 }
 
@@ -10499,6 +10501,87 @@ pub fn frozen_fits_p(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static
     })
 }
 
+// A mismatch said as Fixpt says it (C312; its `check-expect.fx`): "a W is
+// expected here, and this is a G", W and G the whole types at the
+// expression (its `%fitting` mark), and, procedures, a second line: the
+// atoms of G's effect W's does not cover. Where the expression is an
+// argument, "argument N is a G, where a W is expected"; a definition's
+// initializer, "`x` is declared a D: " first (its `%saying` mark).
+pub fn said_of(v: &'static Cv, key: Str) -> Str {
+    let b = scope_bind(string_append(str_lit("%saying "), key), v);
+    if null_p(b) {
+        str_lit("")
+    } else {
+        let tagcase_ = car(b);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                w
+            }
+        }
+    }
+}
+
+pub fn effect_beyond(s: &'static St, got: &'static Ty, want: &'static Ty) -> Str {
+    let tagcase_ = walk(s, got);
+    match *tagcase_ {
+        Ty::TyProc(ge, gp, gr) => {
+            let tagcase_ = walk(s, want);
+            match *tagcase_ {
+                Ty::TyProc(we, wp, wr) => {
+                    let out = filter(lambda1s(move |a: Str| {
+                        null_p(fit_effs(s, kayak_rt::heap_cons(a, kayak_rt::nil()), we))
+                    }), ge);
+                    if null_p(out) {
+                        str_lit("")
+                    } else {
+                        string_append(str_lit("\n  beyond what is expected, it has "), show_effs(out))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+/// A literal's type, as a mismatch says it.
+pub fn literal_type(e: &'static Sexp) -> &'static Ty {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Str(t, f, p) => {
+            ty_string()
+        }
+        Sexp::Chr(c, f, p) => {
+            ty_char()
+        }
+        Sexp::Real(t, f, p) => {
+            ty_f64()
+        }
+        Sexp::Sym(n, f, p) => {
+            ty_bool()
+        }
+        _ => {
+            let other = tagcase_;
+            ty_int()
+        }
+    }
+}
+
+pub fn expected_said(s: &'static St, ctx: Str, got: &'static Ty, want: &'static Ty) -> Str {
+    let (g, w) = (show_ty(s, got), show_ty(s, want));
+    string_append(if has_prefix_p(ctx, str_lit("argument ")) {
+        string_append(ctx, string_append(str_lit(" is a "), string_append(g, string_append(str_lit(", where a "), string_append(w, str_lit(" is expected"))))))
+    } else {
+        string_append(ctx, string_append(str_lit("a "), string_append(w, string_append(str_lit(" is expected here, and this is a "), g))))
+    }, effect_beyond(s, got, want))
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
@@ -12333,7 +12416,31 @@ pub fn size_fits(v: &'static Cv, s: &'static St, za: &'static Ty, ze: &'static T
 }
 
 pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected")))))) {}
+    let f = scope_bind(str_lit("%fitting"), v);
+    if null_p(f) {
+        match refuse_named(v, s, expected_said(s, str_lit(""), a, e)) {}
+    } else {
+        let tagcase_ = car(f);
+        match *tagcase_ {
+            Bind::Bind(n, sc, ctx) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tv, t) => {
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                match refuse_named(v, s, expected_said(s, ctx, car(ps), r)) {}
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                match refuse_named(v, s, expected_said(s, ctx, a, e)) {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// How often type variable `n` is in `t`.
@@ -12930,7 +13037,7 @@ pub fn through_hole(xs: Sexps) -> Sexps {
 /// argument is refused, underlined (C97). Elsewhere `v`, so that no fact's
 /// place changes.
 pub fn in_draft(v: &'static Cv, e: &'static Sexp) -> &'static Cv {
-    if string_eq_p(datum_file(e), str_lit("<draft>")) {
+    if (string_eq_p(datum_file(e), str_lit("<draft>")) || string_eq_p(datum_file(e), str_lit("<stage>"))) {
         at_offset(v, datum_pos(e))
     } else {
         v
@@ -13048,6 +13155,63 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }
     }
+}
+
+pub fn place_key(e: &'static Sexp) -> Str {
+    string_append(datum_file(e), string_append(str_lit(":"), i64_to_string(datum_pos(e))))
+}
+
+/// `v` where `e` is checked as `what` says (C312): `argument N`, or a
+/// definition's ``x` is declared a D: `.
+pub fn saying(v: &'static Cv, e: &'static Sexp, what: Str) -> &'static Cv {
+    with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%saying "), place_key(e)), scheme(nil::<Str>(), ty_unit()), what), kayak_rt::nil()))
+}
+
+/// `saying`, of the expression `v` is at.
+pub fn saying_here(v: &'static Cv, what: Str) -> &'static Cv {
+    with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%saying "), string_append(cv_file(v), string_append(str_lit(":"), i64_to_string(cv_pos(v))))), scheme(nil::<Str>(), ty_unit()), what), kayak_rt::nil()))
+}
+
+pub fn here_key(v: &'static Cv) -> Str {
+    string_append(cv_file(v), string_append(str_lit(":"), i64_to_string(cv_pos(v))))
+}
+
+/// `v` at a call by the general rule, whose arguments a mismatch says as
+/// "argument N" (Fixpt's `k-app-arg`, C312). Every call by the general
+/// rule, `+` and `-` too, which Fixpt's rule of sizes says only as "a
+/// W is expected here": the user's, kayak's the better words there, a
+/// note for Fixpt (TODO.md).
+pub fn arguing(v: &'static Cv) -> &'static Cv {
+    with_binds(v, kayak_rt::heap_cons(bind(str_lit("%arguing"), scheme(nil::<Str>(), ty_unit()), here_key(v)), kayak_rt::nil()))
+}
+
+pub fn argued_p(v: &'static Cv) -> bool {
+    let b = scope_bind(str_lit("%arguing"), v);
+    (not(null_p(b)) && {
+        let tagcase_ = car(b);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                string_eq_p(w, here_key(v))
+            }
+        }
+    })
+}
+
+/// What a refusal at a definition's initializer says first, as Fixpt's
+/// `k-declared-error`: "`x` is declared a T: ".
+pub fn declared_said(v: &'static Cv, t: &'static Ty) -> Str {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            string_append(str_lit("`"), string_append(here, string_append(str_lit("` is declared a "), string_append(show_ty(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), t), str_lit(": ")))))
+        }
+    }
+}
+
+/// `v` where `got`, the type of the expression at `key`, is fitted to
+/// `want`: what `mismatch` says (C312).
+pub fn fitting(v: &'static Cv, key: Str, got: &'static Ty, want: &'static Ty) -> &'static Cv {
+    with_binds(v, kayak_rt::heap_cons(bind(str_lit("%fitting"), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::heap_cons(got, kayak_rt::nil()), want)), said_of(v, key)), kayak_rt::nil()))
 }
 
 /// A local may be named by a keyword, as FX-26 has it; it may not then be
@@ -13181,6 +13345,11 @@ pub fn calls_of(mut names: Strings, mut calls: List<Strings>, mut n: Str) -> Str
             continue;
         }
     }
+}
+
+/// A name bound nowhere, as Fixpt says it (C312).
+pub fn unbound_said(n: Str) -> Str {
+    string_append(str_lit("unbound variable `"), string_append(n, str_lit("`")))
 }
 
 /// In a session's checker (its `%session` mark, C310), reading a global

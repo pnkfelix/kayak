@@ -574,18 +574,28 @@
              (any? (lambda ((n string)) (string-member? (string-append "g:" n) es)) group)))))
 
 (define-rec
-  (held-knot? (subr kfx (strings ty) bool)
+  (held-knot (subr kfx (strings ty) tys)
     (lambda (group t)
-      "Whether type `t` holds, as data, a procedure that may read a member of
-       `group`, or any global, and does not say `spin` (C290)."
+      "A procedure type `t` holds, as data, that may read a member of
+       `group`, or any global, and does not say `spin` (C290): none or one."
       (tagcase t
-        (ty-proc (es ps r) (reads-unspun? group es))
-        (ty-list (e r) (held-knot? group e))
-        (ty-ref (e r) (held-knot? group e))
-        (ty-flat (e r) (held-knot? group e))
-        (ty-shape (p ls ts) (any? (lambda ((x ty)) (held-knot? group x)) ts))
-        (ty-data (d args) (any? (lambda ((x ty)) (held-knot? group x)) args))
-        (else other #f)))))
+        (ty-proc (es ps r) (if (reads-unspun? group es) (the tys (list t)) nil))
+        (ty-list (e r) (held-knot group e))
+        (ty-ref (e r) (held-knot group e))
+        (ty-flat (e r) (held-knot group e))
+        (ty-shape (p ls ts) (held-knot-first group ts))
+        (ty-data (d args) (held-knot-first group args))
+        (else other nil))))
+  (held-knot-first (subr kfx (strings tys) tys)
+    (lambda (group ts)
+      (if (null? ts) nil (let ((x (held-knot group (car ts)))) (if (null? x) (held-knot-first group (cdr ts)) x))))))
+
+(define first-read (subr kfx (strings strings) string)
+  (lambda (group es)
+    "The first member of `group` effect `es` reads; `` if none (Fixpt's
+     `k-first-read`)."
+    (let ((m (filter (lambda ((n string)) (string-member? (string-append "g:" n) es)) group)))
+      (if (null? m) "" (car m)))))
 
 (define no-reaching-itself (subr kfx (cv strings scheme) cv)
   (lambda (v group sc)
@@ -595,20 +605,30 @@
      may read it, at its first definition as at any other; and a procedure a
      global holds without being one, a product's field, a list's element, a
      module's value, which may read that global (C290; Fixpt's b9ed7daf,
-     7906bc63): else, defined again, it ties Landin's knot."
-    (tagcase sc
-      (scheme (tvars t)
-        (tagcase t
-          (ty-proc (es ps r)
-            (if (reads-unspun? group es)
-                (refuse v (string-append "calling " (string-append (words-of group)
-                          " may read any global, itself too, so it may reach itself through a global: its type must say spin")))
-                v))
-          (else other
-            (if (held-knot? group (as-mtype v t))
-                (refuse v (string-append (words-of group)
-                          " holds a procedure that may read it, so defined again it may reach itself through a global: that procedure's type must say spin"))
-                v)))))))
+     7906bc63): else, defined again, it ties Landin's knot. Said as Fixpt's
+     `check-program.fx` says it (C312)."
+    (let ((name (tagcase v (cv (bs ds als es here group2 file line fs tv at ix mk) here)))
+          (must "` may reach itself through a global: its type must say `spin`"))
+      (tagcase sc
+        (scheme (tvars t)
+          (tagcase t
+            (ty-proc (es ps r)
+              (cond ((not (reads-unspun? group es)) v)
+                    ((not (string=? (first-read group es) ""))
+                     (refuse v (string-append "calling `" (string-append name (string-append "` reads `" (string-append (first-read group es)
+                               (string-append "`, so `" (string-append name (string-append must " (or, to call itself directly, it binds itself with a local `letrec`)")))))))))
+                    (else
+                     (refuse v (string-append "calling `" (string-append name (string-append "` may read any global, `" (string-append name
+                               (string-append "` too, so `" (string-append name must))))))))))
+            (else other
+              (let ((found (held-knot group (as-mtype v t))))
+                (if (null? found)
+                    v
+                    (let ((read (tagcase (car found) (ty-proc (es ps r) (first-read group es)) (else other ""))))
+                      (refuse v (string-append "`" (string-append name (string-append "` keeps a procedure that reads `"
+                                (string-append (if (string=? read "") "@globals" read)
+                                  (string-append "`, so it could reach itself through a global: it must say `spin`, and it is a "
+                                                 (show-ty (new-state) (car found))))))))))))))))))
 
 (define ends-alone? (subr kfx (cv string scheme sexp) bool)
   (lambda (v name sc defined)
@@ -693,7 +713,7 @@
           (if (and (head-is? defined "plambda") (not (lambda-form? (third (items defined)))))
               (tagcase (with expressions (check (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (third (items defined)) t))
                 (res (u es s) (with-facts v (with expressions (settle-facts s)))))
-              (tagcase (with expressions (check-lambda (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (items (second lam)) (cdr (cdr lam)) t))
+              (tagcase (with expressions (check-lambda (saying-here (with-tvars v (onto (place-marks-of t) tvars)) (declared-said v t)) (new-state) (items (second lam)) (cdr (cdr lam)) t))
                 (res (u es s) (with-facts v (with expressions (settle-facts s))))))))))))
 
 (define variants-dt (subr kfx (cv string) dt)
@@ -1491,7 +1511,7 @@
                            (tagcase sc
                              (scheme (tvars t)
                                (if (null? tvars)
-                                   (tagcase (with expressions (check v (new-state) (fourth xs) t))
+                                   (tagcase (with expressions (check (saying v (fourth xs) (declared-said v t)) (new-state) (fourth xs) t))
                                      (res (u es s) (with-facts named (with expressions (settle-facts (constant-made v s (fourth xs) es t))))))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))

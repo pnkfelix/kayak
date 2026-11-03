@@ -107,6 +107,17 @@ section below where it has one; here the order, and what each is.
      **sessions**: the checker, the engine and the REPL have them (C309,
      C310, C311); not yet tier 1 or KFX; a module's type printed by its
      abbreviation (`api : api-type`) as Fixpt prints it.
+   - **Refusals in Fixpt's words** (C312; 122 of 406 so far): Fixpt's
+     termination reasons after a `spin` mismatch ("; it may not end:
+     …"); the storage knot's "and it is a T" (no type printer before
+     `show-ty` in check.kfx); types printed alike (`car`'s parameter,
+     inference variables `?` against kayak's `?1`); the tail
+     (`target/kayak-checks/checkers`, `both`).
+   - **For Fixpt's team**: `(+ 1 "x")` and `(- 1 "x")` are refused as "a
+     int is expected here, and this is a string", where every other call
+     says "argument 2 is a string, where a int is expected" (its general
+     rule, `k-app-arg`; `+` and `-` are typed by its rule of sizes). kayak
+     says the latter for them too (the user's, 2026-11-03).
    - **Sessions never give memory back** (the user's concern, 2026-11-03):
      a session's globals are renamed into one flat table (C311, as
      Fixpt's lowered path), so nothing of a session is reclaimed when

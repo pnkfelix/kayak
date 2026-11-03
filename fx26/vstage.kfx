@@ -7,36 +7,95 @@
  here, for the facts its lowering reads, lowered and numbered, and made a
  closure over the module, which its frame holds."
 
-"The datum's positions, each list's its own, so that what the checker
- notes of a part (a `with`'s, C213) the lowering finds."
-(define stage-pos (ref i64 @h) (new 0))
+"The datum's positions (C312): each part's its offset in the code as it
+ is written, as Fixpt places a refusal in it, past a base each code has
+ its own, so that what the checker notes of one part of one code, a
+ session's kept, is no other's. What kayak writes around the code has
+ negative positions, each its own (`stage-at!`)."
+(define stage-pos (ref i64 @h) (new -1))
 (define stage-file string "<stage>")
+(define stage-off (ref i64 @h) (new 0))
+(define stage-base (ref i64 @h) (new 0))
+(define-datatype span (span i64 i64))
+(define stage-spans (ref (listof span acyclic) @h) (new nil))
 
 (define stage-at! (subr hp () i64)
-  (lambda () (let ((p (get stage-pos))) (begin (set stage-pos (i64+ p 1)) p))))
+  (lambda () (let ((p (get stage-pos))) (begin (set stage-pos (i64- p 1)) p))))
+
+(define stage-past! (subr hp (i64) i64)
+  (lambda (n) (let ((p (get stage-off))) (begin (set stage-off (i64+ p n)) p))))
+
+(define-rec
+  (size-of-written (subr kfx ((listof char acyclic)) i64)
+    (lambda (cs)
+      (cond ((null? cs) 0)
+            ((or (char=? (car cs) #\") (char=? (car cs) #\\) (char=? (car cs) #\newline) (char=? (car cs) #\tab)) (i64+ 2 (size-of-written (cdr cs))))
+            (else (i64+ 1 (size-of-written (cdr cs))))))))
+
+(define written-length (subr kfx ((listof char acyclic)) i64)
+  (lambda (cs)
+    "A string's length written, quoted, `\"`, `\\` and a newline escaped."
+    (i64+ 2 (size-of-written cs))))
+
+(define char-length (subr kfx (char) i64)
+  (lambda (c)
+    (cond ((char=? c #\space) 7) ((char=? c #\newline) 9) ((char=? c #\tab) 5) (else 3))))
 
 (define-rec
   (word-sexp (subr hp (i64) sexp)
     (lambda (w)
-      "A datum's word as the reader would have read it."
-      (cond ((fixnum? w) (num (fixnum-value w) (i64->string (fixnum-value w)) (stage-at!)))
-            ((i64= w w-true) (sym "#t" stage-file (stage-at!)))
-            ((i64= w w-false) (sym "#f" stage-file (stage-at!)))
-            ((i64= w w-unit) (sym "#u" stage-file (stage-at!)))
-            ((i64= w w-nil) (lst nil stage-file 1 (stage-at!)))
-            ((keyword-word? w) (sym (string-append "#:" (name-of-number (i64- (immediate-value w) keyword-bias))) stage-file (stage-at!)))
-            ((is-imm? w imm-symbol) (sym (name-of-number (immediate-value w)) stage-file (stage-at!)))
-            ((is-imm? w imm-char) (chr (word-char w) stage-file (stage-at!)))
-            ((is-obj? w ob-string) (str (word-string w) stage-file (stage-at!)))
-            ((is-obj? w ob-big) (big (int->string (word-int w)) stage-file (stage-at!)))
-            ((is-obj? w ob-real) (real (f64->string (word-real w)) stage-file (stage-at!)))
-            ((is-pair? w) (let ((p (stage-at!))) (lst (pair-sexps w) stage-file 1 p)))
-            (else (sym "%unread" stage-file (stage-at!))))))
-  (pair-sexps (subr hp (i64) sexps)
-    (lambda (w)
+      "A datum's word as the reader would have read it, each part placed."
+      (let* ((p (get stage-off))
+             (x (cond ((fixnum? w) (begin (stage-past! (string-length-i64 (i64->string (fixnum-value w)))) (num (fixnum-value w) (i64->string (fixnum-value w)) p)))
+                      ((i64= w w-true) (begin (stage-past! 2) (sym "#t" stage-file p)))
+                      ((i64= w w-false) (begin (stage-past! 2) (sym "#f" stage-file p)))
+                      ((i64= w w-unit) (begin (stage-past! 2) (sym "#u" stage-file p)))
+                      ((i64= w w-nil) (begin (stage-past! 2) (lst nil stage-file 1 p)))
+                      ((keyword-word? w)
+                       (let ((n (string-append "#:" (name-of-number (i64- (immediate-value w) keyword-bias)))))
+                         (begin (stage-past! (string-length-i64 n)) (sym n stage-file p))))
+                      ((is-imm? w imm-symbol)
+                       (let ((n (name-of-number (immediate-value w)))) (begin (stage-past! (string-length-i64 n)) (sym n stage-file p))))
+                      ((is-imm? w imm-char) (begin (stage-past! (char-length (word-char w))) (chr (word-char w) stage-file p)))
+                      ((is-obj? w ob-string) (begin (stage-past! (written-length (string-chars (word-string w)))) (str (word-string w) stage-file p)))
+                      ((is-obj? w ob-big) (let ((t (int->string (word-int w)))) (begin (stage-past! (string-length-i64 t)) (big t stage-file p))))
+                      ((is-obj? w ob-real) (let ((t (f64->string (word-real w)))) (begin (stage-past! (string-length-i64 t)) (real t stage-file p))))
+                      ((is-pair? w) (begin (stage-past! 1) (let ((xs (pair-sexps w #t))) (begin (stage-past! 1) (lst xs stage-file 1 p)))))
+                      (else (begin (stage-past! 7) (sym "%unread" stage-file p))))))
+        (begin (set stage-spans (cons (span p (get stage-off)) (get stage-spans))) x))))
+  (pair-sexps (subr hp (i64 bool) sexps)
+    (lambda (w first)
       (cond ((i64= w w-nil) nil)
-            ((is-pair? w) (let ((a (word-sexp (pair-car w)))) (cons a (pair-sexps (pair-cdr w)))))
-            (else (list (sym "." stage-file (stage-at!)) (word-sexp w)))))))
+            ((is-pair? w)
+             (begin (if first #u (begin (stage-past! 1) #u))
+                    (let ((a (word-sexp (pair-car w)))) (cons a (pair-sexps (pair-cdr w) #f)))))
+            (else (begin (stage-past! 3) (list (sym "." stage-file -1) (word-sexp w))))))))
+
+(define code-sexp! (subr hp (i64) sexp)
+  (lambda (w)
+    "The code `w`, a datum, placed past a base of its own."
+    (begin
+      (set stage-base (get stage-off))
+      (set stage-spans nil)
+      (let ((x (word-sexp w))) (begin (stage-past! 1) x)))))
+
+(define-rec
+  (span-end (subr kfx ((listof span acyclic) i64) i64)
+    (lambda (ss p)
+      "Where the part placed at `p` ends; -1 if no part is."
+      (cond ((null? ss) -1)
+            ((tagcase (car ss) (span (a z) (i64= a p))) (tagcase (car ss) (span (a z) z)))
+            (else (span-end (cdr ss) p))))))
+
+(define code-span (subr hp (i64) span)
+  (lambda (p)
+    "The place a refusal at `p` is in the code: its part's, from the code's
+     start; the whole code where kayak's own (wrapping it) is refused."
+    (let ((whole (span 0 (i64- (span-end (get stage-spans) (get stage-base)) (get stage-base)))))
+      (if (i64< p 0)
+          whole
+          (let ((z (span-end (get stage-spans) p)))
+            (if (i64< z 0) whole (span (i64- p (get stage-base)) (i64- z (get stage-base)))))))))
 
 "What the staged code is checked as: `(lambda (stage-module) (lambda ()
  (with stage-module CODE)))`, against `(subr pure (M) (subr E () R))`."
@@ -87,7 +146,7 @@
      staged code: `, or a definition's, `<stage>:LINE: in NAME: `."
     (let ((said (list->string (after-said (string-chars m) (string-chars "in staged code: ")))))
       (cond ((not (string=? said "")) said)
-            ((not (null? (after-said (string-chars m) (string-chars "<stage>:"))))
+            ((not (null? (after-said (string-chars m) (string-chars "<stage>@"))))
              (let ((past (after-said (after-said (string-chars m) (string-chars ": in ")) (string-chars ": "))))
                (if (null? past) m (list->string past))))
             (else m)))))
@@ -112,6 +171,36 @@
     (let* ((k (sum-word! "refused" w-unit)) (msg (string-word! m)) (p (alloc! ob-product 5)))
       (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
              (obj-set! p 3 (fixnum 0)) (obj-set! p 4 (fixnum 0)) (sum-word! "failed" p)))))
+
+(define stage-failed-at-word! (subr (maxeff hp (alloc @h)) (string string i64 i64) i64)
+  (lambda (kind m a z)
+    "`(sum failed (product (kind (sum KIND #u)) (message m) (start a) (end z)))`."
+    (let* ((k (sum-word! kind w-unit)) (msg (string-word! m)) (p (alloc! ob-product 5)))
+      (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
+             (obj-set! p 3 (fixnum a)) (obj-set! p 4 (fixnum z)) (sum-word! "failed" p)))))
+
+(define stage-failed-word! (subr (maxeff hp (alloc @h)) (string string) i64)
+  (lambda (kind m) (stage-failed-at-word! kind m 0 0)))
+
+(define-rec
+  (place-digits (subr kfx ((listof char acyclic) i64) i64)
+    (lambda (cs n)
+      (if (or (null? cs) (not (char-numeric? (car cs)))) n (place-digits (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+(define refusal-place (subr kfx (string) i64)
+  (lambda (m)
+    "Where in the code a refusal is, its `<stage>@N`; -1, the code itself,
+     if it says none."
+    (let ((cs (after-said (string-chars m) (string-chars "<stage>@"))))
+      (cond ((null? cs) -1)
+            ((char=? (car cs) #\-) -1)
+            (else (place-digits cs 0))))))
+
+(define refused-word! (subr (maxeff hp (alloc @h)) (string) i64)
+  (lambda (why)
+    "A refusal of the code, its words and where it is (C312)."
+    (tagcase (code-span (refusal-place why))
+      (span (a z) (stage-failed-at-word! "refused" (refusal-said why) a z)))))
 
 "Evidence (C307; Fixpt's `docs/fx26.md`, \"Evidence\", and its
  `fixpt_reps::fill`): a rep's holes filled from the evidence given for
@@ -289,11 +378,11 @@
      procedure over module `m`, checked against `rep` filled from the
      evidence given (C307); or `(sum failed WHY)`."
     (let* ((t ((proj rep-ty @h) (rep-filled! rep given (word-string names))))
-           (thunk (staged-thunk (word-sexp code)))
+           (thunk (staged-thunk (code-sexp! code)))
            (prog (staged-program thunk))
            (why (stage-worked prog t)))
       (if (not (string=? why ""))
-          (stage-failure-word! (refusal-said why))
+          (refused-word! why)
           (let* ((s (stage-checked prog t))
                  (gs (with-entries (tagcase s (st (sbs k fs ns) fs))))
                  (body (lower thunk (list (list "stage-module")) gs))
@@ -548,12 +637,6 @@
         (the (addr unit @w) (spawn-monitored relay stage-refused (box unit r) (send relay (session-verdict v form t kind))))
         (icell-get out)))))
 
-(define stage-failed-word! (subr (maxeff hp (alloc @h)) (string string) i64)
-  (lambda (kind m)
-    "`(sum failed (product (kind (sum KIND #u)) (message m) (start 0) (end 0)))`."
-    (let* ((k (sum-word! kind w-unit)) (msg (string-word! m)) (p (alloc! ob-product 5)))
-      (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
-             (obj-set! p 3 (fixnum 0)) (obj-set! p 4 (fixnum 0)) (sum-word! "failed" p)))))
 
 (define thunk-word! (subr (maxeff vm loading) (ir) i64)
   (lambda (lam)
@@ -579,7 +662,7 @@
         (let* ((thunk (session-thunk code))
                (why (session-worked v thunk t 0)))
           (if (not (string=? why ""))
-              (stage-failure-word! (refusal-said why))
+              (refused-word! why)
               (let* ((s (tagcase ((with expressions check) (at v "staged code" nil) (new-state) thunk t) (res (u es s) s)))
                      (gs (session-gs gl (onto (tagcase s (st (sbs n fs ns) fs)) (cv-facts v))))
                      (p (thunk-word! (lower thunk (session-scope) gs))))
@@ -608,14 +691,14 @@
                      (init (second parts))
                      (why (session-worked v code t 1)))
                 (if (not (string=? why ""))
-                    (stage-failure-word! (refusal-said why))
+                    (refused-word! why)
                     (let* ((v2 (session-top v code))
                            (found (scope-bind name v2))
                            (dt (if (null? found) (ty-unit) (tagcase (car found) (bind (n sc w) (tagcase sc (scheme (tvs u) u))))))
                            (es (tagcase t (ty-proc (es ps r) es) (else other nil)))
                            (bounded (if (head-is? init "lambda") "" (session-worked v (session-thunk init) (ty-proc es nil dt) 0))))
                       (if (not (string=? bounded ""))
-                          (stage-failure-word! (refusal-said bounded))
+                          (refused-word! bounded)
                           (let* ((i (size (get pendings)))
                                  (d (alloc! ob-vector 2)))
                             (begin
@@ -633,7 +716,7 @@
            (t (tagcase whole (ty-proc (es ps r) r) (else other whole)))
            (k (session-state! sw mt))
            (st (nth-sess (get sessions) k))
-           (c (word-sexp code)))
+           (c (code-sexp! code)))
       (if (head-is? c "define")
           (session-define! sw k st c t)
           (session-expression! k st c t)))))

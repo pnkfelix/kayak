@@ -622,14 +622,18 @@ pub fn reads_unspun_p(group: Strings, es: Strings) -> bool {
     }), group)))
 }
 
-/// Whether type `t` holds, as data, a procedure that may read a member of
-/// `group`, or any global, and does not say `spin` (C290).
-pub fn held_knot_p(mut group: Strings, mut t: &'static Ty) -> bool {
+/// A procedure type `t` holds, as data, that may read a member of
+/// `group`, or any global, and does not say `spin` (C290): none or one.
+pub fn held_knot(mut group: Strings, mut t: &'static Ty) -> Tys {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
             Ty::TyProc(es, ps, r) => {
-                return reads_unspun_p(group, es);
+                if reads_unspun_p(group, es) {
+                    return the::<Tys>(kayak_rt::heap_cons(t, kayak_rt::nil()));
+                } else {
+                    return nil::<&'static Ty>();
+                }
             }
             Ty::TyList(e, r) => {
                 t = e;
@@ -644,20 +648,45 @@ pub fn held_knot_p(mut group: Strings, mut t: &'static Ty) -> bool {
                 continue;
             }
             Ty::TyShape(p, ls, ts) => {
-                return any_p(lambda1s(move |x: &'static Ty| {
-                    held_knot_p(group, x)
-                }), ts);
+                return held_knot_first(group, ts);
             }
             Ty::TyData(d, args) => {
-                return any_p(lambda1s(move |x: &'static Ty| {
-                    held_knot_p(group, x)
-                }), args);
+                return held_knot_first(group, args);
             }
             _ => {
                 let other = tagcase_;
-                return false;
+                return nil::<&'static Ty>();
             }
         }
+    }
+}
+
+pub fn held_knot_first(mut group: Strings, mut ts: Tys) -> Tys {
+    loop {
+        if null_p(ts) {
+            return nil::<&'static Ty>();
+        } else {
+            let x = held_knot(group, car(ts));
+            if null_p(x) {
+                ts = cdr(ts);
+                continue;
+            } else {
+                return x;
+            }
+        }
+    }
+}
+
+/// The first member of `group` effect `es` reads; `` if none (Fixpt's
+/// `k-first-read`).
+pub fn first_read(group: Strings, es: Strings) -> Str {
+    let m = filter(lambda1s(move |n: Str| {
+        string_member_p(string_append(str_lit("g:"), n), es)
+    }), group);
+    if null_p(m) {
+        str_lit("")
+    } else {
+        car(m)
     }
 }
 
@@ -667,26 +696,54 @@ pub fn held_knot_p(mut group: Strings, mut t: &'static Ty) -> bool {
 /// may read it, at its first definition as at any other; and a procedure a
 /// global holds without being one, a product's field, a list's element, a
 /// module's value, which may read that global (C290; Fixpt's b9ed7daf,
-/// 7906bc63): else, defined again, it ties Landin's knot.
+/// 7906bc63): else, defined again, it ties Landin's knot. Said as Fixpt's
+/// `check-program.fx` says it (C312).
 pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -> &'static Cv {
+    let (name, must) = ({
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group2, file, line, fs, tv, at, ix, mk) => {
+                here
+            }
+        }
+    }, str_lit("` may reach itself through a global: its type must say `spin`"));
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
             let tagcase_ = t;
             match *tagcase_ {
                 Ty::TyProc(es, ps, r) => {
-                    if reads_unspun_p(group, es) {
-                        match refuse(v, string_append(str_lit("calling "), string_append(words_of(group), str_lit(" may read any global, itself too, so it may reach itself through a global: its type must say spin")))) {}
-                    } else {
+                    if not(reads_unspun_p(group, es)) {
                         v
+                    } else if not(string_eq_p(first_read(group, es), str_lit(""))) {
+                        match refuse(v, string_append(str_lit("calling `"), string_append(name, string_append(str_lit("` reads `"), string_append(first_read(group, es), string_append(str_lit("`, so `"), string_append(name, string_append(must, str_lit(" (or, to call itself directly, it binds itself with a local `letrec`)"))))))))) {}
+                    } else {
+                        match refuse(v, string_append(str_lit("calling `"), string_append(name, string_append(str_lit("` may read any global, `"), string_append(name, string_append(str_lit("` too, so `"), string_append(name, must))))))) {}
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    if held_knot_p(group, as_mtype(v, t)) {
-                        match refuse(v, string_append(words_of(group), str_lit(" holds a procedure that may read it, so defined again it may reach itself through a global: that procedure's type must say spin"))) {}
-                    } else {
+                    let found = held_knot(group, as_mtype(v, t));
+                    if null_p(found) {
                         v
+                    } else {
+                        let read = {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    first_read(group, es)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        };
+                        match refuse(v, string_append(str_lit("`"), string_append(name, string_append(str_lit("` keeps a procedure that reads `"), string_append(if string_eq_p(read, str_lit("")) {
+                            str_lit("@globals")
+                        } else {
+                            read
+                        }, string_append(str_lit("`, so it could reach itself through a global: it must say `spin`, and it is a "), show_ty(new_state(), car(found)))))))) {}
                     }
                 }
             }
@@ -841,7 +898,7 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
                         }
                     }
                 } else {
-                    let tagcase_ = expressions::check_lambda(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
+                    let tagcase_ = expressions::check_lambda(saying_here(with_tvars(v, onto(place_marks_of(t), tvars)), declared_said(v, t)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
                             with_facts(v, expressions::settle_facts(s))
@@ -2448,7 +2505,7 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                         match *tagcase_ {
                             Scheme::Scheme(tvars, t) => {
                                 if null_p(tvars) {
-                                    let tagcase_ = expressions::check(v, new_state(), fourth(xs), t);
+                                    let tagcase_ = expressions::check(saying(v, fourth(xs), declared_said(v, t)), new_state(), fourth(xs), t);
                                     match *tagcase_ {
                                         Res::Res(u, es, s) => {
                                             with_facts(named, expressions::settle_facts(constant_made(v, s, fourth(xs), es, t)))

@@ -13,4 +13,4 @@ x3 : int ! pure
 "1011" : string ! (maxeff (read (globals s step)) (read @heap) (write @heap) spin stage)
 "7" : string ! (maxeff (read (globals s step)) (read @heap) (write @heap) spin stage)
 7 : int ! (maxeff (read (globals the-log)) (read @heap))
-"refused: nothing is named x1" : string ! (maxeff (read (globals s step)) (read @heap) (write @heap) spin stage)
+"refused: unbound variable `x1`" : string ! (maxeff (read (globals s step)) (read @heap) (write @heap) spin stage)

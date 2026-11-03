@@ -4437,7 +4437,7 @@ pub mod expressions {
                                             proj_base(v, head)
                                         } else {
                                             str_lit("")
-                                        }, cdr(xs), void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), effs_union(if head_is_p(head, str_lit("proj")) {
+                                        }, cdr(xs), void_call(v, false, false, synth_call_of(arguing(v), s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), effs_union(if head_is_p(head, str_lit("proj")) {
                                             cwcc_spin(proj_base(v, head), cdr(xs))
                                         } else {
                                             nil::<Str>()
@@ -4708,7 +4708,7 @@ pub mod expressions {
         } else {
             let found = scope_bind(name, v);
             if null_p(found) {
-                match refuse(at_offset(v, at_pos), string_append(str_lit("nothing is named "), name)) {}
+                match refuse(at_offset(v, at_pos), unbound_said(name)) {}
             } else {
                 let tagcase_ = car(found);
                 match *tagcase_ {
@@ -4950,7 +4950,7 @@ pub mod expressions {
                 if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
                     let m = member_of_shape(members_of(x), literal_shape(e));
                     if null_p(m) {
-                        match refuse_named(v, s, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                        match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
                     } else {
                         check(v, s, e, car(m))
                     }
@@ -4988,7 +4988,7 @@ pub mod expressions {
                                         } else if (not(null_p(z)) && size_shown_p(v, s, lin_add(car(z), lin(k, nil::<&'static Lterm>()), -1i64)) && size_shown_p(v, s, lin_add(lin(k, nil::<&'static Lterm>()), car(z), -1i64))) {
                                             res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
                                         } else {
-                                            match refuse_named(v, s, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                            match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
                                         }
                                     } else if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
                                         res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
@@ -5003,12 +5003,12 @@ pub mod expressions {
                                     } else if fixed_width_p(d) {
                                         match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
                                     } else {
-                                        match refuse_named(v, s, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                        match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
                                     }
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                    match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
                                 }
                             }
                         }
@@ -5034,7 +5034,7 @@ pub mod expressions {
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    match refuse_named(v, s, string_append(str_lit("a literal past an i64 is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                    match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
                                 }
                             }
                         }
@@ -5204,7 +5204,7 @@ pub mod expressions {
                         s0
                     };
                     res(expected, es, {
-                        let s = coerced(v, fits(v, s, t, expected), datum_file(e), datum_pos(e), t, expected);
+                        let s = coerced(v, fits(fitting(v, place_key(e), t, expected), s, t, expected), datum_file(e), datum_pos(e), t, expected);
                         let tagcase_ = walk_mu(s, t);
                         match *tagcase_ {
                             Ty::TyProc(pes, ps, r) => {
@@ -5822,7 +5822,7 @@ pub mod expressions {
             }
         });
         let s = kfx_restricted(v, s, str_lit("`stage`, FX-26's, which KFX has not yet (C304)"));
-        if (not(session) && {
+        if {
             let tagcase_ = third(xs);
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
@@ -5833,9 +5833,13 @@ pub mod expressions {
                     true
                 }
             }
-        }) {
+        } {
             // Fixpt's rule: by its name, so that the stage's front end knows it.
-            match refuse(v, str_lit("`stage` takes a module by its name")) {}
+            match refuse(v, if session {
+                str_lit("`session-check` takes a session by its name")
+            } else {
+                str_lit("`stage` takes a module by its name")
+            }) {}
         } else {
             let tagcase_ = synth(v, s, third(xs));
             match *tagcase_ {
@@ -5882,7 +5886,7 @@ pub mod expressions {
                         ty_rconst(str_lit("@heap"))
                     };
                     if (session && not(of_session)) {
-                        match refuse(v, string_append(str_lit("`session-check` takes a session, and this is a "), show_ty(s, mt0))) {}
+                        match refuse(v, string_append(str_lit("`session-check` takes a session, not a "), show_ty(s, mt0))) {}
                     } else {
                         if not((mtype_p(walk(s, mt)) || {
                             let tagcase_ = walk(s, mt);
@@ -5896,7 +5900,11 @@ pub mod expressions {
                                 }
                             }
                         })) {
-                            match refuse(v, string_append(str_lit("a stage's module is a module, and this is a "), show_ty(s, mt))) {}
+                            match refuse(v, if session {
+                                str_lit("a session's module type")
+                            } else {
+                                string_append(str_lit("`stage` takes a module, not a "), show_ty(s, mt))
+                            }) {}
                         } else {
                             let tagcase_ = check(v, s, car(cdr(cdr(cdr(xs)))), ty_data(str_lit("datum"), nil::<&'static Ty>()));
                             match *tagcase_ {
@@ -9954,7 +9962,7 @@ pub mod expressions {
                                         };
                                         return res(expected, nil::<Str>(), synced_lambda(v, noted_lambda(v, s, ees), ees, params, forms));
                                     } else {
-                                        return match refuse(v, string_append(str_lit("a lambda whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(ees))))) {};
+                                        return match refuse(v, expected_said(s, said_of(v, string_append(cv_file(v), string_append(str_lit(":"), i64_to_string(cv_pos(v))))), ty_proc(es, eps, r), expected)) {};
                                     }
                                 }
                             }
@@ -10972,7 +10980,15 @@ pub mod expressions {
                     }
                 }
             }))) {
-                return match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which kayak's checker does not take here, or a call of a local named by that keyword")))) {};
+                if null_p(found) {
+                    return match refuse(if string_eq_p(cv_file(v), str_lit("<stage>")) {
+                        at_offset(v, i64_plus(cv_pos(v), 1i64))
+                    } else {
+                        v
+                    }, unbound_said(h)) {};
+                } else {
+                    return match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which kayak's checker does not take here, or a call of a local named by that keyword")))) {};
+                }
             } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
                 return abort_call(v, s, args);
             } else if (null_p(found) && string_eq_p(h, str_lit("native-procedure"))) {
@@ -11408,7 +11424,7 @@ pub mod expressions {
             } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")) || string_eq_p(h, str_lit("rmake-array")) || string_eq_p(h, str_lit("rmake-icell")) || string_eq_p(h, str_lit("rmake-string")))) {
                 return region_alloc_call(v, s, h, args, expected);
             } else if null_p(found) {
-                return match refuse(v, string_append(str_lit("nothing is named "), h)) {};
+                return match refuse(v, unbound_said(h)) {};
             } else if ((string_eq_p(h, str_lit("+")) || string_eq_p(h, str_lit("-"))) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && sized_p(walk(s, car(expected)), str_lit("%natof"))) {
                 // A sum or a difference where `(nat s)` is wanted: shown to be `s` (C158).
                 let (a, b, z) = (linear_of(v, s, car(args)), linear_of(v, s, second(args)), size_lin(s, sized_size(walk(s, car(expected)))));
@@ -11599,7 +11615,7 @@ pub mod expressions {
                                     h
                                 } else {
                                     str_lit("")
-                                }, args, poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil::<Str>(), head_unboxed(v, s, h, wher, t)), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("prim")) {
+                                }, args, poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(arguing(v), s, res(t, nil::<Str>(), head_unboxed(v, s, h, wher, t)), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("prim")) {
                                     cwcc_spin(h, args)
                                 } else {
                                     nil::<Str>()
@@ -13103,7 +13119,7 @@ pub mod expressions {
                 match *tagcase_ {
                     Ty::TyProc(latent, ps, r) => {
                         if (not(i64_eq(size(ps), size(args))) && not(any_p(&draft_hole_p, args))) {
-                            match refuse(v, string_append(str_lit("a call of the wrong number of arguments: "), show_sexps(args))) {}
+                            match refuse(v, string_append(str_lit("expected "), string_append(i64_to_string(size(ps)), string_append(str_lit(" argument(s), got "), i64_to_string(size(args)))))) {}
                         } else if i64_gt(size(args), size(ps)) {
                             match refuse(v, string_append(str_lit("the hole: nothing, the call has its "), string_append(i64_to_string(size(ps)), if i64_eq(size(ps), 1i64) {
                                 str_lit(" argument")
@@ -13392,6 +13408,15 @@ pub mod expressions {
         }
     }
 
+    /// `v`, argument `k`'s, said so where the call `at` is is by the general rule.
+    pub fn said_as_argument(at: &'static Cv, v: &'static Cv, arg: &'static Sexp, k: i64) -> &'static Cv {
+        if argued_p(at) {
+            saying(v, arg, string_append(str_lit("argument "), i64_to_string(k)))
+        } else {
+            v
+        }
+    }
+
     /// The arguments `deferred?` says are `later`'s; the first is argument
     /// `k`. The REPL's hole as one is said to be in it (C97).
     pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool, mut fixed: I64s, mut k: i64) -> &'static Res {
@@ -13425,17 +13450,17 @@ pub mod expressions {
                     // found by itself, as FX-26 finds it (a literal an `int`, a
                     // control form's branches of one type, a `list` at a fresh
                     // region); a lambda, told its parameters, is checked.
-                    check_by_synth(in_draft(if draft_hole_p(car(args)) {
+                    check_by_synth(said_as_argument(v, in_draft(if draft_hole_p(car(args)) {
                         said_in(v, string_append(str_lit("argument "), i64_to_string(k)))
                     } else {
                         v
-                    }, car(args)), s, car(args), car(ps))
+                    }, car(args)), car(args), k), s, car(args), car(ps))
                 } else {
-                    check(in_draft(if draft_hole_p(car(args)) {
+                    check(said_as_argument(v, in_draft(if draft_hole_p(car(args)) {
                         said_in(v, string_append(str_lit("argument "), i64_to_string(k)))
                     } else {
                         v
-                    }, car(args)), s, car(args), car(ps))
+                    }, car(args)), car(args), k), s, car(args), car(ps))
                 };
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
