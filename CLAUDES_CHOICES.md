@@ -8650,3 +8650,33 @@ Part two of Fixpt's sessions, after its `sessions.rs` lowered (its
 `session.fx`, `session-knot.fx` and `evidence-session.fx` but for the
 checker's words in refusals (kayak's, not Fixpt's). Not yet: sessions in
 the REPL (its globals' list does not know a session's), tier 1, KFX.
+
+## C311. A session's globals, named as Fixpt names them; sessions in the REPL (2026-11-03)
+
+The user's model, checked against Fixpt's `sessions.rs` and
+`docs/research/eval.md` ("Sessions"): each session a namespace of its
+own, its globals named `fx26-session-K:NAME`; `m`'s values its first
+definitions, bindings copied and so shadowed in it alone, never changing
+`m`, the values themselves shared (a reference in `m` is the host's and
+every session's); the program's globals invisible to it; the REPL a thing
+apart, whose globals a session's live beside. kayak's (C310) were unnamed
+slots past the program's, which the REPL's next definitions could take.
+Now:
+- **One list of the machine's globals** (`machine-globals`, vstage.kfx,
+  was the REPL's `repl-globals`): a program's, made at loading; the
+  REPL's; a session's, each named as Fixpt's lowering names it. What is
+  defined after a session's globals has an index of its own.
+- **The REPL lowers with the checker's facts** (`entry-facts`): the
+  front's check of an entry gives the machine what it noted of the entry's
+  forms, as a program's lowering has them (`with-entries`). `stage`,
+  `session-check` and evidence lowered in the REPL had no type and failed
+  the machine (`car: nil`) since C305. A draft's run early has them too;
+  in C103's REPL, whose machine has no checker's state, a draft that
+  stages is not run early.
+- Test: `tests/repl/session.in`, both REPLs: a session's definitions
+  among the REPL's, a module's value shadowed in the session alone, a
+  reference in the module written by the session and read by the host,
+  the REPL's globals not the session's.
+Found, not done: `(with m x)` of a module value at the REPL fails in the
+engine (`nothing is named x`), its exports not among the REPL's globals;
+so before this too.

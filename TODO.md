@@ -104,10 +104,13 @@ section below where it has one; here the order, and what each is.
      rep): a refusal's words and places as Fixpt's; tier 1 and KFX;
      evidence and bounds (C307, C308; `evidence-region.fx` waits on a
      module allocating at `@a` passed to a call, which Fixpt masks);
-     **sessions**: the checker and the engine have them (C309, C310);
-     not yet in the REPL (a session's globals past the REPL's list, which
-     does not know them), tier 1 or KFX; a module's type printed by its
+     **sessions**: the checker, the engine and the REPL have them (C309,
+     C310, C311); not yet tier 1 or KFX; a module's type printed by its
      abbreviation (`api : api-type`) as Fixpt prints it.
+   - **The REPL's `with` of a module value** (`(with api base)` after
+     `(define api (module …))`) fails in the engine, `nothing is named
+     base`: a program's lowering has the modules' exports (`module-entries`),
+     the REPL's not (found at C311).
    - **A race in Fixpt's `process/basic.fx`** (seen once, 2026-11-01,
      under `--regs --compiled --gc-stress` with the check's load): its
      `wait-for` returns on `exited` without a last `process-output`, so

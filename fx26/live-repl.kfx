@@ -814,14 +814,14 @@ an entry naming one that has not ended waits for it.")
                        (name (string-append "%" (i64->string k)))
                        (checked (checked-form (get repl-cv) form))
                        (v (if expression (result-bound checked form name) checked))
-                       (gs (onto (get repl-globals) (new-names (if expression (list name) (global-names (list form))) (get repl-globals))))
+                       (gs (onto (get machine-globals) (new-names (if expression (list name) (global-names (list form))) (get machine-globals))))
                        (line (if expression shown-type (form-type v form))))
                   (begin
                     (set repl-cv v)
-                    (set repl-globals gs)
+                    (set machine-globals gs)
                     ;; Lowered on the machine's side alone, which runs it.
                     (let ((ns (if (get machine-side)
-                                  (begin (globals-room! gs) (numbered-or-failed! (lower-tops (list form) gs)))
+                                  (begin (globals-room! gs) (numbered-or-failed! (lower-tops (list form) (onto gs (entry-facts v (datum-file form))))))
                                   nil)))
                       (entry-forms k (cdr forms)
                                    (if expression line typed)
@@ -853,7 +853,7 @@ an entry naming one that has not ended waits for it.")
            is then `%k`'s): the next begun, or the entry done."
           (let* ((ts (get (extract e tops)))
                  (rest (if (null? ts) nil (cdr ts)))
-                 (i (global-index (string-append "%" (i64->string (extract e num))) (get repl-globals) 0)))
+                 (i (global-index (string-append "%" (i64->string (extract e num))) (get machine-globals) 0)))
             (begin
               (if (and (i64>= i 0) (not (null? ts)) (i64>= (car ts) 0)) (flatarray-set-i64! (get globals) i w) #u)
               (set (extract e tops) rest)
@@ -1361,9 +1361,11 @@ an entry naming one that has not ended waits for it.")
             ;; Ended until it starts: the tables given back even if lowering fails.
             (set spec-state 2)
             (let ((forms (program-read (string-chars text) "<draft>" 1)))
-              (if (null? forms)
+              ;; A draft that stages is not run early: its type, which the
+              ;; checker noted, is not here (C311).
+              (if (or (null? forms) (any? (lambda ((n string)) (string-member? n (list "%stage" "%session-check" "reify-effect" "reify-type" "reify-region"))) (names-in (car forms))))
                   #u
-                  (let ((ns (numbered-or-failed! (lower-tops (list (car forms)) (get repl-globals)))))
+                  (let ((ns (numbered-or-failed! (lower-tops (list (car forms)) (get machine-globals)))))
                     (if (or (null? ns) (i64< (car ns) 0))
                         #u
                         (begin (start-parked! 0 (car ns)) (set spec-steps 0) (set spec-state 1)))))))))

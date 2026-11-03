@@ -4,10 +4,10 @@
  `fixpt repl` writes it, `value : type ! effect`. Its entries, keys and
  screen are live-repl.kfx's (C94)."
 
-"What the REPL keeps between forms: the checker's environment, the globals'
- names (an index each, as `lower.kfx` has them), and how many forms."
+"What the REPL keeps between forms: the checker's environment and how
+ many forms; the globals' names are the machine's (`machine-globals`,
+ vstage.kfx), which a session's add to too (C311)."
 (define repl-cv (ref cv @h) (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil)))
-(define repl-globals (ref strings @h) (new nil))
 (define repl-count (ref i64 @h) (new 0))
 
 (define-rec
@@ -75,6 +75,13 @@
       (begin
         (load! nil)
         (set repl-cv (with-binds empty (prim-binds empty)))))))
+
+(define entry-facts (subr kfx (cv string) strings)
+  (lambda (v file)
+    "What the checker noted of the forms read from `file`, as the lowering
+     reads it (`with-entries`): a `stage`'s type (C311), a `with`'s module
+     (C213), a flat's layout (C215). The machine lowers with them."
+    (with-entries (filter (lambda ((f fact)) (tagcase f (fact (fl pos what) (string=? fl file)))) (cv-facts v)))))
 
 (define checked-form (subr kfx (cv sexp) cv)
   (lambda (v form)

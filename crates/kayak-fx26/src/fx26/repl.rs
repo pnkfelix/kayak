@@ -9,19 +9,13 @@ use super::*;
 // `fixpt repl` writes it, `value : type ! effect`. Its entries, keys and
 // screen are live-repl.kfx's (C94).
 
-// What the REPL keeps between forms: the checker's environment, the globals'
-// names (an index each, as `lower.kfx` has them), and how many forms.
+// What the REPL keeps between forms: the checker's environment and how
+// many forms; the globals' names are the machine's (`machine-globals`,
+// vstage.kfx), which a session's add to too (C311).
 pub fn repl_cv() -> Ref<&'static Cv> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Cv>);
     once(&ONCE, || {
         kayak_rt::heap_new(cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>()))
-    })
-}
-
-pub fn repl_globals() -> Ref<Strings> {
-    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<Str>())
     })
 }
 
@@ -142,6 +136,20 @@ pub fn repl_start_x() -> () {
     let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
     load_x(nil::<Str>());
     set(repl_cv(), with_binds(empty, prim_binds(empty)))
+}
+
+/// What the checker noted of the forms read from `file`, as the lowering
+/// reads it (`with-entries`): a `stage`'s type (C311), a `with`'s module
+/// (C213), a flat's layout (C215). The machine lowers with them.
+pub fn entry_facts(v: &'static Cv, file: Str) -> Strings {
+    with_entries(filter(lambda1s(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(fl, pos, what) => {
+                string_eq_p(fl, file)
+            }
+        }
+    }), cv_facts(v)))
 }
 
 /// The checker's environment after `form`, its types and datatypes

@@ -803,11 +803,15 @@ pub fn pendings() -> Ref<Pends> {
     })
 }
 
-// The next session global's index, the first past the program's once known.
-pub fn session_next() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+// The machine's globals' names, an index each, as `lower.kfx` has them: a
+// program's, made at loading (`load!`); the REPL's, which grow as it
+// defines (C65); and the sessions' (C310), each named as Fixpt's lowering
+// names it, `fx26-session-K:NAME`, so that what defines a global after them
+// has an index of its own.
+pub fn machine_globals() -> Ref<Strings> {
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
-        kayak_rt::heap_new(-1i64)
+        kayak_rt::heap_new(nil::<Str>())
     })
 }
 
@@ -920,20 +924,22 @@ pub fn sglobal_name(mut gl: Sglobals, mut all: Sglobals, mut i: i64) -> Str {
 pub fn session_gs(gl: Sglobals, fs: Facts) -> Strings {
     onto(map(lambda1s(move |i: i64| {
         sglobal_name(gl, gl, i)
-    }), counting(0i64, get(session_next()))), with_entries(fs))
+    }), counting(0i64, size(get(machine_globals())))), with_entries(fs))
 }
 
-/// A new global, named `n`, of value `w`: past the program's, the globals'
-/// array and their names' grown if need be.
-pub fn session_global_x(n: Str, w: i64) -> i64 {
-    let i = if i64_lt(get(session_next()), 0i64) {
-        flatarray_length_i64(get(globals()))
-    } else {
-        get(session_next())
-    };
+pub fn session_prefix(k: i64) -> Str {
+    string_append(str_lit("fx26-session-"), string_append(i64_to_string(k), str_lit(":")))
+}
+
+/// A new global of session `k`, its name `n` there, of value `w`: the
+/// machine's next, `fx26-session-K:n`, the globals' array and their
+/// names' grown if need be.
+pub fn session_global_x(k: i64, n: Str, w: i64) -> i64 {
+    let i = size(get(machine_globals()));
+    let full = string_append(session_prefix(k), n);
     let old = get(globals());
     let names = get(global_name_table());
-    set(session_next(), i64_plus(i, 1i64));
+    set(machine_globals(), onto(get(machine_globals()), kayak_rt::heap_cons(full, kayak_rt::nil())));
     if i64_lt(i, flatarray_length_i64(old)) {
         ()
     } else {
@@ -948,7 +954,7 @@ pub fn session_global_x(n: Str, w: i64) -> i64 {
         names_copied_x(names, more, 0i64, int_to_i64(array_length(names)));
         set(global_name_table(), more)
     };
-    array_set_x(get(global_name_table()), i64_to_int(i), n);
+    array_set_x(get(global_name_table()), i64_to_int(i), full);
     flatarray_set_i64_x(get(globals()), i, w);
     i
 }
@@ -985,7 +991,7 @@ pub fn session_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
 
 /// `m`'s values each defined in the session, `(define x (with
 /// stage-module x))`, its global holding `m`'s.
-pub fn seeded(mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings) -> &'static Sess {
+pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings) -> &'static Sess {
     loop {
         if null_p(ns) {
             return sess(v, gl, nil::<&'static Defn>(), 0i64);
@@ -993,7 +999,7 @@ pub fn seeded(mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings)
             let n = car(ns);
             let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
             let v2 = session_top(v, form);
-            let i = session_global_x(n, module_field(m, n));
+            let i = session_global_x(k, n, module_field(m, n));
             (v, gl, ns) = (v2, kayak_rt::heap_cons(sglobal(n, i), gl), cdr(ns));
             continue;
         }
@@ -1007,14 +1013,14 @@ pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
     if i64_gt_eq(k, 0i64) {
         k
     } else {
+        let k2 = size(get(sessions()));
         let m = obj_ref(sw, 0i64);
         let v = with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks()));
-        let gm = session_global_x(str_lit("stage-module"), m);
+        let gm = session_global_x(k2, str_lit("stage-module"), m);
         let vals = map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
             string_eq_p(mitem_kind(x), str_lit("%val"))
         }), mtype_items(mt)));
-        let made = seeded(v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals);
-        let k2 = size(get(sessions()));
+        let made = seeded(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals);
         set(sessions(), onto(get(sessions()), kayak_rt::heap_cons(made, kayak_rt::nil())));
         obj_set_x(sw, 1i64, fixnum(k2));
         k2
@@ -1449,7 +1455,7 @@ pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
                         let i = if (existed && not(needed)) {
                             sglobal_of(gl, name)
                         } else {
-                            session_global_x(name, w_unbound())
+                            session_global_x(k, name, w_unbound())
                         };
                         let gl2 = if (existed && not(needed)) {
                             gl

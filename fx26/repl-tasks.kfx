@@ -62,8 +62,8 @@
       (define-datatype ran (ran (listof told acyclic) i64 bool))
 
       (define-datatype asked
-        (entry-asked i64 string string bool string string bool (listof i64 acyclic))
-        (draft-asked i64 string string)
+        (entry-asked i64 string string bool string string bool (listof i64 acyclic) strings)
+        (draft-asked i64 string string strings)
         (draft-unasked)
         (cancel-asked i64)
         (limit-asked i64)
@@ -497,10 +497,10 @@ an entry naming one that has not ended waits for it.")
         (recheck cv sexp))
 
       (define-datatype done
-        (entry-done cv strings string string bool (listof i64 acyclic))
+        (entry-done cv strings string string bool (listof i64 acyclic) strings)
         (shown-done string)
         (tried-none)
-        (tried-expression string strings (listof i64 acyclic))
+        (tried-expression string strings (listof i64 acyclic) strings)
         (tried-definitions string)
         (items-done i64 string)
         (rechecked cv)
@@ -532,15 +532,15 @@ an entry naming one that has not ended waits for it.")
                   (else (definition-lines v (cdr forms)))))))
 
       (define-rec
-        (entry-checked (subr kfx (cv strings i64 sexps string string bool (listof i64 acyclic)) done)
-          (lambda (v gs k forms typed defined quiet needs)
+        (entry-checked (subr kfx (cv strings i64 sexps string string bool (listof i64 acyclic) string) done)
+          (lambda (v gs k forms typed defined quiet needs file)
             "Each form checked, in order, as C103's `entry-forms` did, and
              lowered, as the machine will lower it, so that its lowering fails
              here if anywhere: an expression's value `%k`'s, the global bound
              at its type; what is written after its value, the lines of the
              definitions, whether it only reads and allocates."
             (if (null? forms)
-                (entry-done v gs typed defined quiet needs)
+                (entry-done v gs typed defined quiet needs (entry-facts v file))
                 (let* ((form (car forms))
                        (expression (not (definition-form? form)))
                        (shown-type (if expression (form-type v form) ""))
@@ -558,14 +558,15 @@ an entry naming one that has not ended waits for it.")
                                          ((string=? defined "") line)
                                          (else (string-append defined (string-append "\n" line))))
                                    (and quiet expression (quiet-effect? effects))
-                                   needs)))))))
+                                   needs file)))))))
 
       (define* job-done (subr kfx (job) done)
         (lambda (j)
           (tagcase j
             (check-entry (v gs k text label)
-              (let ((forms (program-read (string-chars text) (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1)))
-                (entry-checked v gs k forms "" "" #t (concat (map named-results forms)))))
+              (let* ((file (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label))
+                     (forms (program-read (string-chars text) file 1)))
+                (entry-checked v gs k forms "" "" #t (concat (map named-results forms)) file)))
             (type-of (v text)
               (let ((forms (program-read (string-chars text) "<,type>" 1)))
                 (if (null? forms) (begin (error "nothing to type") (shown-done "")) (shown-done (form-type v (car forms))))))
@@ -579,7 +580,7 @@ an entry naming one that has not ended waits for it.")
                       ((and (null? (cdr forms)) (not (definition-form? (car forms))))
                        (begin
                          (lower-tops (list (car forms)) gs)
-                         (tried-expression (form-type v (car forms)) (expression-effects v (car forms)) (named-results (car forms)))))
+                         (tried-expression (form-type v (car forms)) (expression-effects v (car forms)) (named-results (car forms)) (entry-facts v2 "<draft>"))))
                       (else (tried-definitions (words-lines (definition-lines v2 forms)))))))
             (recheck (v form)
               ;; A definition checked again, after one it uses was defined again
@@ -733,37 +734,38 @@ an entry naming one that has not ended waits for it.")
                 (set m-spec-state 0)))))
 
       (define-rec
-        (lowered! (subr running (i64 sexps (listof i64 acyclic)) (listof i64 acyclic))
-          (lambda (k forms tops)
-            "Each form lowered and numbered, as the front's worker lowered it: an
-             expression's value `%k`'s global."
+        (lowered! (subr running (i64 sexps (listof i64 acyclic) strings) (listof i64 acyclic))
+          (lambda (k forms tops facts)
+            "Each form lowered and numbered, as the front's worker lowered it,
+             with what the checker noted of it (`facts`, C311): an expression's
+             value `%k`'s global."
             (if (null? forms)
                 tops
                 (let* ((form (car forms))
                        (expression (not (definition-form? form)))
                        (name (string-append "%" (i64->string k)))
-                       (gs (onto (get repl-globals) (new-names (if expression (list name) (global-names (list form))) (get repl-globals)))))
+                       (gs (onto (get machine-globals) (new-names (if expression (list name) (global-names (list form))) (get machine-globals)))))
                   (begin
-                    (set repl-globals gs)
+                    (set machine-globals gs)
                     (globals-room! gs)
-                    (let ((ns (number-tops! (lower-tops (list form) gs))))
-                      (lowered! k (cdr forms) (onto tops (concat (map (lambda ((n i64)) (if (i64= n -1) nil (the (listof i64 acyclic) (list n)))) ns)))))))))))
+                    (let ((ns (number-tops! (lower-tops (list form) (onto gs facts)))))
+                      (lowered! k (cdr forms) (onto tops (concat (map (lambda ((n i64)) (if (i64= n -1) nil (the (listof i64 acyclic) (list n)))) ns))) facts))))))))
 
-      (define m-given! (subr running (i64 string string bool string string bool (listof i64 acyclic) i64) unit)
-        (lambda (k text label timed typed defined quiet needs now)
+      (define m-given! (subr running (i64 string string bool string string bool (listof i64 acyclic) strings i64) unit)
+        (lambda (k text label timed typed defined quiet needs facts now)
           "An entry the front checked: lowered and numbered, and made a task.
            What the engine cannot number refuses it (C110)."
           (begin
             (m-spec-dropped!)
             (set repl-count k)
             (let* ((forms (program-read (string-chars text) (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1))
-                   (tops (lowered! k forms nil)))
+                   (tops (lowered! k forms nil facts)))
               (if (get engine-failed)
                   (set m-entries (cons (m-made k typed defined quiet needs st-refused nil (failure-taken!) timed now) (get m-entries)))
                   (set m-entries (cons (m-made k typed defined quiet needs st-waiting tops "" timed now) (get m-entries))))))))
 
-      (define m-draft-run! (subr running (i64 string string) unit)
-        (lambda (serial text type)
+      (define m-draft-run! (subr running (i64 string string strings) unit)
+        (lambda (serial text type facts)
           "The draft's run begun, as the task in slot 0, its outcome a note sent
            back with `serial`."
           (begin
@@ -776,7 +778,7 @@ an entry naming one that has not ended waits for it.")
             (let ((forms (program-read (string-chars text) "<draft>" 1)))
               (if (null? forms)
                   #u
-                  (let ((ns (number-tops! (lower-tops (list (car forms)) (get repl-globals)))))
+                  (let ((ns (number-tops! (lower-tops (list (car forms)) (onto (get machine-globals) facts)))))
                     (cond ((get engine-failed) (m-noted! (string-append "running it fails: " (failure-taken!)) #t))
                           ((or (null? ns) (i64< (car ns) 0)) #u)
                           (else (begin (start-parked! 0 (car ns)) (set m-spec-steps 0) (set m-spec-state 1))))))))))
@@ -791,8 +793,8 @@ an entry naming one that has not ended waits for it.")
         (lambda (r now)
           "A request from the front."
           (tagcase r
-            (entry-asked (k text label timed typed defined quiet needs) (m-given! k text label timed typed defined quiet needs now))
-            (draft-asked (serial text type) (m-draft-run! serial text type))
+            (entry-asked (k text label timed typed defined quiet needs facts) (m-given! k text label timed typed defined quiet needs facts now))
+            (draft-asked (serial text type facts) (m-draft-run! serial text type facts))
             (draft-unasked () (m-spec-dropped!))
             (cancel-asked (k)
               (let ((found (m-numbered (get m-entries) k)))
@@ -884,7 +886,7 @@ an entry naming one that has not ended waits for it.")
            is then `%k`'s): the next begun, or the entry done."
           (let* ((ts (get (extract e tops)))
                  (rest (if (null? ts) nil (cdr ts)))
-                 (i (global-index (string-append "%" (i64->string (extract e num))) (get repl-globals) 0)))
+                 (i (global-index (string-append "%" (i64->string (extract e num))) (get machine-globals) 0)))
             (begin
               (if (and (i64>= i 0) (not (null? ts)) (i64>= (car ts) 0)) (flatarray-set-i64! (get globals) i w) #u)
               (set (extract e tops) rest)
@@ -1592,12 +1594,12 @@ an entry naming one that has not ended waits for it.")
                 (f-speculation-dropped! f)
                 (set (extract f entries) (cons (f-made k text "" "" #t nil st-checking "" timed now) (get (extract f entries))))
                 (tagcase (worked (check-entry (get (extract f cv)) (get (extract f globals)) k text label))
-                  (entry-done (v gs typed defined quiet needs)
+                  (entry-done (v gs typed defined quiet needs facts)
                     (begin
                       (set (extract f cv) v)
                       (set (extract f globals) gs)
                       (set (extract f entries) (cons (f-made k text typed defined quiet needs st-waiting "" timed now) (cdr (get (extract f entries)))))
-                      (f-asked! f (entry-asked k text label timed typed defined quiet needs))))
+                      (f-asked! f (entry-asked k text label timed typed defined quiet needs facts))))
                   (refused-done (m) (f-refused! f m now))
                   (else other #u)))))))
 
@@ -1812,9 +1814,9 @@ an entry naming one that has not ended waits for it.")
               (set (extract f spec-phase) 4)
               (if (string=? (get (extract f around)) "") #u (f-noted! f (string-append "next: " (get (extract f around))) #f))))))
 
-      (define* f-expression-speculated! (poly ((r region)) (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (read @globals) spin) ((fstate r) string strings (listof i64 acyclic)) unit))
+      (define* f-expression-speculated! (poly ((r region)) (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (read @globals) spin) ((fstate r) string strings (listof i64 acyclic) strings) unit))
         (plambda ((r region))
-          (lambda (f type effects named)
+          (lambda (f type effects named facts)
             (let ((waiting (f-unfinished-of (get (extract f entries)) named)))
               (begin
                 (set (extract f spec-type) type)
@@ -1827,7 +1829,7 @@ an entry naming one that has not ended waits for it.")
                       (else
                        (begin
                          (set (extract f spec-serial) (i64+ (get (extract f spec-serial)) 1))
-                         (f-asked! f (draft-asked (get (extract f spec-serial)) (get (extract f spec-text)) type))
+                         (f-asked! f (draft-asked (get (extract f spec-serial)) (get (extract f spec-text)) type facts))
                          (set (extract f spec-state) 1)
                          (f-noted! f (string-append "…" type) #f)))))))))
 
@@ -1902,7 +1904,7 @@ an entry naming one that has not ended waits for it.")
                           ;; definitions' types said.
                           (tagcase (worked (try (get (extract f cv)) (get (extract f globals)) closed finished))
                             (refused-done (m) (f-speculation-refused! f m now))
-                            (tried-expression (type effects named) (f-expression-speculated! f type effects named))
+                            (tried-expression (type effects named facts) (f-expression-speculated! f type effects named facts))
                             (tried-definitions (lines) (f-noted! f lines #f))
                             (else other #u)))))))))))
 

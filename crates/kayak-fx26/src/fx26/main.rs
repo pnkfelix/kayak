@@ -252,6 +252,7 @@ pub fn run_tops(mut ns: List<i64>, mut quiet: bool) -> () {
 
 pub fn load_x(gs: Strings) -> () {
     heap_start_x(1048576i64);
+    set(machine_globals(), gs);
     set(globals(), make_flatarray_i64(size(gs), w_unbound()));
     {
         let names = the::<Array<Str>>(make_array(i64_to_int(i64_plus(size(gs), 1i64)), str_lit("")));

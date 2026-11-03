@@ -399,8 +399,12 @@
 
 (define sessions (ref sesss @h) (new nil))
 (define pendings (ref pends @h) (new nil))
-"The next session global's index, the first past the program's once known."
-(define session-next (ref i64 @h) (new -1))
+"The machine's globals' names, an index each, as `lower.kfx` has them: a
+ program's, made at loading (`load!`); the REPL's, which grow as it
+ defines (C65); and the sessions' (C310), each named as Fixpt's lowering
+ names it, `fx26-session-K:NAME`, so that what defines a global after them
+ has an index of its own."
+(define machine-globals (ref strings @h) (new nil))
 "The labels of `session-redefinition`'s product, made at loading."
 (define redefinition-labels (ref i64 @h) (new -1))
 
@@ -440,17 +444,22 @@
     "The globals' names a session's code is lowered with: the program's
      unnamed, which it cannot see; the session's, each by its name where
      it is its name's newest; then the facts' entries (`with-entries`)."
-    (onto (map (lambda ((i i64)) (sglobal-name gl gl i)) (counting 0 (get session-next))) (with-entries fs))))
+    (onto (map (lambda ((i i64)) (sglobal-name gl gl i)) (counting 0 (size (get machine-globals)))) (with-entries fs))))
 
-(define session-global! (subr (maxeff hp (alloc @h)) (string i64) i64)
-  (lambda (n w)
-    "A new global, named `n`, of value `w`: past the program's, the globals'
-     array and their names' grown if need be."
-    (let* ((i (if (i64< (get session-next) 0) (flatarray-length-i64 (get globals)) (get session-next)))
+(define session-prefix (subr kfx (i64) string)
+  (lambda (k) (string-append "fx26-session-" (string-append (i64->string k) ":"))))
+
+(define session-global! (subr (maxeff hp (alloc @h)) (i64 string i64) i64)
+  (lambda (k n w)
+    "A new global of session `k`, its name `n` there, of value `w`: the
+     machine's next, `fx26-session-K:n`, the globals' array and their
+     names' grown if need be."
+    (let* ((i (size (get machine-globals)))
+           (full (string-append (session-prefix k) n))
            (old (get globals))
            (names (get global-name-table)))
       (begin
-        (set session-next (i64+ i 1))
+        (set machine-globals (onto (get machine-globals) (list full)))
         (if (i64< i (flatarray-length-i64 old))
             #u
             (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* (i64+ i 1) 2) w-unbound))))
@@ -459,7 +468,7 @@
             #u
             (let ((more (the (arrayof string @h) (make-array (i64->int (i64* (i64+ i 1) 2)) ""))))
               (begin (names-copied! names more 0 (int->i64 (array-length names))) (set global-name-table more))))
-        (array-set! (get global-name-table) (i64->int i) n)
+        (array-set! (get global-name-table) (i64->int i) full)
         (flatarray-set-i64! (get globals) i w)
         i))))
 
@@ -483,8 +492,8 @@
         (check-top v form))))
 
 (define-rec
-  (seeded (subr (maxeff hp (alloc @h)) (cv sglobals i64 strings) sess)
-    (lambda (v gl m ns)
+  (seeded (subr (maxeff hp (alloc @h)) (i64 cv sglobals i64 strings) sess)
+    (lambda (k v gl m ns)
       "`m`'s values each defined in the session, `(define x (with
        stage-module x))`, its global holding `m`'s."
       (if (null? ns)
@@ -494,8 +503,8 @@
                                   (lst (list (sym "with" stage-file 0) (sym "stage-module" stage-file 0) (sym n stage-file 0)) stage-file 1 (stage-at!)))
                             stage-file 1 (stage-at!)))
                  (v2 (session-top v form))
-                 (i (session-global! n (module-field m n))))
-            (seeded v2 (cons (sglobal n i) gl) m (cdr ns)))))))
+                 (i (session-global! k n (module-field m n))))
+            (seeded k v2 (cons (sglobal n i) gl) m (cdr ns)))))))
 
 (define session-state! (subr (maxeff hp (alloc @h)) (i64 ty) i64)
   (lambda (sw mt)
@@ -504,12 +513,12 @@
     (let ((k (fixnum-value (obj-ref sw 1))))
       (if (i64>= k 0)
           k
-          (let* ((m (obj-ref sw 0))
+          (let* ((k2 (size (get sessions)))
+                 (m (obj-ref sw 0))
                  (v (with-binds (stage-cv) (cons (bind "stage-module" (scheme nil mt) "global") (session-marks))))
-                 (gm (session-global! "stage-module" m))
+                 (gm (session-global! k2 "stage-module" m))
                  (vals (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) (mtype-items mt))))
-                 (made (seeded v (list (sglobal "stage-module" gm)) m vals))
-                 (k2 (size (get sessions))))
+                 (made (seeded k2 v (list (sglobal "stage-module" gm)) m vals)))
             (begin
               (set sessions (onto (get sessions) (list made)))
               (obj-set! sw 1 (fixnum k2))
@@ -721,7 +730,7 @@
                       (else
                        (let* ((v2 (session-top v form))
                               (needed (and existed (rerun-needed? v v2 (list name))))
-                              (i (if (and existed (not needed)) (sglobal-of gl name) (session-global! name w-unbound)))
+                              (i (if (and existed (not needed)) (sglobal-of gl name) (session-global! k name w-unbound)))
                               (gl2 (if (and existed (not needed)) gl (cons (sglobal name i) gl)))
                               (kept (filter (lambda ((x defn)) (not (string-member? name (defn-names x)))) ds))
                               (again (if (and needed (string=? how "rerun"))

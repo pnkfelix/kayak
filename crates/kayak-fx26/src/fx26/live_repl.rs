@@ -1524,21 +1524,21 @@ pub mod session {
                 } else {
                     checked
                 };
-                let gs = onto(get(repl_globals()), new_names(if expression {
+                let gs = onto(get(machine_globals()), new_names(if expression {
                     kayak_rt::heap_cons(name, kayak_rt::nil())
                 } else {
                     global_names(kayak_rt::heap_cons(form, kayak_rt::nil()))
-                }, get(repl_globals())));
+                }, get(machine_globals())));
                 let line = if expression {
                     shown_type
                 } else {
                     form_type(v, form)
                 };
                 set(repl_cv(), v);
-                set(repl_globals(), gs);
+                set(machine_globals(), gs);
                 let ns = if get(machine_side()) {
                     globals_room_x(gs);
-                    numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs))
+                    numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), onto(gs, entry_facts(v, datum_file(form)))))
                 } else {
                     nil::<i64>()
                 };
@@ -1605,7 +1605,7 @@ pub mod session {
         } else {
             cdr(ts)
         };
-        let i = global_index(string_append(str_lit("%"), i64_to_string(e.0)), get(repl_globals()), 0i64);
+        let i = global_index(string_append(str_lit("%"), i64_to_string(e.0)), get(machine_globals()), 0i64);
         if (i64_gt_eq(i, 0i64) && not(null_p(ts)) && i64_gt_eq(car(ts), 0i64)) {
             flatarray_set_i64_x(get(globals()), i, w)
         } else {
@@ -2495,10 +2495,12 @@ pub mod session {
         set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
         set(spec_state(), 2i64);
         let forms = program_read(string_chars(text), str_lit("<draft>"), 1i64);
-        if null_p(forms) {
+        if (null_p(forms) || any_p(lambda1s(move |n: Str| {
+            string_member_p(n, kayak_rt::heap_cons(str_lit("%stage"), kayak_rt::heap_cons(str_lit("%session-check"), kayak_rt::heap_cons(str_lit("reify-effect"), kayak_rt::heap_cons(str_lit("reify-type"), kayak_rt::heap_cons(str_lit("reify-region"), kayak_rt::nil()))))))
+        }), names_in(car(forms)))) {
             ()
         } else {
-            let ns = numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(repl_globals())));
+            let ns = numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(machine_globals())));
             if (null_p(ns) || i64_lt(car(ns), 0i64)) {
                 ()
             } else {

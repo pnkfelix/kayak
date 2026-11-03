@@ -77,8 +77,8 @@ pub mod tasks {
     }
 
     pub enum Asked {
-        EntryAsked(i64, Str, Str, bool, Str, Str, bool, List<i64>),
-        DraftAsked(i64, Str, Str),
+        EntryAsked(i64, Str, Str, bool, Str, Str, bool, List<i64>, Strings),
+        DraftAsked(i64, Str, Str, Strings),
         DraftUnasked(),
         CancelAsked(i64),
         LimitAsked(i64),
@@ -87,12 +87,12 @@ pub mod tasks {
         FrontFailed(Str),
     }
 
-    pub fn entry_asked(f0: i64, f1: Str, f2: Str, f3: bool, f4: Str, f5: Str, f6: bool, f7: List<i64>) -> &'static Asked {
-        kayak_rt::heap_alloc(Asked::EntryAsked(f0, f1, f2, f3, f4, f5, f6, f7))
+    pub fn entry_asked(f0: i64, f1: Str, f2: Str, f3: bool, f4: Str, f5: Str, f6: bool, f7: List<i64>, f8: Strings) -> &'static Asked {
+        kayak_rt::heap_alloc(Asked::EntryAsked(f0, f1, f2, f3, f4, f5, f6, f7, f8))
     }
 
-    pub fn draft_asked(f0: i64, f1: Str, f2: Str) -> &'static Asked {
-        kayak_rt::heap_alloc(Asked::DraftAsked(f0, f1, f2))
+    pub fn draft_asked(f0: i64, f1: Str, f2: Str, f3: Strings) -> &'static Asked {
+        kayak_rt::heap_alloc(Asked::DraftAsked(f0, f1, f2, f3))
     }
 
     pub fn draft_unasked() -> &'static Asked {
@@ -991,18 +991,18 @@ pub mod tasks {
     }
 
     pub enum Done {
-        EntryDone(&'static Cv, Strings, Str, Str, bool, List<i64>),
+        EntryDone(&'static Cv, Strings, Str, Str, bool, List<i64>, Strings),
         ShownDone(Str),
         TriedNone(),
-        TriedExpression(Str, Strings, List<i64>),
+        TriedExpression(Str, Strings, List<i64>, Strings),
         TriedDefinitions(Str),
         ItemsDone(i64, Str),
         Rechecked(&'static Cv),
         RefusedDone(Str),
     }
 
-    pub fn entry_done(f0: &'static Cv, f1: Strings, f2: Str, f3: Str, f4: bool, f5: List<i64>) -> &'static Done {
-        kayak_rt::heap_alloc(Done::EntryDone(f0, f1, f2, f3, f4, f5))
+    pub fn entry_done(f0: &'static Cv, f1: Strings, f2: Str, f3: Str, f4: bool, f5: List<i64>, f6: Strings) -> &'static Done {
+        kayak_rt::heap_alloc(Done::EntryDone(f0, f1, f2, f3, f4, f5, f6))
     }
 
     pub fn shown_done(f0: Str) -> &'static Done {
@@ -1013,8 +1013,8 @@ pub mod tasks {
         kayak_rt::heap_alloc(Done::TriedNone())
     }
 
-    pub fn tried_expression(f0: Str, f1: Strings, f2: List<i64>) -> &'static Done {
-        kayak_rt::heap_alloc(Done::TriedExpression(f0, f1, f2))
+    pub fn tried_expression(f0: Str, f1: Strings, f2: List<i64>, f3: Strings) -> &'static Done {
+        kayak_rt::heap_alloc(Done::TriedExpression(f0, f1, f2, f3))
     }
 
     pub fn tried_definitions(f0: Str) -> &'static Done {
@@ -1088,10 +1088,10 @@ pub mod tasks {
     /// here if anywhere: an expression's value `%k`'s, the global bound
     /// at its type; what is written after its value, the lines of the
     /// definitions, whether it only reads and allocates.
-    pub fn entry_checked(mut v: &'static Cv, mut gs: Strings, mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut needs: List<i64>) -> &'static Done {
+    pub fn entry_checked(mut v: &'static Cv, mut gs: Strings, mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut needs: List<i64>, mut file: Str) -> &'static Done {
         loop {
             if null_p(forms) {
-                return entry_done(v, gs, typed, defined, quiet, needs);
+                return entry_done(v, gs, typed, defined, quiet, needs, entry_facts(v, file));
             } else {
                 let form = car(forms);
                 let expression = not(definition_form_p(form));
@@ -1143,12 +1143,13 @@ pub mod tasks {
         let tagcase_ = j;
         match *tagcase_ {
             Job::CheckEntry(v, gs, k, text, label) => {
-                let forms = program_read(string_chars(text), if string_eq_p(label, str_lit("")) {
+                let file = if string_eq_p(label, str_lit("")) {
                     string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
                 } else {
                     label
-                }, 1i64);
-                entry_checked(v, gs, k, forms, str_lit(""), str_lit(""), true, concat(map(&named_results, forms)))
+                };
+                let forms = program_read(string_chars(text), file, 1i64);
+                entry_checked(v, gs, k, forms, str_lit(""), str_lit(""), true, concat(map(&named_results, forms)), file)
             }
             Job::TypeOf(v, text) => {
                 let forms = program_read(string_chars(text), str_lit("<,type>"), 1i64);
@@ -1166,7 +1167,7 @@ pub mod tasks {
                     tried_none()
                 } else if (null_p(cdr(forms)) && not(definition_form_p(car(forms)))) {
                     lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), gs);
-                    tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)))
+                    tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)), entry_facts(v2, str_lit("<draft>")))
                 } else {
                     tried_definitions(words_lines(definition_lines(v2, forms)))
                 }
@@ -1490,9 +1491,10 @@ pub mod tasks {
         }
     }
 
-    /// Each form lowered and numbered, as the front's worker lowered it: an
-    /// expression's value `%k`'s global.
-    pub fn lowered_x(mut k: i64, mut forms: Sexps, mut tops: List<i64>) -> List<i64> {
+    /// Each form lowered and numbered, as the front's worker lowered it,
+    /// with what the checker noted of it (`facts`, C311): an expression's
+    /// value `%k`'s global.
+    pub fn lowered_x(mut k: i64, mut forms: Sexps, mut tops: List<i64>, mut facts: Strings) -> List<i64> {
         loop {
             if null_p(forms) {
                 return tops;
@@ -1500,14 +1502,14 @@ pub mod tasks {
                 let form = car(forms);
                 let expression = not(definition_form_p(form));
                 let name = string_append(str_lit("%"), i64_to_string(k));
-                let gs = onto(get(repl_globals()), new_names(if expression {
+                let gs = onto(get(machine_globals()), new_names(if expression {
                     kayak_rt::heap_cons(name, kayak_rt::nil())
                 } else {
                     global_names(kayak_rt::heap_cons(form, kayak_rt::nil()))
-                }, get(repl_globals())));
-                set(repl_globals(), gs);
+                }, get(machine_globals())));
+                set(machine_globals(), gs);
                 globals_room_x(gs);
-                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs));
+                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), onto(gs, facts)));
                 (forms, tops) = (cdr(forms), onto(tops, concat(map(lambda1s(move |n: i64| {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
@@ -1522,7 +1524,7 @@ pub mod tasks {
 
     /// An entry the front checked: lowered and numbered, and made a task.
     /// What the engine cannot number refuses it (C110).
-    pub fn m_given_x(k: i64, text: Str, label: Str, timed: bool, typed: Str, defined: Str, quiet: bool, needs: List<i64>, now: i64) -> () {
+    pub fn m_given_x(k: i64, text: Str, label: Str, timed: bool, typed: Str, defined: Str, quiet: bool, needs: List<i64>, facts: Strings, now: i64) -> () {
         m_spec_dropped_x();
         set(repl_count(), k);
         let forms = program_read(string_chars(text), if string_eq_p(label, str_lit("")) {
@@ -1530,7 +1532,7 @@ pub mod tasks {
         } else {
             label
         }, 1i64);
-        let tops = lowered_x(k, forms, nil::<i64>());
+        let tops = lowered_x(k, forms, nil::<i64>(), facts);
         if get(engine_failed()) {
             set(m_entries(), kayak_rt::heap_cons(m_made(k, typed, defined, quiet, needs, st_refused(), nil::<i64>(), failure_taken_x(), timed, now), get(m_entries())))
         } else {
@@ -1540,7 +1542,7 @@ pub mod tasks {
 
     /// The draft's run begun, as the task in slot 0, its outcome a note sent
     /// back with `serial`.
-    pub fn m_draft_run_x(serial: i64, text: Str, r#type: Str) -> () {
+    pub fn m_draft_run_x(serial: i64, text: Str, r#type: Str, facts: Strings) -> () {
         m_spec_dropped_x();
         set(m_spec_serial(), serial);
         set(m_spec_type(), r#type);
@@ -1550,7 +1552,7 @@ pub mod tasks {
         if null_p(forms) {
             ()
         } else {
-            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(repl_globals())));
+            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), onto(get(machine_globals()), facts)));
             if get(engine_failed()) {
                 m_noted_x(string_append(str_lit("running it fails: "), failure_taken_x()), true)
             } else if (null_p(ns) || i64_lt(car(ns), 0i64)) {
@@ -1572,11 +1574,11 @@ pub mod tasks {
     pub fn m_asked_x(r: &'static Asked, now: i64) -> () {
         let tagcase_ = r;
         match *tagcase_ {
-            Asked::EntryAsked(k, text, label, timed, typed, defined, quiet, needs) => {
-                m_given_x(k, text, label, timed, typed, defined, quiet, needs, now)
+            Asked::EntryAsked(k, text, label, timed, typed, defined, quiet, needs, facts) => {
+                m_given_x(k, text, label, timed, typed, defined, quiet, needs, facts, now)
             }
-            Asked::DraftAsked(serial, text, r#type) => {
-                m_draft_run_x(serial, text, r#type)
+            Asked::DraftAsked(serial, text, r#type, facts) => {
+                m_draft_run_x(serial, text, r#type, facts)
             }
             Asked::DraftUnasked() => {
                 m_spec_dropped_x()
@@ -1706,7 +1708,7 @@ pub mod tasks {
         } else {
             cdr(ts)
         };
-        let i = global_index(string_append(str_lit("%"), i64_to_string(e.0)), get(repl_globals()), 0i64);
+        let i = global_index(string_append(str_lit("%"), i64_to_string(e.0)), get(machine_globals()), 0i64);
         if (i64_gt_eq(i, 0i64) && not(null_p(ts)) && i64_gt_eq(car(ts), 0i64)) {
             flatarray_set_i64_x(get(globals()), i, w)
         } else {
@@ -2767,11 +2769,11 @@ pub mod tasks {
         set(f.25, cons(f_made(k, text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), str_lit(""), timed, now), get(f.25)));
         let tagcase_ = worked(check_entry(get(f.44), get(f.45), k, text, label));
         match *tagcase_ {
-            Done::EntryDone(v, gs, typed, defined, quiet, needs) => {
+            Done::EntryDone(v, gs, typed, defined, quiet, needs, facts) => {
                 set(f.44, v);
                 set(f.45, gs);
                 set(f.25, cons(f_made(k, text, typed, defined, quiet, needs, st_waiting(), str_lit(""), timed, now), cdr(get(f.25))));
-                f_asked_x(f, entry_asked(k, text, label, timed, typed, defined, quiet, needs))
+                f_asked_x(f, entry_asked(k, text, label, timed, typed, defined, quiet, needs, facts))
             }
             Done::RefusedDone(m) => {
                 f_refused_x(f, m, now)
@@ -3108,7 +3110,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_expression_speculated_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, r#type: Str, effects: Strings, named: List<i64>) -> () {
+    pub fn f_expression_speculated_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, r#type: Str, effects: Strings, named: List<i64>, facts: Strings) -> () {
         let waiting = f_unfinished_of(get(f.25), named);
         set(f.6, r#type);
         if not(null_p(waiting)) {
@@ -3118,7 +3120,7 @@ pub mod tasks {
             f_noted_x(f, string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit(")"))))), false)
         } else {
             set(f.10, i64_plus(get(f.10), 1i64));
-            f_asked_x(f, draft_asked(get(f.10), get(f.11), r#type));
+            f_asked_x(f, draft_asked(get(f.10), get(f.11), r#type, facts));
             set(f.7, 1i64);
             f_noted_x(f, string_append(str_lit("…"), r#type), false)
         }
@@ -3214,8 +3216,8 @@ pub mod tasks {
                         Done::RefusedDone(m) => {
                             f_speculation_refused_x(f, m, now)
                         }
-                        Done::TriedExpression(r#type, effects, named) => {
-                            f_expression_speculated_x(f, r#type, effects, named)
+                        Done::TriedExpression(r#type, effects, named, facts) => {
+                            f_expression_speculated_x(f, r#type, effects, named, facts)
                         }
                         Done::TriedDefinitions(lines) => {
                             f_noted_x(f, lines, false)
