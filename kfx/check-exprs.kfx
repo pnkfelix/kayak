@@ -2077,7 +2077,15 @@
               (cond ((has-prefix? d "%named ") (regions-in v s (car args) seen))
                     ((string=? d "%mu") (regions-in v s (car (cdr args)) seen))
                     ((string=? d "%poly") (regions-in v s (last args) seen))
-                    ((or (string=? d "%mtype") (string=? d "%dlambda") (string=? d "%app") (has-prefix? d "%module ") (has-prefix? d "%fam "))
+                    ((string=? d "%mtype")
+                     "A module's type: its values' and descriptions' (Fixpt's
+                      `regions_walk`; C313), an abstract type nothing."
+                     (concat (map (lambda ((x ty))
+                                    (if (or (string=? (mitem-kind x) "%val") (string=? (mitem-kind x) "%desc"))
+                                        (tagcase x (ty-data (d2 xs) (regions-in v s (car xs) seen)) (else other nil))
+                                        nil))
+                                  args)))
+                    ((or (string=? d "%dlambda") (string=? d "%app") (has-prefix? d "%module ") (has-prefix? d "%fam "))
                      (the strings (list "%opaque")))
                     ((has-prefix? d "%") (concat (map (lambda ((x ty)) (regions-in v s x seen)) args)))
                     ((or (has-char-in? d #\.) (has-char-in? d #\space))

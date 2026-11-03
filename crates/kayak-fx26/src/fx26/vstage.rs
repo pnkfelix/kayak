@@ -811,7 +811,8 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
 // The session, a vector `#(m index)`, names its state by its index here,
 // made at its first use, when the module's type is known: a global holding
 // `m`, and one for each of `m`'s values, which the session's own may
-// shadow. A pending definition is `#(session index)`, its index among
+// shadow; defined again as a new global, `fx26-session-K:NAME:2`, ... (C313).
+// A pending definition is `#(session index)`, its index among
 // `pendings`. Reading a session's global is reading the session, which its
 // forms' types say (`(read r)`), not part of the code's `E`: the checker's
 // `%session` mark (`naming-effs`).
@@ -1126,12 +1127,25 @@ pub fn session_prefix(k: i64) -> Str {
     string_append(str_lit("fx26-session-"), string_append(i64_to_string(k), str_lit(":")))
 }
 
+/// A session's global named `base`, or, defined again as a new global,
+/// `base:2`, `base:3`, ..., as Fixpt's `Globals::define` names it.
+pub fn numbered_global(base: Str, gs: Strings) -> Str {
+    let n = size(filter(lambda1s(move |g: Str| {
+        (string_eq_p(g, base) || has_prefix_p(g, string_append(base, str_lit(":"))))
+    }), gs));
+    if i64_eq(n, 0i64) {
+        base
+    } else {
+        string_append(base, string_append(str_lit(":"), i64_to_string(i64_plus(n, 1i64))))
+    }
+}
+
 /// A new global of session `k`, its name `n` there, of value `w`: the
 /// machine's next, `fx26-session-K:n`, the globals' array and their
 /// names' grown if need be.
 pub fn session_global_x(k: i64, n: Str, w: i64) -> i64 {
     let i = size(get(machine_globals()));
-    let full = string_append(session_prefix(k), n);
+    let full = numbered_global(string_append(session_prefix(k), n), get(machine_globals()));
     let old = get(globals());
     let names = get(global_name_table());
     set(machine_globals(), onto(get(machine_globals()), kayak_rt::heap_cons(full, kayak_rt::nil())));

@@ -4600,7 +4600,26 @@ pub mod expressions {
                     } else if string_eq_p(d, str_lit("%poly")) {
                         t = last(args);
                         continue;
-                    } else if (string_eq_p(d, str_lit("%mtype")) || string_eq_p(d, str_lit("%dlambda")) || string_eq_p(d, str_lit("%app")) || has_prefix_p(d, str_lit("%module ")) || has_prefix_p(d, str_lit("%fam "))) {
+                    } else if string_eq_p(d, str_lit("%mtype")) {
+                        // A module's type: its values' and descriptions' (Fixpt's
+                        // `regions_walk`; C313), an abstract type nothing.
+                        return concat(map(lambda1s(move |x: &'static Ty| {
+                            if (string_eq_p(mitem_kind(x), str_lit("%val")) || string_eq_p(mitem_kind(x), str_lit("%desc"))) {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyData(d2, xs) => {
+                                        regions_in(v, s, car(xs), seen)
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<Str>()
+                                    }
+                                }
+                            } else {
+                                nil::<Str>()
+                            }
+                        }), args));
+                    } else if (string_eq_p(d, str_lit("%dlambda")) || string_eq_p(d, str_lit("%app")) || has_prefix_p(d, str_lit("%module ")) || has_prefix_p(d, str_lit("%fam "))) {
                         return the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()));
                     } else if has_prefix_p(d, str_lit("%")) {
                         return concat(map(lambda1s(move |x: &'static Ty| {

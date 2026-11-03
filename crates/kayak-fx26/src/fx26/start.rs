@@ -1309,6 +1309,42 @@ pub fn module_names_given(fs: Sexps) -> Strings {
     }), fs))
 }
 
+pub fn whole_named(mut r#as: Abbrevs, mut t: Str) -> Str {
+    loop {
+        if null_p(r#as) {
+            return t;
+        } else if {
+            let tagcase_ = car(r#as);
+            match *tagcase_ {
+                Abbrev::Abbrev(e, n) => {
+                    string_eq_p(e, t)
+                }
+            }
+        } {
+            let tagcase_ = car(r#as);
+            match *tagcase_ {
+                Abbrev::Abbrev(e, n) => {
+                    return n;
+                }
+            }
+        } else {
+            r#as = cdr(r#as);
+            continue;
+        }
+    }
+}
+
+/// A module's type, by the name of an abbreviation of it whole, as Fixpt
+/// prints `api : api-type` (C313); none of its parts, and not one with
+/// abstract types, which are the module's own, so not the abbreviation's.
+pub fn whole_abbreviated(v: &'static Cv, t: Str) -> Str {
+    if string_has_p(t, str_lit("(abs ")) {
+        t
+    } else {
+        whole_named(scope_abbrevs(v), t)
+    }
+}
+
 pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
     let (m, fs) = (sym_name(second(items(form))), if head_is_p(third(items(form)), str_lit("module")) {
         module_written(form)
@@ -1351,15 +1387,15 @@ pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
         if any_p(lambda1s(move |p: Str| {
             string_has_p(p, str_lit("%none"))
         }), parts) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : "), string_append(base_renamed(show_ty(new_state(), module_shown(v, m, module_type_of(v, m))), outer), string_append(str_lit(" ! "), if null_p(included) {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("define "), string_append(m, string_append(str_lit(" : "), string_append(whole_abbreviated(v, base_renamed(show_ty(new_state(), module_shown(v, m, module_type_of(v, m))), outer)), string_append(str_lit(" ! "), if null_p(included) {
                 str_lit("pure")
             } else {
                 string_append(str_lit("(read (globals "), string_append(words_of(included), str_lit("))")))
             }))))), kayak_rt::nil()))
         } else {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%M define "), string_append(m, string_append(str_lit(" : (moduleof"), string_append(run_together(map(lambda1s(move |p: Str| {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%M define "), string_append(m, string_append(str_lit(" : "), string_append(whole_abbreviated(v, string_append(str_lit("(moduleof"), string_append(run_together(map(lambda1s(move |p: Str| {
                 string_append(str_lit(" "), p)
-            }), parts)), string_append(str_lit(") ! "), if null_p(included) {
+            }), parts)), str_lit(")")))), string_append(str_lit(" ! "), if null_p(included) {
                 str_lit("pure")
             } else {
                 string_append(str_lit("(read (globals "), string_append(words_of(included), str_lit("))")))
@@ -1670,6 +1706,55 @@ pub fn lines_text(ls: Strings) -> Str {
     }
 }
 
+/// What each plain abbreviation shows (`%shows t`, C289), read before the
+/// definitions are checked, as Fixpt declares types ahead: so a type is
+/// printed by an abbreviation written after it (C313; `session.fx`'s
+/// `api : api-type`). Not one with parameters, nor one naming a module's
+/// type (`select`); each checked by a worker, as C202's reruns are, one
+/// that cannot be read ahead left to be read in its turn.
+pub fn shows_ahead(v: &'static Cv, forms: Sexps) -> Binds {
+    if null_p(forms) {
+        nil::<&'static Bind>()
+    } else {
+        let f = car(forms);
+        onto(if (head_is_p(f, str_lit("define-type")) && i64_eq(size(items(f)), 3i64) && {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, fl, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && not(string_member_p(str_lit("select"), names_in(third(items(f)))))) {
+            let got = (&tasks::recheck_of)(v, f);
+            if null_p(got) {
+                nil::<&'static Bind>()
+            } else {
+                filter(lambda1s(move |b: &'static Bind| {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            has_prefix_p(n, str_lit("%shows "))
+                        }
+                    }
+                }), {
+                    let tagcase_ = car(got);
+                    match *tagcase_ {
+                        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                            bs
+                        }
+                    }
+                })
+            }
+        } else {
+            nil::<&'static Bind>()
+        }, shows_ahead(v, cdr(forms)))
+    }
+}
+
 pub fn check_command(paths: Strings) -> Int {
     let forms = read_files(paths);
     let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
@@ -1691,7 +1776,8 @@ pub fn check_command(paths: Strings) -> Int {
             }
         }
     };
-    let v = with_binds(typed, kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), prim_binds(typed)));
+    let v0 = with_binds(typed, kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), prim_binds(typed)));
+    let v = with_binds(v0, shows_ahead(v0, forms));
     let names = base_renames(filter(lambda1s(move |f: &'static Sexp| {
         not(module_def_p(f))
     }), forms), nil::<&'static Brn>(), nil::<&'static Brn>());

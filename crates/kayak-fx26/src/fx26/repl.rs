@@ -138,6 +138,21 @@ pub fn repl_start_x() -> () {
     set(repl_cv(), with_binds(empty, prim_binds(empty)))
 }
 
+// The modules the REPL's entries defined, `%exports` each, as a program's
+// lowering has them (`module-entries`, C313): what a `with` of one opens.
+pub fn machine_modules() -> Ref<Strings> {
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Str>())
+    })
+}
+
+/// The modules' entries, `form`'s too, if it defines one.
+pub fn entry_modules_x(form: &'static Sexp) -> Strings {
+    set(machine_modules(), onto(get(machine_modules()), module_words(kayak_rt::heap_cons(form, kayak_rt::nil()), get(machine_modules()))));
+    get(machine_modules())
+}
+
 /// What the checker noted of the forms read from `file`, as the lowering
 /// reads it (`with-entries`): a `stage`'s type (C311), a `with`'s module
 /// (C213), a flat's layout (C215). The machine lowers with them.

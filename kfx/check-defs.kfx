@@ -1460,7 +1460,9 @@
                  (cond ((and (head-is? (third xs) "moduleof") (trait-moduleof? (third xs)) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
                      (begin (with expressions (spec-well-formed v (third xs)))
                             (with expressions (module-type-values (with expressions (module-scope v (third xs) "" "")) (third xs)))
-                            v))
+                            ;; What it abbreviates, for printing a module's type by its
+                            ;; name (C289, C313), as Fixpt prints `api : api-type`.
+                            (with-binds v (list (bind (string-append "%shows " (name-of v (second xs))) (scheme nil (parse-type v nil (third xs))) "mark")))))
                        ((and (head-is? (third xs) "select")
                              (let ((found (find-alias (string-append (name-of v (second (items (third xs)))) (string-append " " (name-of v (third (items (third xs)))))) (cv-aliases v))))
                                (and (not (null? found)) (tagcase (car found) (alias (n ps b) (not (null? ps)))))))

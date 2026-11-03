@@ -5,6 +5,7 @@ cli-stage/evidence-bound-reify.fx
 cli-stage/evidence-bound-taken.fx
 cli-stage/evidence.fx
 cli-stage/evidence-missing.fx
+cli-stage/evidence-region.fx
 cli-stage/evidence-session.fx
 cli-stage/not-a-module.fx
 cli-stage/sealed.fx

@@ -1538,7 +1538,7 @@ pub mod session {
                 set(machine_globals(), gs);
                 let ns = if get(machine_side()) {
                     globals_room_x(gs);
-                    numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), onto(gs, entry_facts(v, datum_file(form)))))
+                    numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), onto(gs, onto(entry_modules_x(form), entry_facts(v, datum_file(form))))))
                 } else {
                     nil::<i64>()
                 };
@@ -2500,7 +2500,7 @@ pub mod session {
         }), names_in(car(forms)))) {
             ()
         } else {
-            let ns = numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(machine_globals())));
+            let ns = numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), onto(get(machine_globals()), get(machine_modules()))));
             if (null_p(ns) || i64_lt(car(ns), 0i64)) {
                 ()
             } else {

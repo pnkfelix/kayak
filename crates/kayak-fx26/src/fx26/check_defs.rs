@@ -2426,7 +2426,7 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 }) {
                     expressions::spec_well_formed(v, third(xs));
                     expressions::module_type_values(expressions::module_scope(v, third(xs), str_lit(""), str_lit("")), third(xs));
-                    v
+                    with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%shows "), name_of(v, second(xs))), scheme(nil::<Str>(), parse_type(v, nil::<Str>(), third(xs))), str_lit("mark")), kayak_rt::nil()))
                 } else if (head_is_p(third(xs), str_lit("select")) && {
                     let found = find_alias(string_append(name_of(v, second(items(third(xs)))), string_append(str_lit(" "), name_of(v, third(items(third(xs)))))), cv_aliases(v));
                     (not(null_p(found)) && {

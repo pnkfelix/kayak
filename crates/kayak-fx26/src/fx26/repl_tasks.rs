@@ -1112,11 +1112,11 @@ pub mod tasks {
                 } else {
                     checked
                 };
-                let gs2 = onto(gs, new_names(if expression {
+                let gs2 = onto(onto(gs, new_names(if expression {
                     kayak_rt::heap_cons(name, kayak_rt::nil())
                 } else {
                     global_names(kayak_rt::heap_cons(form, kayak_rt::nil()))
-                }, gs));
+                }, gs)), module_words(kayak_rt::heap_cons(form, kayak_rt::nil()), gs));
                 let line = if expression {
                     shown_type
                 } else {
@@ -1509,7 +1509,7 @@ pub mod tasks {
                 }, get(machine_globals())));
                 set(machine_globals(), gs);
                 globals_room_x(gs);
-                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), onto(gs, facts)));
+                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), onto(gs, onto(entry_modules_x(form), facts))));
                 (forms, tops) = (cdr(forms), onto(tops, concat(map(lambda1s(move |n: i64| {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
@@ -1552,7 +1552,7 @@ pub mod tasks {
         if null_p(forms) {
             ()
         } else {
-            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), onto(get(machine_globals()), facts)));
+            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), onto(get(machine_globals()), onto(get(machine_modules()), facts))));
             if get(engine_failed()) {
                 m_noted_x(string_append(str_lit("running it fails: "), failure_taken_x()), true)
             } else if (null_p(ns) || i64_lt(car(ns), 0i64)) {

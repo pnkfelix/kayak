@@ -549,6 +549,20 @@
                            (else nil)))
                    fs)))))
 
+(define-rec
+  (whole-named (subr kfx (abbrevs string) string)
+    (lambda (as t)
+      (cond ((null? as) t)
+            ((tagcase (car as) (abbrev (e n) (string=? e t))) (tagcase (car as) (abbrev (e n) n)))
+            (else (whole-named (cdr as) t))))))
+
+(define whole-abbreviated (subr kfx (cv string) string)
+  (lambda (v t)
+    "A module's type, by the name of an abbreviation of it whole, as Fixpt
+     prints `api : api-type` (C313); none of its parts, and not one with
+     abstract types, which are the module's own, so not the abbreviation's."
+    (if (string-has? t "(abs ") t (whole-named (scope-abbrevs v) t))))
+
 (define module-line (subr kfx (cv sexps sexp) strings)
   (lambda (v all form)
     (let ((m (sym-name (second (items form))))
@@ -568,11 +582,12 @@
                  (included (sorted-strings (filter (lambda ((n string)) (not (has-prefix? n "made--"))) (included-modules fs)))))
             (if (any? (lambda ((p string)) (string-has? p "%none")) parts)
                 ;; The module's type as the checker has it, as a value's (C172).
-                (the strings (list (string-append "define " (string-append m (string-append " : " (string-append (base-renamed (show-ty (new-state) (module-shown v m (with expressions (module-type-of v m)))) outer)
+                (the strings (list (string-append "define " (string-append m (string-append " : " (string-append (whole-abbreviated v (base-renamed (show-ty (new-state) (module-shown v m (with expressions (module-type-of v m)))) outer))
                                      (string-append " ! " (if (null? included) "pure" (string-append "(read (globals " (string-append (words-of included) "))"))))))))))
-                (the strings (list (string-append "%M define " (string-append m (string-append " : (moduleof"
-                               (string-append (run-together (map (lambda ((p string)) (string-append " " p)) parts))
-                                 (string-append ") ! " (if (null? included) "pure" (string-append "(read (globals " (string-append (words-of included) "))"))))))))))))))))
+                ;; Its type by an abbreviation, if one shows it (C313).
+                (the strings (list (string-append "%M define " (string-append m (string-append " : "
+                               (string-append (whole-abbreviated v (string-append "(moduleof" (string-append (run-together (map (lambda ((p string)) (string-append " " p)) parts)) ")")))
+                                 (string-append " ! " (if (null? included) "pure" (string-append "(read (globals " (string-append (words-of included) "))"))))))))))))))))
 
 (define form-lines (subr kfx (cv sexps sexp) strings)
   (lambda (v all form)
@@ -727,6 +742,29 @@
   (lines-text (subr kfx (strings) string)
     (lambda (ls) (if (null? ls) "" (string-append (car ls) (string-append "\n" (lines-text (cdr ls))))))))
 
+(define-rec
+  (shows-ahead (subr (maxeff kfx working (read @globals) spin) (cv sexps) binds)
+    (lambda (v forms)
+      "What each plain abbreviation shows (`%shows t`, C289), read before the
+       definitions are checked, as Fixpt declares types ahead: so a type is
+       printed by an abbreviation written after it (C313; `session.fx`'s
+       `api : api-type`). Not one with parameters, nor one naming a module's
+       type (`select`); each checked by a worker, as C202's reruns are, one
+       that cannot be read ahead left to be read in its turn."
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (onto (if (and (head-is? f "define-type") (i64= (size (items f)) 3)
+                           (tagcase (second (items f)) (sym (n fl p) #t) (else other #f))
+                           (not (string-member? "select" (names-in (third (items f))))))
+                      (let ((got ((with tasks recheck-of) v f)))
+                        (if (null? got)
+                            nil
+                            (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (has-prefix? n "%shows "))))
+                                    (tagcase (car got) (cv (bs ds als es here group file line fs tv at ix mk) bs)))))
+                      nil)
+                  (shows-ahead v (cdr forms))))))))
+
 (define check-command (subr (maxeff running working) (strings) int)
   (lambda (paths)
     (let* ((forms (read-files paths))
@@ -735,7 +773,8 @@
            (types (type-names-free start forms))
            (named (tagcase start (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (datatype-names start forms nil) als es here group file line fs tv at ix mk))))
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at ix mk) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at ix mk))))
-           (v (with-binds typed (cons (bind "%reruns" (scheme nil (ty-unit)) "mark") (prim-binds typed)))))
+           (v0 (with-binds typed (cons (bind "%reruns" (scheme nil (ty-unit)) "mark") (prim-binds typed))))
+           (v (with-binds v0 (shows-ahead v0 forms))))
       (let ((names (base-renames (filter (lambda ((f sexp)) (not (module-def? f))) forms) nil nil)))
         (begin (say (lines-text (map (lambda ((l string)) (mu-numbered (if (has-prefix? l "%M ") (after-prefix l "%M ") (base-renamed l names)))) (lines-redefining v forms forms nil)))) 0)))))
 

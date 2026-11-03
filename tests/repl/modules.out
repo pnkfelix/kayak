@@ -1,0 +1,5 @@
+api : (moduleof (val base int) (val twice (subr pure (int) int))) ! pure
+10 : int ! (read (globals api))
+20 : int ! (read (globals api))
+x : int ! pure
+10 : int ! (read (globals api x))

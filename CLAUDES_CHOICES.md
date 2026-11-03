@@ -8719,3 +8719,31 @@ probably right").
   (its termination checker's reasons); the storage knot's "and it is a
   T"; types printed alike (`car`'s `(union nil (pairof ? ? r))`, kayak's
   `(listof ?1 ?0)`); the long tail, each a message of its own.
+
+## C313. Small things, found along the way (2026-11-03)
+
+The user's item 3:
+- **A session's global defined again as a new one** is named as Fixpt's
+  `Globals::define` names it: `fx26-session-K:a`, then `…:a:2`, `…:a:3`.
+- **`with` of a module value at the REPL** (`(with api base)`): the
+  machine lowers with the modules' `%exports` the entries defined
+  (`machine-modules`, `entry-modules!`), as a program's lowering has them
+  (`module-entries`); the front's trial lowering keeps them among its own
+  names. Both REPLs (`tests/repl/modules.in`). It failed in the engine
+  before ("nothing is named base").
+- **A module's type printed by its abbreviation** (`api : api-type`): a
+  `moduleof` abbreviation is kept for printing (`%shows`, C289), and a
+  module's line names its type by an abbreviation of it whole, not one of
+  its parts, and not one with abstract types (the module's own, so not
+  the abbreviation's). `kayak-fx26 --check` reads plain abbreviations
+  ahead (`shows-ahead`, each by a worker, one that cannot be read ahead
+  left), as Fixpt declares types ahead, so one written after a definition
+  names its type too.
+- **Masking past a module type** (`evidence-region.fx`): a module's type
+  holds the regions of its values and descriptions, as Fixpt's
+  `regions_walk` has it, no longer `%opaque`; so a `let` of a module at
+  `@a` given to a procedure over a module type masks `@a` as Fixpt does.
+The checkers: the same of 450 (443), refuses 23 (24), none Fixpt refuses
+accepted. Stage programs as Fixpt prints them: 17 of 21. Left:
+`generative.fx`, `in-a-process.fx` (the checker's), and `kept.fx`,
+`session.fx` (`+`'s wording, C312, and `car`'s type as printed).

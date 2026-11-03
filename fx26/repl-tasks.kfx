@@ -548,7 +548,9 @@ an entry naming one that has not ended waits for it.")
                        (name (string-append "%" (i64->string k)))
                        (checked (checked-form v form))
                        (v2 (if expression (result-bound checked form name) checked))
-                       (gs2 (onto gs (new-names (if expression (list name) (global-names (list form))) gs)))
+                       ;; The front's names are for this trial lowering alone: a module's
+                       ;; `%exports` kept among them, which a `with` of it reads (C313).
+                       (gs2 (onto (onto gs (new-names (if expression (list name) (global-names (list form))) gs)) (module-words (list form) gs)))
                        (line (if expression shown-type (form-type v2 form))))
                   (begin
                     (lower-tops (list form) gs2)
@@ -748,7 +750,7 @@ an entry naming one that has not ended waits for it.")
                   (begin
                     (set machine-globals gs)
                     (globals-room! gs)
-                    (let ((ns (number-tops! (lower-tops (list form) (onto gs facts)))))
+                    (let ((ns (number-tops! (lower-tops (list form) (onto gs (onto (entry-modules! form) facts))))))
                       (lowered! k (cdr forms) (onto tops (concat (map (lambda ((n i64)) (if (i64= n -1) nil (the (listof i64 acyclic) (list n)))) ns))) facts))))))))
 
       (define m-given! (subr running (i64 string string bool string string bool (listof i64 acyclic) strings i64) unit)
@@ -778,7 +780,7 @@ an entry naming one that has not ended waits for it.")
             (let ((forms (program-read (string-chars text) "<draft>" 1)))
               (if (null? forms)
                   #u
-                  (let ((ns (number-tops! (lower-tops (list (car forms)) (onto (get machine-globals) facts)))))
+                  (let ((ns (number-tops! (lower-tops (list (car forms)) (onto (get machine-globals) (onto (get machine-modules) facts))))))
                     (cond ((get engine-failed) (m-noted! (string-append "running it fails: " (failure-taken!)) #t))
                           ((or (null? ns) (i64< (car ns) 0)) #u)
                           (else (begin (start-parked! 0 (car ns)) (set m-spec-steps 0) (set m-spec-state 1))))))))))

@@ -100,13 +100,11 @@ section below where it has one; here the order, and what each is.
    - **Joins**, beyond `list`'s elements (C292): any call's arguments
      instantiating one type binder bounded only from below by a sum
      (Fixpt's `sum_lower_only`, 39318012).
-   - **`stage`** (the checker and the engine have it, C304, C305, by
-     rep): a refusal's words and places as Fixpt's; tier 1 and KFX;
-     evidence and bounds (C307, C308; `evidence-region.fx` waits on a
-     module allocating at `@a` passed to a call, which Fixpt masks);
-     **sessions**: the checker, the engine and the REPL have them (C309,
-     C310, C311); not yet tier 1 or KFX; a module's type printed by its
-     abbreviation (`api : api-type`) as Fixpt prints it.
+   - **`stage`**, evidence and **sessions** (the checker, the engine and
+     the REPL have them, C304-C313): not yet tier 1 (the next step, a
+     design first) or KFX (not needed there). Stage programs Fixpt's way:
+     `generative.fx` (a module's item kayak calls made too late) and
+     `in-a-process.fx` (`stage` in a process) are the checker's to fix.
    - **Refusals in Fixpt's words** (C312; 122 of 406 so far): Fixpt's
      termination reasons after a `spin` mismatch ("; it may not end:
      …"); the storage knot's "and it is a T" (no type printer before
@@ -132,10 +130,6 @@ section below where it has one; here the order, and what each is.
      MIT Scheme's first-class environments), resolution still at check
      time as Forth's search order is. Revisit later; a change to how
      FX-26 keeps sessions is Fixpt's first.
-   - **The REPL's `with` of a module value** (`(with api base)` after
-     `(define api (module …))`) fails in the engine, `nothing is named
-     base`: a program's lowering has the modules' exports (`module-entries`),
-     the REPL's not (found at C311).
    - **A race in Fixpt's `process/basic.fx`** (seen once, 2026-11-01,
      under `--regs --compiled --gc-stress` with the check's load): its
      `wait-for` returns on `exited` without a last `process-output`, so

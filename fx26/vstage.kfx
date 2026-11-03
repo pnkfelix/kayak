@@ -406,7 +406,8 @@
  The session, a vector `#(m index)`, names its state by its index here,
  made at its first use, when the module's type is known: a global holding
  `m`, and one for each of `m`'s values, which the session's own may
- shadow. A pending definition is `#(session index)`, its index among
+ shadow; defined again as a new global, `fx26-session-K:NAME:2`, ... (C313).
+ A pending definition is `#(session index)`, its index among
  `pendings`. Reading a session's global is reading the session, which its
  forms' types say (`(read r)`), not part of the code's `E`: the checker's
  `%session` mark (`naming-effs`)."
@@ -538,13 +539,20 @@
 (define session-prefix (subr kfx (i64) string)
   (lambda (k) (string-append "fx26-session-" (string-append (i64->string k) ":"))))
 
+(define numbered-global (subr kfx (string strings) string)
+  (lambda (base gs)
+    "A session's global named `base`, or, defined again as a new global,
+     `base:2`, `base:3`, ..., as Fixpt's `Globals::define` names it."
+    (let ((n (size (filter (lambda ((g string)) (or (string=? g base) (has-prefix? g (string-append base ":")))) gs))))
+      (if (i64= n 0) base (string-append base (string-append ":" (i64->string (i64+ n 1))))))))
+
 (define session-global! (subr (maxeff hp (alloc @h)) (i64 string i64) i64)
   (lambda (k n w)
     "A new global of session `k`, its name `n` there, of value `w`: the
      machine's next, `fx26-session-K:n`, the globals' array and their
      names' grown if need be."
     (let* ((i (size (get machine-globals)))
-           (full (string-append (session-prefix k) n))
+           (full (numbered-global (string-append (session-prefix k) n) (get machine-globals)))
            (old (get globals))
            (names (get global-name-table)))
       (begin

@@ -821,7 +821,7 @@ an entry naming one that has not ended waits for it.")
                     (set machine-globals gs)
                     ;; Lowered on the machine's side alone, which runs it.
                     (let ((ns (if (get machine-side)
-                                  (begin (globals-room! gs) (numbered-or-failed! (lower-tops (list form) (onto gs (entry-facts v (datum-file form))))))
+                                  (begin (globals-room! gs) (numbered-or-failed! (lower-tops (list form) (onto gs (onto (entry-modules! form) (entry-facts v (datum-file form)))))))
                                   nil)))
                       (entry-forms k (cdr forms)
                                    (if expression line typed)
@@ -1365,7 +1365,7 @@ an entry naming one that has not ended waits for it.")
               ;; checker noted, is not here (C311).
               (if (or (null? forms) (any? (lambda ((n string)) (string-member? n (list "%stage" "%session-check" "reify-effect" "reify-type" "reify-region"))) (names-in (car forms))))
                   #u
-                  (let ((ns (numbered-or-failed! (lower-tops (list (car forms)) (get machine-globals)))))
+                  (let ((ns (numbered-or-failed! (lower-tops (list (car forms)) (onto (get machine-globals) (get machine-modules))))))
                     (if (or (null? ns) (i64< (car ns) 0))
                         #u
                         (begin (start-parked! 0 (car ns)) (set spec-steps 0) (set spec-state 1)))))))))

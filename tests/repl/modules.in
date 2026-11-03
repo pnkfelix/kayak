@@ -1,0 +1,5 @@
+(define api (module (define base 10) (define twice (lambda ((n int)) (* 2 n)))))
+(with api base)
+(with api (twice base))
+(define x 5)
+(with api (twice x))
