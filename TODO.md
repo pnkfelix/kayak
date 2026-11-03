@@ -107,6 +107,20 @@ section below where it has one; here the order, and what each is.
      **sessions**: the checker, the engine and the REPL have them (C309,
      C310, C311); not yet tier 1 or KFX; a module's type printed by its
      abbreviation (`api : api-type`) as Fixpt prints it.
+   - **Sessions never give memory back** (the user's concern, 2026-11-03):
+     a session's globals are renamed into one flat table (C311, as
+     Fixpt's lowered path), so nothing of a session is reclaimed when
+     the session is dropped: `machine-globals`, the globals' array and
+     its names' only grow (each definition, and each redefinition that
+     is not an assignment, a slot more); `sessions` keeps every
+     session's checker state; `pendings` keeps every definition ever
+     checked, committed or not. Fixpt keeps them too (`sessions.rs`'s
+     thread-local list, never shrunk). The user's alternative: a tree of
+     environment frames, each session a leaf whose frame goes when it is
+     unreachable (lookup that ascends to the parent; Racket's namespaces,
+     MIT Scheme's first-class environments), resolution still at check
+     time as Forth's search order is. Revisit later; a change to how
+     FX-26 keeps sessions is Fixpt's first.
    - **The REPL's `with` of a module value** (`(with api base)` after
      `(define api (module …))`) fails in the engine, `nothing is named
      base`: a program's lowering has the modules' exports (`module-entries`),
