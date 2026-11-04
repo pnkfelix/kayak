@@ -37,7 +37,7 @@ pub fn is_flonum_p(v: i64) -> bool {
 }
 
 pub fn is_f32_p(v: i64) -> bool {
-    (i64_eq(tag_of(v), t_immediate()) && i64_eq(i64_and(i64_shr(v, int_lit(3)), 31i64), sub_f32()))
+    (i64_eq(word_tag(v), t_immediate()) && i64_eq(i64_and(i64_shr(v, int_lit(3)), 31i64), sub_f32()))
 }
 
 /// A word's 64 bits, as an unsigned integer.

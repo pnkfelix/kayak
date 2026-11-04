@@ -188,9 +188,9 @@ pub fn header_block(cs: Chars) -> &'static Block {
     let inside = after_char(rest, open_paren());
     let n = number_of(inside);
     let entry = the::<i64>(if contains_p(inside, string_chars(str_lit("cellular)"))) {
-        r_docol()
+        rt_docol()
     } else if contains_p(inside, string_chars(str_lit("the routine "))) {
-        index_in(routine_names(), list_to_string(before_char(drop_n(after_char(after_char(inside, comma()), ' '), 12i64), close_paren())), 0i64)
+        position_in(routine_names(), list_to_string(before_char(drop_n(after_char(after_char(inside, comma()), ' '), 12i64), close_paren())), 0i64)
     } else {
         match listing_error(string_append(str_lit("a word of no kind tier 1 runs: "), list_to_string(cs))) {};
         0i64
@@ -342,10 +342,10 @@ pub fn table_named(mut ts: List<&'static Ltext>, mut n: Str, mut had: Str) -> St
 }
 
 // The words, by name.
-pub fn words() -> Ref<List<&'static Named>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);
+pub fn words() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Named>())
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
@@ -370,9 +370,9 @@ pub fn undefined_closure() -> Ref<i64> {
 
 pub fn the_undefined() -> i64 {
     if i64_eq(get(undefined_closure()), 0i64) {
-        let w = make_code_word_x(str_lit("undefined"), 1i64, r_docol());
+        let w = make_code_word_x(str_lit("undefined"), 1i64, rt_docol());
         let c = make_bloblet_x(k_closure(), 1i64, 0i64, true, false);
-        slot_set_x(w, f_cell0(), fix(r_undefined()));
+        slot_set_x(w, f_cell0(), fix(rt_undefined()));
         slot_set_x(c, f_word(), w);
         set(undefined_closure(), c);
         c
@@ -384,7 +384,7 @@ pub fn the_undefined() -> i64 {
 /// Global `name`'s cell (Fixpt's: its value, its name, how many times it
 /// was written), made the first time it is named.
 pub fn global_named(name: Str) -> i64 {
-    let g = lookup(get(globals()), name);
+    let g = lookup(get(named_globals()), name);
     if not(i64_eq(g, 0i64)) {
         g
     } else {
@@ -392,7 +392,7 @@ pub fn global_named(name: Str) -> i64 {
         slot_set_x(g, f_value(), the_undefined());
         slot_set_x(g, 3i64, symbol_x(name));
         slot_set_x(g, f_writes(), fix(0i64));
-        set(globals(), kayak_rt::heap_cons(named_x(name, g), get(globals())));
+        set(named_globals(), kayak_rt::heap_cons(named_x(name, g), get(named_globals())));
         g
     }
 }
@@ -618,7 +618,7 @@ pub fn trailer_in_p(mut xs: List<i64>) -> bool {
     loop {
         if null_p(xs) {
             return false;
-        } else if i64_eq(tag_of(car(xs)), t_trailer()) {
+        } else if i64_eq(word_tag(car(xs)), t_trailer()) {
             return true;
         } else {
             xs = cdr(xs);
@@ -633,7 +633,7 @@ pub fn trailer_in_p(mut xs: List<i64>) -> bool {
 pub fn bloblet_literal_x(kind: Str, fields: List<i64>, bytes: List<i64>) -> i64 {
     let k = kind_numbered(kind, 0i64);
     let f = args_count(fields, 0i64);
-    let trailer = (not(null_p(fields)) && i64_eq(tag_of(car(fields)), t_trailer()));
+    let trailer = (not(null_p(fields)) && i64_eq(word_tag(car(fields)), t_trailer()));
     let b = make_bloblet_x(k, if trailer {
         i64_minus(f, 1i64)
     } else {
@@ -690,7 +690,7 @@ pub fn vector_literal_x(xs: List<i64>) -> i64 {
             if null_p(ys) {
                 return ();
             } else {
-                obj_set_x(v, i, car(ys));
+                elt_set_x(v, i, car(ys));
                 (ys, i) = (cdr(ys), i64_plus(i, 1i64));
                 continue;
             }
@@ -867,7 +867,7 @@ pub fn lit_datum(cs: Chars) -> &'static Lgot {
         } else if string_eq_p(name, str_lit("#f")) {
             lgot(v_false(), rest)
         } else if string_eq_p(name, str_lit("#u")) {
-            lgot(v_unit(), rest)
+            lgot(v_unit_word(), rest)
         } else if string_eq_p(name, str_lit("#eof")) {
             lgot(v_eof(), rest)
         } else if string_eq_p(name, str_lit("#unspecified")) {
@@ -924,10 +924,10 @@ pub fn lit_items(cs: Chars, acc: List<i64>) -> &'static Gall {
 // A closure the compiler made, a literal: the listing shows its word, not
 // its free values, so it is taken as a closure of none, one for each word,
 // and its word checked to read none (`free-read?`) once all are made.
-pub fn literals() -> Ref<List<&'static Named>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);
+pub fn literals() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Named>())
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
@@ -955,7 +955,7 @@ pub fn free_read_p(mut w: i64, mut k: i64) -> bool {
             if not(is_fixnum_p(cell)) {
                 k = i64_plus(k, 1i64);
                 continue;
-            } else if i64_eq(fix_val(cell), r_free()) {
+            } else if i64_eq(fix_val(cell), rt_free()) {
                 return true;
             } else {
                 k = i64_plus(k, i64_plus(1i64, operand_count(fix_val(cell))));
@@ -965,14 +965,14 @@ pub fn free_read_p(mut w: i64, mut k: i64) -> bool {
     }
 }
 
-pub fn literals_checked_x(mut ls: List<&'static Named>) -> () {
+pub fn literals_checked_x(mut ls: List<&'static NamedSlot>) -> () {
     loop {
         if null_p(ls) {
             return ();
         } else {
             let tagcase_ = car(ls);
             match *tagcase_ {
-                Named::Named(n, i) => {
+                NamedSlot::NamedSlot(n, i) => {
                     if free_read_p(slot_of(named_value(car(ls)), f_word()), f_cell0()) {
                         return match listing_error(string_append(str_lit("a closure as a literal, whose word reads a free value: "), n)) {};
                     } else {
@@ -1009,10 +1009,10 @@ pub fn literal(cs: Chars) -> i64 {
 // `register_lines` writes it, into a bloblet of kind register-code, as
 // Fixpt's `make_register_word` makes one: its entry -1 here (Fixpt's 0,
 // not compiled, is `docol` to tier 1), its twin the word.
-pub fn register_words() -> Ref<List<&'static Named>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);
+pub fn register_words() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Named>())
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
@@ -1037,13 +1037,13 @@ pub fn reg_put_x(rw: i64, at: i64, j: i64, v: i64) -> () {
 pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
     let name = list_to_string(before_char(text, ' '));
     let ops = spaces_dropped(drop_n(text, string_length_i64(name)));
-    let n = index_in(rop_names(), name, 0i64);
+    let n = position_in(rop_names(), name, 0i64);
     let second = spaces_dropped(after_char(ops, ' '));
     let num = lambda1s(move |cs: Chars| {
         fix(number_of(cs))
     });
     let routine = lambda1s(move |cs: Chars| {
-        let r = index_in(routine_names(), list_to_string(before_char(cs, ' ')), 0i64);
+        let r = position_in(routine_names(), list_to_string(before_char(cs, ' ')), 0i64);
         if i64_lt(r, 0i64) {
             match listing_error(string_append(str_lit("no routine is named "), list_to_string(cs))) {};
             the::<i64>(0i64)
@@ -1102,7 +1102,7 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
             let rest = drop_n(ops, 5i64);
             reg_put_x(rw, at, 1i64, word_named(before_char(rest, ' ')));
             reg_put_x(rw, at, 2i64, num(drop_n(after_char(rest, ' '), 5i64)));
-            reg_put_x(rw, at, 3i64, fix(r_closure()))
+            reg_put_x(rw, at, 3i64, fix(rt_closure()))
         } else if (i64_eq(n, ro_branch()) || i64_eq(n, ro_branchf()) || i64_eq(n, ro_brancht())) {
             reg_put_x(rw, at, 1i64, fix(i64_minus(number_of(drop_n(ops, 2i64)), i64_plus(at, 2i64))))
         } else if i64_eq(n, ro_global_guard()) {
@@ -1133,20 +1133,20 @@ pub fn instruction_x(w: i64, rw: i64, il: &'static Iline) -> () {
             } else {
                 let name = list_to_string(before_char(text, ' '));
                 let ops = spaces_dropped(drop_n(text, string_length_i64(name)));
-                let n = index_in(routine_names(), name, 0i64);
+                let n = position_in(routine_names(), name, 0i64);
                 if string_eq_p(name, str_lit("word")) {
                     cell_set_x(w, at, word_named(ops))
                 } else if i64_lt(n, 0i64) {
                     match listing_error(string_append(str_lit("no routine is named "), name)) {}
                 } else {
                     cell_set_x(w, at, fix(n));
-                    if i64_eq(n, r_lit()) {
+                    if i64_eq(n, rt_lit()) {
                         cell_set_x(w, i64_plus(at, 1i64), literal(ops))
-                    } else if (i64_eq(n, r_branch()) || i64_eq(n, r_zbranch())) {
+                    } else if (i64_eq(n, rt_branch()) || i64_eq(n, rt_zbranch())) {
                         cell_set_x(w, i64_plus(at, 1i64), fix(i64_minus(number_of(drop_n(ops, 2i64)), i64_plus(at, 2i64))))
-                    } else if (i64_eq(n, r_global()) || i64_eq(n, r_global_set())) {
+                    } else if (i64_eq(n, rt_global()) || i64_eq(n, rt_global_set())) {
                         cell_set_x(w, i64_plus(at, 1i64), global_named(list_to_string(ops)))
-                    } else if i64_eq(n, r_prim()) {
+                    } else if i64_eq(n, rt_prim()) {
                         let pname = list_to_string(before_char(ops, ' '));
                         let p = prim_number(pname);
                         if i64_lt(p, 0i64) {
@@ -1155,7 +1155,7 @@ pub fn instruction_x(w: i64, rw: i64, il: &'static Iline) -> () {
                             cell_set_x(w, i64_plus(at, 1i64), fix(p));
                             cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
                         }
-                    } else if i64_eq(n, r_closure()) {
+                    } else if i64_eq(n, rt_closure()) {
                         let rest = drop_n(ops, 5i64);
                         cell_set_x(w, i64_plus(at, 1i64), word_named(rest));
                         cell_set_x(w, i64_plus(at, 2i64), fix(number_of(drop_n(after_char(rest, ' '), 5i64))))
@@ -1298,7 +1298,7 @@ pub fn register_cells(mut is: List<&'static Iline>, mut n: i64) -> i64 {
                 Iline::Iline(at, text) => {
                     if i64_lt(at, -1i64) {
                         let k = i64_minus(-2i64, at);
-                        let op = index_in(rop_names(), list_to_string(before_char(text, ' ')), 0i64);
+                        let op = position_in(rop_names(), list_to_string(before_char(text, ' ')), 0i64);
                         let end = i64_plus(k, i64_plus(1i64, if i64_lt(op, 0i64) {
                             0i64
                         } else {
@@ -1333,7 +1333,7 @@ pub fn make_register_word_x(name: Str, twin: i64, n: i64) -> i64 {
 /// Each register word its word's twin (`--regs`), where tier 1 runs it:
 /// one entered with its arguments in registers, at most `REGS` of them
 /// (Fixpt runs the others, `vargs` and more, as stack code too).
-pub fn twins_linked_x(mut rs: List<&'static Named>) -> () {
+pub fn twins_linked_x(mut rs: List<&'static NamedSlot>) -> () {
     loop {
         if null_p(rs) {
             return ();

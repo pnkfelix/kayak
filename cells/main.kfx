@@ -172,10 +172,10 @@ and status 1.
             ((i64= n 0) (string-append (list->string (reverse acc)) "…"))
             (else (cut (cdr cs) (i64- n 1) (cons (car cs) acc)))))))
 (define-rec
-  (name-of (subr cm ((listof named @c) i64) string)
+  (name-of (subr cm ((listof named-slot @c) i64) string)
     (lambda (ws w)
       (cond ((null? ws) (string-append "(word at " (string-append (i64->string w) ")")))
-            ((i64= (named-value (car ws)) w) (tagcase (car ws) (named (n i) n)))
+            ((i64= (named-value (car ws)) w) (tagcase (car ws) (named-slot (n i) n)))
             (else (name-of (cdr ws) w))))))
 (define-rec
   (most-shown (subr cm ((flatarrayof i64 @c) i64 i64 (subr cm (i64) string) string) string)

@@ -9,7 +9,7 @@
 
 (define mem (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 4096 0)))
 "The next free index. Indices 0 to 7 are never an object's."
-(define top (ref i64 @c) (new 8))
+(define heap-top (ref i64 @c) (new 8))
 "How far the heap may be used: less than `heap-capacity`, to which each
  space is reserved once (committed as it is touched), so that nothing
  moves but by a collection, which moves every value (C139)."
@@ -22,41 +22,41 @@
 "A trap's message, or ``: the first one stops the machine."
 (define trap-message (ref string @c) (new ""))
 
-(define trap! (subr cm (string) unit)
+(define trap! (subr chw (string) unit)
   (lambda (m) (if (string=? (get trap-message) "") (set trap-message m) #u)))
-(define trapped? (subr cm () bool) (lambda () (not (string=? (get trap-message) ""))))
+(define trapped? (subr chw () bool) (lambda () (not (string=? (get trap-message) ""))))
 
 (define-rec
-  (copied-into! (subr cm ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
+  (copied-into! (subr chw ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
     (lambda (from to i n)
       (if (i64>= i n)
           #u
           (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i))
                  (copied-into! from to (i64+ i 1) n))))))
 
-(define room! (subr cm (i64) unit)
+(define room! (subr chw (i64) unit)
   (lambda (n)
     "Room for `n` more words: the heap's limit twice as far, if need be,
      within the space reserved, else a trap."
-    (if (i64<= (i64+ (get top) n) (get limit))
+    (if (i64<= (i64+ (get heap-top) n) (get limit))
         #u
         (let ((more (i64* 2 (i64+ (get limit) n))))
-          (if (i64> (i64+ (get top) n) heap-capacity)
+          (if (i64> (i64+ (get heap-top) n) heap-capacity)
               (trap! "out of heap")
               (set limit (if (i64> more heap-capacity) heap-capacity more)))))))
 
 (define-rec
-  (zeroed! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
+  (zeroed! (subr chw ((flatarrayof i64 @c) i64 i64) unit)
     (lambda (m i n) (if (i64>= i n) #u (begin (flatarray-set-i64! m i 0) (zeroed! m (i64+ i 1) n))))))
 
-(define alloc! (subr cm (i64) i64)
+(define heap-alloc! (subr chw (i64) i64)
   (lambda (n)
     "`n` words, each 0 (fixnum 0): the space is used again after a
      collection."
     (begin
       (room! n)
-      (let ((at (get top)))
-        (begin (set top (i64+ at n)) (zeroed! (get mem) at (i64+ at n)) at)))))
+      (let ((at (get heap-top)))
+        (begin (set heap-top (i64+ at n)) (zeroed! (get mem) at (i64+ at n)) at)))))
 
 "The code area (C226; Fixpt's, `docs/object-model.md`, \"A collected
  code area\"): code bloblets, which never move, in a reservation of its
@@ -67,7 +67,7 @@
  heap's reservation is the code area's. The collector leaves its objects
  where they are and forwards their fields in place; none is freed yet.
  Only where the view was made."
-(define code (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define code-space (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define code-on (ref bool @c) (new #f))
 (define code-vbase (ref i64 @c) (new 0))
 (define code-lo (ref i64 @c) (new 0))
@@ -87,18 +87,18 @@
 "Words reserved for code: committed only as they are touched."
 (define code-capacity i64 4194304)
 
-(define code-offset (subr cm () i64)
+(define code-offset (subr chw () i64)
   (lambda () "A code index's distance from the heap's." (i64-shr (i64- (get code-vbase) (get vbase)) 3)))
-(define in-code? (subr cm (i64) bool)
+(define in-code? (subr chw (i64) bool)
   (lambda (w) (and (get code-on) (i64>= w (get code-vbase)) (i64< w (i64+ (get code-vbase) (i64* 8 (get code-hi)))))))
-(define code-at (subr cm (i64) i64) (lambda (j) (flatarray-ref-i64 (get code) j)))
+(define code-at (subr chw (i64) i64) (lambda (j) (flatarray-ref-i64 (get code-space) j)))
 "A collection's marks of the code bloblets it reaches, by their headers'
  indices (C229), apart from the headers native code reads; those marked
  and not yet traced; the free blocks, each its index and its words."
 (define code-marks (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define code-gray (ref (listof i64 @c) @c) (new nil))
 (define-datatype cblock (cblock i64 i64))
-(define code-free (ref (listof cblock @c) @c) (new nil))
+(define code-frees (ref (listof cblock @c) @c) (new nil))
 (define stub-free (ref (listof cblock @c) @c) (new nil))
 "Words made once and called again and again alike (Fixpt's
  `Heap::shared_word`): roots of every collection's, forwarded (a code
@@ -109,7 +109,7 @@
 (define continuation-word (ref i64 @c) (new 0))
 (define vlambda-word (ref i64 @c) (new 0))
 (define adapter-words (ref (listof cblock @c) @c) (new nil))
-(define shared! (subr cm (i64) i64) (lambda (w) w))
+(define shared! (subr chw (i64) i64) (lambda (w) w))
 (define code-fit-at (ref i64 @c) (new -1))
 "The native adapter's code (C230, prims.kfx's `adapter-code!`), made once
  into the code area and kept there by every collection (`collect-begin!`);
@@ -118,14 +118,14 @@
  native code, by the convention's `foreign`, in a tail call, the count as
  its caller passed it."
 (define adapter-code (ref i64 @c) (new 0))
-(define code-set! (subr cm (i64 i64) unit) (lambda (j w) (flatarray-set-i64! (get code) j w)))
+(define code-set! (subr chw (i64 i64) unit) (lambda (j w) (flatarray-set-i64! (get code-space) j w)))
 
-(define word-at (subr cm (i64) i64)
+(define word-at (subr chw (i64) i64)
   (lambda (i)
     (if (and (get code-on) (or (i64< i 0) (i64>= i heap-capacity)))
         (code-at (i64- i (code-offset)))
         (flatarray-ref-i64 (get mem) i))))
-(define word-set! (subr cm (i64 i64) unit)
+(define word-set! (subr chw (i64 i64) unit)
   (lambda (i w)
     (if (and (get code-on) (or (i64< i 0) (i64>= i heap-capacity)))
         (code-set! (i64- i (code-offset)) w)
@@ -143,14 +143,14 @@
 
 
 "Values."
-(define tag-of (subr kfx (i64) i64) (lambda (w) (i64-and w 7)))
-(define is-fixnum? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-fixnum)))
-(define is-pair? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-pair)))
-(define is-bloblet? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-bloblet)))
+(define word-tag (subr kfx (i64) i64) (lambda (w) (i64-and w 7)))
+(define is-fixnum? (subr kfx (i64) bool) (lambda (w) (i64= (word-tag w) t-fixnum)))
+(define is-pair? (subr kfx (i64) bool) (lambda (w) (i64= (word-tag w) t-pair)))
+(define is-bloblet? (subr kfx (i64) bool) (lambda (w) (i64= (word-tag w) t-bloblet)))
 (define fix (subr kfx (i64) i64) (lambda (n) (i64-shl n 3)))
 (define fix-val (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
-(define address (subr cm (i64) i64) (lambda (w) "A value's index." (i64-shr (i64- w (get vbase)) 3)))
-(define heap-ref (subr cm (i64 i64) i64)
+(define address (subr chw (i64) i64) (lambda (w) "A value's index." (i64-shr (i64- w (get vbase)) 3)))
+(define heap-ref (subr chw (i64 i64) i64)
   (lambda (i tag) "The value of index `i`, with `tag`." (i64-or (i64+ (i64-shl i 3) (get vbase)) tag)))
 "A fixnum's range: 61 bits, signed."
 (define fix-max i64 1152921504606846975)
@@ -160,31 +160,31 @@
 (define char-value (subr kfx (i64) i64)
   (lambda (cp) (i64-or (i64-shl cp 8) (i64-or (i64-shl sub-char 3) t-immediate))))
 (define is-char? (subr kfx (i64) bool)
-  (lambda (w) (and (i64= (tag-of w) t-immediate) (i64= (i64-and (i64-shr w 3) 31) sub-char))))
+  (lambda (w) (and (i64= (word-tag w) t-immediate) (i64= (i64-and (i64-shr w 3) 31) sub-char))))
 
 "Suffix refs."
-(define is-sref? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-suffix-ref)))
+(define is-sref? (subr kfx (i64) bool) (lambda (w) (i64= (word-tag w) t-suffix-ref)))
 (define make-sref (subr kfx (i64 i64) i64)
   (lambda (owner offset)
     "A suffix ref to byte `offset` of the suffix at word `owner`."
     (i64-or (i64-shl offset (i64->int sref-offset-shift)) (i64-or (i64-shl owner 3) t-suffix-ref))))
-(define sref-owner (subr cm (i64) i64)
+(define sref-owner (subr chw (i64) i64)
   (lambda (r) "Its owner, a bloblet." (heap-ref (i64-and (i64-shr r 3) sref-owner-mask) t-bloblet)))
 (define sref-offset (subr kfx (i64) i64)
   (lambda (r) (i64-and (i64-shr r (i64->int sref-offset-shift)) (i64- sref-offset-limit 1))))
 
 "Pairs."
-(define cons! (subr cm (i64 i64) i64)
+(define cons! (subr chw (i64 i64) i64)
   (lambda (a d)
-    (let ((at (alloc! 2)))
+    (let ((at (heap-alloc! 2)))
       (begin (word-set! at a) (word-set! (i64+ at 1) d) (heap-ref at t-pair)))))
-(define pair-car (subr cm (i64) i64) (lambda (p) (word-at (address p))))
-(define pair-cdr (subr cm (i64) i64) (lambda (p) (word-at (i64+ (address p) 1))))
+(define pair-car (subr chw (i64) i64) (lambda (p) (word-at (address p))))
+(define pair-cdr (subr chw (i64) i64) (lambda (p) (word-at (i64+ (address p) 1))))
 
 "A list in the heap, of KFX's list of its items."
 (define-rec
-  (list-of (subr cm ((listof i64 @c)) i64)
-    (lambda (xs) (if (null? xs) v-null (cons! (car xs) (list-of (cdr xs)))))))
+  (heap-list-of (subr cha ((listof i64 @c)) i64)
+    (lambda (xs) (if (null? xs) v-null (cons! (car xs) (heap-list-of (cdr xs)))))))
 
 "Bloblets."
 (define header-word (subr kfx (i64 i64 i64 bool bool) i64)
@@ -196,12 +196,12 @@
             (i64-or (i64-shl fields (with lay header-fields-lo))
                     (i64-shl bytes (with lay header-bytes-lo)))))))))
 
-(define make-bloblet! (subr cm (i64 i64 i64 bool bool) i64)
+(define make-bloblet! (subr chw (i64 i64 i64 bool bool) i64)
   (lambda (kind n bytes trailer frozen)
     "A bloblet of `kind`, `n` fields (and a trailer, if `trailer`), each
      fixnum 0, and `bytes` bytes of suffix, 0: a pointer to its suffix."
     (let* ((f (if trailer (i64+ n 1) n))
-           (h (alloc! (i64+ (i64+ 1 f) (i64-quotient (i64+ bytes 7) 8))))
+           (h (heap-alloc! (i64+ (i64+ 1 f) (i64-quotient (i64+ bytes 7) 8))))
            (p (i64+ h (i64+ 1 f))))
       (begin
         (word-set! h (header-word kind f bytes frozen #f))
@@ -216,21 +216,21 @@
  the word below for the header whenever there was no trailer, right only
  with no fields."
 (define-rec
-  (header-scanned (subr cm (i64) i64)
-    (lambda (j) (if (i64= (tag-of (word-at j)) t-header) j (header-scanned (i64- j 1))))))
-(define header-below (subr cm (i64 i64) i64)
+  (header-scanned (subr chw (i64) i64)
+    (lambda (j) (if (i64= (word-tag (word-at j)) t-header) j (header-scanned (i64- j 1))))))
+(define header-below (subr chw (i64 i64) i64)
   (lambda (p before)
-    (cond ((i64= (tag-of before) t-trailer) (i64- (i64- p 1) (i64-shr before 3)))
-          ((i64= (tag-of before) t-header) (i64- p 1))
+    (cond ((i64= (word-tag before) t-trailer) (i64- (i64- p 1) (i64-shr before 3)))
+          ((i64= (word-tag before) t-header) (i64- p 1))
           (else (header-scanned (i64- p 2))))))
 
-(define header-index (subr cm (i64) i64)
+(define header-index (subr chw (i64) i64)
   (lambda (v) (let ((p (address v))) (header-below p (word-at (i64- p 1))))))
 
-(define header-of (subr cm (i64) i64)
+(define header-of (subr chw (i64) i64)
   (lambda (v) "A bloblet's header word." (word-at (header-index v))))
 
-(define frozen-whole! (subr cm (i64) unit)
+(define frozen-whole! (subr chw (i64) unit)
   (lambda (v)
     "A bloblet's fields and suffix frozen (Fixpt's `freeze_bloblet`)."
     (let ((h (header-index v)))
@@ -239,20 +239,20 @@
 
 (define bits (subr kfx (i64 int int) i64)
   (lambda (w lo width) (i64-and (i64-shr w lo) (i64- (i64-shl 1 width) 1))))
-(define kind-of (subr cm (i64) i64)
+(define kind-of (subr chw (i64) i64)
   (lambda (v) (bits (header-of v) (with lay header-kind-lo) (with lay header-kind-width))))
-(define fields-of (subr cm (i64) i64)
+(define fields-of (subr chw (i64) i64)
   (lambda (v) (bits (header-of v) (with lay header-fields-lo) (with lay header-fields-width))))
-(define bytes-of (subr cm (i64) i64)
+(define suffix-bytes (subr chw (i64) i64)
   (lambda (v) (bits (header-of v) (with lay header-bytes-lo) (with lay header-bytes-width))))
-(define fields-frozen? (subr cm (i64) bool)
+(define fields-frozen? (subr chw (i64) bool)
   (lambda (v) (i64= 1 (bits (header-of v) (with lay header-fields-frozen-lo) 1))))
-(define is-kind? (subr cm (i64 i64) bool)
+(define is-kind? (subr chw (i64 i64) bool)
   (lambda (v k) (and (is-bloblet? v) (i64= (kind-of v) k))))
 
-(define suffix-frozen? (subr cm (i64) bool)
+(define suffix-frozen? (subr chw (i64) bool)
   (lambda (v) (i64= 1 (bits (header-of v) (with lay header-suffix-frozen-lo) 1))))
-(define frozen-as! (subr cm (i64 bool bool) unit)
+(define frozen-as! (subr chw (i64 bool bool) unit)
   (lambda (v f sf)
     "A bloblet's fields frozen if `f`, its suffix if `sf` (Fixpt's
      `freeze_bloblet`: it only sets)."
@@ -263,27 +263,27 @@
 
 "Field `k` of a bloblet, read and written as code that knows its shape
  does (Fixpt's `bloblet_slot`): not checked."
-(define slot-of (subr cm (i64 i64) i64) (lambda (v k) (word-at (i64- (address v) k))))
-(define slot-set! (subr cm (i64 i64 i64) unit) (lambda (v k x) (word-set! (i64- (address v) k) x)))
+(define slot-of (subr chw (i64 i64) i64) (lambda (v k) (word-at (i64- (address v) k))))
+(define slot-set! (subr chw (i64 i64 i64) unit) (lambda (v k x) (word-set! (i64- (address v) k) x)))
 
 "An object `alloc` lays out (Fixpt's `obj_ref`, `obj_set`): its payload
  in order from the header up, the trailer last, so that element `i` is
  field `F - i`, `F` its fields with the trailer."
-(define obj-ref (subr cm (i64 i64) i64) (lambda (v i) (slot-of v (i64- (fields-of v) i))))
-(define obj-set! (subr cm (i64 i64 i64) unit) (lambda (v i x) (slot-set! v (i64- (fields-of v) i) x)))
-(define obj-length (subr cm (i64) i64) (lambda (v) (i64- (fields-of v) 1)))
+(define elt-ref (subr chw (i64 i64) i64) (lambda (v i) (slot-of v (i64- (fields-of v) i))))
+(define elt-set! (subr chw (i64 i64 i64) unit) (lambda (v i x) (slot-set! v (i64- (fields-of v) i) x)))
+(define obj-length (subr chw (i64) i64) (lambda (v) (i64- (fields-of v) 1)))
 
 "Whether field `k` may be read (Fixpt's `field_slot`): one of the
  bloblet's, not its trailer."
-(define field-ok? (subr cm (i64 i64) bool)
+(define field-ok? (subr chw (i64 i64) bool)
   (lambda (v k)
     (and (i64> k 0) (i64<= k (fields-of v))
-         (not (i64= (tag-of (slot-of v k)) t-trailer)))))
+         (not (i64= (word-tag (slot-of v k)) t-trailer)))))
 
 "Strings: a bloblet of no fields, its suffix a word of the length, then
  the code points two to a word, the first in the low half."
 (define-rec
-  (points-filled! (subr cm (string i64 i64 i64) unit)
+  (points-filled! (subr chw (string i64 i64 i64) unit)
     (lambda (s p i n)
       "The code points of `s` from `i` on, into the string at `p`: a
        procedure of its own, as a `letrec`'s closure would be made at each
@@ -296,7 +296,7 @@
               (word-set! at (i64-or (word-at at) (if (i64= (i64-remainder i 2) 0) cp (i64-shl cp 32))))
               (points-filled! s p (i64+ i 1) n)))))))
 
-(define make-string! (subr cm (string) i64)
+(define make-string! (subr chw (string) i64)
   (lambda (s)
     (let* ((n (string-length-i64 s))
            (v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f))
@@ -304,7 +304,7 @@
       (begin (word-set! p n) (points-filled! s p 0 n) v))))
 
 (define-rec
-  (text-chars (subr cm (i64 i64 chars) chars)
+  (text-chars (subr chw (i64 i64 chars) chars)
     (lambda (v i acc)
       "String `v`'s characters before the `i`th, onto `acc`."
       (if (i64<= i 0)
@@ -314,7 +314,7 @@
                  (cp (if (i64= (i64-remainder j 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295))))
             (text-chars v j (cons (i64->char cp) acc)))))))
 
-(define string-text (subr cm (i64) string)
+(define string-text (subr chw (i64) string)
   (lambda (v)
     "A string's text, as KFX's: made once, of its characters (C151), not a
      string made again for each."
@@ -323,9 +323,9 @@
 "Symbols, interned: an object of its name, its hash and its global slot,
  in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps
  no global slots: each is 0."
-(define-datatype named (named string i64))
-(define symbols (ref (listof named @c) @c) (new nil))
-(define globals (ref (listof named @c) @c) (new nil))
+(define-datatype named-slot (named-slot string i64))
+(define symbols (ref (listof named-slot @c) @c) (new nil))
+(define named-globals (ref (listof named-slot @c) @c) (new nil))
 
 "A name's value is not in its `named`, which holds where it is: in
  `named-values`, which a collection forwards in place. So a collection
@@ -333,7 +333,7 @@
  that runs long would otherwise grow by every name at each one."
 (define named-values (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
 (define named-count (ref i64 @c) (new 0))
-(define named! (subr cm (string i64) named)
+(define named! (subr cha (string i64) named-slot)
   (lambda (n v)
     (let ((i (get named-count)) (m (get named-values)))
       (begin
@@ -343,34 +343,34 @@
               (begin (copied-into! m bigger 0 i) (set named-values bigger))))
         (flatarray-set-i64! (get named-values) i v)
         (set named-count (i64+ i 1))
-        (named n i)))))
-(define named-value (subr cm (named) i64)
-  (lambda (x) (tagcase x (named (m i) (flatarray-ref-i64 (get named-values) i)))))
+        (named-slot n i)))))
+(define named-value (subr chw (named-slot) i64)
+  (lambda (x) (tagcase x (named-slot (m i) (flatarray-ref-i64 (get named-values) i)))))
 
 (define-rec
-  (lookup (subr cm ((listof named @c) string) i64)
+  (lookup (subr chw ((listof named-slot @c) string) i64)
     (lambda (xs n)
       (cond ((null? xs) 0)
-            ((tagcase (car xs) (named (m i) (string=? m n))) (named-value (car xs)))
+            ((tagcase (car xs) (named-slot (m i) (string=? m n))) (named-value (car xs)))
             (else (lookup (cdr xs) n))))))
 
-(define symbol! (subr cm (string) i64)
+(define symbol! (subr cha (string) i64)
   (lambda (name)
     (let ((had (lookup (get symbols) name)))
       (if (not (i64= had 0))
           had
           (let ((s (make-bloblet! k-symbol 3 0 #t #f)))
             (begin
-              (obj-set! s 0 (make-string! name))
-              (obj-set! s 1 (fix (int->i64 (symbol-name-hash (string->symbol name)))))
-              (obj-set! s 2 (fix 0))
+              (elt-set! s 0 (make-string! name))
+              (elt-set! s 1 (fix (int->i64 (symbol-name-hash (string->symbol name)))))
+              (elt-set! s 2 (fix 0))
               (set symbols (cons (named! name s) (get symbols)))
               s))))))
 
-(define symbol-text (subr cm (i64) string) (lambda (s) (string-text (obj-ref s 0))))
+(define symbol-text (subr chw (i64) string) (lambda (s) (string-text (elt-ref s 0))))
 
 "Words."
-(define make-word! (subr cm (string i64 i64) i64)
+(define make-word! (subr cha (string i64 i64) i64)
   (lambda (name n entry)
     "A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
      publishes a word, each cell written by the reader below."
@@ -408,41 +408,41 @@
 (define interned (ref i64 @c) (new v-false))
 
 
-(define to-at (subr cm (i64) i64) (lambda (i) (flatarray-ref-i64 (get other) i)))
-(define to-ref (subr cm (i64 i64) i64)
+(define to-at (subr chw (i64) i64) (lambda (i) (flatarray-ref-i64 (get other) i)))
+(define to-ref (subr chw (i64 i64) i64)
   (lambda (i tag) "The value of index `i` of the other space, with `tag`." (i64-or (i64+ (i64-shl i 3) (get to-vbase)) tag)))
-(define to-address (subr cm (i64) i64) (lambda (w) (i64-shr (i64- w (get to-vbase)) 3)))
-(define to-set! (subr cm (i64 i64) unit) (lambda (i w) (flatarray-set-i64! (get other) i w)))
-(define to-alloc! (subr cm (i64) i64)
+(define to-address (subr chw (i64) i64) (lambda (w) (i64-shr (i64- w (get to-vbase)) 3)))
+(define to-set! (subr chw (i64 i64) unit) (lambda (i w) (flatarray-set-i64! (get other) i w)))
+(define to-alloc! (subr chw (i64) i64)
   (lambda (n) (let ((at (get to-top))) (begin (set to-top (i64+ at n)) (set words-copied (i64+ (get words-copied) n)) at))))
 
-(define words-of (subr cm (i64) i64)
+(define header-words (subr chw (i64) i64)
   (lambda (head)
     "An object's words, from its header: itself, its fields, its suffix."
     (i64+ (i64+ 1 (bits head (with lay header-fields-lo) (with lay header-fields-width)))
           (i64-quotient (i64+ (bits head (with lay header-bytes-lo) (with lay header-bytes-width)) 7) 8))))
 
 (define-rec
-  (copied-words! (subr cm (i64 i64 i64) unit)
+  (copied-words! (subr chw (i64 i64 i64) unit)
     (lambda (from at n)
       (if (i64<= n 0) #u (begin (to-set! at (word-at from)) (copied-words! (i64+ from 1) (i64+ at 1) (i64- n 1)))))))
 
 (define-rec
-  (code-header-scanned (subr cm (i64) i64)
-    (lambda (j) (if (i64= (tag-of (code-at j)) t-header) j (code-header-scanned (i64- j 1))))))
+  (code-header-scanned (subr chw (i64) i64)
+    (lambda (j) (if (i64= (word-tag (code-at j)) t-header) j (code-header-scanned (i64- j 1))))))
 
-(define code-marked! (subr cm (i64) unit)
+(define code-marked! (subr cha (i64) unit)
   (lambda (w)
     "Code bloblet `w` marked, to be traced, if it was not."
     (let* ((p (i64-shr (i64- w (get code-vbase)) 3)) (t (code-at (i64- p 1)))
-           (h (cond ((i64= (tag-of t) t-trailer) (i64- (i64- p 1) (i64-shr t 3)))
-                    ((i64= (tag-of t) t-header) (i64- p 1))
+           (h (cond ((i64= (word-tag t) t-trailer) (i64- (i64- p 1) (i64-shr t 3)))
+                    ((i64= (word-tag t) t-header) (i64- p 1))
                     (else (code-header-scanned (i64- p 2))))))
       (if (i64= (flatarray-ref-i64 (get code-marks) h) 0)
           (begin (flatarray-set-i64! (get code-marks) h 1) (set code-gray (cons h (get code-gray))))
           #u))))
 
-(define forward-object! (subr cm (i64) i64)
+(define forward-object! (subr cha (i64) i64)
   (lambda (w)
     "The word for `w`, a pair or bloblet, after the collection: its
      object's copy, copied first if need be; itself, if it is no pointer,
@@ -451,7 +451,7 @@
       ((in-code? w) (begin (code-marked! w) w))
       ((is-pair? w)
        (let* ((o (address w)) (first (word-at o)))
-         (if (i64= (tag-of first) t-forward)
+         (if (i64= (word-tag first) t-forward)
              (to-ref (i64-shr first 3) t-pair)
              (let ((at (to-alloc! 2)))
                (begin
@@ -461,25 +461,25 @@
                  (to-ref at t-pair))))))
       ((is-bloblet? w)
        (let* ((p (address w)) (before (word-at (i64- p 1))))
-         (if (i64= (tag-of before) t-forward)
+         (if (i64= (word-tag before) t-forward)
              (to-ref (i64+ (i64-shr before 3) 1) t-bloblet)
              (let* ((h (header-below p before))
                     (head (word-at h)))
-               (if (i64= (tag-of head) t-forward)
+               (if (i64= (word-tag head) t-forward)
                    (to-ref (i64+ (i64-shr head 3) (i64- p h)) t-bloblet)
-                   (let* ((n (words-of head))
+                   (let* ((n (header-words head))
                           (f (bits head (with lay header-fields-lo) (with lay header-fields-width)))
                           (at (to-alloc! n)))
                      (begin
                        (copied-words! h at n)
                        (word-set! h (i64-or (i64-shl at 3) t-forward))
-                       (if (and (i64> f 0) (not (i64= (tag-of before) t-trailer)))
+                       (if (and (i64> f 0) (not (i64= (word-tag before) t-trailer)))
                            (word-set! (i64- p 1) (i64-or (i64-shl (i64+ at f) 3) t-forward))
                            #u)
                        (to-ref (i64+ at (i64- p h)) t-bloblet))))))))
       (else w))))
 
-(define forward! (subr cm (i64) i64)
+(define forward! (subr cha (i64) i64)
   (lambda (w)
     "As `forward-object!`; a suffix ref, at its owner's copy: Coopt's
      heap has none, Fixpt's collector keeps the owner (`object_of`)."
@@ -488,27 +488,27 @@
         (forward-object! w))))
 
 (define-rec
-  (fields-forwarded! (subr cm (i64 i64) unit)
+  (fields-forwarded! (subr cha (i64 i64) unit)
     (lambda (i end)
       (if (i64> i end) #u (begin (to-set! i (forward! (to-at i))) (fields-forwarded! (i64+ i 1) end)))))
-  (scanned! (subr cm (i64) unit)
+  (scanned! (subr cha (i64) unit)
     (lambda (i)
       "Cheney's scan: each object copied, its traced words forwarded, until
        the scan meets the copying."
       (if (i64>= i (get to-top))
           #u
           (let ((w (to-at i)))
-            (if (i64= (tag-of w) t-header)
+            (if (i64= (word-tag w) t-header)
                 (let ((f (bits w (with lay header-fields-lo) (with lay header-fields-width))))
                   (if (i64= (bits w (with lay header-kind-lo) (with lay header-kind-width)) k-weak-pair)
                       ;; A weak pair's car, its first field, not traced (C231):
                       ;; noted, to be moved on or cleared (`weak-moved!`).
                       (begin (set weak-seen (cons i (get weak-seen)))
-                             (fields-forwarded! (i64+ i 2) (i64+ i f)) (scanned! (i64+ i (words-of w))))
-                      (begin (fields-forwarded! (i64+ i 1) (i64+ i f)) (scanned! (i64+ i (words-of w))))))
+                             (fields-forwarded! (i64+ i 2) (i64+ i f)) (scanned! (i64+ i (header-words w))))
+                      (begin (fields-forwarded! (i64+ i 1) (i64+ i f)) (scanned! (i64+ i (header-words w))))))
                 (begin (fields-forwarded! i (i64+ i 1)) (scanned! (i64+ i 2)))))))))
 
-(define weak-after (subr cm (i64) i64)
+(define weak-after (subr cha (i64) i64)
   (lambda (w)
     "What weak reference `w` is after the copying, before the spaces are
      swapped: its object's copy, `weak-dead` if it has none, or itself if it
@@ -521,24 +521,24 @@
       ((in-code? w) w)
       ((is-pair? w)
        (let ((first (word-at (address w))))
-         (if (i64= (tag-of first) t-forward) (to-ref (i64-shr first 3) t-pair) weak-dead)))
+         (if (i64= (word-tag first) t-forward) (to-ref (i64-shr first 3) t-pair) weak-dead)))
       ((is-bloblet? w)
        (let* ((p (address w)) (before (word-at (i64- p 1))))
-         (if (i64= (tag-of before) t-forward)
+         (if (i64= (word-tag before) t-forward)
              (to-ref (i64+ (i64-shr before 3) 1) t-bloblet)
              (let* ((h (header-below p before))
                     (head (word-at h)))
-               (if (i64= (tag-of head) t-forward) (to-ref (i64+ (i64-shr head 3) (i64- p h)) t-bloblet) weak-dead)))))
+               (if (i64= (word-tag head) t-forward) (to-ref (i64+ (i64-shr head 3) (i64- p h)) t-bloblet) weak-dead)))))
       (else w))))
 
 (define-rec
-  (weak-moved! (subr cm ((listof i64 @c)) unit)
+  (weak-moved! (subr cha ((listof i64 @c)) unit)
     (lambda (hs)
       "Each noted weak pair's car moved on, or cleared."
       (if (null? hs) #u (begin (to-set! (i64+ (car hs) 1) (weak-after (to-at (i64+ (car hs) 1)))) (weak-moved! (cdr hs)))))))
 
 (define-rec
-  (named-forwarded! (subr cm (i64) unit)
+  (named-forwarded! (subr cha (i64) unit)
     (lambda (i)
       "Every name's value from `i` on, forwarded in place."
       (if (i64>= i (get named-count))
@@ -547,9 +547,9 @@
             (begin (flatarray-set-i64! m i (forward! (flatarray-ref-i64 m i))) (named-forwarded! (i64+ i 1))))))))
 
 (define-rec
-  (code-fields-forwarded! (subr cm (i64 i64) unit)
+  (code-fields-forwarded! (subr cha (i64 i64) unit)
     (lambda (j end) (if (i64> j end) #u (begin (code-set! j (forward! (code-at j))) (code-fields-forwarded! (i64+ j 1) end)))))
-  (gray-traced! (subr cm () unit)
+  (gray-traced! (subr cha () unit)
     (lambda ()
       "Each code bloblet marked and not yet traced: its fields forwarded in
        place, which may mark more."
@@ -563,7 +563,7 @@
                 (gray-traced!))))))))
 
 (define-rec
-  (traced-all! (subr cm (i64) unit)
+  (traced-all! (subr cha (i64) unit)
     (lambda (i)
       "Cheney's scan from `i`, then the code marked meanwhile traced, until
        neither leaves anything: what the code reaches is copied, and what
@@ -576,11 +576,11 @@
 
 "A free block of the code area, `n` words at `j`: a raw bloblet's header,
  all suffix, as Fixpt's `put_free` writes one."
-(define code-free-block! (subr cm (i64 i64) unit)
+(define code-free-block! (subr chw (i64 i64) unit)
   (lambda (j n) (code-set! j (header-word k-bloblet 0 (i64* 8 (i64- n 1)) #f #f))))
 
 (define-rec
-  (code-swept! (subr cm (i64 i64 i64 (listof cblock @c) bool) unit)
+  (code-swept! (subr cha (i64 i64 i64 (listof cblock @c) bool) unit)
     (lambda (j run len frees stubbed)
       "From `j` on, each code bloblet not marked freed, its mark cleared if
        it was; adjacent free blocks one (`run`, `len` words: the one being
@@ -590,8 +590,8 @@
       (if (i64>= j (if stubbed (get stub-top) (get code-top)))
           (begin
             (if (i64> len 0) (if stubbed (set stub-top run) (set code-top run)) #u)
-            (if stubbed (set stub-free frees) (set code-free frees)))
-          (let ((n (words-of (code-at j))))
+            (if stubbed (set stub-free frees) (set code-frees frees)))
+          (let ((n (header-words (code-at j))))
             (if (i64= (flatarray-ref-i64 (get code-marks) j) 0)
                 (if (i64> len 0) (code-swept! (i64+ j n) run (i64+ len n) frees stubbed) (code-swept! (i64+ j n) j n frees stubbed))
                 (begin
@@ -601,7 +601,7 @@
                       (code-swept! (i64+ j n) 0 0 frees stubbed)))))))))
 
 (define-rec
-  (code-fit! (subr cm ((listof cblock @c) i64) (listof cblock @c))
+  (code-fit! (subr cha ((listof cblock @c) i64) (listof cblock @c))
     (lambda (bs n)
       "The free list, the first block of `n` words or more taken
        (`code-fit-at`), what is left of it free."
@@ -614,18 +614,18 @@
                     ((i64> m n) (begin (set code-fit-at j) (code-free-block! (i64+ j n) (i64- m n)) (cons (cblock (i64+ j n) (i64- m n)) (cdr bs))))
                     (else (cons (car bs) (code-fit! (cdr bs) n))))))))))
 
-(define code-alloc! (subr cm (i64) i64)
+(define code-alloc! (subr cha (i64) i64)
   (lambda (n)
     "`n` words of the code area's native part: the first free block that
      fits, else past its top; -1 if it is full."
     (begin
       (set code-fit-at -1)
-      (set code-free (code-fit! (get code-free) n))
+      (set code-frees (code-fit! (get code-frees) n))
       (cond ((i64>= (get code-fit-at) 0) (get code-fit-at))
             ((i64> (i64+ (get code-top) n) (get code-hi)) -1)
             (else (let ((at (get code-top))) (begin (set code-top (i64+ at n)) at)))))))
 
-(define stub-alloc! (subr cm (i64) i64)
+(define stub-alloc! (subr cha (i64) i64)
   (lambda (n)
     "`n` words of the code area's stubbed part, as `code-alloc!`."
     (begin
@@ -636,7 +636,7 @@
             (else (let ((at (get stub-top))) (begin (set stub-top (i64+ at n)) at)))))))
 
 (define-rec
-  (code-zeroed! (subr cm (i64 i64) unit)
+  (code-zeroed! (subr chw (i64 i64) unit)
     (lambda (j end) (if (i64>= j end) #u (begin (code-set! j 0) (code-zeroed! (i64+ j 1) end))))))
 
 (define make-code-word! (subr cm (string i64 i64) i64)
@@ -656,17 +656,17 @@
                   (code-zeroed! (i64+ at 1) (i64+ at f))
                   (code-set! (i64+ at f) (i64-or (i64-shl f 3) t-trailer))
                   (code-set! (i64+ (i64+ at f) 1) (get code-stub-word))
-                  (code-flush (get code) (i64->int (i64+ (i64+ at f) 1)) 1)
+                  (code-flush (get code-space) (i64->int (i64+ (i64+ at f) 1)) 1)
                   (slot-set! w f-entry (fix entry))
                   (slot-set! w f-name (symbol! name))
                   (slot-set! w f-twin v-false)
                   w)))))))
 
 (define-rec
-  (adapters-forwarded! (subr cm ((listof cblock @c)) (listof cblock @c))
+  (adapters-forwarded! (subr cha ((listof cblock @c)) (listof cblock @c))
     (lambda (ws) (if (null? ws) nil (tagcase (car ws) (cblock (n w) (cons (cblock n (forward! w)) (adapters-forwarded! (cdr ws)))))))))
 
-(define collect-begin! (subr cm () unit)
+(define collect-begin! (subr cha () unit)
   (lambda ()
     "The other space made ready, as big as this one: the roots are then
      forwarded (`forward!`), then `collect-end!`."
@@ -680,7 +680,7 @@
       ;; The native adapter's code, which adapters made later share (C230).
       (if (i64= (get adapter-code) 0) #u (code-marked! (get adapter-code))))))
 
-(define collect-end! (subr cm () unit)
+(define collect-end! (subr cha () unit)
   (lambda ()
     "Everything the roots reach, copied; the spaces swapped; the space grown,
      both, if what lives fills more than half."
@@ -694,8 +694,8 @@
           (set mem (get other))
           (set other old)
           (let ((b (get vbase))) (begin (set vbase (get to-vbase)) (set to-vbase b)))
-          (set top (get to-top))
+          (set heap-top (get to-top))
           (set collections (i64+ (get collections) 1))
-          (if (i64> (i64* 2 (get top)) (get limit))
+          (if (i64> (i64* 2 (get heap-top)) (get limit))
               (room! (get limit))
               #u))))))

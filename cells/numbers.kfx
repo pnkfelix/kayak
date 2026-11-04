@@ -16,7 +16,7 @@
 (define is-integer? (subr cm (i64) bool) (lambda (v) (or (is-fixnum? v) (is-big? v))))
 (define is-flonum? (subr cm (i64) bool) (lambda (v) (is-kind? v k-flonum)))
 (define is-f32? (subr kfx (i64) bool)
-  (lambda (v) (and (i64= (tag-of v) t-immediate) (i64= (i64-and (i64-shr v 3) 31) sub-f32))))
+  (lambda (v) (and (i64= (word-tag v) t-immediate) (i64= (i64-and (i64-shr v 3) 31) sub-f32))))
 
 (define unsigned-int (subr kfx (i64) int)
   (lambda (w) "A word's 64 bits, as an unsigned integer." (if (i64< w 0) (+ (i64->int w) two-64) (i64->int w))))

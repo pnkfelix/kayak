@@ -68,7 +68,7 @@
 
 (define-rec
   (filled! (->* (i64 i64 (listof i64 @c)) i64)
-    (lambda (v i xs) (if (null? xs) v (begin (obj-set! v i (car xs)) (filled! v (i64+ i 1) (cdr xs)))))))
+    (lambda (v i xs) (if (null? xs) v (begin (elt-set! v i (car xs)) (filled! v (i64+ i 1) (cdr xs)))))))
 
 (define state! (->* () i64)
   (lambda ()
@@ -80,8 +80,8 @@
                                 v-false v-null v-null v-false v-null v-null v-null v-null v-null v-null))))
           (begin (set sched-state s) s)))))
 
-(define st (->* (i64) i64) (lambda (k) (obj-ref (state!) k)))
-(define st-set! (->* (i64 i64) unit) (lambda (k v) (obj-set! (state!) k v)))
+(define st (->* (i64) i64) (lambda (k) (elt-ref (state!) k)))
+(define st-set! (->* (i64 i64) unit) (lambda (k v) (elt-set! (state!) k v)))
 (define st-cons! (->* (i64 i64) unit) (lambda (k v) (st-set! k (cons! v (st k)))))
 
 "Tasks: whether each is ended, and its quiet count with its grace in bit
@@ -340,7 +340,7 @@
               (flatarray-set-i64! (get copy-table) (i64+ (i64* 2 i) 1) 0)
               (table-emptied! (i64+ k 1))))))))
 
-(define has-trailer? (->* (i64) bool) (lambda (v) (i64= (tag-of (word-at (i64- (address v) 1))) t-trailer)))
+(define has-trailer? (->* (i64) bool) (lambda (v) (i64= (word-tag (word-at (i64- (address v) 1))) t-trailer)))
 
 (define-rec
   (slots-pending! (->* (i64 i64 i64) unit)
@@ -368,10 +368,10 @@
                     (else
                      (let* ((tr (has-trailer? v))
                             (from (if tr (the i64 2) (the i64 1)))
-                            (copy (make-bloblet! (kind-of v) (if tr (i64- (fields-of v) 1) (fields-of v)) (bytes-of v) tr #f)))
+                            (copy (make-bloblet! (kind-of v) (if tr (i64- (fields-of v) 1) (fields-of v)) (suffix-bytes v) tr #f)))
                        (begin
                          (copy-noted! v copy)
-                         (set copy-words (i64+ (get copy-words) (i64+ (i64+ 1 (fields-of v)) (i64-quotient (i64+ (bytes-of v) 7) 8))))
+                         (set copy-words (i64+ (get copy-words) (i64+ (i64+ 1 (fields-of v)) (i64-quotient (i64+ (suffix-bytes v) 7) 8))))
                          (slots-pending! v from (fields-of v))))))
               (discovered!)))))))
 
@@ -392,7 +392,7 @@
 (define-rec
   (suffix-copied! (->* (i64 i64 i64) unit)
     (lambda (v c j)
-      (if (i64>= j (i64-quotient (i64+ (bytes-of v) 7) 8))
+      (if (i64>= j (i64-quotient (i64+ (suffix-bytes v) 7) 8))
           #u
           (begin (word-set! (i64+ (address c) j) (word-at (i64+ (address v) j))) (suffix-copied! v c (i64+ j 1)))))))
 
@@ -447,7 +447,7 @@
                (slot-set! c 2 v-true)
                (slot-set! c 4 v-null)
                (pushed-each! (reversed-onto! ws v-null))
-               v-unit))))))
+               v-unit-word))))))
 
 (define make-mailbox! (->* () i64)
   (lambda ()
@@ -465,7 +465,7 @@
         (if (i64= (slot-of m 4) v-false)
             #u
             (let ((w (slot-of m 4))) (begin (slot-set! m 4 v-false) (queue-push! w))))
-        v-unit))))
+        v-unit-word))))
 
 (define mailbox-take! (->* (i64) i64)
   (lambda (m)
@@ -484,7 +484,7 @@
       (if (i64>= (clock) t)
           (queue-push! w)
           (st-cons! s-timers (cons! (fix (cond ((i64> t fix-max) fix-max) ((i64< t fix-min) fix-min) (else t))) w)))
-      v-unit)))
+      v-unit-word)))
 
 (define-rec
   (due-in? (->* (i64 i64) bool)

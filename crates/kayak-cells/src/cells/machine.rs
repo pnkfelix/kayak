@@ -96,7 +96,7 @@ pub fn quoted(n: i64) -> Str {
 }
 
 pub fn type_trap_x(n: i64) -> () {
-    trap_x(if (i64_eq(n, r_pair_car()) || i64_eq(n, r_pair_cdr())) {
+    trap_x(if (i64_eq(n, rt_pair_car()) || i64_eq(n, rt_pair_cdr())) {
         str_lit("car or cdr of a non-pair")
     } else {
         string_append(quoted(n), str_lit(" was given a value of the wrong kind"))
@@ -343,7 +343,7 @@ pub fn stress_seed() -> Ref<i64> {
 }
 
 pub fn stress_waited_x() -> () {
-    let s = i64_quotient(i64_plus(get(top()), i64_plus(get(dsp()), get(rsp()))), stress_span());
+    let s = i64_quotient(i64_plus(get(heap_top()), i64_plus(get(dsp()), get(rsp()))), stress_span());
     if i64_eq(s, 0i64) {
         set(stress_wait(), 0i64)
     } else {
@@ -408,7 +408,7 @@ pub fn collect_x() -> () {
 }
 
 pub fn safepoint_x() -> () {
-    if i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit()))) {
+    if i64_gt(i64_star(4i64, get(heap_top())), i64_star(3i64, get(limit()))) {
         collect_x()
     } else if not(get(gc_stress())) {
         ()
@@ -522,7 +522,7 @@ pub fn vector_filled_x(mut v: i64, mut a: FlatArray<i64>, mut from: i64, mut i: 
         if i64_gt_eq(i, to) {
             return ();
         } else {
-            obj_set_x(v, i64_minus(i, from), flatarray_ref_i64(a, i));
+            elt_set_x(v, i64_minus(i, from), flatarray_ref_i64(a, i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -544,7 +544,7 @@ pub fn vector_length(v: i64) -> i64 {
 }
 
 pub fn vector_ref(v: i64, i: i64) -> i64 {
-    obj_ref(v, i)
+    elt_ref(v, i)
 }
 
 pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {
@@ -570,12 +570,12 @@ pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {
 /// `k` as a closure, so that everything callable is one.
 pub fn continuation_closure_x(k: i64) -> i64 {
     let (w, c) = (if i64_eq(get(continuation_word()), 0i64) {
-        let w = make_code_word_x(str_lit("continuation"), 5i64, r_docol());
-        slot_set_x(w, f_cell0(), fix(r_slot()));
+        let w = make_code_word_x(str_lit("continuation"), 5i64, rt_docol());
+        slot_set_x(w, f_cell0(), fix(rt_slot()));
         slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
-        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_free()));
+        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(rt_free()));
         slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(0i64));
-        slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(r_resume()));
+        slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(rt_resume()));
         set(continuation_word(), shared_x(w));
         w
     } else {
@@ -780,7 +780,7 @@ pub fn cards_high() -> i64 {
 /// The heap's top, from the next free address native code left: the
 /// limit grown past it if need be, the collection to come later.
 pub fn top_from_x(next: i64) -> () {
-    set(top(), address(i64_plus(next, 7i64)));
+    set(heap_top(), address(i64_plus(next, 7i64)));
     room_x(0i64)
 }
 
@@ -814,7 +814,7 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
         push_x(c);
         flatarray_set_i64_x(r#box, 0i64, c);
         flatarray_set_i64_x(r#box, 1i64, i64_plus(i64_minus(b, t_bloblet()), get(code_distance())));
-        flatarray_set_i64_x(r#box, 10i64, heap_ref(get(top()), 0i64));
+        flatarray_set_i64_x(r#box, 10i64, heap_ref(get(heap_top()), 0i64));
         flatarray_set_i64_x(r#box, 11i64, heap_ref(heap_capacity(), 0i64));
         flatarray_set_i64_x(r#box, 12i64, cards_low());
         flatarray_set_i64_x(r#box, 13i64, cards_high());
@@ -933,18 +933,18 @@ pub fn call_x(mut n: i64, mut count: i64, mut tail: bool) -> i64 {
 pub fn int_op_x(n: i64) -> i64 {
     let b = pop_x(n);
     let a = pop_x(n);
-    if (is_fixnum_p(a) && is_fixnum_p(b) && (i64_eq(n, r_int_less()) || i64_eq(n, r_int_eq()) || fits_p(if i64_eq(n, r_int_add()) {
+    if (is_fixnum_p(a) && is_fixnum_p(b) && (i64_eq(n, rt_int_less()) || i64_eq(n, rt_int_eq()) || fits_p(if i64_eq(n, rt_int_add()) {
         i64_plus(fix_val(a), fix_val(b))
     } else {
         i64_minus(fix_val(a), fix_val(b))
     }))) {
         let (x, y) = (fix_val(a), fix_val(b));
-        if i64_eq(n, r_int_less()) {
+        if i64_eq(n, rt_int_less()) {
             push_x(boolean(i64_lt(x, y)))
-        } else if i64_eq(n, r_int_eq()) {
+        } else if i64_eq(n, rt_int_eq()) {
             push_x(boolean(i64_eq(a, b)))
         } else {
-            push_x(fix(if i64_eq(n, r_int_add()) {
+            push_x(fix(if i64_eq(n, rt_int_add()) {
                 i64_plus(x, y)
             } else {
                 i64_minus(x, y)
@@ -953,11 +953,11 @@ pub fn int_op_x(n: i64) -> i64 {
     } else if (is_integer_p(a) && is_integer_p(b)) {
         // Past a fixnum, a bignum (Fixpt's `num::int_op`).
         let (x, y) = (int_of(a), int_of(b));
-        push_x(if i64_eq(n, r_int_less()) {
+        push_x(if i64_eq(n, rt_int_less()) {
             boolean(_lt(x, y))
-        } else if i64_eq(n, r_int_eq()) {
+        } else if i64_eq(n, rt_int_eq()) {
             boolean(_eq(x, y))
-        } else if i64_eq(n, r_int_add()) {
+        } else if i64_eq(n, rt_int_add()) {
             int_value_x(_plus(x, y))
         } else {
             int_value_x(_minus(x, y))
@@ -971,10 +971,10 @@ pub fn int_op_x(n: i64) -> i64 {
 pub fn fix_op_x(n: i64) -> i64 {
     let y = pop_fix_x(n);
     let x = pop_fix_x(n);
-    if i64_eq(n, r_less()) {
+    if i64_eq(n, rt_less()) {
         push_x(boolean(i64_lt(x, y)))
     } else {
-        let r = if i64_eq(n, r_add()) {
+        let r = if i64_eq(n, rt_add()) {
             i64_plus(x, y)
         } else {
             i64_minus(x, y)
@@ -1117,7 +1117,7 @@ pub fn ds_list(mut from: i64, mut i: i64, mut acc: i64) -> i64 {
 /// Routine `n`, its operands the cells after it: what to do next.
 pub fn routine_x(mut n: i64) -> i64 {
     loop {
-        if i64_eq(n, r_slot()) {
+        if i64_eq(n, rt_slot()) {
             let i = fix_val(operand_x());
             if i64_lt(i64_plus(get(fp()), i), get(dsp())) {
                 push_x(ds_at(i64_plus(get(fp()), i)))
@@ -1125,21 +1125,21 @@ pub fn routine_x(mut n: i64) -> i64 {
                 field_trap_x(n)
             };
             return next();
-        } else if i64_eq(n, r_lit()) {
+        } else if i64_eq(n, rt_lit()) {
             push_x(operand_x());
             return next();
-        } else if i64_eq(n, r_global()) {
+        } else if i64_eq(n, rt_global()) {
             push_x(slot_of(operand_x(), f_value()));
             return next();
-        } else if (i64_eq(n, r_tcall()) || i64_eq(n, r_ttailcall())) {
+        } else if (i64_eq(n, rt_tcall()) || i64_eq(n, rt_ttailcall())) {
             let count = fix_val(operand_x());
             if (i64_gt(get(dsp()), i64_plus(get(fp()), count)) && closure_p(ds_at(i64_minus(get(dsp()), 1i64)))) {
-                return call_x(n, count, i64_eq(n, r_ttailcall()));
+                return call_x(n, count, i64_eq(n, rt_ttailcall()));
             } else {
                 type_trap_x(n);
                 return next();
             }
-        } else if i64_eq(n, r_return()) {
+        } else if i64_eq(n, rt_return()) {
             let v = pop_x(n);
             if i64_lt(get(dsp()), get(fp())) {
                 underflow_trap_x(n);
@@ -1149,17 +1149,17 @@ pub fn routine_x(mut n: i64) -> i64 {
                 push_x(v);
                 return exit_flow();
             }
-        } else if i64_eq(n, r_closure()) {
+        } else if i64_eq(n, rt_closure()) {
             let at = get(kk());
             set(kk(), i64_plus(at, 2i64));
             return closure_made_x(n, at);
-        } else if i64_eq(n, r_global_set()) {
+        } else if i64_eq(n, rt_global_set()) {
             let g = operand_x();
             let x = pop_x(n);
             slot_set_x(g, f_value(), x);
             slot_set_x(g, f_writes(), fix(i64_plus(fix_val(slot_of(g, f_writes())), 1i64)));
             return next();
-        } else if i64_eq(n, r_zbranch()) {
+        } else if i64_eq(n, rt_zbranch()) {
             let flag = pop_x(n);
             let off = fix_val(operand_x());
             if i64_eq(flag, v_false()) {
@@ -1169,11 +1169,11 @@ pub fn routine_x(mut n: i64) -> i64 {
                 ()
             };
             return next();
-        } else if (i64_eq(n, r_int_add()) || i64_eq(n, r_int_sub()) || i64_eq(n, r_int_less()) || i64_eq(n, r_int_eq())) {
+        } else if (i64_eq(n, rt_int_add()) || i64_eq(n, rt_int_sub()) || i64_eq(n, rt_int_less()) || i64_eq(n, rt_int_eq())) {
             return int_op_x(n);
-        } else if i64_eq(n, r_exit()) {
+        } else if i64_eq(n, rt_exit()) {
             return exit_flow();
-        } else if i64_eq(n, r_slot_set()) {
+        } else if i64_eq(n, rt_slot_set()) {
             let i = fix_val(operand_x());
             let x = pop_x(n);
             if i64_lt(i64_plus(get(fp()), i), get(dsp())) {
@@ -1182,15 +1182,15 @@ pub fn routine_x(mut n: i64) -> i64 {
                 field_trap_x(n)
             };
             return next();
-        } else if i64_eq(n, r_eq()) {
+        } else if i64_eq(n, rt_eq()) {
             let b = pop_x(n);
             let a = pop_x(n);
             push_x(boolean(i64_eq(a, b)));
             return next();
-        } else if (i64_eq(n, r_pair_car()) || i64_eq(n, r_pair_cdr()) || i64_eq(n, r_car()) || i64_eq(n, r_cdr())) {
+        } else if (i64_eq(n, rt_pair_car()) || i64_eq(n, rt_pair_cdr()) || i64_eq(n, rt_car()) || i64_eq(n, rt_cdr())) {
             let p = pop_x(n);
             if is_pair_p(p) {
-                push_x(if (i64_eq(n, r_pair_car()) || i64_eq(n, r_car())) {
+                push_x(if (i64_eq(n, rt_pair_car()) || i64_eq(n, rt_car())) {
                     pair_car(p)
                 } else {
                     pair_cdr(p)
@@ -1199,11 +1199,11 @@ pub fn routine_x(mut n: i64) -> i64 {
                 type_trap_x(n)
             };
             return next();
-        } else if i64_eq(n, r_prim()) {
+        } else if i64_eq(n, rt_prim()) {
             let p = fix_val(operand_x());
             let count = fix_val(operand_x());
             return prim_run_x(n, p, count);
-        } else if i64_eq(n, r_cons()) {
+        } else if i64_eq(n, rt_cons()) {
             if i64_lt(get(dsp()), 2i64) {
                 underflow_trap_x(n);
                 return next();
@@ -1214,14 +1214,14 @@ pub fn routine_x(mut n: i64) -> i64 {
                 push_x(cons_x(a, b));
                 return next();
             }
-        } else if i64_eq(n, r_branch()) {
+        } else if i64_eq(n, rt_branch()) {
             let off = fix_val(operand_x());
             set(kk(), i64_plus(get(kk()), off));
             check_limits_x();
             return next();
-        } else if (i64_eq(n, r_add()) || i64_eq(n, r_sub()) || i64_eq(n, r_less())) {
+        } else if (i64_eq(n, rt_add()) || i64_eq(n, rt_sub()) || i64_eq(n, rt_less())) {
             return fix_op_x(n);
-        } else if i64_eq(n, r_free()) {
+        } else if i64_eq(n, rt_free()) {
             let i = fix_val(operand_x());
             if (is_bloblet_p(get(clo())) && field_ok_p(get(clo()), i64_plus(f_free0(), i))) {
                 push_x(slot_of(get(clo()), i64_plus(f_free0(), i)))
@@ -1229,9 +1229,9 @@ pub fn routine_x(mut n: i64) -> i64 {
                 field_trap_x(n)
             };
             return next();
-        } else if (i64_eq(n, r_call()) || i64_eq(n, r_tailcall())) {
-            return call_x(n, fix_val(operand_x()), i64_eq(n, r_tailcall()));
-        } else if i64_eq(n, r_field()) {
+        } else if (i64_eq(n, rt_call()) || i64_eq(n, rt_tailcall())) {
+            return call_x(n, fix_val(operand_x()), i64_eq(n, rt_tailcall()));
+        } else if i64_eq(n, rt_field()) {
             let k = fix_val(operand_x());
             let obj = pop_x(n);
             if not(is_bloblet_p(obj)) {
@@ -1242,7 +1242,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 field_trap_x(n)
             };
             return next();
-        } else if i64_eq(n, r_field_ref()) {
+        } else if i64_eq(n, rt_field_ref()) {
             let kf = pop_x(n);
             let obj = pop_x(n);
             if (not(is_fixnum_p(kf)) || not(is_bloblet_p(obj))) {
@@ -1253,19 +1253,19 @@ pub fn routine_x(mut n: i64) -> i64 {
                 field_trap_x(n)
             };
             return next();
-        } else if i64_eq(n, r_field_set()) {
+        } else if i64_eq(n, rt_field_set()) {
             let kf = pop_x(n);
             let obj = pop_x(n);
             let x = pop_x(n);
             if (not(is_fixnum_p(kf)) || not(is_bloblet_p(obj))) {
                 type_trap_x(n)
-            } else if (i64_eq(tag_of(x), t_trailer()) || i64_eq(tag_of(x), t_header()) || i64_eq(tag_of(x), t_forward()) || i64_lt(fix_val(kf), 0i64) || not(field_ok_p(obj, fix_val(kf))) || fields_frozen_p(obj)) {
+            } else if (i64_eq(word_tag(x), t_trailer()) || i64_eq(word_tag(x), t_header()) || i64_eq(word_tag(x), t_forward()) || i64_lt(fix_val(kf), 0i64) || not(field_ok_p(obj, fix_val(kf))) || fields_frozen_p(obj)) {
                 field_trap_x(n)
             } else {
                 slot_set_x(obj, fix_val(kf), x)
             };
             return next();
-        } else if i64_eq(n, r_rest()) {
+        } else if i64_eq(n, rt_rest()) {
             if i64_gt(get(fp()), get(dsp())) {
                 underflow_trap_x(n);
                 return next();
@@ -1273,7 +1273,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 push_x(ds_list(get(fp()), get(dsp()), v_null()));
                 return next();
             }
-        } else if i64_eq(n, r_execute()) {
+        } else if i64_eq(n, rt_execute()) {
             let w = pop_x(n);
             if is_fixnum_p(w) {
                 n = fix_val(w);
@@ -1285,44 +1285,44 @@ pub fn routine_x(mut n: i64) -> i64 {
                 trap_x(str_lit("`execute` was given what is no word"));
                 return next();
             }
-        } else if i64_eq(n, r_dup()) {
+        } else if i64_eq(n, rt_dup()) {
             if i64_eq(get(dsp()), 0i64) {
                 underflow_trap_x(n)
             } else {
                 push_x(ds_at(i64_minus(get(dsp()), 1i64)))
             };
             return next();
-        } else if i64_eq(n, r_drop()) {
+        } else if i64_eq(n, rt_drop()) {
             pop_x(n);
             return next();
-        } else if i64_eq(n, r_swap()) {
+        } else if i64_eq(n, rt_swap()) {
             let b = pop_x(n);
             let a = pop_x(n);
             push_x(b);
             push_x(a);
             return next();
-        } else if i64_eq(n, r_over()) {
+        } else if i64_eq(n, rt_over()) {
             if i64_lt(get(dsp()), 2i64) {
                 underflow_trap_x(n)
             } else {
                 push_x(ds_at(i64_minus(get(dsp()), 2i64)))
             };
             return next();
-        } else if (i64_eq(n, r_prompt()) || i64_eq(n, r_withmark())) {
+        } else if (i64_eq(n, rt_prompt()) || i64_eq(n, rt_withmark())) {
             let thunk = pop_x(n);
             let b = pop_x(n);
             let a = pop_x(n);
-            enter_above_x(n, thunk, if i64_eq(n, r_prompt()) {
+            enter_above_x(n, thunk, if i64_eq(n, rt_prompt()) {
                 prompt_mark()
             } else {
                 mark_mark()
-            }, a, b, if i64_eq(n, r_prompt()) {
+            }, a, b, if i64_eq(n, rt_prompt()) {
                 prompt_word(get(dsp()))
             } else {
                 fix(0i64)
             });
             return next();
-        } else if i64_eq(n, r_withmark_tail()) {
+        } else if i64_eq(n, rt_withmark_tail()) {
             let thunk = pop_x(n);
             let v = pop_x(n);
             let key = pop_x(n);
@@ -1347,23 +1347,23 @@ pub fn routine_x(mut n: i64) -> i64 {
                 set(clo(), thunk);
                 return next();
             }
-        } else if i64_eq(n, r_abort()) {
+        } else if i64_eq(n, rt_abort()) {
             let v = pop_x(n);
             let tag = pop_x(n);
             return abort_to_x(n, tag, v);
-        } else if (i64_eq(n, r_callcomp()) || i64_eq(n, r_callone()) || i64_eq(n, r_callcc())) {
-            let tag = if i64_eq(n, r_callcc()) {
+        } else if (i64_eq(n, rt_callcomp()) || i64_eq(n, rt_callone()) || i64_eq(n, rt_callcc())) {
+            let tag = if i64_eq(n, rt_callcc()) {
                 v_false()
             } else {
                 pop_x(n)
             };
             let proc = pop_x(n);
-            let at = if i64_eq(n, r_callcc()) {
+            let at = if i64_eq(n, rt_callcc()) {
                 the::<i64>(-1i64)
             } else {
                 find_marked(get(rsp()), prompt_mark(), tag)
             };
-            if (i64_lt(at, 0i64) && not(i64_eq(n, r_callcc()))) {
+            if (i64_lt(at, 0i64) && not(i64_eq(n, rt_callcc()))) {
                 trap_x(str_lit("call-with-composable-continuation: no prompt for this tag"));
                 return next();
             } else {
@@ -1375,7 +1375,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 } else {
                     capture_x(i64_plus(at, 4i64), prompt_height(rs_at(i64_plus(at, 3i64))), false)
                 };
-                if i64_eq(n, r_callone()) {
+                if i64_eq(n, rt_callone()) {
                     slot_set_x(k, cont_shots(), fix(shots_once()))
                 } else {
                     ()
@@ -1384,7 +1384,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 push_x(proc);
                 return call_x(n, 1i64, false);
             }
-        } else if i64_eq(n, r_resume()) {
+        } else if i64_eq(n, rt_resume()) {
             let k = pop_x(n);
             let v = pop_x(n);
             if not(is_kind_p(k, k_continuation())) {
@@ -1398,7 +1398,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                     return next();
                 }
             }
-        } else if i64_eq(n, r_firstmark()) {
+        } else if i64_eq(n, rt_firstmark()) {
             let default = pop_x(n);
             let key = pop_x(n);
             let at = find_marked(get(rsp()), mark_mark(), key);
@@ -1408,26 +1408,26 @@ pub fn routine_x(mut n: i64) -> i64 {
                 rs_at(i64_plus(at, 2i64))
             });
             return next();
-        } else if i64_eq(n, r_currentmarks()) {
+        } else if i64_eq(n, rt_currentmarks()) {
             let key = pop_x(n);
-            push_x(list_of(marks_of_stack(get(rsp()), key)));
+            push_x(heap_list_of(marks_of_stack(get(rsp()), key)));
             return next();
-        } else if i64_eq(n, r_marksof()) {
+        } else if i64_eq(n, rt_marksof()) {
             let key = pop_x(n);
             let k = continuation_of(pop_x(n));
             if i64_eq(k, 0i64) {
                 type_trap_x(n);
                 return next();
             } else {
-                push_x(list_of(marks_of_vector(slot_of(k, cont_rs()), vector_length(slot_of(k, cont_rs())), key)));
+                push_x(heap_list_of(marks_of_vector(slot_of(k, cont_rs()), vector_length(slot_of(k, cont_rs())), key)));
                 return next();
             }
-        } else if i64_eq(n, r_halt()) {
+        } else if i64_eq(n, rt_halt()) {
             return halt_flow();
-        } else if i64_eq(n, r_undefined()) {
+        } else if i64_eq(n, rt_undefined()) {
             trap_x(str_lit("a procedure was called before it was defined"));
             return next();
-        } else if (i64_lt(n, 1i64) || i64_gt_eq(n, r_count())) {
+        } else if (i64_lt(n, 1i64) || i64_gt_eq(n, rt_count())) {
             trap_x(string_append(str_lit("no routine is numbered "), i64_to_string(n)));
             return next();
         } else {
@@ -1441,7 +1441,7 @@ pub fn routine_x(mut n: i64) -> i64 {
 /// routine, if its entry is one: whether it was entered.
 pub fn enter_x(w: i64) -> bool {
     let entry = fix_val(slot_of(w, f_entry()));
-    if (i64_eq(entry, r_docol()) || i64_gt_eq(entry, r_count())) {
+    if (i64_eq(entry, rt_docol()) || i64_gt_eq(entry, rt_count())) {
         check_limits_x();
         if is_bloblet_p(get(cur())) {
             push_return_x()
@@ -1543,7 +1543,7 @@ pub fn failed_in_task_x() -> bool {
             false
         } else {
             set(trap_message(), str_lit(""));
-            abort_to_x(r_abort(), tag, v_unit());
+            abort_to_x(rt_abort(), tag, v_unit_word());
             not(trapped_p())
         }
     }
@@ -1600,7 +1600,7 @@ pub fn regs_unspilled_x(mut i: i64) -> () {
         if i64_lt(i, 0i64) {
             return ();
         } else {
-            flatarray_set_i64_x(get(rr()), i, pop_x(r_return()));
+            flatarray_set_i64_x(get(rr()), i, pop_x(rt_return()));
             i = i64_minus(i, 1i64);
             continue;
         }
@@ -1614,7 +1614,7 @@ pub fn reg_resumed_x() -> () {
         ()
     } else if i64_gt(k, i64_minus(0i64, polled())) {
         regs_cleared_x(1i64);
-        result_x(pop_x(r_return()));
+        result_x(pop_x(rt_return()));
         set(kk(), i64_minus(0i64, k))
     } else {
         regs_unspilled_x(register_regs());
@@ -1677,7 +1677,7 @@ pub fn reg_op_x() -> i64 {
         if (is_bloblet_p(get(clo())) && field_ok_p(get(clo()), i64_plus(f_free0(), fix_val(o0)))) {
             val(slot_of(get(clo()), i64_plus(f_free0(), fix_val(o0))))
         } else {
-            field_trap_x(r_free());
+            field_trap_x(rt_free());
             next()
         }
     } else if i64_eq(op, ro_save()) {
@@ -1690,7 +1690,7 @@ pub fn reg_op_x() -> i64 {
         next()
     } else if i64_eq(op, ro_pop()) {
         if i64_lt(get(dsp()), i64_plus(fix_val(o0), 1i64)) {
-            underflow_trap_x(r_return());
+            underflow_trap_x(rt_return());
             next()
         } else {
             set(dsp(), i64_minus(get(dsp()), i64_plus(fix_val(o0), 1i64)));
@@ -1704,7 +1704,7 @@ pub fn reg_op_x() -> i64 {
             o1
         });
         if not(slot_ok_p(i)) {
-            field_trap_x(r_slot());
+            field_trap_x(rt_slot());
             next()
         } else if i64_eq(op, ro_stack()) {
             val(ds_at(i64_plus(get(fp()), i)))
@@ -1720,7 +1720,7 @@ pub fn reg_op_x() -> i64 {
             o1
         });
         if not(slot_ok_p(i)) {
-            field_trap_x(r_slot_set());
+            field_trap_x(rt_slot_set());
             next()
         } else {
             ds_set_x(i64_plus(get(fp()), i), if i64_eq(op, ro_setstk()) {
@@ -1753,25 +1753,25 @@ pub fn reg_op_x() -> i64 {
     } else if i64_eq(op, ro_field()) {
         let x = result();
         if not(is_bloblet_p(x)) {
-            type_trap_x(r_field());
+            type_trap_x(rt_field());
             next()
         } else if field_ok_p(x, fix_val(o0)) {
             val(slot_of(x, fix_val(o0)))
         } else {
-            field_trap_x(r_field());
+            field_trap_x(rt_field());
             next()
         }
     } else if i64_eq(op, ro_setfield()) {
         let x = result();
         if not(is_bloblet_p(x)) {
-            type_trap_x(r_field_set());
+            type_trap_x(rt_field_set());
             next()
         } else if field_ok_p(x, fix_val(o0)) {
             slot_set_x(x, fix_val(o0), reg_at(fix_val(o1)));
             set(kk(), nx);
             next()
         } else {
-            field_trap_x(r_field_set());
+            field_trap_x(rt_field_set());
             next()
         }
     } else if i64_eq(op, ro_prim1()) {
@@ -1797,11 +1797,11 @@ pub fn reg_op_x() -> i64 {
     } else if i64_eq(op, ro_prim()) {
         set(kk(), i64_minus(0i64, nx));
         regs_pushed_x(1i64, fix_val(o1));
-        prim_run_x(r_prim(), fix_val(o0), fix_val(o1))
+        prim_run_x(rt_prim(), fix_val(o0), fix_val(o1))
     } else if i64_eq(op, ro_lambda()) {
         set(kk(), i64_minus(0i64, nx));
         regs_pushed_x(1i64, fix_val(o1));
-        closure_made_x(r_closure(), i64_plus(k, 1i64))
+        closure_made_x(rt_closure(), i64_plus(k, 1i64))
     } else if i64_eq(op, ro_cellular()) {
         set(kk(), i64_minus(0i64, nx));
         regs_pushed_x(1i64, fix_val(o1));
@@ -1830,9 +1830,9 @@ pub fn reg_op_x() -> i64 {
             regs_pushed_x(1i64, fix_val(o0));
             push_x(c);
             call_x(if tail {
-                r_tailcall()
+                rt_tailcall()
             } else {
-                r_call()
+                rt_call()
             }, fix_val(o0), tail)
         }
     } else if i64_eq(op, ro_invokeself()) {
@@ -2098,7 +2098,7 @@ pub fn given_x() -> () {
         i64_plus(1600i64, fix_val(slot_of(get(cur()), get(kk()))))
     } else if not(is_fixnum_p(cell)) {
         the::<i64>(63i64)
-    } else if i64_eq(fix_val(cell), r_prim()) {
+    } else if i64_eq(fix_val(cell), rt_prim()) {
         i64_plus(64i64, prim_op(fix_val(slot_of(get(cur()), i64_plus(get(kk()), 1i64)))))
     } else {
         fix_val(cell)
@@ -2166,7 +2166,7 @@ pub fn hand_x(m: HandCode) -> bool {
     flatarray_set_i64_x(s, int_to_i64(st_rs_limit()), i64_star(4i64, rs_limit()));
     flatarray_set_i64_x(s, int_to_i64(st_ds_length()), flatarray_length_i64(get(ds())));
     flatarray_set_i64_x(s, int_to_i64(st_rs_push()), i64_minus(flatarray_length_i64(get(rs())), 4i64));
-    flatarray_set_i64_x(s, int_to_i64(st_top()), get(top()));
+    flatarray_set_i64_x(s, int_to_i64(st_top()), get(heap_top()));
     flatarray_set_i64_x(s, int_to_i64(st_alloc_limit()), if get(gc_stress()) {
         0i64
     } else {
@@ -2184,7 +2184,7 @@ pub fn hand_x(m: HandCode) -> bool {
     set(dsp(), flatarray_ref_i64(s, int_to_i64(st_dsp())));
     set(rsp(), flatarray_ref_i64(s, int_to_i64(st_rsp())));
     set(fuel(), flatarray_ref_i64(s, int_to_i64(st_fuel())));
-    set(top(), flatarray_ref_i64(s, int_to_i64(st_top())));
+    set(heap_top(), flatarray_ref_i64(s, int_to_i64(st_top())));
     regs_copied_x(s, int_to_i64(st_regs()), get(rr()), 0i64, 9i64);
     if i64_eq(why, gave_back()) {
         given_x();
@@ -2327,7 +2327,7 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
         trap_x(str_lit("native code: called no procedure tier 1 runs (C122)"))
     } else {
         let back = make_word_x(str_lit("%callback-return"), 1i64, 0i64);
-        slot_set_x(back, f_cell0(), fix(r_halt()));
+        slot_set_x(back, f_cell0(), fix(rt_halt()));
         set(cur(), back);
         set(kk(), f_cell0());
         push_return_x();
@@ -2362,7 +2362,7 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
     set(rsp(), i64_plus(rsp0, 4i64));
     pop_return_x();
     flatarray_set_i64_x(r#box, 0i64, v);
-    flatarray_set_i64_x(r#box, 10i64, heap_ref(get(top()), 0i64));
+    flatarray_set_i64_x(r#box, 10i64, heap_ref(get(heap_top()), 0i64));
     flatarray_set_i64_x(r#box, 11i64, heap_ref(heap_capacity(), 0i64));
     if ok {
         the::<i64>(0i64)

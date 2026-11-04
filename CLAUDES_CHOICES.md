@@ -9104,3 +9104,26 @@ go (a symbol's, 24, unused since C321; the "special", 27): a primitive
 stays one (25), a procedure, which reaches compiled code through an
 adapter as the engine's closures will (one-heap step 4).
 
+
+## C331. Tier 1's heap, ready to share (2026-11-04; one heap, step 1's last part)
+
+The engine is to load tier 1's heap (`cells/layout.kfx`, `cells/heap.kfx`)
+and be written over it (docs/research/one-heap.md, step 1). First, tier 1's
+side, which changes nothing it does:
+- **Its names that the engine's program defines too, renamed** (27; by a
+  rename that leaves strings, comments and locals alone): `alloc!` is
+  `heap-alloc!`, `top` `heap-top`, `obj-ref` and `obj-set!` `elt-ref` and
+  `elt-set!` (an element in `alloc`'s order), `tag-of` `word-tag`,
+  `bytes-of` `suffix-bytes`, `words-of` `header-words`, `code` (the code
+  area's array) `code-space`, `code-free` `code-frees`, `globals`
+  `named-globals`, `list-of` `heap-list-of`, the `named` datatype
+  `named-slot`, `index-in` `position-in`, `v-unit` `v-unit-word`, and the
+  routines' numbers `r-` `rt-` (all 53, three clashing). Those that mean
+  what the engine's of the same name mean (`pair-car`, `pair-cdr`,
+  `is-pair?`, `slot-set!`'s neighbours, `collections`, `zeroed!`,
+  `symbol-text`, `copied-into!`, `sub-char`, `sub-f32`) keep their names:
+  the engine is to use them, or rename its own.
+- **Its heap's effects narrowed** from `cm`, which has I/O, to what a heap
+  does: `chw` (reading and writing `@c`) and `cha` (and allocating there,
+  for its names, its code blocks' and weak pairs' lists). `cm` has both.
+  Only `make-code-word!` keeps `cm` (`code:flush/1`).

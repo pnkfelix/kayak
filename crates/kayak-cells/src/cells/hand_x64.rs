@@ -1443,9 +1443,9 @@ pub fn yword_entered_x() -> () {
     ytag_in_x(y_w(), int_lit(4));
     ylea_v_x(y11(), y_w(), int_lit(0));
     yld_x(y10(), y11(), at_field(f_entry()));
-    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(r_docol())));
+    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(rt_docol())));
     ybc_x(q_e(), docol);
-    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(rt_count())));
     ygive_if_x(q_b());
     ybind_x(docol);
     ylimits_x();
@@ -1475,66 +1475,66 @@ pub fn ycar_cdr_x(first: bool) -> () {
 
 /// Routine number `n`'s code; what it does not do it gives back.
 pub fn yentered_x(n: Int) -> () {
-    if _eq(n, i64_to_int(r_lit())) {
+    if _eq(n, i64_to_int(rt_lit())) {
         yroom_x();
         yip_op_x(y13());
         ypushed_x(y13());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_dup())) {
+    } else if _eq(n, i64_to_int(rt_dup())) {
         yneed_x(int_lit(1));
         yroom_x();
         yld_x(y13(), y_dsp(), int_lit(-8));
         ypushed_x(y13());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_drop())) {
+    } else if _eq(n, i64_to_int(rt_drop())) {
         yneed_x(int_lit(1));
         yalui_x(a_sub(), y_dsp(), int_lit(8));
         ynext_x()
-    } else if _eq(n, i64_to_int(r_swap())) {
+    } else if _eq(n, i64_to_int(rt_swap())) {
         yneed_x(int_lit(2));
         yld_x(y13(), y_dsp(), int_lit(-8));
         yld_x(y14(), y_dsp(), int_lit(-16));
         yst_x(y_dsp(), int_lit(-16), y13());
         yst_x(y_dsp(), int_lit(-8), y14());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_over())) {
+    } else if _eq(n, i64_to_int(rt_over())) {
         yneed_x(int_lit(2));
         yroom_x();
         yld_x(y13(), y_dsp(), int_lit(-16));
         ypushed_x(y13());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_eq())) {
+    } else if _eq(n, i64_to_int(rt_eq())) {
         yneed_x(int_lit(2));
         yld_x(y13(), y_dsp(), int_lit(-16));
         yld_x(y14(), y_dsp(), int_lit(-8));
         yalu_x(a_cmp(), y13(), y14());
         yboolean_of_x(q_e());
         yput_top_x(y13())
-    } else if (_eq(n, i64_to_int(r_add())) || _eq(n, i64_to_int(r_int_add()))) {
+    } else if (_eq(n, i64_to_int(rt_add())) || _eq(n, i64_to_int(rt_int_add()))) {
         ytwo_fixnums_x();
         yalu_x(a_add(), y13(), y14());
         ygive_if_x(q_o());
         yput_top_x(y13())
-    } else if (_eq(n, i64_to_int(r_sub())) || _eq(n, i64_to_int(r_int_sub()))) {
+    } else if (_eq(n, i64_to_int(rt_sub())) || _eq(n, i64_to_int(rt_int_sub()))) {
         ytwo_fixnums_x();
         yalu_x(a_sub(), y13(), y14());
         ygive_if_x(q_o());
         yput_top_x(y13())
-    } else if (_eq(n, i64_to_int(r_less())) || _eq(n, i64_to_int(r_int_less()))) {
+    } else if (_eq(n, i64_to_int(rt_less())) || _eq(n, i64_to_int(rt_int_less()))) {
         ytwo_fixnums_x();
         yalu_x(a_cmp(), y13(), y14());
         yboolean_of_x(q_l());
         yput_top_x(y13())
-    } else if _eq(n, i64_to_int(r_int_eq())) {
+    } else if _eq(n, i64_to_int(rt_int_eq())) {
         ytwo_fixnums_x();
         yalu_x(a_cmp(), y13(), y14());
         yboolean_of_x(q_e());
         yput_top_x(y13())
-    } else if (_eq(n, i64_to_int(r_car())) || _eq(n, i64_to_int(r_pair_car()))) {
+    } else if (_eq(n, i64_to_int(rt_car())) || _eq(n, i64_to_int(rt_pair_car()))) {
         ycar_cdr_x(true)
-    } else if (_eq(n, i64_to_int(r_cdr())) || _eq(n, i64_to_int(r_pair_cdr()))) {
+    } else if (_eq(n, i64_to_int(rt_cdr())) || _eq(n, i64_to_int(rt_pair_cdr()))) {
         ycar_cdr_x(false)
-    } else if _eq(n, i64_to_int(r_slot())) {
+    } else if _eq(n, i64_to_int(rt_slot())) {
         yip_op_x(y13());
         ylea_ix_x(y14(), y_fp(), y13(), int_lit(1), int_lit(0));
         ycmp_st_x(y14(), st_dsb());
@@ -1545,7 +1545,7 @@ pub fn yentered_x(n: Int) -> () {
         yld_x(y15(), y14(), int_lit(0));
         ypushed_x(y15());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_slot_set())) {
+    } else if _eq(n, i64_to_int(rt_slot_set())) {
         yneed_x(int_lit(1));
         yip_op_x(y13());
         ylea_ix_x(y14(), y_fp(), y13(), int_lit(1), int_lit(0));
@@ -1558,18 +1558,18 @@ pub fn yentered_x(n: Int) -> () {
         yst_x(y14(), int_lit(0), y16());
         ymov_x(y_dsp(), y15());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_global())) {
+    } else if _eq(n, i64_to_int(rt_global())) {
         yroom_x();
         yip_op_x(y13());
         yld_v_x(y15(), y13(), at_field(f_value()));
         ypushed_x(y15());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_branch())) {
+    } else if _eq(n, i64_to_int(rt_branch())) {
         ylimits_x();
         yip_op_x(y13());
         yalu_x(a_sub(), y_ip(), y13());
         ytaken_x()
-    } else if _eq(n, i64_to_int(r_zbranch())) {
+    } else if _eq(n, i64_to_int(rt_zbranch())) {
         let taken = label_x();
         yneed_x(int_lit(1));
         yld_x(y14(), y_dsp(), int_lit(-8));
@@ -1584,11 +1584,11 @@ pub fn yentered_x(n: Int) -> () {
         yip_op_x(y13());
         yalu_x(a_sub(), y_ip(), y13());
         ytaken_x()
-    } else if (_eq(n, i64_to_int(r_call())) || _eq(n, i64_to_int(r_tcall()))) {
+    } else if (_eq(n, i64_to_int(rt_call())) || _eq(n, i64_to_int(rt_tcall()))) {
         ycalled_x(false)
-    } else if (_eq(n, i64_to_int(r_tailcall())) || _eq(n, i64_to_int(r_ttailcall()))) {
+    } else if (_eq(n, i64_to_int(rt_tailcall())) || _eq(n, i64_to_int(rt_ttailcall()))) {
         ycalled_x(true)
-    } else if _eq(n, i64_to_int(r_free())) {
+    } else if _eq(n, i64_to_int(rt_free())) {
         yroom_x();
         ytag_in_x(y_clo(), int_lit(4));
         yip_op_x(y13());
@@ -1597,7 +1597,7 @@ pub fn yentered_x(n: Int) -> () {
         yfield_read_x();
         ypushed_x(y16());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_field())) {
+    } else if _eq(n, i64_to_int(rt_field())) {
         yneed_x(int_lit(1));
         yip_op_x(y10());
         yld_x(y16(), y_dsp(), int_lit(-8));
@@ -1607,7 +1607,7 @@ pub fn yentered_x(n: Int) -> () {
         yfield_read_x();
         yst_x(y_dsp(), int_lit(-8), y16());
         ynext_x()
-    } else if _eq(n, i64_to_int(r_global_set())) {
+    } else if _eq(n, i64_to_int(rt_global_set())) {
         yneed_x(int_lit(1));
         yip_op_x(y13());
         ylea_v_x(y14(), y13(), int_lit(0));
@@ -1616,7 +1616,7 @@ pub fn yentered_x(n: Int) -> () {
         yalumi_x(a_add(), y14(), at_field(f_writes()), int_lit(8));
         yalui_x(a_sub(), y_dsp(), int_lit(8));
         ynext_x()
-    } else if _eq(n, i64_to_int(r_field_ref())) {
+    } else if _eq(n, i64_to_int(rt_field_ref())) {
         yneed_x(int_lit(2));
         yld_x(y10(), y_dsp(), int_lit(-8));
         ytesti_x(y10(), int_lit(7));
@@ -1627,17 +1627,17 @@ pub fn yentered_x(n: Int) -> () {
         ymov_x(y13(), y10());
         yfield_read_x();
         yput_top_x(y16())
-    } else if _eq(n, i64_to_int(r_cons())) {
+    } else if _eq(n, i64_to_int(rt_cons())) {
         yconsed_x(false)
-    } else if _eq(n, i64_to_int(r_prim())) {
+    } else if _eq(n, i64_to_int(rt_prim())) {
         yprimed_x()
-    } else if _eq(n, i64_to_int(r_closure())) {
+    } else if _eq(n, i64_to_int(rt_closure())) {
         yclosed_x()
-    } else if _eq(n, i64_to_int(r_exit())) {
+    } else if _eq(n, i64_to_int(rt_exit())) {
         ycmp_st_x(y_rsp(), st_rsb());
         ygive_if_x(q_e());
         yb_x(get(l_pop_return()))
-    } else if _eq(n, i64_to_int(r_return())) {
+    } else if _eq(n, i64_to_int(rt_return())) {
         yneed_x(int_lit(1));
         ylea_x(y15(), y_dsp(), int_lit(-8));
         yalu_x(a_cmp(), y15(), y_fp());
@@ -1657,7 +1657,7 @@ pub fn yentered_x(n: Int) -> () {
 /// `n`'s label is `base + n`.
 pub fn ytable_x(mut n: Int, mut base: Int) -> () {
     loop {
-        if _gt_eq(n, i64_to_int(r_count())) {
+        if _gt_eq(n, i64_to_int(rt_count())) {
             return ();
         } else {
             yb_x(_plus(base, n));
@@ -1669,7 +1669,7 @@ pub fn ytable_x(mut n: Int, mut base: Int) -> () {
 
 pub fn yroutines_x(mut n: Int, mut base: Int) -> () {
     loop {
-        if _gt_eq(n, i64_to_int(r_count())) {
+        if _gt_eq(n, i64_to_int(rt_count())) {
             return ();
         } else {
             ybind_x(_plus(base, n));
@@ -1909,9 +1909,9 @@ pub fn yresumed_x() -> () {
     ybc_x(q_ne(), get(l_next()));
     ylea_v_x(y11(), y_cur(), int_lit(0));
     yld_x(y10(), y11(), at_field(f_entry()));
-    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(rt_count())));
     ybc_x(q_b(), get(l_next()));
-    yalui_x(a_sub(), y10(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_sub(), y10(), _star(int_lit(8), i64_to_int(rt_count())));
     yadr_x(y16(), get(l_words()));
     yalurm_x(a_cmp(), y10(), y16(), int_lit(0));
     ybc_x(q_ae(), get(l_resume_give()));
@@ -1955,7 +1955,7 @@ pub fn yresumed_x() -> () {
 /// routine for each number.
 pub fn ymachine_x() -> () {
     let (word, table, skip, r#loop, base) = (label_x(), label_x(), label_x(), label_x(), get(hand_labels()));
-    set(hand_labels(), _plus(base, i64_to_int(r_count())));
+    set(hand_labels(), _plus(base, i64_to_int(rt_count())));
     set(l_next(), label_x());
     set(l_give(), label_x());
     set(l_give_pre(), label_x());
@@ -1974,7 +1974,7 @@ pub fn ymachine_x() -> () {
     yip_op_x(y_w());
     ytesti_x(y_w(), int_lit(7));
     ybc_x(q_ne(), word);
-    yalui_x(a_cmp(), y_w(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_cmp(), y_w(), _star(int_lit(8), i64_to_int(rt_count())));
     ygive_if_x(q_ae());
     ymov_x(y10(), y_w());
     yshift_x(s_shr(), y10(), int_lit(3));
@@ -2048,8 +2048,8 @@ pub fn ycells_compiled_x(mut w: i64, mut i: i64, mut n: i64, mut at: FlatArray<i
                 set(h_target(), int_lit(-1));
                 if not(is_fixnum_p(c)) {
                     yword_entered_x()
-                } else if (i64_gt_eq(fix_val(c), 0i64) && i64_lt(fix_val(c), r_count())) {
-                    if (i64_eq(fix_val(c), r_branch()) || i64_eq(fix_val(c), r_zbranch())) {
+                } else if (i64_gt_eq(fix_val(c), 0i64) && i64_lt(fix_val(c), rt_count())) {
+                    if (i64_eq(fix_val(c), rt_branch()) || i64_eq(fix_val(c), rt_zbranch())) {
                         let t = i64_plus(i, i64_plus(2i64, fix_val(slot_of(w, i64_plus(f_cell0(), i64_plus(i, 1i64))))));
                         if (i64_gt_eq(t, 0i64) && i64_lt(t, n) && i64_eq(flatarray_ref_i64(at, t), 1i64)) {
                             set(h_target(), _plus(base, i64_to_int(t)))
@@ -2142,7 +2142,7 @@ pub fn yopnd_x(d: Int, kk: i64, j: Int) -> () {
 /// flags, no boolean made, which `fused-branch` found none reads.
 pub fn yfused_x(rw: i64, b: i64, base: Int, r: i64, y: Int) -> () {
     let t = t6_to(base, fused_target(rw, b));
-    if i64_eq(r, r_eq()) {
+    if i64_eq(r, rt_eq()) {
         ()
     } else {
         ymov_x(y15(), y_w());
@@ -2152,11 +2152,11 @@ pub fn yfused_x(rw: i64, b: i64, base: Int, r: i64, y: Int) -> () {
     };
     yalu_x(a_cmp(), y_w(), y);
     {
-        let (c, not_c) = (if (i64_eq(r, r_int_eq()) || i64_eq(r, r_eq())) {
+        let (c, not_c) = (if (i64_eq(r, rt_int_eq()) || i64_eq(r, rt_eq())) {
             q_e()
         } else {
             q_l()
-        }, if (i64_eq(r, r_int_eq()) || i64_eq(r, r_eq())) {
+        }, if (i64_eq(r, rt_int_eq()) || i64_eq(r, rt_eq())) {
             q_ne()
         } else {
             q_ge()
@@ -2173,30 +2173,30 @@ pub fn yfused_x(rw: i64, b: i64, base: Int, r: i64, y: Int) -> () {
 /// `RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
 /// them, or of another routine, given back.
 pub fn yop2_fast_x(r: i64, y: Int) -> () {
-    if i64_eq(r, r_eq()) {
+    if i64_eq(r, rt_eq()) {
         yalu_x(a_cmp(), y_w(), y);
         yboolean_of_x(q_e());
         ymov_x(y_w(), y13())
-    } else if (i64_eq(r, r_int_add()) || i64_eq(r, r_add()) || i64_eq(r, r_int_sub()) || i64_eq(r, r_sub())) {
+    } else if (i64_eq(r, rt_int_add()) || i64_eq(r, rt_add()) || i64_eq(r, rt_int_sub()) || i64_eq(r, rt_sub())) {
         ymov_x(y15(), y_w());
         yalu_x(a_or(), y15(), y);
         ytesti_x(y15(), int_lit(7));
         ygive_if_x(q_ne());
         ymov_x(y15(), y_w());
-        yalu_x(if (i64_eq(r, r_int_add()) || i64_eq(r, r_add())) {
+        yalu_x(if (i64_eq(r, rt_int_add()) || i64_eq(r, rt_add())) {
             a_add()
         } else {
             a_sub()
         }, y15(), y);
         ygive_if_x(q_o());
         ymov_x(y_w(), y15())
-    } else if (i64_eq(r, r_int_less()) || i64_eq(r, r_less()) || i64_eq(r, r_int_eq())) {
+    } else if (i64_eq(r, rt_int_less()) || i64_eq(r, rt_less()) || i64_eq(r, rt_int_eq())) {
         ymov_x(y15(), y_w());
         yalu_x(a_or(), y15(), y);
         ytesti_x(y15(), int_lit(7));
         ygive_if_x(q_ne());
         yalu_x(a_cmp(), y_w(), y);
-        yboolean_of_x(if i64_eq(r, r_int_eq()) {
+        yboolean_of_x(if i64_eq(r, rt_int_eq()) {
             q_e()
         } else {
             q_l()
@@ -2389,9 +2389,9 @@ pub fn ytail_called_x(r: Int) -> () {
 pub fn yentry_address_x(r: Int, none: Int) -> () {
     yst_ld_x(y13(), st_start());
     yld_v_x(y15(), r, at_field(f_entry()));
-    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
     ybc_x(q_b(), none);
-    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
     yalurm_x(a_cmp(), y15(), y13(), int_lit(8));
     ybc_x(q_ae(), none);
     yld_ix_x(y14(), y13(), y15(), int_lit(16));
@@ -2519,9 +2519,9 @@ pub fn y6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
     yalui_x(a_cmp(), y15(), _star(int_lit(8), n));
     ygive_if_x(q_ne());
     yld_v_x(y15(), y16(), at_field(f_entry()));
-    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
     ygive_if_x(q_b());
-    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(r_count())));
+    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
     yadr_x(y13(), get(l_words()));
     yalurm_x(a_cmp(), y15(), y13(), int_lit(0));
     ygive_if_x(q_ae());
@@ -2734,12 +2734,12 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         }
     } else if i64_eq(op, ro_op1()) {
         let r = o(int_lit(0));
-        if (i64_eq(r, r_car()) || i64_eq(r, r_cdr()) || i64_eq(r, r_pair_car()) || i64_eq(r, r_pair_cdr())) {
+        if (i64_eq(r, rt_car()) || i64_eq(r, rt_cdr()) || i64_eq(r, rt_pair_car()) || i64_eq(r, rt_pair_cdr())) {
             ymov_x(y14(), y_w());
             yalui_x(a_and(), y14(), int_lit(7));
             yalui_x(a_cmp(), y14(), int_lit(1));
             ygive_if_x(q_ne());
-            yld_v_x(y_w(), y_w(), if (i64_eq(r, r_car()) || i64_eq(r, r_pair_car())) {
+            yld_v_x(y_w(), y_w(), if (i64_eq(r, rt_car()) || i64_eq(r, rt_pair_car())) {
                 int_lit(-1)
             } else {
                 int_lit(7)
@@ -2763,7 +2763,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yimm_x(y13(), _star(int_lit(8), i64_to_int(o(int_lit(0)))));
         yfield_read_x();
         ymov_x(y_w(), y16())
-    } else if ((i64_eq(op, ro_cellular()) && i64_eq(o(int_lit(0)), r_cons()) && i64_eq(o(int_lit(1)), 2i64)) || (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_region_cons()) && i64_eq(o(int_lit(1)), 3i64))) {
+    } else if ((i64_eq(op, ro_cellular()) && i64_eq(o(int_lit(0)), rt_cons()) && i64_eq(o(int_lit(1)), 2i64)) || (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_region_cons()) && i64_eq(o(int_lit(1)), 3i64))) {
         let first = if i64_eq(op, ro_cellular()) {
             int_lit(1)
         } else {
@@ -2779,7 +2779,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         ymov_x(y_w(), y16());
         yvalued_x(y_w());
         yalui_x(a_add(), y_w(), int_lit(1))
-    } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), r_closure())) {
+    } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), rt_closure())) {
         let n = i64_to_int(o(int_lit(1)));
         yallocating_x(_plus(int_lit(3), n), int_lit(-1));
         yimm_x(y15(), _plus(_plus(int_lit(6), _star(int_lit(8), i64_to_int(k_closure()))), _star(_plus(n, int_lit(2)), int_lit(16384))));
@@ -3258,7 +3258,7 @@ pub fn y_all_put_x(mut b: &'static Bloblet<()>, mut xs: List<&'static XItem>, mu
 }
 
 /// hand.kfx's `registers-compiled!`, by `yregister-compiled!`.
-pub fn yregisters_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn yregisters_compiled_x(mut rs: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(rs) {
             return rts;
@@ -3267,7 +3267,7 @@ pub fn yregisters_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: 
             if (i64_eq(slot_of(slot_of(rw, f_twin()), f_twin()), rw) && i64_lt_eq(cells_in(rw, f_cell0()), compiled_cells_most())) {
                 let rt = label_x();
                 yregister_compiled_x(rw, i64_to_int(cells_in(rw, f_cell0())), rt);
-                slot_set_x(rw, f_entry(), fix(i64_plus(r_count(), int_to_i64(s))));
+                slot_set_x(rw, f_entry(), fix(i64_plus(rt_count(), int_to_i64(s))));
                 (rs, s, rts) = (cdr(rs), _plus(s, int_lit(1)), kayak_rt::heap_cons(rt, rts));
                 continue;
             } else {
@@ -3279,16 +3279,16 @@ pub fn yregisters_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: 
 }
 
 /// hand.kfx's `words-compiled!`, by `yword-compiled!`.
-pub fn ywords_compiled_x(mut ws: List<&'static Named>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn ywords_compiled_x(mut ws: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(ws) {
             return rts;
         } else {
             let w = named_value(car(ws));
-            if (is_kind_p(w, k_code()) && i64_eq(fix_val(slot_of(w, f_entry())), r_docol()) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
+            if (is_kind_p(w, k_code()) && i64_eq(fix_val(slot_of(w, f_entry())), rt_docol()) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
                 let rt = label_x();
                 yword_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt);
-                slot_set_x(w, f_entry(), fix(i64_plus(r_count(), int_to_i64(s))));
+                slot_set_x(w, f_entry(), fix(i64_plus(rt_count(), int_to_i64(s))));
                 (ws, s, rts) = (cdr(ws), _plus(s, int_lit(1)), kayak_rt::heap_cons(rt, rts));
                 continue;
             } else {
@@ -3439,7 +3439,7 @@ pub fn code_area_made_x(p: AddressCode, first: FlatArray<i64>, above: i64) -> ()
         if (i64_lt(at, above) || i64_eq(d, -1i64)) {
             ()
         } else {
-            set(code(), c);
+            set(code_space(), c);
             set(code_vbase(), at);
             {
                 let mid = i64_plus(lo, i64_star(page, i64_quotient(i64_quotient(n, page), 2i64)));
@@ -3466,7 +3466,7 @@ pub fn code_area_made_x(p: AddressCode, first: FlatArray<i64>, above: i64) -> ()
 /// spaces reserved whole, their addresses the values' bases. Whether
 /// they could be; else values stay indices.
 pub fn heap_addressed_x() -> bool {
-    if not(i64_eq(get(top()), 8i64)) {
+    if not(i64_eq(get(heap_top()), 8i64)) {
         false
     } else {
         let tagcase_ = address_code_x();

@@ -316,14 +316,14 @@ pub fn cut(mut cs: Chars, mut n: i64, mut acc: Chars) -> Str {
     }
 }
 
-pub fn name_of(mut ws: List<&'static Named>, mut w: i64) -> Str {
+pub fn name_of(mut ws: List<&'static NamedSlot>, mut w: i64) -> Str {
     loop {
         if null_p(ws) {
             return string_append(str_lit("(word at "), string_append(i64_to_string(w), str_lit(")")));
         } else if i64_eq(named_value(car(ws)), w) {
             let tagcase_ = car(ws);
             match *tagcase_ {
-                Named::Named(n, i) => {
+                NamedSlot::NamedSlot(n, i) => {
                     return n;
                 }
             }

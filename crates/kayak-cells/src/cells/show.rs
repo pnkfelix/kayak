@@ -176,7 +176,7 @@ pub fn written(v: i64) -> Str {
         str_lit("#f")
     } else if i64_eq(v, v_null()) {
         str_lit("()")
-    } else if i64_eq(v, v_unit()) {
+    } else if i64_eq(v, v_unit_word()) {
         str_lit("#u")
     } else if i64_eq(v, v_eof()) {
         str_lit("#<eof>")
@@ -190,7 +190,7 @@ pub fn written(v: i64) -> Str {
         char_written(i64_shr(v, int_lit(8)))
     } else if is_f32_p(v) {
         number_text(v)
-    } else if i64_eq(tag_of(v), t_immediate()) {
+    } else if i64_eq(word_tag(v), t_immediate()) {
         str_lit("#<immediate>")
     } else if is_pair_p(v) {
         string_append(str_lit("("), string_append(written(pair_car(v)), string_append(tail_written(pair_cdr(v)), str_lit(")"))))
@@ -217,7 +217,7 @@ pub fn written(v: i64) -> Str {
     } else if is_kind_p(v, k_code()) {
         string_append(str_lit("#<cellular-word "), string_append(written(slot_of(v, f_name())), str_lit(">")))
     } else if is_bloblet_p(v) {
-        string_append(str_lit("#<"), string_append(kind_name(kind_of(v)), string_append(str_lit(" "), string_append(i64_to_string(fields_of(v)), string_append(str_lit(" fields "), string_append(i64_to_string(bytes_of(v)), str_lit(" bytes>")))))))
+        string_append(str_lit("#<"), string_append(kind_name(kind_of(v)), string_append(str_lit(" "), string_append(i64_to_string(fields_of(v)), string_append(str_lit(" fields "), string_append(i64_to_string(suffix_bytes(v)), str_lit(" bytes>")))))))
     } else if is_sref_p(v) {
         string_append(str_lit("#<suffix-ref "), string_append(kind_name(kind_of(sref_owner(v))), string_append(str_lit(" +"), string_append(i64_to_string(sref_offset(v)), str_lit(">")))))
     } else {
@@ -230,9 +230,9 @@ pub fn elements_written(v: i64, i: i64, n: i64) -> Str {
     if i64_gt_eq(i, n) {
         str_lit("")
     } else if i64_eq(i, 0i64) {
-        string_append(written(obj_ref(v, 0i64)), elements_written(v, 1i64, n))
+        string_append(written(elt_ref(v, 0i64)), elements_written(v, 1i64, n))
     } else {
-        string_append(str_lit(" "), string_append(written(obj_ref(v, i)), elements_written(v, i64_plus(i, 1i64), n)))
+        string_append(str_lit(" "), string_append(written(elt_ref(v, i)), elements_written(v, i64_plus(i, 1i64), n)))
     }
 }
 

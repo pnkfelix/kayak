@@ -1762,10 +1762,10 @@ pub fn word_entered_x() -> () {
     give_if_x(c_ne());
     add_x(x11(), x_mem(), x_w());
     ldur_x(x10(), x11(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_entry()))));
-    movz_x(x13(), _star(int_lit(8), i64_to_int(r_docol())));
+    movz_x(x13(), _star(int_lit(8), i64_to_int(rt_docol())));
     cmp_x(x10(), x13());
     bc_x(c_eq(), docol);
-    cmpi_x(x10(), _star(int_lit(8), i64_to_int(r_count())));
+    cmpi_x(x10(), _star(int_lit(8), i64_to_int(rt_count())));
     give_if_x(c_lo());
     bind_x(docol);
     limits_x();
@@ -1789,76 +1789,76 @@ pub fn word_entered_x() -> () {
 
 /// Routine number `n`'s code; what it does not do it gives back.
 pub fn entered_x(n: Int) -> () {
-    if _eq(n, i64_to_int(r_lit())) {
+    if _eq(n, i64_to_int(rt_lit())) {
         h_room_x();
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         str_post_x(x13(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_dup())) {
+    } else if _eq(n, i64_to_int(rt_dup())) {
         need_x(int_lit(1));
         h_room_x();
         ldur_x(x13(), x_dsp(), int_lit(-8));
         str_post_x(x13(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_drop())) {
+    } else if _eq(n, i64_to_int(rt_drop())) {
         need_x(int_lit(1));
         subi_x(x_dsp(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_swap())) {
+    } else if _eq(n, i64_to_int(rt_swap())) {
         need_x(int_lit(2));
         ldur_x(x13(), x_dsp(), int_lit(-8));
         ldur_x(x14(), x_dsp(), int_lit(-16));
         stur_x(x13(), x_dsp(), int_lit(-16));
         stur_x(x14(), x_dsp(), int_lit(-8));
         next_x()
-    } else if _eq(n, i64_to_int(r_over())) {
+    } else if _eq(n, i64_to_int(rt_over())) {
         need_x(int_lit(2));
         h_room_x();
         ldur_x(x13(), x_dsp(), int_lit(-16));
         str_post_x(x13(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_eq())) {
+    } else if _eq(n, i64_to_int(rt_eq())) {
         need_x(int_lit(2));
         ldur_x(x13(), x_dsp(), int_lit(-16));
         ldur_x(x14(), x_dsp(), int_lit(-8));
         cmp_x(x13(), x14());
         boolean_of_x(c_eq());
         put_top_x(x13())
-    } else if (_eq(n, i64_to_int(r_add())) || _eq(n, i64_to_int(r_int_add()))) {
+    } else if (_eq(n, i64_to_int(rt_add())) || _eq(n, i64_to_int(rt_int_add()))) {
         two_fixnums_x();
         adds_x(x13(), x13(), x14());
         give_if_x(c_vs());
         put_top_x(x13())
-    } else if (_eq(n, i64_to_int(r_sub())) || _eq(n, i64_to_int(r_int_sub()))) {
+    } else if (_eq(n, i64_to_int(rt_sub())) || _eq(n, i64_to_int(rt_int_sub()))) {
         two_fixnums_x();
         subs_x(x13(), x13(), x14());
         give_if_x(c_vs());
         put_top_x(x13())
-    } else if (_eq(n, i64_to_int(r_less())) || _eq(n, i64_to_int(r_int_less()))) {
+    } else if (_eq(n, i64_to_int(rt_less())) || _eq(n, i64_to_int(rt_int_less()))) {
         two_fixnums_x();
         cmp_x(x13(), x14());
         boolean_of_x(c_lt());
         put_top_x(x13())
-    } else if _eq(n, i64_to_int(r_int_eq())) {
+    } else if _eq(n, i64_to_int(rt_int_eq())) {
         two_fixnums_x();
         cmp_x(x13(), x14());
         boolean_of_x(c_eq());
         put_top_x(x13())
-    } else if (_eq(n, i64_to_int(r_car())) || _eq(n, i64_to_int(r_cdr())) || _eq(n, i64_to_int(r_pair_car())) || _eq(n, i64_to_int(r_pair_cdr()))) {
+    } else if (_eq(n, i64_to_int(rt_car())) || _eq(n, i64_to_int(rt_cdr())) || _eq(n, i64_to_int(rt_pair_car())) || _eq(n, i64_to_int(rt_pair_cdr()))) {
         need_x(int_lit(1));
         ldur_x(x13(), x_dsp(), int_lit(-8));
         andl_x(x14(), x13(), int_lit(3));
         cmpi_x(x14(), int_lit(1));
         give_if_x(c_ne());
         add_x(x15(), x_mem(), x13());
-        ldur_x(x16(), x15(), if (_eq(n, i64_to_int(r_car())) || _eq(n, i64_to_int(r_pair_car()))) {
+        ldur_x(x16(), x15(), if (_eq(n, i64_to_int(rt_car())) || _eq(n, i64_to_int(rt_pair_car()))) {
             int_lit(-1)
         } else {
             int_lit(7)
         });
         stur_x(x16(), x_dsp(), int_lit(-8));
         next_x()
-    } else if _eq(n, i64_to_int(r_slot())) {
+    } else if _eq(n, i64_to_int(rt_slot())) {
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         add_x(x14(), x_fp(), x13());
         cmp_x(x14(), x_dsb());
@@ -1869,7 +1869,7 @@ pub fn entered_x(n: Int) -> () {
         ldr_x(x15(), x14(), int_lit(0));
         str_post_x(x15(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_slot_set())) {
+    } else if _eq(n, i64_to_int(rt_slot_set())) {
         need_x(int_lit(1));
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         add_x(x14(), x_fp(), x13());
@@ -1882,19 +1882,19 @@ pub fn entered_x(n: Int) -> () {
         str_x(x16(), x14(), int_lit(0));
         mov_x(x_dsp(), x15());
         next_x()
-    } else if _eq(n, i64_to_int(r_global())) {
+    } else if _eq(n, i64_to_int(rt_global())) {
         h_room_x();
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         add_x(x14(), x_mem(), x13());
         ldur_x(x15(), x14(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_value()))));
         str_post_x(x15(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_branch())) {
+    } else if _eq(n, i64_to_int(rt_branch())) {
         limits_x();
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         sub_x(x_ip(), x_ip(), x13());
         taken_x()
-    } else if _eq(n, i64_to_int(r_zbranch())) {
+    } else if _eq(n, i64_to_int(rt_zbranch())) {
         let taken = label_x();
         need_x(int_lit(1));
         ldur_x(x14(), x_dsp(), int_lit(-8));
@@ -1909,11 +1909,11 @@ pub fn entered_x(n: Int) -> () {
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         sub_x(x_ip(), x_ip(), x13());
         taken_x()
-    } else if (_eq(n, i64_to_int(r_call())) || _eq(n, i64_to_int(r_tcall()))) {
+    } else if (_eq(n, i64_to_int(rt_call())) || _eq(n, i64_to_int(rt_tcall()))) {
         called_x(false)
-    } else if (_eq(n, i64_to_int(r_tailcall())) || _eq(n, i64_to_int(r_ttailcall()))) {
+    } else if (_eq(n, i64_to_int(rt_tailcall())) || _eq(n, i64_to_int(rt_ttailcall()))) {
         called_x(true)
-    } else if _eq(n, i64_to_int(r_free())) {
+    } else if _eq(n, i64_to_int(rt_free())) {
         h_room_x();
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         addi_x(x13(), x13(), _star(int_lit(8), i64_to_int(f_free0())));
@@ -1924,7 +1924,7 @@ pub fn entered_x(n: Int) -> () {
         field_read_x();
         str_post_x(x16(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_field())) {
+    } else if _eq(n, i64_to_int(rt_field())) {
         need_x(int_lit(1));
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         ldur_x(x10(), x_dsp(), int_lit(-8));
@@ -1935,7 +1935,7 @@ pub fn entered_x(n: Int) -> () {
         field_read_x();
         stur_x(x16(), x_dsp(), int_lit(-8));
         next_x()
-    } else if _eq(n, i64_to_int(r_global_set())) {
+    } else if _eq(n, i64_to_int(rt_global_set())) {
         need_x(int_lit(1));
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         add_x(x14(), x_mem(), x13());
@@ -1946,7 +1946,7 @@ pub fn entered_x(n: Int) -> () {
         stur_x(x16(), x14(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_writes()))));
         subi_x(x_dsp(), x_dsp(), int_lit(8));
         next_x()
-    } else if _eq(n, i64_to_int(r_field_ref())) {
+    } else if _eq(n, i64_to_int(rt_field_ref())) {
         need_x(int_lit(2));
         ldur_x(x13(), x_dsp(), int_lit(-8));
         tstl_x(x13(), int_lit(3));
@@ -1958,18 +1958,18 @@ pub fn entered_x(n: Int) -> () {
         add_x(x11(), x_mem(), x10());
         field_read_x();
         put_top_x(x16())
-    } else if _eq(n, i64_to_int(r_cons())) {
+    } else if _eq(n, i64_to_int(rt_cons())) {
         consed_x(false)
-    } else if _eq(n, i64_to_int(r_prim())) {
+    } else if _eq(n, i64_to_int(rt_prim())) {
         primed_x()
-    } else if _eq(n, i64_to_int(r_closure())) {
+    } else if _eq(n, i64_to_int(rt_closure())) {
         closed_x()
-    } else if _eq(n, i64_to_int(r_exit())) {
+    } else if _eq(n, i64_to_int(rt_exit())) {
         ldr_x(x16(), x_st(), at_st(st_rsb()));
         cmp_x(x_rsp(), x16());
         give_if_x(c_eq());
         b_x(get(l_pop_return()))
-    } else if _eq(n, i64_to_int(r_return())) {
+    } else if _eq(n, i64_to_int(rt_return())) {
         need_x(int_lit(1));
         subi_x(x15(), x_dsp(), int_lit(8));
         cmp_x(x15(), x_fp());
@@ -1990,7 +1990,7 @@ pub fn entered_x(n: Int) -> () {
 /// `base + n`.
 pub fn table_x(mut n: Int, mut base: Int) -> () {
     loop {
-        if _gt_eq(n, i64_to_int(r_count())) {
+        if _gt_eq(n, i64_to_int(rt_count())) {
             return ();
         } else {
             b_x(_plus(base, n));
@@ -2002,7 +2002,7 @@ pub fn table_x(mut n: Int, mut base: Int) -> () {
 
 pub fn routines_x(mut n: Int, mut base: Int) -> () {
     loop {
-        if _gt_eq(n, i64_to_int(r_count())) {
+        if _gt_eq(n, i64_to_int(rt_count())) {
             return ();
         } else {
             bind_x(_plus(base, n));
@@ -2141,9 +2141,9 @@ pub fn resumed_x() -> () {
     bc_x(c_ne(), get(l_next()));
     add_x(x11(), x_mem(), x_cur());
     ldur_x(x10(), x11(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_entry()))));
-    cmpi_x(x10(), _star(int_lit(8), i64_to_int(r_count())));
+    cmpi_x(x10(), _star(int_lit(8), i64_to_int(rt_count())));
     bc_x(c_lo(), get(l_next()));
-    subi_x(x10(), x10(), _star(int_lit(8), i64_to_int(r_count())));
+    subi_x(x10(), x10(), _star(int_lit(8), i64_to_int(rt_count())));
     adr_x(x16(), get(l_words()));
     ldr_x(x14(), x16(), int_lit(0));
     cmp_x(x10(), x14());
@@ -2193,7 +2193,7 @@ pub fn mark_mark_word() -> i64 {
 /// routine for each number.
 pub fn machine_x() -> () {
     let (word, table, skip, r#loop, base) = (label_x(), label_x(), label_x(), label_x(), get(hand_labels()));
-    set(hand_labels(), _plus(base, i64_to_int(r_count())));
+    set(hand_labels(), _plus(base, i64_to_int(rt_count())));
     set(l_next(), label_x());
     set(l_give(), label_x());
     set(l_give_pre(), label_x());
@@ -2212,7 +2212,7 @@ pub fn machine_x() -> () {
     ldr_post_x(x_w(), x_ip(), int_lit(-8));
     tstl_x(x_w(), int_lit(3));
     bc_x(c_ne(), word);
-    cmpi_x(x_w(), _star(int_lit(8), i64_to_int(r_count())));
+    cmpi_x(x_w(), _star(int_lit(8), i64_to_int(rt_count())));
     give_if_x(c_hs());
     lsr_x(x10(), x_w(), int_lit(1));
     adr_x(x16(), table);
@@ -2307,7 +2307,7 @@ pub fn starts_x(mut w: i64, mut i: i64, mut n: i64, mut at: FlatArray<i64>) -> (
         } else {
             let c = slot_of(w, i64_plus(f_cell0(), i));
             flatarray_set_i64_x(at, i, 1i64);
-            i = if (is_fixnum_p(c) && i64_gt_eq(fix_val(c), 0i64) && i64_lt(fix_val(c), r_count())) {
+            i = if (is_fixnum_p(c) && i64_gt_eq(fix_val(c), 0i64) && i64_lt(fix_val(c), rt_count())) {
                 i64_plus(i, i64_plus(1i64, operand_count(fix_val(c))))
             } else {
                 i64_plus(i, 1i64)
@@ -2352,8 +2352,8 @@ pub fn cells_compiled_x(mut w: i64, mut i: i64, mut n: i64, mut at: FlatArray<i6
                 set(h_target(), int_lit(-1));
                 if not(is_fixnum_p(c)) {
                     word_entered_x()
-                } else if (i64_gt_eq(fix_val(c), 0i64) && i64_lt(fix_val(c), r_count())) {
-                    if (i64_eq(fix_val(c), r_branch()) || i64_eq(fix_val(c), r_zbranch())) {
+                } else if (i64_gt_eq(fix_val(c), 0i64) && i64_lt(fix_val(c), rt_count())) {
+                    if (i64_eq(fix_val(c), rt_branch()) || i64_eq(fix_val(c), rt_zbranch())) {
                         let t = i64_plus(i, i64_plus(2i64, fix_val(slot_of(w, i64_plus(f_cell0(), i64_plus(i, 1i64))))));
                         if (i64_gt_eq(t, 0i64) && i64_lt(t, n) && i64_eq(flatarray_ref_i64(at, t), 1i64)) {
                             set(h_target(), _plus(base, i64_to_int(t)))
@@ -2654,27 +2654,27 @@ pub fn at_field(f: i64) -> Int {
 /// `RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
 /// them, or of another routine, given back.
 pub fn op2_fast_x(r: i64, y: Int) -> () {
-    if i64_eq(r, r_eq()) {
+    if i64_eq(r, rt_eq()) {
         cmp_x(int_lit(0), y);
         boolean_of_x(c_eq());
         mov_x(int_lit(0), x13())
-    } else if (i64_eq(r, r_int_add()) || i64_eq(r, r_add()) || i64_eq(r, r_int_sub()) || i64_eq(r, r_sub())) {
+    } else if (i64_eq(r, rt_int_add()) || i64_eq(r, rt_add()) || i64_eq(r, rt_int_sub()) || i64_eq(r, rt_sub())) {
         orr_x(x15(), int_lit(0), y);
         tstl_x(x15(), int_lit(3));
         give_if_x(c_ne());
-        if (i64_eq(r, r_int_add()) || i64_eq(r, r_add())) {
+        if (i64_eq(r, rt_int_add()) || i64_eq(r, rt_add())) {
             adds_x(x15(), int_lit(0), y)
         } else {
             subs_x(x15(), int_lit(0), y)
         };
         give_if_x(c_vs());
         mov_x(int_lit(0), x15())
-    } else if (i64_eq(r, r_int_less()) || i64_eq(r, r_less()) || i64_eq(r, r_int_eq())) {
+    } else if (i64_eq(r, rt_int_less()) || i64_eq(r, rt_less()) || i64_eq(r, rt_int_eq())) {
         orr_x(x15(), int_lit(0), y);
         tstl_x(x15(), int_lit(3));
         give_if_x(c_ne());
         cmp_x(int_lit(0), y);
-        boolean_of_x(if i64_eq(r, r_int_eq()) {
+        boolean_of_x(if i64_eq(r, rt_int_eq()) {
             c_eq()
         } else {
             c_lt()
@@ -2747,9 +2747,9 @@ pub fn entry_address_x(r: Int, none: Int) -> () {
     ldr_x(x13(), x_st(), at_st(st_start()));
     add_x(x14(), x_mem(), r);
     ldur_x(x15(), x14(), at_field(f_entry()));
-    cmpi_x(x15(), _star(int_lit(8), i64_to_int(r_count())));
+    cmpi_x(x15(), _star(int_lit(8), i64_to_int(rt_count())));
     bc_x(c_lo(), none);
-    subi_x(x15(), x15(), _star(int_lit(8), i64_to_int(r_count())));
+    subi_x(x15(), x15(), _star(int_lit(8), i64_to_int(rt_count())));
     ldr_x(x14(), x13(), int_lit(8));
     cmp_x(x15(), x14());
     bc_x(c_hs(), none);
@@ -2812,11 +2812,11 @@ pub fn l_materialize() -> Ref<Int> {
 /// and `%fx26-mul`.
 pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool, fuller: bool) -> bool {
     if i64_eq(op, ro_cellular()) {
-        (allocs && i64_eq(a, r_cons()) && i64_eq(b, 2i64))
+        (allocs && i64_eq(a, rt_cons()) && i64_eq(b, 2i64))
     } else if i64_eq(op, ro_prim()) {
         ((allocs && i64_eq(prim_op(a), o_region_cons()) && i64_eq(b, 3i64)) || (fuller && ((i64_eq(prim_op(a), o_make_box()) && i64_eq(b, 1i64)) || (i64_eq(prim_op(a), o_make_frozen()) && i64_gt_eq(b, 1i64) && i64_lt_eq(b, register_regs())))))
     } else if i64_eq(op, ro_lambda()) {
-        (allocs && i64_lt_eq(b, register_regs()) && i64_eq(c, r_closure()))
+        (allocs && i64_lt_eq(b, register_regs()) && i64_eq(c, rt_closure()))
     } else if i64_eq(op, ro_setfield()) {
         fuller
     } else if i64_eq(op, ro_prim1()) {
@@ -2824,9 +2824,9 @@ pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool, fuller: bool) 
     } else if (i64_eq(op, ro_prim2()) || i64_eq(op, ro_prim2imm())) {
         (fuller && i64_eq(prim_op(a), o_mul()))
     } else if (i64_eq(op, ro_op2()) || i64_eq(op, ro_op2imm())) {
-        (i64_eq(a, r_eq()) || i64_eq(a, r_int_add()) || i64_eq(a, r_add()) || i64_eq(a, r_int_sub()) || i64_eq(a, r_sub()) || i64_eq(a, r_int_less()) || i64_eq(a, r_less()) || i64_eq(a, r_int_eq()))
+        (i64_eq(a, rt_eq()) || i64_eq(a, rt_int_add()) || i64_eq(a, rt_add()) || i64_eq(a, rt_int_sub()) || i64_eq(a, rt_sub()) || i64_eq(a, rt_int_less()) || i64_eq(a, rt_less()) || i64_eq(a, rt_int_eq()))
     } else if i64_eq(op, ro_op1()) {
-        (i64_eq(a, r_car()) || i64_eq(a, r_cdr()) || i64_eq(a, r_pair_car()) || i64_eq(a, r_pair_cdr()))
+        (i64_eq(a, rt_car()) || i64_eq(a, rt_cdr()) || i64_eq(a, rt_pair_car()) || i64_eq(a, rt_pair_cdr()))
     } else {
         (i64_eq(op, ro_args()) || i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_setglbl()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_setreg()) || i64_eq(op, ro_movereg()) || i64_eq(op, ro_lexical()) || i64_eq(op, ro_save()) || i64_eq(op, ro_pop()) || i64_eq(op, ro_stack()) || i64_eq(op, ro_load()) || i64_eq(op, ro_setstk()) || i64_eq(op, ro_store()) || i64_eq(op, ro_field()) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return()) || i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht()) || i64_eq(op, ro_global_guard()))
     }
@@ -3137,7 +3137,7 @@ pub fn fused_target(rw: i64, b: i64) -> i64 {
 /// 1 if comparison `r` and the branch at `b` after it are to be made one,
 /// else 0.
 pub fn fused_branch(rw: i64, b: i64, n: i64, r: i64) -> i64 {
-    if (not(get(h_6())) || i64_gt_eq(b, n) || not((i64_eq(r, r_int_less()) || i64_eq(r, r_less()) || i64_eq(r, r_int_eq()) || i64_eq(r, r_eq())))) {
+    if (not(get(h_6())) || i64_gt_eq(b, n) || not((i64_eq(r, rt_int_less()) || i64_eq(r, rt_less()) || i64_eq(r, rt_int_eq()) || i64_eq(r, rt_eq())))) {
         0i64
     } else {
         let op = fix_val(slot_of(rw, i64_plus(f_cell0(), b)));
@@ -3277,9 +3277,9 @@ pub fn t6_invoked_x(tail: bool, n: Int, nx: i64, after: Int) -> () {
     cmpi_x(x15(), _star(int_lit(8), n));
     give_if_x(c_ne());
     ldur_x(x15(), x14(), at_field(f_entry()));
-    cmpi_x(x15(), _star(int_lit(8), i64_to_int(r_count())));
+    cmpi_x(x15(), _star(int_lit(8), i64_to_int(rt_count())));
     give_if_x(c_lo());
-    subi_x(x15(), x15(), _star(int_lit(8), i64_to_int(r_count())));
+    subi_x(x15(), x15(), _star(int_lit(8), i64_to_int(rt_count())));
     ldr_x(x13(), x_st(), at_st(st_start()));
     ldr_x(x16(), x13(), int_lit(8));
     cmp_x(x15(), x16());
@@ -3487,12 +3487,12 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         }
     } else if i64_eq(op, ro_op1()) {
         let r = o(int_lit(0));
-        if (i64_eq(r, r_car()) || i64_eq(r, r_cdr()) || i64_eq(r, r_pair_car()) || i64_eq(r, r_pair_cdr())) {
+        if (i64_eq(r, rt_car()) || i64_eq(r, rt_cdr()) || i64_eq(r, rt_pair_car()) || i64_eq(r, rt_pair_cdr())) {
             andl_x(x14(), int_lit(0), int_lit(3));
             cmpi_x(x14(), int_lit(1));
             give_if_x(c_ne());
             add_x(x15(), x_mem(), int_lit(0));
-            ldur_x(int_lit(0), x15(), if (i64_eq(r, r_car()) || i64_eq(r, r_pair_car())) {
+            ldur_x(int_lit(0), x15(), if (i64_eq(r, rt_car()) || i64_eq(r, rt_pair_car())) {
                 int_lit(-1)
             } else {
                 int_lit(7)
@@ -3513,7 +3513,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         movz_x(x13(), _star(int_lit(8), i64_to_int(o(int_lit(0)))));
         field_read_x();
         mov_x(int_lit(0), x16())
-    } else if (i64_eq(op, ro_cellular()) && i64_eq(o(int_lit(0)), r_cons()) && i64_eq(o(int_lit(1)), 2i64)) {
+    } else if (i64_eq(op, ro_cellular()) && i64_eq(o(int_lit(0)), rt_cons()) && i64_eq(o(int_lit(1)), 2i64)) {
         allocating_x(int_lit(2), int_lit(31));
         stp_x(int_lit(1), int_lit(2), x16(), int_lit(0));
         addi_x(x15(), x13(), int_lit(2));
@@ -3527,7 +3527,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         str_x(x15(), x_st(), at_st(st_top()));
         sub_x(int_lit(0), x16(), x_mem());
         addi_x(int_lit(0), int_lit(0), int_lit(1))
-    } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), r_closure())) {
+    } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), rt_closure())) {
         let n = i64_to_int(o(int_lit(1)));
         opnd_x(x10(), int_lit(0));
         movz_x(x17(), _star(int_lit(8), n));
@@ -3980,7 +3980,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
 
 /// Each register word that is its word's twin, compiled, word `s` on;
 /// its entry made `r-count + s`. Their tables' labels, the last first.
-pub fn registers_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn registers_compiled_x(mut rs: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(rs) {
             return rts;
@@ -3989,7 +3989,7 @@ pub fn registers_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: L
             if (i64_eq(slot_of(slot_of(rw, f_twin()), f_twin()), rw) && i64_lt_eq(cells_in(rw, f_cell0()), compiled_cells_most())) {
                 let rt = label_x();
                 register_compiled_x(rw, i64_to_int(cells_in(rw, f_cell0())), rt);
-                slot_set_x(rw, f_entry(), fix(i64_plus(r_count(), int_to_i64(s))));
+                slot_set_x(rw, f_entry(), fix(i64_plus(rt_count(), int_to_i64(s))));
                 (rs, s, rts) = (cdr(rs), _plus(s, int_lit(1)), kayak_rt::heap_cons(rt, rts));
                 continue;
             } else {
@@ -4003,16 +4003,16 @@ pub fn registers_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: L
 /// Each of the listing's words whose entry is `docol`, compiled, word
 /// `s` on; its entry made `r-count + s`. Their tables' labels, the last
 /// first.
-pub fn words_compiled_x(mut ws: List<&'static Named>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn words_compiled_x(mut ws: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(ws) {
             return rts;
         } else {
             let w = named_value(car(ws));
-            if (is_kind_p(w, k_code()) && i64_eq(fix_val(slot_of(w, f_entry())), r_docol()) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
+            if (is_kind_p(w, k_code()) && i64_eq(fix_val(slot_of(w, f_entry())), rt_docol()) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
                 let rt = label_x();
                 word_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt);
-                slot_set_x(w, f_entry(), fix(i64_plus(r_count(), int_to_i64(s))));
+                slot_set_x(w, f_entry(), fix(i64_plus(rt_count(), int_to_i64(s))));
                 (ws, s, rts) = (cdr(ws), _plus(s, int_lit(1)), kayak_rt::heap_cons(rt, rts));
                 continue;
             } else {

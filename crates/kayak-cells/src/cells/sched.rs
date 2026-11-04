@@ -159,7 +159,7 @@ pub fn filled_x(mut v: i64, mut i: i64, mut xs: List<i64>) -> i64 {
         if null_p(xs) {
             return v;
         } else {
-            obj_set_x(v, i, car(xs));
+            elt_set_x(v, i, car(xs));
             (i, xs) = (i64_plus(i, 1i64), cdr(xs));
             continue;
         }
@@ -178,11 +178,11 @@ pub fn state_x() -> i64 {
 }
 
 pub fn st(k: i64) -> i64 {
-    obj_ref(state_x(), k)
+    elt_ref(state_x(), k)
 }
 
 pub fn st_set_x(k: i64, v: i64) -> () {
-    obj_set_x(state_x(), k, v)
+    elt_set_x(state_x(), k, v)
 }
 
 pub fn st_cons_x(k: i64, v: i64) -> () {
@@ -674,7 +674,7 @@ pub fn table_emptied_x(mut k: i64) -> () {
 }
 
 pub fn has_trailer_p(v: i64) -> bool {
-    i64_eq(tag_of(word_at(i64_minus(address(v), 1i64))), t_trailer())
+    i64_eq(word_tag(word_at(i64_minus(address(v), 1i64))), t_trailer())
 }
 
 pub fn slots_pending_x(mut v: i64, mut k: i64, mut last: i64) -> () {
@@ -724,9 +724,9 @@ pub fn discovered_x() -> () {
                     i64_minus(fields_of(v), 1i64)
                 } else {
                     fields_of(v)
-                }, bytes_of(v), tr, false);
+                }, suffix_bytes(v), tr, false);
                 copy_noted_x(v, copy);
-                set(copy_words(), i64_plus(get(copy_words()), i64_plus(i64_plus(1i64, fields_of(v)), i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64))));
+                set(copy_words(), i64_plus(get(copy_words()), i64_plus(i64_plus(1i64, fields_of(v)), i64_quotient(i64_plus(suffix_bytes(v), 7i64), 8i64))));
                 slots_pending_x(v, from, fields_of(v))
             };
             continue;
@@ -769,7 +769,7 @@ pub fn fields_copied_x(mut v: i64, mut c: i64, mut k: i64) -> () {
 
 pub fn suffix_copied_x(mut v: i64, mut c: i64, mut j: i64) -> () {
     loop {
-        if i64_gt_eq(j, i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64)) {
+        if i64_gt_eq(j, i64_quotient(i64_plus(suffix_bytes(v), 7i64), 8i64)) {
             return ();
         } else {
             word_set_x(i64_plus(address(c), j), word_at(i64_plus(address(v), j)));
@@ -848,7 +848,7 @@ pub fn cell_put_x(c: i64, v: i64) -> i64 {
         slot_set_x(c, 2i64, v_true());
         slot_set_x(c, 4i64, v_null());
         pushed_each_x(reversed_onto_x(ws, v_null()));
-        v_unit()
+        v_unit_word()
     }
 }
 
@@ -875,7 +875,7 @@ pub fn mailbox_put_x(m: i64, v: i64) -> i64 {
         slot_set_x(m, 4i64, v_false());
         queue_push_x(w)
     };
-    v_unit()
+    v_unit_word()
 }
 
 /// The oldest message, taken.
@@ -910,7 +910,7 @@ pub fn timer_add_x(t: i64, w: i64) -> i64 {
             t
         }), w))
     };
-    v_unit()
+    v_unit_word()
 }
 
 pub fn due_in_p(l: i64, now: i64) -> bool {

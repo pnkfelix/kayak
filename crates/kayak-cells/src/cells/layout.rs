@@ -732,6 +732,10 @@ pub mod lay {
 // machine code (C126), x86_64's of bytes at `@k`, `fx26:x86_64.fx`'s
 // region (C136).
 
+// What tier 1's heap does (C331), which the engine shares: reads and
+// writes `@c`; and, to make what it keeps of its own (its names, its lists
+// of code blocks and of weak pairs), allocates there.
+
 // Tags.
 pub fn t_fixnum() -> i64 {
     int_to_i64(lay::tag_fixnum())
@@ -903,7 +907,7 @@ pub fn v_null() -> i64 {
     19i64
 }
 
-pub fn v_unit() -> i64 {
+pub fn v_unit_word() -> i64 {
     27i64
 }
 
@@ -946,216 +950,216 @@ pub fn sref_offset_limit() -> i64 {
 }
 
 // Routines, by Fixpt's numbers.
-pub fn r_docol() -> i64 {
+pub fn rt_docol() -> i64 {
     int_to_i64(lay::routine_docol())
 }
 
-pub fn r_exit() -> i64 {
+pub fn rt_exit() -> i64 {
     int_to_i64(lay::routine_exit())
 }
 
-pub fn r_halt() -> i64 {
+pub fn rt_halt() -> i64 {
     int_to_i64(lay::routine_halt())
 }
 
-pub fn r_lit() -> i64 {
+pub fn rt_lit() -> i64 {
     int_to_i64(lay::routine_lit())
 }
 
-pub fn r_branch() -> i64 {
+pub fn rt_branch() -> i64 {
     int_to_i64(lay::routine_branch())
 }
 
-pub fn r_zbranch() -> i64 {
+pub fn rt_zbranch() -> i64 {
     int_to_i64(lay::routine_zbranch())
 }
 
-pub fn r_execute() -> i64 {
+pub fn rt_execute() -> i64 {
     int_to_i64(lay::routine_execute())
 }
 
-pub fn r_dup() -> i64 {
+pub fn rt_dup() -> i64 {
     int_to_i64(lay::routine_dup())
 }
 
-pub fn r_drop() -> i64 {
+pub fn rt_drop() -> i64 {
     int_to_i64(lay::routine_drop())
 }
 
-pub fn r_swap() -> i64 {
+pub fn rt_swap() -> i64 {
     int_to_i64(lay::routine_swap())
 }
 
-pub fn r_over() -> i64 {
+pub fn rt_over() -> i64 {
     int_to_i64(lay::routine_over())
 }
 
-pub fn r_add() -> i64 {
+pub fn rt_add() -> i64 {
     int_to_i64(lay::routine_add())
 }
 
-pub fn r_sub() -> i64 {
+pub fn rt_sub() -> i64 {
     int_to_i64(lay::routine_sub())
 }
 
-pub fn r_less() -> i64 {
+pub fn rt_less() -> i64 {
     int_to_i64(lay::routine_less())
 }
 
-pub fn r_eq() -> i64 {
+pub fn rt_eq() -> i64 {
     int_to_i64(lay::routine_eq())
 }
 
-pub fn r_field_ref() -> i64 {
+pub fn rt_field_ref() -> i64 {
     int_to_i64(lay::routine_field_ref())
 }
 
-pub fn r_field_set() -> i64 {
+pub fn rt_field_set() -> i64 {
     int_to_i64(lay::routine_field_set())
 }
 
-pub fn r_cons() -> i64 {
+pub fn rt_cons() -> i64 {
     int_to_i64(lay::routine_cons())
 }
 
-pub fn r_car() -> i64 {
+pub fn rt_car() -> i64 {
     int_to_i64(lay::routine_car())
 }
 
-pub fn r_cdr() -> i64 {
+pub fn rt_cdr() -> i64 {
     int_to_i64(lay::routine_cdr())
 }
 
-pub fn r_slot() -> i64 {
+pub fn rt_slot() -> i64 {
     int_to_i64(lay::routine_slot())
 }
 
-pub fn r_slot_set() -> i64 {
+pub fn rt_slot_set() -> i64 {
     int_to_i64(lay::routine_slot_x())
 }
 
-pub fn r_free() -> i64 {
+pub fn rt_free() -> i64 {
     int_to_i64(lay::routine_free())
 }
 
-pub fn r_global() -> i64 {
+pub fn rt_global() -> i64 {
     int_to_i64(lay::routine_global())
 }
 
-pub fn r_global_set() -> i64 {
+pub fn rt_global_set() -> i64 {
     int_to_i64(lay::routine_global_x())
 }
 
-pub fn r_closure() -> i64 {
+pub fn rt_closure() -> i64 {
     int_to_i64(lay::routine_closure())
 }
 
-pub fn r_call() -> i64 {
+pub fn rt_call() -> i64 {
     int_to_i64(lay::routine_call())
 }
 
-pub fn r_tailcall() -> i64 {
+pub fn rt_tailcall() -> i64 {
     int_to_i64(lay::routine_tailcall())
 }
 
-pub fn r_return() -> i64 {
+pub fn rt_return() -> i64 {
     int_to_i64(lay::routine_return())
 }
 
-pub fn r_prim() -> i64 {
+pub fn rt_prim() -> i64 {
     int_to_i64(lay::routine_prim())
 }
 
-pub fn r_tcall() -> i64 {
+pub fn rt_tcall() -> i64 {
     int_to_i64(lay::routine_tcall())
 }
 
-pub fn r_ttailcall() -> i64 {
+pub fn rt_ttailcall() -> i64 {
     int_to_i64(lay::routine_ttailcall())
 }
 
-pub fn r_undefined() -> i64 {
+pub fn rt_undefined() -> i64 {
     int_to_i64(lay::routine_undefined())
 }
 
-pub fn r_int_add() -> i64 {
+pub fn rt_int_add() -> i64 {
     int_to_i64(lay::routine_int_add())
 }
 
-pub fn r_int_sub() -> i64 {
+pub fn rt_int_sub() -> i64 {
     int_to_i64(lay::routine_int_sub())
 }
 
-pub fn r_int_less() -> i64 {
+pub fn rt_int_less() -> i64 {
     int_to_i64(lay::routine_int_less())
 }
 
-pub fn r_pair_car() -> i64 {
+pub fn rt_pair_car() -> i64 {
     int_to_i64(lay::routine_pair_car())
 }
 
-pub fn r_pair_cdr() -> i64 {
+pub fn rt_pair_cdr() -> i64 {
     int_to_i64(lay::routine_pair_cdr())
 }
 
-pub fn r_field() -> i64 {
+pub fn rt_field() -> i64 {
     int_to_i64(lay::routine_field())
 }
 
-pub fn r_rest() -> i64 {
+pub fn rt_rest() -> i64 {
     int_to_i64(lay::routine_rest())
 }
 
-pub fn r_int_eq() -> i64 {
+pub fn rt_int_eq() -> i64 {
     int_to_i64(lay::routine_int_eq())
 }
 
-pub fn r_prompt() -> i64 {
+pub fn rt_prompt() -> i64 {
     int_to_i64(lay::routine_prompt())
 }
 
-pub fn r_abort() -> i64 {
+pub fn rt_abort() -> i64 {
     int_to_i64(lay::routine_abort())
 }
 
-pub fn r_callcomp() -> i64 {
+pub fn rt_callcomp() -> i64 {
     int_to_i64(lay::routine_callcomp())
 }
 
-pub fn r_callcc() -> i64 {
+pub fn rt_callcc() -> i64 {
     int_to_i64(lay::routine_callcc())
 }
 
-pub fn r_withmark() -> i64 {
+pub fn rt_withmark() -> i64 {
     int_to_i64(lay::routine_withmark())
 }
 
-pub fn r_firstmark() -> i64 {
+pub fn rt_firstmark() -> i64 {
     int_to_i64(lay::routine_firstmark())
 }
 
-pub fn r_currentmarks() -> i64 {
+pub fn rt_currentmarks() -> i64 {
     int_to_i64(lay::routine_currentmarks())
 }
 
-pub fn r_marksof() -> i64 {
+pub fn rt_marksof() -> i64 {
     int_to_i64(lay::routine_marksof())
 }
 
-pub fn r_withmark_tail() -> i64 {
+pub fn rt_withmark_tail() -> i64 {
     int_to_i64(lay::routine_withmark_tail())
 }
 
-pub fn r_resume() -> i64 {
+pub fn rt_resume() -> i64 {
     int_to_i64(lay::routine_resume())
 }
 
-pub fn r_callone() -> i64 {
+pub fn rt_callone() -> i64 {
     int_to_i64(lay::routine_callone())
 }
 
 // How many routines there are: a word's entry at or past it is native code.
-pub fn r_count() -> i64 {
+pub fn rt_count() -> i64 {
     56i64
 }
 
@@ -1327,7 +1331,7 @@ pub fn routine_name(n: i64) -> Str {
     nth_name(routine_names(), n)
 }
 
-pub fn index_in(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
+pub fn position_in(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
     loop {
         if null_p(xs) {
             return -1i64;
@@ -1342,9 +1346,9 @@ pub fn index_in(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
 
 // How many operand cells follow a routine's (Fixpt's `operands`).
 pub fn operand_count(n: i64) -> i64 {
-    if (i64_eq(n, r_closure()) || i64_eq(n, r_prim()) || i64_eq(n, 51i64)) {
+    if (i64_eq(n, rt_closure()) || i64_eq(n, rt_prim()) || i64_eq(n, 51i64)) {
         2i64
-    } else if (i64_eq(n, r_lit()) || i64_eq(n, r_branch()) || i64_eq(n, r_zbranch()) || i64_eq(n, r_slot()) || i64_eq(n, r_slot_set()) || i64_eq(n, r_free()) || i64_eq(n, r_global()) || i64_eq(n, r_global_set()) || i64_eq(n, r_call()) || i64_eq(n, r_tailcall()) || i64_eq(n, r_tcall()) || i64_eq(n, r_ttailcall()) || i64_eq(n, r_field())) {
+    } else if (i64_eq(n, rt_lit()) || i64_eq(n, rt_branch()) || i64_eq(n, rt_zbranch()) || i64_eq(n, rt_slot()) || i64_eq(n, rt_slot_set()) || i64_eq(n, rt_free()) || i64_eq(n, rt_global()) || i64_eq(n, rt_global_set()) || i64_eq(n, rt_call()) || i64_eq(n, rt_tailcall()) || i64_eq(n, rt_tcall()) || i64_eq(n, rt_ttailcall()) || i64_eq(n, rt_field())) {
         1i64
     } else {
         0i64

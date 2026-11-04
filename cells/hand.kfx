@@ -439,8 +439,8 @@
       (andl! x13 x-w 3) (cmpi! x13 4) (give-if! c-ne)
       (add! x11 x-mem x-w)
       (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
-      (movz! x13 (* 8 (i64->int r-docol))) (cmp! x10 x13) (bc! c-eq docol)
-      (cmpi! x10 (* 8 (i64->int r-count))) (give-if! c-lo)
+      (movz! x13 (* 8 (i64->int rt-docol))) (cmp! x10 x13) (bc! c-eq docol)
+      (cmpi! x10 (* 8 (i64->int rt-count))) (give-if! c-lo)
       (bind! docol)
       (limits!)
       (andl! x13 x-cur 3) (cmpi! x13 4) (give-if! c-ne)
@@ -456,48 +456,48 @@
   (lambda (n)
     "Routine number `n`'s code; what it does not do it gives back."
     (cond
-      ((= n (i64->int r-lit))
+      ((= n (i64->int rt-lit))
        (begin (h-room!) (ldr-post! x13 x-ip -8) (str-post! x13 x-dsp 8) (next!)))
-      ((= n (i64->int r-dup))
+      ((= n (i64->int rt-dup))
        (begin (need! 1) (h-room!) (ldur! x13 x-dsp -8) (str-post! x13 x-dsp 8) (next!)))
-      ((= n (i64->int r-drop)) (begin (need! 1) (subi! x-dsp x-dsp 8) (next!)))
-      ((= n (i64->int r-swap))
+      ((= n (i64->int rt-drop)) (begin (need! 1) (subi! x-dsp x-dsp 8) (next!)))
+      ((= n (i64->int rt-swap))
        (begin (need! 2) (ldur! x13 x-dsp -8) (ldur! x14 x-dsp -16) (stur! x13 x-dsp -16) (stur! x14 x-dsp -8) (next!)))
-      ((= n (i64->int r-over))
+      ((= n (i64->int rt-over))
        (begin (need! 2) (h-room!) (ldur! x13 x-dsp -16) (str-post! x13 x-dsp 8) (next!)))
-      ((= n (i64->int r-eq))
+      ((= n (i64->int rt-eq))
        (begin (need! 2) (ldur! x13 x-dsp -16) (ldur! x14 x-dsp -8) (cmp! x13 x14) (boolean-of! c-eq) (put-top! x13)))
-      ((or (= n (i64->int r-add)) (= n (i64->int r-int-add)))
+      ((or (= n (i64->int rt-add)) (= n (i64->int rt-int-add)))
        (begin (two-fixnums!) (adds! x13 x13 x14) (give-if! c-vs) (put-top! x13)))
-      ((or (= n (i64->int r-sub)) (= n (i64->int r-int-sub)))
+      ((or (= n (i64->int rt-sub)) (= n (i64->int rt-int-sub)))
        (begin (two-fixnums!) (subs! x13 x13 x14) (give-if! c-vs) (put-top! x13)))
-      ((or (= n (i64->int r-less)) (= n (i64->int r-int-less)))
+      ((or (= n (i64->int rt-less)) (= n (i64->int rt-int-less)))
        (begin (two-fixnums!) (cmp! x13 x14) (boolean-of! c-lt) (put-top! x13)))
-      ((= n (i64->int r-int-eq))
+      ((= n (i64->int rt-int-eq))
        (begin (two-fixnums!) (cmp! x13 x14) (boolean-of! c-eq) (put-top! x13)))
-      ((or (= n (i64->int r-car)) (= n (i64->int r-cdr)) (= n (i64->int r-pair-car)) (= n (i64->int r-pair-cdr)))
+      ((or (= n (i64->int rt-car)) (= n (i64->int rt-cdr)) (= n (i64->int rt-pair-car)) (= n (i64->int rt-pair-cdr)))
        (begin
          (need! 1) (ldur! x13 x-dsp -8) (andl! x14 x13 3) (cmpi! x14 1) (give-if! c-ne)
          (add! x15 x-mem x13)
-         (ldur! x16 x15 (if (or (= n (i64->int r-car)) (= n (i64->int r-pair-car))) -1 7))
+         (ldur! x16 x15 (if (or (= n (i64->int rt-car)) (= n (i64->int rt-pair-car))) -1 7))
          (stur! x16 x-dsp -8) (next!)))
-      ((= n (i64->int r-slot))
+      ((= n (i64->int rt-slot))
        (begin
          (ldr-post! x13 x-ip -8) (add! x14 x-fp x13)
          (cmp! x14 x-dsb) (give-if! c-lo) (cmp! x14 x-dsp) (give-if! c-hs)
          (h-room!) (ldr! x15 x14 0) (str-post! x15 x-dsp 8) (next!)))
-      ((= n (i64->int r-slot-set))
+      ((= n (i64->int rt-slot-set))
        (begin
          (need! 1) (ldr-post! x13 x-ip -8) (add! x14 x-fp x13) (subi! x15 x-dsp 8)
          (cmp! x14 x-dsb) (give-if! c-lo) (cmp! x14 x15) (give-if! c-hs)
          (ldur! x16 x-dsp -8) (str! x16 x14 0) (mov! x-dsp x15) (next!)))
-      ((= n (i64->int r-global))
+      ((= n (i64->int rt-global))
        (begin
          (h-room!) (ldr-post! x13 x-ip -8) (add! x14 x-mem x13)
          (ldur! x15 x14 (- -4 (* 8 (i64->int f-value)))) (str-post! x15 x-dsp 8) (next!)))
-      ((= n (i64->int r-branch))
+      ((= n (i64->int rt-branch))
        (begin (limits!) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (taken!)))
-      ((= n (i64->int r-zbranch))
+      ((= n (i64->int rt-zbranch))
        (let ((taken (label!)))
          (begin
            (need! 1) (ldur! x14 x-dsp -8) (cmpi! x14 3)
@@ -505,37 +505,37 @@
            (subi! x-dsp x-dsp 8) (subi! x-ip x-ip 8) (next!)
            (bind! taken)
            (limits!) (subi! x-dsp x-dsp 8) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (taken!))))
-      ((or (= n (i64->int r-call)) (= n (i64->int r-tcall)))
+      ((or (= n (i64->int rt-call)) (= n (i64->int rt-tcall)))
        (called! #f))
-      ((or (= n (i64->int r-tailcall)) (= n (i64->int r-ttailcall)))
+      ((or (= n (i64->int rt-tailcall)) (= n (i64->int rt-ttailcall)))
        (called! #t))
-      ((= n (i64->int r-free))
+      ((= n (i64->int rt-free))
        (begin
          (h-room!) (ldr-post! x13 x-ip -8) (addi! x13 x13 (* 8 (i64->int f-free0)))
          (andl! x14 x-clo 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x-clo)
          (field-read!) (str-post! x16 x-dsp 8) (next!)))
-      ((= n (i64->int r-field))
+      ((= n (i64->int rt-field))
        (begin
          (need! 1) (ldr-post! x13 x-ip -8) (ldur! x10 x-dsp -8)
          (andl! x14 x10 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x10)
          (field-read!) (stur! x16 x-dsp -8) (next!)))
-      ((= n (i64->int r-global-set))
+      ((= n (i64->int rt-global-set))
        (begin
          (need! 1) (ldr-post! x13 x-ip -8) (add! x14 x-mem x13)
          (ldur! x15 x-dsp -8) (stur! x15 x14 (- -4 (* 8 (i64->int f-value))))
          (ldur! x16 x14 (- -4 (* 8 (i64->int f-writes)))) (addi! x16 x16 8) (stur! x16 x14 (- -4 (* 8 (i64->int f-writes))))
          (subi! x-dsp x-dsp 8) (next!)))
-      ((= n (i64->int r-field-ref))
+      ((= n (i64->int rt-field-ref))
        (begin
          (need! 2) (ldur! x13 x-dsp -8) (tstl! x13 3) (give-if! c-ne)
          (ldur! x10 x-dsp -16) (andl! x14 x10 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x10)
          (field-read!) (put-top! x16)))
-      ((= n (i64->int r-cons)) (consed! #f))
-      ((= n (i64->int r-prim)) (primed!))
-      ((= n (i64->int r-closure)) (closed!))
-      ((= n (i64->int r-exit))
+      ((= n (i64->int rt-cons)) (consed! #f))
+      ((= n (i64->int rt-prim)) (primed!))
+      ((= n (i64->int rt-closure)) (closed!))
+      ((= n (i64->int rt-exit))
        (begin (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq) (b! (get l-pop-return))))
-      ((= n (i64->int r-return))
+      ((= n (i64->int rt-return))
        (begin
          (need! 1) (subi! x15 x-dsp 8) (cmp! x15 x-fp) (give-if! c-lo)
          (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq)
@@ -548,12 +548,12 @@
     (lambda (n base)
       "A jump to each routine's code, by number: routine `n`'s label is
        `base + n`."
-      (if (>= n (i64->int r-count)) #u (begin (b! (+ base n)) (table! (+ n 1) base))))))
+      (if (>= n (i64->int rt-count)) #u (begin (b! (+ base n)) (table! (+ n 1) base))))))
 
 (define-rec
   (routines! (->* (int int) unit)
     (lambda (n base)
-      (if (>= n (i64->int r-count))
+      (if (>= n (i64->int rt-count))
           #u
           (begin (bind! (+ base n)) (entered! n) (routines! (+ n 1) base))))))
 
@@ -624,8 +624,8 @@
       (mov! 30 31)
       (andl! x13 x-cur 3) (cmpi! x13 4) (bc! c-ne (get l-next))
       (add! x11 x-mem x-cur) (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
-      (cmpi! x10 (* 8 (i64->int r-count))) (bc! c-lo (get l-next))
-      (subi! x10 x10 (* 8 (i64->int r-count)))
+      (cmpi! x10 (* 8 (i64->int rt-count))) (bc! c-lo (get l-next))
+      (subi! x10 x10 (* 8 (i64->int rt-count)))
       ;; Past the words compiled (a register word's entry is -1, C129):
       ;; given back, at the cell the ip is at.
       (adr! x16 (get l-words)) (ldr! x14 x16 0) (cmp! x10 x14) (bc! c-hs (get l-resume-give))
@@ -657,7 +657,7 @@
      routine for each number."
     (let ((word (label!)) (table (label!)) (skip (label!)) (loop (label!)) (base (get hand-labels)))
       (begin
-        (set hand-labels (+ base (i64->int r-count)))
+        (set hand-labels (+ base (i64->int rt-count)))
         (set l-next (label!)) (set l-give (label!)) (set l-give-pre (label!)) (set l-ran-out (label!)) (set l-pop-return (label!))
         (set l-resume (label!)) (set l-resume-give (label!)) (set l-misaligned (label!))
         (bind! (get l-entry))
@@ -672,7 +672,7 @@
         (ldr-post! x-w x-ip -8)
         (tstl! x-w 3)
         (bc! c-ne word)
-        (cmpi! x-w (* 8 (i64->int r-count)))
+        (cmpi! x-w (* 8 (i64->int rt-count)))
         (give-if! c-hs)
         (lsr! x10 x-w 1)
         (adr! x16 table)
@@ -736,7 +736,7 @@
           (let ((c (slot-of w (i64+ f-cell0 i))))
             (begin
               (flatarray-set-i64! at i 1)
-              (starts! w (if (and (is-fixnum? c) (i64>= (fix-val c) 0) (i64< (fix-val c) r-count))
+              (starts! w (if (and (is-fixnum? c) (i64>= (fix-val c) 0) (i64< (fix-val c) rt-count))
                              (i64+ i (i64+ 1 (operand-count (fix-val c))))
                              (i64+ i 1))
                        n at)))))))
@@ -762,9 +762,9 @@
                   (set h-cont (+ base (i64->int nx)))
                   (set h-target -1)
                   (cond ((not (is-fixnum? c)) (word-entered!))
-                        ((and (i64>= (fix-val c) 0) (i64< (fix-val c) r-count))
+                        ((and (i64>= (fix-val c) 0) (i64< (fix-val c) rt-count))
                          (begin
-                           (if (or (i64= (fix-val c) r-branch) (i64= (fix-val c) r-zbranch))
+                           (if (or (i64= (fix-val c) rt-branch) (i64= (fix-val c) rt-zbranch))
                                (let ((t (i64+ i (i64+ 2 (fix-val (slot-of w (i64+ f-cell0 (i64+ i 1))))))))
                                  (if (and (i64>= t 0) (i64< t n) (i64= (flatarray-ref-i64 at t) 1))
                                      (set h-target (+ base (i64->int t)))
@@ -924,16 +924,16 @@
   (lambda (r y)
     "`RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
      them, or of another routine, given back."
-    (cond ((i64= r r-eq) (begin (cmp! 0 y) (boolean-of! c-eq) (mov! 0 x13)))
-          ((or (i64= r r-int-add) (i64= r r-add) (i64= r r-int-sub) (i64= r r-sub))
+    (cond ((i64= r rt-eq) (begin (cmp! 0 y) (boolean-of! c-eq) (mov! 0 x13)))
+          ((or (i64= r rt-int-add) (i64= r rt-add) (i64= r rt-int-sub) (i64= r rt-sub))
            (begin
              (orr! x15 0 y) (tstl! x15 3) (give-if! c-ne)
-             (if (or (i64= r r-int-add) (i64= r r-add)) (adds! x15 0 y) (subs! x15 0 y))
+             (if (or (i64= r rt-int-add) (i64= r rt-add)) (adds! x15 0 y) (subs! x15 0 y))
              (give-if! c-vs) (mov! 0 x15)))
-          ((or (i64= r r-int-less) (i64= r r-less) (i64= r r-int-eq))
+          ((or (i64= r rt-int-less) (i64= r rt-less) (i64= r rt-int-eq))
            (begin
              (orr! x15 0 y) (tstl! x15 3) (give-if! c-ne)
-             (cmp! 0 y) (boolean-of! (if (i64= r r-int-eq) c-eq c-lt)) (mov! 0 x13)))
+             (cmp! 0 y) (boolean-of! (if (i64= r rt-int-eq) c-eq c-lt)) (mov! 0 x13)))
           (else (b! (get l-give))))))
 
 (define-rec
@@ -967,8 +967,8 @@
     (begin
       (ldr! x13 x-st (at-st st-start))
       (add! x14 x-mem r) (ldur! x15 x14 (at-field f-entry))
-      (cmpi! x15 (* 8 (i64->int r-count))) (bc! c-lo none)
-      (subi! x15 x15 (* 8 (i64->int r-count)))
+      (cmpi! x15 (* 8 (i64->int rt-count))) (bc! c-lo none)
+      (subi! x15 x15 (* 8 (i64->int rt-count)))
       (ldr! x14 x13 8) (cmp! x15 x14) (bc! c-hs none)
       (add! x16 x13 x15) (ldr! x14 x16 16)
       (add! x16 x13 x14) (ldr! x14 x16 (* 8 (+ 1 (+ (i64->int f-cell0) 2))))
@@ -998,19 +998,19 @@
      never sees one; with `fuller`, those arm64's tier 5 does itself since
      (C212): `%make-box`, `%make-frozen`, `setfield`, `%fx26-procedure?`
      and `%fx26-mul`."
-    (cond ((i64= op ro-cellular) (and allocs (i64= a r-cons) (i64= b 2)))
+    (cond ((i64= op ro-cellular) (and allocs (i64= a rt-cons) (i64= b 2)))
           ((i64= op ro-prim)
            (or (and allocs (i64= (prim-op a) o-region-cons) (i64= b 3))
                (and fuller (or (and (i64= (prim-op a) o-make-box) (i64= b 1))
                                (and (i64= (prim-op a) o-make-frozen) (i64>= b 1) (i64<= b register-regs))))))
-          ((i64= op ro-lambda) (and allocs (i64<= b register-regs) (i64= c r-closure)))
+          ((i64= op ro-lambda) (and allocs (i64<= b register-regs) (i64= c rt-closure)))
           ((i64= op ro-setfield) fuller)
           ((i64= op ro-prim1) (and fuller (i64= (prim-op a) o-procedure)))
           ((or (i64= op ro-prim2) (i64= op ro-prim2imm)) (and fuller (i64= (prim-op a) o-mul)))
           ((or (i64= op ro-op2) (i64= op ro-op2imm))
-           (or (i64= a r-eq) (i64= a r-int-add) (i64= a r-add) (i64= a r-int-sub) (i64= a r-sub)
-               (i64= a r-int-less) (i64= a r-less) (i64= a r-int-eq)))
-          ((i64= op ro-op1) (or (i64= a r-car) (i64= a r-cdr) (i64= a r-pair-car) (i64= a r-pair-cdr)))
+           (or (i64= a rt-eq) (i64= a rt-int-add) (i64= a rt-add) (i64= a rt-int-sub) (i64= a rt-sub)
+               (i64= a rt-int-less) (i64= a rt-less) (i64= a rt-int-eq)))
+          ((i64= op ro-op1) (or (i64= a rt-car) (i64= a rt-cdr) (i64= a rt-pair-car) (i64= a rt-pair-cdr)))
           (else
             (or (i64= op ro-args) (i64= op ro-const) (i64= op ro-global) (i64= op ro-setglbl) (i64= op ro-reg)
                 (i64= op ro-setreg) (i64= op ro-movereg) (i64= op ro-lexical) (i64= op ro-save) (i64= op ro-pop)
@@ -1157,7 +1157,7 @@
     "1 if comparison `r` and the branch at `b` after it are to be made one,
      else 0."
     (if (or (not (get h-6)) (i64>= b n)
-            (not (or (i64= r r-int-less) (i64= r r-less) (i64= r r-int-eq) (i64= r r-eq))))
+            (not (or (i64= r rt-int-less) (i64= r rt-less) (i64= r rt-int-eq) (i64= r rt-eq))))
         0
         (let ((op (fix-val (slot-of rw (i64+ f-cell0 b)))))
           (if (not (or (i64= op ro-branchf) (i64= op ro-brancht)))
@@ -1257,8 +1257,8 @@
       ;; Its tier 6 code: field 1 of its table, by the tables past the
       ;; code's start.
       (ldur! x15 x14 (at-field f-entry))
-      (cmpi! x15 (* 8 (i64->int r-count))) (give-if! c-lo)
-      (subi! x15 x15 (* 8 (i64->int r-count)))
+      (cmpi! x15 (* 8 (i64->int rt-count))) (give-if! c-lo)
+      (subi! x15 x15 (* 8 (i64->int rt-count)))
       (ldr! x13 x-st (at-st st-start)) (ldr! x16 x13 8) (cmp! x15 x16) (give-if! c-hs)
       (add! x16 x13 x15) (ldr! x16 x16 16)
       (add! x16 x13 x16) (ldr! x17 x16 16) (cbz! x17 (get l-give))
@@ -1381,10 +1381,10 @@
                (if (or (i64= op ro-stack) (i64= op ro-load)) (ldr! r x14 0) (str! r x14 0)))))
           ((i64= op ro-op1)
            (let ((r (o 0)))
-             (if (or (i64= r r-car) (i64= r r-cdr) (i64= r r-pair-car) (i64= r r-pair-cdr))
+             (if (or (i64= r rt-car) (i64= r rt-cdr) (i64= r rt-pair-car) (i64= r rt-pair-cdr))
                  (begin
                    (andl! x14 0 3) (cmpi! x14 1) (give-if! c-ne) (add! x15 x-mem 0)
-                   (ldur! 0 x15 (if (or (i64= r r-car) (i64= r r-pair-car)) -1 7)))
+                   (ldur! 0 x15 (if (or (i64= r rt-car) (i64= r rt-pair-car)) -1 7)))
                  (b! (get l-give)))))
           ((i64= op ro-op2) (op2-fast! (o 0) (reg-of (i64->int (o 1)))))
           ((i64= op ro-op2imm) (begin (opnd! x14 1) (op2-fast! (o 0) x14)))
@@ -1392,7 +1392,7 @@
            (begin
              (andl! x14 0 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem 0)
              (movz! x13 (* 8 (i64->int (o 0)))) (field-read!) (mov! 0 x16)))
-          ((and (i64= op ro-cellular) (i64= (o 0) r-cons) (i64= (o 1) 2))
+          ((and (i64= op ro-cellular) (i64= (o 0) rt-cons) (i64= (o 1) 2))
            (begin
              (allocating! 2 31) (stp! 1 2 x16 0)
              (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (sub! 0 x16 x-mem) (addi! 0 0 1)))
@@ -1400,7 +1400,7 @@
            (begin
              (allocating! 2 31) (stp! 2 3 x16 0)
              (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (sub! 0 x16 x-mem) (addi! 0 0 1)))
-          ((and (i64= op ro-lambda) (i64<= (o 1) register-regs) (i64= (o 2) r-closure))
+          ((and (i64= op ro-lambda) (i64<= (o 1) register-regs) (i64= (o 2) rt-closure))
            (let ((n (i64->int (o 1))))
              (begin
                ;; As `closed!` lays a closure out, its values from the registers.
@@ -1690,7 +1690,7 @@
         (set h-6-adapter -1) (set h-6-on #f)))))
 
 (define-rec
-  (registers-compiled! (->* ((listof named @c) int (listof int @c)) (listof int @c))
+  (registers-compiled! (->* ((listof named-slot @c) int (listof int @c)) (listof int @c))
     (lambda (rs s rts)
       "Each register word that is its word's twin, compiled, word `s` on;
        its entry made `r-count + s`. Their tables' labels, the last first."
@@ -1702,12 +1702,12 @@
                 (let ((rt (label!)))
                   (begin
                     (register-compiled! rw (i64->int (cells-in rw f-cell0)) rt)
-                    (slot-set! rw f-entry (fix (i64+ r-count (int->i64 s))))
+                    (slot-set! rw f-entry (fix (i64+ rt-count (int->i64 s))))
                     (registers-compiled! (cdr rs) (+ s 1) (cons rt rts))))
                 (registers-compiled! (cdr rs) s rts)))))))
 
 (define-rec
-  (words-compiled! (->* ((listof named @c) int (listof int @c)) (listof int @c))
+  (words-compiled! (->* ((listof named-slot @c) int (listof int @c)) (listof int @c))
     (lambda (ws s rts)
       "Each of the listing's words whose entry is `docol`, compiled, word
        `s` on; its entry made `r-count + s`. Their tables' labels, the last
@@ -1715,12 +1715,12 @@
       (if (null? ws)
           rts
           (let ((w (named-value (car ws))))
-            (if (and (is-kind? w k-code) (i64= (fix-val (slot-of w f-entry)) r-docol)
+            (if (and (is-kind? w k-code) (i64= (fix-val (slot-of w f-entry)) rt-docol)
                      (i64<= (cells-in w f-cell0) compiled-cells-most))
                 (let ((rt (label!)))
                   (begin
                     (word-compiled! w (i64->int (cells-in w f-cell0)) rt)
-                    (slot-set! w f-entry (fix (i64+ r-count (int->i64 s))))
+                    (slot-set! w f-entry (fix (i64+ rt-count (int->i64 s))))
                     (words-compiled! (cdr ws) (+ s 1) (cons rt rts))))
                 (words-compiled! (cdr ws) s rts)))))))
 

@@ -1644,7 +1644,7 @@ pub fn filled_of_x(p: i64, bytes: i64, n: i64, x: i64, check_bytes: bool) -> i64
 pub fn field_trouble(b: i64, k: i64) -> Str {
     if (i64_eq(k, 0i64) || i64_gt(k, fields_of(b))) {
         string_append(str_lit("the bloblet has no field -"), i64_to_string(k))
-    } else if i64_eq(tag_of(slot_of(b, k)), t_trailer()) {
+    } else if i64_eq(word_tag(slot_of(b, k)), t_trailer()) {
         str_lit("field -1 is the bloblet's trailer, which only the runtime writes")
     } else {
         str_lit("")
@@ -1680,7 +1680,7 @@ pub fn fields_acyclic_p(mut b: i64, mut k: i64, mut path: List<i64>, mut done: R
     loop {
         if i64_gt(k, fields_of(b)) {
             return true;
-        } else if i64_eq(tag_of(slot_of(b, k)), t_trailer()) {
+        } else if i64_eq(word_tag(slot_of(b, k)), t_trailer()) {
             k = i64_plus(k, 1i64);
             continue;
         } else if acyclic_from_p(slot_of(b, k), path, done) {
@@ -1739,7 +1739,7 @@ pub fn bytes_put_x(mut p: i64, mut at: i64, mut width: i64, mut bits: i64, mut k
 
 /// How many bytes of its owner's suffix lie from ref `r` on.
 pub fn room_at(r: i64) -> i64 {
-    let n = i64_minus(bytes_of(sref_owner(r)), sref_offset(r));
+    let n = i64_minus(suffix_bytes(sref_owner(r)), sref_offset(r));
     if i64_lt(n, 0i64) {
         0i64
     } else {
@@ -1749,7 +1749,7 @@ pub fn room_at(r: i64) -> i64 {
 
 /// Fixpt's `suffix_ref`, its failures said `suffix ref: ...`.
 pub fn sref_at_x(owner: i64, off: i64) -> i64 {
-    let n = bytes_of(owner);
+    let n = suffix_bytes(owner);
     if i64_gt_eq(n, sref_offset_limit()) {
         fail_x(string_append(str_lit("suffix ref: a suffix of "), string_append(i64_to_string(n), str_lit(" bytes is too large to point into (a suffix ref's offset is below 2^27)"))))
     } else if i64_gt_eq(off, n) {
@@ -1771,7 +1771,7 @@ pub fn sref_moved_x(r: i64, d: i64) -> i64 {
 // A read's or a write's trouble at ref `r` (`suffix_ref_read`, `_write`):
 // ``, or what Fixpt says.
 pub fn read_trouble(r: i64, width: i64) -> Str {
-    if i64_gt(i64_plus(sref_offset(r), width), bytes_of(sref_owner(r))) {
+    if i64_gt(i64_plus(sref_offset(r), width), suffix_bytes(sref_owner(r))) {
         string_append(str_lit("suffix ref: the bloblet's suffix has no byte "), i64_to_string(i64_minus(i64_plus(sref_offset(r), width), 1i64)))
     } else {
         str_lit("")
@@ -1890,7 +1890,7 @@ pub fn code_copied_x(mut from: i64, mut to: i64, mut n: i64) -> () {
 pub fn sealed_copy_x(v: i64) -> i64 {
     let h = header_index(v);
     let f = fields_of(v);
-    let nw = i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64);
+    let nw = i64_quotient(i64_plus(suffix_bytes(v), 7i64), 8i64);
     let size = i64_plus(i64_plus(1i64, f), nw);
     let at = code_alloc_x(size);
     if i64_lt(at, 0i64) {
@@ -1898,7 +1898,7 @@ pub fn sealed_copy_x(v: i64) -> i64 {
     } else {
         code_set_x(at, i64_or(word_at(h), i64_shl(1i64, lay::header_suffix_frozen_lo())));
         code_copied_x(i64_plus(h, 1i64), i64_plus(at, 1i64), i64_plus(f, nw));
-        code_flush(get(code()), i64_to_int(i64_plus(i64_plus(at, 1i64), f)), i64_to_int(if i64_eq(nw, 0i64) {
+        code_flush(get(code_space()), i64_to_int(i64_plus(i64_plus(at, 1i64), f)), i64_to_int(if i64_eq(nw, 0i64) {
             the::<i64>(1i64)
         } else {
             nw
@@ -1979,10 +1979,10 @@ pub fn adapter_word_x(n: i64) -> i64 {
     if not(i64_eq(have, 0i64)) {
         have
     } else {
-        let w = make_code_word_x(str_lit("adapter"), 4i64, r_docol());
-        slot_set_x(w, f_cell0(), fix(r_free()));
+        let w = make_code_word_x(str_lit("adapter"), 4i64, rt_docol());
+        slot_set_x(w, f_cell0(), fix(rt_free()));
         slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
-        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_tailcall()));
+        slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(rt_tailcall()));
         slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(n));
         set(adapter_words(), kayak_rt::heap_cons(cblock(n, shared_x(w)), get(adapter_words())));
         w
@@ -2329,7 +2329,7 @@ pub fn elements_hash(mut v: i64, mut i: i64, mut n: i64, mut h: i64) -> i64 {
         if i64_gt_eq(i, n) {
             return h;
         } else {
-            (i, h) = (i64_plus(i, 1i64), intern_mix(h, obj_ref(v, i)));
+            (i, h) = (i64_plus(i, 1i64), intern_mix(h, elt_ref(v, i)));
             continue;
         }
     }
@@ -2340,7 +2340,7 @@ pub fn words_same_p(p: i64, q: i64, i: i64, n: i64) -> bool {
 }
 
 pub fn elements_same_p(a: i64, b: i64, i: i64, n: i64) -> bool {
-    (i64_gt_eq(i, n) || (i64_eq(obj_ref(a, i), obj_ref(b, i)) && elements_same_p(a, b, i64_plus(i, 1i64), n)))
+    (i64_gt_eq(i, n) || (i64_eq(elt_ref(a, i), elt_ref(b, i)) && elements_same_p(a, b, i64_plus(i, 1i64), n)))
 }
 
 /// An interned object's hash: of a pair's parts, a string's words, a
@@ -2482,9 +2482,9 @@ pub fn vector_interned_x(mut v: i64, mut w: i64, mut i: i64, mut same: bool) -> 
         if i64_gt_eq(i, eq_size(v)) {
             return same;
         } else {
-            let x = intern_datum_x(obj_ref(v, i));
-            obj_set_x(w, i, x);
-            (i, same) = (i64_plus(i, 1i64), (same && i64_eq(x, obj_ref(v, i))));
+            let x = intern_datum_x(elt_ref(v, i));
+            elt_set_x(w, i, x);
+            (i, same) = (i64_plus(i, 1i64), (same && i64_eq(x, elt_ref(v, i))));
             continue;
         }
     }
@@ -2984,7 +2984,7 @@ pub fn flat_index(a: i64, i: i64) -> i64 {
     if not(is_kind_p(a, k_flat_array())) {
         expected_x(str_lit("a flat array"));
         -1i64
-    } else if (not(is_fixnum_p(i)) || i64_lt(fix_val(i), 0i64) || i64_gt_eq(fix_val(i), i64_quotient(bytes_of(a), flat_size(fix_val(slot_of(a, 2i64)))))) {
+    } else if (not(is_fixnum_p(i)) || i64_lt(fix_val(i), 0i64) || i64_gt_eq(fix_val(i), i64_quotient(suffix_bytes(a), flat_size(fix_val(slot_of(a, 2i64)))))) {
         fail_x(str_lit("flatarray: index out of range"));
         -1i64
     } else {
@@ -3330,11 +3330,11 @@ pub fn butlast(xs: List<i64>) -> List<i64> {
 /// not run, is not made.
 pub fn vlambda_x(f: i64) -> i64 {
     let w = if i64_eq(get(vlambda_word()), 0i64) {
-        let w = make_code_word_x(str_lit("vlambda"), 5i64, r_docol());
-        slot_set_x(w, f_cell0(), fix(r_rest()));
-        slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(r_free()));
+        let w = make_code_word_x(str_lit("vlambda"), 5i64, rt_docol());
+        slot_set_x(w, f_cell0(), fix(rt_rest()));
+        slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(rt_free()));
         slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(0i64));
-        slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(r_tailcall()));
+        slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(rt_tailcall()));
         slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(1i64));
         set(vlambda_word(), shared_x(w));
         w
@@ -3386,8 +3386,8 @@ pub fn filled_cells_x(mut w: i64, mut k: i64, mut xs: List<i64>) -> () {
 /// `call 0`, `drop`, `%fx26-preempt-done`, `drop`, `exit` (Fixpt's
 /// `%preempt-trampoline`).
 pub fn trampoline_x() -> i64 {
-    let w = make_word_x(str_lit("%preempt-trampoline"), 8i64, r_docol());
-    filled_cells_x(w, f_cell0(), kayak_rt::heap_cons(r_call(), kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(r_drop(), kayak_rt::heap_cons(r_prim(), kayak_rt::heap_cons(prim_number(str_lit("%fx26-preempt-done")), kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(r_drop(), kayak_rt::heap_cons(r_exit(), kayak_rt::nil())))))))));
+    let w = make_word_x(str_lit("%preempt-trampoline"), 8i64, rt_docol());
+    filled_cells_x(w, f_cell0(), kayak_rt::heap_cons(rt_call(), kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(rt_drop(), kayak_rt::heap_cons(rt_prim(), kayak_rt::heap_cons(prim_number(str_lit("%fx26-preempt-done")), kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(rt_drop(), kayak_rt::heap_cons(rt_exit(), kayak_rt::nil())))))))));
     w
 }
 
@@ -3437,14 +3437,14 @@ pub fn io_failed_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permission
             }
         }
     };
-    io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit()), make_string_x(e.1)))
+    io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit_word()), make_string_x(e.1)))
 }
 
 pub fn io_done_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
     let tagcase_ = r;
     match *tagcase_ {
         Sum_4done_6failed::Done(u) => {
-            io_sum_x(str_lit("done"), v_unit())
+            io_sum_x(str_lit("done"), v_unit_word())
         }
         Sum_4done_6failed::Failed(e) => {
             io_failed_x(e)
@@ -3472,7 +3472,7 @@ pub fn io_failure_x() -> i64 {
     } else {
         str_lit("other")
     };
-    io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit()), make_string_x(failure_detail())))
+    io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit_word()), make_string_x(failure_detail())))
 }
 
 pub fn in_mem_p(v: i64) -> bool {
@@ -3492,7 +3492,7 @@ pub fn text_written_x(v: i64, stream: i64) -> i64 {
             write_err(string_text(v))
         })
     } else if i64_eq(int_to_i64(write_points(get(mem()), i64_to_int(i64_plus(address(v), 1i64)), i64_to_int(str_length(v)), int_lit(2), i64_to_int(stream))), 0i64) {
-        io_sum_x(str_lit("done"), v_unit())
+        io_sum_x(str_lit("done"), v_unit_word())
     } else {
         io_failure_x()
     }
@@ -3502,7 +3502,7 @@ pub fn text_written_x(v: i64, stream: i64) -> i64 {
 pub fn line_read_x() -> i64 {
     let n = int_to_i64(read_line_points());
     if i64_eq(n, -1i64) {
-        io_sum_x(str_lit("eof"), v_unit())
+        io_sum_x(str_lit("eof"), v_unit_word())
     } else if i64_lt(n, 0i64) {
         io_failure_x()
     } else {
@@ -3517,10 +3517,10 @@ pub fn terminal_done_x(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Pr
     let tagcase_ = r;
     match *tagcase_ {
         Sum_4done_14not_a_terminal_6failed::Done(u) => {
-            io_sum_x(str_lit("done"), v_unit())
+            io_sum_x(str_lit("done"), v_unit_word())
         }
         Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
-            io_sum_x(str_lit("not-a-terminal"), v_unit())
+            io_sum_x(str_lit("not-a-terminal"), v_unit_word())
         }
         Sum_4done_14not_a_terminal_6failed::Failed(e) => {
             io_failed_x(e)
@@ -3573,7 +3573,7 @@ pub fn process_how_x(h: &'static Sum_6exited_9signalled_7unknown<Int, Int, ()>) 
             io_sum_x(str_lit("signalled"), fix(int_to_i64(c)))
         }
         Sum_6exited_9signalled_7unknown::Unknown(u) => {
-            io_sum_x(str_lit("unknown"), v_unit())
+            io_sum_x(str_lit("unknown"), v_unit_word())
         }
     }
 }
@@ -3586,7 +3586,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
     } else if i64_eq(op, o_exit()) {
         if is_integer_p(a) {
             match exit(int_of(a)) {};
-            v_unit()
+            v_unit_word()
         } else {
             expected_x(str_lit("an exact integer"))
         }
@@ -3599,7 +3599,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
                 io_sum_x(str_lit("byte"), fix(int_to_i64(u8_to_int(k))))
             }
             Sum_4byte_3eof_6failed::Eof(u) => {
-                io_sum_x(str_lit("eof"), v_unit())
+                io_sum_x(str_lit("eof"), v_unit_word())
             }
             Sum_4byte_3eof_6failed::Failed(e) => {
                 io_failed_x(e)
@@ -3625,7 +3625,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
                         io_sum_x(str_lit("count"), fix(int_to_i64(k)))
                     }
                     Sum_5count_3eof_6failed::Eof(u) => {
-                        io_sum_x(str_lit("eof"), v_unit())
+                        io_sum_x(str_lit("eof"), v_unit_word())
                     }
                     Sum_5count_3eof_6failed::Failed(e) => {
                         io_failed_x(e)
@@ -3646,7 +3646,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
                 io_sum_x(str_lit("size"), frozen2_x(k_product(), fix(int_to_i64(p.0)), fix(int_to_i64(p.1))))
             }
             Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
-                io_sum_x(str_lit("not-a-terminal"), v_unit())
+                io_sum_x(str_lit("not-a-terminal"), v_unit_word())
             }
             Sum_4size_14not_a_terminal_6failed::Failed(e) => {
                 io_failed_x(e)
@@ -3706,7 +3706,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
                                 str_lit("other")
                             }
                         }
-                    }, v_unit()), fix(int_to_i64(i.1)), fix(int_to_i64(i.2)), fix(int_to_i64(i.3))))
+                    }, v_unit_word()), fix(int_to_i64(i.1)), fix(int_to_i64(i.2)), fix(int_to_i64(i.3))))
                 }
                 Sum_4info_6failed::Failed(e) => {
                     io_failed_x(e)
@@ -3749,7 +3749,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
         let tagcase_ = process_status(i64_to_int(fix_val(a)));
         match *tagcase_ {
             Sum_7running_6exited_9signalled_7unknown::Running(u) => {
-                io_sum_x(str_lit("running"), v_unit())
+                io_sum_x(str_lit("running"), v_unit_word())
             }
             Sum_7running_6exited_9signalled_7unknown::Exited(c) => {
                 io_sum_x(str_lit("exited"), fix(int_to_i64(c)))
@@ -3758,7 +3758,7 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
                 io_sum_x(str_lit("signalled"), fix(int_to_i64(c)))
             }
             Sum_7running_6exited_9signalled_7unknown::Unknown(u) => {
-                io_sum_x(str_lit("unknown"), v_unit())
+                io_sum_x(str_lit("unknown"), v_unit_word())
             }
         }
     } else if i64_eq(op, o_process_write()) {
@@ -3769,10 +3769,10 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
         }
     } else if i64_eq(op, o_process_close_input()) {
         process_close_input(i64_to_int(fix_val(a)));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(op, o_process_signal()) {
         process_signal(i64_to_int(fix_val(a)), i64_to_int(fix_val(b)));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(op, o_process_exit()) {
         process_how_x(process_exit(i64_to_int(fix_val(a))))
     } else if i64_eq(op, o_process_news()) {
@@ -3829,10 +3829,10 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         boolean(w)
     } else if i64_eq(n, 32i64) {
         quiet_leave_x();
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 33i64) {
         quiet_enter_x();
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 0i64) {
         fix(task_new_x())
     } else if i64_eq(n, 1i64) {
@@ -3844,7 +3844,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
             task_end_x(fix_val(a));
             forget_task_x(a)
         };
-        v_unit()
+        v_unit_word()
     } else if (i64_eq(n, 35i64) || i64_eq(n, 39i64)) {
         let p = if i64_eq(n, 39i64) {
             group_of(fix(get(task_now())))
@@ -3858,7 +3858,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         };
         st_cons_x(s_groups(), cons_x(a, a));
         st_cons_x(s_monitors(), cons_x(a, b));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 36i64) {
         let g = group_of(fix(get(task_now())));
         if i64_eq(g, v_false()) {
@@ -3866,7 +3866,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         } else {
             st_cons_x(s_groups(), cons_x(a, g))
         };
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 37i64) {
         let f = st(s_failure());
         if i64_eq(f, v_false()) {
@@ -3888,14 +3888,14 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         } else {
             st_cons_x(s_cancelled(), a)
         };
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 25i64) {
         boolean(cancelled_p(a))
     } else if i64_eq(n, 3i64) {
         fix(get(task_now()))
     } else if i64_eq(n, 4i64) {
         queue_push_x(a);
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 5i64) {
         queue_pop_x()
     } else if i64_eq(n, 26i64) {
@@ -3905,39 +3905,39 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         } else {
             ()
         };
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 43i64) {
         boolean(stdin_ready_p())
     } else if i64_eq(n, 44i64) {
         st_cons_x(s_stdin(), a);
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 45i64) {
         st_set_x(s_stdin(), without_x(st(s_stdin()), 0i64, a));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 46i64) {
         boolean(process_output_ready_p(fix_val(a)))
     } else if i64_eq(n, 47i64) {
         st_cons_x(s_output(), cons_x(a, b));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 48i64) {
         st_set_x(s_output(), without_x(st(s_output()), 2i64, a));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 49i64) {
         boolean(process_ended_p(fix_val(a)))
     } else if i64_eq(n, 50i64) {
         st_cons_x(s_exit(), cons_x(a, b));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 51i64) {
         st_set_x(s_exit(), without_x(st(s_exit()), 2i64, a));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 52i64) {
         boolean(i64_gt_eq(int_to_i64(process_news()), 0i64))
     } else if i64_eq(n, 53i64) {
         st_cons_x(s_news(), a);
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 54i64) {
         st_set_x(s_news(), without_x(st(s_news()), 0i64, a));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 55i64) {
         int_value_x(i64_to_int(i64_plus(clock(), i64_star(if i64_lt(int_to_i64(int_of(a)), 0i64) {
             0i64
@@ -3946,15 +3946,15 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         }, 1000000i64))))
     } else if i64_eq(n, 40i64) {
         st_cons_x(s_waiting(), cons_x(a, b));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 41i64) {
         st_set_x(s_waiting(), without_x(st(s_waiting()), 1i64, a));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 42i64) {
         reaped_x()
     } else if i64_eq(n, 27i64) {
         st_cons_x(s_parked(), a);
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 28i64) {
         pop_any_x()
     } else if i64_eq(n, 29i64) {
@@ -3968,7 +3968,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         } else {
             r
         }));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 6i64) {
         make_mailbox_x()
     } else if i64_eq(n, 7i64) {
@@ -3983,7 +3983,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         } else {
             slot_set_x(a, 4i64, b)
         };
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 10i64) {
         slot_of(a, 2i64)
     } else if i64_eq(n, 15i64) {
@@ -3994,37 +3994,37 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         } else {
             queue_push_x(b)
         };
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 22i64) {
         slot_set_x(a, 4i64, without_x(slot_of(a, 4i64), 0i64, b));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 23i64) {
         if i64_eq(slot_of(a, 4i64), b) {
             slot_set_x(a, 4i64, v_false())
         } else {
             ()
         };
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 20i64) {
         st_set_x(s_timers(), without_x(st(s_timers()), 2i64, a));
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 14i64) {
         cell_put_x(a, b)
     } else if i64_eq(n, 34i64) {
         if i64_eq(slot_of(a, 2i64), v_false()) {
             cell_put_x(a, b)
         } else {
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(n, 12i64) {
         if i64_eq(st(s_tag()), v_false()) {
-            frozen2_x(k_sum(), symbol_x(str_lit("none")), v_unit())
+            frozen2_x(k_sum(), symbol_x(str_lit("none")), v_unit_word())
         } else {
             frozen2_x(k_sum(), symbol_x(str_lit("some")), st(s_tag()))
         }
     } else if i64_eq(n, 13i64) {
         st_set_x(s_tag(), a);
-        v_unit()
+        v_unit_word()
     } else if i64_eq(n, 16i64) {
         set(regions(), i64_plus(get(regions()), 1i64));
         fix(get(regions()))
@@ -4369,7 +4369,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(str_lit("a character"))
         } else {
             str_set_x(a, fix_val(b), i64_shr(c, int_lit(8)));
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_string_fill()) {
         if not(str_p(a)) {
@@ -4378,7 +4378,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(str_lit("a character"))
         } else {
             str_filled_x(a, 0i64, str_length(a), i64_shr(b, int_lit(8)));
-            v_unit()
+            v_unit_word()
         }
     } else if (i64_eq(op, o_string_copy()) || i64_eq(op, o_string_copy_into())) {
         let v = if i64_eq(op, o_string_copy()) {
@@ -4416,7 +4416,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             let tmp = str_blank_x(i64_minus(fix_val(e), fix_val(s)));
             str_copied_x(tmp, 0i64, v, fix_val(s), fix_val(e));
             str_copied_x(a, fix_val(b), tmp, 0i64, str_length(tmp));
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_string_ref()) {
         if not(str_p(a)) {
@@ -4491,7 +4491,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         }
     } else if i64_eq(op, o_symbol_hash()) {
         if is_kind_p(a, k_symbol()) {
-            obj_ref(a, 1i64)
+            elt_ref(a, 1i64)
         } else {
             expected_x(str_lit("a symbol"))
         }
@@ -4560,7 +4560,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else if i64_eq(op, o_bloblet_fields()) {
             fix(fields_of(a))
         } else if i64_eq(op, o_bloblet_bytes()) {
-            fix(bytes_of(a))
+            fix(suffix_bytes(a))
         } else {
             cons_x(boolean(fields_frozen_p(a)), boolean(suffix_frozen_p(a)))
         }
@@ -4583,7 +4583,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(machine_word())
         } else if i64_lt(fix_val(b), 0i64) {
             fail_x(str_lit("bloblet field: no such field"))
-        } else if (i64_eq(tag_of(c), t_trailer()) || i64_eq(tag_of(c), t_header()) || i64_eq(tag_of(c), t_forward())) {
+        } else if (i64_eq(word_tag(c), t_trailer()) || i64_eq(word_tag(c), t_header()) || i64_eq(word_tag(c), t_forward())) {
             fail_x(str_lit("bloblet field: only a value can be stored in a field"))
         } else if not(string_eq_p(field_trouble(a, fix_val(b)), str_lit(""))) {
             fail_x(string_append(str_lit("bloblet field: "), field_trouble(a, fix_val(b))))
@@ -4598,7 +4598,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(str_lit("a bloblet"))
         } else if not(is_fixnum_p(b)) {
             expected_x(machine_word())
-        } else if (i64_lt(fix_val(b), 0i64) || i64_gt_eq(fix_val(b), bytes_of(a))) {
+        } else if (i64_lt(fix_val(b), 0i64) || i64_gt_eq(fix_val(b), suffix_bytes(a))) {
             fail_x(str_lit("bloblet byte: out of range"))
         } else {
             fix(byte_of(address(a), fix_val(b)))
@@ -4614,7 +4614,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             fail_x(str_lit("bloblet byte: not a byte"))
         } else if i64_lt(fix_val(b), 0i64) {
             fail_x(str_lit("bloblet byte: out of range"))
-        } else if i64_gt_eq(fix_val(b), bytes_of(a)) {
+        } else if i64_gt_eq(fix_val(b), suffix_bytes(a)) {
             fail_x(string_append(str_lit("bloblet byte: the bloblet's suffix has no byte "), i64_to_string(fix_val(b))))
         } else if suffix_frozen_p(a) {
             fail_x(str_lit("bloblet byte: the bloblet's suffix is frozen"))
@@ -4675,13 +4675,13 @@ pub fn prim_apply_x(p: i64) -> i64 {
         if i64_eq(a, v_false()) {
             fail_x(str_lit("assumption not met"))
         } else {
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_assert()) {
         if i64_eq(a, v_false()) {
             fail_x(str_lit("assertion failed"))
         } else {
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_syscall_require()) {
         let label = string_text(a);
@@ -4692,7 +4692,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else if not(string_eq_p(have, text)) {
             fail_x(string_append(label, string_append(str_lit(": declared "), string_append(text, string_append(str_lit("; this runtime's is "), have)))))
         } else {
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_syscall_available()) {
         boolean(string_eq_p(tier1_syscall_type(string_text(a)), string_text(parg(1i64))))
@@ -4707,7 +4707,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else if string_eq_p(host, str_lit("code:exec-view/1")) {
             fix(-1i64)
         } else {
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_string_symbol()) {
         if is_kind_p(a, k_string()) {
@@ -4744,10 +4744,10 @@ pub fn prim_apply_x(p: i64) -> i64 {
                 slot_of(a, 2i64)
             } else if i64_eq(op, o_eqtable_set()) {
                 eq_set_x(a, parg(1i64), parg(2i64));
-                v_unit()
+                v_unit_word()
             } else if i64_eq(op, o_eqtable_delete()) {
                 eq_delete_x(a, parg(1i64));
-                v_unit()
+                v_unit_word()
             } else {
                 let e = eq_entry(a, parg(1i64));
                 if i64_eq(op, o_eqtable_has()) {
@@ -4854,7 +4854,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(flat_bits_expected(fix_val(b)))
         } else {
             sref_write_x(a, flat_size(fix_val(b)), flat_bits(fix_val(b), c));
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_flat_tag()) {
         if not(is_fixnum_p(b)) {
@@ -4992,10 +4992,10 @@ pub fn prim_apply_x(p: i64) -> i64 {
             let code = fix_val(slot_of(a, 2i64));
             let size = flat_size(code);
             bytes_put_x(address(a), i64_star(i, size), size, flat_bits(code, c), 0i64);
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_flatarray_length()) {
-        fix(i64_quotient(bytes_of(a), flat_size(fix_val(slot_of(a, 2i64)))))
+        fix(i64_quotient(suffix_bytes(a), flat_size(fix_val(slot_of(a, 2i64)))))
     } else if i64_eq(op, o_make_bytevector()) {
         if not(is_fixnum_p(a)) {
             expected_x(machine_word())
@@ -5042,7 +5042,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             if i64_eq(op, o_bytevector_set()) {
                 v_unspecified()
             } else {
-                v_unit()
+                v_unit_word()
             }
         }
     } else if (i64_eq(op, o_bytevector_copy()) || i64_eq(op, o_bytevector_copy_into())) {
@@ -5081,7 +5081,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             let tmp = make_bv_x(i64_minus(fix_val(e), fix_val(s)));
             bv_copied_x(tmp, 0i64, v, fix_val(s), fix_val(e));
             bv_copied_x(a, fix_val(b), tmp, 0i64, bv_length(tmp));
-            v_unit()
+            v_unit_word()
         }
     } else if i64_eq(op, o_bytevector_equal()) {
         if not(bv_p(a)) {
@@ -5149,13 +5149,13 @@ pub fn prim_apply_x(p: i64) -> i64 {
         cell_put_x(a, b)
     } else if i64_eq(op, o_preempt_done()) {
         quiet_leave_x();
-        v_unit()
+        v_unit_word()
     } else if i64_eq(op, o_clock()) {
         int_value_x(i64_to_int(clock()))
     } else if i64_eq(op, o_sleep_until()) {
         if fixed_in_p(4i64, a) {
             sleep_until(int_to_i64(int_of(a)));
-            v_unit()
+            v_unit_word()
         } else {
             expected_x(str_lit("an i64"))
         }

@@ -19,7 +19,7 @@ pub fn mem() -> Ref<FlatArray<i64>> {
 }
 
 // The next free index. Indices 0 to 7 are never an object's.
-pub fn top() -> Ref<i64> {
+pub fn heap_top() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(8i64)
@@ -90,11 +90,11 @@ pub fn copied_into_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i6
 /// Room for `n` more words: the heap's limit twice as far, if need be,
 /// within the space reserved, else a trap.
 pub fn room_x(n: i64) -> () {
-    if i64_lt_eq(i64_plus(get(top()), n), get(limit())) {
+    if i64_lt_eq(i64_plus(get(heap_top()), n), get(limit())) {
         ()
     } else {
         let more = i64_star(2i64, i64_plus(get(limit()), n));
-        if i64_gt(i64_plus(get(top()), n), heap_capacity()) {
+        if i64_gt(i64_plus(get(heap_top()), n), heap_capacity()) {
             trap_x(str_lit("out of heap"))
         } else {
             set(limit(), if i64_gt(more, heap_capacity()) {
@@ -120,10 +120,10 @@ pub fn zeroed_x(mut m: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
 
 /// `n` words, each 0 (fixnum 0): the space is used again after a
 /// collection.
-pub fn alloc_x(n: i64) -> i64 {
+pub fn heap_alloc_x(n: i64) -> i64 {
     room_x(n);
-    let at = get(top());
-    set(top(), i64_plus(at, n));
+    let at = get(heap_top());
+    set(heap_top(), i64_plus(at, n));
     zeroed_x(get(mem()), at, i64_plus(at, n));
     at
 }
@@ -137,7 +137,7 @@ pub fn alloc_x(n: i64) -> i64 {
 // heap's reservation is the code area's. The collector leaves its objects
 // where they are and forwards their fields in place; none is freed yet.
 // Only where the view was made.
-pub fn code() -> Ref<FlatArray<i64>> {
+pub fn code_space() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
@@ -235,7 +235,7 @@ pub fn in_code_p(w: i64) -> bool {
 }
 
 pub fn code_at(j: i64) -> i64 {
-    flatarray_ref_i64(get(code()), j)
+    flatarray_ref_i64(get(code_space()), j)
 }
 
 // A collection's marks of the code bloblets it reaches, by their headers'
@@ -263,7 +263,7 @@ pub fn cblock(f0: i64, f1: i64) -> &'static Cblock {
     kayak_rt::heap_alloc(Cblock::Cblock(f0, f1))
 }
 
-pub fn code_free() -> Ref<List<&'static Cblock>> {
+pub fn code_frees() -> Ref<List<&'static Cblock>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<&'static Cblock>())
@@ -329,7 +329,7 @@ pub fn adapter_code() -> Ref<i64> {
 }
 
 pub fn code_set_x(j: i64, w: i64) -> () {
-    flatarray_set_i64_x(get(code()), j, w)
+    flatarray_set_i64_x(get(code_space()), j, w)
 }
 
 pub fn word_at(i: i64) -> i64 {
@@ -377,20 +377,20 @@ pub fn call_native(x1: FlatArray<i64>, x2: Int) -> Int {
 }
 
 // Values.
-pub fn tag_of(w: i64) -> i64 {
+pub fn word_tag(w: i64) -> i64 {
     i64_and(w, 7i64)
 }
 
 pub fn is_fixnum_p(w: i64) -> bool {
-    i64_eq(tag_of(w), t_fixnum())
+    i64_eq(word_tag(w), t_fixnum())
 }
 
 pub fn is_pair_p(w: i64) -> bool {
-    i64_eq(tag_of(w), t_pair())
+    i64_eq(word_tag(w), t_pair())
 }
 
 pub fn is_bloblet_p(w: i64) -> bool {
-    i64_eq(tag_of(w), t_bloblet())
+    i64_eq(word_tag(w), t_bloblet())
 }
 
 pub fn fix(n: i64) -> i64 {
@@ -437,12 +437,12 @@ pub fn char_value(cp: i64) -> i64 {
 }
 
 pub fn is_char_p(w: i64) -> bool {
-    (i64_eq(tag_of(w), t_immediate()) && i64_eq(i64_and(i64_shr(w, int_lit(3)), 31i64), sub_char()))
+    (i64_eq(word_tag(w), t_immediate()) && i64_eq(i64_and(i64_shr(w, int_lit(3)), 31i64), sub_char()))
 }
 
 // Suffix refs.
 pub fn is_sref_p(w: i64) -> bool {
-    i64_eq(tag_of(w), t_suffix_ref())
+    i64_eq(word_tag(w), t_suffix_ref())
 }
 
 /// A suffix ref to byte `offset` of the suffix at word `owner`.
@@ -461,7 +461,7 @@ pub fn sref_offset(r: i64) -> i64 {
 
 // Pairs.
 pub fn cons_x(a: i64, d: i64) -> i64 {
-    let at = alloc_x(2i64);
+    let at = heap_alloc_x(2i64);
     word_set_x(at, a);
     word_set_x(i64_plus(at, 1i64), d);
     heap_ref(at, t_pair())
@@ -476,11 +476,11 @@ pub fn pair_cdr(p: i64) -> i64 {
 }
 
 // A list in the heap, of KFX's list of its items.
-pub fn list_of(xs: List<i64>) -> i64 {
+pub fn heap_list_of(xs: List<i64>) -> i64 {
     if null_p(xs) {
         v_null()
     } else {
-        cons_x(car(xs), list_of(cdr(xs)))
+        cons_x(car(xs), heap_list_of(cdr(xs)))
     }
 }
 
@@ -505,7 +505,7 @@ pub fn make_bloblet_x(kind: i64, n: i64, bytes: i64, trailer: bool, frozen: bool
     } else {
         n
     };
-    let h = alloc_x(i64_plus(i64_plus(1i64, f), i64_quotient(i64_plus(bytes, 7i64), 8i64)));
+    let h = heap_alloc_x(i64_plus(i64_plus(1i64, f), i64_quotient(i64_plus(bytes, 7i64), 8i64)));
     let p = i64_plus(h, i64_plus(1i64, f));
     word_set_x(h, header_word(kind, f, bytes, frozen, false));
     if trailer {
@@ -525,7 +525,7 @@ pub fn make_bloblet_x(kind: i64, n: i64, bytes: i64, trailer: bool, frozen: bool
 // with no fields.
 pub fn header_scanned(mut j: i64) -> i64 {
     loop {
-        if i64_eq(tag_of(word_at(j)), t_header()) {
+        if i64_eq(word_tag(word_at(j)), t_header()) {
             return j;
         } else {
             j = i64_minus(j, 1i64);
@@ -535,9 +535,9 @@ pub fn header_scanned(mut j: i64) -> i64 {
 }
 
 pub fn header_below(p: i64, before: i64) -> i64 {
-    if i64_eq(tag_of(before), t_trailer()) {
+    if i64_eq(word_tag(before), t_trailer()) {
         i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
-    } else if i64_eq(tag_of(before), t_header()) {
+    } else if i64_eq(word_tag(before), t_header()) {
         i64_minus(p, 1i64)
     } else {
         header_scanned(i64_minus(p, 2i64))
@@ -572,7 +572,7 @@ pub fn fields_of(v: i64) -> i64 {
     bits(header_of(v), lay::header_fields_lo(), lay::header_fields_width())
 }
 
-pub fn bytes_of(v: i64) -> i64 {
+pub fn suffix_bytes(v: i64) -> i64 {
     bits(header_of(v), lay::header_bytes_lo(), lay::header_bytes_width())
 }
 
@@ -616,11 +616,11 @@ pub fn slot_set_x(v: i64, k: i64, x: i64) -> () {
 // An object `alloc` lays out (Fixpt's `obj_ref`, `obj_set`): its payload
 // in order from the header up, the trailer last, so that element `i` is
 // field `F - i`, `F` its fields with the trailer.
-pub fn obj_ref(v: i64, i: i64) -> i64 {
+pub fn elt_ref(v: i64, i: i64) -> i64 {
     slot_of(v, i64_minus(fields_of(v), i))
 }
 
-pub fn obj_set_x(v: i64, i: i64, x: i64) -> () {
+pub fn elt_set_x(v: i64, i: i64, x: i64) -> () {
     slot_set_x(v, i64_minus(fields_of(v), i), x)
 }
 
@@ -631,7 +631,7 @@ pub fn obj_length(v: i64) -> i64 {
 // Whether field `k` may be read (Fixpt's `field_slot`): one of the
 // bloblet's, not its trailer.
 pub fn field_ok_p(v: i64, k: i64) -> bool {
-    (i64_gt(k, 0i64) && i64_lt_eq(k, fields_of(v)) && not(i64_eq(tag_of(slot_of(v, k)), t_trailer())))
+    (i64_gt(k, 0i64) && i64_lt_eq(k, fields_of(v)) && not(i64_eq(word_tag(slot_of(v, k)), t_trailer())))
 }
 
 // Strings: a bloblet of no fields, its suffix a word of the length, then
@@ -693,25 +693,25 @@ pub fn string_text(v: i64) -> Str {
 // Symbols, interned: an object of its name, its hash and its global slot,
 // in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps
 // no global slots: each is 0.
-pub enum Named {
-    Named(Str, i64),
+pub enum NamedSlot {
+    NamedSlot(Str, i64),
 }
 
-pub fn named(f0: Str, f1: i64) -> &'static Named {
-    kayak_rt::heap_alloc(Named::Named(f0, f1))
+pub fn named_slot(f0: Str, f1: i64) -> &'static NamedSlot {
+    kayak_rt::heap_alloc(NamedSlot::NamedSlot(f0, f1))
 }
 
-pub fn symbols() -> Ref<List<&'static Named>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);
+pub fn symbols() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Named>())
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
-pub fn globals() -> Ref<List<&'static Named>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Named>>);
+pub fn named_globals() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Named>())
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
@@ -733,7 +733,7 @@ pub fn named_count() -> Ref<i64> {
     })
 }
 
-pub fn named_x(n: Str, v: i64) -> &'static Named {
+pub fn named_x(n: Str, v: i64) -> &'static NamedSlot {
     let (i, m) = (get(named_count()), get(named_values()));
     if i64_lt(i, flatarray_length_i64(m)) {
         ()
@@ -744,26 +744,26 @@ pub fn named_x(n: Str, v: i64) -> &'static Named {
     };
     flatarray_set_i64_x(get(named_values()), i, v);
     set(named_count(), i64_plus(i, 1i64));
-    named(n, i)
+    named_slot(n, i)
 }
 
-pub fn named_value(x: &'static Named) -> i64 {
+pub fn named_value(x: &'static NamedSlot) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
-        Named::Named(m, i) => {
+        NamedSlot::NamedSlot(m, i) => {
             flatarray_ref_i64(get(named_values()), i)
         }
     }
 }
 
-pub fn lookup(mut xs: List<&'static Named>, mut n: Str) -> i64 {
+pub fn lookup(mut xs: List<&'static NamedSlot>, mut n: Str) -> i64 {
     loop {
         if null_p(xs) {
             return 0i64;
         } else if {
             let tagcase_ = car(xs);
             match *tagcase_ {
-                Named::Named(m, i) => {
+                NamedSlot::NamedSlot(m, i) => {
                     string_eq_p(m, n)
                 }
             }
@@ -782,16 +782,16 @@ pub fn symbol_x(name: Str) -> i64 {
         had
     } else {
         let s = make_bloblet_x(k_symbol(), 3i64, 0i64, true, false);
-        obj_set_x(s, 0i64, make_string_x(name));
-        obj_set_x(s, 1i64, fix(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
-        obj_set_x(s, 2i64, fix(0i64));
+        elt_set_x(s, 0i64, make_string_x(name));
+        elt_set_x(s, 1i64, fix(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
+        elt_set_x(s, 2i64, fix(0i64));
         set(symbols(), kayak_rt::heap_cons(named_x(name, s), get(symbols())));
         s
     }
 }
 
 pub fn symbol_text(s: i64) -> Str {
-    string_text(obj_ref(s, 0i64))
+    string_text(elt_ref(s, 0i64))
 }
 
 // Words.
@@ -893,7 +893,7 @@ pub fn to_alloc_x(n: i64) -> i64 {
 }
 
 /// An object's words, from its header: itself, its fields, its suffix.
-pub fn words_of(head: i64) -> i64 {
+pub fn header_words(head: i64) -> i64 {
     i64_plus(i64_plus(1i64, bits(head, lay::header_fields_lo(), lay::header_fields_width())), i64_quotient(i64_plus(bits(head, lay::header_bytes_lo(), lay::header_bytes_width()), 7i64), 8i64))
 }
 
@@ -911,7 +911,7 @@ pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
 
 pub fn code_header_scanned(mut j: i64) -> i64 {
     loop {
-        if i64_eq(tag_of(code_at(j)), t_header()) {
+        if i64_eq(word_tag(code_at(j)), t_header()) {
             return j;
         } else {
             j = i64_minus(j, 1i64);
@@ -924,9 +924,9 @@ pub fn code_header_scanned(mut j: i64) -> i64 {
 pub fn code_marked_x(w: i64) -> () {
     let p = i64_shr(i64_minus(w, get(code_vbase())), int_lit(3));
     let t = code_at(i64_minus(p, 1i64));
-    let h = if i64_eq(tag_of(t), t_trailer()) {
+    let h = if i64_eq(word_tag(t), t_trailer()) {
         i64_minus(i64_minus(p, 1i64), i64_shr(t, int_lit(3)))
-    } else if i64_eq(tag_of(t), t_header()) {
+    } else if i64_eq(word_tag(t), t_header()) {
         i64_minus(p, 1i64)
     } else {
         code_header_scanned(i64_minus(p, 2i64))
@@ -949,7 +949,7 @@ pub fn forward_object_x(w: i64) -> i64 {
     } else if is_pair_p(w) {
         let o = address(w);
         let first = word_at(o);
-        if i64_eq(tag_of(first), t_forward()) {
+        if i64_eq(word_tag(first), t_forward()) {
             to_ref(i64_shr(first, int_lit(3)), t_pair())
         } else {
             let at = to_alloc_x(2i64);
@@ -961,20 +961,20 @@ pub fn forward_object_x(w: i64) -> i64 {
     } else if is_bloblet_p(w) {
         let p = address(w);
         let before = word_at(i64_minus(p, 1i64));
-        if i64_eq(tag_of(before), t_forward()) {
+        if i64_eq(word_tag(before), t_forward()) {
             to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
         } else {
             let h = header_below(p, before);
             let head = word_at(h);
-            if i64_eq(tag_of(head), t_forward()) {
+            if i64_eq(word_tag(head), t_forward()) {
                 to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
             } else {
-                let n = words_of(head);
+                let n = header_words(head);
                 let f = bits(head, lay::header_fields_lo(), lay::header_fields_width());
                 let at = to_alloc_x(n);
                 copied_words_x(h, at, n);
                 word_set_x(h, i64_or(i64_shl(at, int_lit(3)), t_forward()));
-                if (i64_gt(f, 0i64) && not(i64_eq(tag_of(before), t_trailer()))) {
+                if (i64_gt(f, 0i64) && not(i64_eq(word_tag(before), t_trailer()))) {
                     word_set_x(i64_minus(p, 1i64), i64_or(i64_shl(i64_plus(at, f), int_lit(3)), t_forward()))
                 } else {
                     ()
@@ -1017,16 +1017,16 @@ pub fn scanned_x(mut i: i64) -> () {
             return ();
         } else {
             let w = to_at(i);
-            if i64_eq(tag_of(w), t_header()) {
+            if i64_eq(word_tag(w), t_header()) {
                 let f = bits(w, lay::header_fields_lo(), lay::header_fields_width());
                 if i64_eq(bits(w, lay::header_kind_lo(), lay::header_kind_width()), k_weak_pair()) {
                     set(weak_seen(), kayak_rt::heap_cons(i, get(weak_seen())));
                     fields_forwarded_x(i64_plus(i, 2i64), i64_plus(i, f));
-                    i = i64_plus(i, words_of(w));
+                    i = i64_plus(i, header_words(w));
                     continue;
                 } else {
                     fields_forwarded_x(i64_plus(i, 1i64), i64_plus(i, f));
-                    i = i64_plus(i, words_of(w));
+                    i = i64_plus(i, header_words(w));
                     continue;
                 }
             } else {
@@ -1054,7 +1054,7 @@ pub fn weak_after(w: i64) -> i64 {
         w
     } else if is_pair_p(w) {
         let first = word_at(address(w));
-        if i64_eq(tag_of(first), t_forward()) {
+        if i64_eq(word_tag(first), t_forward()) {
             to_ref(i64_shr(first, int_lit(3)), t_pair())
         } else {
             weak_dead()
@@ -1062,12 +1062,12 @@ pub fn weak_after(w: i64) -> i64 {
     } else if is_bloblet_p(w) {
         let p = address(w);
         let before = word_at(i64_minus(p, 1i64));
-        if i64_eq(tag_of(before), t_forward()) {
+        if i64_eq(word_tag(before), t_forward()) {
             to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
         } else {
             let h = header_below(p, before);
             let head = word_at(h);
-            if i64_eq(tag_of(head), t_forward()) {
+            if i64_eq(word_tag(head), t_forward()) {
                 to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
             } else {
                 weak_dead()
@@ -1182,10 +1182,10 @@ pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'st
             if stubbed {
                 return set(stub_free(), frees);
             } else {
-                return set(code_free(), frees);
+                return set(code_frees(), frees);
             }
         } else {
-            let n = words_of(code_at(j));
+            let n = header_words(code_at(j));
             if i64_eq(flatarray_ref_i64(get(code_marks()), j), 0i64) {
                 if i64_gt(len, 0i64) {
                     (j, len) = (i64_plus(j, n), i64_plus(len, n));
@@ -1239,7 +1239,7 @@ pub fn code_fit_x(bs: List<&'static Cblock>, n: i64) -> List<&'static Cblock> {
 /// fits, else past its top; -1 if it is full.
 pub fn code_alloc_x(n: i64) -> i64 {
     set(code_fit_at(), -1i64);
-    set(code_free(), code_fit_x(get(code_free()), n));
+    set(code_frees(), code_fit_x(get(code_frees()), n));
     if i64_gt_eq(get(code_fit_at()), 0i64) {
         get(code_fit_at())
     } else if i64_gt(i64_plus(get(code_top()), n), get(code_hi())) {
@@ -1297,7 +1297,7 @@ pub fn make_code_word_x(name: Str, n: i64, entry: i64) -> i64 {
             code_zeroed_x(i64_plus(at, 1i64), i64_plus(at, f));
             code_set_x(i64_plus(at, f), i64_or(i64_shl(f, int_lit(3)), t_trailer()));
             code_set_x(i64_plus(i64_plus(at, f), 1i64), get(code_stub_word()));
-            code_flush(get(code()), i64_to_int(i64_plus(i64_plus(at, f), 1i64)), int_lit(1));
+            code_flush(get(code_space()), i64_to_int(i64_plus(i64_plus(at, f), 1i64)), int_lit(1));
             slot_set_x(w, f_entry(), fix(entry));
             slot_set_x(w, f_name(), symbol_x(name));
             slot_set_x(w, f_twin(), v_false());
@@ -1363,9 +1363,9 @@ pub fn collect_end_x() -> () {
         set(vbase(), get(to_vbase()));
         set(to_vbase(), b)
     };
-    set(top(), get(to_top()));
+    set(heap_top(), get(to_top()));
     set(collections(), i64_plus(get(collections()), 1i64));
-    if i64_gt(i64_star(2i64, get(top())), get(limit())) {
+    if i64_gt(i64_star(2i64, get(heap_top())), get(limit())) {
         room_x(get(limit()))
     } else {
         ()
