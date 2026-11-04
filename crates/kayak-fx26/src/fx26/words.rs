@@ -178,25 +178,6 @@ pub fn truthy_p(w: i64) -> bool {
     not(i64_eq(w, w_false()))
 }
 
-pub fn symbol_word(n: i64) -> i64 {
-    immediate(imm_symbol(), n)
-}
-
-// Keywords (C291): a symbol's immediate, its name's number past
-// `keyword-bias`, as `f32`s are a special one past the machine's own; one
-// word for each name, as Fixpt interns them, so `eq?` tells them apart.
-pub fn keyword_bias() -> i64 {
-    1099511627776i64
-}
-
-pub fn keyword_word(n: i64) -> i64 {
-    immediate(imm_symbol(), i64_plus(n, keyword_bias()))
-}
-
-pub fn keyword_word_p(w: i64) -> bool {
-    (immediate_p(w) && i64_eq(immediate_kind(w), imm_symbol()) && i64_gt_eq(immediate_value(w), keyword_bias()))
-}
-
 pub fn is_imm_p(w: i64, kind: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_kind(w), kind))
 }
@@ -240,9 +221,89 @@ pub fn pair_cdr(p: i64) -> i64 {
     at_word(i64_plus(pointer_index(p), 1i64))
 }
 
-// Strings: a character a word.
+// Strings and bytevectors, Fixpt's (`heap.rs`, as tier 1 has them; C320):
+// a bloblet of no fields, its suffix a word of the length, then the code
+// points two to a word, or the bytes eight to a word, the first in the
+// low bits.
+pub fn zeroed_x(mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_lt(n, 1i64) {
+            return ();
+        } else {
+            put_x(i, 0i64);
+            (i, n) = (i64_plus(i, 1i64), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn raw_made_x(kind: i64, words: i64, n: i64) -> i64 {
+    let p = alloc_x(kind, words);
+    put_x(pointer_index(p), n);
+    zeroed_x(i64_plus(pointer_index(p), 1i64), i64_minus(words, 1i64));
+    p
+}
+
+pub fn string_alloc_x(n: i64) -> i64 {
+    raw_made_x(ob_string(), i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64)), n)
+}
+
+pub fn bytes_alloc_x(n: i64) -> i64 {
+    raw_made_x(ob_bytes(), i64_plus(1i64, i64_quotient(i64_plus(n, 7i64), 8i64)), n)
+}
+
+pub fn raw_length(v: i64) -> i64 {
+    at_word(pointer_index(v))
+}
+
 pub fn string_length_w(s: i64) -> i64 {
-    obj_size(s)
+    raw_length(s)
+}
+
+pub fn char_at(s: i64, i: i64) -> i64 {
+    let w = at_word(i64_plus(pointer_index(s), i64_plus(1i64, i64_quotient(i, 2i64))));
+    if i64_eq(i64_remainder(i, 2i64), 0i64) {
+        i64_and(w, 4294967295i64)
+    } else {
+        i64_and(i64_shr(w, int_lit(32)), 4294967295i64)
+    }
+}
+
+pub fn char_set_x(s: i64, i: i64, cp: i64) -> () {
+    let at = i64_plus(pointer_index(s), i64_plus(1i64, i64_quotient(i, 2i64)));
+    let w = at_word(at);
+    put_x(at, if i64_eq(i64_remainder(i, 2i64), 0i64) {
+        i64_or(i64_and(w, -4294967296i64), cp)
+    } else {
+        i64_or(i64_and(w, 4294967295i64), i64_shl(cp, int_lit(32)))
+    })
+}
+
+pub fn byte_at(b: i64, i: i64) -> i64 {
+    i64_and(i64_shr(at_word(i64_plus(pointer_index(b), i64_plus(1i64, i64_quotient(i, 8i64)))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
+}
+
+pub fn byte_set_x(b: i64, i: i64, x: i64) -> () {
+    let at = i64_plus(pointer_index(b), i64_plus(1i64, i64_quotient(i, 8i64)));
+    let sh = i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)));
+    put_x(at, i64_or(i64_and(at_word(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
+}
+
+// A string's or a bytevector's element, by its kind: for what both share.
+pub fn raw_ref(v: i64, i: i64) -> i64 {
+    if is_obj_p(v, ob_string()) {
+        char_at(v, i)
+    } else {
+        byte_at(v, i)
+    }
+}
+
+pub fn raw_set_x(v: i64, i: i64, x: i64) -> () {
+    if is_obj_p(v, ob_string()) {
+        char_set_x(v, i, x)
+    } else {
+        byte_set_x(v, i, x)
+    }
 }
 
 pub fn chars_set_x(mut p: i64, mut cs: List<char>, mut i: i64) -> () {
@@ -250,7 +311,7 @@ pub fn chars_set_x(mut p: i64, mut cs: List<char>, mut i: i64) -> () {
         if null_p(cs) {
             return ();
         } else {
-            obj_set_x(p, i, char_to_i64(car(cs)));
+            char_set_x(p, i, char_to_i64(car(cs)));
             (cs, i) = (cdr(cs), i64_plus(i, 1i64));
             continue;
         }
@@ -261,7 +322,7 @@ pub fn chars_set_x(mut p: i64, mut cs: List<char>, mut i: i64) -> () {
 /// made sure of): for loading and I/O.
 pub fn string_word_x(s: Str) -> i64 {
     let cs = the::<List<char>>(string_to_list(s));
-    let p = alloc_x(ob_string(), size(cs));
+    let p = string_alloc_x(size(cs));
     chars_set_x(p, cs, 0i64);
     p
 }
@@ -271,7 +332,7 @@ pub fn string_chars_from(mut p: i64, mut i: i64, mut acc: List<char>) -> List<ch
         if i64_lt(i, 0i64) {
             return acc;
         } else {
-            (i, acc) = (i64_minus(i, 1i64), kayak_rt::heap_cons(i64_to_char(obj_ref(p, i)), acc));
+            (i, acc) = (i64_minus(i, 1i64), kayak_rt::heap_cons(i64_to_char(char_at(p, i)), acc));
             continue;
         }
     }
@@ -279,7 +340,78 @@ pub fn string_chars_from(mut p: i64, mut i: i64, mut acc: List<char>) -> List<ch
 
 /// A heap string as a KFX string: for I/O.
 pub fn word_string(p: i64) -> Str {
-    list_to_string(string_chars_from(p, i64_minus(obj_size(p), 1i64), nil::<char>()))
+    list_to_string(string_chars_from(p, i64_minus(raw_length(p), 1i64), nil::<char>()))
+}
+
+// Symbols and keywords (C321): Fixpt's objects, interned, one a name.
+pub fn objects_copied_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(to, i, flatarray_ref_i64(from, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Table `t`, or a larger copy, with a place for name `n`.
+pub fn room_for_name_x(t: FlatArray<i64>, n: i64) -> FlatArray<i64> {
+    if i64_lt(n, flatarray_length_i64(t)) {
+        t
+    } else {
+        let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(i64_plus(n, 1i64), 2i64), 0i64));
+        objects_copied_x(t, bigger, 0i64, flatarray_length_i64(t));
+        bigger
+    }
+}
+
+/// Name `n`'s symbol, made the first time: its name, its hash, and its
+/// name's number.
+pub fn symbol_word(n: i64) -> i64 {
+    set(symbol_objects(), room_for_name_x(get(symbol_objects()), n));
+    let had = flatarray_ref_i64(get(symbol_objects()), n);
+    if not(i64_eq(had, 0i64)) {
+        had
+    } else {
+        let name = name_of_number(n);
+        let s = string_word_x(name);
+        let sym = alloc_x(ob_symbol(), 3i64);
+        obj_set_x(sym, 0i64, s);
+        obj_set_x(sym, 1i64, fixnum(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
+        obj_set_x(sym, 2i64, fixnum(n));
+        flatarray_set_i64_x(get(symbol_objects()), n, sym);
+        sym
+    }
+}
+
+pub fn symbol_number(w: i64) -> i64 {
+    fixnum_value(obj_ref(w, 2i64))
+}
+
+pub fn symbol_text(w: i64) -> Str {
+    word_string(obj_ref(w, 0i64))
+}
+
+/// Name `n`'s keyword, made the first time: its symbol (Fixpt's
+/// `make_keyword`).
+pub fn keyword_word(n: i64) -> i64 {
+    set(keyword_objects(), room_for_name_x(get(keyword_objects()), n));
+    let had = flatarray_ref_i64(get(keyword_objects()), n);
+    if not(i64_eq(had, 0i64)) {
+        had
+    } else {
+        let sym = symbol_word(n);
+        let k = alloc_x(ob_keyword(), 1i64);
+        obj_set_x(k, 0i64, sym);
+        flatarray_set_i64_x(get(keyword_objects()), n, k);
+        k
+    }
+}
+
+pub fn keyword_word_p(w: i64) -> bool {
+    is_obj_p(w, ob_keyword())
 }
 
 // Reals: an `f64`'s bits.

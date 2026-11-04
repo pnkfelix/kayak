@@ -91,15 +91,7 @@
 (define word-char (subr kfx (i64) char) (lambda (w) (i64->char (immediate-value w))))
 (define bool-word (subr kfx (bool) i64) (lambda (b) (if b w-true w-false)))
 (define truthy? (subr kfx (i64) bool) (lambda (w) (not (i64= w w-false))))
-(define symbol-word (subr kfx (i64) i64) (lambda (n) (immediate imm-symbol n)))
 
-"Keywords (C291): a symbol's immediate, its name's number past
- `keyword-bias`, as `f32`s are a special one past the machine's own; one
- word for each name, as Fixpt interns them, so `eq?` tells them apart."
-(define keyword-bias i64 1099511627776)
-(define keyword-word (subr kfx (i64) i64) (lambda (n) (immediate imm-symbol (i64+ n keyword-bias))))
-(define keyword-word? (subr kfx (i64) bool)
-  (lambda (w) (and (immediate? w) (i64= (immediate-kind w) imm-symbol) (i64>= (immediate-value w) keyword-bias))))
 (define is-imm? (subr kfx (i64 i64) bool) (lambda (w kind) (and (immediate? w) (i64= (immediate-kind w) kind))))
 
 "`f32`s (C220): Fixpt's immediate of subtag 9, its bits the payload (C318)."
@@ -124,27 +116,123 @@
 (define pair-car (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (at-word (pointer-index p))))
 (define pair-cdr (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (at-word (i64+ (pointer-index p) 1))))
 
-"Strings: a character a word."
-(define string-length-w (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (s) (obj-size s)))
+"Strings and bytevectors, Fixpt's (`heap.rs`, as tier 1 has them; C320):
+ a bloblet of no fields, its suffix a word of the length, then the code
+ points two to a word, or the bytes eight to a word, the first in the
+ low bits."
+(define-rec
+  (zeroed! (subr hp (i64 i64) unit)
+    (lambda (i n) (if (i64< n 1) #u (begin (put! i 0) (zeroed! (i64+ i 1) (i64- n 1)))))))
+
+(define raw-made! (subr hp (i64 i64 i64) i64)
+  (lambda (kind words n)
+    (let ((p (alloc! kind words)))
+      (begin (put! (pointer-index p) n) (zeroed! (i64+ (pointer-index p) 1) (i64- words 1)) p))))
+
+(define string-alloc! (subr hp (i64) i64)
+  (lambda (n) (raw-made! ob-string (i64+ 1 (i64-quotient (i64+ n 1) 2)) n)))
+(define bytes-alloc! (subr hp (i64) i64)
+  (lambda (n) (raw-made! ob-bytes (i64+ 1 (i64-quotient (i64+ n 7) 8)) n)))
+
+(define raw-length (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (v) (at-word (pointer-index v))))
+(define string-length-w (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (s) (raw-length s)))
+
+(define char-at (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (s i)
+    (let ((w (at-word (i64+ (pointer-index s) (i64+ 1 (i64-quotient i 2))))))
+      (if (i64= (i64-remainder i 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295)))))
+(define char-set! (subr hp (i64 i64 i64) unit)
+  (lambda (s i cp)
+    (let* ((at (i64+ (pointer-index s) (i64+ 1 (i64-quotient i 2)))) (w (at-word at)))
+      (put! at (if (i64= (i64-remainder i 2) 0)
+                   (i64-or (i64-and w -4294967296) cp)
+                   (i64-or (i64-and w 4294967295) (i64-shl cp 32)))))))
+
+(define byte-at (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (b i)
+    (i64-and (i64-shr (at-word (i64+ (pointer-index b) (i64+ 1 (i64-quotient i 8)))) (i64->int (i64* 8 (i64-remainder i 8)))) 255)))
+(define byte-set! (subr hp (i64 i64 i64) unit)
+  (lambda (b i x)
+    (let* ((at (i64+ (pointer-index b) (i64+ 1 (i64-quotient i 8))))
+           (sh (i64->int (i64* 8 (i64-remainder i 8)))))
+      (put! at (i64-or (i64-and (at-word at) (i64-not (i64-shl 255 sh))) (i64-shl (i64-and x 255) sh))))))
+
+"A string's or a bytevector's element, by its kind: for what both share."
+(define raw-ref (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (v i) (if (is-obj? v ob-string) (char-at v i) (byte-at v i))))
+(define raw-set! (subr hp (i64 i64 i64) unit)
+  (lambda (v i x) (if (is-obj? v ob-string) (char-set! v i x) (byte-set! v i x))))
 
 (define-rec
   (chars-set! (subr hp (i64 (listof char acyclic) i64) unit)
-    (lambda (p cs i) (if (null? cs) #u (begin (obj-set! p i (char->i64 (car cs))) (chars-set! p (cdr cs) (i64+ i 1)))))))
+    (lambda (p cs i) (if (null? cs) #u (begin (char-set! p i (char->i64 (car cs))) (chars-set! p (cdr cs) (i64+ i 1)))))))
 
 (define string-word! (subr hp (string) i64)
   (lambda (s)
     "A KFX string made a heap string (room for its length and a header
      made sure of): for loading and I/O."
     (let* ((cs (the (listof char acyclic) (string->list s)))
-           (p (alloc! ob-string (size cs))))
+           (p (string-alloc! (size cs))))
       (begin (chars-set! p cs 0) p))))
 
 (define-rec
   (string-chars-from (subr (maxeff (read @globals) spin (read @h)) (i64 i64 (listof char acyclic)) (listof char acyclic))
-    (lambda (p i acc) (if (i64< i 0) acc (string-chars-from p (i64- i 1) (cons (i64->char (obj-ref p i)) acc))))))
+    (lambda (p i acc) (if (i64< i 0) acc (string-chars-from p (i64- i 1) (cons (i64->char (char-at p i)) acc))))))
 
 (define word-string (subr (maxeff (read @globals) spin (read @h)) (i64) string)
-  (lambda (p) "A heap string as a KFX string: for I/O." (list->string (string-chars-from p (i64- (obj-size p) 1) nil))))
+  (lambda (p) "A heap string as a KFX string: for I/O." (list->string (string-chars-from p (i64- (raw-length p) 1) nil))))
+
+"Symbols and keywords (C321): Fixpt's objects, interned, one a name."
+(define-rec
+  (objects-copied! (subr (maxeff (read @globals) spin (read @h) (write @h)) ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (objects-copied! from to (i64+ i 1) n))))))
+
+(define room-for-name! (subr (maxeff hp (alloc @h)) ((flatarrayof i64 @h) i64) (flatarrayof i64 @h))
+  (lambda (t n)
+    "Table `t`, or a larger copy, with a place for name `n`."
+    (if (i64< n (flatarray-length-i64 t))
+        t
+        (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* (i64+ n 1) 2) 0))))
+          (begin (objects-copied! t bigger 0 (flatarray-length-i64 t)) bigger)))))
+
+(define symbol-word (subr (maxeff hp (alloc @h)) (i64) i64)
+  (lambda (n)
+    "Name `n`'s symbol, made the first time: its name, its hash, and its
+     name's number."
+    (begin
+      (set symbol-objects (room-for-name! (get symbol-objects) n))
+      (let ((had (flatarray-ref-i64 (get symbol-objects) n)))
+        (if (not (i64= had 0))
+            had
+            (let* ((name (name-of-number n))
+                   (s (string-word! name))
+                   (sym (alloc! ob-symbol 3)))
+              (begin
+                (obj-set! sym 0 s)
+                (obj-set! sym 1 (fixnum (int->i64 (symbol-name-hash (string->symbol name)))))
+                (obj-set! sym 2 (fixnum n))
+                (flatarray-set-i64! (get symbol-objects) n sym)
+                sym)))))))
+
+(define symbol-number (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (w) (fixnum-value (obj-ref w 2))))
+(define symbol-text (subr (maxeff (read @globals) spin (read @h)) (i64) string)
+  (lambda (w) (word-string (obj-ref w 0))))
+
+(define keyword-word (subr (maxeff hp (alloc @h)) (i64) i64)
+  (lambda (n)
+    "Name `n`'s keyword, made the first time: its symbol (Fixpt's
+     `make_keyword`)."
+    (begin
+      (set keyword-objects (room-for-name! (get keyword-objects) n))
+      (let ((had (flatarray-ref-i64 (get keyword-objects) n)))
+        (if (not (i64= had 0))
+            had
+            (let* ((sym (symbol-word n)) (k (alloc! ob-keyword 1)))
+              (begin (obj-set! k 0 sym) (flatarray-set-i64! (get keyword-objects) n k) k)))))))
+(define keyword-word? (subr (maxeff (read @globals) spin (read @h)) (i64) bool)
+  (lambda (w) (is-obj? w ob-keyword)))
 
 "Reals: an `f64`'s bits."
 (define real-word! (subr hp (f64) i64)

@@ -17,9 +17,9 @@ use super::*;
 // the unbound marker, characters and `f32`s Fixpt's own immediates. Not
 // yet Fixpt's: an object is still a header word (its kind in the low 8
 // bits, its payload's size above) and its payload, a pair one too; and
-// symbols, primitives, prompt tags and the machine's own specials are
-// immediates of subtags Fixpt has none of (24 to 27), until each is an
-// object as Fixpt has it. An IR node, in a frame or a procedure, is a
+// primitives, prompt tags and the machine's own specials are immediates
+// of subtags Fixpt has none of (25 to 27), until each is an object as
+// Fixpt has it; symbols are Fixpt's objects (C321). An IR node, in a frame or a procedure, is a
 // fixnum, its number in the IR's table.
 
 // Tags, immediates' kinds, objects' kinds.
@@ -137,13 +137,25 @@ pub fn ob_eqtable() -> i64 {
 }
 
 // Kinds whose payload is raw words, not values: a bloblet's suffix, never
-// traced, as Fixpt's.
+// traced, as Fixpt's. A string and a bytevector are Fixpt's (C320:
+// words.kfx).
 pub fn ob_string() -> i64 {
-    206i64
+    1i64
+}
+
+// A symbol (C321): Fixpt's, its name (a string), its hash and its global
+// slot, which in the engine holds its name's number (tier 1's holds 0: to
+// settle once the heap is one); and a keyword, Fixpt's, its symbol.
+pub fn ob_symbol() -> i64 {
+    2i64
+}
+
+pub fn ob_keyword() -> i64 {
+    48i64
 }
 
 pub fn ob_bytes() -> i64 {
-    207i64
+    4i64
 }
 
 pub fn ob_real() -> i64 {
@@ -363,6 +375,22 @@ pub fn free_at() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(1i64)
+    })
+}
+
+// Each name's symbol and keyword, by its number, once made (0 until then):
+// roots, so that each name has one object (C321).
+pub fn symbol_objects() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+    })
+}
+
+pub fn keyword_objects() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
     })
 }
 
@@ -692,6 +720,8 @@ pub fn grow_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArray<
     copy_roots_x(roots, 0i64, flatarray_length_i64(roots));
     copy_roots_x(globals, 0i64, flatarray_length_i64(globals));
     copy_roots_x(consts, 0i64, flatarray_length_i64(consts));
+    copy_roots_x(get(symbol_objects()), 0i64, flatarray_length_i64(get(symbol_objects())));
+    copy_roots_x(get(keyword_objects()), 0i64, flatarray_length_i64(get(keyword_objects())));
     scan_x(1i64);
     set(space(), get(other_space()));
     set(other_space(), make_flatarray_i64(words, 0i64))
@@ -706,6 +736,8 @@ pub fn collect_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArr
     copy_roots_x(roots, 0i64, flatarray_length_i64(roots));
     copy_roots_x(globals, 0i64, flatarray_length_i64(globals));
     copy_roots_x(consts, 0i64, flatarray_length_i64(consts));
+    copy_roots_x(get(symbol_objects()), 0i64, flatarray_length_i64(get(symbol_objects())));
+    copy_roots_x(get(keyword_objects()), 0i64, flatarray_length_i64(get(keyword_objects())));
     scan_x(1i64);
     let from = get(space());
     set(space(), get(other_space()));

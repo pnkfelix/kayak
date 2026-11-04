@@ -6,10 +6,10 @@ use super::*;
 // vshow.kfx: a word written as `fixpt eval` writes a value (C64). Its KFX
 // string is made in proportion to what is written.
 pub fn escaped_chars(p: i64, i: i64) -> Str {
-    if i64_gt_eq(i, obj_size(p)) {
+    if i64_gt_eq(i, raw_length(p)) {
         str_lit("")
     } else {
-        let c = obj_ref(p, i);
+        let c = char_at(p, i);
         string_append(if i64_eq(c, 34i64) {
             str_lit("\\\"")
         } else if i64_eq(c, 92i64) {
@@ -23,12 +23,12 @@ pub fn escaped_chars(p: i64, i: i64) -> Str {
 }
 
 pub fn bytes_shown(p: i64, i: i64) -> Str {
-    if i64_gt_eq(i, obj_size(p)) {
+    if i64_gt_eq(i, raw_length(p)) {
         str_lit("")
     } else if i64_eq(i, 0i64) {
-        string_append(i64_to_string(obj_ref(p, i)), bytes_shown(p, i64_plus(i, 1i64)))
+        string_append(i64_to_string(byte_at(p, i)), bytes_shown(p, i64_plus(i, 1i64)))
     } else {
-        string_append(str_lit(" "), string_append(i64_to_string(obj_ref(p, i)), bytes_shown(p, i64_plus(i, 1i64))))
+        string_append(str_lit(" "), string_append(i64_to_string(byte_at(p, i)), bytes_shown(p, i64_plus(i, 1i64))))
     }
 }
 
@@ -63,10 +63,6 @@ pub fn show_word(w: i64) -> Str {
             str_lit("#u")
         } else if i64_eq(kind, imm_nil()) {
             str_lit("()")
-        } else if keyword_word_p(w) {
-            string_append(str_lit("#:"), name_of_number(i64_minus(immediate_value(w), keyword_bias())))
-        } else if i64_eq(kind, imm_symbol()) {
-            name_of_number(immediate_value(w))
         } else if i64_eq(kind, imm_tag()) {
             str_lit("#<prompt-tag>")
         } else {
@@ -76,6 +72,10 @@ pub fn show_word(w: i64) -> Str {
         let kind = obj_kind(w);
         if i64_eq(kind, ob_big()) {
             int_to_string(word_int(w))
+        } else if i64_eq(kind, ob_symbol()) {
+            symbol_text(w)
+        } else if i64_eq(kind, ob_keyword()) {
+            string_append(str_lit("#:"), symbol_text(obj_ref(w, 0i64)))
         } else if i64_eq(kind, ob_string()) {
             string_append(str_lit("\""), string_append(escaped_chars(w, 0i64), str_lit("\"")))
         } else if i64_eq(kind, ob_real()) {

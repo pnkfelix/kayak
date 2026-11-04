@@ -397,7 +397,7 @@ pub fn kfx_bytes_set_x(mut p: i64, mut bv: Bytes, mut i: i64, mut n: i64) -> () 
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            obj_set_x(p, i, int_to_i64(u8_to_int(bytevector_u8_ref(bv, i64_to_int(i)))));
+            byte_set_x(p, i, int_to_i64(u8_to_int(bytevector_u8_ref(bv, i64_to_int(i)))));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -406,7 +406,7 @@ pub fn kfx_bytes_set_x(mut p: i64, mut bv: Bytes, mut i: i64, mut n: i64) -> () 
 
 pub fn kfx_bytes_word_x(bv: Bytes) -> i64 {
     let n = int_to_i64(bytevector_length(bv));
-    let p = alloc_x(ob_bytes(), n);
+    let p = bytes_alloc_x(n);
     kfx_bytes_set_x(p, bv, 0i64, n);
     p
 }

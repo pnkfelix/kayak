@@ -22,11 +22,14 @@
         ((i64= op 37) (text-room a))
         ((i64= op 38) (text-room a))
         ((i64= op 41) (i64+ (i64+ (string-length-w a) (string-length-w b)) 1))
+        ;; A symbol made the first time (C321): it, its name's string, a keyword.
+        ((i64= op 72) (i64+ (string-length-w a) 16))
+        ((i64= op 257) (i64+ (raw-length (obj-ref a 0)) 16))
         ((i64= op 49) (i64* 2 (i64+ (string-length-w a) 1)))
         ((i64= op 54) (i64+ (string-length-w a) 1))
         ((i64= op 70) (i64* 3 (i64+ (string-length-w a) 1)))
         ((i64= op 71) (i64+ (list-count a 0) 1))
-        ((i64= op 73) (i64+ (string-length-i64 (name-of-number (immediate-value a))) 1))
+        ((i64= op 73) (i64+ (raw-length (obj-ref a 0)) 2))
         ((i64= op 83) (i64* 3 (i64+ (list-count a 0) 1)))
         ((i64= op 84) (i64* 6 (i64+ (list-count a 0) 1)))
         ((i64= op 90) (i64+ (fixnum-value a) 1))
@@ -37,7 +40,7 @@
         ((i64= op 101) (i64+ (fixnum-value a) 1))
         ((i64= op 105) (i64+ (obj-size a) 1))
         ((i64= op 108) (i64+ (i64* 4 (string-length-w a)) 2))
-        ((i64= op 109) (i64+ (obj-size a) 8))
+        ((i64= op 109) (i64+ (raw-length a) 8))
         ((i64= op 130) (args-room))
         ((i64= op 131) (line-room!))
         ((i64= op 244) (byte-room!))
@@ -137,7 +140,7 @@
   (lambda (owner at size)
     "A blobref to a flat of `size` bytes `at` bytes into `owner`'s, which it
      lies within whole, as FX-26 checks it where one is made."
-    (if (or (i64< at 0) (i64> (i64+ at size) (obj-size (obj-ref owner 0))))
+    (if (or (i64< at 0) (i64> (i64+ at size) (raw-length (obj-ref owner 0))))
         (refused-op! (string-append "suffix ref: a flat of " (string-append (i64->string size) (string-append " bytes at byte " (string-append (i64->string at) " runs past the end of the suffix")))))
         (let ((p (alloc! ob-blobref 2))) (begin (obj-set! p 0 owner) (obj-set! p 1 (fixnum at)) p)))))
 
@@ -145,13 +148,13 @@
   (bytes-read (subr hp (i64 i64 i64 int) int)
     (lambda (b at n acc)
       "Bytes `at` to `at + n - 1` of `b`, little-endian, onto `acc`."
-      (if (i64<= n 0) acc (bytes-read b at (i64- n 1) (+ (* acc 256) (i64->int (obj-ref b (i64+ at (i64- n 1))))))))))
+      (if (i64<= n 0) acc (bytes-read b at (i64- n 1) (+ (* acc 256) (i64->int (byte-at b (i64+ at (i64- n 1))))))))))
 
 (define-rec
   (bytes-written! (subr hp (i64 i64 i64 int) unit)
     (lambda (b at n x)
       (if (i64<= n 0) #u
-          (begin (obj-set! b at (int->i64 (modulo x 256))) (bytes-written! b (i64+ at 1) (i64- n 1) (quotient (- x (modulo x 256)) 256)))))))
+          (begin (byte-set! b at (int->i64 (modulo x 256))) (bytes-written! b (i64+ at 1) (i64- n 1) (quotient (- x (modulo x 256)) 256)))))))
 
 (define scalar-width (subr kfx (i64) i64)
   (lambda (code) (cond ((i64<= code 2) 8) ((i64<= code 5) 4) (else 1))))
@@ -180,7 +183,7 @@
   (lambda (r size len)
     "A flat array's length: `len`, or, to the end of the suffix
      (268435455), as many as are left."
-    (if (i64= len 268435455) (i64-quotient (i64- (obj-size (blobref-bytes r)) (blob-at r)) size) len)))
+    (if (i64= len 268435455) (i64-quotient (i64- (raw-length (blobref-bytes r)) (blob-at r)) size) len)))
 
 (define-rec
   (field-holding (subr hp (i64 i64 i64 i64) i64)
@@ -193,7 +196,7 @@
 (define bloblet! (subr hp (i64 i64) i64)
   (lambda (n fields)
     "A bloblet (C215) of `n` bytes, all 0, and `fields`."
-    (let* ((bytes (filled-raw! ob-bytes n 0))
+    (let* ((bytes (bytes-made! n 0))
            (p (alloc! ob-bloblet (i64+ (list-count fields 0) 1))))
       (begin (obj-set! p 0 bytes) (fields-set! p 1 fields) p))))
 
@@ -394,9 +397,9 @@
         ((i64= op 70) (string-list! a (i64- (string-length-w a) 1) w-nil))
         ((i64= op 71) (list-string! a))
         ((i64= op 72) (symbol-word (intern! (word-string a))))
-        ((i64= op 73) (string-word! (name-of-number (immediate-value a))))
+        ((i64= op 73) (string-word! (symbol-text a)))
         ((i64= op 74) (bool-word (i64= a b)))
-        ((i64= op 75) (fixnum (int->i64 (string-compare (name-of-number (immediate-value a)) (name-of-number (immediate-value b))))))
+        ((i64= op 75) (fixnum (int->i64 (string-compare (symbol-text a) (symbol-text b)))))
         ((i64= op 76) (pair! a b))
         ((i64= op 77) (checked-car a))
         ((i64= op 78) (checked-cdr a))
@@ -422,10 +425,10 @@
         ((i64= op 98) (element a (fixnum-value b)))
         ((i64= op 99) (begin (element-set! a (fixnum-value b) c) w-unit))
         ((i64= op 100) (fixnum (obj-size a)))
-        ((i64= op 101) (filled-raw! ob-bytes (fixnum-value a) (fixnum-value b)))
-        ((i64= op 102) (fixnum (obj-size a)))
-        ((i64= op 103) (fixnum (element a (fixnum-value b))))
-        ((i64= op 104) (begin (element-set! a (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
+        ((i64= op 101) (bytes-made! (fixnum-value a) (fixnum-value b)))
+        ((i64= op 102) (fixnum (raw-length a)))
+        ((i64= op 103) (fixnum (bytes-ref-w a (fixnum-value b))))
+        ((i64= op 104) (begin (bytes-set-w! a (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
         ((i64= op 105) (bytes-copy! a (fixnum-value b) (fixnum-value c)))
         ((i64= op 106) (begin (bytes-copy-into! a b c (fourth-arg args) (fifth-arg args)) w-unit))
         ((i64= op 107) (bool-word (raw-equal? a b 0)))
@@ -438,7 +441,7 @@
         ((i64= op 114) (bool-word (is-obj? a ob-string)))
         ((i64= op 115) (bool-word (is-imm? a imm-bool)))
         ((i64= op 116) (bool-word (is-imm? a imm-char)))
-        ((i64= op 117) (bool-word (or (and (is-imm? a imm-symbol) (not (keyword-word? a))) (i64= a w-unit))))
+        ((i64= op 117) (bool-word (or (is-obj? a ob-symbol) (i64= a w-unit))))
         ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-flatx) (is-obj? a ob-bloblet))))
         ((i64= op 119) (bool-word (or (is-obj? a ob-proc) (is-obj? a ob-ctor) (is-obj? a ob-cont) (is-imm? a imm-prim))))
         ((i64= op 120) (bool-word (is-obj? a ob-real)))
@@ -578,9 +581,9 @@
         ((i64= op 187) (bloblet! (fixnum-value a) (pair-cdr args)))
         ((i64= op 188) (obj-ref a (i64+ (fixnum-value b) 1)))
         ((i64= op 189) (begin (obj-set! a (i64+ (fixnum-value b) 1) c) w-unit))
-        ((i64= op 190) (fixnum (obj-ref (obj-ref a 0) (fixnum-value b))))
-        ((i64= op 191) (begin (obj-set! (obj-ref a 0) (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
-        ((i64= op 192) (fixnum (obj-size (obj-ref a 0))))
+        ((i64= op 190) (fixnum (byte-at (obj-ref a 0) (fixnum-value b))))
+        ((i64= op 191) (begin (byte-set! (obj-ref a 0) (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
+        ((i64= op 192) (fixnum (raw-length (obj-ref a 0))))
         ((i64= op 193) a)
         ((i64= op 194) (blobref! a (fixnum-value b) (fixnum-value c)))
         ((i64= op 195) (blobref! (obj-ref a 0) (i64+ (blob-at a) (fixnum-value b)) (fixnum-value c)))
@@ -614,12 +617,12 @@
         ;; Strings at a region (C285), hand-written (gen-vprims.py has them not).
         ((i64= op 250) (string-made! (fixnum-value a) b))
         ((i64= op 255) (string-made! (fixnum-value b) c))
-        ;; Keywords (C291): a symbol's number past `keyword-bias`.
+        ;; Keywords (C291): Fixpt's objects, a symbol each (C321).
         ((i64= op 256) (bool-word (keyword-word? a)))
-        ((i64= op 257) (keyword-word (immediate-value a)))
-        ((i64= op 258) (symbol-word (i64- (immediate-value a) keyword-bias)))
-        ((i64= op 251) (begin (element-set! a (fixnum-value b) (char->i64 (word-char c))) w-unit))
-        ((i64= op 252) (begin (string-filled! a 0 (obj-size a) (char->i64 (word-char b))) w-unit))
+        ((i64= op 257) (keyword-word (symbol-number a)))
+        ((i64= op 258) (obj-ref a 0))
+        ((i64= op 251) (begin (string-set-w! a (fixnum-value b) (char->i64 (word-char c))) w-unit))
+        ((i64= op 252) (begin (string-filled! a 0 (raw-length a) (char->i64 (word-char b))) w-unit))
         ((i64= op 253) (string-copy-w! a (fixnum-value b) (fixnum-value c)))
         ((i64= op 254) (begin (string-copy-into-w! a b c (fourth-arg args) (fifth-arg args)) w-unit))
         (else (begin (failed-with! "the engine: a primitive of no number") 0))))))

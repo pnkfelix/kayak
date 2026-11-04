@@ -46,28 +46,40 @@
   (array-list! (subr hp (i64 i64 i64) i64)
     (lambda (p i acc) (if (i64< i 0) acc (array-list! p (i64- i 1) (pair! (obj-ref p i) acc))))))
 
-"Strings: a character's code a word each."
+"Strings: Fixpt's (C320, words.kfx)."
+(define in-range? (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) bool)
+  (lambda (v i) (if (or (i64< i 0) (i64>= i (raw-length v))) (begin (failed-with! "an index out of range") #f) #t)))
+
 (define string-ref-w (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
-  (lambda (s i) (immediate imm-char (element s i))))
+  (lambda (s i) (if (in-range? s i) (immediate imm-char (char-at s i)) 0)))
+
+(define string-set-w! (subr hp (i64 i64 i64) unit)
+  (lambda (s i cp) (if (in-range? s i) (char-set! s i cp) #u)))
+
+(define bytes-ref-w (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+  (lambda (b i) (if (in-range? b i) (byte-at b i) 0)))
+
+(define bytes-set-w! (subr hp (i64 i64 i64) unit)
+  (lambda (b i x) (if (in-range? b i) (byte-set! b i x) #u)))
 
 (define-rec
   (copied-into! (subr hp (i64 i64 i64 i64 i64) unit)
-    (lambda (to at from i n) (if (i64>= i n) #u (begin (obj-set! to (i64+ at i) (obj-ref from i)) (copied-into! to at from (i64+ i 1) n))))))
+    (lambda (to at from i n) (if (i64>= i n) #u (begin (raw-set! to (i64+ at i) (raw-ref from i)) (copied-into! to at from (i64+ i 1) n))))))
 
 (define string-append-w! (subr hp (i64 i64) i64)
   (lambda (a b)
-    (let* ((n (string-length-w a)) (m (string-length-w b)) (p (alloc! ob-string (i64+ n m))))
+    (let* ((n (string-length-w a)) (m (string-length-w b)) (p (string-alloc! (i64+ n m))))
       (begin (copied-into! p 0 a 0 n) (copied-into! p n b 0 m) p))))
 
 (define-rec
   (copied-range! (subr hp (i64 i64 i64 i64 i64) unit)
-    (lambda (to from start i n) (if (i64>= i n) #u (begin (obj-set! to i (obj-ref from (i64+ start i))) (copied-range! to from start (i64+ i 1) n))))))
+    (lambda (to from start i n) (if (i64>= i n) #u (begin (raw-set! to i (raw-ref from (i64+ start i))) (copied-range! to from start (i64+ i 1) n))))))
 
 (define substring-w! (subr hp (i64 i64 i64) i64)
   (lambda (s start end)
     (if (or (i64< start 0) (i64< end start) (i64> end (string-length-w s)))
         (begin (failed-with! "substring range out of bounds") 0)
-        (let ((p (alloc! ob-string (i64- end start))))
+        (let ((p (string-alloc! (i64- end start))))
           (begin (copied-range! p s start 0 (i64- end start)) p)))))
 
 (define-rec
@@ -78,8 +90,8 @@
         (cond ((and (i64>= i n) (i64>= i m)) 0)
               ((i64>= i n) -1)
               ((i64>= i m) 1)
-              ((i64< (obj-ref a i) (obj-ref b i)) -1)
-              ((i64> (obj-ref a i) (obj-ref b i)) 1)
+              ((i64< (char-at a i) (char-at b i)) -1)
+              ((i64> (char-at a i) (char-at b i)) 1)
               (else (string-compare-w a b (i64+ i 1))))))))
 
 (define-rec
@@ -87,7 +99,7 @@
     (lambda (s sub at j)
       (cond ((i64>= j (string-length-w sub)) #t)
             ((i64>= (i64+ at j) (string-length-w s)) #f)
-            ((i64= (obj-ref s (i64+ at j)) (obj-ref sub j)) (matches-at? s sub at (i64+ j 1)))
+            ((i64= (char-at s (i64+ at j)) (char-at sub j)) (matches-at? s sub at (i64+ j 1)))
             (else #f)))))
 
 (define-rec
@@ -100,18 +112,18 @@
               (else (string-search-w s sub (i64+ at 1))))))))
 
 (define char-string! (subr hp (i64) i64)
-  (lambda (c) (let ((p (alloc! ob-string 1))) (begin (obj-set! p 0 (immediate-value c)) p))))
+  (lambda (c) (let ((p (string-alloc! 1))) (begin (char-set! p 0 (immediate-value c)) p))))
 
 (define-rec
   (string-list! (subr hp (i64 i64 i64) i64)
-    (lambda (s i acc) (if (i64< i 0) acc (string-list! s (i64- i 1) (pair! (immediate imm-char (obj-ref s i)) acc))))))
+    (lambda (s i acc) (if (i64< i 0) acc (string-list! s (i64- i 1) (pair! (immediate imm-char (char-at s i)) acc))))))
 
 (define-rec
   (chars-from-list! (subr hp (i64 i64 i64) unit)
-    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (obj-set! p i (immediate-value (pair-car xs))) (chars-from-list! p (i64+ i 1) (pair-cdr xs)))))))
+    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (char-set! p i (immediate-value (pair-car xs))) (chars-from-list! p (i64+ i 1) (pair-cdr xs)))))))
 
 (define list-string! (subr hp (i64) i64)
-  (lambda (xs) (let ((p (alloc! ob-string (list-count xs 0)))) (begin (chars-from-list! p 0 xs) p))))
+  (lambda (xs) (let ((p (string-alloc! (list-count xs 0)))) (begin (chars-from-list! p 0 xs) p))))
 
 "An integer's text, as `int->string` writes it: a fixnum's made in place;
  a bignum's through KFX's (which allocates: bignums are rare)."
@@ -122,7 +134,7 @@
 (define-rec
   (digits-set! (subr hp (i64 i64 i64) unit)
     (lambda (p i n)
-      (begin (obj-set! p i (i64+ 48 (i64-remainder n 10)))
+      (begin (char-set! p i (i64+ 48 (i64-remainder n 10)))
              (if (i64< n 10) #u (digits-set! p (i64- i 1) (i64-quotient n 10)))))))
 
 (define int-text! (subr hp (i64) i64)
@@ -133,9 +145,9 @@
                (neg (i64< v 0))
                (mag (if neg (i64- 0 v) v))
                (n (digits-count mag 0))
-               (p (alloc! ob-string (if neg (i64+ n 1) n))))
+               (p (string-alloc! (if neg (i64+ n 1) n))))
           (begin
-            (if neg (obj-set! p 0 45) #u)
+            (if neg (char-set! p 0 45) #u)
             (digits-set! p (if neg n (i64- n 1)) mag)
             p)))))
 
@@ -157,10 +169,10 @@
 
 (define-rec
   (same-chars? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
-    (lambda (a b i) (or (i64>= i (obj-size a)) (and (i64= (obj-ref a i) (obj-ref b i)) (same-chars? a b (i64+ i 1)))))))
+    (lambda (a b i) (or (i64>= i (raw-length a)) (and (i64= (raw-ref a i) (raw-ref b i)) (same-chars? a b (i64+ i 1)))))))
 
 (define raw-equal? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
-  (lambda (a b i) (and (i64= (obj-size a) (obj-size b)) (same-chars? a b i))))
+  (lambda (a b i) (and (i64= (raw-length a) (raw-length b)) (same-chars? a b i))))
 
 (define same-atom-w? (subr hp (i64 i64) bool)
   (lambda (a b)
@@ -170,12 +182,20 @@
           ((and (is-obj? a ob-big) (is-obj? b ob-big)) (= (word-int a) (word-int b)))
           (else #f))))
 
-"Bytes: a byte a word."
+"Bytes: Fixpt's (C320, words.kfx)."
+(define-rec
+  (bytes-filled! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (b i n x) (if (i64>= i n) #u (begin (byte-set! b i x) (bytes-filled! b (i64+ i 1) n x))))))
+
+(define bytes-made! (subr hp (i64 i64) i64)
+  (lambda (n x)
+    (if (i64< n 0) (begin (failed-with! "a negative length") 0) (let ((p (bytes-alloc! n))) (begin (bytes-filled! p 0 n x) p)))))
+
 (define bytes-copy! (subr hp (i64 i64 i64) i64)
   (lambda (b start end)
-    (if (or (i64< start 0) (i64< end start) (i64> end (obj-size b)))
+    (if (or (i64< start 0) (i64< end start) (i64> end (raw-length b)))
         (begin (failed-with! "bytevector-copy: a span that does not fit") 0)
-        (let ((p (alloc! ob-bytes (i64- end start)))) (begin (copied-range! p b start 0 (i64- end start)) p)))))
+        (let ((p (bytes-alloc! (i64- end start)))) (begin (copied-range! p b start 0 (i64- end start)) p)))))
 
 (define fourth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr xs))))))
 (define fifth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr (pair-cdr xs)))))))
@@ -183,46 +203,45 @@
 (define-rec
   (bytes-moved! (subr hp (i64 i64 i64 i64 i64) unit)
     (lambda (to at from i end)
-      (if (i64>= i end) #u (begin (obj-set! to at (obj-ref from i)) (bytes-moved! to (i64+ at 1) from (i64+ i 1) end))))))
+      (if (i64>= i end) #u (begin (raw-set! to at (raw-ref from i)) (bytes-moved! to (i64+ at 1) from (i64+ i 1) end))))))
 
 (define-rec
   (bytes-moved-back! (subr hp (i64 i64 i64 i64 i64) unit)
     (lambda (to at from start i)
-      (if (i64< i start) #u (begin (obj-set! to (i64+ at (i64- i start)) (obj-ref from i)) (bytes-moved-back! to at from start (i64- i 1)))))))
+      (if (i64< i start) #u (begin (raw-set! to (i64+ at (i64- i start)) (raw-ref from i)) (bytes-moved-back! to at from start (i64- i 1)))))))
 
 (define bytes-copy-into! (subr hp (i64 i64 i64 i64 i64) unit)
   (lambda (to at from start end)
     (let ((s (fixnum-value start)) (e (fixnum-value end)) (t (fixnum-value at)))
-      (cond ((or (i64< s 0) (i64< e s) (i64> e (obj-size from)) (i64< t 0) (i64> (i64+ t (i64- e s)) (obj-size to)))
+      (cond ((or (i64< s 0) (i64< e s) (i64> e (raw-length from)) (i64< t 0) (i64> (i64+ t (i64- e s)) (raw-length to)))
              (failed-with! "bytevector-copy!: a span that does not fit"))
             ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
             (else (bytes-moved! to t from s e))))))
 
-"Strings at a region (C285), a character's code a word, as bytes are a
- byte a word: made, written, filled and copied in place; a span checked as
- a bytevector's is."
+"Strings at a region (C285): made, written, filled and copied in place;
+ a span checked as a bytevector's is."
+(define-rec
+  (string-filled! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (s i n code) (if (i64>= i n) #u (begin (char-set! s i code) (string-filled! s (i64+ i 1) n code))))))
+
 (define string-made! (subr hp (i64 i64) i64)
   (lambda (n c)
     (if (i64< n 0)
         (begin (failed-with! "string length must be non-negative") 0)
-        (filled-raw! ob-string n (char->i64 (word-char c))))))
-
-(define-rec
-  (string-filled! (subr hp (i64 i64 i64 i64) unit)
-    (lambda (s i n code) (if (i64>= i n) #u (begin (obj-set! s i code) (string-filled! s (i64+ i 1) n code))))))
+        (let ((p (string-alloc! n))) (begin (string-filled! p 0 n (char->i64 (word-char c))) p)))))
 
 (define string-copy-w! (subr hp (i64 i64 i64) i64)
   (lambda (s start end)
-    (if (or (i64< start 0) (i64< end start) (i64> end (obj-size s)))
+    (if (or (i64< start 0) (i64< end start) (i64> end (raw-length s)))
         (begin (failed-with! "string-copy: a span that does not fit") 0)
-        (let ((p (alloc! ob-string (i64- end start)))) (begin (copied-range! p s start 0 (i64- end start)) p)))))
+        (let ((p (string-alloc! (i64- end start)))) (begin (copied-range! p s start 0 (i64- end start)) p)))))
 
 (define string-copy-into-w! (subr hp (i64 i64 i64 i64 i64) unit)
   (lambda (to at from start end)
     (let ((s (fixnum-value start)) (e (fixnum-value end)) (t (fixnum-value at)))
-      (cond ((or (i64< s 0) (i64< e s) (i64> e (obj-size from)) (i64< t 0))
+      (cond ((or (i64< s 0) (i64< e s) (i64> e (raw-length from)) (i64< t 0))
              (failed-with! "string-copy!: a span that does not fit"))
-            ((i64> (i64+ t (i64- e s)) (obj-size to))
+            ((i64> (i64+ t (i64- e s)) (raw-length to))
              (failed-with! "string-copy!: the characters do not fit"))
             ;; The two may be one string, overlapping: as bytes' are.
             ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
@@ -231,12 +250,12 @@
 "I/O: KFX's, in proportion to what is read and written."
 (define-rec
   (word-bytes-set! (subr hp ((bytevectorof @h) i64 i64 i64) unit)
-    (lambda (bv p i n) (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (obj-ref p i)))) (word-bytes-set! bv p (i64+ i 1) n))))))
+    (lambda (bv p i n) (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (byte-at p i)))) (word-bytes-set! bv p (i64+ i 1) n))))))
 
 (define word-kfx-bytes (subr (maxeff hp (alloc @h)) (i64) (bytevectorof @h))
   (lambda (p)
-    (let ((bv (the (bytevectorof @h) (make-bytevector (i64->int (obj-size p)) (int->u8 0)))))
-      (begin (word-bytes-set! bv p 0 (obj-size p)) bv))))
+    (let ((bv (the (bytevectorof @h) (make-bytevector (i64->int (raw-length p)) (int->u8 0)))))
+      (begin (word-bytes-set! bv p 0 (raw-length p)) bv))))
 
 (define utf8-word! (subr (maxeff hp (alloc @h)) (i64) i64)
   (lambda (p)
@@ -340,8 +359,8 @@
   (lambda ()
     (let ((n (get pending-points)))
       (cond ((i64>= n 0)
-             (let ((p (alloc! ob-string n)))
-               (begin (take-points (get space) (i64->int (pointer-index p)) 1) (sum-word! "line" p))))
+             (let ((p (string-alloc! n)))
+               (begin (take-points (get space) (i64->int (i64+ (pointer-index p) 1)) 2) (sum-word! "line" p))))
             ((i64= n -1) (sum-word! "eof" w-unit))
             (else (failure-word!))))))
 
@@ -350,7 +369,7 @@
  is not: a failure's is made after, a rare path)."
 (define text-written-word! (subr (maxeff hp (alloc @h) (io sys)) (i64 i64) i64)
   (lambda (p stream)
-    (if (i64= (int->i64 (write-points (get space) (i64->int (pointer-index p)) (i64->int (obj-size p)) 1 (i64->int stream))) 0)
+    (if (i64= (int->i64 (write-points (get space) (i64->int (i64+ (pointer-index p) 1)) (i64->int (raw-length p)) 2 (i64->int stream))) 0)
         (sum-word! "done" w-unit)
         (begin (failure-pended!) (failure-word!)))))
 
@@ -391,11 +410,11 @@
     (lambda (bv at i n)
       (if (i64>= i n)
           #u
-          (begin (element-set! bv (i64+ at i) (int->i64 (u8->int (bytevector-u8-ref (get pending-bytes) (i64->int i)))))
+          (begin (bytes-set-w! bv (i64+ at i) (int->i64 (u8->int (bytevector-u8-ref (get pending-bytes) (i64->int i)))))
                  (read-copied! bv at (i64+ i 1) n))))))
 (define read-bytes-word! (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
   (lambda (bv at n)
-    (cond ((or (i64< at 0) (i64< n 0) (i64> (i64+ at n) (obj-size bv)))
+    (cond ((or (i64< at 0) (i64< n 0) (i64> (i64+ at n) (raw-length bv)))
            (begin (failed-with! "read-bytes: a range past the bytevector's end") 0))
           (else
            (tagcase (get pending-count)

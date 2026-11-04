@@ -116,9 +116,46 @@ pub fn array_list_x(mut p: i64, mut i: i64, mut acc: i64) -> i64 {
     }
 }
 
-// Strings: a character's code a word each.
+// Strings: Fixpt's (C320, words.kfx).
+pub fn in_range_p(v: i64, i: i64) -> bool {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, raw_length(v))) {
+        failed_with_x(str_lit("an index out of range"));
+        false
+    } else {
+        true
+    }
+}
+
 pub fn string_ref_w(s: i64, i: i64) -> i64 {
-    immediate(imm_char(), element(s, i))
+    if in_range_p(s, i) {
+        immediate(imm_char(), char_at(s, i))
+    } else {
+        0i64
+    }
+}
+
+pub fn string_set_w_x(s: i64, i: i64, cp: i64) -> () {
+    if in_range_p(s, i) {
+        char_set_x(s, i, cp)
+    } else {
+        ()
+    }
+}
+
+pub fn bytes_ref_w(b: i64, i: i64) -> i64 {
+    if in_range_p(b, i) {
+        byte_at(b, i)
+    } else {
+        0i64
+    }
+}
+
+pub fn bytes_set_w_x(b: i64, i: i64, x: i64) -> () {
+    if in_range_p(b, i) {
+        byte_set_x(b, i, x)
+    } else {
+        ()
+    }
 }
 
 pub fn copied_into_x(mut to: i64, mut at: i64, mut from: i64, mut i: i64, mut n: i64) -> () {
@@ -126,7 +163,7 @@ pub fn copied_into_x(mut to: i64, mut at: i64, mut from: i64, mut i: i64, mut n:
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            obj_set_x(to, i64_plus(at, i), obj_ref(from, i));
+            raw_set_x(to, i64_plus(at, i), raw_ref(from, i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -136,7 +173,7 @@ pub fn copied_into_x(mut to: i64, mut at: i64, mut from: i64, mut i: i64, mut n:
 pub fn string_append_w_x(a: i64, b: i64) -> i64 {
     let n = string_length_w(a);
     let m = string_length_w(b);
-    let p = alloc_x(ob_string(), i64_plus(n, m));
+    let p = string_alloc_x(i64_plus(n, m));
     copied_into_x(p, 0i64, a, 0i64, n);
     copied_into_x(p, n, b, 0i64, m);
     p
@@ -147,7 +184,7 @@ pub fn copied_range_x(mut to: i64, mut from: i64, mut start: i64, mut i: i64, mu
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            obj_set_x(to, i, obj_ref(from, i64_plus(start, i)));
+            raw_set_x(to, i, raw_ref(from, i64_plus(start, i)));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -159,7 +196,7 @@ pub fn substring_w_x(s: i64, start: i64, end: i64) -> i64 {
         failed_with_x(str_lit("substring range out of bounds"));
         0i64
     } else {
-        let p = alloc_x(ob_string(), i64_minus(end, start));
+        let p = string_alloc_x(i64_minus(end, start));
         copied_range_x(p, s, start, 0i64, i64_minus(end, start));
         p
     }
@@ -175,9 +212,9 @@ pub fn string_compare_w(mut a: i64, mut b: i64, mut i: i64) -> i64 {
             return -1i64;
         } else if i64_gt_eq(i, m) {
             return 1i64;
-        } else if i64_lt(obj_ref(a, i), obj_ref(b, i)) {
+        } else if i64_lt(char_at(a, i), char_at(b, i)) {
             return -1i64;
-        } else if i64_gt(obj_ref(a, i), obj_ref(b, i)) {
+        } else if i64_gt(char_at(a, i), char_at(b, i)) {
             return 1i64;
         } else {
             i = i64_plus(i, 1i64);
@@ -192,7 +229,7 @@ pub fn matches_at_p(mut s: i64, mut sub: i64, mut at: i64, mut j: i64) -> bool {
             return true;
         } else if i64_gt_eq(i64_plus(at, j), string_length_w(s)) {
             return false;
-        } else if i64_eq(obj_ref(s, i64_plus(at, j)), obj_ref(sub, j)) {
+        } else if i64_eq(char_at(s, i64_plus(at, j)), char_at(sub, j)) {
             j = i64_plus(j, 1i64);
             continue;
         } else {
@@ -221,8 +258,8 @@ pub fn string_search_w(mut s: i64, mut sub: i64, mut from: i64) -> i64 {
 }
 
 pub fn char_string_x(c: i64) -> i64 {
-    let p = alloc_x(ob_string(), 1i64);
-    obj_set_x(p, 0i64, immediate_value(c));
+    let p = string_alloc_x(1i64);
+    char_set_x(p, 0i64, immediate_value(c));
     p
 }
 
@@ -231,7 +268,7 @@ pub fn string_list_x(mut s: i64, mut i: i64, mut acc: i64) -> i64 {
         if i64_lt(i, 0i64) {
             return acc;
         } else {
-            (i, acc) = (i64_minus(i, 1i64), pair_x(immediate(imm_char(), obj_ref(s, i)), acc));
+            (i, acc) = (i64_minus(i, 1i64), pair_x(immediate(imm_char(), char_at(s, i)), acc));
             continue;
         }
     }
@@ -242,7 +279,7 @@ pub fn chars_from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
         if i64_eq(xs, w_nil()) {
             return ();
         } else {
-            obj_set_x(p, i, immediate_value(pair_car(xs)));
+            char_set_x(p, i, immediate_value(pair_car(xs)));
             (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
             continue;
         }
@@ -250,7 +287,7 @@ pub fn chars_from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
 }
 
 pub fn list_string_x(xs: i64) -> i64 {
-    let p = alloc_x(ob_string(), list_count(xs, 0i64));
+    let p = string_alloc_x(list_count(xs, 0i64));
     chars_from_list_x(p, 0i64, xs);
     p
 }
@@ -270,7 +307,7 @@ pub fn digits_count(mut n: i64, mut k: i64) -> i64 {
 
 pub fn digits_set_x(mut p: i64, mut i: i64, mut n: i64) -> () {
     loop {
-        obj_set_x(p, i, i64_plus(48i64, i64_remainder(n, 10i64)));
+        char_set_x(p, i, i64_plus(48i64, i64_remainder(n, 10i64)));
         if i64_lt(n, 10i64) {
             return ();
         } else {
@@ -292,13 +329,13 @@ pub fn int_text_x(w: i64) -> i64 {
             v
         };
         let n = digits_count(mag, 0i64);
-        let p = alloc_x(ob_string(), if neg {
+        let p = string_alloc_x(if neg {
             i64_plus(n, 1i64)
         } else {
             n
         });
         if neg {
-            obj_set_x(p, 0i64, 45i64)
+            char_set_x(p, 0i64, 45i64)
         } else {
             ()
         };
@@ -351,11 +388,11 @@ pub fn shift_room(a: i64, b: i64) -> i64 {
 }
 
 pub fn same_chars_p(a: i64, b: i64, i: i64) -> bool {
-    (i64_gt_eq(i, obj_size(a)) || (i64_eq(obj_ref(a, i), obj_ref(b, i)) && same_chars_p(a, b, i64_plus(i, 1i64))))
+    (i64_gt_eq(i, raw_length(a)) || (i64_eq(raw_ref(a, i), raw_ref(b, i)) && same_chars_p(a, b, i64_plus(i, 1i64))))
 }
 
 pub fn raw_equal_p(a: i64, b: i64, i: i64) -> bool {
-    (i64_eq(obj_size(a), obj_size(b)) && same_chars_p(a, b, i))
+    (i64_eq(raw_length(a), raw_length(b)) && same_chars_p(a, b, i))
 }
 
 /// `case`'s comparison: two atoms of one kind, by that kind's equality.
@@ -371,13 +408,36 @@ pub fn same_atom_w_p(a: i64, b: i64) -> bool {
     }
 }
 
-// Bytes: a byte a word.
+// Bytes: Fixpt's (C320, words.kfx).
+pub fn bytes_filled_x(mut b: i64, mut i: i64, mut n: i64, mut x: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            byte_set_x(b, i, x);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn bytes_made_x(n: i64, x: i64) -> i64 {
+    if i64_lt(n, 0i64) {
+        failed_with_x(str_lit("a negative length"));
+        0i64
+    } else {
+        let p = bytes_alloc_x(n);
+        bytes_filled_x(p, 0i64, n, x);
+        p
+    }
+}
+
 pub fn bytes_copy_x(b: i64, start: i64, end: i64) -> i64 {
-    if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, obj_size(b))) {
+    if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, raw_length(b))) {
         failed_with_x(str_lit("bytevector-copy: a span that does not fit"));
         0i64
     } else {
-        let p = alloc_x(ob_bytes(), i64_minus(end, start));
+        let p = bytes_alloc_x(i64_minus(end, start));
         copied_range_x(p, b, start, 0i64, i64_minus(end, start));
         p
     }
@@ -396,7 +456,7 @@ pub fn bytes_moved_x(mut to: i64, mut at: i64, mut from: i64, mut i: i64, mut en
         if i64_gt_eq(i, end) {
             return ();
         } else {
-            obj_set_x(to, at, obj_ref(from, i));
+            raw_set_x(to, at, raw_ref(from, i));
             (at, i) = (i64_plus(at, 1i64), i64_plus(i, 1i64));
             continue;
         }
@@ -408,7 +468,7 @@ pub fn bytes_moved_back_x(mut to: i64, mut at: i64, mut from: i64, mut start: i6
         if i64_lt(i, start) {
             return ();
         } else {
-            obj_set_x(to, i64_plus(at, i64_minus(i, start)), obj_ref(from, i));
+            raw_set_x(to, i64_plus(at, i64_minus(i, start)), raw_ref(from, i));
             i = i64_minus(i, 1i64);
             continue;
         }
@@ -417,7 +477,7 @@ pub fn bytes_moved_back_x(mut to: i64, mut at: i64, mut from: i64, mut start: i6
 
 pub fn bytes_copy_into_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> () {
     let (s, e, t) = (fixnum_value(start), fixnum_value(end), fixnum_value(at));
-    if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, obj_size(from)) || i64_lt(t, 0i64) || i64_gt(i64_plus(t, i64_minus(e, s)), obj_size(to))) {
+    if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, raw_length(from)) || i64_lt(t, 0i64) || i64_gt(i64_plus(t, i64_minus(e, s)), raw_length(to))) {
         failed_with_x(str_lit("bytevector-copy!: a span that does not fit"))
     } else if i64_gt(t, s) {
         bytes_moved_back_x(to, t, from, s, i64_minus(e, 1i64))
@@ -426,36 +486,37 @@ pub fn bytes_copy_into_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> (
     }
 }
 
-// Strings at a region (C285), a character's code a word, as bytes are a
-// byte a word: made, written, filled and copied in place; a span checked as
-// a bytevector's is.
-pub fn string_made_x(n: i64, c: i64) -> i64 {
-    if i64_lt(n, 0i64) {
-        failed_with_x(str_lit("string length must be non-negative"));
-        0i64
-    } else {
-        filled_raw_x(ob_string(), n, char_to_i64(word_char(c)))
-    }
-}
-
+// Strings at a region (C285): made, written, filled and copied in place;
+// a span checked as a bytevector's is.
 pub fn string_filled_x(mut s: i64, mut i: i64, mut n: i64, mut code: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            obj_set_x(s, i, code);
+            char_set_x(s, i, code);
             i = i64_plus(i, 1i64);
             continue;
         }
     }
 }
 
+pub fn string_made_x(n: i64, c: i64) -> i64 {
+    if i64_lt(n, 0i64) {
+        failed_with_x(str_lit("string length must be non-negative"));
+        0i64
+    } else {
+        let p = string_alloc_x(n);
+        string_filled_x(p, 0i64, n, char_to_i64(word_char(c)));
+        p
+    }
+}
+
 pub fn string_copy_w_x(s: i64, start: i64, end: i64) -> i64 {
-    if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, obj_size(s))) {
+    if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, raw_length(s))) {
         failed_with_x(str_lit("string-copy: a span that does not fit"));
         0i64
     } else {
-        let p = alloc_x(ob_string(), i64_minus(end, start));
+        let p = string_alloc_x(i64_minus(end, start));
         copied_range_x(p, s, start, 0i64, i64_minus(end, start));
         p
     }
@@ -463,9 +524,9 @@ pub fn string_copy_w_x(s: i64, start: i64, end: i64) -> i64 {
 
 pub fn string_copy_into_w_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> () {
     let (s, e, t) = (fixnum_value(start), fixnum_value(end), fixnum_value(at));
-    if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, obj_size(from)) || i64_lt(t, 0i64)) {
+    if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, raw_length(from)) || i64_lt(t, 0i64)) {
         failed_with_x(str_lit("string-copy!: a span that does not fit"))
-    } else if i64_gt(i64_plus(t, i64_minus(e, s)), obj_size(to)) {
+    } else if i64_gt(i64_plus(t, i64_minus(e, s)), raw_length(to)) {
         failed_with_x(str_lit("string-copy!: the characters do not fit"))
     } else if i64_gt(t, s) {
         bytes_moved_back_x(to, t, from, s, i64_minus(e, 1i64))
@@ -480,7 +541,7 @@ pub fn word_bytes_set_x(mut bv: Bytes, mut p: i64, mut i: i64, mut n: i64) -> ()
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            bytevector_u8_set_x(bv, i64_to_int(i), int_to_u8(i64_to_int(obj_ref(p, i))));
+            bytevector_u8_set_x(bv, i64_to_int(i), int_to_u8(i64_to_int(byte_at(p, i))));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -488,8 +549,8 @@ pub fn word_bytes_set_x(mut bv: Bytes, mut p: i64, mut i: i64, mut n: i64) -> ()
 }
 
 pub fn word_kfx_bytes(p: i64) -> Bytes {
-    let bv = the::<Bytes>(make_bytevector(i64_to_int(obj_size(p)), int_to_u8(int_lit(0))));
-    word_bytes_set_x(bv, p, 0i64, obj_size(p));
+    let bv = the::<Bytes>(make_bytevector(i64_to_int(raw_length(p)), int_to_u8(int_lit(0))));
+    word_bytes_set_x(bv, p, 0i64, raw_length(p));
     bv
 }
 
@@ -779,8 +840,8 @@ pub fn line_room_x() -> i64 {
 pub fn read_line_word_x() -> i64 {
     let n = get(pending_points());
     if i64_gt_eq(n, 0i64) {
-        let p = alloc_x(ob_string(), n);
-        take_points(get(space()), i64_to_int(pointer_index(p)), int_lit(1));
+        let p = string_alloc_x(n);
+        take_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), int_lit(2));
         sum_word_x(str_lit("line"), p)
     } else if i64_eq(n, -1i64) {
         sum_word_x(str_lit("eof"), w_unit())
@@ -793,7 +854,7 @@ pub fn read_line_word_x() -> i64 {
 // error (2): `done`, or the failure (its room found before, as a write's
 // is not: a failure's is made after, a rare path).
 pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
-    if i64_eq(int_to_i64(write_points(get(space()), i64_to_int(pointer_index(p)), i64_to_int(obj_size(p)), int_lit(1), i64_to_int(stream))), 0i64) {
+    if i64_eq(int_to_i64(write_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), i64_to_int(raw_length(p)), int_lit(2), i64_to_int(stream))), 0i64) {
         sum_word_x(str_lit("done"), w_unit())
     } else {
         failure_pended_x();
@@ -914,7 +975,7 @@ pub fn read_copied_x(mut bv: i64, mut at: i64, mut i: i64, mut n: i64) -> () {
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            element_set_x(bv, i64_plus(at, i), int_to_i64(u8_to_int(bytevector_u8_ref(get(pending_bytes()), i64_to_int(i)))));
+            bytes_set_w_x(bv, i64_plus(at, i), int_to_i64(u8_to_int(bytevector_u8_ref(get(pending_bytes()), i64_to_int(i)))));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -922,7 +983,7 @@ pub fn read_copied_x(mut bv: i64, mut at: i64, mut i: i64, mut n: i64) -> () {
 }
 
 pub fn read_bytes_word_x(bv: i64, at: i64, n: i64) -> i64 {
-    if (i64_lt(at, 0i64) || i64_lt(n, 0i64) || i64_gt(i64_plus(at, n), obj_size(bv))) {
+    if (i64_lt(at, 0i64) || i64_lt(n, 0i64) || i64_gt(i64_plus(at, n), raw_length(bv))) {
         failed_with_x(str_lit("read-bytes: a range past the bytevector's end"));
         0i64
     } else {

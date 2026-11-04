@@ -234,11 +234,11 @@
 
 (define-rec
   (kfx-bytes-set! (subr hp (i64 (bytevectorof @h) i64 i64) unit)
-    (lambda (p bv i n) (if (i64>= i n) #u (begin (obj-set! p i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (kfx-bytes-set! p bv (i64+ i 1) n))))))
+    (lambda (p bv i n) (if (i64>= i n) #u (begin (byte-set! p i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (kfx-bytes-set! p bv (i64+ i 1) n))))))
 
 (define kfx-bytes-word! (subr hp ((bytevectorof @h)) i64)
   (lambda (bv)
-    (let* ((n (int->i64 (bytevector-length bv))) (p (alloc! ob-bytes n))) (begin (kfx-bytes-set! p bv 0 n) p))))
+    (let* ((n (int->i64 (bytevector-length bv))) (p (bytes-alloc! n))) (begin (kfx-bytes-set! p bv 0 n) p))))
 
 (define literal-word! (subr numbering (val) i64)
   (lambda (v)

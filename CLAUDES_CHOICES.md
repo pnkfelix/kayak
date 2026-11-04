@@ -8900,3 +8900,39 @@ and Fixpt's kinds' fields need their count read. Measured on the way:
 the first layout, `alloc`'s order everywhere and half the room, was 60%
 slower; the slot order for the engine's own objects took it to 24%,
 direct pairs to 15%.
+
+## C320. The engine's strings and bytevectors, Fixpt's (2026-11-04; one heap, 1c)
+
+Fixpt's layouts, as tier 1 has them: a bloblet of no fields, kind
+`string` (1) or `bytevector` (4), its suffix a word of the length, then
+the code points two to a word, or the bytes eight to a word, the first in
+the low bits. In `fx26/words.kfx`: `string-alloc!`, `bytes-alloc!`,
+`raw-length`, `char-at`, `char-set!`, `byte-at`, `byte-set!`, and
+`raw-ref`/`raw-set!` by kind for what the two share (copies, equality);
+every string and byte operation moved to them from `obj-ref`. Text
+crosses to I/O two code points to a word, as the points syscalls already
+took them for tier 1 (`per` 2). Three the tests had not reached, found
+reading what was left on `obj-size`: `bytevector-length` and
+`bloblet-bytes`' length counted words, and `utf8->string`'s room was too
+small for a string now half a word a character; a program of kayak's
+now reaches them (`tests/fx26-kayak/heap/strings-and-bytes.fx`, every
+tier, as Fixpt prints it). Two more the check found (`engine-programs`,
+the corpus on the engine: `bloblets`, `f32`, `flat-sums`): a bloblet's
+byte read and write (`bloblet-byte`, `bloblet-set-byte!`) were still a
+word each. All tests as before; speed as C319's.
+
+## C321. The engine's symbols and keywords, Fixpt's (2026-11-04; one heap, 1c)
+
+A symbol is Fixpt's object, kind `symbol` (2): its name (a string), its
+hash (`symbol-name-hash`, Fixpt's) and its global slot; a keyword,
+kind `keyword` (48), its symbol. Interned, one object a name, found by the
+name's number in a table of each (`symbol-objects`, `keyword-objects`),
+made the first time it is asked for and kept by the collector, which
+forwards the tables as roots. Not yet as Fixpt's: the global slot holds
+the engine's number for the name (tier 1's holds 0), so that a name's
+number is one read away, as a sum's tag and a product's labels are still
+numbers (next); settled once the heap is one. Printing, staged code's
+reading back, `symbol?`, `symbol->string`, keywords' conversions through
+the objects; `string->symbol` and `symbol->keyword` given room for what
+they may make. The engine's immediates of subtag 24 are gone. All tests
+as before; `engine-bench.py` some 6% faster than C320's.

@@ -115,11 +115,11 @@ pub fn word_sexp(w: i64) -> &'static Sexp {
         stage_past_x(2i64);
         lst(nil::<&'static Sexp>(), stage_file(), 1i64, p)
     } else if keyword_word_p(w) {
-        let n = string_append(str_lit("#:"), name_of_number(i64_minus(immediate_value(w), keyword_bias())));
+        let n = string_append(str_lit("#:"), symbol_text(obj_ref(w, 0i64)));
         stage_past_x(string_length_i64(n));
         sym(n, stage_file(), p)
-    } else if is_imm_p(w, imm_symbol()) {
-        let n = name_of_number(immediate_value(w));
+    } else if is_obj_p(w, ob_symbol()) {
+        let n = symbol_text(w);
         stage_past_x(string_length_i64(n));
         sym(n, stage_file(), p)
     } else if is_imm_p(w, imm_char()) {

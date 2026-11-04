@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"strings-and-bytes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"b : (bytevectorof @heap) ! (alloc @heap)",
+"s : (stringof @heap) ! (alloc @heap)",
+"main : (subr (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals b s))) () string) ! pure",
+"\"13 200 7 11 za 9 héllo, wörld\" : string ! (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals b main s)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}
