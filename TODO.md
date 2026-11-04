@@ -101,8 +101,9 @@ section below where it has one; here the order, and what each is.
      instantiating one type binder bounded only from below by a sum
      (Fixpt's `sum_lower_only`, 39318012).
    - **`stage`**, evidence and **sessions** (the checker, the engine and
-     the REPL have them, C304-C315): not yet the compiled tiers (the next
-     step, a design first) or KFX (not needed there).
+     the REPL have them, C304-C315): not yet the compiled tiers, designed
+     in `docs/research/compiled-stage.md` (C316; four questions the
+     user's), or KFX (not needed there).
    - **Refusals in Fixpt's words** (C312; 122 of 406 so far): Fixpt's
      termination reasons after a `spin` mismatch ("; it may not end:
      …"); the storage knot's "and it is a T" (no type printer before

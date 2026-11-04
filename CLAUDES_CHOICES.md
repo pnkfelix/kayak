@@ -8810,3 +8810,18 @@ run as Fixpt runs them, for its checker.
   output and status, rather than appending `(main)`.
 Checkers: 461 the same of 572 (454), refuses 22 (29); stage programs:
 22 of 23 as Fixpt prints them, `session.fx` but for `car`'s type printed.
+
+## C316. `stage` and sessions on the compiled tiers: a design (2026-11-03)
+
+`docs/research/compiled-stage.md`. Three ways: (a) kayak's front end (KFX
+compiled to Rust) linked into the cells program, staged code compiled to
+cells and read into the running heap by tier 1's own listing reader, as
+Fixpt's compiled machines compile staged code with a front end of their
+own; (b) staged code given to the engine, impossible for procedures while
+the heaps are two; (c) one heap, the engine moved onto tier 1's (Fixpt's
+layout). The user asked whether the heaps must be two: they need not,
+being so by history (the engine, C58 and C64, before C121 took Fixpt's
+formats; tier 1, C122, on them); one heap would still leave two kinds of
+procedure, needing adapters both ways. Recommended (a), (c) apart. Four
+questions for the user: which binary, staged code at tier 1's speed for
+now, the engine-independent half of `vstage.kfx` shared, and one heap.
