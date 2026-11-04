@@ -6,6 +6,7 @@ use kayak_rt::*;
 // of the directory, and of a path that is not there; `read-symlink` of a
 // path that is no link. A file's size is its bytes; its time and mode say
 // only that they are there, as they depend on the clock and the umask.
+#[inline]
 pub fn put(path: Str, text: Str) -> () {
     let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
     match *tagcase_ {
@@ -18,6 +19,7 @@ pub fn put(path: Str, text: Str) -> () {
     }
 }
 
+#[inline]
 pub fn kind_name(k: &'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>) -> Str {
     let tagcase_ = k;
     match *tagcase_ {
@@ -65,6 +67,7 @@ pub fn said(path: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn link(path: Str) -> Str {
     let tagcase_ = read_symlink(path);
     match *tagcase_ {

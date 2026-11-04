@@ -48,10 +48,10 @@
 (define ob-icell i64 16)
 (define ob-mailbox i64 17)
 
-(define sched-at (ref i64 @h) (new -1))
-(define regions-made (ref i64 @h) (new 0))
+(define sched-at (ref i64 @c) (new -1))
+(define regions-made (ref i64 @c) (new 0))
 
-(define sched? (subr (maxeff (read @globals) spin (read @h)) () bool)
+(define sched? (subr (maxeff (read @globals) spin (read @c)) () bool)
   (lambda () (i64>= (get sched-at) 0)))
 
 (define-rec
@@ -74,23 +74,23 @@
 
 "Tasks: whether each is ended, and its quiet count with its grace in bit
  7; the first, 0, never ends."
-(define task-ended (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 64 0)))
-(define task-quiet (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 64 0)))
-(define task-count (ref i64 @h) (new 1))
-(define task-now (ref i64 @h) (new 0))
+(define task-ended (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
+(define task-quiet (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
+(define task-count (ref i64 @c) (new 1))
+(define task-now (ref i64 @c) (new 0))
 
-(define task-live? (subr (maxeff (read @globals) spin (read @h)) (i64) bool)
+(define task-live? (subr (maxeff (read @globals) spin (read @c)) (i64) bool)
   (lambda (t) (and (i64>= t 0) (i64< t (get task-count)) (i64= (flatarray-ref-i64 (get task-ended) t) 0))))
 
 (define-rec
-  (free-task (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (free-task (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
     (lambda (t)
       (cond ((i64>= t (get task-count)) t)
             ((i64= (flatarray-ref-i64 (get task-ended) t) 1) t)
             (else (free-task (i64+ t 1)))))))
 
 (define-rec
-  (flats-grown (subr (maxeff (read @globals) spin (read @h) (write @h)) ((flatarrayof i64 @h) (flatarrayof i64 @h) i64) (flatarrayof i64 @h))
+  (flats-grown (subr (maxeff (read @globals) spin (read @c) (write @c)) ((flatarrayof i64 @c) (flatarrayof i64 @c) i64) (flatarrayof i64 @c))
     (lambda (from to i)
       (if (i64>= i (flatarray-length-i64 from)) to (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (flats-grown from to (i64+ i 1)))))))
 
@@ -123,9 +123,9 @@
             (flatarray-set-i64! (get task-ended) t 1)
             (set task-now (if (i64= was t) (the i64 0) was)))))))
 
-(define quiet (subr (maxeff (read @globals) spin (read @h)) () i64) (lambda () (flatarray-ref-i64 (get task-quiet) (get task-now))))
+(define quiet (subr (maxeff (read @globals) spin (read @c)) () i64) (lambda () (flatarray-ref-i64 (get task-quiet) (get task-now))))
 (define quiet-set! (subr hp (i64) unit) (lambda (q) (flatarray-set-i64! (get task-quiet) (get task-now) q)))
-(define quiet? (subr (maxeff (read @globals) spin (read @h)) () bool) (lambda () (not (i64= (i64-and (quiet) 127) 0))))
+(define quiet? (subr (maxeff (read @globals) spin (read @c)) () bool) (lambda () (not (i64= (i64-and (quiet) 127) 0))))
 (define quiet-enter! (subr hp () unit)
   (lambda ()
     (let ((q (quiet)))
@@ -141,17 +141,16 @@
 "Lists in the heap, sifted where they are. How an item `e` is matched:
  `e` is `x` (0); its car is (1); its cdr is (2); either is (3); its car is
  an item of list `x` (4); its car is a time not after `x` (5)."
-(define is-pair? (subr (maxeff (read @globals) spin (read @h)) (i64) bool) (lambda (w) (is-obj? w ob-pair)))
 
 (define-rec
   (reversed-onto! (subr hp (i64 i64) i64)
     (lambda (l acc) (if (is-pair? l) (reversed-onto! (pair-cdr l) (pair! (pair-car l) acc)) acc))))
 
 (define-rec
-  (heap-member? (subr (maxeff (read @globals) spin (read @h)) (i64 i64) bool)
+  (heap-member? (subr (maxeff (read @globals) spin (read @c)) (i64 i64) bool)
     (lambda (l x) (and (is-pair? l) (or (i64= (pair-car l) x) (heap-member? (pair-cdr l) x))))))
 
-(define matches? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
+(define matches? (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) bool)
   (lambda (e how x)
     (cond ((i64= how 0) (i64= e x))
           ((i64= how 1) (i64= (pair-car e) x))
@@ -161,7 +160,7 @@
           (else (i64<= (fixnum-value (pair-car e)) x)))))
 
 (define-rec
-  (any-match? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
+  (any-match? (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) bool)
     (lambda (l how x) (and (is-pair? l) (or (matches? (pair-car l) how x) (any-match? (pair-cdr l) how x))))))
 
 (define-rec
@@ -228,7 +227,7 @@
 (define make-mailbox! (subr hp () i64)
   (lambda () (let ((m (alloc! ob-mailbox 3))) (begin (obj-set! m 0 w-nil) (obj-set! m 1 w-nil) (obj-set! m 2 w-false) m))))
 
-(define mailbox-ready? (subr (maxeff (read @globals) spin (read @h)) (i64) bool)
+(define mailbox-ready? (subr (maxeff (read @globals) spin (read @c)) (i64) bool)
   (lambda (m) (or (is-pair? (obj-ref m 0)) (is-pair? (obj-ref m 1)))))
 
 (define mailbox-put! (subr (maxeff vm loading) (i64 i64) i64)
@@ -259,14 +258,14 @@
       w-unit)))
 
 (define-rec
-  (due-in? (subr (maxeff (read @globals) spin (read @h)) (i64 i64) bool)
+  (due-in? (subr (maxeff (read @globals) spin (read @c)) (i64 i64) bool)
     (lambda (l now) (and (is-pair? l) (or (i64<= (fixnum-value (pair-car (pair-car l))) now) (due-in? (pair-cdr l) now))))))
 
 (define timer-due? (subr (maxeff vm loading) () bool)
   (lambda () (let ((ts (sched-ref s-timers))) (and (is-pair? ts) (due-in? ts (clock))))))
 
 (define-rec
-  (timers-earliest (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (timers-earliest (subr (maxeff (read @globals) spin (read @c)) (i64 i64) i64)
     (lambda (l e) (if (is-pair? l) (timers-earliest (pair-cdr l) (let ((t (fixnum-value (pair-car (pair-car l))))) (if (i64< t e) t e))) e))))
 
 (define-rec
@@ -354,7 +353,7 @@
 
 "Tasks the scheduler keeps."
 (define-rec
-  (assq-cdr (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (assq-cdr (subr (maxeff (read @globals) spin (read @c)) (i64 i64) i64)
     (lambda (l t)
       (cond ((not (is-pair? l)) w-false)
             ((i64= (pair-car (pair-car l)) t) (pair-cdr (pair-car l)))
@@ -396,7 +395,7 @@
   (lambda (reach) (let ((w (wanted-how!))) (or (i64= w 1) (and (i64= w 2) reach)))))
 
 (define-rec
-  (cars-of (subr (maxeff (read @globals) spin (read @h)) (i64) (listof i64 acyclic))
+  (cars-of (subr (maxeff (read @globals) spin (read @c)) (i64) (listof i64 acyclic))
     (lambda (l) (if (is-pair? l) (cons (pair-car (pair-car l)) (cars-of (pair-cdr l))) nil))))
 
 (define-rec
@@ -417,7 +416,7 @@
             (else (inner-groups (pair-cdr l) gs acc))))))
 
 (define-rec
-  (last-monitor (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+  (last-monitor (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) i64)
     (lambda (l g found)
       (cond ((not (is-pair? l)) found)
             ((i64= (pair-car (pair-car l)) g) (last-monitor (pair-cdr l) g (pair-cdr (pair-car l))))
@@ -460,7 +459,7 @@
   (lambda () "The scheduler's prompt tag, or `#f`." (if (sched?) (sched-ref s-tag) w-false)))
 
 "`%sched`'s operations."
-(define task-arg? (subr (maxeff (read @globals) spin (read @h)) (i64) bool)
+(define task-arg? (subr (maxeff (read @globals) spin (read @c)) (i64) bool)
   (lambda (a) (and (fixnum? a) (task-live? (fixnum-value a)))))
 
 (define sched-op! (subr (maxeff vm loading) (i64 i64 i64) i64)

@@ -242,6 +242,7 @@ pub fn qseen(f0: i64, f1: i64) -> &'static Qseen {
     kayak_rt::heap_alloc(Qseen::Qseen(f0, f1))
 }
 
+#[inline]
 pub fn cg_qreached() -> Ref<List<&'static Qseen>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
     once(&ONCE, || {
@@ -249,6 +250,7 @@ pub fn cg_qreached() -> Ref<List<&'static Qseen>> {
     })
 }
 
+#[inline]
 pub fn cg_qlabels() -> Ref<List<&'static Qseen>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
     once(&ONCE, || {
@@ -256,6 +258,7 @@ pub fn cg_qlabels() -> Ref<List<&'static Qseen>> {
     })
 }
 
+#[inline]
 pub fn cg_qnext() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -350,6 +353,7 @@ pub fn q_written_x(l: &'static Lit) -> Str {
     }
 }
 
+#[inline]
 pub fn q_pair_text(ps: List<&'static Lit>) -> Str {
     string_append(str_lit("("), string_append(q_written_x(car(ps)), string_append(str_lit(" . "), string_append(q_written_x(car(cdr(ps))), str_lit(")")))))
 }

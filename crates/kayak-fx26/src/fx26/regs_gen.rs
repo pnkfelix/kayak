@@ -34,6 +34,7 @@ pub fn gwrites(f0: Str, f1: i64) -> &'static Gwrites {
     kayak_rt::heap_alloc(Gwrites::Gwrites(f0, f1))
 }
 
+#[inline]
 pub fn cg_writes() -> Ref<List<&'static Gwrites>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Gwrites>>);
     once(&ONCE, || {
@@ -41,6 +42,7 @@ pub fn cg_writes() -> Ref<List<&'static Gwrites>> {
     })
 }
 
+#[inline]
 pub fn cg_form_writes() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -97,6 +99,7 @@ pub fn without_one(xs: Strings, n: Str) -> Strings {
     }
 }
 
+#[inline]
 pub fn writes_expected(n: Str) -> i64 {
     count_in(get(cg_form_writes()), n, writes_of(get(cg_writes()), n))
 }
@@ -132,6 +135,7 @@ pub fn rgen(f0: Ref<Ritems>, f1: bool, f2: Ref<i64>, f3: Ref<i64>, f4: Ref<i64>,
     kayak_rt::heap_alloc(Rgen::Rgen(f0, f1, f2, f3, f4, f5, f6, f7, f8))
 }
 
+#[inline]
 pub fn g_items(g: &'static Rgen) -> Ref<Ritems> {
     let tagcase_ = g;
     match *tagcase_ {
@@ -141,6 +145,7 @@ pub fn g_items(g: &'static Rgen) -> Ref<Ritems> {
     }
 }
 
+#[inline]
 pub fn g_leaf(g: &'static Rgen) -> bool {
     let tagcase_ = g;
     match *tagcase_ {
@@ -150,6 +155,7 @@ pub fn g_leaf(g: &'static Rgen) -> bool {
     }
 }
 
+#[inline]
 pub fn g_nreg(g: &'static Rgen) -> Ref<i64> {
     let tagcase_ = g;
     match *tagcase_ {
@@ -159,6 +165,7 @@ pub fn g_nreg(g: &'static Rgen) -> Ref<i64> {
     }
 }
 
+#[inline]
 pub fn g_nslot(g: &'static Rgen) -> Ref<i64> {
     let tagcase_ = g;
     match *tagcase_ {
@@ -168,6 +175,7 @@ pub fn g_nslot(g: &'static Rgen) -> Ref<i64> {
     }
 }
 
+#[inline]
 pub fn g_mslot(g: &'static Rgen) -> Ref<i64> {
     let tagcase_ = g;
     match *tagcase_ {
@@ -177,6 +185,7 @@ pub fn g_mslot(g: &'static Rgen) -> Ref<i64> {
     }
 }
 
+#[inline]
 pub fn g_labels(g: &'static Rgen) -> Ref<i64> {
     let tagcase_ = g;
     match *tagcase_ {
@@ -186,6 +195,7 @@ pub fn g_labels(g: &'static Rgen) -> Ref<i64> {
     }
 }
 
+#[inline]
 pub fn g_this(g: &'static Rgen) -> Rthis {
     let tagcase_ = g;
     match *tagcase_ {
@@ -195,6 +205,7 @@ pub fn g_this(g: &'static Rgen) -> Rthis {
     }
 }
 
+#[inline]
 pub fn g_start(g: &'static Rgen) -> i64 {
     let tagcase_ = g;
     match *tagcase_ {
@@ -204,6 +215,7 @@ pub fn g_start(g: &'static Rgen) -> i64 {
     }
 }
 
+#[inline]
 pub fn g_ctx(g: &'static Rgen) -> &'static Rctx {
     let tagcase_ = g;
     match *tagcase_ {
@@ -213,6 +225,7 @@ pub fn g_ctx(g: &'static Rgen) -> &'static Rctx {
     }
 }
 
+#[inline]
 pub fn x_declined(x: &'static Rctx) -> Ref<bool> {
     let tagcase_ = x;
     match *tagcase_ {
@@ -222,6 +235,7 @@ pub fn x_declined(x: &'static Rctx) -> Ref<bool> {
     }
 }
 
+#[inline]
 pub fn x_assuming(x: &'static Rctx) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
@@ -231,6 +245,7 @@ pub fn x_assuming(x: &'static Rctx) -> bool {
     }
 }
 
+#[inline]
 pub fn x_assumed(x: &'static Rctx) -> Ref<Strings> {
     let tagcase_ = x;
     match *tagcase_ {
@@ -240,6 +255,7 @@ pub fn x_assumed(x: &'static Rctx) -> Ref<Strings> {
     }
 }
 
+#[inline]
 pub fn x_looped(x: &'static Rctx) -> Ref<bool> {
     let tagcase_ = x;
     match *tagcase_ {
@@ -249,6 +265,7 @@ pub fn x_looped(x: &'static Rctx) -> Ref<bool> {
     }
 }
 
+#[inline]
 pub fn x_own(x: &'static Rctx) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
@@ -258,6 +275,7 @@ pub fn x_own(x: &'static Rctx) -> Str {
     }
 }
 
+#[inline]
 pub fn x_own_arity(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
@@ -267,6 +285,7 @@ pub fn x_own_arity(x: &'static Rctx) -> i64 {
     }
 }
 
+#[inline]
 pub fn x_own_start(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
@@ -277,6 +296,7 @@ pub fn x_own_start(x: &'static Rctx) -> i64 {
 }
 
 // The source position of the expression being compiled (C249), 0 if none.
+#[inline]
 pub fn x_at(x: &'static Rctx) -> Ref<i64> {
     let tagcase_ = x;
     match *tagcase_ {
@@ -288,6 +308,7 @@ pub fn x_at(x: &'static Rctx) -> Ref<i64> {
 
 // In a copy, the copy being made (one or none); where the parameter the
 // lambda is is (one or none); the label where the copy starts (C260).
+#[inline]
 pub fn x_spec(x: &'static Rctx) -> List<&'static Rspec> {
     let tagcase_ = x;
     match *tagcase_ {
@@ -297,6 +318,7 @@ pub fn x_spec(x: &'static Rctx) -> List<&'static Rspec> {
     }
 }
 
+#[inline]
 pub fn x_spec_at(x: &'static Rctx) -> Ref<Rlocs> {
     let tagcase_ = x;
     match *tagcase_ {
@@ -306,6 +328,7 @@ pub fn x_spec_at(x: &'static Rctx) -> Ref<Rlocs> {
     }
 }
 
+#[inline]
 pub fn x_spec_start(x: &'static Rctx) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
@@ -316,51 +339,63 @@ pub fn x_spec_start(x: &'static Rctx) -> i64 {
 }
 
 // What the analyses are told of the body (`rview`).
+#[inline]
 pub fn g_view(g: &'static Rgen) -> &'static Rview {
     let x = g_ctx(g);
     rview(x_assuming(x), false, x_own(x), x_own_arity(x))
 }
 
+#[inline]
 pub fn r_decline(g: &'static Rgen) -> () {
     set(x_declined(g_ctx(g)), true)
 }
 
+#[inline]
 pub fn r_declined_p(g: &'static Rgen) -> bool {
     get(x_declined(g_ctx(g)))
 }
 
+#[inline]
 pub fn r_emit(g: &'static Rgen, x: &'static Ritem) -> () {
     set(g_items(g), kayak_rt::heap_cons(x, get(g_items(g))))
 }
 
+#[inline]
 pub fn r_ins(g: &'static Rgen, name: Str, os: List<&'static Opnd>) -> () {
     r_emit(g, ri_op(name, os))
 }
 
+#[inline]
 pub fn r_op0(g: &'static Rgen, name: Str) -> () {
     r_ins(g, name, nil::<&'static Opnd>())
 }
 
+#[inline]
 pub fn r_opn(g: &'static Rgen, name: Str, n: i64) -> () {
     r_ins(g, name, kayak_rt::heap_cons(o_int(n), kayak_rt::nil()))
 }
 
+#[inline]
 pub fn r_opnn(g: &'static Rgen, name: Str, n: i64, m: i64) -> () {
     r_ins(g, name, kayak_rt::heap_cons(o_int(n), kayak_rt::heap_cons(o_int(m), kayak_rt::nil())))
 }
 
+#[inline]
 pub fn r_const(g: &'static Rgen, l: &'static Lit) -> () {
     r_ins(g, str_lit("const"), kayak_rt::heap_cons(o_lit(l), kayak_rt::nil()))
 }
 
+#[inline]
 pub fn r_op2imm(g: &'static Rgen, r: Str, l: &'static Lit) -> () {
     r_ins(g, str_lit("op2imm"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_lit(l), kayak_rt::nil())))
 }
 
+#[inline]
 pub fn r_unit(g: &'static Rgen) -> () {
     r_const(g, l_unit())
 }
 
+#[inline]
 pub fn r_negate(g: &'static Rgen) -> () {
     r_op2imm(g, str_lit("eq"), l_bool(false))
 }
@@ -376,6 +411,7 @@ pub fn r_add_imm(g: &'static Rgen, k: Int) -> () {
     }
 }
 
+#[inline]
 pub fn r_new_label(g: &'static Rgen) -> i64 {
     let n = get(g_labels(g));
     set(g_labels(g), i64_plus(n, 1i64));
@@ -406,11 +442,13 @@ pub fn r_slot(g: &'static Rgen) -> i64 {
 
 // The registers and frame slots taken since there were `regs` and `slots`,
 // free again.
+#[inline]
 pub fn r_restore(g: &'static Rgen, regs: i64, slots: i64) -> () {
     set(g_nreg(g), regs);
     set(g_nslot(g), slots)
 }
 
+#[inline]
 pub fn r_leave(g: &'static Rgen) -> () {
     if g_leaf(g) {
         ()
@@ -419,6 +457,7 @@ pub fn r_leave(g: &'static Rgen) -> () {
     }
 }
 
+#[inline]
 pub fn r_done(g: &'static Rgen, tail: bool) -> () {
     if tail {
         r_leave(g);
@@ -428,23 +467,27 @@ pub fn r_done(g: &'static Rgen, tail: bool) -> () {
     }
 }
 
+#[inline]
 pub fn r_const_value(g: &'static Rgen, l: &'static Lit, tail: bool) -> () {
     r_const(g, l);
     r_done(g, tail)
 }
 
+#[inline]
 pub fn r_keep_in_reg(g: &'static Rgen) -> i64 {
     let r = r_reg(g);
     r_opn(g, str_lit("setreg"), r);
     r
 }
 
+#[inline]
 pub fn r_keep_in_slot(g: &'static Rgen) -> i64 {
     let s = r_slot(g);
     r_opn(g, str_lit("setstk"), s);
     s
 }
 
+#[inline]
 pub fn r_keep(g: &'static Rgen, reg: bool) -> &'static Rloc {
     if reg {
         rl_reg(r_keep_in_reg(g))
@@ -453,6 +496,7 @@ pub fn r_keep(g: &'static Rgen, reg: bool) -> &'static Rloc {
     }
 }
 
+#[inline]
 pub fn r_place_value(g: &'static Rgen) -> &'static Rloc {
     r_keep(g, g_leaf(g))
 }
@@ -473,16 +517,19 @@ pub fn r_get(g: &'static Rgen, l: &'static Rloc) -> () {
     }
 }
 
+#[inline]
 pub fn r_slot_move(g: &'static Rgen, from: i64, to: i64) -> () {
     r_opn(g, str_lit("stack"), from);
     r_opn(g, str_lit("setstk"), to)
 }
 
+#[inline]
 pub fn r_const_into(g: &'static Rgen, l: &'static Lit, k: i64) -> () {
     r_const(g, l);
     r_opn(g, str_lit("setreg"), k)
 }
 
+#[inline]
 pub fn r_lexical_into(g: &'static Rgen, i: i64, k: i64) -> () {
     r_opn(g, str_lit("lexical"), i);
     r_opn(g, str_lit("setreg"), k)
@@ -504,6 +551,7 @@ pub fn r_emit_all(mut g: &'static Rgen, mut xs: Ritems) -> () {
 // (2), called with no look; `fx`, or a composable continuation, which may
 // be of either (0, a call that looks); else cellular (1), as the stack
 // compiler's `tcall`.
+#[inline]
 pub fn r_conv_at(a: i64) -> i64 {
     if cg_fx_call_p(a, get(cg_native_calls())) {
         2i64
@@ -514,6 +562,7 @@ pub fn r_conv_at(a: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn r_invoke(g: &'static Rgen, n: i64, tail: bool, conv: i64) -> () {
     if tail {
         r_leave(g);
@@ -525,6 +574,7 @@ pub fn r_invoke(g: &'static Rgen, n: i64, tail: bool, conv: i64) -> () {
 
 // The guard of a call of `cell`'s procedure: to `call` unless the global
 // has not been written since.
+#[inline]
 pub fn r_guard(g: &'static Rgen, cell: Str, call: i64) -> () {
     r_emit(g, ri_guard(cell, writes_expected(cell), call))
 }
@@ -545,10 +595,12 @@ pub fn r_assume(g: &'static Rgen, cell: Str) -> bool {
     }
 }
 
+#[inline]
 pub fn r_collects_here_p(g: &'static Rgen, x: &'static Cx, te: Cenv, tail: bool) -> bool {
     (not(g_leaf(g)) && r_collects(g_view(g), x, te, g_this(g), tail))
 }
 
+#[inline]
 pub fn r_local(te: Cenv, n: Str) -> Cenv {
     c_extend(n, at_slot(-1i64), te)
 }
@@ -600,6 +652,7 @@ pub fn r_local_names(mut te: Cenv, mut bs: Cbinds) -> Cenv {
     }
 }
 
+#[inline]
 pub fn r_half_regs() -> i64 {
     i64_quotient(register_regs(), 2i64)
 }
@@ -756,20 +809,24 @@ pub fn r_adds_p(env: Renv, e: &'static Cx) -> bool {
     }
 }
 
+#[inline]
 pub fn r_same_exp_p(a: &'static Cx, b: &'static Cx) -> bool {
     i64_eq(cx_start(a), cx_start(b))
 }
 
+#[inline]
 pub fn r_deeper_p(core: Cxs, x: &'static Cx, y: &'static Cx) -> bool {
     (not(null_p(core)) && not(r_same_exp_p(car(core), x)) && not(r_same_exp_p(car(core), y)))
 }
 
+#[inline]
 pub fn r_free_operand_p(env: Renv, x: &'static Cx) -> bool {
     (r_simple_p(x) || not(null_p(r_known(env, x))))
 }
 
 // Names `r-identity-arg` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn r_identity_arg_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -817,10 +874,12 @@ pub fn r_identity_arg(env: Renv, name: Str, args: Cxs) -> Cxs {
     }
 }
 
+#[inline]
 pub fn r_plain_var_loc(env: Renv, x: &'static Cx) -> Rlocs {
     r_var_loc(env, x)
 }
 
+#[inline]
 pub fn r_var_in_reg_p(env: Renv, x: &'static Cx) -> bool {
     i64_gt(r_reg_of(r_plain_var_loc(env, x)), 0i64)
 }
@@ -1027,6 +1086,7 @@ pub fn r_carried(mut env: Renv, mut acc: Renv) -> Renv {
     }
 }
 
+#[inline]
 pub fn r_inline_env(params: Renv, env: Renv, name: Str, at: i64) -> Renv {
     onto(params, kayak_rt::heap_cons(rbind(genv_name(), rl_seen(at)), kayak_rt::heap_cons(rbind(inlining_name(name), rl_loop()), r_carried(env, nil::<&'static Rbind>()))))
 }
@@ -1229,12 +1289,14 @@ pub fn a_thunk(f0: &'static Cx) -> &'static Rarg {
 
 pub type Rargs = List<&'static Rarg>;
 
+#[inline]
 pub fn r_exp_args(es: Cxs) -> Rargs {
     map(lambda1s(move |x: &'static Cx| {
         a_e(x)
     }), es)
 }
 
+#[inline]
 pub fn r_arg_simple_p(a: &'static Rarg) -> bool {
     let tagcase_ = a;
     match *tagcase_ {
@@ -1373,6 +1435,7 @@ pub fn r_made_in(ws: List<&'static Lword>, at: i64, ps: Strings, own: Strings, f
     }
 }
 
+#[inline]
 pub fn r_made_word(ps: Strings, body: &'static Cx, te: Cenv, own0: Strings) -> List<&'static Rmade> {
     r_made_in(get(cg_form_lambdas()), cx_start(body), ps, c_own_of(ps, own0), c_captured(c_free(body, ps, nil::<Str>()), te))
 }
@@ -1692,6 +1755,7 @@ pub fn r_module_slots(g: &'static Rgen, its: List<&'static Cmem>) -> Cenv {
 }
 
 // Each frame slot as an operand, in order.
+#[inline]
 pub fn r_slot_args(ss: List<i64>) -> Rargs {
     if null_p(ss) {
         nil::<&'static Rarg>()
@@ -1745,6 +1809,7 @@ pub fn r_module_own(mut n: Str, mut sc: &'static Rscope, mut later: Cenv, mut lb
 
 // Names `r-standard-app` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn r_standard_app_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -2042,6 +2107,7 @@ pub fn r_prim3(g: &'static Rgen, name: Str, a: &'static Cx, x: i64, b: &'static 
     r_restore(g, regs, slots)
 }
 
+#[inline]
 pub fn r_imm_prim(g: &'static Rgen, name: Str, v: &'static Lit) -> () {
     r_ins(g, str_lit("prim2imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(v), kayak_rt::nil())))
 }
@@ -3080,6 +3146,7 @@ pub fn r_lambda(g: &'static Rgen, ps: Strings, body: &'static Cx, env: Renv, te:
     }
 }
 
+#[inline]
 pub fn r_thunk(g: &'static Rgen, body: &'static Cx, env: Renv, te: Cenv) -> () {
     r_lambda(g, nil::<Str>(), body, env, te, nil::<Str>(), nil::<&'static Cx>(), false);
     ()
@@ -3125,6 +3192,7 @@ pub fn r_free_args(g: &'static Rgen, fv: Strings, env: Renv, j: i64) -> &'static
     }
 }
 
+#[inline]
 pub fn r_free_into_regs(g: &'static Rgen, fv: Strings, env: Renv) -> Rpatches {
     r_emit_all(g, par_move_items(r_reg_moves(fv, env, 0i64), nil::<&'static Ritem>()));
     r_free_regs(g, fv, env, 0i64)
@@ -3730,6 +3798,7 @@ pub fn r_args_list(mut g: &'static Rgen, mut args: Rargs, mut kept: List<i64>, m
     }
 }
 
+#[inline]
 pub fn r_call_out(g: &'static Rgen, how: Str, what: Str, args: Rargs, env: Renv, te: Cenv) -> () {
     r_args(g, args, env, te, nil::<&'static Cx>());
     r_ins(g, how, kayak_rt::heap_cons(o_prim(what), kayak_rt::heap_cons(o_int(size(args)), kayak_rt::nil())))
@@ -3815,6 +3884,7 @@ pub fn r_special(g: &'static Rgen, what: Str, args: Cxs, env: Renv, te: Cenv) ->
     }
 }
 
+#[inline]
 pub fn r_index_field(g: &'static Rgen) -> () {
     r_opn(g, str_lit("reg"), 2i64);
     r_add_imm(g, int_lit(2));

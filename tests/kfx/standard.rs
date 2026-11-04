@@ -6,6 +6,7 @@ use kayak_rt::*;
 // bitwise operations and `arithmetic-shift`, bignums too; characters' and
 // strings' orders and searches; `substring`; symbols, quoted and made from
 // strings; arrays of values.
+#[inline]
 pub fn show_ints(xs: List<Int>) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -18,6 +19,7 @@ pub fn bits() -> Str {
     show_ints(the::<List<Int>>(kayak_rt::heap_cons(bitwise_and(int_lit(12), int_lit(10)), kayak_rt::heap_cons(bitwise_ior(int_lit(-12), int_lit(10)), kayak_rt::heap_cons(bitwise_xor(int_lit(-1), int_lit(5)), kayak_rt::heap_cons(bitwise_not(int_lit(0)), kayak_rt::heap_cons(arithmetic_shift(int_lit(1), int_lit(70)), kayak_rt::heap_cons(arithmetic_shift(int_lit(-5), int_lit(-1)), kayak_rt::heap_cons(arithmetic_shift(int_text("-1180591620717411303425"), int_lit(-70)), kayak_rt::heap_cons(bitwise_and(int_text("-36893488147419103232"), int_text("36893488147419103231")), kayak_rt::heap_cons(string_compare(str_lit("abc"), str_lit("abd")), kayak_rt::heap_cons(string_compare(str_lit("b"), str_lit("a")), kayak_rt::heap_cons(string_search(str_lit("hello, héllo"), str_lit("llo"), int_lit(4)), kayak_rt::nil())))))))))))))
 }
 
+#[inline]
 pub fn flag(b: bool) -> Str {
     if b {
         str_lit("t")
@@ -30,6 +32,7 @@ pub fn orders() -> Str {
     string_append(flag(char_lt_p('a', 'b')), string_append(flag(char_gt_eq_p('a', 'b')), string_append(flag(string_lt_p(str_lit("apple"), str_lit("apples"))), string_append(flag(string_gt_p(str_lit("b"), str_lit("abc"))), string_append(flag(bool_eq_p(true, false)), string_append(flag(string_ci_eq_p(str_lit("HeLLo"), str_lit("hello"))), string_append(str_lit(" "), string_append(string_downcase(str_lit("ÀBC")), string_append(char_to_string(char_downcase('Q')), string_append(str_lit(" "), substring(str_lit("héllo, world"), int_lit(1), int_lit(5))))))))))))
 }
 
+#[inline]
 pub fn greet(s: Symbol) -> Str {
     if symbol_eq_p(s, symbol_lit(str_lit("hello"))) {
         str_lit("hi")
@@ -60,6 +63,7 @@ pub fn arrays() -> Str {
     string_append(int_to_string(sum_array(a, int_lit(0), int_lit(0))), string_append(str_lit(" "), string_append(array_ref(names, int_lit(1)), string_append(str_lit(" "), show_ints(the::<List<Int>>(array_to_list(a)))))))
 }
 
+#[inline]
 pub fn main() -> Str {
     string_append(bits(), string_append(str_lit("| "), string_append(orders(), string_append(str_lit(" | "), string_append(symbols(), string_append(str_lit(" | "), arrays()))))))
 }

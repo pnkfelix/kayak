@@ -99,6 +99,7 @@ pub fn strict(s: Str) -> Int {
 
 // An escape-only tag and a mark, with no library: the first negative
 // number escapes; a mark says how deep the search went.
+#[inline]
 pub fn depth() -> MarkKey<Int> {
     kayak_rt::kept_constant!(ONCE: MarkKey<Int>);
     once(&ONCE, || {
@@ -134,6 +135,7 @@ pub fn found(xs: List<Int>) -> Int {
     }
 }
 
+#[inline]
 pub fn show(xs: List<Int>) -> Str {
     if null_p(xs) {
         str_lit("")

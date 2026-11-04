@@ -62,7 +62,7 @@
         ((i64= op 212) (i64+ (fixnum-value b) 8))
         ((i64= op 222) 8192)
         ((i64= op 223) 24)
-        ((i64= op 227) (i64+ (i64* 2 (obj-size (field-at a 3))) 16))
+        ((i64= op 227) (i64+ (i64* 2 (obj-size (slot-of a 3))) 16))
         ((i64>= op fixed-base) 8)
         ;; Strings at a region (C285): their room, a word a character.
         ((or (i64= op 250) (i64= op 255)) (i64+ (fixnum-value (if (i64= op 250) a (pair-car (pair-cdr args)))) 1))
@@ -77,7 +77,7 @@
 
 "`f32`'s operation `i` (`f32-names`) on `a` and `b` (C220): IEEE's,
  binary32, as KFX's own `f32`."
-(define f32-op-word (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
+(define f32-op-word (subr (maxeff hp (alloc @c)) (i64 i64 i64) i64)
   (lambda (i a b)
     (cond
       ((i64= i 24) (f32-word (int->f32 (word-int a))))
@@ -133,8 +133,8 @@
  `at` bytes in; each scalar read and written little-endian, its code
  (`%blobref-get`): 0 `i64`, 1 `u64`, 2 `f64`, 3 `i32`, 4 `u32`, 5 `f32`,
  6 `u8`, 7 `i8`."
-(define blobref-bytes (subr kfx (i64) i64) (lambda (r) (ref-owner r)))
-(define blob-at (subr kfx (i64) i64) (lambda (r) (ref-offset r)))
+(define blobref-bytes (subr cread (i64) i64) (lambda (r) (sref-owner r)))
+(define blob-at (subr kfx (i64) i64) (lambda (r) (sref-offset r)))
 
 (define blobref! (subr hp (i64 i64 i64) i64)
   (lambda (owner at size)
@@ -193,27 +193,27 @@
  `i64`s."
 (define flat-size (subr kfx (i64) i64)
   (lambda (code) (if (or (i64= code 0) (i64= code 1) (i64= code 4)) 4 8)))
-(define flat-array-code (subr hp (i64) i64) (lambda (a) (fixnum-value (slot-ref a 0))))
+(define flat-array-code (subr hp (i64) i64) (lambda (a) (fixnum-value (bloblet-value a 0))))
 (define flat-count (subr hp (i64) i64)
   (lambda (a) (i64-quotient (suffix-bytes a) (flat-size (flat-array-code a)))))
 
 (define flat-made! (subr hp (i64 i64) i64)
   (lambda (code n)
     (let ((p (bloblet-alloc! 1 (i64* n (flat-size code)))))
-      (begin (put! (header-at p) (header ob-flatx 2 (i64* n (flat-size code)))) (slot-set! p 0 (fixnum code)) p))))
+      (begin (mem-set! (header-at p) (header ob-flatx 2 (i64* n (flat-size code)))) (bloblet-value-set! p 0 (fixnum code)) p))))
 
 (define flat-bits (subr hp (i64 i64) i64)
   (lambda (a i)
     (if (i64= (flat-size (flat-array-code a)) 8)
-        (at-word (i64+ (pointer-index a) i))
-        (i64-and (i64-shr (at-word (i64+ (pointer-index a) (i64-quotient i 2))) (i64->int (i64* 32 (i64-remainder i 2)))) 4294967295))))
+        (mem-at (i64+ (address a) i))
+        (i64-and (i64-shr (mem-at (i64+ (address a) (i64-quotient i 2))) (i64->int (i64* 32 (i64-remainder i 2)))) 4294967295))))
 
 (define flat-bits-set! (subr hp (i64 i64 i64) unit)
   (lambda (a i x)
     (if (i64= (flat-size (flat-array-code a)) 8)
-        (put! (i64+ (pointer-index a) i) x)
-        (let* ((at (i64+ (pointer-index a) (i64-quotient i 2))) (sh (i64->int (i64* 32 (i64-remainder i 2)))))
-          (put! at (i64-or (i64-and (at-word at) (i64-not (i64-shl 4294967295 sh))) (i64-shl (i64-and x 4294967295) sh)))))))
+        (mem-set! (i64+ (address a) i) x)
+        (let* ((at (i64+ (address a) (i64-quotient i 2))) (sh (i64->int (i64* 32 (i64-remainder i 2)))))
+          (mem-set! at (i64-or (i64-and (mem-at at) (i64-not (i64-shl 4294967295 sh))) (i64-shl (i64-and x 4294967295) sh)))))))
 
 (define flat-value (subr hp (i64 i64) i64)
   (lambda (code bits)
@@ -252,7 +252,7 @@
     (lambda (owner w i n)
       "The index of `owner`'s field holding `w`, from `i` of its `n`; -1 if none."
       (cond ((i64>= i n) -1)
-            ((i64= (slot-ref owner i) w) i)
+            ((i64= (bloblet-value owner i) w) i)
             (else (field-holding owner w (i64+ i 1) n))))))
 
 (define bloblet! (subr hp (i64 i64) i64)
@@ -291,7 +291,7 @@
 (define eqtable-made! (subr hp () i64)
   (lambda ()
     (let* ((bs (eq-vector! 8)) (t (fields-alloc! ob-eqtable 3)))
-      (begin (field-set! t 1 (fixnum (get collections))) (field-set! t 2 (fixnum 0)) (field-set! t 3 bs)
+      (begin (slot-set! t 1 (fixnum (get collections))) (slot-set! t 2 (fixnum 0)) (slot-set! t 3 bs)
              t))))
 
 (define-rec
@@ -311,13 +311,13 @@
 (define eqtable-relinked! (subr hp (i64 i64) unit)
   (lambda (t bs)
     "Every entry of `t` linked into `bs` by its key's address now."
-    (begin (buckets-relinked! (field-at t 3) 0 bs) (field-set! t 3 bs) (field-set! t 1 (fixnum (get collections))))))
+    (begin (buckets-relinked! (slot-of t 3) 0 bs) (slot-set! t 3 bs) (slot-set! t 1 (fixnum (get collections))))))
 
 (define eqtable-fresh! (subr hp (i64) unit)
-  (lambda (t) (if (i64= (field-at t 1) (fixnum (get collections))) #u (eqtable-relinked! t (field-at t 3)))))
+  (lambda (t) (if (i64= (slot-of t 1) (fixnum (get collections))) #u (eqtable-relinked! t (slot-of t 3)))))
 
 (define-rec
-  (chain-find (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (chain-find (subr (maxeff (read @globals) spin (read @c)) (i64 i64) i64)
     (lambda (e key)
       "The entry for `key` from `e` on, or `#f`."
       (cond ((i64= e w-false) w-false)
@@ -327,21 +327,21 @@
 (define eq-entry (subr hp (i64 i64) i64)
   (lambda (t key)
     (begin (eqtable-fresh! t)
-           (let ((bs (field-at t 3))) (chain-find (obj-ref bs (eq-bucket key (obj-size bs))) key)))))
+           (let ((bs (slot-of t 3))) (chain-find (obj-ref bs (eq-bucket key (obj-size bs))) key)))))
 
-(define eq-count (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
-  (lambda (t) (fixnum-value (field-at t 2))))
+(define eq-count (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
+  (lambda (t) (fixnum-value (slot-of t 2))))
 
 (define eq-set! (subr hp (i64 i64 i64) unit)
   (lambda (t key v)
     (let ((e (eq-entry t key)))
       (if (not (i64= e w-false))
           (obj-set! e 1 v)
-          (let ((n (i64+ (eq-count t) 1)) (size (obj-size (field-at t 3))))
+          (let ((n (i64+ (eq-count t) 1)) (size (obj-size (slot-of t 3))))
             (begin
-              (field-set! t 2 (fixnum n))
+              (slot-set! t 2 (fixnum n))
               (if (i64> n (i64* 2 size)) (eqtable-relinked! t (eq-vector! (i64* 2 size))) #u)
-              (let* ((bs (field-at t 3)) (b (eq-bucket key (obj-size bs))) (x (alloc! ob-vector 3)))
+              (let* ((bs (slot-of t 3)) (b (eq-bucket key (obj-size bs))) (x (alloc! ob-vector 3)))
                 (begin (obj-set! x 0 key) (obj-set! x 1 v) (obj-set! x 2 (obj-ref bs b)) (obj-set! bs b x)))))))))
 
 (define-rec
@@ -357,10 +357,10 @@
   (lambda (t key)
     (if (i64= (eq-entry t key) w-false)
         #u
-        (let* ((bs (field-at t 3)) (b (eq-bucket key (obj-size bs))) (first (obj-ref bs b)))
+        (let* ((bs (slot-of t 3)) (b (eq-bucket key (obj-size bs))) (first (obj-ref bs b)))
           (begin
             (if (i64= (obj-ref first 0) key) (obj-set! bs b (obj-ref first 2)) (chain-without! first key))
-            (field-set! t 2 (fixnum (i64- (eq-count t) 1))))))))
+            (slot-set! t 2 (fixnum (i64- (eq-count t) 1))))))))
 
 "The engine's syscalls (C224; docs/research/syscalls.md), as Fixpt's
  evaluator's, a runtime of its own: each host name's type in canonical
@@ -615,7 +615,7 @@
         ((or (i64= op 224) (i64= op 225))
          (let ((e (eq-entry a b)))
            (cond ((i64= op 225) (bool-word (not (i64= e w-false)))) ((i64= e w-false) c) (else (obj-ref e 1)))))
-        ((i64= op 226) (field-at a 2))
+        ((i64= op 226) (slot-of a 2))
         ((i64= op 227) (begin (eq-set! a b c) w-unit))
         ((i64= op 228) (begin (eq-delete! a b) w-unit))
         ((and (i64>= op 229) (i64<= op 232)) (fixnum 0))
@@ -656,41 +656,41 @@
         ((i64= op 185) (real-word! (f64-expt (word-real a) (word-real b))))
         ((i64= op 186) (bool-word (has-char-in? (word-string b) (word-char a))))
         ((i64= op 187) (bloblet! (fixnum-value a) (pair-cdr args)))
-        ((i64= op 188) (slot-ref a (fixnum-value b)))
-        ((i64= op 189) (begin (slot-set! a (fixnum-value b) c) w-unit))
+        ((i64= op 188) (bloblet-value a (fixnum-value b)))
+        ((i64= op 189) (begin (bloblet-value-set! a (fixnum-value b) c) w-unit))
         ((i64= op 190) (fixnum (suffix-byte a (fixnum-value b))))
         ((i64= op 191) (begin (suffix-byte-set! a (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
         ((i64= op 192) (fixnum (suffix-bytes a)))
         ((i64= op 193) a)
         ((i64= op 194) (blobref! a (fixnum-value b) (fixnum-value c)))
-        ((i64= op 195) (blobref! (ref-owner a) (i64+ (blob-at a) (fixnum-value b)) (fixnum-value c)))
-        ((i64= op 196) (ref-owner a))
+        ((i64= op 195) (blobref! (sref-owner a) (i64+ (blob-at a) (fixnum-value b)) (fixnum-value c)))
+        ((i64= op 196) (sref-owner a))
         ((i64= op 197) (fixnum (blob-at a)))
         ((i64= op 198) (blob-get a (fixnum-value b)))
         ((i64= op 199) (blob-set! a (fixnum-value b) c))
-        ((i64= op 200) (blobref! (ref-owner a) (i64+ (blob-at a) (fixnum-value b)) 0))
+        ((i64= op 200) (blobref! (sref-owner a) (i64+ (blob-at a) (fixnum-value b)) 0))
         ((i64= op 201)
          (let ((i (fixnum-value b)) (d (pair-car (pair-cdr r2))))
            (if (or (i64< i 0) (i64>= i (blob-length a (fixnum-value c) (fixnum-value d))))
                (refused-op! "blobref-index: out of range")
-               (blobref! (ref-owner a) (i64+ (blob-at a) (i64* i (fixnum-value c))) (fixnum-value c)))))
+               (blobref! (sref-owner a) (i64+ (blob-at a) (i64* i (fixnum-value c))) (fixnum-value c)))))
         ((i64= op 202) (fixnum (blob-length a (fixnum-value b) (fixnum-value c))))
         ((i64= op 203) (int-word! (bytes-read (blobref-bytes a) (blob-at a) (fixnum-value b) 0)))
         ((i64= op 205)
          "A flat sum with no key (C215): its tag the index of the owner's field
           that holds the label."
-         (let* ((owner (ref-owner a)) (i (field-holding owner b 0 (obj-size owner))))
+         (let* ((owner (sref-owner a)) (i (field-holding owner b 0 (obj-size owner))))
            (if (i64< i 0)
                (refused-op! "blobref-variant!: no field of the owner holds that label")
                (begin (bytes-written! (blobref-bytes a) (blob-at a) 1 (i64->int i))
                       (blobref! owner (i64+ (blob-at a) (fixnum-value c)) 0)))))
-        ((i64= op 206) (slot-ref (ref-owner a) (int->i64 (bytes-read (blobref-bytes a) (blob-at a) 1 0))))
+        ((i64= op 206) (bloblet-value (sref-owner a) (int->i64 (bytes-read (blobref-bytes a) (blob-at a) 1 0))))
         ((i64= op 207) (sched-op! (fixnum-value a) b c))
         ((or (i64= op 208) (i64= op 209)) (make-icell!))
         ((i64= op 204)
          (let ((off (fixnum-value (pair-car (pair-cdr r2)))))
            (begin (bytes-written! (blobref-bytes a) (blob-at a) (fixnum-value b) (word-int c))
-                  (blobref! (ref-owner a) (i64+ (blob-at a) off) 0))))
+                  (blobref! (sref-owner a) (i64+ (blob-at a) off) 0))))
         ;; Strings at a region (C285), hand-written (gen-vprims.py has them not).
         ((i64= op 250) (string-made! (fixnum-value a) b))
         ((i64= op 255) (string-made! (fixnum-value b) c))

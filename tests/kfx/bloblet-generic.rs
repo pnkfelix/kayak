@@ -9,10 +9,12 @@ pub type KeySame<K> = &'static (dyn Fn(K, K) -> bool + Send + Sync);
 
 pub type One<'r, K, V> = &'r Bloblet<(std::cell::Cell<KeySame<K>>, std::cell::Cell<K>, std::cell::Cell<V>,)>;
 
+#[inline]
 pub fn make_one<'r, K: Copy + 'static, V: Copy + 'static>(same: KeySame<K>, key: K, val: V) -> One<'r, K, V> {
     the::<One<'r, K, V>>(make_bloblet(int_lit(0), (std::cell::Cell::new(same), std::cell::Cell::new(key), std::cell::Cell::new(val),)))
 }
 
+#[inline]
 pub fn lookup<'r, K: Copy + 'static, V: Copy + 'static>(t: One<'r, K, V>, key: K, d: V) -> V {
     if ((t).fields.0.get())((t).fields.1.get(), key) {
         (t).fields.2.get()
@@ -21,6 +23,7 @@ pub fn lookup<'r, K: Copy + 'static, V: Copy + 'static>(t: One<'r, K, V>, key: K
     }
 }
 
+#[inline]
 pub fn same_i64(a: i64, b: i64) -> bool {
     i64_eq(a, b)
 }

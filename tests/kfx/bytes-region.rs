@@ -71,6 +71,7 @@ pub fn again(mut k: Int, mut last: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     again(int_lit(1000), str_lit(""))
 }

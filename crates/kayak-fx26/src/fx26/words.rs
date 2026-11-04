@@ -14,15 +14,18 @@ use super::*;
 // apart and put together by halves, so that a step on a bignum of n limbs
 // costs some n log n, and not n squared: a step is how long the REPL's keys
 // may wait (live-repl.kfx, C99).
+#[inline]
 pub fn two_64() -> Int {
     arithmetic_shift(int_lit(1), int_lit(64))
 }
 
+#[inline]
 pub fn two_63() -> Int {
     arithmetic_shift(int_lit(1), int_lit(63))
 }
 
 /// Whether `n`, at least 0, has at most `k` limbs.
+#[inline]
 pub fn below_limbs_p(n: Int, k: i64) -> bool {
     zero_p(arithmetic_shift(n, i64_to_int(i64_minus(0i64, i64_star(k, 64i64)))))
 }
@@ -57,6 +60,7 @@ pub fn limbs_above(mut n: Int, mut k: i64) -> i64 {
 }
 
 /// `k` and the limbs of `n`, at least 0.
+#[inline]
 pub fn limbs_count(n: Int, k: i64) -> i64 {
     i64_plus(k, if zero_p(n) {
         0i64
@@ -66,6 +70,7 @@ pub fn limbs_count(n: Int, k: i64) -> i64 {
 }
 
 /// A limb, below 2^64, as a word's 64 bits.
+#[inline]
 pub fn limb_word(n: Int) -> i64 {
     int_to_i64(if _gt_eq(n, two_63()) {
         _minus(n, two_64())
@@ -75,6 +80,7 @@ pub fn limb_word(n: Int) -> i64 {
 }
 
 /// A word's 64 bits, as an unsigned limb.
+#[inline]
 pub fn word_limb(w: i64) -> Int {
     if i64_lt(w, 0i64) {
         _plus(i64_to_int(w), two_64())
@@ -89,7 +95,7 @@ pub fn limbs_set_x(mut p: i64, mut n: Int, mut i: i64, mut k: i64) -> () {
         if i64_lt(k, 1i64) {
             return ();
         } else if i64_eq(k, 1i64) {
-            return put_x(i64_plus(pointer_index(p), i), limb_word(n));
+            return mem_set_x(i64_plus(address(p), i), limb_word(n));
         } else {
             let h = i64_quotient(k, 2i64);
             let bits = i64_to_int(i64_star(h, 64i64));
@@ -101,6 +107,7 @@ pub fn limbs_set_x(mut p: i64, mut n: Int, mut i: i64, mut k: i64) -> () {
 }
 
 /// How many words a bignum of `n` needs.
+#[inline]
 pub fn big_words(n: Int) -> i64 {
     i64_plus(3i64, limbs_count(if _lt(n, int_lit(0)) {
         _minus(int_lit(0), n)
@@ -123,12 +130,12 @@ pub fn int_word_x(n: Int) -> i64 {
         };
         let k = limbs_count(mag, 0i64);
         let p = alloc_x(ob_big(), i64_plus(k, 2i64));
-        put_x(pointer_index(p), fixnum(if _lt(n, int_lit(0)) {
+        mem_set_x(address(p), fixnum(if _lt(n, int_lit(0)) {
             the::<i64>(1i64)
         } else {
             the::<i64>(0i64)
         }));
-        put_x(i64_plus(pointer_index(p), 1i64), fixnum(k));
+        mem_set_x(i64_plus(address(p), 1i64), fixnum(k));
         limbs_set_x(p, mag, 2i64, k);
         p
     }
@@ -139,7 +146,7 @@ pub fn limbs_value(p: i64, i: i64, k: i64) -> Int {
     if i64_lt(k, 1i64) {
         int_lit(0)
     } else if i64_eq(k, 1i64) {
-        word_limb(at_word(i64_plus(pointer_index(p), i)))
+        word_limb(mem_at(i64_plus(address(p), i)))
     } else {
         let h = i64_quotient(k, 2i64);
         _plus(limbs_value(p, i, h), arithmetic_shift(limbs_value(p, i64_plus(i, h), i64_minus(k, h)), i64_to_int(i64_star(h, 64i64))))
@@ -151,8 +158,8 @@ pub fn word_int(w: i64) -> Int {
     if fixnum_p(w) {
         i64_to_int(fixnum_value(w))
     } else {
-        let mag = limbs_value(w, 2i64, fixnum_value(at_word(i64_plus(pointer_index(w), 1i64))));
-        if i64_eq(at_word(pointer_index(w)), fixnum(1i64)) {
+        let mag = limbs_value(w, 2i64, fixnum_value(mem_at(i64_plus(address(w), 1i64))));
+        if i64_eq(mem_at(address(w)), fixnum(1i64)) {
             _minus(int_lit(0), mag)
         } else {
             mag
@@ -161,6 +168,7 @@ pub fn word_int(w: i64) -> Int {
 }
 
 /// An `i64`'s value: a fixnum's, or the low 64 bits of a bignum's.
+#[inline]
 pub fn word_i64(w: i64) -> i64 {
     if fixnum_p(w) {
         fixnum_value(w)
@@ -170,6 +178,7 @@ pub fn word_i64(w: i64) -> i64 {
 }
 
 /// The room an `i64` result may need: a bignum's, if it is no fixnum.
+#[inline]
 pub fn i64_room(n: i64) -> i64 {
     if fits_fixnum_p(n) {
         the::<i64>(0i64)
@@ -178,6 +187,7 @@ pub fn i64_room(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn i64_word_x(n: i64) -> i64 {
     if fits_fixnum_p(n) {
         fixnum(n)
@@ -187,14 +197,17 @@ pub fn i64_word_x(n: i64) -> i64 {
 }
 
 // Characters, booleans, symbols.
+#[inline]
 pub fn char_word(c: char) -> i64 {
     immediate(imm_char(), char_to_i64(c))
 }
 
+#[inline]
 pub fn word_char(w: i64) -> char {
     i64_to_char(immediate_value(w))
 }
 
+#[inline]
 pub fn bool_word(b: bool) -> i64 {
     if b {
         w_true()
@@ -203,23 +216,28 @@ pub fn bool_word(b: bool) -> i64 {
     }
 }
 
+#[inline]
 pub fn truthy_p(w: i64) -> bool {
     not(i64_eq(w, w_false()))
 }
 
+#[inline]
 pub fn is_imm_p(w: i64, kind: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_kind(w), kind))
 }
 
 // `f32`s (C220): Fixpt's immediate of subtag 9, its bits the payload (C318).
+#[inline]
 pub fn f32_word(x: f32) -> i64 {
     imm_word(sub_f32(), int_to_i64(u32_to_int(f32_to_bits(x))))
 }
 
+#[inline]
 pub fn f32_word_p(w: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_sub(w), sub_f32()))
 }
 
+#[inline]
 pub fn word_f32(w: i64) -> f32 {
     bits_to_f32(int_to_u32(i64_to_int(immediate_value(w))))
 }
@@ -228,69 +246,54 @@ pub fn word_f32(w: i64) -> f32 {
 /// A pair by its tag; any other object by its header (C318).
 pub fn is_obj_p(w: i64, kind: i64) -> bool {
     if i64_eq(kind, ob_pair()) {
-        pair_tagged_p(w)
+        is_pair_p(w)
     } else {
-        (i64_eq(i64_and(w, 7i64), 4i64) && i64_eq(header_kind(at_word(header_at(w))), kind))
+        (i64_eq(i64_and(w, 7i64), 4i64) && i64_eq(header_kind(mem_at(header_at(w))), kind))
     }
 }
 
 // Pairs: their car and cdr, written in place.
+#[inline]
 pub fn pair_x(a: i64, d: i64) -> i64 {
     let i = bump_x(2i64);
-    put_x(i, a);
-    put_x(i64_plus(i, 1i64), d);
+    mem_set_x(i, a);
+    mem_set_x(i64_plus(i, 1i64), d);
     pair_at(i)
-}
-
-pub fn pair_car(p: i64) -> i64 {
-    at_word(pointer_index(p))
-}
-
-pub fn pair_cdr(p: i64) -> i64 {
-    at_word(i64_plus(pointer_index(p), 1i64))
 }
 
 // Strings and bytevectors, Fixpt's (`heap.rs`, as tier 1 has them; C320):
 // a bloblet of no fields, its suffix a word of the length, then the code
 // points two to a word, or the bytes eight to a word, the first in the
 // low bits.
-pub fn zeroed_x(mut i: i64, mut n: i64) -> () {
-    loop {
-        if i64_lt(n, 1i64) {
-            return ();
-        } else {
-            put_x(i, 0i64);
-            (i, n) = (i64_plus(i, 1i64), i64_minus(n, 1i64));
-            continue;
-        }
-    }
-}
-
 pub fn raw_made_x(kind: i64, words: i64, n: i64) -> i64 {
     let p = alloc_x(kind, words);
-    put_x(pointer_index(p), n);
-    zeroed_x(i64_plus(pointer_index(p), 1i64), i64_minus(words, 1i64));
+    mem_set_x(address(p), n);
+    words_zeroed_x(i64_plus(address(p), 1i64), i64_minus(words, 1i64));
     p
 }
 
+#[inline]
 pub fn string_alloc_x(n: i64) -> i64 {
     raw_made_x(ob_string(), i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64)), n)
 }
 
+#[inline]
 pub fn bytes_alloc_x(n: i64) -> i64 {
     raw_made_x(ob_bytes(), i64_plus(1i64, i64_quotient(i64_plus(n, 7i64), 8i64)), n)
 }
 
+#[inline]
 pub fn raw_length(v: i64) -> i64 {
-    at_word(pointer_index(v))
+    mem_at(address(v))
 }
 
+#[inline]
 pub fn string_length_w(s: i64) -> i64 {
     raw_length(s)
 }
 
 pub fn char_at(s: i64, i: i64) -> i64 {
-    let w = at_word(i64_plus(pointer_index(s), i64_plus(1i64, i64_quotient(i, 2i64))));
+    let w = mem_at(i64_plus(address(s), i64_plus(1i64, i64_quotient(i, 2i64))));
     if i64_eq(i64_remainder(i, 2i64), 0i64) {
         i64_and(w, 4294967295i64)
     } else {
@@ -299,9 +302,9 @@ pub fn char_at(s: i64, i: i64) -> i64 {
 }
 
 pub fn char_set_x(s: i64, i: i64, cp: i64) -> () {
-    let at = i64_plus(pointer_index(s), i64_plus(1i64, i64_quotient(i, 2i64)));
-    let w = at_word(at);
-    put_x(at, if i64_eq(i64_remainder(i, 2i64), 0i64) {
+    let at = i64_plus(address(s), i64_plus(1i64, i64_quotient(i, 2i64)));
+    let w = mem_at(at);
+    mem_set_x(at, if i64_eq(i64_remainder(i, 2i64), 0i64) {
         i64_or(i64_and(w, -4294967296i64), cp)
     } else {
         i64_or(i64_and(w, 4294967295i64), i64_shl(cp, int_lit(32)))
@@ -309,31 +312,28 @@ pub fn char_set_x(s: i64, i: i64, cp: i64) -> () {
 }
 
 pub fn byte_at(b: i64, i: i64) -> i64 {
-    i64_and(i64_shr(at_word(i64_plus(pointer_index(b), i64_plus(1i64, i64_quotient(i, 8i64)))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
+    i64_and(i64_shr(mem_at(i64_plus(address(b), i64_plus(1i64, i64_quotient(i, 8i64)))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
 }
 
 pub fn byte_set_x(b: i64, i: i64, x: i64) -> () {
-    let at = i64_plus(pointer_index(b), i64_plus(1i64, i64_quotient(i, 8i64)));
+    let at = i64_plus(address(b), i64_plus(1i64, i64_quotient(i, 8i64)));
     let sh = i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)));
-    put_x(at, i64_or(i64_and(at_word(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
+    mem_set_x(at, i64_or(i64_and(mem_at(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
 }
 
 // A bloblet's suffix's byte (C326): its bytes from the suffix's start.
 pub fn suffix_byte(b: i64, i: i64) -> i64 {
-    i64_and(i64_shr(at_word(i64_plus(pointer_index(b), i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
+    i64_and(i64_shr(mem_at(i64_plus(address(b), i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
 }
 
 pub fn suffix_byte_set_x(b: i64, i: i64, x: i64) -> () {
-    let at = i64_plus(pointer_index(b), i64_quotient(i, 8i64));
+    let at = i64_plus(address(b), i64_quotient(i, 8i64));
     let sh = i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)));
-    put_x(at, i64_or(i64_and(at_word(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
-}
-
-pub fn suffix_bytes(b: i64) -> i64 {
-    header_bytes(at_word(header_at(b)))
+    mem_set_x(at, i64_or(i64_and(mem_at(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
 }
 
 // A string's or a bytevector's element, by its kind: for what both share.
+#[inline]
 pub fn raw_ref(v: i64, i: i64) -> i64 {
     if is_obj_p(v, ob_string()) {
         char_at(v, i)
@@ -342,6 +342,7 @@ pub fn raw_ref(v: i64, i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn raw_set_x(v: i64, i: i64, x: i64) -> () {
     if is_obj_p(v, ob_string()) {
         char_set_x(v, i, x)
@@ -383,6 +384,7 @@ pub fn string_chars_from(mut p: i64, mut i: i64, mut acc: List<char>) -> List<ch
 }
 
 /// A heap string as a KFX string: for I/O.
+#[inline]
 pub fn word_string(p: i64) -> Str {
     list_to_string(string_chars_from(p, i64_minus(raw_length(p), 1i64), nil::<char>()))
 }
@@ -411,31 +413,25 @@ pub fn room_for_name_x(t: FlatArray<i64>, n: i64) -> FlatArray<i64> {
     }
 }
 
-/// Name `n`'s symbol, made the first time: its name, its hash, and its
-/// name's number.
+/// Name `n`'s symbol, tier 1's (`symbol!`, C332: one table of them in
+/// the one heap), found the first time: its name, its hash, and in its
+/// global slot, which tier 1 leaves 0, its name's number here.
 pub fn symbol_word(n: i64) -> i64 {
     set(symbol_objects(), room_for_name_x(get(symbol_objects()), n));
     let had = flatarray_ref_i64(get(symbol_objects()), n);
     if not(i64_eq(had, 0i64)) {
         had
     } else {
-        let name = name_of_number(n);
-        let s = string_word_x(name);
-        let sym = alloc_x(ob_symbol(), 3i64);
-        obj_set_x(sym, 0i64, s);
-        obj_set_x(sym, 1i64, fixnum(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
-        obj_set_x(sym, 2i64, fixnum(n));
+        let sym = symbol_x(name_of_number(n));
+        elt_set_x(sym, 2i64, fixnum(n));
         flatarray_set_i64_x(get(symbol_objects()), n, sym);
         sym
     }
 }
 
+#[inline]
 pub fn symbol_number(w: i64) -> i64 {
     fixnum_value(obj_ref(w, 2i64))
-}
-
-pub fn symbol_text(w: i64) -> Str {
-    word_string(obj_ref(w, 0i64))
 }
 
 /// Name `n`'s keyword, made the first time: its symbol (Fixpt's
@@ -454,6 +450,7 @@ pub fn keyword_word(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn keyword_word_p(w: i64) -> bool {
     is_obj_p(w, ob_keyword())
 }
@@ -462,22 +459,25 @@ pub fn keyword_word_p(w: i64) -> bool {
 // its value slot 1.
 pub fn sum_made_x(tag: i64, w: i64) -> i64 {
     let x = alloc_x(ob_sum(), 2i64);
-    slot_set_x(x, 0i64, tag);
-    slot_set_x(x, 1i64, w);
-    frozen_x(x);
+    bloblet_value_set_x(x, 0i64, tag);
+    bloblet_value_set_x(x, 1i64, w);
+    frozen_whole_x(x);
     x
 }
 
+#[inline]
 pub fn sum_tag_number(s: i64) -> i64 {
-    symbol_number(slot_ref(s, 0i64))
+    symbol_number(bloblet_value(s, 0i64))
 }
 
+#[inline]
 pub fn sum_value(s: i64) -> i64 {
-    slot_ref(s, 1i64)
+    bloblet_value(s, 1i64)
 }
 
 // Products (C323): Fixpt's, its fields in slots 0 on, in its type's order,
 // no labels, frozen once filled (`frozen!`).
+#[inline]
 pub fn product_made_x(n: i64) -> i64 {
     alloc_x(ob_product(), n)
 }
@@ -487,7 +487,7 @@ pub fn product_filled_x(mut p: i64, mut i: i64, mut ws: List<i64>) -> () {
         if null_p(ws) {
             return ();
         } else {
-            slot_set_x(p, i, car(ws));
+            bloblet_value_set_x(p, i, car(ws));
             (i, ws) = (i64_plus(i, 1i64), cdr(ws));
             continue;
         }
@@ -495,20 +495,23 @@ pub fn product_filled_x(mut p: i64, mut i: i64, mut ws: List<i64>) -> () {
 }
 
 /// A product of `ws`, frozen.
+#[inline]
 pub fn product_of_x(ws: List<i64>) -> i64 {
     let p = product_made_x(size(ws));
     product_filled_x(p, 0i64, ws);
-    frozen_x(p);
+    frozen_whole_x(p);
     p
 }
 
 // Reals: an `f64`'s bits.
+#[inline]
 pub fn real_word_x(x: f64) -> i64 {
     let p = alloc_x(ob_real(), 1i64);
     obj_set_x(p, 0i64, int_to_i64(u64_to_int(f64_to_bits(x))));
     p
 }
 
+#[inline]
 pub fn word_real(p: i64) -> f64 {
     bits_to_f64(int_to_u64(i64_to_int(obj_ref(p, 0i64))))
 }
@@ -559,6 +562,7 @@ pub fn from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
     }
 }
 
+#[inline]
 pub fn list_array_x(kind: i64, xs: i64) -> i64 {
     let p = alloc_x(kind, list_count(xs, 0i64));
     from_list_x(p, 0i64, xs);

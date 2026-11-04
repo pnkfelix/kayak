@@ -19,6 +19,7 @@ use super::*;
 pub mod restrictions {
     use super::*;
 
+    #[inline]
     pub fn control_primitive_p(n: Str) -> bool {
         string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-current-continuation"), kayak_rt::heap_cons(str_lit("call/cc"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::nil())))))))
     }
@@ -48,10 +49,12 @@ pub mod restrictions {
         }
     }
 
+    #[inline]
     pub fn restriction_refused(file: Str, line: i64, message: Str) -> Void {
         error(string_append(str_lit("kfx: "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), string_append(str_lit(": "), message))))))
     }
 
+    #[inline]
     pub fn items_of(e: &'static Sexp) -> Sexps {
         let tagcase_ = e;
         match *tagcase_ {
@@ -65,6 +68,7 @@ pub mod restrictions {
         }
     }
 
+    #[inline]
     pub fn cdr_items_of(e: &'static Sexp) -> Sexps {
         let tagcase_ = e;
         match *tagcase_ {
@@ -486,6 +490,7 @@ pub mod restrictions {
         }
     }
 
+    #[inline]
     pub fn line_of(e: &'static Sexp) -> i64 {
         let tagcase_ = e;
         match *tagcase_ {
@@ -915,6 +920,7 @@ pub mod restrictions {
         }), forms))
     }
 
+    #[inline]
     pub fn after_file(t: Str) -> Str {
         list_to_string(after_bar(string_chars(t)))
     }

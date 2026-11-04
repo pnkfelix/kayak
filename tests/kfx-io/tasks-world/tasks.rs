@@ -27,10 +27,12 @@ pub fn make_loop() -> Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn 
 }
 
 // The loop's clock: virtual, moved only when no task is ready.
+#[inline]
 pub fn now(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> i64 {
     get(lp.3)
 }
 
+#[inline]
 pub fn reverse_tasks(xs: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, acc: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>) -> List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> {
     if null_p(xs) {
         acc
@@ -143,6 +145,7 @@ pub async fn run_ready_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'stat
 }
 
 // Whether a task sleeps.
+#[inline]
 pub fn sleeping_p(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> bool {
     not(null_p(get(lp.2)))
 }
@@ -175,6 +178,7 @@ pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn
 }
 
 // An ivar: a cell written once, whose readers wait until it is.
+#[inline]
 pub fn make_ivar<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>> {
     kayak_rt::heap_new(the::<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>>(kayak_rt::heap_alloc(Sum_5empty_4full::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>::Empty(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))))
 }

@@ -169,6 +169,7 @@ pub mod cv {
 
     use super::made__input__4590__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 
+    #[inline]
     pub fn cv_ch(t: Str, i: Int) -> char {
         string_ref(t, i)
     }
@@ -246,6 +247,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_items(x: &'static CvSx) -> CvSxs {
         let tagcase_ = x;
         match *tagcase_ {
@@ -259,6 +261,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_name_of(x: &'static CvSx) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
@@ -272,6 +275,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_int_of(x: &'static CvSx) -> Int {
         let tagcase_ = x;
         match *tagcase_ {
@@ -285,6 +289,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_role(x: &'static CvSx) -> Str {
         let xs = cx_items(x);
         if null_p(xs) {
@@ -333,18 +338,22 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_int_at(xs: CvSxs, role: Str) -> Int {
         cx_int_of(cx_nth(cx_get(xs, role), int_lit(0)))
     }
 
+    #[inline]
     pub fn cx_int2_at(xs: CvSxs, role: Str) -> Int {
         cx_int_of(cx_nth(cx_get(xs, role), int_lit(1)))
     }
 
+    #[inline]
     pub fn cv_in_state() -> Int {
         int_lit(4096)
     }
 
+    #[inline]
     pub fn cv_x86_regs() -> CvStrs {
         kayak_rt::heap_cons(str_lit("rax"), kayak_rt::heap_cons(str_lit("rcx"), kayak_rt::heap_cons(str_lit("rdx"), kayak_rt::heap_cons(str_lit("rbx"), kayak_rt::heap_cons(str_lit("rsp"), kayak_rt::heap_cons(str_lit("rbp"), kayak_rt::heap_cons(str_lit("rsi"), kayak_rt::heap_cons(str_lit("rdi"), kayak_rt::heap_cons(str_lit("r8"), kayak_rt::heap_cons(str_lit("r9"), kayak_rt::heap_cons(str_lit("r10"), kayak_rt::heap_cons(str_lit("r11"), kayak_rt::heap_cons(str_lit("r12"), kayak_rt::heap_cons(str_lit("r13"), kayak_rt::heap_cons(str_lit("r14"), kayak_rt::heap_cons(str_lit("r15"), kayak_rt::nil()))))))))))))))))
     }
@@ -377,10 +386,12 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_reg_at(st: CvSxs, xs: CvSxs, role: Str) -> Int {
         cx_reg(st, cx_nth(cx_get(xs, role), int_lit(0)))
     }
 
+    #[inline]
     pub fn cx_regs(st: CvSxs, xs: CvSxs) -> CvInts {
         if null_p(xs) {
             nil::<Int>()
@@ -438,6 +449,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cx_state_at(xs: CvSxs, role: Str, st: CvSxs) -> Int {
         cx_int_at(st, cx_name_of(cx_nth(cx_get(xs, role), int_lit(1))))
     }
@@ -513,10 +525,12 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cv_par(role: Str, parts: CvStrs) -> Str {
         string_append(str_lit("("), string_append(cv_cat(the::<CvStrs>(kayak_rt::heap_cons(role, parts))), str_lit(")")))
     }
 
+    #[inline]
     pub fn cv_kv(role: Str, n: Int) -> Str {
         cv_par(role, kayak_rt::heap_cons(int_to_string(n), kayak_rt::nil()))
     }
@@ -561,6 +575,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cv_sp(nm: CvNm) -> Str {
         cv_reg(nm, if nm.0 {
             int_lit(4)
@@ -569,6 +584,7 @@ pub mod cv {
         })
     }
 
+    #[inline]
     pub fn cv_pr_regs(nm: CvNm, rs: CvInts) -> CvStrs {
         if null_p(rs) {
             nil::<Str>()
@@ -649,6 +665,7 @@ pub mod cv {
         cv_par(str_lit("frames"), kayak_rt::heap_cons(cv_kv(str_lit("align"), f.0), kayak_rt::heap_cons(at(str_lit("header"), f.1), kayak_rt::heap_cons(at(str_lit("link"), f.2), kayak_rt::heap_cons(at(str_lit("return"), f.3), kayak_rt::heap_cons(cv_par(str_lit("map"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(int_to_string(f.4), kayak_rt::heap_cons(cv_kv(str_lit("live-slots-below"), f.6), kayak_rt::heap_cons(cv_par(str_lit("fields-above"), kayak_rt::heap_cons(int_to_string(f.7), kayak_rt::heap_cons(str_lit("link"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("map"), kayak_rt::heap_cons(str_lit("values"), kayak_rt::nil())))))), kayak_rt::heap_cons(str_lit("(all-live negative)"), kayak_rt::nil())))))), kayak_rt::heap_cons(at(str_lit("values-from"), f.5), kayak_rt::heap_cons(str_lit("(raw-after-values)"), kayak_rt::heap_cons(str_lit("(keeps-its-code)"), kayak_rt::heap_cons(str_lit("(map-stored-before calls routines-that-collect)"), kayak_rt::heap_cons(cv_pr_made(nm, f, fp, lr), kayak_rt::heap_cons(cv_kv(str_lit("stub"), f.8), kayak_rt::nil()))))))))))))
     }
 
+    #[inline]
     pub fn cv_pr_entry(sn: CvNames, k: Int) -> Str {
         cv_par(str_lit("entry"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(sn, k), kayak_rt::nil())))
     }
@@ -691,6 +708,7 @@ pub mod cv {
         }, kayak_rt::nil())))))))
     }
 
+    #[inline]
     pub fn cv_naming(c: Convention) -> CvNm {
         Product_3x86_2sn(string_eq_p(c.0, str_lit("x86_64")), cv_state_names(c.6))
     }
@@ -713,6 +731,7 @@ pub mod cv {
         }, kayak_rt::heap_cons(cv_kv(str_lit("subtract"), fu.1), kayak_rt::heap_cons(str_lit("(on entry back-edge)"), kayak_rt::heap_cons(str_lit("(borrow poll)"), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("barrier"), kayak_rt::heap_cons(cv_par(str_lit("cards"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(sn, ba.0), kayak_rt::nil()))), kayak_rt::heap_cons(cv_kv(str_lit("card-shift"), ba.1), kayak_rt::heap_cons(cv_kv(str_lit("mark"), ba.2), kayak_rt::nil())))), kayak_rt::nil()))))))))))
     }
 
+    #[inline]
     pub fn cv_role_of(t: Str) -> Str {
         substring(t, int_lit(1), cv_atom_end(t, int_lit(1)))
     }
@@ -789,6 +808,7 @@ pub mod cv {
         }
     }
 
+    #[inline]
     pub fn cv_native() -> CvRead {
         cv_read_clauses(the::<CvStrs>(native_convention()))
     }
@@ -896,18 +916,22 @@ pub mod x86 {
 
     use super::made__input__4740__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
+    #[inline]
     pub fn x86_b1(a: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, nil::<Int>())
     }
 
+    #[inline]
     pub fn x86_b2(a: Int, b: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, kayak_rt::heap_cons(b, nil::<Int>()))
     }
 
+    #[inline]
     pub fn x86_hi(r: Int) -> Int {
         quotient(r, int_lit(8))
     }
 
+    #[inline]
     pub fn x86_lo(r: Int) -> Int {
         modulo(r, int_lit(8))
     }
@@ -925,6 +949,7 @@ pub mod x86 {
         append(x86_le(int_lit(4), modulo(u, int_lit(4294967296))), x86_le(int_lit(4), quotient(u, int_lit(4294967296))))
     }
 
+    #[inline]
     pub fn x86_i8_p(v: Int) -> bool {
         (_gt_eq(v, int_lit(-128)) && _lt(v, int_lit(128)))
     }
@@ -938,6 +963,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_scale_bits(scale: Int) -> Int {
         if _eq(scale, int_lit(8)) {
             int_lit(3)
@@ -989,26 +1015,32 @@ pub mod x86 {
         }, base), append(op, x86_modrm_mem(field, base, index, scale, disp)))
     }
 
+    #[inline]
     pub fn x86_mov(d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(137)), s, d)
     }
 
+    #[inline]
     pub fn x86_load(d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(139)), d, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_load_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(139)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_store(base: Int, disp: Int, s: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(137)), s, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_lea(d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(141)), d, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_lea_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(141)), d, base, index, scale, disp)
     }
@@ -1023,14 +1055,17 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_cmov(c: Int, d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b2(int_lit(15), _plus(int_lit(64), c)), d, s)
     }
 
+    #[inline]
     pub fn x86_cmov_m(c: Int, d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b2(int_lit(15), _plus(int_lit(64), c)), d, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_alu(op: Int, d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(_plus(_star(int_lit(8), op), int_lit(1))), s, d)
     }
@@ -1045,6 +1080,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_alu_rm(op: Int, d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(_plus(_star(int_lit(8), op), int_lit(3))), d, base, int_lit(-1), int_lit(1), disp)
     }
@@ -1057,6 +1093,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_test(a: Int, b: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(133)), b, a)
     }
@@ -1077,74 +1114,92 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_jmp(rel: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(233), x86_le(int_lit(4), rel))
     }
 
+    #[inline]
     pub fn x86_jcc(c: Int, rel: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(15), kayak_rt::heap_cons(_plus(int_lit(128), c), x86_le(int_lit(4), rel)))
     }
 
+    #[inline]
     pub fn x86_jmp_r(s: Int) -> List<Int> {
         x86_op_rr(int_lit(0), x86_b1(int_lit(255)), int_lit(4), s)
     }
 
+    #[inline]
     pub fn x86_jmp_m(base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(4), base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_call_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(2), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_store8_imm(base: Int, index: Int, scale: Int, disp: Int, imm: Int) -> List<Int> {
         append(x86_op_rm(int_lit(0), x86_b1(int_lit(198)), int_lit(0), base, index, scale, disp), x86_b1(imm))
     }
 
+    #[inline]
     pub fn x86_call_m_ix(base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(2), base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_call(rel: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(232), x86_le(int_lit(4), rel))
     }
 
+    #[inline]
     pub fn x86_ret() -> List<Int> {
         x86_b1(int_lit(195))
     }
 
+    #[inline]
     pub fn x86_push(s: Int) -> List<Int> {
         append(x86_rex(int_lit(0), int_lit(0), int_lit(0), s), x86_b1(_plus(int_lit(80), x86_lo(s))))
     }
 
+    #[inline]
     pub fn x86_pop(d: Int) -> List<Int> {
         append(x86_rex(int_lit(0), int_lit(0), int_lit(0), d), x86_b1(_plus(int_lit(88), x86_lo(d))))
     }
 
+    #[inline]
     pub fn x86_push_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(6), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_pop_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(143)), int_lit(0), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_neg(d: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(3), d)
     }
 
+    #[inline]
     pub fn x86_neg_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(247)), int_lit(3), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_imul(d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b2(int_lit(15), int_lit(175)), d, s)
     }
 
+    #[inline]
     pub fn x86_idiv(s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(7), s)
     }
 
+    #[inline]
     pub fn x86_cqo() -> List<Int> {
         x86_b2(int_lit(72), int_lit(153))
     }
@@ -1157,10 +1212,12 @@ pub mod x86 {
         }, kayak_rt::heap_cons(int_lit(15), kayak_rt::heap_cons(int_lit(182), x86_b1(_plus(_plus(int_lit(192), _star(int_lit(8), x86_lo(d))), x86_lo(s))))))
     }
 
+    #[inline]
     pub fn x86_load32_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(139)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_shift_cl(op: Int, d: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(211)), op, d)
     }
@@ -1210,6 +1267,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_nops(n: Int) -> List<Int> {
         x86_nops_after(n, nil::<Int>())
     }
@@ -1218,34 +1276,42 @@ pub mod x86 {
         append(x86_rex(w, field, int_lit(0), int_lit(0)), append(op, kayak_rt::heap_cons(_plus(_star(int_lit(8), x86_lo(field)), int_lit(5)), x86_le(int_lit(4), disp))))
     }
 
+    #[inline]
     pub fn x86_load_rip(d: Int, disp: Int) -> List<Int> {
         x86_op_rip(int_lit(1), x86_b1(int_lit(139)), d, disp)
     }
 
+    #[inline]
     pub fn x86_lea_rip(d: Int, disp: Int) -> List<Int> {
         x86_op_rip(int_lit(1), x86_b1(int_lit(141)), d, disp)
     }
 
+    #[inline]
     pub fn x86_store_ix(base: Int, index: Int, scale: Int, disp: Int, s: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(137)), s, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_store_imm(base: Int, index: Int, scale: Int, disp: Int, imm: Int) -> List<Int> {
         append(x86_op_rm(int_lit(1), x86_b1(int_lit(199)), int_lit(0), base, index, scale, disp), x86_le(int_lit(4), imm))
     }
 
+    #[inline]
     pub fn x86_store32_ix(base: Int, index: Int, scale: Int, disp: Int, s: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(137)), s, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_load32s_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(99)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_load8_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b2(int_lit(15), int_lit(182)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_load16_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b2(int_lit(15), int_lit(183)), d, base, index, scale, disp)
     }
@@ -1263,18 +1329,22 @@ pub mod x86 {
         }, kayak_rt::heap_cons(int_lit(136), x86_modrm_mem(s, base, index, scale, disp)))
     }
 
+    #[inline]
     pub fn x86_store16_ix(base: Int, index: Int, scale: Int, disp: Int, s: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(102), x86_op_rm(int_lit(0), x86_b1(int_lit(137)), s, base, index, scale, disp))
     }
 
+    #[inline]
     pub fn x86_div(s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(6), s)
     }
 
+    #[inline]
     pub fn x86_not(d: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(2), d)
     }
 
+    #[inline]
     pub fn x86_call_r(s: Int) -> List<Int> {
         x86_op_rr(int_lit(0), x86_b1(int_lit(255)), int_lit(2), s)
     }
@@ -1287,22 +1357,27 @@ pub mod x86 {
         }, append(x86_rex(w, field, int_lit(0), rm), kayak_rt::heap_cons(int_lit(15), append(op, x86_b1(_plus(_plus(int_lit(192), _star(int_lit(8), x86_lo(field))), x86_lo(rm)))))))
     }
 
+    #[inline]
     pub fn x86_movq_to_xmm(x: Int, r: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(1), x86_b1(int_lit(110)), x, r)
     }
 
+    #[inline]
     pub fn x86_movq_from_xmm(r: Int, x: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(1), x86_b1(int_lit(126)), x, r)
     }
 
+    #[inline]
     pub fn x86_movd_to_xmm(x: Int, r: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(0), x86_b1(int_lit(110)), x, r)
     }
 
+    #[inline]
     pub fn x86_movd_from_xmm(r: Int, x: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(0), x86_b1(int_lit(126)), x, r)
     }
 
+    #[inline]
     pub fn x86_fop(double: Int, op: Int, d: Int, s: Int) -> List<Int> {
         x86_sse(if _eq(double, int_lit(1)) {
             int_lit(242)
@@ -1311,6 +1386,7 @@ pub mod x86 {
         }, int_lit(0), x86_b1(op), d, s)
     }
 
+    #[inline]
     pub fn x86_ucomis(double: Int, a: Int, b: Int) -> List<Int> {
         x86_sse(if _eq(double, int_lit(1)) {
             int_lit(102)
@@ -1319,14 +1395,17 @@ pub mod x86 {
         }, int_lit(0), x86_b1(int_lit(46)), a, b)
     }
 
+    #[inline]
     pub fn x86_cvtsi2sd(x: Int, r: Int) -> List<Int> {
         x86_sse(int_lit(242), int_lit(1), x86_b1(int_lit(42)), x, r)
     }
 
+    #[inline]
     pub fn x86_cvttsd2si(r: Int, x: Int) -> List<Int> {
         x86_sse(int_lit(242), int_lit(1), x86_b1(int_lit(44)), r, x)
     }
 
+    #[inline]
     pub fn x86_round(double: Int, d: Int, s: Int, mode: Int) -> List<Int> {
         append(x86_sse(int_lit(102), int_lit(0), x86_b2(int_lit(58), if _eq(double, int_lit(1)) {
             int_lit(11)
@@ -1434,6 +1513,7 @@ pub fn pack_code(c: Convention, at: List<Int>) -> List<Ins> {
     }, kayak_rt::heap_cons(jcc(b, to(int_lit(14), int_lit(37))), kayak_rt::heap_cons(load(role_reg(bl.1, str_lit("bytes")), fp, slot(int_lit(1))), kayak_rt::heap_cons((&x86::x86_mov_imm)(role_reg(bl.1, str_lit("fields")), fixnum(int_lit(2))), kayak_rt::heap_cons(call_m(s, bl.0), kayak_rt::heap_cons(load(r9, fp, slot(int_lit(0))), kayak_rt::heap_cons(store(out, field(int_lit(0)), r9), kayak_rt::nil())))))))))))))))))))), append(mark(field(int_lit(0))), append(kayak_rt::heap_cons(load(r9, fp, slot(int_lit(1))), kayak_rt::heap_cons(store(out, field(int_lit(1)), r9), kayak_rt::nil())), append(mark(field(int_lit(1))), kayak_rt::heap_cons(load(r11, fp, fr.3), kayak_rt::heap_cons(load(fp, fp, fr.2), kayak_rt::heap_cons((&x86::x86_alu_imm)(add, sp, _minus(size, int_lit(8))), kayak_rt::heap_cons(store(sp, int_lit(0), r11), kayak_rt::heap_cons((&x86::x86_ret)(), kayak_rt::heap_cons(call_m(s, rs.2.0), kayak_rt::heap_cons(jmp(to(int_lit(36), int_lit(15))), kayak_rt::heap_cons(load(o.1, cl, code_at), kayak_rt::heap_cons((&x86::x86_mov_imm)(o.2, _plus(arithmetic_shift(int_lit(2), o.3), arithmetic_shift(int_lit(1), o.5))), kayak_rt::heap_cons(call_m(s, o.0), kayak_rt::heap_cons(jmp(to(int_lit(40), int_lit(7))), kayak_rt::nil())))))))))))))))
 }
 
+#[inline]
 pub fn offsets(is: List<Ins>, at: Int) -> List<Int> {
     kayak_rt::heap_cons(at, if null_p(is) {
         nil::<Int>()
@@ -1442,6 +1522,7 @@ pub fn offsets(is: List<Ins>, at: Int) -> List<Int> {
     })
 }
 
+#[inline]
 pub fn copy(i: Ins, rest: List<Int>) -> List<Int> {
     if null_p(i) {
         rest
@@ -1450,6 +1531,7 @@ pub fn copy(i: Ins, rest: List<Int>) -> List<Int> {
     }
 }
 
+#[inline]
 pub fn flat(is: List<Ins>) -> List<Int> {
     if null_p(is) {
         nil::<Int>()
@@ -1458,6 +1540,7 @@ pub fn flat(is: List<Ins>) -> List<Int> {
     }
 }
 
+#[inline]
 pub fn code_bytes(c: Convention) -> List<Int> {
     flat(pack_code(c, offsets(pack_code(c, nil::<Int>()), int_lit(0))))
 }
@@ -1485,6 +1568,7 @@ pub fn pack(c: Convention) -> Packer {
     kayak_rt::native_procedure2::<Str, Int, &'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>>(seal_code(b))
 }
 
+#[inline]
 pub fn shown(b: Packed) -> Str {
     string_append((b).fields.0.get(), string_append(str_lit(" "), string_append(int_to_string((b).fields.1.get()), string_append(str_lit(" "), int_to_string(bloblet_bytes(b))))))
 }
@@ -1512,6 +1596,7 @@ pub fn total(mut bs: List<Packed>, mut acc: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn conv() -> Convention {
     let tagcase_ = (&cv::cv_native)();
     match *tagcase_ {

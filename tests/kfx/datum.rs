@@ -79,14 +79,17 @@ pub fn total() -> &'static (dyn Fn(kayak_rt::value::Value) -> Int + Send + Sync)
 // A pair of a symbol and an int: its parts, taken apart, unboxed.
 pub type Entry = kayak_rt::value::Value;
 
+#[inline]
 pub fn entry_value(e: Entry) -> Int {
     kayak_rt::value::unbox::<Int>(kayak_rt::value::cdr(e))
 }
 
+#[inline]
 pub fn entry_key(e: Entry) -> Symbol {
     kayak_rt::value::unbox::<Symbol>(kayak_rt::value::car(e))
 }
 
+#[inline]
 pub fn ints() -> List<Int> {
     static ONCE: std::sync::OnceLock<List<Int>> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -94,6 +97,7 @@ pub fn ints() -> List<Int> {
     })
 }
 
+#[inline]
 pub fn data() -> List<kayak_rt::value::Value> {
     kayak_rt::kept_constant!(ONCE: List<kayak_rt::value::Value>);
     once(&ONCE, || {
@@ -101,6 +105,7 @@ pub fn data() -> List<kayak_rt::value::Value> {
     })
 }
 
+#[inline]
 pub fn d() -> kayak_rt::value::Value {
     kayak_rt::kept_constant!(ONCE: kayak_rt::value::Value);
     once(&ONCE, || {

@@ -5,6 +5,7 @@ use super::*;
 
 // The second file: it takes apart a datatype the first defines, and calls
 // the first's procedures. In Rust, a module that imports the other's names.
+#[inline]
 pub fn total(ss: Shapes) -> i64 {
     if null_p(ss) {
         0i64

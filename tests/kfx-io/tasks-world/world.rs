@@ -31,6 +31,7 @@ pub async fn perform_in_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8s
     Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x(a__0, a__1))))(wl.0, iv)).await?)
 }
 
+#[inline]
 pub fn reverse_filed(xs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, acc: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>) -> List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>> {
     if null_p(xs) {
         acc

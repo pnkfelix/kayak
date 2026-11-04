@@ -8,6 +8,7 @@ use super::*;
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -17,6 +18,7 @@ pub fn expressions_names() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_2() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -26,6 +28,7 @@ pub fn expressions_names_2() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_3() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -44,6 +47,7 @@ pub fn expressions_names_4() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_5() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -53,6 +57,7 @@ pub fn expressions_names_5() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_6() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -62,6 +67,7 @@ pub fn expressions_names_6() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_7() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -80,6 +86,7 @@ pub fn expressions_names_8() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_9() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -89,6 +96,7 @@ pub fn expressions_names_9() -> Strings {
 
 // Names `expressions` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn expressions_names_10() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -185,10 +193,12 @@ pub mod expressions {
     /// `xs`, each once, in the order of its last: from the last, by a set
     /// of those seen (C269), where each had been looked for in all after
     /// it.
+    #[inline]
     pub fn distinct(xs: Strings) -> Strings {
         distinct_from(reverse(xs), nempty(), nil::<Str>())
     }
 
+    #[inline]
     pub fn blob_form_p(h: Str) -> bool {
         string_member_p(h, expressions_names())
     }
@@ -205,6 +215,7 @@ pub mod expressions {
     }
 
     /// `s`, `what` noted at the form being checked, if it is not ``.
+    #[inline]
     pub fn blob_noted(v: &'static Cv, s: &'static St, what: Str) -> &'static St {
         if string_eq_p(what, str_lit("")) {
             s
@@ -470,6 +481,7 @@ pub mod expressions {
     }
 
     /// That the datum at `file`, `pos` is written at types `ts`.
+    #[inline]
     pub fn note_turbofish(s: &'static St, file: Str, pos: i64, ts: Tys) -> &'static St {
         if null_p(ts) {
             s
@@ -628,12 +640,14 @@ pub mod expressions {
 
     /// A moduleof's values' names, in order: where a module of its type
     /// keeps each, which FX-26's cellular code is told (C144).
+    #[inline]
     pub fn spec_value_words(spec: &'static Sexp) -> Str {
         words_of(map(lambda1s(move |x: Sexps| {
             sym_name(second(x))
         }), spec_items(spec, str_lit("val"))))
     }
 
+    #[inline]
     pub fn mtype_value_names(t: &'static Ty) -> Strings {
         map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
             string_eq_p(mitem_kind(x), str_lit("%val"))
@@ -708,6 +722,7 @@ pub mod expressions {
 
     /// A load's module type, `(load-moduleof ...)`, `%module made--load--K`, as
     /// the module's type as a value (C286); any other type as it is.
+    #[inline]
     pub fn load_mtype(v: &'static Cv, t: &'static Ty) -> &'static Ty {
         let tagcase_ = t;
         match *tagcase_ {
@@ -1702,6 +1717,7 @@ pub mod expressions {
         kayak_rt::heap_alloc(Narrowing::Narrowing(f0, f1))
     }
 
+    #[inline]
     pub fn counting_labels(i: i64, n: i64) -> Strings {
         if i64_gt(i, n) {
             nil::<Str>()
@@ -1751,6 +1767,7 @@ pub mod expressions {
 
     /// Whether a type's Rust is `Value`: a union's, `datum`'s, a pair's whose
     /// tail is no list (C77).
+    #[inline]
     pub fn valued_p(s: &'static St, t: &'static Ty) -> bool {
         let x = walk(s, t);
         (string_eq_p(shape_of(x), str_lit("union")) || general_pair_p(s, x))
@@ -2472,6 +2489,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn constant_region_p(r: Str) -> bool {
         (has_prefix_p(r, str_lit("@")) || string_eq_p(r, str_lit("heap")))
     }
@@ -2535,6 +2553,7 @@ pub mod expressions {
     }
 
     /// The type the fact in force of `path` says, if one is.
+    #[inline]
     pub fn path_fact(v: &'static Cv, s: &'static St, path: Strings) -> Tys {
         if paths_open_p(v) {
             path_fact_in(s, string_append(str_lit("%path "), words_of(path)), car(path), cv_binds(v))
@@ -2617,6 +2636,7 @@ pub mod expressions {
 
     /// `s` with the writes of effect `es`, of an expression just checked,
     /// noted, where a path's fact may be in force.
+    #[inline]
     pub fn path_kills(v: &'static Cv, s: &'static St, es: Strings) -> &'static St {
         if paths_open_p(v) {
             with_kills(s, concat(map(lambda1s(move |a: Str| {
@@ -2841,6 +2861,7 @@ pub mod expressions {
 
     // Sizes' facts (C157): what a comparison of integers shows in each of its
     // branches, of the locals it names.
+    #[inline]
     pub fn std_prim_p(v: &'static Cv, h: Str) -> bool {
         let b = scope_bind(h, v);
         (not(null_p(b)) && prim_p(car(b)))
@@ -3356,6 +3377,7 @@ pub mod expressions {
     // The control primitives KFX types by rules of its own (`abort-call`,
     // `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
     // programs write it.
+    #[inline]
     pub fn control_schemes() -> Str {
         str_lit("(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))\n         (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))\n         (escape (poly ((r region) (a type) (h type)) (subr (goto r) ((escape-tag a h r) h) void)))")
     }
@@ -3743,6 +3765,7 @@ pub mod expressions {
     // Processes and `par` (C101), as FX-26 has them (Fixpt's `docs/fx26.md`,
     // "Processes and `par`"; its `processes.rs`, rule for rule and in its
     // words).
+    #[inline]
     pub fn or_else(why: Str, next: Str) -> Str {
         if string_eq_p(why, str_lit("")) {
             next
@@ -3961,6 +3984,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn all_sync_p(v: &'static Cv, s: &'static St, ts: Tys, seen: Strings) -> bool {
         (null_p(ts) || (sync_type_p(v, s, car(ts), seen) && all_sync_p(v, s, cdr(ts), seen)))
     }
@@ -4001,6 +4025,7 @@ pub mod expressions {
 
     /// Two regions that may be one: the same, or either not a constant;
     /// two constants of other names are two.
+    #[inline]
     pub fn regions_may_be_one_p(p: Str, q: Str) -> bool {
         (string_eq_p(p, q) || not(has_prefix_p(p, str_lit("@"))) || not(has_prefix_p(q, str_lit("@"))))
     }
@@ -4188,6 +4213,7 @@ pub mod expressions {
 
     /// The processes' bodies being checked, innermost first: each a
     /// `%process N` among the type variables, and a binding of that name.
+    #[inline]
     pub fn process_marks(tvars: Strings) -> Strings {
         concat(map(lambda1s(move |n: Str| {
             if has_prefix_p(n, str_lit("%process ")) {
@@ -4209,6 +4235,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn digits_value(x: Str) -> i64 {
         fold_digits(string_to_list(x), 0i64)
     }
@@ -5312,6 +5339,7 @@ pub mod expressions {
     }
 
     /// An expression whose value is dropped: a string is a comment.
+    #[inline]
     pub fn synth_any(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
         let tagcase_ = e;
         match *tagcase_ {
@@ -5685,6 +5713,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn all_safe_p(s: &'static St, ts: Tys, n: Str, positive: bool) -> bool {
         (null_p(ts) || (stands_safe_p(s, car(ts), n, positive) && all_safe_p(s, cdr(ts), n, positive)))
     }
@@ -5780,6 +5809,7 @@ pub mod expressions {
     /// The variables with no evidence given, but regions: a region a
     /// variable names, given none, is a region of its own, named afresh
     /// where the program runs (Fixpt's rule).
+    #[inline]
     pub fn evidence_missing(holes: Strings, covered: Strings) -> Strings {
         filter(lambda1s(move |h: Str| {
             (not(string_member_p(h, covered)) && not(has_prefix_p(h, str_lit("'"))))
@@ -6208,6 +6238,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn fold_effs(effs: List<Strings>) -> Strings {
         if null_p(effs) {
             nil::<Str>()
@@ -8215,6 +8246,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn star_type_p(t: &'static Sexp) -> bool {
         (head_is_p(t, str_lit("subr")) && i64_eq(size(items(t)), 4i64) && sym_is_p(second(items(t)), str_lit("%found")))
     }
@@ -8629,6 +8661,7 @@ pub mod expressions {
     }
 
     /// Whether `t` is a place's type.
+    #[inline]
     pub fn place_region(s: &'static St, t: &'static Ty) -> bool {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
@@ -12208,6 +12241,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn counted_metas(from: i64, n: i64) -> Tys {
         if i64_lt_eq(n, 0i64) {
             nil::<&'static Ty>()
@@ -12854,6 +12888,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn poly_type_p(s: &'static St, t: &'static Ty) -> bool {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
@@ -13102,6 +13137,7 @@ pub mod expressions {
     }
 
     /// An escape-only tag's answer, payload and region, or none.
+    #[inline]
     pub fn escape_tag_parts(s: &'static St, t: &'static Ty) -> Tys {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
@@ -13119,6 +13155,7 @@ pub mod expressions {
         }
     }
 
+    #[inline]
     pub fn escape_tag_p(s: &'static St, t: &'static Ty) -> bool {
         not(null_p(escape_tag_parts(s, t)))
     }
@@ -13550,6 +13587,7 @@ pub mod expressions {
     }
 
     /// `v`, argument `k`'s, said so where the call `at` is is by the general rule.
+    #[inline]
     pub fn said_as_argument(at: &'static Cv, v: &'static Cv, arg: &'static Sexp, k: i64) -> &'static Cv {
         if argued_p(at) {
             saying(v, arg, string_append(str_lit("argument "), i64_to_string(k)))

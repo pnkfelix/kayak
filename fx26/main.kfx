@@ -92,7 +92,7 @@
 (define-effect running (maxeff driving vm))
 
 (define-rec
-  (names-array! (subr running ((arrayof string @h) strings i64) unit)
+  (names-array! (subr running ((arrayof string @c) strings i64) unit)
     (lambda (a ns i) (if (null? ns) #u (begin (array-set! a (i64->int i) (car ns)) (names-array! a (cdr ns) (i64+ i 1)))))))
 
 (define-rec
@@ -135,7 +135,7 @@
       (heap-start! 1048576)
       (set machine-globals gs)
       (set globals (make-flatarray-i64 (size gs) w-unbound))
-      (let ((names (the (arrayof string @h) (make-array (i64->int (i64+ (size gs) 1)) ""))))
+      (let ((names (the (arrayof string @c) (make-array (i64->int (i64+ (size gs) 1)) ""))))
         (begin (names-array! names gs 0) (set global-name-table names)))
       (set io-error-labels (label-ids! (list "kind" "detail")))
       (set size-labels (label-ids! (list "rows" "columns")))

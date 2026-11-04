@@ -41,7 +41,7 @@
   (lambda (t) (cond ((or (string=? t "u64")) 64) ((or (string=? t "i32") (string=? t "u32")) 32) (else 8))))
 
 "The program's own arguments, as `--run`'s driver gives them (main.kfx)."
-(define program-args (ref strings @h) (new nil))
+(define program-args (ref strings @c) (new nil))
 
 (define prim-alias (subr kfx (string) string)
   (lambda (n)
@@ -188,20 +188,20 @@
     (lambda (v) (tagcase v (v-pair (a d) (cons (char-of (get a)) (chars-of (get d)))) (else other nil)))))
 
 (define-rec
-  (vals-array (subr eng (vals) (arrayof val @h))
+  (vals-array (subr eng (vals) (arrayof val @c))
     (lambda (xs)
-      (let ((a (the (arrayof val @h) (make-array (i64->int (size xs)) (v-unit)))))
+      (let ((a (the (arrayof val @c) (make-array (i64->int (size xs)) (v-unit)))))
         (begin (fill-array a 0 xs) a))))
-  (fill-array (subr eng ((arrayof val @h) i64 vals) unit)
+  (fill-array (subr eng ((arrayof val @c) i64 vals) unit)
     (lambda (a i xs) (if (null? xs) #u (begin (array-set! a (i64->int i) (car xs)) (fill-array a (i64+ i 1) (cdr xs)))))))
 
 (define-rec
-  (array-vals (subr eng ((arrayof val @h) i64) vals)
+  (array-vals (subr eng ((arrayof val @c) i64) vals)
     (lambda (a i) (if (>= (i64->int i) (array-length a)) nil (cons (array-ref a (i64->int i)) (array-vals a (i64+ i 1)))))))
 
 (define flag (subr kfx (bool) val) (lambda (b) (v-bool b)))
 
-(define bytes-of (subr eng (val) (bytevectorof @h))
+(define bytes-of (subr eng (val) (bytevectorof @c))
   (lambda (v) (tagcase v (v-bytes (b) b) (else other (begin (failed-with! "the engine: a bytevector is expected") (make-bytevector 0 (int->u8 0)))))))
 
 "An I/O error as FX-26 has it: a product of its kind, a sum, and the
@@ -438,7 +438,7 @@
                (not-a-terminal u (v-sum "not-a-terminal" (v-unit)))
                (failed e (v-sum "failed" (io-error-val e)))))
             ((string=? n "read-file")
-             (tagcase (the (sumof (data (bytevectorof @h)) (failed io-error)) (read-file (string-of a)))
+             (tagcase (the (sumof (data (bytevectorof @c)) (failed io-error)) (read-file (string-of a)))
                (data d (v-sum "data" (v-bytes d))) (failed e (v-sum "failed" (io-error-val e)))))
             ((string=? n "write-file") (written (write-file (string-of a) (bytes-of b))))
             ((string=? n "list-dir")

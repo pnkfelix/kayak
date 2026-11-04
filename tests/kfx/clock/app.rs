@@ -7,6 +7,7 @@ use super::*;
 // and an ivar hands a value from one task to another. The tasks' own
 // effect, `u`, is what they do to the log, at @a.
 
+#[inline]
 pub fn log() -> Ref<List<Str>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<Str>>);
     once(&ONCE, || {
@@ -14,6 +15,7 @@ pub fn log() -> Ref<List<Str>> {
     })
 }
 
+#[inline]
 pub fn note_x(s: Str) -> () {
     set(log(), kayak_rt::heap_cons(s, get(log())))
 }
@@ -39,6 +41,7 @@ pub fn reverse_log(mut xs: List<Str>, mut acc: List<Str>) -> List<Str> {
     }
 }
 
+#[inline]
 pub fn stamp(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, s: Str) -> Str {
     string_append(s, string_append(str_lit("@"), i64_to_string((&now)(lp))))
 }

@@ -11,14 +11,17 @@ pub struct Product_1k<A0>(pub A0);
 // Rust type returns no Result, so it is lifted: a closure that returns its
 // value Ok.
 
+#[inline]
 pub fn inc(x: i64) -> i64 {
     i64_plus(x, 1i64)
 }
 
+#[inline]
 pub fn dbl(y: i64) -> i64 {
     i64_star(y, 2i64)
 }
 
+#[inline]
 pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
     Ok(f(x)?)
 }

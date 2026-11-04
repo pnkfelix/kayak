@@ -24,6 +24,7 @@ pub async fn twice<A: Copy + 'static>(f: &'static dyn Fn(A) -> kayak_rt::suspend
     Ok(kayak_rt::suspend::body(f(kayak_rt::suspend::body(f(x)).await?)).await?)
 }
 
+#[inline]
 pub fn total() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -76,6 +77,7 @@ pub async fn plain() -> Result<i64, Unwind> {
     Ok(7i64)
 }
 
+#[inline]
 pub fn read_total() -> i64 {
     i64_plus(kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(async move {
         Ok(get(total()))

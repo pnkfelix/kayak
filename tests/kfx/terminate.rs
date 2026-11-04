@@ -122,6 +122,7 @@ pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> 
 }
 
 // A group of two, reading globals and no more: no `spin`.
+#[inline]
 pub fn ev_p(n: Int) -> bool {
     if _lt_eq(n, int_lit(0)) {
         true
@@ -130,6 +131,7 @@ pub fn ev_p(n: Int) -> bool {
     }
 }
 
+#[inline]
 pub fn od_p(n: Int) -> bool {
     if _lt_eq(n, int_lit(0)) {
         false

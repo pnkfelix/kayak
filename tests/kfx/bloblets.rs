@@ -27,6 +27,7 @@ impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1
 // written as the flat the checker found.
 
 // Fixpt's bloblet/point.fx, at i64: fields read and written.
+#[inline]
 pub fn p() -> &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
     kayak_rt::kept_constant!(ONCE: &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>);
     once(&ONCE, || {
@@ -34,6 +35,7 @@ pub fn p() -> &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
     })
 }
 
+#[inline]
 pub fn shift(q: &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>, dx: i64) -> () {
     { let blob__ = q; blob__.fields.0.set(i64_plus((q).fields.0.get(), dx)); kayak_rt::bloblet_written(blob__, 0) }
 }
@@ -44,6 +46,7 @@ pub type Pt = Product_1x_1n_1y<f64, i32, f64>;
 
 pub type O = &'static Bloblet<()>;
 
+#[inline]
 pub fn b() -> O {
     kayak_rt::kept_constant!(ONCE: O);
     once(&ONCE, || {
@@ -51,16 +54,19 @@ pub fn b() -> O {
     })
 }
 
+#[inline]
 pub fn arr() -> BlobRef<O> {
     blobref_at(b(), int_lit(0), 72)
 }
 
+#[inline]
 pub fn p1() -> BlobRef<O> {
     (arr()).index(int_lit(1), 24, 3)
 }
 
 pub type Q = Product_1a_1b_1c_1d<i32, i32, f64, i32>;
 
+#[inline]
 pub fn q0() -> BlobRef<O> {
     blobref_at(b(), int_lit(0), 24)
 }
@@ -68,6 +74,7 @@ pub fn q0() -> BlobRef<O> {
 // An odd offset, and bytes: an i32 across two words, read back, and its
 // bytes one by one. It overlaps p1's y (bytes 40 to 47), which it changes:
 // written after 2.5, y is 2.500488281249204, as in FX-26.
+#[inline]
 pub fn odd() -> BlobRef<O> {
     blobref_at(b(), int_lit(41), 4)
 }
@@ -114,6 +121,7 @@ pub fn total(n: i64) -> f64 {
     }
 }
 
+#[inline]
 pub fn ints(ns: List<Int>) -> Str {
     if null_p(ns) {
         str_lit("")

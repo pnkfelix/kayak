@@ -20,6 +20,7 @@ pub mod made__load__0__areas {
         kayak_rt::heap_alloc(Shape::Box(f0, f1))
     }
 
+    #[inline]
     pub fn make_box(w: Int, h: Int) -> &'static Shape {
         r#box(w, h)
     }
@@ -36,6 +37,7 @@ pub mod made__load__1__loaded_select {
 
     pub type Shape = &'static made__load__0__areas::Shape;
 
+    #[inline]
     pub fn area(s: Shape) -> Int {
         let tagcase_ = s;
         match *tagcase_ {
@@ -48,6 +50,7 @@ pub mod made__load__1__loaded_select {
         }
     }
 
+    #[inline]
     pub fn square(n: Int) -> Shape {
         base::make_box(n, n)
     }
@@ -59,6 +62,7 @@ pub mod areas {
     pub use super::made__load__1__loaded_select::{area, square, Shape};
 }
 
+#[inline]
 pub fn main() -> Str {
     int_to_string(areas::area(areas::square(int_lit(7))))
 }

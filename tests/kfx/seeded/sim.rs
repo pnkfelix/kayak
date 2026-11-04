@@ -24,6 +24,7 @@ pub fn next_random_x<'l>(s: Seed<'l>) -> u64 {
 }
 
 // A number from 0 below `n`, `n` above 0.
+#[inline]
 pub fn below_x<'l>(s: Seed<'l>, n: i64) -> i64 {
     int_to_i64(u64_to_int(u64_remainder(u64_shr((&next_random_x)(s), int_lit(33)), int_to_u64(i64_to_int(n)))))
 }
@@ -56,6 +57,7 @@ pub fn faulty(s: Seed<'static>, rate: i64, inner: &'static dyn Fn(i64, Op) -> ka
 }
 
 // The `k`th of a list of operations filed, and the rest, in order.
+#[inline]
 pub fn nth_filed(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, k: i64) -> Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>> {
     if i64_eq(k, 0i64) {
         car(fs)
@@ -72,6 +74,7 @@ pub fn without_nth(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full
     }
 }
 
+#[inline]
 pub fn filed_count(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, n: i64) -> i64 {
     if null_p(fs) {
         n

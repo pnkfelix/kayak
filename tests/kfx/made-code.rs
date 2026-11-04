@@ -2,6 +2,7 @@
 
 use kayak_rt::*;
 
+#[inline]
 pub fn here_p() -> bool {
     (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
 }
@@ -22,6 +23,7 @@ pub fn adder() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
 
 // Whether this machine runs made code, and the leaf's sum, or the answer
 // it would give.
+#[inline]
 pub fn main() -> Str {
     string_append(if here_p() {
         str_lit("native ")

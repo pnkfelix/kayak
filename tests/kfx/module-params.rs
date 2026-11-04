@@ -24,14 +24,17 @@ pub mod counter {
         x.0
     }
 
+    #[inline]
     pub fn zero() -> T {
         up_t(0i64)
     }
 
+    #[inline]
     pub fn inc(c: T) -> T {
         up_t(i64_plus(down_t(c), 1i64))
     }
 
+    #[inline]
     pub fn value(c: T) -> i64 {
         down_t(c)
     }
@@ -45,14 +48,17 @@ pub mod tens {
 
     pub type T = i64;
 
+    #[inline]
     pub fn zero() -> T {
         0i64
     }
 
+    #[inline]
     pub fn inc(c: T) -> T {
         i64_plus(c, 10i64)
     }
 
+    #[inline]
     pub fn value(c: T) -> i64 {
         c
     }
@@ -73,15 +79,18 @@ pub trait Starts {
     fn value(a__0: Self::T) -> i64;
 }
 
+#[inline]
 pub fn three<Mod_M: Steps>() -> i64 {
     Mod_M::value(Mod_M::inc(Mod_M::inc(Mod_M::inc(Mod_M::zero()))))
 }
 
+#[inline]
 pub fn start<Mod_M: Starts>() -> i64 {
     Mod_M::value(Mod_M::zero())
 }
 
 // A module parameter beside others.
+#[inline]
 pub fn steps_from<Mod_M: Steps>(n: i64) -> i64 {
     i64_plus(n, Mod_M::value(Mod_M::inc(Mod_M::zero())))
 }

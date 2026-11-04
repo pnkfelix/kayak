@@ -16,6 +16,7 @@ pub fn words(xs: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn sign(n: i64) -> Str {
     if i64_lt(n, 0i64) {
         str_lit("negative")
@@ -26,6 +27,7 @@ pub fn sign(n: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn kind(c: char) -> Str {
     match c {
         'a' | 'e' | 'i' | 'o' | 'u' => {
@@ -53,6 +55,7 @@ pub fn small(n: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn both(a: bool, b: bool) -> Str {
     string_append(if (a && b) {
         str_lit("and,")

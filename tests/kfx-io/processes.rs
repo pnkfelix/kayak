@@ -30,6 +30,7 @@ pub fn wait_for(mut p: Int, mut acc: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn script() -> Str {
     str_lit("printf 'a\\nb\\n'; echo err >&2; read x; echo got $x; exit 3")
 }

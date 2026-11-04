@@ -13,6 +13,7 @@ pub type Operand = &'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, P
 
 pub type Rnode = Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<Operand>>;
 
+#[inline]
 pub fn hex_digit(d: Int) -> Str {
     substring(str_lit("0123456789abcdef"), d, _plus(d, int_lit(1)))
 }
@@ -26,16 +27,19 @@ pub fn hex_from(b: Bytes, i: Int) -> Str {
     }
 }
 
+#[inline]
 pub fn node(slot: Int, head: Symbol, binders: List<Symbol>, args: List<Operand>) -> Rnode {
     Product_11_12_13_14_15(slot, head, false, binders, args)
 }
 
+#[inline]
 pub fn base(slot: Int, name: Symbol) -> Rnode {
     node(slot, symbol_lit(str_lit("base")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(name))), kayak_rt::nil()))
 }
 
 // Each type's nodes: `int`; `(listof int heap)` as `(pairof int SELF (heap) #t)`;
 // `(poly ((x type)) (subr pure (x) x))`.
+#[inline]
 pub fn int_nodes() -> List<Rnode> {
     static ONCE: std::sync::OnceLock<List<Rnode>> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -57,6 +61,7 @@ pub fn poly_nodes() -> List<Rnode> {
     })
 }
 
+#[inline]
 pub fn heads(ns: List<Rnode>) -> Str {
     if null_p(ns) {
         str_lit("")
@@ -70,6 +75,7 @@ pub fn shown(ns: List<Rnode>, root: Int) -> Str {
     string_append(hex_from(b, int_lit(0)), string_append(str_lit(" :"), string_append(heads(rep_nodes(b, nil::<Str>()).0), str_lit("\n"))))
 }
 
+#[inline]
 pub fn main() -> Str {
     string_append(shown(int_nodes(), int_lit(0)), string_append(shown(list_nodes(), int_lit(0)), shown(poly_nodes(), int_lit(0))))
 }

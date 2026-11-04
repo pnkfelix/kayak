@@ -17,6 +17,7 @@ pub fn show_names(mut ns: List<Str>) -> () {
     }
 }
 
+#[inline]
 pub fn put(path: Str, text: Str) -> () {
     let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
     match *tagcase_ {

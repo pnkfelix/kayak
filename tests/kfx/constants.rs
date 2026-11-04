@@ -6,6 +6,7 @@ use kayak_rt::*;
 // first use, and kept, as FX-26 makes them once, where they are defined.
 // A cell defined at the top level is one cell, however often it is named.
 
+#[inline]
 pub fn cell() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -13,6 +14,7 @@ pub fn cell() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn bump_x() -> i64 {
     set(cell(), i64_plus(get(cell()), 1i64));
     get(cell())
@@ -31,6 +33,7 @@ pub fn next_x() -> &'static dyn Fn() -> i64 {
 }
 
 // A constant found, not written, that allocates too.
+#[inline]
 pub fn tally() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {

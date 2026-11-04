@@ -46,6 +46,7 @@ pub fn adders(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(adders(10i64))
 }

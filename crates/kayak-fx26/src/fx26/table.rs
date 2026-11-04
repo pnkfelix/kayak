@@ -98,6 +98,7 @@ pub fn armx(f0: i64, f1: i64, f2: i64) -> &'static Armx {
     kayak_rt::heap_alloc(Armx::Armx(f0, f1, f2))
 }
 
+#[inline]
 pub fn nodes() -> Ref<Array<&'static Node>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<&'static Node>>);
     once(&ONCE, || {
@@ -105,6 +106,7 @@ pub fn nodes() -> Ref<Array<&'static Node>> {
     })
 }
 
+#[inline]
 pub fn node_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -112,6 +114,7 @@ pub fn node_count() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn kids() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -119,6 +122,7 @@ pub fn kids() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn kid_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -126,6 +130,7 @@ pub fn kid_count() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn armxs() -> Ref<Array<&'static Armx>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<&'static Armx>>);
     once(&ONCE, || {
@@ -133,6 +138,7 @@ pub fn armxs() -> Ref<Array<&'static Armx>> {
     })
 }
 
+#[inline]
 pub fn armx_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -140,6 +146,7 @@ pub fn armx_count() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn constants() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -153,6 +160,7 @@ pub fn constants() -> Ref<FlatArray<i64>> {
 // written, "" for any other node. A lambda's body is numbered just before
 // it (`number!`), so its nodes are a range ending at it, and an inner
 // lambda's take theirs first.
+#[inline]
 pub fn owners() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -160,6 +168,7 @@ pub fn owners() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn wheres() -> Ref<Array<Str>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
     once(&ONCE, || {
@@ -167,6 +176,7 @@ pub fn wheres() -> Ref<Array<Str>> {
     })
 }
 
+#[inline]
 pub fn constant_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -314,6 +324,7 @@ pub fn node_where(i: i64) -> Str {
 }
 
 // A node's lambda's number, or -1.
+#[inline]
 pub fn node_owner(i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, get(node_count()))) {
         -1i64
@@ -322,18 +333,22 @@ pub fn node_owner(i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn node_at(i: i64) -> &'static Node {
     array_ref(get(nodes()), i64_to_int(i))
 }
 
+#[inline]
 pub fn kid_at(i: i64) -> i64 {
     flatarray_ref_i64(get(kids()), i)
 }
 
+#[inline]
 pub fn armx_at(i: i64) -> &'static Armx {
     array_ref(get(armxs()), i64_to_int(i))
 }
 
+#[inline]
 pub fn constant_at(i: i64) -> i64 {
     flatarray_ref_i64(get(constants()), i)
 }
@@ -362,11 +377,13 @@ pub fn list_position(mut n: Str, mut xs: Strings, mut i: i64) -> i64 {
 
 // The fixed widths but `i64`, a primitive of its own each: their names
 // interned, their number past the list's.
+#[inline]
 pub fn fixed_base() -> i64 {
     1000i64
 }
 
 // `f32`'s operations (C220), numbered past the fixed widths'.
+#[inline]
 pub fn f32_base() -> i64 {
     3000i64
 }
@@ -404,6 +421,7 @@ pub fn kfx_bytes_set_x(mut p: i64, mut bv: Bytes, mut i: i64, mut n: i64) -> () 
     }
 }
 
+#[inline]
 pub fn kfx_bytes_word_x(bv: Bytes) -> i64 {
     let n = int_to_i64(bytevector_length(bv));
     let p = bytes_alloc_x(n);
@@ -485,6 +503,7 @@ pub fn quoted(f0: Str, f1: i64) -> &'static Quoted {
     kayak_rt::heap_alloc(Quoted::Quoted(f0, f1))
 }
 
+#[inline]
 pub fn quoteds() -> Ref<List<&'static Quoted>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Quoted>>);
     once(&ONCE, || {
@@ -584,6 +603,7 @@ pub fn kids_placed_x(mut ns: List<i64>) -> () {
     }
 }
 
+#[inline]
 pub fn kids_of_x(ns: List<i64>) -> i64 {
     let at = get(kid_count());
     kids_placed_x(ns);
@@ -591,10 +611,12 @@ pub fn kids_of_x(ns: List<i64>) -> i64 {
 }
 
 /// A product's labels, interned, a range of `kids`: its start.
+#[inline]
 pub fn label_ids_x(ls: Strings) -> i64 {
     kids_of_x(label_numbers_x(ls))
 }
 
+#[inline]
 pub fn label_numbers_x(ls: Strings) -> List<i64> {
     if null_p(ls) {
         nil::<i64>()
@@ -616,6 +638,7 @@ pub fn armxs_placed_x(mut xs: List<&'static Armx>) -> () {
     }
 }
 
+#[inline]
 pub fn place_armxs_x(xs: List<&'static Armx>) -> i64 {
     let at = get(armx_count());
     armxs_placed_x(xs);
@@ -715,10 +738,12 @@ pub fn number_x(e: &'static Ir) -> i64 {
 }
 
 /// Each of `es` numbered, then their numbers a range of `kids`: its start.
+#[inline]
 pub fn number_all_x(es: List<&'static Ir>) -> i64 {
     kids_of_x(numbers_x(es))
 }
 
+#[inline]
 pub fn numbers_x(es: List<&'static Ir>) -> List<i64> {
     if null_p(es) {
         nil::<i64>()
@@ -728,6 +753,7 @@ pub fn numbers_x(es: List<&'static Ir>) -> List<i64> {
     }
 }
 
+#[inline]
 pub fn arms_numbered_x(arms: List<&'static Arm>) -> i64 {
     let made = arm_entries_x(arms);
     place_armxs_x(made)

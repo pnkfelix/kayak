@@ -11,6 +11,7 @@ pub type Task = &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>;
 
 pub type Tasks = List<Task>;
 
+#[inline]
 pub fn sched() -> Tag<(), Task> {
     kayak_rt::kept_constant!(ONCE: Tag<(), Task>);
     once(&ONCE, || {
@@ -18,6 +19,7 @@ pub fn sched() -> Tag<(), Task> {
     })
 }
 
+#[inline]
 pub fn queue() -> Ref<Tasks> {
     kayak_rt::kept_constant!(ONCE: Ref<Tasks>);
     once(&ONCE, || {
@@ -25,6 +27,7 @@ pub fn queue() -> Ref<Tasks> {
     })
 }
 
+#[inline]
 pub fn log() -> Ref<List<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
     once(&ONCE, || {
@@ -49,6 +52,7 @@ pub async fn yield_x() -> Result<(), Unwind> {
     }).await?)
 }
 
+#[inline]
 pub fn enqueue_x(k: Task) -> () {
     set(queue(), reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(queue()), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
 }
@@ -107,6 +111,7 @@ pub async fn pinger(mut who: i64, mut n: i64) -> Result<(), Unwind> {
     }
 }
 
+#[inline]
 pub fn show(xs: List<i64>) -> Str {
     if null_p(xs) {
         str_lit("")

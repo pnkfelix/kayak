@@ -18,6 +18,7 @@ use super::*;
 // The checker is the compiler's (kfx/check*.kfx): what it accepts, the
 // engine runs, for now.
 
+#[inline]
 pub fn fail_with(message: Str, status: Int) -> Void {
     write_err(string_append(str_lit("kayak-fx26: "), string_append(message, str_lit("\n"))));
     match exit(status) {}
@@ -45,6 +46,7 @@ pub fn read_text(path: Str) -> Str {
 
 // A failure as the engine says it (C273): the checker's and reader's, which
 // they share with kfx, say `kfx: ` first; the engine says its own.
+#[inline]
 pub fn engine_said(m: Str) -> Str {
     if has_prefix_p(m, str_lit("kfx: ")) {
         after_prefix(m, str_lit("kfx: "))
@@ -53,6 +55,7 @@ pub fn engine_said(m: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn say(s: Str) -> () {
     let tagcase_ = write_out(s);
     match *tagcase_ {
@@ -142,6 +145,7 @@ pub fn forms_mention_p(es: Sexps, heads: Strings) -> bool {
 /// A program of processes, `%processes` defined first, the scheduler's
 /// module file built in (C219): what its forms are made calls of, as
 /// Fixpt's parser makes them (`process-expanded`).
+#[inline]
 pub fn with_processes(forms: Sexps) -> Sexps {
     if forms_mention_p(forms, process_heads()) {
         onto(with_loads(read_all(string_chars(str_lit("(define %processes (load-module \"fx26:processes.fx\"))")), str_lit("<scheduler>"), 1i64), str_lit("<scheduler>"), nil::<&'static Filed>()), forms)
@@ -150,6 +154,7 @@ pub fn with_processes(forms: Sexps) -> Sexps {
     }
 }
 
+#[inline]
 pub fn before_dashes(xs: Strings) -> Strings {
     if (null_p(xs) || string_eq_p(car(xs), str_lit("--"))) {
         nil::<Str>()
@@ -214,6 +219,7 @@ pub fn number_tops_x(tops: List<&'static Top>) -> List<i64> {
 // A failure the engine said (C110), the program's: `kayak-fx26 FILE` ends
 // as Fixpt's run does, its message written, and status 70; then its
 // backtrace (TODO §29), which Fixpt has not.
+#[inline]
 pub fn failure_raised_x() -> () {
     if get(engine_failed()) {
         write_err(string_append(str_lit("kayak-fx26: "), string_append(failure_traced_x(str_lit("  ")), str_lit("\n"))));
@@ -271,6 +277,7 @@ pub fn load_x(gs: Strings) -> () {
     }
 }
 
+#[inline]
 pub fn usage() -> Str {
     str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --cells FILE ...             the program's cellular words,\n                                               as `fixpt compile` lists its\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
 }

@@ -135,45 +135,55 @@ pub mod tasks {
     }
 
     // Entries' states, as each side keeps them.
+    #[inline]
     pub fn st_checking() -> i64 {
         0i64
     }
 
+    #[inline]
     pub fn st_waiting() -> i64 {
         1i64
     }
 
+    #[inline]
     pub fn st_running() -> i64 {
         2i64
     }
 
+    #[inline]
     pub fn st_done() -> i64 {
         3i64
     }
 
+    #[inline]
     pub fn st_failed() -> i64 {
         4i64
     }
 
+    #[inline]
     pub fn st_interrupted() -> i64 {
         5i64
     }
 
+    #[inline]
     pub fn st_refused() -> i64 {
         6i64
     }
 
     // Text, drawing, history and commands: the helpers C103's REPL has,
     // the same (live-repl.kfx).
+    #[inline]
     pub fn seconds(ms: i64) -> Str {
         string_append(i64_to_string(i64_quotient(ms, 1000i64)), string_append(str_lit("."), string_append(i64_to_string(i64_quotient(i64_remainder(ms, 1000i64), 100i64)), str_lit(" s"))))
     }
 
+    #[inline]
     pub fn spinner(now: i64) -> Str {
         let frames = str_lit("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
         char_to_string(string_ref_i64(frames, i64_remainder(i64_quotient(now, 80i64), 10i64)))
     }
 
+    #[inline]
     pub fn clamped(i: i64, n: i64) -> i64 {
         if i64_lt(i, 0i64) {
             0i64
@@ -184,6 +194,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn cut(s: Str, from: i64, to: i64) -> Str {
         let n = string_length_i64(s);
         substring(s, i64_to_int(clamped(from, n)), i64_to_int(clamped(to, n)))
@@ -211,6 +222,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn name_char_p(c: char) -> bool {
         not((char_whitespace_p(c) || char_eq_p(c, '(') || char_eq_p(c, ')') || char_eq_p(c, '"') || char_eq_p(c, '\'')))
     }
@@ -250,6 +262,7 @@ pub mod tasks {
     }
 
     /// The index `col` along the line beginning at `start`, or its end.
+    #[inline]
     pub fn column_on(d: Str, start: i64, col: i64) -> i64 {
         let end = line_end(d, start);
         if i64_lt(i64_plus(start, col), end) {
@@ -283,6 +296,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn trimmed_end(s: Str) -> Str {
         list_to_string(oldest_first_chars(trimmed_start(oldest_first_chars(string_chars(s), nil::<char>())), nil::<char>()))
     }
@@ -381,11 +395,13 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn help_text() -> Str {
         str_lit(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
     }
 
     /// Whether a command's line is whole: its forms, if any, closed.
+    #[inline]
     pub fn command_whole_p(line: Str) -> bool {
         let rest = command_rest(line);
         (null_p(trimmed_start(string_chars(rest))) || repl_complete_p(rest))
@@ -402,6 +418,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn command_word(line: Str) -> Str {
         substring(line, int_lit(0), i64_to_int(word_end(string_chars(line), 0i64)))
     }
@@ -421,6 +438,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn first_line(s: Str) -> Str {
         let ls = lines_of(string_chars(s), nil::<char>(), nil::<Str>());
         if null_p(ls) {
@@ -676,6 +694,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn closers(n: i64) -> Str {
         if i64_lt_eq(n, 0i64) {
             str_lit("")
@@ -848,6 +867,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn without_prefix(s: Str, p: Str) -> Str {
         if has_prefix_p(s, p) {
             cut(s, string_length_i64(p), string_length_i64(s))
@@ -883,6 +903,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn definition_form_p(f: &'static Sexp) -> bool {
         any_p(lambda1s(move |h: Str| {
             head_is_p(f, h)
@@ -1043,6 +1064,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn expression_effects(v: &'static Cv, form: &'static Sexp) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
@@ -1209,6 +1231,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn refusal(m: Str) -> &'static Done {
         refused_done(m)
     }
@@ -1258,6 +1281,7 @@ pub mod tasks {
     // run (its state, 0 none, 1 running in slot 0, 2 ended; serial; type;
     // the IR tables' lengths before it was numbered; its steps); whether the
     // front has ended.
+    #[inline]
     pub fn m_entries() -> Ref<List<Mentry>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<Mentry>>);
         once(&ONCE, || {
@@ -1265,6 +1289,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_live() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -1272,6 +1297,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_last_run() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -1279,6 +1305,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_step_limit() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -1286,10 +1313,12 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn slice_steps() -> i64 {
         20000i64
     }
 
+    #[inline]
     pub fn m_slice_ns() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -1297,6 +1326,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_news() -> Ref<List<&'static Told>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<&'static Told>>);
         once(&ONCE, || {
@@ -1304,6 +1334,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_spec_state() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -1311,6 +1342,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_spec_serial() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -1318,6 +1350,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_spec_type() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -1325,6 +1358,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_spec_marks() -> Ref<List<i64>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
         once(&ONCE, || {
@@ -1332,6 +1366,7 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn m_spec_steps() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -1339,10 +1374,12 @@ pub mod tasks {
         })
     }
 
+    #[inline]
     pub fn spec_limit() -> i64 {
         2000000i64
     }
 
+    #[inline]
     pub fn m_over() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -1457,6 +1494,7 @@ pub mod tasks {
     }
 
     /// The draft's run's outcome, for the front.
+    #[inline]
     pub fn m_noted_x(text: Str, error: bool) -> () {
         if string_eq_p(text, str_lit("")) {
             ()
@@ -1565,6 +1603,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn m_interrupted_x(e: Mentry, now: i64) -> () {
         m_ended_x(e, st_interrupted(), now);
         parked_cleared_x(e.0)
@@ -1611,6 +1650,7 @@ pub mod tasks {
     // Running, by slices.
     /// A slice's deadline, if the session is live (a scripted one's slices
     /// are steps alone, so that it replays the same).
+    #[inline]
     pub fn slice_timed_x() -> () {
         if i64_gt_eq(get(m_slice_ns()), 0i64) {
             set(deadline(), i64_plus(clock(), get(m_slice_ns())))
@@ -1847,6 +1887,7 @@ pub mod tasks {
         kayak_rt::process::icell_get(c)
     }
 
+    #[inline]
     pub fn now_ms() -> i64 {
         i64_quotient(clock(), 1000000i64)
     }
@@ -2195,10 +2236,12 @@ pub mod tasks {
         }), new(-1i64), new(str_lit("")), timed, new(0i64), new(0i64))
     }
 
+    #[inline]
     pub fn f_say_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, s: Str) -> () {
         set(f.32, put(s, get(f.32)))
     }
 
+    #[inline]
     pub fn f_up_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, n: i64) -> () {
         if i64_gt(n, 0i64) {
             f_say_x(f, string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("A"))))
@@ -2207,6 +2250,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn f_down_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, n: i64) -> () {
         if i64_gt(n, 0i64) {
             f_say_x(f, string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("B"))))
@@ -2215,6 +2259,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn f_asked_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, q: &'static Asked) -> () {
         set(f.43, cons(q, get(f.43)))
     }
@@ -2276,6 +2321,7 @@ pub mod tasks {
     }
 
     // The note under the draft.
+    #[inline]
     pub fn f_noted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, text: Str, error: bool) -> () {
         set(f.0, text);
         set(f.1, error);
@@ -2362,6 +2408,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn f_printed_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, text: Str) -> () {
         f_printed_lines_x(f, lines_of(string_chars(text), nil::<char>(), nil::<Str>()))
     }
@@ -3331,6 +3378,7 @@ pub mod tasks {
     /// How long to wait for a key or news: long enough for a spinner's next
     /// frame if an entry is unfinished and the screen live, else until one
     /// comes.
+    #[inline]
     pub fn f_wait_ms<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>) -> i64 {
         if (get(f.22) && not(null_p(f_unfinished(get(f.25))))) {
             80i64
@@ -3344,6 +3392,7 @@ pub mod tasks {
         (get(f.42) || (get(f.30) && null_p(f_unfinished(get(f.25)))))
     }
 
+    #[inline]
     pub fn f_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, now: i64) -> () {
         let tagcase_ = write_out(f_screen_x(f, now));
         match *tagcase_ {
@@ -3396,6 +3445,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn front_failure(m: Str) -> &'static Relayed {
         from_front(front_failed(m))
     }
@@ -3517,6 +3567,7 @@ pub mod tasks {
         }
     }
 
+    #[inline]
     pub fn before_space(bs: List<i64>) -> List<i64> {
         if (null_p(bs) || i64_eq(car(bs), 32i64)) {
             nil::<i64>()

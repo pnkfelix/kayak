@@ -23,6 +23,7 @@ pub fn rnamed(f0: Str, f1: &'static Rcode) -> &'static Rnamed {
     kayak_rt::heap_alloc(Rnamed::Rnamed(f0, f1))
 }
 
+#[inline]
 pub fn cg_reg_codes() -> Ref<List<&'static Rnamed>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rnamed>>);
     once(&ONCE, || {
@@ -55,6 +56,7 @@ pub fn reg_code_of(mut xs: List<&'static Rnamed>, mut n: Str) -> List<&'static R
     }
 }
 
+#[inline]
 pub fn twin_word(t: &'static Twin) -> Str {
     let tagcase_ = t;
     match *tagcase_ {
@@ -107,6 +109,7 @@ pub fn r_env_of(g: &'static Rgen, inner: Cenv, leaf: bool) -> Renv {
 // at its `(`, the fast version's guards at `l`, the frame made at `a`, the
 // first parameters stored at `m`, `b` and `d`, any more at the last `a`.
 // `at` the lambda's position (none, 0).
+#[inline]
 pub fn entry_pos_x(g: &'static Rgen, at: i64, k: i64) -> () {
     if i64_gt(at, 0i64) {
         r_emit(g, ri_pos(i64_plus(at, k)))
@@ -234,6 +237,7 @@ pub fn r_register_body_as(t: &'static Twin, assuming: bool, assumed: Ref<Strings
     }
 }
 
+#[inline]
 pub fn twin_view(t: &'static Twin, assuming: bool, tail_leaves: bool) -> &'static Rview {
     let tagcase_ = t;
     match *tagcase_ {
@@ -266,6 +270,7 @@ pub fn r_register_body(t: &'static Twin, assuming: bool, assumed: Ref<Strings>, 
     }
 }
 
+#[inline]
 pub fn r_assemble(g: &'static Rgen) -> &'static Rcode {
     rcode(the::<Ritems>(reverse(get(g_items(g)))), get(g_mslot(g)))
 }
@@ -428,6 +433,7 @@ pub fn r_closure_free_p(mut x: &'static Cx) -> bool {
     }
 }
 
+#[inline]
 pub fn r_closure_free_all_p(es: Cxs) -> bool {
     (null_p(es) || (r_closure_free_p(car(es)) && r_closure_free_all_p(cdr(es))))
 }
@@ -707,6 +713,7 @@ pub fn r_twins_made_x(mut ts: List<&'static Twin>) -> () {
 }
 
 // The names a scope binds.
+#[inline]
 pub fn r_scope_names(e: Cenv) -> Strings {
     if null_p(e) {
         nil::<Str>()
@@ -720,6 +727,7 @@ pub fn r_scope_names(e: Cenv) -> Strings {
     }
 }
 
+#[inline]
 pub fn r_bind_names(bs: Cbinds) -> Strings {
     map(lambda1s(move |b: &'static Cbind| {
         let tagcase_ = b;

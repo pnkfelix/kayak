@@ -5,6 +5,7 @@ use kayak_rt::*;
 // Code made by Fixpt's arm64 encoder (`fx26:arm64.fx`, its `load-input`,
 // C116), as Fixpt has it, and run: `sub x0, x1, x2; ret`, and the same with
 // its operands the other way, `#x` literals besides.
+#[inline]
 pub fn here_p() -> bool {
     (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
 }
@@ -182,6 +183,7 @@ pub mod a64 {
 
     use super::made__input__631__arm64_types::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig, Arm64DirectSig};
 
+    #[inline]
     pub fn arm_pow2(n: Int) -> Int {
         arithmetic_shift(int_lit(1), n)
     }
@@ -195,6 +197,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_f(v: Int, shift: Int) -> Int {
         if _lt(v, int_lit(0)) {
             int_lit(-1)
@@ -203,6 +206,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_sum(a: Int, b: Int) -> Int {
         if (_lt(a, int_lit(0)) || _lt(b, int_lit(0))) {
             int_lit(-1)
@@ -211,14 +215,17 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_sum3(a: Int, b: Int, c: Int) -> Int {
         arm_sum(a, arm_sum(b, c))
     }
 
+    #[inline]
     pub fn arm_sum4(a: Int, b: Int, c: Int, d: Int) -> Int {
         arm_sum(a, arm_sum3(b, c, d))
     }
 
+    #[inline]
     pub fn arm_reg(x: Int) -> Int {
         if (_gt_eq(x, int_lit(0)) && _lt_eq(x, int_lit(31))) {
             x
@@ -227,6 +234,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_check(ok: bool, v: Int) -> Int {
         if ok {
             v
@@ -235,46 +243,57 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_in_p(v: Int, lo: Int, hi: Int) -> bool {
         (_gt_eq(v, lo) && _lt(v, hi))
     }
 
+    #[inline]
     pub fn arm_reg_at(x: Int, shift: Int) -> Int {
         arm_f(arm_reg(x), shift)
     }
 
+    #[inline]
     pub fn arm_simm_at(v: Int, bits: Int, shift: Int) -> Int {
         arm_f(arm_simm(v, bits), shift)
     }
 
+    #[inline]
     pub fn arm_n_t(op: Int, field: Int, n: Int, t: Int) -> Int {
         arm_sum4(op, field, arm_reg_at(n, int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_mem9(op: Int, t: Int, n: Int, imm: Int) -> Int {
         arm_n_t(op, arm_simm_at(imm, int_lit(9), int_lit(12)), n, t)
     }
 
+    #[inline]
     pub fn arm_ldr_post(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4164944896), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldr_pre(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4164946944), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_str_post(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4160750592), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_str_pre(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4160752640), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldur(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4164943872), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_stur(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4160749568), t, n, imm)
     }
@@ -283,18 +302,22 @@ pub mod a64 {
         arm_check((_eq(modulo(off, int_lit(8)), int_lit(0)) && _gt_eq(off, int_lit(0)) && _lt(off, int_lit(32768))), arm_n_t(op, arm_f(quotient(off, int_lit(8)), int_lit(10)), n, t))
     }
 
+    #[inline]
     pub fn arm_ldr(t: Int, n: Int, off: Int) -> Int {
         arm_mem12(int_lit(4181721088), t, n, off)
     }
 
+    #[inline]
     pub fn arm_str(t: Int, n: Int, off: Int) -> Int {
         arm_mem12(int_lit(4177526784), t, n, off)
     }
 
+    #[inline]
     pub fn arm_ldr_lit(t: Int, words: Int) -> Int {
         arm_sum3(int_lit(1476395008), arm_simm_at(words, int_lit(19), int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_ldr_reg(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(4167067648), arm_reg_at(m, int_lit(16)), n, t)
     }
@@ -304,82 +327,102 @@ pub mod a64 {
         arm_check(_eq(modulo(imm, int_lit(8)), int_lit(0)), arm_n_t(op, arm_sum(offset, arm_reg_at(t2, int_lit(10))), n, t))
     }
 
+    #[inline]
     pub fn arm_stp_pre(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2843738112), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldp_post(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2831155200), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_stp(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2835349504), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldp(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2839543808), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_imm12(op: Int, d: Int, n: Int, imm: Int) -> Int {
         arm_check(arm_in_p(imm, int_lit(0), int_lit(4096)), arm_n_t(op, arm_f(imm, int_lit(10)), n, d))
     }
 
+    #[inline]
     pub fn arm_add_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(2432696320), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_sub_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(3506438144), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_subs_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(4043309056), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_cmp_imm(n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(4043309056), int_lit(31), n, imm)
     }
 
+    #[inline]
     pub fn arm_reg3(op: Int, d: Int, n: Int, m: Int) -> Int {
         arm_n_t(op, arm_reg_at(m, int_lit(16)), n, d)
     }
 
+    #[inline]
     pub fn arm_add(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2332033024), d, n, m)
     }
 
+    #[inline]
     pub fn arm_sub(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3405774848), d, n, m)
     }
 
+    #[inline]
     pub fn arm_adds(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2868903936), d, n, m)
     }
 
+    #[inline]
     pub fn arm_subs(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3942645760), d, n, m)
     }
 
+    #[inline]
     pub fn arm_orr(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2852126720), d, n, m)
     }
 
+    #[inline]
     pub fn arm_cmp(n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3942645760), int_lit(31), n, m)
     }
 
+    #[inline]
     pub fn arm_mov(d: Int, m: Int) -> Int {
         arm_reg3(int_lit(2852126720), d, int_lit(31), m)
     }
 
+    #[inline]
     pub fn arm_low_mask(bits: Int) -> Int {
         arm_check(arm_in_p(bits, int_lit(1), int_lit(64)), arm_f(_minus(bits, int_lit(1)), int_lit(10)))
     }
 
+    #[inline]
     pub fn arm_and_low(d: Int, n: Int, bits: Int) -> Int {
         arm_n_t(int_lit(2453667840), arm_low_mask(bits), n, d)
     }
 
+    #[inline]
     pub fn arm_tst_low(n: Int, bits: Int) -> Int {
         arm_sum3(int_lit(4064280607), arm_low_mask(bits), arm_reg_at(n, int_lit(5)))
     }
@@ -389,22 +432,27 @@ pub mod a64 {
         arm_check((_lt(lsb, int_lit(64)) && _gt_eq(width, int_lit(1)) && _lt_eq(_plus(lsb, width), int_lit(64))), arm_n_t(int_lit(3544186880), arm_sum(immr, imms), n, d))
     }
 
+    #[inline]
     pub fn arm_shift_imm(op: Int, d: Int, n: Int, s: Int) -> Int {
         arm_check(arm_in_p(s, int_lit(0), int_lit(64)), arm_n_t(op, arm_f(s, int_lit(16)), n, d))
     }
 
+    #[inline]
     pub fn arm_asr_imm(d: Int, n: Int, s: Int) -> Int {
         arm_shift_imm(int_lit(2470509568), d, n, s)
     }
 
+    #[inline]
     pub fn arm_lsr_imm(d: Int, n: Int, s: Int) -> Int {
         arm_shift_imm(int_lit(3544251392), d, n, s)
     }
 
+    #[inline]
     pub fn arm_strb(t: Int, n: Int) -> Int {
         arm_sum3(int_lit(956301312), arm_reg_at(n, int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_csel(d: Int, n: Int, m: Int, c: Int) -> Int {
         arm_n_t(int_lit(2592079872), arm_sum(arm_reg_at(m, int_lit(16)), arm_f(c, int_lit(12))), n, d)
     }
@@ -413,10 +461,12 @@ pub mod a64 {
         arm_check((_gt_eq(imm16, int_lit(0)) && _lt(imm16, int_lit(65536)) && _gt_eq(hw, int_lit(0)) && _lt(hw, int_lit(4))), arm_sum4(op, arm_f(hw, int_lit(21)), arm_f(imm16, int_lit(5)), arm_reg(d)))
     }
 
+    #[inline]
     pub fn arm_movz(d: Int, imm16: Int, hw: Int) -> Int {
         arm_mov16(int_lit(3531603968), d, imm16, hw)
     }
 
+    #[inline]
     pub fn arm_movk(d: Int, imm16: Int, hw: Int) -> Int {
         arm_mov16(int_lit(4068474880), d, imm16, hw)
     }
@@ -442,138 +492,172 @@ pub mod a64 {
         the::<ArmCode>(kayak_rt::heap_cons(arm_movz(d, modulo(v, int_lit(65536)), int_lit(0)), ks(int_lit(1), v)))
     }
 
+    #[inline]
     pub fn arm_b(words: Int) -> Int {
         arm_sum(int_lit(335544320), arm_simm(words, int_lit(26)))
     }
 
+    #[inline]
     pub fn arm_bl(words: Int) -> Int {
         arm_sum(int_lit(2483027968), arm_simm(words, int_lit(26)))
     }
 
+    #[inline]
     pub fn arm_b_cond(c: Int, words: Int) -> Int {
         arm_sum3(int_lit(1409286144), arm_simm_at(words, int_lit(19), int_lit(5)), c)
     }
 
+    #[inline]
     pub fn arm_cbz(t: Int, words: Int) -> Int {
         arm_sum3(int_lit(3019898880), arm_simm_at(words, int_lit(19), int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_cbnz(t: Int, words: Int) -> Int {
         arm_sum3(int_lit(3036676096), arm_simm_at(words, int_lit(19), int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_br(n: Int) -> Int {
         arm_sum(int_lit(3592355840), arm_reg_at(n, int_lit(5)))
     }
 
+    #[inline]
     pub fn arm_blr(n: Int) -> Int {
         arm_sum(int_lit(3594452992), arm_reg_at(n, int_lit(5)))
     }
 
+    #[inline]
     pub fn arm_ret() -> Int {
         int_lit(3596551104)
     }
 
+    #[inline]
     pub fn arm_ldur_w(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(3091202048), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldurh(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(2017460224), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldurb(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(943718400), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_sturh(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(2013265920), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_sturb(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(939524096), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_stur_w(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(3087007744), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldr_x8(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(4167071744), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_ldr_w4(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(3093329920), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_ldrsw_4(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(3097524224), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_str_x8(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(4162877440), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_str_w4(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(3089135616), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_add_imm_pages(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(2436890624), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_sub_imm_pages(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(3510632448), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_adds_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(2969567232), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_add_lsl(d: Int, n: Int, m: Int, s: Int) -> Int {
         arm_check(arm_in_p(s, int_lit(0), int_lit(64)), arm_n_t(int_lit(2332033024), arm_sum(arm_reg_at(m, int_lit(16)), arm_f(s, int_lit(10))), n, d))
     }
 
+    #[inline]
     pub fn arm_cmp_sp(m: Int) -> Int {
         arm_sum(int_lit(3944768511), arm_reg_at(m, int_lit(16)))
     }
 
+    #[inline]
     pub fn arm_eor(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3388997632), d, n, m)
     }
 
+    #[inline]
     pub fn arm_and(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2315255808), d, n, m)
     }
 
+    #[inline]
     pub fn arm_sdiv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596277248), d, n, m)
     }
 
+    #[inline]
     pub fn arm_udiv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596276224), d, n, m)
     }
 
+    #[inline]
     pub fn arm_mul(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2600500224), d, n, m)
     }
 
+    #[inline]
     pub fn arm_smulh(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2604694528), d, n, m)
     }
 
+    #[inline]
     pub fn arm_lslv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596282368), d, n, m)
     }
 
+    #[inline]
     pub fn arm_lsrv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596283392), d, n, m)
     }
 
+    #[inline]
     pub fn arm_asrv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596284416), d, n, m)
     }
 
+    #[inline]
     pub fn arm_msub(d: Int, n: Int, m: Int, a: Int) -> Int {
         arm_n_t(int_lit(2600501248), arm_sum(arm_reg_at(m, int_lit(16)), arm_reg_at(a, int_lit(10))), n, d)
     }
@@ -595,6 +679,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_nop() -> Int {
         int_lit(3573751839)
     }
@@ -607,78 +692,97 @@ pub mod a64 {
         }, kayak_rt::heap_cons(arm_lsr_imm(t1, t1, int_lit(9)), kayak_rt::heap_cons(arm_ldr(t2, state, cards), kayak_rt::heap_cons(arm_add(t2, t2, t1), kayak_rt::heap_cons(arm_movz(t1, int_lit(1), int_lit(0)), kayak_rt::heap_cons(arm_strb(t1, t2), nil::<Int>()))))))
     }
 
+    #[inline]
     pub fn arm_fmov_to_d(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2657550336), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fmov_from_d(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2657484800), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fp2(op: Int, d: Int, n: Int, m: Int) -> Int {
         arm_n_t(_plus(int_lit(509609984), arithmetic_shift(op, int_lit(12))), arm_reg_at(m, int_lit(16)), n, d)
     }
 
+    #[inline]
     pub fn arm_fadd(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(2), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fsub(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(3), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fmul(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(0), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fdiv(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(1), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fp1(op: Int, d: Int, n: Int) -> Int {
         arm_n_t(_plus(int_lit(509624320), arithmetic_shift(op, int_lit(15))), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fabs(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(1), d, n)
     }
 
+    #[inline]
     pub fn arm_fneg(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(2), d, n)
     }
 
+    #[inline]
     pub fn arm_fsqrt(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(3), d, n)
     }
 
+    #[inline]
     pub fn arm_frintn(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(8), d, n)
     }
 
+    #[inline]
     pub fn arm_frintp(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(9), d, n)
     }
 
+    #[inline]
     pub fn arm_frintm(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(10), d, n)
     }
 
+    #[inline]
     pub fn arm_frintz(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(11), d, n)
     }
 
+    #[inline]
     pub fn arm_fcmp(n: Int, m: Int) -> Int {
         arm_sum3(int_lit(509616128), arm_reg_at(m, int_lit(16)), arm_reg_at(n, int_lit(5)))
     }
 
+    #[inline]
     pub fn arm_scvtf(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2657222656), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fcvtzs(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2658664448), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_single(w: Int) -> Int {
         if _lt(w, int_lit(0)) {
             int_lit(-1)
@@ -691,10 +795,12 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_fmov_to_s(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(505872384), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fmov_from_s(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(505806848), int_lit(0), n, d)
     }

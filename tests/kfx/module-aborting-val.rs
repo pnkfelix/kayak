@@ -12,6 +12,7 @@ pub mod strict {
     /// This module, given for a module type (C24).
     pub struct Module;
 
+    #[inline]
     pub fn check<'z>(t: Tag<i64, i64>, n: i64) -> Result<i64, Unwind> {
         if i64_lt(n, 0i64) {
             (return Err(unwind(t, n)))
@@ -27,6 +28,7 @@ pub mod lax {
     /// This module, given for a module type (C24).
     pub struct Module;
 
+    #[inline]
     pub fn check<'z>(t: Tag<i64, i64>, n: i64) -> Result<i64, Unwind> {
         if i64_lt(n, 0i64) {
             Ok(0i64)

@@ -12,35 +12,43 @@ use super::*;
 // subtag 9, its bits in the word's high half. Computed through KFX's `int`,
 // `f64` and `f32`, which are FX-26's.
 // fixpt-source: crates/fixpt-runtime/src/num.rs@1925bca
+#[inline]
 pub fn two_64() -> Int {
     arithmetic_shift(int_lit(1), int_lit(64))
 }
 
+#[inline]
 pub fn fix_max_int() -> Int {
     i64_to_int(fix_max())
 }
 
+#[inline]
 pub fn fix_min_int() -> Int {
     i64_to_int(fix_min())
 }
 
+#[inline]
 pub fn is_big_p(v: i64) -> bool {
     is_kind_p(v, k_bignum())
 }
 
+#[inline]
 pub fn is_integer_p(v: i64) -> bool {
     (is_fixnum_p(v) || is_big_p(v))
 }
 
+#[inline]
 pub fn is_flonum_p(v: i64) -> bool {
     is_kind_p(v, k_flonum())
 }
 
+#[inline]
 pub fn is_f32_p(v: i64) -> bool {
     (i64_eq(word_tag(v), t_immediate()) && i64_eq(i64_and(i64_shr(v, int_lit(3)), 31i64), sub_f32()))
 }
 
 /// A word's 64 bits, as an unsigned integer.
+#[inline]
 pub fn unsigned_int(w: i64) -> Int {
     if i64_lt(w, 0i64) {
         _plus(i64_to_int(w), two_64())
@@ -133,29 +141,35 @@ pub fn make_ratnum_x(num: i64, den: i64) -> i64 {
 }
 
 /// A flonum of a double's bits (`make_flonum`).
+#[inline]
 pub fn flonum_bits_x(bits: i64) -> i64 {
     let b = make_bloblet_x(k_flonum(), 0i64, 8i64, false, false);
     word_set_x(address(b), bits);
     b
 }
 
+#[inline]
 pub fn make_flonum_x(x: f64) -> i64 {
     flonum_bits_x(int_to_i64(u64_to_int(f64_to_bits(x))))
 }
 
+#[inline]
 pub fn flonum_of(v: i64) -> f64 {
     bits_to_f64(int_to_u64(unsigned_int(word_at(address(v)))))
 }
 
 /// An `f32` of a binary32's bits.
+#[inline]
 pub fn f32_bits(bits: i64) -> i64 {
     i64_or(i64_shl(bits, int_lit(32)), i64_or(i64_shl(sub_f32(), int_lit(3)), t_immediate()))
 }
 
+#[inline]
 pub fn f32_value(x: f32) -> i64 {
     f32_bits(int_to_i64(u32_to_int(f32_to_bits(x))))
 }
 
+#[inline]
 pub fn f32_of(v: i64) -> f32 {
     bits_to_f32(int_to_u32(i64_to_int(i64_and(i64_shr(v, int_lit(32)), 4294967295i64))))
 }

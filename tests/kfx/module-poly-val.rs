@@ -12,6 +12,7 @@ pub mod picks {
     /// This module, given for a module type (C24).
     pub struct Module;
 
+    #[inline]
     pub fn first_or<T: Copy + 'static>(xs: List<T>, d: T) -> T {
         if null_p(xs) {
             d
@@ -20,6 +21,7 @@ pub mod picks {
         }
     }
 
+    #[inline]
     pub fn pick<T: Copy + 'static, U: Copy + 'static>(b: bool, x: T, y: T, z: U) -> T {
         if b {
             x
@@ -46,6 +48,7 @@ pub mod lasts {
         }
     }
 
+    #[inline]
     pub fn pick<T: Copy + 'static, U: Copy + 'static>(b: bool, x: T, y: T, z: U) -> T {
         if b {
             y
@@ -65,6 +68,7 @@ pub fn both<Mod_M: Firsts>() -> Str {
     string_append(Mod_M::first_or(kayak_rt::heap_cons(str_lit("a"), kayak_rt::heap_cons(str_lit("b"), kayak_rt::nil())), str_lit("z")), string_append(i64_to_string(Mod_M::first_or(the::<List<i64>>(nil::<i64>()), 7i64)), Mod_M::pick(true, str_lit("p"), str_lit("q"), int_lit(0))))
 }
 
+#[inline]
 pub fn main() -> Str {
     string_append(both::<picks::Module>(), string_append(str_lit(" "), both::<lasts::Module>()))
 }

@@ -12,6 +12,7 @@ use super::*;
 // What the REPL keeps between forms: the checker's environment and how
 // many forms; the globals' names are the machine's (`machine-globals`,
 // vstage.kfx), which a session's add to too (C311).
+#[inline]
 pub fn repl_cv() -> Ref<&'static Cv> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Cv>);
     once(&ONCE, || {
@@ -19,6 +20,7 @@ pub fn repl_cv() -> Ref<&'static Cv> {
     })
 }
 
+#[inline]
 pub fn repl_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -86,6 +88,7 @@ pub fn repl_complete_p(text: Str) -> bool {
     }), cs) && complete_from(cs, 0i64, false, false))
 }
 
+#[inline]
 pub fn repl_banner() -> Str {
     str_lit("kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)")
 }
@@ -140,6 +143,7 @@ pub fn repl_start_x() -> () {
 
 // The modules the REPL's entries defined, `%exports` each, as a program's
 // lowering has them (`module-entries`, C313): what a `with` of one opens.
+#[inline]
 pub fn machine_modules() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -148,6 +152,7 @@ pub fn machine_modules() -> Ref<Strings> {
 }
 
 /// The modules' entries, `form`'s too, if it defines one.
+#[inline]
 pub fn entry_modules_x(form: &'static Sexp) -> Strings {
     set(machine_modules(), onto(get(machine_modules()), module_words(kayak_rt::heap_cons(form, kayak_rt::nil()), get(machine_modules()))));
     get(machine_modules())

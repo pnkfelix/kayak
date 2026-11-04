@@ -43,6 +43,7 @@ pub fn total(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(total(100i64))
 }

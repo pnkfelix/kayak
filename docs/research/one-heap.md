@@ -72,9 +72,13 @@ flat arrays (C327), module values (C328), eqtables (C329, tier 1's too),
 prompt tags and mark keys (C330). Every value the engine makes is now in
 Fixpt's form but its procedures (primitives, an immediate of its own;
 closures, constructors and continuations, objects of its own layout) and
-its frames: those reach compiled code through adapters (step 4). Then the engine's heap code shared with
-tier 1's (step 1's last part, which C318 found needs the two programs'
-regions joined: `@h` and `@c`, and tier 1's effect `cm` includes I/O).
+its frames: those reach compiled code through adapters (step 4). Step
+1's last part done (C331, C332): the engine is written over tier 1's heap
+(`cells/layout.kfx`, `cells/heap.kfx`, in its unit), sharing its spaces,
+its allocation's state, its collector, its symbols and its accessors; the
+engine's file of it is `fx26/vheap.kfx`, its region `@c` as tier 1's,
+and tier 1's heap takes a heap's effects (`cread`, `cwrite`, `calloc`), not
+`cm`, which has I/O. Next: step 2.
 
 1. **The engine's API over tier 1's heap, in the engine's own binary.**
    - The engine's unit loads `cells/layout.kfx` and `cells/heap.kfx`

@@ -120,6 +120,7 @@ pub fn start_summer(cells: Summing) -> Addr<Int> {
 
 // `par` of branches that hold and touch nothing another can write: on
 // threads, checked by rustc too (C102).
+#[inline]
 pub fn fib(n: Int) -> Int {
     if _lt(n, int_lit(2)) {
         n
@@ -140,12 +141,14 @@ pub fn fibs() -> Int {
 // another awaits (Fixpt's par.fx): in turn, the filling first, or at once
 // with `unsafe-par`.
 
+#[inline]
 pub fn fill_x(a: Array<Int>, shared: Array<Int>, k: Int) -> Int {
     array_set_x(a, int_lit(0), _star(k, array_ref(shared, int_lit(0))));
     array_set_x(a, int_lit(1), k);
     array_ref(shared, int_lit(0))
 }
 
+#[inline]
 pub fn fill_y(a: Array<Int>, shared: Array<Int>, k: Int) -> Int {
     array_set_x(a, int_lit(0), _star(k, array_ref(shared, int_lit(0))));
     array_set_x(a, int_lit(1), k);
@@ -163,6 +166,7 @@ pub fn dataflow() -> Int {
     }
 }
 
+#[inline]
 pub fn show(xs: List<Int>) -> Str {
     if null_p(xs) {
         str_lit("")

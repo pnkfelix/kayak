@@ -5,6 +5,7 @@ use kayak_rt::*;
 // Fixpt's programs/made-code/typed-calls.fx, as it is but its last three
 // forms, which main says (C116): a native procedure called in tail
 // position and not, given and called.
+#[inline]
 pub fn here_p() -> bool {
     (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
 }
@@ -23,15 +24,18 @@ pub fn adder() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
     kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b))
 }
 
+#[inline]
 pub fn via() -> Int {
     let g = adder();
     g(int_lit(20), int_lit(22))
 }
 
+#[inline]
 pub fn via2(g: &'static (dyn Fn(Int, Int) -> Int + Send + Sync)) -> Int {
     g(int_lit(20), int_lit(22))
 }
 
+#[inline]
 pub fn via3(g: &'static (dyn Fn(Int, Int) -> Int + Send + Sync)) -> Int {
     _plus(int_lit(1), g(int_lit(20), int_lit(21)))
 }

@@ -18,6 +18,7 @@ use super::*;
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
 // MESSAGE` on the standard error and status 1.
 
+#[inline]
 pub fn say(s: Str) -> () {
     let tagcase_ = write_out(s);
     match *tagcase_ {
@@ -30,6 +31,7 @@ pub fn say(s: Str) -> () {
     }
 }
 
+#[inline]
 pub fn fail_with(message: Str, status: Int) -> Void {
     write_err(string_append(str_lit("kayak-cells: "), string_append(message, str_lit("\n"))));
     match exit(status) {}
@@ -55,10 +57,12 @@ pub fn read_text(path: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn default_steps() -> i64 {
     20000000i64
 }
 
+#[inline]
 pub fn usage() -> Str {
     str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6;\n                       implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --slice-jitter J     each slice N to N+J polls, chosen deterministically\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\n  --profile            tier 1 only: the source lines and the words that\n                       ran the most cells, on the standard error (the\n                       lines from a listing of `kayak-fx26 --cells`)\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
 }

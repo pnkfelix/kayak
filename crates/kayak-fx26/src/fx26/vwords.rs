@@ -32,6 +32,7 @@ pub fn append_words_x(mut rev: i64, mut tail: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn checked_car(p: i64) -> i64 {
     if is_obj_p(p, ob_pair()) {
         pair_car(p)
@@ -41,6 +42,7 @@ pub fn checked_car(p: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn checked_cdr(p: i64) -> i64 {
     if is_obj_p(p, ob_pair()) {
         pair_cdr(p)
@@ -50,6 +52,7 @@ pub fn checked_cdr(p: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn one_word_x(kind: i64, w: i64) -> i64 {
     let p = alloc_x(kind, 1i64);
     obj_set_x(p, 0i64, w);
@@ -68,6 +71,7 @@ pub fn fill_x(mut p: i64, mut i: i64, mut n: i64, mut w: i64) -> () {
     }
 }
 
+#[inline]
 pub fn fill_unbound_x(p: i64, from: i64, n: i64) -> () {
     fill_x(p, from, i64_plus(from, n), w_unbound())
 }
@@ -83,10 +87,12 @@ pub fn filled_x(kind: i64, n: i64, w: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn filled_raw_x(kind: i64, n: i64, raw: i64) -> i64 {
     filled_x(kind, n, raw)
 }
 
+#[inline]
 pub fn element(p: i64, i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
         failed_with_x(str_lit("an index out of range"));
@@ -123,7 +129,7 @@ pub fn slots_filled_x(mut p: i64, mut i: i64, mut n: i64, mut w: i64) -> () {
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            slot_set_x(p, i, w);
+            bloblet_value_set_x(p, i, w);
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -141,12 +147,13 @@ pub fn array_filled_x(n: i64, w: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn array_element(p: i64, i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
         failed_with_x(str_lit("an index out of range"));
         0i64
     } else {
-        slot_ref(p, i)
+        bloblet_value(p, i)
     }
 }
 
@@ -155,7 +162,7 @@ pub fn array_element_set_x(p: i64, i: i64, w: i64) -> () {
         failed_with_x(str_lit("an index out of range"));
         ()
     } else {
-        slot_set_x(p, i, w)
+        bloblet_value_set_x(p, i, w)
     }
 }
 
@@ -164,7 +171,7 @@ pub fn slots_list_x(mut p: i64, mut i: i64, mut acc: i64) -> i64 {
         if i64_lt(i, 0i64) {
             return acc;
         } else {
-            (i, acc) = (i64_minus(i, 1i64), pair_x(slot_ref(p, i), acc));
+            (i, acc) = (i64_minus(i, 1i64), pair_x(bloblet_value(p, i), acc));
             continue;
         }
     }
@@ -175,13 +182,14 @@ pub fn slots_from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
         if i64_eq(xs, w_nil()) {
             return ();
         } else {
-            slot_set_x(p, i, pair_car(xs));
+            bloblet_value_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
             continue;
         }
     }
 }
 
+#[inline]
 pub fn list_bloblet_x(bytes: i64, xs: i64) -> i64 {
     let p = bloblet_alloc_x(list_count(xs, 0i64), bytes);
     slots_from_list_x(p, 0i64, xs);
@@ -189,6 +197,7 @@ pub fn list_bloblet_x(bytes: i64, xs: i64) -> i64 {
 }
 
 // Strings: Fixpt's (C320, words.kfx).
+#[inline]
 pub fn in_range_p(v: i64, i: i64) -> bool {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, raw_length(v))) {
         failed_with_x(str_lit("an index out of range"));
@@ -198,6 +207,7 @@ pub fn in_range_p(v: i64, i: i64) -> bool {
     }
 }
 
+#[inline]
 pub fn string_ref_w(s: i64, i: i64) -> i64 {
     if in_range_p(s, i) {
         immediate(imm_char(), char_at(s, i))
@@ -206,6 +216,7 @@ pub fn string_ref_w(s: i64, i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn string_set_w_x(s: i64, i: i64, cp: i64) -> () {
     if in_range_p(s, i) {
         char_set_x(s, i, cp)
@@ -214,6 +225,7 @@ pub fn string_set_w_x(s: i64, i: i64, cp: i64) -> () {
     }
 }
 
+#[inline]
 pub fn bytes_ref_w(b: i64, i: i64) -> i64 {
     if in_range_p(b, i) {
         byte_at(b, i)
@@ -222,6 +234,7 @@ pub fn bytes_ref_w(b: i64, i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn bytes_set_w_x(b: i64, i: i64, x: i64) -> () {
     if in_range_p(b, i) {
         byte_set_x(b, i, x)
@@ -230,7 +243,7 @@ pub fn bytes_set_w_x(b: i64, i: i64, x: i64) -> () {
     }
 }
 
-pub fn copied_into_x(mut to: i64, mut at: i64, mut from: i64, mut i: i64, mut n: i64) -> () {
+pub fn raw_copied_into_x(mut to: i64, mut at: i64, mut from: i64, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
             return ();
@@ -246,8 +259,8 @@ pub fn string_append_w_x(a: i64, b: i64) -> i64 {
     let n = string_length_w(a);
     let m = string_length_w(b);
     let p = string_alloc_x(i64_plus(n, m));
-    copied_into_x(p, 0i64, a, 0i64, n);
-    copied_into_x(p, n, b, 0i64, m);
+    raw_copied_into_x(p, 0i64, a, 0i64, n);
+    raw_copied_into_x(p, n, b, 0i64, m);
     p
 }
 
@@ -329,6 +342,7 @@ pub fn string_search_w(mut s: i64, mut sub: i64, mut from: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn char_string_x(c: i64) -> i64 {
     let p = string_alloc_x(1i64);
     char_set_x(p, 0i64, immediate_value(c));
@@ -358,6 +372,7 @@ pub fn chars_from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
     }
 }
 
+#[inline]
 pub fn list_string_x(xs: i64) -> i64 {
     let p = string_alloc_x(list_count(xs, 0i64));
     chars_from_list_x(p, 0i64, xs);
@@ -420,6 +435,7 @@ pub fn int_text_x(w: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn text_room(w: i64) -> i64 {
     if fixnum_p(w) {
         the::<i64>(24i64)
@@ -440,6 +456,7 @@ pub fn int_room(a: i64, b: i64) -> i64 {
     }))
 }
 
+#[inline]
 pub fn int_room_mul(a: i64, b: i64) -> i64 {
     i64_plus(8i64, i64_star(2i64, int_room(a, b)))
 }
@@ -463,6 +480,7 @@ pub fn same_chars_p(a: i64, b: i64, i: i64) -> bool {
     (i64_gt_eq(i, raw_length(a)) || (i64_eq(raw_ref(a, i), raw_ref(b, i)) && same_chars_p(a, b, i64_plus(i, 1i64))))
 }
 
+#[inline]
 pub fn raw_equal_p(a: i64, b: i64, i: i64) -> bool {
     (i64_eq(raw_length(a), raw_length(b)) && same_chars_p(a, b, i))
 }
@@ -515,10 +533,12 @@ pub fn bytes_copy_x(b: i64, start: i64, end: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn fourth_arg(xs: i64) -> i64 {
     pair_car(pair_cdr(pair_cdr(pair_cdr(xs))))
 }
 
+#[inline]
 pub fn fifth_arg(xs: i64) -> i64 {
     pair_car(pair_cdr(pair_cdr(pair_cdr(pair_cdr(xs)))))
 }
@@ -626,6 +646,7 @@ pub fn word_kfx_bytes(p: i64) -> Bytes {
     bv
 }
 
+#[inline]
 pub fn sum_word_x(tag: Str, w: i64) -> i64 {
     sum_made_x(symbol_word(intern_x(tag)), w)
 }
@@ -643,6 +664,7 @@ pub fn utf8_word_x(p: i64) -> i64 {
 }
 
 // The labels of `io-error`'s product, a range of `kids`, made at loading.
+#[inline]
 pub fn io_error_labels() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -689,6 +711,7 @@ pub fn io_error_word_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permis
 
 // Output a program writes while the REPL runs it (live-repl.kfx): kept for
 // its entry, not written.
+#[inline]
 pub fn capturing() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -696,6 +719,7 @@ pub fn capturing() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn captured() -> Ref<Chars> {
     kayak_rt::kept_constant!(ONCE: Ref<Chars>);
     once(&ONCE, || {
@@ -704,6 +728,7 @@ pub fn captured() -> Ref<Chars> {
 }
 
 /// What `write-out` does in the REPL: kept for the entry running, if one is.
+#[inline]
 pub fn capture_x(s: Str) -> bool {
     if get(capturing()) {
         set(captured(), put(s, get(captured())));
@@ -713,6 +738,7 @@ pub fn capture_x(s: Str) -> bool {
     }
 }
 
+#[inline]
 pub fn written_word_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
     let tagcase_ = r;
     match *tagcase_ {
@@ -725,6 +751,7 @@ pub fn written_word_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'
     }
 }
 
+#[inline]
 pub fn strings_word_x(ss: Strings) -> i64 {
     if null_p(ss) {
         w_nil()
@@ -745,10 +772,12 @@ pub fn strings_room(mut ss: Strings, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn args_room() -> i64 {
     strings_room(get(program_args()), 8i64)
 }
 
+#[inline]
 pub fn pending_line() -> Ref<&'static Sum_4line_3eof_6failed<Str, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4line_3eof_6failed<Str, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -756,6 +785,7 @@ pub fn pending_line() -> Ref<&'static Sum_4line_3eof_6failed<Str, (), Product_4k
     })
 }
 
+#[inline]
 pub fn pending_file() -> Ref<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -763,6 +793,7 @@ pub fn pending_file() -> Ref<&'static Sum_4data_6failed<Bytes, Product_4kind_6de
     })
 }
 
+#[inline]
 pub fn pending_names() -> Ref<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -828,6 +859,7 @@ pub fn failure_detail() -> Str {
 
 // The line read where its room is found: its length (-1 the end, -2 a
 // failure, its kind and detail kept).
+#[inline]
 pub fn pending_points() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -835,6 +867,7 @@ pub fn pending_points() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn pending_kind() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -842,6 +875,7 @@ pub fn pending_kind() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn pending_detail() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
@@ -849,6 +883,7 @@ pub fn pending_detail() -> Ref<Str> {
     })
 }
 
+#[inline]
 pub fn failure_pended_x() -> i64 {
     set(pending_kind(), int_to_i64(failure_kind()));
     set(pending_detail(), failure_detail());
@@ -895,7 +930,7 @@ pub fn read_line_word_x() -> i64 {
     let n = get(pending_points());
     if i64_gt_eq(n, 0i64) {
         let p = string_alloc_x(n);
-        take_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), int_lit(2));
+        take_points(get(mem()), i64_to_int(i64_plus(address(p), 1i64)), int_lit(2));
         sum_word_x(str_lit("line"), p)
     } else if i64_eq(n, -1i64) {
         sum_word_x(str_lit("eof"), w_unit())
@@ -908,7 +943,7 @@ pub fn read_line_word_x() -> i64 {
 // error (2): `done`, or the failure (its room found before, as a write's
 // is not: a failure's is made after, a rare path).
 pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
-    if i64_eq(int_to_i64(write_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), i64_to_int(raw_length(p)), int_lit(2), i64_to_int(stream))), 0i64) {
+    if i64_eq(int_to_i64(write_points(get(mem()), i64_to_int(i64_plus(address(p), 1i64)), i64_to_int(raw_length(p)), int_lit(2), i64_to_int(stream))), 0i64) {
         sum_word_x(str_lit("done"), w_unit())
     } else {
         failure_pended_x();
@@ -918,6 +953,7 @@ pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
 
 // The rest of FX-26's I/O (C232), as `read-line`: done where its room is
 // found, which a failure's detail sizes, its value made after.
+#[inline]
 pub fn pending_byte() -> Ref<&'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -925,6 +961,7 @@ pub fn pending_byte() -> Ref<&'static Sum_4byte_3eof_6failed<u8, (), Product_4ki
     })
 }
 
+#[inline]
 pub fn pending_count() -> Ref<&'static Sum_5count_3eof_6failed<Int, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_5count_3eof_6failed<Int, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -932,6 +969,7 @@ pub fn pending_count() -> Ref<&'static Sum_5count_3eof_6failed<Int, (), Product_
     })
 }
 
+#[inline]
 pub fn pending_bytes() -> Ref<Bytes> {
     kayak_rt::kept_constant!(ONCE: Ref<Bytes>);
     once(&ONCE, || {
@@ -939,6 +977,7 @@ pub fn pending_bytes() -> Ref<Bytes> {
     })
 }
 
+#[inline]
 pub fn pending_term() -> Ref<&'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -946,6 +985,7 @@ pub fn pending_term() -> Ref<&'static Sum_4done_14not_a_terminal_6failed<(), (),
     })
 }
 
+#[inline]
 pub fn pending_size() -> Ref<&'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -954,6 +994,7 @@ pub fn pending_size() -> Ref<&'static Sum_4size_14not_a_terminal_6failed<Product
 }
 
 // The labels of `terminal-size`'s product, made at loading.
+#[inline]
 pub fn size_labels() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -961,6 +1002,7 @@ pub fn size_labels() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn failure_room(e: Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>) -> i64 {
     i64_plus(32i64, string_length_i64(e.1))
 }
@@ -1126,6 +1168,7 @@ pub fn size_word_x() -> i64 {
 
 // `file-info` and `read-symlink` (C293), as `terminal-size`: asked when
 // their room is, made after.
+#[inline]
 pub fn pending_info() -> Ref<&'static Sum_4info_6failed<Product_4kind_4size_8modified_4mode<&'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>, Int, Int, Int>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4info_6failed<Product_4kind_4size_8modified_4mode<&'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>, Int, Int, Int>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -1133,6 +1176,7 @@ pub fn pending_info() -> Ref<&'static Sum_4info_6failed<Product_4kind_4size_8mod
     })
 }
 
+#[inline]
 pub fn pending_target() -> Ref<&'static Sum_6target_6failed<Str, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_6target_6failed<Str, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -1141,6 +1185,7 @@ pub fn pending_target() -> Ref<&'static Sum_6target_6failed<Str, Product_4kind_6
 }
 
 // The labels of `file-info`'s product, made at loading.
+#[inline]
 pub fn info_labels() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -1204,6 +1249,7 @@ pub fn link_room_x(path: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn read_symlink_word_x() -> i64 {
     let tagcase_ = get(pending_target());
     match *tagcase_ {
@@ -1219,6 +1265,7 @@ pub fn read_symlink_word_x() -> i64 {
 // Programs run beside this one (C295): what `process-start` and
 // `process-output` answer, asked when their room is, made after; the rest
 // small, made at once.
+#[inline]
 pub fn pending_started() -> Ref<&'static Sum_7started_6failed<Int, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_7started_6failed<Int, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
@@ -1226,6 +1273,7 @@ pub fn pending_started() -> Ref<&'static Sum_7started_6failed<Int, Product_4kind
     })
 }
 
+#[inline]
 pub fn pending_output() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
@@ -1233,6 +1281,7 @@ pub fn pending_output() -> Ref<Str> {
     })
 }
 
+#[inline]
 pub fn word_strings(w: i64) -> Strings {
     if i64_eq(w, w_nil()) {
         nil::<Str>()
@@ -1254,6 +1303,7 @@ pub fn started_room_x(argv: i64, dir: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn started_word_x() -> i64 {
     let tagcase_ = get(pending_started());
     match *tagcase_ {
@@ -1266,6 +1316,7 @@ pub fn started_word_x() -> i64 {
     }
 }
 
+#[inline]
 pub fn output_room_x(p: i64) -> i64 {
     set(pending_output(), process_output(word_int(p)));
     i64_plus(8i64, string_length_i64(get(pending_output())))
@@ -1317,6 +1368,7 @@ pub fn file_room_x(path: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn read_file_word_x(path: i64) -> i64 {
     let tagcase_ = get(pending_file());
     match *tagcase_ {
@@ -1342,6 +1394,7 @@ pub fn dir_room_x(path: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn list_dir_word_x(path: i64) -> i64 {
     let tagcase_ = get(pending_names());
     match *tagcase_ {

@@ -23,11 +23,13 @@ pub mod made__load__1__loaded_bloblet_family {
 
     pub type Counts = &'static Bloblet<(std::cell::Cell<Score>,)>;
 
+    #[inline]
     pub fn bump(c: Counts) -> i64 {
         { let blob__ = c; blob__.fields.0.set(i64_plus((c).fields.0.get(), 1i64)); kayak_rt::bloblet_written(blob__, 0) };
         (c).fields.0.get()
     }
 
+    #[inline]
     pub fn fresh() -> Counts {
         the::<Counts>(make_bloblet(int_lit(0), (std::cell::Cell::new(41i64),)))
     }
@@ -39,6 +41,7 @@ pub mod u {
     pub use super::made__load__1__loaded_bloblet_family::{bump, fresh, Score, Counts};
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(u::bump(u::fresh()))
 }

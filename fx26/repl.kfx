@@ -7,8 +7,8 @@
 "What the REPL keeps between forms: the checker's environment and how
  many forms; the globals' names are the machine's (`machine-globals`,
  vstage.kfx), which a session's add to too (C311)."
-(define repl-cv (ref cv @h) (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil)))
-(define repl-count (ref i64 @h) (new 0))
+(define repl-cv (ref cv @c) (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil)))
+(define repl-count (ref i64 @c) (new 0))
 
 (define-rec
   (complete-from (subr kfx ((listof char acyclic) i64 bool bool) bool)
@@ -43,7 +43,7 @@
 
 "Globals: their array grown as definitions come."
 (define-rec
-  (globals-grown! (subr running ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
+  (globals-grown! (subr running ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
     (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (globals-grown! from to (i64+ i 1) n))))))
 
 (define globals-room! (subr running (strings) unit)
@@ -52,8 +52,8 @@
     (let ((n (size gs)) (old (get globals)))
       (if (i64<= n (flatarray-length-i64 old))
           #u
-          (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* (i64+ n 1) 2) w-unbound)))
-                (names (the (arrayof string @h) (make-array (i64->int (i64* (i64+ n 1) 2)) ""))))
+          (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* (i64+ n 1) 2) w-unbound)))
+                (names (the (arrayof string @c) (make-array (i64->int (i64* (i64+ n 1) 2)) ""))))
             (begin
               (globals-grown! old bigger 0 (flatarray-length-i64 old))
               (set globals bigger)
@@ -78,7 +78,7 @@
 
 "The modules the REPL's entries defined, `%exports` each, as a program's
  lowering has them (`module-entries`, C313): what a `with` of one opens."
-(define machine-modules (ref strings @h) (new nil))
+(define machine-modules (ref strings @c) (new nil))
 
 (define entry-modules! (subr running (sexp) strings)
   (lambda (form)

@@ -29,14 +29,17 @@ pub fn binder_name(p: &'static Sexp) -> Str {
     }
 }
 
+#[inline]
 pub fn read_one(text: Str) -> &'static Sexp {
     car(read_all(string_chars(text), str_lit(""), 1i64))
 }
 
+#[inline]
 pub fn sx(xs: Sexps) -> &'static Sexp {
     lst(xs, str_lit(""), 0i64, 0i64)
 }
 
+#[inline]
 pub fn sy(n: Str) -> &'static Sexp {
     sym(n, str_lit(""), 0i64)
 }
@@ -47,10 +50,12 @@ pub fn guarded_bind(t: Str, e: &'static Sexp, test: &'static Sexp, arm: &'static
     sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(e, kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(test, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(items(arm)), kayak_rt::heap_cons(sy(t), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(items(arm)), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
 }
 
+#[inline]
 pub fn member_of_p(x: Str, xs: Strings) -> bool {
     string_member_p(x, xs)
 }
 
+#[inline]
 pub fn process_heads() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -58,10 +63,12 @@ pub fn process_heads() -> Strings {
     })
 }
 
+#[inline]
 pub fn lib_op(name: Str) -> &'static Sexp {
     sx(kayak_rt::heap_cons(sy(str_lit("with")), kayak_rt::heap_cons(sy(str_lit("%processes")), kayak_rt::heap_cons(sy(name), kayak_rt::nil()))))
 }
 
+#[inline]
 pub fn thunk_of(e: &'static Sexp) -> &'static Sexp {
     sx(kayak_rt::heap_cons(sy(str_lit("lambda")), kayak_rt::heap_cons(sx(nil::<&'static Sexp>()), kayak_rt::heap_cons(e, kayak_rt::nil()))))
 }
@@ -233,6 +240,7 @@ pub fn fresh_from(mut base: Str, mut taken: Strings, mut i: i64) -> Str {
 
 /// An expansion's own variable, named for what its form `e` does not
 /// mention (C214; Fixpt's `fresh_name`): `base`, else `base1`, ...
+#[inline]
 pub fn fresh_for(base: Str, e: &'static Sexp) -> Str {
     fresh_from(base, names_in(e), 0i64)
 }
@@ -390,6 +398,7 @@ pub fn reverse_strs(mut xs: Strings, mut acc: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn spaced_words(s: Str) -> Strings {
     words_from(string_chars(s), nil::<char>(), nil::<Str>())
 }
@@ -441,20 +450,24 @@ pub fn fact_at(mut key: Str, mut what: Str, mut gs: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn key_of(e: &'static Sexp) -> Str {
     string_append(datum_file(e), string_append(str_lit(":"), i64_to_string(datum_pos(e))))
 }
 
 // What fails when it runs, saying `why`: what is lowered with facts the
 // checker did not give (a REPL's draft tried, C328).
+#[inline]
 pub fn failed_if_run(why: Str) -> &'static Ir {
     i_call(i_lit(v_prim(str_lit("error"), 1i64)), kayak_rt::heap_cons(i_lit(v_string(why)), kayak_rt::nil()))
 }
 
+#[inline]
 pub fn lit_int(w: Str) -> &'static Ir {
     i_lit(v_int(i64_to_int(string_to_i64(w))))
 }
 
+#[inline]
 pub fn second_ir(xs: Irs) -> &'static Ir {
     car(cdr(xs))
 }
@@ -560,6 +573,7 @@ pub fn include_exports(f: &'static Sexp, gs: Strings) -> Strings {
 // An `include` of a module an expression makes, not one named (C221): its
 // names those the checker noted it gives (`%with-at`), its value kept in a
 // hidden name of its place.
+#[inline]
 pub fn include_named_p(f: &'static Sexp) -> bool {
     let tagcase_ = second(items(f));
     match *tagcase_ {
@@ -573,10 +587,12 @@ pub fn include_named_p(f: &'static Sexp) -> bool {
     }
 }
 
+#[inline]
 pub fn include_hidden(f: &'static Sexp) -> Str {
     string_append(str_lit("%incl "), key_of(second(items(f))))
 }
 
+#[inline]
 pub fn include_names(f: &'static Sexp, gs: Strings) -> Strings {
     if include_named_p(f) {
         include_exports(f, gs)
@@ -591,6 +607,7 @@ pub fn include_names(f: &'static Sexp, gs: Strings) -> Strings {
 // `NAME`, a procedure calling `%syscallN` with its label, host name and
 // canonical type. `found`, the checker's fact: its arguments, then its
 // type's text. (Each `(define name value)`, typeless: the engine's are.)
+#[inline]
 pub fn syscall_params(i: i64, n: i64) -> Sexps {
     if i64_gt(i, n) {
         nil::<&'static Sexp>()
@@ -835,6 +852,7 @@ pub fn after_point(mut cs: List<char>, mut n: i64, mut seen: bool) -> i64 {
     }
 }
 
+#[inline]
 pub fn ten_to(k: i64) -> Int {
     if i64_lt_eq(k, 0i64) {
         int_lit(1)
@@ -978,6 +996,7 @@ pub fn moduleof_names(forms: Sexps) -> Strings {
 }
 
 // Where a form is written, `file:line`, for a lambda's backtrace line.
+#[inline]
 pub fn form_place(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
@@ -992,6 +1011,7 @@ pub fn form_place(e: &'static Sexp) -> Str {
 }
 
 // A lambda given the name it is bound to; anything else as it is.
+#[inline]
 pub fn named(n: Str, e: &'static Ir) -> &'static Ir {
     let tagcase_ = e;
     match *tagcase_ {
@@ -1048,6 +1068,7 @@ pub fn fact_in(mut k: Str, mut fs: Strings) -> Strings {
 
 /// The words of the checker's fact `what` (`module-arg ` and the others)
 /// at `e`, if any.
+#[inline]
 pub fn mfact(sc: Scope, e: &'static Sexp, what: Str) -> Strings {
     if string_eq_p(datum_file(e), str_lit("")) {
         nil::<Str>()
@@ -1056,6 +1077,7 @@ pub fn mfact(sc: Scope, e: &'static Sexp, what: Str) -> Strings {
     }
 }
 
+#[inline]
 pub fn same_words_p(a: Strings, b: Strings) -> bool {
     string_eq_p(words_of(a), words_of(b))
 }
@@ -1158,6 +1180,7 @@ pub fn lower_plain(e: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
     }
 }
 
+#[inline]
 pub fn lower_all(es: Sexps, sc: Scope, gs: Strings) -> Irs {
     if null_p(es) {
         nil::<&'static Ir>()
@@ -1866,6 +1889,7 @@ pub fn lower_tops_in(forms: Sexps, gs: Strings, sc0: Scope) -> List<&'static Top
     }
 }
 
+#[inline]
 pub fn lower_tops(forms: Sexps, gs: Strings) -> List<&'static Top> {
     lower_tops_in(forms, gs, top_scope(gs))
 }
@@ -1897,6 +1921,7 @@ pub fn with_entries(fs: Facts) -> Strings {
 }
 
 /// The globals' names' entries for modules: `%exports`, and `%any-module`.
+#[inline]
 pub fn module_entries(forms: Sexps) -> Strings {
     onto(module_words(forms, nil::<Str>()), kayak_rt::heap_cons(concat_words(kayak_rt::heap_cons(str_lit("%any-module"), moduleof_names(forms))), kayak_rt::nil()))
 }

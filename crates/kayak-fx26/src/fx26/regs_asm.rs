@@ -126,6 +126,7 @@ pub fn rpadded(mut s: Str, mut n: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn rline(at: i64, text: Str) -> Str {
     string_append(str_lit("  "), string_append(rpadded(i64_to_string(at), 6i64), string_append(str_lit(": "), text)))
 }

@@ -99,6 +99,7 @@ pub fn drain(mut s: &'static Step, mut total: i64) -> i64 {
 
 /// A binding hides a parameter: the call under it stays a call, so
 /// shallow, but still right.
+#[inline]
 pub fn shadowed(n: i64, acc: i64) -> i64 {
     if i64_eq(n, 0i64) {
         acc

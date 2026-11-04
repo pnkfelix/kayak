@@ -125,14 +125,17 @@ pub type Rlocs = List<&'static Rloc>;
 // inlined body's, as when it was defined); `%const:G`, global `G`'s value
 // a fast version folds; `%inlining:G`, a procedure whose body is being
 // inlined, and so not inlined again inside it.
+#[inline]
 pub fn genv_name() -> Str {
     str_lit("%genv")
 }
 
+#[inline]
 pub fn const_name(g: Str) -> Str {
     string_append(str_lit("%const:"), g)
 }
 
+#[inline]
 pub fn inlining_name(g: Str) -> Str {
     string_append(str_lit("%inlining:"), g)
 }
@@ -147,6 +150,7 @@ pub fn rbind(f0: Str, f1: &'static Rloc) -> &'static Rbind {
 
 pub type Renv = List<&'static Rbind>;
 
+#[inline]
 pub fn r_bind(n: Str, l: &'static Rloc, env: Renv) -> Renv {
     kayak_rt::heap_cons(rbind(n, l), env)
 }
@@ -178,6 +182,7 @@ pub fn r_local_loc(mut env: Renv, mut n: Str) -> Rlocs {
 }
 
 // The register a place is, or 0.
+#[inline]
 pub fn r_reg_of(l: Rlocs) -> i64 {
     if null_p(l) {
         0i64
@@ -206,6 +211,7 @@ pub fn rmove(f0: i64, f1: i64) -> &'static Rmove {
 
 pub type Rmoves = List<&'static Rmove>;
 
+#[inline]
 pub fn move_from(m: &'static Rmove) -> i64 {
     let tagcase_ = m;
     match *tagcase_ {
@@ -215,6 +221,7 @@ pub fn move_from(m: &'static Rmove) -> i64 {
     }
 }
 
+#[inline]
 pub fn move_to(m: &'static Rmove) -> i64 {
     let tagcase_ = m;
     match *tagcase_ {
@@ -331,6 +338,7 @@ pub fn moves_cycle_p(ms: Rmoves) -> bool {
     })
 }
 
+#[inline]
 pub fn moves_snoc(ms: Rmoves, s: i64, d: i64) -> Rmoves {
     if null_p(ms) {
         kayak_rt::heap_cons(rmove(s, d), kayak_rt::nil())

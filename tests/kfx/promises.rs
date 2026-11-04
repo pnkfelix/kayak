@@ -20,6 +20,7 @@ pub type Tasks = List<Task>;
 
 pub type Promise = Ref<&'static Sum_7pending_8resolved<Tasks, i64>>;
 
+#[inline]
 pub fn sched() -> Tag<(), &'static dyn Fn() -> ()> {
     kayak_rt::kept_constant!(ONCE: Tag<(), &'static dyn Fn() -> ()>);
     once(&ONCE, || {
@@ -27,6 +28,7 @@ pub fn sched() -> Tag<(), &'static dyn Fn() -> ()> {
     })
 }
 
+#[inline]
 pub fn queue() -> Ref<Tasks> {
     kayak_rt::kept_constant!(ONCE: Ref<Tasks>);
     once(&ONCE, || {
@@ -34,6 +36,7 @@ pub fn queue() -> Ref<Tasks> {
     })
 }
 
+#[inline]
 pub fn log() -> Ref<List<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
     once(&ONCE, || {
@@ -52,6 +55,7 @@ pub fn reverse_tasks(mut xs: Tasks, mut acc: Tasks) -> Tasks {
     }
 }
 
+#[inline]
 pub fn enqueue_x(k: Task) -> () {
     set(queue(), reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(queue()), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
 }
@@ -150,6 +154,7 @@ pub async fn spawn_x(thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) ->
     })
 }
 
+#[inline]
 pub fn fut() -> Promise {
     kayak_rt::kept_constant!(ONCE: Promise);
     once(&ONCE, || {
@@ -157,10 +162,12 @@ pub fn fut() -> Promise {
     })
 }
 
+#[inline]
 pub fn note_x(x: i64) -> () {
     set(log(), kayak_rt::heap_cons(x, get(log())))
 }
 
+#[inline]
 pub fn show(xs: List<i64>) -> Str {
     if null_p(xs) {
         str_lit("")

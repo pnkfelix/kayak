@@ -17,6 +17,7 @@ pub fn words(xs: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn show(x: f64) -> Str {
     f64_to_string(x)
 }

@@ -23,7 +23,10 @@ regs-gen.kfx
 regs-entry.kfx
 cg-top.kfx
 listing.kfx
-heap.kfx
+; Tier 1's heap, which the engine's is written over (C332).
+../cells/layout.kfx
+../cells/heap.kfx
+vheap.kfx
 words.kfx
 table.kfx
 vwords.kfx

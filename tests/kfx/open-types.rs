@@ -8,10 +8,12 @@ use kayak_rt::*;
 // whose parameter is named as the closure's (`a-0`, `a_0`; the closure's
 // is `a__0`).
 
+#[inline]
 pub fn mk<A: Copy + 'static>() -> List<A> {
     nil::<A>()
 }
 
+#[inline]
 pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
     Ok(f(x)?)
 }

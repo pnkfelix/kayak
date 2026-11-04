@@ -26,896 +26,1117 @@ pub fn pdef(f0: Str, f1: i64, f2: i64, f3: i64) -> &'static Pdef {
 // The operations. Families: the fixed widths' from `o-fixed` (32 to a
 // width, `i8` `u8` `i32` `u32` `i64` `u64`), `f64`'s from `o-f64`, `f32`'s
 // from `o-f32`.
+#[inline]
 pub fn o_list() -> i64 {
     1i64
 }
 
+#[inline]
 pub fn o_make_box() -> i64 {
     2i64
 }
 
+#[inline]
 pub fn o_region_enter() -> i64 {
     3i64
 }
 
+#[inline]
 pub fn o_region_exit() -> i64 {
     4i64
 }
 
+#[inline]
 pub fn o_region_cons() -> i64 {
     5i64
 }
 
+#[inline]
 pub fn o_make_frozen() -> i64 {
     6i64
 }
 
+#[inline]
 pub fn o_mul() -> i64 {
     7i64
 }
 
+#[inline]
 pub fn o_quotient() -> i64 {
     8i64
 }
 
+#[inline]
 pub fn o_remainder() -> i64 {
     9i64
 }
 
+#[inline]
 pub fn o_zero() -> i64 {
     10i64
 }
 
+#[inline]
 pub fn o_set_car() -> i64 {
     11i64
 }
 
+#[inline]
 pub fn o_set_cdr() -> i64 {
     12i64
 }
 
+#[inline]
 pub fn o_length() -> i64 {
     13i64
 }
 
+#[inline]
 pub fn o_pair() -> i64 {
     14i64
 }
 
+#[inline]
 pub fn o_exact_integer() -> i64 {
     15i64
 }
 
+#[inline]
 pub fn o_nat() -> i64 {
     16i64
 }
 
+#[inline]
 pub fn o_list_copy() -> i64 {
     17i64
 }
 
+#[inline]
 pub fn o_boolean() -> i64 {
     18i64
 }
 
+#[inline]
 pub fn o_null() -> i64 {
     19i64
 }
 
+#[inline]
 pub fn o_int_less() -> i64 {
     20i64
 }
 
+#[inline]
 pub fn o_int_eq() -> i64 {
     21i64
 }
 
+#[inline]
 pub fn o_add() -> i64 {
     22i64
 }
 
+#[inline]
 pub fn o_sub() -> i64 {
     23i64
 }
 
+#[inline]
 pub fn o_modulo() -> i64 {
     24i64
 }
 
+#[inline]
 pub fn o_max() -> i64 {
     25i64
 }
 
+#[inline]
 pub fn o_min() -> i64 {
     26i64
 }
 
+#[inline]
 pub fn o_shift() -> i64 {
     27i64
 }
 
+#[inline]
 pub fn o_bit_and() -> i64 {
     28i64
 }
 
+#[inline]
 pub fn o_bit_ior() -> i64 {
     29i64
 }
 
+#[inline]
 pub fn o_bit_xor() -> i64 {
     30i64
 }
 
+#[inline]
 pub fn o_bit_not() -> i64 {
     31i64
 }
 
+#[inline]
 pub fn o_number_string() -> i64 {
     32i64
 }
 
+#[inline]
 pub fn o_fixnum() -> i64 {
     33i64
 }
 
+#[inline]
 pub fn o_int_f64() -> i64 {
     34i64
 }
 
+#[inline]
 pub fn o_int_f32() -> i64 {
     35i64
 }
 
+#[inline]
 pub fn o_f64_f32() -> i64 {
     36i64
 }
 
+#[inline]
 pub fn o_f64_bits() -> i64 {
     37i64
 }
 
+#[inline]
 pub fn o_bits_f64() -> i64 {
     38i64
 }
 
+#[inline]
 pub fn o_f32_bits() -> i64 {
     39i64
 }
 
+#[inline]
 pub fn o_bits_f32() -> i64 {
     40i64
 }
 
+#[inline]
 pub fn o_append() -> i64 {
     41i64
 }
 
+#[inline]
 pub fn o_reverse() -> i64 {
     42i64
 }
 
+#[inline]
 pub fn o_list_vector() -> i64 {
     43i64
 }
 
+#[inline]
 pub fn o_append_list() -> i64 {
     44i64
 }
 
+#[inline]
 pub fn o_length_is() -> i64 {
     45i64
 }
 
+#[inline]
 pub fn o_first() -> i64 {
     46i64
 }
 
+#[inline]
 pub fn o_acyclic() -> i64 {
     47i64
 }
 
+#[inline]
 pub fn o_eq() -> i64 {
     48i64
 }
 
+#[inline]
 pub fn o_not() -> i64 {
     49i64
 }
 
+#[inline]
 pub fn o_symbol() -> i64 {
     50i64
 }
 
+#[inline]
 pub fn o_string() -> i64 {
     51i64
 }
 
+#[inline]
 pub fn o_char() -> i64 {
     52i64
 }
 
+#[inline]
 pub fn o_vector() -> i64 {
     53i64
 }
 
+#[inline]
 pub fn o_bytevector() -> i64 {
     54i64
 }
 
+#[inline]
 pub fn o_procedure() -> i64 {
     55i64
 }
 
+#[inline]
 pub fn o_array() -> i64 {
     56i64
 }
 
+#[inline]
 pub fn o_f32() -> i64 {
     57i64
 }
 
+#[inline]
 pub fn o_box() -> i64 {
     58i64
 }
 
+#[inline]
 pub fn o_sum() -> i64 {
     59i64
 }
 
+#[inline]
 pub fn o_product() -> i64 {
     60i64
 }
 
+#[inline]
 pub fn o_datum_f64() -> i64 {
     61i64
 }
 
+#[inline]
 pub fn o_string_length() -> i64 {
     62i64
 }
 
+#[inline]
 pub fn o_string_ref() -> i64 {
     63i64
 }
 
+#[inline]
 pub fn o_string_append() -> i64 {
     64i64
 }
 
+#[inline]
 pub fn o_string_append_list() -> i64 {
     65i64
 }
 
+#[inline]
 pub fn o_substring() -> i64 {
     66i64
 }
 
+#[inline]
 pub fn o_make_string_of() -> i64 {
     67i64
 }
 
+#[inline]
 pub fn o_string_eq() -> i64 {
     68i64
 }
 
+#[inline]
 pub fn o_string_lt() -> i64 {
     69i64
 }
 
+#[inline]
 pub fn o_string_le() -> i64 {
     70i64
 }
 
+#[inline]
 pub fn o_string_gt() -> i64 {
     71i64
 }
 
+#[inline]
 pub fn o_string_ge() -> i64 {
     72i64
 }
 
+#[inline]
 pub fn o_string_compare() -> i64 {
     73i64
 }
 
+#[inline]
 pub fn o_string_hash() -> i64 {
     74i64
 }
 
+#[inline]
 pub fn o_symbol_hash() -> i64 {
     75i64
 }
 
+#[inline]
 pub fn o_char_integer() -> i64 {
     76i64
 }
 
+#[inline]
 pub fn o_integer_char() -> i64 {
     77i64
 }
 
+#[inline]
 pub fn o_char_upcase() -> i64 {
     78i64
 }
 
+#[inline]
 pub fn o_char_downcase() -> i64 {
     79i64
 }
 
+#[inline]
 pub fn o_char_numeric() -> i64 {
     80i64
 }
 
+#[inline]
 pub fn o_char_alphabetic() -> i64 {
     81i64
 }
 
+#[inline]
 pub fn o_char_whitespace() -> i64 {
     82i64
 }
 
+#[inline]
 pub fn o_char_lt() -> i64 {
     83i64
 }
 
+#[inline]
 pub fn o_char_le() -> i64 {
     84i64
 }
 
+#[inline]
 pub fn o_char_gt() -> i64 {
     85i64
 }
 
+#[inline]
 pub fn o_char_ge() -> i64 {
     86i64
 }
 
+#[inline]
 pub fn o_error() -> i64 {
     87i64
 }
 
+#[inline]
 pub fn o_make_bloblet() -> i64 {
     88i64
 }
 
+#[inline]
 pub fn o_make_bloblet_filled() -> i64 {
     89i64
 }
 
+#[inline]
 pub fn o_bloblet() -> i64 {
     90i64
 }
 
+#[inline]
 pub fn o_bloblet_kind() -> i64 {
     91i64
 }
 
+#[inline]
 pub fn o_bloblet_fields() -> i64 {
     92i64
 }
 
+#[inline]
 pub fn o_bloblet_bytes() -> i64 {
     93i64
 }
 
+#[inline]
 pub fn o_bloblet_ref() -> i64 {
     94i64
 }
 
+#[inline]
 pub fn o_bloblet_set() -> i64 {
     95i64
 }
 
+#[inline]
 pub fn o_bloblet_byte() -> i64 {
     96i64
 }
 
+#[inline]
 pub fn o_bloblet_set_byte() -> i64 {
     97i64
 }
 
+#[inline]
 pub fn o_bloblet_freeze() -> i64 {
     98i64
 }
 
+#[inline]
 pub fn o_bloblet_frozen() -> i64 {
     99i64
 }
 
+#[inline]
 pub fn o_array_list() -> i64 {
     100i64
 }
 
+#[inline]
 pub fn o_list_array() -> i64 {
     101i64
 }
 
+#[inline]
 pub fn o_stay_cellular() -> i64 {
     102i64
 }
 
+#[inline]
 pub fn o_native_code() -> i64 {
     103i64
 }
 
+#[inline]
 pub fn o_reap_enter() -> i64 {
     104i64
 }
 
+#[inline]
 pub fn o_region_new() -> i64 {
     105i64
 }
 
+#[inline]
 pub fn o_region_make_array() -> i64 {
     106i64
 }
 
+#[inline]
 pub fn o_region_make_bloblet() -> i64 {
     107i64
 }
 
+#[inline]
 pub fn o_region_closure() -> i64 {
     108i64
 }
 
+#[inline]
 pub fn o_vlambda() -> i64 {
     109i64
 }
 
+#[inline]
 pub fn o_make_icell() -> i64 {
     110i64
 }
 
+#[inline]
 pub fn o_region_make_icell() -> i64 {
     111i64
 }
 
+#[inline]
 pub fn o_icell_get() -> i64 {
     112i64
 }
 
+#[inline]
 pub fn o_suffix_ref() -> i64 {
     113i64
 }
 
+#[inline]
 pub fn o_suffix_ref_p() -> i64 {
     114i64
 }
 
+#[inline]
 pub fn o_suffix_ref_add() -> i64 {
     115i64
 }
 
+#[inline]
 pub fn o_suffix_ref_owner() -> i64 {
     116i64
 }
 
+#[inline]
 pub fn o_suffix_ref_offset() -> i64 {
     117i64
 }
 
+#[inline]
 pub fn o_suffix_fits() -> i64 {
     118i64
 }
 
+#[inline]
 pub fn o_suffix_ref_length() -> i64 {
     119i64
 }
 
+#[inline]
 pub fn o_suffix_ref_get() -> i64 {
     120i64
 }
 
+#[inline]
 pub fn o_suffix_ref_index() -> i64 {
     121i64
 }
 
+#[inline]
 pub fn o_blobref_index() -> i64 {
     122i64
 }
 
+#[inline]
 pub fn o_suffix_ref_set() -> i64 {
     123i64
 }
 
+#[inline]
 pub fn o_flat_tag() -> i64 {
     124i64
 }
 
+#[inline]
 pub fn o_flat_variant() -> i64 {
     125i64
 }
 
+#[inline]
 pub fn o_flat_no_arm() -> i64 {
     126i64
 }
 
+#[inline]
 pub fn o_suffix_u8() -> i64 {
     127i64
 }
 
+#[inline]
 pub fn o_suffix_u32() -> i64 {
     128i64
 }
 
+#[inline]
 pub fn o_suffix_u64() -> i64 {
     129i64
 }
 
+#[inline]
 pub fn o_suffix_f64() -> i64 {
     130i64
 }
 
+#[inline]
 pub fn o_suffix_u8_set() -> i64 {
     131i64
 }
 
+#[inline]
 pub fn o_suffix_u32_set() -> i64 {
     132i64
 }
 
+#[inline]
 pub fn o_suffix_u64_set() -> i64 {
     133i64
 }
 
+#[inline]
 pub fn o_suffix_f64_set() -> i64 {
     134i64
 }
 
+#[inline]
 pub fn o_flat_code() -> i64 {
     135i64
 }
 
+#[inline]
 pub fn o_make_flatarray() -> i64 {
     141i64
 }
 
+#[inline]
 pub fn o_flatarray_ref() -> i64 {
     142i64
 }
 
+#[inline]
 pub fn o_flatarray_set() -> i64 {
     143i64
 }
 
+#[inline]
 pub fn o_flatarray_length() -> i64 {
     144i64
 }
 
+#[inline]
 pub fn o_make_bytevector() -> i64 {
     145i64
 }
 
+#[inline]
 pub fn o_bytevector_length() -> i64 {
     146i64
 }
 
+#[inline]
 pub fn o_bytevector_ref() -> i64 {
     147i64
 }
 
+#[inline]
 pub fn o_bytevector_set() -> i64 {
     148i64
 }
 
+#[inline]
 pub fn o_fx26_bytevector_set() -> i64 {
     149i64
 }
 
+#[inline]
 pub fn o_bytevector_copy() -> i64 {
     150i64
 }
 
+#[inline]
 pub fn o_bytevector_copy_into() -> i64 {
     151i64
 }
 
+#[inline]
 pub fn o_bytevector_equal() -> i64 {
     152i64
 }
 
+#[inline]
 pub fn o_string_utf8() -> i64 {
     153i64
 }
 
+#[inline]
 pub fn o_utf8_string() -> i64 {
     154i64
 }
 
+#[inline]
 pub fn o_bytevector_of() -> i64 {
     155i64
 }
 
+#[inline]
 pub fn o_byte() -> i64 {
     156i64
 }
 
+#[inline]
 pub fn o_unit_cell() -> i64 {
     157i64
 }
 
+#[inline]
 pub fn o_nil_cell() -> i64 {
     158i64
 }
 
+#[inline]
 pub fn o_sum_cell() -> i64 {
     159i64
 }
 
+#[inline]
 pub fn o_pair_cell() -> i64 {
     160i64
 }
 
+#[inline]
 pub fn o_product_cell() -> i64 {
     161i64
 }
 
+#[inline]
 pub fn o_list_p() -> i64 {
     162i64
 }
 
+#[inline]
 pub fn o_convert() -> i64 {
     163i64
 }
 
+#[inline]
 pub fn o_sched() -> i64 {
     164i64
 }
 
+#[inline]
 pub fn o_icell_put() -> i64 {
     165i64
 }
 
+#[inline]
 pub fn o_preempt_done() -> i64 {
     166i64
 }
 
+#[inline]
 pub fn o_clock() -> i64 {
     167i64
 }
 
+#[inline]
 pub fn o_sleep_until() -> i64 {
     168i64
 }
 
+#[inline]
 pub fn o_address_identity() -> i64 {
     169i64
 }
 
+#[inline]
 pub fn o_char_in() -> i64 {
     170i64
 }
 
+#[inline]
 pub fn o_native_convention() -> i64 {
     171i64
 }
 
+#[inline]
 pub fn o_make_eqtable() -> i64 {
     172i64
 }
 
+#[inline]
 pub fn o_eqtable_ref() -> i64 {
     173i64
 }
 
+#[inline]
 pub fn o_eqtable_has() -> i64 {
     174i64
 }
 
+#[inline]
 pub fn o_eqtable_count() -> i64 {
     175i64
 }
 
+#[inline]
 pub fn o_eqtable_set() -> i64 {
     176i64
 }
 
+#[inline]
 pub fn o_eqtable_delete() -> i64 {
     177i64
 }
 
+#[inline]
 pub fn o_assume() -> i64 {
     178i64
 }
 
+#[inline]
 pub fn o_list_string() -> i64 {
     179i64
 }
 
+#[inline]
 pub fn o_assert() -> i64 {
     180i64
 }
 
+#[inline]
 pub fn o_string_symbol() -> i64 {
     181i64
 }
 
+#[inline]
 pub fn o_syscall_require() -> i64 {
     182i64
 }
 
+#[inline]
 pub fn o_syscall_available() -> i64 {
     183i64
 }
 
+#[inline]
 pub fn o_syscall() -> i64 {
     184i64
 }
 
+#[inline]
 pub fn o_seal_code() -> i64 {
     185i64
 }
 
+#[inline]
 pub fn o_native_procedure() -> i64 {
     186i64
 }
 
+#[inline]
 pub fn o_intern_datum() -> i64 {
     187i64
 }
 
 // FX-26's I/O (C232), by KFX's own operations, which kayak-rt gives.
+#[inline]
 pub fn o_write_out() -> i64 {
     188i64
 }
 
+#[inline]
 pub fn o_write_err() -> i64 {
     189i64
 }
 
+#[inline]
 pub fn o_exit() -> i64 {
     190i64
 }
 
+#[inline]
 pub fn o_read_line() -> i64 {
     191i64
 }
 
+#[inline]
 pub fn o_read_byte() -> i64 {
     192i64
 }
 
+#[inline]
 pub fn o_read_bytes() -> i64 {
     193i64
 }
 
+#[inline]
 pub fn o_stdin_ready() -> i64 {
     194i64
 }
 
+#[inline]
 pub fn o_terminal_raw() -> i64 {
     195i64
 }
 
+#[inline]
 pub fn o_terminal_restore() -> i64 {
     196i64
 }
 
+#[inline]
 pub fn o_terminal_size() -> i64 {
     197i64
 }
 
+#[inline]
 pub fn o_args() -> i64 {
     198i64
 }
 
+#[inline]
 pub fn o_read_file() -> i64 {
     199i64
 }
 
+#[inline]
 pub fn o_list_dir() -> i64 {
     200i64
 }
 
+#[inline]
 pub fn o_write_file() -> i64 {
     201i64
 }
 
 // A string's characters, a list; a symbol's name, a string (C258: the KFX
 // compiler and `scheme-bench/peval.fx` on tier 1).
+#[inline]
 pub fn o_string_list() -> i64 {
     202i64
 }
 
+#[inline]
 pub fn o_symbol_string() -> i64 {
     203i64
 }
 
 // Strings at a region (C285; Fixpt's 41c0823f): made, written, filled and
 // copied in place.
+#[inline]
 pub fn o_make_string() -> i64 {
     204i64
 }
 
+#[inline]
 pub fn o_region_make_string() -> i64 {
     205i64
 }
 
+#[inline]
 pub fn o_string_set() -> i64 {
     206i64
 }
 
+#[inline]
 pub fn o_string_fill() -> i64 {
     207i64
 }
 
+#[inline]
 pub fn o_string_copy() -> i64 {
     208i64
 }
 
+#[inline]
 pub fn o_string_copy_into() -> i64 {
     209i64
 }
 
 // Keywords (C294).
+#[inline]
 pub fn o_keyword_p() -> i64 {
     210i64
 }
 
+#[inline]
 pub fn o_symbol_keyword() -> i64 {
     211i64
 }
 
+#[inline]
 pub fn o_keyword_symbol() -> i64 {
     212i64
 }
 
 // What a path is (C293), and programs run beside this one (C295), on tier 1
 // (C298).
+#[inline]
 pub fn o_file_info() -> i64 {
     213i64
 }
 
+#[inline]
 pub fn o_read_symlink() -> i64 {
     214i64
 }
 
+#[inline]
 pub fn o_process_start() -> i64 {
     215i64
 }
 
+#[inline]
 pub fn o_process_output() -> i64 {
     216i64
 }
 
+#[inline]
 pub fn o_process_status() -> i64 {
     217i64
 }
 
+#[inline]
 pub fn o_process_write() -> i64 {
     218i64
 }
 
+#[inline]
 pub fn o_process_close_input() -> i64 {
     219i64
 }
 
+#[inline]
 pub fn o_process_signal() -> i64 {
     220i64
 }
 
+#[inline]
 pub fn o_process_exit() -> i64 {
     221i64
 }
 
+#[inline]
 pub fn o_process_news() -> i64 {
     222i64
 }
 
+#[inline]
 pub fn o_fixed() -> i64 {
     1000i64
 }
 
+#[inline]
 pub fn o_f64() -> i64 {
     1200i64
 }
 
+#[inline]
 pub fn o_f32_ops() -> i64 {
     1300i64
 }
 
 // The fixed widths' operations, by their place: `+` 0 to `-shr` 14, `-not`
 // 15, `int->W` 16, `W->int` 17 (Fixpt's `fixed_op`'s `add` to `to`).
+#[inline]
 pub fn fixed_widths() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -923,6 +1144,7 @@ pub fn fixed_widths() -> List<Str> {
     })
 }
 
+#[inline]
 pub fn fixed_suffixes() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -1037,22 +1259,27 @@ pub fn pdef_of(mut ps: List<&'static Pdef>, mut op: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn prim_number(n: Str) -> i64 {
     pdef_named(prims(), n)
 }
 
+#[inline]
 pub fn prim_op(p: i64) -> i64 {
     i64_shr(p, int_lit(16))
 }
 
+#[inline]
 pub fn prim_name(p: i64) -> Str {
     pdef_of(prims(), prim_op(p))
 }
 
+#[inline]
 pub fn prim_min(p: i64) -> i64 {
     i64_and(i64_shr(p, int_lit(8)), 255i64)
 }
 
+#[inline]
 pub fn prim_max(p: i64) -> i64 {
     let m = i64_and(p, 255i64);
     if i64_eq(m, 255i64) {
@@ -1063,21 +1290,25 @@ pub fn prim_max(p: i64) -> i64 {
 }
 
 // Failures, as Fixpt's runtime says them (`rt.fail`, `rt.type_error`).
+#[inline]
 pub fn fail_x(m: Str) -> i64 {
     trap_x(m);
     0i64
 }
 
+#[inline]
 pub fn expected_x(what: Str) -> i64 {
     fail_x(string_append(str_lit("expected "), what))
 }
 
+#[inline]
 pub fn machine_word() -> Str {
     str_lit("an exact integer that fits a machine word")
 }
 
 /// What tier 1 does not do as Fixpt does yet: marked, so that it is not
 /// taken for an answer.
+#[inline]
 pub fn prim_failed(p: i64, why: Str) -> i64 {
     fail_x(string_append(str_lit("tier 1: `"), string_append(prim_name(p), string_append(str_lit("` "), string_append(why, str_lit(", not yet as Fixpt (C122)"))))))
 }
@@ -1133,6 +1364,7 @@ pub fn walked_length(mut v: i64, mut slow: i64, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn proper_length(v: i64) -> i64 {
     walked_length(v, v, 0i64)
 }
@@ -1142,6 +1374,7 @@ pub fn proper_length(v: i64) -> i64 {
 // as the runtime's own memory is never let go (C43) and a long run calls
 // primitives without end. Only a primitive of any number of them makes the
 // list it takes (`pargs-list`).
+#[inline]
 pub fn pargs() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -1149,6 +1382,7 @@ pub fn pargs() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn pargc() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -1165,11 +1399,13 @@ pub fn pargs_room_x(n: i64) -> () {
     }
 }
 
+#[inline]
 pub fn parg_set_x(i: i64, v: i64) -> () {
     flatarray_set_i64_x(get(pargs()), i, v)
 }
 
 /// Argument `i`, or 0 past the last.
+#[inline]
 pub fn parg(i: i64) -> i64 {
     if i64_lt(i, get(pargc())) {
         flatarray_ref_i64(get(pargs()), i)
@@ -1178,17 +1414,20 @@ pub fn parg(i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn pargs1_x(a: i64) -> () {
     pargs_room_x(1i64);
     parg_set_x(0i64, a)
 }
 
+#[inline]
 pub fn pargs2_x(a: i64, b: i64) -> () {
     pargs_room_x(2i64);
     parg_set_x(0i64, a);
     parg_set_x(1i64, b)
 }
 
+#[inline]
 pub fn pargs3_x(a: i64, b: i64, c: i64) -> () {
     pargs_room_x(3i64);
     parg_set_x(0i64, a);
@@ -1208,6 +1447,7 @@ pub fn pargs_heap_list(mut i: i64, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn onto_list(xs: List<i64>, tail: i64) -> i64 {
     if null_p(xs) {
         tail
@@ -1221,6 +1461,7 @@ pub fn onto_list(xs: List<i64>, tail: i64) -> i64 {
 // its own is never let go (C43), and a program makes a product, appends,
 // or joins strings without end.
 /// List `v`'s items, before `tail`.
+#[inline]
 pub fn copied_onto_x(v: i64, tail: i64) -> i64 {
     if is_pair_p(v) {
         cons_x(pair_car(v), copied_onto_x(pair_cdr(v), tail))
@@ -1266,6 +1507,7 @@ pub fn appended_args_x(i: i64) -> i64 {
 }
 
 /// The lists list `l` holds appended, the last as it is.
+#[inline]
 pub fn appended_lists_x(l: i64) -> i64 {
     if is_pair_p(pair_cdr(l)) {
         copied_onto_x(pair_car(l), appended_lists_x(pair_cdr(l)))
@@ -1301,10 +1543,12 @@ pub fn fields_of_list_x(mut b: i64, mut k: i64, mut l: i64) -> () {
 }
 
 // Strings: code points, two to a word, after the length's word.
+#[inline]
 pub fn str_p(v: i64) -> bool {
     is_kind_p(v, k_string())
 }
 
+#[inline]
 pub fn str_length(v: i64) -> i64 {
     word_at(address(v))
 }
@@ -1499,6 +1743,7 @@ pub fn compared_from(mut a: i64, mut b: i64, mut i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn strings_compare(a: i64, b: i64) -> i64 {
     compared_from(a, b, 0i64)
 }
@@ -1546,14 +1791,17 @@ pub fn string_chain(mut i: i64) -> i64 {
 }
 
 // Characters.
+#[inline]
 pub fn char_code(v: i64) -> i64 {
     i64_shr(v, int_lit(8))
 }
 
+#[inline]
 pub fn scalar_p(n: i64) -> bool {
     (i64_gt_eq(n, 0i64) && i64_lt_eq(n, 1114111i64) && not((i64_gt_eq(n, 55296i64) && i64_lt_eq(n, 57343i64))))
 }
 
+#[inline]
 pub fn args_chars_p(i: i64) -> bool {
     (i64_gt_eq(i, get(pargc())) || (is_char_p(parg(i)) && args_chars_p(i64_plus(i, 1i64))))
 }
@@ -1572,16 +1820,19 @@ pub fn chars_written_x(mut v: i64, mut i: i64) -> () {
 }
 
 // Bloblets.
+#[inline]
 pub fn plain_p(v: i64) -> bool {
     is_kind_p(v, k_bloblet())
 }
 
 // The most fields an ordinary header holds; more need Fixpt's large one,
 // which tier 1 does not make yet.
+#[inline]
 pub fn fields_max() -> i64 {
     262143i64
 }
 
+#[inline]
 pub fn bytes_max() -> i64 {
     4294967295i64
 }
@@ -1706,6 +1957,7 @@ pub fn member_i64_p(mut x: i64, mut xs: List<i64>) -> bool {
 }
 
 // Suffix refs, and the bytes they point at.
+#[inline]
 pub fn byte_of(p: i64, i: i64) -> i64 {
     i64_and(i64_shr(word_at(i64_plus(p, i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
 }
@@ -1738,6 +1990,7 @@ pub fn bytes_put_x(mut p: i64, mut at: i64, mut width: i64, mut bits: i64, mut k
 }
 
 /// How many bytes of its owner's suffix lie from ref `r` on.
+#[inline]
 pub fn room_at(r: i64) -> i64 {
     let n = i64_minus(suffix_bytes(sref_owner(r)), sref_offset(r));
     if i64_lt(n, 0i64) {
@@ -1806,6 +2059,7 @@ pub fn sref_write_x(r: i64, width: i64, bits: i64) -> i64 {
 }
 
 // Fixed widths, as Fixpt's `Width`: its bits, its sign, its name.
+#[inline]
 pub fn width_bits(w: i64) -> i64 {
     if i64_lt(w, 2i64) {
         8i64
@@ -1816,6 +2070,7 @@ pub fn width_bits(w: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn width_signed_p(w: i64) -> bool {
     i64_eq(i64_remainder(w, 2i64), 0i64)
 }
@@ -1849,11 +2104,13 @@ pub fn wrapped(w: i64, x: Int) -> Int {
 }
 
 /// Whether `v` is a value of width `w` (`fixed_in`).
+#[inline]
 pub fn fixed_in_p(w: i64, v: i64) -> bool {
     (is_integer_p(v) && _eq(wrapped(w, int_of(v)), int_of(v)))
 }
 
 // A list in the heap of the characters `cs`.
+#[inline]
 pub fn chars_list_x(cs: List<char>) -> i64 {
     if null_p(cs) {
         v_null()
@@ -1863,6 +2120,7 @@ pub fn chars_list_x(cs: List<char>) -> i64 {
 }
 
 // A list in the heap of strings made of `ss`.
+#[inline]
 pub fn strings_list_x(ss: List<Str>) -> i64 {
     if null_p(ss) {
         v_null()
@@ -1947,6 +2205,7 @@ pub fn native_adapter_x(f: i64) -> i64 {
 
 /// Whether native closure `c` is an adapter, by its code (Fixpt's
 /// `Heap::adapted`).
+#[inline]
 pub fn adapter_p(c: i64) -> bool {
     let w = slot_of(c, f_word());
     (i64_eq(w, v_false()) || i64_eq(w, get(adapter_code())))
@@ -2095,12 +2354,14 @@ pub fn failure_detail() -> Str {
     kayak_rt::syscall0(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"))
 }
 
+#[inline]
 pub fn tier1_page_words() -> i64 {
     int_to_i64(page_words())
 }
 
 // `list->string`'s (C220): whether a proper list's elements are all
 // characters; their text.
+#[inline]
 pub fn chars_p(l: i64) -> bool {
     (not(is_pair_p(l)) || (is_char_p(pair_car(l)) && chars_p(pair_cdr(l))))
 }
@@ -2125,6 +2386,7 @@ pub fn chars_text(mut l: i64, mut acc: Str) -> Str {
 // SplitMix64's finalizer as Fixpt's `bucket_of`; rehashed after a
 // collection, relinked.
 /// `z` xor `z` shifted right `s` bits, logically: as a `u64`'s.
+#[inline]
 pub fn eq_mixed(z: i64, s: i64) -> i64 {
     i64_xor(z, i64_and(i64_shr(z, i64_to_int(s)), i64_minus(i64_shl(1i64, i64_to_int(i64_minus(64i64, s))), 1i64)))
 }
@@ -2153,19 +2415,23 @@ pub fn eq_falses_x(mut v: i64, mut i: i64, mut n: i64) -> () {
 }
 
 /// A vector's elements, its fields but the trailer.
+#[inline]
 pub fn eq_size(v: i64) -> i64 {
     i64_minus(fields_of(v), 1i64)
 }
 
 /// A vector's element `j`.
+#[inline]
 pub fn eq_elt(v: i64, j: i64) -> i64 {
     slot_of(v, i64_minus(fields_of(v), j))
 }
 
+#[inline]
 pub fn eq_elt_set_x(v: i64, j: i64, x: i64) -> () {
     slot_set_x(v, i64_minus(fields_of(v), j), x)
 }
 
+#[inline]
 pub fn eq_vector_x(n: i64) -> i64 {
     let v = make_bloblet_x(k_vector(), n, 0i64, true, false);
     eq_falses_x(v, 0i64, n);
@@ -2209,6 +2475,7 @@ pub fn buckets_relinked_x(mut old: i64, mut i: i64, mut bs: i64) -> () {
     }
 }
 
+#[inline]
 pub fn eqtable_relinked_x(t: i64, bs: i64) -> () {
     buckets_relinked_x(slot_of(t, 3i64), 0i64, bs);
     slot_set_x(t, 3i64, bs);
@@ -2299,16 +2566,19 @@ pub fn eq_delete_x(t: i64, key: i64) -> () {
 // count (3) and its buckets (4), chains of weak pairs (heap.kfx), so that
 // what only the table holds is collected; rehashed after a collection, as
 // a pair's hash is its parts' addresses.
+#[inline]
 pub fn intern_mix(h: i64, x: i64) -> i64 {
     let z = i64_star(i64_xor(h, x), 1099511628211i64);
     i64_xor(z, i64_shr(z, int_lit(29)))
 }
 
+#[inline]
 pub fn intern_bucket(h: i64, n: i64) -> i64 {
     i64_plus(2i64, i64_remainder(i64_and(h, 1152921504606846975i64), n))
 }
 
 /// A string's suffix words: its length's, then its code points.
+#[inline]
 pub fn str_words(v: i64) -> i64 {
     i64_plus(1i64, i64_quotient(i64_plus(str_length(v), 1i64), 2i64))
 }
@@ -2621,6 +2891,7 @@ pub fn fixed_op_x(w: i64, s: i64) -> i64 {
 
 // Floats (Fixpt's `f64_op`, `f32_op`): IEEE, round to nearest even,
 // nothing trapping; each `f64` a new flonum.
+#[inline]
 pub fn integral_p(x: f64) -> bool {
     (f64_finite_p(x) && f64_eq(f64_truncate(x), x))
 }
@@ -2712,6 +2983,7 @@ pub fn f64_op_x(p: i64, s: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn integral32_p(x: f32) -> bool {
     (f32_finite_p(x) && f32_eq(f32_truncate(x), x))
 }
@@ -2866,11 +3138,13 @@ pub fn int_radix(n: Int, r: Int) -> Str {
     }
 }
 
+#[inline]
 pub fn is_number_p(v: i64) -> bool {
     (is_integer_p(v) || is_flonum_p(v) || is_kind_p(v, k_ratnum()))
 }
 
 // Flat arrays and blobrefs' layouts (Fixpt's `layout::FLAT_*`).
+#[inline]
 pub fn flat_size(code: i64) -> i64 {
     if (i64_eq(code, 0i64) || i64_eq(code, 1i64) || i64_eq(code, 4i64)) {
         4i64
@@ -2879,6 +3153,7 @@ pub fn flat_size(code: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn flat_to_the_end() -> i64 {
     268435455i64
 }
@@ -2993,18 +3268,22 @@ pub fn flat_index(a: i64, i: i64) -> i64 {
 }
 
 // Bytevectors: a raw object, its length's word, then its bytes.
+#[inline]
 pub fn bv_p(v: i64) -> bool {
     is_kind_p(v, k_bytevector())
 }
 
+#[inline]
 pub fn bv_length(v: i64) -> i64 {
     word_at(address(v))
 }
 
+#[inline]
 pub fn bv_ref(v: i64, i: i64) -> i64 {
     byte_of(i64_plus(address(v), 1i64), i)
 }
 
+#[inline]
 pub fn bv_set_x(v: i64, i: i64, x: i64) -> () {
     byte_put_x(i64_plus(address(v), 1i64), i, x)
 }
@@ -3124,6 +3403,7 @@ pub fn utf8_valid_up_to(mut b: i64, mut i: i64) -> i64 {
 }
 
 /// How many bytes follow a lead byte `x`.
+#[inline]
 pub fn utf8_width(x: i64) -> i64 {
     if i64_lt(x, 128i64) {
         0i64
@@ -3179,6 +3459,7 @@ pub fn utf8_decoded_x(mut v: i64, mut j: i64, mut b: i64, mut i: i64) -> () {
 }
 
 /// How many bytes code point `c` is in UTF-8.
+#[inline]
 pub fn utf8_bytes(c: i64) -> i64 {
     if i64_lt(c, 128i64) {
         1i64
@@ -3279,6 +3560,7 @@ pub fn frozen4_x(k: i64, w: i64, x: i64, y: i64, z: i64) -> i64 {
 }
 
 /// A list in the heap of strings as KFX's (C298), `process-start`'s words.
+#[inline]
 pub fn heap_strings(l: i64) -> List<Str> {
     if is_pair_p(l) {
         kayak_rt::heap_cons(string_text(pair_car(l)), heap_strings(pair_cdr(l)))
@@ -3317,6 +3599,7 @@ pub fn closure_of_x(w: i64, from: i64, n: i64) -> i64 {
     c
 }
 
+#[inline]
 pub fn butlast(xs: List<i64>) -> List<i64> {
     if (null_p(xs) || null_p(cdr(xs))) {
         nil::<i64>()
@@ -3347,6 +3630,7 @@ pub fn vlambda_x(f: i64) -> i64 {
     c
 }
 
+#[inline]
 pub fn fields_list(b: i64, k: i64, last: i64) -> i64 {
     if i64_gt(k, last) {
         v_null()
@@ -3396,6 +3680,7 @@ pub fn trampoline_x() -> i64 {
 // gives; what it gives made tier 1's: a sum of its tag and value, frozen,
 // an `io-error` a frozen product of its kind, a sum of unit, and its detail.
 // The program's arguments, those after `--` (as `fixpt run`'s).
+#[inline]
 pub fn program_args() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -3403,6 +3688,7 @@ pub fn program_args() -> Ref<Strings> {
     })
 }
 
+#[inline]
 pub fn io_sum_x(tag: Str, v: i64) -> i64 {
     frozen2_x(k_sum(), symbol_x(tag), v)
 }
@@ -3440,6 +3726,7 @@ pub fn io_failed_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permission
     io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit_word()), make_string_x(e.1)))
 }
 
+#[inline]
 pub fn io_done_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
     let tagcase_ = r;
     match *tagcase_ {
@@ -3475,6 +3762,7 @@ pub fn io_failure_x() -> i64 {
     io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit_word()), make_string_x(failure_detail())))
 }
 
+#[inline]
 pub fn in_mem_p(v: i64) -> bool {
     let i = address(v);
     (i64_gt_eq(i, 0i64) && i64_lt(i, flatarray_length_i64(get(mem()))))
@@ -3513,6 +3801,7 @@ pub fn line_read_x() -> i64 {
     }
 }
 
+#[inline]
 pub fn terminal_done_x(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
     let tagcase_ = r;
     match *tagcase_ {
@@ -3528,6 +3817,7 @@ pub fn terminal_done_x(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Pr
     }
 }
 
+#[inline]
 pub fn args_list_x(ss: Strings) -> i64 {
     if null_p(ss) {
         v_null()

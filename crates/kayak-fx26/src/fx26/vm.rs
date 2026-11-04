@@ -14,10 +14,12 @@ use super::*;
 // collection. A step that needs more room than the reserve (a primitive's
 // result of its input's size, a continuation's frames copied) asks first,
 // the same way.
+#[inline]
 pub fn reserve() -> i64 {
     65536i64
 }
 
+#[inline]
 pub fn roots() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -29,6 +31,7 @@ pub fn roots() -> Ref<FlatArray<i64>> {
 // before it pauses, or -1, no limit. A paused run's registers are kept in
 // the roots, in its task's slot (`parked-at`), so that the collector keeps
 // what they reach; `w-paused` is what `run` then gives.
+#[inline]
 pub fn fuel() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -41,6 +44,7 @@ pub fn fuel() -> Ref<i64> {
 // a return, a primitive's application, takes none), so that however long
 // one is, a slice is not much longer; the live REPL's keys are read
 // between slices (C99).
+#[inline]
 pub fn deadline() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -48,6 +52,7 @@ pub fn deadline() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn ticks() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -60,6 +65,7 @@ pub fn past_deadline_p() -> bool {
     (i64_eq(i64_and(get(ticks()), 7i64), 0i64) && i64_gt(clock(), get(deadline())))
 }
 
+#[inline]
 pub fn task_slot() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -67,15 +73,18 @@ pub fn task_slot() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn w_paused() -> i64 {
     475i64
 }
 
 // What `run` gives when the run failed (C110): `engine-failure` says how.
+#[inline]
 pub fn w_failed() -> i64 {
     731i64
 }
 
+#[inline]
 pub fn parked_at(slot: i64) -> i64 {
     i64_plus(8i64, i64_star(slot, 8i64))
 }
@@ -83,52 +92,64 @@ pub fn parked_at(slot: i64) -> i64 {
 // Frames: a `frame` object, its next frame first, then its kind, then its
 // fields. Never written once made, so that a continuation's frames may be
 // shared, and resumed again and again.
+#[inline]
 pub fn fk_if() -> i64 {
     1i64
 }
 
+#[inline]
 pub fn fk_seq() -> i64 {
     2i64
 }
 
+#[inline]
 pub fn fk_list() -> i64 {
     3i64
 }
 
+#[inline]
 pub fn fk_letrec() -> i64 {
     4i64
 }
 
+#[inline]
 pub fn fk_define() -> i64 {
     5i64
 }
 
+#[inline]
 pub fn fk_sum() -> i64 {
     6i64
 }
 
+#[inline]
 pub fn fk_tagcase() -> i64 {
     8i64
 }
 
+#[inline]
 pub fn fk_ptag() -> i64 {
     9i64
 }
 
+#[inline]
 pub fn fk_phandler() -> i64 {
     10i64
 }
 
+#[inline]
 pub fn fk_prompt() -> i64 {
     11i64
 }
 
+#[inline]
 pub fn fk_abort() -> i64 {
     12i64
 }
 
 // A continuation mark (C72): its key (an object, compared by identity) and
 // its value.
+#[inline]
 pub fn fk_mark() -> i64 {
     13i64
 }
@@ -136,49 +157,54 @@ pub fn fk_mark() -> i64 {
 // The scheduler's `preempt` called at a slice's end: its value dropped,
 // the node it stopped at (field 0) evaluated in its environment (1) (C219,
 // Fixpt's `VmFrame::Discard`).
+#[inline]
 pub fn fk_preempted() -> i64 {
     14i64
 }
 
 // A product's field by its index (C323): the index (field 0).
+#[inline]
 pub fn fk_field() -> i64 {
     15i64
 }
 
+#[inline]
 pub fn frame_kind(k: i64) -> i64 {
-    fixnum_value(slot_ref(k, 1i64))
+    fixnum_value(bloblet_value(k, 1i64))
 }
 
+#[inline]
 pub fn frame_next(k: i64) -> i64 {
-    slot_ref(k, 0i64)
+    bloblet_value(k, 0i64)
 }
 
+#[inline]
 pub fn frame_field(k: i64, i: i64) -> i64 {
-    slot_ref(k, i64_plus(i, 2i64))
+    bloblet_value(k, i64_plus(i, 2i64))
 }
 
 /// A frame of `kind` with `n` fields, the first `n` of `a` to `d`.
 pub fn frame_x(kind: i64, next: i64, n: i64, a: i64, b: i64, c: i64, d: i64) -> i64 {
     let p = alloc_x(ob_frame(), i64_plus(n, 2i64));
-    slot_set_x(p, 0i64, next);
-    slot_set_x(p, 1i64, fixnum(kind));
+    bloblet_value_set_x(p, 0i64, next);
+    bloblet_value_set_x(p, 1i64, fixnum(kind));
     if i64_gt(n, 0i64) {
-        slot_set_x(p, 2i64, a)
+        bloblet_value_set_x(p, 2i64, a)
     } else {
         ()
     };
     if i64_gt(n, 1i64) {
-        slot_set_x(p, 3i64, b)
+        bloblet_value_set_x(p, 3i64, b)
     } else {
         ()
     };
     if i64_gt(n, 2i64) {
-        slot_set_x(p, 4i64, c)
+        bloblet_value_set_x(p, 4i64, c)
     } else {
         ()
     };
     if i64_gt(n, 3i64) {
-        slot_set_x(p, 5i64, d)
+        bloblet_value_set_x(p, 5i64, d)
     } else {
         ()
     };
@@ -191,7 +217,7 @@ pub fn env_up(mut e: i64, mut d: i64) -> i64 {
         if i64_eq(d, 0i64) {
             return e;
         } else {
-            (e, d) = (slot_ref(e, 0i64), i64_minus(d, 1i64));
+            (e, d) = (bloblet_value(e, 0i64), i64_minus(d, 1i64));
             continue;
         }
     }
@@ -204,7 +230,7 @@ pub fn fill_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
         if i64_lt(i, 1i64) {
             return ();
         } else {
-            slot_set_x(p, i, pair_car(xs));
+            bloblet_value_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_minus(i, 1i64), pair_cdr(xs));
             continue;
         }
@@ -217,7 +243,7 @@ pub fn product_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
         if i64_lt(i, 0i64) {
             return ();
         } else {
-            slot_set_x(p, i, pair_car(xs));
+            bloblet_value_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_minus(i, 1i64), pair_cdr(xs));
             continue;
         }
@@ -230,7 +256,7 @@ pub fn product_args_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
         if i64_eq(xs, w_nil()) {
             return ();
         } else {
-            slot_set_x(p, i, pair_car(xs));
+            bloblet_value_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
             continue;
         }
@@ -243,7 +269,7 @@ pub fn product_to_slots_x(mut e: i64, mut p: i64, mut i: i64, mut n: i64) -> () 
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            slot_set_x(e, i64_plus(i, 1i64), slot_ref(p, i));
+            bloblet_value_set_x(e, i64_plus(i, 1i64), bloblet_value(p, i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -255,7 +281,7 @@ pub fn args_env_x(mut p: i64, mut i: i64, mut xs: i64, mut n: i64) -> () {
         if i64_gt(i, n) {
             return ();
         } else {
-            slot_set_x(p, i, pair_car(xs));
+            bloblet_value_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
             continue;
         }
@@ -268,7 +294,7 @@ pub fn slots_unbound_x(mut p: i64, mut i: i64, mut n: i64) -> () {
         if i64_lt(n, 1i64) {
             return ();
         } else {
-            slot_set_x(p, i, w_unbound());
+            bloblet_value_set_x(p, i, w_unbound());
             (i, n) = (i64_plus(i, 1i64), i64_minus(n, 1i64));
             continue;
         }
@@ -281,7 +307,7 @@ pub fn slots_copied_x(mut to: i64, mut from: i64, mut i: i64, mut n: i64) -> () 
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            slot_set_x(to, i, slot_ref(from, i));
+            bloblet_value_set_x(to, i, bloblet_value(from, i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -333,12 +359,13 @@ pub fn frames_copied_x(k: i64, n: i64, onto: i64) -> i64 {
         let rest = frames_copied_x(frame_next(k), i64_minus(n, 1i64), onto);
         let size = obj_size(k);
         let p = alloc_x(ob_frame(), size);
-        slot_set_x(p, 0i64, rest);
+        bloblet_value_set_x(p, 0i64, rest);
         slots_copied_x(p, k, 1i64, size);
         p
     }
 }
 
+#[inline]
 pub fn tag_number(w: i64) -> i64 {
     immediate_value(w)
 }
@@ -388,46 +415,57 @@ pub fn first_mark_in(mut k: i64, mut key: i64, mut default: i64) -> i64 {
 
 // The control primitives' numbers, their places in `prim-list` (table.kfx),
 // written as literals: a constant is a procedure, called at each use.
+#[inline]
 pub fn op_make_tag() -> i64 {
     135i64
 }
 
+#[inline]
 pub fn op_abort() -> i64 {
     136i64
 }
 
+#[inline]
 pub fn op_capture() -> i64 {
     137i64
 }
 
+#[inline]
 pub fn op_capture_once() -> i64 {
     210i64
 }
 
+#[inline]
 pub fn op_cwcc() -> i64 {
     211i64
 }
 
+#[inline]
 pub fn op_suspend() -> i64 {
     138i64
 }
 
+#[inline]
 pub fn op_with_mark() -> i64 {
     170i64
 }
 
+#[inline]
 pub fn op_first_mark() -> i64 {
     171i64
 }
 
+#[inline]
 pub fn op_current_marks() -> i64 {
     172i64
 }
 
+#[inline]
 pub fn op_marks_of() -> i64 {
     173i64
 }
 
+#[inline]
 pub fn op_apply() -> i64 {
     168i64
 }
@@ -452,11 +490,13 @@ pub fn arm_found(mut start: i64, mut n: i64, mut tag: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn unbound_global(i: i64) -> i64 {
     failed_with_x(string_append(str_lit("the engine: used before it is defined, "), array_ref(get(global_name_table()), i64_to_int(i))));
     0i64
 }
 
+#[inline]
 pub fn consts() -> FlatArray<i64> {
     get(constants())
 }
@@ -509,7 +549,7 @@ pub fn env_within_p(mut outer: i64, mut e: i64, mut depth: i64) -> bool {
         } else if (i64_gt(depth, 256i64) || not(pointer_p(e)) || not(is_obj_p(e, ob_env()))) {
             return false;
         } else {
-            (e, depth) = (slot_ref(e, 0i64), i64_plus(depth, 1i64));
+            (e, depth) = (bloblet_value(e, 0i64), i64_plus(depth, 1i64));
             continue;
         }
     }
@@ -612,10 +652,12 @@ pub fn stopped_x(node: i64, env: i64, k: i64) -> i64 {
 
 // Steps until the next slice's end, as Fixpt's machine counts them
 // (`sched::SLICE`), at which the scheduler may preempt the current task.
+#[inline]
 pub fn sched_slice() -> i64 {
     65536i64
 }
 
+#[inline]
 pub fn sched_poll() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -653,6 +695,7 @@ pub fn preempt_at_x(k: i64) -> i64 {
 // or not as it chose: a loop through a `tagcase` arm grew the Rust stack
 // at each turn, 10 million turns 930 MB, 40 million the 1 GiB stack spent
 // (C233).
+#[inline]
 pub fn go_on() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -660,6 +703,7 @@ pub fn go_on() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn go_regs() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -727,7 +771,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         continue;
                     }
                     Node::NLocal(d, s) => {
-                        (mode, node, val, f, args) = (1i64, 0i64, slot_ref(env_up(env, d), i64_plus(s, 1i64)), 0i64, 0i64);
+                        (mode, node, val, f, args) = (1i64, 0i64, bloblet_value(env_up(env, d), i64_plus(s, 1i64)), 0i64, 0i64);
                         continue;
                     }
                     Node::NGlobal(i) => {
@@ -750,8 +794,8 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NLambda(n, body) => {
                         let p = alloc_x(ob_proc(), 2i64);
-                        slot_set_x(p, 0i64, code_word(node));
-                        slot_set_x(p, 1i64, env);
+                        bloblet_value_set_x(p, 0i64, code_word(node));
+                        bloblet_value_set_x(p, 1i64, env);
                         (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
                         continue;
                     }
@@ -778,7 +822,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     Node::NLet(at, count, body) => {
                         if i64_eq(count, 0i64) {
                             let e = alloc_x(ob_env(), 1i64);
-                            slot_set_x(e, 0i64, env);
+                            bloblet_value_set_x(e, 0i64, env);
                             (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
                             continue;
                         } else {
@@ -788,7 +832,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NLetrec(at, count, body) => {
                         let e = alloc_x(ob_env(), i64_plus(count, 1i64));
-                        slot_set_x(e, 0i64, env);
+                        bloblet_value_set_x(e, 0i64, env);
                         slots_unbound_x(e, 1i64, count);
                         if i64_eq(count, 0i64) {
                             (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
@@ -809,7 +853,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     Node::NProduct(labels, at, count) => {
                         if i64_eq(count, 0i64) {
                             let p = product_made_x(0i64);
-                            frozen_x(p);
+                            frozen_whole_x(p);
                             (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
                             continue;
                         } else {
@@ -884,7 +928,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_letrec()) {
                         let e = frame_field(k, 2i64);
                         let pos = fixnum_value(frame_field(k, 1i64));
-                        slot_set_x(e, i64_plus(pos, 1i64), val);
+                        bloblet_value_set_x(e, i64_plus(pos, 1i64), val);
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
                         match *tagcase_ {
                             Node::NLetrec(at, count, body) => {
@@ -910,7 +954,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         (mode, node, k, val, f, args) = (1i64, 0i64, next, sum_made_x(symbol_word(fixnum_value(frame_field(k, 0i64))), val), 0i64, 0i64);
                         continue;
                     } else if i64_eq(kind, fk_field()) {
-                        (mode, node, k, val, f, args) = (1i64, 0i64, next, slot_ref(val, fixnum_value(frame_field(k, 0i64))), 0i64, 0i64);
+                        (mode, node, k, val, f, args) = (1i64, 0i64, next, bloblet_value(val, fixnum_value(frame_field(k, 0i64))), 0i64, 0i64);
                         continue;
                     } else if i64_eq(kind, fk_tagcase()) {
                         let go_r = tagcase_step(k, next, val);
@@ -1044,7 +1088,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
                 next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
                 let e = alloc_x(ob_env(), i64_plus(count, 1i64));
-                slot_set_x(e, 0i64, env);
+                bloblet_value_set_x(e, 0i64, env);
                 fill_from_reversed_x(e, count, got);
                 next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
             }
@@ -1055,7 +1099,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
             } else {
                 let p = product_made_x(count);
                 product_from_reversed_x(p, i64_minus(count, 1i64), got);
-                frozen_x(p);
+                frozen_whole_x(p);
                 next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
             }
         }
@@ -1081,8 +1125,8 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
             let found = arm_found(start, count, tag);
             if i64_lt(found, 0i64) {
                 let e = alloc_x(ob_env(), 2i64);
-                slot_set_x(e, 0i64, env);
-                slot_set_x(e, 1i64, val);
+                bloblet_value_set_x(e, 0i64, env);
+                bloblet_value_set_x(e, 1i64, val);
                 next_step_x(0i64, default, e, next, 0i64, 0i64, 0i64)
             } else {
                 let tagcase_ = armx_at(found);
@@ -1095,14 +1139,14 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                         };
                         if (i64_eq(binds, -1i64) || (is_sum && not(is_obj_p(whole, ob_product())))) {
                             let e = alloc_x(ob_env(), 2i64);
-                            slot_set_x(e, 0i64, env);
-                            slot_set_x(e, 1i64, whole);
+                            bloblet_value_set_x(e, 0i64, env);
+                            bloblet_value_set_x(e, 1i64, whole);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         } else {
                             let n = obj_size(whole);
                             let e = alloc_x(ob_env(), i64_plus(n, 1i64));
                             product_to_slots_x(e, whole, 0i64, n);
-                            slot_set_x(e, 0i64, env);
+                            bloblet_value_set_x(e, 0i64, env);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         }
                     }
@@ -1152,18 +1196,18 @@ pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
 /// which a failure's backtrace starts at.
 pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
     if is_obj_p(f, ob_proc()) {
-        let tagcase_ = node_at(code_index(slot_ref(f, 0i64)));
+        let tagcase_ = node_at(code_index(bloblet_value(f, 0i64)));
         match *tagcase_ {
             Node::NLambda(arity, body) => {
                 if i64_eq(arity, -1i64) {
                     let e = alloc_x(ob_env(), 2i64);
-                    slot_set_x(e, 0i64, slot_ref(f, 1i64));
-                    slot_set_x(e, 1i64, args);
+                    bloblet_value_set_x(e, 0i64, bloblet_value(f, 1i64));
+                    bloblet_value_set_x(e, 1i64, args);
                     next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
                 } else {
                     let n = list_count(args, 0i64);
                     let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                    slot_set_x(e, 0i64, slot_ref(f, 1i64));
+                    bloblet_value_set_x(e, 0i64, bloblet_value(f, 1i64));
                     args_env_x(e, 1i64, args, n);
                     next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
                 }
@@ -1180,11 +1224,11 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         let n = list_count(args, 0i64);
         let p = product_made_x(n);
         product_args_x(p, 0i64, args);
-        frozen_x(p);
+        frozen_whole_x(p);
         next_step_x(1i64, 0i64, 0i64, k, sum_made_x(symbol_word(fixnum_value(obj_ref(f, 0i64))), p), 0i64, 0i64)
     } else if is_obj_p(f, ob_cont()) {
-        let top = slot_ref(f, 0i64);
-        let n = fixnum_value(slot_ref(f, 1i64));
+        let top = bloblet_value(f, 0i64);
+        let n = fixnum_value(bloblet_value(f, 1i64));
         let room = if i64_lt(n, 0i64) {
             the::<i64>(0i64)
         } else {
@@ -1196,15 +1240,15 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             next_step_x(1i64, 0i64, 0i64, top, pair_car(args), 0i64, 0i64)
         } else if i64_lt(heap_room(), i64_plus(room, reserve())) {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
-        } else if (truthy_p(slot_ref(f, 3i64)) && truthy_p(slot_ref(f, 2i64))) {
-            failed_with_x(if i64_eq(slot_ref(f, 3i64), fixnum(2i64)) {
+        } else if (truthy_p(bloblet_value(f, 3i64)) && truthy_p(bloblet_value(f, 2i64))) {
+            failed_with_x(if i64_eq(bloblet_value(f, 3i64), fixnum(2i64)) {
                 str_lit("a one-shot continuation resumed twice")
             } else {
                 str_lit("a continuation resumed twice")
             });
             failed_at(node, env, k)
         } else {
-            slot_set_x(f, 2i64, w_true());
+            bloblet_value_set_x(f, 2i64, w_true());
             next_step_x(1i64, 0i64, 0i64, frames_copied_x(top, n, k), pair_car(args), 0i64, 0i64)
         }
     } else if is_imm_p(f, imm_prim()) {
@@ -1235,11 +1279,11 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         } else if i64_eq(op, op_marks_of()) {
             let c = pair_car(args);
             let key = pair_car(pair_cdr(args));
-            let need = i64_star(6i64, i64_plus(marks_count(slot_ref(c, 0i64), key, fixnum_value(slot_ref(c, 1i64)), 0i64), 1i64));
+            let need = i64_star(6i64, i64_plus(marks_count(bloblet_value(c, 0i64), key, fixnum_value(bloblet_value(c, 1i64)), 0i64), 1i64));
             if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                next_step_x(1i64, 0i64, 0i64, k, marks_in(slot_ref(c, 0i64), key, fixnum_value(slot_ref(c, 1i64)), w_nil()), 0i64, 0i64)
+                next_step_x(1i64, 0i64, 0i64, k, marks_in(bloblet_value(c, 0i64), key, fixnum_value(bloblet_value(c, 1i64)), w_nil()), 0i64, 0i64)
             }
         } else if i64_eq(op, op_apply()) {
             // `(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
@@ -1268,10 +1312,10 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
-                slot_set_x(c, 0i64, k);
-                slot_set_x(c, 1i64, fixnum(n));
-                slot_set_x(c, 2i64, w_false());
-                slot_set_x(c, 3i64, if i64_eq(op, op_capture_once()) {
+                bloblet_value_set_x(c, 0i64, k);
+                bloblet_value_set_x(c, 1i64, fixnum(n));
+                bloblet_value_set_x(c, 2i64, w_false());
+                bloblet_value_set_x(c, 3i64, if i64_eq(op, op_capture_once()) {
                     fixnum(2i64)
                 } else {
                     w_false()
@@ -1282,10 +1326,10 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             // `(cwcc f)` (C220): `f` given the whole continuation, every
             // frame (`n` -1), to be resumed any number of times.
             let c = alloc_x(ob_cont(), 4i64);
-            slot_set_x(c, 0i64, k);
-            slot_set_x(c, 1i64, fixnum(-1i64));
-            slot_set_x(c, 2i64, w_false());
-            slot_set_x(c, 3i64, w_false());
+            bloblet_value_set_x(c, 0i64, k);
+            bloblet_value_set_x(c, 1i64, fixnum(-1i64));
+            bloblet_value_set_x(c, 2i64, w_false());
+            bloblet_value_set_x(c, 3i64, w_false());
             next_step_x(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
         } else if i64_eq(op, op_suspend()) {
             let tag = tag_number(pair_car(args));
@@ -1295,10 +1339,10 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
-                slot_set_x(c, 0i64, k);
-                slot_set_x(c, 1i64, fixnum(n));
-                slot_set_x(c, 2i64, w_false());
-                slot_set_x(c, 3i64, w_true());
+                bloblet_value_set_x(c, 0i64, k);
+                bloblet_value_set_x(c, 1i64, fixnum(n));
+                bloblet_value_set_x(c, 2i64, w_false());
+                bloblet_value_set_x(c, 3i64, w_true());
                 next_step_x(2i64, -1i64, 0i64, frame_x(fk_abort(), k, 1i64, fixnum(tag), 0i64, 0i64, 0i64), 0i64, pair_car(pair_cdr(args)), pair_x(c, w_nil()))
             }
         } else {

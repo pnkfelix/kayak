@@ -318,6 +318,15 @@
                  (acc (put-syscall-args 1 (size params) acc)))
             (put ")\n}\n\n" acc))))
 
+      (define-rec
+        (weight-under (subr kfx (sexps i64) i64)
+          (lambda (xs budget)
+            "What is left of `budget` once `xs`'s atoms and lists are counted,
+             each one; the count stopped once it is below 0."
+            (if (or (null? xs) (i64< budget 0))
+                budget
+                (weight-under (cdr xs) (tagcase (car xs) (lst (ys f l p) (weight-under ys (i64- budget 1))) (else other (i64- budget 1))))))))
+
       (define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
         (lambda (c name typ defined acc)
           "A definition, a `fn`: a procedure's of its parameters; a constant's of
@@ -361,6 +370,10 @@
                                                        (map param-name (items (second (items defined))))))
                                                  (map (lambda ((mp string)) (string-append "%modparam " mp)) mparams)))
                             c))
+                 ;; A small one marked `#[inline]` (C332): rustc inlines no `fn` into
+                 ;; another codegen unit unless it is, and a unit's files are
+                 ;; modules apart; the engine's heap reads are tier 1's.
+                 (acc (if (and (not suspends) (not loops?) (i64>= (weight-under body 24) 0)) (put "#[inline]\n" acc) acc))
                  (acc (put (if suspends "pub async fn " "pub fn ") acc))
                  (acc (put (mangle (sym-name name)) acc))
                  (acc (cond ((not (null? places)) (put-place-generics c (sym-name name) binders lives places acc))

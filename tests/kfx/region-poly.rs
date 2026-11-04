@@ -22,11 +22,13 @@ pub fn add_up<'r>(mut xs: ListAt<'r, i64>, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn rest_of<'r>(xs: ListAt<'r, i64>) -> ListAt<'r, i64> {
     cdr(xs)
 }
 
 // A reference at the region, read and set.
+#[inline]
 pub fn bump<'r>(b: RefAt<'r, i64>, n: i64) -> () {
     set(b, i64_plus(get(b), n))
 }
@@ -59,6 +61,7 @@ pub fn both<'r, 's>(xs: ListAt<'r, i64>, ys: ListAt<'s, i64>) -> i64 {
 }
 
 // A place's procedure that gives a region-poly one its data.
+#[inline]
 pub fn made<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> i64 {
     add_up(the::<ListAt<'p, i64>>(rcons(h, n, rcons(h, n, nil::<i64>()))), 0i64)
 }
@@ -86,6 +89,7 @@ pub fn total<'r>(mut xs: ListAt<'r, i64>, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn counted(n: i64) -> i64 {
     {
         struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }

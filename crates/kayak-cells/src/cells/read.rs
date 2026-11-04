@@ -88,6 +88,7 @@ pub fn tok(f0: Str, f1: Chars, f2: i64) -> &'static Tok {
     kayak_rt::heap_alloc(Tok::Tok(f0, f1, f2))
 }
 
+#[inline]
 pub fn read_error(file: Str, line: i64, message: Str) -> Void {
     error(string_append(str_lit("kfx: "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), string_append(str_lit(": "), message))))))
 }
@@ -137,6 +138,7 @@ pub fn skip(mut h: &'static Here) -> &'static Here {
     }
 }
 
+#[inline]
 pub fn delimiter_p(c: char) -> bool {
     (char_whitespace_p(c) || char_eq_p(c, '(') || char_eq_p(c, ')') || char_eq_p(c, '"') || char_eq_p(c, ';'))
 }
@@ -153,6 +155,7 @@ pub fn token_chars(mut cs: Chars, mut acc: Chars, mut n: i64) -> &'static Tok {
     }
 }
 
+#[inline]
 pub fn unescape(c: char) -> char {
     match c {
         'n' => {
@@ -252,6 +255,7 @@ pub fn numeric_p(cs: Chars) -> bool {
     (not(null_p(cs)) && (char_numeric_p(car(cs)) || (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs))))))
 }
 
+#[inline]
 pub fn has_char_p(cs: Chars, c: char) -> bool {
     (not(null_p(cs)) && (char_eq_p(car(cs), c) || has_char_p(cdr(cs), c)))
 }
@@ -276,6 +280,7 @@ pub fn point_count(mut cs: Chars, mut n: i64) -> i64 {
 
 /// Digits, after a `-` if any, with one point among them: a real, as FX-26
 /// reads it (and Rust, written with a digit either side of the point).
+#[inline]
 pub fn real_token_p(cs: Chars) -> bool {
     i64_eq(point_count(if char_eq_p(car(cs), '-') {
         cdr(cs)
@@ -336,6 +341,7 @@ pub fn fits_i64_p(cs: Chars) -> bool {
 // Reals as FX-26 reads them past KFX's own (C155): its point first, `.5`,
 // or an exponent, `1e-3`, as Rust's `f64` syntax has them. kfx's
 // restriction pass refuses both, KFX writing a real as it is written.
+#[inline]
 pub fn all_digits_p(cs: Chars) -> bool {
     (null_p(cs) || (char_numeric_p(car(cs)) && all_digits_p(cdr(cs))))
 }
@@ -396,18 +402,21 @@ pub fn exponent_real_p(cs: Chars) -> bool {
 
 /// Whether a real is written as KFX writes one: neither its point first nor
 /// with an exponent.
+#[inline]
 pub fn written_out_real_p(t: Str) -> bool {
     let cs = string_chars(t);
     not((point_first_real_p(cs) || has_char_p(cs, 'e') || has_char_p(cs, 'E')))
 }
 
 /// Whether every character of `cs` is one of `allowed`'s.
+#[inline]
 pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
     not(any_p(lambda1s(move |c: char| {
         not(has_char_p(string_chars(allowed), c))
     }), cs))
 }
 
+#[inline]
 pub fn before_point(cs: Chars) -> Chars {
     if (null_p(cs) || char_eq_p(car(cs), '.')) {
         nil::<char>()
@@ -656,6 +665,7 @@ pub fn read_from(h: &'static Here, file: Str) -> Sexps {
 }
 
 /// Every datum in `cs`, the text of `file` from `line`.
+#[inline]
 pub fn read_all(cs: Chars, file: Str, line: i64) -> Sexps {
     read_from(here(cs, line, 0i64), file)
 }
@@ -717,6 +727,7 @@ pub fn datum_pos(e: &'static Sexp) -> i64 {
     }
 }
 
+#[inline]
 pub fn sym_name(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
@@ -730,6 +741,7 @@ pub fn sym_name(e: &'static Sexp) -> Str {
     }
 }
 
+#[inline]
 pub fn sym_is_p(e: &'static Sexp, s: Str) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
@@ -743,6 +755,7 @@ pub fn sym_is_p(e: &'static Sexp, s: Str) -> bool {
     }
 }
 
+#[inline]
 pub fn items(e: &'static Sexp) -> Sexps {
     let tagcase_ = e;
     match *tagcase_ {
@@ -789,19 +802,23 @@ pub fn without_conv(t: &'static Sexp) -> &'static Sexp {
     }
 }
 
+#[inline]
 pub fn second(xs: Sexps) -> &'static Sexp {
     car(cdr(xs))
 }
 
+#[inline]
 pub fn third(xs: Sexps) -> &'static Sexp {
     car(cdr(cdr(xs)))
 }
 
+#[inline]
 pub fn fourth(xs: Sexps) -> &'static Sexp {
     car(cdr(cdr(cdr(xs))))
 }
 
 /// A lambda's parameter's name: it is `x` or `(x T)`.
+#[inline]
 pub fn param_name(param: &'static Sexp) -> Str {
     sym_name({
         let tagcase_ = param;
@@ -817,6 +834,7 @@ pub fn param_name(param: &'static Sexp) -> Str {
     })
 }
 
+#[inline]
 pub fn lambda_form_p(e: &'static Sexp) -> bool {
     (head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("plambda")))
 }

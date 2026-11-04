@@ -23,80 +23,99 @@ use super::*;
 // grace (Fixpt's `Regions::quiet`). Tier 1 keeps a region's objects in the
 // one heap, so a task's places are only numbers (`regions`).
 // fixpt-source: crates/fixpt-runtime/src/sched.rs@19b31f1
+#[inline]
 pub fn s_front() -> i64 {
     0i64
 }
 
+#[inline]
 pub fn s_back() -> i64 {
     1i64
 }
 
+#[inline]
 pub fn s_tag() -> i64 {
     2i64
 }
 
+#[inline]
 pub fn s_copied() -> i64 {
     4i64
 }
 
+#[inline]
 pub fn s_timers() -> i64 {
     5i64
 }
 
+#[inline]
 pub fn s_cancelled() -> i64 {
     6i64
 }
 
+#[inline]
 pub fn s_preempt() -> i64 {
     7i64
 }
 
+#[inline]
 pub fn s_parked() -> i64 {
     8i64
 }
 
+#[inline]
 pub fn s_running() -> i64 {
     9i64
 }
 
+#[inline]
 pub fn s_trampoline() -> i64 {
     10i64
 }
 
+#[inline]
 pub fn s_groups() -> i64 {
     11i64
 }
 
+#[inline]
 pub fn s_monitors() -> i64 {
     12i64
 }
 
+#[inline]
 pub fn s_failure() -> i64 {
     13i64
 }
 
+#[inline]
 pub fn s_parents() -> i64 {
     14i64
 }
 
+#[inline]
 pub fn s_waiting() -> i64 {
     15i64
 }
 
+#[inline]
 pub fn s_stdin() -> i64 {
     16i64
 }
 
 // Heist's F6 (C298): the wakers waiting for a process's output, and for its
 // end, each `(p . waker)`; and those waiting for any process's news.
+#[inline]
 pub fn s_output() -> i64 {
     17i64
 }
 
+#[inline]
 pub fn s_exit() -> i64 {
     18i64
 }
 
+#[inline]
 pub fn s_news() -> i64 {
     19i64
 }
@@ -104,6 +123,7 @@ pub fn s_news() -> i64 {
 // A task's time slice, in polls: Fixpt's `SLICE`, or another (`--slice`,
 // as Fixpt's `FIXPT_SLICE`), so that a test may preempt at nearly every
 // poll.
+#[inline]
 pub fn slice() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -116,6 +136,7 @@ pub fn slice() -> Ref<i64> {
 // congruential generator, its seed fixed), so that a test's preemptions
 // do not fall into step with a program's loop, and a run is the same each
 // time. 0, every slice `slice`.
+#[inline]
 pub fn slice_jitter() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -123,6 +144,7 @@ pub fn slice_jitter() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn slice_seed() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -133,6 +155,7 @@ pub fn slice_seed() -> Ref<i64> {
 // A region's number, as Fixpt's `%region-enter` gives one. Tier 1 keeps
 // a region's objects in the one heap: what a region frees is memory, never
 // an answer.
+#[inline]
 pub fn regions() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -142,6 +165,7 @@ pub fn regions() -> Ref<i64> {
 
 // The state's vector, or `#f` before the first operation; the collector
 // forwards it (machine.kfx).
+#[inline]
 pub fn sched_state() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -150,6 +174,7 @@ pub fn sched_state() -> Ref<i64> {
 }
 
 // Whether there is a state: it is `#f` until made, and stays a vector.
+#[inline]
 pub fn sched_p() -> bool {
     not(i64_eq(get(sched_state()), v_false()))
 }
@@ -177,20 +202,24 @@ pub fn state_x() -> i64 {
     }
 }
 
+#[inline]
 pub fn st(k: i64) -> i64 {
     elt_ref(state_x(), k)
 }
 
+#[inline]
 pub fn st_set_x(k: i64, v: i64) -> () {
     elt_set_x(state_x(), k, v)
 }
 
+#[inline]
 pub fn st_cons_x(k: i64, v: i64) -> () {
     st_set_x(k, cons_x(v, st(k)))
 }
 
 // Tasks: whether each is ended, and its quiet count with its grace in bit
 // 7; the first, 0, never ends.
+#[inline]
 pub fn task_ended() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -198,6 +227,7 @@ pub fn task_ended() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn task_quiet() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -205,6 +235,7 @@ pub fn task_quiet() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn task_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -212,6 +243,7 @@ pub fn task_count() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn task_now() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -219,6 +251,7 @@ pub fn task_now() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn task_live_p(t: i64) -> bool {
     (i64_gt_eq(t, 0i64) && i64_lt(t, get(task_count())) && i64_eq(flatarray_ref_i64(get(task_ended()), t), 0i64))
 }
@@ -269,6 +302,7 @@ pub fn task_new_x() -> i64 {
 }
 
 /// Task `t` made current: the task that was.
+#[inline]
 pub fn task_switch_x(t: i64) -> i64 {
     let was = get(task_now());
     set(task_now(), t);
@@ -290,14 +324,17 @@ pub fn task_end_x(t: i64) -> () {
     }
 }
 
+#[inline]
 pub fn quiet() -> i64 {
     flatarray_ref_i64(get(task_quiet()), get(task_now()))
 }
 
+#[inline]
 pub fn quiet_set_x(q: i64) -> () {
     flatarray_set_i64_x(get(task_quiet()), get(task_now()), q)
 }
 
+#[inline]
 pub fn quiet_p() -> bool {
     not(i64_eq(i64_and(quiet(), 127i64), 0i64))
 }
@@ -329,6 +366,7 @@ pub fn quiet_leave_x() -> () {
     }))
 }
 
+#[inline]
 pub fn take_grace_x() -> bool {
     let q = quiet();
     quiet_set_x(i64_and(q, 127i64));
@@ -336,6 +374,7 @@ pub fn take_grace_x() -> bool {
 }
 
 // Lists in the heap.
+#[inline]
 pub fn heap_items(l: i64) -> List<i64> {
     if is_pair_p(l) {
         kayak_rt::heap_cons(pair_car(l), heap_items(pair_cdr(l)))
@@ -374,6 +413,7 @@ pub fn reversed_onto_x(mut l: i64, mut acc: i64) -> i64 {
 // item `e` is matched: `e` is `x` (0); its car is (1); its cdr is (2);
 // either is (3); its car is an item of list `x` (4); its car is a time
 // not after `x` (5).
+#[inline]
 pub fn heap_member_p(l: i64, x: i64) -> bool {
     (is_pair_p(l) && (i64_eq(pair_car(l), x) || heap_member_p(pair_cdr(l), x)))
 }
@@ -394,6 +434,7 @@ pub fn matches_p(e: i64, how: i64, x: i64) -> bool {
     }
 }
 
+#[inline]
 pub fn any_match_p(l: i64, how: i64, x: i64) -> bool {
     (is_pair_p(l) && (matches_p(pair_car(l), how, x) || any_match_p(pair_cdr(l), how, x)))
 }
@@ -422,6 +463,7 @@ pub fn sifted_x(mut l: i64, mut how: i64, mut x: i64, mut keep: bool, mut acc: i
 
 /// List `l` without the items that match, in order; `l` itself if it has
 /// none.
+#[inline]
 pub fn without_x(l: i64, how: i64, x: i64) -> i64 {
     if any_match_p(l, how, x) {
         reversed_onto_x(sifted_x(l, how, x, false, v_null()), v_null())
@@ -431,15 +473,18 @@ pub fn without_x(l: i64, how: i64, x: i64) -> i64 {
 }
 
 /// The items of list `l` that match, in order.
+#[inline]
 pub fn only_x(l: i64, how: i64, x: i64) -> i64 {
     reversed_onto_x(sifted_x(l, how, x, true, v_null()), v_null())
 }
 
+#[inline]
 pub fn i64_in_p(xs: List<i64>, x: i64) -> bool {
     (not(null_p(xs)) && (i64_eq(car(xs), x) || i64_in_p(cdr(xs), x)))
 }
 
 // The run queue.
+#[inline]
 pub fn queue_push_x(thunk: i64) -> () {
     st_cons_x(s_back(), thunk)
 }
@@ -509,6 +554,7 @@ pub fn shared_p(v: i64) -> bool {
 // message has needed, not every message's, and a copy is no longer
 // quadratic, as a list walked for each value found made it. No pair or
 // bloblet is 0, the key of none.
+#[inline]
 pub fn copy_table() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -516,6 +562,7 @@ pub fn copy_table() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn copy_held() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -523,6 +570,7 @@ pub fn copy_held() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn copy_used() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -530,6 +578,7 @@ pub fn copy_used() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn copy_order() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -537,6 +586,7 @@ pub fn copy_order() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn copy_ordered() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -544,6 +594,7 @@ pub fn copy_ordered() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn copy_todo() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -551,6 +602,7 @@ pub fn copy_todo() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn copy_pending() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -558,6 +610,7 @@ pub fn copy_pending() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn copy_words() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -591,6 +644,7 @@ pub fn pushed_on_x(s: Ref<FlatArray<i64>>, n: Ref<i64>, x: i64) -> () {
     set(n, i64_plus(k, 1i64))
 }
 
+#[inline]
 pub fn copy_hash(v: i64, entries: i64) -> i64 {
     i64_and(i64_xor(v, i64_xor(i64_shr(v, int_lit(13)), i64_shr(v, int_lit(29)))), i64_minus(entries, 1i64))
 }
@@ -673,6 +727,7 @@ pub fn table_emptied_x(mut k: i64) -> () {
     }
 }
 
+#[inline]
 pub fn has_trailer_p(v: i64) -> bool {
     i64_eq(word_tag(word_at(i64_minus(address(v), 1i64))), t_trailer())
 }
@@ -860,6 +915,7 @@ pub fn make_mailbox_x() -> i64 {
     m
 }
 
+#[inline]
 pub fn mailbox_ready_p(m: i64) -> bool {
     (is_pair_p(slot_of(m, 2i64)) || is_pair_p(slot_of(m, 3i64)))
 }
@@ -913,11 +969,13 @@ pub fn timer_add_x(t: i64, w: i64) -> i64 {
     v_unit_word()
 }
 
+#[inline]
 pub fn due_in_p(l: i64, now: i64) -> bool {
     (is_pair_p(l) && (i64_lt_eq(fix_val(pair_car(pair_car(l))), now) || due_in_p(pair_cdr(l), now)))
 }
 
 /// Whether a timer is due; the clock not read if none is set.
+#[inline]
 pub fn timer_due_p() -> bool {
     let ts = st(s_timers());
     (is_pair_p(ts) && due_in_p(ts, clock()))
@@ -975,6 +1033,7 @@ pub fn wakers_pushed_x(mut l: i64) -> () {
     }
 }
 
+#[inline]
 pub fn heap_cars(xs: List<i64>) -> List<i64> {
     if null_p(xs) {
         nil::<i64>()
@@ -1056,6 +1115,7 @@ pub fn waiters_split(mut l: i64, mut output: bool, mut waiting: i64, mut woken: 
     }
 }
 
+#[inline]
 pub fn stdin_wakers_pushed_x(l: i64) -> () {
     if is_pair_p(l) {
         stdin_wakers_pushed_x(pair_cdr(l));
@@ -1153,6 +1213,7 @@ pub fn assq_cdr(mut l: i64, mut t: i64) -> i64 {
 }
 
 /// The group task `t` is of, or `#f`.
+#[inline]
 pub fn group_of(t: i64) -> i64 {
     if sched_p() {
         assq_cdr(st(s_groups()), t)
@@ -1170,6 +1231,7 @@ pub fn forget_task_x(t: i64) -> () {
     st_set_x(s_waiting(), without_x(st(s_waiting()), 1i64, t))
 }
 
+#[inline]
 pub fn cancelled_p(t: i64) -> bool {
     heap_member_p(st(s_cancelled()), t)
 }
@@ -1208,12 +1270,14 @@ pub fn wanted_how_x() -> i64 {
 /// Whether the scheduler would have the current task preempted here; in
 /// a task, `reach` says whether the scheduler's prompt is on the
 /// machine's stack (`wanted`).
+#[inline]
 pub fn wanted_x(reach: bool) -> bool {
     let w = wanted_how_x();
     (i64_eq(w, 1i64) || (i64_eq(w, 2i64) && reach))
 }
 
 /// The scheduler's prompt tag, or `#f`.
+#[inline]
 pub fn sched_tag() -> i64 {
     if sched_p() {
         st(s_tag())
@@ -1224,6 +1288,7 @@ pub fn sched_tag() -> i64 {
 
 /// At a poll whose slice is spent: as `wanted-how!`, 0 too if there is
 /// no scheduler's `preempt` to call (`preempt_due_with`).
+#[inline]
 pub fn preempt_wanted_x() -> i64 {
     if (sched_p() && is_kind_p(st(s_preempt()), k_closure())) {
         wanted_how_x()
@@ -1234,6 +1299,7 @@ pub fn preempt_wanted_x() -> i64 {
 
 /// The scheduler's `preempt`, wanted, for the machine to call at the
 /// poll, the task then quiet until it has.
+#[inline]
 pub fn preempt_due_x() -> i64 {
     quiet_enter_x();
     st(s_preempt())

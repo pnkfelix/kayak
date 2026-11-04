@@ -27,13 +27,13 @@
  whole), and its body's node."
 (define-datatype armx (armx i64 i64 i64))
 
-(define nodes (ref (arrayof node @h) @h) (new (make-array 1024 (n-lit 0))))
-(define node-count (ref i64 @h) (new 0))
-(define kids (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1024 0)))
-(define kid-count (ref i64 @h) (new 0))
-(define armxs (ref (arrayof armx @h) @h) (new (make-array 64 (armx 0 0 0))))
-(define armx-count (ref i64 @h) (new 0))
-(define constants (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 256 0)))
+(define nodes (ref (arrayof node @c) @c) (new (make-array 1024 (n-lit 0))))
+(define node-count (ref i64 @c) (new 0))
+(define kids (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1024 0)))
+(define kid-count (ref i64 @c) (new 0))
+(define armxs (ref (arrayof armx @c) @c) (new (make-array 64 (armx 0 0 0))))
+(define armx-count (ref i64 @c) (new 0))
+(define constants (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 256 0)))
 
 "For a failure's backtrace (TODO §29): each node's lambda, the innermost
  whose body holds it (its node's number), or -1 outside every lambda; and
@@ -41,26 +41,26 @@
  written, \"\" for any other node. A lambda's body is numbered just before
  it (`number!`), so its nodes are a range ending at it, and an inner
  lambda's take theirs first."
-(define owners (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1024 -1)))
-(define wheres (ref (arrayof string @h) @h) (new (make-array 1024 "")))
-(define constant-count (ref i64 @h) (new 0))
+(define owners (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1024 -1)))
+(define wheres (ref (arrayof string @c) @c) (new (make-array 1024 "")))
+(define constant-count (ref i64 @c) (new 0))
 
-(define-effect loading (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)))
+(define-effect loading (maxeff (read @globals) spin (read @c) (write @c) (alloc @c)))
 
 (define-rec
-  (nodes-copied! (subr loading ((arrayof node @h) (arrayof node @h) i64 i64) unit)
+  (nodes-copied! (subr loading ((arrayof node @c) (arrayof node @c) i64 i64) unit)
     (lambda (from to i n) (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (nodes-copied! from to (i64+ i 1) n))))))
 
 (define-rec
-  (armxs-copied! (subr loading ((arrayof armx @h) (arrayof armx @h) i64 i64) unit)
+  (armxs-copied! (subr loading ((arrayof armx @c) (arrayof armx @c) i64 i64) unit)
     (lambda (from to i n) (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (armxs-copied! from to (i64+ i 1) n))))))
 
 (define-rec
-  (words-copied! (subr loading ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
+  (words-copied! (subr loading ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
     (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (words-copied! from to (i64+ i 1) n))))))
 
 (define-rec
-  (strings-copied! (subr loading ((arrayof string @h) (arrayof string @h) i64 i64) unit)
+  (strings-copied! (subr loading ((arrayof string @c) (arrayof string @c) i64 i64) unit)
     (lambda (from to i n) (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (strings-copied! from to (i64+ i 1) n))))))
 
 (define add-node! (subr loading (node) i64)
@@ -68,9 +68,9 @@
     (let ((n (get node-count)))
       (begin
         (if (i64>= n (int->i64 (array-length (get nodes))))
-            (let ((bigger (the (arrayof node @h) (make-array (i64->int (i64* n 2)) (n-lit 0))))
-                  (os (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* n 2) -1)))
-                  (ws (the (arrayof string @h) (make-array (i64->int (i64* n 2)) ""))))
+            (let ((bigger (the (arrayof node @c) (make-array (i64->int (i64* n 2)) (n-lit 0))))
+                  (os (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* n 2) -1)))
+                  (ws (the (arrayof string @c) (make-array (i64->int (i64* n 2)) ""))))
               (begin (nodes-copied! (get nodes) bigger 0 n) (set nodes bigger)
                      (words-copied! (get owners) os 0 n) (set owners os)
                      (strings-copied! (get wheres) ws 0 n) (set wheres ws)))
@@ -84,7 +84,7 @@
     (let ((n (get kid-count)))
       (begin
         (if (i64>= n (flatarray-length-i64 (get kids)))
-            (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* n 2) 0))))
+            (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* n 2) 0))))
               (begin (words-copied! (get kids) bigger 0 n) (set kids bigger)))
             #u)
         (flatarray-set-i64! (get kids) n k)
@@ -96,7 +96,7 @@
     (let ((n (get armx-count)))
       (begin
         (if (i64>= n (int->i64 (array-length (get armxs))))
-            (let ((bigger (the (arrayof armx @h) (make-array (i64->int (i64* n 2)) (armx 0 0 0)))))
+            (let ((bigger (the (arrayof armx @c) (make-array (i64->int (i64* n 2)) (armx 0 0 0)))))
               (begin (armxs-copied! (get armxs) bigger 0 n) (set armxs bigger)))
             #u)
         (array-set! (get armxs) (i64->int n) a)
@@ -108,7 +108,7 @@
     (let ((n (get constant-count)))
       (begin
         (if (i64>= n (flatarray-length-i64 (get constants)))
-            (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* n 2) 0))))
+            (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* n 2) 0))))
               (begin (words-copied! (get constants) bigger 0 n) (set constants bigger)))
             #u)
         (flatarray-set-i64! (get constants) n w)
@@ -126,26 +126,26 @@
             (owned! (i64+ i 1) end l))))))
 
 "A node's lambda's backtrace words, or \"\" outside every lambda."
-(define node-where (subr (maxeff (read @globals) spin (read @h)) (i64) string)
+(define node-where (subr (maxeff (read @globals) spin (read @c)) (i64) string)
   (lambda (i)
     (if (or (i64< i 0) (i64>= i (get node-count)))
         ""
         (let ((l (flatarray-ref-i64 (get owners) i))) (if (i64< l 0) "" (array-ref (get wheres) (i64->int l)))))))
 
 "A node's lambda's number, or -1."
-(define node-owner (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+(define node-owner (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
   (lambda (i) (if (or (i64< i 0) (i64>= i (get node-count))) -1 (flatarray-ref-i64 (get owners) i))))
 
-(define node-at (subr (maxeff (read @globals) spin (read @h)) (i64) node)
+(define node-at (subr (maxeff (read @globals) spin (read @c)) (i64) node)
   (lambda (i) (array-ref (get nodes) (i64->int i))))
 
-(define kid-at (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+(define kid-at (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
   (lambda (i) (flatarray-ref-i64 (get kids) i)))
 
-(define armx-at (subr (maxeff (read @globals) spin (read @h)) (i64) armx)
+(define armx-at (subr (maxeff (read @globals) spin (read @c)) (i64) armx)
   (lambda (i) (array-ref (get armxs) (i64->int i))))
 
-(define constant-at (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+(define constant-at (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
   (lambda (i) (flatarray-ref-i64 (get constants) i)))
 
 "The primitives, numbered: a primitive's word holds its number here, which
@@ -230,13 +230,13 @@
             ((not (string=? (fixed-type n) "")) (i64+ fixed-base (intern! n)))
             (else (begin (failed-with! (string-append "the engine has no primitive " n)) 0))))))
 
-(define-effect numbering (maxeff loading (read @h) (write @h)))
+(define-effect numbering (maxeff loading (read @c) (write @c)))
 
 (define-rec
-  (kfx-bytes-set! (subr hp (i64 (bytevectorof @h) i64 i64) unit)
+  (kfx-bytes-set! (subr hp (i64 (bytevectorof @c) i64 i64) unit)
     (lambda (p bv i n) (if (i64>= i n) #u (begin (byte-set! p i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (kfx-bytes-set! p bv (i64+ i 1) n))))))
 
-(define kfx-bytes-word! (subr hp ((bytevectorof @h)) i64)
+(define kfx-bytes-word! (subr hp ((bytevectorof @c)) i64)
   (lambda (bv)
     (let* ((n (int->i64 (bytevector-length bv))) (p (bytes-alloc! n))) (begin (kfx-bytes-set! p bv 0 n) p))))
 
@@ -262,17 +262,17 @@
          where the engine allocates, its binary form a bytevector."
         (tagcase (rp-nodes-of-text text)
           (rexp (ns hs root d)
-            (kfx-bytes-word! (the (bytevectorof @h) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
+            (kfx-bytes-word! (the (bytevectorof @c) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
       (else other (begin (failed-with! "the engine: a literal it cannot make") 0)))))
 
 "Quoted data, interned (C79): each pair and atom of a quote made once,
  at loading, a constant; an equal one found again by its text, so that
  equal quotes are one object, as FX-26's heap interns them."
 (define-datatype quoted (quoted string i64))
-(define quoteds (ref (listof quoted @h) @h) (new nil))
+(define quoteds (ref (listof quoted @c) @c) (new nil))
 
 (define-rec
-  (found-quoted (subr numbering (string (listof quoted @h)) i64)
+  (found-quoted (subr numbering (string (listof quoted @c)) i64)
     (lambda (key qs)
       (cond ((null? qs) -1)
             ((tagcase (car qs) (quoted (k i) (string=? k key))) (tagcase (car qs) (quoted (k i) i)))

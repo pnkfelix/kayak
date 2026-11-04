@@ -9,6 +9,7 @@ use kayak_rt::*;
 
 pub type Ints = List<Int>;
 
+#[inline]
 pub fn total(xs: Ints) -> Int {
     if null_p(xs) {
         int_lit(0)

@@ -293,10 +293,12 @@ pub fn chars_reversed(mut xs: List<char>, mut acc: List<char>) -> List<char> {
     }
 }
 
+#[inline]
 pub fn escaped(cs: List<char>) -> Str {
     list_to_string(chars_reversed(escaped_onto(cs, nil::<char>()), nil::<char>()))
 }
 
+#[inline]
 pub fn field(s: Str) -> Str {
     string_append(str_lit("\t"), escaped(the::<List<char>>(string_to_list(s))))
 }

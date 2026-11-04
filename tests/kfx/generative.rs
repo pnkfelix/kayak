@@ -38,14 +38,17 @@ pub fn down_stack<T: Copy + 'static>(x: Stack<T>) -> List<T> {
     x.0
 }
 
+#[inline]
 pub fn add(a: Meters, b: Meters) -> Meters {
     up_meters(i64_plus(down_meters(a), down_meters(b)))
 }
 
+#[inline]
 pub fn to_feet(m: Meters) -> Feet {
     up_feet(i64_quotient(i64_star(down_meters(m), 3281i64), 1000i64))
 }
 
+#[inline]
 pub fn push<T: Copy + 'static>(x: T, s: Stack<T>) -> Stack<T> {
     up_stack(kayak_rt::heap_cons(x, down_stack(s)))
 }

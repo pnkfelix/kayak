@@ -1621,6 +1621,7 @@ pub fn cmem(f0: Str, f1: &'static Cx, f2: i64, f3: bool, f4: i64) -> &'static Cm
     kayak_rt::heap_alloc(Cmem::Cmem(f0, f1, f2, f3, f4))
 }
 
+#[inline]
 pub fn cmem_name(i: &'static Cmem) -> Str {
     let tagcase_ = i;
     match *tagcase_ {
@@ -1630,6 +1631,7 @@ pub fn cmem_name(i: &'static Cmem) -> Str {
     }
 }
 
+#[inline]
 pub fn cmem_value(i: &'static Cmem) -> &'static Cx {
     let tagcase_ = i;
     match *tagcase_ {
@@ -1639,6 +1641,7 @@ pub fn cmem_value(i: &'static Cmem) -> &'static Cx {
     }
 }
 
+#[inline]
 pub fn cmem_kind(i: &'static Cmem) -> i64 {
     let tagcase_ = i;
     match *tagcase_ {
@@ -1856,6 +1859,7 @@ pub fn dpos(f0: i64, f1: i64) -> &'static Dpos {
     kayak_rt::heap_alloc(Dpos::Dpos(f0, f1))
 }
 
+#[inline]
 pub fn cg_define_at() -> Ref<List<&'static Dpos>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Dpos>>);
     once(&ONCE, || {
@@ -1888,6 +1892,7 @@ pub fn define_at(mut ds: List<&'static Dpos>, mut a: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn c_adjoin(xs: Strings, n: Str) -> Strings {
     if string_member_p(n, xs) {
         xs
@@ -1914,6 +1919,7 @@ pub fn c_bound_names(mut bs: Cbinds, mut bound: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn c_bound_exps(bs: Cbinds) -> Cxs {
     map(lambda1s(move |b: &'static Cbind| {
         let tagcase_ = b;
@@ -1941,12 +1947,14 @@ pub fn c_names(mut ns: Strings, mut bound: Strings) -> Strings {
 
 // A standard name, whatever a program binds it to (Fixpt's `(with #%fx
 // name)`, C221): what a quote builds with.
+#[inline]
 pub fn std_var(n: Str, a: i64) -> &'static Cx {
     x_var(string_append(str_lit("#%fx:"), n), a)
 }
 
 // A keyword, `#:n` (C294): as Fixpt's parsers write it, `symbol->keyword` of
 // the symbol `n`, in quoted data too.
+#[inline]
 pub fn keyword_x(n: Str, a: i64) -> &'static Cx {
     x_app(std_var(str_lit("symbol->keyword"), a), kayak_rt::heap_cons(x_sym(after_prefix(n, str_lit("#:")), a), kayak_rt::nil()), a)
 }
@@ -1954,18 +1962,22 @@ pub fn keyword_x(n: Str, a: i64) -> &'static Cx {
 // Written so, `(with #%fx n)` is marked apart (`#%fx!:`), as Fixpt keeps
 // its `with`, which its register code takes for no operation done in line
 // (C248).
+#[inline]
 pub fn std_written_var(n: Str, a: i64) -> &'static Cx {
     x_var(string_append(str_lit("#%fx!:"), n), a)
 }
 
+#[inline]
 pub fn std_written_p(n: Str) -> bool {
     has_prefix_p(n, str_lit("#%fx!:"))
 }
 
+#[inline]
 pub fn std_marked_p(n: Str) -> bool {
     (has_prefix_p(n, str_lit("#%fx:")) || std_written_p(n))
 }
 
+#[inline]
 pub fn std_named(n: Str) -> Str {
     if std_written_p(n) {
         after_prefix(n, str_lit("#%fx!:"))
@@ -2091,6 +2103,7 @@ pub fn c_free_arms(mut arms: List<&'static Carm>, mut bound: Strings, mut acc: S
     }
 }
 
+#[inline]
 pub fn c_free_else(els: Cbinds, bound: Strings, acc: Strings) -> Strings {
     if null_p(els) {
         acc
@@ -2104,15 +2117,18 @@ pub fn c_free_else(els: Cbinds, bound: Strings, acc: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn c_mentions_p(x: &'static Cx, n: Str) -> bool {
     string_member_p(n, c_free(x, nil::<Str>(), nil::<Str>()))
 }
 
+#[inline]
 pub fn c_free_names(x: &'static Cx) -> Strings {
     c_free(x, nil::<Str>(), nil::<Str>())
 }
 
 // The checker's facts, for the program being compiled.
+#[inline]
 pub fn cg_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
@@ -2121,6 +2137,7 @@ pub fn cg_facts() -> Ref<Facts> {
 }
 
 // The program's file, for its words' line tables (C245).
+#[inline]
 pub fn cg_source() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
@@ -2129,6 +2146,7 @@ pub fn cg_source() -> Ref<Str> {
 }
 
 // The source position of the expression being compiled (C245).
+#[inline]
 pub fn cg_at() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -2138,6 +2156,7 @@ pub fn cg_at() -> Ref<i64> {
 
 // Of those, the conversions (C230; `conversion-noted`), looked for at every
 // expression: none, in most programs.
+#[inline]
 pub fn cg_convert_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
@@ -2148,6 +2167,7 @@ pub fn cg_convert_facts() -> Ref<Facts> {
 // Of those, what a module's place is told (C144): a module parameter's type,
 // at each `with` of it (`with-spec`), and at each module given for one
 // (`module-arg`), its values' names in order. Few, so asked of often.
+#[inline]
 pub fn cg_module_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
@@ -2158,6 +2178,7 @@ pub fn cg_module_facts() -> Ref<Facts> {
 // Where each call of a procedure of the fx convention starts (the checker's
 // `call-fx`): made a call that looks at its callee's kind, not a typed one,
 // as Fixpt's `c-call-in` makes it.
+#[inline]
 pub fn cg_fx_calls() -> Ref<List<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
     once(&ONCE, || {
@@ -2167,6 +2188,7 @@ pub fn cg_fx_calls() -> Ref<List<i64>> {
 
 // Of those, the calls of a procedure of the native convention, which
 // register code calls with no look (C248).
+#[inline]
 pub fn cg_native_calls() -> Ref<List<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
     once(&ONCE, || {
@@ -2176,6 +2198,7 @@ pub fn cg_native_calls() -> Ref<List<i64>> {
 
 // The checker's facts of calls, `call-fx` and `call-native`, picked out of
 // all of them once (C266): searched at every application parsed.
+#[inline]
 pub fn cg_call_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
@@ -2227,6 +2250,7 @@ pub fn cmade(f0: Str, f1: &'static Cx) -> &'static Cmade {
     kayak_rt::heap_alloc(Cmade::Cmade(f0, f1))
 }
 
+#[inline]
 pub fn cg_made() -> Ref<List<&'static Cmade>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cmade>>);
     once(&ONCE, || {
@@ -2271,10 +2295,12 @@ pub fn instance_load_p(e: &'static Sexp) -> bool {
     }), items(second(items(e)))))
 }
 
+#[inline]
 pub fn made_here_name_p(n: Str) -> bool {
     (has_prefix_p(n, str_lit("made--")) && not(has_prefix_p(n, str_lit("made--load--"))) && not(has_prefix_p(n, str_lit("made--input--"))))
 }
 
+#[inline]
 pub fn cg_layouts() -> Ref<List<&'static Clayout>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Clayout>>);
     once(&ONCE, || {
@@ -2285,6 +2311,7 @@ pub fn cg_layouts() -> Ref<List<&'static Clayout>> {
 // The modules an `include` makes of an expression, not one named (C221),
 // by a hidden name of their place: the values the checker noted each gives
 // (`with-spec`).
+#[inline]
 pub fn cg_included() -> Ref<List<&'static Clayout>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Clayout>>);
     once(&ONCE, || {
@@ -2340,10 +2367,12 @@ pub fn words_in(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn split_words(s: Str) -> Strings {
     reverse(words_in(string_chars(s), nil::<char>(), nil::<Str>()))
 }
 
+#[inline]
 pub fn indices_from(i: i64, n: i64) -> List<i64> {
     if i64_gt_eq(i, n) {
         nil::<i64>()
@@ -2400,6 +2429,7 @@ pub fn fact_noted_p(mut fs: Facts, mut file: Str, mut pos: i64, mut what: Str) -
     }
 }
 
+#[inline]
 pub fn cg_fail(why: Str) -> Void {
     error(string_append(str_lit("kayak-fx26: cells: "), why))
 }
@@ -2415,10 +2445,12 @@ pub fn digits_i64(mut cs: Chars, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn cg_fixnum_p(n: Int) -> bool {
     (_lt_eq(n, int_lit(1152921504606846975)) && _gt_eq(n, int_lit(-1152921504606846976)))
 }
 
+#[inline]
 pub fn call2(f: Str, x: &'static Cx, y: &'static Cx, a: i64) -> &'static Cx {
     x_app(x_var(f, a), kayak_rt::heap_cons(x, kayak_rt::heap_cons(y, kayak_rt::nil())), a)
 }
@@ -2461,6 +2493,7 @@ pub fn big_literal(v: Int, a: i64) -> &'static Cx {
 // A datatype's constructors, as Fixpt's parser expands `define-datatype`:
 // each `(define tag type (lambda (x1 …) (sum tag (product (1 x1) …))))`, the
 // lambda where the form starts, its body where the variant does.
+#[inline]
 pub fn dt_vars(i: i64, n: i64) -> Strings {
     if i64_gt(i, n) {
         nil::<Str>()
@@ -2563,6 +2596,7 @@ pub fn ckey(f0: &'static Cx, f1: i64, f2: i64) -> &'static Ckey {
     kayak_rt::heap_alloc(Ckey::Ckey(f0, f1, f2))
 }
 
+#[inline]
 pub fn ckey_at(e: &'static Ckey) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
@@ -2650,6 +2684,7 @@ pub fn case_key_nth(mut es: List<&'static Ckey>, mut i: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn case_take(es: List<&'static Ckey>, k: i64) -> List<&'static Ckey> {
     if i64_eq(k, 0i64) {
         nil::<&'static Ckey>()
@@ -2816,6 +2851,7 @@ pub fn typecase_predicate(s: Str) -> Str {
 
 // Names `bloblet-form` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn bloblet_form_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -2823,6 +2859,7 @@ pub fn bloblet_form_names() -> Strings {
     })
 }
 
+#[inline]
 pub fn bloblet_form_p(h: Str) -> bool {
     string_member_p(h, bloblet_form_names())
 }
@@ -2846,12 +2883,14 @@ pub fn flat_code(s: Str) -> i64 {
     }
 }
 
+#[inline]
 pub fn words_i64(w: Str) -> List<i64> {
     map(lambda1s(move |x: Str| {
         digits_i64(string_chars(x), 0i64)
     }), split_words(w))
 }
 
+#[inline]
 pub fn second_i64(xs: List<i64>) -> i64 {
     if null_p(cdr(xs)) {
         0i64
@@ -2905,6 +2944,7 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
 // x)` where the form is, as Fixpt's parser's `identity-at` makes them.
 /// A generative type's name: its own, or a family's head, `(t (a type +))`
 /// (C217).
+#[inline]
 pub fn generative_name(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
@@ -2948,6 +2988,7 @@ pub fn generative_conversions(t: Str, a: i64) -> List<&'static Ctop> {
 }
 
 // The type of the module read last: its values' names, in order.
+#[inline]
 pub fn cg_module_type() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -3073,6 +3114,7 @@ pub fn strings_between(ss: Strings, sep: Str) -> Strings {
     }
 }
 
+#[inline]
 pub fn strings_after(ss: Strings, sep: Str) -> Strings {
     if null_p(ss) {
         nil::<Str>()
@@ -3081,11 +3123,13 @@ pub fn strings_after(ss: Strings, sep: Str) -> Strings {
     }
 }
 
+#[inline]
 pub fn put_sep_words(ss: Strings) -> Str {
     string_list_append(strings_between(ss, str_lit(" ")))
 }
 
 // An arm's label: a name, or a flat sum's number, as its digits (C221).
+#[inline]
 pub fn arm_label(x: &'static Sexp) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
@@ -3119,6 +3163,7 @@ pub fn q_unquote_of(x: &'static Sexp, form: Str) -> Sexps {
     }
 }
 
+#[inline]
 pub fn q_unquoted(x: &'static Sexp, depth: i64) -> Sexps {
     if i64_eq(depth, 1i64) {
         q_unquote_of(x, str_lit("unquote"))
@@ -3127,6 +3172,7 @@ pub fn q_unquoted(x: &'static Sexp, depth: i64) -> Sexps {
     }
 }
 
+#[inline]
 pub fn q_compound_p(x: &'static Sexp) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
@@ -3153,6 +3199,7 @@ pub fn q_dotted_p(mut ys: Sexps) -> bool {
     }
 }
 
+#[inline]
 pub fn q_before_dot(ys: Sexps) -> Sexps {
     if sym_is_p(car(ys), str_lit(".")) {
         nil::<&'static Sexp>()
@@ -3295,6 +3342,7 @@ pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
     }
 }
 
+#[inline]
 pub fn parse_xs(es: Sexps) -> Cxs {
     if null_p(es) {
         nil::<&'static Cx>()
@@ -3304,6 +3352,7 @@ pub fn parse_xs(es: Sexps) -> Cxs {
 }
 
 /// One or more expressions, an implicit `begin` where the form starts.
+#[inline]
 pub fn parse_body(forms: Sexps, a: i64) -> &'static Cx {
     if null_p(cdr(forms)) {
         parse_x(car(forms))
@@ -3664,6 +3713,7 @@ pub fn parse_typecase_arms(arms: Sexps, tmp: Str, a: i64) -> &'static Cx {
     }
 }
 
+#[inline]
 pub fn parse_args(es: Sexps) -> Cxs {
     if null_p(es) {
         nil::<&'static Cx>()
@@ -3757,6 +3807,7 @@ pub fn parse_with(m: &'static Sexp, body: &'static Cx, f: Str, a: i64) -> &'stat
     }
 }
 
+#[inline]
 pub fn with_layout(m: &'static Sexp, ns: Strings, body: &'static Cx, a: i64) -> &'static Cx {
     x_with(parse_x(m), ns, indices_from(0i64, size(ns)), body, a)
 }
@@ -3914,6 +3965,7 @@ pub fn parse_extend(e0: &'static Sexp, e1: &'static Sexp, a: i64) -> &'static Cx
 
 /// `%include`: the modules included, each a member of it; then, of its
 /// type, each of their values in turn.
+#[inline]
 pub fn include_module(incs: List<&'static Cinc>, at: i64) -> &'static Cx {
     x_reshape(x_module(include_members(incs, 0i64), at), include_paths(incs, 0i64), at)
 }
@@ -4041,6 +4093,7 @@ pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<&'static Cinc> {
 
 /// A module's members, in order, each a value; those of a `hide` of kind
 /// 1, hidden.
+#[inline]
 pub fn parse_items(forms: Sexps, kind: i64) -> List<&'static Cmem> {
     if null_p(forms) {
         nil::<&'static Cmem>()
@@ -4163,6 +4216,7 @@ pub fn parse_rec_members(bs: Sexps, kind: i64) -> List<&'static Cmem> {
 
 /// `(import m x …)`: each value `x` defined as `(with m x)`; `(type t
 /// …)` and `(effect e …)` name no value.
+#[inline]
 pub fn imports(e: &'static Sexp) -> List<&'static Ctop> {
     import_names(second(items(e)), cdr(cdr(items(e))), datum_pos(e))
 }
@@ -4723,11 +4777,13 @@ pub fn before_tab(mut cs: Chars, mut acc: Chars) -> Str {
     }
 }
 
+#[inline]
 pub fn shown_name(n: Str) -> Str {
     before_tab(string_chars(n), nil::<char>())
 }
 
 // The program's words, the newest first.
+#[inline]
 pub fn cg_words() -> Ref<List<&'static Word>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Word>>);
     once(&ONCE, || {
@@ -4735,6 +4791,7 @@ pub fn cg_words() -> Ref<List<&'static Word>> {
     })
 }
 
+#[inline]
 pub fn cg_labels() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -4742,49 +4799,59 @@ pub fn cg_labels() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn c_fresh() -> i64 {
     let n = get(cg_labels());
     set(cg_labels(), i64_plus(n, 1i64));
     n
 }
 
+#[inline]
 pub fn c_emit(c: Code, i: &'static Item) -> () {
     set(c, kayak_rt::heap_cons(i, get(c)))
 }
 
+#[inline]
 pub fn c_op(c: Code, r: Str) -> () {
     c_emit(c, it_ins(r, nil::<&'static Opnd>()))
 }
 
+#[inline]
 pub fn c_op1(c: Code, r: Str, x: &'static Opnd) -> () {
     c_emit(c, it_ins(r, kayak_rt::heap_cons(x, kayak_rt::nil())))
 }
 
+#[inline]
 pub fn c_lit(c: Code, x: &'static Lit) -> () {
     c_op1(c, str_lit("lit"), o_lit(x))
 }
 
+#[inline]
 pub fn c_int(c: Code, n: i64) -> () {
     c_lit(c, l_int(i64_to_int(n)))
 }
 
 // Field `k` of a bloblet whose type says it has one.
+#[inline]
 pub fn c_field(c: Code, k: i64) -> () {
     c_op1(c, str_lit("field"), o_int(k))
 }
 
 // Field `k` of the bloblet on top set to the value under it.
+#[inline]
 pub fn c_field_set(c: Code, k: i64) -> () {
     c_int(c, k);
     c_op(c, str_lit("field!"))
 }
 
 // A runtime primitive with `n` arguments.
+#[inline]
 pub fn c_prim(c: Code, name: Str, n: i64) -> () {
     c_emit(c, it_ins(str_lit("prim"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_int(n), kayak_rt::nil()))))
 }
 
 // That the blobref on top has room for a flat of `size` bytes.
+#[inline]
 pub fn c_fits(c: Code, size: i64) -> () {
     if i64_gt(size, 1i64) {
         c_int(c, size);
@@ -4794,17 +4861,20 @@ pub fn c_fits(c: Code, size: i64) -> () {
     }
 }
 
+#[inline]
 pub fn second_cx(xs: Cxs) -> &'static Cx {
     car(cdr(xs))
 }
 
 // Drop what a mutator left, and leave FX-26's unit value instead.
+#[inline]
 pub fn c_unit_after(c: Code) -> () {
     c_op(c, str_lit("drop"));
     c_lit(c, l_unit())
 }
 
 // What is left when the value is in hand: `return` in tail position.
+#[inline]
 pub fn c_done(c: Code, tail: bool) -> () {
     if tail {
         c_op(c, str_lit("return"))
@@ -4854,6 +4924,7 @@ pub fn hex_digits(mut n: i64, mut acc: Chars) -> Chars {
     }
 }
 
+#[inline]
 pub fn hex(n: i64) -> Str {
     list_to_string(hex_digits(n, nil::<char>()))
 }
@@ -4895,6 +4966,7 @@ pub fn lit_escaped(s: Str, quote: char) -> Str {
 // in a word's lines as a mark (`q-open`, its number, `q-close`), which the
 // listing's writing makes the pair in full, labelled where it is reached
 // more than once (`labelled-listing`), as Fixpt's `literal.rs` writes.
+#[inline]
 pub fn q_open() -> Str {
     static ONCE: std::sync::OnceLock<Str> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -4902,6 +4974,7 @@ pub fn q_open() -> Str {
     })
 }
 
+#[inline]
 pub fn q_close() -> Str {
     static ONCE: std::sync::OnceLock<Str> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -4917,6 +4990,7 @@ pub fn qnode(f0: i64, f1: &'static Lit, f2: &'static Lit) -> &'static Qnode {
     kayak_rt::heap_alloc(Qnode::Qnode(f0, f1, f2))
 }
 
+#[inline]
 pub fn cg_qnodes() -> Ref<List<&'static Qnode>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qnode>>);
     once(&ONCE, || {
@@ -4970,6 +5044,7 @@ pub fn lit_text(l: &'static Lit) -> Str {
     }
 }
 
+#[inline]
 pub fn lits_text(ls: List<&'static Lit>) -> Str {
     if null_p(ls) {
         str_lit("")
@@ -5055,6 +5130,7 @@ pub fn place_at(mut ps: List<&'static Place>, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn range_from(i: i64, n: i64) -> List<i64> {
     if i64_gt_eq(i, n) {
         nil::<i64>()
@@ -5063,6 +5139,7 @@ pub fn range_from(i: i64, n: i64) -> List<i64> {
     }
 }
 
+#[inline]
 pub fn range_to(n: i64) -> List<i64> {
     range_from(0i64, n)
 }
@@ -5074,14 +5151,17 @@ pub fn padded(n: i64) -> Str {
     }), range_to(i64_minus(4i64, string_length_i64(s))))), s)
 }
 
+#[inline]
 pub fn second_opnd(os: List<&'static Opnd>) -> &'static Opnd {
     car(cdr(os))
 }
 
+#[inline]
 pub fn line(at: i64, text: Str) -> Str {
     string_append(str_lit("  "), string_append(padded(at), string_append(str_lit(": "), text)))
 }
 
+#[inline]
 pub fn put_sep_lines(ss: Strings) -> Str {
     string_list_append(strings_after(ss, str_lit("\n")))
 }
@@ -5194,6 +5274,7 @@ pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static Place>,
 }
 
 // A word's lines, as the listing writes them.
+#[inline]
 pub fn word_text(xs: Citems) -> Str {
     let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
     match *tagcase_ {
@@ -5316,6 +5397,7 @@ pub type Cenv = List<&'static Centry>;
 
 pub type Found = List<&'static Loc>;
 
+#[inline]
 pub fn c_extend(n: Str, l: &'static Loc, e: Cenv) -> Cenv {
     kayak_rt::heap_cons(centry(n, l), e)
 }
@@ -5346,6 +5428,7 @@ pub fn c_find(mut e: Cenv, mut n: Str) -> Found {
 }
 
 // The globals defined so far, the newest first.
+#[inline]
 pub fn cg_globals() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -5368,10 +5451,12 @@ pub fn gfirst(f0: Str, f1: i64) -> &'static Gfirst {
 
 pub type Gbucket = List<&'static Gfirst>;
 
+#[inline]
 pub fn global_buckets() -> Int {
     int_lit(4096)
 }
 
+#[inline]
 pub fn cg_global_table() -> Ref<Array<Gbucket>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<Gbucket>>);
     once(&ONCE, || {
@@ -5379,6 +5464,7 @@ pub fn cg_global_table() -> Ref<Array<Gbucket>> {
     })
 }
 
+#[inline]
 pub fn cg_global_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -5411,23 +5497,28 @@ pub fn gfirst_in(mut bs: Gbucket, mut n: Str) -> i64 {
     }
 }
 
+#[inline]
 pub fn global_bucket(n: Str) -> Int {
     modulo(string_hash(n), global_buckets())
 }
 
 // How many globals there were once `n` was first defined; 0 if it never was.
+#[inline]
 pub fn global_first(n: Str) -> i64 {
     gfirst_in(array_ref(get(cg_global_table()), global_bucket(n)), n)
 }
 
+#[inline]
 pub fn global_p(n: Str) -> bool {
     i64_gt(global_first(n), 0i64)
 }
 
+#[inline]
 pub fn globals_count() -> i64 {
     get(cg_global_count())
 }
 
+#[inline]
 pub fn globals_reset_x() -> () {
     set(cg_globals(), nil::<Str>());
     set(cg_global_count(), 0i64);
@@ -5467,6 +5558,7 @@ pub fn c_load(c: Code, l: &'static Loc) -> () {
     }
 }
 
+#[inline]
 pub fn c_loop_p(l: &'static Loc) -> bool {
     let tagcase_ = l;
     match *tagcase_ {
@@ -5480,6 +5572,7 @@ pub fn c_loop_p(l: &'static Loc) -> bool {
     }
 }
 
+#[inline]
 pub fn c_global_p(l: &'static Loc) -> bool {
     let tagcase_ = l;
     match *tagcase_ {
@@ -5493,6 +5586,7 @@ pub fn c_global_p(l: &'static Loc) -> bool {
     }
 }
 
+#[inline]
 pub fn c_count<A: Copy + 'static>(xs: List<A>) -> i64 {
     size(xs)
 }
@@ -5587,6 +5681,7 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
     }
 }
 
+#[inline]
 pub fn c_calls_only_inside(x: &'static Cx, f: Str, n: i64, loops: bool) -> bool {
     if loops {
         not(c_mentions_p(x, f))
@@ -5595,6 +5690,7 @@ pub fn c_calls_only_inside(x: &'static Cx, f: Str, n: i64, loops: bool) -> bool 
     }
 }
 
+#[inline]
 pub fn c_calls_only_all(es: Cxs, f: Str, n: i64, loops: bool) -> bool {
     (null_p(es) || (c_calls_only(car(es), f, n, false, loops) && c_calls_only_all(cdr(es), f, n, loops)))
 }
@@ -5631,6 +5727,7 @@ pub fn c_calls_only_else(els: Cbinds, f: Str, n: i64, tail: bool, loops: bool) -
     })
 }
 
+#[inline]
 pub fn c_loops_only(x: &'static Cx, f: Str, n: i64, tail: bool) -> bool {
     c_calls_only(x, f, n, tail, true)
 }
@@ -5646,6 +5743,7 @@ pub fn this(f0: Str, f1: &'static Loc, f2: i64) -> &'static This {
     kayak_rt::heap_alloc(This::This(f0, f1, f2))
 }
 
+#[inline]
 pub fn c_this_name() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
@@ -5653,6 +5751,7 @@ pub fn c_this_name() -> Ref<Str> {
     })
 }
 
+#[inline]
 pub fn c_this_loc() -> Ref<&'static Loc> {
     kayak_rt::kept_constant!(ONCE: Ref<&'static Loc>);
     once(&ONCE, || {
@@ -5660,6 +5759,7 @@ pub fn c_this_loc() -> Ref<&'static Loc> {
     })
 }
 
+#[inline]
 pub fn c_this_params() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -5667,6 +5767,7 @@ pub fn c_this_params() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn c_this_start() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -5674,6 +5775,7 @@ pub fn c_this_start() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn c_this_saved() -> &'static This {
     this(get(c_this_name()), get(c_this_loc()), get(c_this_params()))
 }
@@ -5757,6 +5859,7 @@ pub fn c_loop_stores(mut c: Code, mut i: i64) -> () {
 // it starts, an inner lambda's word named within it, `outer/inner@N`; and
 // while a `let`'s binding's init is compiled, the binding's name, which
 // the first lambda compiled in it is named for. Each a list of none or one.
+#[inline]
 pub fn c_word_name() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -5764,6 +5867,7 @@ pub fn c_word_name() -> Ref<Strings> {
     })
 }
 
+#[inline]
 pub fn c_scope_name() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -5771,6 +5875,7 @@ pub fn c_scope_name() -> Ref<Strings> {
     })
 }
 
+#[inline]
 pub fn c_bind_name() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -5778,6 +5883,7 @@ pub fn c_bind_name() -> Ref<Strings> {
     })
 }
 
+#[inline]
 pub fn c_take(r: Ref<Strings>) -> Strings {
     let v = get(r);
     set(r, nil::<Str>());
@@ -5799,6 +5905,7 @@ pub fn twin(f0: Str, f1: Strings, f2: &'static Cx, f3: Cenv, f4: List<&'static T
     kayak_rt::heap_alloc(Twin::Twin(f0, f1, f2, f3, f4, f5, f6))
 }
 
+#[inline]
 pub fn cg_twins() -> Ref<List<&'static Twin>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Twin>>);
     once(&ONCE, || {
@@ -5818,6 +5925,7 @@ pub fn lword(f0: i64, f1: Strings, f2: Strings, f3: Str, f4: Strings) -> &'stati
     kayak_rt::heap_alloc(Lword::Lword(f0, f1, f2, f3, f4))
 }
 
+#[inline]
 pub fn cg_form_lambdas() -> Ref<List<&'static Lword>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lword>>);
     once(&ONCE, || {
@@ -5837,6 +5945,7 @@ pub fn stwin(f0: Str, f1: Str, f2: i64) -> &'static Stwin {
     kayak_rt::heap_alloc(Stwin::Stwin(f0, f1, f2))
 }
 
+#[inline]
 pub fn cg_standard_twins() -> Ref<List<&'static Stwin>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Stwin>>);
     once(&ONCE, || {
@@ -5844,6 +5953,7 @@ pub fn cg_standard_twins() -> Ref<List<&'static Stwin>> {
     })
 }
 
+#[inline]
 pub fn cg_defining() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -5851,6 +5961,7 @@ pub fn cg_defining() -> Ref<Strings> {
     })
 }
 
+#[inline]
 pub fn cg_lambda_at() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -5881,6 +5992,7 @@ pub fn c_word_base(named: Strings, own: Strings, bound: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn c_word_symbol(base: Str, named: Strings, body: &'static Cx) -> Str {
     if null_p(named) {
         string_append(base, string_append(str_lit("@"), i64_to_string(cx_start(body))))
@@ -5890,14 +6002,17 @@ pub fn c_word_symbol(base: Str, named: Strings, body: &'static Cx) -> Str {
 }
 
 // Whether `name` is an equality of the same word, as `eq` does it.
+#[inline]
 pub fn std_eq_name_p(n: Str) -> bool {
     (string_eq_p(n, str_lit("char=?")) || string_eq_p(n, str_lit("symbol=?")) || string_eq_p(n, str_lit("wglobal=?")) || string_eq_p(n, str_lit("eq?")) || string_eq_p(n, str_lit("bool=?")))
 }
 
+#[inline]
 pub fn std_nil_name_p(n: Str) -> bool {
     (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair")))
 }
 
+#[inline]
 pub fn std_primitive(n: Str) -> Str {
     standard::standard_primitive(n)
 }
@@ -5935,6 +6050,7 @@ pub fn std_arity_in(mut ps: Sexps, mut n: Str) -> i64 {
 // kayak-rt's primitives' table read, kept once read (C262): read again for
 // each name `c-arity` was asked of, each variable's name new to the
 // analyses, it was most of what the reader read in compiling a program.
+#[inline]
 pub fn cg_primitive_forms() -> Ref<List<Sexps>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<Sexps>>);
     once(&ONCE, || {
@@ -5962,6 +6078,7 @@ pub fn c_arity_one_names() -> Strings {
 
 // Names `c-arity` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn c_arity_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -5971,6 +6088,7 @@ pub fn c_arity_names() -> Strings {
 
 // Names `c-arity` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn c_arity_names_2() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -6006,6 +6124,7 @@ pub fn c_arity(n: Str) -> i64 {
 }
 
 // The boolean on top negated.
+#[inline]
 pub fn c_not(c: Code) -> () {
     c_lit(c, l_bool(false));
     c_op(c, str_lit("eq"))
@@ -6013,6 +6132,7 @@ pub fn c_not(c: Code) -> () {
 
 // The index on top made the field it is in an array, whose elements are
 // its fields from 2 on.
+#[inline]
 pub fn c_array_index(c: Code) -> () {
     c_int(c, 2i64);
     c_op(c, str_lit("int-add"))
@@ -6020,6 +6140,7 @@ pub fn c_array_index(c: Code) -> () {
 
 // Names `c-standard-on` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn c_standard_on_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -6126,6 +6247,7 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
 
 // The standard `vsubr`s, `list`, `append` and `string-append`, each with
 // the operation of one list that its value applies; "" for the rest.
+#[inline]
 pub fn c_vsubr_list_op(n: Str) -> Str {
     if string_eq_p(n, str_lit("list")) {
         str_lit("datum-list")
@@ -6138,11 +6260,13 @@ pub fn c_vsubr_list_op(n: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn c_vsubr_p(n: Str) -> bool {
     not(string_eq_p(c_vsubr_list_op(n), str_lit("")))
 }
 
 // The words made of standard operations as values, by name.
+#[inline]
 pub fn cg_standard_words() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -6488,6 +6612,7 @@ pub fn c_inner_env(mut xs: Strings, mut acc: Cenv, mut i: i64) -> Cenv {
 }
 
 // A parameter of the same name hides the procedure.
+#[inline]
 pub fn c_own_of(ps: Strings, own0: Strings) -> Strings {
     if (null_p(own0) || string_member_p(car(own0), ps)) {
         nil::<Str>()
@@ -6511,6 +6636,7 @@ pub fn c_own_scope(own: Strings, fv: Strings, e: Cenv) -> Cenv {
     }
 }
 
+#[inline]
 pub fn c_this_of(own: Strings, inner: Cenv, n: i64) -> List<&'static This> {
     if null_p(own) {
         nil::<&'static This>()
@@ -6659,6 +6785,7 @@ pub fn c_module_slots(its: List<&'static Cmem>, d: i64) -> Cenv {
 }
 
 // Whether `x` names any of `later`'s.
+#[inline]
 pub fn c_names_any_p(x: &'static Cx, later: Cenv) -> bool {
     any_p(lambda1s(move |n: Str| {
         not(null_p(c_find(later, n)))
@@ -7411,6 +7538,7 @@ pub fn c_push_global_x(n: Str) -> () {
 
 // The next lambda's word named for global `n`, when `x`, its definition, is
 // a lambda.
+#[inline]
 pub fn c_name_for_x(n: Str, x: &'static Cx) -> () {
     let tagcase_ = x;
     match *tagcase_ {
@@ -7441,6 +7569,7 @@ pub fn c_rec_globals_x(mut bs: Cbinds) -> () {
     }
 }
 
+#[inline]
 pub fn parse_tops(fs: Sexps) -> List<&'static Ctop> {
     if null_p(fs) {
         nil::<&'static Ctop>()
@@ -7526,6 +7655,7 @@ pub fn entries_shown(mut es: List<&'static Tentry>, mut out: Strings) -> Strings
     }
 }
 
+#[inline]
 pub fn spaced(ss: Strings) -> Str {
     put_sep_words(ss)
 }

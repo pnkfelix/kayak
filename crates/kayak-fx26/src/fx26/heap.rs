@@ -3,365 +3,927 @@
 use kayak_rt::*;
 use super::*;
 
-// heap.kfx: the engine's heap and its collector (C64,
-// docs/research/collector.md): words in two flat arrays of `i64`, a
-// copying collector (Cheney's), written in KFX. Nothing here allocates
-// KFX data once the heap is made, but when it grows: kayak-rt's heap is
-// never freed, so the engine's must be all its own.
-//
-// Moving to Fixpt's layout, tier 1's (C318, `docs/research/one-heap.md`).
-// A word's values are Fixpt's (its `value.rs`): its low three bits its tag
-// (000 a fixnum, the word shifted right by 3; 011 an immediate, a subtag
-// in bits 3 to 8 and its payload above; 100 an object, at the index the
-// word shifted right by 3, `vbase` 0 for now); `#f`, `#t`, `nil`, `#u`,
-// the unbound marker, characters and `f32`s Fixpt's own immediates. Not
-// yet Fixpt's: an object is still a header word (its kind in the low 8
-// bits, its payload's size above) and its payload, a pair one too; and
-// primitives, prompt tags and the machine's own specials are immediates
-// of subtags Fixpt has none of (25 to 27), until each is an object as
-// Fixpt has it; symbols are Fixpt's objects (C321). An IR node, in a frame or a procedure, is a
-// fixnum, its number in the IR's table.
-
-// Tags, immediates' kinds, objects' kinds.
-pub fn imm_char() -> i64 {
-    0i64
+// heap.kfx: tier 1's heap, in Fixpt's format (C122): one flat array of
+// `i64`, a value `vbase + 8 index + tag` (C139): the word's machine
+// address and its tag, as Fixpt's values are, `vbase` the array's address
+// (C139; indices into it, the other way, gone, C244). Pairs are two words; every other object a bloblet: a
+// header, its fields below its suffix (field `k` at `p - k`, the trailer
+// field 1, its payload the distance back to the header), its suffix's
+// bytes. Collected by Coopt's collector's baseline, below (C122).
+// fixpt-source: crates/fixpt-heap/src/heap.rs@19b31f1
+#[inline]
+pub fn mem() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(4096i64, 0i64))
+    })
 }
 
-pub fn imm_bool() -> i64 {
-    1i64
+// The next free index. Indices 0 to 7 are never an object's.
+#[inline]
+pub fn heap_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(8i64)
+    })
 }
 
-pub fn imm_unit() -> i64 {
-    2i64
+// How far the heap may be used: less than `heap-capacity`, to which each
+// space is reserved once (committed as it is touched), so that nothing
+// moves but by a collection, which moves every value (C139).
+#[inline]
+pub fn limit() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(4096i64)
+    })
 }
 
-pub fn imm_nil() -> i64 {
-    3i64
+#[inline]
+pub fn heap_capacity() -> i64 {
+    268435456i64
 }
 
-pub fn imm_prim() -> i64 {
-    5i64
+// The values' base, this space's and the other's: the arrays' addresses.
+#[inline]
+pub fn vbase() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-// Objects' kinds, as an object's header says them: Fixpt's kind where the
-// engine's object is Fixpt's (`layout.rs`'s `KINDS`; C318), else one past
-// Fixpt's (200 on) until it is. A pair has no header: Fixpt's two words.
-pub fn ob_pair() -> i64 {
-    0i64
+#[inline]
+pub fn to_vbase() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-pub fn ob_ref() -> i64 {
-    10i64
+// A trap's message, or ``: the first one stops the machine.
+#[inline]
+pub fn trap_message() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
 }
 
-pub fn ob_sum() -> i64 {
-    36i64
+#[inline]
+pub fn trap_x(m: Str) -> () {
+    if string_eq_p(get(trap_message()), str_lit("")) {
+        set(trap_message(), m)
+    } else {
+        ()
+    }
 }
 
-pub fn ob_product() -> i64 {
-    37i64
+#[inline]
+pub fn trapped_p() -> bool {
+    not(string_eq_p(get(trap_message()), str_lit("")))
 }
 
-// An FX-26 array and a bloblet (C215): Fixpt's plain bloblet (`%make-bloblet`,
-// C326), its values in slots 0 on, a trailer always, its bytes its suffix.
-pub fn ob_array() -> i64 {
-    32i64
+pub fn copied_into_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(to, i, flatarray_ref_i64(from, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
 }
 
-pub fn ob_proc() -> i64 {
-    8i64
+/// Room for `n` more words: the heap's limit twice as far, if need be,
+/// within the space reserved, else a trap.
+pub fn room_x(n: i64) -> () {
+    if i64_lt_eq(i64_plus(get(heap_top()), n), get(limit())) {
+        ()
+    } else {
+        let more = i64_star(2i64, i64_plus(get(limit()), n));
+        if i64_gt(i64_plus(get(heap_top()), n), heap_capacity()) {
+            trap_x(str_lit("out of heap"))
+        } else {
+            set(limit(), if i64_gt(more, heap_capacity()) {
+                heap_capacity()
+            } else {
+                more
+            })
+        }
+    }
 }
 
-pub fn ob_cont() -> i64 {
-    14i64
+pub fn zeroed_x(mut m: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(m, i, 0i64);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
 }
 
-pub fn ob_env() -> i64 {
-    35i64
+/// `n` words, each 0 (fixnum 0): the space is used again after a
+/// collection.
+pub fn heap_alloc_x(n: i64) -> i64 {
+    room_x(n);
+    let at = get(heap_top());
+    set(heap_top(), i64_plus(at, n));
+    zeroed_x(get(mem()), at, i64_plus(at, n));
+    at
 }
 
-pub fn ob_frame() -> i64 {
-    202i64
+// The code area (C226; Fixpt's, `docs/object-model.md`, "A collected
+// code area"): code bloblets, which never move, in a reservation of its
+// own (`code`), whose range from `code-lo` to `code-hi` has a second view,
+// read+execute, `code-distance` bytes on (the syscall `code:exec-view/1`).
+// A code bloblet's index is as any value's, from `vbase`, so that the
+// machine's accessors read it as they read the heap: an index outside the
+// heap's reservation is the code area's. The collector leaves its objects
+// where they are and forwards their fields in place; none is freed yet.
+// Only where the view was made.
+#[inline]
+pub fn code_space() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
 }
 
-pub fn ob_ctor() -> i64 {
-    203i64
+#[inline]
+pub fn code_on() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
 }
 
-// `datum`'s vector (C77): its elements, words, as an array's.
-pub fn ob_vector() -> i64 {
-    3i64
+#[inline]
+pub fn code_vbase() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-// A flat array (C220): Fixpt's (C327, vprims.kfx's `flat-made!`), its
-// layout's code in its slot, its elements' bits its suffix.
-pub fn ob_flatx() -> i64 {
-    42i64
+#[inline]
+pub fn code_lo() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-// A table keyed by identity (C220): Fixpt's (C329, vprims.kfx's
-// `eqtable-made!`), three fields and no trailer.
-pub fn ob_eqtable() -> i64 {
-    43i64
+#[inline]
+pub fn code_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-// Kinds whose payload is raw words, not values: a bloblet's suffix, never
-// traced, as Fixpt's. A string and a bytevector are Fixpt's (C320:
-// words.kfx).
-pub fn ob_string() -> i64 {
-    1i64
+#[inline]
+pub fn code_hi() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-// A symbol (C321): Fixpt's, its name (a string), its hash and its global
-// slot, which in the engine holds its name's number (tier 1's holds 0: to
-// settle once the heap is one); and a keyword, Fixpt's, its symbol.
-pub fn ob_symbol() -> i64 {
-    2i64
+#[inline]
+pub fn code_distance() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-pub fn ob_keyword() -> i64 {
-    48i64
+// The code area in two parts (C234; Fixpt's at 8c7111d,
+// `docs/research/code-stubs.md`): from `stub-lo` to `stub-hi`, what native
+// code calls that is not native code, each bloblet's suffix the stub that
+// enters `foreign` (`code-stub-word`, the machine's); from `code-lo` to
+// `code-hi`, native code. The state's `code-lo` is the native part's start,
+// so that code written to the older clause tests as it did.
+#[inline]
+pub fn stub_lo() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-pub fn ob_bytes() -> i64 {
-    4i64
+#[inline]
+pub fn stub_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-pub fn ob_real() -> i64 {
-    5i64
+#[inline]
+pub fn stub_hi() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-pub fn ob_big() -> i64 {
-    6i64
+#[inline]
+pub fn code_stub_word() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
 }
 
-pub fn raw_kind_p(k: i64) -> bool {
-    (i64_eq(k, ob_string()) || i64_eq(k, ob_bytes()) || i64_eq(k, ob_real()) || i64_eq(k, ob_big()))
+// Words reserved for code: committed only as they are touched.
+#[inline]
+pub fn code_capacity() -> i64 {
+    4194304i64
 }
 
-// Making and taking apart words: Fixpt's tags (`value.rs`).
-pub fn fixnum_max() -> i64 {
-    1152921504606846975i64
+/// A code index's distance from the heap's.
+#[inline]
+pub fn code_offset() -> i64 {
+    i64_shr(i64_minus(get(code_vbase()), get(vbase())), int_lit(3))
 }
 
-pub fn fixnum_min() -> i64 {
-    -1152921504606846976i64
+pub fn in_code_p(w: i64) -> bool {
+    (get(code_on()) && i64_gt_eq(w, get(code_vbase())) && i64_lt(w, i64_plus(get(code_vbase()), i64_star(8i64, get(code_hi())))))
 }
 
-pub fn fixnum_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 7i64), 0i64)
+#[inline]
+pub fn code_at(j: i64) -> i64 {
+    flatarray_ref_i64(get(code_space()), j)
 }
 
-pub fn fits_fixnum_p(n: i64) -> bool {
-    (i64_lt_eq(n, fixnum_max()) && i64_gt_eq(n, fixnum_min()))
+// A collection's marks of the code bloblets it reaches, by their headers'
+// indices (C229), apart from the headers native code reads; those marked
+// and not yet traced; the free blocks, each its index and its words.
+#[inline]
+pub fn code_marks() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
 }
 
-pub fn fixnum(n: i64) -> i64 {
+#[inline]
+pub fn code_gray() -> Ref<List<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<i64>())
+    })
+}
+
+pub enum Cblock {
+    Cblock(i64, i64),
+}
+
+pub fn cblock(f0: i64, f1: i64) -> &'static Cblock {
+    kayak_rt::heap_alloc(Cblock::Cblock(f0, f1))
+}
+
+#[inline]
+pub fn code_frees() -> Ref<List<&'static Cblock>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cblock>())
+    })
+}
+
+#[inline]
+pub fn stub_free() -> Ref<List<&'static Cblock>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cblock>())
+    })
+}
+
+// Words made once and called again and again alike (Fixpt's
+// `Heap::shared_word`): roots of every collection's, forwarded (a code
+// word marked, so that none is freed while no closure holds it; a heap
+// word, where no native code runs, moved): a continuation's, `vlambda`'s,
+// the adapters' by arity (each a `cblock` of its arity and word); 0 until
+// made.
+#[inline]
+pub fn continuation_word() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+#[inline]
+pub fn vlambda_word() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+#[inline]
+pub fn adapter_words() -> Ref<List<&'static Cblock>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cblock>())
+    })
+}
+
+#[inline]
+pub fn shared_x(w: i64) -> i64 {
+    w
+}
+
+#[inline]
+pub fn code_fit_at() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+// The native adapter's code (C230, prims.kfx's `adapter-code!`), made once
+// into the code area and kept there by every collection (`collect-begin!`);
+// 0 until it is made. Fixpt's `native_adapter_code`: the closure called
+// made its free value 0, which is called as native code calls what is not
+// native code, by the convention's `foreign`, in a tail call, the count as
+// its caller passed it.
+#[inline]
+pub fn adapter_code() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+#[inline]
+pub fn code_set_x(j: i64, w: i64) -> () {
+    flatarray_set_i64_x(get(code_space()), j, w)
+}
+
+// A word of the heap's own space by its index, read and written: what is
+// never in the code area (a pair, a value the engine makes), with nothing
+// tested first (C332).
+#[inline]
+pub fn mem_at(i: i64) -> i64 {
+    flatarray_ref_i64(get(mem()), i)
+}
+
+#[inline]
+pub fn mem_set_x(i: i64, w: i64) -> () {
+    flatarray_set_i64_x(get(mem()), i, w)
+}
+
+// A word by its index: the heap's, else the code area's (an index outside
+// the heap's reservation, which there is only where the code area was
+// made). The range first, which reads nothing: the engine's hot path
+// (C332).
+pub fn word_at(i: i64) -> i64 {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, heap_capacity())) {
+        code_at(i64_minus(i, code_offset()))
+    } else {
+        flatarray_ref_i64(get(mem()), i)
+    }
+}
+
+pub fn word_set_x(i: i64, w: i64) -> () {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, heap_capacity())) {
+        code_set_x(i64_minus(i, code_offset()), w)
+    } else {
+        flatarray_set_i64_x(get(mem()), i, w)
+    }
+}
+
+// The syscalls tier 1 asks kayak-rt for (C226): a range's execute view, its
+// instructions made seen, and a call of native code with its words in a
+// mailbox.
+
+pub fn _pctsyscall_available_coloncode_view() -> bool {
+    kayak_rt::syscall_available(str_lit("code:exec-view/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"))
+}
+
+pub fn code_view(x1: FlatArray<i64>, x2: Int, x3: Int) -> Int {
+    kayak_rt::syscall3(str_lit("syscall code-view (\"code:exec-view/1\")"), str_lit("code:exec-view/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_coloncode_flush() -> bool {
+    kayak_rt::syscall_available(str_lit("code:flush/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"))
+}
+
+pub fn code_flush(x1: FlatArray<i64>, x2: Int, x3: Int) -> () {
+    kayak_rt::syscall3(str_lit("syscall code-flush (\"code:flush/1\")"), str_lit("code:flush/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
+}
+
+pub fn _pctsyscall_available_coloncall_native() -> bool {
+    kayak_rt::syscall_available(str_lit("kayak:call-native/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"))
+}
+
+pub fn call_native(x1: FlatArray<i64>, x2: Int) -> Int {
+    kayak_rt::syscall2(str_lit("syscall call-native (\"kayak:call-native/1\")"), str_lit("kayak:call-native/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"), x1, x2)
+}
+
+// Values.
+#[inline]
+pub fn word_tag(w: i64) -> i64 {
+    i64_and(w, 7i64)
+}
+
+#[inline]
+pub fn is_fixnum_p(w: i64) -> bool {
+    i64_eq(word_tag(w), t_fixnum())
+}
+
+#[inline]
+pub fn is_pair_p(w: i64) -> bool {
+    i64_eq(word_tag(w), t_pair())
+}
+
+#[inline]
+pub fn is_bloblet_p(w: i64) -> bool {
+    i64_eq(word_tag(w), t_bloblet())
+}
+
+#[inline]
+pub fn fix(n: i64) -> i64 {
     i64_shl(n, int_lit(3))
 }
 
-pub fn fixnum_value(w: i64) -> i64 {
+#[inline]
+pub fn fix_val(w: i64) -> i64 {
     i64_shr(w, int_lit(3))
 }
 
-// A pair (tag 001) or a bloblet (tag 100): an object, at index `w >> 3`,
-// a pair's car, a bloblet's suffix's first word.
-pub fn pair_tagged_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 7i64), 1i64)
+/// A value's index.
+#[inline]
+pub fn address(w: i64) -> i64 {
+    i64_shr(i64_minus(w, get(vbase())), int_lit(3))
 }
 
-pub fn pointer_p(w: i64) -> bool {
-    (i64_eq(i64_and(w, 7i64), 4i64) || i64_eq(i64_and(w, 7i64), 1i64))
+/// The value of index `i`, with `tag`.
+#[inline]
+pub fn heap_ref(i: i64, tag: i64) -> i64 {
+    i64_or(i64_plus(i64_shl(i, int_lit(3)), get(vbase())), tag)
 }
 
-pub fn pointer_index(w: i64) -> i64 {
-    i64_shr(w, int_lit(3))
+// A fixnum's range: 61 bits, signed.
+#[inline]
+pub fn fix_max() -> i64 {
+    1152921504606846975i64
 }
 
-pub fn bloblet_at(p: i64) -> i64 {
-    i64_plus(i64_shl(p, int_lit(3)), 4i64)
+#[inline]
+pub fn fix_min() -> i64 {
+    -1152921504606846976i64
 }
 
-// A suffix ref (Fixpt's `value.rs`, C326), a blobref: tag 010, its owner's
-// suffix's index in bits 3 to 37, the byte it points at above.
-pub fn suffix_ref(owner: i64, at: i64) -> i64 {
-    i64_plus(i64_shl(at, int_lit(37)), i64_plus(i64_shl(pointer_index(owner), int_lit(3)), 2i64))
+#[inline]
+pub fn fits_p(n: i64) -> bool {
+    (i64_lt_eq(n, fix_max()) && i64_gt_eq(n, fix_min()))
 }
 
-pub fn suffix_ref_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 7i64), 2i64)
+#[inline]
+pub fn boolean(b: bool) -> i64 {
+    if b {
+        v_true()
+    } else {
+        v_false()
+    }
 }
 
-pub fn ref_owner(r: i64) -> i64 {
-    bloblet_at(i64_and(i64_shr(r, int_lit(3)), 17179869183i64))
+#[inline]
+pub fn char_value(cp: i64) -> i64 {
+    i64_or(i64_shl(cp, int_lit(8)), i64_or(i64_shl(sub_char(), int_lit(3)), t_immediate()))
 }
 
-pub fn ref_offset(r: i64) -> i64 {
-    i64_shr(r, int_lit(37))
+#[inline]
+pub fn is_char_p(w: i64) -> bool {
+    (i64_eq(word_tag(w), t_immediate()) && i64_eq(i64_and(i64_shr(w, int_lit(3)), 31i64), sub_char()))
 }
 
-pub fn pair_at(i: i64) -> i64 {
-    i64_plus(i64_shl(i, int_lit(3)), 1i64)
+// Suffix refs.
+#[inline]
+pub fn is_sref_p(w: i64) -> bool {
+    i64_eq(word_tag(w), t_suffix_ref())
 }
 
-pub fn immediate_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 7i64), 3i64)
+/// A suffix ref to byte `offset` of the suffix at word `owner`.
+#[inline]
+pub fn make_sref(owner: i64, offset: i64) -> i64 {
+    i64_or(i64_shl(offset, i64_to_int(sref_offset_shift())), i64_or(i64_shl(owner, int_lit(3)), t_suffix_ref()))
 }
 
-// Fixpt's immediates' subtags, and the engine's own until they are objects.
-pub fn sub_false() -> i64 {
-    0i64
+/// Its owner, a bloblet.
+#[inline]
+pub fn sref_owner(r: i64) -> i64 {
+    heap_ref(i64_and(i64_shr(r, int_lit(3)), sref_owner_mask()), t_bloblet())
 }
 
-pub fn sub_true() -> i64 {
-    1i64
+#[inline]
+pub fn sref_offset(r: i64) -> i64 {
+    i64_and(i64_shr(r, i64_to_int(sref_offset_shift())), i64_minus(sref_offset_limit(), 1i64))
 }
 
-pub fn sub_null() -> i64 {
-    2i64
+// Pairs.
+pub fn cons_x(a: i64, d: i64) -> i64 {
+    let at = heap_alloc_x(2i64);
+    mem_set_x(at, a);
+    mem_set_x(i64_plus(at, 1i64), d);
+    heap_ref(at, t_pair())
 }
 
-pub fn sub_unit() -> i64 {
-    3i64
+#[inline]
+pub fn pair_car(p: i64) -> i64 {
+    mem_at(address(p))
 }
 
-pub fn sub_unbound() -> i64 {
-    7i64
+#[inline]
+pub fn pair_cdr(p: i64) -> i64 {
+    mem_at(i64_plus(address(p), 1i64))
 }
 
-pub fn sub_char() -> i64 {
-    8i64
+// A list in the heap, of KFX's list of its items.
+#[inline]
+pub fn heap_list_of(xs: List<i64>) -> i64 {
+    if null_p(xs) {
+        v_null()
+    } else {
+        cons_x(car(xs), heap_list_of(cdr(xs)))
+    }
 }
 
-pub fn sub_f32() -> i64 {
-    9i64
+// Bloblets.
+pub fn header_word(kind: i64, fields: i64, bytes: i64, ff: bool, sf: bool) -> i64 {
+    i64_or(t_header(), i64_or(i64_shl(kind, lay::header_kind_lo()), i64_or(if ff {
+        i64_shl(1i64, lay::header_fields_frozen_lo())
+    } else {
+        0i64
+    }, i64_or(if sf {
+        i64_shl(1i64, lay::header_suffix_frozen_lo())
+    } else {
+        0i64
+    }, i64_or(i64_shl(fields, lay::header_fields_lo()), i64_shl(bytes, lay::header_bytes_lo()))))))
 }
 
-// A primitive, the engine's own immediate, past Fixpt's subtags: a
-// procedure, which reaches compiled code through an adapter, as the
-// engine's closures will (docs/research/one-heap.md, step 4).
-pub fn sub_prim() -> i64 {
-    25i64
+/// A bloblet of `kind`, `n` fields (and a trailer, if `trailer`), each
+/// fixnum 0, and `bytes` bytes of suffix, 0: a pointer to its suffix.
+pub fn make_bloblet_x(kind: i64, n: i64, bytes: i64, trailer: bool, frozen: bool) -> i64 {
+    let f = if trailer {
+        i64_plus(n, 1i64)
+    } else {
+        n
+    };
+    let h = heap_alloc_x(i64_plus(i64_plus(1i64, f), i64_quotient(i64_plus(bytes, 7i64), 8i64)));
+    let p = i64_plus(h, i64_plus(1i64, f));
+    word_set_x(h, header_word(kind, f, bytes, frozen, false));
+    if trailer {
+        word_set_x(i64_minus(p, 1i64), i64_or(i64_shl(f, int_lit(3)), t_trailer()))
+    } else {
+        ()
+    };
+    heap_ref(p, t_bloblet())
 }
 
-pub fn imm_word(sub: i64, n: i64) -> i64 {
-    i64_plus(i64_shl(n, int_lit(8)), i64_plus(i64_shl(sub, int_lit(3)), 3i64))
-}
-
-pub fn immediate_sub(w: i64) -> i64 {
-    i64_and(i64_shr(w, int_lit(3)), 31i64)
-}
-
-/// The engine's immediate of `kind` (`imm-char` and the rest) and payload
-/// `n`, as Fixpt's subtag says it.
-pub fn immediate(kind: i64, n: i64) -> i64 {
-    if i64_eq(kind, imm_char()) {
-        imm_word(sub_char(), n)
-    } else if i64_eq(kind, imm_bool()) {
-        imm_word(if i64_eq(n, 0i64) {
-            sub_false()
+// A bloblet's main header, from its suffix's index `p` and the word just
+// below it, `before` (Fixpt's `main_of`, C237): as far below as a trailer
+// there says; that word, if it is the header (no fields); else, the word a
+// field, by the backward scan to the first header, which no field can be
+// (its tag no value's: Fixpt's invariants, `object-model.md`). Tier 1 took
+// the word below for the header whenever there was no trailer, right only
+// with no fields.
+pub fn header_scanned(mut j: i64) -> i64 {
+    loop {
+        if i64_eq(word_tag(word_at(j)), t_header()) {
+            return j;
         } else {
-            sub_true()
-        }, 0i64)
-    } else if i64_eq(kind, imm_unit()) {
-        imm_word(sub_unit(), 0i64)
-    } else if i64_eq(kind, imm_nil()) {
-        imm_word(sub_null(), 0i64)
-    } else {
-        imm_word(sub_prim(), n)
+            j = i64_minus(j, 1i64);
+            continue;
+        }
     }
 }
 
-pub fn immediate_kind(w: i64) -> i64 {
-    let sub = immediate_sub(w);
-    if (i64_eq(sub, sub_false()) || i64_eq(sub, sub_true())) {
-        imm_bool()
-    } else if i64_eq(sub, sub_unit()) {
-        imm_unit()
-    } else if i64_eq(sub, sub_null()) {
-        imm_nil()
-    } else if i64_eq(sub, sub_char()) {
-        imm_char()
-    } else if i64_eq(sub, sub_prim()) {
-        imm_prim()
+pub fn header_below(p: i64, before: i64) -> i64 {
+    if i64_eq(word_tag(before), t_trailer()) {
+        i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
+    } else if i64_eq(word_tag(before), t_header()) {
+        i64_minus(p, 1i64)
     } else {
-        -1i64
+        header_scanned(i64_minus(p, 2i64))
     }
 }
 
-pub fn immediate_value(w: i64) -> i64 {
-    i64_shr(w, int_lit(8))
+#[inline]
+pub fn header_index(v: i64) -> i64 {
+    let p = address(v);
+    header_below(p, word_at(i64_minus(p, 1i64)))
 }
 
-pub fn code_word(i: i64) -> i64 {
-    fixnum(i)
+/// A bloblet's header word.
+#[inline]
+pub fn header_of(v: i64) -> i64 {
+    word_at(header_index(v))
 }
 
-pub fn code_index(w: i64) -> i64 {
-    fixnum_value(w)
+/// A bloblet's fields and suffix frozen (Fixpt's `freeze_bloblet`).
+pub fn frozen_whole_x(v: i64) -> () {
+    let h = header_index(v);
+    word_set_x(h, i64_or(word_at(h), i64_or(i64_shl(1i64, lay::header_fields_frozen_lo()), i64_shl(1i64, lay::header_suffix_frozen_lo()))))
 }
 
-// Fixpt's constants (`value.rs`): `#f` 3, `#t` 11, `nil` 19, `#u` 27, the
-// unbound marker 59.
-pub fn w_unit() -> i64 {
-    27i64
+#[inline]
+pub fn bits(w: i64, lo: Int, width: Int) -> i64 {
+    i64_and(i64_shr(w, lo), i64_minus(i64_shl(1i64, width), 1i64))
 }
 
-pub fn w_nil() -> i64 {
-    19i64
+#[inline]
+pub fn kind_of(v: i64) -> i64 {
+    bits(header_of(v), lay::header_kind_lo(), lay::header_kind_width())
 }
 
-pub fn w_true() -> i64 {
-    11i64
+#[inline]
+pub fn fields_of(v: i64) -> i64 {
+    bits(header_of(v), lay::header_fields_lo(), lay::header_fields_width())
 }
 
-pub fn w_false() -> i64 {
-    3i64
+#[inline]
+pub fn suffix_bytes(v: i64) -> i64 {
+    bits(header_of(v), lay::header_bytes_lo(), lay::header_bytes_width())
 }
 
-pub fn w_unbound() -> i64 {
-    59i64
+#[inline]
+pub fn fields_frozen_p(v: i64) -> bool {
+    i64_eq(1i64, bits(header_of(v), lay::header_fields_frozen_lo(), int_lit(1)))
 }
 
-// The heap: the space allocated in, the other, the next free index, and
-// the limit past which a step may not go. A constant each, made once.
-pub fn space() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+#[inline]
+pub fn is_kind_p(v: i64, k: i64) -> bool {
+    (is_bloblet_p(v) && i64_eq(kind_of(v), k))
+}
+
+#[inline]
+pub fn suffix_frozen_p(v: i64) -> bool {
+    i64_eq(1i64, bits(header_of(v), lay::header_suffix_frozen_lo(), int_lit(1)))
+}
+
+/// A bloblet's fields frozen if `f`, its suffix if `sf` (Fixpt's
+/// `freeze_bloblet`: it only sets).
+pub fn frozen_as_x(v: i64, f: bool, sf: bool) -> () {
+    let h = header_index(v);
+    word_set_x(h, i64_or(word_at(h), i64_or(if f {
+        i64_shl(1i64, lay::header_fields_frozen_lo())
+    } else {
+        0i64
+    }, if sf {
+        i64_shl(1i64, lay::header_suffix_frozen_lo())
+    } else {
+        0i64
+    })))
+}
+
+// Field `k` of a bloblet, read and written as code that knows its shape
+// does (Fixpt's `bloblet_slot`): not checked.
+#[inline]
+pub fn slot_of(v: i64, k: i64) -> i64 {
+    word_at(i64_minus(address(v), k))
+}
+
+#[inline]
+pub fn slot_set_x(v: i64, k: i64, x: i64) -> () {
+    word_set_x(i64_minus(address(v), k), x)
+}
+
+// An object `alloc` lays out (Fixpt's `obj_ref`, `obj_set`): its payload
+// in order from the header up, the trailer last, so that element `i` is
+// field `F - i`, `F` its fields with the trailer.
+#[inline]
+pub fn elt_ref(v: i64, i: i64) -> i64 {
+    slot_of(v, i64_minus(fields_of(v), i))
+}
+
+#[inline]
+pub fn elt_set_x(v: i64, i: i64, x: i64) -> () {
+    slot_set_x(v, i64_minus(fields_of(v), i), x)
+}
+
+#[inline]
+pub fn obj_length(v: i64) -> i64 {
+    i64_minus(fields_of(v), 1i64)
+}
+
+// Whether field `k` may be read (Fixpt's `field_slot`): one of the
+// bloblet's, not its trailer.
+#[inline]
+pub fn field_ok_p(v: i64, k: i64) -> bool {
+    (i64_gt(k, 0i64) && i64_lt_eq(k, fields_of(v)) && not(i64_eq(word_tag(slot_of(v, k)), t_trailer())))
+}
+
+// Strings: a bloblet of no fields, its suffix a word of the length, then
+// the code points two to a word, the first in the low half.
+/// The code points of `s` from `i` on, into the string at `p`: a
+/// procedure of its own, as a `letrec`'s closure would be made at each
+/// call, and never let go (C43).
+pub fn points_filled_x(mut s: Str, mut p: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            let (at, cp) = (i64_plus(p, i64_plus(1i64, i64_quotient(i, 2i64))), char_to_i64(string_ref_i64(s, i)));
+            word_set_x(at, i64_or(word_at(at), if i64_eq(i64_remainder(i, 2i64), 0i64) {
+                cp
+            } else {
+                i64_shl(cp, int_lit(32))
+            }));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn make_string_x(s: Str) -> i64 {
+    let n = string_length_i64(s);
+    let v = make_bloblet_x(k_string(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64))), false, false);
+    let p = address(v);
+    word_set_x(p, n);
+    points_filled_x(s, p, 0i64, n);
+    v
+}
+
+/// String `v`'s characters before the `i`th, onto `acc`.
+pub fn text_chars(mut v: i64, mut i: i64, mut acc: Chars) -> Chars {
+    loop {
+        if i64_lt_eq(i, 0i64) {
+            return acc;
+        } else {
+            let j = i64_minus(i, 1i64);
+            let w = word_at(i64_plus(address(v), i64_plus(1i64, i64_quotient(j, 2i64))));
+            let cp = if i64_eq(i64_remainder(j, 2i64), 0i64) {
+                i64_and(w, 4294967295i64)
+            } else {
+                i64_and(i64_shr(w, int_lit(32)), 4294967295i64)
+            };
+            (i, acc) = (j, kayak_rt::heap_cons(i64_to_char(cp), acc));
+            continue;
+        }
+    }
+}
+
+/// A string's text, as KFX's: made once, of its characters (C151), not a
+/// string made again for each.
+#[inline]
+pub fn string_text(v: i64) -> Str {
+    list_to_string(text_chars(v, word_at(address(v)), nil::<char>()))
+}
+
+// Symbols, interned: an object of its name, its hash and its global slot,
+// in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps
+// no global slots: each is 0.
+pub enum NamedSlot {
+    NamedSlot(Str, i64),
+}
+
+pub fn named_slot(f0: Str, f1: i64) -> &'static NamedSlot {
+    kayak_rt::heap_alloc(NamedSlot::NamedSlot(f0, f1))
+}
+
+#[inline]
+pub fn symbols() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
-pub fn other_space() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+#[inline]
+pub fn named_globals() -> Ref<List<&'static NamedSlot>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+        kayak_rt::heap_new(nil::<&'static NamedSlot>())
     })
 }
 
-pub fn free_at() -> Ref<i64> {
+// A name's value is not in its `named`, which holds where it is: in
+// `named-values`, which a collection forwards in place. So a collection
+// makes nothing of the runtime's own, which is never let go: a program
+// that runs long would otherwise grow by every name at each one.
+#[inline]
+pub fn named_values() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+    })
+}
+
+#[inline]
+pub fn named_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
-        kayak_rt::heap_new(1i64)
+        kayak_rt::heap_new(0i64)
     })
 }
 
-// Each name's symbol and keyword, by its number, once made (0 until then):
-// roots, so that each name has one object (C321).
-pub fn symbol_objects() -> Ref<FlatArray<i64>> {
+pub fn named_x(n: Str, v: i64) -> &'static NamedSlot {
+    let (i, m) = (get(named_count()), get(named_values()));
+    if i64_lt(i, flatarray_length_i64(m)) {
+        ()
+    } else {
+        let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i), 0i64));
+        copied_into_x(m, bigger, 0i64, i);
+        set(named_values(), bigger)
+    };
+    flatarray_set_i64_x(get(named_values()), i, v);
+    set(named_count(), i64_plus(i, 1i64));
+    named_slot(n, i)
+}
+
+#[inline]
+pub fn named_value(x: &'static NamedSlot) -> i64 {
+    let tagcase_ = x;
+    match *tagcase_ {
+        NamedSlot::NamedSlot(m, i) => {
+            flatarray_ref_i64(get(named_values()), i)
+        }
+    }
+}
+
+pub fn lookup(mut xs: List<&'static NamedSlot>, mut n: Str) -> i64 {
+    loop {
+        if null_p(xs) {
+            return 0i64;
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                NamedSlot::NamedSlot(m, i) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            return named_value(car(xs));
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+pub fn symbol_x(name: Str) -> i64 {
+    let had = lookup(get(symbols()), name);
+    if not(i64_eq(had, 0i64)) {
+        had
+    } else {
+        let s = make_bloblet_x(k_symbol(), 3i64, 0i64, true, false);
+        elt_set_x(s, 0i64, make_string_x(name));
+        elt_set_x(s, 1i64, fix(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
+        elt_set_x(s, 2i64, fix(0i64));
+        set(symbols(), kayak_rt::heap_cons(named_x(name, s), get(symbols())));
+        s
+    }
+}
+
+#[inline]
+pub fn symbol_text(s: i64) -> Str {
+    string_text(elt_ref(s, 0i64))
+}
+
+// Words.
+/// A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
+/// publishes a word, each cell written by the reader below.
+pub fn make_word_x(name: Str, n: i64, entry: i64) -> i64 {
+    let w = make_bloblet_x(k_code(), i64_plus(n, 3i64), 0i64, true, true);
+    slot_set_x(w, f_entry(), fix(entry));
+    slot_set_x(w, f_name(), symbol_x(name));
+    slot_set_x(w, f_twin(), v_false());
+    w
+}
+
+// The collector: Coopt's baseline, a Cheney copy of everything live into
+// the other space (`coopt-heap`'s `forward`, `forward_pair`,
+// `forward_bloblet`, `cheney`, at Coopt c366857), the spaces swapped, never
+// freed (kayak-rt frees nothing): its generations, regions, summaries and
+// marking to come, each against this one. A forwarding word, tag 7, holds
+// its copy's address: in a pair's first word; in a bloblet's header, and in
+// the word just below its suffix when that is no trailer, so that a pointer
+// finds it at once (Fixpt's arrangement, Coopt's).
+#[inline]
+pub fn other() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
     })
 }
 
-pub fn keyword_objects() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+#[inline]
+pub fn to_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+        kayak_rt::heap_new(8i64)
     })
 }
 
+#[inline]
 pub fn collections() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -369,498 +931,590 @@ pub fn collections() -> Ref<i64> {
     })
 }
 
-/// Two spaces of `words` words each. Index 0 is never an object's, so
-/// that a pointer's index is never 0.
-pub fn heap_start_x(words: i64) -> () {
-    set(space(), make_flatarray_i64(words, 0i64));
-    set(other_space(), make_flatarray_i64(words, 0i64));
-    set(free_at(), 1i64)
-}
-
-/// The room left, as the machine counts what a step needs: a header and a
-/// payload an object (C64). Two thirds of the words free, since Fixpt's
-/// layout (C318) gives an object of fields a trailer too, at most half as
-/// much again (one of a field); one of none has no trailer, and a pair is
-/// two words, not three.
-pub fn heap_room() -> i64 {
-    i64_quotient(i64_star(i64_minus(flatarray_length_i64(get(space())), get(free_at())), 2i64), 3i64)
-}
-
-// Fixpt's headers (`layout.fx`): tag 110, the kind in bits 3 to 11, a
-// large header's mark at bit 11, the fields (F, with the trailer) in bits
-// 14 to 32, the suffix's bytes (B) in bits 32 to 64; a large header's F
-// in the extension word before it, kind 255, its F above bit 11. A
-// trailer, the last field, is tag 101 and F above.
-pub fn fields_max() -> i64 {
-    262143i64
-}
-
-pub fn header(kind: i64, f: i64, b: i64) -> i64 {
-    i64_plus(i64_shl(b, int_lit(32)), i64_plus(i64_shl(f, int_lit(14)), i64_plus(i64_shl(kind, int_lit(3)), 6i64)))
-}
-
-pub fn large_header(kind: i64, b: i64) -> i64 {
-    i64_plus(i64_shl(b, int_lit(32)), i64_plus(2048i64, i64_plus(i64_shl(kind, int_lit(3)), 6i64)))
-}
-
-pub fn extension(f: i64) -> i64 {
-    i64_plus(i64_shl(f, int_lit(11)), i64_plus(i64_shl(255i64, int_lit(3)), 6i64))
-}
-
-pub fn trailer(f: i64) -> i64 {
-    i64_plus(i64_shl(f, int_lit(3)), 5i64)
-}
-
-pub fn header_kind(h: i64) -> i64 {
-    i64_and(i64_shr(h, int_lit(3)), 255i64)
-}
-
-pub fn header_large_p(h: i64) -> bool {
-    i64_eq(i64_and(i64_shr(h, int_lit(11)), 1i64), 1i64)
-}
-
-pub fn header_fields(h: i64) -> i64 {
-    i64_and(i64_shr(h, int_lit(14)), fields_max())
-}
-
-pub fn header_bytes(h: i64) -> i64 {
-    i64_and(i64_shr(h, int_lit(32)), 4294967295i64)
-}
-
-pub fn extension_fields(x: i64) -> i64 {
-    i64_shr(x, int_lit(11))
-}
-
-pub fn word_tag(w: i64) -> i64 {
-    i64_and(w, 7i64)
-}
-
-pub fn suffix_words(b: i64) -> i64 {
-    i64_quotient(i64_plus(b, 7i64), 8i64)
-}
-
-pub fn bump_x(n: i64) -> i64 {
-    let at = get(free_at());
-    if i64_gt(i64_plus(at, n), flatarray_length_i64(get(space()))) {
-        error(str_lit("the engine's heap: a step allocated past the room it was given"));
-        0i64
-    } else {
-        set(free_at(), i64_plus(at, n));
-        at
-    }
-}
-
-pub fn put_x(i: i64, w: i64) -> () {
-    flatarray_set_i64_x(get(space()), i, w)
-}
-
-pub fn at_word(i: i64) -> i64 {
-    flatarray_ref_i64(get(space()), i)
-}
-
-/// An object of `kind`, `n` words of payload, in Fixpt's layout (C318): a
-/// pair two words; an object of raw words a bloblet whose suffix they are;
-/// any other a bloblet of `n` fields and a trailer, so that payload word
-/// `i` is the word `i` after the header, as `alloc` lays it out. The room
-/// was made sure of before the step (`heap-ensure!`).
-pub fn alloc_x(kind: i64, n: i64) -> i64 {
-    if i64_eq(kind, ob_pair()) {
-        pair_at(bump_x(2i64))
-    } else if (raw_kind_p(kind) || i64_eq(n, 0i64)) {
-        let at = bump_x(i64_plus(n, 1i64));
-        put_x(at, header(kind, 0i64, i64_star(8i64, n)));
-        bloblet_at(i64_plus(at, 1i64))
-    } else {
-        let f = i64_plus(n, 1i64);
-        if i64_gt(f, fields_max()) {
-            let at = bump_x(i64_plus(f, 2i64));
-            put_x(at, extension(f));
-            put_x(i64_plus(at, 1i64), large_header(kind, 0i64));
-            put_x(i64_plus(at, i64_plus(f, 1i64)), trailer(f));
-            bloblet_at(i64_plus(at, i64_plus(f, 2i64)))
-        } else {
-            let at = bump_x(i64_plus(f, 1i64));
-            put_x(at, header(kind, f, 0i64));
-            put_x(i64_plus(at, f), trailer(f));
-            bloblet_at(i64_plus(at, i64_plus(f, 1i64)))
-        }
-    }
-}
-
-pub fn words_zeroed_x(mut i: i64, mut n: i64) -> () {
-    loop {
-        if i64_lt_eq(n, 0i64) {
-            return ();
-        } else {
-            put_x(i, 0i64);
-            (i, n) = (i64_plus(i, 1i64), i64_minus(n, 1i64));
-            continue;
-        }
-    }
-}
-
-/// A plain bloblet (`make_bloblet`, C326): `n` fields and a trailer, the
-/// fields for the caller to fill, and a suffix of `bytes` bytes, all 0.
-pub fn bloblet_alloc_x(n: i64, bytes: i64) -> i64 {
-    let f = i64_plus(n, 1i64);
-    let sw = suffix_words(bytes);
-    let large = i64_gt(f, fields_max());
-    let at = bump_x(i64_plus(i64_plus(f, sw), if large {
-        2i64
-    } else {
-        1i64
-    }));
-    let main = if large {
-        i64_plus(at, 1i64)
-    } else {
-        at
-    };
-    if large {
-        put_x(at, extension(f));
-        put_x(main, large_header(ob_array(), bytes))
-    } else {
-        put_x(main, header(ob_array(), f, bytes))
-    };
-    put_x(i64_plus(main, f), trailer(f));
-    words_zeroed_x(i64_plus(main, i64_plus(f, 1i64)), sw);
-    bloblet_at(i64_plus(main, i64_plus(f, 1i64)))
-}
-
-/// A bloblet of `n` fields and no trailer, nor suffix (`make_bloblet`'s,
-/// `trailer` false: an eqtable, C329): field `k`, from 1, at `p - k`
-/// (`field-at`), its header below them.
-pub fn fields_alloc_x(kind: i64, n: i64) -> i64 {
-    let at = bump_x(i64_plus(n, 1i64));
-    put_x(at, header(kind, n, 0i64));
-    bloblet_at(i64_plus(at, i64_plus(n, 1i64)))
-}
-
-pub fn field_at(v: i64, k: i64) -> i64 {
-    at_word(i64_minus(pointer_index(v), k))
-}
-
-pub fn field_set_x(v: i64, k: i64, w: i64) -> () {
-    put_x(i64_minus(pointer_index(v), k), w)
-}
-
-// An object's payload: a pair's two words; a bloblet's fields, found by its
-// trailer (`p - F + i`), or, with none, its suffix (`p + i`).
-pub fn payload_at(v: i64, i: i64) -> i64 {
-    if pair_tagged_p(v) {
-        i64_plus(pointer_index(v), i)
-    } else {
-        let p = pointer_index(v);
-        let b = at_word(i64_minus(p, 1i64));
-        if i64_eq(word_tag(b), 5i64) {
-            i64_plus(i64_minus(p, i64_shr(b, int_lit(3))), i)
-        } else {
-            i64_plus(p, i)
-        }
-    }
-}
-
-/// The header at or below `k` in `ws`: a bloblet's with fields and no
-/// trailer is below them (Fixpt's `find_main`; an eqtable's, C329).
-pub fn main_below(mut ws: FlatArray<i64>, mut k: i64) -> i64 {
-    loop {
-        if i64_eq(word_tag(flatarray_ref_i64(ws, k)), 6i64) {
-            return k;
-        } else {
-            k = i64_minus(k, 1i64);
-            continue;
-        }
-    }
-}
-
-/// Bloblet `p`'s main header's index in `ws`: by its trailer, the word
-/// below its suffix if a header, else found below its fields.
-pub fn main_in(ws: FlatArray<i64>, p: i64) -> i64 {
-    let b = flatarray_ref_i64(ws, i64_minus(p, 1i64));
-    if i64_eq(word_tag(b), 5i64) {
-        i64_minus(i64_minus(p, 1i64), i64_shr(b, int_lit(3)))
-    } else if i64_eq(word_tag(b), 6i64) {
-        i64_minus(p, 1i64)
-    } else {
-        main_below(ws, i64_minus(p, 1i64))
-    }
-}
-
-/// A bloblet's main header's index.
-pub fn header_at(v: i64) -> i64 {
-    main_in(get(space()), pointer_index(v))
-}
-
-pub fn obj_kind(v: i64) -> i64 {
-    if pair_tagged_p(v) {
-        ob_pair()
-    } else {
-        header_kind(at_word(header_at(v)))
-    }
-}
-
-pub fn obj_size(v: i64) -> i64 {
-    if pair_tagged_p(v) {
-        2i64
-    } else {
-        let p = pointer_index(v);
-        let b = at_word(i64_minus(p, 1i64));
-        if i64_eq(word_tag(b), 5i64) {
-            i64_minus(i64_shr(b, int_lit(3)), 1i64)
-        } else {
-            i64_quotient(header_bytes(b), 8i64)
-        }
-    }
-}
-
-pub fn obj_ref(v: i64, i: i64) -> i64 {
-    at_word(payload_at(v, i))
-}
-
-pub fn obj_set_x(v: i64, i: i64, w: i64) -> () {
-    put_x(payload_at(v, i), w)
-}
-
-// The engine's own objects, which only it reads (frames, environments,
-// closures, continuations): payload word `i` is field `i + 2`, at `p - 2 -
-// i`, Fixpt's `slot` order (`bloblet_slot`), no trailer read to find it
-// (C318). Every other object's is `alloc`'s order, which Fixpt's code reads
-// (`obj-ref`), its trailer read for its count of fields.
-pub fn slot_ref(v: i64, i: i64) -> i64 {
-    at_word(i64_minus(i64_minus(pointer_index(v), 2i64), i))
-}
-
-pub fn slot_set_x(v: i64, i: i64, w: i64) -> () {
-    put_x(i64_minus(i64_minus(pointer_index(v), 2i64), i), w)
-}
-
-/// Bloblet `v`'s fields and suffix frozen, its header's bits 12 and 13
-/// (Fixpt's `freeze_bloblet`), as its sums and products are made (C322).
-pub fn frozen_x(v: i64) -> () {
-    let h = header_at(v);
-    put_x(h, i64_or(at_word(h), 12288i64))
-}
-
-// The collector: Cheney's, over Fixpt's objects. Each root copied, then
-// the copies scanned, header by header (a word no header begins a pair);
-// a moved object's forwarding, tag 111, its copy's index, in a pair's first
-// word and in the word below a bloblet's suffix.
-pub fn copy_words_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut at: i64, mut n: i64) -> () {
-    loop {
-        if i64_eq(n, 0i64) {
-            return ();
-        } else {
-            flatarray_set_i64_x(to, at, flatarray_ref_i64(from, i));
-            (i, at, n) = (i64_plus(i, 1i64), i64_plus(at, 1i64), i64_minus(n, 1i64));
-            continue;
-        }
-    }
-}
-
-pub fn forwarded(i: i64) -> i64 {
-    i64_plus(i64_shl(i, int_lit(3)), 7i64)
-}
-
-/// `w`, its object copied to the other space if it is one not yet copied:
-/// the word that now names it.
-pub fn copy_word_x(w: i64) -> i64 {
-    if suffix_ref_p(w) {
-        suffix_ref(copy_word_x(ref_owner(w)), ref_offset(w))
-    } else if not(pointer_p(w)) {
-        w
-    } else if pair_tagged_p(w) {
-        let from = get(space());
-        let i = pointer_index(w);
-        let c = flatarray_ref_i64(from, i);
-        if i64_eq(word_tag(c), 7i64) {
-            pair_at(i64_shr(c, int_lit(3)))
-        } else {
-            let at = get(free_at());
-            copy_words_x(from, get(other_space()), i, at, 2i64);
-            flatarray_set_i64_x(from, i, forwarded(at));
-            set(free_at(), i64_plus(at, 2i64));
-            pair_at(at)
-        }
-    } else {
-        let from = get(space());
-        let p = pointer_index(w);
-        let b = flatarray_ref_i64(from, i64_minus(p, 1i64));
-        if i64_eq(word_tag(b), 7i64) {
-            bloblet_at(i64_shr(b, int_lit(3)))
-        } else {
-            let hi = main_in(from, p);
-            let h = flatarray_ref_i64(from, hi);
-            let start = if header_large_p(h) {
-                i64_minus(hi, 1i64)
-            } else {
-                hi
-            };
-            let n = i64_plus(i64_minus(p, start), suffix_words(header_bytes(h)));
-            let at = get(free_at());
-            let np = i64_plus(at, i64_minus(p, start));
-            copy_words_x(from, get(other_space()), start, at, n);
-            flatarray_set_i64_x(from, i64_minus(p, 1i64), forwarded(np));
-            set(free_at(), i64_plus(at, n));
-            bloblet_at(np)
-        }
-    }
-}
-
-pub fn scan_words_x(mut to: FlatArray<i64>, mut at: i64, mut n: i64) -> () {
-    loop {
-        if i64_eq(n, 0i64) {
-            return ();
-        } else {
-            flatarray_set_i64_x(to, at, copy_word_x(flatarray_ref_i64(to, at)));
-            (at, n) = (i64_plus(at, 1i64), i64_minus(n, 1i64));
-            continue;
-        }
-    }
-}
-
-/// The objects copied, from `at` to the free index, each scanned: a
-/// bloblet's fields, not its suffix; a pair's two words.
-pub fn scan_x(mut at: i64) -> () {
-    loop {
-        if i64_gt_eq(at, get(free_at())) {
-            return ();
-        } else {
-            let to = get(other_space());
-            let w = flatarray_ref_i64(to, at);
-            if i64_eq(word_tag(w), 6i64) {
-                if i64_eq(header_kind(w), 255i64) {
-                    let f = extension_fields(w);
-                    let h = flatarray_ref_i64(to, i64_plus(at, 1i64));
-                    scan_words_x(to, i64_plus(at, 2i64), f);
-                    at = i64_plus(at, i64_plus(2i64, i64_plus(f, suffix_words(header_bytes(h)))));
-                    continue;
-                } else {
-                    let f = header_fields(w);
-                    scan_words_x(to, i64_plus(at, 1i64), f);
-                    at = i64_plus(at, i64_plus(1i64, i64_plus(f, suffix_words(header_bytes(w)))));
-                    continue;
-                }
-            } else {
-                scan_words_x(to, at, 2i64);
-                at = i64_plus(at, 2i64);
-                continue;
-            }
-        }
-    }
-}
-
-pub fn copy_roots_x(mut roots: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
-    loop {
-        if i64_gt_eq(i, n) {
-            return ();
-        } else {
-            flatarray_set_i64_x(roots, i, copy_word_x(flatarray_ref_i64(roots, i)));
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
-}
-
-/// Two new spaces of `words` words, what lives copied into them: the old
-/// two left to kayak-rt, which never frees them (a geometric cost).
-pub fn grow_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArray<i64>, words: i64) -> () {
-    set(other_space(), make_flatarray_i64(words, 0i64));
-    set(free_at(), 1i64);
-    copy_roots_x(roots, 0i64, flatarray_length_i64(roots));
-    copy_roots_x(globals, 0i64, flatarray_length_i64(globals));
-    copy_roots_x(consts, 0i64, flatarray_length_i64(consts));
-    copy_roots_x(get(symbol_objects()), 0i64, flatarray_length_i64(get(symbol_objects())));
-    copy_roots_x(get(keyword_objects()), 0i64, flatarray_length_i64(get(keyword_objects())));
-    scan_x(1i64);
-    set(space(), get(other_space()));
-    set(other_space(), make_flatarray_i64(words, 0i64))
-}
-
-/// Every object `roots`, `globals` and `consts` reach copied to the other space,
-/// which becomes the one allocated in; the spaces grown, both, if what
-/// survives and `need` would fill more than half. The roots updated in
-/// place.
-pub fn collect_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArray<i64>, need: i64) -> () {
-    set(free_at(), 1i64);
-    copy_roots_x(roots, 0i64, flatarray_length_i64(roots));
-    copy_roots_x(globals, 0i64, flatarray_length_i64(globals));
-    copy_roots_x(consts, 0i64, flatarray_length_i64(consts));
-    copy_roots_x(get(symbol_objects()), 0i64, flatarray_length_i64(get(symbol_objects())));
-    copy_roots_x(get(keyword_objects()), 0i64, flatarray_length_i64(get(keyword_objects())));
-    scan_x(1i64);
-    let from = get(space());
-    set(space(), get(other_space()));
-    set(other_space(), from);
-    set(collections(), i64_plus(get(collections()), 1i64));
-    let live = i64_plus(get(free_at()), need);
-    if i64_gt(i64_star(live, 2i64), flatarray_length_i64(get(space()))) {
-        grow_x(roots, globals, consts, i64_star(live, 4i64))
-    } else {
-        ()
-    }
-}
-
-// Interned names: symbols, tags, labels and label lists, each a number in a
-// table of strings, made once a name, never freed.
-pub fn names() -> Ref<Array<Str>> {
-    kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_array(int_lit(64), str_lit("")))
-    })
-}
-
-pub fn name_count() -> Ref<i64> {
+#[inline]
+pub fn words_copied() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
 }
 
-pub fn name_at(mut s: Str, mut i: i64, mut n: i64) -> i64 {
-    loop {
-        if i64_gt_eq(i, n) {
-            return -1i64;
-        } else if string_eq_p(array_ref(get(names()), i64_to_int(i)), s) {
-            return i;
-        } else {
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
+// Weak pairs (C231; Fixpt's `make_weak_pair`, `update_weak_pairs`): a
+// bloblet of kind `weak-pair`, two fields and no trailer, as Fixpt's (its
+// header found by the backward scan, C237), its car field 2 (the first a
+// scan meets), its cdr field 1. A collection does not trace the
+// car: it notes the pair, and when everything else is traced makes the car
+// its object's copy, or, if nothing else kept the object, `WEAK_DEAD` (the
+// fixnum -1). Those this collection noted, by their copies' headers.
+#[inline]
+pub fn weak_seen() -> Ref<List<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<i64>())
+    })
 }
 
-pub fn names_copied_x(mut from: Array<Str>, mut to: Array<Str>, mut i: i64, mut n: i64) -> () {
+#[inline]
+pub fn weak_dead() -> i64 {
+    -8i64
+}
+
+// The table of interned data (prims.kfx's `intern-datum!`), a root; #f
+// until there is one.
+#[inline]
+pub fn interned() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(v_false())
+    })
+}
+
+#[inline]
+pub fn to_at(i: i64) -> i64 {
+    flatarray_ref_i64(get(other()), i)
+}
+
+/// The value of index `i` of the other space, with `tag`.
+#[inline]
+pub fn to_ref(i: i64, tag: i64) -> i64 {
+    i64_or(i64_plus(i64_shl(i, int_lit(3)), get(to_vbase())), tag)
+}
+
+#[inline]
+pub fn to_address(w: i64) -> i64 {
+    i64_shr(i64_minus(w, get(to_vbase())), int_lit(3))
+}
+
+#[inline]
+pub fn to_set_x(i: i64, w: i64) -> () {
+    flatarray_set_i64_x(get(other()), i, w)
+}
+
+pub fn to_alloc_x(n: i64) -> i64 {
+    let at = get(to_top());
+    set(to_top(), i64_plus(at, n));
+    set(words_copied(), i64_plus(get(words_copied()), n));
+    at
+}
+
+/// An object's words, from its header: itself, its fields, its suffix.
+pub fn header_words(head: i64) -> i64 {
+    i64_plus(i64_plus(1i64, bits(head, lay::header_fields_lo(), lay::header_fields_width())), i64_quotient(i64_plus(bits(head, lay::header_bytes_lo(), lay::header_bytes_width()), 7i64), 8i64))
+}
+
+// A large header (Fixpt's `make_large_header`, which the engine makes,
+// C332): its F too big for it, in the extension word just below it, kind
+// 255, F from bit 11. Its words, the extension's too.
+#[inline]
+pub fn large_p(head: i64) -> bool {
+    i64_eq(1i64, bits(head, lay::header_large_lo(), lay::header_large_width()))
+}
+
+#[inline]
+pub fn extension_f(x: i64) -> i64 {
+    bits(x, lay::extension_fields_lo(), lay::extension_fields_width())
+}
+
+pub fn large_words(x: i64, head: i64) -> i64 {
+    i64_plus(i64_plus(2i64, extension_f(x)), i64_quotient(i64_plus(bits(head, lay::header_bytes_lo(), lay::header_bytes_width()), 7i64), 8i64))
+}
+
+pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
     loop {
-        if i64_gt_eq(i, n) {
+        if i64_lt_eq(n, 0i64) {
             return ();
         } else {
-            array_set_x(to, i64_to_int(i), array_ref(from, i64_to_int(i)));
+            to_set_x(at, word_at(from));
+            (from, at, n) = (i64_plus(from, 1i64), i64_plus(at, 1i64), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn code_header_scanned(mut j: i64) -> i64 {
+    loop {
+        if i64_eq(word_tag(code_at(j)), t_header()) {
+            return j;
+        } else {
+            j = i64_minus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Code bloblet `w` marked, to be traced, if it was not.
+pub fn code_marked_x(w: i64) -> () {
+    let p = i64_shr(i64_minus(w, get(code_vbase())), int_lit(3));
+    let t = code_at(i64_minus(p, 1i64));
+    let h = if i64_eq(word_tag(t), t_trailer()) {
+        i64_minus(i64_minus(p, 1i64), i64_shr(t, int_lit(3)))
+    } else if i64_eq(word_tag(t), t_header()) {
+        i64_minus(p, 1i64)
+    } else {
+        code_header_scanned(i64_minus(p, 2i64))
+    };
+    if i64_eq(flatarray_ref_i64(get(code_marks()), h), 0i64) {
+        flatarray_set_i64_x(get(code_marks()), h, 1i64);
+        set(code_gray(), kayak_rt::heap_cons(h, get(code_gray())))
+    } else {
+        ()
+    }
+}
+
+/// The word for `w`, a pair or bloblet, after the collection: its
+/// object's copy, copied first if need be; itself, if it is no pointer,
+/// or a code bloblet (which never moves).
+pub fn forward_object_x(w: i64) -> i64 {
+    if in_code_p(w) {
+        code_marked_x(w);
+        w
+    } else if is_pair_p(w) {
+        let o = address(w);
+        let first = word_at(o);
+        if i64_eq(word_tag(first), t_forward()) {
+            to_ref(i64_shr(first, int_lit(3)), t_pair())
+        } else {
+            let at = to_alloc_x(2i64);
+            to_set_x(at, first);
+            to_set_x(i64_plus(at, 1i64), word_at(i64_plus(o, 1i64)));
+            word_set_x(o, i64_or(i64_shl(at, int_lit(3)), t_forward()));
+            to_ref(at, t_pair())
+        }
+    } else if is_bloblet_p(w) {
+        let p = address(w);
+        let before = word_at(i64_minus(p, 1i64));
+        if i64_eq(word_tag(before), t_forward()) {
+            to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
+        } else {
+            let h = header_below(p, before);
+            let head = word_at(h);
+            if i64_eq(word_tag(head), t_forward()) {
+                to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
+            } else {
+                let big = large_p(head);
+                let n = if big {
+                    large_words(word_at(i64_minus(h, 1i64)), head)
+                } else {
+                    header_words(head)
+                };
+                let f = if big {
+                    extension_f(word_at(i64_minus(h, 1i64)))
+                } else {
+                    bits(head, lay::header_fields_lo(), lay::header_fields_width())
+                };
+                let at = to_alloc_x(n);
+                let main = if big {
+                    i64_plus(at, 1i64)
+                } else {
+                    at
+                };
+                copied_words_x(if big {
+                    i64_minus(h, 1i64)
+                } else {
+                    h
+                }, at, n);
+                word_set_x(h, i64_or(i64_shl(main, int_lit(3)), t_forward()));
+                if (i64_gt(f, 0i64) && not(i64_eq(word_tag(before), t_trailer()))) {
+                    word_set_x(i64_minus(p, 1i64), i64_or(i64_shl(i64_plus(main, f), int_lit(3)), t_forward()))
+                } else {
+                    ()
+                };
+                to_ref(i64_plus(main, i64_minus(p, h)), t_bloblet())
+            }
+        }
+    } else {
+        w
+    }
+}
+
+/// As `forward-object!`; a suffix ref, at its owner's copy: Coopt's
+/// heap has none, Fixpt's collector keeps the owner (`object_of`).
+#[inline]
+pub fn forward_x(w: i64) -> i64 {
+    if is_sref_p(w) {
+        make_sref(to_address(forward_object_x(sref_owner(w))), sref_offset(w))
+    } else {
+        forward_object_x(w)
+    }
+}
+
+pub fn fields_forwarded_x(mut i: i64, mut end: i64) -> () {
+    loop {
+        if i64_gt(i, end) {
+            return ();
+        } else {
+            to_set_x(i, forward_x(to_at(i)));
             i = i64_plus(i, 1i64);
             continue;
         }
     }
 }
 
-/// The number of name `s`, made if it has none.
-pub fn intern_x(s: Str) -> i64 {
-    let found = name_at(s, 0i64, get(name_count()));
-    if i64_gt_eq(found, 0i64) {
-        found
-    } else {
-        let n = get(name_count());
-        if i64_gt_eq(n, int_to_i64(array_length(get(names())))) {
-            let bigger = the::<Array<Str>>(make_array(i64_to_int(i64_star(n, 2i64)), str_lit("")));
-            names_copied_x(get(names()), bigger, 0i64, n);
-            set(names(), bigger)
+/// Cheney's scan: each object copied, its traced words forwarded, until
+/// the scan meets the copying.
+pub fn scanned_x(mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, get(to_top())) {
+            return ();
         } else {
-            ()
-        };
-        array_set_x(get(names()), i64_to_int(n), s);
-        set(name_count(), i64_plus(n, 1i64));
-        n
+            let w = to_at(i);
+            if (i64_eq(word_tag(w), t_header()) && i64_eq(bits(w, lay::header_kind_lo(), lay::header_kind_width()), 255i64)) {
+                fields_forwarded_x(i64_plus(i, 2i64), i64_plus(i64_plus(i, 1i64), extension_f(w)));
+                i = i64_plus(i, large_words(w, to_at(i64_plus(i, 1i64))));
+                continue;
+            } else if i64_eq(word_tag(w), t_header()) {
+                let f = bits(w, lay::header_fields_lo(), lay::header_fields_width());
+                if i64_eq(bits(w, lay::header_kind_lo(), lay::header_kind_width()), k_weak_pair()) {
+                    set(weak_seen(), kayak_rt::heap_cons(i, get(weak_seen())));
+                    fields_forwarded_x(i64_plus(i, 2i64), i64_plus(i, f));
+                    i = i64_plus(i, header_words(w));
+                    continue;
+                } else {
+                    fields_forwarded_x(i64_plus(i, 1i64), i64_plus(i, f));
+                    i = i64_plus(i, header_words(w));
+                    continue;
+                }
+            } else {
+                fields_forwarded_x(i, i64_plus(i, 1i64));
+                i = i64_plus(i, 2i64);
+                continue;
+            }
+        }
     }
 }
 
-pub fn name_of_number(n: i64) -> Str {
-    array_ref(get(names()), i64_to_int(n))
+/// What weak reference `w` is after the copying, before the spaces are
+/// swapped: its object's copy, `weak-dead` if it has none, or itself if it
+/// is no pointer or a code bloblet (which never moves). Fixpt's
+/// `weak_moved`.
+pub fn weak_after(w: i64) -> i64 {
+    if is_sref_p(w) {
+        let o = weak_after(sref_owner(w));
+        if i64_eq(o, weak_dead()) {
+            o
+        } else {
+            make_sref(to_address(o), sref_offset(w))
+        }
+    } else if in_code_p(w) {
+        w
+    } else if is_pair_p(w) {
+        let first = word_at(address(w));
+        if i64_eq(word_tag(first), t_forward()) {
+            to_ref(i64_shr(first, int_lit(3)), t_pair())
+        } else {
+            weak_dead()
+        }
+    } else if is_bloblet_p(w) {
+        let p = address(w);
+        let before = word_at(i64_minus(p, 1i64));
+        if i64_eq(word_tag(before), t_forward()) {
+            to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
+        } else {
+            let h = header_below(p, before);
+            let head = word_at(h);
+            if i64_eq(word_tag(head), t_forward()) {
+                to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
+            } else {
+                weak_dead()
+            }
+        }
+    } else {
+        w
+    }
+}
+
+/// Each noted weak pair's car moved on, or cleared.
+pub fn weak_moved_x(mut hs: List<i64>) -> () {
+    loop {
+        if null_p(hs) {
+            return ();
+        } else {
+            to_set_x(i64_plus(car(hs), 1i64), weak_after(to_at(i64_plus(car(hs), 1i64))));
+            hs = cdr(hs);
+            continue;
+        }
+    }
+}
+
+/// Every name's value from `i` on, forwarded in place.
+pub fn named_forwarded_x(mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, get(named_count())) {
+            return ();
+        } else {
+            let m = get(named_values());
+            flatarray_set_i64_x(m, i, forward_x(flatarray_ref_i64(m, i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn code_fields_forwarded_x(mut j: i64, mut end: i64) -> () {
+    loop {
+        if i64_gt(j, end) {
+            return ();
+        } else {
+            code_set_x(j, forward_x(code_at(j)));
+            j = i64_plus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Each code bloblet marked and not yet traced: its fields forwarded in
+/// place, which may mark more.
+pub fn gray_traced_x() -> () {
+    loop {
+        let g = get(code_gray());
+        if null_p(g) {
+            return ();
+        } else {
+            let h = car(g);
+            let head = code_at(h);
+            set(code_gray(), cdr(g));
+            code_fields_forwarded_x(i64_plus(h, 1i64), i64_plus(h, bits(head, lay::header_fields_lo(), lay::header_fields_width())));
+            continue;
+        }
+    }
+}
+
+/// Cheney's scan from `i`, then the code marked meanwhile traced, until
+/// neither leaves anything: what the code reaches is copied, and what
+/// the copies reach of the code marked (Fixpt's `mark_code` within its
+/// copying collection).
+pub fn traced_all_x(mut i: i64) -> () {
+    loop {
+        scanned_x(i);
+        let t = get(to_top());
+        if null_p(get(code_gray())) {
+            return ();
+        } else {
+            gray_traced_x();
+            i = t;
+            continue;
+        }
+    }
+}
+
+// A free block of the code area, `n` words at `j`: a raw bloblet's header,
+// all suffix, as Fixpt's `put_free` writes one.
+#[inline]
+pub fn code_free_block_x(j: i64, n: i64) -> () {
+    code_set_x(j, header_word(k_bloblet(), 0i64, i64_star(8i64, i64_minus(n, 1i64)), false, false))
+}
+
+/// From `j` on, each code bloblet not marked freed, its mark cleared if
+/// it was; adjacent free blocks one (`run`, `len` words: the one being
+/// made, 0 if none); a free run at the end the part's top again; the
+/// free list `frees` made anew (Fixpt's sweep of its code area); the
+/// stubbed part's if `stubbed`, else the native part's.
+pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'static Cblock>, mut stubbed: bool) -> () {
+    loop {
+        if i64_gt_eq(j, if stubbed {
+            get(stub_top())
+        } else {
+            get(code_top())
+        }) {
+            if i64_gt(len, 0i64) {
+                if stubbed {
+                    set(stub_top(), run)
+                } else {
+                    set(code_top(), run)
+                }
+            } else {
+                ()
+            };
+            if stubbed {
+                return set(stub_free(), frees);
+            } else {
+                return set(code_frees(), frees);
+            }
+        } else {
+            let n = header_words(code_at(j));
+            if i64_eq(flatarray_ref_i64(get(code_marks()), j), 0i64) {
+                if i64_gt(len, 0i64) {
+                    (j, len) = (i64_plus(j, n), i64_plus(len, n));
+                    continue;
+                } else {
+                    (j, run, len) = (i64_plus(j, n), j, n);
+                    continue;
+                }
+            } else {
+                flatarray_set_i64_x(get(code_marks()), j, 0i64);
+                if i64_gt(len, 0i64) {
+                    code_free_block_x(run, len);
+                    (j, run, len, frees) = (i64_plus(j, n), 0i64, 0i64, kayak_rt::heap_cons(cblock(run, len), frees));
+                    continue;
+                } else {
+                    (j, run, len) = (i64_plus(j, n), 0i64, 0i64);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// The free list, the first block of `n` words or more taken
+/// (`code-fit-at`), what is left of it free.
+pub fn code_fit_x(bs: List<&'static Cblock>, n: i64) -> List<&'static Cblock> {
+    if null_p(bs) {
+        nil::<&'static Cblock>()
+    } else {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Cblock::Cblock(j, m) => {
+                if i64_gt_eq(get(code_fit_at()), 0i64) {
+                    bs
+                } else if i64_eq(m, n) {
+                    set(code_fit_at(), j);
+                    cdr(bs)
+                } else if i64_gt(m, n) {
+                    set(code_fit_at(), j);
+                    code_free_block_x(i64_plus(j, n), i64_minus(m, n));
+                    kayak_rt::heap_cons(cblock(i64_plus(j, n), i64_minus(m, n)), cdr(bs))
+                } else {
+                    kayak_rt::heap_cons(car(bs), code_fit_x(cdr(bs), n))
+                }
+            }
+        }
+    }
+}
+
+/// `n` words of the code area's native part: the first free block that
+/// fits, else past its top; -1 if it is full.
+pub fn code_alloc_x(n: i64) -> i64 {
+    set(code_fit_at(), -1i64);
+    set(code_frees(), code_fit_x(get(code_frees()), n));
+    if i64_gt_eq(get(code_fit_at()), 0i64) {
+        get(code_fit_at())
+    } else if i64_gt(i64_plus(get(code_top()), n), get(code_hi())) {
+        -1i64
+    } else {
+        let at = get(code_top());
+        set(code_top(), i64_plus(at, n));
+        at
+    }
+}
+
+/// `n` words of the code area's stubbed part, as `code-alloc!`.
+pub fn stub_alloc_x(n: i64) -> i64 {
+    set(code_fit_at(), -1i64);
+    set(stub_free(), code_fit_x(get(stub_free()), n));
+    if i64_gt_eq(get(code_fit_at()), 0i64) {
+        get(code_fit_at())
+    } else if i64_gt(i64_plus(get(stub_top()), n), get(stub_hi())) {
+        -1i64
+    } else {
+        let at = get(stub_top());
+        set(stub_top(), i64_plus(at, n));
+        at
+    }
+}
+
+pub fn code_zeroed_x(mut j: i64, mut end: i64) -> () {
+    loop {
+        if i64_gt_eq(j, end) {
+            return ();
+        } else {
+            code_set_x(j, 0i64);
+            j = i64_plus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+/// A word, as `make-word!` makes one, in the code area's stubbed part,
+/// its suffix the stub (C234): one native code calls, a closure's; one
+/// only run stays in the heap (Fixpt's `make_transient_word`). In the
+/// heap where no native code runs.
+pub fn make_code_word_x(name: Str, n: i64, entry: i64) -> i64 {
+    if not(get(code_on())) {
+        make_word_x(name, n, entry)
+    } else {
+        let f = i64_plus(n, 4i64);
+        let at = stub_alloc_x(i64_plus(f, 2i64));
+        if i64_lt(at, 0i64) {
+            trap_x(str_lit("words: the code area's stubbed part is full"));
+            make_word_x(name, n, entry)
+        } else {
+            let w = i64_or(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(i64_plus(at, f), 1i64))), t_bloblet());
+            code_set_x(at, header_word(k_code(), f, 8i64, true, true));
+            code_zeroed_x(i64_plus(at, 1i64), i64_plus(at, f));
+            code_set_x(i64_plus(at, f), i64_or(i64_shl(f, int_lit(3)), t_trailer()));
+            code_set_x(i64_plus(i64_plus(at, f), 1i64), get(code_stub_word()));
+            code_flush(get(code_space()), i64_to_int(i64_plus(i64_plus(at, f), 1i64)), int_lit(1));
+            slot_set_x(w, f_entry(), fix(entry));
+            slot_set_x(w, f_name(), symbol_x(name));
+            slot_set_x(w, f_twin(), v_false());
+            w
+        }
+    }
+}
+
+pub fn adapters_forwarded_x(ws: List<&'static Cblock>) -> List<&'static Cblock> {
+    if null_p(ws) {
+        nil::<&'static Cblock>()
+    } else {
+        let tagcase_ = car(ws);
+        match *tagcase_ {
+            Cblock::Cblock(n, w) => {
+                kayak_rt::heap_cons(cblock(n, forward_x(w)), adapters_forwarded_x(cdr(ws)))
+            }
+        }
+    }
+}
+
+/// The other space made ready, as big as this one: the roots are then
+/// forwarded (`forward!`), then `collect-end!`.
+pub fn collect_begin_x() -> () {
+    set(to_top(), 8i64);
+    named_forwarded_x(0i64);
+    set(interned(), forward_x(get(interned())));
+    if i64_eq(get(continuation_word()), 0i64) {
+        ()
+    } else {
+        set(continuation_word(), forward_x(get(continuation_word())))
+    };
+    if i64_eq(get(vlambda_word()), 0i64) {
+        ()
+    } else {
+        set(vlambda_word(), forward_x(get(vlambda_word())))
+    };
+    set(adapter_words(), adapters_forwarded_x(get(adapter_words())));
+    if i64_eq(get(adapter_code()), 0i64) {
+        ()
+    } else {
+        code_marked_x(get(adapter_code()))
+    }
+}
+
+/// Everything the roots reach, copied; the spaces swapped; the space grown,
+/// both, if what lives fills more than half.
+pub fn collect_end_x() -> () {
+    traced_all_x(8i64);
+    weak_moved_x(get(weak_seen()));
+    set(weak_seen(), nil::<i64>());
+    if get(code_on()) {
+        code_swept_x(get(stub_lo()), 0i64, 0i64, nil::<&'static Cblock>(), true);
+        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<&'static Cblock>(), false)
+    } else {
+        ()
+    };
+    let old = get(mem());
+    set(mem(), get(other()));
+    set(other(), old);
+    {
+        let b = get(vbase());
+        set(vbase(), get(to_vbase()));
+        set(to_vbase(), b)
+    };
+    set(heap_top(), get(to_top()));
+    set(collections(), i64_plus(get(collections()), 1i64));
+    if i64_gt(i64_star(2i64, get(heap_top())), get(limit())) {
+        room_x(get(limit()))
+    } else {
+        ()
+    }
 }
 

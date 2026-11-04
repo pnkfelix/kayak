@@ -124,18 +124,22 @@ pub mod x86 {
 
     use super::made__input__1754__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
+    #[inline]
     pub fn x86_b1(a: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, nil::<Int>())
     }
 
+    #[inline]
     pub fn x86_b2(a: Int, b: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, kayak_rt::heap_cons(b, nil::<Int>()))
     }
 
+    #[inline]
     pub fn x86_hi(r: Int) -> Int {
         quotient(r, int_lit(8))
     }
 
+    #[inline]
     pub fn x86_lo(r: Int) -> Int {
         modulo(r, int_lit(8))
     }
@@ -153,6 +157,7 @@ pub mod x86 {
         append(x86_le(int_lit(4), modulo(u, int_lit(4294967296))), x86_le(int_lit(4), quotient(u, int_lit(4294967296))))
     }
 
+    #[inline]
     pub fn x86_i8_p(v: Int) -> bool {
         (_gt_eq(v, int_lit(-128)) && _lt(v, int_lit(128)))
     }
@@ -166,6 +171,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_scale_bits(scale: Int) -> Int {
         if _eq(scale, int_lit(8)) {
             int_lit(3)
@@ -217,26 +223,32 @@ pub mod x86 {
         }, base), append(op, x86_modrm_mem(field, base, index, scale, disp)))
     }
 
+    #[inline]
     pub fn x86_mov(d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(137)), s, d)
     }
 
+    #[inline]
     pub fn x86_load(d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(139)), d, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_load_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(139)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_store(base: Int, disp: Int, s: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(137)), s, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_lea(d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(141)), d, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_lea_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(141)), d, base, index, scale, disp)
     }
@@ -251,14 +263,17 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_cmov(c: Int, d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b2(int_lit(15), _plus(int_lit(64), c)), d, s)
     }
 
+    #[inline]
     pub fn x86_cmov_m(c: Int, d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b2(int_lit(15), _plus(int_lit(64), c)), d, base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_alu(op: Int, d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(_plus(_star(int_lit(8), op), int_lit(1))), s, d)
     }
@@ -273,6 +288,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_alu_rm(op: Int, d: Int, base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(_plus(_star(int_lit(8), op), int_lit(3))), d, base, int_lit(-1), int_lit(1), disp)
     }
@@ -285,6 +301,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_test(a: Int, b: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(133)), b, a)
     }
@@ -305,74 +322,92 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_jmp(rel: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(233), x86_le(int_lit(4), rel))
     }
 
+    #[inline]
     pub fn x86_jcc(c: Int, rel: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(15), kayak_rt::heap_cons(_plus(int_lit(128), c), x86_le(int_lit(4), rel)))
     }
 
+    #[inline]
     pub fn x86_jmp_r(s: Int) -> List<Int> {
         x86_op_rr(int_lit(0), x86_b1(int_lit(255)), int_lit(4), s)
     }
 
+    #[inline]
     pub fn x86_jmp_m(base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(4), base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_call_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(2), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_store8_imm(base: Int, index: Int, scale: Int, disp: Int, imm: Int) -> List<Int> {
         append(x86_op_rm(int_lit(0), x86_b1(int_lit(198)), int_lit(0), base, index, scale, disp), x86_b1(imm))
     }
 
+    #[inline]
     pub fn x86_call_m_ix(base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(2), base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_call(rel: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(232), x86_le(int_lit(4), rel))
     }
 
+    #[inline]
     pub fn x86_ret() -> List<Int> {
         x86_b1(int_lit(195))
     }
 
+    #[inline]
     pub fn x86_push(s: Int) -> List<Int> {
         append(x86_rex(int_lit(0), int_lit(0), int_lit(0), s), x86_b1(_plus(int_lit(80), x86_lo(s))))
     }
 
+    #[inline]
     pub fn x86_pop(d: Int) -> List<Int> {
         append(x86_rex(int_lit(0), int_lit(0), int_lit(0), d), x86_b1(_plus(int_lit(88), x86_lo(d))))
     }
 
+    #[inline]
     pub fn x86_push_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(255)), int_lit(6), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_pop_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(143)), int_lit(0), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_neg(d: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(3), d)
     }
 
+    #[inline]
     pub fn x86_neg_m(base: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(247)), int_lit(3), base, int_lit(-1), int_lit(1), disp)
     }
 
+    #[inline]
     pub fn x86_imul(d: Int, s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b2(int_lit(15), int_lit(175)), d, s)
     }
 
+    #[inline]
     pub fn x86_idiv(s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(7), s)
     }
 
+    #[inline]
     pub fn x86_cqo() -> List<Int> {
         x86_b2(int_lit(72), int_lit(153))
     }
@@ -385,10 +420,12 @@ pub mod x86 {
         }, kayak_rt::heap_cons(int_lit(15), kayak_rt::heap_cons(int_lit(182), x86_b1(_plus(_plus(int_lit(192), _star(int_lit(8), x86_lo(d))), x86_lo(s))))))
     }
 
+    #[inline]
     pub fn x86_load32_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(139)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_shift_cl(op: Int, d: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(211)), op, d)
     }
@@ -438,6 +475,7 @@ pub mod x86 {
         }
     }
 
+    #[inline]
     pub fn x86_nops(n: Int) -> List<Int> {
         x86_nops_after(n, nil::<Int>())
     }
@@ -446,34 +484,42 @@ pub mod x86 {
         append(x86_rex(w, field, int_lit(0), int_lit(0)), append(op, kayak_rt::heap_cons(_plus(_star(int_lit(8), x86_lo(field)), int_lit(5)), x86_le(int_lit(4), disp))))
     }
 
+    #[inline]
     pub fn x86_load_rip(d: Int, disp: Int) -> List<Int> {
         x86_op_rip(int_lit(1), x86_b1(int_lit(139)), d, disp)
     }
 
+    #[inline]
     pub fn x86_lea_rip(d: Int, disp: Int) -> List<Int> {
         x86_op_rip(int_lit(1), x86_b1(int_lit(141)), d, disp)
     }
 
+    #[inline]
     pub fn x86_store_ix(base: Int, index: Int, scale: Int, disp: Int, s: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(137)), s, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_store_imm(base: Int, index: Int, scale: Int, disp: Int, imm: Int) -> List<Int> {
         append(x86_op_rm(int_lit(1), x86_b1(int_lit(199)), int_lit(0), base, index, scale, disp), x86_le(int_lit(4), imm))
     }
 
+    #[inline]
     pub fn x86_store32_ix(base: Int, index: Int, scale: Int, disp: Int, s: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b1(int_lit(137)), s, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_load32s_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(1), x86_b1(int_lit(99)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_load8_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b2(int_lit(15), int_lit(182)), d, base, index, scale, disp)
     }
 
+    #[inline]
     pub fn x86_load16_ix(d: Int, base: Int, index: Int, scale: Int, disp: Int) -> List<Int> {
         x86_op_rm(int_lit(0), x86_b2(int_lit(15), int_lit(183)), d, base, index, scale, disp)
     }
@@ -491,18 +537,22 @@ pub mod x86 {
         }, kayak_rt::heap_cons(int_lit(136), x86_modrm_mem(s, base, index, scale, disp)))
     }
 
+    #[inline]
     pub fn x86_store16_ix(base: Int, index: Int, scale: Int, disp: Int, s: Int) -> List<Int> {
         kayak_rt::heap_cons(int_lit(102), x86_op_rm(int_lit(0), x86_b1(int_lit(137)), s, base, index, scale, disp))
     }
 
+    #[inline]
     pub fn x86_div(s: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(6), s)
     }
 
+    #[inline]
     pub fn x86_not(d: Int) -> List<Int> {
         x86_op_rr(int_lit(1), x86_b1(int_lit(247)), int_lit(2), d)
     }
 
+    #[inline]
     pub fn x86_call_r(s: Int) -> List<Int> {
         x86_op_rr(int_lit(0), x86_b1(int_lit(255)), int_lit(2), s)
     }
@@ -515,22 +565,27 @@ pub mod x86 {
         }, append(x86_rex(w, field, int_lit(0), rm), kayak_rt::heap_cons(int_lit(15), append(op, x86_b1(_plus(_plus(int_lit(192), _star(int_lit(8), x86_lo(field))), x86_lo(rm)))))))
     }
 
+    #[inline]
     pub fn x86_movq_to_xmm(x: Int, r: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(1), x86_b1(int_lit(110)), x, r)
     }
 
+    #[inline]
     pub fn x86_movq_from_xmm(r: Int, x: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(1), x86_b1(int_lit(126)), x, r)
     }
 
+    #[inline]
     pub fn x86_movd_to_xmm(x: Int, r: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(0), x86_b1(int_lit(110)), x, r)
     }
 
+    #[inline]
     pub fn x86_movd_from_xmm(r: Int, x: Int) -> List<Int> {
         x86_sse(int_lit(102), int_lit(0), x86_b1(int_lit(126)), x, r)
     }
 
+    #[inline]
     pub fn x86_fop(double: Int, op: Int, d: Int, s: Int) -> List<Int> {
         x86_sse(if _eq(double, int_lit(1)) {
             int_lit(242)
@@ -539,6 +594,7 @@ pub mod x86 {
         }, int_lit(0), x86_b1(op), d, s)
     }
 
+    #[inline]
     pub fn x86_ucomis(double: Int, a: Int, b: Int) -> List<Int> {
         x86_sse(if _eq(double, int_lit(1)) {
             int_lit(102)
@@ -547,14 +603,17 @@ pub mod x86 {
         }, int_lit(0), x86_b1(int_lit(46)), a, b)
     }
 
+    #[inline]
     pub fn x86_cvtsi2sd(x: Int, r: Int) -> List<Int> {
         x86_sse(int_lit(242), int_lit(1), x86_b1(int_lit(42)), x, r)
     }
 
+    #[inline]
     pub fn x86_cvttsd2si(r: Int, x: Int) -> List<Int> {
         x86_sse(int_lit(242), int_lit(1), x86_b1(int_lit(44)), r, x)
     }
 
+    #[inline]
     pub fn x86_round(double: Int, d: Int, s: Int, mode: Int) -> List<Int> {
         append(x86_sse(int_lit(102), int_lit(0), x86_b2(int_lit(58), if _eq(double, int_lit(1)) {
             int_lit(11)
@@ -565,150 +624,186 @@ pub mod x86 {
 }
 
 // Registers, as the hardware numbers them.
+#[inline]
 pub fn y_mem() -> Int {
     int_lit(10)
 }
 
+#[inline]
 pub fn y_ip() -> Int {
     int_lit(14)
 }
 
+#[inline]
 pub fn y_cur() -> Int {
     int_lit(13)
 }
 
+#[inline]
 pub fn y_dsp() -> Int {
     int_lit(12)
 }
 
+#[inline]
 pub fn y_rsp() -> Int {
     int_lit(3)
 }
 
+#[inline]
 pub fn y_st() -> Int {
     int_lit(15)
 }
 
+#[inline]
 pub fn y_fp() -> Int {
     int_lit(5)
 }
 
+#[inline]
 pub fn y_clo() -> Int {
     int_lit(9)
 }
 
+#[inline]
 pub fn y_w() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn y10() -> Int {
     int_lit(7)
 }
 
+#[inline]
 pub fn y11() -> Int {
     int_lit(6)
 }
 
+#[inline]
 pub fn y13() -> Int {
     int_lit(1)
 }
 
+#[inline]
 pub fn y14() -> Int {
     int_lit(2)
 }
 
+#[inline]
 pub fn y15() -> Int {
     int_lit(8)
 }
 
+#[inline]
 pub fn y16() -> Int {
     int_lit(11)
 }
 
 // The native convention's: its arguments, and its fourth's place in its
 // state.
+#[inline]
 pub fn y_rdi() -> Int {
     int_lit(7)
 }
 
+#[inline]
 pub fn y_rsi() -> Int {
     int_lit(6)
 }
 
+#[inline]
 pub fn y_r8() -> Int {
     int_lit(8)
 }
 
+#[inline]
 pub fn y_reg4() -> Int {
     int_lit(616)
 }
 
 // Conditions, as `x86_64.fx` numbers them.
+#[inline]
 pub fn q_o() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn q_b() -> Int {
     int_lit(2)
 }
 
+#[inline]
 pub fn q_ae() -> Int {
     int_lit(3)
 }
 
+#[inline]
 pub fn q_e() -> Int {
     int_lit(4)
 }
 
+#[inline]
 pub fn q_ne() -> Int {
     int_lit(5)
 }
 
+#[inline]
 pub fn q_be() -> Int {
     int_lit(6)
 }
 
+#[inline]
 pub fn q_a() -> Int {
     int_lit(7)
 }
 
+#[inline]
 pub fn q_l() -> Int {
     int_lit(12)
 }
 
+#[inline]
 pub fn q_ge() -> Int {
     int_lit(13)
 }
 
 // Arithmetic and shifts, as `x86-alu` and `x86-shift-imm` take them.
+#[inline]
 pub fn a_add() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn a_or() -> Int {
     int_lit(1)
 }
 
+#[inline]
 pub fn a_and() -> Int {
     int_lit(4)
 }
 
+#[inline]
 pub fn a_sub() -> Int {
     int_lit(5)
 }
 
+#[inline]
 pub fn a_cmp() -> Int {
     int_lit(7)
 }
 
+#[inline]
 pub fn s_shl() -> Int {
     int_lit(4)
 }
 
+#[inline]
 pub fn s_shr() -> Int {
     int_lit(5)
 }
 
+#[inline]
 pub fn s_sar() -> Int {
     int_lit(7)
 }
@@ -716,14 +811,17 @@ pub fn s_sar() -> Int {
 // The state's elements this machine keeps that hand.kfx keeps in
 // registers: the data stack's base, the cell being run, and register
 // code's link (hand.kfx's `x30`; 0 for none).
+#[inline]
 pub fn st_dsb() -> Int {
     int_lit(30)
 }
 
+#[inline]
 pub fn st_cell() -> Int {
     int_lit(31)
 }
 
+#[inline]
 pub fn st_link() -> Int {
     int_lit(32)
 }
@@ -760,22 +858,27 @@ pub fn xa(f0: Int) -> &'static XItem {
     kayak_rt::heap_alloc(XItem::Xa(f0))
 }
 
+#[inline]
 pub fn y_jmp() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn y_jcc() -> Int {
     int_lit(1)
 }
 
+#[inline]
 pub fn y_lea() -> Int {
     int_lit(2)
 }
 
+#[inline]
 pub fn y_call() -> Int {
     int_lit(3)
 }
 
+#[inline]
 pub fn y_items() -> Ref<List<&'static XItem>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static XItem>>);
     once(&ONCE, || {
@@ -783,36 +886,44 @@ pub fn y_items() -> Ref<List<&'static XItem>> {
     })
 }
 
+#[inline]
 pub fn ye_x(bs: List<Int>) -> () {
     set(y_items(), kayak_rt::heap_cons(xb(bs), get(y_items())))
 }
 
+#[inline]
 pub fn ybind_x(l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xl(l), get(y_items())))
 }
 
+#[inline]
 pub fn yb_x(l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), l), get(y_items())))
 }
 
+#[inline]
 pub fn ybc_x(c: Int, l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xj(y_jcc(), c, l), get(y_items())))
 }
 
+#[inline]
 pub fn yadr_x(r: Int, l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xj(y_lea(), r, l), get(y_items())))
 }
 
 /// No-ops, so that the `n` bytes next end 8-aligned.
+#[inline]
 pub fn yalign_x(n: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xa(n), get(y_items())))
 }
 
+#[inline]
 pub fn ycall_x(l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xj(y_call(), int_lit(0), l), get(y_items())))
 }
 
 // Data, placed before the code: 8 bytes an entry.
+#[inline]
 pub fn y_data() -> Ref<List<&'static XItem>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static XItem>>);
     once(&ONCE, || {
@@ -820,14 +931,17 @@ pub fn y_data() -> Ref<List<&'static XItem>> {
     })
 }
 
+#[inline]
 pub fn yd_x(v: Int) -> () {
     set(y_data(), kayak_rt::heap_cons(xb((&x86::x86_le8)(v)), get(y_data())))
 }
 
+#[inline]
 pub fn ydo_x(l: Int) -> () {
     set(y_data(), kayak_rt::heap_cons(xo(l), get(y_data())))
 }
 
+#[inline]
 pub fn ydata_label_x(l: Int) -> () {
     set(y_data(), kayak_rt::heap_cons(xl(l), get(y_data())))
 }
@@ -925,50 +1039,62 @@ pub fn y_encoded(x: &'static XItem, at: Int, ls: FlatArray<i64>) -> List<Int> {
 }
 
 // Instructions, by `x86_64.fx`'s encoders.
+#[inline]
 pub fn ymov_x(d: Int, s: Int) -> () {
     ye_x((&x86::x86_mov)(d, s))
 }
 
+#[inline]
 pub fn yld_x(d: Int, b: Int, o: Int) -> () {
     ye_x((&x86::x86_load)(d, b, o))
 }
 
+#[inline]
 pub fn yst_x(b: Int, o: Int, s: Int) -> () {
     ye_x((&x86::x86_store)(b, o, s))
 }
 
+#[inline]
 pub fn yld_ix_x(d: Int, b: Int, i: Int, o: Int) -> () {
     ye_x((&x86::x86_load_ix)(d, b, i, int_lit(1), o))
 }
 
+#[inline]
 pub fn ylea_x(d: Int, b: Int, o: Int) -> () {
     ye_x((&x86::x86_lea)(d, b, o))
 }
 
+#[inline]
 pub fn ylea_ix_x(d: Int, b: Int, i: Int, s: Int, o: Int) -> () {
     ye_x((&x86::x86_lea_ix)(d, b, i, s, o))
 }
 
+#[inline]
 pub fn yimm_x(d: Int, i: Int) -> () {
     ye_x((&x86::x86_mov_imm)(d, i))
 }
 
+#[inline]
 pub fn yalu_x(op: Int, d: Int, s: Int) -> () {
     ye_x((&x86::x86_alu)(op, d, s))
 }
 
+#[inline]
 pub fn yalui_x(op: Int, d: Int, i: Int) -> () {
     ye_x((&x86::x86_alu_imm)(op, d, i))
 }
 
+#[inline]
 pub fn yalurm_x(op: Int, d: Int, b: Int, o: Int) -> () {
     ye_x((&x86::x86_alu_rm)(op, d, b, o))
 }
 
+#[inline]
 pub fn yalumi_x(op: Int, b: Int, o: Int, i: Int) -> () {
     ye_x((&x86::x86_alu_mi)(op, b, o, i))
 }
 
+#[inline]
 pub fn ytesti_x(r: Int, i: Int) -> () {
     ye_x((&x86::x86_test_imm)(r, i))
 }
@@ -976,85 +1102,104 @@ pub fn ytesti_x(r: Int, i: Int) -> () {
 // The heap by values (C139): with addresses, a value is its object's
 // address and its tag; with indices, its offset from `r10`, the heap's
 // base.
+#[inline]
 pub fn yld_v_x(d: Int, v: Int, o: Int) -> () {
     yld_x(d, v, o)
 }
 
+#[inline]
 pub fn ylea_v_x(d: Int, v: Int, o: Int) -> () {
     ylea_x(d, v, o)
 }
 
 /// The address in `d` as a value, less its tag: itself (C244).
+#[inline]
 pub fn yvalued_x(d: Int) -> () {
     ()
 }
 
+#[inline]
 pub fn yshift_x(op: Int, d: Int, i: Int) -> () {
     ye_x((&x86::x86_shift_imm)(op, d, i))
 }
 
+#[inline]
 pub fn ycmov_x(c: Int, d: Int, s: Int) -> () {
     ye_x((&x86::x86_cmov)(c, d, s))
 }
 
+#[inline]
 pub fn yjmp_r_x(r: Int) -> () {
     ye_x((&x86::x86_jmp_r)(r))
 }
 
+#[inline]
 pub fn ypush_x(r: Int) -> () {
     ye_x((&x86::x86_push)(r))
 }
 
+#[inline]
 pub fn ypop_x(r: Int) -> () {
     ye_x((&x86::x86_pop)(r))
 }
 
+#[inline]
 pub fn yret_x() -> () {
     ye_x((&x86::x86_ret)())
 }
 
+#[inline]
 pub fn yneg_x(r: Int) -> () {
     ye_x((&x86::x86_neg)(r))
 }
 
+#[inline]
 pub fn ycall_r_x(r: Int) -> () {
     ye_x((&x86::x86_call_r)(r))
 }
 
+#[inline]
 pub fn ypush_st_x(i: Int) -> () {
     ye_x((&x86::x86_push_m)(y_st(), at_st(i)))
 }
 
+#[inline]
 pub fn ypop_st_x(i: Int) -> () {
     ye_x((&x86::x86_pop_m)(y_st(), at_st(i)))
 }
 
 /// The state's element `i` 0.
+#[inline]
 pub fn yzero_x(i: Int) -> () {
     ye_x((&x86::x86_store_imm)(y_st(), int_lit(-1), int_lit(1), at_st(i), int_lit(0)))
 }
 
 // Shorthands: the state's element `i`; a register, its tag checked; a
 // field extracted.
+#[inline]
 pub fn yst_ld_x(d: Int, i: Int) -> () {
     yld_x(d, y_st(), at_st(i))
 }
 
+#[inline]
 pub fn yst_st_x(i: Int, s: Int) -> () {
     yst_x(y_st(), at_st(i), s)
 }
 
+#[inline]
 pub fn ycmp_st_x(r: Int, i: Int) -> () {
     yalurm_x(a_cmp(), r, y_st(), at_st(i))
 }
 
 /// `r` pushed on the data stack.
+#[inline]
 pub fn ypushed_x(r: Int) -> () {
     yst_x(y_dsp(), int_lit(0), r);
     yalui_x(a_add(), y_dsp(), int_lit(8))
 }
 
 /// `d` := `n`'s bits from `lsb`, `mask` of them.
+#[inline]
 pub fn yubfx_x(d: Int, n: Int, lsb: Int, mask: Int) -> () {
     if _eq(d, n) {
         ()
@@ -1066,11 +1211,13 @@ pub fn yubfx_x(d: Int, n: Int, lsb: Int, mask: Int) -> () {
 }
 
 /// Give the cell back if `c`.
+#[inline]
 pub fn ygive_if_x(c: Int) -> () {
     ybc_x(c, get(l_give()))
 }
 
 /// On to the next cell.
+#[inline]
 pub fn ynext_x() -> () {
     yb_x(if _lt(get(h_cont()), int_lit(0)) {
         get(l_next())
@@ -1080,6 +1227,7 @@ pub fn ynext_x() -> () {
 }
 
 /// On to a branch's target, the ip moved to it.
+#[inline]
 pub fn ytaken_x() -> () {
     yb_x(if _lt(get(h_target()), int_lit(0)) {
         get(l_next())
@@ -1089,11 +1237,13 @@ pub fn ytaken_x() -> () {
 }
 
 /// On to the cell at the ip, of `cur`.
+#[inline]
 pub fn yresume_x() -> () {
     yb_x(get(l_resume()))
 }
 
 /// Given back unless `r`'s tag is `tag`.
+#[inline]
 pub fn ytag_in_x(r: Int, tag: Int) -> () {
     ymov_x(y13(), r);
     yalui_x(a_and(), y13(), int_lit(7));
@@ -1115,12 +1265,14 @@ pub fn yneed_x(n: Int) -> () {
 }
 
 /// Room to push one, else give back.
+#[inline]
 pub fn yroom_x() -> () {
     ycmp_st_x(y_dsp(), st_ds_end());
     ygive_if_x(q_ae())
 }
 
 /// Within the limits tier 1's `check-limits!` holds to, else give back.
+#[inline]
 pub fn ylimits_x() -> () {
     ycmp_st_x(y_dsp(), st_ds_lim());
     ygive_if_x(q_a());
@@ -1129,6 +1281,7 @@ pub fn ylimits_x() -> () {
 }
 
 /// Two values replaced by `r`.
+#[inline]
 pub fn yput_top_x(r: Int) -> () {
     yalui_x(a_sub(), y_dsp(), int_lit(8));
     yst_x(y_dsp(), int_lit(-8), r);
@@ -1136,6 +1289,7 @@ pub fn yput_top_x(r: Int) -> () {
 }
 
 /// `rcx` := `#t` if `c`, else `#f`.
+#[inline]
 pub fn yboolean_of_x(c: Int) -> () {
     yimm_x(y13(), int_lit(3));
     yimm_x(y14(), int_lit(11));
@@ -1154,6 +1308,7 @@ pub fn ytwo_fixnums_x() -> () {
 }
 
 /// `d` the operand at the ip, the ip past it.
+#[inline]
 pub fn yip_op_x(d: Int) -> () {
     yld_x(d, y_ip(), int_lit(0));
     yalui_x(a_sub(), y_ip(), int_lit(8))
@@ -1682,6 +1837,7 @@ pub fn yroutines_x(mut n: Int, mut base: Int) -> () {
 
 // The registers the machine uses that the native convention's caller may
 // need, `r15` its state: kept on the machine stack.
+#[inline]
 pub fn ykept_x() -> () {
     ypush_x(y_fp());
     ypush_x(y_rsp());
@@ -1691,6 +1847,7 @@ pub fn ykept_x() -> () {
     ypush_x(y_st())
 }
 
+#[inline]
 pub fn yrestored_x() -> () {
     ypop_x(y_st());
     ypop_x(y_ip());
@@ -1701,6 +1858,7 @@ pub fn yrestored_x() -> () {
 }
 
 /// The state's `at` its `length` element as an address past `base`.
+#[inline]
 pub fn yat_entry_x(length: Int, base: Int, at: Int) -> () {
     yst_ld_x(y14(), length);
     yshift_x(s_shl(), y14(), int_lit(3));
@@ -1867,6 +2025,7 @@ pub fn yregs_in_x(mut k: Int) -> () {
 
 /// Register code left for the machine: `RESULT` and the registers in
 /// machine registers kept in the state, as tier 1 keeps them.
+#[inline]
 pub fn yleft_x() -> () {
     yst_st_x(st_regs(), y_w());
     yregs_out_x(int_lit(1))
@@ -1874,6 +2033,7 @@ pub fn yleft_x() -> () {
 
 /// Register code entered from the machine: `RESULT` and the registers in
 /// machine registers from the state.
+#[inline]
 pub fn yentered_reg_x() -> () {
     yst_ld_x(y_w(), st_regs());
     yregs_in_x(int_lit(1))
@@ -2133,6 +2293,7 @@ pub fn yword_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
 // pushes its own link and jumps, for the callee to pop. So each `ret`
 // pairs with its `call`, as the processor predicts returns (C137).
 /// Operand `j` of the instruction at field `kk` of the running word.
+#[inline]
 pub fn yopnd_x(d: Int, kk: i64, j: Int) -> () {
     yld_v_x(d, y_cur(), _minus(_minus(int_lit(-4), _star(int_lit(8), i64_to_int(kk))), _star(int_lit(8), _plus(j, int_lit(1)))))
 }
@@ -2267,6 +2428,7 @@ pub fn yfills_at_x(mut j: Int, mut m: Int) -> () {
 
 /// `m` slots of `rcx` (`#f`) pushed: stored at their offsets, the stack
 /// moved once (C241), not a store and an `add` each.
+#[inline]
 pub fn yfill_false_x(m: Int) -> () {
     if _lt_eq(m, int_lit(0)) {
         ()
@@ -2284,6 +2446,7 @@ pub fn yfill_false_x(m: Int) -> () {
 // in from the machine), a 0 there stands for it, a return then the
 // stack's way. Whether it is there as an instruction is compiled; and by
 // instruction, for the ways in made after.
+#[inline]
 pub fn hand_fixpt_calls() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -2291,10 +2454,12 @@ pub fn hand_fixpt_calls() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn y_machine_sp() -> Int {
     int_lit(4)
 }
 
+#[inline]
 pub fn h_5_pushed() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -2302,6 +2467,7 @@ pub fn h_5_pushed() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn h_stubs() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2309,15 +2475,18 @@ pub fn h_stubs() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn y_pushed_p() -> bool {
     (get(hand_fixpt_calls()) && _lt(get(h_link()), int_lit(0)))
 }
 
+#[inline]
 pub fn y_pushed_at_p(i: i64) -> bool {
     (get(hand_fixpt_calls()) && i64_eq(flatarray_ref_i64(get(h_5_pushed()), i), 1i64))
 }
 
 /// Leaving for the machine: the link, if it is on the machine stack, dropped.
+#[inline]
 pub fn ylink_dropped_x() -> () {
     if y_pushed_p() {
         yalui_x(a_add(), y_machine_sp(), int_lit(8))
@@ -2326,6 +2495,7 @@ pub fn ylink_dropped_x() -> () {
     }
 }
 
+#[inline]
 pub fn yno_link_pushed_x() -> () {
     yimm_x(y13(), int_lit(0));
     ypush_x(y13())
@@ -2347,10 +2517,12 @@ pub fn ylink_reloaded_x(m: Int) -> () {
 // instruction past `args`. Placed just before that instruction's code, so
 // found from it (`yentry-address!`); the tables' way in to that instruction,
 // by a jump, is past it.
+#[inline]
 pub fn y_link_popped() -> List<Int> {
     (&x86::x86_pop_m)(y_st(), at_st(st_link()))
 }
 
+#[inline]
 pub fn h_call_entry() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2375,6 +2547,7 @@ pub fn ycalled_to_x(l: Int, r: Int) -> () {
 
 /// A call in tail position to the address in `r`, a callee's entry for a
 /// call: this word's link pushed for it to pop.
+#[inline]
 pub fn ytail_called_x(r: Int) -> () {
     if y_pushed_p() {
         ()
@@ -2415,6 +2588,7 @@ pub fn yargs_pushed_x(mut r: Int, mut n: Int) -> () {
 
 // The labels of a register word's ways to give back, by instruction:
 // instruction `i`'s `h-gbase + 2i`, past its step's fuel `h-gbase + 2i + 1`.
+#[inline]
 pub fn h_gbase() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2467,6 +2641,7 @@ pub fn ygive_stubs_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut giv
 // never sees a record. Entered by a call from tier 5 (its entry for a call
 // diverted to `adapter`), over a bottom record, `(1 1)`, that says so.
 // Which words, their blocks and their labels are hand.kfx's, shared.
+#[inline]
 pub fn l_materialize_pushed() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2544,6 +2719,7 @@ pub fn y6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
 
 /// `return`: to the caller's code; over the bottom record, out, to tier
 /// 5's, which returns to tier 5's caller.
+#[inline]
 pub fn y6_returned_x() -> () {
     yalumi_x(a_cmp(), y_machine_sp(), int_lit(8), int_lit(1));
     ygive_if_x(q_e());
@@ -3380,6 +3556,7 @@ pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
 // suffix (tag 4), less its tag, as an `int` (a fixnum).
 pub type AddressCode = &'static dyn Fn(FlatArray<i64>) -> Int;
 
+#[inline]
 pub fn address_made() -> Ref<List<AddressCode>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<AddressCode>>);
     once(&ONCE, || {

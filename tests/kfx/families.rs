@@ -59,6 +59,7 @@ pub type Stack<T> = List<T>;
 
 pub type Ints = Stack<i64>;
 
+#[inline]
 pub fn total(x: &'static Rose<'static, i64>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
@@ -71,6 +72,7 @@ pub fn total(x: &'static Rose<'static, i64>) -> i64 {
     }
 }
 
+#[inline]
 pub fn total_all(ks: List<&'static Rose<'static, i64>>) -> i64 {
     if null_p(ks) {
         0i64
@@ -79,6 +81,7 @@ pub fn total_all(ks: List<&'static Rose<'static, i64>>) -> i64 {
     }
 }
 
+#[inline]
 pub fn first<A: Copy + 'static>(xs: Stack<A>) -> &'static Option<A> {
     if null_p(xs) {
         none::<A>()
@@ -87,6 +90,7 @@ pub fn first<A: Copy + 'static>(xs: Stack<A>) -> &'static Option<A> {
     }
 }
 
+#[inline]
 pub fn or_else<A: Copy + 'static>(o: &'static Option<A>, d: A) -> A {
     let tagcase_ = o;
     match *tagcase_ {
@@ -99,6 +103,7 @@ pub fn or_else<A: Copy + 'static>(o: &'static Option<A>, d: A) -> A {
     }
 }
 
+#[inline]
 pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: &'static Both<A, B>) -> &'static Both<B, A> {
     let tagcase_ = p;
     match *tagcase_ {

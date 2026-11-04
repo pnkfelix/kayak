@@ -12,6 +12,7 @@ pub type Strings = List<Str>;
 
 pub type Ints = List<i64>;
 
+#[inline]
 pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
@@ -42,16 +43,19 @@ pub fn words(xs: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn add1(n: i64) -> i64 {
     i64_plus(n, 1i64)
 }
 
+#[inline]
 pub fn adder(n: i64) -> &'static (dyn Fn(i64) -> i64 + Send + Sync) {
     lambda1s(move |m: i64| {
         i64_plus(n, m)
     })
 }
 
+#[inline]
 pub fn twice<A: Copy + 'static>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
     f(f(x))
 }
@@ -64,6 +68,7 @@ pub fn op(f0: Str, f1: &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> &'st
     kayak_rt::heap_alloc(Op::Op(f0, f1))
 }
 
+#[inline]
 pub fn apply_op(o: &'static Op, a: i64, b: i64) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
@@ -73,6 +78,7 @@ pub fn apply_op(o: &'static Op, a: i64, b: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn i64_star_wrapped(a: i64, b: i64) -> i64 {
     i64_star(a, b)
 }

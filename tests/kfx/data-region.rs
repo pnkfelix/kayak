@@ -52,6 +52,7 @@ pub fn build<'p, Place_P: Holds<Cons<'p, &'p Rose<'p, i64>>> + Holds<Rose<'p, i6
     }
 }
 
+#[inline]
 pub fn total<'r>(x: &'r Rose<'r, i64>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
@@ -64,6 +65,7 @@ pub fn total<'r>(x: &'r Rose<'r, i64>) -> i64 {
     }
 }
 
+#[inline]
 pub fn total_all<'r>(ks: ListAt<'r, &'r Rose<'r, i64>>) -> i64 {
     if null_p(ks) {
         0i64
@@ -73,6 +75,7 @@ pub fn total_all<'r>(ks: ListAt<'r, &'r Rose<'r, i64>>) -> i64 {
 }
 
 // A tree made and summed in a region of its own.
+#[inline]
 pub fn one_tree(k: i64) -> i64 {
     {
         struct Region_R<'r> { a0: Arena<Rose<'r, i64>>, a1: Arena<Cons<'r, &'r Rose<'r, i64>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
@@ -88,6 +91,7 @@ pub fn one_tree(k: i64) -> i64 {
 }
 
 // And one made in the heap, at `acyclic`, as before.
+#[inline]
 pub fn kept() -> &'static Rose<'static, i64> {
     static ONCE: std::sync::OnceLock<&'static Rose<'static, i64>> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -106,6 +110,7 @@ pub fn again(mut k: i64, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     string_append(i64_to_string(again(1000i64, 0i64)), string_append(str_lit(" "), i64_to_string(total(kept()))))
 }

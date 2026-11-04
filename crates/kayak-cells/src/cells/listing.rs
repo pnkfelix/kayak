@@ -11,35 +11,43 @@ use super::*;
 // those are refused. Each word's register code (`its register code`) is
 // read into a register word, its twin under `--regs` (C129).
 // fixpt-source: crates/fixpt-runtime/src/disasm.rs@19b31f1
+#[inline]
 pub fn listing_error(why: Str) -> Void {
     error(string_append(str_lit("kayak-cells: the listing: "), why))
 }
 
 // Parentheses, as characters (KFX's reader takes no `#\(`).
+#[inline]
 pub fn open_paren() -> char {
     i64_to_char(40i64)
 }
 
+#[inline]
 pub fn close_paren() -> char {
     i64_to_char(41i64)
 }
 
+#[inline]
 pub fn comma() -> char {
     i64_to_char(44i64)
 }
 
+#[inline]
 pub fn colon() -> char {
     i64_to_char(58i64)
 }
 
+#[inline]
 pub fn dquote() -> char {
     i64_to_char(34i64)
 }
 
+#[inline]
 pub fn bar() -> char {
     i64_to_char(124i64)
 }
 
+#[inline]
 pub fn backslash() -> char {
     i64_to_char(92i64)
 }
@@ -107,6 +115,7 @@ pub fn until_char(mut cs: Chars, mut c: char, mut acc: Chars) -> Chars {
     }
 }
 
+#[inline]
 pub fn before_char(cs: Chars, c: char) -> Chars {
     until_char(cs, c, nil::<char>())
 }
@@ -263,6 +272,7 @@ pub fn ltext(f0: Str, f1: Str) -> &'static Ltext {
     kayak_rt::heap_alloc(Ltext::Ltext(f0, f1))
 }
 
+#[inline]
 pub fn line_tables() -> Ref<List<&'static Ltext>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
     once(&ONCE, || {
@@ -271,6 +281,7 @@ pub fn line_tables() -> Ref<List<&'static Ltext>> {
 }
 
 // Its register code's, `; regs at FILE INSTRUCTION:POS …` (C249).
+#[inline]
 pub fn reg_line_tables() -> Ref<List<&'static Ltext>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
     once(&ONCE, || {
@@ -342,6 +353,7 @@ pub fn table_named(mut ts: List<&'static Ltext>, mut n: Str, mut had: Str) -> St
 }
 
 // The words, by name.
+#[inline]
 pub fn words() -> Ref<List<&'static NamedSlot>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
@@ -361,6 +373,7 @@ pub fn word_named(cs: Chars) -> i64 {
 
 // The undefined closure: what a global holds before it is written, which
 // traps if called (Fixpt's `undefined_closure`).
+#[inline]
 pub fn undefined_closure() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -414,6 +427,7 @@ pub fn lab(f0: i64, f1: i64) -> &'static Lab {
     kayak_rt::heap_alloc(Lab::Lab(f0, f1))
 }
 
+#[inline]
 pub fn labels() -> Ref<List<&'static Lab>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lab>>);
     once(&ONCE, || {
@@ -480,6 +494,7 @@ pub fn label_value(mut ls: List<&'static Lab>, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn labelled_x(n: i64, v: i64) -> i64 {
     set(labels(), kayak_rt::heap_cons(lab(n, v), get(labels())));
     v
@@ -565,6 +580,7 @@ pub fn expect(cs: Chars, prefix: Str) -> Chars {
     }
 }
 
+#[inline]
 pub fn ends_word_p(cs: Chars) -> bool {
     (null_p(cs) || char_eq_p(car(cs), ' ') || char_eq_p(car(cs), close_paren()))
 }
@@ -924,6 +940,7 @@ pub fn lit_items(cs: Chars, acc: List<i64>) -> &'static Gall {
 // A closure the compiler made, a literal: the listing shows its word, not
 // its free values, so it is taken as a closure of none, one for each word,
 // and its word checked to read none (`free-read?`) once all are made.
+#[inline]
 pub fn literals() -> Ref<List<&'static NamedSlot>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
@@ -1009,6 +1026,7 @@ pub fn literal(cs: Chars) -> i64 {
 // `register_lines` writes it, into a bloblet of kind register-code, as
 // Fixpt's `make_register_word` makes one: its entry -1 here (Fixpt's 0,
 // not compiled, is `docol` to tier 1), its twin the word.
+#[inline]
 pub fn register_words() -> Ref<List<&'static NamedSlot>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
     once(&ONCE, || {
@@ -1017,6 +1035,7 @@ pub fn register_words() -> Ref<List<&'static NamedSlot>> {
 }
 
 // Whether a word's twin is its register word, which tier 1 then runs.
+#[inline]
 pub fn regs_on() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -1024,6 +1043,7 @@ pub fn regs_on() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn reg_put_x(rw: i64, at: i64, j: i64, v: i64) -> () {
     if i64_eq(rw, 0i64) {
         ()
@@ -1120,6 +1140,7 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
     }
 }
 
+#[inline]
 pub fn cell_set_x(w: i64, at: i64, v: i64) -> () {
     slot_set_x(w, i64_plus(f_cell0(), at), v)
 }

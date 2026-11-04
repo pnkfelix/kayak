@@ -44,6 +44,7 @@ pub fn doubled_x(mut bv: Bytes, mut i: Int) -> () {
     }
 }
 
+#[inline]
 pub fn text_length(bv: Bytes) -> Int {
     let tagcase_ = utf8_to_string(bv);
     match *tagcase_ {
@@ -56,6 +57,7 @@ pub fn text_length(bv: Bytes) -> Int {
     }
 }
 
+#[inline]
 pub fn show_ints(xs: List<Int>) -> Str {
     if null_p(xs) {
         str_lit("")

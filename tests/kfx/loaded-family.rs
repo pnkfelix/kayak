@@ -23,10 +23,12 @@ pub mod made__load__1__loaded_family {
 
     }
 
+    #[inline]
     pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: Product_3fst_3snd<A, B>) -> Product_3fst_3snd<B, A> {
         Product_3fst_3snd(p.1, p.0)
     }
 
+    #[inline]
     pub fn made() -> Product_3fst_3snd<i64, Str> {
         Product_3fst_3snd(1i64, str_lit("one"))
     }
@@ -38,6 +40,7 @@ pub mod u {
     pub use super::made__load__1__loaded_family::{swap, made};
 }
 
+#[inline]
 pub fn main() -> Str {
     u::swap(u::made()).0
 }

@@ -21,6 +21,7 @@ pub type Chars = List<char>;
 pub type Strings = List<Str>;
 
 // Lists, of anything
+#[inline]
 pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
@@ -29,6 +30,7 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + S
     }
 }
 
+#[inline]
 pub fn any_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), xs: List<A>) -> bool {
     (not(null_p(xs)) && (p(car(xs)) || any_p(p, cdr(xs))))
 }
@@ -65,6 +67,7 @@ pub fn size_from<A: Copy + 'static>(mut xs: List<A>, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn size<A: Copy + 'static>(xs: List<A>) -> i64 {
     size_from(xs, 0i64)
 }
@@ -80,6 +83,7 @@ pub fn last<A: Copy + 'static>(mut xs: List<A>) -> A {
     }
 }
 
+#[inline]
 pub fn onto<A: Copy + 'static>(xs: List<A>, ys: List<A>) -> List<A> {
     if null_p(xs) {
         ys
@@ -88,6 +92,7 @@ pub fn onto<A: Copy + 'static>(xs: List<A>, ys: List<A>) -> List<A> {
     }
 }
 
+#[inline]
 pub fn concat<A: Copy + 'static>(xss: List<List<A>>) -> List<A> {
     if null_p(xss) {
         nil::<A>()
@@ -108,12 +113,14 @@ pub fn rev_onto(mut xs: Chars, mut acc: Chars) -> Chars {
     }
 }
 
+#[inline]
 pub fn rev_to_string(acc: Chars) -> Str {
     list_to_string(rev_onto(acc, nil::<char>()))
 }
 
 /// A string's characters, in one pass: indexing a string that is not
 /// ASCII counts characters from its start (CLAUDES_CHOICES.md, C14).
+#[inline]
 pub fn string_chars(s: Str) -> Chars {
     string_to_list(s)
 }
@@ -157,6 +164,7 @@ pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
 }
 
 /// Adds `s` to the output `acc`.
+#[inline]
 pub fn put(s: Str, acc: Chars) -> Chars {
     put_from(s, 0i64, string_length_i64(s), acc)
 }
@@ -175,6 +183,7 @@ pub fn put_sep<A: Copy + 'static>(mut each: &'static (dyn Fn(A, Chars) -> Chars 
     }
 }
 
+#[inline]
 pub fn string_member_p(s: Str, xs: Strings) -> bool {
     if null_p(xs) {
         false
@@ -185,6 +194,7 @@ pub fn string_member_p(s: Str, xs: Strings) -> bool {
 
 /// `from`, `from` + 1, ..., to before `n` (C91: from terminate.kfx, which
 /// the emitter used too, now a module of its own).
+#[inline]
 pub fn counting(from: i64, n: i64) -> List<i64> {
     if i64_lt(from, n) {
         kayak_rt::heap_cons(from, counting(i64_plus(from, 1i64), n))
@@ -272,6 +282,7 @@ pub fn tree_of(xs: List<Str>, n: i64) -> &'static Nset {
     }
 }
 
+#[inline]
 pub fn nset_of(xs: List<Str>) -> &'static Nset {
     let sorted = sorted_strings(xs);
     tree_of(sorted, size(sorted))

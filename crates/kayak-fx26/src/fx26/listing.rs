@@ -43,6 +43,7 @@ pub fn w_str_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byte
 }
 
 // A digit's byte, of base 10 or 16 (lower case).
+#[inline]
 pub fn digit_byte(d: i64) -> i64 {
     if i64_lt(d, 10i64) {
         i64_plus(48i64, d)
@@ -72,6 +73,7 @@ pub fn w_i64_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byte
 }
 
 // How many decimal digits `k`, not negative, has.
+#[inline]
 pub fn digit_count(k: i64) -> i64 {
     if i64_lt(k, 10i64) {
         1i64
@@ -104,6 +106,7 @@ pub fn w_padded_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, B
 
 // A word's name as the listing names it (`shown-name`): to its tab, if it
 // has one.
+#[inline]
 pub fn w_name_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, w: Str) -> () {
     w_str_x(p, b, n, if i64_lt(int_to_i64(string_search(w, str_lit("\t"), int_lit(0))), 0i64) {
         w
@@ -295,6 +298,7 @@ pub fn w_ins_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byte
 }
 
 // A line's start: two spaces, where it is, `width` wide, a colon.
+#[inline]
 pub fn w_at_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, at: i64, width: i64) -> () {
     w_str_x(p, b, n, str_lit("  "));
     w_padded_x(p, b, n, at, width);

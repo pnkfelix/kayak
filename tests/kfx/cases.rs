@@ -5,6 +5,7 @@ use kayak_rt::*;
 // A case on a character, an int, a string or a boolean: a `match`, whose
 // guards compare an int or a string, as Rust has no patterns for them.
 
+#[inline]
 pub fn int_class(n: Int) -> Int {
     match n {
         case_ if kayak_rt::_eq(case_, int_lit(0)) => {
@@ -22,6 +23,7 @@ pub fn int_class(n: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn char_class(c: char) -> Int {
     match c {
         'a' | 'e' | 'i' => {
@@ -36,6 +38,7 @@ pub fn char_class(c: char) -> Int {
     }
 }
 
+#[inline]
 pub fn string_class(s: Str) -> Int {
     match s {
         case_ if kayak_rt::string_eq_p(case_, str_lit("x")) => {
@@ -50,6 +53,7 @@ pub fn string_class(s: Str) -> Int {
     }
 }
 
+#[inline]
 pub fn bool_class(b: bool) -> Int {
     match b {
         true => {

@@ -9127,3 +9127,50 @@ side, which changes nothing it does:
   does: `chw` (reading and writing `@c`) and `cha` (and allocating there,
   for its names, its code blocks' and weak pairs' lists). `cm` has both.
   Only `make-code-word!` keeps `cm` (`code:flush/1`).
+
+## C332. The engine on tier 1's heap (2026-11-04; one heap, step 1's last part)
+
+The engine's program loads tier 1's heap (`cells/layout.kfx`,
+`cells/heap.kfx`, in `fx26/fx26.unit`), and its own heap file, now
+`fx26/vheap.kfx` (a unit's files are Rust modules by their names, and
+two `heap`s clash), is written over it:
+- **One region**: the engine's `@h` is `@c`, tier 1's, everywhere in the
+  engine (a rename by tokens, not strings). Tier 1's heap effects
+  (C331) are three, `cread` (only reading, which the engine's reading
+  procedures need), `cwrite` and `calloc` (C331's `chw`, `cha`: `chr`
+  would be the reader's character datum). The engine's `hp` is `cwrite`.
+- **One heap**: tier 1's spaces (`mem`, `other`), each reserved at its
+  capacity and committed as touched, its `heap-top` and `limit`, its count
+  of `collections` (which the eqtables stamp with, C329). The engine
+  allocates from them its own way (`bump!`, not zeroing, as it writes each
+  word); it grows by the limit (`room!`), never by copying.
+- **One collector**: tier 1's, Coopt's baseline, now with large headers
+  (an extension word before the main one, Fixpt's `put_header`, which the
+  engine makes for more than 262142 fields and tier 1 never did). The
+  engine's `collect!` gives it its roots between `collect-begin!` and
+  `collect-end!`; the engine's own Cheney copy is gone.
+- **One symbol table**: a name's symbol is tier 1's (`symbol!`); the
+  engine keeps its name's number in its global slot, which tier 1 leaves
+  0, and its cache by number.
+- **Shared accessors**: `address`, `heap-ref`, `is-pair?`, `pair-car`,
+  `pair-cdr`, `is-sref?`, `make-sref`, `sref-owner`, `sref-offset`,
+  `header-below`, `slot-of`, `slot-set!`, `frozen-whole!`, `suffix-bytes`,
+  `symbol-text`, `word-tag`, `sub-char`, `sub-f32`, and a new pair,
+  `mem-at` and `mem-set!`, a word of the heap's own space with nothing
+  tested (pairs and the engine's values are never in the code area, which
+  tier 1's `word-at` tests for first). The engine's of the same meaning go;
+  its value-order slots are `bloblet-value` (Fixpt's `bloblet_value`), as
+  tier 1's `slot-set!` is a field's by number.
+- **Inlining**: so written, the engine ran 55% slower (`loop.fx`, 8.6 to
+  13.4 s): rustc inlines no `fn` into another codegen unit unless it is
+  `#[inline]`, and the engine's hot reads were now in tier 1's module.
+  One codegen unit gave 8.1 s but built in 40 s, not 12; ThinLTO did
+  nothing. So kfx now marks a small definition `#[inline]`
+  (`emit-tops.kfx`'s `weight-under`: no loop, no `async`, at most 24 atoms
+  and lists), every program's generated Rust with it, boot/ at its fixed
+  point again; builds take as long as before.
+All 907 of Fixpt's and kayak's FX-26 programs print on the engine as
+before. `engine-bench.py` against C330's: 0 to 6% slower (`loop.fx` 8395
+to 8827 ms, `helpers.fx` 8312 to 8793), `lists.fx` 6% faster (5225 to
+4929): the values' base (`vbase`), a thread's constant read at every
+`address`, is most of it (2.2 s of `loop.fx`'s 5 before the inlining).

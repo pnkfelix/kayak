@@ -49,6 +49,7 @@ pub fn parity(n: i64) -> Str {
 }
 
 /// A parameter named as the procedure is: inside, the parameter.
+#[inline]
 pub fn shadow(x: i64) -> i64 {
     let f__knot = knot::<&'static (dyn Fn(i64) -> i64 + Send + Sync)>();
     let f = lambda1s(move |f: i64| {

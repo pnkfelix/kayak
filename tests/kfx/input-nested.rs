@@ -23,11 +23,13 @@ pub mod made__input__139__fam {
 pub mod p {
     use super::*;
 
+    #[inline]
     pub fn made() -> Product_3fst_3snd<i64, i64> {
         Product_3fst_3snd(4i64, 2i64)
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(i64_plus(p::made().0, p::made().1))
 }

@@ -13,6 +13,7 @@ pub fn rust_keywords() -> List<Str> {
     })
 }
 
+#[inline]
 pub fn rust_keyword_p(s: Str) -> bool {
     string_member_p(s, rust_keywords())
 }
@@ -159,6 +160,7 @@ pub fn mangled_length(s: Str) -> i64 {
 
 /// A KFX name as part of a Rust name the emitter makes (`loop__knot`):
 /// `mangle`'s, no `r#`.
+#[inline]
 pub fn mangle_bare(s: Str) -> Str {
     if rust_keyword_p(s) {
         s
@@ -169,6 +171,7 @@ pub fn mangle_bare(s: Str) -> Str {
 
 /// A region's or place's name as a Rust lifetime: `'r`, `'r#loop`; but
 /// `'static_`, since `'static` is Rust's own and no raw lifetime.
+#[inline]
 pub fn lifetime(s: Str) -> Str {
     string_append(str_lit("'"), if string_eq_p(s, str_lit("static")) {
         str_lit("static_")
@@ -200,11 +203,13 @@ pub fn camel_chars(mut cs: Chars, mut up: bool, mut acc: Chars) -> Chars {
 }
 
 /// A KFX name as a Rust type's: `got-list` is `GotList`.
+#[inline]
 pub fn camel(s: Str) -> Str {
     rev_to_string(camel_chars(string_chars(s), true, nil::<char>()))
 }
 
 /// A tag's or a sum's label as a Rust variant's name: camel-cased.
+#[inline]
 pub fn variant_name(s: Str) -> Str {
     camel(s)
 }

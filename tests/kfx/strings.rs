@@ -16,6 +16,7 @@ pub fn words(xs: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn bracket(c: char) -> Str {
     string_append(str_lit("["), string_append(char_to_string(c), str_lit("]")))
 }

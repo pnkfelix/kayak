@@ -68,10 +68,10 @@
 
       (define-type entry
         (productof (num i64) (text string) (typed string) (defined string) (quiet bool) (needs (listof i64 acyclic))
-                   (state (ref i64 @h)) (tops (ref (listof i64 acyclic) @h)) (shown (ref string @h))
-                   (out (ref string @h)) (began (ref i64 @h)) (ended (ref i64 @h))
-                   (row (ref i64 @h)) (drawn (ref string @h))
-                   (timed bool) (steps (ref i64 @h)) (gcs i64) (gcs-after (ref i64 @h))))
+                   (state (ref i64 @c)) (tops (ref (listof i64 acyclic) @c)) (shown (ref string @c))
+                   (out (ref string @c)) (began (ref i64 @c)) (ended (ref i64 @c))
+                   (row (ref i64 @c)) (drawn (ref string @c))
+                   (timed bool) (steps (ref i64 @c)) (gcs i64) (gcs-after (ref i64 @c))))
 
       "The draft's speculation (C96): its note, the line under the draft, and
        whether it is an error; whether the draft as it is has been tried;
@@ -83,29 +83,29 @@
        ends; and what was checked, so that an edit that changes none of it
        (a space after a finished form) keeps what was found."
 
-      (define note (ref string @h) (new ""))
+      (define note (ref string @c) (new ""))
 
-      (define note-error (ref bool @h) (new #f))
+      (define note-error (ref bool @c) (new #f))
 
-      (define speculated (ref bool @h) (new #f))
+      (define speculated (ref bool @c) (new #f))
 
-      (define spec-kept (ref i64 @h) (new 0))
+      (define spec-kept (ref i64 @c) (new 0))
 
-      (define spec-open (ref (listof i64 acyclic) @h) (new nil))
+      (define spec-open (ref (listof i64 acyclic) @c) (new nil))
 
-      (define spec-finished (ref bool @h) (new #f))
+      (define spec-finished (ref bool @c) (new #f))
 
-      (define spec-type (ref string @h) (new ""))
+      (define spec-type (ref string @c) (new ""))
 
-      (define spec-state (ref i64 @h) (new 0))
+      (define spec-state (ref i64 @c) (new 0))
 
-      (define spec-steps (ref i64 @h) (new 0))
+      (define spec-steps (ref i64 @c) (new 0))
 
-      (define spec-marks (ref (listof i64 acyclic) @h) (new nil))
+      (define spec-marks (ref (listof i64 acyclic) @c) (new nil))
 
-      (define spec-waits (ref bool @h) (new #f))
+      (define spec-waits (ref bool @c) (new #f))
 
-      (define spec-key (ref string @h) (new ""))
+      (define spec-key (ref string @c) (new ""))
 
       "What the hints are found from (C97): the tries made so far (`phase`: 1
        the draft checked, 2 with holes, 4 done); the texts with a hole not
@@ -115,25 +115,25 @@
        the narrowest refusal of a list around the hole and where it is; and
        the subform a refusal said is wrong, to underline (`from` = `to`: none)."
 
-      (define spec-phase (ref i64 @h) (new 4))
+      (define spec-phase (ref i64 @c) (new 4))
 
-      (define hole-texts (ref strings @h) (new nil))
+      (define hole-texts (ref strings @c) (new nil))
 
-      (define trying-holes (ref bool @h) (new #f))
+      (define trying-holes (ref bool @c) (new #f))
 
-      (define hole-at (ref i64 @h) (new -1))
+      (define hole-at (ref i64 @c) (new -1))
 
-      (define hole-op (ref string @h) (new ""))
+      (define hole-op (ref string @c) (new ""))
 
-      (define hole-place (ref i64 @h) (new 0))
+      (define hole-place (ref i64 @c) (new 0))
 
-      (define around (ref string @h) (new ""))
+      (define around (ref string @c) (new ""))
 
-      (define around-at (ref i64 @h) (new -1))
+      (define around-at (ref i64 @c) (new -1))
 
-      (define under-from (ref i64 @h) (new 0))
+      (define under-from (ref i64 @c) (new 0))
 
-      (define under-to (ref i64 @h) (new 0))
+      (define under-to (ref i64 @c) (new 0))
 
       (define spec-limit i64 2000000)
 
@@ -178,15 +178,15 @@
        news the machine has not, the newest first; the draft's run's serial,
        and the text it was closed off as."
 
-      (define machine-side (ref bool @h) (new #f))
+      (define machine-side (ref bool @c) (new #f))
 
-      (define requests (ref (listof request acyclic) @h) (new nil))
+      (define requests (ref (listof request acyclic) @c) (new nil))
 
-      (define news-out (ref (listof news acyclic) @h) (new nil))
+      (define news-out (ref (listof news acyclic) @c) (new nil))
 
-      (define spec-serial (ref i64 @h) (new 0))
+      (define spec-serial (ref i64 @c) (new 0))
 
-      (define spec-text (ref string @h) (new ""))
+      (define spec-text (ref string @c) (new ""))
 
       (define asked! (subr running (request) unit)
         (lambda (r) (set requests (cons r (get requests)))))
@@ -204,53 +204,53 @@
        first), where in it ^P/up is, the draft put aside meanwhile, and its
        file; the steps an entry may take; the commands given; ,quit."
 
-      (define live (ref bool @h) (new #f))
+      (define live (ref bool @c) (new #f))
 
-      (define screen-rows (ref i64 @h) (new 24))
+      (define screen-rows (ref i64 @c) (new 24))
 
-      (define screen-cols (ref i64 @h) (new 80))
+      (define screen-cols (ref i64 @c) (new 80))
 
-      (define entries (ref (listof entry acyclic) @h) (new nil))
+      (define entries (ref (listof entry acyclic) @c) (new nil))
 
-      (define draft (ref string @h) (new ""))
+      (define draft (ref string @c) (new ""))
 
-      (define rows (ref i64 @h) (new 0))
+      (define rows (ref i64 @c) (new 0))
 
-      (define draft-rows (ref i64 @h) (new 0))
+      (define draft-rows (ref i64 @c) (new 0))
 
-      (define draft-dirty (ref bool @h) (new #t))
+      (define draft-dirty (ref bool @c) (new #t))
 
-      (define leaving (ref bool @h) (new #f))
+      (define leaving (ref bool @c) (new #f))
 
-      (define escape (ref i64 @h) (new 0))
+      (define escape (ref i64 @c) (new 0))
 
-      (define last-run (ref i64 @h) (new 0))
+      (define last-run (ref i64 @c) (new 0))
 
-      (define written (ref chars @h) (new nil))
+      (define written (ref chars @c) (new nil))
 
-      (define cursor (ref i64 @h) (new 0))
+      (define cursor (ref i64 @c) (new 0))
 
-      (define cursor-row (ref i64 @h) (new 0))
+      (define cursor-row (ref i64 @c) (new 0))
 
-      (define escape-param (ref i64 @h) (new 0))
+      (define escape-param (ref i64 @c) (new 0))
 
-      (define history (ref strings @h) (new nil))
+      (define history (ref strings @c) (new nil))
 
-      (define history-at (ref i64 @h) (new -1))
+      (define history-at (ref i64 @c) (new -1))
 
-      (define stash (ref string @h) (new ""))
+      (define stash (ref string @c) (new ""))
 
-      (define history-path (ref string @h) (new ""))
+      (define history-path (ref string @c) (new ""))
 
-      (define step-limit (ref i64 @h) (new -1))
+      (define step-limit (ref i64 @c) (new -1))
 
-      (define commands (ref i64 @h) (new 0))
+      (define commands (ref i64 @c) (new 0))
 
-      (define quitting (ref bool @h) (new #f))
+      (define quitting (ref bool @c) (new #f))
 
       (define slice-steps i64 20000)
 
-      (define slice-ns (ref i64 @h) (new -1))
+      (define slice-ns (ref i64 @c) (new -1))
 
       (define slice-timed! (subr running () unit)
         (lambda ()

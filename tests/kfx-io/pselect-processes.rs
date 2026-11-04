@@ -34,6 +34,7 @@ pub fn drain(p: Int, acc: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn news() -> Int {
     {
         let sel_0__ = &kayak_rt::process::ProcessNews;

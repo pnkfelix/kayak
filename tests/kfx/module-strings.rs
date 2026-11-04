@@ -10,10 +10,12 @@ pub mod base {
     use super::*;
 
     // The first module's note.
+    #[inline]
     pub fn one() -> i64 {
         1i64
     }
 
+    #[inline]
     pub fn two() -> i64 {
         2i64
     }
@@ -25,6 +27,7 @@ pub mod m {
     // Helpers first.
 
     // Not in m's type.
+    #[inline]
     pub fn three() -> i64 {
         3i64
     }
@@ -34,11 +37,13 @@ pub mod m {
         use super::*;
 
         // A nested module's note.
+        #[inline]
         pub fn four() -> i64 {
             4i64
         }
     }
 
+    #[inline]
     pub fn sum() -> i64 {
         i64_plus(three(), inner::four())
     }
@@ -52,11 +57,13 @@ pub mod more {
     pub use super::base::{one};
 
     // The second module's note.
+    #[inline]
     pub fn two() -> i64 {
         20i64
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(i64_plus(m::sum(), i64_plus(more::one(), more::two())))
 }

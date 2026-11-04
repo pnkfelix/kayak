@@ -51,6 +51,7 @@ pub fn fgroup(f0: i64, f1: Facts) -> &'static Fgroup {
 
 pub type Fgroups = List<&'static Fgroup>;
 
+#[inline]
 pub fn fact_pos(f: &'static Fact) -> i64 {
     let tagcase_ = f;
     match *tagcase_ {
@@ -175,6 +176,7 @@ pub fn fidx_tree(gs: Fgroups, n: i64) -> &'static Fidx {
     }
 }
 
+#[inline]
 pub fn fidx_of(fs: Facts) -> &'static Fidx {
     let gs = grouped(facts_sorted(fs, size(fs)), 0i64, nil::<&'static Fact>(), nil::<&'static Fgroup>());
     fidx_tree(gs, size(gs))
@@ -304,6 +306,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn ctx_effects(c: &'static Ctx) -> Typeds {
         let tagcase_ = c;
         match *tagcase_ {
@@ -396,10 +399,12 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn fact_in(fs: Facts, e: &'static Sexp, prefix: Str) -> Str {
         first_fact(fs, datum_file(e), datum_pos(e), prefix)
     }
 
+    #[inline]
     pub fn fact_in_p(fs: Facts, e: &'static Sexp, what: Str) -> bool {
         any_p(lambda1s(move |f: &'static Fact| {
             let tagcase_ = f;
@@ -451,6 +456,7 @@ pub mod emitter {
     }
 
     /// A mangled name without its raw identifier's `r#`.
+    #[inline]
     pub fn plain_name(n: Str) -> Str {
         if has_prefix_p(n, str_lit("r#")) {
             after_prefix(n, str_lit("r#"))
@@ -459,6 +465,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
@@ -468,6 +475,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
         let tagcase_ = c;
         match *tagcase_ {
@@ -477,6 +485,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn ctx_constants(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
@@ -514,6 +523,7 @@ pub mod emitter {
     }
 
     /// A module's Rust path: a module parameter's is its type parameter.
+    #[inline]
     pub fn module_path(c: &'static Ctx, m: Str) -> Str {
         if string_eq_p(param_module_type(m, ctx_locals(c)), str_lit("")) {
             mangle(m)
@@ -595,6 +605,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn binder_kinds(bs: Sexps) -> Strings {
         map(lambda1s(move |b: &'static Sexp| {
             sym_name(second(items(b)))
@@ -710,6 +721,7 @@ pub mod emitter {
 
     /// The datatype `d`'s head and its lived regions, in a list (C270); none
     /// if its regions are erased.
+    #[inline]
     pub fn lived_of(c: &'static Ctx, d: Str) -> Sexps {
         module_body(c, string_append(str_lit("%lived "), d))
     }
@@ -785,6 +797,7 @@ pub mod emitter {
     }
 
     /// `(select m t)`'s type as the program names it, `m..t`.
+    #[inline]
     pub fn selected_name(sel: &'static Sexp) -> Str {
         string_append(sym_name(second(items(sel))), string_append(str_lit(".."), sym_name(third(items(sel)))))
     }
@@ -944,6 +957,7 @@ pub mod emitter {
     }
 
     /// A module's type as the program names it, `m..t`: `m` and `t`; else none.
+    #[inline]
     pub fn dotted(s: Str) -> Strings {
         dotted_from(nil::<char>(), string_chars(s))
     }
@@ -1054,6 +1068,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn run_together_strings(xs: Strings) -> Str {
         if null_p(xs) {
             str_lit("")
@@ -1218,6 +1233,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn digits_number(s: Str) -> i64 {
         i64_minus(0i64, digits_value(string_chars(s), 0i64, str_lit(""), 0i64))
     }
@@ -1244,10 +1260,12 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn after_first_space(s: Str) -> Str {
         rev_to_string(rev_onto(chars_after_space(string_chars(s)), nil::<char>()))
     }
 
+    #[inline]
     pub fn unquoted(n: Str) -> Str {
         if has_prefix_p(n, str_lit("'")) {
             after_prefix(n, str_lit("'"))
@@ -1257,6 +1275,7 @@ pub mod emitter {
     }
 
     /// A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's.
+    #[inline]
     pub fn owner_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
         let l = region_lifetime(c, r);
         if string_eq_p(l, str_lit("")) {
@@ -1266,6 +1285,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn number_text(e: &'static Sexp) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
@@ -1448,12 +1468,14 @@ pub mod emitter {
 
     /// Whether the function, closure or block being written is `async`, so
     /// that a future in it is `.await`ed (C45): the innermost's mark says.
+    #[inline]
     pub fn async_here_p(c: &'static Ctx) -> bool {
         innermost_async(ctx_locals(c))
     }
 
     /// Whether the function or closure being written returns a `Result`: the
     /// innermost's mark says.
+    #[inline]
     pub fn fallible_here_p(c: &'static Ctx) -> bool {
         innermost_fallible(ctx_locals(c))
     }
@@ -1474,6 +1496,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn heap_alloc(c: &'static Ctx) -> Str {
         if heap_static_p(ctx_locals(c)) {
             str_lit("kayak_rt::heap_alloc(")
@@ -1569,6 +1592,7 @@ pub mod emitter {
     }
 
     /// Names, separated by commas.
+    #[inline]
     pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
         put_sep(lambda2s(move |x: &'static Sexp, acc: List<char>| {
             put(mangle(sym_name(x)), acc)
@@ -1583,10 +1607,12 @@ pub mod emitter {
     // looping procedure does, with the procedure's name and parameters; the
     // flag is false where a binding hides a parameter, since an assignment
     // would then reach the binding, not the parameter.
+    #[inline]
     pub fn binding_name(binding: &'static Sexp) -> Str {
         sym_name(car(items(binding)))
     }
 
+    #[inline]
     pub fn ok_value_p(t: &'static Tail) -> bool {
         let tagcase_ = t;
         match *tagcase_ {
@@ -1600,6 +1626,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn returns_ok_p(t: &'static Tail) -> bool {
         let tagcase_ = t;
         match *tagcase_ {
@@ -1613,6 +1640,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn returns_p(t: &'static Tail) -> bool {
         let tagcase_ = t;
         match *tagcase_ {
@@ -1845,6 +1873,7 @@ pub mod emitter {
     }
 
     /// Names, mangled, separated by commas.
+    #[inline]
     pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
         put_sep(lambda2s(move |x: Str, acc: List<char>| {
             put(mangle(x), acc)
@@ -1923,6 +1952,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn split_at_char(s: Str, c: char) -> Strings {
         split_chars(string_chars(s), c, nil::<char>())
     }
@@ -1946,6 +1976,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn second_string(xs: Strings) -> Str {
         if (null_p(xs) || null_p(cdr(xs))) {
             str_lit("0")
@@ -2283,16 +2314,19 @@ pub mod emitter {
     }
 
     /// Whether the checker found `what` about the datum `e`.
+    #[inline]
     pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
         ctx_fact_p(c, datum_file(e), datum_pos(e), what)
     }
 
     /// Whether a top-level form defines a module maker (C274): the checker
     /// found its lambda one, noted at the definition.
+    #[inline]
     pub fn maker_form_p(c: &'static Ctx, form: &'static Sexp) -> bool {
         (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 4i64) && fact_at_p(c, form, str_lit("module-maker")))
     }
 
+    #[inline]
     pub fn concat_strings(xs: Strings) -> Str {
         if null_p(xs) {
             str_lit("")
@@ -2312,6 +2346,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn split_words(s: Str) -> Strings {
         reverse_strings(split_words_from(string_chars(s), nil::<char>(), nil::<Str>()), nil::<Str>())
     }
@@ -2329,6 +2364,7 @@ pub mod emitter {
         }), labels)))
     }
 
+    #[inline]
     pub fn ctx_locals(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
@@ -2435,6 +2471,7 @@ pub mod emitter {
     }
 
     /// A type definition's name, from its head: a name, or `(name binder ...)`.
+    #[inline]
     pub fn type_head_name(head: &'static Sexp) -> Str {
         let tagcase_ = head;
         match *tagcase_ {
@@ -2500,6 +2537,7 @@ pub mod emitter {
     }
 
     /// The module whose items are being written, or ``.
+    #[inline]
     pub fn module_here(c: &'static Ctx) -> Str {
         after_in(ctx_locals(c))
     }
@@ -2554,6 +2592,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn head_region_params(head: &'static Sexp) -> Strings {
         let tagcase_ = head;
         match *tagcase_ {
@@ -2567,6 +2606,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn head_place_params(head: &'static Sexp) -> Strings {
         let tagcase_ = head;
         match *tagcase_ {
@@ -2580,6 +2620,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn head_type_params(head: &'static Sexp) -> Strings {
         let tagcase_ = head;
         match *tagcase_ {
@@ -2622,6 +2663,7 @@ pub mod emitter {
     }
 
     /// Module `m`'s value `x`, from outside it (C107's `pub use`).
+    #[inline]
     pub fn value_path(c: &'static Ctx, m: Str, x: Str) -> Str {
         string_append(module_path(c, m), string_append(str_lit("::"), mangle(x)))
     }
@@ -2718,12 +2760,14 @@ pub mod emitter {
 
     /// Datatype `d`'s tags, its `variants`', before `ts`: `note-tags`, given on
     /// to the writing of modules (C116).
+    #[inline]
     pub fn tags_noted(variants: Sexps, d: Str, ts: Tagofs) -> Tagofs {
         note_tags(variants, d, ts)
     }
 
     /// What the checker found about `e` that begins `prefix`, the rest; or ``:
     /// `fact-with`, given on to the writing of definitions (C116).
+    #[inline]
     pub fn fact_said(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
         fact_with(c, e, prefix)
     }
@@ -3347,6 +3391,7 @@ pub mod emitter {
     }
 
     /// The innermost `letrena` lifetime `t`'s Rust type mentions, or ``.
+    #[inline]
     pub fn element_lifetime(c: &'static Ctx, t: &'static Sexp) -> Str {
         let text = rev_to_string(put_type(c, t, nil::<char>()));
         first_lifetime_in(text, letrena_lifetimes_inner(ctx_locals(c)))
@@ -3496,6 +3541,7 @@ pub mod emitter {
     }
 
     /// Types, separated by commas.
+    #[inline]
     pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
         put_sep(lambda2s(move |t: &'static Sexp, acc: List<char>| {
             put_type(c, t, acc)
@@ -3503,6 +3549,7 @@ pub mod emitter {
     }
 
     /// A new line, indented `n` levels.
+    #[inline]
     pub fn put_nl(n: i64, acc: Chars) -> Chars {
         put_spaces(n, put(str_lit("\n"), acc))
     }
@@ -3535,6 +3582,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn comment_p(e: &'static Sexp) -> bool {
         let tagcase_ = e;
         match *tagcase_ {
@@ -3548,6 +3596,7 @@ pub mod emitter {
         }
     }
 
+    #[inline]
     pub fn comment_text(e: &'static Sexp) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
@@ -3974,6 +4023,7 @@ pub mod emitter {
     }
 
     /// Expressions separated by `sep`.
+    #[inline]
     pub fn put_joined(c: &'static Ctx, xs: Sexps, sep: Str, n: i64, acc: Chars) -> Chars {
         put_sep(lambda2s(move |x: &'static Sexp, acc: List<char>| {
             put_exp(c, x, n, value(), acc)

@@ -8,24 +8,29 @@ use kayak_rt::*;
 // or by those it gives the place to. A letrena's arena holds all of it.
 
 // Fixpt's place-is-a-region.fx, at i64.
+#[inline]
 pub fn total<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> i64 {
     car(the::<ListAt<'p, i64>>(rcons(h, n, nil::<i64>())))
 }
 
 // A place given on: sum2 gives build its place, and needs what build makes.
+#[inline]
 pub fn build<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64, xs: ListAt<'p, i64>) -> ListAt<'p, i64> {
     rcons(h, n, xs)
 }
 
+#[inline]
 pub fn sum2<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P) -> i64 {
     let xs = build(h, 1i64, build(h, 2i64, nil::<i64>()));
     i64_plus(car(xs), car(cdr(xs)))
 }
 
+#[inline]
 pub fn counter<'p, Place_P: Holds<std::cell::Cell<i64>>>(h: &'p Place_P, n: i64) -> RefAt<'p, i64> {
     rnew(h, n)
 }
 
+#[inline]
 pub fn mk<'p, Place_P: Holds<Bloblet<(std::cell::Cell<i64>,)>>>(h: &'p Place_P, n: i64) -> &'p Bloblet<(std::cell::Cell<i64>,)> {
     rmake_bloblet(h, int_lit(8), (std::cell::Cell::new(n),))
 }

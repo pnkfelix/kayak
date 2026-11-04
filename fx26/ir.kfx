@@ -4,7 +4,7 @@
 
 "The engine's effect: its heap, and the world, which an FX-26 program's
  I/O is (C49)."
-(define-effect eng (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
+(define-effect eng (maxeff (read @globals) spin (read @c) (write @c) (alloc @c)
                            (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit) (io sys) (io terminal) (io process)))
 
 "A run's failure (C110): `error`, a trap (`car` of nil, an index out of
@@ -13,30 +13,30 @@
  machine's step stops at it (`w-failed`), and the REPL ends the entry,
  where a failure would end the REPL, since FX-26 catches none in a
  program's own computation. Its message, the first said; whether one was."
-(define engine-failed (ref bool @h) (new #f))
-(define engine-failure (ref string @h) (new ""))
+(define engine-failed (ref bool @c) (new #f))
+(define engine-failure (ref string @c) (new ""))
 "Its backtrace (TODO §29): a line for each procedure, innermost first;
  none until the machine has stopped at it (vm.kfx's `stopped!`), or if
  nothing is known."
-(define engine-trace (ref (listof string @h) @h) (new nil))
+(define engine-trace (ref (listof string @c) @c) (new nil))
 
-(define failed-with! (subr (maxeff (read @globals) spin (read @h) (write @h)) (string) unit)
+(define failed-with! (subr (maxeff (read @globals) spin (read @c) (write @c)) (string) unit)
   (lambda (message)
     (if (get engine-failed) #u (begin (set engine-failure message) (set engine-failed #t)))))
 
 "The failure said, taken: its message, and none kept."
-(define failure-taken! (subr (maxeff (read @globals) spin (read @h) (write @h)) () string)
+(define failure-taken! (subr (maxeff (read @globals) spin (read @c) (write @c)) () string)
   (lambda ()
     (let ((m (get engine-failure))) (begin (set engine-failed #f) (set engine-failure "") (set engine-trace nil) m))))
 
 (define-rec
-  (traced (subr (maxeff (read @globals) spin (read @h)) ((listof string @h) string) string)
+  (traced (subr (maxeff (read @globals) spin (read @c)) ((listof string @c) string) string)
     (lambda (ls prefix)
       (if (null? ls) "" (string-append "\n" (string-append prefix (string-append (car ls) (traced (cdr ls) prefix))))))))
 
 "The failure said, taken, with its backtrace: each line after its message,
  on a line of its own, after `prefix`."
-(define failure-traced! (subr (maxeff (read @globals) spin (read @h) (write @h)) (string) string)
+(define failure-traced! (subr (maxeff (read @globals) spin (read @c) (write @c)) (string) string)
   (lambda (prefix)
     (let* ((t (get engine-trace)) (m (failure-taken!))) (string-append m (traced t prefix)))))
 
@@ -56,24 +56,24 @@
   (v-bool bool)
   (v-unit)
   (v-nil)
-  (v-pair (ref val @h) (ref val @h))
-  (v-ref (ref val @h))
+  (v-pair (ref val @c) (ref val @c))
+  (v-ref (ref val @c))
   (v-sum string val)
-  (v-product strings (arrayof val @h))
-  (v-data string (arrayof val @h))
-  (v-array (arrayof val @h))
-  (v-bytes (bytevectorof @h))
-  (v-flat (arrayof val @h))
-  (v-proc i64 ir (listof (arrayof val @h) acyclic))
+  (v-product strings (arrayof val @c))
+  (v-data string (arrayof val @c))
+  (v-array (arrayof val @c))
+  (v-bytes (bytevectorof @c))
+  (v-flat (arrayof val @c))
+  (v-proc i64 ir (listof (arrayof val @c) acyclic))
   (v-prim string i64)
   (v-ctor string i64)
-  (v-cont (listof frame acyclic) (ref bool @h) bool)
+  (v-cont (listof frame acyclic) (ref bool @c) bool)
   (v-datum sexp)
   ;; A rep (C305): a type's nodes, as their text, made a rep at loading.
   (v-rep string))
 
 (define-type vals (listof val acyclic))
-(define-type env (listof (arrayof val @h) acyclic))
+(define-type env (listof (arrayof val @c) acyclic))
 
 "The IR: names resolved. A local is a frame's depth and slot; a global,
  an index into the globals; a primitive call names its primitive. `let`
@@ -120,9 +120,9 @@
   (k-if ir ir env)
   (k-seq irs env)
   (k-list vals irs env todo)
-  (k-letrec (arrayof val @h) i64 irs ir env)
+  (k-letrec (arrayof val @c) i64 irs ir env)
   (k-define i64)
-  (k-sum string)
+  (k-sum-tag string)
   (k-extract string)
   (k-tagcase (listof arm acyclic) ir env)
   (k-prompt-tag ir ir env)

@@ -16,6 +16,7 @@ pub enum Sum_3dyn_5where<A0, A1> {
 // identifiers, `r#loop`. Only `self`, `super` and `crate`, which no raw
 // identifier may be, are refused (tests/kfx-stricter/self-name.kfx).
 
+#[inline]
 pub fn r#mod() -> i64 {
     1i64
 }
@@ -48,6 +49,7 @@ pub fn r#loop(mut r#move: i64, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn r#where(s: As) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
@@ -60,6 +62,7 @@ pub fn r#where(s: As) -> i64 {
     }
 }
 
+#[inline]
 pub fn r#const(e: &'static Enum) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
@@ -75,28 +78,34 @@ pub fn r#const(e: &'static Enum) -> i64 {
 pub mod r#impl {
     use super::*;
 
+    #[inline]
     pub fn r#trait() -> i64 {
         7i64
     }
 
+    #[inline]
     pub fn r#return(r#break: i64) -> i64 {
         i64_plus(r#break, r#trait())
     }
 }
 
+#[inline]
 pub fn build<'r#yield, Place_Yield: Holds<Cons<'r#yield, i64>>>(r#async: &'r#yield Place_Yield, n: i64) -> ListAt<'r#yield, i64> {
     rcons(r#async, n, nil::<i64>())
 }
 
 // A region named `static`, Rust's `'r#static`, and a type variable `in`.
+#[inline]
 pub fn keep<In: Copy + 'static>(x: In) -> In {
     x
 }
 
+#[inline]
 pub fn total<'static_, Place_Static: Holds<Cons<'static_, i64>>>(h: &'static_ Place_Static, n: i64) -> i64 {
     car(the::<ListAt<'static_, i64>>(rcons(h, n, nil::<i64>())))
 }
 
+#[inline]
 pub fn first() -> i64 {
     {
         struct Region_Static<'static_> { a0: Arena<Cons<'static_, i64>>, phantom_: std::marker::PhantomData<(&'static_ (),)> }

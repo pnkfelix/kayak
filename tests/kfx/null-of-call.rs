@@ -17,6 +17,7 @@ pub fn find(mut xs: List<i64>, mut n: i64) -> kayak_rt::value::Value {
     }
 }
 
+#[inline]
 pub fn has_p(xs: List<i64>, n: i64) -> bool {
     not(kayak_rt::value::null_p(find(xs, n)))
 }

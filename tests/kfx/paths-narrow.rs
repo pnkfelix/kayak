@@ -17,6 +17,7 @@ pub type Cell = kayak_rt::value::Value;
 
 pub type Frozen = kayak_rt::value::Value;
 
+#[inline]
 pub fn plus(x: Cell) -> Int {
     if int_p(kayak_rt::value::car(x)) {
         _plus(kayak_rt::value::unbox::<Int>(kayak_rt::value::car(x)), int_lit(1))
@@ -25,6 +26,7 @@ pub fn plus(x: Cell) -> Int {
     }
 }
 
+#[inline]
 pub fn otherwise(x: Cell) -> Int {
     if string_p(kayak_rt::value::car(x)) {
         int_lit(0)
@@ -33,6 +35,7 @@ pub fn otherwise(x: Cell) -> Int {
     }
 }
 
+#[inline]
 pub fn elsewhere(x: Cell, b: Ref<Int>) -> Int {
     if int_p(kayak_rt::value::car(x)) {
         set(b, int_lit(1));
@@ -42,6 +45,7 @@ pub fn elsewhere(x: Cell, b: Ref<Int>) -> Int {
     }
 }
 
+#[inline]
 pub fn through_heap(x: Frozen, b: Ref<Int>) -> Int {
     if int_p(kayak_rt::value::car(x)) {
         set(b, int_lit(1));
@@ -51,6 +55,7 @@ pub fn through_heap(x: Frozen, b: Ref<Int>) -> Int {
     }
 }
 
+#[inline]
 pub fn field(p: Product_1a<V>) -> Int {
     if int_p(p.0) {
         _plus(kayak_rt::value::unbox::<Int>(p.0), int_lit(5))
@@ -59,6 +64,7 @@ pub fn field(p: Product_1a<V>) -> Int {
     }
 }
 
+#[inline]
 pub fn name_of(x: Cell) -> Str {
     if string_p(kayak_rt::value::car(x)) {
         kayak_rt::value::unbox::<Str>(kayak_rt::value::car(x))

@@ -43,6 +43,7 @@ pub fn total<'r>(mut a: FlatArray<i64>, mut i: i64, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn show<'r>(a: FlatArray<i64>, i: i64) -> Str {
     if i64_lt(i, flatarray_length_i64(a)) {
         string_append(i64_to_string(flatarray_ref_i64(a, i)), show(a, i64_plus(i, 1i64)))
@@ -99,6 +100,7 @@ pub fn counter(f0: Str, f1: Ref<i64>) -> &'static Counter {
     kayak_rt::heap_alloc(Counter::Counter(f0, f1))
 }
 
+#[inline]
 pub fn bump_x(k: &'static Counter) -> i64 {
     let tagcase_ = k;
     match *tagcase_ {

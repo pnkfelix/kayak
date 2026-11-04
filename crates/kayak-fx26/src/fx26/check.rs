@@ -216,6 +216,7 @@ pub fn bnode(f0: &'static Bix, f1: Str, f2: Binds, f3: i64, f4: &'static Bix) ->
     kayak_rt::heap_alloc(Bix::Bnode(f0, f1, f2, f3, f4))
 }
 
+#[inline]
 pub fn bix_height(t: &'static Bix) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
@@ -354,6 +355,7 @@ pub fn bix_adds(mut t: &'static Bix, mut bs: Binds) -> &'static Bix {
 
 // Names `marker` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn marker_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -361,6 +363,7 @@ pub fn marker_names() -> Strings {
     })
 }
 
+#[inline]
 pub fn marker_p(n: Str) -> bool {
     string_member_p(n, marker_names())
 }
@@ -487,6 +490,7 @@ pub fn show_sexps(xs: Sexps) -> Str {
     }
 }
 
+#[inline]
 pub fn cv_where(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
@@ -517,11 +521,13 @@ pub fn refusal_text(v: &'static Cv, message: Str) -> Str {
 
 /// An error, said where: the innermost list being checked, and the
 /// definition.
+#[inline]
 pub fn refuse(v: &'static Cv, message: Str) -> Void {
     error(string_append(str_lit("kfx: "), refusal_text(v, message)))
 }
 
 /// A name, where one is expected: refused, saying where, if `e` is none.
+#[inline]
 pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
@@ -544,6 +550,7 @@ pub fn take_chars(cs: List<char>, n: i64) -> List<char> {
     }
 }
 
+#[inline]
 pub fn substring_of(x: Str, n: i64) -> Str {
     list_to_string(take_chars(string_to_list(x), n))
 }
@@ -554,6 +561,7 @@ pub fn same_from_p(x: Str, p: Str, i: i64, n: i64) -> bool {
 
 /// Whether `x` begins `p`: compared in place, making nothing (the compiler
 /// asks it of every fact it searches).
+#[inline]
 pub fn has_prefix_p(x: Str, p: Str) -> bool {
     (not(i64_lt(string_length_i64(x), string_length_i64(p))) && same_from_p(x, p, 0i64, string_length_i64(p)))
 }
@@ -604,6 +612,7 @@ pub fn chars_before_dots(cs: List<char>) -> List<char> {
 }
 
 /// What precedes the first `..` of `x`.
+#[inline]
 pub fn before_dots(x: Str) -> Str {
     list_to_string(chars_before_dots(string_chars(x)))
 }
@@ -686,23 +695,28 @@ pub fn chars_with_replaced(mut cs: List<char>, mut from: List<char>, mut to: Lis
     }
 }
 
+#[inline]
 pub fn text_replaced(t: Str, from: Str, to: Str) -> Str {
     list_to_string(chars_with_replaced(string_chars(t), string_chars(from), string_chars(to), false, nil::<char>()))
 }
 
 /// What follows the first `..` of `x`.
+#[inline]
 pub fn after_dots(x: Str) -> Str {
     list_to_string(chars_after_dots(string_chars(x)))
 }
 
+#[inline]
 pub fn char_from_p(s: Str, c: char, i: i64, n: i64) -> bool {
     (i64_lt(i, n) && (char_eq_p(string_ref_i64(s, i), c) || char_from_p(s, c, i64_plus(i, 1i64), n)))
 }
 
+#[inline]
 pub fn has_char_in_p(s: Str, c: char) -> bool {
     char_from_p(s, c, 0i64, string_length_i64(s))
 }
 
+#[inline]
 pub fn repeated_p(xs: Strings) -> bool {
     (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
 }
@@ -775,12 +789,14 @@ pub fn ty_names_p(t: &'static Ty, n: Str) -> bool {
 /// Whether a symbol as read is a keyword, `#:name` (C291; Fixpt's
 /// `docs/fx26.md`, "Keywords"): `#:` and a name after it, which is no
 /// number, as `#:12` is not.
+#[inline]
 pub fn keyword_name_p(n: Str) -> bool {
     (has_prefix_p(n, str_lit("#:")) && i64_gt(string_length_i64(n), 2i64) && not(char_numeric_p(string_ref_i64(n, 2i64))))
 }
 
 /// A tag where a name is expected, a variant's or an arm's: a name, or a
 /// keyword (C291), whose tag is its name.
+#[inline]
 pub fn tag_of(v: &'static Cv, e: &'static Sexp) -> Str {
     let n = name_of(v, e);
     if keyword_name_p(n) {
@@ -822,6 +838,7 @@ pub fn label_of(e: &'static Sexp) -> Str {
 /// Whether effect `es` may abort: a `goto` on some region, or suspend, a
 /// `comefrom` (C45), which aborts to its prompt. Such a procedure, in
 /// Rust, returns a `Result` (emit.kfx).
+#[inline]
 pub fn escapes_p(es: Strings) -> bool {
     any_p(lambda1s(move |x: Str| {
         (has_prefix_p(x, str_lit("goto:")) || has_prefix_p(x, str_lit("comefrom:")) || has_prefix_p(x, str_lit("~")))
@@ -831,6 +848,7 @@ pub fn escapes_p(es: Strings) -> bool {
 /// Whether effect `es` may suspend: a `comefrom` on some region, or an
 /// effect variable, which may stand for one (C46). Such a procedure, in
 /// Rust, is an `async fn` (C45).
+#[inline]
 pub fn suspends_p(es: Strings) -> bool {
     any_p(lambda1s(move |x: Str| {
         (has_prefix_p(x, str_lit("comefrom:")) || has_prefix_p(x, str_lit("~")))
@@ -865,6 +883,7 @@ pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
 }
 
 /// A read of one global, `g:name`; not a `goto:`.
+#[inline]
 pub fn global_atom_p(x: Str) -> bool {
     (i64_gt(string_length_i64(x), 1i64) && char_eq_p(string_ref_i64(x, 0i64), 'g') && char_eq_p(string_ref_i64(x, 1i64), ':'))
 }
@@ -872,6 +891,7 @@ pub fn global_atom_p(x: Str) -> bool {
 /// An effect that reads `@globals` absorbs its reads of single globals,
 /// which say nothing more within it (C290; Fixpt's 34f7fe7e,
 /// `k-absorbed`).
+#[inline]
 pub fn absorbed(es: Strings) -> Strings {
     if string_member_p(str_lit("@globals"), es) {
         filter(lambda1s(move |a: Str| {
@@ -902,6 +922,7 @@ pub fn words_of(xs: Strings) -> Str {
 // The kinds of an effect atom on a region, `read:@a`: FX-26's store
 // effects and control effects, and its processes' (C101): a message sent
 // to a mailbox at a region, taken from one, an I-cell filled, awaited.
+#[inline]
 pub fn region_kinds() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -923,6 +944,7 @@ pub fn after_colon(mut cs: List<char>) -> List<char> {
 }
 
 // Each of `region-kinds` with its colon, as an atom begins.
+#[inline]
 pub fn region_prefixes() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -930,16 +952,19 @@ pub fn region_prefixes() -> Strings {
     })
 }
 
+#[inline]
 pub fn region_atom_p(x: Str) -> bool {
     any_p(lambda1s(move |k: Str| {
         has_prefix_p(x, k)
     }), region_prefixes())
 }
 
+#[inline]
 pub fn atom_kind(x: Str) -> Str {
     substring_of(x, i64_minus(string_length_i64(x), size(after_colon(string_to_list(x)))))
 }
 
+#[inline]
 pub fn atom_region(x: Str) -> Str {
     list_to_string(after_colon(string_to_list(x)))
 }
@@ -947,6 +972,7 @@ pub fn atom_region(x: Str) -> Str {
 // Data frozen into a place (C206; Fixpt's places-and-regions.md): the
 // region `(acyclic p)`, `(const p)`, its name `(acyclic 'p)`; a region of
 // the place `p`, ended with it, but never written.
+#[inline]
 pub fn frozen_place_p(r: Str) -> bool {
     (has_prefix_p(r, str_lit("(acyclic ")) || has_prefix_p(r, str_lit("(const ")))
 }
@@ -961,6 +987,7 @@ pub fn frozen_place_of(r: Str) -> Str {
     substring_of(inner, i64_minus(string_length_i64(inner), 1i64))
 }
 
+#[inline]
 pub fn frozen_place_kind(r: Str) -> Str {
     if has_prefix_p(r, str_lit("(acyclic ")) {
         str_lit("acyclic")
@@ -993,6 +1020,7 @@ pub fn crossing_atom_p(bound: Strings, a: Str) -> bool {
 /// Whether a latent effect is one a process may have (C101), so that a
 /// procedure of it may be held on another thread: its closure, in Rust, is
 /// `Send + Sync` (C102).
+#[inline]
 pub fn crossing_p(es: Strings) -> bool {
     not(any_p(lambda1s(move |a: Str| {
         not(crossing_atom_p(nil::<Str>(), a))
@@ -1017,6 +1045,7 @@ pub fn bar_split(mut cs: List<char>, mut w: List<char>, mut acc: Strings) -> Str
 }
 
 /// `~@E|r|...` as `E` and its regions.
+#[inline]
 pub fn app_atom_parts(x: Str) -> Strings {
     bar_split(string_chars(after_prefix(x, str_lit("~@"))), nil::<char>(), nil::<Str>())
 }
@@ -1046,6 +1075,7 @@ pub fn chars_from_caret(mut cs: List<char>) -> List<char> {
     }
 }
 
+#[inline]
 pub fn chars_to_at(cs: List<char>) -> List<char> {
     if (null_p(cs) || char_eq_p(car(cs), '@')) {
         nil::<char>()
@@ -1071,6 +1101,7 @@ pub fn bare_binder(n: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn spaced_before(xs: Strings) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -1173,6 +1204,7 @@ pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> String
     }
 }
 
+#[inline]
 pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
     let tagcase_ = v;
     match *tagcase_ {
@@ -1256,12 +1288,14 @@ pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) ->
 
 // FX-26's standard type `io-error` (Fixpt 17ac0c5, C49): an I/O failure's
 // kind, for a `tagcase`, and the system's words.
+#[inline]
 pub fn io_error_text() -> Str {
     str_lit("(productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit)\n                           (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))\n              (detail string))")
 }
 
 // FX-26's standard type `stage-failure` (C304; Fixpt's `STAGE_FAILURE`):
 // why `stage` made no code, and where in its code.
+#[inline]
 pub fn stage_failure_text() -> Str {
     str_lit("(productof (kind (sumof (unread unit) (malformed unit) (refused unit) (stale unit))) (message string) (start int) (end int))")
 }
@@ -1269,16 +1303,19 @@ pub fn stage_failure_text() -> Str {
 // FX-26's standard types of sessions (C309; Fixpt's `SESSION_DECISION`,
 // `SESSION_REDEFINITION`): what a redefinition does, and what one would
 // change.
+#[inline]
 pub fn session_decision_text() -> Str {
     str_lit("(sumof (shadow unit) (refuse unit) (rerun unit))")
 }
 
+#[inline]
 pub fn session_redefinition_text() -> Str {
     str_lit("(productof (name string) (old string) (new string) (users (listof string acyclic)))")
 }
 
 // Names `io-kind` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn io_kind_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -1287,10 +1324,12 @@ pub fn io_kind_names() -> Strings {
 }
 
 /// The `io` effects' kinds, a fixed family (C49).
+#[inline]
 pub fn io_kind_p(k: Str) -> bool {
     string_member_p(k, io_kind_names())
 }
 
+#[inline]
 pub fn cv_dts(v: &'static Cv) -> Dts {
     let tagcase_ = v;
     match *tagcase_ {
@@ -1300,6 +1339,7 @@ pub fn cv_dts(v: &'static Cv) -> Dts {
     }
 }
 
+#[inline]
 pub fn cv_aliases(v: &'static Cv) -> Aliases {
     let tagcase_ = v;
     match *tagcase_ {
@@ -1309,6 +1349,7 @@ pub fn cv_aliases(v: &'static Cv) -> Aliases {
     }
 }
 
+#[inline]
 pub fn cv_binds(v: &'static Cv) -> Binds {
     let tagcase_ = v;
     match *tagcase_ {
@@ -1318,6 +1359,7 @@ pub fn cv_binds(v: &'static Cv) -> Binds {
     }
 }
 
+#[inline]
 pub fn cv_group(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
@@ -1327,6 +1369,7 @@ pub fn cv_group(v: &'static Cv) -> Strings {
     }
 }
 
+#[inline]
 pub fn cv_tvars(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
@@ -1385,6 +1428,7 @@ pub fn scope_bind(name: Str, v: &'static Cv) -> Binds {
 // inside is `ID..t`, `ID` the moduleof's or the module's own (`mt@POS`),
 // renamed `p..t` once the module is bound to `p`. A name a module gives as
 // a type, in a `with` or inside the module, is a binding `%type t`.
+#[inline]
 pub fn type_bind(n: Str, t: &'static Ty) -> &'static Bind {
     bind(string_append(str_lit("%type "), n), scheme(nil::<Str>(), t), str_lit("type"))
 }
@@ -1398,6 +1442,7 @@ pub fn with_type_binds(v: &'static Cv, tbs: Binds, eds: Effdefs) -> &'static Cv 
     }
 }
 
+#[inline]
 pub fn mtype_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -1434,6 +1479,7 @@ pub fn mitem_kind(x: &'static Ty) -> Str {
     }
 }
 
+#[inline]
 pub fn mitem_name(x: &'static Ty) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
@@ -1447,6 +1493,7 @@ pub fn mitem_name(x: &'static Ty) -> Str {
     }
 }
 
+#[inline]
 pub fn mtype_items(t: &'static Ty) -> Tys {
     let tagcase_ = t;
     match *tagcase_ {
@@ -1644,12 +1691,14 @@ pub fn data_names_with(mut pre: Str, mut t: &'static Ty) -> Strings {
     }
 }
 
+#[inline]
 pub fn data_renamed(from: Strings, to: Strings, t: &'static Ty) -> &'static Ty {
     data_replaced(from, map(lambda1s(move |n: Str| {
         ty_data(n, nil::<&'static Ty>())
     }), to), t)
 }
 
+#[inline]
 pub fn after_prefix_if(x: Str, p: Str) -> Str {
     if has_prefix_p(x, p) {
         after_prefix(x, p)
@@ -1658,6 +1707,7 @@ pub fn after_prefix_if(x: Str, p: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn abs_ref(x: &'static Ty) -> &'static Ty {
     let tagcase_ = x;
     match *tagcase_ {
@@ -1829,6 +1879,7 @@ pub fn selected_type(v: &'static Cv, p: Str, t: &'static Ty, n: Str) -> &'static
     }
 }
 
+#[inline]
 pub fn aliases_named(v: &'static Cv, n: Str) -> Aliases {
     filter(lambda1s(move |a: &'static Alias| {
         let tagcase_ = a;
@@ -2037,6 +2088,7 @@ pub fn parse_effect(mut v: &'static Cv, mut tvars: Strings, mut e: &'static Sexp
     }
 }
 
+#[inline]
 pub fn parse_effects(v: &'static Cv, tvars: Strings, es: Sexps) -> Strings {
     if null_p(es) {
         nil::<Str>()
@@ -2088,6 +2140,7 @@ pub fn remove_atom(mut x: Str, mut es: Strings) -> Strings {
 
 /// An effect as a type, where an effect binder is given one (C46): the
 /// row of its atoms, held as a procedure's latent effect.
+#[inline]
 pub fn effect_row(atoms: Strings) -> &'static Ty {
     ty_proc(atoms, nil::<&'static Ty>(), ty_unit())
 }
@@ -2188,6 +2241,7 @@ pub fn rename_region(es: Strings, name: Str, m: &'static Ty) -> Strings {
     }
 }
 
+#[inline]
 pub fn meta_name(k: i64) -> Str {
     string_append(str_lit("?"), i64_to_string(k))
 }
@@ -2263,6 +2317,7 @@ pub fn distinct_binder_p(b: &'static Sexp) -> bool {
     }
 }
 
+#[inline]
 pub fn has_suffix_p(x: Str, suffix: Str) -> bool {
     has_prefix_p(list_to_string(reverse(string_to_list(x))), list_to_string(reverse(string_to_list(suffix))))
 }
@@ -2281,6 +2336,7 @@ pub fn fold_renames(mut names: Strings, mut pos: i64, mut t: &'static Ty) -> &'s
     }
 }
 
+#[inline]
 pub fn caret_kind(cs: List<char>) -> List<char> {
     if (null_p(cs) || char_eq_p(car(cs), '^')) {
         nil::<char>()
@@ -2345,6 +2401,7 @@ pub fn arrow_binder(tvars: Strings, n: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn all_regions_p(ns: Strings) -> bool {
     not(any_p(lambda1s(move |n: Str| {
         not(has_prefix_p(n, str_lit("'")))
@@ -2371,6 +2428,7 @@ pub fn poly_binders_of(args: Tys) -> Strings {
     }
 }
 
+#[inline]
 pub fn poly_body(args: Tys) -> &'static Ty {
     last(args)
 }
@@ -2426,6 +2484,7 @@ pub fn substitute(params: Strings, args: Tys, t: &'static Ty) -> &'static Ty {
     }), temps), t))
 }
 
+#[inline]
 pub fn i64s_below(n: i64) -> List<i64> {
     if i64_lt_eq(n, 0i64) {
         nil::<i64>()
@@ -2558,6 +2617,7 @@ pub fn has_app_p(mut t: &'static Ty) -> bool {
 
 /// A poly type's body, its binders given `regions` (C107); an
 /// application of a function given reduced (C173).
+#[inline]
 pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
     let t = substitute(poly_binders_of(args), regions, poly_body(args));
     if has_app_p(t) {
@@ -2567,6 +2627,7 @@ pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
     }
 }
 
+#[inline]
 pub fn binder_kind_shown(n: Str) -> Str {
     if (has_prefix_p(n, str_lit("'")) && has_suffix_p(n, str_lit("%d"))) {
         str_lit("region distinct")
@@ -2587,6 +2648,7 @@ pub fn binders_shown(ns: Strings) -> Str {
 }
 
 /// A poly type's body, its binders as written, `'r` (C107).
+#[inline]
 pub fn poly_written(args: Tys) -> &'static Ty {
     poly_instance(args, map(lambda1s(move |n: Str| {
         ty_var(binder_named(binder_kind(n), written_binder(n)))
@@ -2604,6 +2666,7 @@ pub fn with_tvars(v: &'static Cv, names: Strings) -> &'static Cv {
     }
 }
 
+#[inline]
 pub fn dt_named_p(name: Str, ds: Dts) -> bool {
     any_p(lambda1s(move |d: &'static Dt| {
         let tagcase_ = d;
@@ -2696,6 +2759,7 @@ pub fn conversion_bind(mut name: Str, mut bs: Binds) -> Binds {
     }
 }
 
+#[inline]
 pub fn char_lower_p(c: char) -> bool {
     has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
 }
@@ -2709,12 +2773,14 @@ pub fn has_from_p(s: Str, part: Str, at: i64) -> bool {
 }
 
 /// Whether `part` is in `s`: compared in place, making nothing.
+#[inline]
 pub fn string_has_p(s: Str, part: Str) -> bool {
     has_from_p(s, part, 0i64)
 }
 
 // Names `rust-keyword-clash` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn rust_keyword_clash_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -2725,6 +2791,7 @@ pub fn rust_keyword_clash_names() -> Strings {
 /// Whether `n` is a Rust keyword no raw identifier may be, `self`, `super`,
 /// `crate`, or one as a type's name (`Self`): KFX names none so. The
 /// others are Rust's `r#loop` (C41).
+#[inline]
 pub fn rust_keyword_clash_p(n: Str) -> bool {
     (string_member_p(n, rust_keyword_clash_names()) || string_eq_p(camel(n), str_lit("Self")))
 }
@@ -2747,6 +2814,7 @@ pub fn kfx_name_p(n: Str) -> bool {
 
 // Names `kfx-reserved` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn kfx_reserved_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -2757,12 +2825,14 @@ pub fn kfx_reserved_names() -> Strings {
 /// Whether `n` is spelled as a KFX name but is one kayak-rt or the emitter
 /// writes (`nil`, `cons`, ...): an FX-26 name, refused for KFX by the
 /// restriction pass wherever it is bound (C187).
+#[inline]
 pub fn kfx_reserved_p(n: Str) -> bool {
     string_member_p(n, kfx_reserved_names())
 }
 
 // Names `label-name` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn label_name_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -2773,6 +2843,7 @@ pub fn label_name_names() -> Strings {
 /// Whether `n` may be a product's or a sum's label: as a KFX name (C27),
 /// but those kayak-rt's functions have, which a Rust field or variant is
 /// apart from (`cons`, C116: Fixpt's `convention-types.fx`).
+#[inline]
 pub fn label_name_p(n: Str) -> bool {
     (kfx_name_p(n) || string_member_p(n, label_name_names()))
 }
@@ -2962,6 +3033,7 @@ pub fn no_knot(v: &'static Cv, res: &'static (dyn Fn(Str) -> Str + Send + Sync),
 // order each at its alignment and the whole padded to the widest, an
 // array's elements one after another. KFX's scalars are FX-26's but `f32`,
 // which KFX has not yet.
+#[inline]
 pub fn run_together(xs: Strings) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -2970,6 +3042,7 @@ pub fn run_together(xs: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn key_range(key: Str) -> i64 {
     if string_eq_p(key, str_lit("u8")) {
         256i64
@@ -3001,6 +3074,7 @@ pub fn key_width(k: &'static Ty) -> i64 {
 
 /// Whether a flat sum's tag indexes its owner's fields, which hold its
 /// labels (C175): no key written.
+#[inline]
 pub fn unkeyed_p(args: Tys) -> bool {
     let tagcase_ = car(args);
     match *tagcase_ {
@@ -3044,6 +3118,7 @@ pub fn fvars_of(ts: Tys) -> Fvars {
 }
 
 /// A keyed flat sum's variants, its type's arguments after the key.
+#[inline]
 pub fn flat_sum_variants(args: Tys) -> Fvars {
     fvars_of(cdr(args))
 }
@@ -3195,6 +3270,7 @@ pub fn lengths_named(name: Str, t: &'static Ty) -> &'static Ty {
     }
 }
 
+#[inline]
 pub fn but_last(ts: Tys) -> Tys {
     if (null_p(ts) || null_p(cdr(ts))) {
         nil::<&'static Ty>()
@@ -3250,6 +3326,7 @@ pub fn lmatch(f0: Str, f1: &'static Ty) -> &'static Lmatch {
     kayak_rt::heap_alloc(Lmatch::Lmatch(f0, f1))
 }
 
+#[inline]
 pub fn lemma_name(x: &'static Lmatch) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
@@ -3259,6 +3336,7 @@ pub fn lemma_name(x: &'static Lmatch) -> Str {
     }
 }
 
+#[inline]
 pub fn lemma_value(x: &'static Lmatch) -> &'static Ty {
     let tagcase_ = x;
     match *tagcase_ {
@@ -3310,6 +3388,7 @@ pub fn layout(f0: i64, f1: i64) -> &'static Layout {
     kayak_rt::heap_alloc(Layout::Layout(f0, f1))
 }
 
+#[inline]
 pub fn round_up(n: i64, a: i64) -> i64 {
     i64_star(i64_quotient(i64_plus(n, i64_minus(a, 1i64)), a), a)
 }
@@ -3492,6 +3571,7 @@ pub fn scalar_name(t: &'static Ty) -> Str {
 
 /// FX-26's fixed-width integers beside `i64` (`u8` and `i8` since Fixpt 17ac0c5), whose arithmetic wraps: a type
 /// named so, as a datatype is, of no variants; in Rust, Rust's.
+#[inline]
 pub fn fixed_width_p(s: Str) -> bool {
     (string_eq_p(s, str_lit("i32")) || string_eq_p(s, str_lit("u32")) || string_eq_p(s, str_lit("u64")) || string_eq_p(s, str_lit("u8")) || string_eq_p(s, str_lit("i8")))
 }
@@ -3517,6 +3597,7 @@ pub fn label_type(mut l: Str, mut ls: Strings, mut ts: Tys) -> &'static Ty {
 
 /// `shape-of`; and a bloblet's, FX-26's `bloblet`, which only a recursive
 /// type's union has (C174), a union never KFX's.
+#[inline]
 pub fn member_shape(t: &'static Ty) -> Str {
     if {
         let tagcase_ = t;
@@ -3807,6 +3888,7 @@ pub fn lin_add(a: &'static Lin, b: &'static Lin, k: i64) -> &'static Lin {
     }
 }
 
+#[inline]
 pub fn lin_scaled(a: &'static Lin, k: i64) -> &'static Lin {
     lin_add(lin(0i64, nil::<&'static Lterm>()), a, k)
 }
@@ -3911,10 +3993,12 @@ pub fn fact_words_from(mut cs: Chars, mut w: Chars, mut acc: Strings) -> Strings
     }
 }
 
+#[inline]
 pub fn text_words(t: Str) -> Strings {
     fact_words_from(string_chars(t), nil::<char>(), nil::<Str>())
 }
 
+#[inline]
 pub fn second_word(ws: Strings) -> Str {
     car(cdr(ws))
 }
@@ -3927,6 +4011,7 @@ pub fn lterms_read(ws: Strings) -> List<&'static Lterm> {
     }
 }
 
+#[inline]
 pub fn lin_read(ws: Strings) -> &'static Lin {
     lin(string_to_i64(car(ws)), lterms_read(cdr(ws)))
 }
@@ -3998,10 +4083,12 @@ pub fn lin_shown_p(ges: Lins, nes: Lins, goal: &'static Lin) -> bool {
 // K`), so that instantiating and solving see the variables. `(nat s)` is
 // `%natof`, `nat` itself `(nat finite)`; `(nlist T s)`, a list of
 // exactly `s` elements, frozen, `%nlist`.
+#[inline]
 pub fn size_finite() -> &'static Ty {
     ty_data(str_lit("%finite"), nil::<&'static Ty>())
 }
 
+#[inline]
 pub fn size_term_var(n: Str) -> &'static Ty {
     if has_prefix_p(n, str_lit("?")) {
         ty_meta(string_to_i64(after_prefix(n, str_lit("?"))))
@@ -4044,6 +4131,7 @@ pub fn size_of_lin(l: &'static Lin) -> &'static Ty {
 
 /// A flat array's length as a size (C175): a literal's kept as written,
 /// `ty-rconst`, for KFX's emitter.
+#[inline]
 pub fn flat_length(n: &'static Ty) -> &'static Ty {
     let tagcase_ = n;
     match *tagcase_ {
@@ -4059,6 +4147,7 @@ pub fn flat_length(n: &'static Ty) -> &'static Ty {
 
 /// A flat array's length as the compilers are told it: a literal, or
 /// Fixpt's `FLAT_TO_THE_END`, to the end of the suffix (C175).
+#[inline]
 pub fn flat_length_code(n: &'static Ty) -> Str {
     let tagcase_ = n;
     match *tagcase_ {
@@ -4152,6 +4241,7 @@ pub fn sizes_summed(mut v: &'static Cv, mut tvars: Strings, mut zs: Sexps, mut a
     }
 }
 
+#[inline]
 pub fn parse_size(v: &'static Cv, tvars: Strings, z: &'static Sexp) -> &'static Ty {
     let l = parse_size_lin(v, tvars, z);
     if null_p(l) {
@@ -4198,6 +4288,7 @@ pub fn logic_keywords() -> Strings {
     })
 }
 
+#[inline]
 pub fn logic_base_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -4236,6 +4327,7 @@ pub fn param_name_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> S
     }
 }
 
+#[inline]
 pub fn param_type_written(v: &'static Cv, tvars: Strings, p: &'static Sexp) -> &'static Sexp {
     if string_eq_p(param_name_written(v, tvars, p), str_lit("")) {
         p
@@ -4274,6 +4366,7 @@ pub fn logic_head(x: &'static Sexp) -> Str {
 
 // Names `effect-written` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn effect_written_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -4374,6 +4467,7 @@ pub fn trait_moduleof_p(m: &'static Sexp) -> bool {
     }), cdr(items(m))))
 }
 
+#[inline]
 pub fn spec_clause_p(x: &'static Sexp) -> bool {
     (string_eq_p(logic_head(x), str_lit("requires")) || string_eq_p(logic_head(x), str_lit("ensures")))
 }
@@ -4389,10 +4483,12 @@ pub fn clauses_count(mut xs: Sexps, mut n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn clauses_ending(xs: Sexps) -> i64 {
     clauses_count(reverse(xs), 0i64)
 }
 
+#[inline]
 pub fn spec_firsts(xs: Sexps, n: i64) -> Sexps {
     if i64_eq(n, 0i64) {
         nil::<&'static Sexp>()
@@ -4425,6 +4521,7 @@ pub fn logic_nth(mut xs: Sexps, mut i: i64) -> &'static Sexp {
 
 // Names `logic-literal-symbol` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn logic_literal_symbol_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -4432,6 +4529,7 @@ pub fn logic_literal_symbol_names() -> Strings {
     })
 }
 
+#[inline]
 pub fn logic_literal_symbol_p(x: &'static Sexp) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
@@ -4445,6 +4543,7 @@ pub fn logic_literal_symbol_p(x: &'static Sexp) -> bool {
     }
 }
 
+#[inline]
 pub fn logic_int_ty_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -4464,6 +4563,7 @@ pub fn logic_int_ty_p(t: &'static Ty) -> bool {
     }
 }
 
+#[inline]
 pub fn logic_bool_ty_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -4477,6 +4577,7 @@ pub fn logic_bool_ty_p(t: &'static Ty) -> bool {
     }
 }
 
+#[inline]
 pub fn sname_find(ns: Snames, n: Str) -> Snames {
     filter(lambda1s(move |x: &'static Sname| {
         let tagcase_ = x;
@@ -4491,6 +4592,7 @@ pub fn sname_find(ns: Snames, n: Str) -> Snames {
 /// A procedure type of a convention written (C116, C181): `native`, the
 /// program's in FX-26's checker now and printed so, kept apart for KFX's
 /// `native-procedure`; `cellular`; `fx`, any.
+#[inline]
 pub fn conv_wrapper_p(d: Str) -> bool {
     (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%cellular")))
 }
@@ -4593,6 +4695,7 @@ pub fn logic_callee(v: &'static Cv, xs: Sexps) -> Tys {
 
 // Names `logic-term` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn logic_term_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -4925,6 +5028,7 @@ pub fn logic_clauses(mut v: &'static Cv, mut names: Snames, mut result: &'static
 // or an `=`, each term a parameter's number, `(length i)` or `(lit k)`: an
 // `ensures` of the result, `(and (implies r (and P ...)) (implies (not r)
 // (and Q ...)))`.
+#[inline]
 pub fn latent_shapes() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -5078,6 +5182,7 @@ pub fn latent_of(v: &'static Cv, result: &'static Sexp, n: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn latent_result_p(r: &'static Sexp) -> bool {
     string_eq_p(logic_head(r), str_lit("bool"))
 }
@@ -5123,6 +5228,7 @@ pub fn specified_type(v: &'static Cv, pnames: Strings, plain: &'static Ty, claus
 // unknowns, and a logic function's value, an unknown of its own) shown to
 // have no solution by Fourier–Motzkin, a `bool` named a flag. Sound, not
 // complete: past a depth of cases, it shows nothing.
+#[inline]
 pub fn spec_parts(d: Str) -> Sexps {
     items(car(read_all(string_chars(after_prefix(d, str_lit("%spec "))), str_lit("%spec"), 0i64)))
 }
@@ -5211,6 +5317,7 @@ pub fn logic_splits_p(t: &'static Ptodo) -> bool {
     }
 }
 
+#[inline]
 pub fn logic_trivial_p(x: &'static Sexp) -> bool {
     (string_eq_p(logic_head(x), str_lit("true")) || (string_eq_p(logic_head(x), str_lit("and")) && string_eq_p(show_sexp(x), str_lit("(and)"))))
 }
@@ -5397,6 +5504,7 @@ pub fn spec_within_p(a: Str, b: Str) -> bool {
     })
 }
 
+#[inline]
 pub fn unspecified(t: &'static Ty) -> &'static Ty {
     let tagcase_ = t;
     match *tagcase_ {
@@ -5414,10 +5522,12 @@ pub fn unspecified(t: &'static Ty) -> &'static Ty {
     }
 }
 
+#[inline]
 pub fn spec_ensures(d: Str) -> &'static Sexp {
     car(cdr(cdr(cdr(cdr(spec_parts(d))))))
 }
 
+#[inline]
 pub fn spec_of(t: &'static Ty) -> Str {
     let tagcase_ = t;
     match *tagcase_ {
@@ -5453,6 +5563,7 @@ pub fn spec_under_poly(t: &'static Ty) -> Str {
     }
 }
 
+#[inline]
 pub fn latent_term_p(x: &'static Sexp) -> bool {
     string_member_p(logic_head(x), kayak_rt::heap_cons(str_lit("p"), kayak_rt::heap_cons(str_lit("len"), kayak_rt::heap_cons(str_lit("lit"), kayak_rt::nil()))))
 }
@@ -5621,6 +5732,7 @@ pub fn spec_claims_p(d: Str) -> bool {
 
 // Names `logic-shown` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn logic_shown_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -5764,6 +5876,7 @@ pub fn spec_clauses_shown(d: Str, ens: &'static Sexp) -> Str {
     })
 }
 
+#[inline]
 pub fn spec_param_names(d: Str) -> Strings {
     map(&show_sexp, items(second(spec_parts(d))))
 }
@@ -5790,6 +5903,7 @@ pub fn unnamed_top(mut t: &'static Ty) -> &'static Ty {
 
 /// Type abbreviation `name`'s expansion `t`; read for printing (the
 /// marker `%keep-names` among `tvars`, C164), kept by its name.
+#[inline]
 pub fn named_as(v: &'static Cv, tvars: Strings, name: Str, args: Tys, t: &'static Ty) -> &'static Ty {
     if string_member_p(str_lit("%keep-names"), tvars) {
         ty_data(string_append(str_lit("%named "), name), kayak_rt::heap_cons(t, args))
@@ -6060,6 +6174,7 @@ pub fn mu_list_of(x: &'static Ty, body: &'static Ty) -> Tys {
     }
 }
 
+#[inline]
 pub fn mu_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -6161,6 +6276,7 @@ pub fn dletrec_in(bs: Sexps, t: &'static Sexp, bound: Strings) -> &'static Sexp 
 
 // Names `parse-type` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn parse_type_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -6170,6 +6286,7 @@ pub fn parse_type_names() -> Strings {
 
 // Names `kind-text` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn kind_text_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -6179,6 +6296,7 @@ pub fn kind_text_names() -> Strings {
 
 // Names `kind-text` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn kind_text_names_2() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -7366,6 +7484,7 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
     }
 }
 
+#[inline]
 pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     map(lambda1s(move |t: &'static Sexp| {
         parse_type(v, tvars, t)
@@ -7426,11 +7545,13 @@ pub fn kind_text(v: &'static Cv, k: &'static Sexp) -> Str {
 }
 
 /// An arrow kind's parameters' kinds.
+#[inline]
 pub fn kind_params(k: Str) -> Strings {
     let xs = items(car(read_all(string_chars(k), str_lit(""), 1i64)));
     map(&show_sexp, items(second(xs)))
 }
 
+#[inline]
 pub fn kind_result(k: Str) -> Str {
     show_sexp(third(items(car(read_all(string_chars(k), str_lit(""), 1i64)))))
 }
@@ -7679,6 +7800,7 @@ pub fn parse_arg_of_kind(v: &'static Cv, tvars: Strings, a: &'static Sexp, kind:
 }
 
 /// The descriptions given function `f`, each read as its kind says.
+#[inline]
 pub fn args_of_fun(v: &'static Cv, tvars: Strings, f: &'static Ty, args: Sexps) -> Tys {
     let k = fun_kind(v, f);
     args_by_kinds(v, tvars, if has_prefix_p(k, str_lit("(=>")) {
@@ -7941,6 +8063,7 @@ pub fn newest_items(mut ts: Tys, mut seen: Strings) -> Tys {
     }
 }
 
+#[inline]
 pub fn append_ty(ts: Tys, t: &'static Ty) -> Tys {
     if null_p(ts) {
         kayak_rt::heap_cons(t, kayak_rt::nil())
@@ -7950,6 +8073,7 @@ pub fn append_ty(ts: Tys, t: &'static Ty) -> Tys {
 }
 
 /// A procedure type's parameters, each named or not (C162).
+#[inline]
 pub fn parse_params(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     map(lambda1s(move |t: &'static Sexp| {
         parse_type(v, tvars, param_type_written(v, tvars, t))
@@ -8088,6 +8212,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
 
 /// Now the restriction pass's (C189: `binders-restricted`), KFX's naming of
 /// Rust's type parameters, not FX-26's: nothing here.
+#[inline]
 pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
     ()
 }
@@ -8127,6 +8252,7 @@ pub fn type_binders_apart_kfx(v: &'static Cv, tvars: Strings, types: Strings) ->
 
 // Names `poly-binders` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn poly_binders_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -8261,10 +8387,12 @@ pub fn parse_scheme_of(v: &'static Cv, t0: &'static Sexp, own: bool) -> &'static
     }))
 }
 
+#[inline]
 pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
     parse_scheme_of(v, t, true)
 }
 
+#[inline]
 pub fn digits_only_p(cs: Chars) -> bool {
     (null_p(cs) || (char_numeric_p(car(cs)) && digits_only_p(cdr(cs))))
 }
@@ -8272,6 +8400,7 @@ pub fn digits_only_p(cs: Chars) -> bool {
 /// A product's or sum's label as a type shows it (C291; Fixpt's
 /// `show_label`): a keyword, `#:name`; a number, which no keyword is,
 /// bare.
+#[inline]
 pub fn show_label(l: Str) -> Str {
     if (not(string_eq_p(l, str_lit(""))) && digits_only_p(string_chars(l))) {
         l
@@ -8343,6 +8472,7 @@ pub fn size_terms_lin(mut s: &'static St, mut ts: List<&'static Ty>, mut acc: &'
     }
 }
 
+#[inline]
 pub fn size_finite_p(s: &'static St, t: &'static Ty) -> bool {
     null_p(size_lin(s, t))
 }
@@ -8384,6 +8514,7 @@ pub fn size_text(l: &'static Lin) -> Str {
     }
 }
 
+#[inline]
 pub fn show_size(s: &'static St, t: &'static Ty) -> Str {
     let l = size_lin(s, t);
     if null_p(l) {
@@ -8763,10 +8894,12 @@ pub fn desc_named(mut s: &'static St, mut descs: Tys, mut x: &'static Ty, mut te
     }
 }
 
+#[inline]
 pub fn before_body(text: Str) -> Str {
     list_to_string(item_head(string_chars(text), 2i64))
 }
 
+#[inline]
 pub fn after_body(text: Str) -> Str {
     list_to_string(item_rest(string_chars(text), 2i64))
 }
@@ -9055,6 +9188,7 @@ pub fn fresh(s: &'static St) -> &'static Res {
     }
 }
 
+#[inline]
 pub fn note_fact(s: &'static St, file: Str, pos: i64, what: Str) -> &'static St {
     let tagcase_ = s;
     match *tagcase_ {
@@ -9124,10 +9258,12 @@ pub fn conversion_noted(s: &'static St, x: &'static Sexp, prefix: Str, a: &'stat
 /// not refused here but noted, a fact of the file `%kfx`, for kfx's
 /// restriction pass to refuse (restrict.kfx), where and as the checker
 /// would have; the engine, which runs no such pass, checks on.
+#[inline]
 pub fn kfx_restricted(v: &'static Cv, s: &'static St, message: Str) -> &'static St {
     note_fact(s, str_lit("%kfx"), 0i64, string_append(str_lit("kfx-refuses "), refusal_text(v, message)))
 }
 
+#[inline]
 pub fn st_facts(s: &'static St) -> Facts {
     let tagcase_ = s;
     match *tagcase_ {
@@ -9137,6 +9273,7 @@ pub fn st_facts(s: &'static St) -> Facts {
     }
 }
 
+#[inline]
 pub fn st_kills(s: &'static St) -> Strings {
     let tagcase_ = s;
     match *tagcase_ {
@@ -9159,6 +9296,7 @@ pub fn with_kills(s: &'static St, new: Strings) -> &'static St {
     }
 }
 
+#[inline]
 pub fn st_next(s: &'static St) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
@@ -9323,10 +9461,12 @@ pub fn metas_named(s: &'static St, message: Str) -> Str {
 
 /// A refusal whose types' inference variables are said by their binders'
 /// names, where a draft's instance noted them.
+#[inline]
 pub fn refuse_named(v: &'static Cv, s: &'static St, message: Str) -> Void {
     match refuse(v, metas_named(s, message)) {}
 }
 
+#[inline]
 pub fn solve(s: &'static St, k: i64, t: &'static Ty) -> &'static St {
     let tagcase_ = s;
     match *tagcase_ {
@@ -9485,6 +9625,7 @@ pub fn same_base_p(a: &'static Ty, e: &'static Ty) -> bool {
     }
 }
 
+#[inline]
 pub fn repeat_ty(t: &'static Ty, n: i64) -> Tys {
     if i64_lt(n, 1i64) {
         nil::<&'static Ty>()
@@ -9622,6 +9763,7 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
 
 /// Frozen data's region, `(acyclic 'p)`; the heap's, `acyclic` or `const`
 /// (C284: a place nothing settled is the heap).
+#[inline]
 pub fn frozen_region_string(kind: Str, place: Str) -> Str {
     if string_eq_p(place, str_lit("@heap")) {
         kind
@@ -9688,6 +9830,7 @@ pub fn composable_as_proc(s: &'static St, t: &'static Ty) -> &'static Ty {
 }
 
 /// The number of an inference variable's name, `?k`.
+#[inline]
 pub fn meta_number(r: Str) -> i64 {
     i64_minus(0i64, digits_value(cdr(string_chars(r)), 0i64, str_lit(""), 0i64))
 }
@@ -9705,6 +9848,7 @@ pub fn chars_after_colon(mut cs: Chars) -> Str {
     }
 }
 
+#[inline]
 pub fn effect_region(e: Str) -> Str {
     chars_after_colon(string_chars(e))
 }
@@ -9761,6 +9905,7 @@ pub fn open_effects_p(mut s: &'static St, mut t: &'static Ty) -> bool {
     }
 }
 
+#[inline]
 pub fn has_open_p(s: &'static St, t: &'static Ty) -> bool {
     (has_meta_p(s, t) || open_effects_p(s, t))
 }
@@ -9867,6 +10012,7 @@ pub fn open_atom(mut s: &'static St, mut x: Str, mut es: Strings) -> Strings {
 // call, an inference variable, `~?k`, solved to a row: `(ty-proc atoms nil
 // unit)` holds its atoms, the last of which may be another variable, open
 // for more.
+#[inline]
 pub fn effect_meta_p(x: Str) -> bool {
     has_prefix_p(x, str_lit("~?"))
 }
@@ -9923,6 +10069,7 @@ pub fn closed_row(mut es: Strings) -> Strings {
 /// A call's effect: its effect variables' atoms, and none for a variable
 /// nothing said, as FX-26 instantiates an effect binder no argument
 /// names (pure).
+#[inline]
 pub fn close_effs(s: &'static St, es: Strings) -> Strings {
     closed_row(expand_effs(s, es))
 }
@@ -10030,6 +10177,7 @@ pub fn same_effs(s: &'static St, a: Strings, b: Strings) -> List<&'static St> {
     }
 }
 
+#[inline]
 pub fn datum_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -10194,6 +10342,7 @@ pub fn lone_meta(ts: List<&'static Lterm>) -> List<&'static Lterm> {
     }
 }
 
+#[inline]
 pub fn sized_p(t: &'static Ty, d: Str) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -10207,6 +10356,7 @@ pub fn sized_p(t: &'static Ty, d: Str) -> bool {
     }
 }
 
+#[inline]
 pub fn sized_elem(t: &'static Ty) -> &'static Ty {
     let tagcase_ = t;
     match *tagcase_ {
@@ -10265,6 +10415,7 @@ pub fn sized_less(t: &'static Ty, s: &'static St) -> &'static Ty {
 // conventions/poly.fx): `(ty-data "%convof" (c p))`, `c` the binder
 // (`^conv^c`), an inference variable, or a convention given, `native`,
 // `cellular`, `fx` (constants).
+#[inline]
 pub fn convof_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -10366,6 +10517,7 @@ pub fn convention_ty(s: &'static St, t: &'static Ty) -> Tys {
 
 // Names `convention-given` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn convention_given_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -10393,6 +10545,7 @@ pub fn convention_given(v: &'static Cv, a: &'static Sexp) -> &'static Ty {
 
 // Names `fits-shapes` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn fits_shapes_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -10402,6 +10555,7 @@ pub fn fits_shapes_names() -> Strings {
 
 // Names `fits-shapes-of` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn fits_shapes_of_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -12063,6 +12217,7 @@ pub fn args_same(mut v: &'static Cv, mut s: &'static St, mut xs: Tys, mut ys: Ty
 
 /// The module type a `define-type` of a moduleof names (C24), as a module
 /// value's is (C170).
+#[inline]
 pub fn module_alias_type(v: &'static Cv, d: Str) -> &'static Ty {
     let t = as_mtype(v, ty_data(d, nil::<&'static Ty>()));
     if mtype_p(t) {
@@ -12486,6 +12641,7 @@ pub fn var_count(n: Str, t: &'static Ty) -> i64 {
     }
 }
 
+#[inline]
 pub fn vars_count(n: Str, ts: List<&'static Ty>) -> i64 {
     if null_p(ts) {
         0i64
@@ -12538,6 +12694,7 @@ pub fn region_var_in_p(s: &'static St, t: &'static Ty) -> bool {
 
 // Names `only-called` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn only_called_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -12655,6 +12812,7 @@ pub fn escape_only_p(args: Sexps) -> bool {
     })
 }
 
+#[inline]
 pub fn cwcc_spin(name: Str, args: Sexps) -> Strings {
     if (string_eq_p(name, str_lit("cwcc")) && not(escape_only_p(args))) {
         the::<Strings>(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()))
@@ -12711,6 +12869,7 @@ pub fn region_binders(mut tvars: Strings) -> Strings {
 // other than `alloc` and `read`: a reference's, an array's, a bloblet's, a
 // tag's, an I-cell's, one written. A region binder a call leaves unsolved
 // that is not among them is `acyclic`.
+#[inline]
 pub fn storage_kinds() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -12808,6 +12967,7 @@ pub fn inst(f0: &'static Ty, f1: &'static St, f2: List<i64>, f3: List<i64>) -> &
     kayak_rt::heap_alloc(Inst::Inst(f0, f1, f2, f3))
 }
 
+#[inline]
 pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
     let tagcase_ = sc;
     match *tagcase_ {
@@ -12891,6 +13051,7 @@ pub fn form_keyword_p(name: Str) -> bool {
 
 // Names `process-call` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn process_call_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -12900,12 +13061,14 @@ pub fn process_call_names() -> Strings {
 
 /// FX-26's forms of processes that are calls (C101): typed as procedures
 /// are, but a call headed by one is the form, whatever binds its name.
+#[inline]
 pub fn process_call_p(h: Str) -> bool {
     string_member_p(h, process_call_names())
 }
 
 // Names `process-form` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn process_form_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -12915,6 +13078,7 @@ pub fn process_form_names() -> Strings {
 
 /// FX-26's forms of processes and `par` (C101), each a form wherever it
 /// heads a list, whatever binds its name.
+#[inline]
 pub fn process_form_p(h: Str) -> bool {
     (process_call_p(h) || string_member_p(h, process_form_names()))
 }
@@ -12944,6 +13108,7 @@ pub fn near(v: &'static Cv, file: Str, line: i64, pos: i64) -> &'static Cv {
     }
 }
 
+#[inline]
 pub fn cv_facts(v: &'static Cv) -> Facts {
     let tagcase_ = v;
     match *tagcase_ {
@@ -12953,6 +13118,7 @@ pub fn cv_facts(v: &'static Cv) -> Facts {
     }
 }
 
+#[inline]
 pub fn cv_file(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
@@ -12962,6 +13128,7 @@ pub fn cv_file(v: &'static Cv) -> Str {
     }
 }
 
+#[inline]
 pub fn cv_pos(v: &'static Cv) -> i64 {
     let tagcase_ = v;
     match *tagcase_ {
@@ -13002,6 +13169,7 @@ pub fn words_joined(xs: Strings, between: Str) -> Str {
 /// Whether `e` is the hole the REPL puts where the next item of a draft
 /// goes, to ask what may go there (live-repl.kfx, C97): `%hole`, in a
 /// `<draft>` only, so that no file's meaning changes.
+#[inline]
 pub fn draft_hole_p(e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
@@ -13040,6 +13208,7 @@ pub fn through_hole(xs: Sexps) -> Sexps {
 /// `v`, its refusals said at `e`, if `e` is in a REPL's draft: where an
 /// argument is refused, underlined (C97). Elsewhere `v`, so that no fact's
 /// place changes.
+#[inline]
 pub fn in_draft(v: &'static Cv, e: &'static Sexp) -> &'static Cv {
     if (string_eq_p(datum_file(e), str_lit("<draft>")) || string_eq_p(datum_file(e), str_lit("<stage>"))) {
         at_offset(v, datum_pos(e))
@@ -13048,6 +13217,7 @@ pub fn in_draft(v: &'static Cv, e: &'static Sexp) -> &'static Cv {
     }
 }
 
+#[inline]
 pub fn operator_char_p(c: char) -> bool {
     has_char_in_p(str_lit("?!<>=+*/%"), c)
 }
@@ -13161,12 +13331,14 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
     }
 }
 
+#[inline]
 pub fn place_key(e: &'static Sexp) -> Str {
     string_append(datum_file(e), string_append(str_lit(":"), i64_to_string(datum_pos(e))))
 }
 
 /// `v` where `e` is checked as `what` says (C312): `argument N`, or a
 /// definition's ``x` is declared a D: `.
+#[inline]
 pub fn saying(v: &'static Cv, e: &'static Sexp, what: Str) -> &'static Cv {
     with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%saying "), place_key(e)), scheme(nil::<Str>(), ty_unit()), what), kayak_rt::nil()))
 }
@@ -13176,6 +13348,7 @@ pub fn saying_here(v: &'static Cv, what: Str) -> &'static Cv {
     with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%saying "), string_append(cv_file(v), string_append(str_lit(":"), i64_to_string(cv_pos(v))))), scheme(nil::<Str>(), ty_unit()), what), kayak_rt::nil()))
 }
 
+#[inline]
 pub fn here_key(v: &'static Cv) -> Str {
     string_append(cv_file(v), string_append(str_lit(":"), i64_to_string(cv_pos(v))))
 }
@@ -13185,6 +13358,7 @@ pub fn here_key(v: &'static Cv) -> Str {
 /// rule, `+` and `-` too, which Fixpt's rule of sizes says only as "a
 /// W is expected here": the user's, kayak's the better words there, a
 /// note for Fixpt (TODO.md).
+#[inline]
 pub fn arguing(v: &'static Cv) -> &'static Cv {
     with_binds(v, kayak_rt::heap_cons(bind(str_lit("%arguing"), scheme(nil::<Str>(), ty_unit()), here_key(v)), kayak_rt::nil()))
 }
@@ -13214,6 +13388,7 @@ pub fn declared_said(v: &'static Cv, t: &'static Ty) -> Str {
 
 /// `v` where `got`, the type of the expression at `key`, is fitted to
 /// `want`: what `mismatch` says (C312).
+#[inline]
 pub fn fitting(v: &'static Cv, key: Str, got: &'static Ty, want: &'static Ty) -> &'static Cv {
     with_binds(v, kayak_rt::heap_cons(bind(str_lit("%fitting"), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::heap_cons(got, kayak_rt::nil()), want)), said_of(v, key)), kayak_rt::nil()))
 }
@@ -13221,12 +13396,14 @@ pub fn fitting(v: &'static Cv, key: Str, got: &'static Ty, want: &'static Ty) ->
 /// A local may be named by a keyword, as FX-26 has it; it may not then be
 /// called, since FX-26 reads such a call as its form (`synth-call`). A
 /// module's, its abstract types named for it (C170).
+#[inline]
 pub fn local(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
     bind(name, scheme(nil::<Str>(), mtype_named(name, t)), str_lit("local"))
 }
 
 /// A local narrowed by a test (C62): the same Rust local, its type known
 /// better, unboxed where it is named if a union's (C75).
+#[inline]
 pub fn narrowed(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
     bind(name, scheme(nil::<Str>(), t), str_lit("narrowed"))
 }
@@ -13259,6 +13436,7 @@ pub fn bind_origin(mut name: Str, mut bs: Binds) -> Tys {
 }
 
 // Expressions
+#[inline]
 pub fn with_effs(r: &'static Res, es: Strings) -> &'static Res {
     let tagcase_ = r;
     match *tagcase_ {
@@ -13352,6 +13530,7 @@ pub fn calls_of(mut names: Strings, mut calls: List<Strings>, mut n: Str) -> Str
 }
 
 /// A name bound nowhere, as Fixpt says it (C312).
+#[inline]
 pub fn unbound_said(n: Str) -> Str {
     string_append(str_lit("unbound variable `"), string_append(n, str_lit("`")))
 }
@@ -13359,6 +13538,7 @@ pub fn unbound_said(n: Str) -> Str {
 /// In a session's checker (its `%session` mark, C310), reading a global
 /// is reading the session, which its forms' types say, as Fixpt's
 /// `globals_effects` off has it: no global's read.
+#[inline]
 pub fn session_effs(v: &'static Cv, es: Strings) -> Strings {
     if null_p(scope_bind(str_lit("%session"), v)) {
         es
@@ -13542,6 +13722,7 @@ pub fn crossed_since_p(mut n: Str, mut ts: Trails) -> bool {
     }
 }
 
+#[inline]
 pub fn on_trail_p(n: Str, ts: Trails) -> bool {
     any_p(lambda1s(move |t: &'static Trail| {
         let tagcase_ = t;
@@ -13665,10 +13846,12 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
 /// recursive call: FX-26 says `spin` for one whose type is recursive
 /// through a parameter (C81; KFX had said it, more cautiously, for any
 /// procedure that might hold a procedure).
+#[inline]
 pub fn self_applicable_p(v: &'static Cv, s: &'static St, t: &'static Ty) -> bool {
     cyclic_walk(v, s, t, false, nil::<&'static Trail>())
 }
 
+#[inline]
 pub fn void_p(s: &'static St, t: &'static Ty) -> bool {
     let tagcase_ = walk(s, t);
     match *tagcase_ {
@@ -13686,6 +13869,7 @@ pub fn void_p(s: &'static St, t: &'static Ty) -> bool {
 /// expected, if known; else nothing, each found by itself and then joined
 /// (`join-state`), as FX-26 has it: a literal in one is an `int` though
 /// another is an `i64`.
+#[inline]
 pub fn next_expected(s: &'static St, t: &'static Ty, expected: Tys) -> Tys {
     if null_p(expected) {
         nil::<&'static Ty>()
@@ -13740,6 +13924,7 @@ pub fn sum_parts(s: &'static St, t: &'static Ty) -> Tparts {
     }
 }
 
+#[inline]
 pub fn tpart_tag(x: &'static Tpart) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
@@ -13749,6 +13934,7 @@ pub fn tpart_tag(x: &'static Tpart) -> Str {
     }
 }
 
+#[inline]
 pub fn tpart_ty(x: &'static Tpart) -> &'static Ty {
     let tagcase_ = x;
     match *tagcase_ {
@@ -13995,10 +14181,12 @@ pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
 /// The operations whose result is a `nat` when their operands are, as
 /// FX-26 keeps a `nat` through them: a sum. (A product, a larger, a smaller
 /// are `int`s to FX-26's checker.)
+#[inline]
 pub fn nat_op_p(h: Str) -> bool {
     string_eq_p(h, str_lit("+"))
 }
 
+#[inline]
 pub fn prim_p(b: &'static Bind) -> bool {
     let tagcase_ = b;
     match *tagcase_ {
@@ -14008,6 +14196,7 @@ pub fn prim_p(b: &'static Bind) -> bool {
     }
 }
 
+#[inline]
 pub fn nat_typed_p(s: &'static St, t: &'static Ty) -> bool {
     let tagcase_ = walk(s, t);
     match *tagcase_ {
@@ -14094,6 +14283,7 @@ pub fn deferred_p(arg: &'static Sexp, param: &'static Ty) -> bool {
     }))
 }
 
+#[inline]
 pub fn eqv_bool_p(a: bool, b: bool) -> bool {
     if a {
         b
@@ -14136,6 +14326,7 @@ pub fn names_in_onto(e: &'static Sexp, acc: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn names_all_onto(es: Sexps, acc: Strings) -> Strings {
     if null_p(es) {
         acc
@@ -14144,10 +14335,12 @@ pub fn names_all_onto(es: Sexps, acc: Strings) -> Strings {
     }
 }
 
+#[inline]
 pub fn names_in(e: &'static Sexp) -> Strings {
     names_in_onto(e, nil::<Str>())
 }
 
+#[inline]
 pub fn names_in_all(es: Sexps) -> Strings {
     names_all_onto(es, nil::<Str>())
 }
@@ -14229,6 +14422,7 @@ pub fn binds_prefixed(mut prefix: Str, mut bs: Binds) -> Binds {
 
 /// Module `m`'s values, as items, named as `m` names them (the prefix made
 /// once, C92: a module including another asks it often).
+#[inline]
 pub fn opened_binds(m: Str, bs: Binds) -> Binds {
     binds_prefixed(string_append(m, str_lit(" ")), bs)
 }

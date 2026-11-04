@@ -8,6 +8,7 @@ use kayak_rt::*;
 
 pub type O = &'static Bloblet<()>;
 
+#[inline]
 pub fn b() -> O {
     kayak_rt::kept_constant!(ONCE: O);
     once(&ONCE, || {
@@ -15,14 +16,17 @@ pub fn b() -> O {
     })
 }
 
+#[inline]
 pub fn f() -> BlobRef<O> {
     blobref_at(b(), int_lit(8), 4)
 }
 
+#[inline]
 pub fn s() -> BlobRef<O> {
     blobref_plus(f(), int_lit(4), 4)
 }
 
+#[inline]
 pub fn words(xs: List<Str>) -> Str {
     if null_p(xs) {
         str_lit("")

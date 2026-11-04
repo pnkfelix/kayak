@@ -14,23 +14,28 @@ pub mod shapes {
 
     pub type Point = Product_1x_1y<i64, i64>;
 
+    #[inline]
     pub fn origin() -> Point {
         Product_1x_1y(0i64, 0i64)
     }
 
+    #[inline]
     pub fn shift(p: Point, d: i64) -> Point {
         Product_1x_1y(i64_plus(p.0, d), p.1)
     }
 
+    #[inline]
     pub fn x_of(p: Point) -> i64 {
         p.0
     }
 }
 
+#[inline]
 pub fn origin() -> Product_1x_1y<i64, i64> {
     shapes::origin()
 }
 
+#[inline]
 pub fn shift() -> &'static (dyn Fn(Product_1x_1y<i64, i64>, i64) -> Product_1x_1y<i64, i64> + Send + Sync) {
     &shapes::shift
 }
@@ -40,25 +45,30 @@ pub type Point = shapes::Point;
 pub mod m {
     use super::*;
 
+    #[inline]
     pub fn x_of() -> &'static (dyn Fn(Product_1x_1y<i64, i64>) -> i64 + Send + Sync) {
         &shapes::x_of
     }
 
     pub type Point = shapes::Point;
 
+    #[inline]
     pub fn far() -> Point {
         Product_1x_1y(40i64, 2i64)
     }
 
+    #[inline]
     pub fn reach(p: Point) -> i64 {
         i64_plus(x_of()(p), 3i64)
     }
 }
 
+#[inline]
 pub fn mover(p: Point) -> Point {
     shift()(p, 2i64)
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(i64_plus(shapes::x_of(mover(shapes::origin())), m::reach(m::far())))
 }

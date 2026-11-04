@@ -5,6 +5,7 @@ use kayak_rt::*;
 // define-rec for procedures that call each other, a constant, and a deep
 // recursion that is not a tail call.
 
+#[inline]
 pub fn even_p(n: i64) -> bool {
     if i64_eq(n, 0i64) {
         true
@@ -13,6 +14,7 @@ pub fn even_p(n: i64) -> bool {
     }
 }
 
+#[inline]
 pub fn odd_p(n: i64) -> bool {
     if i64_eq(n, 0i64) {
         false
@@ -21,10 +23,12 @@ pub fn odd_p(n: i64) -> bool {
     }
 }
 
+#[inline]
 pub fn limit() -> i64 {
     200000i64
 }
 
+#[inline]
 pub fn depth(n: i64) -> i64 {
     if i64_eq(n, 0i64) {
         0i64

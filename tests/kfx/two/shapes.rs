@@ -21,6 +21,7 @@ pub fn rect(f0: i64, f1: i64) -> &'static Shape {
 
 pub type Shapes = List<&'static Shape>;
 
+#[inline]
 pub fn area(s: &'static Shape) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {

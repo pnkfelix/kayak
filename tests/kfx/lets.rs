@@ -4,10 +4,12 @@ use kayak_rt::*;
 
 // let binds in parallel, let* in sequence; begin and bodies sequence.
 
+#[inline]
 pub fn show2(a: i64, b: i64) -> Str {
     string_append(i64_to_string(a), string_append(str_lit(","), i64_to_string(b)))
 }
 
+#[inline]
 pub fn swapped(a: i64, b: i64) -> Str {
     let (a, b) = (b, a);
     show2(a, b)

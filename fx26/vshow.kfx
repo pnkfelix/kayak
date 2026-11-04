@@ -2,7 +2,7 @@
  string is made in proportion to what is written."
 
 (define-rec
-  (escaped-chars (subr (maxeff (read @globals) spin (read @h)) (i64 i64) string)
+  (escaped-chars (subr (maxeff (read @globals) spin (read @c)) (i64 i64) string)
     (lambda (p i)
       (if (i64>= i (raw-length p))
           ""
@@ -11,7 +11,7 @@
                            (escaped-chars p (i64+ i 1))))))))
 
 (define-rec
-  (bytes-shown (subr (maxeff (read @globals) spin (read @h)) (i64 i64) string)
+  (bytes-shown (subr (maxeff (read @globals) spin (read @c)) (i64 i64) string)
     (lambda (p i)
       (cond ((i64>= i (raw-length p)) "")
             ((i64= i 0) (string-append (i64->string (byte-at p i)) (bytes-shown p (i64+ i 1))))
@@ -34,7 +34,7 @@
                      ((i64= kind imm-unit) "#u")
                      ((i64= kind imm-nil) "()")
                      (else "#<closure>"))))
-            ((suffix-ref? w) (string-append "#<suffix-ref " (string-append (if (is-obj? (ref-owner w) ob-array) "bloblet" "flat-array") (string-append " +" (string-append (i64->string (ref-offset w)) ">")))))
+            ((is-sref? w) (string-append "#<suffix-ref " (string-append (if (is-obj? (sref-owner w) ob-array) "bloblet" "flat-array") (string-append " +" (string-append (i64->string (sref-offset w)) ">")))))
             ((pointer? w)
              (let ((kind (obj-kind w)))
                (cond ((i64= kind ob-big) (int->string (word-int w)))
@@ -44,14 +44,14 @@
                      ((i64= kind ob-real) (f64->string (word-real w)))
                      ((i64= kind ob-pair) (string-append "(" (string-append (show-word (pair-car w)) (string-append (show-tail (pair-cdr w)) ")"))))
                      ((i64= kind ob-ref) (string-append "#<box " (string-append (show-word (obj-ref w 0)) ">")))
-                     ((i64= kind ob-sum) (string-append "#<sum " (string-append (symbol-text (slot-ref w 0)) ">")))
+                     ((i64= kind ob-sum) (string-append "#<sum " (string-append (symbol-text (bloblet-value w 0)) ">")))
                      ((i64= kind ob-product) (string-append "#<product of " (string-append (i64->string (obj-size w)) ">")))
                      ((i64= kind ob-array) (string-append "#<bloblet " (string-append (i64->string (i64+ (obj-size w) 1)) (string-append " fields " (string-append (i64->string (suffix-bytes w)) " bytes>")))))
                      ((i64= kind ob-vector) (string-append "#(" (string-append (vector-shown w 0) ")")))
                      ((i64= kind ob-bytes) (string-append "#u8(" (string-append (bytes-shown w 0) ")")))
                      ((i64= kind ob-ctor) (name-of-number (fixnum-value (obj-ref w 0))))
                      ((i64= kind ob-cont) "#<continuation>")
-                     ((i64= kind ob-eqtable) (string-append "#<eqtable of " (string-append (i64->string (fixnum-value (field-at w 2))) ">")))
+                     ((i64= kind ob-eqtable) (string-append "#<eqtable of " (string-append (i64->string (fixnum-value (slot-of w 2))) ">")))
                      ((i64= kind ob-flatx) (string-append "#<flat-array 2 fields " (string-append (i64->string (suffix-bytes w)) " bytes>")))
                      (else "#<closure>"))))
             (else "#<closure>"))))

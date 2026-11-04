@@ -24,6 +24,7 @@ pub fn rview(f0: bool, f1: bool, f2: Str, f3: i64) -> &'static Rview {
     kayak_rt::heap_alloc(Rview::Rview(f0, f1, f2, f3))
 }
 
+#[inline]
 pub fn rview_assuming(v: &'static Rview) -> bool {
     let tagcase_ = v;
     match *tagcase_ {
@@ -33,6 +34,7 @@ pub fn rview_assuming(v: &'static Rview) -> bool {
     }
 }
 
+#[inline]
 pub fn rview_tail_leaves(v: &'static Rview) -> bool {
     let tagcase_ = v;
     match *tagcase_ {
@@ -42,6 +44,7 @@ pub fn rview_tail_leaves(v: &'static Rview) -> bool {
     }
 }
 
+#[inline]
 pub fn rview_own_is_p(v: &'static Rview, name: Str, arity: i64) -> bool {
     let tagcase_ = v;
     match *tagcase_ {
@@ -144,6 +147,7 @@ pub fn r_never_collects_names() -> Strings {
 
 // Whether runtime primitive `name` never collects (Fixpt's
 // `never_collects`), so that register code calls it in line.
+#[inline]
 pub fn r_never_collects_p(name: Str) -> bool {
     (string_member_p(name, r_never_collects_names()) || r_fixed_width_op_p(name))
 }
@@ -162,6 +166,7 @@ pub fn r_prim_std(p: Str, n: i64, k: i64) -> &'static Rstd {
 
 // Names `r-prim-name` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn r_prim_name_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -169,12 +174,14 @@ pub fn r_prim_name_names() -> Strings {
     })
 }
 
+#[inline]
 pub fn r_prim_name_p(n: Str) -> bool {
     string_member_p(n, r_prim_name_names())
 }
 
 // Names `r-standard` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn r_standard_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -308,6 +315,7 @@ pub fn drop_strings(mut xs: Strings, mut k: i64) -> Strings {
 }
 
 // Whether global `n` is one of the first `k` defined (-1: of all).
+#[inline]
 pub fn r_global_seen_p(n: Str, k: i64) -> bool {
     let f = global_first(n);
     (i64_gt(f, 0i64) && (i64_lt(k, 0i64) || i64_lt_eq(f, k)))
@@ -334,6 +342,7 @@ pub fn r_where(env: Renv, n: Str) -> Rlocs {
     }
 }
 
+#[inline]
 pub fn r_var_loc(env: Renv, f: &'static Cx) -> Rlocs {
     let tagcase_ = f;
     match *tagcase_ {
@@ -424,6 +433,7 @@ pub fn sv_of(mut xs: List<&'static Sv>, mut n: Str) -> List<bool> {
 
 // The answers so far, by the name's hash (C266): a list of them all had been
 // searched for each name asked.
+#[inline]
 pub fn r_std_table() -> Ref<Array<List<&'static Sv>>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<List<&'static Sv>>>);
     once(&ONCE, || {
@@ -498,14 +508,17 @@ pub fn r_literal_p(x: &'static Cx) -> bool {
     }
 }
 
+#[inline]
 pub fn r_add_name_p(n: Str) -> bool {
     (string_eq_p(n, str_lit("+")) || string_eq_p(n, str_lit("-")))
 }
 
+#[inline]
 pub fn r_small_p(n: Int) -> bool {
     (_lt(n, int_lit(1073741824)) && _gt(n, int_lit(-1073741824)))
 }
 
+#[inline]
 pub fn r_const_small(c: &'static Rconst) -> List<Int> {
     let tagcase_ = c;
     match *tagcase_ {
@@ -523,6 +536,7 @@ pub fn r_const_small(c: &'static Rconst) -> List<Int> {
     }
 }
 
+#[inline]
 pub fn r_const_false_p(c: &'static Rconst) -> bool {
     let tagcase_ = c;
     match *tagcase_ {
@@ -537,6 +551,7 @@ pub fn r_const_false_p(c: &'static Rconst) -> bool {
 }
 
 // Whether constant `c` (in a list) is `when` (true: anything but #f).
+#[inline]
 pub fn r_holds_p(c: List<&'static Rconst>, when: bool) -> bool {
     if r_const_false_p(car(c)) {
         not(when)
@@ -665,6 +680,7 @@ pub fn rinline(f0: Str, f1: Strings, f2: &'static Cx, f3: i64) -> &'static Rinli
     kayak_rt::heap_alloc(Rinline::Rinline(f0, f1, f2, f3))
 }
 
+#[inline]
 pub fn cg_inlines() -> Ref<List<&'static Rinline>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rinline>>);
     once(&ONCE, || {
@@ -675,6 +691,7 @@ pub fn cg_inlines() -> Ref<List<&'static Rinline>> {
 // Likewise those small but calling themselves, whose body neither
 // suspends nor runs an effect not known: unrolled where called with a
 // constant list (Fixpt's `c-unrolls`, `r-unrolled`).
+#[inline]
 pub fn cg_unrolls() -> Ref<List<&'static Rinline>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rinline>>);
     once(&ONCE, || {
@@ -682,10 +699,12 @@ pub fn cg_unrolls() -> Ref<List<&'static Rinline>> {
     })
 }
 
+#[inline]
 pub fn r_unroll_depth() -> i64 {
     16i64
 }
 
+#[inline]
 pub fn r_inline_limit() -> i64 {
     20i64
 }
@@ -703,6 +722,7 @@ pub fn rspecial(f0: Str, f1: Strings, f2: &'static Cx, f3: i64, f4: i64, f5: i64
     kayak_rt::heap_alloc(Rspecial::Rspecial(f0, f1, f2, f3, f4, f5, f6))
 }
 
+#[inline]
 pub fn cg_specials() -> Ref<List<&'static Rspecial>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rspecial>>);
     once(&ONCE, || {
@@ -710,10 +730,12 @@ pub fn cg_specials() -> Ref<List<&'static Rspecial>> {
     })
 }
 
+#[inline]
 pub fn r_special_limit() -> i64 {
     60i64
 }
 
+#[inline]
 pub fn rspecial_name(s: &'static Rspecial) -> Str {
     let tagcase_ = s;
     match *tagcase_ {
@@ -809,6 +831,7 @@ pub fn r_arity_merge(a: i64, b: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn r_var_is_p(x: &'static Cx, p: Str) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
@@ -1017,6 +1040,7 @@ pub fn rcopy(f0: Str, f1: i64, f2: Strings, f3: i64, f4: Str) -> &'static Rcopy 
     kayak_rt::heap_alloc(Rcopy::Rcopy(f0, f1, f2, f3, f4))
 }
 
+#[inline]
 pub fn cg_copies() -> Ref<List<&'static Rcopy>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rcopy>>);
     once(&ONCE, || {
@@ -1083,6 +1107,7 @@ pub fn rgconst(f0: Str, f1: &'static Rconst) -> &'static Rgconst {
     kayak_rt::heap_alloc(Rgconst::Rgconst(f0, f1))
 }
 
+#[inline]
 pub fn cg_consts() -> Ref<List<&'static Rgconst>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Rgconst>>);
     once(&ONCE, || {
@@ -1273,6 +1298,7 @@ pub fn r_room(mut x: &'static Cx, mut n0: i64, mut w: bool) -> i64 {
     }
 }
 
+#[inline]
 pub fn r_room_if(x: &'static Cx, n: i64, w: bool) -> i64 {
     if i64_lt(n, 0i64) {
         n
@@ -1292,6 +1318,7 @@ pub fn r_room_all(mut es: Cxs, mut n: i64, mut w: bool) -> i64 {
     }
 }
 
+#[inline]
 pub fn r_room_if_all(es: Cxs, n: i64, w: bool) -> i64 {
     if i64_lt(n, 0i64) {
         n
@@ -1302,6 +1329,7 @@ pub fn r_room_if_all(es: Cxs, n: i64, w: bool) -> i64 {
 
 // Names `r-test-name` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn r_test_name_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -1310,6 +1338,7 @@ pub fn r_test_name_names() -> Strings {
 }
 
 // Whether `name` is a comparison a test an `if` decides may be of.
+#[inline]
 pub fn r_test_name_p(n: Str) -> bool {
     string_member_p(n, r_test_name_names())
 }
@@ -1718,6 +1747,7 @@ pub fn r_knowing(env: Renv, t: &'static Cx, v: bool) -> Renv {
     }
 }
 
+#[inline]
 pub fn r_known_cell(env: Renv, x: &'static Cx) -> List<&'static Lit> {
     let k = r_known(env, x);
     if null_p(k) {
@@ -1888,10 +1918,12 @@ pub fn r_join_flags_from(bs: Cbinds, body: &'static Cx, tail: bool, i: i64, n: i
     }
 }
 
+#[inline]
 pub fn r_join_flags(bs: Cbinds, body: &'static Cx, tail: bool) -> List<bool> {
     r_join_flags_from(bs, body, tail, 0i64, size(bs))
 }
 
+#[inline]
 pub fn r_all_p(fs: List<bool>) -> bool {
     (null_p(fs) || (car(fs) && r_all_p(cdr(fs))))
 }
@@ -1930,6 +1962,7 @@ pub fn r_locals(mut ps: Strings, mut te: Cenv) -> Cenv {
 
 // Names `r-bloblet-quiet` tests against, made once (C264): a list written in place is
 // made at each call.
+#[inline]
 pub fn r_bloblet_quiet_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -1940,10 +1973,12 @@ pub fn r_bloblet_quiet_names() -> Strings {
 // Whether bloblet form `op` itself never calls out: a field's read; a
 // blobref's read, write, element or variant, in line; a product's field
 // through a blobref (Fixpt's `extract`, C259).
+#[inline]
 pub fn r_bloblet_quiet_p(op: Str) -> bool {
     string_member_p(op, r_bloblet_quiet_names())
 }
 
+#[inline]
 pub fn c_with_local(te: Cenv, n: Str) -> Cenv {
     c_extend(n, at_slot(-1i64), te)
 }

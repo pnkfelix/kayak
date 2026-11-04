@@ -12,6 +12,7 @@ use super::*;
 
 // The fixed widths but `i64` (`i64`'s are above): a name, its type and its
 // operation; each operation done on `int` and wrapped as the type wraps.
+#[inline]
 pub fn fixed_types() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -37,10 +38,12 @@ pub fn fixed_in(mut n: Str, mut ts: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn fixed_type(n: Str) -> Str {
     fixed_in(n, fixed_types())
 }
 
+#[inline]
 pub fn fixed_op(n: Str) -> Str {
     let t = fixed_type(n);
     if has_prefix_p(n, str_lit("int->")) {
@@ -50,6 +53,7 @@ pub fn fixed_op(n: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn fixed_arity(op: Str) -> i64 {
     if string_member_p(op, kayak_rt::heap_cons(str_lit("-not"), kayak_rt::heap_cons(str_lit("->int"), kayak_rt::heap_cons(str_lit("->string"), kayak_rt::heap_cons(str_lit("from-int"), kayak_rt::nil()))))) {
         1i64
@@ -83,6 +87,7 @@ pub fn width_of(t: Str) -> Int {
 }
 
 // The program's own arguments, as `--run`'s driver gives them (main.kfx).
+#[inline]
 pub fn program_args() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -92,6 +97,7 @@ pub fn program_args() -> Ref<Strings> {
 
 /// The primitive `n` is at run time: an escape-only tag a prompt tag, an
 /// escape an abort (C105, as Fixpt runs them); else `n`.
+#[inline]
 pub fn prim_alias(n: Str) -> Str {
     if string_eq_p(n, str_lit("make-escape-tag")) {
         str_lit("make-continuation-prompt-tag")
@@ -249,6 +255,7 @@ pub fn prim_arity(n: Str) -> i64 {
 
 // Values taken apart, a wrong shape an error: the checker has seen to it
 // that none is, but a primitive is not to trust that.
+#[inline]
 pub fn val_int(v: &'static Val) -> Int {
     let tagcase_ = v;
     match *tagcase_ {
@@ -263,6 +270,7 @@ pub fn val_int(v: &'static Val) -> Int {
     }
 }
 
+#[inline]
 pub fn string_of(v: &'static Val) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
@@ -277,6 +285,7 @@ pub fn string_of(v: &'static Val) -> Str {
     }
 }
 
+#[inline]
 pub fn char_of(v: &'static Val) -> char {
     let tagcase_ = v;
     match *tagcase_ {
@@ -291,6 +300,7 @@ pub fn char_of(v: &'static Val) -> char {
     }
 }
 
+#[inline]
 pub fn bool_of(v: &'static Val) -> bool {
     let tagcase_ = v;
     match *tagcase_ {
@@ -305,6 +315,7 @@ pub fn bool_of(v: &'static Val) -> bool {
     }
 }
 
+#[inline]
 pub fn symbol_of(v: &'static Val) -> Symbol {
     let tagcase_ = v;
     match *tagcase_ {
@@ -320,19 +331,23 @@ pub fn symbol_of(v: &'static Val) -> Symbol {
 }
 
 /// An `i64`'s value: the low 64 bits, two's complement.
+#[inline]
 pub fn w64(n: Int) -> Int {
     i64_to_int(int_to_i64(n))
 }
 
+#[inline]
 pub fn i64_of(v: &'static Val) -> i64 {
     int_to_i64(val_int(v))
 }
 
+#[inline]
 pub fn v_i64(n: i64) -> &'static Val {
     v_int(i64_to_int(n))
 }
 
 /// A list's elements, in order.
+#[inline]
 pub fn list_of(v: &'static Val) -> Vals {
     let tagcase_ = v;
     match *tagcase_ {
@@ -346,6 +361,7 @@ pub fn list_of(v: &'static Val) -> Vals {
     }
 }
 
+#[inline]
 pub fn list_val(xs: Vals) -> &'static Val {
     if null_p(xs) {
         v_nil()
@@ -354,6 +370,7 @@ pub fn list_val(xs: Vals) -> &'static Val {
     }
 }
 
+#[inline]
 pub fn chars_val(cs: List<char>) -> &'static Val {
     if null_p(cs) {
         v_nil()
@@ -362,6 +379,7 @@ pub fn chars_val(cs: List<char>) -> &'static Val {
     }
 }
 
+#[inline]
 pub fn chars_of(v: &'static Val) -> List<char> {
     let tagcase_ = v;
     match *tagcase_ {
@@ -401,10 +419,12 @@ pub fn array_vals(a: Array<&'static Val>, i: i64) -> Vals {
     }
 }
 
+#[inline]
 pub fn flag(b: bool) -> &'static Val {
     v_bool(b)
 }
 
+#[inline]
 pub fn bytes_of(v: &'static Val) -> Bytes {
     let tagcase_ = v;
     match *tagcase_ {
@@ -469,6 +489,7 @@ pub fn terminal_val(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Produ
     }
 }
 
+#[inline]
 pub fn written(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
     let tagcase_ = r;
     match *tagcase_ {
@@ -481,6 +502,7 @@ pub fn written(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static 
     }
 }
 
+#[inline]
 pub fn strings_vals(ss: Strings) -> Vals {
     if null_p(ss) {
         nil::<&'static Val>()
@@ -489,6 +511,7 @@ pub fn strings_vals(ss: Strings) -> Vals {
     }
 }
 
+#[inline]
 pub fn onto_vals(xs: Vals, ys: Vals) -> Vals {
     if null_p(xs) {
         ys
@@ -508,6 +531,7 @@ pub fn reverse_vals(mut xs: Vals, mut acc: Vals) -> Vals {
     }
 }
 
+#[inline]
 pub fn real_of(v: &'static Val) -> f64 {
     let tagcase_ = v;
     match *tagcase_ {

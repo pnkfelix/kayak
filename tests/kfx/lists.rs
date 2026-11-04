@@ -19,6 +19,7 @@ pub fn rev_onto(mut xs: Ints, mut acc: Ints) -> Ints {
     }
 }
 
+#[inline]
 pub fn count_from(i: i64, n: i64) -> Ints {
     if i64_lt(i, n) {
         kayak_rt::heap_cons(i, count_from(i64_plus(i, 1i64), n))
@@ -27,6 +28,7 @@ pub fn count_from(i: i64, n: i64) -> Ints {
     }
 }
 
+#[inline]
 pub fn total(xs: Ints) -> i64 {
     if null_p(xs) {
         0i64

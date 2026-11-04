@@ -6,22 +6,27 @@ use kayak_rt::*;
 // emitter (elaboration): a constant, a procedure whose parameters' types
 // are written, and one that uses both.
 
+#[inline]
 pub fn base() -> i64 {
     the::<i64>(40i64)
 }
 
+#[inline]
 pub fn greeting() -> Str {
     str_lit("hello")
 }
 
+#[inline]
 pub fn add(a: i64, b: i64) -> i64 {
     i64_plus(a, b)
 }
 
+#[inline]
 pub fn shout(s: Str) -> Str {
     string_append(s, str_lit("!"))
 }
 
+#[inline]
 pub fn pair_up(x: i64) -> List<i64> {
     the::<List<i64>>(kayak_rt::heap_cons(x, kayak_rt::heap_cons(add(x, base()), kayak_rt::nil())))
 }

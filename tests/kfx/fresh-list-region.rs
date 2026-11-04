@@ -6,10 +6,12 @@ use kayak_rt::*;
 // acyclic, as FX-26 had it; since its e4af8997, `acyclic`, built and never
 // written, which is what a later use wants (C284).
 
+#[inline]
 pub fn h<A: Copy + 'static>(fs: List<A>) -> i64 {
     0i64
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(h(kayak_rt::heap_cons(str_lit("x"), nil::<Str>())))
 }

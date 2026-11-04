@@ -15,6 +15,7 @@ pub enum Sum_2ok_6failed<A0, A1> {
 
 pub type Report = &'static Sum_2ok_6failed<Int, Str>;
 
+#[inline]
 pub fn failed(m: Str) -> Report {
     kayak_rt::heap_alloc(Sum_2ok_6failed::<Int, Str>::Failed(m))
 }
@@ -84,6 +85,7 @@ pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
     })
 }
 
+#[inline]
 pub fn work(k: Int) -> Int {
     if _eq(k, int_lit(0)) {
         error(str_lit("bad input"))
@@ -93,6 +95,7 @@ pub fn work(k: Int) -> Int {
 }
 
 // A worker, which answers one number, or fails (Fixpt's worker-fails.fx).
+#[inline]
 pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
     kayak_rt::process::spawn_monitored(collector, &failed, move |r#box: kayak_rt::Inbox<Int>| {
         let _ = {
@@ -137,6 +140,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
 
 // A worker that divides by what it is sent: a trap, whatever the runtime
 // says of it, not `error` (Fixpt's trap.fx).
+#[inline]
 pub fn start_divider(collector: Addr<Report>) -> Addr<Int> {
     kayak_rt::process::spawn_monitored(collector, &failed, move |r#box: kayak_rt::Inbox<Int>| {
         let _ = {
@@ -221,6 +225,7 @@ pub fn counted() -> Int {
     kayak_rt::process::icell_get(out)
 }
 
+#[inline]
 pub fn show(xs: List<Int>) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -229,6 +234,7 @@ pub fn show(xs: List<Int>) -> Str {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     show(kayak_rt::heap_cons(three(), kayak_rt::heap_cons(pair(false), kayak_rt::heap_cons(pair(true), kayak_rt::heap_cons(divided(), kayak_rt::heap_cons(counted(), kayak_rt::nil()))))))
 }

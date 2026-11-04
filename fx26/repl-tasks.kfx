@@ -619,9 +619,9 @@ an entry naming one that has not ended waits for it.")
        collections before and after it."
       (define-type mentry
         (productof (num i64) (typed string) (defined string) (quiet bool) (needs (listof i64 acyclic))
-                   (state (ref i64 @h)) (tops (ref (listof i64 acyclic) @h)) (shown (ref string @h))
-                   (out (ref string @h)) (began (ref i64 @h)) (ended (ref i64 @h)) (drawn (ref string @h))
-                   (timed bool) (steps (ref i64 @h)) (gcs i64) (gcs-after (ref i64 @h))))
+                   (state (ref i64 @c)) (tops (ref (listof i64 acyclic) @c)) (shown (ref string @c))
+                   (out (ref string @c)) (began (ref i64 @c)) (ended (ref i64 @c)) (drawn (ref string @c))
+                   (timed bool) (steps (ref i64 @c)) (gcs i64) (gcs-after (ref i64 @c))))
 
       "The machine's session: its entries, the newest first; whether live;
        the entry run last (for turns); the steps an entry may take; a slice's
@@ -629,20 +629,20 @@ an entry naming one that has not ended waits for it.")
        run (its state, 0 none, 1 running in slot 0, 2 ended; serial; type;
        the IR tables' lengths before it was numbered; its steps); whether the
        front has ended."
-      (define m-entries (ref (listof mentry acyclic) @h) (new nil))
-      (define m-live (ref bool @h) (new #f))
-      (define m-last-run (ref i64 @h) (new 0))
-      (define m-step-limit (ref i64 @h) (new -1))
+      (define m-entries (ref (listof mentry acyclic) @c) (new nil))
+      (define m-live (ref bool @c) (new #f))
+      (define m-last-run (ref i64 @c) (new 0))
+      (define m-step-limit (ref i64 @c) (new -1))
       (define slice-steps i64 20000)
-      (define m-slice-ns (ref i64 @h) (new -1))
-      (define m-news (ref (listof told acyclic) @h) (new nil))
-      (define m-spec-state (ref i64 @h) (new 0))
-      (define m-spec-serial (ref i64 @h) (new 0))
-      (define m-spec-type (ref string @h) (new ""))
-      (define m-spec-marks (ref (listof i64 acyclic) @h) (new nil))
-      (define m-spec-steps (ref i64 @h) (new 0))
+      (define m-slice-ns (ref i64 @c) (new -1))
+      (define m-news (ref (listof told acyclic) @c) (new nil))
+      (define m-spec-state (ref i64 @c) (new 0))
+      (define m-spec-serial (ref i64 @c) (new 0))
+      (define m-spec-type (ref string @c) (new ""))
+      (define m-spec-marks (ref (listof i64 acyclic) @c) (new nil))
+      (define m-spec-steps (ref i64 @c) (new 0))
       (define spec-limit i64 2000000)
-      (define m-over (ref bool @h) (new #f))
+      (define m-over (ref bool @c) (new #f))
 
       (define m-made (subr running (i64 string string bool (listof i64 acyclic) i64 (listof i64 acyclic) string bool i64) mentry)
         (lambda (k typed defined quiet needs state tops shown timed now)

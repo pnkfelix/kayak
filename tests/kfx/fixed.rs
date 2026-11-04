@@ -7,6 +7,7 @@ use kayak_rt::*;
 // the width.
 
 // FNV-1a, 32 bits.
+#[inline]
 pub fn fnv(h: u32, c: u32) -> u32 {
     u32_star(u32_xor(h, c), 16777619u32)
 }

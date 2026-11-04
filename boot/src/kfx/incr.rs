@@ -52,6 +52,7 @@ pub mod incremental {
 
     use super::writing::{made_here_p, put_module_impls, definition_p, maker_defs, maker_item_type, place_given, maker_item_lambda, put_shapes, put_show_generatives, put_top, put_maker, types_once, put_module, module_parts, put_module_around, put_tops, put_toplevel};
 
+    #[inline]
     pub fn fnv_offset() -> i64 {
         -3750763034362895579i64
     }
@@ -69,6 +70,7 @@ pub mod incremental {
 
     /// `s` onto fingerprint `h`, after a separator, so that two strings are
     /// not one string.
+    #[inline]
     pub fn fnv_string(s: Str, h: i64) -> i64 {
         fnv_onto(string_chars(s), i64_star(i64_xor(h, 31i64), 1099511628211i64))
     }
@@ -86,6 +88,7 @@ pub mod incremental {
 
     // The context's fingerprint: everything in it but the facts, which are
     // taken form by form.
+    #[inline]
     pub fn typed_text(x: &'static Typed) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
@@ -158,6 +161,7 @@ pub mod incremental {
 
     // Each form's text, cut from its file's characters at the forms' offsets;
     // the last to the end of its file, an offset past every other.
+    #[inline]
     pub fn end_of_file() -> i64 {
         9223372036854775807i64
     }
@@ -409,10 +413,12 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn quoted(s: Str) -> Str {
         rev_to_string(kayak_rt::heap_cons('"', quoted_onto(string_chars(s), kayak_rt::heap_cons('"', kayak_rt::nil()))))
     }
 
+    #[inline]
     pub fn quoted_all(ss: Strings) -> Str {
         string_append(str_lit("("), string_append(words_of(map(&quoted, ss)), str_lit(")")))
     }
@@ -484,10 +490,12 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn tys_code(ts: Tys) -> Str {
         string_append(str_lit("("), string_append(words_of(map(&ty_code, ts)), str_lit(")")))
     }
 
+    #[inline]
     pub fn code_text(e: &'static Sexp) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
@@ -504,6 +512,7 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn code_number(e: &'static Sexp) -> i64 {
         let tagcase_ = e;
         match *tagcase_ {
@@ -561,10 +570,12 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn code_tys(e: &'static Sexp) -> Tys {
         map(&code_ty, items(e))
     }
 
+    #[inline]
     pub fn code_strings(e: &'static Sexp) -> Strings {
         map(&code_text, items(e))
     }
@@ -597,6 +608,7 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn code_effdef(e: &'static Sexp) -> &'static Effdef {
         let xs = items(e);
         effdef(code_text(car(xs)), code_strings(second(xs)))
@@ -635,6 +647,7 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn code_typed(e: &'static Sexp) -> &'static Typed {
         let xs = items(e);
         typed(code_text(car(xs)), second(xs))
@@ -649,6 +662,7 @@ pub mod incremental {
     }
 
     /// A fact the checker reads again, after the form that noted it.
+    #[inline]
     pub fn interface_fact_p(f: &'static Fact) -> bool {
         let tagcase_ = f;
         match *tagcase_ {
@@ -668,6 +682,7 @@ pub mod incremental {
         kayak_rt::heap_alloc(Change::Change(f0, f1))
     }
 
+    #[inline]
     pub fn where_text(here: Str, group: Strings, tv: Strings) -> Str {
         concat_strings(kayak_rt::heap_cons(quoted(here), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(group), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(tv), kayak_rt::nil()))))))
     }
@@ -797,6 +812,7 @@ pub mod incremental {
         kayak_rt::heap_alloc(OrderMemo::OrderMemo(f0, f1))
     }
 
+    #[inline]
     pub fn order_memo_forms(o: &'static OrderMemo) -> Sexps {
         let tagcase_ = o;
         match *tagcase_ {
@@ -806,6 +822,7 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn order_memo_made(o: &'static OrderMemo) -> Memos {
         let tagcase_ = o;
         match *tagcase_ {
@@ -1188,10 +1205,12 @@ pub mod incremental {
         }
     }
 
+    #[inline]
     pub fn memos_text(ms: Memos) -> Str {
         rev_to_string(memos_onto(ms, nil::<char>()))
     }
 
+    #[inline]
     pub fn memos_of_text(s: Str) -> Memos {
         memo_lines(string_chars(s), nil::<char>(), 0i64, false, nil::<&'static Memo>())
     }

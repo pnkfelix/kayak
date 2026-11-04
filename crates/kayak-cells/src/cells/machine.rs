@@ -12,14 +12,17 @@ use super::*;
 // fixpt-source: crates/fixpt-engine/src/cellular.rs@19b31f1
 
 // The limits: values on the data stack, entries on the return stack.
+#[inline]
 pub fn ds_limit() -> i64 {
     131072i64
 }
 
+#[inline]
 pub fn rs_limit() -> i64 {
     65536i64
 }
 
+#[inline]
 pub fn ds() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -27,6 +30,7 @@ pub fn ds() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn dsp() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -34,6 +38,7 @@ pub fn dsp() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn rs() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -41,6 +46,7 @@ pub fn rs() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn rsp() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -48,6 +54,7 @@ pub fn rsp() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn cur() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -55,6 +62,7 @@ pub fn cur() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn kk() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -62,6 +70,7 @@ pub fn kk() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn fp() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -69,6 +78,7 @@ pub fn fp() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn clo() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -76,6 +86,7 @@ pub fn clo() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn fuel() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -84,6 +95,7 @@ pub fn fuel() -> Ref<i64> {
 }
 
 // What is left of the step limit past this slice (Fixpt's `reserve`).
+#[inline]
 pub fn reserve() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -91,10 +103,12 @@ pub fn reserve() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn quoted(n: i64) -> Str {
     string_append(str_lit("`"), string_append(routine_name(n), str_lit("`")))
 }
 
+#[inline]
 pub fn type_trap_x(n: i64) -> () {
     trap_x(if (i64_eq(n, rt_pair_car()) || i64_eq(n, rt_pair_cdr())) {
         str_lit("car or cdr of a non-pair")
@@ -103,23 +117,28 @@ pub fn type_trap_x(n: i64) -> () {
     })
 }
 
+#[inline]
 pub fn overflow_trap_x(n: i64) -> () {
     trap_x(string_append(quoted(n), str_lit("'s result does not fit")))
 }
 
+#[inline]
 pub fn underflow_trap_x(n: i64) -> () {
     trap_x(string_append(quoted(n), str_lit(" found too few values on the data stack")))
 }
 
+#[inline]
 pub fn field_trap_x(n: i64) -> () {
     trap_x(string_append(quoted(n), str_lit(" named a field that is not there")))
 }
 
 // The data stack.
+#[inline]
 pub fn ds_at(i: i64) -> i64 {
     flatarray_ref_i64(get(ds()), i)
 }
 
+#[inline]
 pub fn ds_set_x(i: i64, v: i64) -> () {
     flatarray_set_i64_x(get(ds()), i, v)
 }
@@ -144,6 +163,7 @@ pub fn pop_x(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn pop_fix_x(n: i64) -> i64 {
     let v = pop_x(n);
     if is_fixnum_p(v) {
@@ -155,11 +175,13 @@ pub fn pop_fix_x(n: i64) -> i64 {
 }
 
 // The return stack.
+#[inline]
 pub fn rs_push_x(v: i64) -> () {
     flatarray_set_i64_x(get(rs()), get(rsp()), v);
     set(rsp(), i64_plus(get(rsp()), 1i64))
 }
 
+#[inline]
 pub fn rs_at(i: i64) -> i64 {
     flatarray_ref_i64(get(rs()), i)
 }
@@ -179,6 +201,7 @@ pub fn push_return_x() -> () {
 // (`REG0` is `clo`). Live only between instructions that cannot collect:
 // Fixpt's compiler saves what lives across a call or a call-out in the
 // frame, and a poll spills them all to the data stack.
+#[inline]
 pub fn rr() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -186,6 +209,7 @@ pub fn rr() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn reg_at(k: i64) -> i64 {
     if i64_eq(k, 0i64) {
         get(clo())
@@ -194,14 +218,17 @@ pub fn reg_at(k: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn reg_set_x(k: i64, v: i64) -> () {
     flatarray_set_i64_x(get(rr()), k, v)
 }
 
+#[inline]
 pub fn result() -> i64 {
     flatarray_ref_i64(get(rr()), 0i64)
 }
 
+#[inline]
 pub fn result_x(v: i64) -> () {
     flatarray_set_i64_x(get(rr()), 0i64, v)
 }
@@ -210,6 +237,7 @@ pub fn result_x(v: i64) -> () {
 // else has run. `-K`: after a call or a call-out, its value on the data
 // stack, popped into `RESULT`; `-K - POLLED`: after a poll, every register
 // on it (Fixpt marks the entries a `blr` made, negating `8k`).
+#[inline]
 pub fn polled() -> i64 {
     1048576i64
 }
@@ -251,10 +279,12 @@ pub fn adapted_x(mut rw: i64, mut i: i64, mut count: i64) -> () {
 // A prompt's entry on the return stack, `(PROMPT-MARK tag handler
 // height)`, and a mark's, `(MARK-MARK key value 0)`, just above the entry
 // its body returns to (Fixpt's).
+#[inline]
 pub fn prompt_mark() -> i64 {
     v_default()
 }
 
+#[inline]
 pub fn mark_mark() -> i64 {
     v_unspecified()
 }
@@ -277,6 +307,7 @@ pub fn pop_return_x() -> () {
     }
 }
 
+#[inline]
 pub fn check_limits_x() -> () {
     if (i64_gt(get(dsp()), ds_limit()) || i64_gt_eq(i64_quotient(get(rsp()), 4i64), rs_limit())) {
         trap_x(str_lit("stack overflow"))
@@ -285,6 +316,7 @@ pub fn check_limits_x() -> () {
     }
 }
 
+#[inline]
 pub fn limits_ok_p() -> bool {
     not((i64_gt(get(dsp()), ds_limit()) || i64_gt_eq(i64_quotient(get(rsp()), 4i64), rs_limit())))
 }
@@ -295,10 +327,12 @@ pub fn operand_x() -> i64 {
     v
 }
 
+#[inline]
 pub fn closure_p(v: i64) -> bool {
     is_kind_p(v, k_closure())
 }
 
+#[inline]
 pub fn word_p(v: i64) -> bool {
     is_kind_p(v, k_code())
 }
@@ -308,6 +342,7 @@ pub fn word_p(v: i64) -> bool {
 // tables of what was read. When the space is three quarters full; or at
 // every safepoint, under stress (`--gc-stress`, Coopt's policy for tests),
 // but where much lives (C142, `stress-wait`).
+#[inline]
 pub fn gc_stress() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -324,10 +359,12 @@ pub fn gc_stress() -> Ref<bool> {
 // half of it to half again, deterministically (a linear congruential
 // generator, its seed fixed), so that the collections do not fall into
 // step with a program's loop, and a run is the same each time.
+#[inline]
 pub fn stress_span() -> i64 {
     4096i64
 }
 
+#[inline]
 pub fn stress_wait() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -335,6 +372,7 @@ pub fn stress_wait() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn stress_seed() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -356,6 +394,7 @@ pub fn stress_waited_x() -> () {
 // Callbacks from native code under way (`native-callback`), and an escape
 // under way: the continuation (0 for none) and its value, kept, roots of
 // the collector's, while the native frames are left.
+#[inline]
 pub fn callback_depth() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -363,6 +402,7 @@ pub fn callback_depth() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn pending_k() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -370,6 +410,7 @@ pub fn pending_k() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn pending_v() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -420,14 +461,17 @@ pub fn safepoint_x() -> () {
 }
 
 // Flows: what a routine leaves the loop to do.
+#[inline]
 pub fn next() -> i64 {
     0i64
 }
 
+#[inline]
 pub fn exit_flow() -> i64 {
     1i64
 }
 
+#[inline]
 pub fn halt_flow() -> i64 {
     2i64
 }
@@ -437,69 +481,85 @@ pub fn halt_flow() -> i64 {
 // the data stack's height they were taken from, whether it is everything,
 // and how many times it may be resumed; given to a program as a closure
 // over the word `slot 0; free 0; resume`.
+#[inline]
 pub fn cont_ds() -> i64 {
     2i64
 }
 
+#[inline]
 pub fn cont_rs() -> i64 {
     3i64
 }
 
+#[inline]
 pub fn cont_cur() -> i64 {
     4i64
 }
 
+#[inline]
 pub fn cont_k() -> i64 {
     5i64
 }
 
+#[inline]
 pub fn cont_fp() -> i64 {
     6i64
 }
 
+#[inline]
 pub fn cont_clo() -> i64 {
     7i64
 }
 
+#[inline]
 pub fn cont_base() -> i64 {
     8i64
 }
 
+#[inline]
 pub fn cont_whole() -> i64 {
     9i64
 }
 
+#[inline]
 pub fn cont_regions() -> i64 {
     10i64
 }
 
+#[inline]
 pub fn cont_run() -> i64 {
     11i64
 }
 
+#[inline]
 pub fn cont_inner() -> i64 {
     12i64
 }
 
+#[inline]
 pub fn cont_shots() -> i64 {
     13i64
 }
 
 // How many callbacks deep it was taken (C234): one resumed deeper escapes
 // the native frames between, as Fixpt's `NativeExit::Throw`.
+#[inline]
 pub fn cont_depth() -> i64 {
     14i64
 }
 
 // Shots: many, once, spent.
+#[inline]
 pub fn shots_many() -> i64 {
     0i64
 }
 
+#[inline]
 pub fn shots_once() -> i64 {
     1i64
 }
 
+#[inline]
 pub fn shots_spent() -> i64 {
     2i64
 }
@@ -539,10 +599,12 @@ pub fn vector_from_x(a: FlatArray<i64>, from: i64, to: i64) -> i64 {
     v
 }
 
+#[inline]
 pub fn vector_length(v: i64) -> i64 {
     obj_length(v)
 }
 
+#[inline]
 pub fn vector_ref(v: i64, i: i64) -> i64 {
     elt_ref(v, i)
 }
@@ -597,10 +659,12 @@ pub fn continuation_of(v: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn prompt_height(w: i64) -> i64 {
     i64_and(fix_val(w), 4294967295i64)
 }
 
+#[inline]
 pub fn prompt_word(h: i64) -> i64 {
     fix(i64_and(h, 4294967295i64))
 }
@@ -746,6 +810,7 @@ pub fn spend_x(k: i64) -> bool {
 // mailbox; its answer the value, as a primitive's, or, in tail position,
 // the frame's. Code a program makes calls none of the convention's routines
 // here yet: one that does fails, as a trap of its own.
+#[inline]
 pub fn native_box() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -753,6 +818,7 @@ pub fn native_box() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn lesser(a: i64, b: i64) -> i64 {
     if i64_lt(a, b) {
         a
@@ -761,6 +827,7 @@ pub fn lesser(a: i64, b: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn greater(a: i64, b: i64) -> i64 {
     if i64_gt(a, b) {
         a
@@ -769,6 +836,7 @@ pub fn greater(a: i64, b: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn cards_low() -> i64 {
     lesser(lesser(get(vbase()), get(to_vbase())), get(code_vbase()))
 }
@@ -779,6 +847,7 @@ pub fn cards_high() -> i64 {
 
 /// The heap's top, from the next free address native code left: the
 /// limit grown past it if need be, the collection to come later.
+#[inline]
 pub fn top_from_x(next: i64) -> () {
     set(heap_top(), address(i64_plus(next, 7i64)));
     room_x(0i64)
@@ -1913,6 +1982,7 @@ pub fn reg_step_x(base: i64) -> bool {
 // place in it. A tally: open addressing over slots of three, a key's two
 // parts (the first never 0) and its count, after one that counts the slots
 // used. A word never moves (in the code area), so its address is its key.
+#[inline]
 pub fn profiling() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -1920,14 +1990,17 @@ pub fn profiling() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn tally_made(slots: i64) -> FlatArray<i64> {
     make_flatarray_i64(i64_plus(1i64, i64_star(3i64, slots)), 0i64)
 }
 
+#[inline]
 pub fn tally_slots(t: FlatArray<i64>) -> i64 {
     i64_quotient(i64_minus(flatarray_length_i64(t), 1i64), 3i64)
 }
 
+#[inline]
 pub fn profile() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -2028,6 +2101,7 @@ pub fn cell_step_x(base: i64) -> bool {
 }
 
 /// One cell, as tier 1 runs it: whether the run goes on.
+#[inline]
 pub fn step_x(base: i64) -> bool {
     if (get(regs_on()) && is_kind_p(get(cur()), k_register_code())) {
         reg_step_x(base)
@@ -2050,6 +2124,7 @@ pub fn run_x(mut base: i64) -> () {
 // Tier 2 (C126): the hand machine (hand.kfx) runs cells until it gives
 // one back; tier 1 runs that one; and so on. The machine is given tier 1's
 // registers in its state, and tier 1's heap and stacks themselves.
+#[inline]
 pub fn hand_on() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -2057,6 +2132,7 @@ pub fn hand_on() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn hand_state() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -2064,6 +2140,7 @@ pub fn hand_state() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn hand_entries() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -2074,10 +2151,12 @@ pub fn hand_entries() -> Ref<i64> {
 // What the machine gave back, counted for `--gc-stats`: a routine at its
 // number, register code resumed at 62, a word at 63, a `prim` at 64 plus
 // its op, a register instruction at 1600 plus its op.
+#[inline]
 pub fn given_size() -> i64 {
     2048i64
 }
 
+#[inline]
 pub fn hand_given() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {

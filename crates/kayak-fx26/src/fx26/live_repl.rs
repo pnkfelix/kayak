@@ -110,6 +110,7 @@ pub mod session {
     // back); whether it waits for an entry, to be tried again when one
     // ends; and what was checked, so that an edit that changes none of it
     // (a space after a finished form) keeps what was found.
+    #[inline]
     pub fn note() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -117,6 +118,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn note_error() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -124,6 +126,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn speculated() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -131,6 +134,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_kept() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -138,6 +142,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_open() -> Ref<List<i64>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
         once(&ONCE, || {
@@ -145,6 +150,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_finished() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -152,6 +158,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_type() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -159,6 +166,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_state() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -166,6 +174,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_steps() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -173,6 +182,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_marks() -> Ref<List<i64>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
         once(&ONCE, || {
@@ -180,6 +190,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_waits() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -187,6 +198,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_key() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -201,6 +213,7 @@ pub mod session {
     // hole's place in that list (0, the operator's own); the hint found, and
     // the narrowest refusal of a list around the hole and where it is; and
     // the subform a refusal said is wrong, to underline (`from` = `to`: none).
+    #[inline]
     pub fn spec_phase() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -208,6 +221,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn hole_texts() -> Ref<Strings> {
         kayak_rt::kept_constant!(ONCE: Ref<Strings>);
         once(&ONCE, || {
@@ -215,6 +229,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn trying_holes() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -222,6 +237,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn hole_at() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -229,6 +245,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn hole_op() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -236,6 +253,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn hole_place() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -243,6 +261,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn around() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -250,6 +269,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn around_at() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -257,6 +277,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn under_from() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -264,6 +285,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn under_to() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -271,6 +293,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_limit() -> i64 {
         2000000i64
     }
@@ -278,6 +301,7 @@ pub mod session {
     /// The tops numbered; what the engine cannot number a failure (C110), as
     /// it was before the engine said one rather than failing, for the Rust
     /// to catch (`machine-refused!`).
+    #[inline]
     pub fn numbered_or_failed_x(tops: List<&'static Top>) -> List<i64> {
         let ns = number_tops_x(tops);
         failure_raised_x();
@@ -305,30 +329,37 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn st_checking() -> i64 {
         0i64
     }
 
+    #[inline]
     pub fn st_waiting() -> i64 {
         1i64
     }
 
+    #[inline]
     pub fn st_running() -> i64 {
         2i64
     }
 
+    #[inline]
     pub fn st_done() -> i64 {
         3i64
     }
 
+    #[inline]
     pub fn st_failed() -> i64 {
         4i64
     }
 
+    #[inline]
     pub fn st_interrupted() -> i64 {
         5i64
     }
 
+    #[inline]
     pub fn st_refused() -> i64 {
         6i64
     }
@@ -336,6 +367,7 @@ pub mod session {
     // Which side this is; the requests the front has not yet sent, and the
     // news the machine has not, the newest first; the draft's run's serial,
     // and the text it was closed off as.
+    #[inline]
     pub fn machine_side() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -343,6 +375,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn requests() -> Ref<List<&'static Request>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<&'static Request>>);
         once(&ONCE, || {
@@ -350,6 +383,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn news_out() -> Ref<List<&'static News>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<&'static News>>);
         once(&ONCE, || {
@@ -357,6 +391,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_serial() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -364,6 +399,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn spec_text() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -371,6 +407,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn asked_x(r: &'static Request) -> () {
         set(requests(), kayak_rt::heap_cons(r, get(requests())))
     }
@@ -394,6 +431,7 @@ pub mod session {
     // is in the draft, and on which of its rows; the history (newest
     // first), where in it ^P/up is, the draft put aside meanwhile, and its
     // file; the steps an entry may take; the commands given; ,quit.
+    #[inline]
     pub fn live() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -401,6 +439,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn screen_rows() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -408,6 +447,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn screen_cols() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -415,6 +455,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn entries() -> Ref<List<Entry>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<Entry>>);
         once(&ONCE, || {
@@ -422,6 +463,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn draft() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -429,6 +471,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn rows() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -436,6 +479,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn draft_rows() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -443,6 +487,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn draft_dirty() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -450,6 +495,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn leaving() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -457,6 +503,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn escape() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -464,6 +511,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn last_run() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -471,6 +519,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn written() -> Ref<Chars> {
         kayak_rt::kept_constant!(ONCE: Ref<Chars>);
         once(&ONCE, || {
@@ -478,6 +527,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn cursor() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -485,6 +535,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn cursor_row() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -492,6 +543,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn escape_param() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -499,6 +551,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn history() -> Ref<Strings> {
         kayak_rt::kept_constant!(ONCE: Ref<Strings>);
         once(&ONCE, || {
@@ -506,6 +559,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn history_at() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -513,6 +567,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn stash() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -520,6 +575,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn history_path() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
@@ -527,6 +583,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn step_limit() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -534,6 +591,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn commands() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -541,6 +599,7 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn quitting() -> Ref<bool> {
         kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
@@ -548,10 +607,12 @@ pub mod session {
         })
     }
 
+    #[inline]
     pub fn slice_steps() -> i64 {
         20000i64
     }
 
+    #[inline]
     pub fn slice_ns() -> Ref<i64> {
         kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
@@ -561,6 +622,7 @@ pub mod session {
 
     /// The machine's deadline for a slice, if the session is live (a
     /// scripted one's slices are steps alone, so that it replays the same).
+    #[inline]
     pub fn slice_timed_x() -> () {
         if i64_gt_eq(get(slice_ns()), 0i64) {
             set(deadline(), i64_plus(clock(), get(slice_ns())))
@@ -569,6 +631,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn say_x(s: Str) -> () {
         set(written(), put(s, get(written())))
     }
@@ -647,6 +710,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn definition_form_p(f: &'static Sexp) -> bool {
         any_p(lambda1s(move |h: Str| {
             head_is_p(f, h)
@@ -728,10 +792,12 @@ pub mod session {
     }
 
     // What an entry's line says.
+    #[inline]
     pub fn seconds(ms: i64) -> Str {
         string_append(i64_to_string(i64_quotient(ms, 1000i64)), string_append(str_lit("."), string_append(i64_to_string(i64_quotient(i64_remainder(ms, 1000i64), 100i64)), str_lit(" s"))))
     }
 
+    #[inline]
     pub fn spinner(now: i64) -> Str {
         let frames = str_lit("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
         char_to_string(string_ref_i64(frames, i64_remainder(i64_quotient(now, 80i64), 10i64)))
@@ -791,6 +857,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn interrupted_x(e: Entry, now: i64) -> () {
         ended_x(e, st_interrupted(), now);
         parked_cleared_x(e.0)
@@ -862,6 +929,7 @@ pub mod session {
         set(draft_dirty(), true)
     }
 
+    #[inline]
     pub fn clamped(i: i64, n: i64) -> i64 {
         if i64_lt(i, 0i64) {
             0i64
@@ -872,6 +940,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn cut(s: Str, from: i64, to: i64) -> Str {
         let n = string_length_i64(s);
         substring(s, i64_to_int(clamped(from, n)), i64_to_int(clamped(to, n)))
@@ -894,6 +963,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn moved_x(at: i64) -> () {
         set(cursor(), clamped(at, string_length_i64(get(draft()))));
         set(draft_dirty(), true)
@@ -921,6 +991,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn name_char_p(c: char) -> bool {
         not((char_whitespace_p(c) || char_eq_p(c, '(') || char_eq_p(c, ')') || char_eq_p(c, '"') || char_eq_p(c, '\'')))
     }
@@ -999,6 +1070,7 @@ pub mod session {
     }
 
     /// The index `col` along the line beginning at `start`, or its end.
+    #[inline]
     pub fn column_on(d: Str, start: i64, col: i64) -> i64 {
         let end = line_end(d, start);
         if i64_lt(i64_plus(start, col), end) {
@@ -1085,6 +1157,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn trimmed_end(s: Str) -> Str {
         list_to_string(oldest_first_chars(trimmed_start(oldest_first_chars(string_chars(s), nil::<char>())), nil::<char>()))
     }
@@ -1273,11 +1346,13 @@ pub mod session {
     }
 
     // Commands, as Fixpt's REPL has them: a line beginning with a comma.
+    #[inline]
     pub fn help_text() -> Str {
         str_lit(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
     }
 
     /// Whether a command's line is whole: its forms, if any, closed.
+    #[inline]
     pub fn command_whole_p(line: Str) -> bool {
         let rest = command_rest(line);
         (null_p(trimmed_start(string_chars(rest))) || repl_complete_p(rest))
@@ -1294,6 +1369,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn command_word(line: Str) -> Str {
         substring(line, int_lit(0), i64_to_int(word_end(string_chars(line), 0i64)))
     }
@@ -1445,6 +1521,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn first_line(s: Str) -> Str {
         let ls = lines_of(string_chars(s), nil::<char>(), nil::<Str>());
         if null_p(ls) {
@@ -1574,6 +1651,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn expression_effects(v: &'static Cv, form: &'static Sexp) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
@@ -1783,6 +1861,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn up_x(n: i64) -> () {
         if i64_gt(n, 0i64) {
             say_x(string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("A"))))
@@ -1791,6 +1870,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn down_x(n: i64) -> () {
         if i64_gt(n, 0i64) {
             say_x(string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("B"))))
@@ -2092,6 +2172,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn closers(n: i64) -> Str {
         if i64_lt_eq(n, 0i64) {
             str_lit("")
@@ -2290,6 +2371,7 @@ pub mod session {
 
     /// A text with a hole checked: the checker refuses at the hole, saying
     /// what goes there (`speculation-refused!`), or at a list around it.
+    #[inline]
     pub fn hole_tried_x(text: Str) -> () {
         if string_eq_p(text, str_lit("")) {
             ()
@@ -2327,6 +2409,7 @@ pub mod session {
 
     /// No hole reached: the narrowest refusal of a list around it, if any,
     /// says what that list must be.
+    #[inline]
     pub fn hints_said_x() -> () {
         set(spec_phase(), 4i64);
         if string_eq_p(get(around()), str_lit("")) {
@@ -2595,6 +2678,7 @@ pub mod session {
         }
     }
 
+    #[inline]
     pub fn without_prefix(s: Str, p: Str) -> Str {
         if has_prefix_p(s, p) {
             cut(s, string_length_i64(p), string_length_i64(s))
@@ -2899,6 +2983,7 @@ pub mod session {
     }
 
     /// Entry `k` failed (the Rust caught the failure); or the draft's run.
+    #[inline]
     pub fn failed_x(k: i64, message: Str, now: i64) -> () {
         run_failed_x(k, message, now)
     }
@@ -2920,6 +3005,7 @@ pub mod session {
     /// Each slice at most `ms` milliseconds by the clock, about: the keys
     /// are read between slices, so a slice is how long typing may wait,
     /// whatever an entry or the draft's early run is doing (C99).
+    #[inline]
     pub fn slices_timed_x(ms: i64) -> () {
         set(slice_ns(), i64_star(ms, 1000000i64))
     }
@@ -2945,6 +3031,7 @@ pub mod session {
 
     // The two sides (C103).
     /// This thread the machine's side: the REPL's start, and nothing drawn.
+    #[inline]
     pub fn machine_start_x(is_live: bool) -> () {
         set(machine_side(), true);
         repl_start_x();
@@ -2952,6 +3039,7 @@ pub mod session {
     }
 
     /// The front's requests not yet sent, the oldest first.
+    #[inline]
     pub fn requests_x() -> List<&'static Request> {
         let rs = get(requests());
         set(requests(), nil::<&'static Request>());
@@ -3048,10 +3136,12 @@ pub mod session {
     }
 
     /// Whether to leave: ^D (or the input's end) asked, and no entry unfinished.
+    #[inline]
     pub fn over_p() -> bool {
         (get(quitting()) || (get(leaving()) && not(some_entry_p(&unfinished_p, get(entries())))))
     }
 
+    #[inline]
     pub fn leave_x() -> () {
         set(leaving(), true)
     }

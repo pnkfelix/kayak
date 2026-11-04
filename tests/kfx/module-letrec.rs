@@ -12,6 +12,7 @@ pub mod nums {
 
     pub type Num = i64;
 
+    #[inline]
     pub fn one() -> Num {
         1i64
     }
@@ -22,6 +23,7 @@ pub mod more {
 
     pub type Num = i64;
 
+    #[inline]
     pub fn two() -> Num {
         2i64
     }
@@ -34,22 +36,27 @@ pub mod m {
 
     use super::more::{two};
 
+    #[inline]
     pub fn g(x: i64) -> i64 {
         f(x)
     }
 
+    #[inline]
     pub fn f(x: i64) -> i64 {
         i64_plus(x, limit())
     }
 
+    #[inline]
     pub fn limit() -> Num {
         i64_plus(one(), two())
     }
 
+    #[inline]
     pub fn y() -> i64 {
         g(1i64)
     }
 
+    #[inline]
     pub fn even_p(n: i64) -> bool {
         if i64_eq(n, 0i64) {
             true
@@ -58,6 +65,7 @@ pub mod m {
         }
     }
 
+    #[inline]
     pub fn odd_p(n: i64) -> bool {
         if i64_eq(n, 0i64) {
             false
@@ -68,11 +76,13 @@ pub mod m {
 
     pub type Size = i64;
 
+    #[inline]
     pub fn size() -> Size {
         7i64
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     string_append(i64_to_string(i64_plus(m::y(), m::size())), if m::even_p(10i64) {
         str_lit(" even")

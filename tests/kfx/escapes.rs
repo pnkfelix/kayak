@@ -65,10 +65,12 @@ pub fn each<'r>(mut f: &'r dyn Fn(i64) -> Result<(), Unwind>, mut xs: Ints) -> R
 
 // A procedure that cannot abort, given where one that may is expected: in
 // Rust, a closure around it that returns `Ok`.
+#[inline]
 pub fn skip(x: i64) -> () {
     ()
 }
 
+#[inline]
 pub fn size_of(xs: Ints) -> i64 {
     if null_p(xs) {
         0i64
@@ -77,6 +79,7 @@ pub fn size_of(xs: Ints) -> i64 {
     }
 }
 
+#[inline]
 pub fn each_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<(), Unwind>, xs: Ints) -> Result<(), Unwind> {
     Ok(each(f, xs)?)
 }

@@ -5,10 +5,12 @@ use kayak_rt::*;
 // Names: the mangling, and names made of operators. (Rust's keywords:
 // tests/kfx/rust-keywords.kfx.)
 
+#[inline]
 pub fn empty_string_p(s: Str) -> bool {
     i64_eq(string_length_i64(s), 0i64)
 }
 
+#[inline]
 pub fn i64_to_yes(n: i64) -> Str {
     if i64_eq(n, 0i64) {
         str_lit("no")
@@ -17,10 +19,12 @@ pub fn i64_to_yes(n: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn _lt_plus_gt(a: Str, b: Str) -> Str {
     string_append(a, string_append(str_lit("+"), b))
 }
 
+#[inline]
 pub fn bump_x(n: i64) -> i64 {
     i64_plus(n, 1i64)
 }

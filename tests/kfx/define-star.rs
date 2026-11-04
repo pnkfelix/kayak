@@ -4,14 +4,17 @@ use kayak_rt::*;
 
 // define*: the globals a procedure's body reads are found, not written.
 // Each of these is declared pure; its type gets what it reads.
+#[inline]
 pub fn limit() -> i64 {
     10i64
 }
 
+#[inline]
 pub fn floor() -> i64 {
     -10i64
 }
 
+#[inline]
 pub fn clamp(x: i64) -> i64 {
     if i64_gt(x, limit()) {
         limit()
@@ -22,6 +25,7 @@ pub fn clamp(x: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn clamp_both(a: i64, b: i64) -> i64 {
     i64_plus(clamp(a), clamp(b))
 }

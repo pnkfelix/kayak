@@ -39,6 +39,7 @@ pub fn fib(mut n: Int, mut a: Int, mut b: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn power(b: Int, e: Int) -> Int {
     if _eq(e, int_lit(0)) {
         int_lit(1)

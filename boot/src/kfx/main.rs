@@ -33,6 +33,7 @@ use super::*;
 // The runner the compiler's reads and writes go to.
 pub type Drt = Tag<Int, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<Int>>>;
 
+#[inline]
 pub fn fail_with(message: Str, status: Int) -> Void {
     write_err(string_append(str_lit("kfx: "), string_append(message, str_lit("\n"))));
     match exit(status) {}
@@ -134,6 +135,7 @@ pub fn drop_space(mut cs: Chars) -> Chars {
     }
 }
 
+#[inline]
 pub fn line_trimmed(s: Str) -> Str {
     rev_to_string(drop_space(rev_onto(drop_space(string_chars(s)), nil::<char>())))
 }
@@ -211,6 +213,7 @@ pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind>
 
 // Whether a manifest says its program is a runtime's own, which may
 // declare syscalls (C225): a line `--syscalls`, as Fixpt's flag.
+#[inline]
 pub fn runtime_unit_p(text: Str) -> bool {
     string_member_p(str_lit("--syscalls"), map(&line_trimmed, lines_from(string_chars(text), nil::<char>())))
 }

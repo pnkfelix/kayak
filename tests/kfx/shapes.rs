@@ -25,6 +25,7 @@ pub type Point = Product_1x_1y<i64, i64>;
 pub type Shape = &'static Sum_6circle_4rect<i64, Product_1w_1h<i64, i64>>;
 
 // A member taken apart, `(rect (w h) ...)`, or bound whole, `(rect q ...)`.
+#[inline]
 pub fn area(s: Shape) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
@@ -39,6 +40,7 @@ pub fn area(s: Shape) -> i64 {
     }
 }
 
+#[inline]
 pub fn width(s: Shape) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
@@ -52,15 +54,18 @@ pub fn width(s: Shape) -> i64 {
     }
 }
 
+#[inline]
 pub fn origin() -> Point {
     Product_1x_1y(1i64, 2i64)
 }
 
 // Positional labels, and a product of products.
+#[inline]
 pub fn pair(a: i64, b: i64) -> Product_11_12<i64, i64> {
     Product_11_12(a, b)
 }
 
+#[inline]
 pub fn swap(p: Product_11_12<i64, i64>) -> Product_11_12<i64, i64> {
     Product_11_12(p.1, p.0)
 }

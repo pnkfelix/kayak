@@ -31,10 +31,12 @@ pub mod builder_in {
         }
     }
 
+    #[inline]
     pub fn count_to<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, n: i64) -> ListAt<'p, i64> {
         count_from(p, 1i64, n, nil::<i64>())
     }
 
+    #[inline]
     pub fn total<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, xs: ListAt<'p, i64>) -> i64 {
         if null_p(xs) {
             0i64
@@ -79,6 +81,7 @@ pub fn again(mut k: i64, mut acc: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(again(1000i64, 0i64))
 }

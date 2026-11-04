@@ -17,6 +17,7 @@ use super::*;
 // its own, so that what the checker notes of one part of one code, a
 // session's kept, is no other's. What kayak writes around the code has
 // negative positions, each its own (`stage-at!`).
+#[inline]
 pub fn stage_pos() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -24,10 +25,12 @@ pub fn stage_pos() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn stage_file() -> Str {
     str_lit("<stage>")
 }
 
+#[inline]
 pub fn stage_off() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -35,6 +38,7 @@ pub fn stage_off() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn stage_base() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -50,6 +54,7 @@ pub fn span(f0: i64, f1: i64) -> &'static Span {
     kayak_rt::heap_alloc(Span::Span(f0, f1))
 }
 
+#[inline]
 pub fn stage_spans() -> Ref<List<&'static Span>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Span>>);
     once(&ONCE, || {
@@ -57,12 +62,14 @@ pub fn stage_spans() -> Ref<List<&'static Span>> {
     })
 }
 
+#[inline]
 pub fn stage_at_x() -> i64 {
     let p = get(stage_pos());
     set(stage_pos(), i64_minus(p, 1i64));
     p
 }
 
+#[inline]
 pub fn stage_past_x(n: i64) -> i64 {
     let p = get(stage_off());
     set(stage_off(), i64_plus(p, n));
@@ -80,10 +87,12 @@ pub fn size_of_written(cs: List<char>) -> i64 {
 }
 
 /// A string's length written, quoted, `"`, `\` and a newline escaped.
+#[inline]
 pub fn written_length(cs: List<char>) -> i64 {
     i64_plus(2i64, size_of_written(cs))
 }
 
+#[inline]
 pub fn char_length(c: char) -> i64 {
     if char_eq_p(c, ' ') {
         7i64
@@ -246,6 +255,7 @@ pub fn stage_cv() -> &'static Cv {
 }
 
 // The check: its state, whose facts the lowering reads; a refusal fails.
+#[inline]
 pub fn stage_checked(prog: &'static Sexp, t: &'static Ty) -> &'static St {
     let tagcase_ = (&expressions::check)(at(stage_cv(), str_lit("staged code"), nil::<Str>()), new_state(), prog, t);
     match *tagcase_ {
@@ -255,6 +265,7 @@ pub fn stage_checked(prog: &'static Sexp, t: &'static Ty) -> &'static St {
     }
 }
 
+#[inline]
 pub fn stage_verdict(prog: &'static Sexp, t: &'static Ty) -> Str {
     stage_checked(prog, t);
     str_lit("")
@@ -278,6 +289,7 @@ pub fn after_said(mut cs: Chars, mut pat: Chars) -> Chars {
     }
 }
 
+#[inline]
 pub fn stage_refused(m: Str) -> Str {
     if string_eq_p(m, str_lit("")) {
         str_lit("refused")
@@ -334,6 +346,7 @@ pub fn stage_worked(prog: &'static Sexp, t: &'static Ty) -> Str {
 }
 
 // The labels of `stage-failure`'s product, made at loading.
+#[inline]
 pub fn stage_failure_labels() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -356,6 +369,7 @@ pub fn stage_failed_at_word_x(kind: Str, m: Str, a: i64, z: i64) -> i64 {
     sum_word_x(str_lit("failed"), product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(msg, kayak_rt::heap_cons(fixnum(a), kayak_rt::heap_cons(fixnum(z), kayak_rt::nil()))))))
 }
 
+#[inline]
 pub fn stage_failed_word_x(kind: Str, m: Str) -> i64 {
     stage_failed_at_word_x(kind, m, 0i64, 0i64)
 }
@@ -385,6 +399,7 @@ pub fn refusal_place(m: Str) -> i64 {
 }
 
 /// A refusal of the code, its words and where it is (C312).
+#[inline]
 pub fn refused_word_x(why: Str) -> i64 {
     let tagcase_ = code_span(refusal_place(why));
     match *tagcase_ {
@@ -686,13 +701,14 @@ pub fn evidence_given(prod: i64, names: Strings, i: i64) -> List<&'static Rpe> {
     if null_p(names) {
         nil::<&'static Rpe>()
     } else {
-        let got = (&rep_nodes)(word_kfx_bytes(slot_ref(prod, i)), nil::<Str>());
+        let got = (&rep_nodes)(word_kfx_bytes(bloblet_value(prod, i)), nil::<Str>());
         kayak_rt::heap_cons(rpe(car(names), got.0, got.1), evidence_given(prod, cdr(names), i64_plus(i, 1i64)))
     }
 }
 
 // A region a variable names, given no evidence: one of its own, named
 // afresh, `%region-N`, never another (Fixpt's rule).
+#[inline]
 pub fn fresh_regions() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -751,6 +767,7 @@ pub fn rep_filled_x(rep: i64, given: i64, names: Str) -> Bytes {
 }
 
 // `(%reify given REP names)`: evidence, its rep filled.
+#[inline]
 pub fn reify_run_x(given: i64, rep: i64, names: i64) -> i64 {
     kfx_bytes_word_x(rep_filled_x(rep, given, word_string(names)))
 }
@@ -779,10 +796,10 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
         let l = number_x(body);
         let e = alloc_x(ob_env(), 2i64);
         let p = alloc_x(ob_proc(), 2i64);
-        slot_set_x(e, 0i64, w_nil());
-        slot_set_x(e, 1i64, m);
-        slot_set_x(p, 0i64, code_word(l));
-        slot_set_x(p, 1i64, e);
+        bloblet_value_set_x(e, 0i64, w_nil());
+        bloblet_value_set_x(e, 1i64, m);
+        bloblet_value_set_x(p, 0i64, code_word(l));
+        bloblet_value_set_x(p, 1i64, e);
         sum_word_x(str_lit("ok"), p)
     }
 }
@@ -822,6 +839,7 @@ pub fn rerun_out(f0: &'static Cv, f1: Strings) -> &'static RerunOut {
     kayak_rt::heap_alloc(RerunOut::RerunOut(f0, f1))
 }
 
+#[inline]
 pub fn defn_names(d: &'static Defn) -> Strings {
     let tagcase_ = d;
     match *tagcase_ {
@@ -910,6 +928,7 @@ pub fn broken_binds(v: &'static Cv, names: Strings) -> Binds {
 
 // The machine's globals and their names (vm.kfx's, here since a session
 // makes globals, C310).
+#[inline]
 pub fn globals() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -917,6 +936,7 @@ pub fn globals() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn global_name_table() -> Ref<Array<Str>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
     once(&ONCE, || {
@@ -960,6 +980,7 @@ pub fn pend(f0: i64, f1: i64, f2: Str, f3: &'static Sexp, f4: &'static Ty, f5: b
 
 pub type Pends = List<&'static Pend>;
 
+#[inline]
 pub fn sessions() -> Ref<Sesss> {
     kayak_rt::kept_constant!(ONCE: Ref<Sesss>);
     once(&ONCE, || {
@@ -967,6 +988,7 @@ pub fn sessions() -> Ref<Sesss> {
     })
 }
 
+#[inline]
 pub fn pendings() -> Ref<Pends> {
     kayak_rt::kept_constant!(ONCE: Ref<Pends>);
     once(&ONCE, || {
@@ -979,6 +1001,7 @@ pub fn pendings() -> Ref<Pends> {
 // defines (C65); and the sessions' (C310), each named as Fixpt's lowering
 // names it, `fx26-session-K:NAME`, so that what defines a global after them
 // has an index of its own.
+#[inline]
 pub fn machine_globals() -> Ref<Strings> {
     kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
@@ -987,6 +1010,7 @@ pub fn machine_globals() -> Ref<Strings> {
 }
 
 // The labels of `session-redefinition`'s product, made at loading.
+#[inline]
 pub fn redefinition_labels() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -1098,6 +1122,7 @@ pub fn session_gs(gl: Sglobals, fs: Facts) -> Strings {
     }), counting(0i64, size(get(machine_globals())))), with_entries(fs))
 }
 
+#[inline]
 pub fn session_prefix(k: i64) -> Str {
     string_append(str_lit("fx26-session-"), string_append(i64_to_string(k), str_lit(":")))
 }
@@ -1143,6 +1168,7 @@ pub fn session_global_x(k: i64, n: Str, w: i64) -> i64 {
     i
 }
 
+#[inline]
 pub fn session_marks() -> Binds {
     kayak_rt::heap_cons(bind(str_lit("%session"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()))
 }
@@ -1173,7 +1199,7 @@ pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut 
             let n = car(ns);
             let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
             let v2 = session_top(v, form);
-            let g = session_global_x(k, n, slot_ref(m, i));
+            let g = session_global_x(k, n, bloblet_value(m, i));
             (v, gl, ns, i) = (v2, kayak_rt::heap_cons(sglobal(n, g), gl), cdr(ns), i64_plus(i, 1i64));
             continue;
         }
@@ -1254,6 +1280,7 @@ pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
 }
 
 /// `(make-session m)`: `#(m -1)`, its state made at its first use.
+#[inline]
 pub fn make_session_word_x(m: i64) -> i64 {
     let s = alloc_x(ob_vector(), 2i64);
     obj_set_x(s, 0i64, m);
@@ -1307,17 +1334,19 @@ pub fn thunk_word_x(lam: &'static Ir) -> i64 {
     let l = number_x(lam);
     let e = alloc_x(ob_env(), 2i64);
     let p = alloc_x(ob_proc(), 2i64);
-    slot_set_x(e, 0i64, w_nil());
-    slot_set_x(e, 1i64, w_unit());
-    slot_set_x(p, 0i64, code_word(l));
-    slot_set_x(p, 1i64, e);
+    bloblet_value_set_x(e, 0i64, w_nil());
+    bloblet_value_set_x(e, 1i64, w_unit());
+    bloblet_value_set_x(p, 0i64, code_word(l));
+    bloblet_value_set_x(p, 1i64, e);
     p
 }
 
+#[inline]
 pub fn session_scope() -> Scope {
     kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("%session"), kayak_rt::nil()), kayak_rt::nil())
 }
 
+#[inline]
 pub fn session_thunk(e: &'static Sexp) -> &'static Sexp {
     lst(kayak_rt::heap_cons(sym(str_lit("lambda"), stage_file(), stage_at_x()), kayak_rt::heap_cons(lst(nil::<&'static Sexp>(), stage_file(), 1i64, stage_at_x()), kayak_rt::heap_cons(e, kayak_rt::nil()))), stage_file(), 1i64, stage_at_x())
 }
@@ -1485,6 +1514,7 @@ pub fn session_run_x(sw: i64, code: i64, given: i64, rep: i64, names: i64) -> i6
     }
 }
 
+#[inline]
 pub fn pending_of(d: i64) -> &'static Pend {
     nth_pend(get(pendings()), fixnum_value(obj_ref(d, 1i64)))
 }
@@ -1608,6 +1638,7 @@ pub fn session_reruns(mut v: &'static Cv, mut gl: Sglobals, mut us: Defns, mut r
     }
 }
 
+#[inline]
 pub fn decision_tag(w: i64) -> Str {
     if is_obj_p(w, ob_sum()) {
         name_of_number(sum_tag_number(w))
@@ -1698,6 +1729,7 @@ pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
 }
 
 /// `(%session-committed! s d)`: `(sum defined NAME)`.
+#[inline]
 pub fn committed_word_x(sw: i64, d: i64) -> i64 {
     let tagcase_ = pending_of(d);
     match *tagcase_ {

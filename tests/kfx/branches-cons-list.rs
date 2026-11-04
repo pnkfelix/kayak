@@ -6,6 +6,7 @@ use kayak_rt::*;
 // refused, the pair at a region of its own (C123); since FX-26's e4af8997 a
 // list nothing places is `acyclic`, the pair too, and joins the list (C284).
 
+#[inline]
 pub fn f(b: bool, xs: List<Int>) -> List<Int> {
     let ys = if b {
         xs
@@ -15,6 +16,7 @@ pub fn f(b: bool, xs: List<Int>) -> List<Int> {
     ys
 }
 
+#[inline]
 pub fn main() -> Str {
     int_to_string(car(f(false, kayak_rt::heap_cons(int_lit(2), kayak_rt::nil()))))
 }

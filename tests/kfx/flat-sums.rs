@@ -30,6 +30,7 @@ impl<A0: Flat, A1: Flat> Flat for Product_1w_1h<A0, A1> {
 
 pub type O = &'static Bloblet<()>;
 
+#[inline]
 pub fn b() -> O {
     kayak_rt::kept_constant!(ONCE: O);
     once(&ONCE, || {
@@ -37,14 +38,17 @@ pub fn b() -> O {
     })
 }
 
+#[inline]
 pub fn r() -> BlobRef<O> {
     blobref_at(b(), int_lit(0), 16)
 }
 
+#[inline]
 pub fn k() -> BlobRef<O> {
     blobref_at(b(), int_lit(16), 16)
 }
 
+#[inline]
 pub fn z() -> BlobRef<O> {
     kayak_rt::kept_constant!(ONCE: BlobRef<O>);
     once(&ONCE, || {
@@ -99,6 +103,7 @@ pub fn total(mut a: Arr, mut i: i64, mut acc: f64) -> f64 {
     }
 }
 
+#[inline]
 pub fn ints(ns: List<Int>) -> Str {
     if null_p(ns) {
         str_lit("")

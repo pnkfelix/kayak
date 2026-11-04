@@ -32,14 +32,17 @@ pub mod counter {
         x.0
     }
 
+    #[inline]
     pub fn zero() -> T {
         up_t(0i64)
     }
 
+    #[inline]
     pub fn inc(c: T) -> T {
         up_t(i64_plus(down_t(c), 1i64))
     }
 
+    #[inline]
     pub fn value(c: T) -> i64 {
         down_t(c)
     }
@@ -53,14 +56,17 @@ pub mod stack {
 
     pub type Items = List<i64>;
 
+    #[inline]
     pub fn empty() -> Items {
         nil::<i64>()
     }
 
+    #[inline]
     pub fn push(x: i64, xs: Items) -> Items {
         kayak_rt::heap_cons(x, xs)
     }
 
+    #[inline]
     pub fn depth(xs: Items) -> i64 {
         if null_p(xs) {
             0i64
@@ -69,10 +75,12 @@ pub mod stack {
         }
     }
 
+    #[inline]
     pub fn two() -> List<i64> {
         push(2i64, push(1i64, empty()))
     }
 
+    #[inline]
     pub fn pusher() -> &'static (dyn Fn(i64, Items) -> Items + Send + Sync) {
         &push
     }
@@ -105,6 +113,7 @@ pub mod geometry {
         kayak_rt::heap_alloc(Shape::Rect(f0, f1))
     }
 
+    #[inline]
     pub fn area(s: &'static Shape) -> i64 {
         let tagcase_ = s;
         match *tagcase_ {
@@ -122,11 +131,13 @@ pub mod geometry {
 pub mod cells {
     use super::*;
 
+    #[inline]
     pub fn bump_x(c: Ref<i64>) -> () {
         set(c, i64_plus(get(c), 1i64))
     }
 }
 
+#[inline]
 pub fn bump_twice_x(c: Ref<i64>) -> () {
     cells::bump_x(c);
     cells::bump_x(c)
@@ -137,10 +148,12 @@ pub fn bump_twice_x(c: Ref<i64>) -> () {
 pub mod basics {
     use super::*;
 
+    #[inline]
     pub fn one() -> i64 {
         1i64
     }
 
+    #[inline]
     pub fn twice(n: i64) -> i64 {
         i64_star(2i64, n)
     }
@@ -149,6 +162,7 @@ pub mod basics {
 pub mod extras {
     use super::*;
 
+    #[inline]
     pub fn ten() -> i64 {
         10i64
     }
@@ -161,14 +175,17 @@ pub mod both {
 
     use super::extras::{ten};
 
+    #[inline]
     pub fn secret() -> i64 {
         i64_plus(3i64, 4i64)
     }
 
+    #[inline]
     pub fn eleven() -> i64 {
         i64_plus(one(), ten())
     }
 
+    #[inline]
     pub fn shown() -> i64 {
         twice(i64_plus(eleven(), secret()))
     }
@@ -176,10 +193,12 @@ pub mod both {
 
 pub type Shape = &'static geometry::Shape;
 
+#[inline]
 pub fn rect() -> &'static (dyn Fn(i64, i64) -> &'static geometry::Shape + Send + Sync) {
     &geometry::rect
 }
 
+#[inline]
 pub fn big_p(s: Shape) -> bool {
     let tagcase_ = s;
     match *tagcase_ {
@@ -192,12 +211,14 @@ pub fn big_p(s: Shape) -> bool {
     }
 }
 
+#[inline]
 pub fn twice(c: counter::T) -> counter::T {
     counter::inc(counter::inc(c))
 }
 
 // A `with` names its module's values before any local: `value` here is
 // counter's, the parameter hidden, and the call no loop.
+#[inline]
 pub fn count_to(value: i64, n: i64) -> i64 {
     if i64_eq(n, 0i64) {
         value

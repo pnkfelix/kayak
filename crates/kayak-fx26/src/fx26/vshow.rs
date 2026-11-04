@@ -66,12 +66,12 @@ pub fn show_word(w: i64) -> Str {
         } else {
             str_lit("#<closure>")
         }
-    } else if suffix_ref_p(w) {
-        string_append(str_lit("#<suffix-ref "), string_append(if is_obj_p(ref_owner(w), ob_array()) {
+    } else if is_sref_p(w) {
+        string_append(str_lit("#<suffix-ref "), string_append(if is_obj_p(sref_owner(w), ob_array()) {
             str_lit("bloblet")
         } else {
             str_lit("flat-array")
-        }, string_append(str_lit(" +"), string_append(i64_to_string(ref_offset(w)), str_lit(">")))))
+        }, string_append(str_lit(" +"), string_append(i64_to_string(sref_offset(w)), str_lit(">")))))
     } else if pointer_p(w) {
         let kind = obj_kind(w);
         if i64_eq(kind, ob_big()) {
@@ -89,7 +89,7 @@ pub fn show_word(w: i64) -> Str {
         } else if i64_eq(kind, ob_ref()) {
             string_append(str_lit("#<box "), string_append(show_word(obj_ref(w, 0i64)), str_lit(">")))
         } else if i64_eq(kind, ob_sum()) {
-            string_append(str_lit("#<sum "), string_append(symbol_text(slot_ref(w, 0i64)), str_lit(">")))
+            string_append(str_lit("#<sum "), string_append(symbol_text(bloblet_value(w, 0i64)), str_lit(">")))
         } else if i64_eq(kind, ob_product()) {
             string_append(str_lit("#<product of "), string_append(i64_to_string(obj_size(w)), str_lit(">")))
         } else if i64_eq(kind, ob_array()) {
@@ -103,7 +103,7 @@ pub fn show_word(w: i64) -> Str {
         } else if i64_eq(kind, ob_cont()) {
             str_lit("#<continuation>")
         } else if i64_eq(kind, ob_eqtable()) {
-            string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(field_at(w, 2i64))), str_lit(">")))
+            string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(slot_of(w, 2i64))), str_lit(">")))
         } else if i64_eq(kind, ob_flatx()) {
             string_append(str_lit("#<flat-array 2 fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))
         } else {

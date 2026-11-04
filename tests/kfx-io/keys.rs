@@ -8,6 +8,7 @@ use kayak_rt::*;
 // and size, which a pipe has not, so each says `not-a-terminal`. The
 // status is how many bytes came.
 
+#[inline]
 pub fn said(s: Str) -> () {
     let tagcase_ = write_out(string_append(s, str_lit("\n")));
     match *tagcase_ {
@@ -22,6 +23,7 @@ pub fn said(s: Str) -> () {
 
 pub type ByteResult = &'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>;
 
+#[inline]
 pub fn code(b: ByteResult) -> Int {
     let tagcase_ = b;
     match *tagcase_ {
@@ -97,6 +99,7 @@ pub fn start_keyed(out: ICell<Int>) -> Addr<Int> {
     })
 }
 
+#[inline]
 pub fn keyed() -> Int {
     let out = the::<ICell<Int>>(make_icell());
     let w = start_keyed(out);

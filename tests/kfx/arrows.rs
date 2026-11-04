@@ -6,14 +6,17 @@ use kayak_rt::*;
 // (T ...) R)`, a pure procedure's; `(->* (T ...) R)`, a definition's whose
 // effect its lambda says, alone, in a `define-rec`, and under a `poly`.
 
+#[inline]
 pub fn double(n: Int) -> Int {
     _star(int_lit(2), n)
 }
 
+#[inline]
 pub fn twice(n: Int) -> Int {
     double(double(n))
 }
 
+#[inline]
 pub fn counter() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -21,11 +24,13 @@ pub fn counter() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn bump() -> Int {
     set(counter(), _plus(get(counter()), int_lit(1)));
     get(counter())
 }
 
+#[inline]
 pub fn even_n_p(n: Int) -> bool {
     if _eq(n, int_lit(0)) {
         true
@@ -34,6 +39,7 @@ pub fn even_n_p(n: Int) -> bool {
     }
 }
 
+#[inline]
 pub fn odd_n_p(n: Int) -> bool {
     if _eq(n, int_lit(0)) {
         false
@@ -53,6 +59,7 @@ pub fn count_down(mut n: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn first_of<T: Copy + 'static>(xs: List<T>, d: T) -> T {
     if null_p(xs) {
         d
@@ -61,6 +68,7 @@ pub fn first_of<T: Copy + 'static>(xs: List<T>, d: T) -> T {
     }
 }
 
+#[inline]
 pub fn apply_to(f: &'static (dyn Fn(Int) -> Int + Send + Sync), x: Int) -> Int {
     f(x)
 }

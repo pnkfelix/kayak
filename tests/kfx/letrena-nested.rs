@@ -33,6 +33,7 @@ pub fn f(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(f(20i64))
 }

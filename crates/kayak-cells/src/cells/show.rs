@@ -7,10 +7,12 @@ use super::*;
 // tier 1's answers are compared with Fixpt's as text. Shared structure is
 // not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
 // fixpt-source: crates/fixpt-runtime/src/print.rs@19b31f1
+#[inline]
 pub fn hex_digit(d: i64) -> Str {
     char_to_string(string_ref_i64(str_lit("0123456789abcdef"), d))
 }
 
+#[inline]
 pub fn hex(n: i64) -> Str {
     if i64_lt(n, 16i64) {
         hex_digit(n)
@@ -152,6 +154,7 @@ pub fn kind_name(k: i64) -> Str {
 }
 
 /// Byte `i` of the raw words from word `p`, little-endian.
+#[inline]
 pub fn byte_at(p: i64, i: i64) -> i64 {
     i64_and(i64_shr(word_at(i64_plus(p, i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
 }

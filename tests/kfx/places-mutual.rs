@@ -6,6 +6,7 @@ use kayak_rt::*;
 // all the group makes in a place of its name, so each holds what the other
 // needs: evens makes pairs, odds references, and each calls the other.
 
+#[inline]
 pub fn evens<'p, Place_P: Holds<std::cell::Cell<i64>> + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64, acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
     if i64_lt(n, 1i64) {
         acc
@@ -42,6 +43,7 @@ pub fn total(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(total(6i64))
 }

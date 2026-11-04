@@ -13,10 +13,10 @@
   (append-words! (subr hp (i64 i64) i64)
     (lambda (rev tail) "`rev`, a list reversed, before `tail`." (if (i64= rev w-nil) tail (append-words! (pair-cdr rev) (pair! (pair-car rev) tail))))))
 
-(define checked-car (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) i64)
+(define checked-car (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64) i64)
   (lambda (p) (if (is-obj? p ob-pair) (pair-car p) (begin (failed-with! "car of nil") 0))))
 
-(define checked-cdr (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) i64)
+(define checked-cdr (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64) i64)
   (lambda (p) (if (is-obj? p ob-pair) (pair-cdr p) (begin (failed-with! "cdr of nil") 0))))
 
 (define one-word! (subr hp (i64 i64) i64)
@@ -36,7 +36,7 @@
 (define filled-raw! (subr hp (i64 i64 i64) i64)
   (lambda (kind n raw) (filled! kind n raw)))
 
-(define element (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+(define element (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64 i64) i64)
   (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") 0) (obj-ref p i))))
 
 (define element-set! (subr hp (i64 i64 i64) unit)
@@ -50,53 +50,53 @@
  in slots (`bloblet_value`), from 0."
 (define-rec
   (slots-filled! (subr hp (i64 i64 i64 i64) unit)
-    (lambda (p i n w) (if (i64>= i n) #u (begin (slot-set! p i w) (slots-filled! p (i64+ i 1) n w))))))
+    (lambda (p i n w) (if (i64>= i n) #u (begin (bloblet-value-set! p i w) (slots-filled! p (i64+ i 1) n w))))))
 
 (define array-filled! (subr hp (i64 i64) i64)
   (lambda (n w)
     (if (i64< n 0) (begin (failed-with! "a negative length") 0) (let ((p (bloblet-alloc! n 0))) (begin (slots-filled! p 0 n w) p)))))
 
-(define array-element (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
-  (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") 0) (slot-ref p i))))
+(define array-element (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64 i64) i64)
+  (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") 0) (bloblet-value p i))))
 
 (define array-element-set! (subr hp (i64 i64 i64) unit)
-  (lambda (p i w) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") #u) (slot-set! p i w))))
+  (lambda (p i w) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") #u) (bloblet-value-set! p i w))))
 
 (define-rec
   (slots-list! (subr hp (i64 i64 i64) i64)
-    (lambda (p i acc) (if (i64< i 0) acc (slots-list! p (i64- i 1) (pair! (slot-ref p i) acc))))))
+    (lambda (p i acc) (if (i64< i 0) acc (slots-list! p (i64- i 1) (pair! (bloblet-value p i) acc))))))
 
 (define-rec
   (slots-from-list! (subr hp (i64 i64 i64) unit)
-    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (slot-set! p i (pair-car xs)) (slots-from-list! p (i64+ i 1) (pair-cdr xs)))))))
+    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (bloblet-value-set! p i (pair-car xs)) (slots-from-list! p (i64+ i 1) (pair-cdr xs)))))))
 
 (define list-bloblet! (subr hp (i64 i64) i64)
   (lambda (bytes xs) (let ((p (bloblet-alloc! (list-count xs 0) bytes))) (begin (slots-from-list! p 0 xs) p))))
 
 "Strings: Fixpt's (C320, words.kfx)."
-(define in-range? (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) bool)
+(define in-range? (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64 i64) bool)
   (lambda (v i) (if (or (i64< i 0) (i64>= i (raw-length v))) (begin (failed-with! "an index out of range") #f) #t)))
 
-(define string-ref-w (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+(define string-ref-w (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64 i64) i64)
   (lambda (s i) (if (in-range? s i) (immediate imm-char (char-at s i)) 0)))
 
 (define string-set-w! (subr hp (i64 i64 i64) unit)
   (lambda (s i cp) (if (in-range? s i) (char-set! s i cp) #u)))
 
-(define bytes-ref-w (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+(define bytes-ref-w (subr (maxeff (read @globals) spin (read @c) (write @c)) (i64 i64) i64)
   (lambda (b i) (if (in-range? b i) (byte-at b i) 0)))
 
 (define bytes-set-w! (subr hp (i64 i64 i64) unit)
   (lambda (b i x) (if (in-range? b i) (byte-set! b i x) #u)))
 
 (define-rec
-  (copied-into! (subr hp (i64 i64 i64 i64 i64) unit)
-    (lambda (to at from i n) (if (i64>= i n) #u (begin (raw-set! to (i64+ at i) (raw-ref from i)) (copied-into! to at from (i64+ i 1) n))))))
+  (raw-copied-into! (subr hp (i64 i64 i64 i64 i64) unit)
+    (lambda (to at from i n) (if (i64>= i n) #u (begin (raw-set! to (i64+ at i) (raw-ref from i)) (raw-copied-into! to at from (i64+ i 1) n))))))
 
 (define string-append-w! (subr hp (i64 i64) i64)
   (lambda (a b)
     (let* ((n (string-length-w a)) (m (string-length-w b)) (p (string-alloc! (i64+ n m))))
-      (begin (copied-into! p 0 a 0 n) (copied-into! p n b 0 m) p))))
+      (begin (raw-copied-into! p 0 a 0 n) (raw-copied-into! p n b 0 m) p))))
 
 (define-rec
   (copied-range! (subr hp (i64 i64 i64 i64 i64) unit)
@@ -110,7 +110,7 @@
           (begin (copied-range! p s start 0 (i64- end start)) p)))))
 
 (define-rec
-  (string-compare-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+  (string-compare-w (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) i64)
     (lambda (a b i)
       "-1, 0 or 1, character by character."
       (let ((n (string-length-w a)) (m (string-length-w b)))
@@ -122,7 +122,7 @@
               (else (string-compare-w a b (i64+ i 1))))))))
 
 (define-rec
-  (matches-at? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) bool)
+  (matches-at? (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64 i64) bool)
     (lambda (s sub at j)
       (cond ((i64>= j (string-length-w sub)) #t)
             ((i64>= (i64+ at j) (string-length-w s)) #f)
@@ -130,7 +130,7 @@
             (else #f)))))
 
 (define-rec
-  (string-search-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+  (string-search-w (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) i64)
     (lambda (s sub from)
       "Where `sub` first is in `s`, at `from` or after; or -1."
       (let ((at (if (i64>= from 0) from (the i64 0))))
@@ -178,16 +178,16 @@
             (digits-set! p (if neg n (i64- n 1)) mag)
             p)))))
 
-(define text-room (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+(define text-room (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
   (lambda (w) (if (fixnum? w) (the i64 24) (i64+ 4 (i64* 10 (obj-size w))))))
 
-(define int-room (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+(define int-room (subr (maxeff (read @globals) spin (read @c)) (i64 i64) i64)
   (lambda (a b) (i64+ 8 (i64+ (if (fixnum? a) (the i64 2) (obj-size a)) (if (fixnum? b) (the i64 2) (obj-size b))))))
 
-(define int-room-mul (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+(define int-room-mul (subr (maxeff (read @globals) spin (read @c)) (i64 i64) i64)
   (lambda (a b) (i64+ 8 (i64* 2 (int-room a b)))))
 
-(define shift-room (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+(define shift-room (subr (maxeff (read @globals) spin (read @c)) (i64 i64) i64)
   (lambda (a b)
     "A shift's room: a count past 2^24 is too large but for 0, and the
      result then a word, or none."
@@ -195,10 +195,10 @@
       (i64+ (int-room a a) (if (and (i64> k 0) (i64<= k 16777216)) (i64+ 2 (i64-quotient k 32)) (the i64 0))))))
 
 (define-rec
-  (same-chars? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
+  (same-chars? (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) bool)
     (lambda (a b i) (or (i64>= i (raw-length a)) (and (i64= (raw-ref a i) (raw-ref b i)) (same-chars? a b (i64+ i 1)))))))
 
-(define raw-equal? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
+(define raw-equal? (subr (maxeff (read @globals) spin (read @c)) (i64 i64 i64) bool)
   (lambda (a b i) (and (i64= (raw-length a) (raw-length b)) (same-chars? a b i))))
 
 (define same-atom-w? (subr hp (i64 i64) bool)
@@ -224,8 +224,8 @@
         (begin (failed-with! "bytevector-copy: a span that does not fit") 0)
         (let ((p (bytes-alloc! (i64- end start)))) (begin (copied-range! p b start 0 (i64- end start)) p)))))
 
-(define fourth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr xs))))))
-(define fifth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr (pair-cdr xs)))))))
+(define fourth-arg (subr (maxeff (read @globals) spin (read @c)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr xs))))))
+(define fifth-arg (subr (maxeff (read @globals) spin (read @c)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr (pair-cdr xs)))))))
 
 (define-rec
   (bytes-moved! (subr hp (i64 i64 i64 i64 i64) unit)
@@ -276,18 +276,18 @@
 
 "I/O: KFX's, in proportion to what is read and written."
 (define-rec
-  (word-bytes-set! (subr hp ((bytevectorof @h) i64 i64 i64) unit)
+  (word-bytes-set! (subr hp ((bytevectorof @c) i64 i64 i64) unit)
     (lambda (bv p i n) (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (byte-at p i)))) (word-bytes-set! bv p (i64+ i 1) n))))))
 
-(define word-kfx-bytes (subr (maxeff hp (alloc @h)) (i64) (bytevectorof @h))
+(define word-kfx-bytes (subr (maxeff hp (alloc @c)) (i64) (bytevectorof @c))
   (lambda (p)
-    (let ((bv (the (bytevectorof @h) (make-bytevector (i64->int (raw-length p)) (int->u8 0)))))
+    (let ((bv (the (bytevectorof @c) (make-bytevector (i64->int (raw-length p)) (int->u8 0)))))
       (begin (word-bytes-set! bv p 0 (raw-length p)) bv))))
 
-(define sum-word! (subr (maxeff hp (alloc @h)) (string i64) i64)
+(define sum-word! (subr (maxeff hp (alloc @c)) (string i64) i64)
   (lambda (tag w) (sum-made! (symbol-word (intern! tag)) w)))
 
-(define utf8-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+(define utf8-word! (subr (maxeff hp (alloc @c)) (i64) i64)
   (lambda (p)
     (tagcase (utf8->string (word-kfx-bytes p))
       (text s (sum-word! "text" (string-word! s)))
@@ -295,9 +295,9 @@
 
 
 "The labels of `io-error`'s product, a range of `kids`, made at loading."
-(define io-error-labels (ref i64 @h) (new -1))
+(define io-error-labels (ref i64 @c) (new -1))
 
-(define io-error-word! (subr (maxeff hp (alloc @h)) (io-error) i64)
+(define io-error-word! (subr (maxeff hp (alloc @c)) (io-error) i64)
   (lambda (e)
     "FX-26's `io-error`: a product of its kind, a sum, and the system's
      words; its labels interned as a product's are."
@@ -312,30 +312,30 @@
 
 "Output a program writes while the REPL runs it (live-repl.kfx): kept for
  its entry, not written."
-(define capturing (ref bool @h) (new #f))
-(define captured (ref chars @h) (new nil))
+(define capturing (ref bool @c) (new #f))
+(define captured (ref chars @c) (new nil))
 
-(define capture! (subr (maxeff hp (alloc @h)) (string) bool)
+(define capture! (subr (maxeff hp (alloc @c)) (string) bool)
   (lambda (s)
     "What `write-out` does in the REPL: kept for the entry running, if one is."
     (if (get capturing) (begin (set captured (put s (get captured))) #t) #f)))
 
-(define written-word! (subr (maxeff hp (alloc @h)) ((sumof (done unit) (failed io-error))) i64)
+(define written-word! (subr (maxeff hp (alloc @c)) ((sumof (done unit) (failed io-error))) i64)
   (lambda (r) (tagcase r (done u (sum-word! "done" w-unit)) (failed e (sum-word! "failed" (io-error-word! e))))))
 
 (define-rec
-  (strings-word! (subr (maxeff hp (alloc @h)) (strings) i64)
+  (strings-word! (subr (maxeff hp (alloc @c)) (strings) i64)
     (lambda (ss) (if (null? ss) w-nil (let ((rest (strings-word! (cdr ss)))) (pair! (string-word! (car ss)) rest))))))
 
 (define-rec
   (strings-room (subr kfx (strings i64) i64)
     (lambda (ss n) (if (null? ss) n (strings-room (cdr ss) (i64+ n (i64+ 4 (string-length-i64 (car ss)))))))))
 
-(define args-room (subr (maxeff (read @globals) spin (read @h)) () i64) (lambda () (strings-room (get program-args) 8)))
+(define args-room (subr (maxeff (read @globals) spin (read @c)) () i64) (lambda () (strings-room (get program-args) 8)))
 
-(define pending-line (ref (sumof (line string) (eof unit) (failed io-error)) @h) (new (sum eof #u)))
-(define pending-file (ref (sumof (data (bytevectorof @h)) (failed io-error)) @h) (new (sum data (make-bytevector 0 (int->u8 0)))))
-(define pending-names (ref (sumof (names strings) (failed io-error)) @h) (new (sum names nil)))
+(define pending-line (ref (sumof (line string) (eof unit) (failed io-error)) @c) (new (sum eof #u)))
+(define pending-file (ref (sumof (data (bytevectorof @c)) (failed io-error)) @c) (new (sum data (make-bytevector 0 (int->u8 0)))))
+(define pending-names (ref (sumof (names strings) (failed io-error)) @c) (new (sum names nil)))
 
 "Text in the engine's own words (C233): kayak-rt writes a string's code
  points from `space` (one to a word), and reads a line into a string made
@@ -352,16 +352,16 @@
 
 "The line read where its room is found: its length (-1 the end, -2 a
  failure, its kind and detail kept)."
-(define pending-points (ref i64 @h) (new -1))
-(define pending-kind (ref i64 @h) (new 7))
-(define pending-detail (ref string @h) (new ""))
+(define pending-points (ref i64 @c) (new -1))
+(define pending-kind (ref i64 @c) (new 7))
+(define pending-detail (ref string @c) (new ""))
 
 (define failure-pended! (subr (maxeff hp (io sys)) () i64)
   (lambda ()
     (begin (set pending-kind (int->i64 (failure-kind))) (set pending-detail (failure-detail))
            (i64+ 32 (string-length-i64 (get pending-detail))))))
 
-(define failure-word! (subr (maxeff hp (alloc @h)) () i64)
+(define failure-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     "The failure pended, as `io-error-word!` makes one."
     (let* ((k (get pending-kind))
@@ -372,7 +372,7 @@
            (d (string-word! (get pending-detail))))
       (sum-word! "failed" (product-of! (list s d))))))
 
-(define line-room! (subr (maxeff hp (alloc @h) (io stdin) (io sys)) () i64)
+(define line-room! (subr (maxeff hp (alloc @c) (io stdin) (io sys)) () i64)
   (lambda ()
     (begin
       (set pending-points (int->i64 (read-line-points)))
@@ -380,48 +380,48 @@
             ((i64= (get pending-points) -1) 8)
             (else (failure-pended!))))))
 
-(define read-line-word! (subr (maxeff hp (alloc @h) (io sys)) () i64)
+(define read-line-word! (subr (maxeff hp (alloc @c) (io sys)) () i64)
   (lambda ()
     (let ((n (get pending-points)))
       (cond ((i64>= n 0)
              (let ((p (string-alloc! n)))
-               (begin (take-points (get space) (i64->int (i64+ (pointer-index p) 1)) 2) (sum-word! "line" p))))
+               (begin (take-points (get mem) (i64->int (i64+ (address p) 1)) 2) (sum-word! "line" p))))
             ((i64= n -1) (sum-word! "eof" w-unit))
             (else (failure-word!))))))
 
 "A string written from the engine's words, to the standard output (1) or
  error (2): `done`, or the failure (its room found before, as a write's
  is not: a failure's is made after, a rare path)."
-(define text-written-word! (subr (maxeff hp (alloc @h) (io sys)) (i64 i64) i64)
+(define text-written-word! (subr (maxeff hp (alloc @c) (io sys)) (i64 i64) i64)
   (lambda (p stream)
-    (if (i64= (int->i64 (write-points (get space) (i64->int (i64+ (pointer-index p) 1)) (i64->int (raw-length p)) 2 (i64->int stream))) 0)
+    (if (i64= (int->i64 (write-points (get mem) (i64->int (i64+ (address p) 1)) (i64->int (raw-length p)) 2 (i64->int stream))) 0)
         (sum-word! "done" w-unit)
         (begin (failure-pended!) (failure-word!)))))
 
 "The rest of FX-26's I/O (C232), as `read-line`: done where its room is
  found, which a failure's detail sizes, its value made after."
-(define pending-byte (ref (sumof (byte u8) (eof unit) (failed io-error)) @h) (new (sum eof #u)))
-(define pending-count (ref (sumof (count int) (eof unit) (failed io-error)) @h) (new (sum eof #u)))
-(define pending-bytes (ref (bytevectorof @h) @h) (new (make-bytevector 0 (int->u8 0))))
-(define pending-term (ref (sumof (done unit) (not-a-terminal unit) (failed io-error)) @h) (new (sum done #u)))
-(define pending-size (ref (sumof (size (productof (rows int) (columns int))) (not-a-terminal unit) (failed io-error)) @h)
+(define pending-byte (ref (sumof (byte u8) (eof unit) (failed io-error)) @c) (new (sum eof #u)))
+(define pending-count (ref (sumof (count int) (eof unit) (failed io-error)) @c) (new (sum eof #u)))
+(define pending-bytes (ref (bytevectorof @c) @c) (new (make-bytevector 0 (int->u8 0))))
+(define pending-term (ref (sumof (done unit) (not-a-terminal unit) (failed io-error)) @c) (new (sum done #u)))
+(define pending-size (ref (sumof (size (productof (rows int) (columns int))) (not-a-terminal unit) (failed io-error)) @c)
   (new (sum not-a-terminal #u)))
 "The labels of `terminal-size`'s product, made at loading."
-(define size-labels (ref i64 @h) (new -1))
+(define size-labels (ref i64 @c) (new -1))
 
 (define failure-room (subr kfx (io-error) i64) (lambda (e) (i64+ 32 (string-length-i64 (extract e detail)))))
 
-(define byte-room! (subr (maxeff hp (alloc @h) (io stdin)) () i64)
+(define byte-room! (subr (maxeff hp (alloc @c) (io stdin)) () i64)
   (lambda ()
     (begin (set pending-byte (read-byte)) (tagcase (get pending-byte) (byte k 8) (eof u 8) (failed e (failure-room e))))))
-(define read-byte-word! (subr (maxeff hp (alloc @h)) () i64)
+(define read-byte-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     (tagcase (get pending-byte)
       (byte k (sum-word! "byte" (int-word! (u8->int k))))
       (eof u (sum-word! "eof" w-unit))
       (failed e (sum-word! "failed" (io-error-word! e))))))
 
-(define bytes-room! (subr (maxeff hp (alloc @h) (io stdin)) (i64) i64)
+(define bytes-room! (subr (maxeff hp (alloc @c) (io stdin)) (i64) i64)
   (lambda (n)
     "Read into a bytevector of KFX's, `n` bytes long (the span's), copied
      after into the program's (`read-bytes-word!`); an empty span read as
@@ -437,7 +437,7 @@
           #u
           (begin (bytes-set-w! bv (i64+ at i) (int->i64 (u8->int (bytevector-u8-ref (get pending-bytes) (i64->int i)))))
                  (read-copied! bv at (i64+ i 1) n))))))
-(define read-bytes-word! (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
+(define read-bytes-word! (subr (maxeff hp (alloc @c)) (i64 i64 i64) i64)
   (lambda (bv at n)
     (cond ((or (i64< at 0) (i64< n 0) (i64> (i64+ at n) (raw-length bv)))
            (begin (failed-with! "read-bytes: a range past the bytevector's end") 0))
@@ -447,7 +447,7 @@
              (eof u (sum-word! "eof" w-unit))
              (failed e (sum-word! "failed" (io-error-word! e))))))))
 
-(define term-room! (subr (maxeff hp (alloc @h) (io terminal)) (i64) i64)
+(define term-room! (subr (maxeff hp (alloc @c) (io terminal)) (i64) i64)
   (lambda (which)
     (begin
       (cond ((i64= which 0) (set pending-term (terminal-raw)))
@@ -456,13 +456,13 @@
       (if (i64< which 2)
           (tagcase (get pending-term) (done u 8) (not-a-terminal u 8) (failed e (failure-room e)))
           (tagcase (get pending-size) (size p 16) (not-a-terminal u 8) (failed e (failure-room e)))))))
-(define term-word! (subr (maxeff hp (alloc @h)) () i64)
+(define term-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     (tagcase (get pending-term)
       (done u (sum-word! "done" w-unit))
       (not-a-terminal u (sum-word! "not-a-terminal" w-unit))
       (failed e (sum-word! "failed" (io-error-word! e))))))
-(define size-word! (subr (maxeff hp (alloc @h)) () i64)
+(define size-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     (tagcase (get pending-size)
       (size p (sum-word! "size" (product-of! (list (int-word! (extract p rows)) (int-word! (extract p columns))))))
@@ -474,27 +474,27 @@
 (define pending-info
   (ref (sumof (info (productof (kind (sumof (file unit) (directory unit) (symlink unit) (other unit))) (size int) (modified int) (mode int)))
               (failed io-error))
-       @h)
+       @c)
   (new (sum info (product (kind (sum other #u)) (size 0) (modified 0) (mode 0)))))
-(define pending-target (ref (sumof (target string) (failed io-error)) @h) (new (sum target "")))
+(define pending-target (ref (sumof (target string) (failed io-error)) @c) (new (sum target "")))
 "The labels of `file-info`'s product, made at loading."
-(define info-labels (ref i64 @h) (new -1))
+(define info-labels (ref i64 @c) (new -1))
 
-(define info-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+(define info-room! (subr (maxeff hp (alloc @c) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin (set pending-info (file-info (word-string path))) (tagcase (get pending-info) (info i 32) (failed e (failure-room e))))))
-(define file-info-word! (subr (maxeff hp (alloc @h)) () i64)
+(define file-info-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     (tagcase (get pending-info)
       (info i (let* ((k (sum-word! (tagcase (extract i kind) (file u "file") (directory u "directory") (symlink u "symlink") (other u "other")) w-unit))
                     (x (product-of! (list k (int-word! (extract i size)) (int-word! (extract i modified)) (int-word! (extract i mode))))))
                 (sum-word! "info" x)))
       (failed e (sum-word! "failed" (io-error-word! e))))))
-(define link-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+(define link-room! (subr (maxeff hp (alloc @c) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin (set pending-target (read-symlink (word-string path)))
            (tagcase (get pending-target) (target t (i64+ 32 (string-length-i64 t))) (failed e (failure-room e))))))
-(define read-symlink-word! (subr (maxeff hp (alloc @h)) () i64)
+(define read-symlink-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     (tagcase (get pending-target)
       (target t (sum-word! "target" (string-word! t)))
@@ -503,57 +503,57 @@
 "Programs run beside this one (C295): what `process-start` and
  `process-output` answer, asked when their room is, made after; the rest
  small, made at once."
-(define pending-started (ref (sumof (started int) (failed io-error)) @h) (new (sum started (the int 0))))
-(define pending-output (ref string @h) (new ""))
+(define pending-started (ref (sumof (started int) (failed io-error)) @c) (new (sum started (the int 0))))
+(define pending-output (ref string @c) (new ""))
 
 (define-rec
-  (word-strings (subr (maxeff (read @globals) spin (read @h)) (i64) strings)
+  (word-strings (subr (maxeff (read @globals) spin (read @c)) (i64) strings)
     (lambda (w) (if (i64= w w-nil) nil (cons (word-string (pair-car w)) (word-strings (pair-cdr w)))))))
 
-(define started-room! (subr (maxeff hp (alloc @h) (io process)) (i64 i64) i64)
+(define started-room! (subr (maxeff hp (alloc @c) (io process)) (i64 i64) i64)
   (lambda (argv dir)
     (begin (set pending-started (process-start (the strings (word-strings argv)) (word-string dir)))
            (tagcase (get pending-started) (started p 16) (failed e (failure-room e))))))
-(define started-word! (subr (maxeff hp (alloc @h)) () i64)
+(define started-word! (subr (maxeff hp (alloc @c)) () i64)
   (lambda ()
     (tagcase (get pending-started)
       (started p (sum-word! "started" (int-word! p)))
       (failed e (sum-word! "failed" (io-error-word! e))))))
-(define output-room! (subr (maxeff hp (alloc @h) (io process)) (i64) i64)
+(define output-room! (subr (maxeff hp (alloc @c) (io process)) (i64) i64)
   (lambda (p) (begin (set pending-output (process-output (word-int p))) (i64+ 8 (string-length-i64 (get pending-output))))))
-(define status-word! (subr (maxeff hp (alloc @h)) ((sumof (running unit) (exited int) (signalled int) (unknown unit))) i64)
+(define status-word! (subr (maxeff hp (alloc @c)) ((sumof (running unit) (exited int) (signalled int) (unknown unit))) i64)
   (lambda (s)
     (tagcase s
       (running u (sum-word! "running" w-unit))
       (exited c (sum-word! "exited" (int-word! c)))
       (signalled c (sum-word! "signalled" (int-word! c)))
       (unknown u (sum-word! "unknown" w-unit)))))
-(define exit-word! (subr (maxeff hp (alloc @h)) ((sumof (exited int) (signalled int) (unknown unit))) i64)
+(define exit-word! (subr (maxeff hp (alloc @c)) ((sumof (exited int) (signalled int) (unknown unit))) i64)
   (lambda (s)
     (tagcase s
       (exited c (sum-word! "exited" (int-word! c)))
       (signalled c (sum-word! "signalled" (int-word! c)))
       (unknown u (sum-word! "unknown" w-unit)))))
 
-(define file-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+(define file-room! (subr (maxeff hp (alloc @c) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin
       (set pending-file (read-file (word-string path)))
       (tagcase (get pending-file) (data b (i64+ 16 (int->i64 (bytevector-length b)))) (failed e (i64+ 32 (string-length-i64 (extract e detail))))))))
 
-(define read-file-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+(define read-file-word! (subr (maxeff hp (alloc @c)) (i64) i64)
   (lambda (path)
     (tagcase (get pending-file)
       (data b (sum-word! "data" (kfx-bytes-word! b)))
       (failed e (sum-word! "failed" (io-error-word! e))))))
 
-(define dir-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+(define dir-room! (subr (maxeff hp (alloc @c) (io fs-read)) (i64) i64)
   (lambda (path)
     (begin
       (set pending-names (list-dir (word-string path)))
       (tagcase (get pending-names) (names ns (strings-room ns 16)) (failed e (i64+ 32 (string-length-i64 (extract e detail))))))))
 
-(define list-dir-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+(define list-dir-word! (subr (maxeff hp (alloc @c)) (i64) i64)
   (lambda (path)
     (tagcase (get pending-names)
       (names ns (sum-word! "names" (strings-word! ns)))
@@ -561,7 +561,7 @@
 
 "The fixed widths but `i64`: rare in what the engine runs, and done through
  KFX's `int`."
-(define fixed-op-word (subr (maxeff hp (alloc @h)) (string i64 i64) i64)
+(define fixed-op-word (subr (maxeff hp (alloc @c)) (string i64 i64) i64)
   (lambda (name a b)
     (let* ((t (fixed-type name)) (op (fixed-op name)) (x (word-int a)))
       (cond ((string=? op "from-int") (int-word! (wrapped t x)))

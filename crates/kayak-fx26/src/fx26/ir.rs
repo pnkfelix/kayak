@@ -16,6 +16,7 @@ use super::*;
 // machine's step stops at it (`w-failed`), and the REPL ends the entry,
 // where a failure would end the REPL, since FX-26 catches none in a
 // program's own computation. Its message, the first said; whether one was.
+#[inline]
 pub fn engine_failed() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -23,6 +24,7 @@ pub fn engine_failed() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn engine_failure() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
@@ -33,6 +35,7 @@ pub fn engine_failure() -> Ref<Str> {
 // Its backtrace (TODO §29): a line for each procedure, innermost first;
 // none until the machine has stopped at it (vm.kfx's `stopped!`), or if
 // nothing is known.
+#[inline]
 pub fn engine_trace() -> Ref<List<Str>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<Str>>);
     once(&ONCE, || {
@@ -40,6 +43,7 @@ pub fn engine_trace() -> Ref<List<Str>> {
     })
 }
 
+#[inline]
 pub fn failed_with_x(message: Str) -> () {
     if get(engine_failed()) {
         ()
@@ -50,6 +54,7 @@ pub fn failed_with_x(message: Str) -> () {
 }
 
 // The failure said, taken: its message, and none kept.
+#[inline]
 pub fn failure_taken_x() -> Str {
     let m = get(engine_failure());
     set(engine_failed(), false);
@@ -58,6 +63,7 @@ pub fn failure_taken_x() -> Str {
     m
 }
 
+#[inline]
 pub fn traced(ls: List<Str>, prefix: Str) -> Str {
     if null_p(ls) {
         str_lit("")
@@ -68,6 +74,7 @@ pub fn traced(ls: List<Str>, prefix: Str) -> Str {
 
 // The failure said, taken, with its backtrace: each line after its message,
 // on a line of its own, after `prefix`.
+#[inline]
 pub fn failure_traced_x(prefix: Str) -> Str {
     let t = get(engine_trace());
     let m = failure_taken_x();
@@ -323,7 +330,7 @@ pub enum Frame {
     KList(Vals, Irs, Env, &'static Todo),
     KLetrec(Array<&'static Val>, i64, Irs, &'static Ir, Env),
     KDefine(i64),
-    KSum(Str),
+    KSumTag(Str),
     KExtract(Str),
     KTagcase(List<&'static Arm>, &'static Ir, Env),
     KPromptTag(&'static Ir, &'static Ir, Env),
@@ -352,8 +359,8 @@ pub fn k_define(f0: i64) -> &'static Frame {
     kayak_rt::heap_alloc(Frame::KDefine(f0))
 }
 
-pub fn k_sum(f0: Str) -> &'static Frame {
-    kayak_rt::heap_alloc(Frame::KSum(f0))
+pub fn k_sum_tag(f0: Str) -> &'static Frame {
+    kayak_rt::heap_alloc(Frame::KSumTag(f0))
 }
 
 pub fn k_extract(f0: Str) -> &'static Frame {

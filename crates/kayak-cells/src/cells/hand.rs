@@ -193,6 +193,7 @@ pub mod a64 {
 
     use super::made__input__1089__arm64_types::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig, Arm64DirectSig};
 
+    #[inline]
     pub fn arm_pow2(n: Int) -> Int {
         arithmetic_shift(int_lit(1), n)
     }
@@ -206,6 +207,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_f(v: Int, shift: Int) -> Int {
         if _lt(v, int_lit(0)) {
             int_lit(-1)
@@ -214,6 +216,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_sum(a: Int, b: Int) -> Int {
         if (_lt(a, int_lit(0)) || _lt(b, int_lit(0))) {
             int_lit(-1)
@@ -222,14 +225,17 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_sum3(a: Int, b: Int, c: Int) -> Int {
         arm_sum(a, arm_sum(b, c))
     }
 
+    #[inline]
     pub fn arm_sum4(a: Int, b: Int, c: Int, d: Int) -> Int {
         arm_sum(a, arm_sum3(b, c, d))
     }
 
+    #[inline]
     pub fn arm_reg(x: Int) -> Int {
         if (_gt_eq(x, int_lit(0)) && _lt_eq(x, int_lit(31))) {
             x
@@ -238,6 +244,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_check(ok: bool, v: Int) -> Int {
         if ok {
             v
@@ -246,46 +253,57 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_in_p(v: Int, lo: Int, hi: Int) -> bool {
         (_gt_eq(v, lo) && _lt(v, hi))
     }
 
+    #[inline]
     pub fn arm_reg_at(x: Int, shift: Int) -> Int {
         arm_f(arm_reg(x), shift)
     }
 
+    #[inline]
     pub fn arm_simm_at(v: Int, bits: Int, shift: Int) -> Int {
         arm_f(arm_simm(v, bits), shift)
     }
 
+    #[inline]
     pub fn arm_n_t(op: Int, field: Int, n: Int, t: Int) -> Int {
         arm_sum4(op, field, arm_reg_at(n, int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_mem9(op: Int, t: Int, n: Int, imm: Int) -> Int {
         arm_n_t(op, arm_simm_at(imm, int_lit(9), int_lit(12)), n, t)
     }
 
+    #[inline]
     pub fn arm_ldr_post(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4164944896), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldr_pre(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4164946944), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_str_post(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4160750592), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_str_pre(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4160752640), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldur(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4164943872), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_stur(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(4160749568), t, n, imm)
     }
@@ -294,18 +312,22 @@ pub mod a64 {
         arm_check((_eq(modulo(off, int_lit(8)), int_lit(0)) && _gt_eq(off, int_lit(0)) && _lt(off, int_lit(32768))), arm_n_t(op, arm_f(quotient(off, int_lit(8)), int_lit(10)), n, t))
     }
 
+    #[inline]
     pub fn arm_ldr(t: Int, n: Int, off: Int) -> Int {
         arm_mem12(int_lit(4181721088), t, n, off)
     }
 
+    #[inline]
     pub fn arm_str(t: Int, n: Int, off: Int) -> Int {
         arm_mem12(int_lit(4177526784), t, n, off)
     }
 
+    #[inline]
     pub fn arm_ldr_lit(t: Int, words: Int) -> Int {
         arm_sum3(int_lit(1476395008), arm_simm_at(words, int_lit(19), int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_ldr_reg(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(4167067648), arm_reg_at(m, int_lit(16)), n, t)
     }
@@ -315,82 +337,102 @@ pub mod a64 {
         arm_check(_eq(modulo(imm, int_lit(8)), int_lit(0)), arm_n_t(op, arm_sum(offset, arm_reg_at(t2, int_lit(10))), n, t))
     }
 
+    #[inline]
     pub fn arm_stp_pre(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2843738112), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldp_post(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2831155200), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_stp(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2835349504), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldp(t: Int, t2: Int, n: Int, imm: Int) -> Int {
         arm_pair(int_lit(2839543808), t, t2, n, imm)
     }
 
+    #[inline]
     pub fn arm_imm12(op: Int, d: Int, n: Int, imm: Int) -> Int {
         arm_check(arm_in_p(imm, int_lit(0), int_lit(4096)), arm_n_t(op, arm_f(imm, int_lit(10)), n, d))
     }
 
+    #[inline]
     pub fn arm_add_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(2432696320), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_sub_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(3506438144), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_subs_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(4043309056), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_cmp_imm(n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(4043309056), int_lit(31), n, imm)
     }
 
+    #[inline]
     pub fn arm_reg3(op: Int, d: Int, n: Int, m: Int) -> Int {
         arm_n_t(op, arm_reg_at(m, int_lit(16)), n, d)
     }
 
+    #[inline]
     pub fn arm_add(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2332033024), d, n, m)
     }
 
+    #[inline]
     pub fn arm_sub(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3405774848), d, n, m)
     }
 
+    #[inline]
     pub fn arm_adds(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2868903936), d, n, m)
     }
 
+    #[inline]
     pub fn arm_subs(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3942645760), d, n, m)
     }
 
+    #[inline]
     pub fn arm_orr(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2852126720), d, n, m)
     }
 
+    #[inline]
     pub fn arm_cmp(n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3942645760), int_lit(31), n, m)
     }
 
+    #[inline]
     pub fn arm_mov(d: Int, m: Int) -> Int {
         arm_reg3(int_lit(2852126720), d, int_lit(31), m)
     }
 
+    #[inline]
     pub fn arm_low_mask(bits: Int) -> Int {
         arm_check(arm_in_p(bits, int_lit(1), int_lit(64)), arm_f(_minus(bits, int_lit(1)), int_lit(10)))
     }
 
+    #[inline]
     pub fn arm_and_low(d: Int, n: Int, bits: Int) -> Int {
         arm_n_t(int_lit(2453667840), arm_low_mask(bits), n, d)
     }
 
+    #[inline]
     pub fn arm_tst_low(n: Int, bits: Int) -> Int {
         arm_sum3(int_lit(4064280607), arm_low_mask(bits), arm_reg_at(n, int_lit(5)))
     }
@@ -400,22 +442,27 @@ pub mod a64 {
         arm_check((_lt(lsb, int_lit(64)) && _gt_eq(width, int_lit(1)) && _lt_eq(_plus(lsb, width), int_lit(64))), arm_n_t(int_lit(3544186880), arm_sum(immr, imms), n, d))
     }
 
+    #[inline]
     pub fn arm_shift_imm(op: Int, d: Int, n: Int, s: Int) -> Int {
         arm_check(arm_in_p(s, int_lit(0), int_lit(64)), arm_n_t(op, arm_f(s, int_lit(16)), n, d))
     }
 
+    #[inline]
     pub fn arm_asr_imm(d: Int, n: Int, s: Int) -> Int {
         arm_shift_imm(int_lit(2470509568), d, n, s)
     }
 
+    #[inline]
     pub fn arm_lsr_imm(d: Int, n: Int, s: Int) -> Int {
         arm_shift_imm(int_lit(3544251392), d, n, s)
     }
 
+    #[inline]
     pub fn arm_strb(t: Int, n: Int) -> Int {
         arm_sum3(int_lit(956301312), arm_reg_at(n, int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_csel(d: Int, n: Int, m: Int, c: Int) -> Int {
         arm_n_t(int_lit(2592079872), arm_sum(arm_reg_at(m, int_lit(16)), arm_f(c, int_lit(12))), n, d)
     }
@@ -424,10 +471,12 @@ pub mod a64 {
         arm_check((_gt_eq(imm16, int_lit(0)) && _lt(imm16, int_lit(65536)) && _gt_eq(hw, int_lit(0)) && _lt(hw, int_lit(4))), arm_sum4(op, arm_f(hw, int_lit(21)), arm_f(imm16, int_lit(5)), arm_reg(d)))
     }
 
+    #[inline]
     pub fn arm_movz(d: Int, imm16: Int, hw: Int) -> Int {
         arm_mov16(int_lit(3531603968), d, imm16, hw)
     }
 
+    #[inline]
     pub fn arm_movk(d: Int, imm16: Int, hw: Int) -> Int {
         arm_mov16(int_lit(4068474880), d, imm16, hw)
     }
@@ -453,138 +502,172 @@ pub mod a64 {
         the::<ArmCode>(kayak_rt::heap_cons(arm_movz(d, modulo(v, int_lit(65536)), int_lit(0)), ks(int_lit(1), v)))
     }
 
+    #[inline]
     pub fn arm_b(words: Int) -> Int {
         arm_sum(int_lit(335544320), arm_simm(words, int_lit(26)))
     }
 
+    #[inline]
     pub fn arm_bl(words: Int) -> Int {
         arm_sum(int_lit(2483027968), arm_simm(words, int_lit(26)))
     }
 
+    #[inline]
     pub fn arm_b_cond(c: Int, words: Int) -> Int {
         arm_sum3(int_lit(1409286144), arm_simm_at(words, int_lit(19), int_lit(5)), c)
     }
 
+    #[inline]
     pub fn arm_cbz(t: Int, words: Int) -> Int {
         arm_sum3(int_lit(3019898880), arm_simm_at(words, int_lit(19), int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_cbnz(t: Int, words: Int) -> Int {
         arm_sum3(int_lit(3036676096), arm_simm_at(words, int_lit(19), int_lit(5)), arm_reg(t))
     }
 
+    #[inline]
     pub fn arm_br(n: Int) -> Int {
         arm_sum(int_lit(3592355840), arm_reg_at(n, int_lit(5)))
     }
 
+    #[inline]
     pub fn arm_blr(n: Int) -> Int {
         arm_sum(int_lit(3594452992), arm_reg_at(n, int_lit(5)))
     }
 
+    #[inline]
     pub fn arm_ret() -> Int {
         int_lit(3596551104)
     }
 
+    #[inline]
     pub fn arm_ldur_w(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(3091202048), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldurh(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(2017460224), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldurb(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(943718400), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_sturh(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(2013265920), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_sturb(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(939524096), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_stur_w(t: Int, n: Int, imm: Int) -> Int {
         arm_mem9(int_lit(3087007744), t, n, imm)
     }
 
+    #[inline]
     pub fn arm_ldr_x8(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(4167071744), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_ldr_w4(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(3093329920), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_ldrsw_4(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(3097524224), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_str_x8(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(4162877440), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_str_w4(t: Int, n: Int, m: Int) -> Int {
         arm_n_t(int_lit(3089135616), arm_reg_at(m, int_lit(16)), n, t)
     }
 
+    #[inline]
     pub fn arm_add_imm_pages(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(2436890624), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_sub_imm_pages(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(3510632448), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_adds_imm(d: Int, n: Int, imm: Int) -> Int {
         arm_imm12(int_lit(2969567232), d, n, imm)
     }
 
+    #[inline]
     pub fn arm_add_lsl(d: Int, n: Int, m: Int, s: Int) -> Int {
         arm_check(arm_in_p(s, int_lit(0), int_lit(64)), arm_n_t(int_lit(2332033024), arm_sum(arm_reg_at(m, int_lit(16)), arm_f(s, int_lit(10))), n, d))
     }
 
+    #[inline]
     pub fn arm_cmp_sp(m: Int) -> Int {
         arm_sum(int_lit(3944768511), arm_reg_at(m, int_lit(16)))
     }
 
+    #[inline]
     pub fn arm_eor(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(3388997632), d, n, m)
     }
 
+    #[inline]
     pub fn arm_and(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2315255808), d, n, m)
     }
 
+    #[inline]
     pub fn arm_sdiv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596277248), d, n, m)
     }
 
+    #[inline]
     pub fn arm_udiv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596276224), d, n, m)
     }
 
+    #[inline]
     pub fn arm_mul(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2600500224), d, n, m)
     }
 
+    #[inline]
     pub fn arm_smulh(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2604694528), d, n, m)
     }
 
+    #[inline]
     pub fn arm_lslv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596282368), d, n, m)
     }
 
+    #[inline]
     pub fn arm_lsrv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596283392), d, n, m)
     }
 
+    #[inline]
     pub fn arm_asrv(d: Int, n: Int, m: Int) -> Int {
         arm_reg3(int_lit(2596284416), d, n, m)
     }
 
+    #[inline]
     pub fn arm_msub(d: Int, n: Int, m: Int, a: Int) -> Int {
         arm_n_t(int_lit(2600501248), arm_sum(arm_reg_at(m, int_lit(16)), arm_reg_at(a, int_lit(10))), n, d)
     }
@@ -606,6 +689,7 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_nop() -> Int {
         int_lit(3573751839)
     }
@@ -618,78 +702,97 @@ pub mod a64 {
         }, kayak_rt::heap_cons(arm_lsr_imm(t1, t1, int_lit(9)), kayak_rt::heap_cons(arm_ldr(t2, state, cards), kayak_rt::heap_cons(arm_add(t2, t2, t1), kayak_rt::heap_cons(arm_movz(t1, int_lit(1), int_lit(0)), kayak_rt::heap_cons(arm_strb(t1, t2), nil::<Int>()))))))
     }
 
+    #[inline]
     pub fn arm_fmov_to_d(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2657550336), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fmov_from_d(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2657484800), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fp2(op: Int, d: Int, n: Int, m: Int) -> Int {
         arm_n_t(_plus(int_lit(509609984), arithmetic_shift(op, int_lit(12))), arm_reg_at(m, int_lit(16)), n, d)
     }
 
+    #[inline]
     pub fn arm_fadd(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(2), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fsub(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(3), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fmul(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(0), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fdiv(d: Int, n: Int, m: Int) -> Int {
         arm_fp2(int_lit(1), d, n, m)
     }
 
+    #[inline]
     pub fn arm_fp1(op: Int, d: Int, n: Int) -> Int {
         arm_n_t(_plus(int_lit(509624320), arithmetic_shift(op, int_lit(15))), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fabs(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(1), d, n)
     }
 
+    #[inline]
     pub fn arm_fneg(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(2), d, n)
     }
 
+    #[inline]
     pub fn arm_fsqrt(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(3), d, n)
     }
 
+    #[inline]
     pub fn arm_frintn(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(8), d, n)
     }
 
+    #[inline]
     pub fn arm_frintp(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(9), d, n)
     }
 
+    #[inline]
     pub fn arm_frintm(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(10), d, n)
     }
 
+    #[inline]
     pub fn arm_frintz(d: Int, n: Int) -> Int {
         arm_fp1(int_lit(11), d, n)
     }
 
+    #[inline]
     pub fn arm_fcmp(n: Int, m: Int) -> Int {
         arm_sum3(int_lit(509616128), arm_reg_at(m, int_lit(16)), arm_reg_at(n, int_lit(5)))
     }
 
+    #[inline]
     pub fn arm_scvtf(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2657222656), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fcvtzs(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(2658664448), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_single(w: Int) -> Int {
         if _lt(w, int_lit(0)) {
             int_lit(-1)
@@ -702,121 +805,150 @@ pub mod a64 {
         }
     }
 
+    #[inline]
     pub fn arm_fmov_to_s(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(505872384), int_lit(0), n, d)
     }
 
+    #[inline]
     pub fn arm_fmov_from_s(d: Int, n: Int) -> Int {
         arm_n_t(int_lit(505806848), int_lit(0), n, d)
     }
 }
 
 // Registers.
+#[inline]
 pub fn x_mem() -> Int {
     int_lit(19)
 }
 
+#[inline]
 pub fn x_ip() -> Int {
     int_lit(20)
 }
 
+#[inline]
 pub fn x_cur() -> Int {
     int_lit(21)
 }
 
+#[inline]
 pub fn x_dsp() -> Int {
     int_lit(22)
 }
 
+#[inline]
 pub fn x_rsp() -> Int {
     int_lit(23)
 }
 
+#[inline]
 pub fn x_st() -> Int {
     int_lit(24)
 }
 
+#[inline]
 pub fn x_dsb() -> Int {
     int_lit(25)
 }
 
+#[inline]
 pub fn x_fp() -> Int {
     int_lit(26)
 }
 
+#[inline]
 pub fn x_clo() -> Int {
     int_lit(27)
 }
 
+#[inline]
 pub fn x_fuel() -> Int {
     int_lit(28)
 }
 
+#[inline]
 pub fn x_cell() -> Int {
     int_lit(12)
 }
 
+#[inline]
 pub fn x_w() -> Int {
     int_lit(9)
 }
 
+#[inline]
 pub fn x10() -> Int {
     int_lit(10)
 }
 
+#[inline]
 pub fn x11() -> Int {
     int_lit(11)
 }
 
+#[inline]
 pub fn x13() -> Int {
     int_lit(13)
 }
 
+#[inline]
 pub fn x14() -> Int {
     int_lit(14)
 }
 
+#[inline]
 pub fn x15() -> Int {
     int_lit(15)
 }
 
+#[inline]
 pub fn x16() -> Int {
     int_lit(16)
 }
 
+#[inline]
 pub fn x17() -> Int {
     int_lit(17)
 }
 
 // Conditions, as `arm64.fx` numbers them.
+#[inline]
 pub fn c_eq() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn c_ne() -> Int {
     int_lit(1)
 }
 
+#[inline]
 pub fn c_hs() -> Int {
     int_lit(2)
 }
 
+#[inline]
 pub fn c_lo() -> Int {
     int_lit(3)
 }
 
+#[inline]
 pub fn c_vs() -> Int {
     int_lit(6)
 }
 
+#[inline]
 pub fn c_hi() -> Int {
     int_lit(8)
 }
 
+#[inline]
 pub fn c_ls() -> Int {
     int_lit(9)
 }
 
+#[inline]
 pub fn c_lt() -> Int {
     int_lit(11)
 }
@@ -828,89 +960,110 @@ pub fn c_lt() -> Int {
 // (0 under `--gc-stress`), the heap's length, and what the
 // machine works out from them at its entry: the return stack's base, and
 // the limits as addresses.
+#[inline]
 pub fn st_cur() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn st_kk() -> Int {
     int_lit(1)
 }
 
+#[inline]
 pub fn st_fp() -> Int {
     int_lit(2)
 }
 
+#[inline]
 pub fn st_clo() -> Int {
     int_lit(3)
 }
 
+#[inline]
 pub fn st_dsp() -> Int {
     int_lit(4)
 }
 
+#[inline]
 pub fn st_rsp() -> Int {
     int_lit(5)
 }
 
+#[inline]
 pub fn st_fuel() -> Int {
     int_lit(6)
 }
 
+#[inline]
 pub fn st_ds_limit() -> Int {
     int_lit(8)
 }
 
+#[inline]
 pub fn st_rs_limit() -> Int {
     int_lit(9)
 }
 
+#[inline]
 pub fn st_ds_length() -> Int {
     int_lit(10)
 }
 
+#[inline]
 pub fn st_rs_push() -> Int {
     int_lit(11)
 }
 
+#[inline]
 pub fn st_rsb() -> Int {
     int_lit(12)
 }
 
+#[inline]
 pub fn st_ds_lim() -> Int {
     int_lit(13)
 }
 
+#[inline]
 pub fn st_rs_lim() -> Int {
     int_lit(14)
 }
 
+#[inline]
 pub fn st_ds_end() -> Int {
     int_lit(15)
 }
 
+#[inline]
 pub fn st_rs_end() -> Int {
     int_lit(16)
 }
 
+#[inline]
 pub fn st_top() -> Int {
     int_lit(17)
 }
 
+#[inline]
 pub fn st_alloc_limit() -> Int {
     int_lit(18)
 }
 
+#[inline]
 pub fn st_mem_length() -> Int {
     int_lit(19)
 }
 
 // Register code's `RESULT` and `REG1`…`REG8` (C130), in `x0`…`x8` while the
 // machine runs, as Fixpt's tier 5 keeps them.
+#[inline]
 pub fn st_regs() -> Int {
     int_lit(20)
 }
 
 // Where the code starts (C131): its tables are at fixed places past it.
+#[inline]
 pub fn st_start() -> Int {
     int_lit(29)
 }
@@ -918,29 +1071,35 @@ pub fn st_start() -> Int {
 // The values' base (C139): the heap's address, the values being
 // addresses (never indices now, C244); the machine's base register is the heap's
 // address less it, so that a value plus it is the value's word.
+#[inline]
 pub fn st_vbase() -> Int {
     int_lit(34)
 }
 
 // Its length: 30 to 32 are hand-x64.kfx's own, 33 tier 6's (`st-t6link`).
+#[inline]
 pub fn st_size() -> i64 {
     35i64
 }
 
+#[inline]
 pub fn at_st(i: Int) -> Int {
     _star(int_lit(8), i)
 }
 
 // Why the machine stopped: to give a cell back; or the return stack ran
 // out under its entries' marks, which tier 1 would read past.
+#[inline]
 pub fn gave_back() -> i64 {
     1i64
 }
 
+#[inline]
 pub fn ran_out() -> i64 {
     2i64
 }
 
+#[inline]
 pub fn misaligned() -> i64 {
     3i64
 }
@@ -974,36 +1133,44 @@ pub fn align_odd(f0: Int) -> &'static Item {
     kayak_rt::heap_alloc(Item::AlignOdd(f0))
 }
 
+#[inline]
 pub fn j_b() -> Int {
     int_lit(0)
 }
 
+#[inline]
 pub fn j_cond() -> Int {
     int_lit(1)
 }
 
+#[inline]
 pub fn j_cbz() -> Int {
     int_lit(2)
 }
 
+#[inline]
 pub fn j_adr() -> Int {
     int_lit(3)
 }
 
+#[inline]
 pub fn j_cbnz() -> Int {
     int_lit(4)
 }
 
+#[inline]
 pub fn j_bl() -> Int {
     int_lit(5)
 }
 
 // A `nop`, and `align-odd!`: one if the next instruction's place is even,
 // so that the one after it, where a `blr` returns, is 8-aligned (C131).
+#[inline]
 pub fn arm_nop() -> Int {
     int_lit(3573751839)
 }
 
+#[inline]
 pub fn hand_items() -> Ref<List<&'static Item>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Item>>);
     once(&ONCE, || {
@@ -1012,6 +1179,7 @@ pub fn hand_items() -> Ref<List<&'static Item>> {
 }
 
 // Data, placed before the code: 8 bytes an entry.
+#[inline]
 pub fn hand_data() -> Ref<List<&'static Item>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Item>>);
     once(&ONCE, || {
@@ -1019,6 +1187,7 @@ pub fn hand_data() -> Ref<List<&'static Item>> {
     })
 }
 
+#[inline]
 pub fn hand_labels() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1026,48 +1195,59 @@ pub fn hand_labels() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn e_x(w: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(ins(w), get(hand_items())))
 }
 
+#[inline]
 pub fn label_x() -> Int {
     let l = get(hand_labels());
     set(hand_labels(), _plus(l, int_lit(1)));
     l
 }
 
+#[inline]
 pub fn bind_x(l: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(label_here(l), get(hand_items())))
 }
 
+#[inline]
 pub fn b_x(l: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(jump(j_b(), int_lit(0), l), get(hand_items())))
 }
 
+#[inline]
 pub fn bc_x(c: Int, l: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(jump(j_cond(), c, l), get(hand_items())))
 }
 
+#[inline]
 pub fn cbz_x(r: Int, l: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(jump(j_cbz(), r, l), get(hand_items())))
 }
 
+#[inline]
 pub fn adr_x(r: Int, l: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(jump(j_adr(), r, l), get(hand_items())))
 }
 
+#[inline]
 pub fn bl_x(l: Int) -> () {
     set(hand_items(), kayak_rt::heap_cons(jump(j_bl(), int_lit(0), l), get(hand_items())))
 }
 
+#[inline]
 pub fn align_odd_x() -> () {
     set(hand_items(), kayak_rt::heap_cons(align_odd(int_lit(0)), get(hand_items())))
 }
 
+#[inline]
 pub fn d_x(i: &'static Item) -> () {
     set(hand_data(), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(i, get(hand_data()))))
 }
 
+#[inline]
 pub fn data_label_x(l: Int) -> () {
     set(hand_data(), kayak_rt::heap_cons(label_here(l), get(hand_data())))
 }
@@ -1116,6 +1296,7 @@ pub fn placed_x(mut xs: List<&'static Item>, mut at: Int, mut ls: FlatArray<i64>
     }
 }
 
+#[inline]
 pub fn r#where(ls: FlatArray<i64>, l: Int) -> Int {
     i64_to_int(flatarray_ref_i64(ls, int_to_i64(l)))
 }
@@ -1157,118 +1338,147 @@ pub fn encoded(x: &'static Item, at: Int, ls: FlatArray<i64>) -> Int {
 }
 
 // Instructions, by `arm64.fx`'s encoders.
+#[inline]
 pub fn ldr_x(t: Int, n: Int, o: Int) -> () {
     e_x((&a64::arm_ldr)(t, n, o))
 }
 
+#[inline]
 pub fn str_x(t: Int, n: Int, o: Int) -> () {
     e_x((&a64::arm_str)(t, n, o))
 }
 
+#[inline]
 pub fn ldur_x(t: Int, n: Int, o: Int) -> () {
     e_x((&a64::arm_ldur)(t, n, o))
 }
 
+#[inline]
 pub fn stur_x(t: Int, n: Int, o: Int) -> () {
     e_x((&a64::arm_stur)(t, n, o))
 }
 
+#[inline]
 pub fn ldr_post_x(t: Int, n: Int, o: Int) -> () {
     e_x((&a64::arm_ldr_post)(t, n, o))
 }
 
+#[inline]
 pub fn str_post_x(t: Int, n: Int, o: Int) -> () {
     e_x((&a64::arm_str_post)(t, n, o))
 }
 
+#[inline]
 pub fn add_x(d: Int, n: Int, m: Int) -> () {
     e_x((&a64::arm_add)(d, n, m))
 }
 
+#[inline]
 pub fn sub_x(d: Int, n: Int, m: Int) -> () {
     e_x((&a64::arm_sub)(d, n, m))
 }
 
+#[inline]
 pub fn adds_x(d: Int, n: Int, m: Int) -> () {
     e_x((&a64::arm_adds)(d, n, m))
 }
 
+#[inline]
 pub fn subs_x(d: Int, n: Int, m: Int) -> () {
     e_x((&a64::arm_subs)(d, n, m))
 }
 
+#[inline]
 pub fn addi_x(d: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_add_imm)(d, n, i))
 }
 
+#[inline]
 pub fn subi_x(d: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_sub_imm)(d, n, i))
 }
 
+#[inline]
 pub fn cmp_x(n: Int, m: Int) -> () {
     e_x((&a64::arm_cmp)(n, m))
 }
 
+#[inline]
 pub fn cmpi_x(n: Int, i: Int) -> () {
     e_x((&a64::arm_cmp_imm)(n, i))
 }
 
+#[inline]
 pub fn mov_x(d: Int, m: Int) -> () {
     e_x((&a64::arm_mov)(d, m))
 }
 
+#[inline]
 pub fn movz_x(d: Int, i: Int) -> () {
     e_x((&a64::arm_movz)(d, i, int_lit(0)))
 }
 
+#[inline]
 pub fn orr_x(d: Int, n: Int, m: Int) -> () {
     e_x((&a64::arm_orr)(d, n, m))
 }
 
+#[inline]
 pub fn andl_x(d: Int, n: Int, bits: Int) -> () {
     e_x((&a64::arm_and_low)(d, n, bits))
 }
 
+#[inline]
 pub fn tstl_x(n: Int, bits: Int) -> () {
     e_x((&a64::arm_tst_low)(n, bits))
 }
 
+#[inline]
 pub fn asr_x(d: Int, n: Int, s: Int) -> () {
     e_x((&a64::arm_asr_imm)(d, n, s))
 }
 
+#[inline]
 pub fn lsr_x(d: Int, n: Int, s: Int) -> () {
     e_x((&a64::arm_lsr_imm)(d, n, s))
 }
 
+#[inline]
 pub fn csel_x(d: Int, n: Int, m: Int, c: Int) -> () {
     e_x((&a64::arm_csel)(d, n, m, c))
 }
 
+#[inline]
 pub fn br_x(n: Int) -> () {
     e_x((&a64::arm_br)(n))
 }
 
+#[inline]
 pub fn blr_x(n: Int) -> () {
     e_x((&a64::arm_blr)(n))
 }
 
+#[inline]
 pub fn stp_pre_x(t: Int, t2: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_stp_pre)(t, t2, n, i))
 }
 
+#[inline]
 pub fn ldp_post_x(t: Int, t2: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_ldp_post)(t, t2, n, i))
 }
 
+#[inline]
 pub fn stp_x(t: Int, t2: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_stp)(t, t2, n, i))
 }
 
+#[inline]
 pub fn ldp_x(t: Int, t2: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_ldp)(t, t2, n, i))
 }
 
+#[inline]
 pub fn ubfx_x(d: Int, n: Int, lsb: Int, w: Int) -> () {
     e_x((&a64::arm_ubfx)(d, n, lsb, w))
 }
@@ -1278,29 +1488,35 @@ pub fn arm_lsl(d: Int, n: Int, sh: Int) -> Int {
     _plus(int_lit(3544186880), _plus(_star(modulo(_minus(int_lit(64), sh), int_lit(64)), int_lit(65536)), _plus(_star(_minus(int_lit(63), sh), int_lit(1024)), _plus(_star(n, int_lit(32)), d))))
 }
 
+#[inline]
 pub fn lsl_x(d: Int, n: Int, sh: Int) -> () {
     e_x(arm_lsl(d, n, sh))
 }
 
 // `mul` and `smulh`, which `arm64.fx` has not: `madd xd, xn, xm, xzr`, and
 // the high 64 bits of the signed product.
+#[inline]
 pub fn mul_x(d: Int, n: Int, m: Int) -> () {
     e_x(_plus(int_lit(2600500224), _plus(_star(m, int_lit(65536)), _plus(_star(n, int_lit(32)), d))))
 }
 
+#[inline]
 pub fn smulh_x(d: Int, n: Int, m: Int) -> () {
     e_x(_plus(int_lit(2604694528), _plus(_star(m, int_lit(65536)), _plus(_star(n, int_lit(32)), d))))
 }
 
+#[inline]
 pub fn ret_x() -> () {
     e_x(a64::arm_ret())
 }
 
+#[inline]
 pub fn ldr_reg_x(t: Int, n: Int, m: Int) -> () {
     e_x((&a64::arm_ldr_reg)(t, n, m))
 }
 
 /// `r` times 8.
+#[inline]
 pub fn times8_x(r: Int) -> () {
     add_x(r, r, r);
     add_x(r, r, r);
@@ -1308,6 +1524,7 @@ pub fn times8_x(r: Int) -> () {
 }
 
 // The labels every routine shares.
+#[inline]
 pub fn l_next() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1315,6 +1532,7 @@ pub fn l_next() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_give() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1322,6 +1540,7 @@ pub fn l_give() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_give_pre() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1329,6 +1548,7 @@ pub fn l_give_pre() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_ran_out() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1336,6 +1556,7 @@ pub fn l_ran_out() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_pop_return() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1343,6 +1564,7 @@ pub fn l_pop_return() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_resume() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1350,6 +1572,7 @@ pub fn l_resume() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_resume_give() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1357,6 +1580,7 @@ pub fn l_resume_give() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_misaligned() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1366,6 +1590,7 @@ pub fn l_misaligned() -> Ref<Int> {
 
 // Where the code starts, where the machine is entered, and where the
 // table of the compiled words' tables of where to resume is (C128).
+#[inline]
 pub fn l_start() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1373,6 +1598,7 @@ pub fn l_start() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_entry() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1380,6 +1606,7 @@ pub fn l_entry() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_words() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1389,6 +1616,7 @@ pub fn l_words() -> Ref<Int> {
 
 // Compiling a word (tier 4, C128): the label of the next cell's code, and
 // of a branch's target's; -1 in the machine, or for a target not compiled.
+#[inline]
 pub fn h_cont() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1396,6 +1624,7 @@ pub fn h_cont() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn h_target() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -1404,11 +1633,13 @@ pub fn h_target() -> Ref<Int> {
 }
 
 /// Give the cell back if `c`.
+#[inline]
 pub fn give_if_x(c: Int) -> () {
     bc_x(c, get(l_give()))
 }
 
 /// On to the next cell.
+#[inline]
 pub fn next_x() -> () {
     b_x(if _lt(get(h_cont()), int_lit(0)) {
         get(l_next())
@@ -1418,6 +1649,7 @@ pub fn next_x() -> () {
 }
 
 /// On to a branch's target, the ip moved to it.
+#[inline]
 pub fn taken_x() -> () {
     b_x(if _lt(get(h_target()), int_lit(0)) {
         get(l_next())
@@ -1427,6 +1659,7 @@ pub fn taken_x() -> () {
 }
 
 /// On to the cell at the ip, of `cur`: its code if it has some.
+#[inline]
 pub fn resume_x() -> () {
     b_x(get(l_resume()))
 }
@@ -1445,6 +1678,7 @@ pub fn need_x(n: Int) -> () {
 }
 
 /// Room to push one, else give back (tier 1's `push!` traps).
+#[inline]
 pub fn h_room_x() -> () {
     ldr_x(x16(), x_st(), at_st(st_ds_end()));
     cmp_x(x_dsp(), x16());
@@ -1462,6 +1696,7 @@ pub fn limits_x() -> () {
 }
 
 /// Two values replaced by `r`.
+#[inline]
 pub fn put_top_x(r: Int) -> () {
     subi_x(x_dsp(), x_dsp(), int_lit(8));
     stur_x(r, x_dsp(), int_lit(-8));
@@ -1469,6 +1704,7 @@ pub fn put_top_x(r: Int) -> () {
 }
 
 /// `x13` := `#t` if `c`, else `#f`.
+#[inline]
 pub fn boolean_of_x(c: Int) -> () {
     movz_x(x13(), int_lit(11));
     movz_x(x14(), int_lit(3));
@@ -1505,6 +1741,7 @@ pub fn kind_in_x(r: Int, kind: i64) -> () {
 }
 
 /// `kind-in!`, of a cellular closure.
+#[inline]
 pub fn closure_in_x(r: Int) -> () {
     kind_in_x(r, k_closure())
 }
@@ -2181,10 +2418,12 @@ pub fn resumed_x() -> () {
 
 // A prompt's and a mark's entries begin with these (machine.kfx's
 // `prompt-mark`, `mark-mark`).
+#[inline]
 pub fn prompt_mark_word() -> i64 {
     51i64
 }
 
+#[inline]
 pub fn mark_mark_word() -> i64 {
     43i64
 }
@@ -2267,6 +2506,7 @@ pub fn machine_x() -> () {
 // Fixpt's `assemble_word`, of its hand machine's routines (Fixpt's
 // `native.fx` compiles for Fixpt's own machine, its stacks and registers,
 // not this one's).
+#[inline]
 pub fn hand_compiled() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -2274,6 +2514,7 @@ pub fn hand_compiled() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn words_compiled() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2282,6 +2523,7 @@ pub fn words_compiled() -> Ref<Int> {
 }
 
 // Longer words are not compiled: their branches' reach (a megabyte).
+#[inline]
 pub fn compiled_cells_most() -> i64 {
     4000i64
 }
@@ -2419,6 +2661,7 @@ pub fn span(f0: Str, f1: Int, f2: Int, f3: i64, f4: bool, f5: Int) -> &'static S
     kayak_rt::heap_alloc(Span::Span(f0, f1, f2, f3, f4, f5))
 }
 
+#[inline]
 pub fn word_spans() -> Ref<List<&'static Span>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Span>>);
     once(&ONCE, || {
@@ -2460,21 +2703,25 @@ pub fn note_code_lines(x1: Int, x2: Int, x3: Str, x4: Str, x5: FlatArray<i64>, x
 /// or register instructions' code it is (its source lines then noted
 /// with it, C246, C249), else 0; `regs` whether a register word's;
 /// `base` the label of its cell, or instruction, 0.
+#[inline]
 pub fn span_labelled_x(name: Str, lo: Int, hi: Int, w: i64, regs: bool, base: Int) -> () {
     set(word_spans(), kayak_rt::heap_cons(span(name, lo, hi, w, regs, base), get(word_spans())))
 }
 
 /// Word `w`'s compiled code to be named, its cells' labels from `base`.
+#[inline]
 pub fn span_noted_x(w: i64, base: Int) -> () {
     span_labelled_x(symbol_text(slot_of(w, f_name())), base, _plus(base, i64_to_int(cells_in(w, f_cell0()))), w, false, base)
 }
 
 /// Register word `rw`'s cellular twin's name, as the listing has it.
+#[inline]
 pub fn twin_name(rw: i64) -> Str {
     symbol_text(slot_of(slot_of(rw, f_twin()), f_name()))
 }
 
 /// Register word `rw`'s name, its cellular twin's, and the tier.
+#[inline]
 pub fn register_name(rw: i64, tier: Str) -> Str {
     string_append(twin_name(rw), tier)
 }
@@ -2616,6 +2863,7 @@ pub fn word_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
 // (machine.kfx's `reg-op!`), the registers in the state. A call returns
 // by the data stack, as stack code's do; the table of where to resume has
 // a second half, the points after a call, which pop `RESULT` (`resumed!`).
+#[inline]
 pub fn sub_const_x(d: Int, n: Int, k: Int) -> () {
     if _lt(k, int_lit(4096)) {
         subi_x(d, n, k)
@@ -2625,6 +2873,7 @@ pub fn sub_const_x(d: Int, n: Int, k: Int) -> () {
     }
 }
 
+#[inline]
 pub fn add_const_x(d: Int, n: Int, k: Int) -> () {
     if _lt(k, int_lit(4096)) {
         addi_x(d, n, k)
@@ -2634,6 +2883,7 @@ pub fn add_const_x(d: Int, n: Int, k: Int) -> () {
     }
 }
 
+#[inline]
 pub fn reg_of(k: Int) -> Int {
     if _eq(k, int_lit(0)) {
         x_clo()
@@ -2643,10 +2893,12 @@ pub fn reg_of(k: Int) -> Int {
 }
 
 /// Operand `j` of the instruction at `x12`.
+#[inline]
 pub fn opnd_x(d: Int, j: Int) -> () {
     ldur_x(d, x_cell(), _star(int_lit(-8), _plus(j, int_lit(1))))
 }
 
+#[inline]
 pub fn at_field(f: i64) -> Int {
     _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f)))
 }
@@ -2725,6 +2977,7 @@ pub fn frees_stored_x(mut r: Int, mut n: Int) -> () {
 
 // The frame's slot that keeps the link, past `save M`'s `M` (C131); -1
 // before one, a leaf's link staying in `x30`.
+#[inline]
 pub fn h_link() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2733,6 +2986,7 @@ pub fn h_link() -> Ref<Int> {
 }
 
 /// `x30` the link again, after a call.
+#[inline]
 pub fn link_reloaded_x(m: Int) -> () {
     if _gt_eq(m, int_lit(0)) {
         ldr_x(int_lit(30), x_fp(), _star(int_lit(8), m))
@@ -2776,6 +3030,7 @@ pub fn args_pushed_x(mut r: Int, mut n: Int) -> () {
 // compiles (those that never allocate), their blocks, and the labels of
 // their tier 6 code, its ways out and its ways in. Each machine emits its
 // own code from these (hand-x64.kfx's `y6-…`, this file's `t6-…`).
+#[inline]
 pub fn hand_direct() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -2785,10 +3040,12 @@ pub fn hand_direct() -> Ref<bool> {
 
 // Where tier 6 was gone into: the link tier 5's code had then
 // (hand-x64.kfx's; arm64 keeps it in the bottom record, C210).
+#[inline]
 pub fn st_t6link() -> Int {
     int_lit(33)
 }
 
+#[inline]
 pub fn words_direct() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2796,6 +3053,7 @@ pub fn words_direct() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn l_materialize() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2862,6 +3120,7 @@ pub fn direct_able_p(rw: i64, i: i64, n: i64, allocs: bool, fuller: bool) -> boo
 
 // Compiling a word for tier 6: whether, its instructions' labels, their
 // ways out, its tier 5 code's labels, and its blocks.
+#[inline]
 pub fn h_6() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -2869,6 +3128,7 @@ pub fn h_6() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn h_6_base() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2876,6 +3136,7 @@ pub fn h_6_base() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn h_6_exits() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2883,6 +3144,7 @@ pub fn h_6_exits() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn h_6_tier5() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2890,6 +3152,7 @@ pub fn h_6_tier5() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn h_6_adapter() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2899,6 +3162,7 @@ pub fn h_6_adapter() -> Ref<Int> {
 
 // While a word with tier 6 code is compiled: each block's first's way in
 // to it, and where in its block each instruction is.
+#[inline]
 pub fn h_6_on() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
@@ -2906,6 +3170,7 @@ pub fn h_6_on() -> Ref<bool> {
     })
 }
 
+#[inline]
 pub fn h_6_ins() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
@@ -2913,6 +3178,7 @@ pub fn h_6_ins() -> Ref<Int> {
     })
 }
 
+#[inline]
 pub fn h_6_at() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -2920,6 +3186,7 @@ pub fn h_6_at() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn h_6_of() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -2994,6 +3261,7 @@ pub fn t6_blocks_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64>
 
 // A block's fuel, spent at its start: given back by its first's way out
 // if there is not as much.
+#[inline]
 pub fn h_6_lead() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -3001,6 +3269,7 @@ pub fn h_6_lead() -> Ref<FlatArray<i64>> {
     })
 }
 
+#[inline]
 pub fn h_6_len() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -3047,6 +3316,7 @@ pub fn fills_but_x(mut rw: i64, mut i: i64, mut n: i64, mut j: Int, mut m: Int) 
 // register. A `load` of what a register holds is then nothing, or a move;
 // a `stack` of it, a move. Stores still write the frame: the collector,
 // callbacks and tier 5's code read it.
+#[inline]
 pub fn h_held() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -3066,6 +3336,7 @@ pub fn held_cleared_x(mut k: i64) -> () {
     }
 }
 
+#[inline]
 pub fn held_of(k: i64) -> i64 {
     if (i64_lt(k, 1i64) || i64_gt(k, 3i64)) {
         -1i64
@@ -3074,6 +3345,7 @@ pub fn held_of(k: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn held_set_x(k: i64, s: i64) -> () {
     if (i64_lt(k, 1i64) || i64_gt(k, 3i64)) {
         ()
@@ -3118,6 +3390,7 @@ pub fn slot_forgotten_x(mut k: i64, mut s: i64) -> () {
 // one after it and its target, an instruction that sets `RESULT` before
 // any reads it (Fixpt's `sets_first`), so that nothing reads the boolean.
 // The branch's instruction then makes nothing (`h-fused`).
+#[inline]
 pub fn h_fused() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -3125,11 +3398,13 @@ pub fn h_fused() -> Ref<i64> {
     })
 }
 
+#[inline]
 pub fn sets_result_first_p(op: i64) -> bool {
     (i64_eq(op, ro_const()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_stack()) || i64_eq(op, ro_global()) || i64_eq(op, ro_lexical()))
 }
 
 /// Branch `b`'s target.
+#[inline]
 pub fn fused_target(rw: i64, b: i64) -> i64 {
     i64_plus(i64_plus(b, 2i64), fix_val(slot_of(rw, i64_plus(f_cell0(), i64_plus(b, 1i64)))))
 }
@@ -3201,6 +3476,7 @@ pub fn t6_prepared_x(rw: i64, n: i64) -> () {
 
 // By instruction, the label of tier 5's code just past its call, where
 // its callee returns to by its link (C210).
+#[inline]
 pub fn h_6_after() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -3219,6 +3495,7 @@ pub fn after_call_x(i: i64) -> () {
     }
 }
 
+#[inline]
 pub fn subsi_x(d: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_subs_imm)(d, n, i))
 }
@@ -3302,6 +3579,7 @@ pub fn t6_invoked_x(tail: bool, n: Int, nx: i64, after: Int) -> () {
 
 /// `return`: to the caller's code; over the bottom record, out, to tier
 /// 5's, which returns to tier 5's caller.
+#[inline]
 pub fn t6_returned_x() -> () {
     ldr_x(x13(), int_lit(31), int_lit(8));
     cmpi_x(x13(), int_lit(1));
@@ -4094,6 +4372,7 @@ pub fn count_of(mut xs: List<Int>, mut n: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn hand_made() -> Ref<List<HandCode>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<HandCode>>);
     once(&ONCE, || {

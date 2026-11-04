@@ -67,10 +67,12 @@ pub fn rxi(f0: &'static Rx, f1: i64) -> &'static Rxi {
     kayak_rt::heap_alloc(Rxi::Rxi(f0, f1))
 }
 
+#[inline]
 pub fn rx_empty() -> &'static Rx {
     rx(nil::<Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>>>(), 0i64, nil::<Str>(), str_lit(""))
 }
 
+#[inline]
 pub fn rx_reserve(x: &'static Rx) -> &'static Rxi {
     let tagcase_ = x;
     match *tagcase_ {
@@ -91,6 +93,7 @@ pub fn rx_fill(x: &'static Rx, slot: i64, head: Str, set: bool, binders: Strings
     }
 }
 
+#[inline]
 pub fn rx_declined(x: &'static Rx, why: Str) -> &'static Rx {
     let tagcase_ = x;
     match *tagcase_ {
@@ -114,6 +117,7 @@ pub fn rx_node(x: &'static Rx, head: Str, set: bool, args: RpOperands) -> &'stat
     }
 }
 
+#[inline]
 pub fn rx_sym(s: Str) -> RpOperand {
     the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(string_to_symbol(s))))
 }
@@ -280,6 +284,7 @@ pub fn rx_atoms(x: &'static Rx, sc: Rpbinds, es: Strings) -> &'static Rxs {
     }
 }
 
+#[inline]
 pub fn rx_effect(x: &'static Rx, sc: Rpbinds, es: Strings) -> &'static Rxa {
     let tagcase_ = rx_atoms(x, sc, es);
     match *tagcase_ {
@@ -289,6 +294,7 @@ pub fn rx_effect(x: &'static Rx, sc: Rpbinds, es: Strings) -> &'static Rxa {
     }
 }
 
+#[inline]
 pub fn base_type_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -335,6 +341,7 @@ pub fn rx_binder_nodes(x: &'static Rx, ns: Strings) -> &'static Rxs {
 // A module type's descriptions, in the order written (C315): a type's,
 // `%desc d`, and an effect's, `%edesc e`, the latter a description function
 // giving it (`%effdesc`).
+#[inline]
 pub fn desc_of_p(it: &'static Ty) -> bool {
     let tagcase_ = it;
     match *tagcase_ {
@@ -388,6 +395,7 @@ pub fn desc_types(items: Tys) -> Tys {
 
 // kayak's types that are Fixpt's generative types (C301): each a named
 // constant applied to descriptions, as a datatype is.
+#[inline]
 pub fn rp_generative_heads() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -397,6 +405,7 @@ pub fn rp_generative_heads() -> Strings {
 
 // Fixpt's standard generative types, in its numbering (`check.rs`): a
 // constant's key is made of its name and its number there (C303).
+#[inline]
 pub fn rp_standard_generatives() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -426,6 +435,7 @@ pub fn rp_const(name: Str, arity: i64) -> RpOperand {
     }))))
 }
 
+#[inline]
 pub fn rp_generative_name(d: Str) -> Str {
     if string_eq_p(d, str_lit("%bytes")) {
         str_lit("bytevectorof")
@@ -434,6 +444,7 @@ pub fn rp_generative_name(d: Str) -> Str {
     }
 }
 
+#[inline]
 pub fn rp_generative_head(n: Str) -> Str {
     if string_eq_p(n, str_lit("bytevectorof")) {
         str_lit("%bytes")
@@ -444,6 +455,7 @@ pub fn rp_generative_head(n: Str) -> Str {
 
 // Fixpt's shapes, by number (`check.rs`'s `SHAPES`), and its relations'
 // names (`Rel`), for specifications (C303).
+#[inline]
 pub fn rp_shapes() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -451,6 +463,7 @@ pub fn rp_shapes() -> Strings {
     })
 }
 
+#[inline]
 pub fn rp_rels() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -471,6 +484,7 @@ pub fn rp_nth_string(mut xs: Strings, mut k: i64) -> Str {
     }
 }
 
+#[inline]
 pub fn sexp_int(e: &'static Sexp) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
@@ -504,6 +518,7 @@ pub fn rp_key_width(k: &'static Ty) -> i64 {
     }
 }
 
+#[inline]
 pub fn rp_key_of_width(w: i64) -> &'static Ty {
     ty_rconst(if i64_eq(w, 1i64) {
         str_lit("u8")
@@ -1000,6 +1015,7 @@ pub fn rx_parts(s: &'static St, x: &'static Rx, sc: Rpbinds, ls: Strings, ts: Ty
     }
 }
 
+#[inline]
 pub fn rx_subr(s: &'static St, x: &'static Rx, sc: Rpbinds, conv: Str, es: Strings, ps: Tys, r: &'static Ty, slot: i64) -> &'static Rx {
     rx_subr_spec(s, x, sc, conv, es, ps, r, slot, str_lit(""))
 }
@@ -1527,6 +1543,7 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
     }
 }
 
+#[inline]
 pub fn rp_hex_digits() -> Str {
     str_lit("0123456789abcdef")
 }
@@ -1667,6 +1684,7 @@ pub fn rp_op_text(mut ns: RpNodes, mut a: RpOperand) -> Str {
     }
 }
 
+#[inline]
 pub fn rp_ops_text(ns: RpNodes, r#as: RpOperands) -> Str {
     if null_p(r#as) {
         str_lit("")
@@ -1742,6 +1760,7 @@ pub fn ri_ty(c: &'static Ri, a: RpOperand) -> &'static Ty {
     }
 }
 
+#[inline]
 pub fn ri_tys(c: &'static Ri, r#as: RpOperands) -> Tys {
     if null_p(r#as) {
         nil::<&'static Ty>()
@@ -1950,10 +1969,12 @@ pub fn ri_region(c: &'static Ri, a: RpOperand) -> &'static Ty {
     }
 }
 
+#[inline]
 pub fn ri_region_string(c: &'static Ri, a: RpOperand) -> Str {
     region_string(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>(), nil::<Str>()), ri_region(c, a))
 }
 
+#[inline]
 pub fn ri_atoms(c: &'static Ri, r#as: RpOperands) -> Strings {
     if null_p(r#as) {
         nil::<Str>()
@@ -2589,6 +2610,7 @@ pub fn ty_rep<'r>(s: &'static St, t: &'static Ty) -> ListAt<'r, BytesAt<'r>> {
 // `(SLOT HEAD SET (BINDER …) (ARG …))`, each argument as its sum's tag and
 // its payload, every name written as a string, so that no name breaks the
 // reading.
+#[inline]
 pub fn rp_quoted(n: Str) -> Str {
     string_append(str_lit("\""), string_append(n, str_lit("\"")))
 }
@@ -2649,6 +2671,7 @@ pub fn rp_nodes_text(ns: RpNodes, hs: Strings, root: Int) -> Str {
 }
 
 // The text back (C305): the nodes, the holes' names, the root.
+#[inline]
 pub fn sexp_string(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
@@ -2701,6 +2724,7 @@ pub fn rp_nodes_of_text(text: Str) -> &'static Rexp {
 }
 
 // Why type `t` is declined: the first part a rep does not take, or none.
+#[inline]
 pub fn ty_declined(s: &'static St, t: &'static Ty) -> Str {
     let tagcase_ = rx_ty(s, rx_empty(), nil::<&'static Rpbind>(), t);
     match *tagcase_ {

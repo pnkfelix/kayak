@@ -13,6 +13,7 @@ pub type Wide = kayak_rt::value::Value;
 pub type MaybeInt = kayak_rt::value::Value;
 
 // A union below a wider one: the same `Value`.
+#[inline]
 pub fn widen(x: Small) -> Wide {
     x
 }
@@ -65,6 +66,7 @@ pub fn kind(x: Wide) -> Str {
 }
 
 // `#f` where `false` is a member: "an int or none".
+#[inline]
 pub fn next(x: MaybeInt) -> Int {
     if bool_p(x) {
         int_lit(0)
@@ -73,11 +75,13 @@ pub fn next(x: MaybeInt) -> Int {
     }
 }
 
+#[inline]
 pub fn none() -> MaybeInt {
     kayak_rt::value::ToValue::to_value(false)
 }
 
 // A union at a type variable: a generic Rust fn, instantiated at `Value`.
+#[inline]
 pub fn pick<T: Copy + 'static>(b: bool, x: T, y: T) -> T {
     if b {
         x
@@ -93,6 +97,7 @@ pub fn all() -> List<Wide> {
     }), kayak_rt::value::Shape::Procedure), kayak_rt::heap_cons(widen(the::<Small>(kayak_rt::value::ToValue::to_value(int_lit(41)))), kayak_rt::nil())))))))))
 }
 
+#[inline]
 pub fn sizes(xs: List<Wide>) -> Int {
     if null_p(xs) {
         int_lit(0)
@@ -101,6 +106,7 @@ pub fn sizes(xs: List<Wide>) -> Int {
     }
 }
 
+#[inline]
 pub fn kinds(xs: List<Wide>) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -110,6 +116,7 @@ pub fn kinds(xs: List<Wide>) -> Str {
 }
 
 // A list at `acyclic` given as a list of a union: copied, boxed (C78).
+#[inline]
 pub fn smalls(xs: List<Small>) -> Int {
     if null_p(xs) {
         int_lit(0)
@@ -122,6 +129,7 @@ pub fn smalls(xs: List<Small>) -> Int {
     }
 }
 
+#[inline]
 pub fn some_ints() -> List<Int> {
     static ONCE: std::sync::OnceLock<List<Int>> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -131,10 +139,12 @@ pub fn some_ints() -> List<Int> {
 
 // A procedure given where one of a union's parameter or result is wanted:
 // wrapped, its argument and result boxed (C82).
+#[inline]
 pub fn apply_int(f: &'static (dyn Fn(Int) -> Int + Send + Sync), n: Int) -> Int {
     f(n)
 }
 
+#[inline]
 pub fn small_size(x: Small) -> Int {
     if int_p(x) {
         kayak_rt::value::unbox::<Int>(x)
@@ -143,10 +153,12 @@ pub fn small_size(x: Small) -> Int {
     }
 }
 
+#[inline]
 pub fn call_small(g: &'static (dyn Fn() -> Small + Send + Sync)) -> Small {
     g()
 }
 
+#[inline]
 pub fn seven() -> Int {
     int_lit(7)
 }

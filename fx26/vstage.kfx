@@ -12,12 +12,12 @@
  its own, so that what the checker notes of one part of one code, a
  session's kept, is no other's. What kayak writes around the code has
  negative positions, each its own (`stage-at!`)."
-(define stage-pos (ref i64 @h) (new -1))
+(define stage-pos (ref i64 @c) (new -1))
 (define stage-file string "<stage>")
-(define stage-off (ref i64 @h) (new 0))
-(define stage-base (ref i64 @h) (new 0))
+(define stage-off (ref i64 @c) (new 0))
+(define stage-base (ref i64 @c) (new 0))
 (define-datatype span (span i64 i64))
-(define stage-spans (ref (listof span acyclic) @h) (new nil))
+(define stage-spans (ref (listof span acyclic) @c) (new nil))
 
 (define stage-at! (subr hp () i64)
   (lambda () (let ((p (get stage-pos))) (begin (set stage-pos (i64- p 1)) p))))
@@ -162,22 +162,22 @@
         (icell-get out)))))
 
 "The labels of `stage-failure`'s product, made at loading."
-(define stage-failure-labels (ref i64 @h) (new -1))
+(define stage-failure-labels (ref i64 @c) (new -1))
 
-(define stage-failure-word! (subr (maxeff hp (alloc @h)) (string) i64)
+(define stage-failure-word! (subr (maxeff hp (alloc @c)) (string) i64)
   (lambda (m)
     "`(sum failed (product (kind (sum refused #u)) (message m) (start 0) (end 0)))`:
      the place in the code no refusal of kayak's says yet."
     (let* ((k (sum-word! "refused" w-unit)) (msg (string-word! m)))
       (sum-word! "failed" (product-of! (list k msg (fixnum 0) (fixnum 0)))))))
 
-(define stage-failed-at-word! (subr (maxeff hp (alloc @h)) (string string i64 i64) i64)
+(define stage-failed-at-word! (subr (maxeff hp (alloc @c)) (string string i64 i64) i64)
   (lambda (kind m a z)
     "`(sum failed (product (kind (sum KIND #u)) (message m) (start a) (end z)))`."
     (let* ((k (sum-word! kind w-unit)) (msg (string-word! m)))
       (sum-word! "failed" (product-of! (list k msg (fixnum a) (fixnum z)))))))
 
-(define stage-failed-word! (subr (maxeff hp (alloc @h)) (string string) i64)
+(define stage-failed-word! (subr (maxeff hp (alloc @c)) (string string) i64)
   (lambda (kind m) (stage-failed-at-word! kind m 0 0)))
 
 (define-rec
@@ -194,7 +194,7 @@
             ((char=? (car cs) #\-) -1)
             (else (place-digits cs 0))))))
 
-(define refused-word! (subr (maxeff hp (alloc @h)) (string) i64)
+(define refused-word! (subr (maxeff hp (alloc @c)) (string) i64)
   (lambda (why)
     "A refusal of the code, its words and where it is (C312)."
     (tagcase (code-span (refusal-place why))
@@ -320,16 +320,16 @@
 "Evidence's words given: each a rep's binary form, the variable it is for
  named, in the order `names` says."
 (define-rec
-  (evidence-given (subr (maxeff hp (alloc @h)) (i64 strings i64) (listof rpe acyclic))
+  (evidence-given (subr (maxeff hp (alloc @c)) (i64 strings i64) (listof rpe acyclic))
     (lambda (prod names i)
       (if (null? names)
           nil
-          (let ((got ((proj rep-nodes @h) (word-kfx-bytes (slot-ref prod i)) nil)))
+          (let ((got ((proj rep-nodes @c) (word-kfx-bytes (bloblet-value prod i)) nil)))
             (cons (rpe (car names) (extract got 1) (extract got 2)) (evidence-given prod (cdr names) (i64+ i 1))))))))
 
 "A region a variable names, given no evidence: one of its own, named
  afresh, `%region-N`, never another (Fixpt's rule)."
-(define fresh-regions (ref i64 @h) (new 0))
+(define fresh-regions (ref i64 @c) (new 0))
 
 (define-rec
   (fresh-evidence! (subr hp (strings strings) (listof rpe acyclic))
@@ -347,27 +347,27 @@
                             nil)
                        (fresh-evidence! (cdr holes) named)))))))))
 
-(define rep-filled! (subr (maxeff hp (alloc @h)) (i64 i64 string) (bytevectorof @h))
+(define rep-filled! (subr (maxeff hp (alloc @c)) (i64 i64 string) (bytevectorof @c))
   (lambda (rep given names)
     "Rep `rep`'s binary form, its holes filled from the evidence `given`
      holds, for the variables `names` names: canonical, each set's members
      once."
-    (let* ((got ((proj rep-nodes @h) (word-kfx-bytes rep) nil))
+    (let* ((got ((proj rep-nodes @c) (word-kfx-bytes rep) nil))
            (main (rexp (extract got 1) (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) 0 ""))
            (named (spaced-words names))
            (es (onto (evidence-given given named 0)
                      (fresh-evidence! (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) named)))
            (canonical (lambda ((r rexp))
                    (tagcase r
-                     (rexp (ns hs root d) (the (bytevectorof @h) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
+                     (rexp (ns hs root d) (the (bytevectorof @c) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
            (b (canonical (rp-filled main es)))
-           (again ((proj rep-nodes @h) b nil)))
+           (again ((proj rep-nodes @c) b nil)))
       (canonical (rexp (map (lambda ((x rp-node)) (if (extract x 3) (product (1 (extract x 1)) (2 (extract x 2)) (3 #t) (4 (extract x 4)) (5 (rp-once (extract x 5)))) x))
                        (extract again 1))
                   (map (lambda ((y symbol)) (symbol->string y)) (extract again 2)) 0 "")))))
 
 "`(%reify given REP names)`: evidence, its rep filled."
-(define reify-run! (subr (maxeff hp (alloc @h)) (i64 i64 i64) i64)
+(define reify-run! (subr (maxeff hp (alloc @c)) (i64 i64 i64) i64)
   (lambda (given rep names) (kfx-bytes-word! (rep-filled! rep given (word-string names)))))
 
 (define stage-run! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 i64 i64 i64 i64) i64)
@@ -375,7 +375,7 @@
     "`(%stage-run m code given rep names)`: `(sum ok THUNK)`, the code made a
      procedure over module `m`, checked against `rep` filled from the
      evidence given (C307); or `(sum failed WHY)`."
-    (let* ((t ((proj rep-ty @h) (rep-filled! rep given (word-string names))))
+    (let* ((t ((proj rep-ty @c) (rep-filled! rep given (word-string names))))
            (thunk (staged-thunk (code-sexp! code)))
            (prog (staged-program thunk))
            (why (stage-worked prog t)))
@@ -387,8 +387,8 @@
                  (l (number! body))
                  (e (alloc! ob-env 2))
                  (p (alloc! ob-proc 2)))
-            (begin (slot-set! e 0 w-nil) (slot-set! e 1 m)
-                   (slot-set! p 0 (code-word l)) (slot-set! p 1 e)
+            (begin (bloblet-value-set! e 0 w-nil) (bloblet-value-set! e 1 m)
+                   (bloblet-value-set! p 0 (code-word l)) (bloblet-value-set! p 1 e)
                    (sum-word! "ok" p)))))))
 
 
@@ -460,8 +460,8 @@
 
 "The machine's globals and their names (vm.kfx's, here since a session
  makes globals, C310)."
-(define globals (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
-(define global-name-table (ref (arrayof string @h) @h) (new (make-array 1 "")))
+(define globals (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define global-name-table (ref (arrayof string @c) @c) (new (make-array 1 "")))
 
 "A session's global: a name and its index."
 (define-datatype sglobal (sglobal string i64))
@@ -478,16 +478,16 @@
 (define-datatype pend (pend i64 i64 string sexp ty bool))
 (define-type pends (listof pend acyclic))
 
-(define sessions (ref sesss @h) (new nil))
-(define pendings (ref pends @h) (new nil))
+(define sessions (ref sesss @c) (new nil))
+(define pendings (ref pends @c) (new nil))
 "The machine's globals' names, an index each, as `lower.kfx` has them: a
  program's, made at loading (`load!`); the REPL's, which grow as it
  defines (C65); and the sessions' (C310), each named as Fixpt's lowering
  names it, `fx26-session-K:NAME`, so that what defines a global after them
  has an index of its own."
-(define machine-globals (ref strings @h) (new nil))
+(define machine-globals (ref strings @c) (new nil))
 "The labels of `session-redefinition`'s product, made at loading."
-(define redefinition-labels (ref i64 @h) (new -1))
+(define redefinition-labels (ref i64 @c) (new -1))
 
 (define-rec
   (nth-sess (subr kfx (sesss i64) sess)
@@ -537,7 +537,7 @@
     (let ((n (size (filter (lambda ((g string)) (or (string=? g base) (has-prefix? g (string-append base ":")))) gs))))
       (if (i64= n 0) base (string-append base (string-append ":" (i64->string (i64+ n 1))))))))
 
-(define session-global! (subr (maxeff hp (alloc @h)) (i64 string i64) i64)
+(define session-global! (subr (maxeff hp (alloc @c)) (i64 string i64) i64)
   (lambda (k n w)
     "A new global of session `k`, its name `n` there, of value `w`: the
      machine's next, `fx26-session-K:n`, the globals' array and their
@@ -550,11 +550,11 @@
         (set machine-globals (onto (get machine-globals) (list full)))
         (if (i64< i (flatarray-length-i64 old))
             #u
-            (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* (i64+ i 1) 2) w-unbound))))
+            (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* (i64+ i 1) 2) w-unbound))))
               (begin (words-copied! old bigger 0 (flatarray-length-i64 old)) (set globals bigger))))
         (if (i64< i (int->i64 (array-length names)))
             #u
-            (let ((more (the (arrayof string @h) (make-array (i64->int (i64* (i64+ i 1) 2)) ""))))
+            (let ((more (the (arrayof string @c) (make-array (i64->int (i64* (i64+ i 1) 2)) ""))))
               (begin (names-copied! names more 0 (int->i64 (array-length names))) (set global-name-table more))))
         (array-set! (get global-name-table) (i64->int i) full)
         (flatarray-set-i64! (get globals) i w)
@@ -573,7 +573,7 @@
         (check-top v form))))
 
 (define-rec
-  (seeded (subr (maxeff hp (alloc @h)) (i64 cv sglobals i64 strings i64) sess)
+  (seeded (subr (maxeff hp (alloc @c)) (i64 cv sglobals i64 strings i64) sess)
     (lambda (k v gl m ns i)
       "`m`'s values each defined in the session, `(define x (with
        stage-module x))`, its global holding `m`'s: a product, its values in
@@ -585,7 +585,7 @@
                                   (lst (list (sym "with" stage-file 0) (sym "stage-module" stage-file 0) (sym n stage-file 0)) stage-file 1 (stage-at!)))
                             stage-file 1 (stage-at!)))
                  (v2 (session-top v form))
-                 (g (session-global! k n (slot-ref m i))))
+                 (g (session-global! k n (bloblet-value m i))))
             (seeded k v2 (cons (sglobal n g) gl) m (cdr ns) (i64+ i 1)))))))
 
 (define module-types-opened (subr kfx (cv ty) cv)
@@ -605,7 +605,7 @@
                          nil))
                    (mtype-items mt))))))
 
-(define session-state! (subr (maxeff hp (alloc @h)) (i64 ty) i64)
+(define session-state! (subr (maxeff hp (alloc @c)) (i64 ty) i64)
   (lambda (sw mt)
     "The index of session `sw`'s state, made first if it has none, of
      module type `mt`."
@@ -630,7 +630,7 @@
               (obj-set! sw 1 (fixnum k2))
               k2))))))
 
-(define make-session-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+(define make-session-word! (subr (maxeff hp (alloc @c)) (i64) i64)
   (lambda (m)
     "`(make-session m)`: `#(m -1)`, its state made at its first use."
     (let ((s (alloc! ob-vector 2))) (begin (obj-set! s 0 m) (obj-set! s 1 (fixnum -1)) s))))
@@ -659,8 +659,8 @@
   (lambda (lam)
     "Procedure `lam`, lowered at the top, a closure over nothing."
     (let* ((l (number! lam)) (e (alloc! ob-env 2)) (p (alloc! ob-proc 2)))
-      (begin (slot-set! e 0 w-nil) (slot-set! e 1 w-unit)
-             (slot-set! p 0 (code-word l)) (slot-set! p 1 e)
+      (begin (bloblet-value-set! e 0 w-nil) (bloblet-value-set! e 1 w-unit)
+             (bloblet-value-set! p 0 (code-word l)) (bloblet-value-set! p 1 e)
              p))))
 
 (define session-scope (subr kfx () scope) (lambda () (list (list "%session"))))
@@ -728,7 +728,7 @@
     "`(%session-run s code given rep names)`, `session-check`'s: the code an
      expression or a definition, checked in session `s` against `rep`,
      `(subr pure (M) (subr E () R))`, filled from the evidence given."
-    (let* ((whole ((proj rep-ty @h) (rep-filled! rep given (word-string names))))
+    (let* ((whole ((proj rep-ty @c) (rep-filled! rep given (word-string names))))
            (mt (tagcase whole (ty-proc (es ps r) (car ps)) (else other whole)))
            (t (tagcase whole (ty-proc (es ps r) r) (else other whole)))
            (k (session-state! sw mt))
@@ -753,7 +753,7 @@
               (onto (if (and (string-member? n (names-in f)) (not (string-member? n ns))) ns nil)
                     (direct-users (cdr ds) n))))))))
 
-(define redefines-word! (subr (maxeff hp (alloc @h)) (i64 i64) i64)
+(define redefines-word! (subr (maxeff hp (alloc @c)) (i64 i64) i64)
   (lambda (sw d)
     "`(session-redefines s d)`: `(sum fresh #u)`, or `(sum redefines r)`, `r`
      the name, its type and the new one, and the session's definitions
@@ -841,7 +841,7 @@
                                  (set pendings (pend-replaced (get pendings) (fixnum-value (obj-ref d 1)) (pend k g name form dt #t)))
                                  (sum-word! "go" p))))))))))))))))
 
-(define committed-word! (subr (maxeff hp (alloc @h)) (i64 i64) i64)
+(define committed-word! (subr (maxeff hp (alloc @c)) (i64 i64) i64)
   (lambda (sw d)
     "`(%session-committed! s d)`: `(sum defined NAME)`."
     (tagcase (pending-of d) (pend (k g name form dt used) (sum-word! "defined" (string-word! name))))))

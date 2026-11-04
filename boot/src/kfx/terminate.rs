@@ -207,6 +207,7 @@ pub mod termination {
         }
     }
 
+    #[inline]
     pub fn wc_bound(c: &'static Wc, n: Str) -> List<Trackeds> {
         let tagcase_ = c;
         match *tagcase_ {
@@ -308,6 +309,7 @@ pub mod termination {
     }
 
     /// Whether `o + k` is past an i64, where FX-26's `checked_add` gives up.
+    #[inline]
     pub fn overflows_p(o: i64, k: i64) -> bool {
         if i64_gt(k, 0i64) {
             i64_gt(o, i64_minus(9223372036854775807i64, k))
@@ -635,6 +637,7 @@ pub mod termination {
         }
     }
 
+    #[inline]
     pub fn hiding(c: &'static Wc, names: Strings) -> &'static Wc {
         in_scope(c, map(lambda1s(move |n: Str| {
             known(n, nil::<&'static termination::Tracked>())
@@ -776,6 +779,7 @@ pub mod termination {
         }
     }
 
+    #[inline]
     pub fn escaping(st: &'static Ws) -> &'static Ws {
         let tagcase_ = st;
         match *tagcase_ {
@@ -1302,6 +1306,7 @@ pub mod termination {
         }
     }
 
+    #[inline]
     pub fn compose(a: Edges, b: Edges) -> Edges {
         fold_edges(a, b, nil::<&'static termination::Edge>())
     }
@@ -1343,6 +1348,7 @@ pub mod termination {
     }
 
     // The closure of the calls under composition stops past this many.
+    #[inline]
     pub fn most_graphs() -> i64 {
         500i64
     }

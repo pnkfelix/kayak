@@ -5,6 +5,7 @@ use kayak_rt::*;
 // The standard input, a line at a time (C49): each line written back
 // numbered, its ending left off; a line not UTF-8 a failure the program
 // sees, `invalid-data`; at the end, the count of lines, which is the status.
+#[inline]
 pub fn said(n: Int, s: Str) -> () {
     let tagcase_ = write_out(string_append(int_to_string(n), string_append(str_lit(": "), string_append(s, str_lit("\n")))));
     match *tagcase_ {
@@ -49,6 +50,7 @@ pub fn echo(mut n: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn main() -> Int {
     echo(int_lit(0))
 }

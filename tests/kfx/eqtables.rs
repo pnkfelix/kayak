@@ -46,6 +46,7 @@ pub fn in_arena(n: Int) -> Int {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     string_append(by_refs(), string_append(str_lit(" "), string_append(int_to_string(by_arrays()), string_append(str_lit(" "), int_to_string(in_arena(int_lit(7)))))))
 }

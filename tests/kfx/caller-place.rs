@@ -10,6 +10,7 @@ use kayak_rt::*;
 
 pub type Builder<'r, 'p, Place_P> = &'r dyn Fn(&'p Place_P, i64) -> ListAt<'r, i64>;
 
+#[inline]
 pub fn build<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> ListAt<'p, i64> {
     rcons(h, n, rcons(h, i64_plus(n, 1i64), nil::<i64>()))
 }
@@ -28,6 +29,7 @@ pub fn total(n: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn main() -> Str {
     i64_to_string(total(20i64))
 }

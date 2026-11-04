@@ -87,6 +87,7 @@ pub mod writing {
     }
 
     /// `c` where a module type's abstract types are `Self`'s.
+    #[inline]
     pub fn in_trait(c: &'static Ctx, spec: &'static Sexp) -> &'static Ctx {
         with_locals(c, kayak_rt::heap_cons(str_lit("%with Self"), map(lambda1s(move |t: Str| {
             string_append(str_lit("%type "), t)
@@ -357,6 +358,7 @@ pub mod writing {
     }
 
     /// A poly type's body, or a plambda's: what is under the binders.
+    #[inline]
     pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
         if (head_is_p(e, str_lit("poly")) || head_is_p(e, str_lit("plambda"))) {
             third(items(e))
@@ -523,6 +525,7 @@ pub mod writing {
         }
     }
 
+    #[inline]
     pub fn put_str_lit(s: Str, acc: Chars) -> Chars {
         put(str_lit("\")"), put_rust_chars(string_chars(s), put(str_lit("str_lit(\""), acc)))
     }
@@ -611,6 +614,30 @@ pub mod writing {
         let acc = put_str_lit(text, put(str_lit(", "), put_str_lit(host, put(str_lit(", "), put_str_lit(label, acc)))));
         let acc = put_syscall_args(1i64, size(params), acc);
         put(str_lit(")\n}\n\n"), acc)
+    }
+
+    /// What is left of `budget` once `xs`'s atoms and lists are counted,
+    /// each one; the count stopped once it is below 0.
+    pub fn weight_under(mut xs: Sexps, mut budget: i64) -> i64 {
+        loop {
+            if (null_p(xs) || i64_lt(budget, 0i64)) {
+                return budget;
+            } else {
+                (xs, budget) = (cdr(xs), {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            weight_under(ys, i64_minus(budget, 1i64))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            i64_minus(budget, 1i64)
+                        }
+                    }
+                });
+                continue;
+            }
+        }
     }
 
     /// A definition, a `fn`: a procedure's of its parameters; a constant's of
@@ -705,6 +732,11 @@ pub mod writing {
             }), mparams)))
         } else {
             c
+        };
+        let acc = if (not(suspends) && not(loops_p) && i64_gt_eq(weight_under(body, 24i64), 0i64)) {
+            put(str_lit("#[inline]\n"), acc)
+        } else {
+            acc
         };
         let acc = put(if suspends {
             str_lit("pub async fn ")
@@ -1135,6 +1167,7 @@ pub mod writing {
         }
     }
 
+    #[inline]
     pub fn put_generic_params(n: i64, acc: Chars) -> Chars {
         if i64_eq(n, 0i64) {
             acc
@@ -1268,6 +1301,7 @@ pub mod writing {
     }
 
     // What a module's items are written in, and its items (C91).
+    #[inline]
     pub fn toplevel_form_p(f: &'static Sexp) -> bool {
         not((definition_p(f) || head_is_p(f, str_lit("define-effect"))))
     }
@@ -1419,6 +1453,7 @@ pub mod writing {
         }), cdr(cdr(ys))))), str_lit(""), 0i64, 0i64)
     }
 
+    #[inline]
     pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
         put_shape_decls(program_shapes(c, forms), shows, uses_blobrefs_p(c), acc)
     }

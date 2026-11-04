@@ -338,6 +338,7 @@ pub fn scope_abbrevs(v: &'static Cv) -> Abbrevs {
     }), cv_binds(v))), the::<Abbrevs>(kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(io_error_text()), str_lit(""), 1i64)))), str_lit("io-error")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(stage_failure_text()), str_lit(""), 1i64)))), str_lit("stage-failure")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(session_decision_text()), str_lit(""), 1i64)))), str_lit("session-decision")), kayak_rt::heap_cons(abbrev(show_ty(new_state(), parse_type(v, nil::<Str>(), car(read_all(string_chars(session_redefinition_text()), str_lit(""), 1i64)))), str_lit("session-redefinition")), kayak_rt::nil()))))))
 }
 
+#[inline]
 pub fn shown_abbreviated(v: &'static Cv, shown: Str) -> Str {
     abbrevs_put(shown, scope_abbrevs(v))
 }
@@ -397,10 +398,12 @@ pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -
     }
 }
 
+#[inline]
 pub fn no_form() -> &'static Sexp {
     lst(nil::<&'static Sexp>(), str_lit(""), 0i64, 0i64)
 }
 
+#[inline]
 pub fn chars_ahead_of(cs: Chars, pat: Chars) -> Chars {
     if (null_p(cs) || chars_start_p(cs, pat)) {
         nil::<char>()
@@ -937,6 +940,7 @@ pub fn brn(f0: Str, f1: Str) -> &'static Brn {
 
 pub type Brns = List<&'static Brn>;
 
+#[inline]
 pub fn base_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
@@ -1132,6 +1136,7 @@ pub fn tokens_renamed(mut cs: Chars, mut tok: Chars, mut renames: Brns, mut acc:
     }
 }
 
+#[inline]
 pub fn base_renamed(line: Str, renames: Brns) -> Str {
     if null_p(renames) {
         line
@@ -1140,6 +1145,7 @@ pub fn base_renamed(line: Str, renames: Brns) -> Str {
     }
 }
 
+#[inline]
 pub fn visible_items(fs: Sexps) -> Sexps {
     filter(lambda1s(move |f: &'static Sexp| {
         not(head_is_p(f, str_lit("hide")))
@@ -1206,6 +1212,7 @@ pub fn included_modules(fs: Sexps) -> Strings {
     }), fs))
 }
 
+#[inline]
 pub fn field_labels(i: i64, ts: Tys) -> Strings {
     if null_p(ts) {
         nil::<Str>()
@@ -1337,6 +1344,7 @@ pub fn whole_named(mut r#as: Abbrevs, mut t: Str) -> Str {
 /// A module's type, by the name of an abbreviation of it whole, as Fixpt
 /// prints `api : api-type` (C313); none of its parts, and not one with
 /// abstract types, which are the module's own, so not the abbreviation's.
+#[inline]
 pub fn whole_abbreviated(v: &'static Cv, t: Str) -> Str {
     if string_has_p(t, str_lit("(abs ")) {
         t
@@ -1540,6 +1548,7 @@ pub fn mu_renamed(mut w: Str, mut frames: Strings) -> Str {
     }
 }
 
+#[inline]
 pub fn mu_node_count(frames: Strings) -> i64 {
     if null_p(frames) {
         0i64
@@ -1698,6 +1707,7 @@ pub fn lines_redefining(v: &'static Cv, all: Sexps, forms: Sexps, ds: Defns) -> 
     }
 }
 
+#[inline]
 pub fn lines_text(ls: Strings) -> Str {
     if null_p(ls) {
         str_lit("")
