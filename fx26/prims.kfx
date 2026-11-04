@@ -218,7 +218,7 @@
   (lambda (r)
     (tagcase r (done u (v-sum "done" (v-unit))) (not-a-terminal u (v-sum "not-a-terminal" (v-unit))) (failed e (v-sum "failed" (io-error-val e))))))
 
-(define written (subr eng ((sumof (done unit) (failed io-error))) val)
+(define write-outcome (subr eng ((sumof (done unit) (failed io-error))) val)
   (lambda (r) (tagcase r (done u (v-sum "done" (v-unit))) (failed e (v-sum "failed" (io-error-val e))))))
 
 (define-rec
@@ -416,8 +416,8 @@
             ((string=? n "bytevector?") (flag (tagcase a (v-bytes (x) #t) (else other #f))))
             ((string=? n "i64-shl") (v-i64 (i64-shl (i64-of a) (val-int b))))
             ((string=? n "i64-shr") (v-i64 (i64-shr (i64-of a) (val-int b))))
-            ((string=? n "write-out") (written (write-out (string-of a))))
-            ((string=? n "write-err") (written (write-err (string-of a))))
+            ((string=? n "write-out") (write-outcome (write-out (string-of a))))
+            ((string=? n "write-err") (write-outcome (write-err (string-of a))))
             ((string=? n "exit") (begin (exit (val-int a)) (v-unit)))
             ((string=? n "clock") (v-i64 (clock)))
             ((string=? n "sleep-until") (begin (sleep-until (i64-of a)) (v-unit)))
@@ -440,7 +440,7 @@
             ((string=? n "read-file")
              (tagcase (the (sumof (data (bytevectorof @c)) (failed io-error)) (read-file (string-of a)))
                (data d (v-sum "data" (v-bytes d))) (failed e (v-sum "failed" (io-error-val e)))))
-            ((string=? n "write-file") (written (write-file (string-of a) (bytes-of b))))
+            ((string=? n "write-file") (write-outcome (write-file (string-of a) (bytes-of b))))
             ((string=? n "list-dir")
              (tagcase (the (sumof (names strings) (failed io-error)) (list-dir (string-of a)))
                (names ns (v-sum "names" (list-val (strings-vals ns)))) (failed e (v-sum "failed" (io-error-val e)))))

@@ -153,31 +153,31 @@ pub fn refused_op_x(message: Str) -> i64 {
 // binary32, as KFX's own `f32`.
 pub fn f32_op_word(i: i64, a: i64, b: i64) -> i64 {
     if i64_eq(i, 24i64) {
-        f32_word(int_to_f32(word_int(a)))
+        f32_value(int_to_f32(int_of(a)))
     } else if i64_eq(i, 25i64) {
-        f32_word(f64_to_f32(word_real(a)))
+        f32_value(f64_to_f32(flonum_of(a)))
     } else if i64_eq(i, 26i64) {
-        bool_word(f32_word_p(a))
+        bool_word(is_f32_p(a))
     } else if i64_eq(i, 28i64) {
-        f32_word(bits_to_f32(int_to_u32(word_int(a))))
-    } else if not(f32_word_p(a)) {
+        f32_value(bits_to_f32(int_to_u32(int_of(a))))
+    } else if not(is_f32_p(a)) {
         refused_op_x(str_lit("an f32 expected"))
     } else if i64_gt_eq(i, 11i64) {
-        let x = word_f32(a);
+        let x = f32_of(a);
         if i64_eq(i, 11i64) {
-            f32_word(f32_abs(x))
+            f32_value(f32_abs(x))
         } else if i64_eq(i, 12i64) {
-            f32_word(f32_neg(x))
+            f32_value(f32_neg(x))
         } else if i64_eq(i, 13i64) {
-            f32_word(f32_sqrt(x))
+            f32_value(f32_sqrt(x))
         } else if i64_eq(i, 14i64) {
-            f32_word(f32_floor(x))
+            f32_value(f32_floor(x))
         } else if i64_eq(i, 15i64) {
-            f32_word(f32_ceiling(x))
+            f32_value(f32_ceiling(x))
         } else if i64_eq(i, 16i64) {
-            f32_word(f32_truncate(x))
+            f32_value(f32_truncate(x))
         } else if i64_eq(i, 17i64) {
-            f32_word(f32_round(x))
+            f32_value(f32_round(x))
         } else if i64_eq(i, 18i64) {
             bool_word(f32_nan_p(x))
         } else if i64_eq(i, 19i64) {
@@ -188,31 +188,31 @@ pub fn f32_op_word(i: i64, a: i64, b: i64) -> i64 {
             string_word_x(f32_to_string(x))
         } else if i64_eq(i, 22i64) {
             if (f32_finite_p(x) && f32_eq(f32_truncate(x), x)) {
-                int_word_x(f32_to_int(x))
+                int_value_x(f32_to_int(x))
             } else {
                 refused_op_x(str_lit("f32->int: not an integer"))
             }
         } else if i64_eq(i, 23i64) {
-            real_word_x(f32_to_f64(x))
+            make_flonum_x(f32_to_f64(x))
         } else {
-            int_word_x(u32_to_int(f32_to_bits(x)))
+            int_value_x(u32_to_int(f32_to_bits(x)))
         }
-    } else if not(f32_word_p(b)) {
+    } else if not(is_f32_p(b)) {
         refused_op_x(str_lit("an f32 expected"))
     } else {
-        let (x, y) = (word_f32(a), word_f32(b));
+        let (x, y) = (f32_of(a), f32_of(b));
         if i64_eq(i, 0i64) {
-            f32_word(f32_plus(x, y))
+            f32_value(f32_plus(x, y))
         } else if i64_eq(i, 1i64) {
-            f32_word(f32_minus(x, y))
+            f32_value(f32_minus(x, y))
         } else if i64_eq(i, 2i64) {
-            f32_word(f32_star(x, y))
+            f32_value(f32_star(x, y))
         } else if i64_eq(i, 3i64) {
-            f32_word(f32_slash(x, y))
+            f32_value(f32_slash(x, y))
         } else if i64_eq(i, 4i64) {
-            f32_word(f32_min(x, y))
+            f32_value(f32_min(x, y))
         } else if i64_eq(i, 5i64) {
-            f32_word(f32_max(x, y))
+            f32_value(f32_max(x, y))
         } else if i64_eq(i, 6i64) {
             bool_word(f32_lt(x, y))
         } else if i64_eq(i, 7i64) {
@@ -325,13 +325,13 @@ pub fn blob_get(r: i64, code: i64) -> i64 {
     if i64_eq(code, 0i64) {
         i64_word_x(int_to_i64(signed_from(u, 8i64)))
     } else if i64_eq(code, 2i64) {
-        real_word_x(bits_to_f64(int_to_u64(u)))
+        make_flonum_x(bits_to_f64(int_to_u64(u)))
     } else if i64_eq(code, 5i64) {
-        f32_word(bits_to_f32(int_to_u32(u)))
+        f32_value(bits_to_f32(int_to_u32(u)))
     } else if (i64_eq(code, 3i64) || i64_eq(code, 7i64)) {
-        int_word_x(signed_from(u, n))
+        int_value_x(signed_from(u, n))
     } else {
-        int_word_x(u)
+        int_value_x(u)
     }
 }
 
@@ -339,11 +339,11 @@ pub fn blob_set_x(r: i64, code: i64, w: i64) -> i64 {
     let x = if i64_eq(code, 0i64) {
         i64_to_int(word_i64(w))
     } else if i64_eq(code, 2i64) {
-        u64_to_int(f64_to_bits(word_real(w)))
+        u64_to_int(f64_to_bits(flonum_of(w)))
     } else if i64_eq(code, 5i64) {
-        u32_to_int(f32_to_bits(word_f32(w)))
+        u32_to_int(f32_to_bits(f32_of(w)))
     } else {
-        word_int(w)
+        int_of(w)
     };
     bytes_written_x(blobref_bytes(r), blob_at(r), scalar_width(code), x);
     w_unit()
@@ -412,15 +412,15 @@ pub fn flat_bits_set_x(a: i64, i: i64, x: i64) -> () {
 /// The value bits of layout `code` stand for (`flat_value`).
 pub fn flat_value(code: i64, bits: i64) -> i64 {
     if i64_eq(code, 0i64) {
-        int_word_x(signed_from(word_limb(bits), 4i64))
+        int_value_x(signed_from(unsigned_int(bits), 4i64))
     } else if i64_eq(code, 2i64) {
         i64_word_x(bits)
     } else if i64_eq(code, 4i64) {
-        f32_word(bits_to_f32(int_to_u32(word_limb(bits))))
+        f32_value(bits_to_f32(int_to_u32(unsigned_int(bits))))
     } else if i64_eq(code, 5i64) {
-        real_word_x(bits_to_f64(int_to_u64(word_limb(bits))))
+        make_flonum_x(bits_to_f64(int_to_u64(unsigned_int(bits))))
     } else {
-        int_word_x(word_limb(bits))
+        int_value_x(unsigned_int(bits))
     }
 }
 
@@ -431,11 +431,11 @@ pub fn flat_bits_of(code: i64, w: i64) -> i64 {
     } else if i64_eq(code, 2i64) {
         word_i64(w)
     } else if i64_eq(code, 3i64) {
-        limb_word(modulo(word_int(w), two_64()))
+        limb_word(modulo(int_of(w), two_64()))
     } else if i64_eq(code, 4i64) {
-        limb_word(u32_to_int(f32_to_bits(word_f32(w))))
+        limb_word(u32_to_int(f32_to_bits(f32_of(w))))
     } else {
-        limb_word(u64_to_int(f64_to_bits(word_real(w))))
+        limb_word(u64_to_int(f64_to_bits(flonum_of(w))))
     }
 }
 
@@ -775,57 +775,57 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 13i64) {
         bool_word(i64_gt_eq(word_i64(a), word_i64(b)))
     } else if i64_eq(op, 14i64) {
-        i64_word_x(i64_shl(word_i64(a), word_int(b)))
+        i64_word_x(i64_shl(word_i64(a), int_of(b)))
     } else if i64_eq(op, 15i64) {
-        i64_word_x(i64_shr(word_i64(a), word_int(b)))
+        i64_word_x(i64_shr(word_i64(a), int_of(b)))
     } else if i64_eq(op, 16i64) {
-        int_word_x(_plus(word_int(a), word_int(b)))
+        int_value_x(_plus(int_of(a), int_of(b)))
     } else if i64_eq(op, 17i64) {
-        int_word_x(_minus(word_int(a), word_int(b)))
+        int_value_x(_minus(int_of(a), int_of(b)))
     } else if i64_eq(op, 18i64) {
-        int_word_x(_star(word_int(a), word_int(b)))
-    } else if (i64_gt_eq(op, 19i64) && i64_lt_eq(op, 21i64) && zero_p(word_int(b))) {
+        int_value_x(_star(int_of(a), int_of(b)))
+    } else if (i64_gt_eq(op, 19i64) && i64_lt_eq(op, 21i64) && zero_p(int_of(b))) {
         refused_op_x(if i64_eq(op, 19i64) {
             str_lit("quotient: division by zero")
         } else {
             str_lit("remainder: division by zero")
         })
     } else if i64_eq(op, 19i64) {
-        int_word_x(quotient(word_int(a), word_int(b)))
+        int_value_x(quotient(int_of(a), int_of(b)))
     } else if i64_eq(op, 20i64) {
-        int_word_x(remainder(word_int(a), word_int(b)))
+        int_value_x(remainder(int_of(a), int_of(b)))
     } else if i64_eq(op, 21i64) {
-        int_word_x(modulo(word_int(a), word_int(b)))
+        int_value_x(modulo(int_of(a), int_of(b)))
     } else if i64_eq(op, 22i64) {
-        bool_word(_eq(word_int(a), word_int(b)))
+        bool_word(_eq(int_of(a), int_of(b)))
     } else if i64_eq(op, 23i64) {
-        bool_word(_lt(word_int(a), word_int(b)))
+        bool_word(_lt(int_of(a), int_of(b)))
     } else if i64_eq(op, 24i64) {
-        bool_word(_gt(word_int(a), word_int(b)))
+        bool_word(_gt(int_of(a), int_of(b)))
     } else if i64_eq(op, 25i64) {
-        bool_word(_lt_eq(word_int(a), word_int(b)))
+        bool_word(_lt_eq(int_of(a), int_of(b)))
     } else if i64_eq(op, 26i64) {
-        bool_word(_gt_eq(word_int(a), word_int(b)))
+        bool_word(_gt_eq(int_of(a), int_of(b)))
     } else if i64_eq(op, 27i64) {
-        int_word_x(max(word_int(a), word_int(b)))
+        int_value_x(max(int_of(a), int_of(b)))
     } else if i64_eq(op, 28i64) {
-        int_word_x(min(word_int(a), word_int(b)))
+        int_value_x(min(int_of(a), int_of(b)))
     } else if i64_eq(op, 29i64) {
-        bool_word(zero_p(word_int(a)))
+        bool_word(zero_p(int_of(a)))
     } else if i64_eq(op, 30i64) {
-        int_word_x(bitwise_and(word_int(a), word_int(b)))
+        int_value_x(bitwise_and(int_of(a), int_of(b)))
     } else if i64_eq(op, 31i64) {
-        int_word_x(bitwise_ior(word_int(a), word_int(b)))
+        int_value_x(bitwise_ior(int_of(a), int_of(b)))
     } else if i64_eq(op, 32i64) {
-        int_word_x(bitwise_xor(word_int(a), word_int(b)))
+        int_value_x(bitwise_xor(int_of(a), int_of(b)))
     } else if i64_eq(op, 33i64) {
-        int_word_x(bitwise_not(word_int(a)))
-    } else if (i64_eq(op, 34i64) && _gt(word_int(b), int_lit(4294967296)) && not(zero_p(word_int(a)))) {
+        int_value_x(bitwise_not(int_of(a)))
+    } else if (i64_eq(op, 34i64) && _gt(int_of(b), int_lit(4294967296)) && not(zero_p(int_of(a)))) {
         refused_op_x(str_lit("arithmetic-shift: the count is too large"))
     } else if i64_eq(op, 34i64) {
-        int_word_x(arithmetic_shift(word_int(a), word_int(b)))
+        int_value_x(arithmetic_shift(int_of(a), int_of(b)))
     } else if i64_eq(op, 35i64) {
-        i64_word_x(int_to_i64(word_int(a)))
+        i64_word_x(int_to_i64(int_of(a)))
     } else if i64_eq(op, 36i64) {
         a
     } else if i64_eq(op, 37i64) {
@@ -1036,7 +1036,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 126i64) {
         text_written_word_x(a, 2i64)
     } else if i64_eq(op, 127i64) {
-        match exit(word_int(a)) {};
+        match exit(int_of(a)) {};
         0i64
     } else if i64_eq(op, 128i64) {
         i64_word_x(clock())
@@ -1074,19 +1074,19 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 262i64) {
         string_word_x(get(pending_output()))
     } else if i64_eq(op, 263i64) {
-        status_word_x(process_status(word_int(a)))
+        status_word_x(process_status(int_of(a)))
     } else if i64_eq(op, 264i64) {
-        written_word_x(process_write(word_int(a), word_string(b)))
+        written_word_x(process_write(int_of(a), word_string(b)))
     } else if i64_eq(op, 265i64) {
-        process_close_input(word_int(a));
+        process_close_input(int_of(a));
         w_unit()
     } else if i64_eq(op, 266i64) {
-        process_signal(word_int(a), word_int(b));
+        process_signal(int_of(a), int_of(b));
         w_unit()
     } else if i64_eq(op, 267i64) {
-        exit_word_x(process_exit(word_int(a)))
+        exit_word_x(process_exit(int_of(a)))
     } else if i64_eq(op, 268i64) {
-        int_word_x(process_news())
+        int_value_x(process_news())
     } else if i64_eq(op, 269i64) {
         stage_run_x(a, b, pair_car(pair_cdr(pair_cdr(args))), fourth_arg(args), fifth_arg(args))
     } else if i64_eq(op, 270i64) {
@@ -1104,55 +1104,55 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 277i64) {
         committed_word_x(a, b)
     } else if i64_eq(op, 139i64) {
-        real_word_x(int_to_f64(word_int(a)))
-    } else if (i64_eq(op, 140i64) && not(integral_p(word_real(a)))) {
+        make_flonum_x(int_to_f64(int_of(a)))
+    } else if (i64_eq(op, 140i64) && not(integral_p(flonum_of(a)))) {
         refused_op_x(str_lit("f64->int: not an integer"))
     } else if i64_eq(op, 140i64) {
-        int_word_x(f64_to_int(word_real(a)))
+        int_value_x(f64_to_int(flonum_of(a)))
     } else if i64_eq(op, 141i64) {
-        string_word_x(f64_to_string(word_real(a)))
+        string_word_x(f64_to_string(flonum_of(a)))
     } else if i64_eq(op, 142i64) {
-        real_word_x(f64_plus(word_real(a), word_real(b)))
+        make_flonum_x(f64_plus(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 143i64) {
-        real_word_x(f64_minus(word_real(a), word_real(b)))
+        make_flonum_x(f64_minus(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 144i64) {
-        real_word_x(f64_star(word_real(a), word_real(b)))
+        make_flonum_x(f64_star(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 145i64) {
-        real_word_x(f64_slash(word_real(a), word_real(b)))
+        make_flonum_x(f64_slash(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 146i64) {
-        bool_word(f64_lt(word_real(a), word_real(b)))
+        bool_word(f64_lt(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 147i64) {
-        bool_word(f64_lt_eq(word_real(a), word_real(b)))
+        bool_word(f64_lt_eq(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 148i64) {
-        bool_word(f64_gt(word_real(a), word_real(b)))
+        bool_word(f64_gt(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 149i64) {
-        bool_word(f64_gt_eq(word_real(a), word_real(b)))
+        bool_word(f64_gt_eq(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 150i64) {
-        bool_word(f64_eq(word_real(a), word_real(b)))
+        bool_word(f64_eq(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 151i64) {
-        real_word_x(f64_abs(word_real(a)))
+        make_flonum_x(f64_abs(flonum_of(a)))
     } else if i64_eq(op, 152i64) {
-        real_word_x(f64_neg(word_real(a)))
+        make_flonum_x(f64_neg(flonum_of(a)))
     } else if i64_eq(op, 153i64) {
-        real_word_x(f64_sqrt(word_real(a)))
+        make_flonum_x(f64_sqrt(flonum_of(a)))
     } else if i64_eq(op, 154i64) {
-        real_word_x(f64_floor(word_real(a)))
+        make_flonum_x(f64_floor(flonum_of(a)))
     } else if i64_eq(op, 155i64) {
-        real_word_x(f64_ceiling(word_real(a)))
+        make_flonum_x(f64_ceiling(flonum_of(a)))
     } else if i64_eq(op, 156i64) {
-        real_word_x(f64_truncate(word_real(a)))
+        make_flonum_x(f64_truncate(flonum_of(a)))
     } else if i64_eq(op, 157i64) {
-        real_word_x(f64_round(word_real(a)))
+        make_flonum_x(f64_round(flonum_of(a)))
     } else if i64_eq(op, 158i64) {
-        real_word_x(f64_min(word_real(a), word_real(b)))
+        make_flonum_x(f64_min(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 159i64) {
-        real_word_x(f64_max(word_real(a), word_real(b)))
+        make_flonum_x(f64_max(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 160i64) {
-        bool_word(f64_nan_p(word_real(a)))
+        bool_word(f64_nan_p(flonum_of(a)))
     } else if i64_eq(op, 161i64) {
-        bool_word(f64_infinite_p(word_real(a)))
+        bool_word(f64_infinite_p(flonum_of(a)))
     } else if i64_eq(op, 162i64) {
-        bool_word(f64_finite_p(word_real(a)))
+        bool_word(f64_finite_p(flonum_of(a)))
     } else if i64_eq(op, 163i64) {
         bool_word(string_eq_p(string_downcase(word_string(a)), string_downcase(word_string(b))))
     } else if i64_eq(op, 164i64) {
@@ -1256,25 +1256,25 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
     } else if i64_eq(op, 176i64) {
-        real_word_x(f64_exp(word_real(a)))
+        make_flonum_x(f64_exp(flonum_of(a)))
     } else if i64_eq(op, 177i64) {
-        real_word_x(f64_log(word_real(a)))
+        make_flonum_x(f64_log(flonum_of(a)))
     } else if i64_eq(op, 178i64) {
-        real_word_x(f64_sin(word_real(a)))
+        make_flonum_x(f64_sin(flonum_of(a)))
     } else if i64_eq(op, 179i64) {
-        real_word_x(f64_cos(word_real(a)))
+        make_flonum_x(f64_cos(flonum_of(a)))
     } else if i64_eq(op, 180i64) {
-        real_word_x(f64_tan(word_real(a)))
+        make_flonum_x(f64_tan(flonum_of(a)))
     } else if i64_eq(op, 181i64) {
-        real_word_x(f64_asin(word_real(a)))
+        make_flonum_x(f64_asin(flonum_of(a)))
     } else if i64_eq(op, 182i64) {
-        real_word_x(f64_acos(word_real(a)))
+        make_flonum_x(f64_acos(flonum_of(a)))
     } else if i64_eq(op, 183i64) {
-        real_word_x(f64_atan(word_real(a)))
+        make_flonum_x(f64_atan(flonum_of(a)))
     } else if i64_eq(op, 184i64) {
-        real_word_x(f64_atan2(word_real(a), word_real(b)))
+        make_flonum_x(f64_atan2(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 185i64) {
-        real_word_x(f64_expt(word_real(a), word_real(b)))
+        make_flonum_x(f64_expt(flonum_of(a), flonum_of(b)))
     } else if i64_eq(op, 186i64) {
         bool_word(has_char_in_p(word_string(b), word_char(a)))
     } else if i64_eq(op, 187i64) {
@@ -1317,7 +1317,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 202i64) {
         fixnum(blob_length(a, fixnum_value(b), fixnum_value(c)))
     } else if i64_eq(op, 203i64) {
-        int_word_x(bytes_read(blobref_bytes(a), blob_at(a), fixnum_value(b), int_lit(0)))
+        int_value_x(bytes_read(blobref_bytes(a), blob_at(a), fixnum_value(b), int_lit(0)))
     } else if i64_eq(op, 205i64) {
         // A flat sum with no key (C215): its tag the index of the owner's field
         // that holds the label.
@@ -1337,7 +1337,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         make_icell_x()
     } else if i64_eq(op, 204i64) {
         let off = fixnum_value(pair_car(pair_cdr(r2)));
-        bytes_written_x(blobref_bytes(a), blob_at(a), fixnum_value(b), word_int(c));
+        bytes_written_x(blobref_bytes(a), blob_at(a), fixnum_value(b), int_of(c));
         blobref_x(sref_owner(a), i64_plus(blob_at(a), off), 0i64)
     } else if i64_eq(op, 250i64) {
         string_made_x(fixnum_value(a), b)

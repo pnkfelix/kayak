@@ -57,15 +57,96 @@ pub fn unsigned_int(w: i64) -> Int {
     }
 }
 
-/// Limbs `j` down to 0 of the bignum at word `p`, after `acc`.
-pub fn limbs_int(mut p: i64, mut j: i64, mut acc: Int) -> Int {
+// Bignums taken apart and put together by halves (the engine's, C99, now
+// tier 1's too, C333): a bignum of n limbs costs some n log n, not n
+// squared, so that a step on one is never long (a step is how long the
+// REPL's keys may wait).
+#[inline]
+pub fn two_63() -> Int {
+    arithmetic_shift(int_lit(1), int_lit(63))
+}
+
+/// Whether `n`, at least 0, has at most `k` limbs.
+#[inline]
+pub fn below_limbs_p(n: Int, k: i64) -> bool {
+    zero_p(arithmetic_shift(n, i64_to_int(i64_minus(0i64, i64_star(k, 64i64)))))
+}
+
+/// The limbs of `n`, between `lo` (too few) and `hi` (enough).
+pub fn limbs_within(mut n: Int, mut lo: i64, mut hi: i64) -> i64 {
     loop {
-        if i64_lt(j, 0i64) {
-            return acc;
+        if i64_lt_eq(i64_minus(hi, lo), 1i64) {
+            return hi;
         } else {
-            (j, acc) = (i64_minus(j, 1i64), _plus(arithmetic_shift(acc, int_lit(64)), unsigned_int(word_at(i64_plus(p, i64_plus(2i64, j))))));
+            let mid = i64_plus(lo, i64_quotient(i64_minus(hi, lo), 2i64));
+            if below_limbs_p(n, mid) {
+                hi = mid;
+                continue;
+            } else {
+                lo = mid;
+                continue;
+            }
+        }
+    }
+}
+
+pub fn limbs_above(mut n: Int, mut k: i64) -> i64 {
+    loop {
+        if below_limbs_p(n, k) {
+            return limbs_within(n, i64_quotient(k, 2i64), k);
+        } else {
+            k = i64_star(k, 2i64);
             continue;
         }
+    }
+}
+
+/// `k` and the limbs of `n`, at least 0.
+#[inline]
+pub fn limbs_count(n: Int, k: i64) -> i64 {
+    i64_plus(k, if zero_p(n) {
+        0i64
+    } else {
+        limbs_above(n, 1i64)
+    })
+}
+
+/// A limb, below 2^64, as a word's 64 bits.
+#[inline]
+pub fn limb_word(n: Int) -> i64 {
+    int_to_i64(if _gt_eq(n, two_63()) {
+        _minus(n, two_64())
+    } else {
+        n
+    })
+}
+
+/// `n`'s `k` limbs, from bignum `p`'s suffix word `i` on.
+pub fn limbs_set_x(mut p: i64, mut n: Int, mut i: i64, mut k: i64) -> () {
+    loop {
+        if i64_lt(k, 1i64) {
+            return ();
+        } else if i64_eq(k, 1i64) {
+            return mem_set_x(i64_plus(address(p), i), limb_word(n));
+        } else {
+            let h = i64_quotient(k, 2i64);
+            let bits = i64_to_int(i64_star(h, 64i64));
+            limbs_set_x(p, bitwise_and(n, _minus(arithmetic_shift(int_lit(1), bits), int_lit(1))), i, h);
+            (n, i, k) = (arithmetic_shift(n, _minus(int_lit(0), bits)), i64_plus(i, h), i64_minus(k, h));
+            continue;
+        }
+    }
+}
+
+/// The integer of bignum `p`'s `k` limbs from suffix word `i` on.
+pub fn limbs_value(p: i64, i: i64, k: i64) -> Int {
+    if i64_lt(k, 1i64) {
+        int_lit(0)
+    } else if i64_eq(k, 1i64) {
+        unsigned_int(mem_at(i64_plus(address(p), i)))
+    } else {
+        let h = i64_quotient(k, 2i64);
+        _plus(limbs_value(p, i, h), arithmetic_shift(limbs_value(p, i64_plus(i, h), i64_minus(k, h)), i64_to_int(i64_star(h, 64i64))))
     }
 }
 
@@ -74,35 +155,11 @@ pub fn int_of(v: i64) -> Int {
     if is_fixnum_p(v) {
         i64_to_int(fix_val(v))
     } else {
-        let p = address(v);
-        let m = limbs_int(p, i64_minus(fix_val(word_at(i64_plus(p, 1i64))), 1i64), int_lit(0));
-        if i64_eq(word_at(p), fix(1i64)) {
+        let m = limbs_value(v, 2i64, fix_val(mem_at(i64_plus(address(v), 1i64))));
+        if i64_eq(mem_at(address(v)), fix(1i64)) {
             _minus(int_lit(0), m)
         } else {
             m
-        }
-    }
-}
-
-pub fn limbs_needed(mut m: Int, mut k: i64) -> i64 {
-    loop {
-        if zero_p(m) {
-            return k;
-        } else {
-            (m, k) = (arithmetic_shift(m, int_lit(-64)), i64_plus(k, 1i64));
-            continue;
-        }
-    }
-}
-
-pub fn limbs_written_x(mut p: i64, mut m: Int, mut j: i64, mut k: i64) -> () {
-    loop {
-        if i64_gt_eq(j, k) {
-            return ();
-        } else {
-            word_set_x(i64_plus(p, i64_plus(2i64, j)), int_to_i64(m));
-            (m, j) = (arithmetic_shift(m, int_lit(-64)), i64_plus(j, 1i64));
-            continue;
         }
     }
 }
@@ -118,16 +175,15 @@ pub fn int_value_x(n: Int) -> i64 {
         } else {
             n
         };
-        let k = limbs_needed(m, 0i64);
+        let k = limbs_count(m, 0i64);
         let b = make_bloblet_x(k_bignum(), 0i64, i64_star(8i64, i64_plus(2i64, k)), false, false);
-        let p = address(b);
-        word_set_x(p, fix(if _lt(n, int_lit(0)) {
+        mem_set_x(address(b), fix(if _lt(n, int_lit(0)) {
             the::<i64>(1i64)
         } else {
             the::<i64>(0i64)
         }));
-        word_set_x(i64_plus(p, 1i64), fix(k));
-        limbs_written_x(p, m, 0i64, k);
+        mem_set_x(i64_plus(address(b), 1i64), fix(k));
+        limbs_set_x(b, m, 2i64, k);
         b
     }
 }

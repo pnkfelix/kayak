@@ -105,6 +105,10 @@ section below where it has one; here the order, and what each is.
      in `docs/research/compiled-stage.md` (C316), after one heap
      (`docs/research/one-heap.md`, C317, the user's: first); or KFX (not
      needed there).
+   - **The engine's primitives and constructors within data** (C333): a
+     list of them prints as tier 1 sees them (`#<immediate>`, `#<? 2
+     fields 0 bytes>`), not `#<procedure>`, until they are Fixpt's objects
+     (one heap, step 4).
    - **To take to the Fixpt team**: its checker panics on a module
      reshaped inside `list` (docs/requests/fixpt-reshape-in-list.md, C328).
    - **The live REPL's early run of a draft** (`live-repl.kfx`, the

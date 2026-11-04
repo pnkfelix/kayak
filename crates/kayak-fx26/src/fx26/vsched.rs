@@ -1098,10 +1098,10 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         sched_set_x(s_news(), without_x(sched_ref(s_news()), 0i64, a));
         w_unit()
     } else if i64_eq(n, 55i64) {
-        int_word_x(i64_to_int(i64_plus(clock(), i64_star(if i64_lt(int_to_i64(word_int(a)), 0i64) {
+        int_value_x(i64_to_int(i64_plus(clock(), i64_star(if i64_lt(int_to_i64(int_of(a)), 0i64) {
             0i64
         } else {
-            int_to_i64(word_int(a))
+            int_to_i64(int_of(a))
         }, 1000000i64))))
     } else if i64_eq(n, 40i64) {
         sched_cons_x(s_waiting(), pair_x(a, b));

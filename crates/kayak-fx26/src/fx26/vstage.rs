@@ -138,11 +138,11 @@ pub fn word_sexp(w: i64) -> &'static Sexp {
         stage_past_x(written_length(string_chars(word_string(w))));
         str(word_string(w), stage_file(), p)
     } else if is_obj_p(w, ob_big()) {
-        let t = int_to_string(word_int(w));
+        let t = int_to_string(int_of(w));
         stage_past_x(string_length_i64(t));
         big(t, stage_file(), p)
     } else if is_obj_p(w, ob_real()) {
-        let t = f64_to_string(word_real(w));
+        let t = f64_to_string(flonum_of(w));
         stage_past_x(string_length_i64(t));
         real(t, stage_file(), p)
     } else if is_pair_p(w) {

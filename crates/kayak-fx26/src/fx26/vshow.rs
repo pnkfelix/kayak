@@ -3,134 +3,20 @@
 use kayak_rt::*;
 use super::*;
 
-// vshow.kfx: a word written as `fixpt eval` writes a value (C64). Its KFX
-// string is made in proportion to what is written.
-pub fn escaped_chars(p: i64, i: i64) -> Str {
-    if i64_gt_eq(i, raw_length(p)) {
-        str_lit("")
-    } else {
-        let c = char_at(p, i);
-        string_append(if i64_eq(c, 34i64) {
-            str_lit("\\\"")
-        } else if i64_eq(c, 92i64) {
-            str_lit("\\\\")
-        } else if i64_eq(c, 10i64) {
-            str_lit("\\n")
-        } else {
-            char_to_string(i64_to_char(c))
-        }, escaped_chars(p, i64_plus(i, 1i64)))
-    }
-}
-
-pub fn bytes_shown(p: i64, i: i64) -> Str {
-    if i64_gt_eq(i, raw_length(p)) {
-        str_lit("")
-    } else if i64_eq(i, 0i64) {
-        string_append(i64_to_string(byte_at(p, i)), bytes_shown(p, i64_plus(i, 1i64)))
-    } else {
-        string_append(str_lit(" "), string_append(i64_to_string(byte_at(p, i)), bytes_shown(p, i64_plus(i, 1i64))))
-    }
-}
-
-pub fn char_shown(c: char) -> Str {
-    if char_eq_p(c, ' ') {
-        str_lit("#\\space")
-    } else if char_eq_p(c, '\n') {
-        str_lit("#\\newline")
-    } else if char_eq_p(c, '\t') {
-        str_lit("#\\tab")
-    } else {
-        string_append(str_lit("#\\"), char_to_string(c))
-    }
-}
-
+// vshow.kfx: a word written as Fixpt's `write` writes a value (C64), by
+// tier 1's `written` (C333). Its KFX string is made in proportion to what
+// is written.
+/// A word written: tier 1's `written` (C333), Fixpt's `write`. The engine's
+/// procedures, a closure Fixpt's `#<procedure>` (`print.rs`), and so its
+/// primitives and constructors, not yet Fixpt's objects (one-heap, step
+/// 4), here; within data, those two as tier 1 sees them.
 pub fn show_word(w: i64) -> Str {
-    if fixnum_p(w) {
-        i64_to_string(fixnum_value(w))
-    } else if f32_word_p(w) {
-        f32_to_string(word_f32(w))
-    } else if immediate_p(w) {
-        let kind = immediate_kind(w);
-        if i64_eq(kind, imm_char()) {
-            char_shown(word_char(w))
-        } else if i64_eq(kind, imm_bool()) {
-            if truthy_p(w) {
-                str_lit("#t")
-            } else {
-                str_lit("#f")
-            }
-        } else if i64_eq(kind, imm_unit()) {
-            str_lit("#u")
-        } else if i64_eq(kind, imm_nil()) {
-            str_lit("()")
-        } else {
-            str_lit("#<closure>")
-        }
-    } else if is_sref_p(w) {
-        string_append(str_lit("#<suffix-ref "), string_append(if is_obj_p(sref_owner(w), ob_array()) {
-            str_lit("bloblet")
-        } else {
-            str_lit("flat-array")
-        }, string_append(str_lit(" +"), string_append(i64_to_string(sref_offset(w)), str_lit(">")))))
-    } else if pointer_p(w) {
-        let kind = obj_kind(w);
-        if i64_eq(kind, ob_big()) {
-            int_to_string(word_int(w))
-        } else if i64_eq(kind, ob_symbol()) {
-            symbol_text(w)
-        } else if i64_eq(kind, ob_keyword()) {
-            string_append(str_lit("#:"), symbol_text(obj_ref(w, 0i64)))
-        } else if i64_eq(kind, ob_string()) {
-            string_append(str_lit("\""), string_append(escaped_chars(w, 0i64), str_lit("\"")))
-        } else if i64_eq(kind, ob_real()) {
-            f64_to_string(word_real(w))
-        } else if i64_eq(kind, ob_pair()) {
-            string_append(str_lit("("), string_append(show_word(pair_car(w)), string_append(show_tail(pair_cdr(w)), str_lit(")"))))
-        } else if i64_eq(kind, ob_ref()) {
-            string_append(str_lit("#<box "), string_append(show_word(obj_ref(w, 0i64)), str_lit(">")))
-        } else if i64_eq(kind, ob_sum()) {
-            string_append(str_lit("#<sum "), string_append(symbol_text(bloblet_value(w, 0i64)), str_lit(">")))
-        } else if i64_eq(kind, ob_product()) {
-            string_append(str_lit("#<product of "), string_append(i64_to_string(obj_size(w)), str_lit(">")))
-        } else if i64_eq(kind, ob_array()) {
-            string_append(str_lit("#<bloblet "), string_append(i64_to_string(i64_plus(obj_size(w), 1i64)), string_append(str_lit(" fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))))
-        } else if i64_eq(kind, ob_vector()) {
-            string_append(str_lit("#("), string_append(vector_shown(w, 0i64), str_lit(")")))
-        } else if i64_eq(kind, ob_bytes()) {
-            string_append(str_lit("#u8("), string_append(bytes_shown(w, 0i64), str_lit(")")))
-        } else if i64_eq(kind, ob_ctor()) {
-            name_of_number(fixnum_value(obj_ref(w, 0i64)))
-        } else if i64_eq(kind, ob_cont()) {
-            str_lit("#<continuation>")
-        } else if i64_eq(kind, ob_eqtable()) {
-            string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(slot_of(w, 2i64))), str_lit(">")))
-        } else if i64_eq(kind, ob_flatx()) {
-            string_append(str_lit("#<flat-array 2 fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))
-        } else {
-            str_lit("#<closure>")
-        }
+    if (immediate_p(w) && i64_eq(immediate_kind(w), imm_prim())) {
+        str_lit("#<procedure>")
+    } else if is_obj_p(w, ob_ctor()) {
+        str_lit("#<procedure>")
     } else {
-        str_lit("#<closure>")
-    }
-}
-
-pub fn vector_shown(w: i64, i: i64) -> Str {
-    if i64_gt_eq(i, obj_size(w)) {
-        str_lit("")
-    } else if i64_eq(i, 0i64) {
-        string_append(show_word(element(w, 0i64)), vector_shown(w, 1i64))
-    } else {
-        string_append(str_lit(" "), string_append(show_word(element(w, i)), vector_shown(w, i64_plus(i, 1i64))))
-    }
-}
-
-pub fn show_tail(w: i64) -> Str {
-    if i64_eq(w, w_nil()) {
-        str_lit("")
-    } else if is_obj_p(w, ob_pair()) {
-        string_append(str_lit(" "), string_append(show_word(pair_car(w)), show_tail(pair_cdr(w))))
-    } else {
-        string_append(str_lit(" . "), show_word(w))
+        written(w)
     }
 }
 

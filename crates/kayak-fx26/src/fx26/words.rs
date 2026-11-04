@@ -8,104 +8,8 @@ use super::*;
 // strings and `f64`, which allocate KFX data and so are for loading, I/O
 // and bignums alone, never a step's work.
 
-// Integers: a fixnum if it fits, else a bignum, Fixpt's (`write_bignum`,
-// C324): a raw object, its sign (a fixnum, 1 if negative), its count of
-// limbs (a fixnum), then the limbs, 64 bits each, the low first. Taken
-// apart and put together by halves, so that a step on a bignum of n limbs
-// costs some n log n, and not n squared: a step is how long the REPL's keys
-// may wait (live-repl.kfx, C99).
-#[inline]
-pub fn two_64() -> Int {
-    arithmetic_shift(int_lit(1), int_lit(64))
-}
-
-#[inline]
-pub fn two_63() -> Int {
-    arithmetic_shift(int_lit(1), int_lit(63))
-}
-
-/// Whether `n`, at least 0, has at most `k` limbs.
-#[inline]
-pub fn below_limbs_p(n: Int, k: i64) -> bool {
-    zero_p(arithmetic_shift(n, i64_to_int(i64_minus(0i64, i64_star(k, 64i64)))))
-}
-
-/// The limbs of `n`, between `lo` (too few) and `hi` (enough).
-pub fn limbs_within(mut n: Int, mut lo: i64, mut hi: i64) -> i64 {
-    loop {
-        if i64_lt_eq(i64_minus(hi, lo), 1i64) {
-            return hi;
-        } else {
-            let mid = i64_plus(lo, i64_quotient(i64_minus(hi, lo), 2i64));
-            if below_limbs_p(n, mid) {
-                hi = mid;
-                continue;
-            } else {
-                lo = mid;
-                continue;
-            }
-        }
-    }
-}
-
-pub fn limbs_above(mut n: Int, mut k: i64) -> i64 {
-    loop {
-        if below_limbs_p(n, k) {
-            return limbs_within(n, i64_quotient(k, 2i64), k);
-        } else {
-            k = i64_star(k, 2i64);
-            continue;
-        }
-    }
-}
-
-/// `k` and the limbs of `n`, at least 0.
-#[inline]
-pub fn limbs_count(n: Int, k: i64) -> i64 {
-    i64_plus(k, if zero_p(n) {
-        0i64
-    } else {
-        limbs_above(n, 1i64)
-    })
-}
-
-/// A limb, below 2^64, as a word's 64 bits.
-#[inline]
-pub fn limb_word(n: Int) -> i64 {
-    int_to_i64(if _gt_eq(n, two_63()) {
-        _minus(n, two_64())
-    } else {
-        n
-    })
-}
-
-/// A word's 64 bits, as an unsigned limb.
-#[inline]
-pub fn word_limb(w: i64) -> Int {
-    if i64_lt(w, 0i64) {
-        _plus(i64_to_int(w), two_64())
-    } else {
-        i64_to_int(w)
-    }
-}
-
-/// `n`'s `k` limbs, from bignum `p`'s suffix word `i` on.
-pub fn limbs_set_x(mut p: i64, mut n: Int, mut i: i64, mut k: i64) -> () {
-    loop {
-        if i64_lt(k, 1i64) {
-            return ();
-        } else if i64_eq(k, 1i64) {
-            return mem_set_x(i64_plus(address(p), i), limb_word(n));
-        } else {
-            let h = i64_quotient(k, 2i64);
-            let bits = i64_to_int(i64_star(h, 64i64));
-            limbs_set_x(p, bitwise_and(n, _minus(arithmetic_shift(int_lit(1), bits), int_lit(1))), i, h);
-            (n, i, k) = (arithmetic_shift(n, _minus(int_lit(0), bits)), i64_plus(i, h), i64_minus(k, h));
-            continue;
-        }
-    }
-}
-
+// Integers: a fixnum if it fits, else a bignum, Fixpt's (C324), tier 1's
+// (`int-value!`, `int-of`; C333).
 /// How many words a bignum of `n` needs.
 #[inline]
 pub fn big_words(n: Int) -> i64 {
@@ -116,64 +20,13 @@ pub fn big_words(n: Int) -> i64 {
     }, 0i64))
 }
 
-/// `n` as a word: a fixnum, or a bignum made (room for `big-words` made
-/// sure of before).
-pub fn int_word_x(n: Int) -> i64 {
-    let x = int_to_i64(n);
-    if (_eq(i64_to_int(x), n) && fits_fixnum_p(x)) {
-        fixnum(x)
-    } else {
-        let mag = if _lt(n, int_lit(0)) {
-            _minus(int_lit(0), n)
-        } else {
-            n
-        };
-        let k = limbs_count(mag, 0i64);
-        let p = alloc_x(ob_big(), i64_plus(k, 2i64));
-        mem_set_x(address(p), fixnum(if _lt(n, int_lit(0)) {
-            the::<i64>(1i64)
-        } else {
-            the::<i64>(0i64)
-        }));
-        mem_set_x(i64_plus(address(p), 1i64), fixnum(k));
-        limbs_set_x(p, mag, 2i64, k);
-        p
-    }
-}
-
-/// The integer of bignum `p`'s `k` limbs from suffix word `i` on.
-pub fn limbs_value(p: i64, i: i64, k: i64) -> Int {
-    if i64_lt(k, 1i64) {
-        int_lit(0)
-    } else if i64_eq(k, 1i64) {
-        word_limb(mem_at(i64_plus(address(p), i)))
-    } else {
-        let h = i64_quotient(k, 2i64);
-        _plus(limbs_value(p, i, h), arithmetic_shift(limbs_value(p, i64_plus(i, h), i64_minus(k, h)), i64_to_int(i64_star(h, 64i64))))
-    }
-}
-
-/// A word's integer: a fixnum's, or a bignum's (`read_bignum`).
-pub fn word_int(w: i64) -> Int {
-    if fixnum_p(w) {
-        i64_to_int(fixnum_value(w))
-    } else {
-        let mag = limbs_value(w, 2i64, fixnum_value(mem_at(i64_plus(address(w), 1i64))));
-        if i64_eq(mem_at(address(w)), fixnum(1i64)) {
-            _minus(int_lit(0), mag)
-        } else {
-            mag
-        }
-    }
-}
-
 /// An `i64`'s value: a fixnum's, or the low 64 bits of a bignum's.
 #[inline]
 pub fn word_i64(w: i64) -> i64 {
     if fixnum_p(w) {
         fixnum_value(w)
     } else {
-        int_to_i64(word_int(w))
+        int_to_i64(int_of(w))
     }
 }
 
@@ -192,7 +45,7 @@ pub fn i64_word_x(n: i64) -> i64 {
     if fits_fixnum_p(n) {
         fixnum(n)
     } else {
-        int_word_x(i64_to_int(n))
+        int_value_x(i64_to_int(n))
     }
 }
 
@@ -226,21 +79,9 @@ pub fn is_imm_p(w: i64, kind: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_kind(w), kind))
 }
 
-// `f32`s (C220): Fixpt's immediate of subtag 9, its bits the payload (C318).
-#[inline]
-pub fn f32_word(x: f32) -> i64 {
-    imm_word(sub_f32(), int_to_i64(u32_to_int(f32_to_bits(x))))
-}
-
-#[inline]
-pub fn f32_word_p(w: i64) -> bool {
-    (immediate_p(w) && i64_eq(immediate_sub(w), sub_f32()))
-}
-
-#[inline]
-pub fn word_f32(w: i64) -> f32 {
-    bits_to_f32(int_to_u32(i64_to_int(immediate_value(w))))
-}
+// `f32`s (C220): tier 1's (`f32-value`, `f32-of`, `is-f32?`; C333),
+// Fixpt's immediate of subtag 9, its bits from bit 32 (the engine's were
+// from bit 8, C318).
 
 // Objects of a kind.
 /// A pair by its tag; any other object by its header (C318).
@@ -503,18 +344,7 @@ pub fn product_of_x(ws: List<i64>) -> i64 {
     p
 }
 
-// Reals: an `f64`'s bits.
-#[inline]
-pub fn real_word_x(x: f64) -> i64 {
-    let p = alloc_x(ob_real(), 1i64);
-    obj_set_x(p, 0i64, int_to_i64(u64_to_int(f64_to_bits(x))));
-    p
-}
-
-#[inline]
-pub fn word_real(p: i64) -> f64 {
-    bits_to_f64(int_to_u64(i64_to_int(obj_ref(p, 0i64))))
-}
+// Reals: tier 1's flonums (`make-flonum!`, `flonum-of`; C333).
 
 // Lists of words, counted, and made arrays: loading makes a quoted
 // vector so (C80), and the primitives (vwords.kfx).

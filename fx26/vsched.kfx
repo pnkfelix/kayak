@@ -523,7 +523,7 @@
       ((i64= n 54) (begin (sched-set! s-news (without! (sched-ref s-news) 0 a)) w-unit))
       ;; `attempt-within`'s deadline (Fixpt's 3e026d63): the clock `a`
       ;; milliseconds from now.
-      ((i64= n 55) (int-word! (i64->int (i64+ (clock) (i64* (if (i64< (int->i64 (word-int a)) 0) 0 (int->i64 (word-int a))) 1000000)))))
+      ((i64= n 55) (int-value! (i64->int (i64+ (clock) (i64* (if (i64< (int->i64 (int-of a)) 0) 0 (int->i64 (int-of a))) 1000000)))))
       ((i64= n 40) (begin (sched-cons! s-waiting (pair! a b)) w-unit))
       ((i64= n 41) (begin (sched-set! s-waiting (without! (sched-ref s-waiting) 1 a)) w-unit))
       ((i64= n 42) (reaped!))

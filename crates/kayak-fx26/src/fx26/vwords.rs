@@ -406,7 +406,7 @@ pub fn digits_set_x(mut p: i64, mut i: i64, mut n: i64) -> () {
 
 pub fn int_text_x(w: i64) -> i64 {
     if not(fixnum_p(w)) {
-        string_word_x(int_to_string(word_int(w)))
+        string_word_x(int_to_string(int_of(w)))
     } else {
         let v = fixnum_value(w);
         let neg = i64_lt(v, 0i64);
@@ -492,7 +492,7 @@ pub fn same_atom_w_p(a: i64, b: i64) -> bool {
     } else if (is_obj_p(a, ob_string()) && is_obj_p(b, ob_string())) {
         raw_equal_p(a, b, 0i64)
     } else if (is_obj_p(a, ob_big()) && is_obj_p(b, ob_big())) {
-        _eq(word_int(a), word_int(b))
+        _eq(int_of(a), int_of(b))
     } else {
         false
     }
@@ -658,7 +658,7 @@ pub fn utf8_word_x(p: i64) -> i64 {
             sum_word_x(str_lit("text"), string_word_x(s))
         }
         Sum_4text_3bad::Bad(k) => {
-            sum_word_x(str_lit("bad"), int_word_x(k))
+            sum_word_x(str_lit("bad"), int_value_x(k))
         }
     }
 }
@@ -1027,7 +1027,7 @@ pub fn read_byte_word_x() -> i64 {
     let tagcase_ = get(pending_byte());
     match *tagcase_ {
         Sum_4byte_3eof_6failed::Byte(k) => {
-            sum_word_x(str_lit("byte"), int_word_x(u8_to_int(k)))
+            sum_word_x(str_lit("byte"), int_value_x(u8_to_int(k)))
         }
         Sum_4byte_3eof_6failed::Eof(u) => {
             sum_word_x(str_lit("eof"), w_unit())
@@ -1087,7 +1087,7 @@ pub fn read_bytes_word_x(bv: i64, at: i64, n: i64) -> i64 {
         match *tagcase_ {
             Sum_5count_3eof_6failed::Count(k) => {
                 read_copied_x(bv, at, 0i64, int_to_i64(k));
-                sum_word_x(str_lit("count"), int_word_x(k))
+                sum_word_x(str_lit("count"), int_value_x(k))
             }
             Sum_5count_3eof_6failed::Eof(u) => {
                 sum_word_x(str_lit("eof"), w_unit())
@@ -1155,7 +1155,7 @@ pub fn size_word_x() -> i64 {
     let tagcase_ = get(pending_size());
     match *tagcase_ {
         Sum_4size_14not_a_terminal_6failed::Size(p) => {
-            sum_word_x(str_lit("size"), product_of_x(kayak_rt::heap_cons(int_word_x(p.0), kayak_rt::heap_cons(int_word_x(p.1), kayak_rt::nil()))))
+            sum_word_x(str_lit("size"), product_of_x(kayak_rt::heap_cons(int_value_x(p.0), kayak_rt::heap_cons(int_value_x(p.1), kayak_rt::nil()))))
         }
         Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
             sum_word_x(str_lit("not-a-terminal"), w_unit())
@@ -1227,7 +1227,7 @@ pub fn file_info_word_x() -> i64 {
                     }
                 }
             }, w_unit());
-            let x = product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(int_word_x(i.1), kayak_rt::heap_cons(int_word_x(i.2), kayak_rt::heap_cons(int_word_x(i.3), kayak_rt::nil())))));
+            let x = product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(int_value_x(i.1), kayak_rt::heap_cons(int_value_x(i.2), kayak_rt::heap_cons(int_value_x(i.3), kayak_rt::nil())))));
             sum_word_x(str_lit("info"), x)
         }
         Sum_4info_6failed::Failed(e) => {
@@ -1308,7 +1308,7 @@ pub fn started_word_x() -> i64 {
     let tagcase_ = get(pending_started());
     match *tagcase_ {
         Sum_7started_6failed::Started(p) => {
-            sum_word_x(str_lit("started"), int_word_x(p))
+            sum_word_x(str_lit("started"), int_value_x(p))
         }
         Sum_7started_6failed::Failed(e) => {
             sum_word_x(str_lit("failed"), io_error_word_x(e))
@@ -1318,7 +1318,7 @@ pub fn started_word_x() -> i64 {
 
 #[inline]
 pub fn output_room_x(p: i64) -> i64 {
-    set(pending_output(), process_output(word_int(p)));
+    set(pending_output(), process_output(int_of(p)));
     i64_plus(8i64, string_length_i64(get(pending_output())))
 }
 
@@ -1329,10 +1329,10 @@ pub fn status_word_x(s: &'static Sum_7running_6exited_9signalled_7unknown<(), In
             sum_word_x(str_lit("running"), w_unit())
         }
         Sum_7running_6exited_9signalled_7unknown::Exited(c) => {
-            sum_word_x(str_lit("exited"), int_word_x(c))
+            sum_word_x(str_lit("exited"), int_value_x(c))
         }
         Sum_7running_6exited_9signalled_7unknown::Signalled(c) => {
-            sum_word_x(str_lit("signalled"), int_word_x(c))
+            sum_word_x(str_lit("signalled"), int_value_x(c))
         }
         Sum_7running_6exited_9signalled_7unknown::Unknown(u) => {
             sum_word_x(str_lit("unknown"), w_unit())
@@ -1344,10 +1344,10 @@ pub fn exit_word_x(s: &'static Sum_6exited_9signalled_7unknown<Int, Int, ()>) ->
     let tagcase_ = s;
     match *tagcase_ {
         Sum_6exited_9signalled_7unknown::Exited(c) => {
-            sum_word_x(str_lit("exited"), int_word_x(c))
+            sum_word_x(str_lit("exited"), int_value_x(c))
         }
         Sum_6exited_9signalled_7unknown::Signalled(c) => {
-            sum_word_x(str_lit("signalled"), int_word_x(c))
+            sum_word_x(str_lit("signalled"), int_value_x(c))
         }
         Sum_6exited_9signalled_7unknown::Unknown(u) => {
             sum_word_x(str_lit("unknown"), w_unit())
@@ -1412,41 +1412,41 @@ pub fn list_dir_word_x(path: i64) -> i64 {
 pub fn fixed_op_word(name: Str, a: i64, b: i64) -> i64 {
     let t = fixed_type(name);
     let op = fixed_op(name);
-    let x = word_int(a);
+    let x = int_of(a);
     if string_eq_p(op, str_lit("from-int")) {
-        int_word_x(wrapped(t, x))
+        int_value_x(wrapped(t, x))
     } else if string_eq_p(op, str_lit("->int")) {
         a
     } else if string_eq_p(op, str_lit("->string")) {
         int_text_x(a)
     } else if string_eq_p(op, str_lit("-not")) {
-        int_word_x(wrapped(t, bitwise_not(x)))
+        int_value_x(wrapped(t, bitwise_not(x)))
     } else {
-        let y = word_int(b);
+        let y = int_of(b);
         if string_eq_p(op, str_lit("+")) {
-            int_word_x(wrapped(t, _plus(x, y)))
+            int_value_x(wrapped(t, _plus(x, y)))
         } else if string_eq_p(op, str_lit("-")) {
-            int_word_x(wrapped(t, _minus(x, y)))
+            int_value_x(wrapped(t, _minus(x, y)))
         } else if string_eq_p(op, str_lit("*")) {
-            int_word_x(wrapped(t, _star(x, y)))
+            int_value_x(wrapped(t, _star(x, y)))
         } else if ((string_eq_p(op, str_lit("-quotient")) || string_eq_p(op, str_lit("-remainder"))) && zero_p(y)) {
             // kayak-rt's failure, the engine's first (C110).
             failed_with_x(string_append(name, str_lit(": division by zero")));
             0i64
         } else if string_eq_p(op, str_lit("-quotient")) {
-            int_word_x(wrapped(t, quotient(x, y)))
+            int_value_x(wrapped(t, quotient(x, y)))
         } else if string_eq_p(op, str_lit("-remainder")) {
-            int_word_x(wrapped(t, remainder(x, y)))
+            int_value_x(wrapped(t, remainder(x, y)))
         } else if string_eq_p(op, str_lit("-and")) {
-            int_word_x(wrapped(t, bitwise_and(x, y)))
+            int_value_x(wrapped(t, bitwise_and(x, y)))
         } else if string_eq_p(op, str_lit("-or")) {
-            int_word_x(wrapped(t, bitwise_ior(x, y)))
+            int_value_x(wrapped(t, bitwise_ior(x, y)))
         } else if string_eq_p(op, str_lit("-xor")) {
-            int_word_x(wrapped(t, bitwise_xor(x, y)))
+            int_value_x(wrapped(t, bitwise_xor(x, y)))
         } else if string_eq_p(op, str_lit("-shl")) {
-            int_word_x(wrapped(t, arithmetic_shift(x, modulo(y, width_of(t)))))
+            int_value_x(wrapped(t, arithmetic_shift(x, modulo(y, width_of(t)))))
         } else if string_eq_p(op, str_lit("-shr")) {
-            int_word_x(wrapped(t, arithmetic_shift(x, _minus(int_lit(0), modulo(y, width_of(t))))))
+            int_value_x(wrapped(t, arithmetic_shift(x, _minus(int_lit(0), modulo(y, width_of(t))))))
         } else if string_eq_p(op, str_lit("=")) {
             bool_word(_eq(x, y))
         } else if string_eq_p(op, str_lit("<")) {

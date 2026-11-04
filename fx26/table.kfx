@@ -244,8 +244,8 @@
   (lambda (v)
     "A literal's word, its object made in the heap if it is one."
     (tagcase v
-      (v-int (n) (int-word! n))
-      (v-real (x) (real-word! x))
+      (v-int (n) (int-value! n))
+      (v-real (x) (make-flonum! x))
       (v-char (c) (char-word c))
       (v-string (s) (string-word! s))
       (v-symbol (s)

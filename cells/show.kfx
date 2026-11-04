@@ -7,8 +7,8 @@
   (lambda (d) (char->string (string-ref-i64 "0123456789abcdef" d))))
 
 (define-rec
-  (hex (subr kfx (i64) string)
-    (lambda (n) (if (i64< n 16) (hex-digit n) (string-append (hex (i64-shr n 4)) (hex-digit (i64-and n 15)))))))
+  (hex-text (subr kfx (i64) string)
+    (lambda (n) (if (i64< n 16) (hex-digit n) (string-append (hex-text (i64-shr n 4)) (hex-digit (i64-and n 15)))))))
 
 (define char-written (subr kfx (i64) string)
   (lambda (cp)
@@ -16,7 +16,7 @@
       (cond ((i64= cp 32) "space") ((i64= cp 10) "newline") ((i64= cp 9) "tab") ((i64= cp 13) "return")
             ((i64= cp 0) "null") ((i64= cp 7) "alarm") ((i64= cp 8) "backspace") ((i64= cp 127) "delete")
             ((i64= cp 27) "escape")
-            ((i64< cp 32) (string-append "x" (hex cp)))
+            ((i64< cp 32) (string-append "x" (hex-text cp)))
             (else (char->string (i64->char cp)))))))
 
 (define-rec
@@ -28,7 +28,7 @@
             (escaped s (i64+ i 1)
               (string-append acc
                 (cond ((i64= cp 34) "\\\"") ((i64= cp 92) "\\\\") ((i64= cp 10) "\\n") ((i64= cp 9) "\\t") ((i64= cp 13) "\\r")
-                      ((i64< cp 32) (string-append "\\x" (string-append (hex cp) ";")))
+                      ((i64< cp 32) (string-append "\\x" (string-append (hex-text cp) ";")))
                       (else (char->string c))))))))))
 
 (define kind-name (subr kfx (i64) string)
@@ -73,21 +73,21 @@
           ((i64= k (int->i64 (with lay kind-extension))) "extension")
           (else "?"))))
 
-(define byte-at (subr cm (i64 i64) i64)
+(define raw-byte-at (subr cread (i64 i64) i64)
   (lambda (p i)
     "Byte `i` of the raw words from word `p`, little-endian."
     (i64-and (i64-shr (word-at (i64+ p (i64-quotient i 8))) (i64->int (i64* 8 (i64-remainder i 8)))) 255)))
 
 (define-rec
-  (bytes-written (subr cm (i64 i64 i64) string)
+  (bytes-written (subr cread (i64 i64 i64) string)
     (lambda (p i n)
       "A bytevector's bytes from `i`, its length `n`: after its length's word."
       (cond ((i64>= i n) "")
-            ((i64= i 0) (string-append (i64->string (byte-at (i64+ p 1) 0)) (bytes-written p 1 n)))
-            (else (string-append " " (string-append (i64->string (byte-at (i64+ p 1) i)) (bytes-written p (i64+ i 1) n))))))))
+            ((i64= i 0) (string-append (i64->string (raw-byte-at (i64+ p 1) 0)) (bytes-written p 1 n)))
+            (else (string-append " " (string-append (i64->string (raw-byte-at (i64+ p 1) i)) (bytes-written p (i64+ i 1) n))))))))
 
 (define-rec
-  (written (subr cm (i64) string)
+  (written (subr cread (i64) string)
     (lambda (v)
       (cond ((is-fixnum? v) (i64->string (fix-val v)))
             ((i64= v v-true) "#t")
@@ -109,11 +109,17 @@
             ((is-kind? v k-vector) (string-append "#(" (string-append (elements-written v 0 (obj-length v)) ")")))
             ((is-kind? v k-bytevector)
              (string-append "#u8(" (string-append (bytes-written (address v) 0 (word-at (address v))) ")")))
+            ;; Fixpt's closure and continuation (`print.rs`'s `Closure`,
+            ;; `Continuation`): the engine's procedures and continuations (C333).
+            ((is-kind? v (int->i64 (with lay kind-closure))) "#<procedure>")
+            ((is-kind? v (int->i64 (with lay kind-continuation))) "#<continuation>")
             ((or (is-kind? v k-continuation)
                  (and (is-kind? v k-closure) (i64= (fields-of v) f-free0) (is-kind? (slot-of v f-free0) k-continuation)))
              "#<continuation>")
             ((is-kind? v k-box) (string-append "#<box " (string-append (written (slot-of v 2)) ">")))
             ((is-kind? v k-sum) (string-append "#<sum " (string-append (written (slot-of v 2)) ">")))
+            ;; Its count, Fixpt's (`print.rs`; C333): an eqtable's second field (C329).
+            ((is-kind? v k-eqtable) (string-append "#<eqtable of " (string-append (i64->string (fix-val (slot-of v 2))) ">")))
             ((is-kind? v k-product) (string-append "#<product of " (string-append (i64->string (i64- (fields-of v) 1)) ">")))
             ((is-kind? v k-code) (string-append "#<cellular-word " (string-append (written (slot-of v f-name)) ">")))
             ((is-bloblet? v)
@@ -124,13 +130,13 @@
              (string-append "#<suffix-ref " (string-append (kind-name (kind-of (sref-owner v)))
                (string-append " +" (string-append (i64->string (sref-offset v)) ">")))))
             (else "#<unknown>"))))
-  (elements-written (subr cm (i64 i64 i64) string)
+  (elements-written (subr cread (i64 i64 i64) string)
     (lambda (v i n)
       "A vector's elements from `i`, a space between."
       (cond ((i64>= i n) "")
             ((i64= i 0) (string-append (written (elt-ref v 0)) (elements-written v 1 n)))
             (else (string-append " " (string-append (written (elt-ref v i)) (elements-written v (i64+ i 1) n)))))))
-  (tail-written (subr cm (i64) string)
+  (tail-written (subr cread (i64) string)
     (lambda (rest)
       (cond ((i64= rest v-null) "")
             ((is-pair? rest) (string-append " " (string-append (written (pair-car rest)) (tail-written (pair-cdr rest)))))

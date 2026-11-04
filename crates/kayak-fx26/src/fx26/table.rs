@@ -434,10 +434,10 @@ pub fn literal_word_x(v: &'static Val) -> i64 {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VInt(n) => {
-            int_word_x(n)
+            int_value_x(n)
         }
         Val::VReal(x) => {
-            real_word_x(x)
+            make_flonum_x(x)
         }
         Val::VChar(c) => {
             char_word(c)

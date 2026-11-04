@@ -12,73 +12,98 @@
 (define fix-max-int int (i64->int fix-max))
 (define fix-min-int int (i64->int fix-min))
 
-(define is-big? (subr cm (i64) bool) (lambda (v) (is-kind? v k-bignum)))
-(define is-integer? (subr cm (i64) bool) (lambda (v) (or (is-fixnum? v) (is-big? v))))
-(define is-flonum? (subr cm (i64) bool) (lambda (v) (is-kind? v k-flonum)))
+(define is-big? (subr cread (i64) bool) (lambda (v) (is-kind? v k-bignum)))
+(define is-integer? (subr cread (i64) bool) (lambda (v) (or (is-fixnum? v) (is-big? v))))
+(define is-flonum? (subr cread (i64) bool) (lambda (v) (is-kind? v k-flonum)))
 (define is-f32? (subr kfx (i64) bool)
   (lambda (v) (and (i64= (word-tag v) t-immediate) (i64= (i64-and (i64-shr v 3) 31) sub-f32))))
 
 (define unsigned-int (subr kfx (i64) int)
   (lambda (w) "A word's 64 bits, as an unsigned integer." (if (i64< w 0) (+ (i64->int w) two-64) (i64->int w))))
 
+"Bignums taken apart and put together by halves (the engine's, C99, now
+ tier 1's too, C333): a bignum of n limbs costs some n log n, not n
+ squared, so that a step on one is never long (a step is how long the
+ REPL's keys may wait)."
+(define two-63 int (arithmetic-shift 1 63))
 (define-rec
-  (limbs-int (subr cm (i64 i64 int) int)
-    (lambda (p j acc)
-      "Limbs `j` down to 0 of the bignum at word `p`, after `acc`."
-      (if (i64< j 0)
-          acc
-          (limbs-int p (i64- j 1) (+ (arithmetic-shift acc 64) (unsigned-int (word-at (i64+ p (i64+ 2 j))))))))))
+  (below-limbs? (subr kfx (int i64) bool)
+    (lambda (n k) "Whether `n`, at least 0, has at most `k` limbs." (zero? (arithmetic-shift n (i64->int (i64- 0 (i64* k 64)))))))
+  (limbs-within (subr kfx (int i64 i64) i64)
+    (lambda (n lo hi)
+      "The limbs of `n`, between `lo` (too few) and `hi` (enough)."
+      (if (i64<= (i64- hi lo) 1)
+          hi
+          (let ((mid (i64+ lo (i64-quotient (i64- hi lo) 2))))
+            (if (below-limbs? n mid) (limbs-within n lo mid) (limbs-within n mid hi))))))
+  (limbs-above (subr kfx (int i64) i64)
+    (lambda (n k) (if (below-limbs? n k) (limbs-within n (i64-quotient k 2) k) (limbs-above n (i64* k 2))))))
 
-(define int-of (subr cm (i64) int)
+(define limbs-count (subr kfx (int i64) i64)
+  (lambda (n k) "`k` and the limbs of `n`, at least 0." (i64+ k (if (zero? n) 0 (limbs-above n 1)))))
+
+(define limb-word (subr kfx (int) i64)
+  (lambda (n) "A limb, below 2^64, as a word's 64 bits." (int->i64 (if (>= n two-63) (- n two-64) n))))
+
+(define-rec
+  (limbs-set! (subr cwrite (i64 int i64 i64) unit)
+    (lambda (p n i k)
+      "`n`'s `k` limbs, from bignum `p`'s suffix word `i` on."
+      (cond ((i64< k 1) #u)
+            ((i64= k 1) (mem-set! (i64+ (address p) i) (limb-word n)))
+            (else
+             (let* ((h (i64-quotient k 2))
+                    (bits (i64->int (i64* h 64))))
+               (begin
+                 (limbs-set! p (bitwise-and n (- (arithmetic-shift 1 bits) 1)) i h)
+                 (limbs-set! p (arithmetic-shift n (- 0 bits)) (i64+ i h) (i64- k h)))))))))
+
+(define-rec
+  (limbs-value (subr cread (i64 i64 i64) int)
+    (lambda (p i k)
+      "The integer of bignum `p`'s `k` limbs from suffix word `i` on."
+      (cond ((i64< k 1) 0)
+            ((i64= k 1) (unsigned-int (mem-at (i64+ (address p) i))))
+            (else
+             (let ((h (i64-quotient k 2)))
+               (+ (limbs-value p i h) (arithmetic-shift (limbs-value p (i64+ i h) (i64- k h)) (i64->int (i64* h 64))))))))))
+
+(define int-of (subr cread (i64) int)
   (lambda (v)
     "An exact integer's value: a fixnum's, or a bignum's (`read_bignum`)."
     (if (is-fixnum? v)
         (i64->int (fix-val v))
-        (let* ((p (address v))
-               (m (limbs-int p (i64- (fix-val (word-at (i64+ p 1))) 1) 0)))
-          (if (i64= (word-at p) (fix 1)) (- 0 m) m)))))
+        (let ((m (limbs-value v 2 (fix-val (mem-at (i64+ (address v) 1))))))
+          (if (i64= (mem-at (address v)) (fix 1)) (- 0 m) m)))))
 
-(define-rec
-  (limbs-needed (subr kfx (int i64) i64)
-    (lambda (m k) (if (zero? m) k (limbs-needed (arithmetic-shift m -64) (i64+ k 1))))))
-
-(define-rec
-  (limbs-written! (subr cm (i64 int i64 i64) unit)
-    (lambda (p m j k)
-      (if (i64>= j k)
-          #u
-          (begin (word-set! (i64+ p (i64+ 2 j)) (int->i64 m))
-                 (limbs-written! p (arithmetic-shift m -64) (i64+ j 1) k))))))
-
-(define int-value! (subr cm (int) i64)
+(define int-value! (subr cwrite (int) i64)
   (lambda (n)
     "`n` as Fixpt's runtime keeps it: a fixnum where it fits, else a bignum
      made (`N::store`)."
     (if (and (<= n fix-max-int) (>= n fix-min-int))
         (fix (int->i64 n))
         (let* ((m (if (< n 0) (- 0 n) n))
-               (k (limbs-needed m 0))
-               (b (make-bloblet! k-bignum 0 (i64* 8 (i64+ 2 k)) #f #f))
-               (p (address b)))
+               (k (limbs-count m 0))
+               (b (make-bloblet! k-bignum 0 (i64* 8 (i64+ 2 k)) #f #f)))
           (begin
-            (word-set! p (fix (if (< n 0) (the i64 1) (the i64 0))))
-            (word-set! (i64+ p 1) (fix k))
-            (limbs-written! p m 0 k)
+            (mem-set! (address b) (fix (if (< n 0) (the i64 1) (the i64 0))))
+            (mem-set! (i64+ (address b) 1) (fix k))
+            (limbs-set! b m 2 k)
             b)))))
 
-(define make-ratnum! (subr cm (i64 i64) i64)
+(define make-ratnum! (subr cwrite (i64 i64) i64)
   (lambda (num den)
     "A ratnum: two fields, the numerator first, as `alloc` lays them out."
     (let ((r (make-bloblet! k-ratnum 2 0 #t #f)))
       (begin (slot-set! r 3 num) (slot-set! r 2 den) r))))
 
-(define flonum-bits! (subr cm (i64) i64)
+(define flonum-bits! (subr cwrite (i64) i64)
   (lambda (bits)
     "A flonum of a double's bits (`make_flonum`)."
     (let ((b (make-bloblet! k-flonum 0 8 #f #f))) (begin (word-set! (address b) bits) b))))
-(define make-flonum! (subr cm (f64) i64)
+(define make-flonum! (subr cwrite (f64) i64)
   (lambda (x) (flonum-bits! (int->i64 (u64->int (f64->bits x))))))
-(define flonum-of (subr cm (i64) f64)
+(define flonum-of (subr cread (i64) f64)
   (lambda (v) (bits->f64 (int->u64 (unsigned-int (word-at (address v)))))))
 
 (define f32-bits (subr kfx (i64) i64)
@@ -87,7 +112,7 @@
 (define f32-of (subr kfx (i64) f32)
   (lambda (v) (bits->f32 (int->u32 (i64->int (i64-and (i64-shr v 32) 4294967295))))))
 
-(define number-text (subr cm (i64) string)
+(define number-text (subr cread (i64) string)
   (lambda (v)
     "A number, as Fixpt's `to_string_radix` writes it in base 10."
     (cond ((is-fixnum? v) (i64->string (fix-val v)))

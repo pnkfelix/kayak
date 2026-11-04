@@ -78,7 +78,8 @@ its frames: those reach compiled code through adapters (step 4). Step
 its allocation's state, its collector, its symbols and its accessors; the
 engine's file of it is `fx26/vheap.kfx`, its region `@c` as tier 1's,
 and tier 1's heap takes a heap's effects (`cread`, `cwrite`, `calloc`), not
-`cm`, which has I/O. Next: step 2.
+`cm`, which has I/O. Step 2 done (C333): the engine's numbers and
+printing are tier 1's (`numbers.kfx`, `show.kfx`). Next: step 3.
 
 1. **The engine's API over tier 1's heap, in the engine's own binary.**
    - The engine's unit loads `cells/layout.kfx` and `cells/heap.kfx`

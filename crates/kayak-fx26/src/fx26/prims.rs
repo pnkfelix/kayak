@@ -490,7 +490,7 @@ pub fn terminal_val(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Produ
 }
 
 #[inline]
-pub fn written(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
+pub fn write_outcome(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
     let tagcase_ = r;
     match *tagcase_ {
         Sum_4done_6failed::Done(u) => {
@@ -1198,9 +1198,9 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
     } else if string_eq_p(n, str_lit("i64-shr")) {
         v_i64(i64_shr(i64_of(a), val_int(b)))
     } else if string_eq_p(n, str_lit("write-out")) {
-        written(write_out(string_of(a)))
+        write_outcome(write_out(string_of(a)))
     } else if string_eq_p(n, str_lit("write-err")) {
-        written(write_err(string_of(a)))
+        write_outcome(write_err(string_of(a)))
     } else if string_eq_p(n, str_lit("exit")) {
         match exit(val_int(a)) {};
         v_unit()
@@ -1280,7 +1280,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
             }
         }
     } else if string_eq_p(n, str_lit("write-file")) {
-        written(write_file(string_of(a), bytes_of(b)))
+        write_outcome(write_file(string_of(a), bytes_of(b)))
     } else if string_eq_p(n, str_lit("list-dir")) {
         let tagcase_ = the::<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(list_dir(string_of(a)));
         match *tagcase_ {

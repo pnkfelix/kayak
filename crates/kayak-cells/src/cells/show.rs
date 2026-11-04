@@ -13,11 +13,11 @@ pub fn hex_digit(d: i64) -> Str {
 }
 
 #[inline]
-pub fn hex(n: i64) -> Str {
+pub fn hex_text(n: i64) -> Str {
     if i64_lt(n, 16i64) {
         hex_digit(n)
     } else {
-        string_append(hex(i64_shr(n, int_lit(4))), hex_digit(i64_and(n, 15i64)))
+        string_append(hex_text(i64_shr(n, int_lit(4))), hex_digit(i64_and(n, 15i64)))
     }
 }
 
@@ -41,7 +41,7 @@ pub fn char_written(cp: i64) -> Str {
     } else if i64_eq(cp, 27i64) {
         str_lit("escape")
     } else if i64_lt(cp, 32i64) {
-        string_append(str_lit("x"), hex(cp))
+        string_append(str_lit("x"), hex_text(cp))
     } else {
         char_to_string(i64_to_char(cp))
     })
@@ -65,7 +65,7 @@ pub fn escaped(mut s: Str, mut i: i64, mut acc: Str) -> Str {
             } else if i64_eq(cp, 13i64) {
                 str_lit("\\r")
             } else if i64_lt(cp, 32i64) {
-                string_append(str_lit("\\x"), string_append(hex(cp), str_lit(";")))
+                string_append(str_lit("\\x"), string_append(hex_text(cp), str_lit(";")))
             } else {
                 char_to_string(c)
             }));
@@ -155,7 +155,7 @@ pub fn kind_name(k: i64) -> Str {
 
 /// Byte `i` of the raw words from word `p`, little-endian.
 #[inline]
-pub fn byte_at(p: i64, i: i64) -> i64 {
+pub fn raw_byte_at(p: i64, i: i64) -> i64 {
     i64_and(i64_shr(word_at(i64_plus(p, i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
 }
 
@@ -164,9 +164,9 @@ pub fn bytes_written(p: i64, i: i64, n: i64) -> Str {
     if i64_gt_eq(i, n) {
         str_lit("")
     } else if i64_eq(i, 0i64) {
-        string_append(i64_to_string(byte_at(i64_plus(p, 1i64), 0i64)), bytes_written(p, 1i64, n))
+        string_append(i64_to_string(raw_byte_at(i64_plus(p, 1i64), 0i64)), bytes_written(p, 1i64, n))
     } else {
-        string_append(str_lit(" "), string_append(i64_to_string(byte_at(i64_plus(p, 1i64), i)), bytes_written(p, i64_plus(i, 1i64), n)))
+        string_append(str_lit(" "), string_append(i64_to_string(raw_byte_at(i64_plus(p, 1i64), i)), bytes_written(p, i64_plus(i, 1i64), n)))
     }
 }
 
@@ -209,12 +209,18 @@ pub fn written(v: i64) -> Str {
         string_append(str_lit("#("), string_append(elements_written(v, 0i64, obj_length(v)), str_lit(")")))
     } else if is_kind_p(v, k_bytevector()) {
         string_append(str_lit("#u8("), string_append(bytes_written(address(v), 0i64, word_at(address(v))), str_lit(")")))
+    } else if is_kind_p(v, int_to_i64(lay::kind_closure())) {
+        str_lit("#<procedure>")
+    } else if is_kind_p(v, int_to_i64(lay::kind_continuation())) {
+        str_lit("#<continuation>")
     } else if (is_kind_p(v, k_continuation()) || (is_kind_p(v, k_closure()) && i64_eq(fields_of(v), f_free0()) && is_kind_p(slot_of(v, f_free0()), k_continuation()))) {
         str_lit("#<continuation>")
     } else if is_kind_p(v, k_box()) {
         string_append(str_lit("#<box "), string_append(written(slot_of(v, 2i64)), str_lit(">")))
     } else if is_kind_p(v, k_sum()) {
         string_append(str_lit("#<sum "), string_append(written(slot_of(v, 2i64)), str_lit(">")))
+    } else if is_kind_p(v, k_eqtable()) {
+        string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fix_val(slot_of(v, 2i64))), str_lit(">")))
     } else if is_kind_p(v, k_product()) {
         string_append(str_lit("#<product of "), string_append(i64_to_string(i64_minus(fields_of(v), 1i64)), str_lit(">")))
     } else if is_kind_p(v, k_code()) {

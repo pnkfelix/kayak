@@ -9174,3 +9174,33 @@ before. `engine-bench.py` against C330's: 0 to 6% slower (`loop.fx` 8395
 to 8827 ms, `helpers.fx` 8312 to 8793), `lists.fx` 6% faster (5225 to
 4929): the values' base (`vbase`), a thread's constant read at every
 `address`, is most of it (2.2 s of `loop.fx`'s 5 before the inlining).
+
+## C333. The engine's numbers and printing, tier 1's (2026-11-04; one heap, step 2)
+
+The engine's program loads tier 1's `numbers.kfx` and `show.kfx` too, so
+that a number is made, read and written one way, and a value printed one
+way, everywhere (docs/research/one-heap.md, step 2):
+- **Numbers**: the engine's bignums are tier 1's `int-value!` and
+  `int-of`, its reals `make-flonum!` and `flonum-of`, its `f32`s
+  `f32-value`, `f32-of`, `is-f32?`. Tier 1's bignums now take integers
+  apart and put them together by halves, the engine's way (C99: n log n
+  for n limbs, not n squared, which tier 1's limb by limb was); the
+  engine's code moved there.
+- **An `f32` was not Fixpt's on the engine**: its bits from bit 8 (C318),
+  where Fixpt's `Value::f32` puts them from bit 32 (`bits << 24`, then the
+  payload's shift of 8), as tier 1 had. Now Fixpt's.
+- **Printing**: the engine's `show-word` is tier 1's `written` (Fixpt's
+  `print.rs`), which writes characters and strings as Fixpt does (more
+  characters named, `\t`, `\r`, `\x…;`) where the engine's named and
+  escaped fewer. Tier 1's `written` gains Fixpt's eqtable (`#<eqtable of
+  N>`), closure (`#<procedure>`) and continuation (kind 14,
+  `#<continuation>`). A procedure the engine writes is `#<procedure>`, not
+  `#<closure>`, which was the engine's own (Fixpt writes one by its
+  machine, `#<native-closure 2 fields 0 bytes>` on x86_64, its FX-26
+  printer `#<procedure>`): three of Fixpt's programs print so now, which
+  no answer compared.
+- **Clashes** renamed: tier 1's `byte-at` is `raw-byte-at`, its `hex`
+  `hex-text`; the engine's `written` (an I/O outcome, prims.kfx)
+  `write-outcome`; the engine's `two-64` goes, tier 1's the same. Tier 1's
+  numbers and printing take the heap's effects (`cread`, `cwrite`), not `cm`.
+All 907 programs print as before but those three.
