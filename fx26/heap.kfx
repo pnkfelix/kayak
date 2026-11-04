@@ -22,10 +22,7 @@
 (define imm-bool i64 1)
 (define imm-unit i64 2)
 (define imm-nil i64 3)
-(define imm-symbol i64 4)
 (define imm-prim i64 5)
-(define imm-tag i64 6)
-(define imm-special i64 7)
 
 "Objects' kinds, as an object's header says them: Fixpt's kind where the
  engine's object is Fixpt's (`layout.rs`'s `KINDS`; C318), else one past
@@ -47,10 +44,8 @@
 "A flat array (C220): Fixpt's (C327, vprims.kfx's `flat-made!`), its
  layout's code in its slot, its elements' bits its suffix."
 (define ob-flatx i64 42)
-"A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
- collections when its keys were last hashed, its count of entries, its
- buckets (an `ob-array` of chains); an entry an `ob-array`, its key,
- value and next entry (`#f` at a chain's end)."
+"A table keyed by identity (C220): Fixpt's (C329, vprims.kfx's
+ `eqtable-made!`), three fields and no trailer."
 (define ob-eqtable i64 43)
 "Kinds whose payload is raw words, not values: a bloblet's suffix, never
  traced, as Fixpt's. A string and a bytevector are Fixpt's (C320:
@@ -98,10 +93,10 @@
 (define sub-unbound i64 7)
 (define sub-char i64 8)
 (define sub-f32 i64 9)
-(define sub-symbol i64 24)
+"A primitive, the engine's own immediate, past Fixpt's subtags: a
+ procedure, which reaches compiled code through an adapter, as the
+ engine's closures will (docs/research/one-heap.md, step 4)."
 (define sub-prim i64 25)
-(define sub-tag i64 26)
-(define sub-special i64 27)
 
 (define imm-word (subr kfx (i64 i64) i64)
   (lambda (sub n) (i64+ (i64-shl n 8) (i64+ (i64-shl sub 3) 3))))
@@ -115,10 +110,7 @@
           ((i64= kind imm-bool) (imm-word (if (i64= n 0) sub-false sub-true) 0))
           ((i64= kind imm-unit) (imm-word sub-unit 0))
           ((i64= kind imm-nil) (imm-word sub-null 0))
-          ((i64= kind imm-symbol) (imm-word sub-symbol n))
-          ((i64= kind imm-prim) (imm-word sub-prim n))
-          ((i64= kind imm-tag) (imm-word sub-tag n))
-          (else (imm-word sub-special n)))))
+          (else (imm-word sub-prim n)))))
 (define immediate-kind (subr kfx (i64) i64)
   (lambda (w)
     (let ((sub (immediate-sub w)))
@@ -126,10 +118,8 @@
             ((i64= sub sub-unit) imm-unit)
             ((i64= sub sub-null) imm-nil)
             ((i64= sub sub-char) imm-char)
-            ((i64= sub sub-symbol) imm-symbol)
             ((i64= sub sub-prim) imm-prim)
-            ((i64= sub sub-tag) imm-tag)
-            (else imm-special)))))
+            (else -1)))))
 (define immediate-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 8)))
 (define code-word (subr kfx (i64) i64) (lambda (i) (fixnum i)))
 (define code-index (subr kfx (i64) i64) (lambda (w) (fixnum-value w)))
@@ -240,6 +230,17 @@
              (words-zeroed! (i64+ main (i64+ f 1)) sw)
              (bloblet-at (i64+ main (i64+ f 1)))))))
 
+(define fields-alloc! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+  (lambda (kind n)
+    "A bloblet of `n` fields and no trailer, nor suffix (`make_bloblet`'s,
+     `trailer` false: an eqtable, C329): field `k`, from 1, at `p - k`
+     (`field-at`), its header below them."
+    (let ((at (bump! (i64+ n 1)))) (begin (put! at (header kind n 0)) (bloblet-at (i64+ at (i64+ n 1)))))))
+(define field-at (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (v k) (at-word (i64- (pointer-index v) k))))
+(define field-set! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64 i64) unit)
+  (lambda (v k w) (put! (i64- (pointer-index v) k) w)))
+
 "An object's payload: a pair's two words; a bloblet's fields, found by its
  trailer (`p - F + i`), or, with none, its suffix (`p + i`)."
 (define payload-at (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
@@ -249,11 +250,26 @@
         (let* ((p (pointer-index v)) (b (at-word (i64- p 1))))
           (if (i64= (word-tag b) 5) (i64+ (i64- p (i64-shr b 3)) i) (i64+ p i))))))
 
+(define-rec
+  (main-below (subr (maxeff (read @globals) spin (read @h)) ((flatarrayof i64 @h) i64) i64)
+    (lambda (ws k)
+      "The header at or below `k` in `ws`: a bloblet's with fields and no
+       trailer is below them (Fixpt's `find_main`; an eqtable's, C329)."
+      (if (i64= (word-tag (flatarray-ref-i64 ws k)) 6) k (main-below ws (i64- k 1))))))
+
+(define main-in (subr (maxeff (read @globals) spin (read @h)) ((flatarrayof i64 @h) i64) i64)
+  (lambda (ws p)
+    "Bloblet `p`'s main header's index in `ws`: by its trailer, the word
+     below its suffix if a header, else found below its fields."
+    (let ((b (flatarray-ref-i64 ws (i64- p 1))))
+      (cond ((i64= (word-tag b) 5) (i64- (i64- p 1) (i64-shr b 3)))
+            ((i64= (word-tag b) 6) (i64- p 1))
+            (else (main-below ws (i64- p 1)))))))
+
 (define header-at (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
   (lambda (v)
     "A bloblet's main header's index."
-    (let* ((p (pointer-index v)) (b (at-word (i64- p 1))))
-      (if (i64= (word-tag b) 5) (i64- (i64- p 1) (i64-shr b 3)) (i64- p 1)))))
+    (main-in (get space) (pointer-index v))))
 
 (define obj-kind (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
   (lambda (v) (if (pair-tagged? v) ob-pair (header-kind (at-word (header-at v))))))
@@ -323,8 +339,7 @@
            (let* ((from (get space)) (p (pointer-index w)) (b (flatarray-ref-i64 from (i64- p 1))))
              (if (i64= (word-tag b) 7)
                  (bloblet-at (i64-shr b 3))
-                 (let* ((f (if (i64= (word-tag b) 5) (i64-shr b 3) (the i64 0)))
-                        (hi (i64- (i64- p 1) f))
+                 (let* ((hi (main-in from p))
                         (h (flatarray-ref-i64 from hi))
                         (start (if (header-large? h) (i64- hi 1) hi))
                         (n (i64+ (i64- p start) (suffix-words (header-bytes h))))

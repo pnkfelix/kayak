@@ -454,9 +454,6 @@ pub fn literal_word_x(v: &'static Val) -> i64 {
             obj_set_x(p, 1i64, fixnum(n));
             p
         }
-        Val::VTag(n) => {
-            immediate(imm_tag(), n)
-        }
         Val::VRep(text) => {
             // A rep (C305): its nodes, which the checker noted, made canonical here,
             // where the engine allocates, its binary form a bytevector.

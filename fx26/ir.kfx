@@ -67,7 +67,6 @@
   (v-proc i64 ir (listof (arrayof val @h) acyclic))
   (v-prim string i64)
   (v-ctor string i64)
-  (v-tag i64)
   (v-cont (listof frame acyclic) (ref bool @h) bool)
   (v-datum sexp)
   ;; A rep (C305): a type's nodes, as their text, made a rep at loading.

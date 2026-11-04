@@ -9066,3 +9066,41 @@ tier 1). Now both (`module-value-order`). A new test,
 reshape inside `list` (docs/requests/fixpt-reshape-in-list.md, for the
 user to take to the Fixpt team), so the test keeps its reshapes out of
 one. All 890 of Fixpt's programs print on the engine as before.
+
+## C329. Eqtables, Fixpt's, on the engine and on tier 1 (2026-11-04; one heap, 1c)
+
+An eqtable is Fixpt's (`eqtable.rs`) on both: a bloblet of kind `eqtable`
+with three fields and no trailer (the count of collections when its keys
+were last hashed, its count, its buckets), the buckets a `vector`, bucket
+`i` its element `i`, an entry a vector of key, value and next; a key's
+bucket SplitMix64's finalizer over its word, modulo the buckets
+(`bucket_of`). Before, each was kayak's own (C220): the engine's an
+object with a trailer, its buckets and entries FX-26 arrays; tier 1's a
+bloblet with a trailer, its entries' elements in slot order (the key
+where Fixpt's `next` is), and both hashed `key >> 3 ^ key >> 12`. Fixpt's
+eqtable has not changed since (0fb1d40f, 2026-09-30): these were kayak's
+departures, not drift.
+- **A bloblet with fields and no trailer**, its header found below its
+  fields (Fixpt's `find_main`): the engine's `fields-alloc!`, `field-at`,
+  `main-in` (which `header-at` and the collector use). Tier 1's heap had
+  it (`header-scanned`).
+- **The hash in machine words**: KFX's `i64*` wraps, so SplitMix64 is
+  `i64` arithmetic, its right shifts made logical by a mask and its
+  remainder a `u64`'s by halving (checked against `bucket_of` on 200000
+  random keys). Through KFX's `int` and `u64`, tier 1's `native/eqtables.fx`
+  under `--gc-stress`, which rehashes at every operation, ran past the
+  test's time; now 15 s.
+Fixpt's eqtable programs (`run/eqtable.fx`, `native/eqtables.fx`, 10000
+entries across collections) print alike on both.
+
+## C330. The engine's prompt tags and mark keys, Fixpt's (2026-11-04; one heap, 1c)
+
+A prompt tag and a continuation mark key are what Fixpt makes them
+(`cellular.rs`: `make-continuation-prompt-tag`, `make-escape-tag`,
+`make-continuation-mark-key`): a new box of unit, compared by identity.
+The engine's tags were an immediate of its own (subtag 26), numbered as
+made; its mark keys a box of 0. Its last immediates past Fixpt's but one
+go (a symbol's, 24, unused since C321; the "special", 27): a primitive
+stays one (25), a procedure, which reaches compiled code through an
+adapter as the engine's closures will (one-heap step 4).
+

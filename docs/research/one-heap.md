@@ -68,9 +68,11 @@ layout and the collector over them (C319), 11 to 17% slower. 1c so far:
 strings and bytevectors (C320), symbols and keywords (C321), sums (C322),
 products (C323, now 0 to 4% faster than before 1a), datatype values
 (C324), bignums (C325), arrays, bloblets and suffix references (C326),
-flat arrays (C327), module values (C328). Left of 1c: the engine's own
-immediates and objects (primitives, prompt tags, closures, frames,
-constructors) and its eqtables; then the engine's heap code shared with
+flat arrays (C327), module values (C328), eqtables (C329, tier 1's too),
+prompt tags and mark keys (C330). Every value the engine makes is now in
+Fixpt's form but its procedures (primitives, an immediate of its own;
+closures, constructors and continuations, objects of its own layout) and
+its frames: those reach compiled code through adapters (step 4). Then the engine's heap code shared with
 tier 1's (step 1's last part, which C318 found needs the two programs'
 regions joined: `@h` and `@c`, and tier 1's effect `cm` includes I/O).
 

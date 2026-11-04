@@ -101,7 +101,6 @@ pub enum Val {
     VProc(i64, &'static Ir, List<Array<&'static Val>>),
     VPrim(Str, i64),
     VCtor(Str, i64),
-    VTag(i64),
     VCont(List<&'static Frame>, Ref<bool>, bool),
     VDatum(&'static Sexp),
     VRep(Str),
@@ -181,10 +180,6 @@ pub fn v_prim(f0: Str, f1: i64) -> &'static Val {
 
 pub fn v_ctor(f0: Str, f1: i64) -> &'static Val {
     kayak_rt::heap_alloc(Val::VCtor(f0, f1))
-}
-
-pub fn v_tag(f0: i64) -> &'static Val {
-    kayak_rt::heap_alloc(Val::VTag(f0))
 }
 
 pub fn v_cont(f0: List<&'static Frame>, f1: Ref<bool>, f2: bool) -> &'static Val {

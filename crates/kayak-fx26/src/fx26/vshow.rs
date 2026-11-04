@@ -63,8 +63,6 @@ pub fn show_word(w: i64) -> Str {
             str_lit("#u")
         } else if i64_eq(kind, imm_nil()) {
             str_lit("()")
-        } else if i64_eq(kind, imm_tag()) {
-            str_lit("#<prompt-tag>")
         } else {
             str_lit("#<closure>")
         }
@@ -105,7 +103,7 @@ pub fn show_word(w: i64) -> Str {
         } else if i64_eq(kind, ob_cont()) {
             str_lit("#<continuation>")
         } else if i64_eq(kind, ob_eqtable()) {
-            string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(obj_ref(w, 1i64))), str_lit(">")))
+            string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(field_at(w, 2i64))), str_lit(">")))
         } else if i64_eq(kind, ob_flatx()) {
             string_append(str_lit("#<flat-array 2 fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))
         } else {

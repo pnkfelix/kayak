@@ -257,7 +257,6 @@
       (v-nil () w-nil)
       (v-prim (n a) (immediate imm-prim (prim-number n)))
       (v-ctor (t n) (let ((p (alloc! ob-ctor 2))) (begin (obj-set! p 0 (fixnum (intern! t))) (obj-set! p 1 (fixnum n)) p)))
-      (v-tag (n) (immediate imm-tag n))
       (v-rep (text)
         "A rep (C305): its nodes, which the checker noted, made canonical here,
          where the engine allocates, its binary form a bytevector."

@@ -2116,14 +2116,28 @@ pub fn chars_text(mut l: i64, mut acc: Str) -> Str {
     }
 }
 
-// Tables keyed by identity (C220), as Fixpt's `eqtable.rs`: a bloblet of
-// kind `eqtable`, its slots the count of collections when its keys were
-// last hashed (2), its count (3), its buckets (4), a vector of chains; an
-// entry a vector of its key (2), value (3) and next entry (4), `#f` at a
-// chain's end. Hashed by address, rehashed after a collection, relinked.
+// Tables keyed by identity (C220), Fixpt's (`eqtable.rs`, C329): a bloblet
+// of kind `eqtable`, no trailer, its slots the count of collections when its
+// keys were last hashed (1), its count (2), its buckets (3), a vector of
+// chains, bucket `i` its element `i`; an entry a vector of its key, value and
+// next entry (elements 0 to 2), `#f` at a chain's end. A vector's element `j`
+// of `n` is its slot `n + 1 - j`, as `alloc` lays it out. Hashed by address,
+// SplitMix64's finalizer as Fixpt's `bucket_of`; rehashed after a
+// collection, relinked.
+/// `z` xor `z` shifted right `s` bits, logically: as a `u64`'s.
+pub fn eq_mixed(z: i64, s: i64) -> i64 {
+    i64_xor(z, i64_and(i64_shr(z, i64_to_int(s)), i64_minus(i64_shl(1i64, i64_to_int(i64_minus(64i64, s))), 1i64)))
+}
+
 pub fn eq_bucket(key: i64, n: i64) -> i64 {
-    let z = i64_xor(i64_shr(key, int_lit(3)), i64_shr(key, int_lit(12)));
-    i64_remainder(i64_and(z, 1152921504606846975i64), n)
+    let z1 = i64_star(eq_mixed(key, 30i64), -4658895280553007687i64);
+    let z2 = i64_star(eq_mixed(z1, 27i64), -7723592293110705685i64);
+    let z = eq_mixed(z2, 31i64);
+    if i64_gt_eq(z, 0i64) {
+        i64_remainder(z, n)
+    } else {
+        i64_remainder(i64_plus(i64_star(2i64, i64_remainder(i64_and(i64_shr(z, int_lit(1)), 9223372036854775807i64), n)), i64_and(z, 1i64)), n)
+    }
 }
 
 pub fn eq_falses_x(mut v: i64, mut i: i64, mut n: i64) -> () {
@@ -2143,6 +2157,15 @@ pub fn eq_size(v: i64) -> i64 {
     i64_minus(fields_of(v), 1i64)
 }
 
+/// A vector's element `j`.
+pub fn eq_elt(v: i64, j: i64) -> i64 {
+    slot_of(v, i64_minus(fields_of(v), j))
+}
+
+pub fn eq_elt_set_x(v: i64, j: i64, x: i64) -> () {
+    slot_set_x(v, i64_minus(fields_of(v), j), x)
+}
+
 pub fn eq_vector_x(n: i64) -> i64 {
     let v = make_bloblet_x(k_vector(), n, 0i64, true, false);
     eq_falses_x(v, 0i64, n);
@@ -2151,10 +2174,10 @@ pub fn eq_vector_x(n: i64) -> i64 {
 
 pub fn eqtable_made_x() -> i64 {
     let bs = eq_vector_x(8i64);
-    let t = make_bloblet_x(k_eqtable(), 3i64, 0i64, true, false);
-    slot_set_x(t, 2i64, fix(get(collections())));
-    slot_set_x(t, 3i64, fix(0i64));
-    slot_set_x(t, 4i64, bs);
+    let t = make_bloblet_x(k_eqtable(), 3i64, 0i64, false, false);
+    slot_set_x(t, 1i64, fix(get(collections())));
+    slot_set_x(t, 2i64, fix(0i64));
+    slot_set_x(t, 3i64, bs);
     t
 }
 
@@ -2163,9 +2186,9 @@ pub fn chain_relinked_x(mut e: i64, mut bs: i64) -> () {
         if i64_eq(e, v_false()) {
             return ();
         } else {
-            let (next, b) = (slot_of(e, 4i64), i64_plus(2i64, eq_bucket(slot_of(e, 2i64), eq_size(bs))));
-            slot_set_x(e, 4i64, slot_of(bs, b));
-            slot_set_x(bs, b, e);
+            let (next, b) = (eq_elt(e, 2i64), eq_bucket(eq_elt(e, 0i64), eq_size(bs)));
+            eq_elt_set_x(e, 2i64, eq_elt(bs, b));
+            eq_elt_set_x(bs, b, e);
             e = next;
             continue;
         }
@@ -2177,8 +2200,8 @@ pub fn buckets_relinked_x(mut old: i64, mut i: i64, mut bs: i64) -> () {
         if i64_gt_eq(i, eq_size(old)) {
             return ();
         } else {
-            let e = slot_of(old, i64_plus(i, 2i64));
-            slot_set_x(old, i64_plus(i, 2i64), v_false());
+            let e = eq_elt(old, i);
+            eq_elt_set_x(old, i, v_false());
             chain_relinked_x(e, bs);
             i = i64_plus(i, 1i64);
             continue;
@@ -2187,63 +2210,63 @@ pub fn buckets_relinked_x(mut old: i64, mut i: i64, mut bs: i64) -> () {
 }
 
 pub fn eqtable_relinked_x(t: i64, bs: i64) -> () {
-    buckets_relinked_x(slot_of(t, 4i64), 0i64, bs);
-    slot_set_x(t, 4i64, bs);
-    slot_set_x(t, 2i64, fix(get(collections())))
+    buckets_relinked_x(slot_of(t, 3i64), 0i64, bs);
+    slot_set_x(t, 3i64, bs);
+    slot_set_x(t, 1i64, fix(get(collections())))
 }
 
 pub fn chain_find(mut e: i64, mut key: i64) -> i64 {
     loop {
         if i64_eq(e, v_false()) {
             return v_false();
-        } else if i64_eq(slot_of(e, 2i64), key) {
+        } else if i64_eq(eq_elt(e, 0i64), key) {
             return e;
         } else {
-            e = slot_of(e, 4i64);
+            e = eq_elt(e, 2i64);
             continue;
         }
     }
 }
 
 pub fn eq_entry(t: i64, key: i64) -> i64 {
-    if i64_eq(slot_of(t, 2i64), fix(get(collections()))) {
+    if i64_eq(slot_of(t, 1i64), fix(get(collections()))) {
         ()
     } else {
-        eqtable_relinked_x(t, slot_of(t, 4i64))
+        eqtable_relinked_x(t, slot_of(t, 3i64))
     };
-    let bs = slot_of(t, 4i64);
-    chain_find(slot_of(bs, i64_plus(2i64, eq_bucket(key, eq_size(bs)))), key)
+    let bs = slot_of(t, 3i64);
+    chain_find(eq_elt(bs, eq_bucket(key, eq_size(bs))), key)
 }
 
 pub fn eq_set_x(t: i64, key: i64, v: i64) -> () {
     let e = eq_entry(t, key);
     if not(i64_eq(e, v_false())) {
-        slot_set_x(e, 3i64, v)
+        eq_elt_set_x(e, 1i64, v)
     } else {
-        let (n, size) = (i64_plus(i64_shr(slot_of(t, 3i64), int_lit(3)), 1i64), eq_size(slot_of(t, 4i64)));
-        slot_set_x(t, 3i64, fix(n));
+        let (n, size) = (i64_plus(i64_shr(slot_of(t, 2i64), int_lit(3)), 1i64), eq_size(slot_of(t, 3i64)));
+        slot_set_x(t, 2i64, fix(n));
         if i64_gt(n, i64_star(2i64, size)) {
             eqtable_relinked_x(t, eq_vector_x(i64_star(2i64, size)))
         } else {
             ()
         };
-        let bs = slot_of(t, 4i64);
-        let b = i64_plus(2i64, eq_bucket(key, eq_size(bs)));
+        let bs = slot_of(t, 3i64);
+        let b = eq_bucket(key, eq_size(bs));
         let x = eq_vector_x(3i64);
-        slot_set_x(x, 2i64, key);
-        slot_set_x(x, 3i64, v);
-        slot_set_x(x, 4i64, slot_of(bs, b));
-        slot_set_x(bs, b, x)
+        eq_elt_set_x(x, 0i64, key);
+        eq_elt_set_x(x, 1i64, v);
+        eq_elt_set_x(x, 2i64, eq_elt(bs, b));
+        eq_elt_set_x(bs, b, x)
     }
 }
 
 pub fn chain_without_x(mut before: i64, mut key: i64) -> () {
     loop {
-        let e = slot_of(before, 4i64);
+        let e = eq_elt(before, 2i64);
         if i64_eq(e, v_false()) {
             return ();
-        } else if i64_eq(slot_of(e, 2i64), key) {
-            return slot_set_x(before, 4i64, slot_of(e, 4i64));
+        } else if i64_eq(eq_elt(e, 0i64), key) {
+            return eq_elt_set_x(before, 2i64, eq_elt(e, 2i64));
         } else {
             before = e;
             continue;
@@ -2255,15 +2278,15 @@ pub fn eq_delete_x(t: i64, key: i64) -> () {
     if i64_eq(eq_entry(t, key), v_false()) {
         ()
     } else {
-        let bs = slot_of(t, 4i64);
-        let b = i64_plus(2i64, eq_bucket(key, eq_size(bs)));
-        let first = slot_of(bs, b);
-        if i64_eq(slot_of(first, 2i64), key) {
-            slot_set_x(bs, b, slot_of(first, 4i64))
+        let bs = slot_of(t, 3i64);
+        let b = eq_bucket(key, eq_size(bs));
+        let first = eq_elt(bs, b);
+        if i64_eq(eq_elt(first, 0i64), key) {
+            eq_elt_set_x(bs, b, eq_elt(first, 2i64))
         } else {
             chain_without_x(first, key)
         };
-        slot_set_x(t, 3i64, fix(i64_minus(i64_shr(slot_of(t, 3i64), int_lit(3)), 1i64)))
+        slot_set_x(t, 2i64, fix(i64_minus(i64_shr(slot_of(t, 2i64), int_lit(3)), 1i64)))
     }
 }
 
@@ -4718,7 +4741,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(str_lit("an eqtable"))
         } else {
             if i64_eq(op, o_eqtable_count()) {
-                slot_of(a, 3i64)
+                slot_of(a, 2i64)
             } else if i64_eq(op, o_eqtable_set()) {
                 eq_set_x(a, parg(1i64), parg(2i64));
                 v_unit()
@@ -4732,7 +4755,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
                 } else if i64_eq(e, v_false()) {
                     parg(2i64)
                 } else {
-                    slot_of(e, 3i64)
+                    eq_elt(e, 1i64)
                 }
             }
         }

@@ -39,7 +39,6 @@
 "What `run` gives when the run failed (C110): `engine-failure` says how."
 (define w-failed i64 731)
 (define parked-at (subr kfx (i64) i64) (lambda (slot) (i64+ 8 (i64* slot 8))))
-(define tags-made (ref i64 @h) (new 0))
 
 "Frames: a `frame` object, its next frame first, then its kind, then its
  fields. Never written once made, so that a continuation's frames may be
@@ -550,7 +549,8 @@
          (let ((op (immediate-value f)))
            (cond
              ((i64= op op-make-tag)
-              (let ((t (get tags-made))) (begin (set tags-made (i64+ t 1)) (next-step! 1 0 0 k (immediate imm-tag t) 0 0))))
+              ;; Fixpt's: a box of unit, compared by identity (C330).
+              (next-step! 1 0 0 k (one-word! ob-ref w-unit) 0 0))
              ((i64= op op-with-mark)
               "The thunk called with the mark on the continuation: in place of
                one of the key there, in tail position, as Scheme's."

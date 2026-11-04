@@ -80,13 +80,6 @@ pub fn parked_at(slot: i64) -> i64 {
     i64_plus(8i64, i64_star(slot, 8i64))
 }
 
-pub fn tags_made() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
-    })
-}
-
 // Frames: a `frame` object, its next frame first, then its kind, then its
 // fields. Never written once made, so that a continuation's frames may be
 // shared, and resumed again and again.
@@ -1217,9 +1210,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
     } else if is_imm_p(f, imm_prim()) {
         let op = immediate_value(f);
         if i64_eq(op, op_make_tag()) {
-            let t = get(tags_made());
-            set(tags_made(), i64_plus(t, 1i64));
-            next_step_x(1i64, 0i64, 0i64, k, immediate(imm_tag(), t), 0i64, 0i64)
+            next_step_x(1i64, 0i64, 0i64, k, one_word_x(ob_ref(), w_unit()), 0i64, 0i64)
         } else if i64_eq(op, op_with_mark()) {
             // The thunk called with the mark on the continuation: in place of
             // one of the key there, in tail position, as Scheme's.

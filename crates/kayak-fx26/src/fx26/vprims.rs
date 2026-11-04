@@ -124,7 +124,7 @@ pub fn op_need(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 223i64) {
         24i64
     } else if i64_eq(op, 227i64) {
-        i64_plus(i64_star(2i64, obj_size(obj_ref(a, 2i64))), 16i64)
+        i64_plus(i64_star(2i64, obj_size(field_at(a, 3i64))), 16i64)
     } else if i64_gt_eq(op, fixed_base()) {
         8i64
     } else if (i64_eq(op, 250i64) || i64_eq(op, 255i64)) {
@@ -488,21 +488,42 @@ pub fn bloblet_x(n: i64, fields: i64) -> i64 {
     }
 }
 
-// Tables keyed by identity (C220), as Fixpt's `eqtable.rs` (Larceny's
-// design, one stamp): hashed by address, every entry rehashed by an
-// operation that finds a collection since, relinked, nothing allocated.
+// Tables keyed by identity (C220), Fixpt's (`eqtable.rs`, C329; Larceny's
+// design, one stamp): a bloblet of kind `eqtable`, no trailer, its fields
+// the count of collections when its keys were last hashed (1), its count
+// (2) and its buckets (3), a vector of chains; an entry a vector of its key
+// (0), value (1) and next entry (2), `#f` at a chain's end. Hashed by
+// address, SplitMix64's finalizer as Fixpt's `bucket_of`; every entry
+// rehashed by an operation that finds a collection since, relinked,
+// nothing allocated.
+/// `z` xor `z` shifted right `s` bits, logically: as a `u64`'s.
+pub fn eq_mixed(z: i64, s: i64) -> i64 {
+    i64_xor(z, i64_and(i64_shr(z, i64_to_int(s)), i64_minus(i64_shl(1i64, i64_to_int(i64_minus(64i64, s))), 1i64)))
+}
+
 pub fn eq_bucket(key: i64, n: i64) -> i64 {
-    let z = i64_xor(i64_shr(key, int_lit(2)), i64_shr(key, int_lit(11)));
-    i64_remainder(i64_and(z, 1152921504606846975i64), n)
+    let z1 = i64_star(eq_mixed(key, 30i64), -4658895280553007687i64);
+    let z2 = i64_star(eq_mixed(z1, 27i64), -7723592293110705685i64);
+    let z = eq_mixed(z2, 31i64);
+    if i64_gt_eq(z, 0i64) {
+        i64_remainder(z, n)
+    } else {
+        i64_remainder(i64_plus(i64_star(2i64, i64_remainder(i64_and(i64_shr(z, int_lit(1)), 9223372036854775807i64), n)), i64_and(z, 1i64)), n)
+    }
+}
+
+pub fn eq_vector_x(n: i64) -> i64 {
+    let v = alloc_x(ob_vector(), n);
+    fill_x(v, 0i64, n, w_false());
+    v
 }
 
 pub fn eqtable_made_x() -> i64 {
-    let bs = alloc_x(ob_array(), 8i64);
-    let t = alloc_x(ob_eqtable(), 3i64);
-    fill_x(bs, 0i64, 8i64, w_false());
-    obj_set_x(t, 0i64, fixnum(get(collections())));
-    obj_set_x(t, 1i64, fixnum(0i64));
-    obj_set_x(t, 2i64, bs);
+    let bs = eq_vector_x(8i64);
+    let t = fields_alloc_x(ob_eqtable(), 3i64);
+    field_set_x(t, 1i64, fixnum(get(collections())));
+    field_set_x(t, 2i64, fixnum(0i64));
+    field_set_x(t, 3i64, bs);
     t
 }
 
@@ -536,16 +557,16 @@ pub fn buckets_relinked_x(mut old: i64, mut i: i64, mut bs: i64) -> () {
 
 /// Every entry of `t` linked into `bs` by its key's address now.
 pub fn eqtable_relinked_x(t: i64, bs: i64) -> () {
-    buckets_relinked_x(obj_ref(t, 2i64), 0i64, bs);
-    obj_set_x(t, 2i64, bs);
-    obj_set_x(t, 0i64, fixnum(get(collections())))
+    buckets_relinked_x(field_at(t, 3i64), 0i64, bs);
+    field_set_x(t, 3i64, bs);
+    field_set_x(t, 1i64, fixnum(get(collections())))
 }
 
 pub fn eqtable_fresh_x(t: i64) -> () {
-    if i64_eq(obj_ref(t, 0i64), fixnum(get(collections()))) {
+    if i64_eq(field_at(t, 1i64), fixnum(get(collections()))) {
         ()
     } else {
-        eqtable_relinked_x(t, obj_ref(t, 2i64))
+        eqtable_relinked_x(t, field_at(t, 3i64))
     }
 }
 
@@ -565,8 +586,12 @@ pub fn chain_find(mut e: i64, mut key: i64) -> i64 {
 
 pub fn eq_entry(t: i64, key: i64) -> i64 {
     eqtable_fresh_x(t);
-    let bs = obj_ref(t, 2i64);
+    let bs = field_at(t, 3i64);
     chain_find(obj_ref(bs, eq_bucket(key, obj_size(bs))), key)
+}
+
+pub fn eq_count(t: i64) -> i64 {
+    fixnum_value(field_at(t, 2i64))
 }
 
 pub fn eq_set_x(t: i64, key: i64, v: i64) -> () {
@@ -574,18 +599,16 @@ pub fn eq_set_x(t: i64, key: i64, v: i64) -> () {
     if not(i64_eq(e, w_false())) {
         obj_set_x(e, 1i64, v)
     } else {
-        let (n, size) = (i64_plus(fixnum_value(obj_ref(t, 1i64)), 1i64), obj_size(obj_ref(t, 2i64)));
-        obj_set_x(t, 1i64, fixnum(n));
+        let (n, size) = (i64_plus(eq_count(t), 1i64), obj_size(field_at(t, 3i64)));
+        field_set_x(t, 2i64, fixnum(n));
         if i64_gt(n, i64_star(2i64, size)) {
-            let bigger = alloc_x(ob_array(), i64_star(2i64, size));
-            fill_x(bigger, 0i64, i64_star(2i64, size), w_false());
-            eqtable_relinked_x(t, bigger)
+            eqtable_relinked_x(t, eq_vector_x(i64_star(2i64, size)))
         } else {
             ()
         };
-        let bs = obj_ref(t, 2i64);
+        let bs = field_at(t, 3i64);
         let b = eq_bucket(key, obj_size(bs));
-        let x = alloc_x(ob_array(), 3i64);
+        let x = alloc_x(ob_vector(), 3i64);
         obj_set_x(x, 0i64, key);
         obj_set_x(x, 1i64, v);
         obj_set_x(x, 2i64, obj_ref(bs, b));
@@ -612,7 +635,7 @@ pub fn eq_delete_x(t: i64, key: i64) -> () {
     if i64_eq(eq_entry(t, key), w_false()) {
         ()
     } else {
-        let bs = obj_ref(t, 2i64);
+        let bs = field_at(t, 3i64);
         let b = eq_bucket(key, obj_size(bs));
         let first = obj_ref(bs, b);
         if i64_eq(obj_ref(first, 0i64), key) {
@@ -620,7 +643,7 @@ pub fn eq_delete_x(t: i64, key: i64) -> () {
         } else {
             chain_without_x(first, key)
         };
-        obj_set_x(t, 1i64, fixnum(i64_minus(fixnum_value(obj_ref(t, 1i64)), 1i64)))
+        field_set_x(t, 2i64, fixnum(i64_minus(eq_count(t), 1i64)))
     }
 }
 
@@ -1125,7 +1148,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 167i64) {
         a
     } else if i64_eq(op, 169i64) {
-        one_word_x(ob_ref(), fixnum(0i64))
+        one_word_x(ob_ref(), w_unit())
     } else if i64_eq(op, 174i64) {
         bool_word(is_obj_p(a, ob_vector()))
     } else if i64_eq(op, 175i64) {
@@ -1158,7 +1181,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
             obj_ref(e, 1i64)
         }
     } else if i64_eq(op, 226i64) {
-        obj_ref(a, 1i64)
+        field_at(a, 2i64)
     } else if i64_eq(op, 227i64) {
         eq_set_x(a, b, c);
         w_unit()

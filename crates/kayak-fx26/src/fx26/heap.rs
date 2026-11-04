@@ -39,20 +39,8 @@ pub fn imm_nil() -> i64 {
     3i64
 }
 
-pub fn imm_symbol() -> i64 {
-    4i64
-}
-
 pub fn imm_prim() -> i64 {
     5i64
-}
-
-pub fn imm_tag() -> i64 {
-    6i64
-}
-
-pub fn imm_special() -> i64 {
-    7i64
 }
 
 // Objects' kinds, as an object's header says them: Fixpt's kind where the
@@ -111,10 +99,8 @@ pub fn ob_flatx() -> i64 {
     42i64
 }
 
-// A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
-// collections when its keys were last hashed, its count of entries, its
-// buckets (an `ob-array` of chains); an entry an `ob-array`, its key,
-// value and next entry (`#f` at a chain's end).
+// A table keyed by identity (C220): Fixpt's (C329, vprims.kfx's
+// `eqtable-made!`), three fields and no trailer.
 pub fn ob_eqtable() -> i64 {
     43i64
 }
@@ -251,20 +237,11 @@ pub fn sub_f32() -> i64 {
     9i64
 }
 
-pub fn sub_symbol() -> i64 {
-    24i64
-}
-
+// A primitive, the engine's own immediate, past Fixpt's subtags: a
+// procedure, which reaches compiled code through an adapter, as the
+// engine's closures will (docs/research/one-heap.md, step 4).
 pub fn sub_prim() -> i64 {
     25i64
-}
-
-pub fn sub_tag() -> i64 {
-    26i64
-}
-
-pub fn sub_special() -> i64 {
-    27i64
 }
 
 pub fn imm_word(sub: i64, n: i64) -> i64 {
@@ -290,14 +267,8 @@ pub fn immediate(kind: i64, n: i64) -> i64 {
         imm_word(sub_unit(), 0i64)
     } else if i64_eq(kind, imm_nil()) {
         imm_word(sub_null(), 0i64)
-    } else if i64_eq(kind, imm_symbol()) {
-        imm_word(sub_symbol(), n)
-    } else if i64_eq(kind, imm_prim()) {
-        imm_word(sub_prim(), n)
-    } else if i64_eq(kind, imm_tag()) {
-        imm_word(sub_tag(), n)
     } else {
-        imm_word(sub_special(), n)
+        imm_word(sub_prim(), n)
     }
 }
 
@@ -311,14 +282,10 @@ pub fn immediate_kind(w: i64) -> i64 {
         imm_nil()
     } else if i64_eq(sub, sub_char()) {
         imm_char()
-    } else if i64_eq(sub, sub_symbol()) {
-        imm_symbol()
     } else if i64_eq(sub, sub_prim()) {
         imm_prim()
-    } else if i64_eq(sub, sub_tag()) {
-        imm_tag()
     } else {
-        imm_special()
+        -1i64
     }
 }
 
@@ -559,6 +526,23 @@ pub fn bloblet_alloc_x(n: i64, bytes: i64) -> i64 {
     bloblet_at(i64_plus(main, i64_plus(f, 1i64)))
 }
 
+/// A bloblet of `n` fields and no trailer, nor suffix (`make_bloblet`'s,
+/// `trailer` false: an eqtable, C329): field `k`, from 1, at `p - k`
+/// (`field-at`), its header below them.
+pub fn fields_alloc_x(kind: i64, n: i64) -> i64 {
+    let at = bump_x(i64_plus(n, 1i64));
+    put_x(at, header(kind, n, 0i64));
+    bloblet_at(i64_plus(at, i64_plus(n, 1i64)))
+}
+
+pub fn field_at(v: i64, k: i64) -> i64 {
+    at_word(i64_minus(pointer_index(v), k))
+}
+
+pub fn field_set_x(v: i64, k: i64, w: i64) -> () {
+    put_x(i64_minus(pointer_index(v), k), w)
+}
+
 // An object's payload: a pair's two words; a bloblet's fields, found by its
 // trailer (`p - F + i`), or, with none, its suffix (`p + i`).
 pub fn payload_at(v: i64, i: i64) -> i64 {
@@ -575,15 +559,35 @@ pub fn payload_at(v: i64, i: i64) -> i64 {
     }
 }
 
-/// A bloblet's main header's index.
-pub fn header_at(v: i64) -> i64 {
-    let p = pointer_index(v);
-    let b = at_word(i64_minus(p, 1i64));
+/// The header at or below `k` in `ws`: a bloblet's with fields and no
+/// trailer is below them (Fixpt's `find_main`; an eqtable's, C329).
+pub fn main_below(mut ws: FlatArray<i64>, mut k: i64) -> i64 {
+    loop {
+        if i64_eq(word_tag(flatarray_ref_i64(ws, k)), 6i64) {
+            return k;
+        } else {
+            k = i64_minus(k, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Bloblet `p`'s main header's index in `ws`: by its trailer, the word
+/// below its suffix if a header, else found below its fields.
+pub fn main_in(ws: FlatArray<i64>, p: i64) -> i64 {
+    let b = flatarray_ref_i64(ws, i64_minus(p, 1i64));
     if i64_eq(word_tag(b), 5i64) {
         i64_minus(i64_minus(p, 1i64), i64_shr(b, int_lit(3)))
-    } else {
+    } else if i64_eq(word_tag(b), 6i64) {
         i64_minus(p, 1i64)
+    } else {
+        main_below(ws, i64_minus(p, 1i64))
     }
+}
+
+/// A bloblet's main header's index.
+pub fn header_at(v: i64) -> i64 {
+    main_in(get(space()), pointer_index(v))
 }
 
 pub fn obj_kind(v: i64) -> i64 {
@@ -683,12 +687,7 @@ pub fn copy_word_x(w: i64) -> i64 {
         if i64_eq(word_tag(b), 7i64) {
             bloblet_at(i64_shr(b, int_lit(3)))
         } else {
-            let f = if i64_eq(word_tag(b), 5i64) {
-                i64_shr(b, int_lit(3))
-            } else {
-                the::<i64>(0i64)
-            };
-            let hi = i64_minus(i64_minus(p, 1i64), f);
+            let hi = main_in(from, p);
             let h = flatarray_ref_i64(from, hi);
             let start = if header_large_p(h) {
                 i64_minus(hi, 1i64)

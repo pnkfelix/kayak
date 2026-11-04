@@ -904,75 +904,91 @@
           (chars-text (pair-cdr l) (string-append acc (char->string (i64->char (char-code (pair-car l))))))
           acc))))
 
-"Tables keyed by identity (C220), as Fixpt's `eqtable.rs`: a bloblet of
- kind `eqtable`, its slots the count of collections when its keys were
- last hashed (2), its count (3), its buckets (4), a vector of chains; an
- entry a vector of its key (2), value (3) and next entry (4), `#f` at a
- chain's end. Hashed by address, rehashed after a collection, relinked."
+"Tables keyed by identity (C220), Fixpt's (`eqtable.rs`, C329): a bloblet
+ of kind `eqtable`, no trailer, its slots the count of collections when its
+ keys were last hashed (1), its count (2), its buckets (3), a vector of
+ chains, bucket `i` its element `i`; an entry a vector of its key, value and
+ next entry (elements 0 to 2), `#f` at a chain's end. A vector's element `j`
+ of `n` is its slot `n + 1 - j`, as `alloc` lays it out. Hashed by address,
+ SplitMix64's finalizer as Fixpt's `bucket_of`; rehashed after a
+ collection, relinked."
+(define eq-mixed (subr kfx (i64 i64) i64)
+  (lambda (z s)
+    "`z` xor `z` shifted right `s` bits, logically: as a `u64`'s."
+    (i64-xor z (i64-and (i64-shr z (i64->int s)) (i64- (i64-shl 1 (i64->int (i64- 64 s))) 1)))))
 (define eq-bucket (subr kfx (i64 i64) i64)
   (lambda (key n)
-    (let ((z (i64-xor (i64-shr key 3) (i64-shr key 12))))
-      (i64-remainder (i64-and z 1152921504606846975) n))))
+    (let* ((z1 (i64* (eq-mixed key 30) -4658895280553007687))
+           (z2 (i64* (eq-mixed z1 27) -7723592293110705685))
+           (z (eq-mixed z2 31)))
+      ;; `z` modulo `n`, `z` read as a `u64`'s bits.
+      (if (i64>= z 0)
+          (i64-remainder z n)
+          (i64-remainder (i64+ (i64* 2 (i64-remainder (i64-and (i64-shr z 1) 9223372036854775807) n)) (i64-and z 1)) n)))))
 (define-rec
   (eq-falses! (subr cm (i64 i64 i64) unit)
     (lambda (v i n) (if (i64>= i n) #u (begin (slot-set! v (i64+ i 2) v-false) (eq-falses! v (i64+ i 1) n))))))
 (define eq-size (subr cm (i64) i64)
   (lambda (v) "A vector's elements, its fields but the trailer." (i64- (fields-of v) 1)))
+(define eq-elt (subr cm (i64 i64) i64)
+  (lambda (v j) "A vector's element `j`." (slot-of v (i64- (fields-of v) j))))
+(define eq-elt-set! (subr cm (i64 i64 i64) unit)
+  (lambda (v j x) (slot-set! v (i64- (fields-of v) j) x)))
 (define eq-vector! (subr cm (i64) i64)
   (lambda (n) (let ((v (make-bloblet! k-vector n 0 #t #f))) (begin (eq-falses! v 0 n) v))))
 (define eqtable-made! (subr cm () i64)
   (lambda ()
-    (let* ((bs (eq-vector! 8)) (t (make-bloblet! k-eqtable 3 0 #t #f)))
-      (begin (slot-set! t 2 (fix (get collections))) (slot-set! t 3 (fix 0)) (slot-set! t 4 bs) t))))
+    (let* ((bs (eq-vector! 8)) (t (make-bloblet! k-eqtable 3 0 #f #f)))
+      (begin (slot-set! t 1 (fix (get collections))) (slot-set! t 2 (fix 0)) (slot-set! t 3 bs) t))))
 (define-rec
   (chain-relinked! (subr cm (i64 i64) unit)
     (lambda (e bs)
       (if (i64= e v-false)
           #u
-          (let ((next (slot-of e 4)) (b (i64+ 2 (eq-bucket (slot-of e 2) (eq-size bs)))))
-            (begin (slot-set! e 4 (slot-of bs b)) (slot-set! bs b e) (chain-relinked! next bs))))))
+          (let ((next (eq-elt e 2)) (b (eq-bucket (eq-elt e 0) (eq-size bs))))
+            (begin (eq-elt-set! e 2 (eq-elt bs b)) (eq-elt-set! bs b e) (chain-relinked! next bs))))))
   (buckets-relinked! (subr cm (i64 i64 i64) unit)
     (lambda (old i bs)
       (if (i64>= i (eq-size old))
           #u
-          (let ((e (slot-of old (i64+ i 2))))
-            (begin (slot-set! old (i64+ i 2) v-false) (chain-relinked! e bs) (buckets-relinked! old (i64+ i 1) bs)))))))
+          (let ((e (eq-elt old i)))
+            (begin (eq-elt-set! old i v-false) (chain-relinked! e bs) (buckets-relinked! old (i64+ i 1) bs)))))))
 (define eqtable-relinked! (subr cm (i64 i64) unit)
-  (lambda (t bs) (begin (buckets-relinked! (slot-of t 4) 0 bs) (slot-set! t 4 bs) (slot-set! t 2 (fix (get collections))))))
+  (lambda (t bs) (begin (buckets-relinked! (slot-of t 3) 0 bs) (slot-set! t 3 bs) (slot-set! t 1 (fix (get collections))))))
 (define-rec
   (chain-find (subr cm (i64 i64) i64)
-    (lambda (e key) (cond ((i64= e v-false) v-false) ((i64= (slot-of e 2) key) e) (else (chain-find (slot-of e 4) key))))))
+    (lambda (e key) (cond ((i64= e v-false) v-false) ((i64= (eq-elt e 0) key) e) (else (chain-find (eq-elt e 2) key))))))
 (define eq-entry (subr cm (i64 i64) i64)
   (lambda (t key)
     (begin
-      (if (i64= (slot-of t 2) (fix (get collections))) #u (eqtable-relinked! t (slot-of t 4)))
-      (let ((bs (slot-of t 4))) (chain-find (slot-of bs (i64+ 2 (eq-bucket key (eq-size bs)))) key)))))
+      (if (i64= (slot-of t 1) (fix (get collections))) #u (eqtable-relinked! t (slot-of t 3)))
+      (let ((bs (slot-of t 3))) (chain-find (eq-elt bs (eq-bucket key (eq-size bs))) key)))))
 (define eq-set! (subr cm (i64 i64 i64) unit)
   (lambda (t key v)
     (let ((e (eq-entry t key)))
       (if (not (i64= e v-false))
-          (slot-set! e 3 v)
-          (let ((n (i64+ (i64-shr (slot-of t 3) 3) 1)) (size (eq-size (slot-of t 4))))
+          (eq-elt-set! e 1 v)
+          (let ((n (i64+ (i64-shr (slot-of t 2) 3) 1)) (size (eq-size (slot-of t 3))))
             (begin
-              (slot-set! t 3 (fix n))
+              (slot-set! t 2 (fix n))
               (if (i64> n (i64* 2 size)) (eqtable-relinked! t (eq-vector! (i64* 2 size))) #u)
-              (let* ((bs (slot-of t 4)) (b (i64+ 2 (eq-bucket key (eq-size bs)))) (x (eq-vector! 3)))
-                (begin (slot-set! x 2 key) (slot-set! x 3 v) (slot-set! x 4 (slot-of bs b)) (slot-set! bs b x)))))))))
+              (let* ((bs (slot-of t 3)) (b (eq-bucket key (eq-size bs))) (x (eq-vector! 3)))
+                (begin (eq-elt-set! x 0 key) (eq-elt-set! x 1 v) (eq-elt-set! x 2 (eq-elt bs b)) (eq-elt-set! bs b x)))))))))
 (define-rec
   (chain-without! (subr cm (i64 i64) unit)
     (lambda (before key)
-      (let ((e (slot-of before 4)))
+      (let ((e (eq-elt before 2)))
         (cond ((i64= e v-false) #u)
-              ((i64= (slot-of e 2) key) (slot-set! before 4 (slot-of e 4)))
+              ((i64= (eq-elt e 0) key) (eq-elt-set! before 2 (eq-elt e 2)))
               (else (chain-without! e key)))))))
 (define eq-delete! (subr cm (i64 i64) unit)
   (lambda (t key)
     (if (i64= (eq-entry t key) v-false)
         #u
-        (let* ((bs (slot-of t 4)) (b (i64+ 2 (eq-bucket key (eq-size bs)))) (first (slot-of bs b)))
+        (let* ((bs (slot-of t 3)) (b (eq-bucket key (eq-size bs))) (first (eq-elt bs b)))
           (begin
-            (if (i64= (slot-of first 2) key) (slot-set! bs b (slot-of first 4)) (chain-without! first key))
-            (slot-set! t 3 (fix (i64- (i64-shr (slot-of t 3) 3) 1))))))))
+            (if (i64= (eq-elt first 0) key) (eq-elt-set! bs b (eq-elt first 2)) (chain-without! first key))
+            (slot-set! t 2 (fix (i64- (i64-shr (slot-of t 2) 3) 1))))))))
 
 "Quoted data interned (C231; Fixpt's `heap/intern.rs`, `TODO.md` §51):
  data nothing writes and no cycle runs through made the one object equal
@@ -2109,14 +2125,14 @@
         ((or (i64= op o-eqtable-ref) (i64= op o-eqtable-has) (i64= op o-eqtable-count) (i64= op o-eqtable-set) (i64= op o-eqtable-delete))
          (if (not (is-kind? a k-eqtable))
              (expected! "an eqtable")
-             (cond ((i64= op o-eqtable-count) (slot-of a 3))
+             (cond ((i64= op o-eqtable-count) (slot-of a 2))
                    ((i64= op o-eqtable-set) (begin (eq-set! a (parg 1) (parg 2)) v-unit))
                    ((i64= op o-eqtable-delete) (begin (eq-delete! a (parg 1)) v-unit))
                    (else
                     (let ((e (eq-entry a (parg 1))))
                       (cond ((i64= op o-eqtable-has) (boolean (not (i64= e v-false))))
                             ((i64= e v-false) (parg 2))
-                            (else (slot-of e 3))))))))
+                            (else (eq-elt e 1))))))))
         ((i64= op o-native-convention)
          "Fixpt's convention for this machine, which kayak-jit keeps (C220)."
          (strings-list! (native-convention)))
