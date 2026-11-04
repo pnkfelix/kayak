@@ -47,7 +47,6 @@
                      ((i64= kind ob-ref) (string-append "#<box " (string-append (show-word (obj-ref w 0)) ">")))
                      ((i64= kind ob-sum) (string-append "#<sum " (string-append (symbol-text (slot-ref w 0)) ">")))
                      ((i64= kind ob-product) (string-append "#<product of " (string-append (i64->string (obj-size w)) ">")))
-                     ((i64= kind ob-module) (string-append "#<product of " (string-append (i64->string (i64- (obj-size w) 1)) ">")))
                      ((i64= kind ob-array) (string-append "#<bloblet " (string-append (i64->string (i64+ (obj-size w) 1)) (string-append " fields " (string-append (i64->string (suffix-bytes w)) " bytes>")))))
                      ((i64= kind ob-vector) (string-append "#(" (string-append (vector-shown w 0) ")")))
                      ((i64= kind ob-bytes) (string-append "#u8(" (string-append (bytes-shown w 0) ")")))

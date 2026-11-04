@@ -291,6 +291,7 @@
       (define mtype-value-names (subr kfx (ty) strings)
         (lambda (t) (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) (mtype-items t)))))
 
+
       (define mtype-opened (subr kfx (cv ty) cv)
         (lambda (v t)
           "`v` in a `with` of a module of type `t` (C170): its values, its types
@@ -336,6 +337,17 @@
                     (if (null? found) nil (tagcase (car found) (alias (n ps body) (the sexps (list body))))))
                   nil))
             (else other nil))))
+
+      (define module-value-order (subr kfx (cv st ty) strings)
+        (lambda (v s t)
+          "The order of the values of a module of type `t`, where it keeps each
+           (C216, C328): a module type's, or a named `moduleof`'s (`%module
+           NAME`, a module parameter's type); none if `t` is no module's."
+          (let ((w (walk s t)))
+            (if (mtype? w)
+                (mtype-value-names w)
+                (let ((spec (module-spec v w)))
+                  (if (null? spec) nil (map (lambda ((x sexps)) (sym-name (second x))) (spec-items (car spec) "val"))))))))
 
       (define-rec
         (fold-values (subr kfx (cv st string binds) st)
@@ -2209,9 +2221,8 @@
            module's type is, the values that type names noted, in its order
            (`module-arg`, C216: Fixpt's `k-reshape-at`), for the generator
            to reshape it."
-          (let ((s (if (and (mtype? (walk s0 expected)) (not (string=? (datum-file e) "")))
-                       (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-arg " (words-of (mtype-value-names (walk s0 expected)))))
-                       s0)))
+          (let ((s (let ((order (if (string=? (datum-file e) "") nil (module-value-order v s0 expected))))
+                     (if (null? order) s0 (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-arg " (words-of order)))))))
           (tagcase (tagcase e
                      (lst (xs f l p)
                        ;; A path a fact narrows, found so (C196).
@@ -2358,11 +2369,10 @@
               (refuse-named v s (string-append "the hole: " (tagcase (walk s expected) (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s expected)))))))
           (tagcase (converted v (synth v s e) expected e)
             (res (t es s0)
-              (let ((s (if (and (mtype? (walk s0 expected)) (mtype? (walk s0 t)) (not (string=? (datum-file e) "")))
-                           ;; The value's own order, as it was found, for the
-                           ;; generator to reshape it (C216).
-                           (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-had " (words-of (mtype-value-names (walk s0 t)))))
-                           s0)))
+              (let ((s (let ((had (if (or (string=? (datum-file e) "") (null? (module-value-order v s0 expected))) nil (module-value-order v s0 t))))
+                         ;; The value's own order, as it was found, for the
+                         ;; generator to reshape it (C216).
+                         (if (null? had) s0 (note-fact s0 (datum-file e) (datum-pos e) (string-append "module-had " (words-of had)))))))
               (res expected es
                    (let ((s (coerced v (fits (fitting v (place-key e) t expected) s t expected) (datum-file e) (datum-pos e) t expected)))
                      (tagcase (walk-mu s t)

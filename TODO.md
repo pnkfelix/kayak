@@ -105,6 +105,13 @@ section below where it has one; here the order, and what each is.
      in `docs/research/compiled-stage.md` (C316), after one heap
      (`docs/research/one-heap.md`, C317, the user's: first); or KFX (not
      needed there).
+   - **To take to the Fixpt team**: its checker panics on a module
+     reshaped inside `list` (docs/requests/fixpt-reshape-in-list.md, C328).
+   - **The live REPL's early run of a draft** (`live-repl.kfx`, the
+     in-process speculation) lowers it with no checker facts: a module
+     given where its type orders it otherwise is not reshaped there (C328),
+     nor a `with` of a module value opened. The machine's speculation
+     (`repl-tasks.kfx`) has them.
    - **Refusals in Fixpt's words** (C312; 122 of 406 so far): Fixpt's
      termination reasons after a `spin` mismatch ("; it may not end:
      …"); the storage knot's "and it is a T" (no type printer before

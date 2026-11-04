@@ -114,10 +114,6 @@ pub fn fk_sum() -> i64 {
     6i64
 }
 
-pub fn fk_extract() -> i64 {
-    7i64
-}
-
 pub fn fk_tagcase() -> i64 {
     8i64
 }
@@ -256,19 +252,6 @@ pub fn product_to_slots_x(mut e: i64, mut p: i64, mut i: i64, mut n: i64) -> () 
         } else {
             slot_set_x(e, i64_plus(i, 1i64), slot_ref(p, i));
             i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
-}
-
-/// `fill-from-reversed!`, of an object in `alloc`'s order (a product).
-pub fn fields_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
-    loop {
-        if i64_lt(i, 1i64) {
-            return ();
-        } else {
-            obj_set_x(p, i, pair_car(xs));
-            (i, xs) = (i64_minus(i, 1i64), pair_cdr(xs));
             continue;
         }
     }
@@ -841,21 +824,6 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                             continue;
                         }
                     }
-                    Node::NModule(labels, at, count) => {
-                        if i64_eq(count, 0i64) {
-                            let p = alloc_x(ob_module(), 1i64);
-                            obj_set_x(p, 0i64, fixnum(labels));
-                            (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
-                            continue;
-                        } else {
-                            (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
-                            continue;
-                        }
-                    }
-                    Node::NExtract(l, x) => {
-                        (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_extract(), k, 1i64, fixnum(l), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
-                        continue;
-                    }
                     Node::NField(i, x) => {
                         (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_field(), k, 1i64, fixnum(i), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
                         continue;
@@ -951,23 +919,6 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_field()) {
                         (mode, node, k, val, f, args) = (1i64, 0i64, next, slot_ref(val, fixnum_value(frame_field(k, 0i64))), 0i64, 0i64);
                         continue;
-                    } else if i64_eq(kind, fk_extract()) {
-                        let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
-                        if i64_lt(i, 0i64) {
-                            failed_with_x(str_lit("the engine: extract of a field the product has not"));
-                            let go_r = failed_at(-1i64, 0i64, k);
-                            if get(go_on()) {
-                                set(go_on(), false);
-                                let g = get(go_regs());
-                                (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
-                                continue;
-                            } else {
-                                return go_r;
-                            }
-                        } else {
-                            (mode, node, k, val, f, args) = (1i64, 0i64, next, obj_ref(val, i64_plus(i, 1i64)), 0i64, 0i64);
-                            continue;
-                        }
                     } else if i64_eq(kind, fk_tagcase()) {
                         let go_r = tagcase_step(k, next, val);
                         if get(go_on()) {
@@ -1112,16 +1063,6 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
                 let p = product_made_x(count);
                 product_from_reversed_x(p, i64_minus(count, 1i64), got);
                 frozen_x(p);
-                next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
-            }
-        }
-        Node::NModule(labels, at, count) => {
-            if i64_lt(pos, count) {
-                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
-            } else {
-                let p = alloc_x(ob_module(), i64_plus(count, 1i64));
-                obj_set_x(p, 0i64, fixnum(labels));
-                fields_from_reversed_x(p, count, got);
                 next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
             }
         }

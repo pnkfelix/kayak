@@ -67,10 +67,10 @@ Done: 1a, values in Fixpt's encoding (C318); 1b, objects in Fixpt's
 layout and the collector over them (C319), 11 to 17% slower. 1c so far:
 strings and bytevectors (C320), symbols and keywords (C321), sums (C322),
 products (C323, now 0 to 4% faster than before 1a), datatype values
-(C324), bignums (C325). Left of 1c: module values (labelled still, a kind
-of the engine's), FX-26 bloblets and suffix references, flat arrays, and
-the engine's own immediates and objects (primitives, tags, closures,
-frames, constructors); then the engine's heap code shared with
+(C324), bignums (C325), arrays, bloblets and suffix references (C326),
+flat arrays (C327), module values (C328). Left of 1c: the engine's own
+immediates and objects (primitives, prompt tags, closures, frames,
+constructors) and its eqtables; then the engine's heap code shared with
 tier 1's (step 1's last part, which C318 found needs the two programs'
 regions joined: `@h` and `@c`, and tier 1's effect `cm` includes I/O).
 

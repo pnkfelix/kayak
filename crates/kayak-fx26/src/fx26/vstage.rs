@@ -908,8 +908,8 @@ pub fn broken_binds(v: &'static Cv, names: Strings) -> Binds {
     }), names))
 }
 
-// The machine's globals and their names, and where a product keeps a
-// label (vm.kfx's, here since a session makes globals, C310).
+// The machine's globals and their names (vm.kfx's, here since a session
+// makes globals, C310).
 pub fn globals() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
@@ -922,19 +922,6 @@ pub fn global_name_table() -> Ref<Array<Str>> {
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(1), str_lit("")))
     })
-}
-
-pub fn label_position(mut start: i64, mut n: i64, mut l: i64, mut i: i64) -> i64 {
-    loop {
-        if i64_gt_eq(i, n) {
-            return -1i64;
-        } else if i64_eq(kid_at(i64_plus(start, i)), l) {
-            return i;
-        } else {
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
 }
 
 // A session's global: a name and its index.
@@ -1156,17 +1143,6 @@ pub fn session_global_x(k: i64, n: Str, w: i64) -> i64 {
     i
 }
 
-/// Module value `m`'s value named `n` (a product's field, as `extract`
-/// finds it).
-pub fn module_field(m: i64, n: Str) -> i64 {
-    let i = label_position(fixnum_value(obj_ref(m, 0i64)), i64_minus(obj_size(m), 1i64), intern_x(n), 0i64);
-    if i64_lt(i, 0i64) {
-        w_unbound()
-    } else {
-        obj_ref(m, i64_plus(i, 1i64))
-    }
-}
-
 pub fn session_marks() -> Binds {
     kayak_rt::heap_cons(bind(str_lit("%session"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::heap_cons(bind(str_lit("%reruns"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()))
 }
@@ -1187,8 +1163,9 @@ pub fn session_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
 }
 
 /// `m`'s values each defined in the session, `(define x (with
-/// stage-module x))`, its global holding `m`'s.
-pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings) -> &'static Sess {
+/// stage-module x))`, its global holding `m`'s: a product, its values in
+/// its type's order (C328), `ns`, from `i`.
+pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings, mut i: i64) -> &'static Sess {
     loop {
         if null_p(ns) {
             return sess(v, gl, nil::<&'static Defn>(), 0i64);
@@ -1196,8 +1173,8 @@ pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut 
             let n = car(ns);
             let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
             let v2 = session_top(v, form);
-            let i = session_global_x(k, n, module_field(m, n));
-            (v, gl, ns) = (v2, kayak_rt::heap_cons(sglobal(n, i), gl), cdr(ns));
+            let g = session_global_x(k, n, slot_ref(m, i));
+            (v, gl, ns, i) = (v2, kayak_rt::heap_cons(sglobal(n, g), gl), cdr(ns), i64_plus(i, 1i64));
             continue;
         }
     }
@@ -1269,7 +1246,7 @@ pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
         let vals = map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
             string_eq_p(mitem_kind(x), str_lit("%val"))
         }), mtype_items(mt)));
-        let made = seeded(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals);
+        let made = seeded(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals, 0i64);
         set(sessions(), onto(get(sessions()), kayak_rt::heap_cons(made, kayak_rt::nil())));
         obj_set_x(sw, 1i64, fixnum(k2));
         k2

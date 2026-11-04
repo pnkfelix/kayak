@@ -94,8 +94,6 @@ pub fn show_word(w: i64) -> Str {
             string_append(str_lit("#<sum "), string_append(symbol_text(slot_ref(w, 0i64)), str_lit(">")))
         } else if i64_eq(kind, ob_product()) {
             string_append(str_lit("#<product of "), string_append(i64_to_string(obj_size(w)), str_lit(">")))
-        } else if i64_eq(kind, ob_module()) {
-            string_append(str_lit("#<product of "), string_append(i64_to_string(i64_minus(obj_size(w), 1i64)), str_lit(">")))
         } else if i64_eq(kind, ob_array()) {
             string_append(str_lit("#<bloblet "), string_append(i64_to_string(i64_plus(obj_size(w), 1i64)), string_append(str_lit(" fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))))
         } else if i64_eq(kind, ob_vector()) {

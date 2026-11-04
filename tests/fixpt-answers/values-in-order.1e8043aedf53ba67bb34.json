@@ -1,0 +1,36 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"values-in-order.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (val a int) (val c int) (val b int)) ! pure",
+"first-b : (subr pure (ab) int) ! pure",
+"second-a : (subr pure (ab) int) ! pure",
+"k : ab ! pure",
+"n : (moduleof (val a int) (val c int) (val b int) (val d int)) ! (read (globals m))",
+"x : int ! (read (globals first-b m))",
+"y : int ! (read (globals m second-a))",
+"z : int ! (read (globals first-b))",
+"main : (subr (read (globals first-b k n second-a x y z)) () (listof int acyclic)) ! pure",
+"(7 2 5 6 0 3 9) : (listof int acyclic) ! (read (globals first-b k main n second-a x y z))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@19b31f10a2151ad409456d7f4de7d9863b7a1b13"
+]
+}
+]
+}

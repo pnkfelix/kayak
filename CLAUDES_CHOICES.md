@@ -9028,3 +9028,41 @@ word when 4; read as `flat_value` makes a value of them, written as
 elements were the engine's words, whatever their layout, after a width.
 KFX's `make-flatarray-i64`, which the engine ran as a kind of its own
 (201), is a flat array of `i64`s.
+
+## C328. The engine's module values, Fixpt's (2026-11-04; one heap, 1c)
+
+A module value is a Fixpt product, its values in its type's order and no
+labels (was a kind of the engine's own, 209, its labels' number then its
+values, each found by name). As the cell generator does (C216), the
+lowering knows each module's layout and finds a value at its place:
+- **Made**: a `module` or `extend` in the order of the type wanted where
+  it is (`module-arg`), else its own type's (`module-made`); a module
+  defined, `(define m (module ...))`, as written, which a named module's
+  `%exports` says (`lower-own-module`). A generative type's conversions
+  are the module's own, not values it gives (they were in `%exports`).
+- **Read**: a `with`'s names at their places in what opens it (a named
+  module's `%exports`, else the checker's `with-spec`), a slot read
+  (`i-field`); an `include` likewise. A `with` whose layout nothing says
+  opens nothing (was every name any module gives, by name).
+- **Given where a type orders its values otherwise**: reshaped, a product
+  of the type's values picked from it by place (`lower`, Fixpt's
+  `k-reshape-at`), from a named module's `%exports` or the checker's
+  `module-had`. The checker's module facts reach the lowering as
+  `%mfact` entries, kept in a top scope's last frame (`top-scope`), so
+  that each expression looks among a few.
+- A session seeded from a module (C310) takes its values by their places
+  in its type.
+- **Lowered with no facts** (the REPL front's draft, tried before it is
+  run, C311), an extract or a `with`'s value whose place nothing says
+  lowers to a failure if run, as the fallback by name did, so that the
+  try is not refused.
+- `i-module`, `i-extract`, their nodes and frame, and `ob-module` go.
+**The checker noted no order for a type written `(define-type ab
+(moduleof ...))`** (a `%module ab`, a module parameter's type), only for a
+`%mtype`: a module given for one was not reshaped, so the cell generator
+read its values at the wrong places too (`(first-b k)` gave 1, not 6, on
+tier 1). Now both (`module-value-order`). A new test,
+`tests/fx26-kayak/modules/values-in-order.fx`; Fixpt's checker panics on a
+reshape inside `list` (docs/requests/fixpt-reshape-in-list.md, for the
+user to take to the Fixpt team), so the test keeps its reshapes out of
+one. All 890 of Fixpt's programs print on the engine as before.

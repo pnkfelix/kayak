@@ -458,17 +458,10 @@
                      (if (null? b) nil (tagcase (car b) (bind (m sc w) (the binds (list (bind n sc "broken"))))))))
                  names))))
 
-"The machine's globals and their names, and where a product keeps a
- label (vm.kfx's, here since a session makes globals, C310)."
+"The machine's globals and their names (vm.kfx's, here since a session
+ makes globals, C310)."
 (define globals (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
 (define global-name-table (ref (arrayof string @h) @h) (new (make-array 1 "")))
-
-(define-rec
-  (label-position (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) i64)
-    (lambda (start n l i)
-      (cond ((i64>= i n) -1)
-            ((i64= (kid-at (i64+ start i)) l) i)
-            (else (label-position start n l (i64+ i 1)))))))
 
 "A session's global: a name and its index."
 (define-datatype sglobal (sglobal string i64))
@@ -567,13 +560,6 @@
         (flatarray-set-i64! (get globals) i w)
         i))))
 
-(define module-field (subr (maxeff hp (alloc @h)) (i64 string) i64)
-  (lambda (m n)
-    "Module value `m`'s value named `n` (a product's field, as `extract`
-     finds it)."
-    (let ((i (label-position (fixnum-value (obj-ref m 0)) (i64- (obj-size m) 1) (intern! n) 0)))
-      (if (i64< i 0) w-unbound (obj-ref m (i64+ i 1))))))
-
 (define session-marks (subr kfx () binds)
   (lambda ()
     (list (bind "%session" (scheme nil (ty-unit)) "mark") (bind "%reruns" (scheme nil (ty-unit)) "mark"))))
@@ -587,10 +573,11 @@
         (check-top v form))))
 
 (define-rec
-  (seeded (subr (maxeff hp (alloc @h)) (i64 cv sglobals i64 strings) sess)
-    (lambda (k v gl m ns)
+  (seeded (subr (maxeff hp (alloc @h)) (i64 cv sglobals i64 strings i64) sess)
+    (lambda (k v gl m ns i)
       "`m`'s values each defined in the session, `(define x (with
-       stage-module x))`, its global holding `m`'s."
+       stage-module x))`, its global holding `m`'s: a product, its values in
+       its type's order (C328), `ns`, from `i`."
       (if (null? ns)
           (sess v gl nil 0)
           (let* ((n (car ns))
@@ -598,8 +585,8 @@
                                   (lst (list (sym "with" stage-file 0) (sym "stage-module" stage-file 0) (sym n stage-file 0)) stage-file 1 (stage-at!)))
                             stage-file 1 (stage-at!)))
                  (v2 (session-top v form))
-                 (i (session-global! k n (module-field m n))))
-            (seeded k v2 (cons (sglobal n i) gl) m (cdr ns)))))))
+                 (g (session-global! k n (slot-ref m i))))
+            (seeded k v2 (cons (sglobal n g) gl) m (cdr ns) (i64+ i 1)))))))
 
 (define module-types-opened (subr kfx (cv ty) cv)
   (lambda (v mt)
@@ -637,7 +624,7 @@
                      mt))
                  (gm (session-global! k2 "stage-module" m))
                  (vals (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) (mtype-items mt))))
-                 (made (seeded k2 v (list (sglobal "stage-module" gm)) m vals)))
+                 (made (seeded k2 v (list (sglobal "stage-module" gm)) m vals 0)))
             (begin
               (set sessions (onto (get sessions) (list made)))
               (obj-set! sw 1 (fixnum k2))

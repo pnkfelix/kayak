@@ -34,9 +34,6 @@
 (define ob-ref i64 10)
 (define ob-sum i64 36)
 (define ob-product i64 37)
-"A module value (C323): its labels' number, then its values, `alloc`'s
- order, found by name; a kind past Fixpt's, until it is Fixpt's product."
-(define ob-module i64 209)
 "An FX-26 array and a bloblet (C215): Fixpt's plain bloblet (`%make-bloblet`,
  C326), its values in slots 0 on, a trailer always, its bytes its suffix."
 (define ob-array i64 32)

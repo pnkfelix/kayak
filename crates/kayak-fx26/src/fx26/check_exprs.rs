@@ -753,6 +753,25 @@ pub mod expressions {
         }
     }
 
+    /// The order of the values of a module of type `t`, where it keeps each
+    /// (C216, C328): a module type's, or a named `moduleof`'s (`%module
+    /// NAME`, a module parameter's type); none if `t` is no module's.
+    pub fn module_value_order(v: &'static Cv, s: &'static St, t: &'static Ty) -> Strings {
+        let w = walk(s, t);
+        if mtype_p(w) {
+            mtype_value_names(w)
+        } else {
+            let spec = module_spec(v, w);
+            if null_p(spec) {
+                nil::<Str>()
+            } else {
+                map(lambda1s(move |x: Sexps| {
+                    sym_name(second(x))
+                }), spec_items(car(spec), str_lit("val")))
+            }
+        }
+    }
+
     pub fn fold_values(v: &'static Cv, s: &'static St, m: Str, bs: Binds) -> &'static St {
         if null_p(bs) {
             s
@@ -4892,10 +4911,17 @@ pub mod expressions {
     /// (`module-arg`, C216: Fixpt's `k-reshape-at`), for the generator
     /// to reshape it.
     pub fn check(v: &'static Cv, s0: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
-        let s = if (mtype_p(walk(s0, expected)) && not(string_eq_p(datum_file(e), str_lit("")))) {
-            note_fact(s0, datum_file(e), datum_pos(e), string_append(str_lit("module-arg "), words_of(mtype_value_names(walk(s0, expected)))))
-        } else {
-            s0
+        let s = {
+            let order = if string_eq_p(datum_file(e), str_lit("")) {
+                nil::<Str>()
+            } else {
+                module_value_order(v, s0, expected)
+            };
+            if null_p(order) {
+                s0
+            } else {
+                note_fact(s0, datum_file(e), datum_pos(e), string_append(str_lit("module-arg "), words_of(order)))
+            }
         };
         let tagcase_ = {
             let tagcase_ = e;
@@ -5217,10 +5243,17 @@ pub mod expressions {
             let tagcase_ = converted(v, synth(v, s, e), expected, e);
             match *tagcase_ {
                 Res::Res(t, es, s0) => {
-                    let s = if (mtype_p(walk(s0, expected)) && mtype_p(walk(s0, t)) && not(string_eq_p(datum_file(e), str_lit("")))) {
-                        note_fact(s0, datum_file(e), datum_pos(e), string_append(str_lit("module-had "), words_of(mtype_value_names(walk(s0, t)))))
-                    } else {
-                        s0
+                    let s = {
+                        let had = if (string_eq_p(datum_file(e), str_lit("")) || null_p(module_value_order(v, s0, expected))) {
+                            nil::<Str>()
+                        } else {
+                            module_value_order(v, s0, t)
+                        };
+                        if null_p(had) {
+                            s0
+                        } else {
+                            note_fact(s0, datum_file(e), datum_pos(e), string_append(str_lit("module-had "), words_of(had)))
+                        }
                     };
                     res(expected, es, {
                         let s = coerced(v, fits(fitting(v, place_key(e), t, expected), s, t, expected), datum_file(e), datum_pos(e), t, expected);

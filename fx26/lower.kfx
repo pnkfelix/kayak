@@ -202,10 +202,13 @@
   (find-local (subr kfx (string scope i64) (listof i64 acyclic))
     (lambda (n sc depth)
       "A local's depth and slot, or nothing; a slot of -1 is a name of the
-       module a `with` opened, whose frame holds the module (a product)."
+       module a `with` opened, whose frame holds the module (a product), and
+       then its index there (C328)."
       (cond ((null? sc) nil)
             ((and (not (null? (car sc))) (string=? (car (car sc)) "%with"))
-             (if (string-member? n (cdr (car sc))) (list depth -1) (find-local n (cdr sc) (i64+ depth 1))))
+             (cond ((not (string-member? n (cdr (car sc)))) (find-local n (cdr sc) (i64+ depth 1)))
+                   ((string-member? "%unknown" (cdr (car sc))) (list depth -1 -1))
+                   (else (list depth -1 (position-of n (cdr (car sc)) 0)))))
             (else
              (let ((i (position-of n (car sc) 0)))
                (if (i64>= i 0) (list depth i) (find-local n (cdr sc) (i64+ depth 1)))))))))
@@ -255,6 +258,11 @@
 
 (define key-of (subr kfx (sexp) string)
   (lambda (e) (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e))))))
+
+"What fails when it runs, saying `why`: what is lowered with facts the
+ checker did not give (a REPL's draft tried, C328)."
+(define failed-if-run (subr kfx (string) ir)
+  (lambda (why) (i-call (i-lit (v-prim "error" 1)) (list (i-lit (v-string why))))))
 
 (define lit-int (subr kfx (string) ir) (lambda (w) (i-lit (v-int (i64->int (string->i64 w))))))
 
@@ -379,8 +387,10 @@
             (onto (cond ((or (head-is? f "define") (head-is? f "define*")) (list (binder-name (second (items f)))))
                         ((head-is? f "define-rec") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (items f))))
                         ((head-is? f "define-datatype") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
+                        ;; A generative type's conversions, the module's own, not values it
+                        ;; gives (Fixpt's, the cell generator's; C328).
                         ((head-is? f "define-generative")
-                         (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
+                         (if exported nil (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n)))))
                         ((and (head-is? f "include") (not (include-named? f)))
                          (if exported (include-names f gs) (cons (include-hidden f) (include-names f gs))))
                         ((head-is? f "include")
@@ -539,8 +549,68 @@
 (define named (subr kfx (string ir) ir)
   (lambda (n e) (tagcase e (i-lambda (a body m w) (i-lambda a body n w)) (else other e))))
 
+"The checker's facts of modules (C328: `module-arg`, `module-had`,
+ `module-made`; `with-entries`'s `%mfact`s), each `FILE:POS WHAT WORDS`:
+ the last frame of a top
+ level's scope, `%mfacts` its head, which no name finds; few, so looked
+ for at each expression, as the cell generator's `cg-module-facts` are."
+(define top-scope (subr kfx (strings) scope)
+  (lambda (gs)
+    (list (cons "%mfacts"
+                (concat (map (lambda ((g string))
+                               (if (has-prefix? g "%mfact ") (the strings (list (after-prefix g "%mfact "))) nil))
+                             gs))))))
+
+(define-rec
+  (facts-frame (subr kfx (scope) strings)
+    (lambda (sc)
+      (cond ((null? sc) nil)
+            ((and (null? (cdr sc)) (not (null? (car sc))) (string=? (car (car sc)) "%mfacts")) (cdr (car sc)))
+            (else (facts-frame (cdr sc)))))))
+
+(define-rec
+  (fact-in (subr kfx (string strings) strings)
+    (lambda (k fs)
+      (cond ((null? fs) nil)
+            ((has-prefix? (car fs) k) (spaced-words (after-prefix (car fs) k)))
+            (else (fact-in k (cdr fs)))))))
+
+(define mfact (subr kfx (scope sexp string) strings)
+  (lambda (sc e what)
+    "The words of the checker's fact `what` (`module-arg ` and the others)
+     at `e`, if any."
+    (if (string=? (datum-file e) "")
+        nil
+        (fact-in (string-append (key-of e) (string-append " " what)) (facts-frame sc)))))
+
+(define same-words? (subr kfx (strings strings) bool)
+  (lambda (a b) (string=? (words-of a) (words-of b))))
+
 (define-rec
   (lower (subr kfx (sexp scope strings) ir)
+    (lambda (e sc gs)
+      "`e`; a module where a module's type is wanted made one of that type,
+       its values those the type names, in its order (the checker's
+       `module-arg`; Fixpt's `k-reshape-at`, C328), unless it is so already.
+       One made here is made so (`lower-module`)."
+      (let ((want (mfact sc e "module-arg ")))
+        (if (or (null? want) (head-is? e "module") (head-is? e "extend") (head-is? e "%module-value"))
+            (lower-plain e sc gs)
+            (let ((have (module-layout e sc gs)))
+              (if (or (null? have) (same-words? want have))
+                  (lower-plain e sc gs)
+                  (i-let (list (lower-plain e sc gs))
+                         (i-product want (map (lambda ((n string)) (i-field (position-of n have 0) (i-local 0 0))) want)))))))))
+
+  (module-layout (subr kfx (sexp scope strings) strings)
+    (lambda (e sc gs)
+      "The order of module `e`'s values: a module named, the one it was made
+       in (`%exports`); else its type's, as the checker found it
+       (`module-had`)."
+      (let ((named (tagcase e (sym (n f p) (if (null? (find-local n sc 0)) (exports-of n gs) nil)) (else other nil))))
+        (if (null? named) (mfact sc e "module-had ") named))))
+
+  (lower-plain (subr kfx (sexp scope strings) ir)
     (lambda (e sc gs)
       (tagcase e
         (num (k f p) (i-lit (v-int (i64->int k))))
@@ -569,7 +639,9 @@
   (lower-name (subr kfx (string scope strings) ir)
     (lambda (n sc gs)
       (let ((local (find-local n sc 0)))
-        (cond ((and (not (null? local)) (i64= (car (cdr local)) -1)) (i-extract n (i-local (car local) 0)))
+        (cond ((and (not (null? local)) (i64= (car (cdr local)) -1) (i64< (car (cdr (cdr local))) 0))
+               (failed-if-run (string-append "the engine: a with's value whose place the checker did not say: " n)))
+              ((and (not (null? local)) (i64= (car (cdr local)) -1)) (i-field (car (cdr (cdr local))) (i-local (car local) 0)))
               ((not (null? local)) (i-local (car local) (car (cdr local))))
               ((string=? n "#t") (i-lit (v-bool #t)))
               ((string=? n "#f") (i-lit (v-bool #f)))
@@ -740,11 +812,14 @@
              (let* ((m (car xs))
                     (statics (tagcase m (sym (n f p) (exports-of n gs)) (else other nil)))
                     (found (if (null? statics) (with-at (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e)))) gs) nil))
-                    (names (the strings (cond ((not (null? statics)) (the strings statics)) ((not (null? found)) (the strings found)) (else (any-module gs))))))
+                    (names (the strings (cond ((not (null? statics)) (the strings statics)) ((not (null? found)) (the strings found))
+                                              ;; Lowered with no facts (a REPL's draft, tried): any module's
+                                              ;; names, each a failure if run (C328).
+                                              (else (cons "%unknown" (any-module gs)))))))
                (i-let (list (lower m sc gs)) (lower-body (cdr xs) (cons (cons "%with" names) sc) gs))))
             ((string=? h "select") (error "the engine: a select as a value"))
-            ((or (string=? h "module") (string=? h "%module-value")) (lower-module xs sc gs))
-            ((string=? h "extend") (lower-module (module-written (lst (list (sym "define" "" 0) (sym "%extend" "" 0) e) "" 0 0)) sc gs))
+            ((or (string=? h "module") (string=? h "%module-value")) (lower-module xs e sc gs #f))
+            ((string=? h "extend") (lower-module (module-written (lst (list (sym "define" "" 0) (sym "%extend" "" 0) e) "" 0 0)) e sc gs #f))
             ((string=? h "and")
              (cond ((null? xs) (i-lit (v-bool #t)))
                    ((null? (cdr xs)) (lower (car xs) sc gs))
@@ -780,7 +855,8 @@
                      ;; `k - 1`, as the cell generator has it.
                      ((tagcase (second xs) (num (j f p) #t) (else other #f))
                       (i-field (i64- (tagcase (second xs) (num (j f p) j) (else other 1)) 1) (lower (car xs) sc gs)))
-                     (else (i-extract (label-of (second xs)) (lower (car xs) sc gs))))))
+                     ;; Lowered with no facts (a REPL's draft, tried): a failure if run.
+                     (else (failed-if-run (string-append "the engine: an extract the checker gave no index: " (label-of (second xs))))))))
             ((and (string=? h "tagcase") (not (null? (fact-at (key-of e) "blob-tagcase " gs))))
              (lower (flat-tagcase e xs (fact-at (key-of e) "blob-tagcase " gs)) sc gs))
             ((string=? h "tagcase") (lower-tagcase xs sc gs))
@@ -788,38 +864,56 @@
             ((string=? h "prompt") (i-prompt (lower (car xs) sc gs) (lower (third xs) sc gs) (lower (second xs) sc gs)))
             (else (i-call (lower-name h sc gs) (lower-all xs sc gs))))))
 
-  (lower-module (subr kfx (sexps scope strings) ir)
-    (lambda (written sc gs)
+  (lower-module (subr kfx (sexps sexp scope strings bool) ir)
+    (lambda (written e sc gs own)
       "A module: its items' values in a frame of their own, each seeing those
-       before it and itself (a `letrec`), then the product of those it gives.
-       The modules it includes are made first, as FX-26 makes them (C86)."
+       before it and itself (a `letrec`), then the product of those it gives
+       (C328), Fixpt's: in the order of the type wanted (`module-arg`), else
+       of its own (`module-made`), else, or if `own`, a module defined, as
+       written. The modules it includes are made first, as FX-26 makes them
+       (C86)."
       (let* ((its (includes-first written))
              (names (module-item-names its gs #f))
-             (given (module-item-names its gs #t))
+             (want (if own nil (mfact sc e "module-arg ")))
+             (made (if own nil (mfact sc e "module-made ")))
+             (order (the strings (cond ((not (null? want)) (the strings want)) ((not (null? made)) (the strings made)) (else (module-item-names written gs #t)))))
+             (lost (filter (lambda ((n string)) (i64< (position-of n names 0) 0)) order))
              (inner (the scope (cons names sc))))
-        (i-letrec (module-values its inner gs)
-                  (i-module given (map (lambda ((n string)) (i-local 0 (position-of n names 0))) given))))))
+        (if (not (null? lost))
+            (failed-if-run (string-append "the engine: a module's value it does not make: " (words-of lost)))
+            (i-letrec (module-values its inner gs)
+                      (i-product order (map (lambda ((n string)) (i-local 0 (position-of n names 0))) order)))))))
+
+  (lower-own-module (subr kfx (sexp scope strings) ir)
+    (lambda (x sc gs)
+      "A module defined, `(define m (module ...))`: its values in the order
+       written (`%exports`'s), as a `with` or `include` of `m` finds them."
+      (if (head-is? x "extend")
+          (lower-module (module-written (lst (list (sym "define" "" 0) (sym "%extend" "" 0) x) "" 0 0)) x sc gs #t)
+          (lower-module (cdr (items x)) x sc gs #t))))
 
   (module-values (subr kfx (sexps scope strings) irs)
     (lambda (its sc gs)
       (if (null? its)
           nil
           (let ((f (car its)))
-            (onto (cond ((or (head-is? f "define") (head-is? f "define*")) (list (named (binder-name (second (items f))) (lower (last (items f)) sc gs))))
+            (onto (cond ((module-def? f) (list (named (binder-name (second (items f))) (lower-own-module (last (items f)) sc gs))))
+                        ((or (head-is? f "define") (head-is? f "define*")) (list (named (binder-name (second (items f))) (lower (last (items f)) sc gs))))
                         ((head-is? f "define-rec") (map (lambda ((g sexp)) (named (sym-name (car (items g))) (lower (last (items g)) sc gs))) (cdr (items f))))
                         ((head-is? f "define-datatype")
                          (map (lambda ((g sexp)) (i-lit (v-ctor (sym-name (car (items g))) (i64- (size (items g)) 1)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative") (list (i-lit (v-prim "%identity" 1)) (i-lit (v-prim "%identity" 1))))
                         ((and (head-is? f "include") (not (include-named? f)))
                          (cons (named (include-hidden f) (lower (second (items f)) sc gs))
-                               (map (lambda ((n string)) (i-extract n (lower-name (include-hidden f) sc gs))) (include-names f gs))))
+                               (let ((all (include-names f gs)))
+                                 (map (lambda ((n string)) (i-field (position-of n all 0) (lower-name (include-hidden f) sc gs))) all))))
                         ((head-is? f "include")
                          (let ((m (sym-name (second (items f)))))
                            (if (string-member? m (instances-of gs))
                                ;; A new instance (C213): its maker called, its values taken.
                                (cons (named (string-append "%inst " m) (i-call (lower-name m sc gs) nil))
-                                     (map (lambda ((n string)) (i-extract n (lower-name (string-append "%inst " m) sc gs))) (include-exports f gs)))
-                               (map (lambda ((n string)) (i-extract n (lower-name m sc gs))) (include-exports f gs)))))
+                                     (map (lambda ((n string)) (i-field (position-of n (exports-of m gs) 0) (lower-name (string-append "%inst " m) sc gs))) (include-exports f gs)))
+                               (map (lambda ((n string)) (i-field (position-of n (exports-of m gs) 0) (lower-name m sc gs))) (include-exports f gs)))))
                         ((head-is? f "hide") (module-values (cdr (items f)) sc gs))
                         (else nil))
                   (module-values (cdr its) sc gs))))))
@@ -895,8 +989,8 @@
 (define-datatype top (top-define ir) (top-expr ir) (top-none))
 
 (define-rec
-  (lower-tops (subr kfx (sexps strings) (listof top acyclic))
-    (lambda (forms gs)
+  (lower-tops-in (subr kfx (sexps strings scope) (listof top acyclic))
+    (lambda (forms gs sc0)
       (if (null? forms)
           nil
           (let ((f (car forms)))
@@ -907,15 +1001,15 @@
                                                        (named (binder-name (second xs))
                                                               (if (instance-module? (last xs))
                                                                   ;; Its maker (C213).
-                                                                  (lower (lst (list (sym "lambda" "" 0) (lst nil "" 0 0) (last xs)) "" 0 0) nil gs)
-                                                                  (lower (last xs) nil gs))))))))
+                                                                  (lower (lst (list (sym "lambda" "" 0) (lst nil "" 0 0) (last xs)) "" 0 0) sc0 gs)
+                                                                  (if (module-def? f) (lower-own-module (last xs) sc0 gs) (lower (last xs) sc0 gs)))))))))
                         ((head-is? f "define*")
                          (let ((xs (items f)))
-                           (list (top-define (i-define (position-of (binder-name (second xs)) gs 0) (named (binder-name (second xs)) (lower (last xs) nil gs)))))))
+                           (list (top-define (i-define (position-of (binder-name (second xs)) gs 0) (named (binder-name (second xs)) (lower (last xs) sc0 gs)))))))
                         ((head-is? f "define-rec")
                          (map (lambda ((g sexp))
                                 (let ((ys (items g)))
-                                  (top-define (i-define (position-of (sym-name (car ys)) gs 0) (named (sym-name (car ys)) (lower (last ys) nil gs))))))
+                                  (top-define (i-define (position-of (sym-name (car ys)) gs 0) (named (sym-name (car ys)) (lower (last ys) sc0 gs))))))
                               (cdr (items f))))
                         ((head-is? f "define-datatype")
                          (map (lambda ((g sexp))
@@ -931,10 +1025,13 @@
                          (list (top-none)))
                         ((or (head-is? f "define-syscall") (head-is? f "define-optional-syscall"))
                          (map (lambda ((d sexp))
-                                (top-define (i-define (position-of (sym-name (second (items d))) gs 0) (named (sym-name (second (items d))) (lower (third (items d)) nil gs)))))
+                                (top-define (i-define (position-of (sym-name (second (items d))) gs 0) (named (sym-name (second (items d))) (lower (third (items d)) sc0 gs)))))
                               (syscall-definitions f (fact-at (key-of f) "syscall " gs))))
-                        (else (list (top-expr (lower f nil gs)))))
-                  (lower-tops (cdr forms) gs)))))))
+                        (else (list (top-expr (lower f sc0 gs)))))
+                  (lower-tops-in (cdr forms) gs sc0)))))))
+
+(define lower-tops (subr kfx (sexps strings) (listof top acyclic))
+  (lambda (forms gs) (lower-tops-in forms gs (top-scope gs))))
 
 (define with-entries (subr kfx (facts) strings)
   (lambda (fs)
@@ -946,6 +1043,9 @@
                      (fact (file pos what)
                        (cond ((has-prefix? what "with-spec ")
                               (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec ")))))))))
+                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "module-arg " "module-had " "module-made "))
+                              ;; Where a module's values are laid out (C328).
+                              (the strings (list (string-append "%mfact " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " what))))))))
                              ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase " "syscall " "stage-rep " "stage-given " "reify-rep " "reify-given " "extract-index "))
                               ;; A flat's layout where it is read (C215).
                               (the strings (list (string-append "%fact " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " what))))))))

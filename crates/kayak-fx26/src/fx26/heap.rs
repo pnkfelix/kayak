@@ -74,12 +74,6 @@ pub fn ob_product() -> i64 {
     37i64
 }
 
-// A module value (C323): its labels' number, then its values, `alloc`'s
-// order, found by name; a kind past Fixpt's, until it is Fixpt's product.
-pub fn ob_module() -> i64 {
-    209i64
-}
-
 // An FX-26 array and a bloblet (C215): Fixpt's plain bloblet (`%make-bloblet`,
 // C326), its values in slots 0 on, a trailer always, its bytes its suffix.
 pub fn ob_array() -> i64 {
