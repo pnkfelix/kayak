@@ -32,10 +32,10 @@
         ((i64= op 73) (i64+ (raw-length (obj-ref a 0)) 2))
         ((i64= op 83) (i64* 3 (i64+ (list-count a 0) 1)))
         ((i64= op 84) (i64* 6 (i64+ (list-count a 0) 1)))
-        ((i64= op 90) (i64+ (fixnum-value a) 1))
+        ((i64= op 90) (i64+ (fixnum-value a) 2))
         ((i64= op 94) (i64* 3 (i64+ (obj-size a) 1)))
-        ((i64= op 95) (i64+ (list-count a 0) 1))
-        ((i64= op 96) (i64+ (fixnum-value b) 1))
+        ((i64= op 95) (i64+ (list-count a 0) 2))
+        ((i64= op 96) (i64+ (fixnum-value b) 2))
         ((i64= op 97) (i64+ (fixnum-value a) 1))
         ((i64= op 101) (i64+ (fixnum-value a) 1))
         ((i64= op 105) (i64+ (obj-size a) 1))
@@ -55,7 +55,7 @@
         ((i64= op 261) (started-room! a b))
         ((i64= op 262) (output-room! a))
         ((i64= op 175) (i64+ (list-count a 0) 1))
-        ((i64= op 187) (i64+ (i64+ (fixnum-value a) 1) (i64+ (list-count (pair-cdr args) 0) 2)))
+        ((i64= op 187) (i64+ (i64-quotient (fixnum-value a) 8) (i64+ (list-count (pair-cdr args) 0) 4)))
         ((i64= op 207) 4096)
         ((i64= op 269) 65536)
         ((i64= op 270) 65536)
@@ -133,28 +133,29 @@
  `at` bytes in; each scalar read and written little-endian, its code
  (`%blobref-get`): 0 `i64`, 1 `u64`, 2 `f64`, 3 `i32`, 4 `u32`, 5 `f32`,
  6 `u8`, 7 `i8`."
-(define blobref-bytes (subr hp (i64) i64) (lambda (r) (obj-ref (obj-ref r 0) 0)))
-(define blob-at (subr hp (i64) i64) (lambda (r) (fixnum-value (obj-ref r 1))))
+(define blobref-bytes (subr kfx (i64) i64) (lambda (r) (ref-owner r)))
+(define blob-at (subr kfx (i64) i64) (lambda (r) (ref-offset r)))
 
 (define blobref! (subr hp (i64 i64 i64) i64)
   (lambda (owner at size)
-    "A blobref to a flat of `size` bytes `at` bytes into `owner`'s, which it
-     lies within whole, as FX-26 checks it where one is made."
-    (if (or (i64< at 0) (i64> (i64+ at size) (raw-length (obj-ref owner 0))))
+    "A blobref, a suffix ref (C326), to a flat of `size` bytes `at` bytes
+     into `owner`'s suffix, which it lies within whole, as FX-26 checks it
+     where one is made."
+    (if (or (i64< at 0) (i64> (i64+ at size) (suffix-bytes owner)))
         (refused-op! (string-append "suffix ref: a flat of " (string-append (i64->string size) (string-append " bytes at byte " (string-append (i64->string at) " runs past the end of the suffix")))))
-        (let ((p (alloc! ob-blobref 2))) (begin (obj-set! p 0 owner) (obj-set! p 1 (fixnum at)) p)))))
+        (suffix-ref owner at))))
 
 (define-rec
   (bytes-read (subr hp (i64 i64 i64 int) int)
     (lambda (b at n acc)
       "Bytes `at` to `at + n - 1` of `b`, little-endian, onto `acc`."
-      (if (i64<= n 0) acc (bytes-read b at (i64- n 1) (+ (* acc 256) (i64->int (byte-at b (i64+ at (i64- n 1))))))))))
+      (if (i64<= n 0) acc (bytes-read b at (i64- n 1) (+ (* acc 256) (i64->int (suffix-byte b (i64+ at (i64- n 1))))))))))
 
 (define-rec
   (bytes-written! (subr hp (i64 i64 i64 int) unit)
     (lambda (b at n x)
       (if (i64<= n 0) #u
-          (begin (byte-set! b at (int->i64 (modulo x 256))) (bytes-written! b (i64+ at 1) (i64- n 1) (quotient (- x (modulo x 256)) 256)))))))
+          (begin (suffix-byte-set! b at (int->i64 (modulo x 256))) (bytes-written! b (i64+ at 1) (i64- n 1) (quotient (- x (modulo x 256)) 256)))))))
 
 (define scalar-width (subr kfx (i64) i64)
   (lambda (code) (cond ((i64<= code 2) 8) ((i64<= code 5) 4) (else 1))))
@@ -183,22 +184,23 @@
   (lambda (r size len)
     "A flat array's length: `len`, or, to the end of the suffix
      (268435455), as many as are left."
-    (if (i64= len 268435455) (i64-quotient (i64- (raw-length (blobref-bytes r)) (blob-at r)) size) len)))
+    (if (i64= len 268435455) (i64-quotient (i64- (suffix-bytes (blobref-bytes r)) (blob-at r)) size) len)))
 
 (define-rec
   (field-holding (subr hp (i64 i64 i64 i64) i64)
     (lambda (owner w i n)
       "The index of `owner`'s field holding `w`, from `i` of its `n`; -1 if none."
       (cond ((i64>= i n) -1)
-            ((i64= (obj-ref owner (i64+ i 1)) w) i)
+            ((i64= (slot-ref owner i) w) i)
             (else (field-holding owner w (i64+ i 1) n))))))
 
 (define bloblet! (subr hp (i64 i64) i64)
   (lambda (n fields)
-    "A bloblet (C215) of `n` bytes, all 0, and `fields`."
-    (let* ((bytes (bytes-made! n 0))
-           (p (alloc! ob-bloblet (i64+ (list-count fields 0) 1))))
-      (begin (obj-set! p 0 bytes) (fields-set! p 1 fields) p))))
+    "A bloblet (C215) of `n` bytes, all 0, and `fields`: Fixpt's plain
+     bloblet (C326)."
+    (if (or (i64< n 0) (i64> n 4294967295))
+        (refused-op! "a bloblet's suffix is 0 to 4 GiB")
+        (list-bloblet! n fields))))
 
 "Tables keyed by identity (C220), as Fixpt's `eqtable.rs` (Larceny's
  design, one stamp): hashed by address, every entry rehashed by an
@@ -414,13 +416,13 @@
         ((i64= op 87) (begin (obj-set! a 0 b) w-unit))
         ((i64= op 88) (one-word! ob-ref b))
         ((i64= op 89) (pair! b c))
-        ((i64= op 90) (filled! ob-array (fixnum-value a) b))
-        ((i64= op 91) (element a (fixnum-value b)))
-        ((i64= op 92) (begin (element-set! a (fixnum-value b) c) w-unit))
+        ((i64= op 90) (array-filled! (fixnum-value a) b))
+        ((i64= op 91) (array-element a (fixnum-value b)))
+        ((i64= op 92) (begin (array-element-set! a (fixnum-value b) c) w-unit))
         ((i64= op 93) (fixnum (obj-size a)))
-        ((i64= op 94) (array-list! a (i64- (obj-size a) 1) w-nil))
-        ((i64= op 95) (list-array! ob-array a))
-        ((i64= op 96) (filled! ob-array (fixnum-value b) c))
+        ((i64= op 94) (slots-list! a (i64- (obj-size a) 1) w-nil))
+        ((i64= op 95) (list-bloblet! 0 a))
+        ((i64= op 96) (array-filled! (fixnum-value b) c))
         ((i64= op 97) (filled! ob-flat (fixnum-value a) b))
         ((i64= op 98) (element a (fixnum-value b)))
         ((i64= op 99) (begin (element-set! a (fixnum-value b) c) w-unit))
@@ -442,7 +444,7 @@
         ((i64= op 115) (bool-word (is-imm? a imm-bool)))
         ((i64= op 116) (bool-word (is-imm? a imm-char)))
         ((i64= op 117) (bool-word (or (is-obj? a ob-symbol) (i64= a w-unit))))
-        ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-flatx) (is-obj? a ob-bloblet))))
+        ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-flatx))))
         ((i64= op 119) (bool-word (or (is-obj? a ob-proc) (is-obj? a ob-ctor) (is-obj? a ob-cont) (is-imm? a imm-prim))))
         ((i64= op 120) (bool-word (is-obj? a ob-real)))
         ((i64= op 121) (bool-word (is-obj? a ob-ref)))
@@ -579,41 +581,41 @@
         ((i64= op 185) (real-word! (f64-expt (word-real a) (word-real b))))
         ((i64= op 186) (bool-word (has-char-in? (word-string b) (word-char a))))
         ((i64= op 187) (bloblet! (fixnum-value a) (pair-cdr args)))
-        ((i64= op 188) (obj-ref a (i64+ (fixnum-value b) 1)))
-        ((i64= op 189) (begin (obj-set! a (i64+ (fixnum-value b) 1) c) w-unit))
-        ((i64= op 190) (fixnum (byte-at (obj-ref a 0) (fixnum-value b))))
-        ((i64= op 191) (begin (byte-set! (obj-ref a 0) (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
-        ((i64= op 192) (fixnum (raw-length (obj-ref a 0))))
+        ((i64= op 188) (slot-ref a (fixnum-value b)))
+        ((i64= op 189) (begin (slot-set! a (fixnum-value b) c) w-unit))
+        ((i64= op 190) (fixnum (suffix-byte a (fixnum-value b))))
+        ((i64= op 191) (begin (suffix-byte-set! a (fixnum-value b) (i64-and (fixnum-value c) 255)) w-unit))
+        ((i64= op 192) (fixnum (suffix-bytes a)))
         ((i64= op 193) a)
         ((i64= op 194) (blobref! a (fixnum-value b) (fixnum-value c)))
-        ((i64= op 195) (blobref! (obj-ref a 0) (i64+ (blob-at a) (fixnum-value b)) (fixnum-value c)))
-        ((i64= op 196) (obj-ref a 0))
+        ((i64= op 195) (blobref! (ref-owner a) (i64+ (blob-at a) (fixnum-value b)) (fixnum-value c)))
+        ((i64= op 196) (ref-owner a))
         ((i64= op 197) (fixnum (blob-at a)))
         ((i64= op 198) (blob-get a (fixnum-value b)))
         ((i64= op 199) (blob-set! a (fixnum-value b) c))
-        ((i64= op 200) (blobref! (obj-ref a 0) (i64+ (blob-at a) (fixnum-value b)) 0))
+        ((i64= op 200) (blobref! (ref-owner a) (i64+ (blob-at a) (fixnum-value b)) 0))
         ((i64= op 201)
          (let ((i (fixnum-value b)) (d (pair-car (pair-cdr r2))))
            (if (or (i64< i 0) (i64>= i (blob-length a (fixnum-value c) (fixnum-value d))))
                (refused-op! "blobref-index: out of range")
-               (blobref! (obj-ref a 0) (i64+ (blob-at a) (i64* i (fixnum-value c))) (fixnum-value c)))))
+               (blobref! (ref-owner a) (i64+ (blob-at a) (i64* i (fixnum-value c))) (fixnum-value c)))))
         ((i64= op 202) (fixnum (blob-length a (fixnum-value b) (fixnum-value c))))
         ((i64= op 203) (int-word! (bytes-read (blobref-bytes a) (blob-at a) (fixnum-value b) 0)))
         ((i64= op 205)
          "A flat sum with no key (C215): its tag the index of the owner's field
           that holds the label."
-         (let* ((owner (obj-ref a 0)) (i (field-holding owner b 0 (i64- (obj-size owner) 1))))
+         (let* ((owner (ref-owner a)) (i (field-holding owner b 0 (obj-size owner))))
            (if (i64< i 0)
                (refused-op! "blobref-variant!: no field of the owner holds that label")
                (begin (bytes-written! (blobref-bytes a) (blob-at a) 1 (i64->int i))
                       (blobref! owner (i64+ (blob-at a) (fixnum-value c)) 0)))))
-        ((i64= op 206) (obj-ref (obj-ref a 0) (i64+ (int->i64 (bytes-read (blobref-bytes a) (blob-at a) 1 0)) 1)))
+        ((i64= op 206) (slot-ref (ref-owner a) (int->i64 (bytes-read (blobref-bytes a) (blob-at a) 1 0))))
         ((i64= op 207) (sched-op! (fixnum-value a) b c))
         ((or (i64= op 208) (i64= op 209)) (make-icell!))
         ((i64= op 204)
          (let ((off (fixnum-value (pair-car (pair-cdr r2)))))
            (begin (bytes-written! (blobref-bytes a) (blob-at a) (fixnum-value b) (word-int c))
-                  (blobref! (obj-ref a 0) (i64+ (blob-at a) off) 0))))
+                  (blobref! (ref-owner a) (i64+ (blob-at a) off) 0))))
         ;; Strings at a region (C285), hand-written (gen-vprims.py has them not).
         ((i64= op 250) (string-made! (fixnum-value a) b))
         ((i64= op 255) (string-made! (fixnum-value b) c))

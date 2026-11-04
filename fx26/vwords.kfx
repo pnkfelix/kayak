@@ -46,6 +46,33 @@
   (array-list! (subr hp (i64 i64 i64) i64)
     (lambda (p i acc) (if (i64< i 0) acc (array-list! p (i64- i 1) (pair! (obj-ref p i) acc))))))
 
+"FX-26's arrays and bloblets (C326): Fixpt's plain bloblets, their values
+ in slots (`bloblet_value`), from 0."
+(define-rec
+  (slots-filled! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (p i n w) (if (i64>= i n) #u (begin (slot-set! p i w) (slots-filled! p (i64+ i 1) n w))))))
+
+(define array-filled! (subr hp (i64 i64) i64)
+  (lambda (n w)
+    (if (i64< n 0) (begin (failed-with! "a negative length") 0) (let ((p (bloblet-alloc! n 0))) (begin (slots-filled! p 0 n w) p)))))
+
+(define array-element (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+  (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") 0) (slot-ref p i))))
+
+(define array-element-set! (subr hp (i64 i64 i64) unit)
+  (lambda (p i w) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") #u) (slot-set! p i w))))
+
+(define-rec
+  (slots-list! (subr hp (i64 i64 i64) i64)
+    (lambda (p i acc) (if (i64< i 0) acc (slots-list! p (i64- i 1) (pair! (slot-ref p i) acc))))))
+
+(define-rec
+  (slots-from-list! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (slot-set! p i (pair-car xs)) (slots-from-list! p (i64+ i 1) (pair-cdr xs)))))))
+
+(define list-bloblet! (subr hp (i64 i64) i64)
+  (lambda (bytes xs) (let ((p (bloblet-alloc! (list-count xs 0) bytes))) (begin (slots-from-list! p 0 xs) p))))
+
 "Strings: Fixpt's (C320, words.kfx)."
 (define in-range? (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) bool)
   (lambda (v i) (if (or (i64< i 0) (i64>= i (raw-length v))) (begin (failed-with! "an index out of range") #f) #t)))

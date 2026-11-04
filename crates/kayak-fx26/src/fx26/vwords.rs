@@ -116,6 +116,78 @@ pub fn array_list_x(mut p: i64, mut i: i64, mut acc: i64) -> i64 {
     }
 }
 
+// FX-26's arrays and bloblets (C326): Fixpt's plain bloblets, their values
+// in slots (`bloblet_value`), from 0.
+pub fn slots_filled_x(mut p: i64, mut i: i64, mut n: i64, mut w: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            slot_set_x(p, i, w);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn array_filled_x(n: i64, w: i64) -> i64 {
+    if i64_lt(n, 0i64) {
+        failed_with_x(str_lit("a negative length"));
+        0i64
+    } else {
+        let p = bloblet_alloc_x(n, 0i64);
+        slots_filled_x(p, 0i64, n, w);
+        p
+    }
+}
+
+pub fn array_element(p: i64, i: i64) -> i64 {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
+        failed_with_x(str_lit("an index out of range"));
+        0i64
+    } else {
+        slot_ref(p, i)
+    }
+}
+
+pub fn array_element_set_x(p: i64, i: i64, w: i64) -> () {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
+        failed_with_x(str_lit("an index out of range"));
+        ()
+    } else {
+        slot_set_x(p, i, w)
+    }
+}
+
+pub fn slots_list_x(mut p: i64, mut i: i64, mut acc: i64) -> i64 {
+    loop {
+        if i64_lt(i, 0i64) {
+            return acc;
+        } else {
+            (i, acc) = (i64_minus(i, 1i64), pair_x(slot_ref(p, i), acc));
+            continue;
+        }
+    }
+}
+
+pub fn slots_from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
+    loop {
+        if i64_eq(xs, w_nil()) {
+            return ();
+        } else {
+            slot_set_x(p, i, pair_car(xs));
+            (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+pub fn list_bloblet_x(bytes: i64, xs: i64) -> i64 {
+    let p = bloblet_alloc_x(list_count(xs, 0i64), bytes);
+    slots_from_list_x(p, 0i64, xs);
+    p
+}
+
 // Strings: Fixpt's (C320, words.kfx).
 pub fn in_range_p(v: i64, i: i64) -> bool {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, raw_length(v))) {

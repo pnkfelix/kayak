@@ -80,7 +80,8 @@ pub fn ob_module() -> i64 {
     209i64
 }
 
-// An FX-26 array: Fixpt's bloblet of fields.
+// An FX-26 array and a bloblet (C215): Fixpt's plain bloblet (`%make-bloblet`,
+// C326), its values in slots 0 on, a trailer always, its bytes its suffix.
 pub fn ob_array() -> i64 {
     32i64
 }
@@ -112,16 +113,6 @@ pub fn ob_ctor() -> i64 {
 // `datum`'s vector (C77): its elements, words, as an array's.
 pub fn ob_vector() -> i64 {
     3i64
-}
-
-// A bloblet (C215): its bytes, an `ob-bytes`, then its fields.
-pub fn ob_bloblet() -> i64 {
-    204i64
-}
-
-// A blobref (C215): its owner, a bloblet, then its offset, a fixnum.
-pub fn ob_blobref() -> i64 {
-    205i64
 }
 
 // An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
@@ -213,6 +204,24 @@ pub fn pointer_index(w: i64) -> i64 {
 
 pub fn bloblet_at(p: i64) -> i64 {
     i64_plus(i64_shl(p, int_lit(3)), 4i64)
+}
+
+// A suffix ref (Fixpt's `value.rs`, C326), a blobref: tag 010, its owner's
+// suffix's index in bits 3 to 37, the byte it points at above.
+pub fn suffix_ref(owner: i64, at: i64) -> i64 {
+    i64_plus(i64_shl(at, int_lit(37)), i64_plus(i64_shl(pointer_index(owner), int_lit(3)), 2i64))
+}
+
+pub fn suffix_ref_p(w: i64) -> bool {
+    i64_eq(i64_and(w, 7i64), 2i64)
+}
+
+pub fn ref_owner(r: i64) -> i64 {
+    bloblet_at(i64_and(i64_shr(r, int_lit(3)), 17179869183i64))
+}
+
+pub fn ref_offset(r: i64) -> i64 {
+    i64_shr(r, int_lit(37))
 }
 
 pub fn pair_at(i: i64) -> i64 {
@@ -521,6 +530,45 @@ pub fn alloc_x(kind: i64, n: i64) -> i64 {
     }
 }
 
+pub fn words_zeroed_x(mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_lt_eq(n, 0i64) {
+            return ();
+        } else {
+            put_x(i, 0i64);
+            (i, n) = (i64_plus(i, 1i64), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// A plain bloblet (`make_bloblet`, C326): `n` fields and a trailer, the
+/// fields for the caller to fill, and a suffix of `bytes` bytes, all 0.
+pub fn bloblet_alloc_x(n: i64, bytes: i64) -> i64 {
+    let f = i64_plus(n, 1i64);
+    let sw = suffix_words(bytes);
+    let large = i64_gt(f, fields_max());
+    let at = bump_x(i64_plus(i64_plus(f, sw), if large {
+        2i64
+    } else {
+        1i64
+    }));
+    let main = if large {
+        i64_plus(at, 1i64)
+    } else {
+        at
+    };
+    if large {
+        put_x(at, extension(f));
+        put_x(main, large_header(ob_array(), bytes))
+    } else {
+        put_x(main, header(ob_array(), f, bytes))
+    };
+    put_x(i64_plus(main, f), trailer(f));
+    words_zeroed_x(i64_plus(main, i64_plus(f, 1i64)), sw);
+    bloblet_at(i64_plus(main, i64_plus(f, 1i64)))
+}
+
 // An object's payload: a pair's two words; a bloblet's fields, found by its
 // trailer (`p - F + i`), or, with none, its suffix (`p + i`).
 pub fn payload_at(v: i64, i: i64) -> i64 {
@@ -621,7 +669,9 @@ pub fn forwarded(i: i64) -> i64 {
 /// `w`, its object copied to the other space if it is one not yet copied:
 /// the word that now names it.
 pub fn copy_word_x(w: i64) -> i64 {
-    if not(pointer_p(w)) {
+    if suffix_ref_p(w) {
+        suffix_ref(copy_word_x(ref_owner(w)), ref_offset(w))
+    } else if not(pointer_p(w)) {
         w
     } else if pair_tagged_p(w) {
         let from = get(space());

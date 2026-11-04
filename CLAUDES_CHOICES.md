@@ -8996,3 +8996,23 @@ Still taken apart and put together by halves (C99). The room asked for
 (`int-room`, `text-room`, `shift-room`) is in suffix words, now fewer for
 the same integer, so it stays enough. Fixpt's bignum programs
 (`bignums`, `int-fast`, `shift-counts`, `big-literals`) print alike.
+
+## C326. The engine's arrays, bloblets and blobrefs, Fixpt's (2026-11-04; one heap, 1c)
+
+An FX-26 array and a bloblet are one thing, as in Fixpt: a plain bloblet
+(kind `bloblet`, 32; `%make-bloblet`), its values in slots from 0
+(`bloblet_value`, below the trailer, the last first), a trailer always,
+its bytes its own suffix (`bloblet-alloc!`). Before, an array's elements
+were in `alloc`'s order, and a bloblet was an object of its own (204), its
+bytes a bytevector in its field 0 and its fields after.
+- **A blobref is Fixpt's suffix ref** (tag 010, the owner's suffix's
+  index in bits 3 to 37, the byte above), not an object (205) of an owner
+  and an offset: it allocates nothing, and the collector moves it with its
+  owner (`copy-word!`). Printed as Fixpt prints one, `#<suffix-ref
+  bloblet +8>`.
+- A flat sum's tag with no key is the index of the owner's value holding
+  the label (`%fx26-flat-tag`), now a slot.
+- The engine's own tables (`eqtable`'s buckets and entries) stay arrays of
+  the engine's making, in `alloc`'s order: an eqtable is not yet Fixpt's.
+Fixpt's bloblet programs (`tests/fx26/programs/bloblet`, the runs among
+them) print alike.

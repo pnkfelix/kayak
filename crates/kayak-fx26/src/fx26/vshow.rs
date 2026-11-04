@@ -68,6 +68,12 @@ pub fn show_word(w: i64) -> Str {
         } else {
             str_lit("#<closure>")
         }
+    } else if suffix_ref_p(w) {
+        string_append(str_lit("#<suffix-ref "), string_append(if is_obj_p(ref_owner(w), ob_array()) {
+            str_lit("bloblet")
+        } else {
+            str_lit("flat-array")
+        }, string_append(str_lit(" +"), string_append(i64_to_string(ref_offset(w)), str_lit(">")))))
     } else if pointer_p(w) {
         let kind = obj_kind(w);
         if i64_eq(kind, ob_big()) {
@@ -91,7 +97,7 @@ pub fn show_word(w: i64) -> Str {
         } else if i64_eq(kind, ob_module()) {
             string_append(str_lit("#<product of "), string_append(i64_to_string(i64_minus(obj_size(w), 1i64)), str_lit(">")))
         } else if i64_eq(kind, ob_array()) {
-            string_append(str_lit("#<bloblet "), string_append(i64_to_string(i64_plus(obj_size(w), 1i64)), str_lit(" fields 0 bytes>")))
+            string_append(str_lit("#<bloblet "), string_append(i64_to_string(i64_plus(obj_size(w), 1i64)), string_append(str_lit(" fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))))
         } else if i64_eq(kind, ob_flat()) {
             string_append(str_lit("#<flat-array "), string_append(i64_to_string(obj_size(w)), string_append(str_lit(" fields "), string_append(i64_to_string(i64_star(8i64, obj_size(w))), str_lit(" bytes>")))))
         } else if i64_eq(kind, ob_vector()) {

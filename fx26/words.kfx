@@ -171,6 +171,18 @@
            (sh (i64->int (i64* 8 (i64-remainder i 8)))))
       (put! at (i64-or (i64-and (at-word at) (i64-not (i64-shl 255 sh))) (i64-shl (i64-and x 255) sh))))))
 
+"A bloblet's suffix's byte (C326): its bytes from the suffix's start."
+(define suffix-byte (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (b i)
+    (i64-and (i64-shr (at-word (i64+ (pointer-index b) (i64-quotient i 8))) (i64->int (i64* 8 (i64-remainder i 8)))) 255)))
+(define suffix-byte-set! (subr hp (i64 i64 i64) unit)
+  (lambda (b i x)
+    (let* ((at (i64+ (pointer-index b) (i64-quotient i 8)))
+           (sh (i64->int (i64* 8 (i64-remainder i 8)))))
+      (put! at (i64-or (i64-and (at-word at) (i64-not (i64-shl 255 sh))) (i64-shl (i64-and x 255) sh))))))
+(define suffix-bytes (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (b) (header-bytes (at-word (header-at b)))))
+
 "A string's or a bytevector's element, by its kind: for what both share."
 (define raw-ref (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
   (lambda (v i) (if (is-obj? v ob-string) (char-at v i) (byte-at v i))))

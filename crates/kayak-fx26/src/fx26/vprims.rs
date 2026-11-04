@@ -64,13 +64,13 @@ pub fn op_need(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 84i64) {
         i64_star(6i64, i64_plus(list_count(a, 0i64), 1i64))
     } else if i64_eq(op, 90i64) {
-        i64_plus(fixnum_value(a), 1i64)
+        i64_plus(fixnum_value(a), 2i64)
     } else if i64_eq(op, 94i64) {
         i64_star(3i64, i64_plus(obj_size(a), 1i64))
     } else if i64_eq(op, 95i64) {
-        i64_plus(list_count(a, 0i64), 1i64)
+        i64_plus(list_count(a, 0i64), 2i64)
     } else if i64_eq(op, 96i64) {
-        i64_plus(fixnum_value(b), 1i64)
+        i64_plus(fixnum_value(b), 2i64)
     } else if i64_eq(op, 97i64) {
         i64_plus(fixnum_value(a), 1i64)
     } else if i64_eq(op, 101i64) {
@@ -110,7 +110,7 @@ pub fn op_need(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 175i64) {
         i64_plus(list_count(a, 0i64), 1i64)
     } else if i64_eq(op, 187i64) {
-        i64_plus(i64_plus(fixnum_value(a), 1i64), i64_plus(list_count(pair_cdr(args), 0i64), 2i64))
+        i64_plus(i64_quotient(fixnum_value(a), 8i64), i64_plus(list_count(pair_cdr(args), 0i64), 4i64))
     } else if i64_eq(op, 207i64) {
         4096i64
     } else if i64_eq(op, 269i64) {
@@ -252,23 +252,21 @@ pub fn fields_set_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
 // (`%blobref-get`): 0 `i64`, 1 `u64`, 2 `f64`, 3 `i32`, 4 `u32`, 5 `f32`,
 // 6 `u8`, 7 `i8`.
 pub fn blobref_bytes(r: i64) -> i64 {
-    obj_ref(obj_ref(r, 0i64), 0i64)
+    ref_owner(r)
 }
 
 pub fn blob_at(r: i64) -> i64 {
-    fixnum_value(obj_ref(r, 1i64))
+    ref_offset(r)
 }
 
-/// A blobref to a flat of `size` bytes `at` bytes into `owner`'s, which it
-/// lies within whole, as FX-26 checks it where one is made.
+/// A blobref, a suffix ref (C326), to a flat of `size` bytes `at` bytes
+/// into `owner`'s suffix, which it lies within whole, as FX-26 checks it
+/// where one is made.
 pub fn blobref_x(owner: i64, at: i64, size: i64) -> i64 {
-    if (i64_lt(at, 0i64) || i64_gt(i64_plus(at, size), raw_length(obj_ref(owner, 0i64)))) {
+    if (i64_lt(at, 0i64) || i64_gt(i64_plus(at, size), suffix_bytes(owner))) {
         refused_op_x(string_append(str_lit("suffix ref: a flat of "), string_append(i64_to_string(size), string_append(str_lit(" bytes at byte "), string_append(i64_to_string(at), str_lit(" runs past the end of the suffix"))))))
     } else {
-        let p = alloc_x(ob_blobref(), 2i64);
-        obj_set_x(p, 0i64, owner);
-        obj_set_x(p, 1i64, fixnum(at));
-        p
+        suffix_ref(owner, at)
     }
 }
 
@@ -278,7 +276,7 @@ pub fn bytes_read(mut b: i64, mut at: i64, mut n: i64, mut acc: Int) -> Int {
         if i64_lt_eq(n, 0i64) {
             return acc;
         } else {
-            (n, acc) = (i64_minus(n, 1i64), _plus(_star(acc, int_lit(256)), i64_to_int(byte_at(b, i64_plus(at, i64_minus(n, 1i64))))));
+            (n, acc) = (i64_minus(n, 1i64), _plus(_star(acc, int_lit(256)), i64_to_int(suffix_byte(b, i64_plus(at, i64_minus(n, 1i64))))));
             continue;
         }
     }
@@ -289,7 +287,7 @@ pub fn bytes_written_x(mut b: i64, mut at: i64, mut n: i64, mut x: Int) -> () {
         if i64_lt_eq(n, 0i64) {
             return ();
         } else {
-            byte_set_x(b, at, int_to_i64(modulo(x, int_lit(256))));
+            suffix_byte_set_x(b, at, int_to_i64(modulo(x, int_lit(256))));
             (at, n, x) = (i64_plus(at, 1i64), i64_minus(n, 1i64), quotient(_minus(x, modulo(x, int_lit(256))), int_lit(256)));
             continue;
         }
@@ -349,7 +347,7 @@ pub fn blob_set_x(r: i64, code: i64, w: i64) -> i64 {
 /// (268435455), as many as are left.
 pub fn blob_length(r: i64, size: i64, len: i64) -> i64 {
     if i64_eq(len, 268435455i64) {
-        i64_quotient(i64_minus(raw_length(blobref_bytes(r)), blob_at(r)), size)
+        i64_quotient(i64_minus(suffix_bytes(blobref_bytes(r)), blob_at(r)), size)
     } else {
         len
     }
@@ -360,7 +358,7 @@ pub fn field_holding(mut owner: i64, mut w: i64, mut i: i64, mut n: i64) -> i64 
     loop {
         if i64_gt_eq(i, n) {
             return -1i64;
-        } else if i64_eq(obj_ref(owner, i64_plus(i, 1i64)), w) {
+        } else if i64_eq(slot_ref(owner, i), w) {
             return i;
         } else {
             i = i64_plus(i, 1i64);
@@ -369,13 +367,14 @@ pub fn field_holding(mut owner: i64, mut w: i64, mut i: i64, mut n: i64) -> i64 
     }
 }
 
-/// A bloblet (C215) of `n` bytes, all 0, and `fields`.
+/// A bloblet (C215) of `n` bytes, all 0, and `fields`: Fixpt's plain
+/// bloblet (C326).
 pub fn bloblet_x(n: i64, fields: i64) -> i64 {
-    let bytes = bytes_made_x(n, 0i64);
-    let p = alloc_x(ob_bloblet(), i64_plus(list_count(fields, 0i64), 1i64));
-    obj_set_x(p, 0i64, bytes);
-    fields_set_x(p, 1i64, fields);
-    p
+    if (i64_lt(n, 0i64) || i64_gt(n, 4294967295i64)) {
+        refused_op_x(str_lit("a bloblet's suffix is 0 to 4 GiB"))
+    } else {
+        list_bloblet_x(n, fields)
+    }
 }
 
 // Tables keyed by identity (C220), as Fixpt's `eqtable.rs` (Larceny's
@@ -787,20 +786,20 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 89i64) {
         pair_x(b, c)
     } else if i64_eq(op, 90i64) {
-        filled_x(ob_array(), fixnum_value(a), b)
+        array_filled_x(fixnum_value(a), b)
     } else if i64_eq(op, 91i64) {
-        element(a, fixnum_value(b))
+        array_element(a, fixnum_value(b))
     } else if i64_eq(op, 92i64) {
-        element_set_x(a, fixnum_value(b), c);
+        array_element_set_x(a, fixnum_value(b), c);
         w_unit()
     } else if i64_eq(op, 93i64) {
         fixnum(obj_size(a))
     } else if i64_eq(op, 94i64) {
-        array_list_x(a, i64_minus(obj_size(a), 1i64), w_nil())
+        slots_list_x(a, i64_minus(obj_size(a), 1i64), w_nil())
     } else if i64_eq(op, 95i64) {
-        list_array_x(ob_array(), a)
+        list_bloblet_x(0i64, a)
     } else if i64_eq(op, 96i64) {
-        filled_x(ob_array(), fixnum_value(b), c)
+        array_filled_x(fixnum_value(b), c)
     } else if i64_eq(op, 97i64) {
         filled_x(ob_flat(), fixnum_value(a), b)
     } else if i64_eq(op, 98i64) {
@@ -848,7 +847,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 117i64) {
         bool_word((is_obj_p(a, ob_symbol()) || i64_eq(a, w_unit())))
     } else if i64_eq(op, 118i64) {
-        bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flat()) || is_obj_p(a, ob_flatx()) || is_obj_p(a, ob_bloblet())))
+        bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flat()) || is_obj_p(a, ob_flatx())))
     } else if i64_eq(op, 119i64) {
         bool_word((is_obj_p(a, ob_proc()) || is_obj_p(a, ob_ctor()) || is_obj_p(a, ob_cont()) || is_imm_p(a, imm_prim())))
     } else if i64_eq(op, 120i64) {
@@ -1126,25 +1125,25 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 187i64) {
         bloblet_x(fixnum_value(a), pair_cdr(args))
     } else if i64_eq(op, 188i64) {
-        obj_ref(a, i64_plus(fixnum_value(b), 1i64))
+        slot_ref(a, fixnum_value(b))
     } else if i64_eq(op, 189i64) {
-        obj_set_x(a, i64_plus(fixnum_value(b), 1i64), c);
+        slot_set_x(a, fixnum_value(b), c);
         w_unit()
     } else if i64_eq(op, 190i64) {
-        fixnum(byte_at(obj_ref(a, 0i64), fixnum_value(b)))
+        fixnum(suffix_byte(a, fixnum_value(b)))
     } else if i64_eq(op, 191i64) {
-        byte_set_x(obj_ref(a, 0i64), fixnum_value(b), i64_and(fixnum_value(c), 255i64));
+        suffix_byte_set_x(a, fixnum_value(b), i64_and(fixnum_value(c), 255i64));
         w_unit()
     } else if i64_eq(op, 192i64) {
-        fixnum(raw_length(obj_ref(a, 0i64)))
+        fixnum(suffix_bytes(a))
     } else if i64_eq(op, 193i64) {
         a
     } else if i64_eq(op, 194i64) {
         blobref_x(a, fixnum_value(b), fixnum_value(c))
     } else if i64_eq(op, 195i64) {
-        blobref_x(obj_ref(a, 0i64), i64_plus(blob_at(a), fixnum_value(b)), fixnum_value(c))
+        blobref_x(ref_owner(a), i64_plus(blob_at(a), fixnum_value(b)), fixnum_value(c))
     } else if i64_eq(op, 196i64) {
-        obj_ref(a, 0i64)
+        ref_owner(a)
     } else if i64_eq(op, 197i64) {
         fixnum(blob_at(a))
     } else if i64_eq(op, 198i64) {
@@ -1152,13 +1151,13 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 199i64) {
         blob_set_x(a, fixnum_value(b), c)
     } else if i64_eq(op, 200i64) {
-        blobref_x(obj_ref(a, 0i64), i64_plus(blob_at(a), fixnum_value(b)), 0i64)
+        blobref_x(ref_owner(a), i64_plus(blob_at(a), fixnum_value(b)), 0i64)
     } else if i64_eq(op, 201i64) {
         let (i, d) = (fixnum_value(b), pair_car(pair_cdr(r2)));
         if (i64_lt(i, 0i64) || i64_gt_eq(i, blob_length(a, fixnum_value(c), fixnum_value(d)))) {
             refused_op_x(str_lit("blobref-index: out of range"))
         } else {
-            blobref_x(obj_ref(a, 0i64), i64_plus(blob_at(a), i64_star(i, fixnum_value(c))), fixnum_value(c))
+            blobref_x(ref_owner(a), i64_plus(blob_at(a), i64_star(i, fixnum_value(c))), fixnum_value(c))
         }
     } else if i64_eq(op, 202i64) {
         fixnum(blob_length(a, fixnum_value(b), fixnum_value(c)))
@@ -1167,8 +1166,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 205i64) {
         // A flat sum with no key (C215): its tag the index of the owner's field
         // that holds the label.
-        let owner = obj_ref(a, 0i64);
-        let i = field_holding(owner, b, 0i64, i64_minus(obj_size(owner), 1i64));
+        let owner = ref_owner(a);
+        let i = field_holding(owner, b, 0i64, obj_size(owner));
         if i64_lt(i, 0i64) {
             refused_op_x(str_lit("blobref-variant!: no field of the owner holds that label"))
         } else {
@@ -1176,7 +1175,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
             blobref_x(owner, i64_plus(blob_at(a), fixnum_value(c)), 0i64)
         }
     } else if i64_eq(op, 206i64) {
-        obj_ref(obj_ref(a, 0i64), i64_plus(int_to_i64(bytes_read(blobref_bytes(a), blob_at(a), 1i64, int_lit(0))), 1i64))
+        slot_ref(ref_owner(a), int_to_i64(bytes_read(blobref_bytes(a), blob_at(a), 1i64, int_lit(0))))
     } else if i64_eq(op, 207i64) {
         sched_op_x(fixnum_value(a), b, c)
     } else if (i64_eq(op, 208i64) || i64_eq(op, 209i64)) {
@@ -1184,7 +1183,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 204i64) {
         let off = fixnum_value(pair_car(pair_cdr(r2)));
         bytes_written_x(blobref_bytes(a), blob_at(a), fixnum_value(b), word_int(c));
-        blobref_x(obj_ref(a, 0i64), i64_plus(blob_at(a), off), 0i64)
+        blobref_x(ref_owner(a), i64_plus(blob_at(a), off), 0i64)
     } else if i64_eq(op, 250i64) {
         string_made_x(fixnum_value(a), b)
     } else if i64_eq(op, 255i64) {

@@ -318,6 +318,21 @@ pub fn byte_set_x(b: i64, i: i64, x: i64) -> () {
     put_x(at, i64_or(i64_and(at_word(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
 }
 
+// A bloblet's suffix's byte (C326): its bytes from the suffix's start.
+pub fn suffix_byte(b: i64, i: i64) -> i64 {
+    i64_and(i64_shr(at_word(i64_plus(pointer_index(b), i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
+}
+
+pub fn suffix_byte_set_x(b: i64, i: i64, x: i64) -> () {
+    let at = i64_plus(pointer_index(b), i64_quotient(i, 8i64));
+    let sh = i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)));
+    put_x(at, i64_or(i64_and(at_word(at), i64_not(i64_shl(255i64, sh))), i64_shl(i64_and(x, 255i64), sh)))
+}
+
+pub fn suffix_bytes(b: i64) -> i64 {
+    header_bytes(at_word(header_at(b)))
+}
+
 // A string's or a bytevector's element, by its kind: for what both share.
 pub fn raw_ref(v: i64, i: i64) -> i64 {
     if is_obj_p(v, ob_string()) {
