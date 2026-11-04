@@ -11,13 +11,18 @@
                           (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet))
 
 
-"Integers: a fixnum if it fits, else a bignum, its sign and 32-bit limbs,
- the low first. Taken apart and put together by halves, so that a step on
- a bignum of n limbs costs some n log n, and not n squared: a step is how
- long the REPL's keys may wait (live-repl.kfx, C99)."
+"Integers: a fixnum if it fits, else a bignum, Fixpt's (`write_bignum`,
+ C324): a raw object, its sign (a fixnum, 1 if negative), its count of
+ limbs (a fixnum), then the limbs, 64 bits each, the low first. Taken
+ apart and put together by halves, so that a step on a bignum of n limbs
+ costs some n log n, and not n squared: a step is how long the REPL's keys
+ may wait (live-repl.kfx, C99)."
+(define two-64 int (arithmetic-shift 1 64))
+(define two-63 int (arithmetic-shift 1 63))
+
 (define-rec
   (below-limbs? (subr kfx (int i64) bool)
-    (lambda (n k) "Whether `n`, at least 0, has at most `k` limbs." (zero? (arithmetic-shift n (i64->int (i64- 0 (i64* k 32)))))))
+    (lambda (n k) "Whether `n`, at least 0, has at most `k` limbs." (zero? (arithmetic-shift n (i64->int (i64- 0 (i64* k 64)))))))
   (limbs-within (subr kfx (int i64 i64) i64)
     (lambda (n lo hi)
       "The limbs of `n`, between `lo` (too few) and `hi` (enough)."
@@ -31,21 +36,26 @@
 (define limbs-count (subr kfx (int i64) i64)
   (lambda (n k) "`k` and the limbs of `n`, at least 0." (i64+ k (if (zero? n) 0 (limbs-above n 1)))))
 
+(define limb-word (subr kfx (int) i64)
+  (lambda (n) "A limb, below 2^64, as a word's 64 bits." (int->i64 (if (>= n two-63) (- n two-64) n))))
+(define word-limb (subr kfx (i64) int)
+  (lambda (w) "A word's 64 bits, as an unsigned limb." (if (i64< w 0) (+ (i64->int w) two-64) (i64->int w))))
+
 (define-rec
   (limbs-set! (subr hp (i64 int i64 i64) unit)
     (lambda (p n i k)
-      "`n`'s `k` limbs, from object `p`'s word `i` on."
+      "`n`'s `k` limbs, from bignum `p`'s suffix word `i` on."
       (cond ((i64< k 1) #u)
-            ((i64= k 1) (obj-set! p i (int->i64 n)))
+            ((i64= k 1) (put! (i64+ (pointer-index p) i) (limb-word n)))
             (else
              (let* ((h (i64-quotient k 2))
-                    (bits (i64->int (i64* h 32))))
+                    (bits (i64->int (i64* h 64))))
                (begin
                  (limbs-set! p (bitwise-and n (- (arithmetic-shift 1 bits) 1)) i h)
                  (limbs-set! p (arithmetic-shift n (- 0 bits)) (i64+ i h) (i64- k h)))))))))
 
 (define big-words (subr kfx (int) i64)
-  (lambda (n) "How many words a bignum of `n` needs." (i64+ 2 (limbs-count (if (< n 0) (- 0 n) n) 0))))
+  (lambda (n) "How many words a bignum of `n` needs." (i64+ 3 (limbs-count (if (< n 0) (- 0 n) n) 0))))
 
 (define int-word! (subr hp (int) i64)
   (lambda (n)
@@ -56,26 +66,29 @@
           (fixnum x)
           (let* ((mag (if (< n 0) (- 0 n) n))
                  (k (limbs-count mag 0))
-                 (p (alloc! ob-big (i64+ k 1))))
-            (begin (obj-set! p 0 (if (< n 0) (the i64 1) (the i64 0))) (limbs-set! p mag 1 k) p))))))
+                 (p (alloc! ob-big (i64+ k 2))))
+            (begin (put! (pointer-index p) (fixnum (if (< n 0) (the i64 1) (the i64 0))))
+                   (put! (i64+ (pointer-index p) 1) (fixnum k))
+                   (limbs-set! p mag 2 k)
+                   p))))))
 
 (define-rec
   (limbs-value (subr hp (i64 i64 i64) int)
     (lambda (p i k)
-      "The integer of object `p`'s `k` limbs from word `i` on."
+      "The integer of bignum `p`'s `k` limbs from suffix word `i` on."
       (cond ((i64< k 1) 0)
-            ((i64= k 1) (i64->int (obj-ref p i)))
+            ((i64= k 1) (word-limb (at-word (i64+ (pointer-index p) i))))
             (else
              (let ((h (i64-quotient k 2)))
-               (+ (limbs-value p i h) (arithmetic-shift (limbs-value p (i64+ i h) (i64- k h)) (i64->int (i64* h 32))))))))))
+               (+ (limbs-value p i h) (arithmetic-shift (limbs-value p (i64+ i h) (i64- k h)) (i64->int (i64* h 64))))))))))
 
 (define word-int (subr hp (i64) int)
   (lambda (w)
-    "A word's integer: a fixnum's, or a bignum's."
+    "A word's integer: a fixnum's, or a bignum's (`read_bignum`)."
     (if (fixnum? w)
         (i64->int (fixnum-value w))
-        (let ((mag (limbs-value w 1 (i64- (obj-size w) 1))))
-          (if (i64= (obj-ref w 0) 1) (- 0 mag) mag)))))
+        (let ((mag (limbs-value w 2 (fixnum-value (at-word (i64+ (pointer-index w) 1))))))
+          (if (i64= (at-word (pointer-index w)) (fixnum 1)) (- 0 mag) mag)))))
 
 (define word-i64 (subr hp (i64) i64)
   (lambda (w) "An `i64`'s value: a fixnum's, or the low 64 bits of a bignum's." (if (fixnum? w) (fixnum-value w) (int->i64 (word-int w)))))

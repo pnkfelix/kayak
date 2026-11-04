@@ -856,7 +856,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 121i64) {
         bool_word(is_obj_p(a, ob_ref()))
     } else if i64_eq(op, 122i64) {
-        bool_word((is_obj_p(a, ob_sum()) || is_obj_p(a, ob_data())))
+        bool_word(is_obj_p(a, ob_sum()))
     } else if i64_eq(op, 123i64) {
         bool_word(is_obj_p(a, ob_product()))
     } else if i64_eq(op, 124i64) {

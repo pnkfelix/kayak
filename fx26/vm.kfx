@@ -102,6 +102,10 @@
       (if (i64< i 0) #u (begin (slot-set! p i (pair-car xs)) (product-from-reversed! p (i64- i 1) (pair-cdr xs)))))))
 
 (define-rec
+  (product-args! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs) "Product `p`'s slots from `i` on, the list `xs`'s elements (C324)." (if (i64= xs w-nil) #u (begin (slot-set! p i (pair-car xs)) (product-args! p (i64+ i 1) (pair-cdr xs)))))))
+
+(define-rec
   (product-to-slots! (subr hp (i64 i64 i64 i64) unit)
     (lambda (e p i n) "Environment `e`'s slots 1 to `n` from product `p`'s 0 to `n` - 1." (if (i64>= i n) #u (begin (slot-set! e (i64+ i 1) (slot-ref p i)) (product-to-slots! e p (i64+ i 1) n))))))
 
@@ -116,20 +120,12 @@
     (lambda (p i xs n) (if (i64> i n) #u (begin (slot-set! p i (pair-car xs)) (args-env! p (i64+ i 1) (pair-cdr xs) n))))))
 
 (define-rec
-  (args-fields! (subr hp (i64 i64 i64 i64) unit)
-    (lambda (p i xs n) (if (i64> i n) #u (begin (obj-set! p i (pair-car xs)) (args-fields! p (i64+ i 1) (pair-cdr xs) n))))))
-
-(define-rec
   (slots-unbound! (subr hp (i64 i64 i64) unit)
     (lambda (p i n) "Slots `i` to `i + n - 1` of `p`, unbound." (if (i64< n 1) #u (begin (slot-set! p i w-unbound) (slots-unbound! p (i64+ i 1) (i64- n 1)))))))
 
 (define-rec
   (slots-copied! (subr hp (i64 i64 i64 i64) unit)
     (lambda (to from i n) "Slots `i` to `n` - 1 of `from` to the same of `to`." (if (i64>= i n) #u (begin (slot-set! to i (slot-ref from i)) (slots-copied! to from (i64+ i 1) n))))))
-
-(define-rec
-  (fields-to-slots! (subr hp (i64 i64 i64 i64) unit)
-    (lambda (to from i n) "`slots-copied!`, from an object in `alloc`'s order." (if (i64>= i n) #u (begin (slot-set! to i (obj-ref from i)) (fields-to-slots! to from (i64+ i 1) n))))))
 
 "Continuations: the frames above a prompt of a tag, by their count."
 (define-rec
@@ -502,7 +498,7 @@
         (n-tagcase (x start count default)
           (let* ((env (frame-field k 1))
                  (is-sum (is-obj? val ob-sum))
-                 (tag (cond (is-sum (sum-tag-number val)) ((is-obj? val ob-data) (fixnum-value (obj-ref val 0))) (else (the i64 -1))))
+                 (tag (if is-sum (sum-tag-number val) (the i64 -1)))
                  (found (arm-found start count tag)))
             (if (i64< found 0)
                 (let ((e (alloc! ob-env 2))) (begin (slot-set! e 0 env) (slot-set! e 1 val) (next-step! 0 default e next 0 0 0)))
@@ -511,10 +507,9 @@
                     (let ((whole (if is-sum (sum-value val) val)))
                       (if (or (i64= binds -1) (and is-sum (not (is-obj? whole ob-product))))
                           (let ((e (alloc! ob-env 2))) (begin (slot-set! e 0 env) (slot-set! e 1 whole) (next-step! 0 body e next 0 0 0)))
-                          (let* ((product (is-obj? whole ob-product))
-                                 (n (if product (obj-size whole) (i64- (obj-size whole) 1)))
+                          (let* ((n (obj-size whole))
                                  (e (alloc! ob-env (i64+ n 1))))
-                            (begin (if product (product-to-slots! e whole 0 n) (fields-to-slots! e whole 1 (i64+ n 1))) (slot-set! e 0 env)
+                            (begin (product-to-slots! e whole 0 n) (slot-set! e 0 env)
                                    (next-step! 0 body e next 0 0 0))))))))))
         (else other (begin (failed-with! "the engine: a tagcase frame of no tagcase") (failed-at -1 0 k))))))
 
@@ -557,9 +552,12 @@
                           (next-step! 0 body e k 0 0 0)))))
            (else other (begin (failed-with! "the engine: a procedure of no lambda") (failed-at node env k)))))
         ((is-obj? f ob-ctor)
+         "A datatype's constructor (C324): Fixpt's expansion, `(sum tag (product
+          (1 x1) …))`, a sum of a product of its members."
          (let* ((n (list-count args 0))
-                (p (alloc! ob-data (i64+ n 1))))
-           (begin (obj-set! p 0 (obj-ref f 0)) (args-fields! p 1 args n) (next-step! 1 0 0 k p 0 0))))
+                (p (product-made! n)))
+           (begin (product-args! p 0 args) (frozen! p)
+                  (next-step! 1 0 0 k (sum-made! (symbol-word (fixnum-value (obj-ref f 0))) p) 0 0))))
         ((is-obj? f ob-cont)
          (let* ((top (slot-ref f 0)) (n (fixnum-value (slot-ref f 1))) (room (if (i64< n 0) (the i64 0) (frames-room top n 0))))
            (cond ((i64< n 0)

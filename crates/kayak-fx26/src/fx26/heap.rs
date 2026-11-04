@@ -74,10 +74,6 @@ pub fn ob_product() -> i64 {
     37i64
 }
 
-pub fn ob_data() -> i64 {
-    200i64
-}
-
 // A module value (C323): its labels' number, then its values, `alloc`'s
 // order, found by name; a kind past Fixpt's, until it is Fixpt's product.
 pub fn ob_module() -> i64 {
@@ -169,7 +165,7 @@ pub fn ob_real() -> i64 {
 }
 
 pub fn ob_big() -> i64 {
-    208i64
+    6i64
 }
 
 pub fn raw_kind_p(k: i64) -> bool {

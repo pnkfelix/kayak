@@ -34,7 +34,6 @@
 (define ob-ref i64 10)
 (define ob-sum i64 36)
 (define ob-product i64 37)
-(define ob-data i64 200)
 "A module value (C323): its labels' number, then its values, `alloc`'s
  order, found by name; a kind past Fixpt's, until it is Fixpt's product."
 (define ob-module i64 209)
@@ -71,7 +70,7 @@
 (define ob-keyword i64 48)
 (define ob-bytes i64 4)
 (define ob-real i64 5)
-(define ob-big i64 208)
+(define ob-big i64 6)
 (define raw-kind? (subr kfx (i64) bool)
   (lambda (k) (or (i64= k ob-string) (i64= k ob-bytes) (i64= k ob-real) (i64= k ob-big))))
 

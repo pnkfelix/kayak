@@ -235,6 +235,19 @@ pub fn product_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
     }
 }
 
+/// Product `p`'s slots from `i` on, the list `xs`'s elements (C324).
+pub fn product_args_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
+    loop {
+        if i64_eq(xs, w_nil()) {
+            return ();
+        } else {
+            slot_set_x(p, i, pair_car(xs));
+            (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
 /// Environment `e`'s slots 1 to `n` from product `p`'s 0 to `n` - 1.
 pub fn product_to_slots_x(mut e: i64, mut p: i64, mut i: i64, mut n: i64) -> () {
     loop {
@@ -273,18 +286,6 @@ pub fn args_env_x(mut p: i64, mut i: i64, mut xs: i64, mut n: i64) -> () {
     }
 }
 
-pub fn args_fields_x(mut p: i64, mut i: i64, mut xs: i64, mut n: i64) -> () {
-    loop {
-        if i64_gt(i, n) {
-            return ();
-        } else {
-            obj_set_x(p, i, pair_car(xs));
-            (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
-            continue;
-        }
-    }
-}
-
 /// Slots `i` to `i + n - 1` of `p`, unbound.
 pub fn slots_unbound_x(mut p: i64, mut i: i64, mut n: i64) -> () {
     loop {
@@ -305,19 +306,6 @@ pub fn slots_copied_x(mut to: i64, mut from: i64, mut i: i64, mut n: i64) -> () 
             return ();
         } else {
             slot_set_x(to, i, slot_ref(from, i));
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
-}
-
-/// `slots-copied!`, from an object in `alloc`'s order.
-pub fn fields_to_slots_x(mut to: i64, mut from: i64, mut i: i64, mut n: i64) -> () {
-    loop {
-        if i64_gt_eq(i, n) {
-            return ();
-        } else {
-            slot_set_x(to, i, obj_ref(from, i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -1153,8 +1141,6 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
             let is_sum = is_obj_p(val, ob_sum());
             let tag = if is_sum {
                 sum_tag_number(val)
-            } else if is_obj_p(val, ob_data()) {
-                fixnum_value(obj_ref(val, 0i64))
             } else {
                 the::<i64>(-1i64)
             };
@@ -1179,18 +1165,9 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                             slot_set_x(e, 1i64, whole);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         } else {
-                            let product = is_obj_p(whole, ob_product());
-                            let n = if product {
-                                obj_size(whole)
-                            } else {
-                                i64_minus(obj_size(whole), 1i64)
-                            };
+                            let n = obj_size(whole);
                             let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                            if product {
-                                product_to_slots_x(e, whole, 0i64, n)
-                            } else {
-                                fields_to_slots_x(e, whole, 1i64, i64_plus(n, 1i64))
-                            };
+                            product_to_slots_x(e, whole, 0i64, n);
                             slot_set_x(e, 0i64, env);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         }
@@ -1264,11 +1241,13 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             }
         }
     } else if is_obj_p(f, ob_ctor()) {
+        // A datatype's constructor (C324): Fixpt's expansion, `(sum tag (product
+        // (1 x1) …))`, a sum of a product of its members.
         let n = list_count(args, 0i64);
-        let p = alloc_x(ob_data(), i64_plus(n, 1i64));
-        obj_set_x(p, 0i64, obj_ref(f, 0i64));
-        args_fields_x(p, 1i64, args, n);
-        next_step_x(1i64, 0i64, 0i64, k, p, 0i64, 0i64)
+        let p = product_made_x(n);
+        product_args_x(p, 0i64, args);
+        frozen_x(p);
+        next_step_x(1i64, 0i64, 0i64, k, sum_made_x(symbol_word(fixnum_value(obj_ref(f, 0i64))), p), 0i64, 0i64)
     } else if is_obj_p(f, ob_cont()) {
         let top = slot_ref(f, 0i64);
         let n = fixnum_value(slot_ref(f, 1i64));

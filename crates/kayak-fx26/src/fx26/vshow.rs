@@ -86,8 +86,6 @@ pub fn show_word(w: i64) -> Str {
             string_append(str_lit("#<box "), string_append(show_word(obj_ref(w, 0i64)), str_lit(">")))
         } else if i64_eq(kind, ob_sum()) {
             string_append(str_lit("#<sum "), string_append(symbol_text(slot_ref(w, 0i64)), str_lit(">")))
-        } else if i64_eq(kind, ob_data()) {
-            string_append(str_lit("#<sum "), string_append(name_of_number(fixnum_value(obj_ref(w, 0i64))), str_lit(">")))
         } else if i64_eq(kind, ob_product()) {
             string_append(str_lit("#<product of "), string_append(i64_to_string(obj_size(w)), str_lit(">")))
         } else if i64_eq(kind, ob_module()) {

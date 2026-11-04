@@ -8,13 +8,23 @@ use super::*;
 // strings and `f64`, which allocate KFX data and so are for loading, I/O
 // and bignums alone, never a step's work.
 
-// Integers: a fixnum if it fits, else a bignum, its sign and 32-bit limbs,
-// the low first. Taken apart and put together by halves, so that a step on
-// a bignum of n limbs costs some n log n, and not n squared: a step is how
-// long the REPL's keys may wait (live-repl.kfx, C99).
+// Integers: a fixnum if it fits, else a bignum, Fixpt's (`write_bignum`,
+// C324): a raw object, its sign (a fixnum, 1 if negative), its count of
+// limbs (a fixnum), then the limbs, 64 bits each, the low first. Taken
+// apart and put together by halves, so that a step on a bignum of n limbs
+// costs some n log n, and not n squared: a step is how long the REPL's keys
+// may wait (live-repl.kfx, C99).
+pub fn two_64() -> Int {
+    arithmetic_shift(int_lit(1), int_lit(64))
+}
+
+pub fn two_63() -> Int {
+    arithmetic_shift(int_lit(1), int_lit(63))
+}
+
 /// Whether `n`, at least 0, has at most `k` limbs.
 pub fn below_limbs_p(n: Int, k: i64) -> bool {
-    zero_p(arithmetic_shift(n, i64_to_int(i64_minus(0i64, i64_star(k, 32i64)))))
+    zero_p(arithmetic_shift(n, i64_to_int(i64_minus(0i64, i64_star(k, 64i64)))))
 }
 
 /// The limbs of `n`, between `lo` (too few) and `hi` (enough).
@@ -55,16 +65,34 @@ pub fn limbs_count(n: Int, k: i64) -> i64 {
     })
 }
 
-/// `n`'s `k` limbs, from object `p`'s word `i` on.
+/// A limb, below 2^64, as a word's 64 bits.
+pub fn limb_word(n: Int) -> i64 {
+    int_to_i64(if _gt_eq(n, two_63()) {
+        _minus(n, two_64())
+    } else {
+        n
+    })
+}
+
+/// A word's 64 bits, as an unsigned limb.
+pub fn word_limb(w: i64) -> Int {
+    if i64_lt(w, 0i64) {
+        _plus(i64_to_int(w), two_64())
+    } else {
+        i64_to_int(w)
+    }
+}
+
+/// `n`'s `k` limbs, from bignum `p`'s suffix word `i` on.
 pub fn limbs_set_x(mut p: i64, mut n: Int, mut i: i64, mut k: i64) -> () {
     loop {
         if i64_lt(k, 1i64) {
             return ();
         } else if i64_eq(k, 1i64) {
-            return obj_set_x(p, i, int_to_i64(n));
+            return put_x(i64_plus(pointer_index(p), i), limb_word(n));
         } else {
             let h = i64_quotient(k, 2i64);
-            let bits = i64_to_int(i64_star(h, 32i64));
+            let bits = i64_to_int(i64_star(h, 64i64));
             limbs_set_x(p, bitwise_and(n, _minus(arithmetic_shift(int_lit(1), bits), int_lit(1))), i, h);
             (n, i, k) = (arithmetic_shift(n, _minus(int_lit(0), bits)), i64_plus(i, h), i64_minus(k, h));
             continue;
@@ -74,7 +102,7 @@ pub fn limbs_set_x(mut p: i64, mut n: Int, mut i: i64, mut k: i64) -> () {
 
 /// How many words a bignum of `n` needs.
 pub fn big_words(n: Int) -> i64 {
-    i64_plus(2i64, limbs_count(if _lt(n, int_lit(0)) {
+    i64_plus(3i64, limbs_count(if _lt(n, int_lit(0)) {
         _minus(int_lit(0), n)
     } else {
         n
@@ -94,36 +122,37 @@ pub fn int_word_x(n: Int) -> i64 {
             n
         };
         let k = limbs_count(mag, 0i64);
-        let p = alloc_x(ob_big(), i64_plus(k, 1i64));
-        obj_set_x(p, 0i64, if _lt(n, int_lit(0)) {
+        let p = alloc_x(ob_big(), i64_plus(k, 2i64));
+        put_x(pointer_index(p), fixnum(if _lt(n, int_lit(0)) {
             the::<i64>(1i64)
         } else {
             the::<i64>(0i64)
-        });
-        limbs_set_x(p, mag, 1i64, k);
+        }));
+        put_x(i64_plus(pointer_index(p), 1i64), fixnum(k));
+        limbs_set_x(p, mag, 2i64, k);
         p
     }
 }
 
-/// The integer of object `p`'s `k` limbs from word `i` on.
+/// The integer of bignum `p`'s `k` limbs from suffix word `i` on.
 pub fn limbs_value(p: i64, i: i64, k: i64) -> Int {
     if i64_lt(k, 1i64) {
         int_lit(0)
     } else if i64_eq(k, 1i64) {
-        i64_to_int(obj_ref(p, i))
+        word_limb(at_word(i64_plus(pointer_index(p), i)))
     } else {
         let h = i64_quotient(k, 2i64);
-        _plus(limbs_value(p, i, h), arithmetic_shift(limbs_value(p, i64_plus(i, h), i64_minus(k, h)), i64_to_int(i64_star(h, 32i64))))
+        _plus(limbs_value(p, i, h), arithmetic_shift(limbs_value(p, i64_plus(i, h), i64_minus(k, h)), i64_to_int(i64_star(h, 64i64))))
     }
 }
 
-/// A word's integer: a fixnum's, or a bignum's.
+/// A word's integer: a fixnum's, or a bignum's (`read_bignum`).
 pub fn word_int(w: i64) -> Int {
     if fixnum_p(w) {
         i64_to_int(fixnum_value(w))
     } else {
-        let mag = limbs_value(w, 1i64, i64_minus(obj_size(w), 1i64));
-        if i64_eq(obj_ref(w, 0i64), 1i64) {
+        let mag = limbs_value(w, 2i64, fixnum_value(at_word(i64_plus(pointer_index(w), 1i64))));
+        if i64_eq(at_word(pointer_index(w)), fixnum(1i64)) {
             _minus(int_lit(0), mag)
         } else {
             mag

@@ -8973,3 +8973,26 @@ and `par`'s fields, which no fact names. All tests as before; the corpus
 on the engine as before. `engine-bench.py`, best of 3, against before
 C318: 0 to 4% faster (`loop.fx` 8425 to 8125 ms, `tak.fx` 757 to 728),
 a field by its index rather than its label searched.
+
+## C324. The engine's datatype values, Fixpt's (2026-11-04; one heap, 1c)
+
+A datatype value is what Fixpt makes it: a sum of a product, the sum's tag
+the constructor's symbol, the product its arguments in order (was a kind
+of the engine's own, `ob-data`, a number tag and the fields). So
+`tagcase` sees only sums: a tag is a sum's tag, the value's fields a
+product's slots (`product-to-slots!`), and the engine's `ob-data`,
+`args-fields!`, `fields-to-slots!` and `vshow`'s case for it go. `sum?`
+(op 122) is a sum's kind alone. All tests as before; the corpus on the
+engine (`engine-programs`) as before, 89 of 96.
+
+## C325. The engine's bignums, Fixpt's (2026-11-04; one heap, 1c)
+
+A bignum is Fixpt's (`write_bignum`, and tier 1's `int-value!`): kind
+`bignum` (6, was the engine's 208), a raw suffix of its sign (a fixnum, 1
+if negative), its count of limbs (a fixnum), then the limbs, 64 bits each,
+the low first (were 32 bits, as object words, the sign a raw word). A limb
+above 2^63 is kept as the word of its 64 bits (`limb-word`, `word-limb`).
+Still taken apart and put together by halves (C99). The room asked for
+(`int-room`, `text-room`, `shift-room`) is in suffix words, now fewer for
+the same integer, so it stays enough. Fixpt's bignum programs
+(`bignums`, `int-fast`, `shift-counts`, `big-literals`) print alike.

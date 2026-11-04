@@ -64,9 +64,13 @@ share the heap:
 ## Steps
 
 Done: 1a, values in Fixpt's encoding (C318); 1b, objects in Fixpt's
-layout and the collector over them (C319), 11 to 17% slower. Next, 1c:
-strings, bignums, symbols, products' labels, sums' tags and the engine's
-other kinds in Fixpt's own forms; then the engine's heap code shared with
+layout and the collector over them (C319), 11 to 17% slower. 1c so far:
+strings and bytevectors (C320), symbols and keywords (C321), sums (C322),
+products (C323, now 0 to 4% faster than before 1a), datatype values
+(C324), bignums (C325). Left of 1c: module values (labelled still, a kind
+of the engine's), FX-26 bloblets and suffix references, flat arrays, and
+the engine's own immediates and objects (primitives, tags, closures,
+frames, constructors); then the engine's heap code shared with
 tier 1's (step 1's last part, which C318 found needs the two programs'
 regions joined: `@h` and `@c`, and tier 1's effect `cm` includes I/O).
 

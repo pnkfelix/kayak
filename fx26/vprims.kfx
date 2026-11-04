@@ -446,7 +446,7 @@
         ((i64= op 119) (bool-word (or (is-obj? a ob-proc) (is-obj? a ob-ctor) (is-obj? a ob-cont) (is-imm? a imm-prim))))
         ((i64= op 120) (bool-word (is-obj? a ob-real)))
         ((i64= op 121) (bool-word (is-obj? a ob-ref)))
-        ((i64= op 122) (bool-word (or (is-obj? a ob-sum) (is-obj? a ob-data))))
+        ((i64= op 122) (bool-word (is-obj? a ob-sum)))
         ((i64= op 123) (bool-word (is-obj? a ob-product)))
         ((i64= op 124) (bool-word (is-obj? a ob-bytes)))
         ((i64= op 125)
