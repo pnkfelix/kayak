@@ -257,14 +257,15 @@
     (let ((bv (the (bytevectorof @h) (make-bytevector (i64->int (raw-length p)) (int->u8 0)))))
       (begin (word-bytes-set! bv p 0 (raw-length p)) bv))))
 
+(define sum-word! (subr (maxeff hp (alloc @h)) (string i64) i64)
+  (lambda (tag w) (sum-made! (symbol-word (intern! tag)) w)))
+
 (define utf8-word! (subr (maxeff hp (alloc @h)) (i64) i64)
   (lambda (p)
     (tagcase (utf8->string (word-kfx-bytes p))
-      (text s (let ((x (alloc! ob-sum 2))) (begin (obj-set! x 0 (fixnum (intern! "text"))) (obj-set! x 1 (string-word! s)) x)))
-      (bad k (let ((x (alloc! ob-sum 2))) (begin (obj-set! x 0 (fixnum (intern! "bad"))) (obj-set! x 1 (int-word! k)) x))))))
+      (text s (sum-word! "text" (string-word! s)))
+      (bad k (sum-word! "bad" (int-word! k))))))
 
-(define sum-word! (subr (maxeff hp (alloc @h)) (string i64) i64)
-  (lambda (tag w) (let ((x (alloc! ob-sum 2))) (begin (obj-set! x 0 (fixnum (intern! tag))) (obj-set! x 1 w) x))))
 
 "The labels of `io-error`'s product, a range of `kids`, made at loading."
 (define io-error-labels (ref i64 @h) (new -1))

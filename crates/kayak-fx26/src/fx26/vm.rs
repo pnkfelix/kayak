@@ -912,10 +912,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         (mode, node, k, val, f, args) = (1i64, 0i64, next, w_unit(), 0i64, 0i64);
                         continue;
                     } else if i64_eq(kind, fk_sum()) {
-                        let p = alloc_x(ob_sum(), 2i64);
-                        obj_set_x(p, 0i64, frame_field(k, 0i64));
-                        obj_set_x(p, 1i64, val);
-                        (mode, node, k, val, f, args) = (1i64, 0i64, next, p, 0i64, 0i64);
+                        (mode, node, k, val, f, args) = (1i64, 0i64, next, sum_made_x(symbol_word(fixnum_value(frame_field(k, 0i64))), val), 0i64, 0i64);
                         continue;
                     } else if i64_eq(kind, fk_extract()) {
                         let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
@@ -1095,7 +1092,9 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
         Node::NTagcase(x, start, count, default) => {
             let env = frame_field(k, 1i64);
             let is_sum = is_obj_p(val, ob_sum());
-            let tag = if (is_sum || is_obj_p(val, ob_data())) {
+            let tag = if is_sum {
+                sum_tag_number(val)
+            } else if is_obj_p(val, ob_data()) {
                 fixnum_value(obj_ref(val, 0i64))
             } else {
                 the::<i64>(-1i64)
@@ -1111,7 +1110,7 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                 match *tagcase_ {
                     Armx::Armx(t, binds, body) => {
                         let whole = if is_sum {
-                            obj_ref(val, 1i64)
+                            sum_value(val)
                         } else {
                             val
                         };

@@ -414,6 +414,24 @@ pub fn keyword_word_p(w: i64) -> bool {
     is_obj_p(w, ob_keyword())
 }
 
+// Sums (C322): Fixpt's (`make_frozen`), frozen, its tag (a symbol) slot 0,
+// its value slot 1.
+pub fn sum_made_x(tag: i64, w: i64) -> i64 {
+    let x = alloc_x(ob_sum(), 2i64);
+    slot_set_x(x, 0i64, tag);
+    slot_set_x(x, 1i64, w);
+    frozen_x(x);
+    x
+}
+
+pub fn sum_tag_number(s: i64) -> i64 {
+    symbol_number(slot_ref(s, 0i64))
+}
+
+pub fn sum_value(s: i64) -> i64 {
+    slot_ref(s, 1i64)
+}
+
 // Reals: an `f64`'s bits.
 pub fn real_word_x(x: f64) -> i64 {
     let p = alloc_x(ob_real(), 1i64);

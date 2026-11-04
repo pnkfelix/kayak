@@ -554,29 +554,20 @@ pub fn word_kfx_bytes(p: i64) -> Bytes {
     bv
 }
 
+pub fn sum_word_x(tag: Str, w: i64) -> i64 {
+    sum_made_x(symbol_word(intern_x(tag)), w)
+}
+
 pub fn utf8_word_x(p: i64) -> i64 {
     let tagcase_ = utf8_to_string(word_kfx_bytes(p));
     match *tagcase_ {
         Sum_4text_3bad::Text(s) => {
-            let x = alloc_x(ob_sum(), 2i64);
-            obj_set_x(x, 0i64, fixnum(intern_x(str_lit("text"))));
-            obj_set_x(x, 1i64, string_word_x(s));
-            x
+            sum_word_x(str_lit("text"), string_word_x(s))
         }
         Sum_4text_3bad::Bad(k) => {
-            let x = alloc_x(ob_sum(), 2i64);
-            obj_set_x(x, 0i64, fixnum(intern_x(str_lit("bad"))));
-            obj_set_x(x, 1i64, int_word_x(k));
-            x
+            sum_word_x(str_lit("bad"), int_word_x(k))
         }
     }
-}
-
-pub fn sum_word_x(tag: Str, w: i64) -> i64 {
-    let x = alloc_x(ob_sum(), 2i64);
-    obj_set_x(x, 0i64, fixnum(intern_x(tag)));
-    obj_set_x(x, 1i64, w);
-    x
 }
 
 // The labels of `io-error`'s product, a range of `kids`, made at loading.

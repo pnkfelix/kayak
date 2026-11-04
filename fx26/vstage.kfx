@@ -814,7 +814,7 @@
                                     gl (cdr us) redefined made)))))))))
 
 (define decision-tag (subr hp (i64) string)
-  (lambda (w) (if (is-obj? w ob-sum) (name-of-number (fixnum-value (obj-ref w 0))) "")))
+  (lambda (w) (if (is-obj? w ob-sum) (name-of-number (sum-tag-number w)) "")))
 
 (define run-ir (subr kfx (strings runs) ir)
   (lambda (gs r)

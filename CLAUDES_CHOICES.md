@@ -8936,3 +8936,15 @@ reading back, `symbol?`, `symbol->string`, keywords' conversions through
 the objects; `string->symbol` and `symbol->keyword` given room for what
 they may make. The engine's immediates of subtag 24 are gone. All tests
 as before; `engine-bench.py` some 6% faster than C320's.
+
+## C322. The engine's sums, Fixpt's (2026-11-04; one heap, 1c)
+
+A sum is Fixpt's (`make_frozen`): kind `sum`, frozen (its header's bits
+12 and 13, `frozen!`), its tag, a symbol (C321), slot 0, its value slot 1
+(`sum-made!`, `sum-tag-number`, `sum-value`); was a fixnum, the tag
+name's number, then the value, in `alloc`'s order. Made by the machine's
+`sum` (its frame holds the tag's number), by `sum-word!`, and by I/O's
+results; read by `tagcase` (the tag's number from its symbol's third
+field, C321) and printing. Datatype values (`ob-data`) keep a number tag
+until they are settled (a kind past Fixpt's). All tests as before; the
+corpus on the engine as before.

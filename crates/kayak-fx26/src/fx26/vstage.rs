@@ -1651,7 +1651,7 @@ pub fn session_reruns(mut v: &'static Cv, mut gl: Sglobals, mut us: Defns, mut r
 
 pub fn decision_tag(w: i64) -> Str {
     if is_obj_p(w, ob_sum()) {
-        name_of_number(fixnum_value(obj_ref(w, 0i64)))
+        name_of_number(sum_tag_number(w))
     } else {
         str_lit("")
     }

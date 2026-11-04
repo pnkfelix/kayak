@@ -234,6 +234,16 @@
 (define keyword-word? (subr (maxeff (read @globals) spin (read @h)) (i64) bool)
   (lambda (w) (is-obj? w ob-keyword)))
 
+"Sums (C322): Fixpt's (`make_frozen`), frozen, its tag (a symbol) slot 0,
+ its value slot 1."
+(define sum-made! (subr (maxeff hp (alloc @h)) (i64 i64) i64)
+  (lambda (tag w)
+    (let ((x (alloc! ob-sum 2))) (begin (slot-set! x 0 tag) (slot-set! x 1 w) (frozen! x) x))))
+(define sum-tag-number (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (s) (symbol-number (slot-ref s 0))))
+(define sum-value (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (s) (slot-ref s 1)))
+
 "Reals: an `f64`'s bits."
 (define real-word! (subr hp (f64) i64)
   (lambda (x) (let ((p (alloc! ob-real 1))) (begin (obj-set! p 0 (int->i64 (u64->int (f64->bits x)))) p))))

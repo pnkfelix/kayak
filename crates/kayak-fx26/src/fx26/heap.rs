@@ -589,6 +589,13 @@ pub fn slot_set_x(v: i64, i: i64, w: i64) -> () {
     put_x(i64_minus(i64_minus(pointer_index(v), 2i64), i), w)
 }
 
+/// Bloblet `v`'s fields and suffix frozen, its header's bits 12 and 13
+/// (Fixpt's `freeze_bloblet`), as its sums and products are made (C322).
+pub fn frozen_x(v: i64) -> () {
+    let h = header_at(v);
+    put_x(h, i64_or(at_word(h), 12288i64))
+}
+
 // The collector: Cheney's, over Fixpt's objects. Each root copied, then
 // the copies scanned, header by header (a word no header begins a pair);
 // a moved object's forwarding, tag 111, its copy's index, in a pair's first

@@ -264,6 +264,12 @@
 (define slot-set! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64 i64) unit)
   (lambda (v i w) (put! (i64- (i64- (pointer-index v) 2) i) w)))
 
+(define frozen! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) unit)
+  (lambda (v)
+    "Bloblet `v`'s fields and suffix frozen, its header's bits 12 and 13
+     (Fixpt's `freeze_bloblet`), as its sums and products are made (C322)."
+    (let ((h (header-at v))) (put! h (i64-or (at-word h) 12288)))))
+
 "The collector: Cheney's, over Fixpt's objects. Each root copied, then
  the copies scanned, header by header (a word no header begins a pair);
  a moved object's forwarding, tag 111, its copy's index, in a pair's first
