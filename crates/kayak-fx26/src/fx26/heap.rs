@@ -86,10 +86,6 @@ pub fn ob_array() -> i64 {
     32i64
 }
 
-pub fn ob_flat() -> i64 {
-    201i64
-}
-
 pub fn ob_proc() -> i64 {
     8i64
 }
@@ -115,8 +111,8 @@ pub fn ob_vector() -> i64 {
     3i64
 }
 
-// An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
-// then its elements, words (the engine's values are its own, not raw).
+// A flat array (C220): Fixpt's (C327, vprims.kfx's `flat-made!`), its
+// layout's code in its slot, its elements' bits its suffix.
 pub fn ob_flatx() -> i64 {
     42i64
 }

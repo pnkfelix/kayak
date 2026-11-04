@@ -40,7 +40,6 @@
 "An FX-26 array and a bloblet (C215): Fixpt's plain bloblet (`%make-bloblet`,
  C326), its values in slots 0 on, a trailer always, its bytes its suffix."
 (define ob-array i64 32)
-(define ob-flat i64 201)
 (define ob-proc i64 8)
 (define ob-cont i64 14)
 (define ob-env i64 35)
@@ -48,8 +47,8 @@
 (define ob-ctor i64 203)
 "`datum`'s vector (C77): its elements, words, as an array's."
 (define ob-vector i64 3)
-"An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
- then its elements, words (the engine's values are its own, not raw)."
+"A flat array (C220): Fixpt's (C327, vprims.kfx's `flat-made!`), its
+ layout's code in its slot, its elements' bits its suffix."
 (define ob-flatx i64 42)
 "A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
  collections when its keys were last hashed, its count of entries, its

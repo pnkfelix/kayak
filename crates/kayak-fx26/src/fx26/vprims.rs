@@ -72,7 +72,7 @@ pub fn op_need(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 96i64) {
         i64_plus(fixnum_value(b), 2i64)
     } else if i64_eq(op, 97i64) {
-        i64_plus(fixnum_value(a), 1i64)
+        i64_plus(fixnum_value(a), 4i64)
     } else if i64_eq(op, 101i64) {
         i64_plus(fixnum_value(a), 1i64)
     } else if i64_eq(op, 105i64) {
@@ -350,6 +350,117 @@ pub fn blob_length(r: i64, size: i64, len: i64) -> i64 {
         i64_quotient(i64_minus(suffix_bytes(blobref_bytes(r)), blob_at(r)), size)
     } else {
         len
+    }
+}
+
+// Flat arrays (C327): Fixpt's (`make_flat_array`), kind `flat-array`, its
+// layout's code in its one slot (`layout.rs`'s `FLAT_*`: 0 `i32`, 1 `u32`,
+// 2 `i64`, 3 `u64`, 4 `f32`, 5 `f64`), its elements' bits its suffix, 4 or
+// 8 bytes each, two to a word when 4. KFX's `make-flatarray-i64` is one of
+// `i64`s.
+pub fn flat_size(code: i64) -> i64 {
+    if (i64_eq(code, 0i64) || i64_eq(code, 1i64) || i64_eq(code, 4i64)) {
+        4i64
+    } else {
+        8i64
+    }
+}
+
+pub fn flat_array_code(a: i64) -> i64 {
+    fixnum_value(slot_ref(a, 0i64))
+}
+
+pub fn flat_count(a: i64) -> i64 {
+    i64_quotient(suffix_bytes(a), flat_size(flat_array_code(a)))
+}
+
+pub fn flat_made_x(code: i64, n: i64) -> i64 {
+    let p = bloblet_alloc_x(1i64, i64_star(n, flat_size(code)));
+    put_x(header_at(p), header(ob_flatx(), 2i64, i64_star(n, flat_size(code))));
+    slot_set_x(p, 0i64, fixnum(code));
+    p
+}
+
+pub fn flat_bits(a: i64, i: i64) -> i64 {
+    if i64_eq(flat_size(flat_array_code(a)), 8i64) {
+        at_word(i64_plus(pointer_index(a), i))
+    } else {
+        i64_and(i64_shr(at_word(i64_plus(pointer_index(a), i64_quotient(i, 2i64))), i64_to_int(i64_star(32i64, i64_remainder(i, 2i64)))), 4294967295i64)
+    }
+}
+
+pub fn flat_bits_set_x(a: i64, i: i64, x: i64) -> () {
+    if i64_eq(flat_size(flat_array_code(a)), 8i64) {
+        put_x(i64_plus(pointer_index(a), i), x)
+    } else {
+        let at = i64_plus(pointer_index(a), i64_quotient(i, 2i64));
+        let sh = i64_to_int(i64_star(32i64, i64_remainder(i, 2i64)));
+        put_x(at, i64_or(i64_and(at_word(at), i64_not(i64_shl(4294967295i64, sh))), i64_shl(i64_and(x, 4294967295i64), sh)))
+    }
+}
+
+/// The value bits of layout `code` stand for (`flat_value`).
+pub fn flat_value(code: i64, bits: i64) -> i64 {
+    if i64_eq(code, 0i64) {
+        int_word_x(signed_from(word_limb(bits), 4i64))
+    } else if i64_eq(code, 2i64) {
+        i64_word_x(bits)
+    } else if i64_eq(code, 4i64) {
+        f32_word(bits_to_f32(int_to_u32(word_limb(bits))))
+    } else if i64_eq(code, 5i64) {
+        real_word_x(bits_to_f64(int_to_u64(word_limb(bits))))
+    } else {
+        int_word_x(word_limb(bits))
+    }
+}
+
+/// A value of layout `code`, as the bits a flat array keeps (`flat_bits_of`).
+pub fn flat_bits_of(code: i64, w: i64) -> i64 {
+    if (i64_eq(code, 0i64) || i64_eq(code, 1i64)) {
+        i64_and(word_i64(w), 4294967295i64)
+    } else if i64_eq(code, 2i64) {
+        word_i64(w)
+    } else if i64_eq(code, 3i64) {
+        limb_word(modulo(word_int(w), two_64()))
+    } else if i64_eq(code, 4i64) {
+        limb_word(u32_to_int(f32_to_bits(word_f32(w))))
+    } else {
+        limb_word(u64_to_int(f64_to_bits(word_real(w))))
+    }
+}
+
+pub fn flat_filled_x(mut a: i64, mut i: i64, mut n: i64, mut x: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flat_bits_set_x(a, i, x);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn flat_filled_made_x(code: i64, n: i64, w: i64) -> i64 {
+    if i64_lt(n, 0i64) {
+        refused_op_x(str_lit("make-flatarray: a negative length"))
+    } else {
+        let (a, x) = (flat_made_x(code, n), flat_bits_of(code, w));
+        if i64_eq(x, 0i64) {
+            ()
+        } else {
+            flat_filled_x(a, 0i64, n, x)
+        };
+        a
+    }
+}
+
+pub fn flat_index(a: i64, i: i64) -> i64 {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, flat_count(a))) {
+        refused_op_x(str_lit("flatarray: index out of range"));
+        -1i64
+    } else {
+        i
     }
 }
 
@@ -801,14 +912,24 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 96i64) {
         array_filled_x(fixnum_value(b), c)
     } else if i64_eq(op, 97i64) {
-        filled_x(ob_flat(), fixnum_value(a), b)
+        flat_filled_made_x(2i64, fixnum_value(a), b)
     } else if i64_eq(op, 98i64) {
-        element(a, fixnum_value(b))
+        let i = flat_index(a, fixnum_value(b));
+        if i64_lt(i, 0i64) {
+            w_unit()
+        } else {
+            i64_word_x(flat_bits(a, i))
+        }
     } else if i64_eq(op, 99i64) {
-        element_set_x(a, fixnum_value(b), c);
+        let i = flat_index(a, fixnum_value(b));
+        if i64_lt(i, 0i64) {
+            ()
+        } else {
+            flat_bits_set_x(a, i, word_i64(c))
+        };
         w_unit()
     } else if i64_eq(op, 100i64) {
-        fixnum(obj_size(a))
+        fixnum(flat_count(a))
     } else if i64_eq(op, 101i64) {
         bytes_made_x(fixnum_value(a), fixnum_value(b))
     } else if i64_eq(op, 102i64) {
@@ -847,7 +968,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 117i64) {
         bool_word((is_obj_p(a, ob_symbol()) || i64_eq(a, w_unit())))
     } else if i64_eq(op, 118i64) {
-        bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flat()) || is_obj_p(a, ob_flatx())))
+        bool_word((is_obj_p(a, ob_array()) || is_obj_p(a, ob_flatx())))
     } else if i64_eq(op, 119i64) {
         bool_word((is_obj_p(a, ob_proc()) || is_obj_p(a, ob_ctor()) || is_obj_p(a, ob_cont()) || is_imm_p(a, imm_prim())))
     } else if i64_eq(op, 120i64) {
@@ -1010,26 +1131,19 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 175i64) {
         list_array_x(ob_vector(), a)
     } else if i64_eq(op, 212i64) {
-        if i64_lt(fixnum_value(b), 0i64) {
-            refused_op_x(str_lit("make-flatarray: a negative length"))
-        } else {
-            let p = alloc_x(ob_flatx(), i64_plus(fixnum_value(b), 1i64));
-            fill_x(p, 1i64, i64_plus(fixnum_value(b), 1i64), c);
-            obj_set_x(p, 0i64, a);
-            p
-        }
+        flat_filled_made_x(fixnum_value(a), fixnum_value(b), c)
     } else if (i64_eq(op, 213i64) || i64_eq(op, 214i64)) {
-        let i = fixnum_value(b);
-        if (i64_lt(i, 0i64) || i64_gt_eq(i, i64_minus(obj_size(a), 1i64))) {
-            refused_op_x(str_lit("flatarray: index out of range"))
+        let i = flat_index(a, fixnum_value(b));
+        if i64_lt(i, 0i64) {
+            w_unit()
         } else if i64_eq(op, 213i64) {
-            obj_ref(a, i64_plus(i, 1i64))
+            flat_value(flat_array_code(a), flat_bits(a, i))
         } else {
-            obj_set_x(a, i64_plus(i, 1i64), c);
+            flat_bits_set_x(a, i, flat_bits_of(flat_array_code(a), c));
             w_unit()
         }
     } else if i64_eq(op, 215i64) {
-        fixnum(i64_minus(obj_size(a), 1i64))
+        fixnum(flat_count(a))
     } else if i64_eq(op, 222i64) {
         strings_word_x(native_convention())
     } else if i64_eq(op, 223i64) {
@@ -1085,17 +1199,17 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
             w_unit()
         }
     } else if i64_eq(op, 216i64) {
-        fixnum(4i64)
+        fixnum(0i64)
     } else if i64_eq(op, 217i64) {
-        fixnum(4i64)
+        fixnum(1i64)
     } else if i64_eq(op, 218i64) {
-        fixnum(8i64)
+        fixnum(2i64)
     } else if i64_eq(op, 219i64) {
-        fixnum(8i64)
+        fixnum(3i64)
     } else if i64_eq(op, 220i64) {
         fixnum(4i64)
     } else if i64_eq(op, 221i64) {
-        fixnum(8i64)
+        fixnum(5i64)
     } else if i64_gt_eq(op, f32_base()) {
         f32_op_word(i64_minus(op, f32_base()), a, b)
     } else if i64_gt_eq(op, fixed_base()) {

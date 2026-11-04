@@ -9016,3 +9016,15 @@ bytes a bytevector in its field 0 and its fields after.
   the engine's making, in `alloc`'s order: an eqtable is not yet Fixpt's.
 Fixpt's bloblet programs (`tests/fx26/programs/bloblet`, the runs among
 them) print alike.
+
+## C327. The engine's flat arrays, Fixpt's (2026-11-04; one heap, 1c)
+
+A flat array is Fixpt's (`make_flat_array`): kind `flat-array` (42), its
+layout's code in its one slot (Fixpt's `FLAT_*`: 0 `i32`, 1 `u32`, 2
+`i64`, 3 `u64`, 4 `f32`, 5 `f64`; `i32-flat` and the rest now give these,
+not a width), its elements' bits its suffix, 4 or 8 bytes each, two to a
+word when 4; read as `flat_value` makes a value of them, written as
+`flat_bits_of` (`flat-value`, `flat-bits-of` in vprims.kfx). Before, its
+elements were the engine's words, whatever their layout, after a width.
+KFX's `make-flatarray-i64`, which the engine ran as a kind of its own
+(201), is a flat array of `i64`s.

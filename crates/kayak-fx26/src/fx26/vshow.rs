@@ -98,8 +98,6 @@ pub fn show_word(w: i64) -> Str {
             string_append(str_lit("#<product of "), string_append(i64_to_string(i64_minus(obj_size(w), 1i64)), str_lit(">")))
         } else if i64_eq(kind, ob_array()) {
             string_append(str_lit("#<bloblet "), string_append(i64_to_string(i64_plus(obj_size(w), 1i64)), string_append(str_lit(" fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))))
-        } else if i64_eq(kind, ob_flat()) {
-            string_append(str_lit("#<flat-array "), string_append(i64_to_string(obj_size(w)), string_append(str_lit(" fields "), string_append(i64_to_string(i64_star(8i64, obj_size(w))), str_lit(" bytes>")))))
         } else if i64_eq(kind, ob_vector()) {
             string_append(str_lit("#("), string_append(vector_shown(w, 0i64), str_lit(")")))
         } else if i64_eq(kind, ob_bytes()) {
@@ -111,7 +109,7 @@ pub fn show_word(w: i64) -> Str {
         } else if i64_eq(kind, ob_eqtable()) {
             string_append(str_lit("#<eqtable of "), string_append(i64_to_string(fixnum_value(obj_ref(w, 1i64))), str_lit(">")))
         } else if i64_eq(kind, ob_flatx()) {
-            string_append(str_lit("#<flat-array 2 fields "), string_append(i64_to_string(i64_star(fixnum_value(obj_ref(w, 0i64)), i64_minus(obj_size(w), 1i64))), str_lit(" bytes>")))
+            string_append(str_lit("#<flat-array 2 fields "), string_append(i64_to_string(suffix_bytes(w)), str_lit(" bytes>")))
         } else {
             str_lit("#<closure>")
         }

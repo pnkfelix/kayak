@@ -36,7 +36,7 @@
         ((i64= op 94) (i64* 3 (i64+ (obj-size a) 1)))
         ((i64= op 95) (i64+ (list-count a 0) 2))
         ((i64= op 96) (i64+ (fixnum-value b) 2))
-        ((i64= op 97) (i64+ (fixnum-value a) 1))
+        ((i64= op 97) (i64+ (fixnum-value a) 4))
         ((i64= op 101) (i64+ (fixnum-value a) 1))
         ((i64= op 105) (i64+ (obj-size a) 1))
         ((i64= op 108) (i64+ (i64* 4 (string-length-w a)) 2))
@@ -185,6 +185,67 @@
     "A flat array's length: `len`, or, to the end of the suffix
      (268435455), as many as are left."
     (if (i64= len 268435455) (i64-quotient (i64- (suffix-bytes (blobref-bytes r)) (blob-at r)) size) len)))
+
+"Flat arrays (C327): Fixpt's (`make_flat_array`), kind `flat-array`, its
+ layout's code in its one slot (`layout.rs`'s `FLAT_*`: 0 `i32`, 1 `u32`,
+ 2 `i64`, 3 `u64`, 4 `f32`, 5 `f64`), its elements' bits its suffix, 4 or
+ 8 bytes each, two to a word when 4. KFX's `make-flatarray-i64` is one of
+ `i64`s."
+(define flat-size (subr kfx (i64) i64)
+  (lambda (code) (if (or (i64= code 0) (i64= code 1) (i64= code 4)) 4 8)))
+(define flat-array-code (subr hp (i64) i64) (lambda (a) (fixnum-value (slot-ref a 0))))
+(define flat-count (subr hp (i64) i64)
+  (lambda (a) (i64-quotient (suffix-bytes a) (flat-size (flat-array-code a)))))
+
+(define flat-made! (subr hp (i64 i64) i64)
+  (lambda (code n)
+    (let ((p (bloblet-alloc! 1 (i64* n (flat-size code)))))
+      (begin (put! (header-at p) (header ob-flatx 2 (i64* n (flat-size code)))) (slot-set! p 0 (fixnum code)) p))))
+
+(define flat-bits (subr hp (i64 i64) i64)
+  (lambda (a i)
+    (if (i64= (flat-size (flat-array-code a)) 8)
+        (at-word (i64+ (pointer-index a) i))
+        (i64-and (i64-shr (at-word (i64+ (pointer-index a) (i64-quotient i 2))) (i64->int (i64* 32 (i64-remainder i 2)))) 4294967295))))
+
+(define flat-bits-set! (subr hp (i64 i64 i64) unit)
+  (lambda (a i x)
+    (if (i64= (flat-size (flat-array-code a)) 8)
+        (put! (i64+ (pointer-index a) i) x)
+        (let* ((at (i64+ (pointer-index a) (i64-quotient i 2))) (sh (i64->int (i64* 32 (i64-remainder i 2)))))
+          (put! at (i64-or (i64-and (at-word at) (i64-not (i64-shl 4294967295 sh))) (i64-shl (i64-and x 4294967295) sh)))))))
+
+(define flat-value (subr hp (i64 i64) i64)
+  (lambda (code bits)
+    "The value bits of layout `code` stand for (`flat_value`)."
+    (cond ((i64= code 0) (int-word! (signed-from (word-limb bits) 4)))
+          ((i64= code 2) (i64-word! bits))
+          ((i64= code 4) (f32-word (bits->f32 (int->u32 (word-limb bits)))))
+          ((i64= code 5) (real-word! (bits->f64 (int->u64 (word-limb bits)))))
+          (else (int-word! (word-limb bits))))))
+
+(define flat-bits-of (subr hp (i64 i64) i64)
+  (lambda (code w)
+    "A value of layout `code`, as the bits a flat array keeps (`flat_bits_of`)."
+    (cond ((or (i64= code 0) (i64= code 1)) (i64-and (word-i64 w) 4294967295))
+          ((i64= code 2) (word-i64 w))
+          ((i64= code 3) (limb-word (modulo (word-int w) two-64)))
+          ((i64= code 4) (limb-word (u32->int (f32->bits (word-f32 w)))))
+          (else (limb-word (u64->int (f64->bits (word-real w))))))))
+
+(define-rec
+  (flat-filled! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (a i n x) (if (i64>= i n) #u (begin (flat-bits-set! a i x) (flat-filled! a (i64+ i 1) n x))))))
+
+(define flat-filled-made! (subr hp (i64 i64 i64) i64)
+  (lambda (code n w)
+    (if (i64< n 0)
+        (refused-op! "make-flatarray: a negative length")
+        (let ((a (flat-made! code n)) (x (flat-bits-of code w)))
+          (begin (if (i64= x 0) #u (flat-filled! a 0 n x)) a)))))
+
+(define flat-index (subr hp (i64 i64) i64)
+  (lambda (a i) (if (or (i64< i 0) (i64>= i (flat-count a))) (begin (refused-op! "flatarray: index out of range") -1) i)))
 
 (define-rec
   (field-holding (subr hp (i64 i64 i64 i64) i64)
@@ -423,10 +484,10 @@
         ((i64= op 94) (slots-list! a (i64- (obj-size a) 1) w-nil))
         ((i64= op 95) (list-bloblet! 0 a))
         ((i64= op 96) (array-filled! (fixnum-value b) c))
-        ((i64= op 97) (filled! ob-flat (fixnum-value a) b))
-        ((i64= op 98) (element a (fixnum-value b)))
-        ((i64= op 99) (begin (element-set! a (fixnum-value b) c) w-unit))
-        ((i64= op 100) (fixnum (obj-size a)))
+        ((i64= op 97) (flat-filled-made! 2 (fixnum-value a) b))
+        ((i64= op 98) (let ((i (flat-index a (fixnum-value b)))) (if (i64< i 0) w-unit (i64-word! (flat-bits a i)))))
+        ((i64= op 99) (let ((i (flat-index a (fixnum-value b)))) (begin (if (i64< i 0) #u (flat-bits-set! a i (word-i64 c))) w-unit)))
+        ((i64= op 100) (fixnum (flat-count a)))
         ((i64= op 101) (bytes-made! (fixnum-value a) (fixnum-value b)))
         ((i64= op 102) (fixnum (raw-length a)))
         ((i64= op 103) (fixnum (bytes-ref-w a (fixnum-value b))))
@@ -444,7 +505,7 @@
         ((i64= op 115) (bool-word (is-imm? a imm-bool)))
         ((i64= op 116) (bool-word (is-imm? a imm-char)))
         ((i64= op 117) (bool-word (or (is-obj? a ob-symbol) (i64= a w-unit))))
-        ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flat) (is-obj? a ob-flatx))))
+        ((i64= op 118) (bool-word (or (is-obj? a ob-array) (is-obj? a ob-flatx))))
         ((i64= op 119) (bool-word (or (is-obj? a ob-proc) (is-obj? a ob-ctor) (is-obj? a ob-cont) (is-imm? a imm-prim))))
         ((i64= op 120) (bool-word (is-obj? a ob-real)))
         ((i64= op 121) (bool-word (is-obj? a ob-ref)))
@@ -525,16 +586,13 @@
         ((i64= op 169) (one-word! ob-ref (fixnum 0)))
         ((i64= op 174) (bool-word (is-obj? a ob-vector)))
         ((i64= op 175) (list-array! ob-vector a))
-        ((i64= op 212)
-         (if (i64< (fixnum-value b) 0)
-             (refused-op! "make-flatarray: a negative length")
-             (let ((p (alloc! ob-flatx (i64+ (fixnum-value b) 1)))) (begin (fill! p 1 (i64+ (fixnum-value b) 1) c) (obj-set! p 0 a) p))))
+        ((i64= op 212) (flat-filled-made! (fixnum-value a) (fixnum-value b) c))
         ((or (i64= op 213) (i64= op 214))
-         (let ((i (fixnum-value b)))
-           (cond ((or (i64< i 0) (i64>= i (i64- (obj-size a) 1))) (refused-op! "flatarray: index out of range"))
-                 ((i64= op 213) (obj-ref a (i64+ i 1)))
-                 (else (begin (obj-set! a (i64+ i 1) c) w-unit)))))
-        ((i64= op 215) (fixnum (i64- (obj-size a) 1)))
+         (let ((i (flat-index a (fixnum-value b))))
+           (cond ((i64< i 0) w-unit)
+                 ((i64= op 213) (flat-value (flat-array-code a) (flat-bits a i)))
+                 (else (begin (flat-bits-set! a i (flat-bits-of (flat-array-code a) c)) w-unit)))))
+        ((i64= op 215) (fixnum (flat-count a)))
         ((i64= op 222) (strings-word! (native-convention)))
         ((i64= op 223) (eqtable-made!))
         ((or (i64= op 224) (i64= op 225))
@@ -565,8 +623,8 @@
                   (fixnum (int->i64 (host-utf8-length (word-string (pair-car (pair-cdr r2)))))))
                  ((string=? host "code:exec-view/1") (fixnum -1))
                  (else w-unit))))
-        ((i64= op 216) (fixnum 4)) ((i64= op 217) (fixnum 4)) ((i64= op 218) (fixnum 8))
-        ((i64= op 219) (fixnum 8)) ((i64= op 220) (fixnum 4)) ((i64= op 221) (fixnum 8))
+        ((i64= op 216) (fixnum 0)) ((i64= op 217) (fixnum 1)) ((i64= op 218) (fixnum 2))
+        ((i64= op 219) (fixnum 3)) ((i64= op 220) (fixnum 4)) ((i64= op 221) (fixnum 5))
         ((i64>= op f32-base) (f32-op-word (i64- op f32-base) a b))
         ((i64>= op fixed-base) (fixed-op-word (name-of-number (i64- op fixed-base)) a b))
         ((i64= op 176) (real-word! (f64-exp (word-real a))))
