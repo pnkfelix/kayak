@@ -8837,3 +8837,28 @@ kind of Fixpt's (an interpreter's own among them: `closure`, `env-frame`,
 `continuation`), the collector tier 1's given the engine's roots; then
 printing and numbers shared, one scheduler, one program; then the
 compiled-stage design on the one heap.
+
+## C318. The engine's values in Fixpt's encoding (2026-11-03; one heap, step 1a)
+
+`docs/research/one-heap.md`, step 1, its first part: the engine's words
+are Fixpt's values (`value.rs`), in `fx26/heap.kfx` behind the API every
+caller uses (`fixnum`, `immediate`, `immediate-kind`, the `w-` constants).
+- **Tags**: three bits, Fixpt's: a fixnum `000`, shifted by 3 (61 bits,
+  Fixpt's range, was 62); an immediate `011`, its subtag in bits 3 to 8,
+  its payload above; an object `100` (Fixpt's bloblet's), at its index
+  shifted by 3, `vbase` 0 while the heap is the engine's alone.
+- **Fixpt's immediates** where Fixpt has one: `#f` 3, `#t` 11, `nil` 19,
+  `#u` 27, the unbound marker 59, characters (subtag 8), `f32`s (subtag
+  9, their bits the payload, no longer a bias past the engine's specials).
+- **Not yet Fixpt's**, marked so: symbols, primitives, prompt tags and the
+  machine's own specials (`w-paused`, `w-failed`) are immediates of
+  subtags Fixpt has none of, 24 to 27, until each is an object as Fixpt
+  has it (1c); objects keep the engine's header and payload, pairs among
+  them (1b).
+- **An IR node** in a frame or a procedure is a fixnum, its number in the
+  IR's table: the engine's fourth tag, `11`, gone (Fixpt has no such tag).
+All 3788 tests as before. `scripts/engine-bench.py` (new): Fixpt's
+benchmarks on the engine, best of 3, some 2% slower (407 to 417 ms for
+`captures.fx`, 8425 to 8641 for `loop.fx`), the subtag's mapping to a
+kind. Found on the way (TODO): the compiler no longer runs on the engine,
+which has no `rep-nodes`.

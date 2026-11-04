@@ -35,9 +35,9 @@
       (set ticks (i64+ (get ticks) 1))
       (and (i64= (i64-and (get ticks) 7) 0) (i64> (clock) (get deadline))))))
 (define task-slot (ref i64 @h) (new 0))
-(define w-paused i64 62)
+(define w-paused i64 475)
 "What `run` gives when the run failed (C110): `engine-failure` says how."
-(define w-failed i64 94)
+(define w-failed i64 731)
 (define parked-at (subr kfx (i64) i64) (lambda (slot) (i64+ 8 (i64* slot 8))))
 (define tags-made (ref i64 @h) (new 0))
 

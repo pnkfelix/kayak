@@ -201,18 +201,17 @@ pub fn is_imm_p(w: i64, kind: i64) -> bool {
     (immediate_p(w) && i64_eq(immediate_kind(w), kind))
 }
 
-// `f32`s (C220): an immediate, as Fixpt's, a special one past the
-// machine's own (`w-failed` and the rest), its bits above 2^32.
+// `f32`s (C220): Fixpt's immediate of subtag 9, its bits the payload (C318).
 pub fn f32_word(x: f32) -> i64 {
-    immediate(imm_special(), i64_plus(4294967296i64, int_to_i64(u32_to_int(f32_to_bits(x)))))
+    imm_word(sub_f32(), int_to_i64(u32_to_int(f32_to_bits(x))))
 }
 
 pub fn f32_word_p(w: i64) -> bool {
-    (is_imm_p(w, imm_special()) && i64_gt_eq(immediate_value(w), 4294967296i64))
+    (immediate_p(w) && i64_eq(immediate_sub(w), sub_f32()))
 }
 
 pub fn word_f32(w: i64) -> f32 {
-    bits_to_f32(int_to_u32(i64_to_int(i64_minus(immediate_value(w), 4294967296i64))))
+    bits_to_f32(int_to_u32(i64_to_int(immediate_value(w))))
 }
 
 // Objects of a kind.

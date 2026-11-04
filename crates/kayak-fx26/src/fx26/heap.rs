@@ -9,11 +9,18 @@ use super::*;
 // KFX data once the heap is made, but when it grows: kayak-rt's heap is
 // never freed, so the engine's must be all its own.
 //
-// A word's low two bits are its tag: 00 a fixnum (the word shifted right
-// by 2), 01 a pointer (an object at the index the word shifted right by
-// 2), 10 an immediate (a kind in bits 2 to 4, its payload above), 11 an IR
-// node (its number in the IR's table). An object is a header word (its
-// kind in the low 8 bits, its payload's size above) and its payload.
+// Moving to Fixpt's layout, tier 1's (C318, `docs/research/one-heap.md`).
+// A word's values are Fixpt's (its `value.rs`): its low three bits its tag
+// (000 a fixnum, the word shifted right by 3; 011 an immediate, a subtag
+// in bits 3 to 8 and its payload above; 100 an object, at the index the
+// word shifted right by 3, `vbase` 0 for now); `#f`, `#t`, `nil`, `#u`,
+// the unbound marker, characters and `f32`s Fixpt's own immediates. Not
+// yet Fixpt's: an object is still a header word (its kind in the low 8
+// bits, its payload's size above) and its payload, a pair one too; and
+// symbols, primitives, prompt tags and the machine's own specials are
+// immediates of subtags Fixpt has none of (24 to 27), until each is an
+// object as Fixpt has it. An IR node, in a frame or a procedure, is a
+// fixnum, its number in the IR's table.
 
 // Tags, immediates' kinds, objects' kinds.
 pub fn imm_char() -> i64 {
@@ -150,17 +157,17 @@ pub fn ob_forward() -> i64 {
     255i64
 }
 
-// Making and taking apart words.
+// Making and taking apart words: Fixpt's tags (`value.rs`).
 pub fn fixnum_max() -> i64 {
-    2305843009213693951i64
+    1152921504606846975i64
 }
 
 pub fn fixnum_min() -> i64 {
-    -2305843009213693952i64
+    -1152921504606846976i64
 }
 
 pub fn fixnum_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 3i64), 0i64)
+    i64_eq(i64_and(w, 7i64), 0i64)
 }
 
 pub fn fits_fixnum_p(n: i64) -> bool {
@@ -168,71 +175,161 @@ pub fn fits_fixnum_p(n: i64) -> bool {
 }
 
 pub fn fixnum(n: i64) -> i64 {
-    i64_shl(n, int_lit(2))
+    i64_shl(n, int_lit(3))
 }
 
 pub fn fixnum_value(w: i64) -> i64 {
-    i64_shr(w, int_lit(2))
+    i64_shr(w, int_lit(3))
 }
 
 pub fn pointer_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 3i64), 1i64)
+    i64_eq(i64_and(w, 7i64), 4i64)
 }
 
 pub fn pointer_index(w: i64) -> i64 {
-    i64_shr(w, int_lit(2))
+    i64_shr(w, int_lit(3))
 }
 
 pub fn pointer_to(i: i64) -> i64 {
-    i64_plus(i64_shl(i, int_lit(2)), 1i64)
+    i64_plus(i64_shl(i, int_lit(3)), 4i64)
 }
 
 pub fn immediate_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 3i64), 2i64)
+    i64_eq(i64_and(w, 7i64), 3i64)
 }
 
+// Fixpt's immediates' subtags, and the engine's own until they are objects.
+pub fn sub_false() -> i64 {
+    0i64
+}
+
+pub fn sub_true() -> i64 {
+    1i64
+}
+
+pub fn sub_null() -> i64 {
+    2i64
+}
+
+pub fn sub_unit() -> i64 {
+    3i64
+}
+
+pub fn sub_unbound() -> i64 {
+    7i64
+}
+
+pub fn sub_char() -> i64 {
+    8i64
+}
+
+pub fn sub_f32() -> i64 {
+    9i64
+}
+
+pub fn sub_symbol() -> i64 {
+    24i64
+}
+
+pub fn sub_prim() -> i64 {
+    25i64
+}
+
+pub fn sub_tag() -> i64 {
+    26i64
+}
+
+pub fn sub_special() -> i64 {
+    27i64
+}
+
+pub fn imm_word(sub: i64, n: i64) -> i64 {
+    i64_plus(i64_shl(n, int_lit(8)), i64_plus(i64_shl(sub, int_lit(3)), 3i64))
+}
+
+pub fn immediate_sub(w: i64) -> i64 {
+    i64_and(i64_shr(w, int_lit(3)), 31i64)
+}
+
+/// The engine's immediate of `kind` (`imm-char` and the rest) and payload
+/// `n`, as Fixpt's subtag says it.
 pub fn immediate(kind: i64, n: i64) -> i64 {
-    i64_plus(i64_shl(n, int_lit(5)), i64_plus(i64_shl(kind, int_lit(2)), 2i64))
+    if i64_eq(kind, imm_char()) {
+        imm_word(sub_char(), n)
+    } else if i64_eq(kind, imm_bool()) {
+        imm_word(if i64_eq(n, 0i64) {
+            sub_false()
+        } else {
+            sub_true()
+        }, 0i64)
+    } else if i64_eq(kind, imm_unit()) {
+        imm_word(sub_unit(), 0i64)
+    } else if i64_eq(kind, imm_nil()) {
+        imm_word(sub_null(), 0i64)
+    } else if i64_eq(kind, imm_symbol()) {
+        imm_word(sub_symbol(), n)
+    } else if i64_eq(kind, imm_prim()) {
+        imm_word(sub_prim(), n)
+    } else if i64_eq(kind, imm_tag()) {
+        imm_word(sub_tag(), n)
+    } else {
+        imm_word(sub_special(), n)
+    }
 }
 
 pub fn immediate_kind(w: i64) -> i64 {
-    i64_and(i64_shr(w, int_lit(2)), 7i64)
+    let sub = immediate_sub(w);
+    if (i64_eq(sub, sub_false()) || i64_eq(sub, sub_true())) {
+        imm_bool()
+    } else if i64_eq(sub, sub_unit()) {
+        imm_unit()
+    } else if i64_eq(sub, sub_null()) {
+        imm_nil()
+    } else if i64_eq(sub, sub_char()) {
+        imm_char()
+    } else if i64_eq(sub, sub_symbol()) {
+        imm_symbol()
+    } else if i64_eq(sub, sub_prim()) {
+        imm_prim()
+    } else if i64_eq(sub, sub_tag()) {
+        imm_tag()
+    } else {
+        imm_special()
+    }
 }
 
 pub fn immediate_value(w: i64) -> i64 {
-    i64_shr(w, int_lit(5))
-}
-
-pub fn code_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 3i64), 3i64)
+    i64_shr(w, int_lit(8))
 }
 
 pub fn code_word(i: i64) -> i64 {
-    i64_plus(i64_shl(i, int_lit(2)), 3i64)
+    fixnum(i)
 }
 
 pub fn code_index(w: i64) -> i64 {
-    i64_shr(w, int_lit(2))
+    fixnum_value(w)
 }
 
+// Fixpt's constants (`value.rs`): `#f` 3, `#t` 11, `nil` 19, `#u` 27, the
+// unbound marker 59.
 pub fn w_unit() -> i64 {
-    10i64
+    27i64
 }
 
 pub fn w_nil() -> i64 {
-    14i64
+    19i64
 }
 
 pub fn w_true() -> i64 {
-    38i64
+    11i64
 }
 
 pub fn w_false() -> i64 {
-    6i64
+    3i64
 }
 
 pub fn w_unbound() -> i64 {
-    30i64
+    59i64
 }
 
 // The heap: the space allocated in, the other, the next free index, and

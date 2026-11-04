@@ -119,6 +119,12 @@ section below where it has one; here the order, and what each is.
      (`mtype-opened`, at C315) broke the bootstrap's second generation:
      the Rust it emitted did not build (`expected &Res, found Void`, 382
      errors). Not looked into.
+   - **The compiler no longer runs on the engine** (found 2026-11-03,
+     C318): the engine has no `rep-nodes` or `rep-of-nodes` (C300's
+     plan, "the engine: ops", not done), which the checker uses since
+     C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
+     check runs it. The ops, then a check that runs it, and
+     `scripts/engine-bench.py`'s row for it.
    - **Sessions never give memory back** (the user's concern, 2026-11-03):
      a session's globals are renamed into one flat table (C311, as
      Fixpt's lowered path), so nothing of a session is reclaimed when

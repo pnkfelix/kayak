@@ -68,12 +68,12 @@ pub fn task_slot() -> Ref<i64> {
 }
 
 pub fn w_paused() -> i64 {
-    62i64
+    475i64
 }
 
 // What `run` gives when the run failed (C110): `engine-failure` says how.
 pub fn w_failed() -> i64 {
-    94i64
+    731i64
 }
 
 pub fn parked_at(slot: i64) -> i64 {

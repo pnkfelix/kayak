@@ -4,11 +4,18 @@
  KFX data once the heap is made, but when it grows: kayak-rt's heap is
  never freed, so the engine's must be all its own.
 
- A word's low two bits are its tag: 00 a fixnum (the word shifted right
- by 2), 01 a pointer (an object at the index the word shifted right by
- 2), 10 an immediate (a kind in bits 2 to 4, its payload above), 11 an IR
- node (its number in the IR's table). An object is a header word (its
- kind in the low 8 bits, its payload's size above) and its payload."
+ Moving to Fixpt's layout, tier 1's (C318, `docs/research/one-heap.md`).
+ A word's values are Fixpt's (its `value.rs`): its low three bits its tag
+ (000 a fixnum, the word shifted right by 3; 011 an immediate, a subtag
+ in bits 3 to 8 and its payload above; 100 an object, at the index the
+ word shifted right by 3, `vbase` 0 for now); `#f`, `#t`, `nil`, `#u`,
+ the unbound marker, characters and `f32`s Fixpt's own immediates. Not
+ yet Fixpt's: an object is still a header word (its kind in the low 8
+ bits, its payload's size above) and its payload, a pair one too; and
+ symbols, primitives, prompt tags and the machine's own specials are
+ immediates of subtags Fixpt has none of (24 to 27), until each is an
+ object as Fixpt has it. An IR node, in a frame or a procedure, is a
+ fixnum, its number in the IR's table."
 
 "Tags, immediates' kinds, objects' kinds."
 (define imm-char i64 0)
@@ -54,29 +61,69 @@
 (define ob-big i64 35)
 (define ob-forward i64 255)
 
-"Making and taking apart words."
-(define fixnum-max i64 2305843009213693951)
-(define fixnum-min i64 -2305843009213693952)
-(define fixnum? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 0)))
+"Making and taking apart words: Fixpt's tags (`value.rs`)."
+(define fixnum-max i64 1152921504606846975)
+(define fixnum-min i64 -1152921504606846976)
+(define fixnum? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 7) 0)))
 (define fits-fixnum? (subr kfx (i64) bool) (lambda (n) (and (i64<= n fixnum-max) (i64>= n fixnum-min))))
-(define fixnum (subr kfx (i64) i64) (lambda (n) (i64-shl n 2)))
-(define fixnum-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 2)))
-(define pointer? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 1)))
-(define pointer-index (subr kfx (i64) i64) (lambda (w) (i64-shr w 2)))
-(define pointer-to (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 2) 1)))
-(define immediate? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 2)))
-(define immediate (subr kfx (i64 i64) i64) (lambda (kind n) (i64+ (i64-shl n 5) (i64+ (i64-shl kind 2) 2))))
-(define immediate-kind (subr kfx (i64) i64) (lambda (w) (i64-and (i64-shr w 2) 7)))
-(define immediate-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 5)))
-(define code? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 3)))
-(define code-word (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 2) 3)))
-(define code-index (subr kfx (i64) i64) (lambda (w) (i64-shr w 2)))
+(define fixnum (subr kfx (i64) i64) (lambda (n) (i64-shl n 3)))
+(define fixnum-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
+(define pointer? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 7) 4)))
+(define pointer-index (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
+(define pointer-to (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 3) 4)))
+(define immediate? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 7) 3)))
 
-(define w-unit i64 10)
-(define w-nil i64 14)
-(define w-true i64 38)
-(define w-false i64 6)
-(define w-unbound i64 30)
+"Fixpt's immediates' subtags, and the engine's own until they are objects."
+(define sub-false i64 0)
+(define sub-true i64 1)
+(define sub-null i64 2)
+(define sub-unit i64 3)
+(define sub-unbound i64 7)
+(define sub-char i64 8)
+(define sub-f32 i64 9)
+(define sub-symbol i64 24)
+(define sub-prim i64 25)
+(define sub-tag i64 26)
+(define sub-special i64 27)
+
+(define imm-word (subr kfx (i64 i64) i64)
+  (lambda (sub n) (i64+ (i64-shl n 8) (i64+ (i64-shl sub 3) 3))))
+(define immediate-sub (subr kfx (i64) i64) (lambda (w) (i64-and (i64-shr w 3) 31)))
+
+(define immediate (subr kfx (i64 i64) i64)
+  (lambda (kind n)
+    "The engine's immediate of `kind` (`imm-char` and the rest) and payload
+     `n`, as Fixpt's subtag says it."
+    (cond ((i64= kind imm-char) (imm-word sub-char n))
+          ((i64= kind imm-bool) (imm-word (if (i64= n 0) sub-false sub-true) 0))
+          ((i64= kind imm-unit) (imm-word sub-unit 0))
+          ((i64= kind imm-nil) (imm-word sub-null 0))
+          ((i64= kind imm-symbol) (imm-word sub-symbol n))
+          ((i64= kind imm-prim) (imm-word sub-prim n))
+          ((i64= kind imm-tag) (imm-word sub-tag n))
+          (else (imm-word sub-special n)))))
+(define immediate-kind (subr kfx (i64) i64)
+  (lambda (w)
+    (let ((sub (immediate-sub w)))
+      (cond ((or (i64= sub sub-false) (i64= sub sub-true)) imm-bool)
+            ((i64= sub sub-unit) imm-unit)
+            ((i64= sub sub-null) imm-nil)
+            ((i64= sub sub-char) imm-char)
+            ((i64= sub sub-symbol) imm-symbol)
+            ((i64= sub sub-prim) imm-prim)
+            ((i64= sub sub-tag) imm-tag)
+            (else imm-special)))))
+(define immediate-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 8)))
+(define code-word (subr kfx (i64) i64) (lambda (i) (fixnum i)))
+(define code-index (subr kfx (i64) i64) (lambda (w) (fixnum-value w)))
+
+"Fixpt's constants (`value.rs`): `#f` 3, `#t` 11, `nil` 19, `#u` 27, the
+ unbound marker 59."
+(define w-unit i64 27)
+(define w-nil i64 19)
+(define w-true i64 11)
+(define w-false i64 3)
+(define w-unbound i64 59)
 
 "The heap: the space allocated in, the other, the next free index, and
  the limit past which a step may not go. A constant each, made once."

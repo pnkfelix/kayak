@@ -13,6 +13,12 @@ copying collector. Tier 1's (`cells/heap.kfx`, C122) is Fixpt's layout,
 taken whole (C121): values `vbase + 8 index + tag`, pairs of two words,
 everything else a bloblet, and Coopt's collector's baseline.
 
+This was always the intent, though it wasn't said in so many words: the
+user (2026-11-03), "my intention had been that the engine would likewise
+be adapted to Fixpt's tagging scheme". C121 took Fixpt's formats for
+compiled code; the engine's own encoding, a few days older (C64), was
+never revisited. So this closes a gap rather than making a new choice.
+
 With one heap, the engine and the compiled tiers share every value but
 procedures, which need an adapter each way. That makes option (b) of the
 compiled-stage note possible, and it puts kayak on Fixpt's one format
