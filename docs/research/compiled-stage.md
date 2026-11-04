@@ -159,6 +159,6 @@ apart from this (question 4).
    engine's half (its globals and its lowering) and the cells half stay
    apart.
 4. **One heap**: move the engine onto tier 1's heap (Fixpt's layout), as a
-   project of its own, before, after, or instead of (a)? I lean after:
-   (a) doesn't need it, and (c) is a large port whose benefits are
-   elsewhere.
+   project of its own, before, after, or instead of (a)? I leaned after.
+   **Decided, the user's (2026-11-03): before.** The plan is
+   `docs/research/one-heap.md` (C317). Questions 1 to 3 wait for it.

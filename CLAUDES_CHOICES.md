@@ -8825,3 +8825,15 @@ formats; tier 1, C122, on them); one heap would still leave two kinds of
 procedure, needing adapters both ways. Recommended (a), (c) apart. Four
 questions for the user: which binary, staged code at tier 1's speed for
 now, the engine-independent half of `vstage.kfx` shared, and one heap.
+
+## C317. One heap first: a plan (2026-11-03)
+
+The user's, answering C316's question 4: unify the heaps before `stage`
+comes to the compiled tiers. `docs/research/one-heap.md`: the engine's
+heap API (some 700 uses, nearly all through `alloc!`, `obj-ref` and the
+rest; the encoding's arithmetic confined to `heap.kfx` and four places)
+written over tier 1's heap, Fixpt's layout, each engine object given a
+kind of Fixpt's (an interpreter's own among them: `closure`, `env-frame`,
+`continuation`), the collector tier 1's given the engine's roots; then
+printing and numbers shared, one scheduler, one program; then the
+compiled-stage design on the one heap.

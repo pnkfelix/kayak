@@ -102,8 +102,9 @@ section below where it has one; here the order, and what each is.
      (Fixpt's `sum_lower_only`, 39318012).
    - **`stage`**, evidence and **sessions** (the checker, the engine and
      the REPL have them, C304-C315): not yet the compiled tiers, designed
-     in `docs/research/compiled-stage.md` (C316; four questions the
-     user's), or KFX (not needed there).
+     in `docs/research/compiled-stage.md` (C316), after one heap
+     (`docs/research/one-heap.md`, C317, the user's: first); or KFX (not
+     needed there).
    - **Refusals in Fixpt's words** (C312; 122 of 406 so far): Fixpt's
      termination reasons after a `spin` mismatch ("; it may not end:
      …"); the storage knot's "and it is a T" (no type printer before
