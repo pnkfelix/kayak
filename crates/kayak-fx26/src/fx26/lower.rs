@@ -1394,7 +1394,39 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             // A flat product's field, of a blobref (C215): a blobref to it.
             return i_call(i_lit(v_prim(str_lit("%blobref-field"), 2i64)), kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::heap_cons(lit_int(car(fact_at(key_of(e), str_lit("blob-offset "), gs))), kayak_rt::nil())));
         } else if string_eq_p(h, str_lit("extract")) {
-            return i_extract(label_of(second(xs)), lower(car(xs), sc, gs));
+            // A product's field by its index, as the checker found it (C323): a
+            // product is Fixpt's, its fields in order, no labels; a module
+            // value's by its name.
+            let k = fact_at(key_of(e), str_lit("extract-index "), gs);
+            if not(null_p(k)) {
+                return i_field(string_to_i64(car(k)), lower(car(xs), sc, gs));
+            } else if {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Num(j, f, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                return i_field(i64_minus({
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Num(j, f, p) => {
+                            j
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            1i64
+                        }
+                    }
+                }, 1i64), lower(car(xs), sc, gs));
+            } else {
+                return i_extract(label_of(second(xs)), lower(car(xs), sc, gs));
+            }
         } else if (string_eq_p(h, str_lit("tagcase")) && not(null_p(fact_at(key_of(e), str_lit("blob-tagcase "), gs)))) {
             return lower(flat_tagcase(e, xs, fact_at(key_of(e), str_lit("blob-tagcase "), gs)), sc, gs);
         } else if string_eq_p(h, str_lit("tagcase")) {
@@ -1417,7 +1449,7 @@ pub fn lower_module(written: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     let names = module_item_names(its, gs, false);
     let given = module_item_names(its, gs, true);
     let inner = the::<Scope>(kayak_rt::heap_cons(names, sc));
-    i_letrec(module_values(its, inner, gs), i_product(given, map(lambda1s(move |n: Str| {
+    i_letrec(module_values(its, inner, gs), i_module(given, map(lambda1s(move |n: Str| {
         i_local(0i64, position_of(n, names, 0i64))
     }), given)))
 }
@@ -1684,7 +1716,7 @@ pub fn with_entries(fs: Facts) -> Strings {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%with-at "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), after_prefix(what, str_lit("with-spec "))))))), kayak_rt::nil()))
                 } else if any_p(lambda1s(move |k: Str| {
                     has_prefix_p(what, k)
-                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::heap_cons(str_lit("stage-rep "), kayak_rt::heap_cons(str_lit("stage-given "), kayak_rt::heap_cons(str_lit("reify-rep "), kayak_rt::heap_cons(str_lit("reify-given "), kayak_rt::nil())))))))))))) {
+                }), kayak_rt::heap_cons(str_lit("blob-size "), kayak_rt::heap_cons(str_lit("blob-scalar "), kayak_rt::heap_cons(str_lit("blob-element "), kayak_rt::heap_cons(str_lit("blob-variant "), kayak_rt::heap_cons(str_lit("blob-offset "), kayak_rt::heap_cons(str_lit("blob-tagcase "), kayak_rt::heap_cons(str_lit("syscall "), kayak_rt::heap_cons(str_lit("stage-rep "), kayak_rt::heap_cons(str_lit("stage-given "), kayak_rt::heap_cons(str_lit("reify-rep "), kayak_rt::heap_cons(str_lit("reify-given "), kayak_rt::heap_cons(str_lit("extract-index "), kayak_rt::nil()))))))))))))) {
                     the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%fact "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(pos), string_append(str_lit(" "), what))))), kayak_rt::nil()))
                 } else {
                     nil::<Str>()

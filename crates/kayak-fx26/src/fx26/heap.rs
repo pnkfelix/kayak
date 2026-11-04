@@ -78,6 +78,12 @@ pub fn ob_data() -> i64 {
     200i64
 }
 
+// A module value (C323): its labels' number, then its values, `alloc`'s
+// order, found by name; a kind past Fixpt's, until it is Fixpt's product.
+pub fn ob_module() -> i64 {
+    209i64
+}
+
 // An FX-26 array: Fixpt's bloblet of fields.
 pub fn ob_array() -> i64 {
     32i64

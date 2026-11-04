@@ -244,6 +244,19 @@
 (define sum-value (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
   (lambda (s) (slot-ref s 1)))
 
+"Products (C323): Fixpt's, its fields in slots 0 on, in its type's order,
+ no labels, frozen once filled (`frozen!`)."
+(define product-made! (subr (maxeff hp (alloc @h)) (i64) i64)
+  (lambda (n) (alloc! ob-product n)))
+(define-rec
+  (product-filled! (subr hp (i64 i64 (listof i64 acyclic)) unit)
+    (lambda (p i ws) (if (null? ws) #u (begin (slot-set! p i (car ws)) (product-filled! p (i64+ i 1) (cdr ws)))))))
+(define product-of! (subr (maxeff hp (alloc @h)) ((listof i64 acyclic)) i64)
+  (lambda (ws)
+    "A product of `ws`, frozen."
+    (let ((p (product-made! (size ws))))
+      (begin (product-filled! p 0 ws) (frozen! p) p))))
+
 "Reals: an `f64`'s bits."
 (define real-word! (subr hp (f64) i64)
   (lambda (x) (let ((p (alloc! ob-real 1))) (begin (obj-set! p 0 (int->i64 (u64->int (f64->bits x)))) p))))

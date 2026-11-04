@@ -151,6 +151,11 @@ pub fn fk_preempted() -> i64 {
     14i64
 }
 
+// A product's field by its index (C323): the index (field 0).
+pub fn fk_field() -> i64 {
+    15i64
+}
+
 pub fn frame_kind(k: i64) -> i64 {
     fixnum_value(slot_ref(k, 1i64))
 }
@@ -212,6 +217,32 @@ pub fn fill_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
         } else {
             slot_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_minus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+/// Product `p`'s slots `i` down to 0 from the list `xs`, the last first (C323).
+pub fn product_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
+    loop {
+        if i64_lt(i, 0i64) {
+            return ();
+        } else {
+            slot_set_x(p, i, pair_car(xs));
+            (i, xs) = (i64_minus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+/// Environment `e`'s slots 1 to `n` from product `p`'s 0 to `n` - 1.
+pub fn product_to_slots_x(mut e: i64, mut p: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            slot_set_x(e, i64_plus(i, 1i64), slot_ref(p, i));
+            i = i64_plus(i, 1i64);
             continue;
         }
     }
@@ -813,7 +844,18 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NProduct(labels, at, count) => {
                         if i64_eq(count, 0i64) {
-                            let p = alloc_x(ob_product(), 1i64);
+                            let p = product_made_x(0i64);
+                            frozen_x(p);
+                            (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
+                            continue;
+                        } else {
+                            (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
+                            continue;
+                        }
+                    }
+                    Node::NModule(labels, at, count) => {
+                        if i64_eq(count, 0i64) {
+                            let p = alloc_x(ob_module(), 1i64);
                             obj_set_x(p, 0i64, fixnum(labels));
                             (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
                             continue;
@@ -824,6 +866,10 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NExtract(l, x) => {
                         (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_extract(), k, 1i64, fixnum(l), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
+                        continue;
+                    }
+                    Node::NField(i, x) => {
+                        (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_field(), k, 1i64, fixnum(i), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
                         continue;
                     }
                     Node::NTagcase(x, start, count, default) => {
@@ -913,6 +959,9 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         continue;
                     } else if i64_eq(kind, fk_sum()) {
                         (mode, node, k, val, f, args) = (1i64, 0i64, next, sum_made_x(symbol_word(fixnum_value(frame_field(k, 0i64))), val), 0i64, 0i64);
+                        continue;
+                    } else if i64_eq(kind, fk_field()) {
+                        (mode, node, k, val, f, args) = (1i64, 0i64, next, slot_ref(val, fixnum_value(frame_field(k, 0i64))), 0i64, 0i64);
                         continue;
                     } else if i64_eq(kind, fk_extract()) {
                         let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
@@ -1072,7 +1121,17 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
             if i64_lt(pos, count) {
                 next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
-                let p = alloc_x(ob_product(), i64_plus(count, 1i64));
+                let p = product_made_x(count);
+                product_from_reversed_x(p, i64_minus(count, 1i64), got);
+                frozen_x(p);
+                next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
+            }
+        }
+        Node::NModule(labels, at, count) => {
+            if i64_lt(pos, count) {
+                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+            } else {
+                let p = alloc_x(ob_module(), i64_plus(count, 1i64));
                 obj_set_x(p, 0i64, fixnum(labels));
                 fields_from_reversed_x(p, count, got);
                 next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
@@ -1120,9 +1179,18 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                             slot_set_x(e, 1i64, whole);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         } else {
-                            let n = i64_minus(obj_size(whole), 1i64);
+                            let product = is_obj_p(whole, ob_product());
+                            let n = if product {
+                                obj_size(whole)
+                            } else {
+                                i64_minus(obj_size(whole), 1i64)
+                            };
                             let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                            fields_to_slots_x(e, whole, 1i64, i64_plus(n, 1i64));
+                            if product {
+                                product_to_slots_x(e, whole, 0i64, n)
+                            } else {
+                                fields_to_slots_x(e, whole, 1i64, i64_plus(n, 1i64))
+                            };
                             slot_set_x(e, 0i64, env);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         }

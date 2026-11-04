@@ -63,6 +63,8 @@
  the node it stopped at (field 0) evaluated in its environment (1) (C219,
  Fixpt's `VmFrame::Discard`)."
 (define fk-preempted i64 14)
+"A product's field by its index (C323): the index (field 0)."
+(define fk-field i64 15)
 
 (define frame-kind (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (k) (fixnum-value (slot-ref k 1))))
 (define frame-next (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (k) (slot-ref k 0)))
@@ -92,6 +94,16 @@
       "Slots `i` down to 1 of `p` (its first after the header's field 0)
        from the list `xs`, the last first."
       (if (i64< i 1) #u (begin (slot-set! p i (pair-car xs)) (fill-from-reversed! p (i64- i 1) (pair-cdr xs)))))))
+
+(define-rec
+  (product-from-reversed! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs)
+      "Product `p`'s slots `i` down to 0 from the list `xs`, the last first (C323)."
+      (if (i64< i 0) #u (begin (slot-set! p i (pair-car xs)) (product-from-reversed! p (i64- i 1) (pair-cdr xs)))))))
+
+(define-rec
+  (product-to-slots! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (e p i n) "Environment `e`'s slots 1 to `n` from product `p`'s 0 to `n` - 1." (if (i64>= i n) #u (begin (slot-set! e (i64+ i 1) (slot-ref p i)) (product-to-slots! e p (i64+ i 1) n))))))
 
 (define-rec
   (fields-from-reversed! (subr hp (i64 i64 i64) unit)
@@ -369,9 +381,14 @@
                (n-sum (t x) (run 0 x env (frame! fk-sum k 1 (fixnum t) 0 0 0) 0 0 0))
                (n-product (labels at count)
                  (if (i64= count 0)
-                     (let ((p (alloc! ob-product 1))) (begin (obj-set! p 0 (fixnum labels)) (run 1 0 env k p 0 0)))
+                     (let ((p (product-made! 0))) (begin (frozen! p) (run 1 0 env k p 0 0)))
+                     (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0)))
+               (n-module (labels at count)
+                 (if (i64= count 0)
+                     (let ((p (alloc! ob-module 1))) (begin (obj-set! p 0 (fixnum labels)) (run 1 0 env k p 0 0)))
                      (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0)))
                (n-extract (l x) (run 0 x env (frame! fk-extract k 1 (fixnum l) 0 0 0) 0 0 0))
+               (n-field (i x) (run 0 x env (frame! fk-field k 1 (fixnum i) 0 0 0) 0 0 0))
                (n-tagcase (x start count default) (run 0 x env (frame! fk-tagcase k 2 (code-word node) env 0 0) 0 0 0))
                (n-prompt (t h body) (run 0 t env (frame! fk-ptag k 2 (code-word node) env 0 0) 0 0 0)))))
             ((i64= mode 1)
@@ -406,6 +423,7 @@
                       (begin (flatarray-set-i64! (get globals) (fixnum-value (frame-field k 0)) val) (run 1 0 env next w-unit 0 0)))
                      ((i64= kind fk-sum)
                       (run 1 0 env next (sum-made! (symbol-word (fixnum-value (frame-field k 0))) val) 0 0))
+                     ((i64= kind fk-field) (run 1 0 env next (slot-ref val (fixnum-value (frame-field k 0))) 0 0))
                      ((i64= kind fk-extract)
                       (let ((i (label-position (fixnum-value (obj-ref val 0)) (i64- (obj-size val) 1) (fixnum-value (frame-field k 0)) 0)))
                         (if (i64< i 0)
@@ -471,7 +489,11 @@
           (n-product (labels at count)
             (if (i64< pos count)
                 (next-step! 0 (kid-at (i64+ at pos)) env (frame! fk-list next 4 (frame-field k 0) (fixnum (i64+ pos 1)) env got) 0 0 0)
-                (let ((p (alloc! ob-product (i64+ count 1)))) (begin (obj-set! p 0 (fixnum labels)) (fields-from-reversed! p count got) (next-step! 1 0 env next p 0 0)))))
+                (let ((p (product-made! count))) (begin (product-from-reversed! p (i64- count 1) got) (frozen! p) (next-step! 1 0 env next p 0 0)))))
+          (n-module (labels at count)
+            (if (i64< pos count)
+                (next-step! 0 (kid-at (i64+ at pos)) env (frame! fk-list next 4 (frame-field k 0) (fixnum (i64+ pos 1)) env got) 0 0 0)
+                (let ((p (alloc! ob-module (i64+ count 1)))) (begin (obj-set! p 0 (fixnum labels)) (fields-from-reversed! p count got) (next-step! 1 0 env next p 0 0)))))
           (else other (begin (failed-with! "the engine: a list frame of no list") (failed-at -1 0 k)))))))
 
   (tagcase-step (subr vm (i64 i64 i64) i64)
@@ -489,9 +511,10 @@
                     (let ((whole (if is-sum (sum-value val) val)))
                       (if (or (i64= binds -1) (and is-sum (not (is-obj? whole ob-product))))
                           (let ((e (alloc! ob-env 2))) (begin (slot-set! e 0 env) (slot-set! e 1 whole) (next-step! 0 body e next 0 0 0)))
-                          (let* ((n (i64- (obj-size whole) 1))
+                          (let* ((product (is-obj? whole ob-product))
+                                 (n (if product (obj-size whole) (i64- (obj-size whole) 1)))
                                  (e (alloc! ob-env (i64+ n 1))))
-                            (begin (fields-to-slots! e whole 1 (i64+ n 1)) (slot-set! e 0 env)
+                            (begin (if product (product-to-slots! e whole 0 n) (fields-to-slots! e whole 1 (i64+ n 1))) (slot-set! e 0 env)
                                    (next-step! 0 body e next 0 0 0))))))))))
         (else other (begin (failed-with! "the engine: a tagcase frame of no tagcase") (failed-at -1 0 k))))))
 

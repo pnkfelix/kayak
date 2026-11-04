@@ -224,6 +224,8 @@ pub enum Ir {
     ISum(Str, &'static Ir),
     IProduct(Strings, List<&'static Ir>),
     IExtract(Str, &'static Ir),
+    IModule(Strings, List<&'static Ir>),
+    IField(i64, &'static Ir),
     ITagcase(&'static Ir, List<&'static Arm>, &'static Ir),
     IPrompt(&'static Ir, &'static Ir, &'static Ir),
 }
@@ -278,6 +280,14 @@ pub fn i_product(f0: Strings, f1: List<&'static Ir>) -> &'static Ir {
 
 pub fn i_extract(f0: Str, f1: &'static Ir) -> &'static Ir {
     kayak_rt::heap_alloc(Ir::IExtract(f0, f1))
+}
+
+pub fn i_module(f0: Strings, f1: List<&'static Ir>) -> &'static Ir {
+    kayak_rt::heap_alloc(Ir::IModule(f0, f1))
+}
+
+pub fn i_field(f0: i64, f1: &'static Ir) -> &'static Ir {
+    kayak_rt::heap_alloc(Ir::IField(f0, f1))
 }
 
 pub fn i_tagcase(f0: &'static Ir, f1: List<&'static Arm>, f2: &'static Ir) -> &'static Ir {

@@ -770,7 +770,17 @@
             ((and (string=? h "extract") (not (null? (fact-at (key-of e) "blob-offset " gs))))
              "A flat product's field, of a blobref (C215): a blobref to it."
              (i-call (i-lit (v-prim "%blobref-field" 2)) (list (lower (car xs) sc gs) (lit-int (car (fact-at (key-of e) "blob-offset " gs))))))
-            ((string=? h "extract") (i-extract (label-of (second xs)) (lower (car xs) sc gs)))
+            ((string=? h "extract")
+             "A product's field by its index, as the checker found it (C323): a
+              product is Fixpt's, its fields in order, no labels; a module
+              value's by its name."
+             (let ((k (fact-at (key-of e) "extract-index " gs)))
+               (cond ((not (null? k)) (i-field (string->i64 (car k)) (lower (car xs) sc gs)))
+                     ;; A numbered field the lowering wrote (`par`'s), `k` field
+                     ;; `k - 1`, as the cell generator has it.
+                     ((tagcase (second xs) (num (j f p) #t) (else other #f))
+                      (i-field (i64- (tagcase (second xs) (num (j f p) j) (else other 1)) 1) (lower (car xs) sc gs)))
+                     (else (i-extract (label-of (second xs)) (lower (car xs) sc gs))))))
             ((and (string=? h "tagcase") (not (null? (fact-at (key-of e) "blob-tagcase " gs))))
              (lower (flat-tagcase e xs (fact-at (key-of e) "blob-tagcase " gs)) sc gs))
             ((string=? h "tagcase") (lower-tagcase xs sc gs))
@@ -788,7 +798,7 @@
              (given (module-item-names its gs #t))
              (inner (the scope (cons names sc))))
         (i-letrec (module-values its inner gs)
-                  (i-product given (map (lambda ((n string)) (i-local 0 (position-of n names 0))) given))))))
+                  (i-module given (map (lambda ((n string)) (i-local 0 (position-of n names 0))) given))))))
 
   (module-values (subr kfx (sexps scope strings) irs)
     (lambda (its sc gs)
@@ -936,7 +946,7 @@
                      (fact (file pos what)
                        (cond ((has-prefix? what "with-spec ")
                               (the strings (list (string-append "%with-at " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " (after-prefix what "with-spec ")))))))))
-                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase " "syscall " "stage-rep " "stage-given " "reify-rep " "reify-given "))
+                             ((any? (lambda ((k string)) (has-prefix? what k)) (list "blob-size " "blob-scalar " "blob-element " "blob-variant " "blob-offset " "blob-tagcase " "syscall " "stage-rep " "stage-given " "reify-rep " "reify-given " "extract-index "))
                               ;; A flat's layout where it is read (C215).
                               (the strings (list (string-append "%fact " (string-append file (string-append ":" (string-append (i64->string pos) (string-append " " what))))))))
                              (else nil)))))

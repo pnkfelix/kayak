@@ -8948,3 +8948,28 @@ results; read by `tagcase` (the tag's number from its symbol's third
 field, C321) and printing. Datatype values (`ob-data`) keep a number tag
 until they are settled (a kind past Fixpt's). All tests as before; the
 corpus on the engine as before.
+
+## C323. The engine's products, Fixpt's (2026-11-04; one heap, 1c)
+
+A product is Fixpt's (`make_frozen`): kind `product`, frozen, its fields
+in slots 0 on in its type's order, no label field (was a fixnum, the
+labels' number, then the fields). So a field is found by its index, not
+its label: the lowering takes the checker's `extract-index` fact (now
+among the facts it is given, `with-entries`) and makes `i-field`, a slot
+read; a numbered field the lowering wrote itself (`par`'s `(extract %par
+1)`) is field `k - 1`, as the cell generator has it. What the runtime
+makes (I/O's errors, sizes and file information, a stage's failure, a
+session's redefinition, evidence given) is made so (`product-of!`).
+- **Module values stay labelled**, a kind past Fixpt's (`ob-module`,
+  209), their own IR node (`i-module`), each value found by its name
+  (`i-extract`), as a `with` of one needs: making them Fixpt's products
+  needs their reshaping where a type orders them otherwise (C216), as
+  the cell generator does: a step of its own.
+- `tagcase` takes a product's fields from its slots, a datatype value's
+  (still the engine's, a number tag) as before.
+The corpus on the engine (`engine-programs`, which the test suite does
+not run) found the last two: datatype values destructured as products,
+and `par`'s fields, which no fact names. All tests as before; the corpus
+on the engine as before. `engine-bench.py`, best of 3, against before
+C318: 0 to 4% faster (`loop.fx` 8425 to 8125 ms, `tak.fx` 757 to 728),
+a field by its index rather than its label searched.

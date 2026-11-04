@@ -24,6 +24,8 @@ pub enum Node {
     NSum(i64, i64),
     NProduct(i64, i64, i64),
     NExtract(i64, i64),
+    NModule(i64, i64, i64),
+    NField(i64, i64),
     NTagcase(i64, i64, i64, i64),
     NPrompt(i64, i64, i64),
 }
@@ -78,6 +80,14 @@ pub fn n_product(f0: i64, f1: i64, f2: i64) -> &'static Node {
 
 pub fn n_extract(f0: i64, f1: i64) -> &'static Node {
     kayak_rt::heap_alloc(Node::NExtract(f0, f1))
+}
+
+pub fn n_module(f0: i64, f1: i64, f2: i64) -> &'static Node {
+    kayak_rt::heap_alloc(Node::NModule(f0, f1, f2))
+}
+
+pub fn n_field(f0: i64, f1: i64) -> &'static Node {
+    kayak_rt::heap_alloc(Node::NField(f0, f1))
 }
 
 pub fn n_tagcase(f0: i64, f1: i64, f2: i64, f3: i64) -> &'static Node {
@@ -701,6 +711,15 @@ pub fn number_x(e: &'static Ir) -> i64 {
         Ir::IExtract(l, x) => {
             let a = number_x(x);
             add_node_x(n_extract(intern_x(l), a))
+        }
+        Ir::IModule(ls, es) => {
+            let labels = label_ids_x(ls);
+            let at = number_all_x(es);
+            add_node_x(n_module(labels, at, size(es)))
+        }
+        Ir::IField(i, x) => {
+            let a = number_x(x);
+            add_node_x(n_field(i, a))
         }
         Ir::ITagcase(x, arms, default) => {
             let a = number_x(x);

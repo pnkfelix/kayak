@@ -610,14 +610,9 @@ pub fn io_error_word_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permis
             }
         }
     };
-    let labels = get(io_error_labels());
     let k = sum_word_x(kind, w_unit());
     let d = string_word_x(e.1);
-    let p = alloc_x(ob_product(), 3i64);
-    obj_set_x(p, 0i64, fixnum(labels));
-    obj_set_x(p, 1i64, k);
-    obj_set_x(p, 2i64, d);
-    p
+    product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(d, kayak_rt::nil())))
 }
 
 // Output a program writes while the REPL runs it (live-repl.kfx): kept for
@@ -810,11 +805,7 @@ pub fn failure_word_x() -> i64 {
     };
     let s = sum_word_x(kind, w_unit());
     let d = string_word_x(get(pending_detail()));
-    let p = alloc_x(ob_product(), 3i64);
-    obj_set_x(p, 0i64, fixnum(get(io_error_labels())));
-    obj_set_x(p, 1i64, s);
-    obj_set_x(p, 2i64, d);
-    sum_word_x(str_lit("failed"), p)
+    sum_word_x(str_lit("failed"), product_of_x(kayak_rt::heap_cons(s, kayak_rt::heap_cons(d, kayak_rt::nil()))))
 }
 
 pub fn line_room_x() -> i64 {
@@ -1050,11 +1041,7 @@ pub fn size_word_x() -> i64 {
     let tagcase_ = get(pending_size());
     match *tagcase_ {
         Sum_4size_14not_a_terminal_6failed::Size(p) => {
-            let x = alloc_x(ob_product(), 3i64);
-            obj_set_x(x, 0i64, fixnum(get(size_labels())));
-            obj_set_x(x, 1i64, int_word_x(p.0));
-            obj_set_x(x, 2i64, int_word_x(p.1));
-            sum_word_x(str_lit("size"), x)
+            sum_word_x(str_lit("size"), product_of_x(kayak_rt::heap_cons(int_word_x(p.0), kayak_rt::heap_cons(int_word_x(p.1), kayak_rt::nil()))))
         }
         Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
             sum_word_x(str_lit("not-a-terminal"), w_unit())
@@ -1106,7 +1093,7 @@ pub fn file_info_word_x() -> i64 {
     let tagcase_ = get(pending_info());
     match *tagcase_ {
         Sum_4info_6failed::Info(i) => {
-            let (k, x) = (sum_word_x({
+            let k = sum_word_x({
                 let tagcase_ = i.0;
                 match *tagcase_ {
                     Sum_4file_9directory_7symlink_5other::File(u) => {
@@ -1122,12 +1109,8 @@ pub fn file_info_word_x() -> i64 {
                         str_lit("other")
                     }
                 }
-            }, w_unit()), alloc_x(ob_product(), 5i64));
-            obj_set_x(x, 0i64, fixnum(get(info_labels())));
-            obj_set_x(x, 1i64, k);
-            obj_set_x(x, 2i64, int_word_x(i.1));
-            obj_set_x(x, 3i64, int_word_x(i.2));
-            obj_set_x(x, 4i64, int_word_x(i.3));
+            }, w_unit());
+            let x = product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(int_word_x(i.1), kayak_rt::heap_cons(int_word_x(i.2), kayak_rt::heap_cons(int_word_x(i.3), kayak_rt::nil())))));
             sum_word_x(str_lit("info"), x)
         }
         Sum_4info_6failed::Failed(e) => {

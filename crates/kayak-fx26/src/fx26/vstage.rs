@@ -346,26 +346,14 @@ pub fn stage_failure_labels() -> Ref<i64> {
 pub fn stage_failure_word_x(m: Str) -> i64 {
     let k = sum_word_x(str_lit("refused"), w_unit());
     let msg = string_word_x(m);
-    let p = alloc_x(ob_product(), 5i64);
-    obj_set_x(p, 0i64, fixnum(get(stage_failure_labels())));
-    obj_set_x(p, 1i64, k);
-    obj_set_x(p, 2i64, msg);
-    obj_set_x(p, 3i64, fixnum(0i64));
-    obj_set_x(p, 4i64, fixnum(0i64));
-    sum_word_x(str_lit("failed"), p)
+    sum_word_x(str_lit("failed"), product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(msg, kayak_rt::heap_cons(fixnum(0i64), kayak_rt::heap_cons(fixnum(0i64), kayak_rt::nil()))))))
 }
 
 /// `(sum failed (product (kind (sum KIND #u)) (message m) (start a) (end z)))`.
 pub fn stage_failed_at_word_x(kind: Str, m: Str, a: i64, z: i64) -> i64 {
     let k = sum_word_x(kind, w_unit());
     let msg = string_word_x(m);
-    let p = alloc_x(ob_product(), 5i64);
-    obj_set_x(p, 0i64, fixnum(get(stage_failure_labels())));
-    obj_set_x(p, 1i64, k);
-    obj_set_x(p, 2i64, msg);
-    obj_set_x(p, 3i64, fixnum(a));
-    obj_set_x(p, 4i64, fixnum(z));
-    sum_word_x(str_lit("failed"), p)
+    sum_word_x(str_lit("failed"), product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(msg, kayak_rt::heap_cons(fixnum(a), kayak_rt::heap_cons(fixnum(z), kayak_rt::nil()))))))
 }
 
 pub fn stage_failed_word_x(kind: Str, m: Str) -> i64 {
@@ -698,7 +686,7 @@ pub fn evidence_given(prod: i64, names: Strings, i: i64) -> List<&'static Rpe> {
     if null_p(names) {
         nil::<&'static Rpe>()
     } else {
-        let got = (&rep_nodes)(word_kfx_bytes(obj_ref(prod, i)), nil::<Str>());
+        let got = (&rep_nodes)(word_kfx_bytes(slot_ref(prod, i)), nil::<Str>());
         kayak_rt::heap_cons(rpe(car(names), got.0, got.1), evidence_given(prod, cdr(names), i64_plus(i, 1i64)))
     }
 }
@@ -736,7 +724,7 @@ pub fn rep_filled_x(rep: i64, given: i64, names: Str) -> Bytes {
         symbol_to_string(y)
     }), got.1), int_lit(0), str_lit(""));
     let named = spaced_words(names);
-    let es = onto(evidence_given(given, named, 1i64), fresh_evidence_x(map(lambda1s(move |y: Symbol| {
+    let es = onto(evidence_given(given, named, 0i64), fresh_evidence_x(map(lambda1s(move |y: Symbol| {
         symbol_to_string(y)
     }), got.1), named));
     let canonical = lambda1s(move |r: &'static Rexp| {
@@ -1590,13 +1578,7 @@ pub fn redefines_word_x(sw: i64, d: i64) -> i64 {
                         }
                     }
                 };
-                let p = alloc_x(ob_product(), 5i64);
-                obj_set_x(p, 0i64, fixnum(get(redefinition_labels())));
-                obj_set_x(p, 1i64, string_word_x(name));
-                obj_set_x(p, 2i64, string_word_x(old));
-                obj_set_x(p, 3i64, string_word_x(show_ty(new_state(), dt)));
-                obj_set_x(p, 4i64, strings_word_x(users));
-                sum_word_x(str_lit("redefines"), p)
+                sum_word_x(str_lit("redefines"), product_of_x(kayak_rt::heap_cons(string_word_x(name), kayak_rt::heap_cons(string_word_x(old), kayak_rt::heap_cons(string_word_x(show_ty(new_state(), dt)), kayak_rt::heap_cons(strings_word_x(users), kayak_rt::nil()))))))
             }
         }
     }

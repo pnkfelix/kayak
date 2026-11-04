@@ -168,16 +168,14 @@
   (lambda (m)
     "`(sum failed (product (kind (sum refused #u)) (message m) (start 0) (end 0)))`:
      the place in the code no refusal of kayak's says yet."
-    (let* ((k (sum-word! "refused" w-unit)) (msg (string-word! m)) (p (alloc! ob-product 5)))
-      (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
-             (obj-set! p 3 (fixnum 0)) (obj-set! p 4 (fixnum 0)) (sum-word! "failed" p)))))
+    (let* ((k (sum-word! "refused" w-unit)) (msg (string-word! m)))
+      (sum-word! "failed" (product-of! (list k msg (fixnum 0) (fixnum 0)))))))
 
 (define stage-failed-at-word! (subr (maxeff hp (alloc @h)) (string string i64 i64) i64)
   (lambda (kind m a z)
     "`(sum failed (product (kind (sum KIND #u)) (message m) (start a) (end z)))`."
-    (let* ((k (sum-word! kind w-unit)) (msg (string-word! m)) (p (alloc! ob-product 5)))
-      (begin (obj-set! p 0 (fixnum (get stage-failure-labels))) (obj-set! p 1 k) (obj-set! p 2 msg)
-             (obj-set! p 3 (fixnum a)) (obj-set! p 4 (fixnum z)) (sum-word! "failed" p)))))
+    (let* ((k (sum-word! kind w-unit)) (msg (string-word! m)))
+      (sum-word! "failed" (product-of! (list k msg (fixnum a) (fixnum z)))))))
 
 (define stage-failed-word! (subr (maxeff hp (alloc @h)) (string string) i64)
   (lambda (kind m) (stage-failed-at-word! kind m 0 0)))
@@ -326,7 +324,7 @@
     (lambda (prod names i)
       (if (null? names)
           nil
-          (let ((got ((proj rep-nodes @h) (word-kfx-bytes (obj-ref prod i)) nil)))
+          (let ((got ((proj rep-nodes @h) (word-kfx-bytes (slot-ref prod i)) nil)))
             (cons (rpe (car names) (extract got 1) (extract got 2)) (evidence-given prod (cdr names) (i64+ i 1))))))))
 
 "A region a variable names, given no evidence: one of its own, named
@@ -357,7 +355,7 @@
     (let* ((got ((proj rep-nodes @h) (word-kfx-bytes rep) nil))
            (main (rexp (extract got 1) (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) 0 ""))
            (named (spaced-words names))
-           (es (onto (evidence-given given named 1)
+           (es (onto (evidence-given given named 0)
                      (fresh-evidence! (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) named)))
            (canonical (lambda ((r rexp))
                    (tagcase r
@@ -780,13 +778,8 @@
           (if (or (null? found) (tagcase (car found) (bind (n sc w) (not (or (string=? w "global") (string=? w "broken"))))))
               (sum-word! "fresh" w-unit)
               (let* ((old (tagcase (car found) (bind (n sc w) (tagcase sc (scheme (tvs u) (show-ty (new-state) u))))))
-                     (users (tagcase st (sess (v gl ds g2) (direct-users ds name))))
-                     (p (alloc! ob-product 5)))
-                (begin
-                  (obj-set! p 0 (fixnum (get redefinition-labels)))
-                  (obj-set! p 1 (string-word! name)) (obj-set! p 2 (string-word! old))
-                  (obj-set! p 3 (string-word! (show-ty (new-state) dt))) (obj-set! p 4 (strings-word! users))
-                  (sum-word! "redefines" p)))))))))
+                     (users (tagcase st (sess (v gl ds g2) (direct-users ds name)))))
+                (sum-word! "redefines" (product-of! (list (string-word! name) (string-word! old) (string-word! (show-ty (new-state) dt)) (strings-word! users)))))))))))
 
 "What a commit runs: each definition, its global and its form."
 (define-datatype runs (runs i64 sexp))

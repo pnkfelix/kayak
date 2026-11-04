@@ -432,6 +432,32 @@ pub fn sum_value(s: i64) -> i64 {
     slot_ref(s, 1i64)
 }
 
+// Products (C323): Fixpt's, its fields in slots 0 on, in its type's order,
+// no labels, frozen once filled (`frozen!`).
+pub fn product_made_x(n: i64) -> i64 {
+    alloc_x(ob_product(), n)
+}
+
+pub fn product_filled_x(mut p: i64, mut i: i64, mut ws: List<i64>) -> () {
+    loop {
+        if null_p(ws) {
+            return ();
+        } else {
+            slot_set_x(p, i, car(ws));
+            (i, ws) = (i64_plus(i, 1i64), cdr(ws));
+            continue;
+        }
+    }
+}
+
+/// A product of `ws`, frozen.
+pub fn product_of_x(ws: List<i64>) -> i64 {
+    let p = product_made_x(size(ws));
+    product_filled_x(p, 0i64, ws);
+    frozen_x(p);
+    p
+}
+
 // Reals: an `f64`'s bits.
 pub fn real_word_x(x: f64) -> i64 {
     let p = alloc_x(ob_real(), 1i64);
