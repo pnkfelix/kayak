@@ -27,39 +27,44 @@
 (define imm-tag i64 6)
 (define imm-special i64 7)
 
-(define ob-pair i64 1)
-(define ob-ref i64 2)
-(define ob-sum i64 3)
-(define ob-product i64 4)
-(define ob-data i64 5)
-(define ob-array i64 6)
-(define ob-flat i64 7)
+"Objects' kinds, as an object's header says them: Fixpt's kind where the
+ engine's object is Fixpt's (`layout.rs`'s `KINDS`; C318), else one past
+ Fixpt's (200 on) until it is. A pair has no header: Fixpt's two words."
+(define ob-pair i64 0)
+(define ob-ref i64 10)
+(define ob-sum i64 36)
+(define ob-product i64 37)
+(define ob-data i64 200)
+"An FX-26 array: Fixpt's bloblet of fields."
+(define ob-array i64 32)
+(define ob-flat i64 201)
 (define ob-proc i64 8)
-(define ob-cont i64 9)
-(define ob-env i64 10)
-(define ob-frame i64 11)
-(define ob-ctor i64 12)
+(define ob-cont i64 14)
+(define ob-env i64 35)
+(define ob-frame i64 202)
+(define ob-ctor i64 203)
 "`datum`'s vector (C77): its elements, words, as an array's."
-(define ob-vector i64 13)
+(define ob-vector i64 3)
 "A bloblet (C215): its bytes, an `ob-bytes`, then its fields."
-(define ob-bloblet i64 14)
+(define ob-bloblet i64 204)
 "A blobref (C215): its owner, a bloblet, then its offset, a fixnum."
-(define ob-blobref i64 15)
+(define ob-blobref i64 205)
 "An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
  then its elements, words (the engine's values are its own, not raw)."
-(define ob-flatx i64 18)
+(define ob-flatx i64 42)
 "A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
  collections when its keys were last hashed, its count of entries, its
  buckets (an `ob-array` of chains); an entry an `ob-array`, its key,
  value and next entry (`#f` at a chain's end)."
-(define ob-eqtable i64 19)
-"Kinds from here on hold raw words, not values: not scanned."
-(define ob-raw i64 32)
-(define ob-string i64 32)
-(define ob-bytes i64 33)
-(define ob-real i64 34)
-(define ob-big i64 35)
-(define ob-forward i64 255)
+(define ob-eqtable i64 43)
+"Kinds whose payload is raw words, not values: a bloblet's suffix, never
+ traced, as Fixpt's."
+(define ob-string i64 206)
+(define ob-bytes i64 207)
+(define ob-real i64 5)
+(define ob-big i64 208)
+(define raw-kind? (subr kfx (i64) bool)
+  (lambda (k) (or (i64= k ob-string) (i64= k ob-bytes) (i64= k ob-real) (i64= k ob-big))))
 
 "Making and taking apart words: Fixpt's tags (`value.rs`)."
 (define fixnum-max i64 1152921504606846975)
@@ -68,9 +73,13 @@
 (define fits-fixnum? (subr kfx (i64) bool) (lambda (n) (and (i64<= n fixnum-max) (i64>= n fixnum-min))))
 (define fixnum (subr kfx (i64) i64) (lambda (n) (i64-shl n 3)))
 (define fixnum-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
-(define pointer? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 7) 4)))
+"A pair (tag 001) or a bloblet (tag 100): an object, at index `w >> 3`,
+ a pair's car, a bloblet's suffix's first word."
+(define pair-tagged? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 7) 1)))
+(define pointer? (subr kfx (i64) bool) (lambda (w) (or (i64= (i64-and w 7) 4) (i64= (i64-and w 7) 1))))
 (define pointer-index (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
-(define pointer-to (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 3) 4)))
+(define bloblet-at (subr kfx (i64) i64) (lambda (p) (i64+ (i64-shl p 3) 4)))
+(define pair-at (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 3) 1)))
 (define immediate? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 7) 3)))
 
 "Fixpt's immediates' subtags, and the engine's own until they are objects."
@@ -142,39 +151,113 @@
       (set free-at 1))))
 
 (define heap-room (subr (maxeff (read @globals) spin (read @h)) () i64)
-  (lambda () (i64- (flatarray-length-i64 (get space)) (get free-at))))
+  (lambda ()
+    "The room left, as the machine counts what a step needs: a header and a
+     payload an object (C64). Two thirds of the words free, since Fixpt's
+     layout (C318) gives an object of fields a trailer too, at most half as
+     much again (one of a field); one of none has no trailer, and a pair is
+     two words, not three."
+    (i64-quotient (i64* (i64- (flatarray-length-i64 (get space)) (get free-at)) 2) 3)))
 
-(define header (subr kfx (i64 i64) i64) (lambda (kind n) (i64+ kind (i64-shl n 8))))
-(define header-kind (subr kfx (i64) i64) (lambda (h) (i64-and h 255)))
-(define header-size (subr kfx (i64) i64) (lambda (h) (i64-shr h 8)))
+"Fixpt's headers (`layout.fx`): tag 110, the kind in bits 3 to 11, a
+ large header's mark at bit 11, the fields (F, with the trailer) in bits
+ 14 to 32, the suffix's bytes (B) in bits 32 to 64; a large header's F
+ in the extension word before it, kind 255, its F above bit 11. A
+ trailer, the last field, is tag 101 and F above."
+(define fields-max i64 262143)
+(define header (subr kfx (i64 i64 i64) i64)
+  (lambda (kind f b) (i64+ (i64-shl b 32) (i64+ (i64-shl f 14) (i64+ (i64-shl kind 3) 6)))))
+(define large-header (subr kfx (i64 i64) i64)
+  (lambda (kind b) (i64+ (i64-shl b 32) (i64+ 2048 (i64+ (i64-shl kind 3) 6)))))
+(define extension (subr kfx (i64) i64) (lambda (f) (i64+ (i64-shl f 11) (i64+ (i64-shl 255 3) 6))))
+(define trailer (subr kfx (i64) i64) (lambda (f) (i64+ (i64-shl f 3) 5)))
+(define header-kind (subr kfx (i64) i64) (lambda (h) (i64-and (i64-shr h 3) 255)))
+(define header-large? (subr kfx (i64) bool) (lambda (h) (i64= (i64-and (i64-shr h 11) 1) 1)))
+(define header-fields (subr kfx (i64) i64) (lambda (h) (i64-and (i64-shr h 14) fields-max)))
+(define header-bytes (subr kfx (i64) i64) (lambda (h) (i64-and (i64-shr h 32) 4294967295)))
+(define extension-fields (subr kfx (i64) i64) (lambda (x) (i64-shr x 11)))
+(define word-tag (subr kfx (i64) i64) (lambda (w) (i64-and w 7)))
+(define suffix-words (subr kfx (i64) i64) (lambda (b) (i64-quotient (i64+ b 7) 8)))
+
+(define bump! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) i64)
+  (lambda (n)
+    (let ((at (get free-at)))
+      (if (i64> (i64+ at n) (flatarray-length-i64 (get space)))
+          (begin (error "the engine's heap: a step allocated past the room it was given") 0)
+          (begin (set free-at (i64+ at n)) at)))))
+
+(define put! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) unit)
+  (lambda (i w) (flatarray-set-i64! (get space) i w)))
+(define at-word (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (i) (flatarray-ref-i64 (get space) i)))
 
 (define alloc! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
   (lambda (kind n)
-    "An object of `kind`, `n` words of payload, all 0 (fixnum 0): a pointer
-     to it. The room was made sure of before the step (`heap-ensure!`)."
-    (let ((at (get free-at)))
-      (if (i64> (i64+ at (i64+ n 1)) (flatarray-length-i64 (get space)))
-          (begin (error "the engine's heap: a step allocated past the room it was given") 0)
-          (begin
-            (flatarray-set-i64! (get space) at (header kind n))
-            (set free-at (i64+ at (i64+ n 1)))
-            (pointer-to at))))))
+    "An object of `kind`, `n` words of payload, in Fixpt's layout (C318): a
+     pair two words; an object of raw words a bloblet whose suffix they are;
+     any other a bloblet of `n` fields and a trailer, so that payload word
+     `i` is the word `i` after the header, as `alloc` lays it out. The room
+     was made sure of before the step (`heap-ensure!`)."
+    (cond ((i64= kind ob-pair) (pair-at (bump! 2)))
+          ;; No fields: no trailer, the word below the suffix its header.
+          ((or (raw-kind? kind) (i64= n 0))
+           (let ((at (bump! (i64+ n 1)))) (begin (put! at (header kind 0 (i64* 8 n))) (bloblet-at (i64+ at 1)))))
+          (else
+           (let ((f (i64+ n 1)))
+             (if (i64> f fields-max)
+                 (let ((at (bump! (i64+ f 2))))
+                   (begin (put! at (extension f)) (put! (i64+ at 1) (large-header kind 0))
+                          (put! (i64+ at (i64+ f 1)) (trailer f))
+                          (bloblet-at (i64+ at (i64+ f 2)))))
+                 (let ((at (bump! (i64+ f 1))))
+                   (begin (put! at (header kind f 0)) (put! (i64+ at f) (trailer f))
+                          (bloblet-at (i64+ at (i64+ f 1)))))))))))
+
+"An object's payload: a pair's two words; a bloblet's fields, found by its
+ trailer (`p - F + i`), or, with none, its suffix (`p + i`)."
+(define payload-at (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (v i)
+    (if (pair-tagged? v)
+        (i64+ (pointer-index v) i)
+        (let* ((p (pointer-index v)) (b (at-word (i64- p 1))))
+          (if (i64= (word-tag b) 5) (i64+ (i64- p (i64-shr b 3)) i) (i64+ p i))))))
+
+(define header-at (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (v)
+    "A bloblet's main header's index."
+    (let* ((p (pointer-index v)) (b (at-word (i64- p 1))))
+      (if (i64= (word-tag b) 5) (i64- (i64- p 1) (i64-shr b 3)) (i64- p 1)))))
 
 (define obj-kind (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
-  (lambda (p) (header-kind (flatarray-ref-i64 (get space) (pointer-index p)))))
+  (lambda (v) (if (pair-tagged? v) ob-pair (header-kind (at-word (header-at v))))))
 
 (define obj-size (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
-  (lambda (p) (header-size (flatarray-ref-i64 (get space) (pointer-index p)))))
+  (lambda (v)
+    (if (pair-tagged? v)
+        2
+        (let* ((p (pointer-index v)) (b (at-word (i64- p 1))))
+          (if (i64= (word-tag b) 5) (i64- (i64-shr b 3) 1) (i64-quotient (header-bytes b) 8))))))
 
 (define obj-ref (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
-  (lambda (p i) (flatarray-ref-i64 (get space) (i64+ (pointer-index p) (i64+ i 1)))))
+  (lambda (v i) (at-word (payload-at v i))))
 
 (define obj-set! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64 i64) unit)
-  (lambda (p i w) (flatarray-set-i64! (get space) (i64+ (pointer-index p) (i64+ i 1)) w)))
+  (lambda (v i w) (put! (payload-at v i) w)))
 
-"The collector: Cheney's. Each root copied, then each object copied
- scanned, its words that are pointers copied in turn; a moved object's
- header is its forwarding, the index it moved to."
+"The engine's own objects, which only it reads (frames, environments,
+ closures, continuations): payload word `i` is field `i + 2`, at `p - 2 -
+ i`, Fixpt's `slot` order (`bloblet_slot`), no trailer read to find it
+ (C318). Every other object's is `alloc`'s order, which Fixpt's code reads
+ (`obj-ref`), its trailer read for its count of fields."
+(define slot-ref (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (v i) (at-word (i64- (i64- (pointer-index v) 2) i))))
+(define slot-set! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64 i64) unit)
+  (lambda (v i w) (put! (i64- (i64- (pointer-index v) 2) i) w)))
+
+"The collector: Cheney's, over Fixpt's objects. Each root copied, then
+ the copies scanned, header by header (a word no header begins a pair);
+ a moved object's forwarding, tag 111, its copy's index, in a pair's first
+ word and in the word below a bloblet's suffix."
 
 (define-rec
   (copy-words! (subr (maxeff (read @globals) spin (read @h) (write @h)) ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64 i64) unit)
@@ -184,25 +267,39 @@
           (begin (flatarray-set-i64! to at (flatarray-ref-i64 from i))
                  (copy-words! from to (i64+ i 1) (i64+ at 1) (i64- n 1)))))))
 
+(define forwarded (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 3) 7)))
+
 (define copy-word! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) i64)
   (lambda (w)
-    "`w`, its object copied to the other space if it is a pointer not yet
-     copied: the word that now names it."
-    (if (not (pointer? w))
-        w
-        (let* ((from (get space))
-               (to (get other-space))
-               (i (pointer-index w))
-               (h (flatarray-ref-i64 from i)))
-          (if (i64= (header-kind h) ob-forward)
-              (pointer-to (header-size h))
-              (let ((at (get free-at))
-                    (n (header-size h)))
-                (begin
-                  (copy-words! from to i at (i64+ n 1))
-                  (flatarray-set-i64! from i (header ob-forward at))
-                  (set free-at (i64+ at (i64+ n 1)))
-                  (pointer-to at))))))))
+    "`w`, its object copied to the other space if it is one not yet copied:
+     the word that now names it."
+    (cond ((not (pointer? w)) w)
+          ((pair-tagged? w)
+           (let* ((from (get space)) (i (pointer-index w)) (c (flatarray-ref-i64 from i)))
+             (if (i64= (word-tag c) 7)
+                 (pair-at (i64-shr c 3))
+                 (let ((at (get free-at)))
+                   (begin
+                     (copy-words! from (get other-space) i at 2)
+                     (flatarray-set-i64! from i (forwarded at))
+                     (set free-at (i64+ at 2))
+                     (pair-at at))))))
+          (else
+           (let* ((from (get space)) (p (pointer-index w)) (b (flatarray-ref-i64 from (i64- p 1))))
+             (if (i64= (word-tag b) 7)
+                 (bloblet-at (i64-shr b 3))
+                 (let* ((f (if (i64= (word-tag b) 5) (i64-shr b 3) (the i64 0)))
+                        (hi (i64- (i64- p 1) f))
+                        (h (flatarray-ref-i64 from hi))
+                        (start (if (header-large? h) (i64- hi 1) hi))
+                        (n (i64+ (i64- p start) (suffix-words (header-bytes h))))
+                        (at (get free-at))
+                        (np (i64+ at (i64- p start))))
+                   (begin
+                     (copy-words! from (get other-space) start at n)
+                     (flatarray-set-i64! from (i64- p 1) (forwarded np))
+                     (set free-at (i64+ at n))
+                     (bloblet-at np)))))))))
 
 (define-rec
   (scan-words! (subr (maxeff (read @globals) spin (read @h) (write @h)) ((flatarrayof i64 @h) i64 i64) unit)
@@ -215,15 +312,20 @@
 (define-rec
   (scan! (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) unit)
     (lambda (at)
-      "The objects copied, from `at` to the free index, each scanned."
+      "The objects copied, from `at` to the free index, each scanned: a
+       bloblet's fields, not its suffix; a pair's two words."
       (if (i64>= at (get free-at))
           #u
-          (let* ((to (get other-space))
-                 (h (flatarray-ref-i64 to at))
-                 (n (header-size h)))
-            (begin
-              (if (i64< (header-kind h) ob-raw) (scan-words! to (i64+ at 1) n) #u)
-              (scan! (i64+ at (i64+ n 1)))))))))
+          (let* ((to (get other-space)) (w (flatarray-ref-i64 to at)))
+            (if (i64= (word-tag w) 6)
+                (if (i64= (header-kind w) 255)
+                    (let* ((f (extension-fields w)) (h (flatarray-ref-i64 to (i64+ at 1))))
+                      (begin (scan-words! to (i64+ at 2) f)
+                             (scan! (i64+ at (i64+ 2 (i64+ f (suffix-words (header-bytes h))))))))
+                    (let ((f (header-fields w)))
+                      (begin (scan-words! to (i64+ at 1) f)
+                             (scan! (i64+ at (i64+ 1 (i64+ f (suffix-words (header-bytes w)))))))))
+                (begin (scan-words! to at 2) (scan! (i64+ at 2)))))))))
 
 (define-rec
   (copy-roots! (subr (maxeff (read @globals) spin (read @h) (write @h)) ((flatarrayof i64 @h) i64 i64) unit)

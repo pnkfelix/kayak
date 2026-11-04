@@ -341,7 +341,7 @@
     (let ((n (get pending-points)))
       (cond ((i64>= n 0)
              (let ((p (alloc! ob-string n)))
-               (begin (take-points (get space) (i64->int (i64+ (pointer-index p) 1)) 1) (sum-word! "line" p))))
+               (begin (take-points (get space) (i64->int (pointer-index p)) 1) (sum-word! "line" p))))
             ((i64= n -1) (sum-word! "eof" w-unit))
             (else (failure-word!))))))
 
@@ -350,7 +350,7 @@
  is not: a failure's is made after, a rare path)."
 (define text-written-word! (subr (maxeff hp (alloc @h) (io sys)) (i64 i64) i64)
   (lambda (p stream)
-    (if (i64= (int->i64 (write-points (get space) (i64->int (i64+ (pointer-index p) 1)) (i64->int (obj-size p)) 1 (i64->int stream))) 0)
+    (if (i64= (int->i64 (write-points (get space) (i64->int (pointer-index p)) (i64->int (obj-size p)) 1 (i64->int stream))) 0)
         (sum-word! "done" w-unit)
         (begin (failure-pended!) (failure-word!)))))
 

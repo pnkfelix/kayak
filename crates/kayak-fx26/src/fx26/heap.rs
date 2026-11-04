@@ -55,32 +55,36 @@ pub fn imm_special() -> i64 {
     7i64
 }
 
+// Objects' kinds, as an object's header says them: Fixpt's kind where the
+// engine's object is Fixpt's (`layout.rs`'s `KINDS`; C318), else one past
+// Fixpt's (200 on) until it is. A pair has no header: Fixpt's two words.
 pub fn ob_pair() -> i64 {
-    1i64
+    0i64
 }
 
 pub fn ob_ref() -> i64 {
-    2i64
+    10i64
 }
 
 pub fn ob_sum() -> i64 {
-    3i64
+    36i64
 }
 
 pub fn ob_product() -> i64 {
-    4i64
+    37i64
 }
 
 pub fn ob_data() -> i64 {
-    5i64
+    200i64
 }
 
+// An FX-26 array: Fixpt's bloblet of fields.
 pub fn ob_array() -> i64 {
-    6i64
+    32i64
 }
 
 pub fn ob_flat() -> i64 {
-    7i64
+    201i64
 }
 
 pub fn ob_proc() -> i64 {
@@ -88,40 +92,40 @@ pub fn ob_proc() -> i64 {
 }
 
 pub fn ob_cont() -> i64 {
-    9i64
+    14i64
 }
 
 pub fn ob_env() -> i64 {
-    10i64
+    35i64
 }
 
 pub fn ob_frame() -> i64 {
-    11i64
+    202i64
 }
 
 pub fn ob_ctor() -> i64 {
-    12i64
+    203i64
 }
 
 // `datum`'s vector (C77): its elements, words, as an array's.
 pub fn ob_vector() -> i64 {
-    13i64
+    3i64
 }
 
 // A bloblet (C215): its bytes, an `ob-bytes`, then its fields.
 pub fn ob_bloblet() -> i64 {
-    14i64
+    204i64
 }
 
 // A blobref (C215): its owner, a bloblet, then its offset, a fixnum.
 pub fn ob_blobref() -> i64 {
-    15i64
+    205i64
 }
 
 // An FX-26 flat array (C220): its elements' width in bytes, a fixnum,
 // then its elements, words (the engine's values are its own, not raw).
 pub fn ob_flatx() -> i64 {
-    18i64
+    42i64
 }
 
 // A table keyed by identity (C220, Fixpt's `eqtable.rs`): the count of
@@ -129,32 +133,29 @@ pub fn ob_flatx() -> i64 {
 // buckets (an `ob-array` of chains); an entry an `ob-array`, its key,
 // value and next entry (`#f` at a chain's end).
 pub fn ob_eqtable() -> i64 {
-    19i64
+    43i64
 }
 
-// Kinds from here on hold raw words, not values: not scanned.
-pub fn ob_raw() -> i64 {
-    32i64
-}
-
+// Kinds whose payload is raw words, not values: a bloblet's suffix, never
+// traced, as Fixpt's.
 pub fn ob_string() -> i64 {
-    32i64
+    206i64
 }
 
 pub fn ob_bytes() -> i64 {
-    33i64
+    207i64
 }
 
 pub fn ob_real() -> i64 {
-    34i64
+    5i64
 }
 
 pub fn ob_big() -> i64 {
-    35i64
+    208i64
 }
 
-pub fn ob_forward() -> i64 {
-    255i64
+pub fn raw_kind_p(k: i64) -> bool {
+    (i64_eq(k, ob_string()) || i64_eq(k, ob_bytes()) || i64_eq(k, ob_real()) || i64_eq(k, ob_big()))
 }
 
 // Making and taking apart words: Fixpt's tags (`value.rs`).
@@ -182,16 +183,26 @@ pub fn fixnum_value(w: i64) -> i64 {
     i64_shr(w, int_lit(3))
 }
 
+// A pair (tag 001) or a bloblet (tag 100): an object, at index `w >> 3`,
+// a pair's car, a bloblet's suffix's first word.
+pub fn pair_tagged_p(w: i64) -> bool {
+    i64_eq(i64_and(w, 7i64), 1i64)
+}
+
 pub fn pointer_p(w: i64) -> bool {
-    i64_eq(i64_and(w, 7i64), 4i64)
+    (i64_eq(i64_and(w, 7i64), 4i64) || i64_eq(i64_and(w, 7i64), 1i64))
 }
 
 pub fn pointer_index(w: i64) -> i64 {
     i64_shr(w, int_lit(3))
 }
 
-pub fn pointer_to(i: i64) -> i64 {
-    i64_plus(i64_shl(i, int_lit(3)), 4i64)
+pub fn bloblet_at(p: i64) -> i64 {
+    i64_plus(i64_shl(p, int_lit(3)), 4i64)
+}
+
+pub fn pair_at(i: i64) -> i64 {
+    i64_plus(i64_shl(i, int_lit(3)), 1i64)
 }
 
 pub fn immediate_p(w: i64) -> bool {
@@ -370,55 +381,190 @@ pub fn heap_start_x(words: i64) -> () {
     set(free_at(), 1i64)
 }
 
+/// The room left, as the machine counts what a step needs: a header and a
+/// payload an object (C64). Two thirds of the words free, since Fixpt's
+/// layout (C318) gives an object of fields a trailer too, at most half as
+/// much again (one of a field); one of none has no trailer, and a pair is
+/// two words, not three.
 pub fn heap_room() -> i64 {
-    i64_minus(flatarray_length_i64(get(space())), get(free_at()))
+    i64_quotient(i64_star(i64_minus(flatarray_length_i64(get(space())), get(free_at())), 2i64), 3i64)
 }
 
-pub fn header(kind: i64, n: i64) -> i64 {
-    i64_plus(kind, i64_shl(n, int_lit(8)))
+// Fixpt's headers (`layout.fx`): tag 110, the kind in bits 3 to 11, a
+// large header's mark at bit 11, the fields (F, with the trailer) in bits
+// 14 to 32, the suffix's bytes (B) in bits 32 to 64; a large header's F
+// in the extension word before it, kind 255, its F above bit 11. A
+// trailer, the last field, is tag 101 and F above.
+pub fn fields_max() -> i64 {
+    262143i64
+}
+
+pub fn header(kind: i64, f: i64, b: i64) -> i64 {
+    i64_plus(i64_shl(b, int_lit(32)), i64_plus(i64_shl(f, int_lit(14)), i64_plus(i64_shl(kind, int_lit(3)), 6i64)))
+}
+
+pub fn large_header(kind: i64, b: i64) -> i64 {
+    i64_plus(i64_shl(b, int_lit(32)), i64_plus(2048i64, i64_plus(i64_shl(kind, int_lit(3)), 6i64)))
+}
+
+pub fn extension(f: i64) -> i64 {
+    i64_plus(i64_shl(f, int_lit(11)), i64_plus(i64_shl(255i64, int_lit(3)), 6i64))
+}
+
+pub fn trailer(f: i64) -> i64 {
+    i64_plus(i64_shl(f, int_lit(3)), 5i64)
 }
 
 pub fn header_kind(h: i64) -> i64 {
-    i64_and(h, 255i64)
+    i64_and(i64_shr(h, int_lit(3)), 255i64)
 }
 
-pub fn header_size(h: i64) -> i64 {
-    i64_shr(h, int_lit(8))
+pub fn header_large_p(h: i64) -> bool {
+    i64_eq(i64_and(i64_shr(h, int_lit(11)), 1i64), 1i64)
 }
 
-/// An object of `kind`, `n` words of payload, all 0 (fixnum 0): a pointer
-/// to it. The room was made sure of before the step (`heap-ensure!`).
-pub fn alloc_x(kind: i64, n: i64) -> i64 {
+pub fn header_fields(h: i64) -> i64 {
+    i64_and(i64_shr(h, int_lit(14)), fields_max())
+}
+
+pub fn header_bytes(h: i64) -> i64 {
+    i64_and(i64_shr(h, int_lit(32)), 4294967295i64)
+}
+
+pub fn extension_fields(x: i64) -> i64 {
+    i64_shr(x, int_lit(11))
+}
+
+pub fn word_tag(w: i64) -> i64 {
+    i64_and(w, 7i64)
+}
+
+pub fn suffix_words(b: i64) -> i64 {
+    i64_quotient(i64_plus(b, 7i64), 8i64)
+}
+
+pub fn bump_x(n: i64) -> i64 {
     let at = get(free_at());
-    if i64_gt(i64_plus(at, i64_plus(n, 1i64)), flatarray_length_i64(get(space()))) {
+    if i64_gt(i64_plus(at, n), flatarray_length_i64(get(space()))) {
         error(str_lit("the engine's heap: a step allocated past the room it was given"));
         0i64
     } else {
-        flatarray_set_i64_x(get(space()), at, header(kind, n));
-        set(free_at(), i64_plus(at, i64_plus(n, 1i64)));
-        pointer_to(at)
+        set(free_at(), i64_plus(at, n));
+        at
     }
 }
 
-pub fn obj_kind(p: i64) -> i64 {
-    header_kind(flatarray_ref_i64(get(space()), pointer_index(p)))
+pub fn put_x(i: i64, w: i64) -> () {
+    flatarray_set_i64_x(get(space()), i, w)
 }
 
-pub fn obj_size(p: i64) -> i64 {
-    header_size(flatarray_ref_i64(get(space()), pointer_index(p)))
+pub fn at_word(i: i64) -> i64 {
+    flatarray_ref_i64(get(space()), i)
 }
 
-pub fn obj_ref(p: i64, i: i64) -> i64 {
-    flatarray_ref_i64(get(space()), i64_plus(pointer_index(p), i64_plus(i, 1i64)))
+/// An object of `kind`, `n` words of payload, in Fixpt's layout (C318): a
+/// pair two words; an object of raw words a bloblet whose suffix they are;
+/// any other a bloblet of `n` fields and a trailer, so that payload word
+/// `i` is the word `i` after the header, as `alloc` lays it out. The room
+/// was made sure of before the step (`heap-ensure!`).
+pub fn alloc_x(kind: i64, n: i64) -> i64 {
+    if i64_eq(kind, ob_pair()) {
+        pair_at(bump_x(2i64))
+    } else if (raw_kind_p(kind) || i64_eq(n, 0i64)) {
+        let at = bump_x(i64_plus(n, 1i64));
+        put_x(at, header(kind, 0i64, i64_star(8i64, n)));
+        bloblet_at(i64_plus(at, 1i64))
+    } else {
+        let f = i64_plus(n, 1i64);
+        if i64_gt(f, fields_max()) {
+            let at = bump_x(i64_plus(f, 2i64));
+            put_x(at, extension(f));
+            put_x(i64_plus(at, 1i64), large_header(kind, 0i64));
+            put_x(i64_plus(at, i64_plus(f, 1i64)), trailer(f));
+            bloblet_at(i64_plus(at, i64_plus(f, 2i64)))
+        } else {
+            let at = bump_x(i64_plus(f, 1i64));
+            put_x(at, header(kind, f, 0i64));
+            put_x(i64_plus(at, f), trailer(f));
+            bloblet_at(i64_plus(at, i64_plus(f, 1i64)))
+        }
+    }
 }
 
-pub fn obj_set_x(p: i64, i: i64, w: i64) -> () {
-    flatarray_set_i64_x(get(space()), i64_plus(pointer_index(p), i64_plus(i, 1i64)), w)
+// An object's payload: a pair's two words; a bloblet's fields, found by its
+// trailer (`p - F + i`), or, with none, its suffix (`p + i`).
+pub fn payload_at(v: i64, i: i64) -> i64 {
+    if pair_tagged_p(v) {
+        i64_plus(pointer_index(v), i)
+    } else {
+        let p = pointer_index(v);
+        let b = at_word(i64_minus(p, 1i64));
+        if i64_eq(word_tag(b), 5i64) {
+            i64_plus(i64_minus(p, i64_shr(b, int_lit(3))), i)
+        } else {
+            i64_plus(p, i)
+        }
+    }
 }
 
-// The collector: Cheney's. Each root copied, then each object copied
-// scanned, its words that are pointers copied in turn; a moved object's
-// header is its forwarding, the index it moved to.
+/// A bloblet's main header's index.
+pub fn header_at(v: i64) -> i64 {
+    let p = pointer_index(v);
+    let b = at_word(i64_minus(p, 1i64));
+    if i64_eq(word_tag(b), 5i64) {
+        i64_minus(i64_minus(p, 1i64), i64_shr(b, int_lit(3)))
+    } else {
+        i64_minus(p, 1i64)
+    }
+}
+
+pub fn obj_kind(v: i64) -> i64 {
+    if pair_tagged_p(v) {
+        ob_pair()
+    } else {
+        header_kind(at_word(header_at(v)))
+    }
+}
+
+pub fn obj_size(v: i64) -> i64 {
+    if pair_tagged_p(v) {
+        2i64
+    } else {
+        let p = pointer_index(v);
+        let b = at_word(i64_minus(p, 1i64));
+        if i64_eq(word_tag(b), 5i64) {
+            i64_minus(i64_shr(b, int_lit(3)), 1i64)
+        } else {
+            i64_quotient(header_bytes(b), 8i64)
+        }
+    }
+}
+
+pub fn obj_ref(v: i64, i: i64) -> i64 {
+    at_word(payload_at(v, i))
+}
+
+pub fn obj_set_x(v: i64, i: i64, w: i64) -> () {
+    put_x(payload_at(v, i), w)
+}
+
+// The engine's own objects, which only it reads (frames, environments,
+// closures, continuations): payload word `i` is field `i + 2`, at `p - 2 -
+// i`, Fixpt's `slot` order (`bloblet_slot`), no trailer read to find it
+// (C318). Every other object's is `alloc`'s order, which Fixpt's code reads
+// (`obj-ref`), its trailer read for its count of fields.
+pub fn slot_ref(v: i64, i: i64) -> i64 {
+    at_word(i64_minus(i64_minus(pointer_index(v), 2i64), i))
+}
+
+pub fn slot_set_x(v: i64, i: i64, w: i64) -> () {
+    put_x(i64_minus(i64_minus(pointer_index(v), 2i64), i), w)
+}
+
+// The collector: Cheney's, over Fixpt's objects. Each root copied, then
+// the copies scanned, header by header (a word no header begins a pair);
+// a moved object's forwarding, tag 111, its copy's index, in a pair's first
+// word and in the word below a bloblet's suffix.
 pub fn copy_words_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut at: i64, mut n: i64) -> () {
     loop {
         if i64_eq(n, 0i64) {
@@ -431,24 +577,54 @@ pub fn copy_words_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64
     }
 }
 
-/// `w`, its object copied to the other space if it is a pointer not yet
-/// copied: the word that now names it.
+pub fn forwarded(i: i64) -> i64 {
+    i64_plus(i64_shl(i, int_lit(3)), 7i64)
+}
+
+/// `w`, its object copied to the other space if it is one not yet copied:
+/// the word that now names it.
 pub fn copy_word_x(w: i64) -> i64 {
     if not(pointer_p(w)) {
         w
+    } else if pair_tagged_p(w) {
+        let from = get(space());
+        let i = pointer_index(w);
+        let c = flatarray_ref_i64(from, i);
+        if i64_eq(word_tag(c), 7i64) {
+            pair_at(i64_shr(c, int_lit(3)))
+        } else {
+            let at = get(free_at());
+            copy_words_x(from, get(other_space()), i, at, 2i64);
+            flatarray_set_i64_x(from, i, forwarded(at));
+            set(free_at(), i64_plus(at, 2i64));
+            pair_at(at)
+        }
     } else {
         let from = get(space());
-        let to = get(other_space());
-        let i = pointer_index(w);
-        let h = flatarray_ref_i64(from, i);
-        if i64_eq(header_kind(h), ob_forward()) {
-            pointer_to(header_size(h))
+        let p = pointer_index(w);
+        let b = flatarray_ref_i64(from, i64_minus(p, 1i64));
+        if i64_eq(word_tag(b), 7i64) {
+            bloblet_at(i64_shr(b, int_lit(3)))
         } else {
-            let (at, n) = (get(free_at()), header_size(h));
-            copy_words_x(from, to, i, at, i64_plus(n, 1i64));
-            flatarray_set_i64_x(from, i, header(ob_forward(), at));
-            set(free_at(), i64_plus(at, i64_plus(n, 1i64)));
-            pointer_to(at)
+            let f = if i64_eq(word_tag(b), 5i64) {
+                i64_shr(b, int_lit(3))
+            } else {
+                the::<i64>(0i64)
+            };
+            let hi = i64_minus(i64_minus(p, 1i64), f);
+            let h = flatarray_ref_i64(from, hi);
+            let start = if header_large_p(h) {
+                i64_minus(hi, 1i64)
+            } else {
+                hi
+            };
+            let n = i64_plus(i64_minus(p, start), suffix_words(header_bytes(h)));
+            let at = get(free_at());
+            let np = i64_plus(at, i64_minus(p, start));
+            copy_words_x(from, get(other_space()), start, at, n);
+            flatarray_set_i64_x(from, i64_minus(p, 1i64), forwarded(np));
+            set(free_at(), i64_plus(at, n));
+            bloblet_at(np)
         }
     }
 }
@@ -465,22 +641,33 @@ pub fn scan_words_x(mut to: FlatArray<i64>, mut at: i64, mut n: i64) -> () {
     }
 }
 
-/// The objects copied, from `at` to the free index, each scanned.
+/// The objects copied, from `at` to the free index, each scanned: a
+/// bloblet's fields, not its suffix; a pair's two words.
 pub fn scan_x(mut at: i64) -> () {
     loop {
         if i64_gt_eq(at, get(free_at())) {
             return ();
         } else {
             let to = get(other_space());
-            let h = flatarray_ref_i64(to, at);
-            let n = header_size(h);
-            if i64_lt(header_kind(h), ob_raw()) {
-                scan_words_x(to, i64_plus(at, 1i64), n)
+            let w = flatarray_ref_i64(to, at);
+            if i64_eq(word_tag(w), 6i64) {
+                if i64_eq(header_kind(w), 255i64) {
+                    let f = extension_fields(w);
+                    let h = flatarray_ref_i64(to, i64_plus(at, 1i64));
+                    scan_words_x(to, i64_plus(at, 2i64), f);
+                    at = i64_plus(at, i64_plus(2i64, i64_plus(f, suffix_words(header_bytes(h)))));
+                    continue;
+                } else {
+                    let f = header_fields(w);
+                    scan_words_x(to, i64_plus(at, 1i64), f);
+                    at = i64_plus(at, i64_plus(1i64, i64_plus(f, suffix_words(header_bytes(w)))));
+                    continue;
+                }
             } else {
-                ()
-            };
-            at = i64_plus(at, i64_plus(n, 1i64));
-            continue;
+                scan_words_x(to, at, 2i64);
+                at = i64_plus(at, 2i64);
+                continue;
+            }
         }
     }
 }

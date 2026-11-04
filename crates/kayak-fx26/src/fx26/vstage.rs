@@ -791,10 +791,10 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
         let l = number_x(body);
         let e = alloc_x(ob_env(), 2i64);
         let p = alloc_x(ob_proc(), 2i64);
-        obj_set_x(e, 0i64, w_nil());
-        obj_set_x(e, 1i64, m);
-        obj_set_x(p, 0i64, code_word(l));
-        obj_set_x(p, 1i64, e);
+        slot_set_x(e, 0i64, w_nil());
+        slot_set_x(e, 1i64, m);
+        slot_set_x(p, 0i64, code_word(l));
+        slot_set_x(p, 1i64, e);
         sum_word_x(str_lit("ok"), p)
     }
 }
@@ -1342,10 +1342,10 @@ pub fn thunk_word_x(lam: &'static Ir) -> i64 {
     let l = number_x(lam);
     let e = alloc_x(ob_env(), 2i64);
     let p = alloc_x(ob_proc(), 2i64);
-    obj_set_x(e, 0i64, w_nil());
-    obj_set_x(e, 1i64, w_unit());
-    obj_set_x(p, 0i64, code_word(l));
-    obj_set_x(p, 1i64, e);
+    slot_set_x(e, 0i64, w_nil());
+    slot_set_x(e, 1i64, w_unit());
+    slot_set_x(p, 0i64, code_word(l));
+    slot_set_x(p, 1i64, e);
     p
 }
 

@@ -389,8 +389,8 @@
                  (l (number! body))
                  (e (alloc! ob-env 2))
                  (p (alloc! ob-proc 2)))
-            (begin (obj-set! e 0 w-nil) (obj-set! e 1 m)
-                   (obj-set! p 0 (code-word l)) (obj-set! p 1 e)
+            (begin (slot-set! e 0 w-nil) (slot-set! e 1 m)
+                   (slot-set! p 0 (code-word l)) (slot-set! p 1 e)
                    (sum-word! "ok" p)))))))
 
 
@@ -674,8 +674,8 @@
   (lambda (lam)
     "Procedure `lam`, lowered at the top, a closure over nothing."
     (let* ((l (number! lam)) (e (alloc! ob-env 2)) (p (alloc! ob-proc 2)))
-      (begin (obj-set! e 0 w-nil) (obj-set! e 1 w-unit)
-             (obj-set! p 0 (code-word l)) (obj-set! p 1 e)
+      (begin (slot-set! e 0 w-nil) (slot-set! e 1 w-unit)
+             (slot-set! p 0 (code-word l)) (slot-set! p 1 e)
              p))))
 
 (define session-scope (subr kfx () scope) (lambda () (list (list "%session"))))

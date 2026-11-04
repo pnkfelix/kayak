@@ -152,39 +152,39 @@ pub fn fk_preempted() -> i64 {
 }
 
 pub fn frame_kind(k: i64) -> i64 {
-    fixnum_value(obj_ref(k, 1i64))
+    fixnum_value(slot_ref(k, 1i64))
 }
 
 pub fn frame_next(k: i64) -> i64 {
-    obj_ref(k, 0i64)
+    slot_ref(k, 0i64)
 }
 
 pub fn frame_field(k: i64, i: i64) -> i64 {
-    obj_ref(k, i64_plus(i, 2i64))
+    slot_ref(k, i64_plus(i, 2i64))
 }
 
 /// A frame of `kind` with `n` fields, the first `n` of `a` to `d`.
 pub fn frame_x(kind: i64, next: i64, n: i64, a: i64, b: i64, c: i64, d: i64) -> i64 {
     let p = alloc_x(ob_frame(), i64_plus(n, 2i64));
-    obj_set_x(p, 0i64, next);
-    obj_set_x(p, 1i64, fixnum(kind));
+    slot_set_x(p, 0i64, next);
+    slot_set_x(p, 1i64, fixnum(kind));
     if i64_gt(n, 0i64) {
-        obj_set_x(p, 2i64, a)
+        slot_set_x(p, 2i64, a)
     } else {
         ()
     };
     if i64_gt(n, 1i64) {
-        obj_set_x(p, 3i64, b)
+        slot_set_x(p, 3i64, b)
     } else {
         ()
     };
     if i64_gt(n, 2i64) {
-        obj_set_x(p, 4i64, c)
+        slot_set_x(p, 4i64, c)
     } else {
         ()
     };
     if i64_gt(n, 3i64) {
-        obj_set_x(p, 5i64, d)
+        slot_set_x(p, 5i64, d)
     } else {
         ()
     };
@@ -197,7 +197,7 @@ pub fn env_up(mut e: i64, mut d: i64) -> i64 {
         if i64_eq(d, 0i64) {
             return e;
         } else {
-            (e, d) = (obj_ref(e, 0i64), i64_minus(d, 1i64));
+            (e, d) = (slot_ref(e, 0i64), i64_minus(d, 1i64));
             continue;
         }
     }
@@ -206,6 +206,19 @@ pub fn env_up(mut e: i64, mut d: i64) -> i64 {
 /// Slots `i` down to 1 of `p` (its first after the header's field 0)
 /// from the list `xs`, the last first.
 pub fn fill_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
+    loop {
+        if i64_lt(i, 1i64) {
+            return ();
+        } else {
+            slot_set_x(p, i, pair_car(xs));
+            (i, xs) = (i64_minus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+/// `fill-from-reversed!`, of an object in `alloc`'s order (a product).
+pub fn fields_from_reversed_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
     loop {
         if i64_lt(i, 1i64) {
             return ();
@@ -222,8 +235,33 @@ pub fn args_env_x(mut p: i64, mut i: i64, mut xs: i64, mut n: i64) -> () {
         if i64_gt(i, n) {
             return ();
         } else {
+            slot_set_x(p, i, pair_car(xs));
+            (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+pub fn args_fields_x(mut p: i64, mut i: i64, mut xs: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt(i, n) {
+            return ();
+        } else {
             obj_set_x(p, i, pair_car(xs));
             (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+/// Slots `i` to `i + n - 1` of `p`, unbound.
+pub fn slots_unbound_x(mut p: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_lt(n, 1i64) {
+            return ();
+        } else {
+            slot_set_x(p, i, w_unbound());
+            (i, n) = (i64_plus(i, 1i64), i64_minus(n, 1i64));
             continue;
         }
     }
@@ -235,7 +273,20 @@ pub fn slots_copied_x(mut to: i64, mut from: i64, mut i: i64, mut n: i64) -> () 
         if i64_gt_eq(i, n) {
             return ();
         } else {
-            obj_set_x(to, i, obj_ref(from, i));
+            slot_set_x(to, i, slot_ref(from, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// `slots-copied!`, from an object in `alloc`'s order.
+pub fn fields_to_slots_x(mut to: i64, mut from: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            slot_set_x(to, i, obj_ref(from, i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -287,7 +338,7 @@ pub fn frames_copied_x(k: i64, n: i64, onto: i64) -> i64 {
         let rest = frames_copied_x(frame_next(k), i64_minus(n, 1i64), onto);
         let size = obj_size(k);
         let p = alloc_x(ob_frame(), size);
-        obj_set_x(p, 0i64, rest);
+        slot_set_x(p, 0i64, rest);
         slots_copied_x(p, k, 1i64, size);
         p
     }
@@ -463,7 +514,7 @@ pub fn env_within_p(mut outer: i64, mut e: i64, mut depth: i64) -> bool {
         } else if (i64_gt(depth, 256i64) || not(pointer_p(e)) || not(is_obj_p(e, ob_env()))) {
             return false;
         } else {
-            (e, depth) = (obj_ref(e, 0i64), i64_plus(depth, 1i64));
+            (e, depth) = (slot_ref(e, 0i64), i64_plus(depth, 1i64));
             continue;
         }
     }
@@ -681,7 +732,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         continue;
                     }
                     Node::NLocal(d, s) => {
-                        (mode, node, val, f, args) = (1i64, 0i64, obj_ref(env_up(env, d), i64_plus(s, 1i64)), 0i64, 0i64);
+                        (mode, node, val, f, args) = (1i64, 0i64, slot_ref(env_up(env, d), i64_plus(s, 1i64)), 0i64, 0i64);
                         continue;
                     }
                     Node::NGlobal(i) => {
@@ -704,8 +755,8 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NLambda(n, body) => {
                         let p = alloc_x(ob_proc(), 2i64);
-                        obj_set_x(p, 0i64, code_word(node));
-                        obj_set_x(p, 1i64, env);
+                        slot_set_x(p, 0i64, code_word(node));
+                        slot_set_x(p, 1i64, env);
                         (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
                         continue;
                     }
@@ -732,7 +783,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     Node::NLet(at, count, body) => {
                         if i64_eq(count, 0i64) {
                             let e = alloc_x(ob_env(), 1i64);
-                            obj_set_x(e, 0i64, env);
+                            slot_set_x(e, 0i64, env);
                             (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
                             continue;
                         } else {
@@ -742,8 +793,8 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NLetrec(at, count, body) => {
                         let e = alloc_x(ob_env(), i64_plus(count, 1i64));
-                        obj_set_x(e, 0i64, env);
-                        fill_unbound_x(e, 1i64, count);
+                        slot_set_x(e, 0i64, env);
+                        slots_unbound_x(e, 1i64, count);
                         if i64_eq(count, 0i64) {
                             (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
                             continue;
@@ -838,7 +889,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_letrec()) {
                         let e = frame_field(k, 2i64);
                         let pos = fixnum_value(frame_field(k, 1i64));
-                        obj_set_x(e, i64_plus(pos, 1i64), val);
+                        slot_set_x(e, i64_plus(pos, 1i64), val);
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
                         match *tagcase_ {
                             Node::NLetrec(at, count, body) => {
@@ -1015,7 +1066,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
                 next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
                 let e = alloc_x(ob_env(), i64_plus(count, 1i64));
-                obj_set_x(e, 0i64, env);
+                slot_set_x(e, 0i64, env);
                 fill_from_reversed_x(e, count, got);
                 next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
             }
@@ -1026,7 +1077,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
             } else {
                 let p = alloc_x(ob_product(), i64_plus(count, 1i64));
                 obj_set_x(p, 0i64, fixnum(labels));
-                fill_from_reversed_x(p, count, got);
+                fields_from_reversed_x(p, count, got);
                 next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
             }
         }
@@ -1052,8 +1103,8 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
             let found = arm_found(start, count, tag);
             if i64_lt(found, 0i64) {
                 let e = alloc_x(ob_env(), 2i64);
-                obj_set_x(e, 0i64, env);
-                obj_set_x(e, 1i64, val);
+                slot_set_x(e, 0i64, env);
+                slot_set_x(e, 1i64, val);
                 next_step_x(0i64, default, e, next, 0i64, 0i64, 0i64)
             } else {
                 let tagcase_ = armx_at(found);
@@ -1066,14 +1117,14 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
                         };
                         if (i64_eq(binds, -1i64) || (is_sum && not(is_obj_p(whole, ob_product())))) {
                             let e = alloc_x(ob_env(), 2i64);
-                            obj_set_x(e, 0i64, env);
-                            obj_set_x(e, 1i64, whole);
+                            slot_set_x(e, 0i64, env);
+                            slot_set_x(e, 1i64, whole);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         } else {
                             let n = i64_minus(obj_size(whole), 1i64);
                             let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                            slots_copied_x(e, whole, 1i64, i64_plus(n, 1i64));
-                            obj_set_x(e, 0i64, env);
+                            fields_to_slots_x(e, whole, 1i64, i64_plus(n, 1i64));
+                            slot_set_x(e, 0i64, env);
                             next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                         }
                     }
@@ -1123,18 +1174,18 @@ pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
 /// which a failure's backtrace starts at.
 pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
     if is_obj_p(f, ob_proc()) {
-        let tagcase_ = node_at(code_index(obj_ref(f, 0i64)));
+        let tagcase_ = node_at(code_index(slot_ref(f, 0i64)));
         match *tagcase_ {
             Node::NLambda(arity, body) => {
                 if i64_eq(arity, -1i64) {
                     let e = alloc_x(ob_env(), 2i64);
-                    obj_set_x(e, 0i64, obj_ref(f, 1i64));
-                    obj_set_x(e, 1i64, args);
+                    slot_set_x(e, 0i64, slot_ref(f, 1i64));
+                    slot_set_x(e, 1i64, args);
                     next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
                 } else {
                     let n = list_count(args, 0i64);
                     let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                    obj_set_x(e, 0i64, obj_ref(f, 1i64));
+                    slot_set_x(e, 0i64, slot_ref(f, 1i64));
                     args_env_x(e, 1i64, args, n);
                     next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
                 }
@@ -1149,11 +1200,11 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         let n = list_count(args, 0i64);
         let p = alloc_x(ob_data(), i64_plus(n, 1i64));
         obj_set_x(p, 0i64, obj_ref(f, 0i64));
-        args_env_x(p, 1i64, args, n);
+        args_fields_x(p, 1i64, args, n);
         next_step_x(1i64, 0i64, 0i64, k, p, 0i64, 0i64)
     } else if is_obj_p(f, ob_cont()) {
-        let top = obj_ref(f, 0i64);
-        let n = fixnum_value(obj_ref(f, 1i64));
+        let top = slot_ref(f, 0i64);
+        let n = fixnum_value(slot_ref(f, 1i64));
         let room = if i64_lt(n, 0i64) {
             the::<i64>(0i64)
         } else {
@@ -1165,15 +1216,15 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             next_step_x(1i64, 0i64, 0i64, top, pair_car(args), 0i64, 0i64)
         } else if i64_lt(heap_room(), i64_plus(room, reserve())) {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
-        } else if (truthy_p(obj_ref(f, 3i64)) && truthy_p(obj_ref(f, 2i64))) {
-            failed_with_x(if i64_eq(obj_ref(f, 3i64), fixnum(2i64)) {
+        } else if (truthy_p(slot_ref(f, 3i64)) && truthy_p(slot_ref(f, 2i64))) {
+            failed_with_x(if i64_eq(slot_ref(f, 3i64), fixnum(2i64)) {
                 str_lit("a one-shot continuation resumed twice")
             } else {
                 str_lit("a continuation resumed twice")
             });
             failed_at(node, env, k)
         } else {
-            obj_set_x(f, 2i64, w_true());
+            slot_set_x(f, 2i64, w_true());
             next_step_x(1i64, 0i64, 0i64, frames_copied_x(top, n, k), pair_car(args), 0i64, 0i64)
         }
     } else if is_imm_p(f, imm_prim()) {
@@ -1206,11 +1257,11 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
         } else if i64_eq(op, op_marks_of()) {
             let c = pair_car(args);
             let key = pair_car(pair_cdr(args));
-            let need = i64_star(6i64, i64_plus(marks_count(obj_ref(c, 0i64), key, fixnum_value(obj_ref(c, 1i64)), 0i64), 1i64));
+            let need = i64_star(6i64, i64_plus(marks_count(slot_ref(c, 0i64), key, fixnum_value(slot_ref(c, 1i64)), 0i64), 1i64));
             if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                next_step_x(1i64, 0i64, 0i64, k, marks_in(obj_ref(c, 0i64), key, fixnum_value(obj_ref(c, 1i64)), w_nil()), 0i64, 0i64)
+                next_step_x(1i64, 0i64, 0i64, k, marks_in(slot_ref(c, 0i64), key, fixnum_value(slot_ref(c, 1i64)), w_nil()), 0i64, 0i64)
             }
         } else if i64_eq(op, op_apply()) {
             // `(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
@@ -1239,10 +1290,10 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
-                obj_set_x(c, 0i64, k);
-                obj_set_x(c, 1i64, fixnum(n));
-                obj_set_x(c, 2i64, w_false());
-                obj_set_x(c, 3i64, if i64_eq(op, op_capture_once()) {
+                slot_set_x(c, 0i64, k);
+                slot_set_x(c, 1i64, fixnum(n));
+                slot_set_x(c, 2i64, w_false());
+                slot_set_x(c, 3i64, if i64_eq(op, op_capture_once()) {
                     fixnum(2i64)
                 } else {
                     w_false()
@@ -1253,10 +1304,10 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             // `(cwcc f)` (C220): `f` given the whole continuation, every
             // frame (`n` -1), to be resumed any number of times.
             let c = alloc_x(ob_cont(), 4i64);
-            obj_set_x(c, 0i64, k);
-            obj_set_x(c, 1i64, fixnum(-1i64));
-            obj_set_x(c, 2i64, w_false());
-            obj_set_x(c, 3i64, w_false());
+            slot_set_x(c, 0i64, k);
+            slot_set_x(c, 1i64, fixnum(-1i64));
+            slot_set_x(c, 2i64, w_false());
+            slot_set_x(c, 3i64, w_false());
             next_step_x(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
         } else if i64_eq(op, op_suspend()) {
             let tag = tag_number(pair_car(args));
@@ -1266,10 +1317,10 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
                 failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
-                obj_set_x(c, 0i64, k);
-                obj_set_x(c, 1i64, fixnum(n));
-                obj_set_x(c, 2i64, w_false());
-                obj_set_x(c, 3i64, w_true());
+                slot_set_x(c, 0i64, k);
+                slot_set_x(c, 1i64, fixnum(n));
+                slot_set_x(c, 2i64, w_false());
+                slot_set_x(c, 3i64, w_true());
                 next_step_x(2i64, -1i64, 0i64, frame_x(fk_abort(), k, 1i64, fixnum(tag), 0i64, 0i64, 0i64), 0i64, pair_car(pair_cdr(args)), pair_x(c, w_nil()))
             }
         } else {

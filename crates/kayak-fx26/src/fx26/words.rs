@@ -215,24 +215,29 @@ pub fn word_f32(w: i64) -> f32 {
 }
 
 // Objects of a kind.
+/// A pair by its tag; any other object by its header (C318).
 pub fn is_obj_p(w: i64, kind: i64) -> bool {
-    (pointer_p(w) && i64_eq(obj_kind(w), kind))
+    if i64_eq(kind, ob_pair()) {
+        pair_tagged_p(w)
+    } else {
+        (i64_eq(i64_and(w, 7i64), 4i64) && i64_eq(header_kind(at_word(header_at(w))), kind))
+    }
 }
 
 // Pairs: their car and cdr, written in place.
 pub fn pair_x(a: i64, d: i64) -> i64 {
-    let p = alloc_x(ob_pair(), 2i64);
-    obj_set_x(p, 0i64, a);
-    obj_set_x(p, 1i64, d);
-    p
+    let i = bump_x(2i64);
+    put_x(i, a);
+    put_x(i64_plus(i, 1i64), d);
+    pair_at(i)
 }
 
 pub fn pair_car(p: i64) -> i64 {
-    obj_ref(p, 0i64)
+    at_word(pointer_index(p))
 }
 
 pub fn pair_cdr(p: i64) -> i64 {
-    obj_ref(p, 1i64)
+    at_word(i64_plus(pointer_index(p), 1i64))
 }
 
 // Strings: a character a word.

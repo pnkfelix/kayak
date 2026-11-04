@@ -63,6 +63,13 @@ share the heap:
 
 ## Steps
 
+Done: 1a, values in Fixpt's encoding (C318); 1b, objects in Fixpt's
+layout and the collector over them (C319), 11 to 17% slower. Next, 1c:
+strings, bignums, symbols, products' labels, sums' tags and the engine's
+other kinds in Fixpt's own forms; then the engine's heap code shared with
+tier 1's (step 1's last part, which C318 found needs the two programs'
+regions joined: `@h` and `@c`, and tier 1's effect `cm` includes I/O).
+
 1. **The engine's API over tier 1's heap, in the engine's own binary.**
    - The engine's unit loads `cells/layout.kfx` and `cells/heap.kfx`
      (renaming where the two clash: both define `alloc!`, `obj-ref`,

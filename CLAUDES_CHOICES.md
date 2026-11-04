@@ -8862,3 +8862,41 @@ benchmarks on the engine, best of 3, some 2% slower (407 to 417 ms for
 `captures.fx`, 8425 to 8641 for `loop.fx`), the subtag's mapping to a
 kind. Found on the way (TODO): the compiler no longer runs on the engine,
 which has no `rep-nodes`.
+
+## C319. The engine's objects in Fixpt's layout (2026-11-03; one heap, step 1b)
+
+The engine's objects are Fixpt's (`heap.rs`, `layout.fx`), in
+`fx26/heap.kfx`, its collector Cheney's over them.
+- **A pair** is Fixpt's: two words, tag `001`, no header (`pair!`,
+  `pair-car`, `pair-cdr` direct).
+- **Any other object** is a bloblet, its value at its suffix, tag `100`:
+  Fixpt's header (the kind in 8 bits, F fields in 18, B suffix bytes in
+  32; past 2^18 fields an extension word before it, kind 255), its
+  fields, the last a trailer (tag `101`, F) where it has any. An object of
+  raw words (strings, bytevectors, reals, bignums) has them as its suffix,
+  never traced, as Fixpt's; one of no fields no trailer.
+- **Kinds** are Fixpt's where the engine's object is Fixpt's: box, sum,
+  product, an FX-26 array (Fixpt's bloblet of fields: the engine printed
+  it so already), datum's vector, closure, continuation, environment
+  frame, flat array, eqtable, flonum. The others are kinds past Fixpt's,
+  200 on, until each is Fixpt's (1c): datatype values, the engine's flat,
+  its frames, constructors, FX-26 bloblets and blobrefs, strings,
+  bytevectors, bignums.
+- **Two orders of fields.** Fixpt's own kinds keep `alloc`'s order,
+  payload word `i` the word `i` after the header, as tier 1 reads them
+  (`obj-ref`, its trailer read for F). The engine's private objects
+  (frames, environments, closures, continuations), which only it reads,
+  are in Fixpt's slot order, word `i` field `i + 2` at `p - 2 - i`, no
+  trailer read (`slot-ref`): the machine's hot path.
+- **The room** a step may use is two thirds of what is free: an object
+  is at most half again its old size (a trailer), a pair smaller.
+- **The collector**: Cheney's, its forwarding a tag-`111` word in a
+  pair's first word and below a bloblet's suffix; the copies scanned
+  header by header (a word that is no header begins a pair).
+All 3788 tests as before, both REPLs' sessions. `engine-bench.py`, best
+of 3, from before C318: 11 to 17% slower (`loop.fx` 8425 to 9713 ms,
+`tak.fx` 757 to 843): a kind is only in the header, two loads to reach,
+and Fixpt's kinds' fields need their count read. Measured on the way:
+the first layout, `alloc`'s order everywhere and half the room, was 60%
+slower; the slot order for the engine's own objects took it to 24%,
+direct pairs to 15%.

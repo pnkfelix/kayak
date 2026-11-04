@@ -112,13 +112,17 @@
 
 "Objects of a kind."
 (define is-obj? (subr (maxeff (read @globals) spin (read @h)) (i64 i64) bool)
-  (lambda (w kind) (and (pointer? w) (i64= (obj-kind w) kind))))
+  (lambda (w kind)
+    "A pair by its tag; any other object by its header (C318)."
+    (if (i64= kind ob-pair)
+        (pair-tagged? w)
+        (and (i64= (i64-and w 7) 4) (i64= (header-kind (at-word (header-at w))) kind)))))
 
 "Pairs: their car and cdr, written in place."
 (define pair! (subr hp (i64 i64) i64)
-  (lambda (a d) (let ((p (alloc! ob-pair 2))) (begin (obj-set! p 0 a) (obj-set! p 1 d) p))))
-(define pair-car (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (obj-ref p 0)))
-(define pair-cdr (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (obj-ref p 1)))
+  (lambda (a d) (let ((i (bump! 2))) (begin (put! i a) (put! (i64+ i 1) d) (pair-at i)))))
+(define pair-car (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (at-word (pointer-index p))))
+(define pair-cdr (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (at-word (i64+ (pointer-index p) 1))))
 
 "Strings: a character a word."
 (define string-length-w (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (s) (obj-size s)))

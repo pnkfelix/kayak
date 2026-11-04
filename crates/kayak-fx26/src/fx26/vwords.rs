@@ -780,7 +780,7 @@ pub fn read_line_word_x() -> i64 {
     let n = get(pending_points());
     if i64_gt_eq(n, 0i64) {
         let p = alloc_x(ob_string(), n);
-        take_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), int_lit(1));
+        take_points(get(space()), i64_to_int(pointer_index(p)), int_lit(1));
         sum_word_x(str_lit("line"), p)
     } else if i64_eq(n, -1i64) {
         sum_word_x(str_lit("eof"), w_unit())
@@ -793,7 +793,7 @@ pub fn read_line_word_x() -> i64 {
 // error (2): `done`, or the failure (its room found before, as a write's
 // is not: a failure's is made after, a rare path).
 pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
-    if i64_eq(int_to_i64(write_points(get(space()), i64_to_int(i64_plus(pointer_index(p), 1i64)), i64_to_int(obj_size(p)), int_lit(1), i64_to_int(stream))), 0i64) {
+    if i64_eq(int_to_i64(write_points(get(space()), i64_to_int(pointer_index(p)), i64_to_int(obj_size(p)), int_lit(1), i64_to_int(stream))), 0i64) {
         sum_word_x(str_lit("done"), w_unit())
     } else {
         failure_pended_x();
