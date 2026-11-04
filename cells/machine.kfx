@@ -830,7 +830,7 @@
      on the data stack."
     (begin
       (push-return!)
-      (set cur (st s-trampoline)) (set kk f-cell0) (set fp (get dsp)) (set clo v-false)
+      (set cur (sched-st s-trampoline)) (set kk f-cell0) (set fp (get dsp)) (set clo v-false)
       (push! f))))
 
 (define poll! (subr cm () bool)

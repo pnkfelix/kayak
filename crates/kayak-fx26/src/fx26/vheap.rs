@@ -634,6 +634,7 @@ pub fn collect_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArr
     roots_forwarded_x(consts, 0i64, flatarray_length_i64(consts));
     roots_forwarded_x(get(symbol_objects()), 0i64, flatarray_length_i64(get(symbol_objects())));
     roots_forwarded_x(get(keyword_objects()), 0i64, flatarray_length_i64(get(keyword_objects())));
+    set(sched_state(), forward_x(get(sched_state())));
     collect_end_x();
     room_x(i64_plus(need, i64_quotient(need, 2i64)))
 }

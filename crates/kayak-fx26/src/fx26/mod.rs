@@ -50,6 +50,8 @@ pub mod numbers;
 pub use numbers::*;
 pub mod show;
 pub use show::*;
+pub mod sched;
+pub use sched::*;
 pub mod vheap;
 pub use vheap::*;
 pub mod words;

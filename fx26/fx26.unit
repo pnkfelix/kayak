@@ -23,11 +23,12 @@ regs-gen.kfx
 regs-entry.kfx
 cg-top.kfx
 listing.kfx
-; Tier 1's heap (C332), numbers and printing (C333), which the engine's are written over.
+; Tier 1's heap (C332), numbers and printing (C333) and scheduler's state (C334), which the engine's are written over.
 ../cells/layout.kfx
 ../cells/heap.kfx
 ../cells/numbers.kfx
 ../cells/show.kfx
+../cells/sched.kfx
 vheap.kfx
 words.kfx
 table.kfx

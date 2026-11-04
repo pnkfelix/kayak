@@ -1580,7 +1580,7 @@ pub fn poll_due_x() -> i64 {
 /// on the data stack.
 pub fn preempt_entered_x(f: i64) -> () {
     push_return_x();
-    set(cur(), st(s_trampoline()));
+    set(cur(), sched_st(s_trampoline()));
     set(kk(), f_cell0());
     set(fp(), get(dsp()));
     set(clo(), v_false());

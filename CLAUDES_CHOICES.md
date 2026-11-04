@@ -9204,3 +9204,29 @@ way, everywhere (docs/research/one-heap.md, step 2):
   `write-outcome`; the engine's `two-64` goes, tier 1's the same. Tier 1's
   numbers and printing take the heap's effects (`cread`, `cwrite`), not `cm`.
 All 907 programs print as before but those three.
+
+## C334. One scheduler's state for the engine and tier 1 (2026-11-04; one heap, step 3)
+
+The engine's program loads tier 1's `cells/sched.kfx` (C125, a port of
+Fixpt's `sched.rs`): the scheduler's state vector (`sched-state`, which
+the engine's `collect!` now forwards; it was among the engine's
+constants), its tasks, run queue, I-cells, mailboxes, timers, groups,
+monitors and cancellations, the waits on the input and on processes.
+The engine's `vsched.kfx`, which was a second port of the same, is now
+its dispatcher alone (`sched-op!`, `%sched`'s operations by number), as
+tier 1's is in its prims.kfx; the two dispatchers stay apart, each giving
+failures as its machine does: the engine checks an I-cell written twice
+and an empty mailbox before tier 1's procedures would `trap!`.
+- **The engine's I-cells and mailboxes were kinds 16 and 17**, Fixpt's
+  `promise` and `hash-table`; now tier 1's, Fixpt's `icell` (46) and
+  `mailbox` (47), their state in slots 2 to 4.
+- **Messages are copied**, as Fixpt's and tier 1's are (`copy-within!`:
+  sharing and cycles kept, what is shared not copied); the engine's
+  were shared, which its checker's rule that what crosses is
+  transmissible made the same to a program but for identity.
+- Renamed, as the engine's program has the names: tier 1's `st`,
+  `st-set!`, `st-cons!` (the checker's state is `st`) are `sched-st`,
+  `sched-st-set!`, `sched-st-cons!`; its `filled!` `items-filled!`. Its
+  `kept-of` takes a predicate of `cread`, not `cm`, which gave every
+  caller tier 1's I/O.
+All 907 programs print as before, and the REPL's sessions.

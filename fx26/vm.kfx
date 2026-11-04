@@ -298,7 +298,7 @@
           (set sched-poll sched-slice)
           (if (not (sched?))
               w-false
-              (let ((f (sched-ref s-preempt)) (t (sched-ref s-tag)))
+              (let ((f (sched-st s-preempt)) (t (sched-st s-tag)))
                 (if (and (is-obj? f ob-proc)
                          (wanted! (and (not (i64= t w-false)) (i64>= (frames-to k (tag-number t) 0) 0))))
                     (begin (quiet-enter!) f)
@@ -335,7 +335,7 @@
             ((and (i64>= (get deadline) 0) (past-deadline?))
              (park! mode node env k val f args))
             ((and (i64= mode 0) (not (i64= (preempt-at! k) w-false)))
-             (run 2 -1 0 (frame! fk-preempted k 2 (code-word node) env 0 0) 0 (sched-ref s-preempt) w-nil))
+             (run 2 -1 0 (frame! fk-preempted k 2 (code-word node) env 0 0) 0 (sched-st s-preempt) w-nil))
             ((i64= mode 0)
              (begin
              (if (i64> (get fuel) 0) (set fuel (i64- (get fuel) 1)) #u)
@@ -500,7 +500,7 @@
       (let ((tag (sched-tag)))
         (if (or (i64= tag w-false) (i64< (frames-to k (tag-number tag) 0) 0))
             (stopped! node env k)
-            (let ((t (task-failed! (string-word! (get engine-failure)) #t)))
+            (let ((t (task-failed! (get engine-failure) #t)))
               (if (i64= t w-false)
                   (stopped! node env k)
                   (begin (failure-taken!) (abort-to (tag-number t) k w-unit))))))))

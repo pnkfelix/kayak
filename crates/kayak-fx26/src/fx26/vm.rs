@@ -677,7 +677,7 @@ pub fn preempt_at_x(k: i64) -> i64 {
         if not(sched_p()) {
             w_false()
         } else {
-            let (f, t) = (sched_ref(s_preempt()), sched_ref(s_tag()));
+            let (f, t) = (sched_st(s_preempt()), sched_st(s_tag()));
             if (is_obj_p(f, ob_proc()) && wanted_x((not(i64_eq(t, w_false())) && i64_gt_eq(frames_to(k, tag_number(t), 0i64), 0i64)))) {
                 quiet_enter_x();
                 f
@@ -756,7 +756,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
             } else if (i64_gt_eq(get(deadline()), 0i64) && past_deadline_p()) {
                 return park_x(mode, node, env, k, val, f, args);
             } else if (i64_eq(mode, 0i64) && not(i64_eq(preempt_at_x(k), w_false()))) {
-                (mode, node, env, k, val, f, args) = (2i64, -1i64, 0i64, frame_x(fk_preempted(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, sched_ref(s_preempt()), w_nil());
+                (mode, node, env, k, val, f, args) = (2i64, -1i64, 0i64, frame_x(fk_preempted(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, sched_st(s_preempt()), w_nil());
                 continue;
             } else if i64_eq(mode, 0i64) {
                 if i64_gt(get(fuel()), 0i64) {
@@ -1170,7 +1170,7 @@ pub fn failed_at(node: i64, env: i64, k: i64) -> i64 {
     if (i64_eq(tag, w_false()) || i64_lt(frames_to(k, tag_number(tag), 0i64), 0i64)) {
         stopped_x(node, env, k)
     } else {
-        let t = task_failed_x(string_word_x(get(engine_failure())), true);
+        let t = task_failed_x(get(engine_failure()), true);
         if i64_eq(t, w_false()) {
             stopped_x(node, env, k)
         } else {

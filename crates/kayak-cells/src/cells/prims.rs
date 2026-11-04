@@ -4144,25 +4144,25 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         if i64_eq(p, v_false()) {
             ()
         } else {
-            st_cons_x(s_parents(), cons_x(a, p))
+            sched_st_cons_x(s_parents(), cons_x(a, p))
         };
-        st_cons_x(s_groups(), cons_x(a, a));
-        st_cons_x(s_monitors(), cons_x(a, b));
+        sched_st_cons_x(s_groups(), cons_x(a, a));
+        sched_st_cons_x(s_monitors(), cons_x(a, b));
         v_unit_word()
     } else if i64_eq(n, 36i64) {
         let g = group_of(fix(get(task_now())));
         if i64_eq(g, v_false()) {
             ()
         } else {
-            st_cons_x(s_groups(), cons_x(a, g))
+            sched_st_cons_x(s_groups(), cons_x(a, g))
         };
         v_unit_word()
     } else if i64_eq(n, 37i64) {
-        let f = st(s_failure());
+        let f = sched_st(s_failure());
         if i64_eq(f, v_false()) {
             ()
         } else {
-            st_set_x(s_failure(), v_false());
+            sched_st_set_x(s_failure(), v_false());
             if i64_eq(get(task_now()), 0i64) {
                 ()
             } else {
@@ -4176,7 +4176,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         if i64_eq(fix_val(a), 0i64) {
             ()
         } else {
-            st_cons_x(s_cancelled(), a)
+            sched_st_cons_x(s_cancelled(), a)
         };
         v_unit_word()
     } else if i64_eq(n, 25i64) {
@@ -4189,9 +4189,9 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
     } else if i64_eq(n, 5i64) {
         queue_pop_x()
     } else if i64_eq(n, 26i64) {
-        st_set_x(s_preempt(), a);
-        if i64_eq(st(s_trampoline()), v_false()) {
-            st_set_x(s_trampoline(), trampoline_x())
+        sched_st_set_x(s_preempt(), a);
+        if i64_eq(sched_st(s_trampoline()), v_false()) {
+            sched_st_set_x(s_trampoline(), trampoline_x())
         } else {
             ()
         };
@@ -4199,34 +4199,34 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
     } else if i64_eq(n, 43i64) {
         boolean(stdin_ready_p())
     } else if i64_eq(n, 44i64) {
-        st_cons_x(s_stdin(), a);
+        sched_st_cons_x(s_stdin(), a);
         v_unit_word()
     } else if i64_eq(n, 45i64) {
-        st_set_x(s_stdin(), without_x(st(s_stdin()), 0i64, a));
+        sched_st_set_x(s_stdin(), without_x(sched_st(s_stdin()), 0i64, a));
         v_unit_word()
     } else if i64_eq(n, 46i64) {
         boolean(process_output_ready_p(fix_val(a)))
     } else if i64_eq(n, 47i64) {
-        st_cons_x(s_output(), cons_x(a, b));
+        sched_st_cons_x(s_output(), cons_x(a, b));
         v_unit_word()
     } else if i64_eq(n, 48i64) {
-        st_set_x(s_output(), without_x(st(s_output()), 2i64, a));
+        sched_st_set_x(s_output(), without_x(sched_st(s_output()), 2i64, a));
         v_unit_word()
     } else if i64_eq(n, 49i64) {
         boolean(process_ended_p(fix_val(a)))
     } else if i64_eq(n, 50i64) {
-        st_cons_x(s_exit(), cons_x(a, b));
+        sched_st_cons_x(s_exit(), cons_x(a, b));
         v_unit_word()
     } else if i64_eq(n, 51i64) {
-        st_set_x(s_exit(), without_x(st(s_exit()), 2i64, a));
+        sched_st_set_x(s_exit(), without_x(sched_st(s_exit()), 2i64, a));
         v_unit_word()
     } else if i64_eq(n, 52i64) {
         boolean(i64_gt_eq(int_to_i64(process_news()), 0i64))
     } else if i64_eq(n, 53i64) {
-        st_cons_x(s_news(), a);
+        sched_st_cons_x(s_news(), a);
         v_unit_word()
     } else if i64_eq(n, 54i64) {
-        st_set_x(s_news(), without_x(st(s_news()), 0i64, a));
+        sched_st_set_x(s_news(), without_x(sched_st(s_news()), 0i64, a));
         v_unit_word()
     } else if i64_eq(n, 55i64) {
         int_value_x(i64_to_int(i64_plus(clock(), i64_star(if i64_lt(int_to_i64(int_of(a)), 0i64) {
@@ -4235,25 +4235,25 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
             int_to_i64(int_of(a))
         }, 1000000i64))))
     } else if i64_eq(n, 40i64) {
-        st_cons_x(s_waiting(), cons_x(a, b));
+        sched_st_cons_x(s_waiting(), cons_x(a, b));
         v_unit_word()
     } else if i64_eq(n, 41i64) {
-        st_set_x(s_waiting(), without_x(st(s_waiting()), 1i64, a));
+        sched_st_set_x(s_waiting(), without_x(sched_st(s_waiting()), 1i64, a));
         v_unit_word()
     } else if i64_eq(n, 42i64) {
         reaped_x()
     } else if i64_eq(n, 27i64) {
-        st_cons_x(s_parked(), a);
+        sched_st_cons_x(s_parked(), a);
         v_unit_word()
     } else if i64_eq(n, 28i64) {
         pop_any_x()
     } else if i64_eq(n, 29i64) {
-        let r = i64_plus(fix_val(st(s_running())), if is_fixnum_p(a) {
+        let r = i64_plus(fix_val(sched_st(s_running())), if is_fixnum_p(a) {
             fix_val(a)
         } else {
             the::<i64>(0i64)
         });
-        st_set_x(s_running(), fix(if i64_lt(r, 0i64) {
+        sched_st_set_x(s_running(), fix(if i64_lt(r, 0i64) {
             the::<i64>(0i64)
         } else {
             r
@@ -4296,7 +4296,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         };
         v_unit_word()
     } else if i64_eq(n, 20i64) {
-        st_set_x(s_timers(), without_x(st(s_timers()), 2i64, a));
+        sched_st_set_x(s_timers(), without_x(sched_st(s_timers()), 2i64, a));
         v_unit_word()
     } else if i64_eq(n, 14i64) {
         cell_put_x(a, b)
@@ -4307,13 +4307,13 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
             v_unit_word()
         }
     } else if i64_eq(n, 12i64) {
-        if i64_eq(st(s_tag()), v_false()) {
+        if i64_eq(sched_st(s_tag()), v_false()) {
             frozen2_x(k_sum(), symbol_x(str_lit("none")), v_unit_word())
         } else {
-            frozen2_x(k_sum(), symbol_x(str_lit("some")), st(s_tag()))
+            frozen2_x(k_sum(), symbol_x(str_lit("some")), sched_st(s_tag()))
         }
     } else if i64_eq(n, 13i64) {
-        st_set_x(s_tag(), a);
+        sched_st_set_x(s_tag(), a);
         v_unit_word()
     } else if i64_eq(n, 16i64) {
         set(regions(), i64_plus(get(regions()), 1i64));

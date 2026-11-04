@@ -283,6 +283,7 @@
       (roots-forwarded! consts 0 (flatarray-length-i64 consts))
       (roots-forwarded! (get symbol-objects) 0 (flatarray-length-i64 (get symbol-objects)))
       (roots-forwarded! (get keyword-objects) 0 (flatarray-length-i64 (get keyword-objects)))
+      (set sched-state (forward! (get sched-state)))
       (collect-end!)
       (room! (i64+ need (i64-quotient need 2))))))
 

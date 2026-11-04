@@ -179,7 +179,7 @@ pub fn sched_p() -> bool {
     not(i64_eq(get(sched_state()), v_false()))
 }
 
-pub fn filled_x(mut v: i64, mut i: i64, mut xs: List<i64>) -> i64 {
+pub fn items_filled_x(mut v: i64, mut i: i64, mut xs: List<i64>) -> i64 {
     loop {
         if null_p(xs) {
             return v;
@@ -196,25 +196,25 @@ pub fn state_x() -> i64 {
     if sched_p() {
         get(sched_state())
     } else {
-        let s = filled_x(make_bloblet_x(k_vector(), 20i64, 0i64, true, false), 0i64, kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::nil())))))))))))))))))))));
+        let s = items_filled_x(make_bloblet_x(k_vector(), 20i64, 0i64, true, false), 0i64, kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::nil())))))))))))))))))))));
         set(sched_state(), s);
         s
     }
 }
 
 #[inline]
-pub fn st(k: i64) -> i64 {
+pub fn sched_st(k: i64) -> i64 {
     elt_ref(state_x(), k)
 }
 
 #[inline]
-pub fn st_set_x(k: i64, v: i64) -> () {
+pub fn sched_st_set_x(k: i64, v: i64) -> () {
     elt_set_x(state_x(), k, v)
 }
 
 #[inline]
-pub fn st_cons_x(k: i64, v: i64) -> () {
-    st_set_x(k, cons_x(v, st(k)))
+pub fn sched_st_cons_x(k: i64, v: i64) -> () {
+    sched_st_set_x(k, cons_x(v, sched_st(k)))
 }
 
 // Tasks: whether each is ended, and its quiet count with its grace in bit
@@ -486,7 +486,7 @@ pub fn i64_in_p(xs: List<i64>, x: i64) -> bool {
 // The run queue.
 #[inline]
 pub fn queue_push_x(thunk: i64) -> () {
-    st_cons_x(s_back(), thunk)
+    sched_st_cons_x(s_back(), thunk)
 }
 
 pub fn pushed_each_x(mut ws: i64) -> () {
@@ -503,18 +503,18 @@ pub fn pushed_each_x(mut ws: i64) -> () {
 
 /// The next task to run, the oldest, or `#f` (`pop`).
 pub fn queue_pop_x() -> i64 {
-    let front = if i64_eq(st(s_front()), v_null()) {
-        let f = reversed_onto_x(st(s_back()), v_null());
-        st_set_x(s_back(), v_null());
+    let front = if i64_eq(sched_st(s_front()), v_null()) {
+        let f = reversed_onto_x(sched_st(s_back()), v_null());
+        sched_st_set_x(s_back(), v_null());
         f
     } else {
-        st(s_front())
+        sched_st(s_front())
     };
     if not(is_pair_p(front)) {
-        st_set_x(s_front(), v_null());
+        sched_st_set_x(s_front(), v_null());
         v_false()
     } else {
-        st_set_x(s_front(), pair_cdr(front));
+        sched_st_set_x(s_front(), pair_cdr(front));
         pair_car(front)
     }
 }
@@ -525,9 +525,9 @@ pub fn pop_any_x() -> i64 {
     if not(i64_eq(t, v_false())) {
         t
     } else {
-        let ps = reversed_onto_x(st(s_parked()), v_null());
+        let ps = reversed_onto_x(sched_st(s_parked()), v_null());
         if is_pair_p(ps) {
-            st_set_x(s_parked(), reversed_onto_x(pair_cdr(ps), v_null()));
+            sched_st_set_x(s_parked(), reversed_onto_x(pair_cdr(ps), v_null()));
             pair_car(ps)
         } else {
             v_false()
@@ -870,7 +870,7 @@ pub fn copy_within_x(root: i64) -> i64 {
     pushed_on_x(copy_todo(), copy_pending(), root);
     discovered_x();
     filled_copy_x(0i64);
-    st_set_x(s_copied(), fix(i64_plus(fix_val(st(s_copied())), get(copy_words()))));
+    sched_st_set_x(s_copied(), fix(i64_plus(fix_val(sched_st(s_copied())), get(copy_words()))));
     let m = copied_value(root);
     table_emptied_x(0i64);
     set(copy_ordered(), 0i64);
@@ -958,7 +958,7 @@ pub fn timer_add_x(t: i64, w: i64) -> i64 {
     if i64_gt_eq(clock(), t) {
         queue_push_x(w)
     } else {
-        st_cons_x(s_timers(), cons_x(fix(if i64_gt(t, fix_max()) {
+        sched_st_cons_x(s_timers(), cons_x(fix(if i64_gt(t, fix_max()) {
             fix_max()
         } else if i64_lt(t, fix_min()) {
             fix_min()
@@ -977,7 +977,7 @@ pub fn due_in_p(l: i64, now: i64) -> bool {
 /// Whether a timer is due; the clock not read if none is set.
 #[inline]
 pub fn timer_due_p() -> bool {
-    let ts = st(s_timers());
+    let ts = sched_st(s_timers());
     (is_pair_p(ts) && due_in_p(ts, clock()))
 }
 
@@ -1128,9 +1128,9 @@ pub fn stdin_wakers_pushed_x(l: i64) -> () {
 /// The wakers of `slot` whose process is ready pushed, oldest first; the
 /// rest kept, in order (Fixpt's `timers_wait`).
 pub fn process_waiters_woken_x(slot: i64, output: bool) -> () {
-    let parted = waiters_split(st(slot), output, v_null(), v_null());
+    let parted = waiters_split(sched_st(slot), output, v_null(), v_null());
     if is_pair_p(pair_cdr(parted)) {
-        st_set_x(slot, reversed_onto_x(pair_car(parted), v_null()));
+        sched_st_set_x(slot, reversed_onto_x(pair_car(parted), v_null()));
         wakers_pushed_x(pair_cdr(parted))
     } else {
         ()
@@ -1144,10 +1144,10 @@ pub fn process_waiters_woken_x(slot: i64, output: bool) -> () {
 /// each timer due taken, its waker run, in the order of their times, and
 /// `#t` (Fixpt's `timers_wait`; C232).
 pub fn timers_wait_x(sleep: bool) -> i64 {
-    let ts = st(s_timers());
-    let input = is_pair_p(st(s_stdin()));
-    let news = is_pair_p(st(s_news()));
-    let processes = (news || is_pair_p(st(s_output())) || is_pair_p(st(s_exit())));
+    let ts = sched_st(s_timers());
+    let input = is_pair_p(sched_st(s_stdin()));
+    let news = is_pair_p(sched_st(s_news()));
+    let processes = (news || is_pair_p(sched_st(s_output())) || is_pair_p(sched_st(s_exit())));
     if (not(is_pair_p(ts)) && not(input) && not(processes)) {
         v_false()
     } else {
@@ -1171,15 +1171,15 @@ pub fn timers_wait_x(sleep: bool) -> i64 {
             sleep_until(timers_earliest(ts, fix_max()))
         };
         if (input && stdin_ready_p()) {
-            let ws = st(s_stdin());
-            st_set_x(s_stdin(), v_null());
+            let ws = sched_st(s_stdin());
+            sched_st_set_x(s_stdin(), v_null());
             stdin_wakers_pushed_x(ws)
         } else {
             ()
         };
         if (news && i64_gt_eq(int_to_i64(process_news()), 0i64)) {
-            let ws = st(s_news());
-            st_set_x(s_news(), v_null());
+            let ws = sched_st(s_news());
+            sched_st_set_x(s_news(), v_null());
             stdin_wakers_pushed_x(ws)
         } else {
             ()
@@ -1191,7 +1191,7 @@ pub fn timers_wait_x(sleep: bool) -> i64 {
             ()
         };
         let now = clock();
-        st_set_x(s_timers(), without_x(ts, 5i64, now));
+        sched_st_set_x(s_timers(), without_x(ts, 5i64, now));
         wakers_pushed_x(timers_sorted_x(reversed_onto_x(only_x(ts, 5i64, now), v_null()), v_null()));
         v_true()
     }
@@ -1216,7 +1216,7 @@ pub fn assq_cdr(mut l: i64, mut t: i64) -> i64 {
 #[inline]
 pub fn group_of(t: i64) -> i64 {
     if sched_p() {
-        assq_cdr(st(s_groups()), t)
+        assq_cdr(sched_st(s_groups()), t)
     } else {
         v_false()
     }
@@ -1224,25 +1224,25 @@ pub fn group_of(t: i64) -> i64 {
 
 /// What the scheduler kept of task `t`, ended (`forget_task`).
 pub fn forget_task_x(t: i64) -> () {
-    st_set_x(s_cancelled(), without_x(st(s_cancelled()), 0i64, t));
-    st_set_x(s_groups(), without_x(st(s_groups()), 1i64, t));
-    st_set_x(s_monitors(), without_x(st(s_monitors()), 1i64, t));
-    st_set_x(s_parents(), without_x(st(s_parents()), 3i64, t));
-    st_set_x(s_waiting(), without_x(st(s_waiting()), 1i64, t))
+    sched_st_set_x(s_cancelled(), without_x(sched_st(s_cancelled()), 0i64, t));
+    sched_st_set_x(s_groups(), without_x(sched_st(s_groups()), 1i64, t));
+    sched_st_set_x(s_monitors(), without_x(sched_st(s_monitors()), 1i64, t));
+    sched_st_set_x(s_parents(), without_x(sched_st(s_parents()), 3i64, t));
+    sched_st_set_x(s_waiting(), without_x(sched_st(s_waiting()), 1i64, t))
 }
 
 #[inline]
 pub fn cancelled_p(t: i64) -> bool {
-    heap_member_p(st(s_cancelled()), t)
+    heap_member_p(sched_st(s_cancelled()), t)
 }
 
 /// Each cancelled task that waits, `(task . stop)`, taken from those that
 /// wait (`REAP`).
 pub fn reaped_x() -> i64 {
-    let cs = st(s_cancelled());
-    let ws = st(s_waiting());
+    let cs = sched_st(s_cancelled());
+    let ws = sched_st(s_waiting());
     let them = only_x(ws, 4i64, cs);
-    st_set_x(s_waiting(), without_x(ws, 4i64, cs));
+    sched_st_set_x(s_waiting(), without_x(ws, 4i64, cs));
     them
 }
 
@@ -1255,12 +1255,12 @@ pub fn wanted_how_x() -> i64 {
     if (quiet_p() || take_grace_x()) {
         0i64
     } else if i64_eq(get(task_now()), 0i64) {
-        if ((is_pair_p(st(s_front())) || is_pair_p(st(s_back())) || is_pair_p(st(s_parked())) || timer_due_p()) && i64_eq(fix_val(st(s_running())), 0i64)) {
+        if ((is_pair_p(sched_st(s_front())) || is_pair_p(sched_st(s_back())) || is_pair_p(sched_st(s_parked())) || timer_due_p()) && i64_eq(fix_val(sched_st(s_running())), 0i64)) {
             1i64
         } else {
             0i64
         }
-    } else if i64_eq(st(s_tag()), v_false()) {
+    } else if i64_eq(sched_st(s_tag()), v_false()) {
         0i64
     } else {
         2i64
@@ -1280,7 +1280,7 @@ pub fn wanted_x(reach: bool) -> bool {
 #[inline]
 pub fn sched_tag() -> i64 {
     if sched_p() {
-        st(s_tag())
+        sched_st(s_tag())
     } else {
         v_false()
     }
@@ -1290,7 +1290,7 @@ pub fn sched_tag() -> i64 {
 /// no scheduler's `preempt` to call (`preempt_due_with`).
 #[inline]
 pub fn preempt_wanted_x() -> i64 {
-    if (sched_p() && is_kind_p(st(s_preempt()), k_closure())) {
+    if (sched_p() && is_kind_p(sched_st(s_preempt()), k_closure())) {
         wanted_how_x()
     } else {
         0i64
@@ -1302,13 +1302,13 @@ pub fn preempt_wanted_x() -> i64 {
 #[inline]
 pub fn preempt_due_x() -> i64 {
     quiet_enter_x();
-    st(s_preempt())
+    sched_st(s_preempt())
 }
 
 /// `gs`, with every group inside one of them (`BRANCH_GROUP`).
 pub fn groups_within(mut gs: List<i64>) -> List<i64> {
     loop {
-        let more = kept_of(heap_cars(kept_of(heap_items(st(s_parents())), lambda1(move |e: i64| {
+        let more = kept_of(heap_cars(kept_of(heap_items(sched_st(s_parents())), lambda1(move |e: i64| {
             not(i64_in_p(gs, pair_cdr(e)))
         }))), lambda1(move |g: i64| {
             i64_in_p(gs, g)
@@ -1355,7 +1355,7 @@ pub fn pushed_cancelled_x(mut ts: List<i64>) -> () {
         if null_p(ts) {
             return ();
         } else {
-            st_cons_x(s_cancelled(), car(ts));
+            sched_st_cons_x(s_cancelled(), car(ts));
             ts = cdr(ts);
             continue;
         }
@@ -1383,18 +1383,18 @@ pub fn task_failed_x(message: Str, reach: bool) -> i64 {
     let mon = if i64_eq(g, v_false()) {
         v_false()
     } else {
-        last_monitor(st(s_monitors()), g, v_false())
+        last_monitor(sched_st(s_monitors()), g, v_false())
     };
-    if (i64_eq(get(task_now()), 0i64) || i64_eq(mon, v_false()) || i64_eq(st(s_tag()), v_false()) || not(reach) || not(i64_eq(st(s_failure()), v_false()))) {
+    if (i64_eq(get(task_now()), 0i64) || i64_eq(mon, v_false()) || i64_eq(sched_st(s_tag()), v_false()) || not(reach) || not(i64_eq(sched_st(s_failure()), v_false()))) {
         v_false()
     } else {
         let gs = groups_within(kayak_rt::heap_cons(g, kayak_rt::nil()));
-        pushed_cancelled_x(heap_cars(kept_of(heap_items(st(s_groups())), lambda1(move |e: i64| {
+        pushed_cancelled_x(heap_cars(kept_of(heap_items(sched_st(s_groups())), lambda1(move |e: i64| {
             (not(i64_in_p(gs, pair_cdr(e))) || i64_eq(pair_car(e), cur))
         }))));
-        st_set_x(s_failure(), cons_x(make_string_x(message), mon));
+        sched_st_set_x(s_failure(), cons_x(make_string_x(message), mon));
         all_quiet_left_x();
-        st(s_tag())
+        sched_st(s_tag())
     }
 }
 
