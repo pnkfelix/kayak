@@ -104,6 +104,19 @@ dispatcher. Next: step 4.
 
 ## Questions
 
+- **Step 4, against Fixpt** (2026-11-04, after C334). Fixpt has no calls
+  between its evaluator and its compiled code: its REPL and `fixpt eval`
+  compile each form (its FX-26 compiler) and run the words on one chosen
+  machine (`--machine`); its evaluator, `fx-ast-eval`, is a machine of
+  its own, "the reference, not a way to run things"
+  (`docs/performance.md`); its adapters are between the cellular and the
+  native conventions only. So step 4 as written, the engine's procedures
+  and tier 1's calling each other, would be kayak's alone. With the heap
+  one (steps 1 to 3), `docs/research/compiled-stage.md`'s (a), the front
+  end linked into the compiled program as Fixpt's conductor is, needs no
+  adapter: staged code becomes cells. The user's to choose: step 4 as
+  written, or (a) next, step 4 dropped.
+
 - **Speed.** The engine's words are tagged in 2 bits, Fixpt's in 3, and
   Fixpt's objects are read below a suffix, not after a header. Step 1
   measures what that costs the engine. If it costs much, the API's hot
