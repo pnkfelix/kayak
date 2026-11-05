@@ -1515,10 +1515,15 @@ pub fn routine_x(mut n: i64) -> i64 {
 }
 
 /// Enter word `w`, sharing this frame, as Forth's words call; or run its
-/// routine, if its entry is one: whether it was entered.
+/// routine, if its entry is one: whether it was entered. A compiled
+/// word's entry is its code (C343), its cells run here as any word's.
 pub fn enter_x(w: i64) -> bool {
-    let entry = fix_val(slot_of(w, f_entry()));
-    if (i64_eq(entry, rt_docol()) || i64_gt_eq(entry, rt_count())) {
+    let entry = if is_fixnum_p(slot_of(w, f_entry())) {
+        fix_val(slot_of(w, f_entry()))
+    } else {
+        rt_docol()
+    };
+    if i64_eq(entry, rt_docol()) {
         check_limits_x();
         if is_bloblet_p(get(cur())) {
             push_return_x()
@@ -2261,6 +2266,7 @@ pub fn hand_x(m: HandCode) -> bool {
     });
     flatarray_set_i64_x(s, int_to_i64(st_mem_length()), get(limit()));
     flatarray_set_i64_x(s, int_to_i64(st_vbase()), get(vbase()));
+    flatarray_set_i64_x(s, int_to_i64(st_code_delta()), i64_minus(get(code_distance()), i64_plus(8i64, t_bloblet())));
     set(hand_entries(), i64_plus(get(hand_entries()), 1i64));
     regs_copied_x(get(rr()), 0i64, s, int_to_i64(st_regs()), 9i64);
     let why = int_to_i64(m(s, get(mem()), get(ds()), get(rs())));

@@ -122,7 +122,9 @@ section below where it has one; here the order, and what each is.
      (`target/kayak-checks/checkers`, `both`).
    - **From Fixpt 19b31f1 and 8616f2f** (C314, C341): Fixpt's 516abc8e and
      bb635fe8, a compiled word's code kept in its own bloblet, on x86_64 and
-     arm64 (`cells/hand.kfx`'s mark at 8616f2f, the carrying over next);
+     arm64 (`cells/hand.kfx`'s mark at 8616f2f; x86_64's steps 1 to 3 done,
+     C342, C343: `docs/research/word-code.md`; next, words compiled as
+     read, step 4, then arm64 on Fixpt's interim, then measuring);
      arm64's register code (6c46d762). (`attempt-within`
      and `dlambda` descriptions done, C315.)
    - **Exporting a new item from check-exprs.kfx's `expressions` module**

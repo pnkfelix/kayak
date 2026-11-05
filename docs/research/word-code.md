@@ -1,7 +1,8 @@
 # A compiled word's code in its own bloblet (Fixpt's 516abc8e, bb635fe8)
 
-Status: plan (2026-11-04, after C341). The user's "go ahead" (the port, after
-the pin move to 8616f2f). Step 6 of `docs/research/compiled-stage.md`:
+Status: steps 1 to 3 done on x86_64 (C342, C343, 2026-11-05); step 4
+next. The user's "go ahead" (the port, after the pin move to 8616f2f) and
+"go for it" (this plan: arm64 on Fixpt's interim, the port in steps). Step 6 of `docs/research/compiled-stage.md`:
 staged words compiled to machine code need it, as Fixpt's sessions did.
 
 ## What kayak's tiers 4 to 6 do now
@@ -77,3 +78,22 @@ compiled: it runs as cells (C338).
 2. **The block's words meanwhile**: step 1 keeps them so that every step
    tests as it goes; step 3 removes them. Fine as one sequence, or would
    you rather have the switch in one go?
+
+## Done
+
+- **Step 1** (C342): the machine's places a word's code goes to, in the
+  state (`st-exports`); a word's code reaches them by it alone.
+- **Steps 2 and 3** (C343), as one: steps 2's code bloblets could not run
+  before step 3's dispatch by tag, so neither tests alone. Each word,
+  emitted alone after the machine is sealed, is a code bloblet of the
+  code area's native part (`word-code!`): field 0 its table's place past
+  its suffix, the suffix its code then its table, every offset from the
+  field's word, so that the reference plus `st-code-delta` (the code area's
+  distance less 12) is where they are from. Kind `bloblet`, frozen; the
+  collector marks it from the word's entry and frees it with the word, as
+  any code bloblet (C229). Its suffix 8-aligned only, as the area's words
+  are (Fixpt's starts at 32 bytes; a filler before it would need the sweep
+  to know of it): to measure at step 6. The dispatch by tag, as Fixpt's:
+  `NEXT`'s word, a resume, register code's call of a twin, tier 6's invoke;
+  tier 1's `enter!` too. The block's table of words and its export gone.
+  Where the code area is not (no `code:exec-view/1`), nothing is compiled.

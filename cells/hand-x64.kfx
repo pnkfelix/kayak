@@ -18,10 +18,12 @@
    branch to a label is a 32-bit one, never out of reach.
  - `r15` is the native convention's pinned state: kept on the machine
    stack, with every other register the machine uses, and given back.
- - Tiers 4 and 5 (`--compiled`): hand.kfx's, at the same places, by the
-   same tables; register code's `RESULT` in `rax`, `REG1` in `rdi`,
-   `REG2` in `r14`, the rest in the state, its link there too while a
-   word runs, calls by `call` and `ret` (C137).
+ - Tiers 4 and 5 (`--compiled`): hand.kfx's, by the same tables, but
+   each word's code its own, a code bloblet in tier 1's code area, its
+   entry (C343; Fixpt's 516abc8e), where hand.kfx's are in the machine's
+   block; register code's `RESULT` in `rax`, `REG1` in `rdi`, `REG2` in
+   `r14`, the rest in the state, its link there too while a word runs,
+   calls by `call` and `ret` (C137).
  - Tier 6 (`--direct`): register code as native procedures beside tier
    5's, leaving for it where it would give back (C138).
  fixpt-source: crates/fixpt-native/src/cellular/x64.rs@19b31f1"
@@ -144,7 +146,7 @@
     (if (y-far? l)
         (set y-items (cons (xb ((with x86 x86-call-m) y-st (at-st (export-slot l)))) (get y-items)))
         (set y-items (cons (xj y-call 0 l) (get y-items))))))
-"Data, placed before the code: 8 bytes an entry."
+"Data, 8 bytes an entry: the machine's before its code, a word's after its own (C343)."
 (define y-data (ref (listof x-item @c) @c) (new nil))
 (define yd! (->* (int) unit) (lambda (v) (set y-data (cons (xb ((with x86 x86-le8) v)) (get y-data)))))
 (define ydo! (->* (int) unit) (lambda (l) (set y-data (cons (xo l) (get y-data)))))
@@ -453,14 +455,14 @@
 (define yword-entered! (->* () unit)
   (lambda ()
     "The word in `rax`, a cell, entered as tier 1's `enter!` does, if its
-     entry is `docol` or past the routines (compiled)."
+     entry is `docol` or code (a pointer, C343)."
     (let ((docol (label!)))
      (begin
       (ytag-in! y-w 4)
       (ylea-v! y11 y-w 0)
       (yld! y10 y11 (at-field f-entry))
-      (yalui! a-cmp y10 (* 8 (i64->int rt-docol))) (ybc! q-e docol)
-      (yalui! a-cmp y10 (* 8 (i64->int rt-count))) (ygive-if! q-b)
+      (ytesti! y10 7) (ybc! q-ne docol)
+      (yalui! a-cmp y10 (* 8 (i64->int rt-docol))) (ygive-if! q-ne)
       (ybind! docol)
       (ylimits!)
       (ytag-in! y-cur 4)
@@ -692,20 +694,24 @@
     "hand.kfx's `resumed!`: going on at the ip, a cell of `cur`'s, its code
      if `cur` was compiled and has code for that cell, else the cell
      interpreted (`NEXT`); by the same tables, at the same places."
-    (let ((neg (label!)) (plain (label!)))
+    (let ((neg (label!)) (plain (label!)) (code (label!)))
       (begin
         (ybind! (get l-resume))
         ;; Entered so, register code has no link: it returns the stack's way.
         (yzero! st-link)
         (ymov! y13 y-cur) (yalui! a-and y13 7) (yalui! a-cmp y13 4) (ybc! q-ne (get l-next))
         (ylea-v! y11 y-cur 0) (yld! y10 y11 (at-field f-entry))
+        ;; An entry of a routine's number (C343): `docol`'s, the cells run;
+        ;; else (a register word's not compiled, -1), given back, at the
+        ;; cell the ip is at.
+        (ytesti! y10 7) (ybc! q-ne code)
         (yalui! a-cmp y10 (* 8 (i64->int rt-count))) (ybc! q-b (get l-next))
-        (yalui! a-sub y10 (* 8 (i64->int rt-count)))
-        ;; Past the words compiled (a register word's entry is -1): given
-        ;; back, at the cell the ip is at.
-        (yadr! y16 (get l-words)) (yalurm! a-cmp y10 y16 0) (ybc! q-ae (get l-resume-give))
-        (yld-ix! y14 y16 y10 8)
-        (yadr! y16 (get l-start)) (yalu! a-add y16 y14)
+        (yb! (get l-resume-give))
+        ;; Code: its table, field 0's bytes past its suffix; `r10` where
+        ;; the offsets it holds are from (`word-code!`).
+        (ybind! code)
+        (yld! y14 y10 -12) (ylea-ix! y16 y10 y14 1 -4)
+        (yalurm! a-add y10 y-st (at-st st-code-delta))
         (ylea! y15 y11 -4) (yalu! a-sub y15 y-ip)
         (yld! y14 y16 0)
         (yalui! a-cmp y15 0) (ybc! q-l neg)
@@ -714,16 +720,16 @@
         ;; A register word's way in, from field 0 of its table (never a
         ;; cell's): its registers from the state, then on; stack code's 0.
         (yld! y15 y16 8)
-        (yadr! y16 (get l-start)) (yalu! a-add y16 y14)
+        (ylea-ix! y16 y10 y14 1 0)
         (yalui! a-cmp y15 0) (ybc! q-e plain)
-        (yadr! y13 (get l-start)) (yalu! a-add y13 y15) (yjmp-r! y13)
+        (ylea-ix! y13 y10 y15 1 0) (yjmp-r! y13)
         (ybind! plain) (yjmp-r! y16)
         ;; Below 0, register code's point to resume at after a call: the
         ;; table's second half; past it, a poll's, given back.
         (ybind! neg)
         (yneg! y15) (yalu! a-cmp y15 y14) (ybc! q-ae (get l-resume-give))
         (yalu! a-add y16 y14) (yld-ix! y14 y16 y15 8) (yalui! a-cmp y14 0) (ybc! q-e (get l-resume-give))
-        (yadr! y16 (get l-start)) (yalu! a-add y16 y14) (yjmp-r! y16)))))
+        (ylea-ix! y16 y10 y14 1 0) (yjmp-r! y16)))))
 
 (define ymachine! (->* () unit)
   (lambda ()
@@ -983,17 +989,14 @@
 
 (define yentry-address! (->* (int int) unit)
   (lambda (r none)
-    "`r11` register word `r`'s entry for a call, by the tables past the
-     code's start (field 2 of its own); to `none` if it has none."
+    "`r11` register word `r`'s entry for a call, by its code's table (field
+     2); to `none` if it has no code (an entry of a number, C343)."
     (begin
-      (yst-ld! y13 st-start)
       (yld-v! y15 r (at-field f-entry))
-      (yalui! a-cmp y15 (* 8 (i64->int rt-count))) (ybc! q-b none)
-      (yalui! a-sub y15 (* 8 (i64->int rt-count)))
-      (yalurm! a-cmp y15 y13 8) (ybc! q-ae none)
-      (yld-ix! y14 y13 y15 16)
-      (ylea-ix! y16 y13 y14 1 0) (yld! y14 y16 24)
-      (ylea-ix! y16 y13 y14 1 0))))
+      (ytesti! y15 7) (ybc! q-e none)
+      (yld! y14 y15 -12) (ylea-ix! y16 y15 y14 1 -4) (yld! y14 y16 24)
+      (yalurm! a-add y15 y-st (at-st st-code-delta))
+      (ylea-ix! y16 y15 y14 1 0))))
 
 (define-rec
   (yargs-pushed! (->* (int int) unit)
@@ -1067,16 +1070,13 @@
       (yld! y13 y11 (at-field f-word)) (yld-v! y16 y13 (at-field f-twin))
       (yalui! a-cmp y16 3) (ygive-if! q-e)
       (yld-v! y15 y16 (at-field (i64+ f-cell0 1))) (yalui! a-cmp y15 (* 8 n)) (ygive-if! q-ne)
-      ;; Its tier 6 code: field 1 of its table, by the tables past the
-      ;; code's start.
+      ;; Its tier 6 code: field 1 of its code's table (C343).
       (yld-v! y15 y16 (at-field f-entry))
-      (yalui! a-cmp y15 (* 8 (i64->int rt-count))) (ygive-if! q-b)
-      (yalui! a-sub y15 (* 8 (i64->int rt-count)))
-      (yadr! y13 (get l-words)) (yalurm! a-cmp y15 y13 0) (ygive-if! q-ae)
-      (yld-ix! y14 y13 y15 8)
-      (yadr! y13 (get l-start)) (yalu! a-add y14 y13) (yld! y14 y14 16)
+      (ytesti! y15 7) (ygive-if! q-e)
+      (yld! y14 y15 -12) (ylea-ix! y13 y15 y14 1 -4) (yld! y14 y13 16)
       (yalui! a-cmp y14 0) (ygive-if! q-e)
-      (yalu! a-add y14 y13)
+      (yalurm! a-add y15 y-st (at-st st-code-delta))
+      (yalu! a-add y14 y15)
       (if tail
           (begin (ylimits!) (ymov! y-clo y-w) (ymov! y-cur y16) (yjmp-r! y14))
           (y6-called! -1 y14 y16 nx)))))
@@ -1534,83 +1534,136 @@
           #u
           (y-all-put! b (cdr xs) (y-bytes! b (y-encoded (car xs) at ls) at) ls)))))
 
+"A compiled word's code (C343; Fixpt's 516abc8e, `make_word_code`): a
+ code bloblet in the code area's native part, the word's entry, which keeps
+ it as long as the word lives. Its field 0 its table's place, in bytes past
+ its suffix (a fixnum's bits being the bytes); its suffix the code, then the
+ table. Each word is emitted alone, its labels after the machine's
+ (`y-machine-labels`), which it reaches by the state alone (`y-far?`), and
+ placed from its field's word, so that the offsets its table holds are from
+ there: its reference less 12, which `st-code-delta` makes where it runs."
+(define y-machine-labels (ref int @c) (new 0))
+
 (define-rec
-  (yregisters-compiled! (->* ((listof named-slot @c) int (listof int @c)) (listof int @c))
-    (lambda (rs s rts)
-      "hand.kfx's `registers-compiled!`, by `yregister-compiled!`."
+  (y-word-bytes! (->* ((flatarrayof i64 @c) (listof int @k) int) int)
+    (lambda (ws bs at)
+      "Bytes `bs` into the words `ws` from byte `at`, the least first."
+      (if (null? bs)
+          at
+          (let* ((i (i64-shr (int->i64 at) 3)) (sh (* 8 (modulo at 8))))
+            (begin
+              (flatarray-set-i64! ws i (i64-or (flatarray-ref-i64 ws i) (i64-shl (int->i64 (car bs)) sh)))
+              (y-word-bytes! ws (cdr bs) (+ at 1))))))))
+
+(define-rec
+  (y-word-put! (->* ((flatarrayof i64 @c) (listof x-item @c) int (flatarrayof i64 @c)) unit)
+    (lambda (ws xs at ls)
+      (if (null? xs) #u (y-word-put! ws (cdr xs) (y-word-bytes! ws (y-encoded (car xs) at ls) at) ls)))))
+
+(define-rec
+  (code-words-set! (->* (i64 (flatarrayof i64 @c) i64 i64) unit)
+    (lambda (j ws i n)
+      (if (i64>= i n) #u (begin (code-set! (i64+ j i) (flatarray-ref-i64 ws i)) (code-words-set! j ws (i64+ i 1) n))))))
+
+(define word-code! (->* (i64 int) bool)
+  (lambda (w rt)
+    "Word `w`'s code, just emitted (`rt` its table's label), a code
+     bloblet, and `w`'s entry: whether the code area had room for it."
+    (let* ((its (the (listof x-item @c)
+                  (cons (xb ((with x86 x86-le8) 0)) (append (reverse (get y-items)) (cons (xa 0) (reverse (get y-data)))))))
+           (ls (the (flatarrayof i64 @c) (make-flatarray-i64 (int->i64 (get hand-labels)) 0)))
+           (nw (i64-quotient (i64+ (int->i64 (y-placed! its 0 ls)) 7) 8))
+           (ws (the (flatarrayof i64 @c) (make-flatarray-i64 nw 0)))
+           (u (y-word-put! ws its 0 ls))
+           (j (code-alloc! (i64+ nw 1))))
+      (begin
+        (set y-items nil) (set y-data nil)
+        (if (i64< j 0)
+            (begin (set word-spans nil) #f)
+            (begin
+              (flatarray-set-i64! ws 0 (i64- (int->i64 (where ls rt)) 8))
+              (code-set! j (header-word k-bloblet 1 (i64* 8 (i64- nw 1)) #t #t))
+              (code-words-set! (i64+ j 1) ws 0 nw)
+              (code-flush (get code-space) (i64->int (i64+ j 1)) (i64->int nw))
+              (spans-noted! (i64->int (i64+ (i64+ (get code-vbase) (i64* 8 (i64+ j 1))) (get code-distance))) ls 1 (get word-spans))
+              (set word-spans nil)
+              (slot-set! w f-entry (i64-or (i64+ (get code-vbase) (i64* 8 (i64+ j 2))) t-bloblet))
+              #t))))))
+
+(define yword-made! (->* (i64 bool) bool)
+  (lambda (w regs)
+    "Word `w` compiled to its own code: a register word's (tier 5, and 6 if
+     `--direct`), if `regs`, else its cells'."
+    (begin
+      (set hand-labels (get y-machine-labels)) (set y-items nil) (set y-data nil) (set word-spans nil)
+      (let ((rt (label!)))
+        (begin
+          (if regs
+              (yregister-compiled! w (i64->int (cells-in w f-cell0)) rt)
+              (yword-compiled! w (i64->int (cells-in w f-cell0)) rt))
+          (y-stubs-done!)
+          (word-code! w rt))))))
+
+(define-rec
+  (yregisters-compiled! (->* ((listof named-slot @c) int) int)
+    (lambda (rs k)
+      "hand.kfx's `registers-compiled!`, each by `yword-made!`: how many."
       (if (null? rs)
-          rts
+          k
           (let ((rw (named-value (car rs))))
             (if (and (i64= (slot-of (slot-of rw f-twin) f-twin) rw)
                      (i64<= (cells-in rw f-cell0) compiled-cells-most))
-                (let ((rt (label!)))
-                  (begin
-                    (yregister-compiled! rw (i64->int (cells-in rw f-cell0)) rt)
-                    (slot-set! rw f-entry (fix (i64+ rt-count (int->i64 s))))
-                    (yregisters-compiled! (cdr rs) (+ s 1) (cons rt rts))))
-                (yregisters-compiled! (cdr rs) s rts)))))))
+                (yregisters-compiled! (cdr rs) (if (yword-made! rw #t) (+ k 1) k))
+                (yregisters-compiled! (cdr rs) k)))))))
 
 (define-rec
-  (ywords-compiled! (->* ((listof named-slot @c) int (listof int @c)) (listof int @c))
-    (lambda (ws s rts)
-      "hand.kfx's `words-compiled!`, by `yword-compiled!`."
+  (ywords-compiled! (->* ((listof named-slot @c) int) int)
+    (lambda (ws k)
+      "hand.kfx's `words-compiled!`, each by `yword-made!`: how many."
       (if (null? ws)
-          rts
+          k
           (let ((w (named-value (car ws))))
-            (if (and (is-kind? w k-code) (i64= (fix-val (slot-of w f-entry)) rt-docol)
+            (if (and (is-kind? w k-code) (i64= (slot-of w f-entry) (fix rt-docol))
                      (i64<= (cells-in w f-cell0) compiled-cells-most))
-                (let ((rt (label!)))
-                  (begin
-                    (yword-compiled! w (i64->int (cells-in w f-cell0)) rt)
-                    (slot-set! w f-entry (fix (i64+ rt-count (int->i64 s))))
-                    (ywords-compiled! (cdr ws) (+ s 1) (cons rt rts))))
-                (ywords-compiled! (cdr ws) s rts)))))))
-
-(define-rec
-  (y-words-table (->* ((listof int @c) (listof x-item @c)) (listof x-item @c))
-    (lambda (rts acc)
-      "The table of the words' tables, word 0's first (`rts` the last first)."
-      (if (null? rts) acc (y-words-table (cdr rts) (cons (xo (car rts)) acc))))))
+                (ywords-compiled! (cdr ws) (if (yword-made! w #f) (+ k 1) k))
+                (ywords-compiled! (cdr ws) k)))))))
 
 (define hand-code-x64! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()
-    "The machine, made once: emitted, with the listing's words compiled
-     (`--compiled`), encoded, sealed. First a jump to its entry, then the
-     data, then the code, at hand.kfx's places: the table of the words'
-     tables 8 bytes in."
+    "The machine, made once: emitted, encoded, sealed, a jump to its entry
+     first, then its code. Then, with `--compiled`, each of the listing's
+     words compiled to its own code (`yword-made!`), where there is a code
+     area for it; else none, its cells run."
     (if (not (null? (get hand-made)))
         (sum made (car (get hand-made)))
         (begin
           (set y-items nil) (set y-data nil) (set hand-labels 0)
-          (set l-start (label!)) (set l-entry (label!)) (set l-words (label!)) (set l-exports (label!))
+          (set l-start (label!)) (set l-entry (label!)) (set l-exports (label!))
           (set h-cont -1) (set h-target -1)
           (ymachine!)
           (set l-materialize (label!)) (y-materialize! (get l-materialize) #f)
           (set l-materialize-pushed (label!))
           (if (get hand-fixpt-calls) (y-materialize! (get l-materialize-pushed) #t) #u)
           (set y-exports (list (get l-next) (get l-give) (get l-give-pre) (get l-resume) (get l-resume-give) (get l-pop-return)
-                               (get l-ran-out) (get l-misaligned) (get l-start) (get l-materialize) (get l-materialize-pushed) (get l-words)))
-          (set y-far-from (get hand-labels))
-          (let* ((cts (if (get hand-compiled) (ywords-compiled! (get words) 0 nil) nil))
-                 (rts (if (get hand-compiled) (yregisters-compiled! (get register-words) (count-of cts 0) cts) cts))
-                 (u0 (y-stubs-done!))
-                 (u1 (set y-far-from -1))
-                 (u2 (begin (ybind! (get l-exports)) (y-exports-written! (get y-exports) 0) (yresume!)))
-                 (u (set words-compiled (count-of rts 0)))
-                 (its (the (listof x-item @c)
+                               (get l-ran-out) (get l-misaligned) (get l-start) (get l-materialize) (get l-materialize-pushed)))
+          (ybind! (get l-exports)) (y-exports-written! (get y-exports) 0) (yresume!)
+          (let* ((its (the (listof x-item @c)
                         (cons (xl (get l-start))
                           (cons (xj y-jmp 0 (get l-entry))
-                            (cons (xb (list 0 0 0))
-                              (cons (xl (get l-words))
-                                (cons (xb ((with x86 x86-le8) (* 8 (count-of rts 0))))
-                                  (append (y-words-table rts nil) (append (reverse (get y-data)) (reverse (get y-items)))))))))))
+                            (append (reverse (get y-data)) (reverse (get y-items)))))))
                  (ls (the (flatarrayof i64 @c) (make-flatarray-i64 (int->i64 (get hand-labels)) 0)))
                  (count (y-placed! its 0 ls))
                  (b (the (bloblet (fields) @heap) (make-bloblet count)))
                  (v (y-all-put! b its 0 ls))
                  (p (the hand-code (native-procedure (seal-code b)))))
             (begin (code-named! ls 1 count "kayak tier 2: the machine")
-                   (set hand-made (list p)) (sum made p)))))))
+                   (set hand-made (list p))
+                   (set y-machine-labels (get hand-labels)) (set y-far-from (get hand-labels))
+                   (if (and (get hand-compiled) (get code-on))
+                       (let ((k (ywords-compiled! (get words) 0)))
+                         (set words-compiled (yregisters-compiled! (get register-words) k)))
+                       #u)
+                   (sum made p)))))))
 
 (define hand-code! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()

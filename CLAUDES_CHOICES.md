@@ -9390,3 +9390,58 @@ commits.
   found a silent case as well (the same values in the other order, the
   wrong one taken); kayak gives `(7 7 9)` on the engine and on tier 1, as
   Fixpt now does, neither case kayak's.
+
+## C342. A compiled word's code reaches the machine by the state (2026-11-05; word code, step 1)
+
+`docs/research/word-code.md`'s step 1, the user's "go for it" (arm64 on
+Fixpt's interim, compiling nothing until it can be run; the port in steps,
+the block's words kept meanwhile). On x86_64 a compiled word's code now
+reaches the machine's own code only through the state, as Fixpt's does
+since 516abc8e, so that it may be anywhere, a code bloblet of its own:
+- **The machine's exported places** (`y-exports`): `NEXT`, the ways to
+  give back, to resume, to return, to run out, the misaligned exit, the
+  code's start, tier 6's ways back to tier 5 (`l-materialize`, `-pushed`),
+  and, until step 3, the block's table of words. Their addresses are in the
+  state from `st-exports` (the state 52 words now, `st-code-delta` among
+  them for step 2), written by the machine at each entry, from a routine
+  after the words (`l-exports`), once every place is.
+- **While words are compiled** (`y-far-from`, a label's number, the first
+  a word's), a jump, a call or an address of one of those places is
+  `jmp [r15 + slot]`, `call [r15 + slot]`, `mov r, [r15 + slot]`: no
+  register, as `r11` carries tier 5's code to `l-materialize`; a
+  conditional jump goes to a stub of its own that jumps so
+  (`y-stubs`). A place not exported is refused, loudly (tier 6's reach of
+  the table of words was found so).
+All tests as before, every tier.
+
+## C343. A compiled word's code in its own bloblet, entered by its tag (2026-11-05; word code, steps 2 and 3)
+
+`docs/research/word-code.md`'s steps 2 and 3 on x86_64, as one (step 2's
+bloblets cannot run until step 3's dispatch reads them), Fixpt's 516abc8e:
+- **A word's code** (`yword-made!`, `word-code!`): each word compiled after
+  the machine is made and sealed, alone, its labels from the machine's last
+  (`y-machine-labels`), so that every label of the machine is far
+  (`y-far?`) and goes by the state (C342). Placed from an 8-byte field,
+  then its code, then its data (its table), and put in a code bloblet of
+  the code area's native part (`code-alloc!`, `code-set!`, `code:flush/1`),
+  kind `bloblet`, frozen, field 0 the table's place in bytes past the
+  suffix. Its entry is its reference: the collector marks it from there
+  and frees it with the word. Its spans are noted for the perf map at the
+  place it runs.
+- **Where it runs**: the state's `st-code-delta`, set by tier 1's `hand!`,
+  is the code area's distance less 12 (the field's word and the tag), so
+  that the reference plus it is where the table's offsets are from.
+- **The dispatch by tag**: `NEXT`'s word and `execute` (`yword-entered!`),
+  a resume (`yresumed!`: a number below the routines' count the cells,
+  else, a register word not compiled, given back, as before), register
+  code's call of a twin (`yentry-address!`) and tier 6's invoke
+  (`y6-invoked!`) test the entry's tag: a pointer is code, its table at
+  the field's bytes past its suffix. Tier 1's `enter!` runs a word whose
+  entry is code as cells, said, not by its number's size.
+- **The block** holds the machine alone: its table of words, the export of
+  it and the slot numbers past `rt-count` are gone.
+- Where tier 1 has no code area (no `code:exec-view/1`), nothing is
+  compiled: words run as cells, as Fixpt's interim on arm64.
+fib, tak, loop, closures, lists and captures on `--compiled`, `--regs
+--compiled`, `--regs --direct` time as before, but whole-process runs of
+10 to 160 ms say little: step 6 measures. The cells tests (1817) pass.

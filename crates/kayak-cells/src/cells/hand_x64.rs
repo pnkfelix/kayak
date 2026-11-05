@@ -23,10 +23,12 @@ use super::*;
 // branch to a label is a 32-bit one, never out of reach.
 // - `r15` is the native convention's pinned state: kept on the machine
 // stack, with every other register the machine uses, and given back.
-// - Tiers 4 and 5 (`--compiled`): hand.kfx's, at the same places, by the
-// same tables; register code's `RESULT` in `rax`, `REG1` in `rdi`,
-// `REG2` in `r14`, the rest in the state, its link there too while a
-// word runs, calls by `call` and `ret` (C137).
+// - Tiers 4 and 5 (`--compiled`): hand.kfx's, by the same tables, but
+// each word's code its own, a code bloblet in tier 1's code area, its
+// entry (C343; Fixpt's 516abc8e), where hand.kfx's are in the machine's
+// block; register code's `RESULT` in `rax`, `REG1` in `rdi`, `REG2` in
+// `r14`, the rest in the state, its link there too while a word runs,
+// calls by `call` and `ret` (C137).
 // - Tier 6 (`--direct`): register code as native procedures beside tier
 // 5's, leaving for it where it would give back (C138).
 // fixpt-source: crates/fixpt-native/src/cellular/x64.rs@19b31f1
@@ -113,7 +115,7 @@ pub mod made__load__0__fx26_x86_64 {
     }
 }
 
-pub mod made__input__1754__x86_64_types {
+pub mod made__input__1889__x86_64_types {
     use super::*;
 
     pub use super::made__load__0__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
@@ -122,7 +124,7 @@ pub mod made__input__1754__x86_64_types {
 pub mod x86 {
     use super::*;
 
-    use super::made__input__1754__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
+    use super::made__input__1889__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
     #[inline]
     pub fn x86_b1(a: Int) -> X86Bytes {
@@ -1028,7 +1030,7 @@ pub fn ycall_x(l: Int) -> () {
     }
 }
 
-// Data, placed before the code: 8 bytes an entry.
+// Data, 8 bytes an entry: the machine's before its code, a word's after its own (C343).
 #[inline]
 pub fn y_data() -> Ref<List<&'static XItem>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static XItem>>);
@@ -1698,16 +1700,16 @@ pub fn yclosed_x() -> () {
 }
 
 /// The word in `rax`, a cell, entered as tier 1's `enter!` does, if its
-/// entry is `docol` or past the routines (compiled).
+/// entry is `docol` or code (a pointer, C343).
 pub fn yword_entered_x() -> () {
     let docol = label_x();
     ytag_in_x(y_w(), int_lit(4));
     ylea_v_x(y11(), y_w(), int_lit(0));
     yld_x(y10(), y11(), at_field(f_entry()));
+    ytesti_x(y10(), int_lit(7));
+    ybc_x(q_ne(), docol);
     yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(rt_docol())));
-    ybc_x(q_e(), docol);
-    yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(rt_count())));
-    ygive_if_x(q_b());
+    ygive_if_x(q_ne());
     ybind_x(docol);
     ylimits_x();
     ytag_in_x(y_cur(), int_lit(4));
@@ -2180,7 +2182,7 @@ pub fn yregs_zeroed_x(mut k: Int) -> () {
 /// if `cur` was compiled and has code for that cell, else the cell
 /// interpreted (`NEXT`); by the same tables, at the same places.
 pub fn yresumed_x() -> () {
-    let (neg, plain) = (label_x(), label_x());
+    let (neg, plain, code) = (label_x(), label_x(), label_x());
     ybind_x(get(l_resume()));
     yzero_x(st_link());
     ymov_x(y13(), y_cur());
@@ -2189,15 +2191,15 @@ pub fn yresumed_x() -> () {
     ybc_x(q_ne(), get(l_next()));
     ylea_v_x(y11(), y_cur(), int_lit(0));
     yld_x(y10(), y11(), at_field(f_entry()));
+    ytesti_x(y10(), int_lit(7));
+    ybc_x(q_ne(), code);
     yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(rt_count())));
     ybc_x(q_b(), get(l_next()));
-    yalui_x(a_sub(), y10(), _star(int_lit(8), i64_to_int(rt_count())));
-    yadr_x(y16(), get(l_words()));
-    yalurm_x(a_cmp(), y10(), y16(), int_lit(0));
-    ybc_x(q_ae(), get(l_resume_give()));
-    yld_ix_x(y14(), y16(), y10(), int_lit(8));
-    yadr_x(y16(), get(l_start()));
-    yalu_x(a_add(), y16(), y14());
+    yb_x(get(l_resume_give()));
+    ybind_x(code);
+    yld_x(y14(), y10(), int_lit(-12));
+    ylea_ix_x(y16(), y10(), y14(), int_lit(1), int_lit(-4));
+    yalurm_x(a_add(), y10(), y_st(), at_st(st_code_delta()));
     ylea_x(y15(), y11(), int_lit(-4));
     yalu_x(a_sub(), y15(), y_ip());
     yld_x(y14(), y16(), int_lit(0));
@@ -2209,12 +2211,10 @@ pub fn yresumed_x() -> () {
     yalui_x(a_cmp(), y14(), int_lit(0));
     ybc_x(q_e(), get(l_next()));
     yld_x(y15(), y16(), int_lit(8));
-    yadr_x(y16(), get(l_start()));
-    yalu_x(a_add(), y16(), y14());
+    ylea_ix_x(y16(), y10(), y14(), int_lit(1), int_lit(0));
     yalui_x(a_cmp(), y15(), int_lit(0));
     ybc_x(q_e(), plain);
-    yadr_x(y13(), get(l_start()));
-    yalu_x(a_add(), y13(), y15());
+    ylea_ix_x(y13(), y10(), y15(), int_lit(1), int_lit(0));
     yjmp_r_x(y13());
     ybind_x(plain);
     yjmp_r_x(y16());
@@ -2226,8 +2226,7 @@ pub fn yresumed_x() -> () {
     yld_ix_x(y14(), y16(), y15(), int_lit(8));
     yalui_x(a_cmp(), y14(), int_lit(0));
     ybc_x(q_e(), get(l_resume_give()));
-    yadr_x(y16(), get(l_start()));
-    yalu_x(a_add(), y16(), y14());
+    ylea_ix_x(y16(), y10(), y14(), int_lit(1), int_lit(0));
     yjmp_r_x(y16())
 }
 
@@ -2677,20 +2676,17 @@ pub fn ytail_called_x(r: Int) -> () {
     yjmp_r_x(r)
 }
 
-/// `r11` register word `r`'s entry for a call, by the tables past the
-/// code's start (field 2 of its own); to `none` if it has none.
+/// `r11` register word `r`'s entry for a call, by its code's table (field
+/// 2); to `none` if it has no code (an entry of a number, C343).
 pub fn yentry_address_x(r: Int, none: Int) -> () {
-    yst_ld_x(y13(), st_start());
     yld_v_x(y15(), r, at_field(f_entry()));
-    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
-    ybc_x(q_b(), none);
-    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
-    yalurm_x(a_cmp(), y15(), y13(), int_lit(8));
-    ybc_x(q_ae(), none);
-    yld_ix_x(y14(), y13(), y15(), int_lit(16));
-    ylea_ix_x(y16(), y13(), y14(), int_lit(1), int_lit(0));
+    ytesti_x(y15(), int_lit(7));
+    ybc_x(q_e(), none);
+    yld_x(y14(), y15(), int_lit(-12));
+    ylea_ix_x(y16(), y15(), y14(), int_lit(1), int_lit(-4));
     yld_x(y14(), y16(), int_lit(24));
-    ylea_ix_x(y16(), y13(), y14(), int_lit(1), int_lit(0))
+    yalurm_x(a_add(), y15(), y_st(), at_st(st_code_delta()));
+    ylea_ix_x(y16(), y15(), y14(), int_lit(1), int_lit(0))
 }
 
 pub fn yargs_pushed_x(mut r: Int, mut n: Int) -> () {
@@ -2814,19 +2810,15 @@ pub fn y6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
     yalui_x(a_cmp(), y15(), _star(int_lit(8), n));
     ygive_if_x(q_ne());
     yld_v_x(y15(), y16(), at_field(f_entry()));
-    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
-    ygive_if_x(q_b());
-    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(rt_count())));
-    yadr_x(y13(), get(l_words()));
-    yalurm_x(a_cmp(), y15(), y13(), int_lit(0));
-    ygive_if_x(q_ae());
-    yld_ix_x(y14(), y13(), y15(), int_lit(8));
-    yadr_x(y13(), get(l_start()));
-    yalu_x(a_add(), y14(), y13());
-    yld_x(y14(), y14(), int_lit(16));
+    ytesti_x(y15(), int_lit(7));
+    ygive_if_x(q_e());
+    yld_x(y14(), y15(), int_lit(-12));
+    ylea_ix_x(y13(), y15(), y14(), int_lit(1), int_lit(-4));
+    yld_x(y14(), y13(), int_lit(16));
     yalui_x(a_cmp(), y14(), int_lit(0));
     ygive_if_x(q_e());
-    yalu_x(a_add(), y14(), y13());
+    yalurm_x(a_add(), y15(), y_st(), at_st(st_code_delta()));
+    yalu_x(a_add(), y14(), y15());
     if tail {
         ylimits_x();
         ymov_x(y_clo(), y_w());
@@ -3553,18 +3545,116 @@ pub fn y_all_put_x(mut b: &'static Bloblet<()>, mut xs: List<&'static XItem>, mu
     }
 }
 
-/// hand.kfx's `registers-compiled!`, by `yregister-compiled!`.
-pub fn yregisters_compiled_x(mut rs: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+// A compiled word's code (C343; Fixpt's 516abc8e, `make_word_code`): a
+// code bloblet in the code area's native part, the word's entry, which keeps
+// it as long as the word lives. Its field 0 its table's place, in bytes past
+// its suffix (a fixnum's bits being the bytes); its suffix the code, then the
+// table. Each word is emitted alone, its labels after the machine's
+// (`y-machine-labels`), which it reaches by the state alone (`y-far?`), and
+// placed from its field's word, so that the offsets its table holds are from
+// there: its reference less 12, which `st-code-delta` makes where it runs.
+#[inline]
+pub fn y_machine_labels() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+/// Bytes `bs` into the words `ws` from byte `at`, the least first.
+pub fn y_word_bytes_x(mut ws: FlatArray<i64>, mut bs: List<Int>, mut at: Int) -> Int {
+    loop {
+        if null_p(bs) {
+            return at;
+        } else {
+            let i = i64_shr(int_to_i64(at), int_lit(3));
+            let sh = _star(int_lit(8), modulo(at, int_lit(8)));
+            flatarray_set_i64_x(ws, i, i64_or(flatarray_ref_i64(ws, i), i64_shl(int_to_i64(car(bs)), sh)));
+            (bs, at) = (cdr(bs), _plus(at, int_lit(1)));
+            continue;
+        }
+    }
+}
+
+pub fn y_word_put_x(mut ws: FlatArray<i64>, mut xs: List<&'static XItem>, mut at: Int, mut ls: FlatArray<i64>) -> () {
+    loop {
+        if null_p(xs) {
+            return ();
+        } else {
+            (xs, at) = (cdr(xs), y_word_bytes_x(ws, y_encoded(car(xs), at, ls), at));
+            continue;
+        }
+    }
+}
+
+pub fn code_words_set_x(mut j: i64, mut ws: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            code_set_x(i64_plus(j, i), flatarray_ref_i64(ws, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Word `w`'s code, just emitted (`rt` its table's label), a code
+/// bloblet, and `w`'s entry: whether the code area had room for it.
+pub fn word_code_x(w: i64, rt: Int) -> bool {
+    let its = the::<List<&'static XItem>>(kayak_rt::heap_cons(xb((&x86::x86_le8)(int_lit(0))), append(reverse(get(y_items())), kayak_rt::heap_cons(xa(int_lit(0)), reverse(get(y_data()))))));
+    let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
+    let nw = i64_quotient(i64_plus(int_to_i64(y_placed_x(its, int_lit(0), ls)), 7i64), 8i64);
+    let ws = the::<FlatArray<i64>>(make_flatarray_i64(nw, 0i64));
+    let u = y_word_put_x(ws, its, int_lit(0), ls);
+    let j = code_alloc_x(i64_plus(nw, 1i64));
+    set(y_items(), nil::<&'static XItem>());
+    set(y_data(), nil::<&'static XItem>());
+    if i64_lt(j, 0i64) {
+        set(word_spans(), nil::<&'static Span>());
+        false
+    } else {
+        flatarray_set_i64_x(ws, 0i64, i64_minus(int_to_i64(r#where(ls, rt)), 8i64));
+        code_set_x(j, header_word(k_bloblet(), 1i64, i64_star(8i64, i64_minus(nw, 1i64)), true, true));
+        code_words_set_x(i64_plus(j, 1i64), ws, 0i64, nw);
+        code_flush(get(code_space()), i64_to_int(i64_plus(j, 1i64)), i64_to_int(nw));
+        spans_noted_x(i64_to_int(i64_plus(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(j, 1i64))), get(code_distance()))), ls, int_lit(1), get(word_spans()));
+        set(word_spans(), nil::<&'static Span>());
+        slot_set_x(w, f_entry(), i64_or(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(j, 2i64))), t_bloblet()));
+        true
+    }
+}
+
+/// Word `w` compiled to its own code: a register word's (tier 5, and 6 if
+/// `--direct`), if `regs`, else its cells'.
+pub fn yword_made_x(w: i64, regs: bool) -> bool {
+    set(hand_labels(), get(y_machine_labels()));
+    set(y_items(), nil::<&'static XItem>());
+    set(y_data(), nil::<&'static XItem>());
+    set(word_spans(), nil::<&'static Span>());
+    let rt = label_x();
+    if regs {
+        yregister_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt)
+    } else {
+        yword_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt)
+    };
+    y_stubs_done_x();
+    word_code_x(w, rt)
+}
+
+/// hand.kfx's `registers-compiled!`, each by `yword-made!`: how many.
+pub fn yregisters_compiled_x(mut rs: List<&'static NamedSlot>, mut k: Int) -> Int {
     loop {
         if null_p(rs) {
-            return rts;
+            return k;
         } else {
             let rw = named_value(car(rs));
             if (i64_eq(slot_of(slot_of(rw, f_twin()), f_twin()), rw) && i64_lt_eq(cells_in(rw, f_cell0()), compiled_cells_most())) {
-                let rt = label_x();
-                yregister_compiled_x(rw, i64_to_int(cells_in(rw, f_cell0())), rt);
-                slot_set_x(rw, f_entry(), fix(i64_plus(rt_count(), int_to_i64(s))));
-                (rs, s, rts) = (cdr(rs), _plus(s, int_lit(1)), kayak_rt::heap_cons(rt, rts));
+                (rs, k) = (cdr(rs), if yword_made_x(rw, true) {
+                    _plus(k, int_lit(1))
+                } else {
+                    k
+                });
                 continue;
             } else {
                 rs = cdr(rs);
@@ -3574,18 +3664,19 @@ pub fn yregisters_compiled_x(mut rs: List<&'static NamedSlot>, mut s: Int, mut r
     }
 }
 
-/// hand.kfx's `words-compiled!`, by `yword-compiled!`.
-pub fn ywords_compiled_x(mut ws: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+/// hand.kfx's `words-compiled!`, each by `yword-made!`: how many.
+pub fn ywords_compiled_x(mut ws: List<&'static NamedSlot>, mut k: Int) -> Int {
     loop {
         if null_p(ws) {
-            return rts;
+            return k;
         } else {
             let w = named_value(car(ws));
-            if (is_kind_p(w, k_code()) && i64_eq(fix_val(slot_of(w, f_entry())), rt_docol()) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
-                let rt = label_x();
-                yword_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt);
-                slot_set_x(w, f_entry(), fix(i64_plus(rt_count(), int_to_i64(s))));
-                (ws, s, rts) = (cdr(ws), _plus(s, int_lit(1)), kayak_rt::heap_cons(rt, rts));
+            if (is_kind_p(w, k_code()) && i64_eq(slot_of(w, f_entry()), fix(rt_docol())) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
+                (ws, k) = (cdr(ws), if yword_made_x(w, false) {
+                    _plus(k, int_lit(1))
+                } else {
+                    k
+                });
                 continue;
             } else {
                 ws = cdr(ws);
@@ -3595,22 +3686,10 @@ pub fn ywords_compiled_x(mut ws: List<&'static NamedSlot>, mut s: Int, mut rts: 
     }
 }
 
-/// The table of the words' tables, word 0's first (`rts` the last first).
-pub fn y_words_table(mut rts: List<Int>, mut acc: List<&'static XItem>) -> List<&'static XItem> {
-    loop {
-        if null_p(rts) {
-            return acc;
-        } else {
-            (rts, acc) = (cdr(rts), kayak_rt::heap_cons(xo(car(rts)), acc));
-            continue;
-        }
-    }
-}
-
-/// The machine, made once: emitted, with the listing's words compiled
-/// (`--compiled`), encoded, sealed. First a jump to its entry, then the
-/// data, then the code, at hand.kfx's places: the table of the words'
-/// tables 8 bytes in.
+/// The machine, made once: emitted, encoded, sealed, a jump to its entry
+/// first, then its code. Then, with `--compiled`, each of the listing's
+/// words compiled to its own code (`yword-made!`), where there is a code
+/// area for it; else none, its cells run.
 pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     if not(null_p(get(hand_made()))) {
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(car(get(hand_made()))))
@@ -3620,7 +3699,6 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         set(hand_labels(), int_lit(0));
         set(l_start(), label_x());
         set(l_entry(), label_x());
-        set(l_words(), label_x());
         set(l_exports(), label_x());
         set(h_cont(), int_lit(-1));
         set(h_target(), int_lit(-1));
@@ -3633,27 +3711,11 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         } else {
             ()
         };
-        set(y_exports(), kayak_rt::heap_cons(get(l_next()), kayak_rt::heap_cons(get(l_give()), kayak_rt::heap_cons(get(l_give_pre()), kayak_rt::heap_cons(get(l_resume()), kayak_rt::heap_cons(get(l_resume_give()), kayak_rt::heap_cons(get(l_pop_return()), kayak_rt::heap_cons(get(l_ran_out()), kayak_rt::heap_cons(get(l_misaligned()), kayak_rt::heap_cons(get(l_start()), kayak_rt::heap_cons(get(l_materialize()), kayak_rt::heap_cons(get(l_materialize_pushed()), kayak_rt::heap_cons(get(l_words()), kayak_rt::nil())))))))))))));
-        set(y_far_from(), get(hand_labels()));
-        let cts = if get(hand_compiled()) {
-            ywords_compiled_x(get(words()), int_lit(0), nil::<Int>())
-        } else {
-            nil::<Int>()
-        };
-        let rts = if get(hand_compiled()) {
-            yregisters_compiled_x(get(register_words()), count_of(cts, int_lit(0)), cts)
-        } else {
-            cts
-        };
-        let u0 = y_stubs_done_x();
-        let u1 = set(y_far_from(), int_lit(-1));
-        let u2 = {
-            ybind_x(get(l_exports()));
-            y_exports_written_x(get(y_exports()), int_lit(0));
-            yresume_x()
-        };
-        let u = set(words_compiled(), count_of(rts, int_lit(0)));
-        let its = the::<List<&'static XItem>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(xb(kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(0), kayak_rt::nil())))), kayak_rt::heap_cons(xl(get(l_words())), kayak_rt::heap_cons(xb((&x86::x86_le8)(_star(int_lit(8), count_of(rts, int_lit(0))))), append(y_words_table(rts, nil::<&'static XItem>()), append(reverse(get(y_data())), reverse(get(y_items()))))))))));
+        set(y_exports(), kayak_rt::heap_cons(get(l_next()), kayak_rt::heap_cons(get(l_give()), kayak_rt::heap_cons(get(l_give_pre()), kayak_rt::heap_cons(get(l_resume()), kayak_rt::heap_cons(get(l_resume_give()), kayak_rt::heap_cons(get(l_pop_return()), kayak_rt::heap_cons(get(l_ran_out()), kayak_rt::heap_cons(get(l_misaligned()), kayak_rt::heap_cons(get(l_start()), kayak_rt::heap_cons(get(l_materialize()), kayak_rt::heap_cons(get(l_materialize_pushed()), kayak_rt::nil()))))))))))));
+        ybind_x(get(l_exports()));
+        y_exports_written_x(get(y_exports()), int_lit(0));
+        yresume_x();
+        let its = the::<List<&'static XItem>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), append(reverse(get(y_data())), reverse(get(y_items()))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = y_placed_x(its, int_lit(0), ls);
         let b = the::<&'static Bloblet<()>>(make_bloblet(count, ()));
@@ -3661,6 +3723,14 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         let p = kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b));
         code_named_x(ls, int_lit(1), count, str_lit("kayak tier 2: the machine"));
         set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
+        set(y_machine_labels(), get(hand_labels()));
+        set(y_far_from(), get(hand_labels()));
+        if (get(hand_compiled()) && get(code_on())) {
+            let k = ywords_compiled_x(get(words()), int_lit(0));
+            set(words_compiled(), yregisters_compiled_x(get(register_words()), k))
+        } else {
+            ()
+        };
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(p))
     }
 }

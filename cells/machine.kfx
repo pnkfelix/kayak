@@ -786,9 +786,10 @@
   (enter! (subr cm (i64) bool)
     (lambda (w)
       "Enter word `w`, sharing this frame, as Forth's words call; or run its
-       routine, if its entry is one: whether it was entered."
-      (let ((entry (fix-val (slot-of w f-entry))))
-        (if (or (i64= entry rt-docol) (i64>= entry rt-count))
+       routine, if its entry is one: whether it was entered. A compiled
+       word's entry is its code (C343), its cells run here as any word's."
+      (let ((entry (if (is-fixnum? (slot-of w f-entry)) (fix-val (slot-of w f-entry)) rt-docol)))
+        (if (i64= entry rt-docol)
             (begin
               (check-limits!)
               (if (is-bloblet? (get cur)) (push-return!) #u)
@@ -1172,6 +1173,8 @@
                             (if (get gc-stress) 0 (i64-quotient (i64* 3 (get limit)) 4)))
         (flatarray-set-i64! s (int->i64 st-mem-length) (get limit))
         (flatarray-set-i64! s (int->i64 st-vbase) (get vbase))
+        ;; Where a compiled word's code runs, from its reference (C343).
+        (flatarray-set-i64! s (int->i64 st-code-delta) (i64- (get code-distance) (i64+ 8 t-bloblet)))
         (set hand-entries (i64+ (get hand-entries) 1))
         (regs-copied! (get rr) 0 s (int->i64 st-regs) 9)
         (let ((why (int->i64 (m s (get mem) (get ds) (get rs)))))
