@@ -896,19 +896,122 @@ pub fn ybind_x(l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xl(l), get(y_items())))
 }
 
+// A word's code reaching the machine's (C342; Fixpt's 516abc8e): while
+// words are compiled (`y-far-from` a label's number, the first a word's),
+// a jump, a call or an address of the machine's own place goes by the
+// state's slot for it (`st-exports`), not by its distance, so that a word's
+// code may be anywhere; a conditional jump, to a stub of the word's own
+// (`y-stubs`) that jumps so. The places so reached, `y-exports`.
 #[inline]
+pub fn y_far_from() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(-1))
+    })
+}
+
+#[inline]
+pub fn y_exports() -> Ref<List<Int>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<Int>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Int>())
+    })
+}
+
+pub enum Ystub {
+    Ystub(Int, Int),
+}
+
+pub fn ystub(f0: Int, f1: Int) -> &'static Ystub {
+    kayak_rt::heap_alloc(Ystub::Ystub(f0, f1))
+}
+
+#[inline]
+pub fn y_stubs() -> Ref<List<&'static Ystub>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ystub>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Ystub>())
+    })
+}
+
+pub fn export_at(mut es: List<Int>, mut l: Int, mut i: Int) -> Int {
+    loop {
+        if null_p(es) {
+            return int_lit(-1);
+        } else if _eq(car(es), l) {
+            return i;
+        } else {
+            (es, i) = (cdr(es), _plus(i, int_lit(1)));
+            continue;
+        }
+    }
+}
+
+#[inline]
+pub fn y_far_p(l: Int) -> bool {
+    (_gt_eq(get(y_far_from()), int_lit(0)) && _lt(l, get(y_far_from())))
+}
+
+pub fn export_slot(l: Int) -> Int {
+    let i = export_at(get(y_exports()), l, int_lit(0));
+    if _lt(i, int_lit(0)) {
+        error(string_append(str_lit("kayak-cells: a word's code goes to the machine's label "), string_append(int_to_string(l), str_lit(", which it does not export"))));
+        int_lit(0)
+    } else {
+        _plus(st_exports(), i)
+    }
+}
+
 pub fn yb_x(l: Int) -> () {
-    set(y_items(), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), l), get(y_items())))
+    if y_far_p(l) {
+        set(y_items(), kayak_rt::heap_cons(xb((&x86::x86_jmp_m)(y_st(), int_lit(-1), int_lit(1), at_st(export_slot(l)))), get(y_items())))
+    } else {
+        set(y_items(), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), l), get(y_items())))
+    }
 }
 
-#[inline]
 pub fn ybc_x(c: Int, l: Int) -> () {
-    set(y_items(), kayak_rt::heap_cons(xj(y_jcc(), c, l), get(y_items())))
+    if y_far_p(l) {
+        let s = label_x();
+        set(y_stubs(), kayak_rt::heap_cons(ystub(s, l), get(y_stubs())));
+        set(y_items(), kayak_rt::heap_cons(xj(y_jcc(), c, s), get(y_items())))
+    } else {
+        set(y_items(), kayak_rt::heap_cons(xj(y_jcc(), c, l), get(y_items())))
+    }
+}
+
+pub fn yadr_x(r: Int, l: Int) -> () {
+    if y_far_p(l) {
+        set(y_items(), kayak_rt::heap_cons(xb((&x86::x86_load)(r, y_st(), at_st(export_slot(l)))), get(y_items())))
+    } else {
+        set(y_items(), kayak_rt::heap_cons(xj(y_lea(), r, l), get(y_items())))
+    }
+}
+
+/// Each stub a word's conditional jumps to the machine took: its far jump.
+pub fn y_stubs_flushed_x(mut ss: List<&'static Ystub>) -> () {
+    loop {
+        if null_p(ss) {
+            return ();
+        } else {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Ystub::Ystub(s, l) => {
+                    ybind_x(s);
+                    yb_x(l);
+                    ss = cdr(ss);
+                    continue;
+                }
+            }
+        }
+    }
 }
 
 #[inline]
-pub fn yadr_x(r: Int, l: Int) -> () {
-    set(y_items(), kayak_rt::heap_cons(xj(y_lea(), r, l), get(y_items())))
+pub fn y_stubs_done_x() -> () {
+    let ss = get(y_stubs());
+    set(y_stubs(), nil::<&'static Ystub>());
+    y_stubs_flushed_x(ss)
 }
 
 /// No-ops, so that the `n` bytes next end 8-aligned.
@@ -917,9 +1020,12 @@ pub fn yalign_x(n: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xa(n), get(y_items())))
 }
 
-#[inline]
 pub fn ycall_x(l: Int) -> () {
-    set(y_items(), kayak_rt::heap_cons(xj(y_call(), int_lit(0), l), get(y_items())))
+    if y_far_p(l) {
+        set(y_items(), kayak_rt::heap_cons(xb((&x86::x86_call_m)(y_st(), at_st(export_slot(l)))), get(y_items())))
+    } else {
+        set(y_items(), kayak_rt::heap_cons(xj(y_call(), int_lit(0), l), get(y_items())))
+    }
 }
 
 // Data, placed before the code: 8 bytes an entry.
@@ -1900,7 +2006,21 @@ pub fn yentry_x() -> () {
     yst_st_x(st_start(), y16());
     ytesti_x(y16(), int_lit(15));
     ybc_x(q_ne(), get(l_misaligned()));
-    yresume_x()
+    yb_x(get(l_exports()))
+}
+
+/// Each exported place's address, in its slot of the state (C342).
+pub fn y_exports_written_x(mut es: List<Int>, mut i: Int) -> () {
+    loop {
+        if null_p(es) {
+            return ();
+        } else {
+            yadr_x(y13(), car(es));
+            yst_st_x(_plus(st_exports(), i), y13());
+            (es, i) = (cdr(es), _plus(i, int_lit(1)));
+            continue;
+        }
+    }
 }
 
 /// The registers back in the state, the cell being run `kk`'s, and out,
@@ -3501,6 +3621,7 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         set(l_start(), label_x());
         set(l_entry(), label_x());
         set(l_words(), label_x());
+        set(l_exports(), label_x());
         set(h_cont(), int_lit(-1));
         set(h_target(), int_lit(-1));
         ymachine_x();
@@ -3512,6 +3633,8 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         } else {
             ()
         };
+        set(y_exports(), kayak_rt::heap_cons(get(l_next()), kayak_rt::heap_cons(get(l_give()), kayak_rt::heap_cons(get(l_give_pre()), kayak_rt::heap_cons(get(l_resume()), kayak_rt::heap_cons(get(l_resume_give()), kayak_rt::heap_cons(get(l_pop_return()), kayak_rt::heap_cons(get(l_ran_out()), kayak_rt::heap_cons(get(l_misaligned()), kayak_rt::heap_cons(get(l_start()), kayak_rt::heap_cons(get(l_materialize()), kayak_rt::heap_cons(get(l_materialize_pushed()), kayak_rt::heap_cons(get(l_words()), kayak_rt::nil())))))))))))));
+        set(y_far_from(), get(hand_labels()));
         let cts = if get(hand_compiled()) {
             ywords_compiled_x(get(words()), int_lit(0), nil::<Int>())
         } else {
@@ -3521,6 +3644,13 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
             yregisters_compiled_x(get(register_words()), count_of(cts, int_lit(0)), cts)
         } else {
             cts
+        };
+        let u0 = y_stubs_done_x();
+        let u1 = set(y_far_from(), int_lit(-1));
+        let u2 = {
+            ybind_x(get(l_exports()));
+            y_exports_written_x(get(y_exports()), int_lit(0));
+            yresume_x()
         };
         let u = set(words_compiled(), count_of(rts, int_lit(0)));
         let its = the::<List<&'static XItem>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(xb(kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(0), kayak_rt::nil())))), kayak_rt::heap_cons(xl(get(l_words())), kayak_rt::heap_cons(xb((&x86::x86_le8)(_star(int_lit(8), count_of(rts, int_lit(0))))), append(y_words_table(rts, nil::<&'static XItem>()), append(reverse(get(y_data())), reverse(get(y_items()))))))))));

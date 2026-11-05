@@ -84,8 +84,16 @@
  addresses (never indices now, C244); the machine's base register is the heap's
  address less it, so that a value plus it is the value's word."
 (define st-vbase int 34)
+"A compiled word's code (C342; Fixpt's 516abc8e): what its reference
+ is less than where it runs (the code area's execute view less the tag);
+ and from `st-exports`, where each of the machine's own places a word's
+ code goes to is (hand-x64.kfx's `y-exports`), which the machine writes at
+ its entry, so that a word's code reaches the machine by them alone."
+(define st-code-delta int 35)
+(define st-exports int 36)
+(define st-export-count int 16)
 "Its length: 30 to 32 are hand-x64.kfx's own, 33 tier 6's (`st-t6link`)."
-(define st-size i64 35)
+(define st-size i64 52)
 (define at-st (->* (int) int) (lambda (i) (* 8 i)))
 
 "Why the machine stopped: to give a cell back; or the return stack ran
@@ -219,6 +227,8 @@
 (define l-start (ref int @c) (new 0))
 (define l-entry (ref int @c) (new 0))
 (define l-words (ref int @c) (new 0))
+"Where the x86_64 machine's entry writes its exported places (C342)."
+(define l-exports (ref int @c) (new 0))
 
 "Compiling a word (tier 4, C128): the label of the next cell's code, and
  of a branch's target's; -1 in the machine, or for a target not compiled."

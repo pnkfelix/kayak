@@ -92,12 +92,58 @@
 (define y-items (ref (listof x-item @c) @c) (new nil))
 (define ye! (->* ((listof int @k)) unit) (lambda (bs) (set y-items (cons (xb bs) (get y-items)))))
 (define ybind! (->* (int) unit) (lambda (l) (set y-items (cons (xl l) (get y-items)))))
-(define yb! (->* (int) unit) (lambda (l) (set y-items (cons (xj y-jmp 0 l) (get y-items)))))
-(define ybc! (->* (int int) unit) (lambda (c l) (set y-items (cons (xj y-jcc c l) (get y-items)))))
-(define yadr! (->* (int int) unit) (lambda (r l) (set y-items (cons (xj y-lea r l) (get y-items)))))
+
+"A word's code reaching the machine's (C342; Fixpt's 516abc8e): while
+ words are compiled (`y-far-from` a label's number, the first a word's),
+ a jump, a call or an address of the machine's own place goes by the
+ state's slot for it (`st-exports`), not by its distance, so that a word's
+ code may be anywhere; a conditional jump, to a stub of the word's own
+ (`y-stubs`) that jumps so. The places so reached, `y-exports`."
+(define y-far-from (ref int @c) (new -1))
+(define y-exports (ref (listof int @c) @c) (new nil))
+(define-datatype ystub (ystub int int))
+(define y-stubs (ref (listof ystub @c) @c) (new nil))
+(define-rec
+  (export-at (->* ((listof int @c) int int) int)
+    (lambda (es l i) (cond ((null? es) -1) ((= (car es) l) i) (else (export-at (cdr es) l (+ i 1)))))))
+(define y-far? (->* (int) bool)
+  (lambda (l) (and (>= (get y-far-from) 0) (< l (get y-far-from)))))
+(define export-slot (->* (int) int)
+  (lambda (l)
+    (let ((i (export-at (get y-exports) l 0)))
+      (if (< i 0) (begin (error (string-append "kayak-cells: a word's code goes to the machine's label " (string-append (int->string l) ", which it does not export"))) 0) (+ st-exports i)))))
+(define yb! (->* (int) unit)
+  (lambda (l)
+    (if (y-far? l)
+        (set y-items (cons (xb ((with x86 x86-jmp-m) y-st -1 1 (at-st (export-slot l)))) (get y-items)))
+        (set y-items (cons (xj y-jmp 0 l) (get y-items))))))
+(define ybc! (->* (int int) unit)
+  (lambda (c l)
+    (if (y-far? l)
+        (let ((s (label!))) (begin (set y-stubs (cons (ystub s l) (get y-stubs))) (set y-items (cons (xj y-jcc c s) (get y-items)))))
+        (set y-items (cons (xj y-jcc c l) (get y-items))))))
+(define yadr! (->* (int int) unit)
+  (lambda (r l)
+    (if (y-far? l)
+        (set y-items (cons (xb ((with x86 x86-load) r y-st (at-st (export-slot l)))) (get y-items)))
+        (set y-items (cons (xj y-lea r l) (get y-items))))))
+(define-rec
+  (y-stubs-flushed! (->* ((listof ystub @c)) unit)
+    (lambda (ss)
+      "Each stub a word's conditional jumps to the machine took: its far jump."
+      (if (null? ss)
+          #u
+          (tagcase (car ss)
+            (ystub (s l) (begin (ybind! s) (yb! l) (y-stubs-flushed! (cdr ss)))))))))
+(define y-stubs-done! (->* () unit)
+  (lambda () (let ((ss (get y-stubs))) (begin (set y-stubs nil) (y-stubs-flushed! ss)))))
 (define yalign! (->* (int) unit)
   (lambda (n) "No-ops, so that the `n` bytes next end 8-aligned." (set y-items (cons (xa n) (get y-items)))))
-(define ycall! (->* (int) unit) (lambda (l) (set y-items (cons (xj y-call 0 l) (get y-items)))))
+(define ycall! (->* (int) unit)
+  (lambda (l)
+    (if (y-far? l)
+        (set y-items (cons (xb ((with x86 x86-call-m) y-st (at-st (export-slot l)))) (get y-items)))
+        (set y-items (cons (xj y-call 0 l) (get y-items))))))
 "Data, placed before the code: 8 bytes an entry."
 (define y-data (ref (listof x-item @c) @c) (new nil))
 (define yd! (->* (int) unit) (lambda (v) (set y-data (cons (xb ((with x86 x86-le8) v)) (get y-data)))))
@@ -571,7 +617,14 @@
       ;; The code 16-byte aligned, as kayak-jit seals it, else out at once.
       (yadr! y16 (get l-start)) (yst-st! st-start y16)
       (ytesti! y16 15) (ybc! q-ne (get l-misaligned))
-      (yresume!))))
+      ;; The exported places written (`y-exports-written!`), then on.
+      (yb! (get l-exports)))))
+
+(define-rec
+  (y-exports-written! (->* ((listof int @c) int) unit)
+    (lambda (es i)
+      "Each exported place's address, in its slot of the state (C342)."
+      (if (null? es) #u (begin (yadr! y13 (car es)) (yst-st! (+ st-exports i) y13) (y-exports-written! (cdr es) (+ i 1)))))))
 
 (define yleave! (->* (i64) unit)
   (lambda (why)
@@ -1529,14 +1582,20 @@
         (sum made (car (get hand-made)))
         (begin
           (set y-items nil) (set y-data nil) (set hand-labels 0)
-          (set l-start (label!)) (set l-entry (label!)) (set l-words (label!))
+          (set l-start (label!)) (set l-entry (label!)) (set l-words (label!)) (set l-exports (label!))
           (set h-cont -1) (set h-target -1)
           (ymachine!)
           (set l-materialize (label!)) (y-materialize! (get l-materialize) #f)
           (set l-materialize-pushed (label!))
           (if (get hand-fixpt-calls) (y-materialize! (get l-materialize-pushed) #t) #u)
+          (set y-exports (list (get l-next) (get l-give) (get l-give-pre) (get l-resume) (get l-resume-give) (get l-pop-return)
+                               (get l-ran-out) (get l-misaligned) (get l-start) (get l-materialize) (get l-materialize-pushed) (get l-words)))
+          (set y-far-from (get hand-labels))
           (let* ((cts (if (get hand-compiled) (ywords-compiled! (get words) 0 nil) nil))
                  (rts (if (get hand-compiled) (yregisters-compiled! (get register-words) (count-of cts 0) cts) cts))
+                 (u0 (y-stubs-done!))
+                 (u1 (set y-far-from -1))
+                 (u2 (begin (ybind! (get l-exports)) (y-exports-written! (get y-exports) 0) (yresume!)))
                  (u (set words-compiled (count-of rts 0)))
                  (its (the (listof x-item @c)
                         (cons (xl (get l-start))

@@ -1076,10 +1076,30 @@ pub fn st_vbase() -> Int {
     int_lit(34)
 }
 
+// A compiled word's code (C342; Fixpt's 516abc8e): what its reference
+// is less than where it runs (the code area's execute view less the tag);
+// and from `st-exports`, where each of the machine's own places a word's
+// code goes to is (hand-x64.kfx's `y-exports`), which the machine writes at
+// its entry, so that a word's code reaches the machine by them alone.
+#[inline]
+pub fn st_code_delta() -> Int {
+    int_lit(35)
+}
+
+#[inline]
+pub fn st_exports() -> Int {
+    int_lit(36)
+}
+
+#[inline]
+pub fn st_export_count() -> Int {
+    int_lit(16)
+}
+
 // Its length: 30 to 32 are hand-x64.kfx's own, 33 tier 6's (`st-t6link`).
 #[inline]
 pub fn st_size() -> i64 {
-    35i64
+    52i64
 }
 
 #[inline]
@@ -1608,6 +1628,15 @@ pub fn l_entry() -> Ref<Int> {
 
 #[inline]
 pub fn l_words() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+// Where the x86_64 machine's entry writes its exported places (C342).
+#[inline]
+pub fn l_exports() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
         kayak_rt::heap_new(int_lit(0))
