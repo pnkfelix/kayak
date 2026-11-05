@@ -4282,7 +4282,7 @@ pub type Snames = List<&'static Sname>;
 pub fn logic_type_forms() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("oneof"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -6837,7 +6837,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                     // tail of any types; a list's pair when its tail is the list.
                     return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
-                } else if sym_is_p(car(xs), str_lit("union")) {
+                } else if (sym_is_p(car(xs), str_lit("oneof")) || sym_is_p(car(xs), str_lit("union"))) {
                     let members = union_members(parse_types(v, tvars, cdr(xs)));
                     let shapes = map(lambda1s(move |m: &'static Ty| {
                         mu_member_shape(v, tvars, m)
@@ -8675,7 +8675,7 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                 } else if string_eq_p(d, str_lit("%array")) {
                     return string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%union")) {
-                    return string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")));
+                    return string_append(str_lit("(oneof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%pairof")) {
                     return string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%mark-key")) {

@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"allof-split.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"id : same ! pure",
+"go : (subr (read (globals id)) ((oneof int bool)) (oneof int bool)) ! pure",
+"(5 #t) : (listof (oneof int bool) acyclic) ! (read (globals go id))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

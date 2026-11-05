@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"budget-past.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/anyof/budget-past.fx:137:15: `q` is declared a all: a all is expected here, and this is a (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib) (7 ib))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

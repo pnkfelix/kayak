@@ -13,7 +13,7 @@
 {
 "code": 0,
 "out": [
-"first : (subr (read @heap) ((union nil (pairof int bool @heap))) int) ! pure",
+"first : (subr (read @heap) ((oneof nil (pairof int bool @heap))) int) ! pure",
 "7 : int ! (maxeff (read @heap) (alloc @heap) (read (globals first)))",
 ""
 ],
@@ -21,7 +21,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
 ]
 }
 ]

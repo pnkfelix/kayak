@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"meet.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define f : (allof (subr pure (ab) ab) (subr pure (ac) ac)) ! pure",
+"define only-a : (subr pure ((sumof (#:a int))) int) ! pure",
+"define apply-ab : (subr pure ((subr pure (ab) ab) ab) int) ! pure",
+"(listof int acyclic) ! (read (globals apply-ab f only-a))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

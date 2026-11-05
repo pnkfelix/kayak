@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"sub-sum.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define head : (subr pure (sexp) symbol) ! pure",
+"define via : (subr (read (globals head)) (eop) symbol) ! pure",
+"define e1 : expr ! pure",
+"define o1 : op ! pure",
+"define v1 : (sumof (#:var symbol)) ! pure",
+"(listof symbol acyclic) ! (read (globals e1 head o1 v1 via))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

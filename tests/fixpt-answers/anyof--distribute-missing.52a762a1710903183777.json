@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"distribute-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"p : (productof (1 ib) (2 ib)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/anyof/distribute-missing.fx:7:17: `q` is declared a three: a three is expected here, and this is a (productof (1 ib) (2 ib))",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

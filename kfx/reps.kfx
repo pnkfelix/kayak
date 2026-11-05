@@ -93,7 +93,7 @@
             (tagcase (rx-node x "pairof" #f (the rp-operands (list (the rp-operand (sum node (i64->int slot))) (the rp-operand (sum node (i64->int slot))) fr (the rp-operand (sum flag #t)))))
               (rxa (x p)
                 (tagcase (rx-bases x (list "vector" "bytevector"))
-                  (rxs (x as2) (rx-fill x slot "union" #f (the strings nil) (onto as1 (cons p as2)))))))))))))
+                  (rxs (x as2) (rx-fill x slot "oneof" #f (the strings nil) (onto as1 (cons p as2)))))))))))))
 
 (define rx-hole (subr kfx (rx string) rxa)
   (lambda (x n)
@@ -343,7 +343,7 @@
  type; a program's from its checker's own: its parameters, its marks
  (`%variance NAME`) and the representation `up-NAME` takes."
 (define-datatype gdecl (gdecl strings strings strings ty))
-"fixpt-source: crates/fixpt-fx26/src/check.rs@8616f2f"
+"fixpt-source: crates/fixpt-fx26/src/check.rs@1311497"
 (define rp-generative-decls strings
   (list "(vsubr (e effect +) (t type -) (r type +)) (subr e ((listof t acyclic)) r)"
         "(flatlayout (t type)) int"
@@ -697,7 +697,7 @@
                          (tagcase (rx-tys s x sc (list (car as) (car (cdr as))))
                            (rxs (x ab) (tagcase (rx-region s x sc (car (cdr (cdr as)))) (rxa (x r2) (rx-fill x slot "pairof" #f (the strings nil) (onto ab (the rp-operands (list r2 (the rp-operand (sum flag #t)))))))))))
                        (else other (rx-declined x "a union of nil and no pair")))))
-                  ((string=? d "%union") (tagcase (rx-tys s x sc args) (rxs (x as) (rx-fill x slot "union" #f (the strings nil) as))))
+                  ((string=? d "%union") (tagcase (rx-tys s x sc args) (rxs (x as) (rx-fill x slot "oneof" #f (the strings nil) as))))
                   ((and (string=? d "%pairof") (i64= (size args) 3)) (tagcase (rx-tys s x sc (list (car args) (car (cdr args)))) (rxs (x as) (tagcase (rx-region s x sc (car (cdr (cdr args)))) (rxa (x r2) (rx-fill x slot "pairof" #f (the strings nil) (onto as (the rp-operands (list r2 (the rp-operand (sum flag #f)))))))))))
                   ((and (string=? d "%mu") (i64= (size args) 2)) (tagcase (car args) (ty-var (n) (rx-ty-at s x (cons (rpbind n slot -1) sc) (walk s (car (cdr args))) slot)) (else other (rx-declined x "a part not a variable"))))
                   ((and (string=? d "%dlambda") (not (null? args)))
@@ -1010,7 +1010,7 @@
                              (ty-data "%natof" (list (ri-size c (car args))))))
                  (else other (ty-nat))))
               ((string=? head "nlist") (ty-data "%nlist" (list (ri-ty c (car args)) (ri-size c (car (cdr args))))))
-              ((string=? head "union") (if (ri-datum? (tagcase c (ri (ns hs bs busy) ns)) k args) (ty-data "datum" nil) (ty-data "%union" (ri-tys c args))))
+              ((or (string=? head "oneof") (string=? head "union")) (if (ri-datum? (tagcase c (ri (ns hs bs busy) ns)) k args) (ty-data "datum" nil) (ty-data "%union" (ri-tys c args))))
               ((string=? head "subr")
                (let* ((conv (tagcase (car args) (node j (symbol->string (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 2))) (else other "cellular")))
                       (es (tagcase (car (cdr args)) (node j (ri-atoms c (extract (car (rp-node-at (tagcase c (ri (ns hs bs busy) ns)) j)) 5))) (else other nil)))

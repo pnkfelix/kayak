@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"meet.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"f : (allof (subr pure (ab) ab) (subr pure (ac) ac)) ! pure",
+"only-a : (subr pure ((sumof (#:a int))) int) ! pure",
+"apply-ab : (subr pure ((subr pure (ab) ab) ab) int) ! pure",
+"(1 2 3) : (listof int acyclic) ! (read (globals apply-ab f only-a))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

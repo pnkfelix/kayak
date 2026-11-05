@@ -1,0 +1,66 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"allof-split.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (26 cells, cellular):",
+"     0: closure word id over 0",
+"     3: global! id",
+"     5: closure word go over 0",
+"     8: global! go",
+"    10: lit 5",
+"    12: global go",
+"    14: tcall 1",
+"    16: lit #t",
+"    18: global go",
+"    20: tcall 1",
+"    22: prim list 2",
+"    25: exit",
+"",
+"word go (6 cells, cellular):",
+"     0: slot 0",
+"     2: global id",
+"     4: ttailcall 1",
+"  its register code (33 cells, not compiled):",
+"       0: args 1",
+"       2: global-guard id written 1 else → 9",
+"       6: reg 1",
+"       8: return",
+"       9: save 1",
+"      11: store 1 0",
+"      14: global-guard id written 1 else → 23",
+"      18: stack 0",
+"      20: pop 1",
+"      22: return",
+"      23: load 1 0",
+"      26: global id",
+"      28: pop 1",
+"      30: tailinvoke 1 1",
+"",
+"word id (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

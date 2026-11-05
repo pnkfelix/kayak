@@ -24,25 +24,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"define plus : (subr (read @r) (cell) int) ! pure",
-"define otherwise : (subr (read @r) (cell) int) ! pure",
-"define elsewhere : (subr (maxeff (read @r) (write @s)) (cell (ref int @s)) int) ! pure",
-"define through-heap : (subr (write @heap) (frozen (ref int @heap)) int) ! pure",
-"define field : (subr pure ((productof (#:a v))) int) ! pure",
-"int ! (read (globals field))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
-]
 }
 ]
 }

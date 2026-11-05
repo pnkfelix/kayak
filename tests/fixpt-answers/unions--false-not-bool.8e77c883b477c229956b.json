@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"false-not-bool.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/unions/false-not-bool.fx:3:16: a `oneof`'s members must be told apart at run time: a false and a bool cannot be",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

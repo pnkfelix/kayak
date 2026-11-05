@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"latent-alias.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"is-int : (subr pure ((oneof int string)) (bool (then (shape 0 int)) (else))) ! pure",
+"f : (subr (read (globals is-int)) ((oneof int string)) int) ! pure",
+"42 : int ! (read (globals f is-int))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

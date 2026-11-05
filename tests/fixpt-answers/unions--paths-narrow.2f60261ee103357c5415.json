@@ -23,24 +23,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"plus : (subr (read @r) (cell) int) ! pure",
-"otherwise : (subr (read @r) (cell) int) ! pure",
-"elsewhere : (subr (maxeff (read @r) (write @s)) (cell (ref int @s)) int) ! pure",
-"through-heap : (subr (write @heap) (frozen (ref int @heap)) int) ! pure",
-"field : (subr pure ((productof (#:a v))) int) ! pure",
-"42 : int ! (read (globals field))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
-]
 }
 ]
 }

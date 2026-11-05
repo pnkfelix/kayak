@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"fits-none.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"f : (allof (subr pure (int) int) (subr pure (string) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/allof/fits-none.fx:3:1: this call fits no member of a (allof (subr pure (int) int) (subr pure (string) int)): its arguments are a bool",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

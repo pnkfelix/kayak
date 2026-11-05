@@ -868,7 +868,7 @@ pub mod emitter {
                     // is expanded where applied, as that family is (C89); so is one
                     // whose body is a union, a `Value` in Rust, which an alias could not
                     // give its parameters (C119: Fixpt's `entry`).
-                    ctx(ds, ts, ks, ls, xs, fs, fx, note_family(second(items(form)), false, ms), es, onto(if (head_is_p(car(items(third(items(form)))), str_lit("select")) || head_is_p(third(items(form)), str_lit("union"))) {
+                    ctx(ds, ts, ks, ls, xs, fs, fx, note_family(second(items(form)), false, ms), es, onto(if (head_is_p(car(items(third(items(form)))), str_lit("select")) || head_is_p(third(items(form)), str_lit("union")) || head_is_p(third(items(form)), str_lit("oneof"))) {
                         the::<Typeds>(kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), type_head_name(second(items(form)))), sym(str_lit(""), str_lit(""), 0i64)), kayak_rt::nil()))
                     } else {
                         nil::<&'static Typed>()
@@ -2912,7 +2912,7 @@ pub mod emitter {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)));
                     } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
-                    } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("%union"))) {
+                    } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("oneof")) || sym_is_p(car(xs), str_lit("%union"))) {
                         // A union's value (C75): kayak-rt's uniform one.
                         return put(str_lit("kayak_rt::value::Value"), acc);
                     } else if ((sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) && list_type_p(c, third(xs))) {

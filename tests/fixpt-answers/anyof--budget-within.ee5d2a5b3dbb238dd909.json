@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"budget-within.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define p : (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib)) ! pure",
+"define q : all ! (read (globals p))",
+"ib ! (read (globals p))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

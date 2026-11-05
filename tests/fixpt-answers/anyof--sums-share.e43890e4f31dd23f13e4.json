@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"sums-share.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define f : (subr pure ((anyof a b)) int) ! pure",
+"(listof int acyclic) ! (read (globals f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

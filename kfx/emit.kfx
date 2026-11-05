@@ -417,7 +417,7 @@
                       give its parameters (C119: Fixpt's `entry`)."
                      (ctx ds ts ks ls xs fs fx (note-family (second (items form)) #f ms) es
                           (onto (if (or (head-is? (car (items (third (items form)))) "select")
-                                        (head-is? (third (items form)) "union"))
+                                        (head-is? (third (items form)) "union") (head-is? (third (items form)) "oneof"))
                                     (the typeds (list (typed (string-append "%expand " (type-head-name (second (items form)))) (sym "" "" 0))))
                                     nil)
                                 (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods))))
@@ -1517,7 +1517,7 @@
                      (put ">" (put-type c (second xs) (put "List<" acc))))
                     ((sym-is? (car xs) "flatarrayof")
                      (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
-                    ((or (sym-is? (car xs) "union") (sym-is? (car xs) "%union"))
+                    ((or (sym-is? (car xs) "union") (sym-is? (car xs) "oneof") (sym-is? (car xs) "%union"))
                      "A union's value (C75): kayak-rt's uniform one."
                      (put "kayak_rt::value::Value" acc))
                     ((and (or (sym-is? (car xs) "pairof") (sym-is? (car xs) "%pairof")) (list-type? c (third xs)))

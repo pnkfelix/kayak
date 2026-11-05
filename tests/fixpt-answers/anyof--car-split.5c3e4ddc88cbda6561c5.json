@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"car-split.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define first : (subr pure (ib) int) ! pure",
+"(listof int acyclic) ! (read (globals first))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

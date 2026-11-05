@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"type-variable.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/unions/type-variable.fx:3:41: a t cannot be in a `oneof`: its shape at run time is not known",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

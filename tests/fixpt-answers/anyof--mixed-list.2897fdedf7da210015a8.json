@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"mixed-list.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"l : (listof ib acyclic) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/anyof/mixed-list.fx:6:62: `m` is declared a (anyof (listof int acyclic) (listof bool acyclic)): a (anyof (listof int acyclic) (listof bool acyclic)) is expected here, and this is a (listof ib acyclic)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

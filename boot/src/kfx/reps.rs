@@ -205,7 +205,7 @@ pub fn rx_datum(x: &'static Rx, slot: i64) -> &'static Rx {
                             let tagcase_ = rx_bases(x, kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil())));
                             match *tagcase_ {
                                 Rxs::Rxs(x, as2) => {
-                                    rx_fill(x, slot, str_lit("union"), false, the::<Strings>(nil::<Str>()), onto(as1, kayak_rt::heap_cons(p, as2)))
+                                    rx_fill(x, slot, str_lit("oneof"), false, the::<Strings>(nil::<Str>()), onto(as1, kayak_rt::heap_cons(p, as2)))
                                 }
                             }
                         }
@@ -832,7 +832,7 @@ pub fn gdecl(f0: Strings, f1: Strings, f2: Strings, f3: &'static Ty) -> &'static
     kayak_rt::heap_alloc(Gdecl::Gdecl(f0, f1, f2, f3))
 }
 
-// fixpt-source: crates/fixpt-fx26/src/check.rs@8616f2f
+// fixpt-source: crates/fixpt-fx26/src/check.rs@1311497
 #[inline]
 pub fn rp_generative_decls() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
@@ -1859,7 +1859,7 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                     let tagcase_ = rx_tys(s, x, sc, args);
                     match *tagcase_ {
                         Rxs::Rxs(x, r#as) => {
-                            return rx_fill(x, slot, str_lit("union"), false, the::<Strings>(nil::<Str>()), r#as);
+                            return rx_fill(x, slot, str_lit("oneof"), false, the::<Strings>(nil::<Str>()), r#as);
                         }
                     }
                 } else if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(args), 3i64)) {
@@ -3048,7 +3048,7 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
         }
     } else if string_eq_p(head, str_lit("nlist")) {
         ty_data(str_lit("%nlist"), kayak_rt::heap_cons(ri_ty(c, car(args)), kayak_rt::heap_cons(ri_size(c, car(cdr(args))), kayak_rt::nil())))
-    } else if string_eq_p(head, str_lit("union")) {
+    } else if (string_eq_p(head, str_lit("oneof")) || string_eq_p(head, str_lit("union"))) {
         if ri_datum_p({
             let tagcase_ = c;
             match *tagcase_ {

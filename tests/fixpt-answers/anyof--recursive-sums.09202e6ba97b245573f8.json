@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"recursive-sums.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"total : (subr pure (tree) int) ! pure",
+"leaf : (subr pure (int) tree) ! pure",
+"node : (subr pure (tree tree) tree) ! pure",
+"6 : int ! (read (globals leaf node total))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

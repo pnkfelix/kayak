@@ -1,7 +1,9 @@
 # A request to the Fixpt team: `fixpt check --reps`, each definition's rep
 
-Status: proposed 2026-11-05 by kayak (C346-C349), on Fixpt 8616f2fe
-(kayak's pin). Not sent yet.
+Status: proposed 2026-11-05 by kayak (C346-C349), on Fixpt 8616f2fe;
+landed the same day in Fixpt 13114974 (`fixpt check --reps`, `--reps=text`,
+`NAME differs REP` where the FX-26 checker's rep is another), kayak's pin
+since C351, its use C352.
 
 ## What we ask
 

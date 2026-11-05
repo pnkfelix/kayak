@@ -640,7 +640,7 @@
  as tokens, parentheses, spaces and words, kept; each frame a list's: `N`
  a constructor's, `-` another's, `M x k` a mu's."
 (define mu-nodes strings
-  (list "subr" "poly" "productof" "sumof" "listof" "pairof" "union" "moduleof" "ref" "icell" "arrayof" "flatarrayof"
+  (list "subr" "poly" "productof" "sumof" "listof" "pairof" "union" "oneof" "moduleof" "ref" "icell" "arrayof" "flatarrayof"
         "narrayof" "bloblet" "vectorof" "addr" "inbox" "mark-key" "prompt-tag" "composable" "oneshot" "vsubr" "blobref" "nlist"
         "dlambda" "bytevectorof"))
 

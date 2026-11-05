@@ -1,0 +1,50 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"union-still-read.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word g over 0",
+"     3: global! g",
+"     5: lit 3",
+"     7: global g",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word g (13 cells, cellular):",
+"     0: slot 0",
+"     2: prim exact-integer? 1",
+"     5: 0branch → 10",
+"     7: slot 0",
+"     9: return",
+"    10: lit 0",
+"    12: return",
+"  its register code (14 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim1 exact-integer?",
+"       6: branchf → 11",
+"       8: reg 1",
+"      10: return",
+"      11: const 0",
+"      13: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"distribute-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/anyof/distribute-missing.fx:7:17: `q` is declared a three: a three is expected here, and this is a (productof (1 ib) (2 ib))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

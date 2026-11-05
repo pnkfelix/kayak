@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"overlap.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define count : (subr pure ((listof (oneof int bool) acyclic)) int) ! pure",
+"define size : (subr (read (globals count)) (ns) int) ! pure",
+"define is : ns ! pure",
+"define bs : ns ! pure",
+"(listof int acyclic) ! (read (globals bs count is size))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

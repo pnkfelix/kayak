@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"distribute-product.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define p : (productof (1 ib) (2 ib)) ! pure",
+"define q : four ! (read (globals p))",
+"ib ! (read (globals p))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

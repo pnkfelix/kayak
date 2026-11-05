@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"swap.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define swap : swapper ! pure",
+"define body : (subr pure (expr) expr) ! pure",
+"define name-of : (subr pure (expr) symbol) ! pure",
+"define e1 : expr ! pure",
+"(listof symbol acyclic) ! (read (globals body e1 name-of swap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

@@ -9595,3 +9595,23 @@ team: `docs/requests/fixpt-check-reps.md`, a flag printing each
 definition's rep (`NAME HEX` or `NAME declined`), so that kayak's checks
 compare reps through the `fixpt` binary instead of a program linking
 Fixpt's crates (C346's scratch tool, its source in the request).
+
+## C351. The pin at Fixpt 1311497 (2026-11-05)
+
+The user's: "Pull Fixpt from GitHub. Adapt your workflow to fit its
+addition of `check --reps`. … then start work on … allof/anyof/oneof." The
+pinned clone fetched from its GitHub `origin` and moved from 8616f2f to
+13114974 (20 commits): Fixpt's logical types (U0 `oneof`, U1 `allof`,
+U2/U2b `anyof`, U3/U3b rule 5) and `fixpt check --reps` (kayak's request,
+C350). Carried over:
+- **`oneof`** read as `union` was (`union` still read, as Fixpt's), printed
+  `oneof`, its rep's head `oneof` (`union` still imported), the emitter
+  and the REPL's lists of type heads too: Fixpt's prelude
+  (`kfx/built-in.kfx`, copied) and its `unions/` tests are written with it
+  now. The rest of U0 (two sums of no tag in common one sum, two sharing
+  one refused) and U1 to U3 are the next work.
+- **`check.rs`'s generative declarations**, copied in `kfx/reps.kfx`
+  (C347): unchanged since 8616f2f (only `DATUM`'s `union` became `oneof`,
+  which kayak's export writes itself); the mark moved.
+The new Fixpt programs (`allof/`, `anyof/`, `unions/oneof-sums*.fx`) are
+not yet kayak's; no passing list dropped.

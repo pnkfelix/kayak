@@ -24,7 +24,7 @@
 "3",
 "not defined: the session changed since this definition was checked: check it again",
 "refused: argument 2 is a string, where a int is expected",
-"refused: argument 1 is a int, where a (union nil (pairof ? ? r)) is expected",
+"refused: argument 1 is a int, where a (oneof nil (pairof ? ? r)) is expected",
 "defined a",
 "refused: `g` is broken, since `a` was redefined (argument 2 is a string, where a int is expected): define it again to use it",
 ""
@@ -33,7 +33,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
 ]
 }
 ]

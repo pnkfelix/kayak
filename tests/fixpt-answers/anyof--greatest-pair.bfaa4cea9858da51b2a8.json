@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"greatest-pair.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define first : (subr pure (ns) int) ! pure",
+"define v : ns ! pure",
+"define w : ns ! pure",
+"(listof int acyclic) ! (read (globals first v w))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

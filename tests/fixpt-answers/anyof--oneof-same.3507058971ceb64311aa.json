@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"oneof-same.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define f : (subr pure ((oneof int string)) int) ! pure",
+"define g : (subr (read (globals f)) ((oneof int string)) int) ! pure",
+"define h : (subr (read (globals f g)) ((oneof int string)) int) ! pure",
+"(listof int acyclic) ! (read (globals f g h))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

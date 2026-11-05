@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"swap-anyof.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"swap : swapper ! pure",
+"swap-eop : (subr (read (globals swap)) (eop) eop) ! pure",
+"name-of : (subr pure (eop) symbol) ! pure",
+"(y m) : (listof symbol acyclic) ! (read (globals name-of swap swap-eop))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}
