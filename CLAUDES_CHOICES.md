@@ -9478,3 +9478,44 @@ word read named, so a root; a session's globals the machine's table; its
 checker state and pendings kept); a plan, `docs/research/session-memory.md`,
 not started (type reps first, the user's). `compiled-stage.md`'s status and
 TODO.md's `stage` entry brought up to C344.
+
+## C346. Reps compared with Fixpt's, byte for byte: the first part (2026-11-05)
+
+The user's: parity with Fixpt, the pin's (8616f2f, not its newer logical
+types, which wait for the user's review). `docs/research/type-reps.md`'s
+"Parity", item 1 (the declined), led to the first comparison of kayak's
+reps with Fixpt's: until now each side's reps were only checked against
+themselves (kayak's `--reps` round trip; C300's byte-for-byte test was of
+hand-written nodes, the crate's, not of kayak's export). A scratch tool
+(not kept: it links the pinned clone's `fixpt-fx26`, `Checker::export_ty`)
+printed each definition's rep as Fixpt's Rust checker makes it, for every
+program of `tests/fx26/programs`: 800 of 1280 were Fixpt's, 480 differed.
+Now 1091 are, by:
+- **A type variable a `var` node** over it (both of Fixpt's checkers,
+  `reps.rs`, `check-reps.fx:308`), a recursive type's variable its node
+  still; and so in staging's fill (`rp-filled`, `rp-var-aliases`), a
+  `var` node over a filled hole its filler, as Fixpt's `fill`.
+- **`@heap` a region constant**, `(rconst @heap)`, as Fixpt reads a
+  written `@heap`; Fixpt's `(heap)` is a written `heap`, another region
+  (below).
+- **Binders named as written** (`a`, not `a@148`; `p`, not `'p`; a spec's
+  unnamed one empty, not `%none`), the kind in the binder node; the import
+  spells each as kayak's checker does again, `@r` and its node, `%d` if
+  distinct.
+- **`datum`** the union Fixpt's standard abbreviation is, read back as
+  `datum`; **`nil` or a pair** the pair that may be `nil`; an **`nlist`'s
+  region** `(frozen #t)`.
+- **Declined no more** (30 to 6): a module type by its abbreviation's name
+  expanded by the checker's environment (`mtypes-expanded`, at `--reps`,
+  a stage's and evidence's export); composable continuations,
+  `(composable T A D R once?)`.
+Left (189): a generative type's `gendef` node and Fixpt's numbering of
+generative types (144), a `define-datatype` as the sum it is (17), a place
+binder's kind (10), `param-sel`, a `poly` of several kinds nested, a
+module's abstract type outside it a hole, descriptions' order, inferred
+effects (`alloc` of `(frozen #t)` missing in one), and 6 still declined
+(`app`, `convof`, two effect atoms).
+
+Found on the way, a checker difference: at the pin Fixpt refuses
+`(subr pure ((listof int heap)) (listof int @heap))` of the identity, `heap`
+and `@heap` two regions; kayak takes them as one (C171) and runs it. TODO.

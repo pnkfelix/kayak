@@ -675,6 +675,85 @@ pub fn rp_filled_args(r#as: RpOperands, set: bool, holes: List<Symbol>, ps: List
     }
 }
 
+pub enum Rpalias {
+    Rpalias(Int, RpOperand),
+}
+
+pub fn rpalias(f0: Int, f1: RpOperand) -> &'static Rpalias {
+    kayak_rt::heap_alloc(Rpalias::Rpalias(f0, f1))
+}
+
+/// Each `var` node of `before` over a hole, which `after`, the same nodes
+/// filled, fills: its slot, and its filler.
+pub fn rp_var_aliases(before: RpNodes, after: RpNodes) -> List<&'static Rpalias> {
+    if (null_p(before) || null_p(after)) {
+        nil::<&'static Rpalias>()
+    } else {
+        let (rest, x) = (rp_var_aliases(cdr(before), cdr(after)), car(before));
+        if (string_eq_p(symbol_to_string(x.1), str_lit("var")) && i64_eq(size(x.4), 1i64) && {
+            let tagcase_ = car(x.4);
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && not({
+            let tagcase_ = car(car(after).4);
+            match *tagcase_ {
+                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })) {
+            kayak_rt::heap_cons(rpalias(x.0, car(car(after).4)), rest)
+        } else {
+            rest
+        }
+    }
+}
+
+pub fn rp_aliased(mut als: List<&'static Rpalias>, mut a: RpOperand) -> RpOperand {
+    loop {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                if null_p(als) {
+                    return a;
+                } else if {
+                    let tagcase_ = car(als);
+                    match *tagcase_ {
+                        Rpalias::Rpalias(k, f) => {
+                            _eq(k, j)
+                        }
+                    }
+                } {
+                    let tagcase_ = car(als);
+                    match *tagcase_ {
+                        Rpalias::Rpalias(k, f) => {
+                            return f;
+                        }
+                    }
+                } else {
+                    als = cdr(als);
+                    continue;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return a;
+            }
+        }
+    }
+}
+
 /// Rep `main`'s nodes, its holes filled from evidence `es`.
 pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
     let tagcase_ = main;
@@ -712,10 +791,27 @@ pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
             let holes = map(lambda1s(move |h: Str| {
                 string_to_symbol(h)
             }), hs);
-            let mine = map(lambda1s(move |x: RpNode| {
+            let filled = map(lambda1s(move |x: RpNode| {
                 Product_11_12_13_14_15(x.0, x.1, x.2, x.3, rp_filled_args(x.4, x.2, holes, ps, all, moved))
             }), ns);
-            rexp(onto(mine, moved), all, root, d)
+            let aliases = rp_var_aliases(ns, filled);
+            let mine = map(lambda1s(move |x: RpNode| {
+                Product_11_12_13_14_15(x.0, x.1, x.2, x.3, map(lambda1s(move |a: RpOperand| {
+                    rp_aliased(aliases, a)
+                }), x.4))
+            }), filled);
+            rexp(onto(mine, moved), all, {
+                let tagcase_ = rp_aliased(aliases, the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(root))));
+                match *tagcase_ {
+                    Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
+                        j
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        root
+                    }
+                }
+            }, d)
         }
     }
 }

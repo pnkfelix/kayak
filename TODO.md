@@ -137,6 +137,12 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
+   - **`heap` and `@heap` one region in kayak, two in Fixpt** (found
+     2026-11-05, C346): at the pin Fixpt refuses the identity at `(subr
+     pure ((listof int heap)) (listof int @heap))`; kayak runs it (C171
+     made a written `heap` `@heap`). kayak accepts what Fixpt refuses.
+   - **Reps byte for byte Fixpt's** (C346): 1091 of 1280 definitions;
+     the rest in C346's "Left".
    - **Staged code and sessions never give memory back** (the user's
      concern, 2026-11-03; corrected 2026-11-05): kayak's own doing, not
      FX-26's nor Fixpt's compiled machines', whose session is all in the

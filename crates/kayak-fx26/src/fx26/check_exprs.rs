@@ -5860,7 +5860,7 @@ pub mod expressions {
         let tagcase_ = synth(v, s, g);
         match *tagcase_ {
             Res::Res(gt, ges, s) => {
-                let tagcase_ = evidence_export(s, kind, t);
+                let tagcase_ = evidence_export(s, kind, mtypes_expanded(v, s, t));
                 match *tagcase_ {
                     Rexp::Rexp(ns, hs, root, why) => {
                         if not(string_eq_p(why, str_lit(""))) {
@@ -5994,7 +5994,7 @@ pub mod expressions {
                                     let tagcase_ = synth(v, s, car(cdr(cdr(cdr(cdr(xs))))));
                                     match *tagcase_ {
                                         Res::Res(gt, ges, s) => {
-                                            let tagcase_ = ty_export(s, ty_proc(nil::<Str>(), kayak_rt::heap_cons({
+                                            let tagcase_ = ty_export(s, mtypes_expanded(v, s, ty_proc(nil::<Str>(), kayak_rt::heap_cons({
                                                 let tagcase_ = walk(s, mt);
                                                 match *tagcase_ {
                                                     Ty::TyData(d, r#as) => {
@@ -6009,7 +6009,7 @@ pub mod expressions {
                                                         mt
                                                     }
                                                 }
-                                            }, kayak_rt::nil()), ty_proc(es, nil::<&'static Ty>(), r)));
+                                            }, kayak_rt::nil()), ty_proc(es, nil::<&'static Ty>(), r))));
                                             match *tagcase_ {
                                                 Rexp::Rexp(ns, hs, root, why) => {
                                                     if not(string_eq_p(why, str_lit(""))) {

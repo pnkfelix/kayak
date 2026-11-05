@@ -326,6 +326,29 @@
                           (else z (cons of rest)))))))
               (else other (cons (car as) rest))))))))
 
+(define-datatype rpalias (rpalias int rp-operand))
+(define-rec
+  (rp-var-aliases (subr kfx (rp-nodes rp-nodes) (listof rpalias acyclic))
+    (lambda (before after)
+      "Each `var` node of `before` over a hole, which `after`, the same nodes
+       filled, fills: its slot, and its filler."
+      (if (or (null? before) (null? after))
+          nil
+          (let ((rest (rp-var-aliases (cdr before) (cdr after))) (x (car before)))
+            (if (and (string=? (symbol->string (extract x 2)) "var") (i64= (size (extract x 5)) 1)
+                     (tagcase (car (extract x 5)) (hole h #t) (else other #f))
+                     (not (tagcase (car (extract (car after) 5)) (hole h #t) (else other #f))))
+                (cons (rpalias (extract x 1) (car (extract (car after) 5))) rest)
+                rest))))))
+(define-rec
+  (rp-aliased (subr kfx ((listof rpalias acyclic) rp-operand) rp-operand)
+    (lambda (als a)
+      (tagcase a
+        (node j (cond ((null? als) a)
+                      ((tagcase (car als) (rpalias (k f) (= k j))) (tagcase (car als) (rpalias (k f) f)))
+                      (else (rp-aliased (cdr als) a))))
+        (else other a)))))
+
 (define rp-filled (subr kfx (rexp (listof rpe acyclic)) rexp)
   (lambda (main es)
     "Rep `main`'s nodes, its holes filled from evidence `es`."
@@ -344,11 +367,18 @@
                                                ens))))
                                     ps)))
                (holes (map (lambda ((h string)) (string->symbol h)) hs))
+               (filled (map (lambda ((x rp-node))
+                              (product (1 (extract x 1)) (2 (extract x 2)) (3 (extract x 3)) (4 (extract x 4))
+                                       (5 (rp-filled-args (extract x 5) (extract x 3) holes ps all moved))))
+                            ns))
+               ;; A variable's occurrence filled is its filler (C346; Fixpt's
+               ;; `fill`): each `var` node whose hole is filled, and what fills it.
+               (aliases (rp-var-aliases ns filled))
                (mine (map (lambda ((x rp-node))
                             (product (1 (extract x 1)) (2 (extract x 2)) (3 (extract x 3)) (4 (extract x 4))
-                                     (5 (rp-filled-args (extract x 5) (extract x 3) holes ps all moved))))
-                          ns)))
-          (rexp (onto mine moved) all root d))))))
+                                     (5 (map (lambda ((a rp-operand)) (rp-aliased aliases a)) (extract x 5)))))
+                          filled)))
+          (rexp (onto mine moved) all (tagcase (rp-aliased aliases (the rp-operand (sum node root))) (node j j) (else other root)) d))))))
 
 (define rp-same? (subr kfx (rp-operand rp-operand) bool)
   (lambda (a b)

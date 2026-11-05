@@ -1,14 +1,14 @@
 # Types as reps, in kayak
 
-Status: design (2026-11-01, C299); step 1 done (C300); step 2 begun
-(C301-C303: 1334 of 1365 definitions round-trip, the rest declined);
-step 3 deferred (the emitter works on type syntax, not `ty`); step 4,
-`stage` by rep, begun (C304, C305). The user's direction: adopt Fixpt's
-"heap types" (its `docs/research/heap-types.md`, steps 1 to 6 done at
-the pin 63b95ef) before `stage` and sessions, so that those are built on
-reps from the start rather than on text and then moved, as Fixpt's were
-(its step 6).
-
+Status: design (2026-11-01, C299); step 1 done (C300, but for the
+engine's procedures); step 2 begun (C301-C303: 1334 of 1365 definitions
+round-trip, the rest declined); step 3 deferred (the emitter works on
+type syntax, not `ty`); step 4, `stage` by rep, done in substance
+(C304-C315, C337-C340). The user's direction: adopt Fixpt's "heap types"
+(its `docs/research/heap-types.md`, steps 1 to 6 done at the pin 63b95ef)
+before `stage` and sessions, so that those are built on reps from the
+start rather than on text and then moved, as Fixpt's were (its step 6).
+Since 2026-11-05, the user's: parity with Fixpt ("Parity", at the end).
 ## What Fixpt did
 
 A **rep** is a type as a graph of nodes: a node is a head (a name:
@@ -153,3 +153,26 @@ Fixpt's for now: a generative type's name and place.
   only on `fixpt-heap`, and only in `heap.rs`. A copy keeps kayak
   building with no Fixpt clone, as kayak's checks do now; a path
   dependency would not.
+
+## Parity with Fixpt (2026-11-05)
+
+The user's: "we should be seeking parity with Fixpt", meaning the Fixpt
+of kayak's pin (8616f2f, `../kayak-refs/fixpt`), not Fixpt's newer work:
+its logical types (U0 `oneof`, U1 `allof`, U2 `anyof`, past the pin) wait
+until the user has reviewed them with Fixpt's team. Where kayak's reps
+stand against the pin's, in the order to take them:
+
+1. **The 31 declined**, each a type Fixpt's Rust export takes at the pin (`reps.rs`): a
+   module type by its abbreviation's name, module types with effect
+   descriptions, higher kinds (`dlambda`, `app`), composable
+   continuations, an effect variable applied.
+2. **A program's datatypes numbered as Fixpt numbers them** (after the
+   standard ones, in definition order; kayak keys them 0), so that a rep
+   of one is Fixpt's byte for byte.
+3. **`rep-of-nodes` and `rep-nodes` on the engine** (step 1's rest), so
+   that the compiler runs on the engine again (TODO).
+4. **Comparing reps with Fixpt's**: the agreement test by reps, which
+   needs Fixpt to print them (a request, `fixpt check --reps`), its
+   heap-types step 2's test, against Fixpt rather than in one process.
+5. **Facts by rep** (step 3), kayak's own boundary (the emitter reads
+   types as text); measured by the bootstrap's time.

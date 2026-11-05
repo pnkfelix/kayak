@@ -786,7 +786,7 @@
           (let ((b (scope-bind (car ns) v)))
             (cons (if (null? b)
                       (string-append (car ns) " none")
-                      (tagcase (car b) (bind (m sc w) (string-append (car ns) (string-append " " (scheme-rep-hex (new-state) sc))))))
+                      (tagcase (car b) (bind (m sc w) (string-append (car ns) (string-append " " (scheme-rep-hex (new-state) (tagcase sc (scheme (tvs t) (scheme tvs (mtypes-expanded v (new-state) t))))))))))
                   (rep-lines-of v (cdr ns))))))))
 
 "`--reps FILE` (C301): each definition's type as a rep, as kayak's checker
