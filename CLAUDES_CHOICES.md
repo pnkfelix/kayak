@@ -9658,3 +9658,39 @@ sum (`sum-form`). Fixpt's three tests (`unions/oneof-sums.fx`,
 Not ported: Fixpt's refusal of a `oneof` of several sums one of which is a
 recursive type's own name not yet defined (kayak finds such a member's
 shape otherwise, `mu-member-shape`).
+
+## C354. U1: `allof` (2026-11-05; logical types, step 2)
+
+Fixpt's U1 (c3dc2406; `docs/research/logical-types.md` §8.5, rules 1 to
+4), in kayak's checker:
+- **The type**: `(allof (subr …) …)`, `%allof` of monomorphic procedure
+  types of one convention (an `allof` in it its members), printed and
+  exported (`allof`) as Fixpt's; KFX's restriction pass refuses it and
+  `anyof` (KFX's Rust has no intersections).
+- **Subtyping**: below an `allof`, below each member; an `allof` below a
+  type, through the first member that is.
+- **Rule 1**: a `lambda` where an `allof` is expected is checked once per
+  member (`check-allof`), in a scope marked `%allof`.
+- **Rule 2**: there, a sum's `tagcase` skips an arm whose tag the
+  member's subject lacks (`%arm-skipped`, `%arm-taken`); one skipped under
+  every member is refused (`a T has no tag `c``, the last member's).
+- **Rule 3**: what each member's check leaves, at each place both left
+  facts, the same, else refused in Fixpt's words ("one body cannot be each
+  member …"). Compared: every fact but the checker's own (`%`) and those
+  only KFX's emitter reads (`allof-emitter-only`: `param-types`,
+  `tagcase-sum`), which no `allof` reaches. Each member's facts kept.
+- **Rule 4**: a call of an `allof` (`allof-chosen`): its arguments
+  synthesized once; every member they fit (`quick-fits?`, a subtype test
+  that answers without refusing, as Fixpt's `k-tes-below?`: where it cannot
+  tell, no, so a call fits fewer members, never more); the call as the
+  first's parameters, its result the meet (`meet`: a type with itself,
+  `nat`/`int`, sums by their common tags, products field by field,
+  immutable lists, procedures their `allof`), its latent effect the least
+  if one is. Refused where none fits, or two results have no meet.
+Fixpt's tests: `compiled-apart`, `dead-in-all`, `fits-none`, `no-meet`
+refused as Fixpt's (`dead-in-all` names the sum written out, not `ab`:
+kayak's types keep no abbreviation's name), `meet` (1 2 3) on the engine
+and every tier. Not yet: `swap.fx`, refused for a gap of kayak's own, not
+`allof`'s: kayak's termination check does not see recursion through a
+recursive sum's payloads (`tagcase`, then `extract`) end, which Fixpt's
+does; the same `swap` at one plain type is refused alike (TODO).

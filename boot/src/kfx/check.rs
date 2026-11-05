@@ -3742,6 +3742,72 @@ pub fn union_members(ts: Tys) -> Tys {
     }
 }
 
+// Facts only KFX's emitter reads (`emit.kfx`), which an `allof`'s members
+// may note apart (C354): the Rust types of a lambda's parameters, of a
+// `tagcase`'s sum. The FX-26 compilers (`fx26/`) read none of them.
+#[inline]
+pub fn allof_emitter_only() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("param-types "), kayak_rt::heap_cons(str_lit("tagcase-sum "), kayak_rt::nil()))
+    })
+}
+
+// An `allof`'s members (C354): an `allof` among them its members; and a
+// member's convention, `` for a plain `subr`, a convention's own, or `?` for
+// what is no procedure type.
+pub fn allof_flat(ts: Tys) -> Tys {
+    if null_p(ts) {
+        nil::<&'static Ty>()
+    } else {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%allof")) {
+                    onto(args, allof_flat(cdr(ts)))
+                } else {
+                    kayak_rt::heap_cons(car(ts), allof_flat(cdr(ts)))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                kayak_rt::heap_cons(car(ts), allof_flat(cdr(ts)))
+            }
+        }
+    }
+}
+
+pub fn allof_conv(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            str_lit("")
+        }
+        Ty::TyData(d, args) => {
+            if ((string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%cellular"))) && i64_eq(size(args), 1i64) && {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                d
+            } else {
+                str_lit("?")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("?")
+        }
+    }
+}
+
 // A `oneof`'s sums (Fixpt's U0, C353; `check-unions.fx`'s
 // `k-union-sums-merged`): two sums with no tag in common are told apart by
 // their tags, so they may be members, made one sum where the `oneof` is
@@ -4435,7 +4501,7 @@ pub type Snames = List<&'static Sname>;
 pub fn logic_type_forms() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("oneof"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("oneof"), kayak_rt::heap_cons(str_lit("allof"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("escape-tag"), kayak_rt::heap_cons(str_lit("flatarrayof"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("eqtable"), kayak_rt::heap_cons(str_lit("identity"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -6990,6 +7056,27 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                     // tail of any types; a list's pair when its tail is the list.
                     return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
+                } else if sym_is_p(car(xs), str_lit("allof")) {
+                    // One procedure with each member's type (Fixpt's U1, C354;
+                    // `docs/research/logical-types.md` §8.5): `(allof (subr …) …)`,
+                    // monomorphic procedure types of one convention, an `allof` in it
+                    // its members.
+                    let ms = allof_flat(parse_types(v, tvars, cdr(xs)));
+                    if i64_lt(size(cdr(xs)), 2i64) {
+                        return match refuse(v, str_lit("`(allof (subr …) (subr …) …)`")) {};
+                    } else if not(null_p(filter(lambda1s(move |m: &'static Ty| {
+                        string_eq_p(allof_conv(m), str_lit("?"))
+                    }), ms))) {
+                        return match refuse(v, string_append(str_lit("a member of an `allof` is a `subr` type, and this is a "), show_sexp(car(filter(lambda1s(move |x: &'static Sexp| {
+                            string_eq_p(allof_conv(parse_type(v, tvars, x)), str_lit("?"))
+                        }), cdr(xs)))))) {};
+                    } else if not(null_p(filter(lambda1s(move |m: &'static Ty| {
+                        not(string_eq_p(allof_conv(m), allof_conv(car(ms))))
+                    }), ms))) {
+                        return match refuse(v, str_lit("an `allof`'s members have one convention")) {};
+                    } else {
+                        return ty_data(str_lit("%allof"), ms);
+                    }
                 } else if (sym_is_p(car(xs), str_lit("oneof")) || sym_is_p(car(xs), str_lit("union"))) {
                     let each = parse_types(v, tvars, cdr(xs));
                     let written = union_members(each);
@@ -8858,6 +8945,8 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                     return string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%union")) {
                     return string_append(str_lit("(oneof "), string_append(show_tys(s, args), str_lit(")")));
+                } else if string_eq_p(d, str_lit("%allof")) {
+                    return string_append(str_lit("(allof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%pairof")) {
                     return string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%mark-key")) {
@@ -11008,6 +11097,59 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
     if frozen_fits_p(v, s, a, e) {
         s
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%allof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        // Below an `allof`: below each member (C354).
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                fits_all_members(v, s, a, args)
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
+    } else if {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%allof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        // An `allof` below a type: a member of it (C354), the first that is.
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                let m = filter(lambda1s(move |x: &'static Ty| {
+                    quick_fits_p(s, x, e)
+                }), args);
+                if null_p(m) {
+                    mismatch(v, s, a, e)
+                } else {
+                    fits(v, s, car(m), e)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
     } else if ({
         let tagcase_ = a;
         match *tagcase_ {
@@ -11476,6 +11618,396 @@ pub fn fits_each_member(mut v: &'static Cv, mut s: &'static St, mut ms: Tys, mut
         } else {
             (s, ms) = (fits(v, s, car(ms), e), cdr(ms));
             continue;
+        }
+    }
+}
+
+pub fn fits_all_members(mut v: &'static Cv, mut s: &'static St, mut a: &'static Ty, mut ms: Tys) -> &'static St {
+    loop {
+        if null_p(ms) {
+            return s;
+        } else {
+            (s, ms) = (fits(v, s, a, car(ms)), cdr(ms));
+            continue;
+        }
+    }
+}
+
+pub fn named_seen(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (has_prefix_p(d, str_lit("%named ")) && not(null_p(args))) {
+                    t = car(args);
+                    continue;
+                } else {
+                    return walk(s, t);
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return walk(s, t);
+            }
+        }
+    }
+}
+
+/// Whether a value of type `a` may stand where `e` is, answered without
+/// refusing, so that an `allof`'s members may each be tried (C354; Fixpt's
+/// `k-tes-below?`). Where it cannot tell, no: the call then fits fewer
+/// members, or none, and says so; never one more.
+pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
+    let (a, e) = (named_seen(s, a0), named_seen(s, e0));
+    if string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e))) {
+        true
+    } else if {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyVoid() => {
+                true
+            }
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        true
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        true
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyNat() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        true
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%union"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                any_p(lambda1s(move |m: &'static Ty| {
+                    quick_fits_p(s, a, m)
+                }), args)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%allof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                all_p(lambda1s(move |m: &'static Ty| {
+                    quick_fits_p(s, a, m)
+                }), args)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } else {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyShape(pa, la, ta) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyShape(pe, le, te) => {
+                        if pa {
+                            (pe && string_eq_p(words_of(la), words_of(le)) && quick_fits_each_p(s, ta, te))
+                        } else {
+                            (not(pe) && all_p(lambda1s(move |l: Str| {
+                                (string_member_p(l, le) && quick_fits_p(s, label_type(l, la, ta), label_type(l, le, te)))
+                            }), la))
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%union")) {
+                    all_p(lambda1s(move |m: &'static Ty| {
+                        quick_fits_p(s, m, e)
+                    }), args)
+                } else if string_eq_p(d, str_lit("%allof")) {
+                    any_p(lambda1s(move |m: &'static Ty| {
+                        quick_fits_p(s, m, e)
+                    }), args)
+                } else {
+                    false
+                }
+            }
+            Ty::TyProc(ea, pa, ra) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyProc(ee, pe, re) => {
+                        (i64_eq(size(pa), size(pe)) && quick_fits_each_p(s, pe, pa) && quick_fits_p(s, ra, re) && all_p(lambda1s(move |x: Str| {
+                            string_member_p(x, ee)
+                        }), ea))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }
+            Ty::TyList(x, r) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyList(y, q) => {
+                        (quick_fits_p(s, x, y) && string_eq_p(show_ty(s, zonk(s, r)), show_ty(s, zonk(s, q))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+}
+
+pub fn quick_fits_each_p(s: &'static St, r#as: Tys, es: Tys) -> bool {
+    if (null_p(r#as) && null_p(es)) {
+        true
+    } else if (null_p(r#as) || null_p(es)) {
+        false
+    } else {
+        (quick_fits_p(s, car(r#as), car(es)) && quick_fits_each_p(s, cdr(r#as), cdr(es)))
+    }
+}
+
+/// The meet of `a` and `b`, as a list of one, where it is exact (C354;
+/// Fixpt's U1, `logical-types.md` §8.5, rule 4): a type with itself, `nat`
+/// and `int`, sums (the tags in common, their payloads' meets; none in
+/// common, `void`), products field by field, immutable lists, procedures
+/// (their `allof`); none else.
+pub fn meet(s: &'static St, a0: &'static Ty, b0: &'static Ty) -> Tys {
+    let (a, b) = (named_seen(s, a0), named_seen(s, b0));
+    if string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, b))) {
+        kayak_rt::heap_cons(a0, kayak_rt::nil())
+    } else if {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyVoid() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        kayak_rt::heap_cons(a, kayak_rt::nil())
+    } else if {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Ty::TyVoid() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        kayak_rt::heap_cons(b, kayak_rt::nil())
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyNat() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        kayak_rt::heap_cons(a, kayak_rt::nil())
+    } else if ({
+        let tagcase_ = b;
+        match *tagcase_ {
+            Ty::TyNat() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        kayak_rt::heap_cons(b, kayak_rt::nil())
+    } else {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyShape(pa, la, ta) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyShape(pb, lb, tb) => {
+                        if (pa && pb && string_eq_p(words_of(la), words_of(lb))) {
+                            let ms = map2(lambda2s(move |x: &'static Ty, y: &'static Ty| {
+                                meet(s, x, y)
+                            }), ta, tb);
+                            if any_p(lambda1s(move |m: Tys| {
+                                null_p(m)
+                            }), ms) {
+                                nil::<&'static Ty>()
+                            } else {
+                                kayak_rt::heap_cons(ty_shape(true, la, map(lambda1s(move |m: Tys| {
+                                    car(m)
+                                }), ms)), kayak_rt::nil())
+                            }
+                        } else if (pa || pb) {
+                            nil::<&'static Ty>()
+                        } else {
+                            let common = filter(lambda1s(move |l: Str| {
+                                string_member_p(l, lb)
+                            }), la);
+                            let ms = map(lambda1s(move |l: Str| {
+                                meet(s, label_type(l, la, ta), label_type(l, lb, tb))
+                            }), common);
+                            if null_p(common) {
+                                kayak_rt::heap_cons(ty_void(), kayak_rt::nil())
+                            } else if any_p(lambda1s(move |m: Tys| {
+                                null_p(m)
+                            }), ms) {
+                                nil::<&'static Ty>()
+                            } else {
+                                kayak_rt::heap_cons(ty_shape(false, common, map(lambda1s(move |m: Tys| {
+                                    car(m)
+                                }), ms)), kayak_rt::nil())
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Ty>()
+                    }
+                }
+            }
+            Ty::TyProc(ea, pa, ra) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyProc(eb, pb, rb) => {
+                        kayak_rt::heap_cons(ty_data(str_lit("%allof"), allof_flat(kayak_rt::heap_cons(a, kayak_rt::heap_cons(b, kayak_rt::nil())))), kayak_rt::nil())
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Ty>()
+                    }
+                }
+            }
+            Ty::TyList(x, r) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyList(y, q) => {
+                        if (string_eq_p(show_ty(s, zonk(s, r)), show_ty(s, zonk(s, q))) && string_member_p(show_ty(s, zonk(s, r)), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::nil())))) {
+                            let m = meet(s, x, y);
+                            if null_p(m) {
+                                nil::<&'static Ty>()
+                            } else {
+                                kayak_rt::heap_cons(ty_list(car(m), r), kayak_rt::nil())
+                            }
+                        } else {
+                            nil::<&'static Ty>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Ty>()
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
         }
     }
 }

@@ -1700,6 +1700,33 @@
             (ty-data (d args) (if (string=? d "%union") (onto (union-members args) (union-members (cdr ts))) (cons (car ts) (union-members (cdr ts)))))
             (else other (cons (car ts) (union-members (cdr ts)))))))))
 
+"Facts only KFX's emitter reads (`emit.kfx`), which an `allof`'s members
+ may note apart (C354): the Rust types of a lambda's parameters, of a
+ `tagcase`'s sum. The FX-26 compilers (`fx26/`) read none of them."
+(define allof-emitter-only strings (list "param-types " "tagcase-sum "))
+
+"An `allof`'s members (C354): an `allof` among them its members; and a
+ member's convention, `` for a plain `subr`, a convention's own, or `?` for
+ what is no procedure type."
+(define-rec
+  (allof-flat (subr kfx (tys) tys)
+    (lambda (ts)
+      (if (null? ts)
+          nil
+          (tagcase (car ts)
+            (ty-data (d args) (if (string=? d "%allof") (onto args (allof-flat (cdr ts))) (cons (car ts) (allof-flat (cdr ts)))))
+            (else other (cons (car ts) (allof-flat (cdr ts)))))))))
+(define allof-conv (subr kfx (ty) string)
+  (lambda (t)
+    (tagcase t
+      (ty-proc (es ps r) "")
+      (ty-data (d args)
+        (if (and (or (string=? d "%native") (string=? d "%fx") (string=? d "%cellular")) (i64= (size args) 1)
+                 (tagcase (car args) (ty-proc (es ps r) #t) (else other #f)))
+            d
+            "?"))
+      (else other "?"))))
+
 "A `oneof`'s sums (Fixpt's U0, C353; `check-unions.fx`'s
  `k-union-sums-merged`): two sums with no tag in common are told apart by
  their tags, so they may be members, made one sum where the `oneof` is
@@ -1972,7 +1999,7 @@
 (define logic-type-forms strings
   (list "arrayof" "narrayof" "bloblet" "composable" "dletrec" "icell" "listof" "mark-key" "moduleof" "mu"
         "nat" "nlist" "oneshot" "pairof" "place" "poly" "productof" "prompt-tag" "proves" "ref" "select" "subr"
-        "sumof" "bool" "union" "oneof" "->" "->*"
+        "sumof" "bool" "union" "oneof" "allof" "->" "->*"
         ;; And those of KFX's types that FX-26 names as types of its base.
         "addr" "blobref" "bytevectorof" "stringof" "escape-tag" "flatarrayof" "flatlayout" "inbox" "vsubr" "eqtable" "identity"))
 (define logic-keywords strings
@@ -3103,6 +3130,19 @@
                  "FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                   tail of any types; a list's pair when its tail is the list."
                  (ty-data "%pairof" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs)) (parse-region v tvars (fourth xs)))))
+                ((sym-is? (car xs) "allof")
+                 "One procedure with each member's type (Fixpt's U1, C354;
+                  `docs/research/logical-types.md` §8.5): `(allof (subr …) …)`,
+                  monomorphic procedure types of one convention, an `allof` in it
+                  its members."
+                 (let ((ms (allof-flat (parse-types v tvars (cdr xs)))))
+                   (cond ((i64< (size (cdr xs)) 2) (refuse v "`(allof (subr …) (subr …) …)`"))
+                         ((not (null? (filter (lambda ((m ty)) (string=? (allof-conv m) "?")) ms)))
+                          (refuse v (string-append "a member of an `allof` is a `subr` type, and this is a "
+                                                   (show-sexp (car (filter (lambda ((x sexp)) (string=? (allof-conv (parse-type v tvars x)) "?")) (cdr xs)))))))
+                         ((not (null? (filter (lambda ((m ty)) (not (string=? (allof-conv m) (allof-conv (car ms))))) ms)))
+                          (refuse v "an `allof`'s members have one convention"))
+                         (else (ty-data "%allof" ms)))))
                 ;; `oneof` (Fixpt's U0, C351), `union` still read as it, as Fixpt's.
                 ((or (sym-is? (car xs) "oneof") (sym-is? (car xs) "union"))
                  (let* ((each (parse-types v tvars (cdr xs)))
@@ -3915,6 +3955,7 @@
                      (string-append "(stringof " (string-append (show-ty s (car args)) ")"))))
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%union") (string-append "(oneof " (string-append (show-tys s args) ")")))
+                ((string=? d "%allof") (string-append "(allof " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
@@ -4784,6 +4825,16 @@
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (cond ((frozen-fits? v s a e) s)
+            ((tagcase e (ty-data (d args) (string=? d "%allof")) (else other #f))
+             "Below an `allof`: below each member (C354)."
+             (tagcase e (ty-data (d args) (fits-all-members v s a args)) (else other s)))
+            ((tagcase a (ty-data (d args) (string=? d "%allof")) (else other #f))
+             "An `allof` below a type: a member of it (C354), the first that is."
+             (tagcase a
+               (ty-data (d args)
+                 (let ((m (filter (lambda ((x ty)) (quick-fits? s x e)) args)))
+                   (if (null? m) (mismatch v s a e) (fits v s (car m) e))))
+               (else other s)))
             ((and (tagcase a (ty-string () #t) (else other #f)) (tagcase e (ty-data (d args) (string=? d "%stringof")) (else other #f)))
              "A `string`, `(stringof const)` (C285): where a string at a region is
               expected, that region `const`."
@@ -4903,6 +4954,100 @@
             (else (fits-shapes-of v s a e)))))
   (fits-each-member (subr kfx (cv st tys ty) st)
     (lambda (v s ms e) (if (null? ms) s (fits-each-member v (fits v s (car ms) e) (cdr ms) e))))
+  (fits-all-members (subr kfx (cv st ty tys) st)
+    (lambda (v s a ms) (if (null? ms) s (fits-all-members v (fits v s a (car ms)) a (cdr ms)))))
+  (named-seen (subr kfx (st ty) ty)
+    (lambda (s t)
+      (tagcase (walk s t)
+        (ty-data (d args) (if (and (has-prefix? d "%named ") (not (null? args))) (named-seen s (car args)) (walk s t)))
+        (else other (walk s t)))))
+  (quick-fits? (subr kfx (st ty ty) bool)
+    (lambda (s a0 e0)
+      "Whether a value of type `a` may stand where `e` is, answered without
+       refusing, so that an `allof`'s members may each be tried (C354; Fixpt's
+       `k-tes-below?`). Where it cannot tell, no: the call then fits fewer
+       members, or none, and says so; never one more."
+      (let ((a (named-seen s a0)) (e (named-seen s e0)))
+        (cond ((string=? (show-ty s (zonk s a)) (show-ty s (zonk s e))) #t)
+              ((tagcase a (ty-void () #t) (ty-meta (k) #t) (else other #f)) #t)
+              ((tagcase e (ty-meta (k) #t) (else other #f)) #t)
+              ((and (tagcase a (ty-nat () #t) (else other #f)) (tagcase e (ty-int () #t) (else other #f))) #t)
+              ((tagcase e (ty-data (d args) (string=? d "%union")) (else other #f))
+               (tagcase e (ty-data (d args) (any? (lambda ((m ty)) (quick-fits? s a m)) args)) (else other #f)))
+              ((tagcase e (ty-data (d args) (string=? d "%allof")) (else other #f))
+               (tagcase e (ty-data (d args) (all? (lambda ((m ty)) (quick-fits? s a m)) args)) (else other #f)))
+              (else
+               (tagcase a
+                 (ty-shape (pa la ta)
+                   (tagcase e
+                     (ty-shape (pe le te)
+                       (if pa
+                           (and pe (string=? (words-of la) (words-of le)) (quick-fits-each? s ta te))
+                           (and (not pe)
+                                (all? (lambda ((l string)) (and (string-member? l le) (quick-fits? s (label-type l la ta) (label-type l le te)))) la))))
+                     (else other #f)))
+                 (ty-data (d args)
+                   (cond ((string=? d "%union") (all? (lambda ((m ty)) (quick-fits? s m e)) args))
+                         ((string=? d "%allof") (any? (lambda ((m ty)) (quick-fits? s m e)) args))
+                         (else #f)))
+                 (ty-proc (ea pa ra)
+                   (tagcase e
+                     (ty-proc (ee pe re)
+                       (and (i64= (size pa) (size pe)) (quick-fits-each? s pe pa) (quick-fits? s ra re)
+                            (all? (lambda ((x string)) (string-member? x ee)) ea)))
+                     (else other #f)))
+                 (ty-list (x r)
+                   (tagcase e
+                     (ty-list (y q) (and (quick-fits? s x y) (string=? (show-ty s (zonk s r)) (show-ty s (zonk s q)))))
+                     (else other #f)))
+                 (else other #f)))))))
+  (quick-fits-each? (subr kfx (st tys tys) bool)
+    (lambda (s as es)
+      (cond ((and (null? as) (null? es)) #t)
+            ((or (null? as) (null? es)) #f)
+            (else (and (quick-fits? s (car as) (car es)) (quick-fits-each? s (cdr as) (cdr es)))))))
+  (meet (subr kfx (st ty ty) tys)
+    (lambda (s a0 b0)
+      "The meet of `a` and `b`, as a list of one, where it is exact (C354;
+       Fixpt's U1, `logical-types.md` §8.5, rule 4): a type with itself, `nat`
+       and `int`, sums (the tags in common, their payloads' meets; none in
+       common, `void`), products field by field, immutable lists, procedures
+       (their `allof`); none else."
+      (let ((a (named-seen s a0)) (b (named-seen s b0)))
+        (cond ((string=? (show-ty s (zonk s a)) (show-ty s (zonk s b))) (list a0))
+              ((tagcase a (ty-void () #t) (else other #f)) (list a))
+              ((tagcase b (ty-void () #t) (else other #f)) (list b))
+              ((and (tagcase a (ty-nat () #t) (else other #f)) (tagcase b (ty-int () #t) (else other #f))) (list a))
+              ((and (tagcase b (ty-nat () #t) (else other #f)) (tagcase a (ty-int () #t) (else other #f))) (list b))
+              (else
+               (tagcase a
+                 (ty-shape (pa la ta)
+                   (tagcase b
+                     (ty-shape (pb lb tb)
+                       (cond ((and pa pb (string=? (words-of la) (words-of lb)))
+                              (let ((ms (map2 (lambda ((x ty) (y ty)) (meet s x y)) ta tb)))
+                                (if (any? (lambda ((m tys)) (null? m)) ms) nil (list (ty-shape #t la (map (lambda ((m tys)) (car m)) ms))))))
+                             ((or pa pb) nil)
+                             (else
+                              (let* ((common (filter (lambda ((l string)) (string-member? l lb)) la))
+                                     (ms (map (lambda ((l string)) (meet s (label-type l la ta) (label-type l lb tb))) common)))
+                                (cond ((null? common) (list (ty-void)))
+                                      ((any? (lambda ((m tys)) (null? m)) ms) nil)
+                                      (else (list (ty-shape #f common (map (lambda ((m tys)) (car m)) ms)))))))))
+                     (else other nil)))
+                 (ty-proc (ea pa ra)
+                   (tagcase b
+                     (ty-proc (eb pb rb) (list (ty-data "%allof" (allof-flat (list a b)))))
+                     (else other nil)))
+                 (ty-list (x r)
+                   (tagcase b
+                     (ty-list (y q)
+                       (if (and (string=? (show-ty s (zonk s r)) (show-ty s (zonk s q)))
+                                (string-member? (show-ty s (zonk s r)) (list "acyclic" "const")))
+                           (let ((m (meet s x y))) (if (null? m) nil (list (ty-list (car m) r))))
+                           nil))
+                     (else other nil)))
+                 (else other nil)))))))
   (fits-shapes-of (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (tagcase a

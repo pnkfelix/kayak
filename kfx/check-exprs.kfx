@@ -2236,9 +2236,120 @@
                   (res expected es (coerced v s (datum-file e) (datum-pos e) t expected))
                   (res t es (coerced v s (datum-file e) (datum-pos e) t expected)))))))))
 
+      (check-allof (subr kfx (cv st sexp tys) res)
+        (lambda (v s e ms)
+          "A `lambda` where an `allof` is expected (Fixpt's U1, C354;
+           `docs/research/logical-types.md` §8.5): checked once for each member
+           (rule 1), in a scope marked `%allof`, where a `tagcase` arm whose tag
+           the member's subject lacks is skipped, and refused only if skipped
+           under every member (rule 2); what each check leaves for the
+           compilers, at each place both left facts, alike, since one body is
+           compiled once (rule 3); its effect the greatest of theirs."
+          (let* ((key (string-append "%allof-mark " (i64->string (datum-pos e))))
+                 (w (with-binds v (list (bind "%allof" (scheme nil (ty-unit)) "mark")))))
+            (tagcase (allof-checked w s e ms 0 key)
+              (res (t es s2)
+                (let ((segs (allof-segments (st-facts s2) key nil nil)))
+                  (begin
+                    (allof-agree v s2 ms segs 0)
+                    ;; The last member's words first, as Fixpt's says them.
+                    (allof-arms-dead v (concat (reverse segs)))
+                    (res (ty-data "%allof" ms) es
+                         (tagcase s2 (st (b n fs xs) (st b n (filter (lambda ((f fact)) (not (allof-mark? f))) fs) xs)))))))))))
+
+      (allof-checked (subr kfx (cv st sexp tys i64 string) res)
+        (lambda (v s e ms i key)
+          (if (null? ms)
+              (res (ty-unit) nil s)
+              (tagcase (check v (note-fact s "%allof" 0 (string-append key (string-append " " (i64->string i)))) e (car ms))
+                (res (t es s2)
+                  (tagcase (allof-checked v s2 e (cdr ms) (i64+ i 1) key)
+                    (res (t2 es2 s3) (res t2 (effs-union es es2) s3))))))))
+
+      (allof-mark? (subr kfx (fact) bool)
+        (lambda (f) (tagcase f (fact (fl p w) (or (string=? fl "%allof") (has-prefix? w "%arm-"))))))
+
+      (allof-segments (subr kfx (facts string facts (listof facts acyclic)) (listof facts acyclic))
+        (lambda (fs key acc out)
+          "Each member's check's facts, in the members' order: the facts noted
+           after each member's mark (`allof-checked`), newest first in `fs`."
+          (if (null? fs)
+              out
+              (tagcase (car fs)
+                (fact (fl p w)
+                  (if (and (string=? fl "%allof") (has-prefix? w (string-append key " ")))
+                      (if (string=? (after-prefix w (string-append key " ")) "0")
+                          (cons acc out)
+                          (allof-segments (cdr fs) key nil (cons acc out)))
+                      (allof-segments (cdr fs) key (cons (car fs) acc) out)))))))
+
+      (allof-compiled? (subr kfx (fact) bool)
+        (lambda (f)
+          "A fact the compilers read, not the checker's own (`%`) or a mark, nor
+           one only KFX's emitter reads (`allof-emitter-only`), which no `allof`
+           reaches: KFX has none (the restriction pass)."
+          (tagcase f (fact (fl p w) (and (not (string=? fl "")) (not (has-prefix? fl "%")) (not (has-prefix? w "%"))
+                                         (not (any? (lambda ((k string)) (has-prefix? w k)) allof-emitter-only)))))))
+
+      (allof-facts-at (subr kfx (facts string i64) strings)
+        (lambda (fs fl p)
+          (map (lambda ((f fact)) (tagcase f (fact (g q w) w)))
+               (filter (lambda ((f fact)) (tagcase f (fact (g q w) (and (string=? g fl) (i64= q p))))) fs))))
+
+      (allof-alike? (subr kfx (facts facts) bool)
+        (lambda (a b)
+          "Whether, at each place both noted facts the compilers read, they
+           noted the same."
+          (let ((ca (filter allof-compiled? a)) (cb (filter allof-compiled? b)))
+            (all? (lambda ((f fact))
+                    (tagcase f
+                      (fact (fl p w)
+                        (let ((there (allof-facts-at cb fl p)))
+                          (or (null? there)
+                              (let ((here (allof-facts-at ca fl p)))
+                                (and (all? (lambda ((x string)) (string-member? x there)) here)
+                                     (all? (lambda ((x string)) (string-member? x here)) there))))))))
+                  ca))))
+
+      (allof-agree (subr kfx (cv st tys (listof facts acyclic) i64) unit)
+        (lambda (v s ms segs i)
+          (if (or (null? ms) (null? segs) (null? (cdr ms)) (null? (cdr segs)))
+              #u
+              (begin
+                (allof-agree-with v s (car ms) (car segs) (cdr ms) (cdr segs))
+                (allof-agree v s (cdr ms) (cdr segs) (i64+ i 1))))))
+
+      (allof-agree-with (subr kfx (cv st ty facts tys (listof facts acyclic)) unit)
+        (lambda (v s m seg ms segs)
+          (cond ((or (null? ms) (null? segs)) #u)
+                ((allof-alike? seg (car segs)) (allof-agree-with v s m seg (cdr ms) (cdr segs)))
+                (else
+                 (refuse v (string-append "one body cannot be each member of this `allof`: checked as a "
+                             (string-append (show-ty s m) (string-append " and as a "
+                               (string-append (show-ty s (car ms)) ", it would be compiled differently")))))))))
+
+      (allof-arms-dead (subr kfx (cv facts) unit)
+        (lambda (v fs)
+          "An arm skipped under every member (rule 2): the error it would be
+           anywhere, `%arm-skipped TAG WHY` noted where none is `%arm-taken TAG`."
+          (let ((taken (filter (lambda ((f fact)) (tagcase f (fact (fl p w) (has-prefix? w "%arm-taken ")))) fs)))
+            (map (lambda ((f fact))
+                   (tagcase f
+                     (fact (fl p w)
+                       (if (has-prefix? w "%arm-skipped ")
+                           (let* ((rest (after-prefix w "%arm-skipped ")) (tag (list->string (taken-before (string-chars rest) #\space))))
+                             (if (any? (lambda ((g fact)) (tagcase g (fact (gl q x) (and (string=? gl fl) (i64= q p) (string=? x (string-append "%arm-taken " tag)))))) taken)
+                                 #u
+                                 (refuse v (after-prefix rest (string-append tag " ")))))
+                           #u))))
+                 fs)
+            #u)))
+
       (check-plain (subr kfx (cv st sexp ty) res)
         (lambda (v s e expected)
           (let ((x (walk s expected)))
+            (if (and (head-is? e "lambda") (tagcase x (ty-data (d args) (string=? d "%allof")) (else other #f)))
+                (check-allof v s e (tagcase x (ty-data (d args) args) (else other nil)))
             (if (draft-hole? e)
                 (refuse-named v s (string-append "the hole: " (tagcase x (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s x)))))))
             (if (and (tagcase e (sym (n f p) (string=? n "#f")) (else other #f))
@@ -2339,7 +2450,7 @@
                              (else other (check-by-synth v s e x))))
                          (else other (check-by-synth v s e x))))
                       (else (check-by-synth v s e x))))
-              (else other (check-by-synth v s e x)))))))))
+              (else other (check-by-synth v s e x))))))))))
 
       (converted (subr kfx (cv res ty sexp) res)
         (lambda (v r expected x)
@@ -3247,11 +3358,33 @@
                        (ty-shape (p ls ts)
                          (if p
                              (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
-                             (let ((arms (cdr xs)))
+                             (let* ((in-allof (not (null? (scope-bind "%allof" v))))
+                                    ;; Checked as an `allof`'s member (C354, rule 2): an arm
+                                    ;; whose tag its subject lacks cannot run, skipped.
+                                    (arms (if in-allof (filter (lambda ((a sexp)) (arm-live? v ls a)) (cdr xs)) (cdr xs)))
+                                    (s (if in-allof (arms-noted v s ls (cdr xs) (show-ty s t)) s)))
                                (with-effs (tag-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "tagcase-sum " (words-of ls)))
                                                     (walk s t) (map sum-arm arms) (sum-variants v ls ts (unholed arms)) expected)
                                           es))))
                        (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no datatype")))))))))))
+
+      (arm-live? (subr kfx (cv strings sexp) bool)
+        (lambda (v ls a)
+          (let ((t (tagcase a (lst (xs f l p) (if (null? xs) "else" (tag-of v (car xs)))) (else other "else"))))
+            (or (string=? t "else") (string-member? t ls)))))
+
+      (arms-noted (subr kfx (cv st strings sexps string) st)
+        (lambda (v s ls arms shown)
+          "Each arm taken, `%arm-taken TAG`, or skipped, `%arm-skipped TAG WHY`."
+          (if (null? arms)
+              s
+              (let ((t (tagcase (car arms) (lst (xs f l p) (if (null? xs) "else" (tag-of v (car xs)))) (else other "else"))))
+                (arms-noted v
+                            (cond ((string=? t "else") s)
+                                  ((string-member? t ls) (note-fact s (cv-file v) (cv-pos v) (string-append "%arm-taken " t)))
+                                  (else (note-fact s (cv-file v) (cv-pos v)
+                                                   (string-append "%arm-skipped " (string-append t (string-append " a " (string-append shown (string-append " has no tag `" (string-append t "`")))))))))
+                            ls (cdr arms) shown)))))
 
       (product-form (subr kfx (cv st sexps tys) res)
         (lambda (v s fields expected)
@@ -4514,6 +4647,9 @@
             ;; KFX's own, as any procedure of KFX's is.
             (ty-data (d args)
               (cond ((string=? d "%fx") (check-lambda v s params forms (walk s (car args))))
+                    ((string=? d "%allof")
+                     "A lambda where an `allof` is expected (C354): once per member."
+                     (check-allof v s (lst (cons (sym "lambda" "" 0) (cons (lst params "" 0 0) forms)) (cv-file v) 0 (cv-pos v)) args))
                     ((or (string=? d "%cellular") (string=? d "%native"))
                      "A lambda where a procedure of a convention written is expected
                       (C181): checked as one of the program's, made in that convention,
@@ -5937,8 +6073,8 @@
            list it makes, found by itself, at a region nothing said is at a
            fresh one, as FX-26's is: not one a later use may choose (C36)."
           (tagcase (poly-callee callee)
-            (res (t es0 s)
-              (let ((args (if (string=? (cv-file v) "<draft>") (through-hole args) args)))
+            (res (t-callee es0 s)
+              (let* ((t (allof-chosen v s t-callee args)) (args (if (string=? (cv-file v) "<draft>") (through-hole args) args)))
               (tagcase (vsubr-as-proc (composable-as-proc s (dep-substituted v s (walk-mu s t) args)) (size args))
                 (ty-proc (latent ps r)
                   (cond ((and (not (i64= (size ps) (size args))) (not (any? draft-hole? args)))
@@ -5966,6 +6102,54 @@
                               (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))
                                    (fx-noted v t (lift-noted v (noted-call v s named) r expected))))))))))))
                 (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure"))))))))))
+
+      (allof-chosen (subr kfx (cv st ty sexps) ty)
+        (lambda (v s t args)
+          "A call of an `allof` (Fixpt's U1, C354, rule 4): its arguments
+           synthesized once; every member whose parameters take them fits
+           (`quick-fits?`, no conversion); the call as one of the first's
+           parameters, its result the meet of theirs, its latent effect the
+           least of theirs if one is, else the first's. Any other callee, as it
+           is."
+          (tagcase (walk-mu s t)
+            (ty-data (d ms)
+              (if (not (string=? d "%allof"))
+                  t
+                  (let* ((ts (map (lambda ((a sexp)) (tagcase (synth v s a) (res (u es s2) (zonk s2 u)))) args))
+                         (fits (filter (lambda ((m ty))
+                                         (tagcase m
+                                           (ty-proc (es ps r) (and (i64= (size ps) (size ts)) (all? (lambda ((x ty)) #t) ps) (quick-fits-each? s ts ps)))
+                                           (else other #f)))
+                                       ms)))
+                    (if (null? fits)
+                        (refuse v (string-append "this call fits no member of a " (string-append (show-ty s (zonk s t))
+                                    (string-append ": its arguments are " (words-joined (map (lambda ((u ty)) (string-append "a " (show-ty s u))) ts) ", ")))))
+                        (tagcase (car fits)
+                          (ty-proc (es0 ps0 r0)
+                            (ty-proc (allof-least s fits fits) ps0 (allof-results-met v s (car fits) (cdr fits) r0)))
+                          (else other t))))))
+            (else other t))))
+
+      (allof-results-met (subr kfx (cv st ty tys ty) ty)
+        (lambda (v s m0 fits r)
+          (if (null? fits)
+              r
+              (tagcase (car fits)
+                (ty-proc (es ps r1)
+                  (let ((m (meet s r r1)))
+                    (if (null? m)
+                        (refuse v (string-append "this call fits a " (string-append (show-ty s m0) (string-append " and a "
+                                    (string-append (show-ty s (car fits)) ", whose results have no meet")))))
+                        (allof-results-met v s m0 (cdr fits) (car m)))))
+                (else other r)))))
+
+      (allof-least (subr kfx (st tys tys) strings)
+        (lambda (s ls fits)
+          "Of `fits`, the first latent effect within every other's, or the first's."
+          (let ((latent (lambda ((m ty)) (tagcase m (ty-proc (es ps r) es) (else other nil)))))
+            (cond ((null? ls) (latent (car fits)))
+                  ((all? (lambda ((m ty)) (all? (lambda ((x string)) (string-member? x (latent m))) (latent (car ls)))) fits) (latent (car ls)))
+                  (else (allof-least s (cdr ls) fits))))))
 
       (fx-noted (subr kfx (cv ty st) st)
         (lambda (v t s)

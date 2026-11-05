@@ -35,6 +35,11 @@ pub fn any_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), x
     (not(null_p(xs)) && (p(car(xs)) || any_p(p, cdr(xs))))
 }
 
+#[inline]
+pub fn all_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), xs: List<A>) -> bool {
+    (null_p(xs) || (p(car(xs)) && all_p(p, cdr(xs))))
+}
+
 pub fn filter<A: Copy + 'static>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> List<A> {
     loop {
         if null_p(xs) {

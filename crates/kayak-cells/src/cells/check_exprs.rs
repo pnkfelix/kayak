@@ -4978,238 +4978,467 @@ pub mod expressions {
         }
     }
 
+    /// A `lambda` where an `allof` is expected (Fixpt's U1, C354;
+    /// `docs/research/logical-types.md` §8.5): checked once for each member
+    /// (rule 1), in a scope marked `%allof`, where a `tagcase` arm whose tag
+    /// the member's subject lacks is skipped, and refused only if skipped
+    /// under every member (rule 2); what each check leaves for the
+    /// compilers, at each place both left facts, alike, since one body is
+    /// compiled once (rule 3); its effect the greatest of theirs.
+    pub fn check_allof(v: &'static Cv, s: &'static St, e: &'static Sexp, ms: Tys) -> &'static Res {
+        let key = string_append(str_lit("%allof-mark "), i64_to_string(datum_pos(e)));
+        let w = with_binds(v, kayak_rt::heap_cons(bind(str_lit("%allof"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()));
+        let tagcase_ = allof_checked(w, s, e, ms, 0i64, key);
+        match *tagcase_ {
+            Res::Res(t, es, s2) => {
+                let segs = allof_segments(st_facts(s2), key, nil::<&'static Fact>(), nil::<List<&'static Fact>>());
+                allof_agree(v, s2, ms, segs, 0i64);
+                allof_arms_dead(v, concat(reverse(segs)));
+                res(ty_data(str_lit("%allof"), ms), es, {
+                    let tagcase_ = s2;
+                    match *tagcase_ {
+                        St::St(b, n, fs, xs) => {
+                            st(b, n, filter(lambda1s(move |f: &'static Fact| {
+                                not(allof_mark_p(f))
+                            }), fs), xs)
+                        }
+                    }
+                })
+            }
+        }
+    }
+
+    pub fn allof_checked(v: &'static Cv, s: &'static St, e: &'static Sexp, ms: Tys, i: i64, key: Str) -> &'static Res {
+        if null_p(ms) {
+            res(ty_unit(), nil::<Str>(), s)
+        } else {
+            let tagcase_ = check(v, note_fact(s, str_lit("%allof"), 0i64, string_append(key, string_append(str_lit(" "), i64_to_string(i)))), e, car(ms));
+            match *tagcase_ {
+                Res::Res(t, es, s2) => {
+                    let tagcase_ = allof_checked(v, s2, e, cdr(ms), i64_plus(i, 1i64), key);
+                    match *tagcase_ {
+                        Res::Res(t2, es2, s3) => {
+                            res(t2, effs_union(es, es2), s3)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn allof_mark_p(f: &'static Fact) -> bool {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(fl, p, w) => {
+                (string_eq_p(fl, str_lit("%allof")) || has_prefix_p(w, str_lit("%arm-")))
+            }
+        }
+    }
+
+    /// Each member's check's facts, in the members' order: the facts noted
+    /// after each member's mark (`allof-checked`), newest first in `fs`.
+    pub fn allof_segments(mut fs: Facts, mut key: Str, mut acc: Facts, mut out: List<Facts>) -> List<Facts> {
+        loop {
+            if null_p(fs) {
+                return out;
+            } else {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(fl, p, w) => {
+                        if (string_eq_p(fl, str_lit("%allof")) && has_prefix_p(w, string_append(key, str_lit(" ")))) {
+                            if string_eq_p(after_prefix(w, string_append(key, str_lit(" "))), str_lit("0")) {
+                                return kayak_rt::heap_cons(acc, out);
+                            } else {
+                                (fs, acc, out) = (cdr(fs), nil::<&'static Fact>(), kayak_rt::heap_cons(acc, out));
+                                continue;
+                            }
+                        } else {
+                            (fs, acc) = (cdr(fs), kayak_rt::heap_cons(car(fs), acc));
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// A fact the compilers read, not the checker's own (`%`) or a mark, nor
+    /// one only KFX's emitter reads (`allof-emitter-only`), which no `allof`
+    /// reaches: KFX has none (the restriction pass).
+    pub fn allof_compiled_p(f: &'static Fact) -> bool {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(fl, p, w) => {
+                (not(string_eq_p(fl, str_lit(""))) && not(has_prefix_p(fl, str_lit("%"))) && not(has_prefix_p(w, str_lit("%"))) && not(any_p(lambda1s(move |k: Str| {
+                    has_prefix_p(w, k)
+                }), allof_emitter_only())))
+            }
+        }
+    }
+
+    pub fn allof_facts_at(fs: Facts, fl: Str, p: i64) -> Strings {
+        map(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(g, q, w) => {
+                    w
+                }
+            }
+        }), filter(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(g, q, w) => {
+                    (string_eq_p(g, fl) && i64_eq(q, p))
+                }
+            }
+        }), fs))
+    }
+
+    /// Whether, at each place both noted facts the compilers read, they
+    /// noted the same.
+    pub fn allof_alike_p(a: Facts, b: Facts) -> bool {
+        let (ca, cb) = (filter(&allof_compiled_p, a), filter(&allof_compiled_p, b));
+        all_p(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(fl, p, w) => {
+                    let there = allof_facts_at(cb, fl, p);
+                    (null_p(there) || {
+                        let here = allof_facts_at(ca, fl, p);
+                        (all_p(lambda1s(move |x: Str| {
+                            string_member_p(x, there)
+                        }), here) && all_p(lambda1s(move |x: Str| {
+                            string_member_p(x, here)
+                        }), there))
+                    })
+                }
+            }
+        }), ca)
+    }
+
+    pub fn allof_agree(mut v: &'static Cv, mut s: &'static St, mut ms: Tys, mut segs: List<Facts>, mut i: i64) -> () {
+        loop {
+            if (null_p(ms) || null_p(segs) || null_p(cdr(ms)) || null_p(cdr(segs))) {
+                return ();
+            } else {
+                allof_agree_with(v, s, car(ms), car(segs), cdr(ms), cdr(segs));
+                (ms, segs, i) = (cdr(ms), cdr(segs), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn allof_agree_with(mut v: &'static Cv, mut s: &'static St, mut m: &'static Ty, mut seg: Facts, mut ms: Tys, mut segs: List<Facts>) -> () {
+        loop {
+            if (null_p(ms) || null_p(segs)) {
+                return ();
+            } else if allof_alike_p(seg, car(segs)) {
+                (ms, segs) = (cdr(ms), cdr(segs));
+                continue;
+            } else {
+                return match refuse(v, string_append(str_lit("one body cannot be each member of this `allof`: checked as a "), string_append(show_ty(s, m), string_append(str_lit(" and as a "), string_append(show_ty(s, car(ms)), str_lit(", it would be compiled differently")))))) {};
+            }
+        }
+    }
+
+    /// An arm skipped under every member (rule 2): the error it would be
+    /// anywhere, `%arm-skipped TAG WHY` noted where none is `%arm-taken TAG`.
+    pub fn allof_arms_dead(v: &'static Cv, fs: Facts) -> () {
+        let taken = filter(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(fl, p, w) => {
+                    has_prefix_p(w, str_lit("%arm-taken "))
+                }
+            }
+        }), fs);
+        map(lambda1s(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(fl, p, w) => {
+                    if has_prefix_p(w, str_lit("%arm-skipped ")) {
+                        let rest = after_prefix(w, str_lit("%arm-skipped "));
+                        let tag = list_to_string(taken_before(string_chars(rest), ' '));
+                        if any_p(lambda1s(move |g: &'static Fact| {
+                            let tagcase_ = g;
+                            match *tagcase_ {
+                                Fact::Fact(gl, q, x) => {
+                                    (string_eq_p(gl, fl) && i64_eq(q, p) && string_eq_p(x, string_append(str_lit("%arm-taken "), tag)))
+                                }
+                            }
+                        }), taken) {
+                            ()
+                        } else {
+                            match refuse(v, after_prefix(rest, string_append(tag, str_lit(" ")))) {}
+                        }
+                    } else {
+                        ()
+                    }
+                }
+            }
+        }), fs);
+        ()
+    }
+
     pub fn check_plain(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
         let x = walk(s, expected);
-        if draft_hole_p(e) {
-            match refuse_named(v, s, string_append(str_lit("the hole: "), {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Ty::TyMeta(m) => {
-                        str_lit("an expression")
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        string_append(str_lit("an expression of type "), show_ty(s, zonk(s, x)))
-                    }
+        if (head_is_p(e, str_lit("lambda")) && {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    string_eq_p(d, str_lit("%allof"))
                 }
-            })) {}
-        } else {
-            if ({
-                let tagcase_ = e;
-                match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        string_eq_p(n, str_lit("#f"))
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
-                    }
+                _ => {
+                    let other = tagcase_;
+                    false
                 }
-            } && (string_eq_p(show_ty(s, x), str_lit("false")) || {
+            }
+        }) {
+            check_allof(v, s, e, {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Ty::TyData(d, args) => {
-                        (string_eq_p(d, str_lit("%union")) && not(null_p(member_of_shape(args, str_lit("bool")))) && string_eq_p(show_ty(s, car(member_of_shape(args, str_lit("bool")))), str_lit("false")))
+                        args
                     }
                     _ => {
                         let other = tagcase_;
-                        false
+                        nil::<&'static Ty>()
                     }
                 }
-            })) {
-                res(ty_data(str_lit("false"), nil::<&'static Ty>()), nil::<Str>(), s)
-            } else {
-                if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
-                    let m = member_of_shape(members_of(x), literal_shape(e));
-                    if null_p(m) {
-                        match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
-                    } else {
-                        check(v, s, e, car(m))
-                    }
-                } else {
-                    let tagcase_ = e;
+            })
+        } else {
+            if draft_hole_p(e) {
+                match refuse_named(v, s, string_append(str_lit("the hole: "), {
+                    let tagcase_ = x;
                     match *tagcase_ {
-                        Sexp::Num(k, num_file, num_pos) => {
-                            // A literal is an `i64` where one is expected, and otherwise an
-                            // `int`, as in FX-26: an inference variable it meets is solved
-                            // to `int`.
-                            let tagcase_ = x;
-                            match *tagcase_ {
-                                Ty::TyI64() => {
-                                    res(x, nil::<Str>(), s)
-                                }
-                                Ty::TyInt() => {
-                                    res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
-                                }
-                                Ty::TyNat() => {
-                                    if (i64_lt(k, 0i64) || i64_gt(k, 1152921504606846975i64)) {
-                                        match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
-                                    } else {
-                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
-                                    }
-                                }
-                                Ty::TyMeta(m) => {
-                                    res(ty_int(), nil::<Str>(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
-                                }
-                                Ty::TyData(d, args) => {
-                                    if string_eq_p(d, str_lit("%natof")) {
-                                        // A natural where `(nat s)` is wanted: `s` shown to be it (C158).
-                                        let z = size_lin(s, car(args));
-                                        if i64_lt(k, 0i64) {
-                                            match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat"))) {}
-                                        } else if (not(null_p(z)) && size_shown_p(v, s, lin_add(car(z), lin(k, nil::<&'static Lterm>()), -1i64)) && size_shown_p(v, s, lin_add(lin(k, nil::<&'static Lterm>()), car(z), -1i64))) {
-                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
-                                        } else {
-                                            match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
-                                        }
-                                    } else if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
-                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
-                                    } else if (string_eq_p(d, str_lit("u32")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 4294967295i64))) {
-                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
-                                    } else if (string_eq_p(d, str_lit("u64")) && not(i64_lt(k, 0i64))) {
-                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u64")))
-                                    } else if (string_eq_p(d, str_lit("u8")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 255i64))) {
-                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u8")))
-                                    } else if (string_eq_p(d, str_lit("i8")) && not(i64_lt(k, -128i64)) && not(i64_gt(k, 127i64))) {
-                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i8")))
-                                    } else if fixed_width_p(d) {
-                                        match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
-                                    } else {
-                                        match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
-                                    }
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
-                                }
-                            }
-                        }
-                        Sexp::Big(text, f, p) => {
-                            // A literal past an i64: an `int`, or a `nat` if not negative.
-                            let tagcase_ = x;
-                            match *tagcase_ {
-                                Ty::TyInt() => {
-                                    res(x, nil::<Str>(), s)
-                                }
-                                Ty::TyNat() => {
-                                    match refuse(v, string_append(text, str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
-                                }
-                                Ty::TyMeta(m) => {
-                                    res(ty_int(), nil::<Str>(), solve(s, m, ty_int()))
-                                }
-                                Ty::TyData(d, args) => {
-                                    if (string_eq_p(d, str_lit("u64")) && not(char_eq_p(string_ref_i64(text, 0i64), '-')) && (i64_lt(string_length_i64(text), 20i64) || (i64_eq(string_length_i64(text), 20i64) && digits_at_most_p(string_chars(text), string_chars(str_lit("18446744073709551615")))))) {
-                                        res(x, nil::<Str>(), note_fact(s, f, p, str_lit("fixed u64")))
-                                    } else {
-                                        match refuse(v, string_append(text, string_append(str_lit(" is not a "), d))) {}
-                                    }
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
-                                }
-                            }
-                        }
-                        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                            let v = near(v, src_file, src_line, src_pos);
-                            let tagcase_ = car(xs);
-                            match *tagcase_ {
-                                Sexp::Sym(h, at_file, at_pos) => {
-                                    check_form(v, s, e, h, cdr(xs), x)
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    check_by_synth(v, s, e, x)
-                                }
-                            }
-                        }
-                        Sexp::Sym(name, at_file, at_pos) => {
-                            if (string_eq_p(name, str_lit("nil")) && std_prim_p(v, str_lit("nil")) && sized_p(x, str_lit("%nlist"))) {
-                                // `nil` where a list of a size is wanted: of size 0 (C158).
-                                res(x, nil::<Str>(), size_fits(v, s, size_of_lin(lin(0i64, nil::<&'static Lterm>())), sized_size(x), ty_data(str_lit("nil"), nil::<&'static Ty>()), x))
-                            } else if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
-                                // `nil` where a union with a `nil` member is wanted (C84): that
-                                // member, as FX-26 has it.
-                                res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
-                            } else if (string_eq_p(name, str_lit("nil")) && std_prim_p(v, str_lit("nil")) && {
-                                let tagcase_ = x;
-                                match *tagcase_ {
-                                    Ty::TyData(d, args) => {
-                                        string_eq_p(d, str_lit("nil"))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        false
-                                    }
-                                }
-                            }) {
-                                // `nil` where the type `nil` is wanted: it (C184; Fixpt's `(pairof
-                                // int nil @r)`, `bidirectional/bounds`); KFX's `nil` is a list's.
-                                res(x, nil::<Str>(), kfx_restricted(v, s, str_lit("`nil` where the type `nil` is wanted, FX-26's, which KFX's Rust lists have not (C184)")))
-                            } else if string_eq_p(name, str_lit("nil")) {
-                                let tagcase_ = x;
-                                match *tagcase_ {
-                                    Ty::TyList(el, r) => {
-                                        res(x, nil::<Str>(), note_turbofish(s, at_file, at_pos, kayak_rt::heap_cons(el, kayak_rt::nil())))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        check_by_synth(v, s, e, x)
-                                    }
-                                }
-                            } else if (string_eq_p(name, str_lit("cons")) && std_prim_p(v, str_lit("cons")) && {
-                                let tagcase_ = x;
-                                match *tagcase_ {
-                                    Ty::TyProc(es, ps, r) => {
-                                        (i64_eq(size(ps), 2i64) && {
-                                            let tagcase_ = walk(s, r);
-                                            match *tagcase_ {
-                                                Ty::TyData(d, args) => {
-                                                    string_eq_p(d, str_lit("%pairof"))
-                                                }
-                                                _ => {
-                                                    let other = tagcase_;
-                                                    false
-                                                }
-                                            }
-                                        })
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        false
-                                    }
-                                }
-                            }) {
-                                // `cons` as a value where a procedure making a pair is wanted (C197):
-                                // at Fixpt's type, `(subr (alloc r) (t1 t2) (pairof t1 t2 r))`,
-                                // instantiated at the pair wanted. KFX's `cons` makes lists.
-                                let tagcase_ = x;
-                                match *tagcase_ {
-                                    Ty::TyProc(es, ps, r) => {
-                                        let tagcase_ = walk(s, r);
-                                        match *tagcase_ {
-                                            Ty::TyData(d, args) => {
-                                                let made = ty_proc(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, car(cdr(cdr(args))))), kayak_rt::nil()), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::nil())), walk(s, r));
-                                                res(x, nil::<Str>(), kfx_restricted(v, fits(v, s, made, x), str_lit("cons as a value making a pair, at FX-26's type, which KFX's cons, making lists, has not (C197)")))
-                                            }
-                                            _ => {
-                                                let other = tagcase_;
-                                                check_by_synth(v, s, e, x)
-                                            }
-                                        }
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        check_by_synth(v, s, e, x)
-                                    }
-                                }
-                            } else {
-                                check_by_synth(v, s, e, x)
-                            }
+                        Ty::TyMeta(m) => {
+                            str_lit("an expression")
                         }
                         _ => {
                             let other = tagcase_;
-                            check_by_synth(v, s, e, x)
+                            string_append(str_lit("an expression of type "), show_ty(s, zonk(s, x)))
+                        }
+                    }
+                })) {}
+            } else {
+                if ({
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            string_eq_p(n, str_lit("#f"))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && (string_eq_p(show_ty(s, x), str_lit("false")) || {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            (string_eq_p(d, str_lit("%union")) && not(null_p(member_of_shape(args, str_lit("bool")))) && string_eq_p(show_ty(s, car(member_of_shape(args, str_lit("bool")))), str_lit("false")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })) {
+                    res(ty_data(str_lit("false"), nil::<&'static Ty>()), nil::<Str>(), s)
+                } else {
+                    if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
+                        let m = member_of_shape(members_of(x), literal_shape(e));
+                        if null_p(m) {
+                            match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
+                        } else {
+                            check(v, s, e, car(m))
+                        }
+                    } else {
+                        let tagcase_ = e;
+                        match *tagcase_ {
+                            Sexp::Num(k, num_file, num_pos) => {
+                                // A literal is an `i64` where one is expected, and otherwise an
+                                // `int`, as in FX-26: an inference variable it meets is solved
+                                // to `int`.
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyI64() => {
+                                        res(x, nil::<Str>(), s)
+                                    }
+                                    Ty::TyInt() => {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
+                                    }
+                                    Ty::TyNat() => {
+                                        if (i64_lt(k, 0i64) || i64_gt(k, 1152921504606846975i64)) {
+                                            match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
+                                        } else {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
+                                        }
+                                    }
+                                    Ty::TyMeta(m) => {
+                                        res(ty_int(), nil::<Str>(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
+                                    }
+                                    Ty::TyData(d, args) => {
+                                        if string_eq_p(d, str_lit("%natof")) {
+                                            // A natural where `(nat s)` is wanted: `s` shown to be it (C158).
+                                            let z = size_lin(s, car(args));
+                                            if i64_lt(k, 0i64) {
+                                                match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat"))) {}
+                                            } else if (not(null_p(z)) && size_shown_p(v, s, lin_add(car(z), lin(k, nil::<&'static Lterm>()), -1i64)) && size_shown_p(v, s, lin_add(lin(k, nil::<&'static Lterm>()), car(z), -1i64))) {
+                                                res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
+                                            } else {
+                                                match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
+                                            }
+                                        } else if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
+                                        } else if (string_eq_p(d, str_lit("u32")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 4294967295i64))) {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
+                                        } else if (string_eq_p(d, str_lit("u64")) && not(i64_lt(k, 0i64))) {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u64")))
+                                        } else if (string_eq_p(d, str_lit("u8")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 255i64))) {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u8")))
+                                        } else if (string_eq_p(d, str_lit("i8")) && not(i64_lt(k, -128i64)) && not(i64_gt(k, 127i64))) {
+                                            res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i8")))
+                                        } else if fixed_width_p(d) {
+                                            match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
+                                        } else {
+                                            match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
+                                    }
+                                }
+                            }
+                            Sexp::Big(text, f, p) => {
+                                // A literal past an i64: an `int`, or a `nat` if not negative.
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyInt() => {
+                                        res(x, nil::<Str>(), s)
+                                    }
+                                    Ty::TyNat() => {
+                                        match refuse(v, string_append(text, str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
+                                    }
+                                    Ty::TyMeta(m) => {
+                                        res(ty_int(), nil::<Str>(), solve(s, m, ty_int()))
+                                    }
+                                    Ty::TyData(d, args) => {
+                                        if (string_eq_p(d, str_lit("u64")) && not(char_eq_p(string_ref_i64(text, 0i64), '-')) && (i64_lt(string_length_i64(text), 20i64) || (i64_eq(string_length_i64(text), 20i64) && digits_at_most_p(string_chars(text), string_chars(str_lit("18446744073709551615")))))) {
+                                            res(x, nil::<Str>(), note_fact(s, f, p, str_lit("fixed u64")))
+                                        } else {
+                                            match refuse(v, string_append(text, string_append(str_lit(" is not a "), d))) {}
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        match refuse_named(v, s, expected_said(s, said_of(v, place_key(e)), literal_type(e), x)) {}
+                                    }
+                                }
+                            }
+                            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                                let v = near(v, src_file, src_line, src_pos);
+                                let tagcase_ = car(xs);
+                                match *tagcase_ {
+                                    Sexp::Sym(h, at_file, at_pos) => {
+                                        check_form(v, s, e, h, cdr(xs), x)
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        check_by_synth(v, s, e, x)
+                                    }
+                                }
+                            }
+                            Sexp::Sym(name, at_file, at_pos) => {
+                                if (string_eq_p(name, str_lit("nil")) && std_prim_p(v, str_lit("nil")) && sized_p(x, str_lit("%nlist"))) {
+                                    // `nil` where a list of a size is wanted: of size 0 (C158).
+                                    res(x, nil::<Str>(), size_fits(v, s, size_of_lin(lin(0i64, nil::<&'static Lterm>())), sized_size(x), ty_data(str_lit("nil"), nil::<&'static Ty>()), x))
+                                } else if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
+                                    // `nil` where a union with a `nil` member is wanted (C84): that
+                                    // member, as FX-26 has it.
+                                    res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
+                                } else if (string_eq_p(name, str_lit("nil")) && std_prim_p(v, str_lit("nil")) && {
+                                    let tagcase_ = x;
+                                    match *tagcase_ {
+                                        Ty::TyData(d, args) => {
+                                            string_eq_p(d, str_lit("nil"))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }) {
+                                    // `nil` where the type `nil` is wanted: it (C184; Fixpt's `(pairof
+                                    // int nil @r)`, `bidirectional/bounds`); KFX's `nil` is a list's.
+                                    res(x, nil::<Str>(), kfx_restricted(v, s, str_lit("`nil` where the type `nil` is wanted, FX-26's, which KFX's Rust lists have not (C184)")))
+                                } else if string_eq_p(name, str_lit("nil")) {
+                                    let tagcase_ = x;
+                                    match *tagcase_ {
+                                        Ty::TyList(el, r) => {
+                                            res(x, nil::<Str>(), note_turbofish(s, at_file, at_pos, kayak_rt::heap_cons(el, kayak_rt::nil())))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            check_by_synth(v, s, e, x)
+                                        }
+                                    }
+                                } else if (string_eq_p(name, str_lit("cons")) && std_prim_p(v, str_lit("cons")) && {
+                                    let tagcase_ = x;
+                                    match *tagcase_ {
+                                        Ty::TyProc(es, ps, r) => {
+                                            (i64_eq(size(ps), 2i64) && {
+                                                let tagcase_ = walk(s, r);
+                                                match *tagcase_ {
+                                                    Ty::TyData(d, args) => {
+                                                        string_eq_p(d, str_lit("%pairof"))
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        false
+                                                    }
+                                                }
+                                            })
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }) {
+                                    // `cons` as a value where a procedure making a pair is wanted (C197):
+                                    // at Fixpt's type, `(subr (alloc r) (t1 t2) (pairof t1 t2 r))`,
+                                    // instantiated at the pair wanted. KFX's `cons` makes lists.
+                                    let tagcase_ = x;
+                                    match *tagcase_ {
+                                        Ty::TyProc(es, ps, r) => {
+                                            let tagcase_ = walk(s, r);
+                                            match *tagcase_ {
+                                                Ty::TyData(d, args) => {
+                                                    let made = ty_proc(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, car(cdr(cdr(args))))), kayak_rt::nil()), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::nil())), walk(s, r));
+                                                    res(x, nil::<Str>(), kfx_restricted(v, fits(v, s, made, x), str_lit("cons as a value making a pair, at FX-26's type, which KFX's cons, making lists, has not (C197)")))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    check_by_synth(v, s, e, x)
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            check_by_synth(v, s, e, x)
+                                        }
+                                    }
+                                } else {
+                                    check_by_synth(v, s, e, x)
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                check_by_synth(v, s, e, x)
+                            }
                         }
                     }
                 }
@@ -7219,7 +7448,19 @@ pub mod expressions {
                             if p {
                                 match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
                             } else {
-                                let arms = cdr(xs);
+                                let in_allof = not(null_p(scope_bind(str_lit("%allof"), v)));
+                                let arms = if in_allof {
+                                    filter(lambda1s(move |a: &'static Sexp| {
+                                        arm_live_p(v, ls, a)
+                                    }), cdr(xs))
+                                } else {
+                                    cdr(xs)
+                                };
+                                let s = if in_allof {
+                                    arms_noted(v, s, ls, cdr(xs), show_ty(s, t))
+                                } else {
+                                    s
+                                };
                                 with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, unholed(arms)), expected), es)
                             }
                         }
@@ -7229,6 +7470,60 @@ pub mod expressions {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    pub fn arm_live_p(v: &'static Cv, ls: Strings, a: &'static Sexp) -> bool {
+        let t = {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        str_lit("else")
+                    } else {
+                        tag_of(v, car(xs))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("else")
+                }
+            }
+        };
+        (string_eq_p(t, str_lit("else")) || string_member_p(t, ls))
+    }
+
+    /// Each arm taken, `%arm-taken TAG`, or skipped, `%arm-skipped TAG WHY`.
+    pub fn arms_noted(mut v: &'static Cv, mut s: &'static St, mut ls: Strings, mut arms: Sexps, mut shown: Str) -> &'static St {
+        loop {
+            if null_p(arms) {
+                return s;
+            } else {
+                let t = {
+                    let tagcase_ = car(arms);
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f, l, p) => {
+                            if null_p(xs) {
+                                str_lit("else")
+                            } else {
+                                tag_of(v, car(xs))
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("else")
+                        }
+                    }
+                };
+                (s, arms) = (if string_eq_p(t, str_lit("else")) {
+                    s
+                } else if string_member_p(t, ls) {
+                    note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("%arm-taken "), t))
+                } else {
+                    note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("%arm-skipped "), string_append(t, string_append(str_lit(" a "), string_append(shown, string_append(str_lit(" has no tag `"), string_append(t, str_lit("`"))))))))
+                }, cdr(arms));
+                continue;
             }
         }
     }
@@ -10161,6 +10456,9 @@ pub mod expressions {
                     if string_eq_p(d, str_lit("%fx")) {
                         expected0 = walk(s, car(args));
                         continue;
+                    } else if string_eq_p(d, str_lit("%allof")) {
+                        // A lambda where an `allof` is expected (C354): once per member.
+                        return check_allof(v, s, lst(kayak_rt::heap_cons(sym(str_lit("lambda"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(params, str_lit(""), 0i64, 0i64), forms)), cv_file(v), 0i64, cv_pos(v)), args);
                     } else if (string_eq_p(d, str_lit("%cellular")) || string_eq_p(d, str_lit("%native"))) {
                         // A lambda where a procedure of a convention written is expected
                         // (C181): checked as one of the program's, made in that convention,
@@ -13301,7 +13599,8 @@ pub mod expressions {
     pub fn synth_call_of_plain(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
         let tagcase_ = poly_callee(callee);
         match *tagcase_ {
-            Res::Res(t, es0, s) => {
+            Res::Res(t_callee, es0, s) => {
+                let t = allof_chosen(v, s, t_callee, args);
                 let args = if string_eq_p(cv_file(v), str_lit("<draft>")) {
                     through_hole(args)
                 } else {
@@ -13364,6 +13663,121 @@ pub mod expressions {
                         match refuse(v, string_append(str_lit("a call of a "), string_append(show_ty(s, t), str_lit(", no procedure")))) {}
                     }
                 }
+            }
+        }
+    }
+
+    /// A call of an `allof` (Fixpt's U1, C354, rule 4): its arguments
+    /// synthesized once; every member whose parameters take them fits
+    /// (`quick-fits?`, no conversion); the call as one of the first's
+    /// parameters, its result the meet of theirs, its latent effect the
+    /// least of theirs if one is, else the first's. Any other callee, as it
+    /// is.
+    pub fn allof_chosen(v: &'static Cv, s: &'static St, t: &'static Ty, args: Sexps) -> &'static Ty {
+        let tagcase_ = walk_mu(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, ms) => {
+                if not(string_eq_p(d, str_lit("%allof"))) {
+                    t
+                } else {
+                    let ts = map(lambda1s(move |a: &'static Sexp| {
+                        let tagcase_ = synth(v, s, a);
+                        match *tagcase_ {
+                            Res::Res(u, es, s2) => {
+                                zonk(s2, u)
+                            }
+                        }
+                    }), args);
+                    let fits = filter(lambda1s(move |m: &'static Ty| {
+                        let tagcase_ = m;
+                        match *tagcase_ {
+                            Ty::TyProc(es, ps, r) => {
+                                (i64_eq(size(ps), size(ts)) && all_p(lambda1s(move |x: &'static Ty| {
+                                    true
+                                }), ps) && quick_fits_each_p(s, ts, ps))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }), ms);
+                    if null_p(fits) {
+                        match refuse(v, string_append(str_lit("this call fits no member of a "), string_append(show_ty(s, zonk(s, t)), string_append(str_lit(": its arguments are "), words_joined(map(lambda1s(move |u: &'static Ty| {
+                            string_append(str_lit("a "), show_ty(s, u))
+                        }), ts), str_lit(", ")))))) {}
+                    } else {
+                        let tagcase_ = car(fits);
+                        match *tagcase_ {
+                            Ty::TyProc(es0, ps0, r0) => {
+                                ty_proc(allof_least(s, fits, fits), ps0, allof_results_met(v, s, car(fits), cdr(fits), r0))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                t
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                t
+            }
+        }
+    }
+
+    pub fn allof_results_met(mut v: &'static Cv, mut s: &'static St, mut m0: &'static Ty, mut fits: Tys, mut r: &'static Ty) -> &'static Ty {
+        loop {
+            if null_p(fits) {
+                return r;
+            } else {
+                let tagcase_ = car(fits);
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r1) => {
+                        let m = meet(s, r, r1);
+                        if null_p(m) {
+                            return match refuse(v, string_append(str_lit("this call fits a "), string_append(show_ty(s, m0), string_append(str_lit(" and a "), string_append(show_ty(s, car(fits)), str_lit(", whose results have no meet")))))) {};
+                        } else {
+                            (fits, r) = (cdr(fits), car(m));
+                            continue;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return r;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Of `fits`, the first latent effect within every other's, or the first's.
+    pub fn allof_least(mut s: &'static St, mut ls: Tys, mut fits: Tys) -> Strings {
+        loop {
+            let latent = lambda1s(move |m: &'static Ty| {
+                let tagcase_ = m;
+                match *tagcase_ {
+                    Ty::TyProc(es, ps, r) => {
+                        es
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            });
+            if null_p(ls) {
+                return latent(car(fits));
+            } else if all_p(lambda1s(move |m: &'static Ty| {
+                all_p(lambda1s(move |x: Str| {
+                    string_member_p(x, latent(m))
+                }), latent(car(ls)))
+            }), fits) {
+                return latent(car(ls));
+            } else {
+                ls = cdr(ls);
+                continue;
             }
         }
     }

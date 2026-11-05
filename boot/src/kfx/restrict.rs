@@ -274,6 +274,8 @@ pub mod restrictions {
                     }
                 } {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C285)"))) {}
+                } else if (sym_is_p(car(xs), str_lit("allof")) || sym_is_p(car(xs), str_lit("anyof"))) {
+                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's logical types, which KFX has not yet: its Rust's types have no intersections or overlapping unions (C354)"))) {}
                 } else if sym_is_p(car(xs), str_lit("composable")) {
                     match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
                 } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {

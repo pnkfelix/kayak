@@ -1855,6 +1855,13 @@ pub fn rx_ty_at(mut s: &'static St, mut x: &'static Rx, mut sc: Rpbinds, mut t: 
                             return rx_declined(x, str_lit("a union of nil and no pair"));
                         }
                     }
+                } else if string_eq_p(d, str_lit("%allof")) {
+                    let tagcase_ = rx_tys(s, x, sc, args);
+                    match *tagcase_ {
+                        Rxs::Rxs(x, r#as) => {
+                            return rx_fill(x, slot, str_lit("allof"), false, the::<Strings>(nil::<Str>()), r#as);
+                        }
+                    }
                 } else if string_eq_p(d, str_lit("%union")) {
                     let tagcase_ = rx_tys(s, x, sc, args);
                     match *tagcase_ {
@@ -3048,6 +3055,8 @@ pub fn ri_made(c: &'static Ri, k: Int, head: Str, args: RpOperands, binders: Lis
         }
     } else if string_eq_p(head, str_lit("nlist")) {
         ty_data(str_lit("%nlist"), kayak_rt::heap_cons(ri_ty(c, car(args)), kayak_rt::heap_cons(ri_size(c, car(cdr(args))), kayak_rt::nil())))
+    } else if string_eq_p(head, str_lit("allof")) {
+        ty_data(str_lit("%allof"), ri_tys(c, args))
     } else if (string_eq_p(head, str_lit("oneof")) || string_eq_p(head, str_lit("union"))) {
         if ri_datum_p({
             let tagcase_ = c;

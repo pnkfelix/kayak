@@ -25,6 +25,9 @@
 (define any? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
   (lambda (p xs) (and (not (null? xs)) (or (p (car xs)) (any? p (cdr xs))))))
 
+(define all? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
+  (lambda (p xs) (or (null? xs) (and (p (car xs)) (all? p (cdr xs))))))
+
 (define filter (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) (listof a acyclic)))
   (lambda (p xs) (cond ((null? xs) nil) ((p (car xs)) (cons (car xs) (filter p (cdr xs)))) (else (filter p (cdr xs))))))
 
