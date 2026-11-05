@@ -9587,3 +9587,11 @@ Fixpt's says `(place)`, and it printed `(p region)`. Now:
 uses of it want (a place is a region). 1262 of the 1286 definitions'
 reps are Fixpt's; left, C347's list but the places, and a region bound
 within a place (`(binder (region) #f #0.0)`, `caller-place.fx`).
+
+## C350. A request: `fixpt check --reps` (2026-11-05; docs)
+
+The user asked for a request document and a short prompt for the Fixpt
+team: `docs/requests/fixpt-check-reps.md`, a flag printing each
+definition's rep (`NAME HEX` or `NAME declined`), so that kayak's checks
+compare reps through the `fixpt` binary instead of a program linking
+Fixpt's crates (C346's scratch tool, its source in the request).
