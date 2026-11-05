@@ -9641,3 +9641,20 @@ types' 15, and four whose module's type as a value kayak cannot read,
 `import-list-and-family.fx`), 413 refused by both. Most of the 63 are
 modules' reps, compared now that a module's name is listed: abstract
 types, descriptions, their order.
+
+## C353. U0: a `oneof`'s sums (2026-11-05; logical types, step 1)
+
+The user's "start work on implementing its allof/anyof/oneof type
+constructors", after the pin at 1311497 (C351, which read `oneof`).
+Fixpt's U0 (ba49c7bf, `check-unions.fx`'s `k-union-sums-merged`): a
+`oneof`'s members are told apart at run time, by shape, or, for two sums,
+by their tags, none in common. So two sums with no tag in common may be
+members, made one sum where the `oneof` is written (`sums-merged`: the
+same values, which `tagcase` takes apart), and two sharing a tag are
+refused in Fixpt's words, each named as written (`a a and a b both have
+`x``). A `sum` given where a `oneof` is expected is checked against its
+sum (`sum-form`). Fixpt's three tests (`unions/oneof-sums.fx`,
+`oneof-sums-share.fx`, `union-still-read.fx`) now give Fixpt's answers.
+Not ported: Fixpt's refusal of a `oneof` of several sums one of which is a
+recursive type's own name not yet defined (kayak finds such a member's
+shape otherwise, `mu-member-shape`).

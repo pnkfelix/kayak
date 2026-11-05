@@ -7339,32 +7339,46 @@ pub mod expressions {
 
     /// `(sum tag e)`, where a sum with that tag is expected: its type known
     /// whole, which the emitter is told, for Rust's sake.
-    pub fn sum_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: &'static Ty) -> &'static Res {
-        let tagcase_ = walk_mu(s, expected);
-        match *tagcase_ {
-            Ty::TyShape(p, ls, ts) => {
-                if (not(p) && not(null_p(xs)) && draft_hole_p(car(xs))) {
-                    match refuse_named(v, s, string_append(str_lit("the hole: a tag, then its value: "), words_joined(tags_wanted(s, ls, ts), str_lit(", ")))) {}
-                } else {
-                    let tag = label_of(car(xs));
-                    if (p || not(string_member_p(tag, ls)) || not(i64_eq(size(xs), 2i64))) {
-                        match refuse_named(v, s, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected")))))) {}
+    pub fn sum_form(mut v: &'static Cv, mut s: &'static St, mut xs: Sexps, mut expected: &'static Ty) -> &'static Res {
+        loop {
+            let tagcase_ = walk_mu(s, expected);
+            match *tagcase_ {
+                Ty::TyShape(p, ls, ts) => {
+                    if (not(p) && not(null_p(xs)) && draft_hole_p(car(xs))) {
+                        return match refuse_named(v, s, string_append(str_lit("the hole: a tag, then its value: "), words_joined(tags_wanted(s, ls, ts), str_lit(", ")))) {};
                     } else {
-                        let tagcase_ = check(v, s, second(xs), member_type(tag, ls, ts));
-                        match *tagcase_ {
-                            Res::Res(t, es, s) => {
-                                res(expected, es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("sum-type "), show_sexp(ty_sexp(v, s, zonk(s, expected))))))
+                        let tag = label_of(car(xs));
+                        if (p || not(string_member_p(tag, ls)) || not(i64_eq(size(xs), 2i64))) {
+                            return match refuse_named(v, s, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected")))))) {};
+                        } else {
+                            let tagcase_ = check(v, s, second(xs), member_type(tag, ls, ts));
+                            match *tagcase_ {
+                                Res::Res(t, es, s) => {
+                                    return res(expected, es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("sum-type "), show_sexp(ty_sexp(v, s, zonk(s, expected))))));
+                                }
                             }
                         }
                     }
                 }
-            }
-            _ => {
-                let other = tagcase_;
-                if (not(null_p(xs)) && draft_hole_p(car(xs))) {
-                    match refuse(v, str_lit("the hole: a tag, then an expression")) {}
-                } else {
-                    match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {}
+                Ty::TyData(d, args) => {
+                    if (string_eq_p(d, str_lit("%union")) && not(null_p(member_of_shape(args, str_lit("sum"))))) {
+                        expected = car(member_of_shape(args, str_lit("sum")));
+                        continue;
+                    } else {
+                        if (not(null_p(xs)) && draft_hole_p(car(xs))) {
+                            return match refuse(v, str_lit("the hole: a tag, then an expression")) {};
+                        } else {
+                            return match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {};
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    if (not(null_p(xs)) && draft_hole_p(car(xs))) {
+                        return match refuse(v, str_lit("the hole: a tag, then an expression")) {};
+                    } else {
+                        return match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {};
+                    }
                 }
             }
         }

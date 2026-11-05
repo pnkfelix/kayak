@@ -3309,6 +3309,13 @@
                       (res (t es s)
                         (res expected es (note-fact s (cv-file v) (cv-pos v)
                                                     (string-append "sum-type " (show-sexp (ty-sexp v s (zonk s expected))))))))))))
+            (ty-data (d args)
+              (if (and (string=? d "%union") (not (null? (member-of-shape args "sum"))))
+                  ;; A `oneof`'s sum (C353: its sums made one where it is written).
+                  (sum-form v s xs (car (member-of-shape args "sum")))
+                  (if (and (not (null? xs)) (draft-hole? (car xs)))
+                      (refuse v "the hole: a tag, then an expression")
+                      (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))))
             (else other (if (and (not (null? xs)) (draft-hole? (car xs)))
                             (refuse v "the hole: a tag, then an expression")
                             (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))))))

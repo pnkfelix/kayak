@@ -3742,6 +3742,159 @@ pub fn union_members(ts: Tys) -> Tys {
     }
 }
 
+// A `oneof`'s sums (Fixpt's U0, C353; `check-unions.fx`'s
+// `k-union-sums-merged`): two sums with no tag in common are told apart by
+// their tags, so they may be members, made one sum where the `oneof` is
+// written (the same values, which `tagcase` takes apart); two sharing a tag
+// may not.
+/// Member `t`'s sum, seen through an abbreviation, as a list of one.
+pub fn sum_of_member(mut t: &'static Ty) -> Tys {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (has_prefix_p(d, str_lit("%named ")) && not(null_p(args))) {
+                    t = car(args);
+                    continue;
+                } else {
+                    return nil::<&'static Ty>();
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                if p {
+                    return nil::<&'static Ty>();
+                } else {
+                    return kayak_rt::heap_cons(t, kayak_rt::nil());
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return nil::<&'static Ty>();
+            }
+        }
+    }
+}
+
+#[inline]
+pub fn sum_labels(t: &'static Ty) -> Strings {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            ls
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
+#[inline]
+pub fn sum_types(t: &'static Ty) -> Tys {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            ts
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
+}
+
+/// A sum as a refusal names it: its abbreviation's name, as Fixpt's does,
+/// else its tags.
+pub fn sum_named(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if has_prefix_p(d, str_lit("%named ")) {
+                after_prefix(d, str_lit("%named "))
+            } else {
+                d
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            string_append(str_lit("(sumof "), string_append(words_of(sum_labels(car(sum_of_member(t)))), str_lit(")")))
+        }
+    }
+}
+
+/// Two of members `ms` that are sums sharing a tag, by their names as
+/// written (`ns`, the same length; `` for one not a name), and the tag:
+/// `(A B TAG)`; none if none do.
+pub fn sums_sharing(mut ms: Tys, mut ns: Strings) -> Strings {
+    loop {
+        if (null_p(ms) || null_p(ns)) {
+            return nil::<Str>();
+        } else {
+            let rest = sums_sharing_with(car(ms), car(ns), cdr(ms), cdr(ns));
+            if null_p(rest) {
+                (ms, ns) = (cdr(ms), cdr(ns));
+                continue;
+            } else {
+                return rest;
+            }
+        }
+    }
+}
+
+pub fn sums_sharing_with(mut m: &'static Ty, mut n: Str, mut ms: Tys, mut ns: Strings) -> Strings {
+    loop {
+        if (null_p(ms) || null_p(ns) || null_p(sum_of_member(m))) {
+            return nil::<Str>();
+        } else if null_p(sum_of_member(car(ms))) {
+            (ms, ns) = (cdr(ms), cdr(ns));
+            continue;
+        } else {
+            let shared = filter(lambda1s(move |l: Str| {
+                string_member_p(l, sum_labels(car(sum_of_member(car(ms)))))
+            }), sum_labels(car(sum_of_member(m))));
+            if null_p(shared) {
+                (ms, ns) = (cdr(ms), cdr(ns));
+                continue;
+            } else {
+                return kayak_rt::heap_cons(if string_eq_p(n, str_lit("")) {
+                    sum_named(m)
+                } else {
+                    n
+                }, kayak_rt::heap_cons(if string_eq_p(car(ns), str_lit("")) {
+                    sum_named(car(ms))
+                } else {
+                    car(ns)
+                }, kayak_rt::heap_cons(car(shared), kayak_rt::nil())));
+            }
+        }
+    }
+}
+
+pub fn sums_replaced(mut ms: Tys, mut sum: &'static Ty, mut done: bool) -> Tys {
+    loop {
+        if null_p(ms) {
+            return nil::<&'static Ty>();
+        } else if null_p(sum_of_member(car(ms))) {
+            return kayak_rt::heap_cons(car(ms), sums_replaced(cdr(ms), sum, done));
+        } else if done {
+            ms = cdr(ms);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(sum, sums_replaced(cdr(ms), sum, true));
+        }
+    }
+}
+
+/// Members `ms`, their sums (no two sharing a tag) one sum, where the first was.
+pub fn sums_merged(ms: Tys) -> Tys {
+    let sums = concat(map(&sum_of_member, ms));
+    if i64_lt(size(sums), 2i64) {
+        ms
+    } else {
+        sums_replaced(ms, ty_shape(false, concat(map(&sum_labels, sums)), concat(map(&sum_types, sums))), false)
+    }
+}
+
 // `datum` (C77), FX-26's union of what a reader reads, `(union int f64
 // char bool string symbol keyword nil (pairof datum datum acyclic)
 // vector)`, its keywords C291's: a name, its members found when they are
@@ -6838,12 +6991,41 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // tail of any types; a list's pair when its tail is the list.
                     return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
                 } else if (sym_is_p(car(xs), str_lit("oneof")) || sym_is_p(car(xs), str_lit("union"))) {
-                    let members = union_members(parse_types(v, tvars, cdr(xs)));
+                    let each = parse_types(v, tvars, cdr(xs));
+                    let written = union_members(each);
+                    let sharing = {
+                        let by_name = sums_sharing(each, map(lambda1s(move |x: &'static Sexp| {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Sexp::Sym(n, f, p) => {
+                                    n
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        }), cdr(xs)));
+                        if null_p(by_name) {
+                            sums_sharing(written, map(lambda1s(move |m: &'static Ty| {
+                                str_lit("")
+                            }), written))
+                        } else {
+                            by_name
+                        }
+                    };
+                    let members = if null_p(sharing) {
+                        sums_merged(written)
+                    } else {
+                        written
+                    };
                     let shapes = map(lambda1s(move |m: &'static Ty| {
                         mu_member_shape(v, tvars, m)
                     }), members);
-                    if i64_lt(size(members), 2i64) {
+                    if i64_lt(size(written), 2i64) {
                         return match refuse(v, string_append(str_lit("a union of fewer than two members: "), show_sexp(t))) {};
+                    } else if not(null_p(sharing)) {
+                        return match refuse(v, string_append(str_lit("a `oneof`'s sums must have no tag in common: a "), string_append(car(sharing), string_append(str_lit(" and a "), string_append(car(cdr(sharing)), string_append(str_lit(" both have `"), string_append(car(cdr(cdr(sharing))), str_lit("`")))))))) {};
                     } else if (string_member_p(str_lit(""), shapes) || any_p(lambda1s(move |m: &'static Ty| {
                         generative_p(v, m)
                     }), members)) {

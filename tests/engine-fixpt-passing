@@ -158,6 +158,7 @@ run/case-tree.fx
 run/case.fx
 run/conditions.fx
 run/define-rec.fx
+run/eqtable.fx
 run/fails-car.fx
 run/fails-error.fx
 run/fails-integer-char.fx
@@ -201,7 +202,9 @@ unions/false.fx
 unions/more-shapes.fx
 unions/not-and-or-narrow.fx
 unions/null-narrows.fx
+unions/oneof-sums.fx
 unions/paths-narrow.fx
 unions/shapes-narrow.fx
 unions/typecase.fx
+unions/union-still-read.fx
 unions/union-subtyping.fx

@@ -1700,6 +1700,63 @@
             (ty-data (d args) (if (string=? d "%union") (onto (union-members args) (union-members (cdr ts))) (cons (car ts) (union-members (cdr ts)))))
             (else other (cons (car ts) (union-members (cdr ts)))))))))
 
+"A `oneof`'s sums (Fixpt's U0, C353; `check-unions.fx`'s
+ `k-union-sums-merged`): two sums with no tag in common are told apart by
+ their tags, so they may be members, made one sum where the `oneof` is
+ written (the same values, which `tagcase` takes apart); two sharing a tag
+ may not."
+(define-rec
+  (sum-of-member (subr kfx (ty) tys)
+    (lambda (t)
+      "Member `t`'s sum, seen through an abbreviation, as a list of one."
+      (tagcase t
+        (ty-data (d args) (if (and (has-prefix? d "%named ") (not (null? args))) (sum-of-member (car args)) nil))
+        (ty-shape (p ls ts) (if p nil (list t)))
+        (else other nil)))))
+(define sum-labels (subr kfx (ty) strings) (lambda (t) (tagcase t (ty-shape (p ls ts) ls) (else other nil))))
+(define sum-types (subr kfx (ty) tys) (lambda (t) (tagcase t (ty-shape (p ls ts) ts) (else other nil))))
+(define sum-named (subr kfx (ty) string)
+  (lambda (t)
+    "A sum as a refusal names it: its abbreviation's name, as Fixpt's does,
+     else its tags."
+    (tagcase t
+      (ty-data (d args) (if (has-prefix? d "%named ") (after-prefix d "%named ") d))
+      (else other (string-append "(sumof " (string-append (words-of (sum-labels (car (sum-of-member t)))) ")"))))))
+
+(define-rec
+  (sums-sharing (subr kfx (tys strings) strings)
+    (lambda (ms ns)
+      "Two of members `ms` that are sums sharing a tag, by their names as
+       written (`ns`, the same length; `` for one not a name), and the tag:
+       `(A B TAG)`; none if none do."
+      (if (or (null? ms) (null? ns))
+          nil
+          (let ((rest (sums-sharing-with (car ms) (car ns) (cdr ms) (cdr ns))))
+            (if (null? rest) (sums-sharing (cdr ms) (cdr ns)) rest)))))
+  (sums-sharing-with (subr kfx (ty string tys strings) strings)
+    (lambda (m n ms ns)
+      (cond ((or (null? ms) (null? ns) (null? (sum-of-member m))) nil)
+            ((null? (sum-of-member (car ms))) (sums-sharing-with m n (cdr ms) (cdr ns)))
+            (else
+             (let ((shared (filter (lambda ((l string)) (string-member? l (sum-labels (car (sum-of-member (car ms)))))) (sum-labels (car (sum-of-member m))))))
+               (if (null? shared)
+                   (sums-sharing-with m n (cdr ms) (cdr ns))
+                   (list (if (string=? n "") (sum-named m) n) (if (string=? (car ns) "") (sum-named (car ms)) (car ns)) (car shared)))))))))
+(define-rec
+  (sums-replaced (subr kfx (tys ty bool) tys)
+    (lambda (ms sum done)
+      (cond ((null? ms) nil)
+            ((null? (sum-of-member (car ms))) (cons (car ms) (sums-replaced (cdr ms) sum done)))
+            (done (sums-replaced (cdr ms) sum done))
+            (else (cons sum (sums-replaced (cdr ms) sum #t)))))))
+(define sums-merged (subr kfx (tys) tys)
+  (lambda (ms)
+    "Members `ms`, their sums (no two sharing a tag) one sum, where the first was."
+    (let ((sums (concat (map sum-of-member ms))))
+      (if (i64< (size sums) 2)
+          ms
+          (sums-replaced ms (ty-shape #f (concat (map sum-labels sums)) (concat (map sum-types sums))) #f)))))
+
 "`datum` (C77), FX-26's union of what a reader reads, `(union int f64
  char bool string symbol keyword nil (pairof datum datum acyclic)
  vector)`, its keywords C291's: a name, its members found when they are
@@ -3048,9 +3105,20 @@
                  (ty-data "%pairof" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs)) (parse-region v tvars (fourth xs)))))
                 ;; `oneof` (Fixpt's U0, C351), `union` still read as it, as Fixpt's.
                 ((or (sym-is? (car xs) "oneof") (sym-is? (car xs) "union"))
-                 (let* ((members (union-members (parse-types v tvars (cdr xs))))
+                 (let* ((each (parse-types v tvars (cdr xs)))
+                        (written (union-members each))
+                        ;; Each member's name as written, for a refusal, as Fixpt's says.
+                        (sharing (let ((by-name (sums-sharing each (map (lambda ((x sexp)) (tagcase x (sym (n f p) n) (else other ""))) (cdr xs)))))
+                                   (if (null? by-name) (sums-sharing written (map (lambda ((m ty)) "") written)) by-name)))
+                        (members (if (null? sharing) (sums-merged written) written))
                         (shapes (map (lambda ((m ty)) (mu-member-shape v tvars m)) members)))
-                   (cond ((i64< (size members) 2) (refuse v (string-append "a union of fewer than two members: " (show-sexp t))))
+                   (cond ((i64< (size written) 2) (refuse v (string-append "a union of fewer than two members: " (show-sexp t))))
+                         ((not (null? sharing))
+                          (refuse v (string-append "a `oneof`'s sums must have no tag in common: a "
+                                      (string-append (car sharing)
+                                        (string-append " and a "
+                                          (string-append (car (cdr sharing))
+                                            (string-append " both have `" (string-append (car (cdr (cdr sharing))) "`"))))))))
                          ((or (string-member? "" shapes) (any? (lambda ((m ty)) (generative? v m)) members))
                           (refuse v (string-append "a union's member with no shape known (a type variable, an abstract or generative type, a tag): " (show-sexp t))))
                          ((repeated? shapes) (refuse v (string-append "a union of two members of one shape, which no test tells apart: " (show-sexp t))))
