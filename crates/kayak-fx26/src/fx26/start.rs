@@ -1812,7 +1812,7 @@ pub fn rep_lines_of(v: &'static Cv, ns: Strings) -> Strings {
             let tagcase_ = car(b);
             match *tagcase_ {
                 Bind::Bind(m, sc, w) => {
-                    string_append(car(ns), string_append(str_lit(" "), scheme_rep_hex(new_state(), {
+                    string_append(car(ns), string_append(str_lit(" "), scheme_rep_hex(v, new_state(), {
                         let tagcase_ = sc;
                         match *tagcase_ {
                             Scheme::Scheme(tvs, t) => {

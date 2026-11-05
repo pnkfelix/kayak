@@ -9519,3 +9519,34 @@ effects (`alloc` of `(frozen #t)` missing in one), and 6 still declined
 Found on the way, a checker difference: at the pin Fixpt refuses
 `(subr pure ((listof int heap)) (listof int @heap))` of the identity, `heap`
 and `@heap` two regions; kayak takes them as one (C171) and runs it. TODO.
+
+## C347. Reps compared with Fixpt's: datatypes, generative types, type functions (2026-11-05)
+
+C346 continued: 1252 of the 1286 definitions of `tests/fx26/programs`
+now have Fixpt's rep byte for byte (31 differ, 3 declined), by:
+- **The checker's environment in the export** (`ty-export-in`,
+  `ty-rep-in`; the state's `rxenv`, with a memo of the nodes made by key),
+  where `--reps`, a stage and the round trip have it.
+- **A `define-datatype` the sum it is**, as FX-26's is a `define-type` of
+  one (each variant a product labelled from 1), a node made once for each
+  application so that a recursive one is a cycle, its type functions'
+  applications reduced (`reduced`).
+- **A generative type's definition**, Fixpt's `(named <g KIND key> (gendef
+  {params} binder… (variances v…) rep) d…)`, made once: Fixpt's 22
+  standard ones from their declarations (`check.rs`, copied in
+  `rp-generative-decls` with its `fixpt-source` mark, read as kayak reads a
+  type); a program's from its checker's own (its parameters, its
+  `%variance` marks, the representation `up-NAME` takes). Its key is
+  Fixpt's number of it: a program's after the 22, in the order defined.
+  The import skips a `gendef`.
+- **Type functions applied** (`app F d…`), descriptions that are type
+  functions `d-fun`, and **arrow kinds** `(=> K … R)` (kayak spells one
+  `(=> (K …) R)`, read back so).
+Left, each in kayak's checker's own types rather than the export: a place
+binder kept as a region binder (11; the kind `place` is lost once read);
+nested `poly`s merged into one (2); a module's abstract type seen outside
+it (Fixpt a hole, `?0:counter..t`) and in a functor (`param-sel`), and a
+module's abstract type of arrow kind (16); a module's descriptions' order;
+a loaded module's global's name; a written `heap` (C346); one inferred
+effect (`alloc` of `(frozen #t)`); and declined, `convof` and two effect
+atoms (an effect family applied, `~!`).

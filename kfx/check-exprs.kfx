@@ -2714,7 +2714,7 @@
                              (res (ct ces s)
                                (tagcase (synth v s (car (cdr (cdr (cdr (cdr xs))))))
                                  (res (gt ges s)
-                                   (tagcase (ty-export s (mtypes-expanded v s (ty-proc nil (list (tagcase (walk s mt) (ty-data (d as) (if (has-prefix? d "%module ") (module-alias-type v d) mt)) (else other mt)))
+                                   (tagcase (ty-export-in v s (mtypes-expanded v s (ty-proc nil (list (tagcase (walk s mt) (ty-data (d as) (if (has-prefix? d "%module ") (module-alias-type v d) mt)) (else other mt)))
                                                                   (ty-proc es nil r))))
                                      (rexp (ns hs root why)
                                        (cond

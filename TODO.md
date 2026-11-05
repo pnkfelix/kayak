@@ -141,8 +141,11 @@ section below where it has one; here the order, and what each is.
      2026-11-05, C346): at the pin Fixpt refuses the identity at `(subr
      pure ((listof int heap)) (listof int @heap))`; kayak runs it (C171
      made a written `heap` `@heap`). kayak accepts what Fixpt refuses.
-   - **Reps byte for byte Fixpt's** (C346): 1091 of 1280 definitions;
-     the rest in C346's "Left".
+   - **Reps byte for byte Fixpt's** (C346, C347): 1252 of 1286
+     definitions; the rest in C347's "Left", in the checker's own types.
+     The comparison is a scratch tool against the pinned clone's
+     `fixpt-fx26` (not kept); to keep it, a check that builds it as
+     `scripts/fixpt.sh` builds `fixpt`, or Fixpt's `fixpt check --reps`.
    - **Staged code and sessions never give memory back** (the user's
      concern, 2026-11-03; corrected 2026-11-05): kayak's own doing, not
      FX-26's nor Fixpt's compiled machines', whose session is all in the

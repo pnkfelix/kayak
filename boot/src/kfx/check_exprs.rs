@@ -5994,7 +5994,7 @@ pub mod expressions {
                                     let tagcase_ = synth(v, s, car(cdr(cdr(cdr(cdr(xs))))));
                                     match *tagcase_ {
                                         Res::Res(gt, ges, s) => {
-                                            let tagcase_ = ty_export(s, mtypes_expanded(v, s, ty_proc(nil::<Str>(), kayak_rt::heap_cons({
+                                            let tagcase_ = ty_export_in(v, s, mtypes_expanded(v, s, ty_proc(nil::<Str>(), kayak_rt::heap_cons({
                                                 let tagcase_ = walk(s, mt);
                                                 match *tagcase_ {
                                                     Ty::TyData(d, r#as) => {
