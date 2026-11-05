@@ -1,10 +1,13 @@
 # `stage` and sessions on the compiled tiers
 
-Status: design (2026-11-03, C316), for the user's decisions at the end.
-`stage`, evidence and sessions work on the engine and in both REPLs
-(C304-C315). None of the compiled tiers takes them yet:
-`kayak-fx26 --cells` stops at a staging program ("cells: not yet compiled
-as a value: @heap").
+Status: done (C335-C344, 2026-11-05): `stage`, evidence and sessions on
+every tier, 22 of Fixpt's 23 stage programs (`session.fx` differs in a
+refusal's type printed), staged words compiled to machine code on x86_64
+(`docs/research/word-code.md`). What they keep: `session-memory.md`.
+Below, as designed (2026-11-03, C316), when `stage`, evidence and
+sessions worked on the engine and in both REPLs (C304-C315) and none of
+the compiled tiers took them (`kayak-fx26 --cells` stopped at a staging
+program, "cells: not yet compiled as a value: @heap").
 
 ## How a program reaches the compiled tiers today
 
@@ -137,8 +140,8 @@ Status (2026-11-04): (a) chosen, the user's ("Start on (a)"), questions 1
 to 3 taken as leaned; step 1 done (C335); the shared half of staging
 (C336); step 2 done (C337), 13 of Fixpt's 23 stage programs on tier 1;
 step 3 done (C338), the same under every tier; step 4 done (C339), 16 of
-23; step 5 done (C340), 22 of 23, the engine's 22. Left: step 6, staged
-words compiled to machine code, after Fixpt's 516abc8e.
+23; step 5 done (C340), 22 of 23, the engine's 22; step 6 done (C342-C344),
+staged words compiled to machine code, after Fixpt's 516abc8e.
 
 1. **The front end in a cells program**: rename the clashes, build the
    combined unit, and measure its build time and binary size. No behaviour

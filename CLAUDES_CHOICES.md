@@ -9465,3 +9465,16 @@ The rest of `docs/research/word-code.md`:
   arm64 to run it on: code nobody has run is a guess.
 - **Measured** (step 6): within 5% either way on every program and tier,
   compiled cells some 2% dearer; the table in word-code.md.
+
+## C345. What staged code and sessions keep: kayak's, not Fixpt's (2026-11-05; docs)
+
+The user asked whether Fixpt's API makes sessions grow without bound. It
+does not: on Fixpt's compiled machines a session is all in the heap
+(`sessions26.rs`, 6ddd924d: its front end, its globals that front end's
+cells, its code its words'), collected when unreachable; only its Rust
+checker's path (`sessions.rs`'s `SESSIONS`) grows. TODO.md's entry, which
+said "Fixpt keeps them too", corrected; kayak's own causes named (every
+word read named, so a root; a session's globals the machine's table; its
+checker state and pendings kept); a plan, `docs/research/session-memory.md`,
+not started (type reps first, the user's). `compiled-stage.md`'s status and
+TODO.md's `stage` entry brought up to C344.

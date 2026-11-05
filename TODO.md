@@ -100,11 +100,11 @@ section below where it has one; here the order, and what each is.
    - **Joins**, beyond `list`'s elements (C292): any call's arguments
      instantiating one type binder bounded only from below by a sum
      (Fixpt's `sum_lower_only`, 39318012).
-   - **`stage`**, evidence and **sessions** (the checker, the engine and
-     the REPL have them, C304-C315): not yet the compiled tiers, designed
-     in `docs/research/compiled-stage.md` (C316), after one heap
-     (`docs/research/one-heap.md`, C317, the user's: first); or KFX (not
-     needed there).
+   - **`stage`**, evidence and **sessions** on the compiled tiers: done
+     (C335-C344, `docs/research/compiled-stage.md`), 22 of Fixpt's 23 stage
+     programs on all seven tiers, staged words compiled to machine code on
+     x86_64; `session.fx` differs in a refusal's type printed (below,
+     "Refusals in Fixpt's words"). Not KFX (not needed there).
    - **The engine's primitives and constructors within data** (C333): a
      list of them prints as tier 1 sees them (`#<immediate>`, `#<? 2
      fields 0 bytes>`), not `#<procedure>`, until they are Fixpt's objects
@@ -137,20 +137,22 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **Sessions never give memory back** (the user's concern, 2026-11-03):
-     a session's globals are renamed into one flat table (C311, as
-     Fixpt's lowered path), so nothing of a session is reclaimed when
-     the session is dropped: `machine-globals`, the globals' array and
-     its names' only grow (each definition, and each redefinition that
-     is not an assignment, a slot more); `sessions` keeps every
-     session's checker state; `pendings` keeps every definition ever
-     checked, committed or not. Fixpt keeps them too (`sessions.rs`'s
-     thread-local list, never shrunk). The user's alternative: a tree of
-     environment frames, each session a leaf whose frame goes when it is
-     unreachable (lookup that ascends to the parent; Racket's namespaces,
-     MIT Scheme's first-class environments), resolution still at check
-     time as Forth's search order is. Revisit later; a change to how
-     FX-26 keeps sessions is Fixpt's first.
+   - **Staged code and sessions never give memory back** (the user's
+     concern, 2026-11-03; corrected 2026-11-05): kayak's own doing, not
+     FX-26's nor Fixpt's compiled machines', whose session is all in the
+     heap (`sessions26.rs`, 6ddd924d: its front end in the session's
+     third field, its globals cells of that front end's compiler, its code
+     its words', which the machine keeps nothing of since 516abc8e), so
+     that an unreachable session is collected, code and all. Only Fixpt's
+     path on its Rust checker (`sessions.rs`'s thread-local `SESSIONS`,
+     never shrunk) grows, as kayak does. kayak's: every word a listing
+     reads is named, so a root forever (`named!`, `named-forwarded!`),
+     a plain `stage`'s too; a session's globals are tier 1's (and the
+     engine's) flat table, `fx26-session-K:NAME` (C311, from Fixpt's
+     lowered path); `sessions` and `pendings` keep every session's
+     checker state and every definition checked. The plan:
+     `docs/research/session-memory.md`. (The user's tree of environment
+     frames, each session a leaf, is what Fixpt's heap session amounts to.)
    - **A race in Fixpt's `process/basic.fx`** (seen once, 2026-11-01,
      under `--regs --compiled --gc-stress` with the check's load): its
      `wait-for` returns on `exited` without a last `process-output`, so
