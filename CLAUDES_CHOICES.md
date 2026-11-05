@@ -9373,3 +9373,20 @@ Sessions (C310, C311, C313) run on tier 1 as on the engine, compiled.
 Of Fixpt's 23 stage programs, 22 run on tier 1 as Fixpt runs them, every
 way: the engine's 22 (`tests/stage-cells-passing` is `tests/stage-passing`);
 `session.fx` differs on both only in a refusal's type printed (TODO).
+
+## C341. The pin at Fixpt 8616f2f (2026-11-04)
+
+Before porting 516abc8e (a compiled word's code in its own bloblet), the
+user's "go ahead": the pin from 19b31f1 to `origin/main`, 8616f2f, three
+commits.
+- **bb635fe8, ec10e701**: 516abc8e on arm64 too, and its notes. The one
+  ported source behind the pin, `cells/hand.kfx` (`fixpt-native`'s
+  `cellular.rs`), is carried over with 516abc8e itself, the next step: its
+  mark moved to the pin, as its 19b31f1 mark stood with 516abc8e's x86_64
+  half not carried over (TODO).
+- **8616f2fe**: a module reshaped twice over is reshaped once, both of
+  Fixpt's checkers: kayak's request (docs/requests/fixpt-reshape-in-list.md,
+  C328), landed, crediting it. Its test, `modules/reshape-in-list.fx`,
+  found a silent case as well (the same values in the other order, the
+  wrong one taken); kayak gives `(7 7 9)` on the engine and on tier 1, as
+  Fixpt now does, neither case kayak's.

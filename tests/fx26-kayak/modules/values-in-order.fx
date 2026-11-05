@@ -11,7 +11,7 @@
 (define k ab (module (define z int 1) (define a int 0) (define b int 6)))
 (define n (module (include m) (define d int 9)))
 ;; Each reshape in a definition of its own: one in a `list`
-;; stops Fixpt's checker (docs/requests/fixpt-reshape-in-list.md).
+;; stopped Fixpt's checker before its 8616f2fe (docs/requests/fixpt-reshape-in-list.md).
 (define x int (first-b m))
 (define y int (second-a m))
 (define z int (first-b (module (define z int 1) (define a int 0) (define b int 5))))

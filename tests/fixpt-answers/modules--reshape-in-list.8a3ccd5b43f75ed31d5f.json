@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"reshape-in-list.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (val a int) (val c int) (val b int)) ! pure",
+"n : (moduleof (val a int) (val b int)) ! pure",
+"first-b : (subr pure (ab) int) ! pure",
+"o : (moduleof (val b int)) ! pure",
+"(7 7 9) : (listof int acyclic) ! (read (globals first-b m n o))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
+]
+}
+]
+}

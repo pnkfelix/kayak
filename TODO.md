@@ -109,8 +109,6 @@ section below where it has one; here the order, and what each is.
      list of them prints as tier 1 sees them (`#<immediate>`, `#<? 2
      fields 0 bytes>`), not `#<procedure>`, until they are Fixpt's objects
      (one heap, step 4).
-   - **To take to the Fixpt team**: its checker panics on a module
-     reshaped inside `list` (docs/requests/fixpt-reshape-in-list.md, C328).
    - **The live REPL's early run of a draft** (`live-repl.kfx`, the
      in-process speculation) lowers it with no checker facts: a module
      given where its type orders it otherwise is not reshaped there (C328),
@@ -122,9 +120,10 @@ section below where it has one; here the order, and what each is.
      `show-ty` in check.kfx); types printed alike (`car`'s parameter,
      inference variables `?` against kayak's `?1`); the tail
      (`target/kayak-checks/checkers`, `both`).
-   - **From Fixpt 19b31f1** (C314): Fixpt's 516abc8e, a compiled word's
-     code kept in its own bloblet, to port before sessions run on the
-     compiled tiers; arm64's register code (6c46d762). (`attempt-within`
+   - **From Fixpt 19b31f1 and 8616f2f** (C314, C341): Fixpt's 516abc8e and
+     bb635fe8, a compiled word's code kept in its own bloblet, on x86_64 and
+     arm64 (`cells/hand.kfx`'s mark at 8616f2f, the carrying over next);
+     arm64's register code (6c46d762). (`attempt-within`
      and `dlambda` descriptions done, C315.)
    - **Exporting a new item from check-exprs.kfx's `expressions` module**
      (`mtype-opened`, at C315) broke the bootstrap's second generation:

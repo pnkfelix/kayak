@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"reshape-in-list.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (val a int) (val c int) (val b int)) ! pure",
+"define n : (moduleof (val a int) (val b int)) ! pure",
+"define first-b : (subr pure (ab) int) ! pure",
+"define o : (moduleof (val b int)) ! pure",
+"(listof int acyclic) ! (read (globals first-b m n o))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
+]
+}
+]
+}

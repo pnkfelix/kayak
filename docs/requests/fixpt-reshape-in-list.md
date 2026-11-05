@@ -1,7 +1,9 @@
 # A request to the Fixpt team: a checker panic on a reshaped module in `list`
 
 Status: found 2026-11-04 by kayak (C328), on Fixpt 19b31f10 (kayak's pin);
-`origin/main` at ec10e701 has it too.
+landed in Fixpt the same day (8616f2fe, its test `modules/reshape-in-list.fx`,
+which found a silent case too: the same values in another order, the wrong one
+taken); kayak's pin since C341.
 
 ## The panic
 
