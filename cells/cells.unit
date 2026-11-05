@@ -5,14 +5,35 @@
 --syscalls
 ../kfx/base.kfx
 ../kfx/read.kfx
+; The front end (docs/research/compiled-stage.md, (a); C335): kfx's checker,
+; and kayak's compiler to cells, for code a program stages.
+../kfx/names.kfx
+../kfx/check.kfx
+../kfx/reps.kfx
+../kfx/terminate.kfx
+../kfx/check-exprs.kfx
+../kfx/built-in.kfx
+../kfx/check-defs.kfx
 ../kfx/regs-isa.kfx
+../fx26/ir.kfx
+../fx26/prims.kfx
+../fx26/lower.kfx
+../fx26/cg.kfx
+../fx26/regs-asm.kfx
+../fx26/regs-moves.kfx
+../fx26/regs-know.kfx
+../fx26/regs-gen.kfx
+../fx26/regs-entry.kfx
+../fx26/cg-top.kfx
+../fx26/listing.kfx
+; Tier 1's own.
 layout.kfx
 heap.kfx
 numbers.kfx
 show.kfx
 sched.kfx
-prims.kfx
-listing.kfx
+cprims.kfx
+listing-reader.kfx
 hand.kfx
 hand-x64.kfx
 machine.kfx

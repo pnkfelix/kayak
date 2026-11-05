@@ -95,7 +95,7 @@
 (define misaligned i64 3)
 
 "Code: instructions, and jumps to labels, placed when every label is."
-(define-datatype item (ins int) (jump int int int) (label-here int) (offset-of int) (align-odd int))
+(define-datatype hand-item (ins int) (jump int int int) (label-here int) (offset-of int) (align-odd int))
 (define j-b int 0)
 (define j-cond int 1)
 (define j-cbz int 2)
@@ -106,9 +106,9 @@
  so that the one after it, where a `blr` returns, is 8-aligned (C131)."
 (define arm-nop int 3573751839)
 
-(define hand-items (ref (listof item @c) @c) (new nil))
+(define hand-items (ref (listof hand-item @c) @c) (new nil))
 "Data, placed before the code: 8 bytes an entry."
-(define hand-data (ref (listof item @c) @c) (new nil))
+(define hand-data (ref (listof hand-item @c) @c) (new nil))
 (define hand-labels (ref int @c) (new 0))
 (define e! (->* (int) unit) (lambda (w) (set hand-items (cons (ins w) (get hand-items)))))
 (define label! (->* () int) (lambda () (let ((l (get hand-labels))) (begin (set hand-labels (+ l 1)) l))))
@@ -119,7 +119,7 @@
 (define adr! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-adr r l) (get hand-items)))))
 (define bl! (->* (int) unit) (lambda (l) (set hand-items (cons (jump j-bl 0 l) (get hand-items)))))
 (define align-odd! (->* () unit) (lambda () (set hand-items (cons (align-odd 0) (get hand-items)))))
-(define d! (->* (item) unit) (lambda (i) (set hand-data (cons (ins 0) (cons i (get hand-data))))))
+(define d! (->* (hand-item) unit) (lambda (i) (set hand-data (cons (ins 0) (cons i (get hand-data))))))
 (define data-label! (->* (int) unit) (lambda (l) (set hand-data (cons (label-here l) (get hand-data)))))
 
 "`adr xd, label`, which `arm64.fx` has not: a byte offset of 21 bits."
@@ -129,7 +129,7 @@
       (+ 268435456 (+ (* (modulo v 4) 536870912) (+ (* (quotient v 4) 32) d))))))
 
 (define-rec
-  (placed! (->* ((listof item @c) int (flatarrayof i64 @c)) int)
+  (placed! (->* ((listof hand-item @c) int (flatarrayof i64 @c)) int)
     (lambda (xs at ls)
       "Each label's place, in instructions, in `ls`; how many there are."
       (if (null? xs)
@@ -143,7 +143,7 @@
 
 (define where (->* ((flatarrayof i64 @c) int) int) (lambda (ls l) (i64->int (flatarray-ref-i64 ls (int->i64 l)))))
 
-(define encoded (->* (item int (flatarrayof i64 @c)) int)
+(define encoded (->* (hand-item int (flatarrayof i64 @c)) int)
   (lambda (x at ls)
     "Item `x`, at `at`, encoded; a jump to where its label is, an offset
      its label's in bytes."
@@ -838,7 +838,7 @@
                              (es (cposes (after-char cs #\space) nil))
                              (pairs (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (i64+ 1 (size es))) 0)))
                              (n (lines-paired! es pairs at ls scale base from to 0)))
-                        (note-code-lines (+ at from) (- to from) (string-append "fx26 " name) (list->string (before-char cs #\space)) pairs (i64->int n))))
+                        (note-code-lines (+ at from) (- to from) (string-append "fx26 " name) (list->string (chars-before-char cs #\space)) pairs (i64->int n))))
                   (spans-noted! at ls scale (cdr ss)))))))))
   (lines-paired! (->* ((listof cpos acyclic) (flatarrayof i64 @c) int (flatarrayof i64 @c) int int int int i64) i64)
     (lambda (es pairs at ls scale base from to n)
@@ -1739,7 +1739,7 @@
            (bloblet-set-byte! b (+ at 3) (quotient w 16777216)))))
 
 (define-rec
-  (all-put! (->* ((bloblet (fields) @heap) (listof item @c) int (flatarrayof i64 @c)) int)
+  (all-put! (->* ((bloblet (fields) @heap) (listof hand-item @c) int (flatarrayof i64 @c)) int)
     (lambda (b xs at ls)
       "Each item placed, at instruction `at` on; the first that did not
        encode, as its place, or -1."
@@ -1755,7 +1755,7 @@
                     (begin (put4 b (* 4 at) w) (all-put! b (cdr xs) (+ at 1) ls))))))))))
 
 (define-rec
-  (words-table (->* ((listof int @c) (listof item @c)) (listof item @c))
+  (words-table (->* ((listof int @c) (listof hand-item @c)) (listof hand-item @c))
     (lambda (rts acc)
       "The table of the words' tables, word 0's first (`rts` the last first)."
       (if (null? rts) acc (words-table (cdr rts) (cons (offset-of (car rts)) (cons (ins 0) acc)))))))
@@ -1781,7 +1781,7 @@
           (let* ((cts (if (get hand-compiled) (words-compiled! (get words) 0 nil) nil))
                  (rts (if (get hand-compiled) (registers-compiled! (get register-words) (count-of cts 0) cts) cts))
                  (u (set words-compiled (count-of rts 0)))
-                 (its (the (listof item @c)
+                 (its (the (listof hand-item @c)
                         (cons (label-here (get l-start))
                           (cons (jump j-b 0 (get l-entry))
                             (cons (ins 0)

@@ -127,7 +127,7 @@ and status 1.
             (ltext (n text)
               (let* ((cs (string-chars text)) (w (lookup (get words) n)))
                 (lines-tallied! (cdr ts) file starts exact
-                                (if (or (i64= w 0) (not (string=? (list->string (before-char cs #\space)) file)))
+                                (if (or (i64= w 0) (not (string=? (list->string (chars-before-char cs #\space)) file)))
                                     into
                                     (word-lines! (get profile) w (cposes (after-char cs #\space) nil) starts exact into 0))))))))))
 (define-rec
@@ -159,8 +159,8 @@ and status 1.
   (nth-line (subr kfx ((listof chars acyclic) i64) chars)
     (lambda (ls n) (cond ((null? ls) nil) ((i64= n 0) (car ls)) (else (nth-line (cdr ls) (i64- n 1)))))))
 (define-rec
-  (padded (subr kfx (string i64) string)
-    (lambda (s n) (if (i64>= (int->i64 (string-length s)) n) s (padded (string-append " " s) n)))))
+  (padded-to (subr kfx (string i64) string)
+    (lambda (s n) (if (i64>= (int->i64 (string-length s)) n) s (padded-to (string-append " " s) n)))))
 (define percent (subr kfx (i64 i64) string)
   (lambda (n total)
     (let ((m (if (i64= total 0) (the i64 0) (i64-quotient (i64* n 1000) total))))
@@ -172,11 +172,11 @@ and status 1.
             ((i64= n 0) (string-append (list->string (reverse acc)) "…"))
             (else (cut (cdr cs) (i64- n 1) (cons (car cs) acc)))))))
 (define-rec
-  (name-of (subr cm ((listof named-slot @c) i64) string)
+  (word-name-of (subr cm ((listof named-slot @c) i64) string)
     (lambda (ws w)
       (cond ((null? ws) (string-append "(word at " (string-append (i64->string w) ")")))
             ((i64= (named-value (car ws)) w) (tagcase (car ws) (named-slot (n i) n)))
-            (else (name-of (cdr ws) w))))))
+            (else (word-name-of (cdr ws) w))))))
 (define-rec
   (most-shown (subr cm ((flatarrayof i64 @c) i64 i64 (subr cm (i64) string) string) string)
     (lambda (t total n what out)
@@ -188,16 +188,16 @@ and status 1.
               (begin
                 (flatarray-set-i64! t (i64+ at 2) (i64- 0 c))
                 (most-shown t total (i64- n 1) what
-                            (string-append out (string-append "  " (string-append (padded (i64->string c) 12) (string-append (padded (percent c total) 8) (string-append "  " (string-append (what (flatarray-ref-i64 t at)) "\n"))))))))))))))
+                            (string-append out (string-append "  " (string-append (padded-to (i64->string c) 12) (string-append (padded-to (percent c total) 8) (string-append "  " (string-append (what (flatarray-ref-i64 t at)) "\n"))))))))))))))
 
 (define profile-shown! (subr driving () unit)
   (lambda ()
     (let* ((total (tally-total (get profile) 0 0))
            (ws (words-tallied! (get profile) (tally-made 256) 0))
            (head (string-append "profile: " (string-append (i64->string total) " cells run by tier 1\n")))
-           (by-word (most-shown ws total 15 (lambda ((w i64)) (name-of (get words) w)) "the words that ran the most:\n"))
+           (by-word (most-shown ws total 15 (lambda ((w i64)) (word-name-of (get words) w)) "the words that ran the most:\n"))
            (ts (get line-tables))
-           (file (if (null? ts) "" (tagcase (car ts) (ltext (n text) (list->string (before-char (string-chars text) #\space))))))
+           (file (if (null? ts) "" (tagcase (car ts) (ltext (n text) (list->string (chars-before-char (string-chars text) #\space))))))
            (by-line
              (if (string=? file "")
                  "no line tables: the listing is not kayak's (`kayak-fx26 --cells`)\n"
@@ -218,7 +218,7 @@ and status 1.
                              (most-shown ps total 15
                                          (lambda ((q i64))
                                            (let* ((p (i64- q 1)) (l (line-of starts p 0 (i64- (flatarray-length-i64 starts) 1))))
-                                             (string-append (i64->string (i64+ l 1)) (string-append ":" (string-append (i64->string (i64- p (flatarray-ref-i64 starts l))) (string-append "  " (cut (drop-n cs p) 50 nil)))))))
+                                             (string-append (i64->string (i64+ l 1)) (string-append ":" (string-append (i64->string (i64- p (flatarray-ref-i64 starts l))) (string-append "  " (cut (chars-dropped cs p) 50 nil)))))))
                                          "the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n"))))
                        (bad k (string-append file ": not UTF-8\n"))))
                    (failed e (string-append "cannot read " (string-append file "\n")))))))
@@ -231,7 +231,7 @@ and status 1.
         ((null? as) (begin (write-err usage) (exit 2) 2))
         ((or (string=? (car as) "--help") (string=? (car as) "-h")) (begin (say usage) 0))
         (else
-          (let* ((u01 (set program-args (after-dashes as)))
+          (let* ((u01 (set run-args (after-dashes as)))
                  (u00 (if (heap-addressed!)
                           #u
                           (begin (write-err "kayak-cells: values cannot be addresses here, which tier 1 needs (C244)\n") (exit 1) #u)))

@@ -3,1464 +3,714 @@
 use kayak_rt::*;
 use super::*;
 
-// listing.kfx: words read from Fixpt's listing of them (C122), what
-// `fixpt --fx26-machine fx-cells-rsinterp compile` writes: for each word
-// its header, `word NAME (N cells, cellular):`, then a line for each
-// instruction, `AT: ROUTINE OPERAND ...`. Exact, but where a literal is
-// cut short (`…`), two words share a name, or the compilers disagree:
-// those are refused. Each word's register code (`its register code`) is
-// read into a register word, its twin under `--regs` (C129).
-// fixpt-source: crates/fixpt-runtime/src/disasm.rs@19b31f1
-#[inline]
-pub fn listing_error(why: Str) -> Void {
-    error(string_append(str_lit("kayak-cells: the listing: "), why))
-}
+// listing.kfx: the listing, written (C268). Each word's text is written
+// into a buffer of bytes in a place of its own, a `letrena`'s, which
+// doubles as it fills; then made one string, given to be written out, and
+// the place freed: none of the text's pieces kept, where they had been
+// strings in the heap, kept for the run, some thirty times the listing's
+// size. As Fixpt's `disasm.rs` writes it, byte for byte as the strings had
+// (`lit-text`, `lines-of-items`, `rcode-said`, `line-table`, which other
+// uses keep).
 
-// Parentheses, as characters (KFX's reader takes no `#\(`).
-#[inline]
-pub fn open_paren() -> char {
-    i64_to_char(40i64)
-}
-
-#[inline]
-pub fn close_paren() -> char {
-    i64_to_char(41i64)
-}
-
-#[inline]
-pub fn comma() -> char {
-    i64_to_char(44i64)
-}
-
-#[inline]
-pub fn colon() -> char {
-    i64_to_char(58i64)
-}
-
-#[inline]
-pub fn dquote() -> char {
-    i64_to_char(34i64)
-}
-
-#[inline]
-pub fn bar() -> char {
-    i64_to_char(124i64)
-}
-
-#[inline]
-pub fn backslash() -> char {
-    i64_to_char(92i64)
-}
-
-// Lines, each its characters.
-pub fn lines_of(mut cs: Chars, mut acc: Chars, mut out: List<Chars>) -> List<Chars> {
-    loop {
-        if null_p(cs) {
-            return the::<List<Chars>>(reverse(the::<List<Chars>>(if null_p(acc) {
-                out
-            } else {
-                kayak_rt::heap_cons(the::<Chars>(reverse(acc)), out)
-            })));
-        } else if char_eq_p(car(cs), '\n') {
-            (cs, acc, out) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(the::<Chars>(reverse(acc)), out));
-            continue;
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn starts_p(cs: Chars, prefix: Chars) -> bool {
-    if null_p(prefix) {
-        true
-    } else if null_p(cs) {
-        false
+// Room for `k` more bytes in the buffer `b`, `n` of them used: a buffer
+// twice as large, in the place, the bytes so far copied in, where there is
+// not.
+pub fn w_room_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
+    let (have, at) = (int_to_i64(bytevector_length(get(b))), get(n));
+    if i64_lt_eq(i64_plus(at, k), have) {
+        ()
     } else {
-        (char_eq_p(car(cs), car(prefix)) && starts_p(cdr(cs), cdr(prefix)))
+        let more = the::<BytesAt<'p>>(make_bytevector_in(p, i64_to_int(i64_star(2i64, i64_plus(have, k))), 0u8));
+        bytevector_copy_x(more, int_lit(0), get(b), int_lit(0), i64_to_int(at));
+        set(b, more)
     }
 }
 
-pub fn drop_n(mut cs: Chars, mut n: i64) -> Chars {
-    loop {
-        if (null_p(cs) || i64_eq(n, 0i64)) {
-            return cs;
-        } else {
-            (cs, n) = (cdr(cs), i64_minus(n, 1i64));
-            continue;
-        }
-    }
+// The byte `k`.
+pub fn w_byte_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
+    w_room_x(p, b, n, 1i64);
+    bytevector_u8_set_x(get(b), i64_to_int(get(n)), int_to_u8(i64_to_int(k)));
+    set(n, i64_plus(get(n), 1i64))
 }
 
-pub fn spaces_dropped(mut cs: Chars) -> Chars {
-    loop {
-        if (not(null_p(cs)) && char_eq_p(car(cs), ' ')) {
-            cs = cdr(cs);
-            continue;
-        } else {
-            return cs;
-        }
-    }
+// The string `s`'s bytes, by way of the place.
+pub fn w_str_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, s: Str) -> () {
+    let bs = the::<BytesAt<'p>>(string_to_utf8_in(p, s));
+    let k = int_to_i64(bytevector_length(bs));
+    w_room_x(p, b, n, k);
+    bytevector_copy_x(get(b), i64_to_int(get(n)), bs, int_lit(0), i64_to_int(k));
+    set(n, i64_plus(get(n), k))
 }
 
-/// The characters before the first `c`.
-pub fn until_char(mut cs: Chars, mut c: char, mut acc: Chars) -> Chars {
-    loop {
-        if (null_p(cs) || char_eq_p(car(cs), c)) {
-            return the::<Chars>(reverse(acc));
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
+// A digit's byte, of base 10 or 16 (lower case).
 #[inline]
-pub fn before_char(cs: Chars, c: char) -> Chars {
-    until_char(cs, c, nil::<char>())
-}
-
-pub fn after_char(mut cs: Chars, mut c: char) -> Chars {
-    loop {
-        if null_p(cs) {
-            return nil::<char>();
-        } else if char_eq_p(car(cs), c) {
-            return cdr(cs);
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn contains_p(mut cs: Chars, mut part: Chars) -> bool {
-    loop {
-        if starts_p(cs, part) {
-            return true;
-        } else if null_p(cs) {
-            return false;
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn digits_of(mut cs: Chars, mut acc: i64) -> i64 {
-    loop {
-        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
-            (cs, acc) = (cdr(cs), i64_plus(i64_star(acc, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        } else {
-            return acc;
-        }
-    }
-}
-
-pub fn number_of(cs: Chars) -> i64 {
-    let cs = spaces_dropped(cs);
-    if null_p(cs) {
-        match listing_error(str_lit("a number is missing")) {};
-        0i64
-    } else if char_eq_p(car(cs), '-') {
-        i64_minus(0i64, digits_of(cdr(cs), 0i64))
-    } else if char_numeric_p(car(cs)) {
-        digits_of(cs, 0i64)
+pub fn digit_byte(d: i64) -> i64 {
+    if i64_lt(d, 10i64) {
+        i64_plus(48i64, d)
     } else {
-        match listing_error(string_append(str_lit("not a number: "), list_to_string(cs))) {};
-        0i64
+        i64_plus(87i64, d)
     }
 }
 
-// A word's block: its name, its cells, its entry, its instructions' lines
-// (each where it starts, and the rest of it).
-pub enum Iline {
-    Iline(i64, Chars),
-}
-
-pub fn iline(f0: i64, f1: Chars) -> &'static Iline {
-    kayak_rt::heap_alloc(Iline::Iline(f0, f1))
-}
-
-pub enum Block {
-    Block(Str, i64, i64, List<&'static Iline>),
-}
-
-pub fn block(f0: Str, f1: i64, f2: i64, f3: List<&'static Iline>) -> &'static Block {
-    kayak_rt::heap_alloc(Block::Block(f0, f1, f2, f3))
-}
-
-/// `word NAME (N cells, cellular):` or `(N cells, the routine R):`.
-pub fn header_block(cs: Chars) -> &'static Block {
-    let rest = drop_n(cs, 5i64);
-    let name = list_to_string(before_char(rest, ' '));
-    let inside = after_char(rest, open_paren());
-    let n = number_of(inside);
-    let entry = the::<i64>(if contains_p(inside, string_chars(str_lit("cellular)"))) {
-        rt_docol()
-    } else if contains_p(inside, string_chars(str_lit("the routine "))) {
-        position_in(routine_names(), list_to_string(before_char(drop_n(after_char(after_char(inside, comma()), ' '), 12i64), close_paren())), 0i64)
+// `k`, not negative, in `base`.
+pub fn w_digits_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64, base: i64) -> () {
+    if i64_gt_eq(k, base) {
+        w_digits_x(p, b, n, i64_quotient(k, base), base)
     } else {
-        match listing_error(string_append(str_lit("a word of no kind tier 1 runs: "), list_to_string(cs))) {};
-        0i64
-    });
-    block(name, n, entry, nil::<&'static Iline>())
+        ()
+    };
+    w_byte_x(p, b, n, digit_byte(i64_remainder(k, base)))
 }
 
-/// The blocks of a listing's lines, newest last. `mode`: 0 in a word's
-/// cells, 1 in its register code (each instruction kept at `-2 - AT`),
-/// 2 in what else is listed of it, passed over.
-pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut mode: i64) -> List<&'static Block> {
-    loop {
-        if null_p(ls) {
-            return the::<List<&'static Block>>(reverse(out));
-        } else {
-            let l = car(ls);
-            if starts_p(l, string_chars(str_lit("word "))) {
-                (ls, out, mode) = (cdr(ls), kayak_rt::heap_cons(header_block(l), out), 0i64);
-                continue;
-            } else if starts_p(l, string_chars(str_lit("; the compilers disagree"))) {
-                match listing_error(str_lit("the compilers disagree")) {};
-                return nil::<&'static Block>();
-            } else if (null_p(l) || char_eq_p(car(l), ';')) {
-                (ls, mode) = (cdr(ls), 0i64);
-                continue;
-            } else if starts_p(l, string_chars(str_lit("  its register code "))) {
-                (ls, mode) = (cdr(ls), 1i64);
-                continue;
-            } else if starts_p(l, string_chars(str_lit("  its "))) {
-                (ls, mode) = (cdr(ls), 2i64);
-                continue;
-            } else if (null_p(out) || i64_eq(mode, 2i64)) {
-                ls = cdr(ls);
-                continue;
-            } else {
-                let t = spaces_dropped(l);
-                let at = digits_of(t, 0i64);
-                let text = spaces_dropped(after_char(t, colon()));
-                if contains_p(text, string_chars(str_lit("…"))) {
-                    match listing_error(str_lit("a literal cut short")) {};
-                    return nil::<&'static Block>();
-                } else {
-                    (ls, out) = (cdr(ls), {
-                        let tagcase_ = car(out);
-                        match *tagcase_ {
-                            Block::Block(n, c, e, is) => {
-                                kayak_rt::heap_cons(block(n, c, e, kayak_rt::heap_cons(iline(if i64_eq(mode, 1i64) {
-                                    i64_minus(-2i64, at)
-                                } else {
-                                    at
-                                }, text), is)), cdr(out))
-                            }
-                        }
-                    });
-                    continue;
-                }
-            }
-        }
+// `k` in decimal.
+pub fn w_i64_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
+    if i64_lt(k, 0i64) {
+        w_byte_x(p, b, n, 45i64);
+        w_digits_x(p, b, n, i64_minus(0i64, k), 10i64)
+    } else {
+        w_digits_x(p, b, n, k, 10i64)
     }
 }
 
-// Each word's line table (C245), as kayak's compiler writes it after the
-// word: its name, and the rest of its `; at FILE CELL:POS …` line, read
-// by `--profile`. Fixpt's listings have none.
-pub enum Ltext {
-    Ltext(Str, Str),
-}
-
-pub fn ltext(f0: Str, f1: Str) -> &'static Ltext {
-    kayak_rt::heap_alloc(Ltext::Ltext(f0, f1))
-}
-
+// How many decimal digits `k`, not negative, has.
 #[inline]
-pub fn line_tables() -> Ref<List<&'static Ltext>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Ltext>())
-    })
+pub fn digit_count(k: i64) -> i64 {
+    if i64_lt(k, 10i64) {
+        1i64
+    } else {
+        i64_plus(1i64, digit_count(i64_quotient(k, 10i64)))
+    }
 }
 
-// Its register code's, `; regs at FILE INSTRUCTION:POS …` (C249).
-#[inline]
-pub fn reg_line_tables() -> Ref<List<&'static Ltext>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Ltext>())
-    })
-}
-
-pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
+// Spaces before `k` to make it `width` wide (`padded`, `rpadded`).
+pub fn w_spaces_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut k: i64) -> () {
     loop {
-        if null_p(ls) {
+        if i64_lt_eq(k, 0i64) {
             return ();
-        } else if starts_p(car(ls), string_chars(str_lit("word "))) {
-            (ls, name) = (cdr(ls), list_to_string(before_char(drop_n(car(ls), 5i64), ' ')));
-            continue;
-        } else if starts_p(car(ls), string_chars(str_lit("; regs at "))) {
-            set(reg_line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(drop_n(car(ls), 10i64))), get(reg_line_tables())));
-            ls = cdr(ls);
-            continue;
-        } else if starts_p(car(ls), string_chars(str_lit("; at "))) {
-            set(line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(drop_n(car(ls), 5i64))), get(line_tables())));
-            ls = cdr(ls);
-            continue;
         } else {
-            ls = cdr(ls);
+            w_byte_x(p, b, n, 32i64);
+            k = i64_minus(k, 1i64);
             continue;
         }
     }
 }
 
-// A line table's entries: each a cell and the source position from it on.
-pub enum Cpos {
-    Cpos(i64, i64),
-}
-
-pub fn cpos(f0: i64, f1: i64) -> &'static Cpos {
-    kayak_rt::heap_alloc(Cpos::Cpos(f0, f1))
-}
-
-pub fn cposes(cs: Chars, out: List<&'static Cpos>) -> List<&'static Cpos> {
-    let cs = spaces_dropped(cs);
-    if null_p(cs) {
-        reverse(out)
+pub fn w_padded_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64, width: i64) -> () {
+    w_spaces_x(p, b, n, i64_minus(width, if i64_lt(k, 0i64) {
+        i64_plus(1i64, digit_count(i64_minus(0i64, k)))
     } else {
-        let rest = after_char(cs, colon());
-        cposes(after_char(rest, ' '), kayak_rt::heap_cons(cpos(digits_of(cs, 0i64), digits_of(rest, 0i64)), out))
-    }
+        digit_count(k)
+    }));
+    w_i64_x(p, b, n, k)
 }
 
-/// The rest of word `n`'s `; at` line, "" if none: the first listed of
-/// a name listed again, the one its word is made from.
-pub fn table_named(mut ts: List<&'static Ltext>, mut n: Str, mut had: Str) -> Str {
-    loop {
-        if null_p(ts) {
-            return had;
-        } else {
-            let tagcase_ = car(ts);
-            match *tagcase_ {
-                Ltext::Ltext(m, text) => {
-                    (ts, had) = (cdr(ts), if string_eq_p(m, n) {
-                        text
-                    } else {
-                        had
-                    });
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-// The words, by name.
+// A word's name as the listing names it (`shown-name`): to its tab, if it
+// has one.
 #[inline]
-pub fn words() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
-    })
-}
-
-pub fn word_named(cs: Chars) -> i64 {
-    let w = lookup(get(words()), list_to_string(before_char(cs, ' ')));
-    if i64_eq(w, 0i64) {
-        match listing_error(string_append(str_lit("no word is named "), list_to_string(cs))) {};
-        0i64
-    } else {
+pub fn w_name_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, w: Str) -> () {
+    w_str_x(p, b, n, if i64_lt(int_to_i64(string_search(w, str_lit("\t"), int_lit(0))), 0i64) {
         w
-    }
-}
-
-// The undefined closure: what a global holds before it is written, which
-// traps if called (Fixpt's `undefined_closure`).
-#[inline]
-pub fn undefined_closure() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
+    } else {
+        shown_name(w)
     })
 }
 
-pub fn the_undefined() -> i64 {
-    if i64_eq(get(undefined_closure()), 0i64) {
-        let w = make_code_word_x(str_lit("undefined"), 1i64, rt_docol());
-        let c = make_bloblet_x(k_closure(), 1i64, 0i64, true, false);
-        slot_set_x(w, f_cell0(), fix(rt_undefined()));
-        slot_set_x(c, f_word(), w);
-        set(undefined_closure(), c);
-        c
-    } else {
-        get(undefined_closure())
+// A string's characters, each not printable ASCII (and `quote` and `\`)
+// by its code, `\xHH;` (`lit-escaped`).
+pub fn w_escaped_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut s: Str, mut quote: i64, mut i: i64, mut len: i64) -> () {
+    loop {
+        if i64_gt_eq(i, len) {
+            return ();
+        } else {
+            let k = char_to_i64(string_ref_i64(s, i));
+            if (i64_eq(k, quote) || i64_eq(k, 92i64) || i64_lt(k, 32i64) || i64_gt(k, 126i64)) {
+                w_str_x(p, b, n, str_lit("\\x"));
+                w_digits_x(p, b, n, k, 16i64);
+                w_byte_x(p, b, n, 59i64)
+            } else {
+                w_byte_x(p, b, n, k)
+            };
+            i = i64_plus(i, 1i64);
+            continue;
+        }
     }
 }
 
-/// Global `name`'s cell (Fixpt's: its value, its name, how many times it
-/// was written), made the first time it is named.
-pub fn global_named(name: Str) -> i64 {
-    let g = lookup(get(named_globals()), name);
-    if not(i64_eq(g, 0i64)) {
-        g
-    } else {
-        let g = make_bloblet_x(k_bloblet(), 3i64, 0i64, true, false);
-        slot_set_x(g, f_value(), the_undefined());
-        slot_set_x(g, 3i64, symbol_x(name));
-        slot_set_x(g, f_writes(), fix(0i64));
-        set(named_globals(), kayak_rt::heap_cons(named_x(name, g), get(named_globals())));
-        g
+// A literal as `lit-text` writes it; a quoted node as its label says
+// (`q-written!`, the reaches counted first).
+pub fn w_lit_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: &'static Lit) -> () {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lit::LInt(k) => {
+            w_str_x(p, b, n, int_to_string(k))
+        }
+        Lit::LBool(v) => {
+            w_str_x(p, b, n, if v {
+                str_lit("#t")
+            } else {
+                str_lit("#f")
+            })
+        }
+        Lit::LUnit() => {
+            w_str_x(p, b, n, str_lit("|#u|"))
+        }
+        Lit::LNil() => {
+            w_str_x(p, b, n, str_lit("()"))
+        }
+        Lit::LStr(s) => {
+            w_byte_x(p, b, n, 34i64);
+            w_escaped_x(p, b, n, s, 34i64, 0i64, string_length_i64(s));
+            w_byte_x(p, b, n, 34i64)
+        }
+        Lit::LChar(ch) => {
+            w_str_x(p, b, n, str_lit("#\\x"));
+            w_digits_x(p, b, n, char_to_i64(ch), 16i64)
+        }
+        Lit::LF64(x) => {
+            w_str_x(p, b, n, str_lit("#f64x"));
+            w_str_x(p, b, n, hex_bits(x, 16i64, nil::<char>()))
+        }
+        Lit::LSym(s) => {
+            w_byte_x(p, b, n, 124i64);
+            w_escaped_x(p, b, n, s, 124i64, 0i64, string_length_i64(s));
+            w_byte_x(p, b, n, 124i64)
+        }
+        Lit::LPair(a, d) => {
+            w_byte_x(p, b, n, 40i64);
+            w_lit_x(p, b, n, a);
+            w_str_x(p, b, n, str_lit(" . "));
+            w_lit_x(p, b, n, d);
+            w_byte_x(p, b, n, 41i64)
+        }
+        Lit::LWord(w) => {
+            w_str_x(p, b, n, str_lit("word "));
+            w_name_x(p, b, n, w)
+        }
+        Lit::LQuoted(k) => {
+            w_str_x(p, b, n, q_written_x(l))
+        }
+        Lit::LFrozen(kind, fs) => {
+            w_str_x(p, b, n, str_lit("#bloblet("));
+            w_str_x(p, b, n, kind);
+            w_str_x(p, b, n, str_lit(" (#trailer "));
+            w_i64_x(p, b, n, i64_plus(1i64, size(fs)));
+            w_lits_x(p, b, n, fs);
+            w_str_x(p, b, n, str_lit(") #u8())"))
+        }
     }
 }
 
-// Literals as `fixpt compile --full-literals` writes them (C123): every one
-// in full, so that it is built again exactly (Fixpt's `literal.rs`;
-// `docs/fx26.md`, "The compile listing's literals"). An object reached
-// more than once is labelled `#N=` where first written and named `#N#`
-// after, across the whole listing, so that what is `eq?` in the program is
-// `eq?` here. A labelled pair is made before what is in it, so that a
-// cycle through pairs is too; one through a vector or other bloblet is
-// refused (not yet).
-// fixpt-source: crates/fixpt-runtime/src/literal.rs@19b31f1
-pub enum Lab {
-    Lab(i64, i64),
-}
-
-pub fn lab(f0: i64, f1: i64) -> &'static Lab {
-    kayak_rt::heap_alloc(Lab::Lab(f0, f1))
-}
-
-#[inline]
-pub fn labels() -> Ref<List<&'static Lab>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lab>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Lab>())
-    })
-}
-
-// What reading gives: a value, an integer, a text or values, and what is
-// left to read.
-pub enum Lgot {
-    Lgot(i64, Chars),
-}
-
-pub fn lgot(f0: i64, f1: Chars) -> &'static Lgot {
-    kayak_rt::heap_alloc(Lgot::Lgot(f0, f1))
-}
-
-pub enum Gint {
-    Gint(Int, Chars),
-}
-
-pub fn gint(f0: Int, f1: Chars) -> &'static Gint {
-    kayak_rt::heap_alloc(Gint::Gint(f0, f1))
-}
-
-pub enum Gtext {
-    Gtext(Str, Chars),
-}
-
-pub fn gtext(f0: Str, f1: Chars) -> &'static Gtext {
-    kayak_rt::heap_alloc(Gtext::Gtext(f0, f1))
-}
-
-pub enum Gall {
-    Gall(List<i64>, Chars),
-}
-
-pub fn gall(f0: List<i64>, f1: Chars) -> &'static Gall {
-    kayak_rt::heap_alloc(Gall::Gall(f0, f1))
-}
-
-pub fn label_value(mut ls: List<&'static Lab>, mut n: i64) -> i64 {
+pub fn w_lits_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<&'static Lit>) -> () {
     loop {
         if null_p(ls) {
-            return 0i64;
-        } else if {
-            let tagcase_ = car(ls);
-            match *tagcase_ {
-                Lab::Lab(m, v) => {
-                    i64_eq(m, n)
-                }
-            }
-        } {
-            let tagcase_ = car(ls);
-            match *tagcase_ {
-                Lab::Lab(m, v) => {
-                    return v;
-                }
-            }
+            return ();
         } else {
+            w_byte_x(p, b, n, 32i64);
+            w_lit_x(p, b, n, car(ls));
             ls = cdr(ls);
             continue;
         }
     }
 }
 
-#[inline]
-pub fn labelled_x(n: i64, v: i64) -> i64 {
-    set(labels(), kayak_rt::heap_cons(lab(n, v), get(labels())));
-    v
-}
-
-pub fn hex_digit_value(c: char) -> i64 {
-    let n = char_to_i64(c);
-    if (i64_gt_eq(n, 48i64) && i64_lt_eq(n, 57i64)) {
-        i64_minus(n, 48i64)
-    } else if (i64_gt_eq(n, 97i64) && i64_lt_eq(n, 102i64)) {
-        i64_minus(n, 87i64)
-    } else {
-        -1i64
-    }
-}
-
-pub fn hex_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
-    loop {
-        if (not(null_p(cs)) && i64_gt_eq(hex_digit_value(car(cs)), 0i64)) {
-            (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(16)), i64_to_int(hex_digit_value(car(cs)))));
-            continue;
-        } else {
-            return gint(acc, cs);
+// An operand as the stack code's lines write it (`opnd-text`), and as
+// register code's do (`ropnd-text`: a word as its cell is shown).
+pub fn w_opnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: &'static Opnd) -> () {
+    let tagcase_ = o;
+    match *tagcase_ {
+        Opnd::OInt(k) => {
+            w_i64_x(p, b, n, k)
+        }
+        Opnd::OLit(l) => {
+            w_lit_x(p, b, n, l)
+        }
+        Opnd::OWord(w) => {
+            w_str_x(p, b, n, str_lit("word "));
+            w_name_x(p, b, n, w)
+        }
+        Opnd::OGlobal(g) => {
+            w_str_x(p, b, n, g)
+        }
+        Opnd::OPrim(q) => {
+            w_str_x(p, b, n, q)
         }
     }
 }
 
-pub fn decimal_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
-    loop {
-        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
-            (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(10)), i64_to_int(i64_minus(char_to_i64(car(cs)), 48i64))));
-            continue;
-        } else {
-            return gint(acc, cs);
-        }
-    }
-}
-
-pub fn signed_int(cs: Chars) -> &'static Gint {
-    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
-        let tagcase_ = decimal_int(cdr(cs), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                gint(_minus(int_lit(0), n), rest)
-            }
-        }
-    } else {
-        decimal_int(cs, int_lit(0))
-    }
-}
-
-/// A string's or a symbol's characters up to `q`: one that is not
-/// printable ASCII, or is `q` or a backslash, written by its code in hex,
-/// after a backslash and an `x`, before a `;`.
-pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> &'static Gtext {
-    loop {
-        if null_p(cs) {
-            match listing_error(str_lit("a literal's text runs to the end")) {};
-            return gtext(str_lit(""), nil::<char>());
-        } else if char_eq_p(car(cs), q) {
-            return gtext(list_to_string(the::<Chars>(reverse(acc))), cdr(cs));
-        } else if char_eq_p(car(cs), backslash()) {
-            let tagcase_ = hex_int(drop_n(cs, 2i64), int_lit(0));
+pub fn w_ropnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: &'static Opnd) -> () {
+    let tagcase_ = o;
+    match *tagcase_ {
+        Opnd::OLit(l) => {
+            let tagcase_ = l;
             match *tagcase_ {
-                Gint::Gint(n, rest) => {
-                    (cs, acc) = (cdr(rest), kayak_rt::heap_cons(i64_to_char(int_to_i64(n)), acc));
-                    continue;
+                Lit::LWord(w) => {
+                    w_str_x(p, b, n, str_lit("#word \""));
+                    w_name_x(p, b, n, w);
+                    w_byte_x(p, b, n, 34i64)
+                }
+                _ => {
+                    let y = tagcase_;
+                    w_opnd_x(p, b, n, o)
                 }
             }
+        }
+        _ => {
+            let y = tagcase_;
+            w_opnd_x(p, b, n, o)
+        }
+    }
+}
+
+// Operands, a space before each.
+pub fn w_opnds_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<&'static Opnd>, mut regs: bool) -> () {
+    loop {
+        if null_p(os) {
+            return ();
         } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            w_byte_x(p, b, n, 32i64);
+            if regs {
+                w_ropnd_x(p, b, n, car(os))
+            } else {
+                w_opnd_x(p, b, n, car(os))
+            };
+            os = cdr(os);
             continue;
         }
     }
 }
 
-pub fn expect(cs: Chars, prefix: Str) -> Chars {
-    if starts_p(cs, string_chars(prefix)) {
-        drop_n(cs, string_length_i64(prefix))
+// An instruction's text (`ins-text`; register code's, `rop-text`, `regs`).
+pub fn w_ins_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<&'static Opnd>, regs: bool) -> () {
+    if string_eq_p(r, if regs {
+        str_lit("lambda")
     } else {
-        match listing_error(string_append(str_lit("a literal tier 1 does not read: "), list_to_string(cs))) {};
-        nil::<char>()
+        str_lit("closure")
+    }) {
+        w_str_x(p, b, n, r);
+        w_byte_x(p, b, n, 32i64);
+        w_opnd_x(p, b, n, car(os));
+        w_str_x(p, b, n, str_lit(" over "));
+        w_opnd_x(p, b, n, second_opnd(os))
+    } else {
+        w_str_x(p, b, n, r);
+        w_opnds_x(p, b, n, os, regs)
     }
 }
 
+// A line's start: two spaces, where it is, `width` wide, a colon.
 #[inline]
-pub fn ends_word_p(cs: Chars) -> bool {
-    (null_p(cs) || char_eq_p(car(cs), ' ') || char_eq_p(car(cs), close_paren()))
+pub fn w_at_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, at: i64, width: i64) -> () {
+    w_str_x(p, b, n, str_lit("  "));
+    w_padded_x(p, b, n, at, width);
+    w_str_x(p, b, n, str_lit(": "))
 }
 
-pub fn kind_numbered(mut name: Str, mut k: i64) -> i64 {
-    loop {
-        if i64_gt(k, 255i64) {
-            match listing_error(string_append(str_lit("a bloblet of no kind tier 1 knows: "), name)) {};
-            return 0i64;
-        } else if string_eq_p(kind_name(k), name) {
-            return k;
-        } else {
-            k = i64_plus(k, 1i64);
-            continue;
-        }
-    }
-}
-
-pub fn fields_set_x(mut b: i64, mut k: i64, mut xs: List<i64>) -> () {
+// A word's lines (`lines-of-items`), each then a newline.
+pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<&'static Place>) -> () {
     loop {
         if null_p(xs) {
             return ();
         } else {
-            slot_set_x(b, k, car(xs));
-            (k, xs) = (i64_plus(k, 1i64), cdr(xs));
+            let x = car(xs);
+            let next = i64_plus(at, item_size(x));
+            {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Item::ItLabel(k) => {
+                        ()
+                    }
+                    Item::ItPos(q) => {
+                        ()
+                    }
+                    Item::ItBranch(k) => {
+                        w_at_x(p, b, n, at, 4i64);
+                        w_str_x(p, b, n, str_lit("branch → "));
+                        w_i64_x(p, b, n, place_at(ps, k));
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                    Item::ItZbranch(k) => {
+                        w_at_x(p, b, n, at, 4i64);
+                        w_str_x(p, b, n, str_lit("0branch → "));
+                        w_i64_x(p, b, n, place_at(ps, k));
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                    Item::ItIns(r, os) => {
+                        w_at_x(p, b, n, at, 4i64);
+                        w_ins_x(p, b, n, r, os, false);
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                }
+            };
+            (xs, at) = (cdr(xs), next);
             continue;
         }
     }
 }
 
-/// Byte `i` of the raw words from word `p` := `x`, little-endian.
-pub fn byte_set_x(p: i64, i: i64, x: i64) -> () {
-    let at = i64_plus(p, i64_quotient(i, 8i64));
-    let shift = i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)));
-    word_set_x(at, i64_or(i64_and(word_at(at), i64_not(i64_shl(255i64, shift))), i64_shl(x, shift)))
-}
-
-pub fn bytes_set_x(mut p: i64, mut i: i64, mut xs: List<i64>) -> () {
+// Register code's lines (`rlines-of`), each then a newline.
+pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<&'static Place>, mut frame: i64) -> () {
     loop {
         if null_p(xs) {
             return ();
         } else {
-            byte_set_x(p, i, fix_val(car(xs)));
-            (i, xs) = (i64_plus(i, 1i64), cdr(xs));
+            let x = car(xs);
+            let next = i64_plus(at, ritem_size(x));
+            {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Ritem::RiLabel(k) => {
+                        ()
+                    }
+                    Ritem::RiPos(q) => {
+                        ()
+                    }
+                    Ritem::RiFrame(name) => {
+                        w_at_x(p, b, n, at, 6i64);
+                        w_str_x(p, b, n, name);
+                        w_byte_x(p, b, n, 32i64);
+                        w_i64_x(p, b, n, frame);
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                    Ritem::RiBranch(name, k) => {
+                        w_at_x(p, b, n, at, 6i64);
+                        w_str_x(p, b, n, name);
+                        w_str_x(p, b, n, str_lit(" → "));
+                        w_i64_x(p, b, n, place_at(ps, k));
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                    Ritem::RiGuard(g, w, k) => {
+                        w_at_x(p, b, n, at, 6i64);
+                        w_str_x(p, b, n, str_lit("global-guard "));
+                        w_str_x(p, b, n, g);
+                        w_str_x(p, b, n, str_lit(" written "));
+                        w_i64_x(p, b, n, w);
+                        w_str_x(p, b, n, str_lit(" else → "));
+                        w_i64_x(p, b, n, place_at(ps, k));
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                    Ritem::RiOp(name, os) => {
+                        w_at_x(p, b, n, at, 6i64);
+                        w_ins_x(p, b, n, name, os, true);
+                        w_byte_x(p, b, n, 10i64)
+                    }
+                }
+            };
+            (xs, at) = (cdr(xs), next);
             continue;
         }
     }
 }
 
-pub fn trailer_in_p(mut xs: List<i64>) -> bool {
+// A line table's entries, `CELL:POS`, apart by spaces, the oldest first.
+pub fn w_entries_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<&'static Tentry>, mut first: bool) -> () {
+    loop {
+        if null_p(es) {
+            return ();
+        } else {
+            if first {
+                ()
+            } else {
+                w_byte_x(p, b, n, 32i64)
+            };
+            {
+                let tagcase_ = car(es);
+                match *tagcase_ {
+                    Tentry::Tentry(a, q) => {
+                        w_i64_x(p, b, n, a);
+                        w_byte_x(p, b, n, 58i64);
+                        w_i64_x(p, b, n, q)
+                    }
+                }
+            };
+            (es, first) = (cdr(es), false);
+            continue;
+        }
+    }
+}
+
+// A line table (`line-table`, `rcode-line-table`): `HEAD FILE ENTRIES`
+// and a newline; none if no entries, or no file.
+pub fn w_table_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<&'static Tentry>) -> () {
+    if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
+        ()
+    } else {
+        w_str_x(p, b, n, head);
+        w_str_x(p, b, n, get(cg_source()));
+        w_byte_x(p, b, n, 32i64);
+        w_entries_x(p, b, n, reverse(es), true);
+        w_byte_x(p, b, n, 10i64)
+    }
+}
+
+// A word, as the listing writes it: its head, its lines, its register code
+// and its line table after them, then its line table.
+pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, name: Str, xs: Citems) -> () {
+    w_str_x(p, b, n, str_lit("\nword "));
+    w_name_x(p, b, n, name);
+    w_str_x(p, b, n, str_lit(" ("));
+    w_i64_x(p, b, n, cells_of(xs, 0i64));
+    w_str_x(p, b, n, str_lit(" cells, cellular):\n"));
+    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()));
+    {
+        let rc = reg_code_of(get(cg_reg_codes()), name);
+        if null_p(rc) {
+            ()
+        } else {
+            let tagcase_ = car(rc);
+            match *tagcase_ {
+                Rcode::Rcode(rs, frame) => {
+                    w_str_x(p, b, n, str_lit("  its register code ("));
+                    w_i64_x(p, b, n, ritems_size(rs, 0i64));
+                    w_str_x(p, b, n, str_lit(" cells, not compiled):\n"));
+                    w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<&'static Place>()), frame);
+                    w_table_x(p, b, n, str_lit("; regs at "), rtable_entries(rs, 0i64, nil::<&'static Tentry>()))
+                }
+            }
+        }
+    };
+    w_table_x(p, b, n, str_lit("; at "), table_entries(xs, 0i64, nil::<&'static Tentry>()))
+}
+
+// A word's text, written in a place of its own, freed once it is made one
+// string.
+pub fn word_written(name: Str, xs: Citems) -> Str {
+    {
+        struct Region_R<'r> { a0: Arena<std::cell::Cell<BytesAt<'r>>>, a1: Arena<BytesCells>, a2: Arena<std::cell::Cell<i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), a2: Arena::default(), phantom_: std::marker::PhantomData } } }
+        impl<'r> Holds<std::cell::Cell<BytesAt<'r>>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<BytesAt<'r>>> { &self.a0 } }
+        impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a1 } }
+        impl<'r> Holds<std::cell::Cell<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<i64>> { &self.a2 } }
+        fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<&'static Item>) -> Str {
+            let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
+            w_word_x(r, b, n, name, xs);
+            let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, get(b), int_lit(0), i64_to_int(get(n)))));
+            match *tagcase_ {
+                Sum_4text_3bad::Text(t) => {
+                    t
+                }
+                Sum_4text_3bad::Bad(k) => {
+                    str_lit("")
+                }
+            }
+        }
+        let r__arena = Region_R::default();
+        letrena__r(&r__arena, name, xs)
+    }
+}
+
+// The words a word's instructions name, in order: its cells', then its
+// register code's (`lines-of-items`' and `rlines-of`'s `named`).
+pub fn items_named(mut xs: Citems, mut acc: Strings) -> Strings {
     loop {
         if null_p(xs) {
-            return false;
-        } else if i64_eq(word_tag(car(xs)), t_trailer()) {
-            return true;
+            return reverse(acc);
         } else {
+            (xs, acc) = (cdr(xs), {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Item::ItIns(r, os) => {
+                        onto(reverse(words_said(os)), acc)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        acc
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn ritems_named(mut xs: Ritems, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return reverse(acc);
+        } else {
+            (xs, acc) = (cdr(xs), {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Ritem::RiOp(r, os) => {
+                        onto(reverse(words_said(os)), acc)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        acc
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+// The words listed, in order, from `program`, as `disasm.rs` walks them:
+// the words a word names pushed in order, the last pushed next.
+pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<&'static Word>) -> List<&'static Word> {
+    loop {
+        if null_p(todo) {
+            return reverse(out);
+        } else if string_member_p(car(todo), seen) {
+            todo = cdr(todo);
+            continue;
+        } else {
+            let w = word_named(get(cg_words()), car(todo));
+            if null_p(w) {
+                (todo, seen) = (cdr(todo), kayak_rt::heap_cons(car(todo), seen));
+                continue;
+            } else {
+                let tagcase_ = car(w);
+                match *tagcase_ {
+                    Word::Word(name, xs) => {
+                        let rc = reg_code_of(get(cg_reg_codes()), name);
+                        (todo, seen, out) = (onto(reverse(onto(items_named(xs, nil::<Str>()), if null_p(rc) {
+                            nil::<Str>()
+                        } else {
+                            let tagcase_ = car(rc);
+                            match *tagcase_ {
+                                Rcode::Rcode(rs, frame) => {
+                                    ritems_named(rs, nil::<Str>())
+                                }
+                            }
+                        })), cdr(todo)), kayak_rt::heap_cons(name, seen), kayak_rt::heap_cons(car(w), out));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Each quoted node's reaches counted, in the order the listing writes
+// them (`q-marks`' order): each word's cells' literals, then its register
+// code's, each literal's parts in order.
+pub fn lit_reached_x(mut l: &'static Lit) -> () {
+    loop {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Lit::LQuoted(k) => {
+                return q_reached_x(l);
+            }
+            Lit::LPair(a, d) => {
+                lit_reached_x(a);
+                l = d;
+                continue;
+            }
+            Lit::LFrozen(kind, fs) => {
+                return lits_reached_x(fs);
+            }
+            _ => {
+                let y = tagcase_;
+                return ();
+            }
+        }
+    }
+}
+
+pub fn lits_reached_x(mut ls: List<&'static Lit>) -> () {
+    loop {
+        if null_p(ls) {
+            return ();
+        } else {
+            lit_reached_x(car(ls));
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+pub fn opnds_reached_x(mut os: List<&'static Opnd>) -> () {
+    loop {
+        if null_p(os) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(os);
+                match *tagcase_ {
+                    Opnd::OLit(l) => {
+                        lit_reached_x(l)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        ()
+                    }
+                }
+            };
+            os = cdr(os);
+            continue;
+        }
+    }
+}
+
+pub fn items_reached_x(mut xs: Citems) -> () {
+    loop {
+        if null_p(xs) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Item::ItIns(r, os) => {
+                        opnds_reached_x(os)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        ()
+                    }
+                }
+            };
             xs = cdr(xs);
             continue;
         }
     }
 }
 
-/// `#bloblet(KIND (FIELD ...) #u8(BYTE ...))`: its fields from 1, field 1
-/// its trailer, `#trailer N`, if it has one; frozen if a sum or product,
-/// as Fixpt makes those (the listing does not say).
-pub fn bloblet_literal_x(kind: Str, fields: List<i64>, bytes: List<i64>) -> i64 {
-    let k = kind_numbered(kind, 0i64);
-    let f = args_count(fields, 0i64);
-    let trailer = (not(null_p(fields)) && i64_eq(word_tag(car(fields)), t_trailer()));
-    let b = make_bloblet_x(k, if trailer {
-        i64_minus(f, 1i64)
-    } else {
-        f
-    }, args_count(bytes, 0i64), trailer, false);
-    if (trailer && not(i64_eq(i64_shr(car(fields), int_lit(3)), f))) {
-        match listing_error(str_lit("a bloblet's trailer that says not its fields")) {}
-    } else {
-        ()
-    };
-    if trailer_in_p(if trailer {
-        cdr(fields)
-    } else {
-        fields
-    }) {
-        match listing_error(str_lit("a trailer that is not a bloblet's field 1")) {}
-    } else {
-        ()
-    };
-    fields_set_x(b, if trailer {
-        the::<i64>(2i64)
-    } else {
-        the::<i64>(1i64)
-    }, if trailer {
-        cdr(fields)
-    } else {
-        fields
-    });
-    bytes_set_x(address(b), 0i64, bytes);
-    if (i64_eq(k, k_sum()) || i64_eq(k, k_product())) {
-        frozen_whole_x(b)
-    } else {
-        ()
-    };
-    b
-}
-
-pub fn until_delimiter(mut cs: Chars, mut acc: Chars) -> Chars {
+pub fn ritems_reached_x(mut xs: Ritems) -> () {
     loop {
-        if (null_p(cs) || char_eq_p(car(cs), ' ') || char_eq_p(car(cs), close_paren()) || char_eq_p(car(cs), open_paren())) {
-            return the::<Chars>(reverse(acc));
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn vector_literal_x(xs: List<i64>) -> i64 {
-    let v = make_bloblet_x(k_vector(), args_count(xs, 0i64), 0i64, true, false);
-    let fill__knot = knot::<&'static dyn Fn(List<i64>, i64) -> ()>();
-    let fill = lambda2(move |mut ys: List<i64>, mut i: i64| {
-        loop {
-            if null_p(ys) {
-                return ();
-            } else {
-                elt_set_x(v, i, car(ys));
-                (ys, i) = (cdr(ys), i64_plus(i, 1i64));
-                continue;
-            }
-        }
-    });
-    fill__knot.set(fill);
-    fill(xs, 0i64);
-    v
-}
-
-/// A bytevector (Fixpt's `make_bytevector`): its length, a raw word, then
-/// its bytes.
-pub fn bytevector_literal_x(xs: List<i64>) -> i64 {
-    let n = args_count(xs, 0i64);
-    let b = make_bloblet_x(k_bytevector(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 7i64), 8i64))), false, false);
-    word_set_x(address(b), n);
-    bytes_set_x(i64_plus(address(b), 1i64), 0i64, xs);
-    b
-}
-
-/// One literal, from the start of `cs`.
-pub fn lit_datum(cs: Chars) -> &'static Lgot {
-    if null_p(cs) {
-        match listing_error(str_lit("a literal is missing")) {};
-        lgot(0i64, nil::<char>())
-    } else if (char_numeric_p(car(cs)) || char_eq_p(car(cs), '-')) {
-        let tagcase_ = signed_int(cs);
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                if (not(null_p(rest)) && char_eq_p(car(rest), '/')) {
-                    let tagcase_ = decimal_int(cdr(rest), int_lit(0));
-                    match *tagcase_ {
-                        Gint::Gint(d, rest2) => {
-                            lgot(make_ratnum_x(int_value_x(n), int_value_x(d)), rest2)
-                        }
-                    }
-                } else {
-                    lgot(int_value_x(n), rest)
-                }
-            }
-        }
-    } else if char_eq_p(car(cs), dquote()) {
-        let tagcase_ = escaped_text(cdr(cs), dquote(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(make_string_x(t), rest)
-            }
-        }
-    } else if char_eq_p(car(cs), bar()) {
-        let tagcase_ = escaped_text(cdr(cs), bar(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(symbol_x(t), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("()"))) {
-        lgot(v_null(), drop_n(cs, 2i64))
-    } else if char_eq_p(car(cs), open_paren()) {
-        pair_rest(cdr(cs), cons_x(v_null(), v_null()))
-    } else if starts_p(cs, string_chars(str_lit("#f64x"))) {
-        let tagcase_ = hex_int(drop_n(cs, 5i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(flonum_bits_x(int_to_i64(n)), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#f32x"))) {
-        let tagcase_ = hex_int(drop_n(cs, 5i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(f32_bits(int_to_i64(n)), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#\\x"))) {
-        let tagcase_ = hex_int(drop_n(cs, 3i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(char_value(int_to_i64(n)), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#u8("))) {
-        let tagcase_ = lit_items(drop_n(cs, 4i64), nil::<i64>());
-        match *tagcase_ {
-            Gall::Gall(xs, rest) => {
-                lgot(bytevector_literal_x(xs), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#("))) {
-        let tagcase_ = lit_items(drop_n(cs, 2i64), nil::<i64>());
-        match *tagcase_ {
-            Gall::Gall(xs, rest) => {
-                lgot(vector_literal_x(xs), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#word "))) {
-        let tagcase_ = escaped_text(cdr(drop_n(cs, 6i64)), dquote(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(word_named(string_chars(t)), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#global "))) {
-        let tagcase_ = escaped_text(cdr(drop_n(cs, 8i64)), dquote(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(global_named(t), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#trailer "))) {
-        let tagcase_ = decimal_int(drop_n(cs, 9i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(i64_or(i64_shl(int_to_i64(n), int_lit(3)), t_trailer()), rest)
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#bloblet("))) {
-        let at = drop_n(cs, 9i64);
-        let kind = list_to_string(before_char(at, ' '));
-        let tagcase_ = lit_items(expect(drop_n(at, i64_plus(string_length_i64(kind), 1i64)), str_lit("(")), nil::<i64>());
-        match *tagcase_ {
-            Gall::Gall(fields, rest) => {
-                let tagcase_ = lit_items(expect(spaces_dropped(rest), str_lit("#u8(")), nil::<i64>());
-                match *tagcase_ {
-                    Gall::Gall(bytes, rest2) => {
-                        lgot(bloblet_literal_x(kind, fields, bytes), expect(rest2, str_lit(")")))
-                    }
-                }
-            }
-        }
-    } else if starts_p(cs, string_chars(str_lit("#suffix-ref("))) {
-        let tagcase_ = lit_datum(drop_n(cs, 12i64));
-        match *tagcase_ {
-            Lgot::Lgot(o, rest) => {
-                let tagcase_ = decimal_int(spaces_dropped(rest), int_lit(0));
-                match *tagcase_ {
-                    Gint::Gint(n, rest2) => {
-                        lgot(make_sref(address(o), int_to_i64(n)), expect(rest2, str_lit(")")))
-                    }
-                }
-            }
-        }
-    } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs)))) {
-        let tagcase_ = decimal_int(cdr(cs), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                if starts_p(rest, string_chars(str_lit("#"))) {
-                    let v = label_value(get(labels()), int_to_i64(n));
-                    if i64_eq(v, 0i64) {
-                        match listing_error(str_lit("a label named before what it labels is made: a cycle through a vector or bloblet, not yet")) {};
-                        lgot(0i64, nil::<char>())
-                    } else {
-                        lgot(v, cdr(rest))
-                    }
-                } else if (starts_p(rest, string_chars(str_lit("=("))) && not(starts_p(rest, string_chars(str_lit("=()"))))) {
-                    pair_rest(drop_n(rest, 2i64), labelled_x(int_to_i64(n), cons_x(v_null(), v_null())))
-                } else if starts_p(rest, string_chars(str_lit("="))) {
-                    let tagcase_ = lit_datum(cdr(rest));
-                    match *tagcase_ {
-                        Lgot::Lgot(v, rest2) => {
-                            lgot(labelled_x(int_to_i64(n), v), rest2)
-                        }
-                    }
-                } else {
-                    match listing_error(str_lit("a label neither made nor named")) {};
-                    lgot(0i64, nil::<char>())
-                }
-            }
-        }
-    } else if char_eq_p(car(cs), '#') {
-        let name = list_to_string(before_char(until_delimiter(cs, nil::<char>()), ' '));
-        let rest = drop_n(cs, string_length_i64(name));
-        if string_eq_p(name, str_lit("#t")) {
-            lgot(v_true(), rest)
-        } else if string_eq_p(name, str_lit("#f")) {
-            lgot(v_false(), rest)
-        } else if string_eq_p(name, str_lit("#u")) {
-            lgot(v_unit_word(), rest)
-        } else if string_eq_p(name, str_lit("#eof")) {
-            lgot(v_eof(), rest)
-        } else if string_eq_p(name, str_lit("#unspecified")) {
-            lgot(v_unspecified(), rest)
-        } else if string_eq_p(name, str_lit("#default")) {
-            lgot(v_default(), rest)
-        } else if string_eq_p(name, str_lit("#unbound")) {
-            lgot(v_unbound(), rest)
-        } else {
-            match listing_error(string_append(str_lit("a literal tier 1 does not have yet: "), name)) {};
-            lgot(0i64, nil::<char>())
-        }
-    } else {
-        match listing_error(string_append(str_lit("a literal tier 1 does not read: "), list_to_string(cs))) {};
-        lgot(0i64, nil::<char>())
-    }
-}
-
-/// A pair's `car . cdr)`, into pair `p`, made already.
-pub fn pair_rest(cs: Chars, p: i64) -> &'static Lgot {
-    let tagcase_ = lit_datum(cs);
-    match *tagcase_ {
-        Lgot::Lgot(a, rest) => {
-            word_set_x(address(p), a);
-            let tagcase_ = lit_datum(expect(rest, str_lit(" . ")));
-            match *tagcase_ {
-                Lgot::Lgot(d, rest2) => {
-                    word_set_x(i64_plus(address(p), 1i64), d);
-                    lgot(p, expect(rest2, str_lit(")")))
-                }
-            }
-        }
-    }
-}
-
-/// Literals a space apart, to a `)`.
-pub fn lit_items(cs: Chars, acc: List<i64>) -> &'static Gall {
-    let cs = spaces_dropped(cs);
-    if null_p(cs) {
-        match listing_error(str_lit("a literal's items run to the end")) {};
-        gall(nil::<i64>(), nil::<char>())
-    } else if char_eq_p(car(cs), close_paren()) {
-        gall(the::<List<i64>>(reverse(acc)), cdr(cs))
-    } else {
-        let tagcase_ = lit_datum(cs);
-        match *tagcase_ {
-            Lgot::Lgot(v, rest) => {
-                lit_items(rest, kayak_rt::heap_cons(v, acc))
-            }
-        }
-    }
-}
-
-// A closure the compiler made, a literal: the listing shows its word, not
-// its free values, so it is taken as a closure of none, one for each word,
-// and its word checked to read none (`free-read?`) once all are made.
-#[inline]
-pub fn literals() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
-    })
-}
-
-pub fn closure_literal(w: i64) -> i64 {
-    let name = symbol_text(slot_of(w, f_name()));
-    let had = lookup(get(literals()), name);
-    if not(i64_eq(had, 0i64)) {
-        had
-    } else {
-        let c = make_bloblet_x(k_closure(), 1i64, 0i64, true, false);
-        slot_set_x(c, f_word(), w);
-        set(literals(), kayak_rt::heap_cons(named_x(name, c), get(literals())));
-        c
-    }
-}
-
-/// Whether word `w`, from field `k`, reads a free value: instruction by
-/// instruction, so that no operand is taken for one.
-pub fn free_read_p(mut w: i64, mut k: i64) -> bool {
-    loop {
-        if i64_gt(k, fields_of(w)) {
-            return false;
-        } else {
-            let cell = slot_of(w, k);
-            if not(is_fixnum_p(cell)) {
-                k = i64_plus(k, 1i64);
-                continue;
-            } else if i64_eq(fix_val(cell), rt_free()) {
-                return true;
-            } else {
-                k = i64_plus(k, i64_plus(1i64, operand_count(fix_val(cell))));
-                continue;
-            }
-        }
-    }
-}
-
-pub fn literals_checked_x(mut ls: List<&'static NamedSlot>) -> () {
-    loop {
-        if null_p(ls) {
+        if null_p(xs) {
             return ();
         } else {
-            let tagcase_ = car(ls);
-            match *tagcase_ {
-                NamedSlot::NamedSlot(n, i) => {
-                    if free_read_p(slot_of(named_value(car(ls)), f_word()), f_cell0()) {
-                        return match listing_error(string_append(str_lit("a closure as a literal, whose word reads a free value: "), n)) {};
-                    } else {
-                        ls = cdr(ls);
-                        continue;
+            {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Ritem::RiOp(r, os) => {
+                        opnds_reached_x(os)
                     }
-                }
-            }
-        }
-    }
-}
-
-pub fn literal(cs: Chars) -> i64 {
-    if starts_p(cs, string_chars(str_lit("word "))) {
-        word_named(drop_n(cs, 5i64))
-    } else if starts_p(cs, string_chars(str_lit("closure of "))) {
-        closure_literal(word_named(drop_n(cs, 11i64)))
-    } else {
-        let tagcase_ = lit_datum(cs);
-        match *tagcase_ {
-            Lgot::Lgot(v, rest) => {
-                if null_p(spaces_dropped(rest)) {
-                    v
-                } else {
-                    match listing_error(string_append(str_lit("a literal: "), list_to_string(cs))) {};
-                    0i64
-                }
-            }
-        }
-    }
-}
-
-// Register words (C129), by name: a word's register code, read as Fixpt's
-// `register_lines` writes it, into a bloblet of kind register-code, as
-// Fixpt's `make_register_word` makes one: its entry -1 here (Fixpt's 0,
-// not compiled, is `docol` to tier 1), its twin the word.
-#[inline]
-pub fn register_words() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
-    })
-}
-
-// Whether a word's twin is its register word, which tier 1 then runs.
-#[inline]
-pub fn regs_on() -> Ref<bool> {
-    kayak_rt::kept_constant!(ONCE: Ref<bool>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(false)
-    })
-}
-
-#[inline]
-pub fn reg_put_x(rw: i64, at: i64, j: i64, v: i64) -> () {
-    if i64_eq(rw, 0i64) {
-        ()
-    } else {
-        slot_set_x(rw, i64_plus(f_cell0(), i64_plus(at, j)), v)
-    }
-}
-
-/// Register instruction `text` at cell `at` of `rw` (0: its literals only
-/// read, for the labels they make).
-pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
-    let name = list_to_string(before_char(text, ' '));
-    let ops = spaces_dropped(drop_n(text, string_length_i64(name)));
-    let n = position_in(rop_names(), name, 0i64);
-    let second = spaces_dropped(after_char(ops, ' '));
-    let num = lambda1s(move |cs: Chars| {
-        fix(number_of(cs))
-    });
-    let routine = lambda1s(move |cs: Chars| {
-        let r = position_in(routine_names(), list_to_string(before_char(cs, ' ')), 0i64);
-        if i64_lt(r, 0i64) {
-            match listing_error(string_append(str_lit("no routine is named "), list_to_string(cs))) {};
-            the::<i64>(0i64)
-        } else {
-            fix(r)
-        }
-    });
-    let prim = lambda1s(move |cs: Chars| {
-        let p = prim_number(list_to_string(before_char(cs, ' ')));
-        if i64_lt(p, 0i64) {
-            match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), list_to_string(cs))) {};
-            the::<i64>(0i64)
-        } else {
-            fix(p)
-        }
-    });
-    if i64_lt(n, 0i64) {
-        match listing_error(string_append(str_lit("no register operation is named "), name)) {}
-    } else {
-        reg_put_x(rw, at, 0i64, fix(n));
-        if (i64_eq(n, ro_vargs()) || i64_eq(n, ro_return())) {
-            ()
-        } else if i64_eq(n, ro_const()) {
-            reg_put_x(rw, at, 1i64, literal(ops))
-        } else if (i64_eq(n, ro_global()) || i64_eq(n, ro_setglbl())) {
-            reg_put_x(rw, at, 1i64, global_named(list_to_string(ops)))
-        } else if i64_eq(n, ro_op1()) {
-            reg_put_x(rw, at, 1i64, routine(ops))
-        } else if (i64_eq(n, ro_op2()) || i64_eq(n, ro_cellular())) {
-            reg_put_x(rw, at, 1i64, routine(ops));
-            reg_put_x(rw, at, 2i64, num(second))
-        } else if i64_eq(n, ro_op2imm()) {
-            reg_put_x(rw, at, 1i64, routine(ops));
-            reg_put_x(rw, at, 2i64, literal(second))
-        } else if i64_eq(n, ro_prim()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
-            reg_put_x(rw, at, 2i64, num(second))
-        } else if i64_eq(n, ro_prim1()) {
-            reg_put_x(rw, at, 1i64, prim(ops))
-        } else if i64_eq(n, ro_prim2()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
-            reg_put_x(rw, at, 2i64, num(second))
-        } else if i64_eq(n, ro_prim2imm()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
-            reg_put_x(rw, at, 2i64, literal(second))
-        } else if i64_eq(n, ro_prim3imm()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
-            let tagcase_ = lit_datum(second);
-            match *tagcase_ {
-                Lgot::Lgot(v, rest) => {
-                    reg_put_x(rw, at, 2i64, v);
-                    reg_put_x(rw, at, 3i64, num(spaces_dropped(rest)))
-                }
-            }
-        } else if i64_eq(n, ro_lambda()) {
-            let rest = drop_n(ops, 5i64);
-            reg_put_x(rw, at, 1i64, word_named(before_char(rest, ' ')));
-            reg_put_x(rw, at, 2i64, num(drop_n(after_char(rest, ' '), 5i64)));
-            reg_put_x(rw, at, 3i64, fix(rt_closure()))
-        } else if (i64_eq(n, ro_branch()) || i64_eq(n, ro_branchf()) || i64_eq(n, ro_brancht())) {
-            reg_put_x(rw, at, 1i64, fix(i64_minus(number_of(drop_n(ops, 2i64)), i64_plus(at, 2i64))))
-        } else if i64_eq(n, ro_global_guard()) {
-            let written = after_char(after_char(ops, ' '), ' ');
-            let to = drop_n(after_char(after_char(written, ' '), ' '), 2i64);
-            reg_put_x(rw, at, 1i64, global_named(list_to_string(before_char(ops, ' '))));
-            reg_put_x(rw, at, 2i64, num(written));
-            reg_put_x(rw, at, 3i64, fix(i64_minus(number_of(to), i64_plus(at, 4i64))))
-        } else if i64_eq(rop_operands(n), 1i64) {
-            reg_put_x(rw, at, 1i64, num(ops))
-        } else {
-            reg_put_x(rw, at, 1i64, num(ops));
-            reg_put_x(rw, at, 2i64, num(second))
-        }
-    }
-}
-
-#[inline]
-pub fn cell_set_x(w: i64, at: i64, v: i64) -> () {
-    slot_set_x(w, i64_plus(f_cell0(), at), v)
-}
-
-pub fn instruction_x(w: i64, rw: i64, il: &'static Iline) -> () {
-    let tagcase_ = il;
-    match *tagcase_ {
-        Iline::Iline(at, text) => {
-            if i64_lt(at, 0i64) {
-                reg_instruction_x(rw, i64_minus(-2i64, at), text)
-            } else {
-                let name = list_to_string(before_char(text, ' '));
-                let ops = spaces_dropped(drop_n(text, string_length_i64(name)));
-                let n = position_in(routine_names(), name, 0i64);
-                if string_eq_p(name, str_lit("word")) {
-                    cell_set_x(w, at, word_named(ops))
-                } else if i64_lt(n, 0i64) {
-                    match listing_error(string_append(str_lit("no routine is named "), name)) {}
-                } else {
-                    cell_set_x(w, at, fix(n));
-                    if i64_eq(n, rt_lit()) {
-                        cell_set_x(w, i64_plus(at, 1i64), literal(ops))
-                    } else if (i64_eq(n, rt_branch()) || i64_eq(n, rt_zbranch())) {
-                        cell_set_x(w, i64_plus(at, 1i64), fix(i64_minus(number_of(drop_n(ops, 2i64)), i64_plus(at, 2i64))))
-                    } else if (i64_eq(n, rt_global()) || i64_eq(n, rt_global_set())) {
-                        cell_set_x(w, i64_plus(at, 1i64), global_named(list_to_string(ops)))
-                    } else if i64_eq(n, rt_prim()) {
-                        let pname = list_to_string(before_char(ops, ' '));
-                        let p = prim_number(pname);
-                        if i64_lt(p, 0i64) {
-                            match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), pname)) {}
-                        } else {
-                            cell_set_x(w, i64_plus(at, 1i64), fix(p));
-                            cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
-                        }
-                    } else if i64_eq(n, rt_closure()) {
-                        let rest = drop_n(ops, 5i64);
-                        cell_set_x(w, i64_plus(at, 1i64), word_named(rest));
-                        cell_set_x(w, i64_plus(at, 2i64), fix(number_of(drop_n(after_char(rest, ' '), 5i64))))
-                    } else if i64_eq(operand_count(n), 1i64) {
-                        cell_set_x(w, i64_plus(at, 1i64), fix(number_of(ops)))
-                    } else if i64_eq(operand_count(n), 0i64) {
+                    _ => {
+                        let y = tagcase_;
                         ()
-                    } else {
-                        match listing_error(string_append(str_lit("operands tier 1 does not read yet: "), name)) {}
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn chars_eq_p(a: Chars, b: Chars) -> bool {
-    if null_p(a) {
-        null_p(b)
-    } else if null_p(b) {
-        false
-    } else {
-        (char_eq_p(car(a), car(b)) && chars_eq_p(cdr(a), cdr(b)))
-    }
-}
-
-/// After a label's digits.
-pub fn label_end(mut cs: Chars) -> Chars {
-    loop {
-        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
-            cs = cdr(cs);
-            continue;
-        } else {
-            return cs;
-        }
-    }
-}
-
-/// A line, its labels made (`#N=`) taken out: a word listed twice is the
-/// same word though its literals were labelled the first time (C123).
-pub fn unlabelled(mut cs: Chars, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return the::<Chars>(reverse(acc));
-        } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs))) && not(null_p(label_end(cdr(cs)))) && char_eq_p(car(label_end(cdr(cs))), '=')) {
-            cs = cdr(label_end(cdr(cs)));
-            continue;
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn ilines_eq_p(a: List<&'static Iline>, b: List<&'static Iline>) -> bool {
-    if null_p(a) {
-        null_p(b)
-    } else if null_p(b) {
-        false
-    } else {
-        ({
-            let tagcase_ = car(a);
-            match *tagcase_ {
-                Iline::Iline(x, xs) => {
-                    let tagcase_ = car(b);
-                    match *tagcase_ {
-                        Iline::Iline(y, ys) => {
-                            (i64_eq(x, y) && chars_eq_p(unlabelled(xs, nil::<char>()), unlabelled(ys, nil::<char>())))
-                        }
-                    }
-                }
-            }
-        } && ilines_eq_p(cdr(a), cdr(b)))
-    }
-}
-
-pub fn block_named(mut bs: List<&'static Block>, mut n: Str) -> List<&'static Block> {
-    loop {
-        if null_p(bs) {
-            return nil::<&'static Block>();
-        } else if {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(m, c, e, is) => {
-                    string_eq_p(m, n)
-                }
-            }
-        } {
-            return the::<List<&'static Block>>(kayak_rt::heap_cons(car(bs), kayak_rt::nil()));
-        } else {
-            bs = cdr(bs);
-            continue;
-        }
-    }
-}
-
-/// The blocks, a word listed twice, cell for cell the same, once (C122:
-/// a word reached two ways is listed each time, as words are compared
-/// by no program, its two copies are one); two that differ, refused.
-pub fn distinct_blocks(mut bs: List<&'static Block>, mut seen: List<&'static Block>) -> List<&'static Block> {
-    loop {
-        if null_p(bs) {
-            return the::<List<&'static Block>>(reverse(seen));
-        } else {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(n, c, e, is) => {
-                    let had = block_named(seen, n);
-                    if null_p(had) {
-                        (bs, seen) = (cdr(bs), kayak_rt::heap_cons(car(bs), seen));
-                        continue;
-                    } else if {
-                        let tagcase_ = car(had);
-                        match *tagcase_ {
-                            Block::Block(m, c2, e2, is2) => {
-                                (i64_eq(c, c2) && i64_eq(e, e2) && ilines_eq_p(is, is2))
-                            }
-                        }
-                    } {
-                        bs = cdr(bs);
-                        continue;
-                    } else {
-                        match listing_error(string_append(str_lit("two words are named "), n)) {};
-                        return nil::<&'static Block>();
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// How many cells a word's register code has: past its last instruction.
-pub fn register_cells(mut is: List<&'static Iline>, mut n: i64) -> i64 {
-    loop {
-        if null_p(is) {
-            return n;
-        } else {
-            let tagcase_ = car(is);
-            match *tagcase_ {
-                Iline::Iline(at, text) => {
-                    if i64_lt(at, -1i64) {
-                        let k = i64_minus(-2i64, at);
-                        let op = position_in(rop_names(), list_to_string(before_char(text, ' ')), 0i64);
-                        let end = i64_plus(k, i64_plus(1i64, if i64_lt(op, 0i64) {
-                            0i64
-                        } else {
-                            rop_operands(op)
-                        }));
-                        (is, n) = (cdr(is), if i64_gt(end, n) {
-                            end
-                        } else {
-                            n
-                        });
-                        continue;
-                    } else {
-                        is = cdr(is);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// A register word of `n` cells, standing for word `twin` (Fixpt's
-/// `make_register_word`).
-pub fn make_register_word_x(name: Str, twin: i64, n: i64) -> i64 {
-    let w = make_bloblet_x(k_register_code(), i64_plus(i64_minus(f_cell0(), 2i64), n), 0i64, true, true);
-    slot_set_x(w, f_entry(), fix(-1i64));
-    slot_set_x(w, f_name(), symbol_x(name));
-    slot_set_x(w, f_twin(), twin);
-    w
-}
-
-/// Each register word its word's twin (`--regs`), where tier 1 runs it:
-/// one entered with its arguments in registers, at most `REGS` of them
-/// (Fixpt runs the others, `vargs` and more, as stack code too).
-pub fn twins_linked_x(mut rs: List<&'static NamedSlot>) -> () {
-    loop {
-        if null_p(rs) {
-            return ();
-        } else {
-            {
-                let rw = named_value(car(rs));
-                if (i64_eq(slot_of(rw, f_cell0()), fix(ro_args())) && i64_lt_eq(fix_val(slot_of(rw, i64_plus(f_cell0(), 1i64))), register_regs())) {
-                    slot_set_x(slot_of(rw, f_twin()), f_twin(), rw)
-                } else {
-                    ()
-                }
-            };
-            rs = cdr(rs);
-            continue;
-        }
-    }
-}
-
-/// Each block's word, made, its cells not yet written.
-pub fn words_made_x(mut bs: List<&'static Block>) -> () {
-    loop {
-        if null_p(bs) {
-            return ();
-        } else {
-            {
-                let tagcase_ = car(bs);
-                match *tagcase_ {
-                    Block::Block(n, c, e, is) => {
-                        if not(i64_eq(lookup(get(words()), n), 0i64)) {
-                            match listing_error(string_append(str_lit("two words are named "), n)) {}
-                        } else {
-                            let (w, rc) = (make_code_word_x(n, c, e), register_cells(is, 0i64));
-                            set(words(), kayak_rt::heap_cons(named_x(n, w), get(words())));
-                            if i64_gt(rc, 0i64) {
-                                set(register_words(), kayak_rt::heap_cons(named_x(n, make_register_word_x(n, w, rc)), get(register_words())))
-                            } else {
-                                ()
-                            }
-                        }
                     }
                 }
             };
-            bs = cdr(bs);
+            xs = cdr(xs);
             continue;
         }
     }
 }
 
-pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<&'static Iline>) -> () {
+pub fn words_reached_x(mut ws: List<&'static Word>) -> () {
     loop {
-        if null_p(is) {
+        if null_p(ws) {
             return ();
         } else {
-            instruction_x(w, rw, car(is));
-            is = cdr(is);
-            continue;
-        }
-    }
-}
-
-/// A word listed again: its literals read, for the labels they make, and
-/// dropped.
-pub fn literals_read_x(mut is: List<&'static Iline>) -> () {
-    loop {
-        if null_p(is) {
-            return ();
-        } else {
-            {
-                let tagcase_ = car(is);
-                match *tagcase_ {
-                    Iline::Iline(at, text) => {
-                        if i64_lt(at, 0i64) {
-                            reg_instruction_x(0i64, i64_minus(-2i64, at), text)
-                        } else if starts_p(text, string_chars(str_lit("lit "))) {
-                            literal(drop_n(text, 4i64));
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Word::Word(name, xs) => {
+                    items_reached_x(xs);
+                    {
+                        let rc = reg_code_of(get(cg_reg_codes()), name);
+                        if null_p(rc) {
                             ()
                         } else {
-                            ()
+                            let tagcase_ = car(rc);
+                            match *tagcase_ {
+                                Rcode::Rcode(rs, frame) => {
+                                    ritems_reached_x(rs)
+                                }
+                            }
                         }
-                    }
-                }
-            };
-            is = cdr(is);
-            continue;
-        }
-    }
-}
-
-/// Every block's cells, in the listing's order, so that a label is made
-/// where Fixpt writes it first: a word's first listing written into it,
-/// a later one's literals only read.
-pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
-    loop {
-        if null_p(bs) {
-            return ();
-        } else {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(n, c, e, is) => {
-                    let is = the::<List<&'static Iline>>(reverse(is));
-                    if string_member_p(n, seen) {
-                        literals_read_x(is)
-                    } else {
-                        cells_written_x(lookup(get(words()), n), lookup(get(register_words()), n), is)
                     };
-                    (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
+                    ws = cdr(ws);
                     continue;
                 }
             }
@@ -1468,26 +718,32 @@ pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
     }
 }
 
-/// The words of a listing, made; the word named `program`.
-pub fn listing_words_x(text: Str) -> i64 {
-    let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
-    let u = tables_read_x(ls, str_lit(""));
-    let all = blocks(ls, nil::<&'static Block>(), 0i64);
-    let bs = distinct_blocks(all, nil::<&'static Block>());
-    words_made_x(bs);
-    blocks_written_x(all, nil::<Str>());
-    literals_checked_x(get(literals()));
-    if get(regs_on()) {
-        twins_linked_x(get(register_words()))
+pub fn words_written(ws: List<&'static Word>) -> Strings {
+    if null_p(ws) {
+        nil::<Str>()
     } else {
-        ()
-    };
-    let p = lookup(get(words()), str_lit("program"));
-    if i64_eq(p, 0i64) {
-        match listing_error(str_lit("no word is named program")) {};
-        0i64
-    } else {
-        p
+        let tagcase_ = car(ws);
+        match *tagcase_ {
+            Word::Word(name, xs) => {
+                let t = word_written(name, xs);
+                kayak_rt::heap_cons(t, words_written(cdr(ws)))
+            }
+        }
     }
+}
+
+// The listing, a word's text each, in order (C266, C268): the quoted
+// nodes' reaches counted across all the words first, then each written.
+pub fn cells_listing() -> Strings {
+    let ws = words_listed(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), nil::<&'static Word>());
+    if null_p(get(cg_qnodes())) {
+        ()
+    } else {
+        set(cg_qreached(), nil::<&'static Qseen>());
+        set(cg_qlabels(), nil::<&'static Qseen>());
+        set(cg_qnext(), 0i64);
+        words_reached_x(ws)
+    };
+    words_written(ws)
 }
 

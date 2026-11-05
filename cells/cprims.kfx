@@ -1,4 +1,4 @@
-"prims.kfx: the runtime primitives `prim` calls (C122, C123), by Fixpt's
+"cprims.kfx: the runtime primitives `prim` calls (C122, C123), by Fixpt's
  names, each as Fixpt's runtime has it: its checks in its order, its
  failures in its words (what `rt.fail` and `rt.type_error` say, which the
  cellular machine gives as its trap). A primitive's cell holds tier 1's
@@ -761,7 +761,7 @@
 (define width-signed? (subr kfx (i64) bool) (lambda (w) (i64= (i64-remainder w 2) 0)))
 (define width-name (subr kfx (i64) string)
   (lambda (w) (cond ((i64= w 0) "an i8") ((i64= w 1) "a u8") ((i64= w 2) "an i32") ((i64= w 3) "a u32") ((i64= w 4) "an i64") (else "a u64"))))
-(define wrapped (subr kfx (i64 int) int)
+(define int-wrapped (subr kfx (i64 int) int)
   (lambda (w x)
     "`x`'s low bits, sign-extended if the width is signed (`Width::wrap`)."
     (let* ((b (i64->int (width-bits w)))
@@ -769,7 +769,7 @@
            (low (modulo x m)))
       (if (and (width-signed? w) (>= low (arithmetic-shift 1 (- b 1)))) (- low m) low))))
 (define fixed-in? (subr cm (i64 i64) bool)
-  (lambda (w v) "Whether `v` is a value of width `w` (`fixed_in`)." (and (is-integer? v) (= (wrapped w (int-of v)) (int-of v)))))
+  (lambda (w v) "Whether `v` is a value of width `w` (`fixed_in`)." (and (is-integer? v) (= (int-wrapped w (int-of v)) (int-of v)))))
 
 "A list in the heap of the characters `cs`."
 (define-rec
@@ -1119,7 +1119,7 @@
                       (if (i64> n (i64* 2 (eq-size bs))) (interned-relinked! t (i64* 4 (eq-size bs))) #u)
                       c)))))))))
 
-(define keyword! (subr cm (i64) i64)
+(define keyword-made! (subr cm (i64) i64)
   (lambda (sym)
     "The keyword of name `sym`, a symbol (C294; Fixpt's `make_keyword`):
      frozen, its name in slot 2, interned, so one object for each name."
@@ -1131,16 +1131,16 @@
     "Operation `s` of width `w` (Fixpt's `fixed_op`)."
     (let ((a (parg 0)))
       (cond
-        ((i64= s 16) (if (is-integer? a) (int-value! (wrapped w (int-of a))) (expected! "an exact integer")))
+        ((i64= s 16) (if (is-integer? a) (int-value! (int-wrapped w (int-of a))) (expected! "an exact integer")))
         ((not (fixed-in? w a)) (expected! (width-name w)))
         ((i64= s 17) (int-value! (int-of a)))
-        ((i64= s 15) (int-value! (wrapped w (bitwise-not (int-of a)))))
+        ((i64= s 15) (int-value! (int-wrapped w (bitwise-not (int-of a)))))
         ((or (i64= s 13) (i64= s 14))
          (let ((c (parg 1)))
            (if (not (is-integer? c))
                (expected! "an exact integer")
                (let ((k (modulo (int-of c) (i64->int (width-bits w)))))
-                 (int-value! (wrapped w (arithmetic-shift (int-of a) (if (i64= s 13) k (- 0 k)))))))))
+                 (int-value! (int-wrapped w (arithmetic-shift (int-of a) (if (i64= s 13) k (- 0 k)))))))))
         (else
          (let ((b (parg 1)))
            (if (not (fixed-in? w b))
@@ -1153,7 +1153,7 @@
                        ((i64= s 11) (boolean (>= x y)))
                        ((i64= s 12) (boolean (= x y)))
                        (else
-                        (int-value! (wrapped w (cond ((i64= s 0) (+ x y))
+                        (int-value! (int-wrapped w (cond ((i64= s 0) (+ x y))
                                                      ((i64= s 1) (- x y))
                                                      ((i64= s 2) (* x y))
                                                      ((i64= s 3) (quotient x y))
@@ -1563,7 +1563,7 @@
  gives; what it gives made tier 1's: a sum of its tag and value, frozen,
  an `io-error` a frozen product of its kind, a sum of unit, and its detail.
  The program's arguments, those after `--` (as `fixpt run`'s)."
-(define program-args (ref strings @c) (new nil))
+(define run-args (ref strings @c) (new nil))
 (define io-sum! (subr cm (string i64) i64) (lambda (tag v) (frozen2! k-sum (symbol! tag) v)))
 (define io-failed! (subr cm (io-error) i64)
   (lambda (e)
@@ -1656,7 +1656,7 @@
          (size p (io-sum! "size" (frozen2! k-product (fix (int->i64 (extract p rows))) (fix (int->i64 (extract p columns))))))
          (not-a-terminal u (io-sum! "not-a-terminal" v-unit-word))
          (failed e (io-failed! e))))
-      ((i64= op o-args) (args-list! (get program-args)))
+      ((i64= op o-args) (args-list! (get run-args)))
       ((i64= op o-read-file)
        (if (str? a)
            (tagcase (the (sumof (data (bytevectorof @c)) (failed io-error)) (read-file (string-text a)))
@@ -2304,7 +2304,7 @@
         ((i64= op o-address-identity) (fix 0))
         ((i64= op o-intern-datum) (intern-datum! a))
         ((i64= op o-keyword-p) (boolean (is-kind? a k-keyword)))
-        ((i64= op o-symbol-keyword) (if (is-kind? a k-symbol) (keyword! a) (expected! "a symbol")))
+        ((i64= op o-symbol-keyword) (if (is-kind? a k-symbol) (keyword-made! a) (expected! "a symbol")))
         ((i64= op o-keyword-symbol) (if (is-kind? a k-keyword) (slot-of a 2) (expected! "a keyword")))
         ((or (and (i64>= op o-write-out) (i64<= op o-write-file)) (and (i64>= op o-file-info) (i64<= op o-process-news)))
          (io-op! op a b (parg 2)))

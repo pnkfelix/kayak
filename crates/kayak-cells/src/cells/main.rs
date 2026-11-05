@@ -218,7 +218,7 @@ pub fn lines_tallied_x(mut ts: List<&'static Ltext>, mut file: Str, mut starts: 
                 Ltext::Ltext(n, text) => {
                     let cs = string_chars(text);
                     let w = lookup(get(words()), n);
-                    (ts, into) = (cdr(ts), if (i64_eq(w, 0i64) || not(string_eq_p(list_to_string(before_char(cs, ' ')), file))) {
+                    (ts, into) = (cdr(ts), if (i64_eq(w, 0i64) || not(string_eq_p(list_to_string(chars_before_char(cs, ' ')), file))) {
                         into
                     } else {
                         word_lines_x(get(profile()), w, cposes(after_char(cs, ' '), nil::<&'static Cpos>()), starts, exact, into, 0i64)
@@ -287,7 +287,7 @@ pub fn nth_line(mut ls: List<Chars>, mut n: i64) -> Chars {
     }
 }
 
-pub fn padded(mut s: Str, mut n: i64) -> Str {
+pub fn padded_to(mut s: Str, mut n: i64) -> Str {
     loop {
         if i64_gt_eq(int_to_i64(string_length(s)), n) {
             return s;
@@ -320,7 +320,7 @@ pub fn cut(mut cs: Chars, mut n: i64, mut acc: Chars) -> Str {
     }
 }
 
-pub fn name_of(mut ws: List<&'static NamedSlot>, mut w: i64) -> Str {
+pub fn word_name_of(mut ws: List<&'static NamedSlot>, mut w: i64) -> Str {
     loop {
         if null_p(ws) {
             return string_append(str_lit("(word at "), string_append(i64_to_string(w), str_lit(")")));
@@ -351,7 +351,7 @@ pub fn most_shown(mut t: FlatArray<i64>, mut total: i64, mut n: i64, mut what: &
         } else {
             let c = flatarray_ref_i64(t, i64_plus(at, 2i64));
             flatarray_set_i64_x(t, i64_plus(at, 2i64), i64_minus(0i64, c));
-            (n, out) = (i64_minus(n, 1i64), string_append(out, string_append(str_lit("  "), string_append(padded(i64_to_string(c), 12i64), string_append(padded(percent(c, total), 8i64), string_append(str_lit("  "), string_append(what(flatarray_ref_i64(t, at)), str_lit("\n"))))))));
+            (n, out) = (i64_minus(n, 1i64), string_append(out, string_append(str_lit("  "), string_append(padded_to(i64_to_string(c), 12i64), string_append(padded_to(percent(c, total), 8i64), string_append(str_lit("  "), string_append(what(flatarray_ref_i64(t, at)), str_lit("\n"))))))));
             continue;
         }
     }
@@ -362,7 +362,7 @@ pub fn profile_shown_x() -> () {
     let ws = words_tallied_x(get(profile()), tally_made(256i64), 0i64);
     let head = string_append(str_lit("profile: "), string_append(i64_to_string(total), str_lit(" cells run by tier 1\n")));
     let by_word = most_shown(ws, total, 15i64, lambda1(move |w: i64| {
-        name_of(get(words()), w)
+        word_name_of(get(words()), w)
     }), str_lit("the words that ran the most:\n"));
     let ts = get(line_tables());
     let file = if null_p(ts) {
@@ -371,7 +371,7 @@ pub fn profile_shown_x() -> () {
         let tagcase_ = car(ts);
         match *tagcase_ {
             Ltext::Ltext(n, text) => {
-                list_to_string(before_char(string_chars(text), ' '))
+                list_to_string(chars_before_char(string_chars(text), ' '))
             }
         }
     };
@@ -394,7 +394,7 @@ pub fn profile_shown_x() -> () {
                         }), str_lit("the source lines that ran the most:\n")), most_shown(ps, total, 15i64, lambda1(move |q: i64| {
                             let p = i64_minus(q, 1i64);
                             let l = line_of(starts, p, 0i64, i64_minus(flatarray_length_i64(starts), 1i64));
-                            string_append(i64_to_string(i64_plus(l, 1i64)), string_append(str_lit(":"), string_append(i64_to_string(i64_minus(p, flatarray_ref_i64(starts, l))), string_append(str_lit("  "), cut(drop_n(cs, p), 50i64, nil::<char>())))))
+                            string_append(i64_to_string(i64_plus(l, 1i64)), string_append(str_lit(":"), string_append(i64_to_string(i64_minus(p, flatarray_ref_i64(starts, l))), string_append(str_lit("  "), cut(chars_dropped(cs, p), 50i64, nil::<char>())))))
                         }), str_lit("the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n")))
                     }
                     Sum_4text_3bad::Bad(k) => {
@@ -428,7 +428,7 @@ pub fn cells_main() -> Int {
         say(usage());
         int_lit(0)
     } else {
-        let u01 = set(program_args(), after_dashes(r#as));
+        let u01 = set(run_args(), after_dashes(r#as));
         let u00 = if heap_addressed_x() {
             ()
         } else {

@@ -9230,3 +9230,32 @@ and an empty mailbox before tier 1's procedures would `trap!`.
   `kept-of` takes a predicate of `cread`, not `cm`, which gave every
   caller tier 1's I/O.
 All 907 programs print as before, and the REPL's sessions.
+
+## C335. The front end in tier 1's program (2026-11-04; compiled stage (a), step 1)
+
+The user (2026-11-04), of `docs/research/compiled-stage.md`'s (a), the
+front end linked into the compiled program's runtime as Fixpt's
+conductor is: "Start on (a)". Its open questions taken as the note
+leaned: one binary (`kayak-cells` grows by the front end, as Fixpt's
+runner is one), staged code at tier 1's speed first, and the engine's
+staging half that is no engine's shared. Step 1, which changes nothing
+tier 1 does:
+- **`cells/cells.unit` loads the front end**: kfx's checker
+  (`kfx/names.kfx` to `check-defs.kfx`) and kayak's compiler to cells
+  (`fx26/ir.kfx` to `fx26/listing.kfx`, as the engine's unit has them),
+  before tier 1's own files. The one heap (C318 to C334) made most of the
+  note's 25 clashes go already.
+- **Two files renamed**, a unit's files being Rust modules by their
+  names: tier 1's `prims.kfx` is `cprims.kfx` (after the engine's
+  `vprims.kfx`), its `listing.kfx`, which reads listings, is
+  `listing-reader.kfx` (`fx26/listing.kfx` writes them).
+- **Nine names renamed on tier 1's side** (the rename that leaves strings,
+  comments and locals): `program-args` `run-args`, `wrapped`
+  `int-wrapped`, `before-char` `chars-before-char`, `drop-n`
+  `chars-dropped`, `word-named` `listing-word`, the datatype `item`
+  `hand-item`, `name-of` `word-name-of`, `padded` `padded-to`, and
+  `keyword!` `keyword-made!` (one in Rust with the front end's
+  `keyword-x`, which no scan of KFX's names finds).
+- **Its cost**: kfx makes tier 1's Rust in 16.9 s, not 4.3; the crate
+  rebuilds in 5.3 s, not 2.8; the binary is as it was (2,450,848 bytes,
+  not 2,450,792), nothing calling the front end yet.
