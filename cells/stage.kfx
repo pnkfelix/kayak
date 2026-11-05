@@ -24,15 +24,6 @@
   (lines-joined (subr kfx (strings string) string)
     (lambda (ls acc) (if (null? ls) acc (lines-joined (cdr ls) (string-append acc (string-append (car ls) "\n")))))))
 
-(define rep-of-text! (subr calloc (string) i64)
-  (lambda (text)
-    "A rep's binary form, a bytevector of the heap, from the text of its
-     nodes the checker noted (`stage-rep`), as the engine's loading makes
-     it (C305)."
-    (tagcase (rp-nodes-of-text text)
-      (rexp (ns hs root d)
-        (kfx-bytes-heap! (the (bytevectorof @c) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root)))))))
-
 (define stage-run-cells! (subr cm (i64 i64 i64 i64 i64) i64)
   (lambda (m code given rep-text names)
     "`(%kayak-stage-run m code given REP NAMES)`, as the engine's

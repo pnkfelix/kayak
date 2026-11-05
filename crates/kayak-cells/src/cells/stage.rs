@@ -55,20 +55,6 @@ pub fn lines_joined(mut ls: Strings, mut acc: Str) -> Str {
     }
 }
 
-/// A rep's binary form, a bytevector of the heap, from the text of its
-/// nodes the checker noted (`stage-rep`), as the engine's loading makes
-/// it (C305).
-pub fn rep_of_text_x(text: Str) -> i64 {
-    let tagcase_ = rp_nodes_of_text(text);
-    match *tagcase_ {
-        Rexp::Rexp(ns, hs, root, d) => {
-            kfx_bytes_heap_x(the::<Bytes>(rep_of_nodes(ns, map(lambda1s(move |h: Str| {
-                string_to_symbol(h)
-            }), hs), root)))
-        }
-    }
-}
-
 /// `(%kayak-stage-run m code given REP NAMES)`, as the engine's
 /// `stage-run!`: the code checked against the rep filled from the evidence
 /// given (C307), compiled as `(define %stage-K (lambda (stage-module)

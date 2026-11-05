@@ -851,6 +851,20 @@ pub fn rep_filled_x(rep: i64, given: i64, names: Str) -> Bytes {
     }), again.1), int_lit(0), str_lit("")))
 }
 
+/// A rep's binary form, a bytevector of the heap, from the text of its
+/// nodes the checker noted (`stage-rep`), as the engine's loading makes
+/// it (C305): tier 1's `stage` and `%reify` (C337, C339).
+pub fn rep_of_text_x(text: Str) -> i64 {
+    let tagcase_ = rp_nodes_of_text(text);
+    match *tagcase_ {
+        Rexp::Rexp(ns, hs, root, d) => {
+            kfx_bytes_heap_x(the::<Bytes>(rep_of_nodes(ns, map(lambda1s(move |h: Str| {
+                string_to_symbol(h)
+            }), hs), root)))
+        }
+    }
+}
+
 // `(%reify given REP names)`: evidence, its rep filled.
 #[inline]
 pub fn reify_run_x(given: i64, rep: i64, names: i64) -> i64 {

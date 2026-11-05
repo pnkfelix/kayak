@@ -243,6 +243,11 @@
 "`stage` (C337): the machine's own (machine.kfx's `prim-run!`), as staging
  is stage.kfx's, after this file."
 (define o-kayak-stage i64 223)
+"Evidence (C339): `%reify`, its rep's text and the evidence's names the
+ checker's (as the engine's lowering writes them, C307); a bound, Fixpt's
+ `%fx26-evidence-bound`, evidence as it is."
+(define o-kayak-reify i64 224)
+(define o-evidence-bound i64 225)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -357,7 +362,7 @@
          (pdef "%fx26-string->utf8" 1 1 o-string-utf8) (pdef "%fx26-utf8->string" 1 1 o-utf8-string)
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
-         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%kayak-stage-run" 5 5 o-kayak-stage) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
+         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%kayak-stage-run" 5 5 o-kayak-stage) (pdef "%kayak-reify" 3 3 o-kayak-reify) (pdef "%fx26-evidence-bound" 1 1 o-evidence-bound) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
          (pdef "%fx26-keyword?" 1 1 o-keyword-p) (pdef "%fx26-symbol->keyword" 1 1 o-symbol-keyword) (pdef "%fx26-keyword->symbol" 1 1 o-keyword-symbol)
          (pdef "%fx26-file-info" 1 1 o-file-info) (pdef "%fx26-read-symlink" 1 1 o-read-symlink)
          (pdef "%fx26-process-start" 2 2 o-process-start) (pdef "%fx26-process-output" 1 1 o-process-output)
@@ -2311,6 +2316,8 @@
         ((i64= op o-keyword-symbol) (if (is-kind? a k-keyword) (slot-of a 2) (expected! "a keyword")))
         ((or (and (i64>= op o-write-out) (i64<= op o-write-file)) (and (i64>= op o-file-info) (i64<= op o-process-news)))
          (io-op! op a b (parg 2)))
+        ((i64= op o-kayak-reify) (reify-run! (parg 0) (rep-of-text! (string-text (parg 1))) (parg 2)))
+        ((i64= op o-evidence-bound) (parg 0))
         ((i64= op o-convert)
          "A procedure already of the convention itself; one of the other, an
           adapter (C230; Fixpt's `%fx26-convert`, `adapt`); anything else

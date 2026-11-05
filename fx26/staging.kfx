@@ -412,6 +412,15 @@
                        (extract again 1))
                   (map (lambda ((y symbol)) (symbol->string y)) (extract again 2)) 0 "")))))
 
+(define rep-of-text! (subr calloc (string) i64)
+  (lambda (text)
+    "A rep's binary form, a bytevector of the heap, from the text of its
+     nodes the checker noted (`stage-rep`), as the engine's loading makes
+     it (C305): tier 1's `stage` and `%reify` (C337, C339)."
+    (tagcase (rp-nodes-of-text text)
+      (rexp (ns hs root d)
+        (kfx-bytes-heap! (the (bytevectorof @c) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root)))))))
+
 "`(%reify given REP names)`: evidence, its rep filled."
 (define reify-run! (subr calloc (i64 i64 i64) i64)
   (lambda (given rep names) (kfx-bytes-heap! (rep-filled! rep given (string-text names)))))

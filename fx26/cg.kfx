@@ -755,6 +755,16 @@
             ;; (not simple; a node counted).
             ((string=? h "the") (x-proj (parse-x (car (cdr (cdr xs)))) a))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
+            ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region")) (i64>= (size xs) 2))
+             "Evidence (C339): a call of tier 1's `%kayak-reify` with the evidence
+              given, a product of them in order, and what the checker noted, its
+              rep's text and the evidence's names, as the engine's lowering writes
+              `%reify` (C307)."
+             (let* ((given (if (i64>= (size xs) 3) (cdr (items (third xs))) nil))
+                    (prod (lst (cons (sym "product" f a) (map2 (lambda ((x sexp) (k i64)) (lst (list (num k (i64->string k) a) x) f 1 a)) given (counting 1 (i64+ (size given) 1)))) f 1 a)))
+               (x-app (x-var "%kayak-reify" a)
+                      (list (parse-x prod) (x-str (fact-text (get cg-facts) f a "reify-rep ") a) (x-str (fact-text (get cg-facts) f a "reify-given ") a))
+                      a)))
             ((and (string=? h "%stage") (i64= (size xs) 6))
              "`stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
               the code, the evidence given, and what the checker noted, its rep's
@@ -1994,7 +2004,7 @@
            (c-prim c name n))
           ;; A conversion (C230, `converted-x`): Fixpt's primitive itself.
           ((string=? name "%fx26-convert") (c-prim c name n))
-          ((string=? name "%kayak-stage-run") (c-prim c name n))
+          ((or (string=? name "%kayak-stage-run") (string=? name "%kayak-reify")) (c-prim c name n))
           ((std-eq-name? name) (c-op c "eq"))
           (else
            (let ((p (std-primitive name)))

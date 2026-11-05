@@ -3388,6 +3388,20 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_proj(parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
+    } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && i64_gt_eq(size(xs), 2i64)) {
+        // Evidence (C339): a call of tier 1's `%kayak-reify` with the evidence
+        // given, a product of them in order, and what the checker noted, its
+        // rep's text and the evidence's names, as the engine's lowering writes
+        // `%reify` (C307).
+        let given = if i64_gt_eq(size(xs), 3i64) {
+            cdr(items(third(xs)))
+        } else {
+            nil::<&'static Sexp>()
+        };
+        let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(lambda2s(move |x: &'static Sexp, k: i64| {
+            lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
+        }), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
+        x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a)
     } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 6i64)) {
         // `stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
         // the code, the evidence given, and what the checker noted, its rep's
@@ -6237,7 +6251,7 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
         c_prim(c, name, n)
     } else if string_eq_p(name, str_lit("%fx26-convert")) {
         c_prim(c, name, n)
-    } else if string_eq_p(name, str_lit("%kayak-stage-run")) {
+    } else if (string_eq_p(name, str_lit("%kayak-stage-run")) || string_eq_p(name, str_lit("%kayak-reify"))) {
         c_prim(c, name, n)
     } else if std_eq_name_p(name) {
         c_op(c, str_lit("eq"))

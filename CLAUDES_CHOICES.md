@@ -9331,3 +9331,16 @@ runs (x86_64 Linux, arm64 macOS, as the cells test has it), `--hand`,
 `--compiled`, `--regs --compiled`, `--regs --direct`; each must print
 what Fixpt prints. The 13 of C337 do, every way. Staged words compiled
 to machine code stay later (the note's step 6, after Fixpt's 516abc8e).
+
+## C339. Evidence and bounds on tier 1 (2026-11-04; compiled stage (a), step 4)
+
+`reify-effect`, `reify-type` and `reify-region` compile to a call of tier
+1's new `%kayak-reify` with the evidence given, a product of them in
+order, and what the checker noted (`reify-rep`, `reify-given`), as the
+engine's lowering writes `%reify` (C307); tier 1 fills the rep
+(staging.kfx's `reify-run!`, and `rep-of-text!`, moved there from
+cells/stage.kfx). A bound, `effect-bound` or `type-bound`, compiles as
+Fixpt's does, to `%fx26-evidence-bound`, which tier 1 lacked: the
+evidence as it is. Of Fixpt's stage programs, 16 now run on tier 1 as
+Fixpt runs them, every way (`evidence`, `evidence-bound`,
+`evidence-region` more); the seven left need sessions.

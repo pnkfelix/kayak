@@ -1,7 +1,10 @@
+cli-stage/evidence-bound.fx
 cli-stage/evidence-bound-region.fx
 cli-stage/evidence-bound-reify.fx
 cli-stage/evidence-bound-taken.fx
+cli-stage/evidence.fx
 cli-stage/evidence-missing.fx
+cli-stage/evidence-region.fx
 cli-stage/generative.fx
 cli-stage/in-a-process.fx
 cli-stage/kept.fx
