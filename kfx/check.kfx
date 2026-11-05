@@ -633,9 +633,10 @@
             ((string-member? (string-append "'" s) tvars) (string-append "'" s))
             ((and (char=? (string-ref-i64 s 0) #\') (string-member? s tvars)) s)
             ((string=? s "heap")
-             "The heap place, a region as any place is (C34): `@heap` (C171;
-              Fixpt's `with-shadows-applied.fx`)."
-             "@heap")
+             "The heap's place (C34), Fixpt's `Region::Heap`: a region of its
+              own, `heap`, not the constant `@heap` (C348; C171 had made it
+              that, which Fixpt refuses)."
+             "heap")
             (else (refuse v (string-append "a region KFX-0 does not have: " s)))))))
 
 (define parse-region (subr kfx (cv strings sexp) ty)
@@ -2893,7 +2894,7 @@
                           (ty-data "%place" (list (ty-var (string-append "'" r)))))
                          ((string=? r "heap")
                           "The heap's place (C218; `processes.fx`'s `(place heap)`)."
-                          (ty-data "%place" (list (ty-rconst "@heap"))))
+                          (ty-data "%place" (list (ty-rconst "heap"))))
                          (else
                        (refuse v (string-append "a place's type names a letrena's place or a poly's place binder: " (show-sexp t)))))))
                 ((sym-is? (car xs) "bloblet")
@@ -4219,7 +4220,7 @@
   (lambda (kind place)
     "Frozen data's region, `(acyclic 'p)`; the heap's, `acyclic` or `const`
      (C284: a place nothing settled is the heap)."
-    (if (string=? place "@heap") kind (string-append "(" (string-append kind (string-append " " (string-append place ")")))))))
+    (if (string=? place "heap") kind (string-append "(" (string-append kind (string-append " " (string-append place ")")))))))
 
 (define-rec
   (region-string (subr kfx (st ty) string)
@@ -4606,7 +4607,7 @@
             (let ((k (tagcase (walk s (car args)) (ty-rconst (n) n) (else other "")))
                   (p (tagcase (walk s (car (cdr args)))
                        (ty-var (n) n)
-                       (ty-rconst (n) (if (string=? n "@heap") "%heap" ""))
+                       (ty-rconst (n) (if (string=? n "heap") "%heap" ""))
                        ;; Not solved yet: no place a given one may be said to outlive,
                        ;; but the heap, which outlives every place.
                        (ty-meta (m) "?")
@@ -5987,7 +5988,7 @@
     "Effects, an atom on frozen data of the heap place, `(acyclic @heap)`, on
      the heap's, `acyclic` (C284)."
     (map (lambda ((a string))
-           (if (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) "@heap"))
+           (if (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) "heap"))
                (string-append (atom-kind a) (frozen-place-kind (atom-region a)))
                a))
          es)))
@@ -6002,7 +6003,7 @@
         (res (ty-unit) es s)
         (let* ((k (meta-name (car regions)))
                (place? (any? (lambda ((a string)) (and (region-atom? a) (frozen-place? (atom-region a)) (string=? (frozen-place-of (atom-region a)) k))) es))
-               (s (cond (place? (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "@heap"))) (else other s)))
+               (s (cond (place? (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "heap"))) (else other s)))
                         ;; Storage, or written: a region of its own (C284, C285).
                         ((string-member? k keep) (tagcase (walk s (ty-meta (car regions))) (ty-meta (m) (solve s m (ty-rconst "%fresh"))) (else other s)))
                         (else s))))

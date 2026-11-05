@@ -137,11 +137,7 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **`heap` and `@heap` one region in kayak, two in Fixpt** (found
-     2026-11-05, C346): at the pin Fixpt refuses the identity at `(subr
-     pure ((listof int heap)) (listof int @heap))`; kayak runs it (C171
-     made a written `heap` `@heap`). kayak accepts what Fixpt refuses.
-   - **Reps byte for byte Fixpt's** (C346, C347): 1252 of 1286
+   - **Reps byte for byte Fixpt's** (C346, C347): 1253 of 1286
      definitions; the rest in C347's "Left", in the checker's own types.
      The comparison is a scratch tool against the pinned clone's
      `fixpt-fx26` (not kept); to keep it, a check that builds it as

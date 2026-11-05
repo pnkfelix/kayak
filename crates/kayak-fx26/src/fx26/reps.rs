@@ -293,12 +293,13 @@ pub fn rx_var_ty(x: &'static Rx, sc: Rpbinds, n: Str) -> &'static Rxa {
 }
 
 // Regions, as `reps.rs` writes them: `(rconst a)`, `@heap` too, as
-// Fixpt reads a written `@heap` (C346), `(frozen acyclic? [place])`,
-// `(global g)`, `(globals)`, or a variable. Fixpt's `(heap)`, a written
-// `heap`, is another region, which kayak's checker has not yet told from
-// `@heap` (C171): read back as `@heap`.
+// Fixpt reads a written `@heap` (C346); `(heap)`, the heap's place, `heap`
+// (C348); `(frozen acyclic? [place])`, `(global g)`, `(globals)`, or a
+// variable.
 pub fn rx_region_named(x: &'static Rx, sc: Rpbinds, r: Str) -> &'static Rxa {
-    if string_eq_p(r, str_lit("acyclic")) {
+    if string_eq_p(r, str_lit("heap")) {
+        rx_node(x, str_lit("heap"), false, the::<RpOperands>(nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()))
+    } else if string_eq_p(r, str_lit("acyclic")) {
         rx_node(x, str_lit("frozen"), false, the::<RpOperands>(kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(true))), kayak_rt::nil())))
     } else if string_eq_p(r, str_lit("const")) {
         rx_node(x, str_lit("frozen"), false, the::<RpOperands>(kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(false))), kayak_rt::nil())))
@@ -2767,7 +2768,7 @@ pub fn ri_region(c: &'static Ri, a: RpOperand) -> &'static Ty {
                     } else {
                         let (head, args) = (symbol_to_string(car(n).1), car(n).4);
                         if string_eq_p(head, str_lit("heap")) {
-                            ty_rconst(str_lit("@heap"))
+                            ty_rconst(str_lit("heap"))
                         } else if string_eq_p(head, str_lit("rconst")) {
                             let tagcase_ = car(args);
                             match *tagcase_ {

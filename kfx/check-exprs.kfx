@@ -5382,7 +5382,7 @@
                                           (go (tagcase (walk s (ty-meta (car ks)))
                                                 (ty-meta (k) (solve s k (ty-rconst (cond ((null? ns) "%fresh")
                                                                                          ;; A place nothing settles, the heap.
-                                                                                         ((tagcase sc (scheme (tvars u) (string-member? (string-append "%place " (car ns)) tvars))) "@heap")
+                                                                                         ((tagcase sc (scheme (tvars u) (string-member? (string-append "%place " (car ns)) tvars))) "heap")
                                                                                          ((string-member? (car ns) keep) "%fresh")
                                                                                          (else "acyclic")))))
                                                 (else other s))

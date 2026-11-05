@@ -9550,3 +9550,20 @@ module's abstract type of arrow kind (16); a module's descriptions' order;
 a loaded module's global's name; a written `heap` (C346); one inferred
 effect (`alloc` of `(frozen #t)`); and declined, `convof` and two effect
 atoms (an effect family applied, `~!`).
+
+## C348. `heap` and `@heap`, two regions (2026-11-05)
+
+The user's: "Why are you equating heap and @heap? … Yeah fix that." C171
+read a written `heap` as `@heap`, kayak's own choice, never Fixpt's: at the
+pin Fixpt's parser reads every `@NAME` as a region constant and `heap` as
+`Region::Heap`, the collected heap as a place (`docs/fx26.md`), and
+refuses a `(listof int heap)` where a `(listof int @heap)` is expected;
+kayak ran it. Now the heap's place is a region of its own, `heap` (no
+mark: no constant or binder is spelt so): a written `heap`, `(place
+heap)`, and the place nothing settles (C284, as Fixpt's `infer.rs` takes
+`Region::Heap` for one), so too frozen data of the heap's place
+(`frozen-region-string`, `heap-frozen`). An unsolved region printed as
+written stays `@heap`, a default, not the heap's place. Reps: `(heap)`,
+read back as `heap` (`with-shadows-applied.fx` now Fixpt's rep). Test:
+`tests/fx26-kayak/checker/heap-is-not-at-heap.fx`, refused by both. No
+program's answer changed.

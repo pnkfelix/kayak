@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"heap-is-not-at-heap.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <kayak>/tests/fx26-kayak/checker/heap-is-not-at-heap.fx:5:74: a (listof int @heap) is expected here, and this is a (listof int heap)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@8616f2feebd44c16e12701bc63a3b33ae1a3221b"
+]
+}
+]
+}

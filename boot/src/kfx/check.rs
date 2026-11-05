@@ -1256,9 +1256,10 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
     } else if (char_eq_p(string_ref_i64(s, 0i64), '\'') && string_member_p(s, tvars)) {
         s
     } else if string_eq_p(s, str_lit("heap")) {
-        // The heap place, a region as any place is (C34): `@heap` (C171;
-        // Fixpt's `with-shadows-applied.fx`).
-        str_lit("@heap")
+        // The heap's place (C34), Fixpt's `Region::Heap`: a region of its
+        // own, `heap`, not the constant `@heap` (C348; C171 had made it
+        // that, which Fixpt refuses).
+        str_lit("heap")
     } else {
         match refuse(v, string_append(str_lit("a region KFX-0 does not have: "), s)) {}
     }
@@ -6578,7 +6579,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return ty_data(str_lit("%place"), kayak_rt::heap_cons(ty_var(string_append(str_lit("'"), r)), kayak_rt::nil()));
                     } else if string_eq_p(r, str_lit("heap")) {
                         // The heap's place (C218; `processes.fx`'s `(place heap)`).
-                        return ty_data(str_lit("%place"), kayak_rt::heap_cons(ty_rconst(str_lit("@heap")), kayak_rt::nil()));
+                        return ty_data(str_lit("%place"), kayak_rt::heap_cons(ty_rconst(str_lit("heap")), kayak_rt::nil()));
                     } else {
                         return match refuse(v, string_append(str_lit("a place's type names a letrena's place or a poly's place binder: "), show_sexp(t))) {};
                     }
@@ -9765,7 +9766,7 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
 /// (C284: a place nothing settled is the heap).
 #[inline]
 pub fn frozen_region_string(kind: Str, place: Str) -> Str {
-    if string_eq_p(place, str_lit("@heap")) {
+    if string_eq_p(place, str_lit("heap")) {
         kind
     } else {
         string_append(str_lit("("), string_append(kind, string_append(str_lit(" "), string_append(place, str_lit(")")))))
@@ -10601,7 +10602,7 @@ pub fn frozen_at(s: &'static St, r: &'static Ty) -> Strings {
                             n
                         }
                         Ty::TyRconst(n) => {
-                            if string_eq_p(n, str_lit("@heap")) {
+                            if string_eq_p(n, str_lit("heap")) {
                                 str_lit("%heap")
                             } else {
                                 str_lit("")
@@ -14069,7 +14070,7 @@ pub fn region_of(v: &'static Cv, s: &'static St, r: &'static Ty) -> &'static Res
 /// the heap's, `acyclic` (C284).
 pub fn heap_frozen(es: Strings) -> Strings {
     map(lambda1s(move |a: Str| {
-        if (region_atom_p(a) && frozen_place_p(atom_region(a)) && string_eq_p(frozen_place_of(atom_region(a)), str_lit("@heap"))) {
+        if (region_atom_p(a) && frozen_place_p(atom_region(a)) && string_eq_p(frozen_place_of(atom_region(a)), str_lit("heap"))) {
             string_append(atom_kind(a), frozen_place_kind(atom_region(a)))
         } else {
             a
@@ -14093,7 +14094,7 @@ pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i
             let tagcase_ = walk(s, ty_meta(car(regions)));
             match *tagcase_ {
                 Ty::TyMeta(m) => {
-                    solve(s, m, ty_rconst(str_lit("@heap")))
+                    solve(s, m, ty_rconst(str_lit("heap")))
                 }
                 _ => {
                     let other = tagcase_;

@@ -135,13 +135,13 @@
           (else other (rx-node x "var" #f (the rp-operands (list a)))))))))
 
 "Regions, as `reps.rs` writes them: `(rconst a)`, `@heap` too, as
- Fixpt reads a written `@heap` (C346), `(frozen acyclic? [place])`,
- `(global g)`, `(globals)`, or a variable. Fixpt's `(heap)`, a written
- `heap`, is another region, which kayak's checker has not yet told from
- `@heap` (C171): read back as `@heap`."
+ Fixpt reads a written `@heap` (C346); `(heap)`, the heap's place, `heap`
+ (C348); `(frozen acyclic? [place])`, `(global g)`, `(globals)`, or a
+ variable."
 (define rx-region-named (subr kfx (rx rpbinds string) rxa)
   (lambda (x sc r)
-    (cond ((string=? r "acyclic") (rx-node x "frozen" #f (the rp-operands (list (the rp-operand (sum flag #t))))))
+    (cond ((string=? r "heap") (rx-node x "heap" #f (the rp-operands nil)))
+          ((string=? r "acyclic") (rx-node x "frozen" #f (the rp-operands (list (the rp-operand (sum flag #t))))))
           ((string=? r "const") (rx-node x "frozen" #f (the rp-operands (list (the rp-operand (sum flag #f))))))
           ((frozen-place? r)
            (tagcase (rx-var x sc (frozen-place-of r))
@@ -938,7 +938,7 @@
                 (if (null? n)
                     (ty-void)
                     (let ((head (symbol->string (extract (car n) 2))) (args (extract (car n) 5)))
-                      (cond ((string=? head "heap") (ty-rconst "@heap"))
+                      (cond ((string=? head "heap") (ty-rconst "heap"))
                             ((string=? head "rconst") (tagcase (car args) (sym s (ty-rconst (symbol->string s))) (else other (ty-void))))
                             ((string=? head "frozen")
                              (let ((kind (tagcase (car args) (flag f (if f "acyclic" "const")) (else other "const"))))
