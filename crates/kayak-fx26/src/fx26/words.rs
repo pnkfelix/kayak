@@ -256,7 +256,7 @@ pub fn room_for_name_x(t: FlatArray<i64>, n: i64) -> FlatArray<i64> {
 
 /// Name `n`'s symbol, tier 1's (`symbol!`, C332: one table of them in
 /// the one heap), found the first time: its name, its hash, and in its
-/// global slot, which tier 1 leaves 0, its name's number here.
+/// global slot, which tier 1 leaves 0, its name's number here, plus 1.
 pub fn symbol_word(n: i64) -> i64 {
     set(symbol_objects(), room_for_name_x(get(symbol_objects()), n));
     let had = flatarray_ref_i64(get(symbol_objects()), n);
@@ -264,15 +264,22 @@ pub fn symbol_word(n: i64) -> i64 {
         had
     } else {
         let sym = symbol_x(name_of_number(n));
-        elt_set_x(sym, 2i64, fixnum(n));
+        elt_set_x(sym, 2i64, fixnum(i64_plus(n, 1i64)));
         flatarray_set_i64_x(get(symbol_objects()), n, sym);
         sym
     }
 }
 
-#[inline]
+/// A symbol's name's number: what its global slot holds, less 1; one tier
+/// 1 made (`symbol!`, a stage's failure's tag, C336), its slot 0, by its
+/// name, -1 if the engine has none of it.
 pub fn symbol_number(w: i64) -> i64 {
-    fixnum_value(obj_ref(w, 2i64))
+    let k = fixnum_value(obj_ref(w, 2i64));
+    if i64_gt(k, 0i64) {
+        i64_minus(k, 1i64)
+    } else {
+        name_at(symbol_text(w), 0i64, get(name_count()))
+    }
 }
 
 /// Name `n`'s keyword, made the first time: its symbol (Fixpt's

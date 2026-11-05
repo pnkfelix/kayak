@@ -52,6 +52,8 @@ pub mod show;
 pub use show::*;
 pub mod sched;
 pub use sched::*;
+pub mod staging;
+pub use staging::*;
 pub mod vheap;
 pub use vheap::*;
 pub mod words;

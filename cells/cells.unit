@@ -32,6 +32,8 @@ heap.kfx
 numbers.kfx
 show.kfx
 sched.kfx
+; What staging is no machine's (C336), which the engine loads too.
+../fx26/staging.kfx
 cprims.kfx
 listing-reader.kfx
 hand.kfx

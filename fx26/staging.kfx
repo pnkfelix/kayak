@@ -1,0 +1,418 @@
+"staging.kfx: `stage`'s and sessions' work that is no one machine's
+ (C305 to C315; C336), which the engine (vstage.kfx) and tier 1 (its
+ compiled `stage`, docs/research/compiled-stage.md) both load, written over
+ tier 1's heap, which is the engine's (C332): the code, a datum, read back
+ as the reader would have read it, each part placed; what it is checked as,
+ the check, in a worker first (C111: the checker refuses by failing, which
+ fails the worker alone); a refusal's words and place, made a
+ `stage-failure`; and evidence filling a rep. Each machine makes the
+ procedure the code becomes its own way."
+
+"A sum and a product, frozen, Fixpt's (C322, C323), and a bytevector of
+ the heap as KFX's and back, for what this makes."
+(define staged-sum! (subr calloc (string i64) i64)
+  (lambda (tag v)
+    (let ((x (make-bloblet! k-sum 2 0 #t #f))) (begin (slot-set! x 2 (symbol! tag)) (slot-set! x 3 v) (frozen-whole! x) x))))
+
+(define-rec
+  (staged-filled! (subr cwrite (i64 i64 (listof i64 acyclic)) unit)
+    (lambda (x k vs) (if (null? vs) #u (begin (slot-set! x k (car vs)) (staged-filled! x (i64+ k 1) (cdr vs)))))))
+
+(define staged-product! (subr calloc ((listof i64 acyclic)) i64)
+  (lambda (vs)
+    (let ((x (make-bloblet! k-product (size vs) 0 #t #f))) (begin (staged-filled! x 2 vs) (frozen-whole! x) x))))
+
+(define-rec
+  (heap-bytes-copied! (subr cwrite ((bytevectorof @c) i64 i64 i64) unit)
+    (lambda (bv p i n)
+      (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (raw-byte-at (i64+ p 1) i)))) (heap-bytes-copied! bv p (i64+ i 1) n))))))
+
+(define heap-kfx-bytes (subr calloc (i64) (bytevectorof @c))
+  (lambda (v)
+    "A bytevector of the heap's bytes, KFX's: its length word, then the
+     bytes eight to a word, the low first."
+    (let* ((p (address v)) (n (mem-at p)) (bv (the (bytevectorof @c) (make-bytevector (i64->int n) (int->u8 0)))))
+      (begin (heap-bytes-copied! bv p 0 n) bv))))
+
+(define-rec
+  (word-of-bytes (subr cread ((bytevectorof @c) i64 i64 i64 i64) i64)
+    (lambda (bv at j n acc)
+      "Bytes `at + j` on, eight at most of `n`, as a word's, the low first."
+      (if (or (i64>= j 8) (i64>= (i64+ at j) n))
+          acc
+          (word-of-bytes bv at (i64+ j 1) n (i64-or acc (i64-shl (int->i64 (u8->int (bytevector-u8-ref bv (i64->int (i64+ at j))))) (i64->int (i64* 8 j)))))))))
+
+(define-rec
+  (bytes-words-set! (subr cwrite ((bytevectorof @c) i64 i64 i64) unit)
+    (lambda (bv p at n)
+      (if (i64>= at n) #u (begin (mem-set! (i64+ p (i64+ 1 (i64-quotient at 8))) (word-of-bytes bv at 0 n 0)) (bytes-words-set! bv p (i64+ at 8) n))))))
+
+(define kfx-bytes-heap! (subr calloc ((bytevectorof @c)) i64)
+  (lambda (bv)
+    "KFX's bytevector as the heap's."
+    (let* ((n (int->i64 (bytevector-length bv))) (v (make-bloblet! k-bytevector 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 7) 8))) #f #f)))
+      (begin (mem-set! (address v) n) (bytes-words-set! bv (address v) 0 n) v))))
+
+"The datum's positions (C312): each part's its offset in the code as it
+ is written, as Fixpt places a refusal in it, past a base each code has
+ its own, so that what the checker notes of one part of one code, a
+ session's kept, is no other's. What kayak writes around the code has
+ negative positions, each its own (`stage-at!`)."
+(define stage-pos (ref i64 @c) (new -1))
+(define stage-file string "<stage>")
+(define stage-off (ref i64 @c) (new 0))
+(define stage-base (ref i64 @c) (new 0))
+(define-datatype code-place (code-place i64 i64))
+(define stage-spans (ref (listof code-place acyclic) @c) (new nil))
+
+(define stage-at! (subr cwrite () i64)
+  (lambda () (let ((p (get stage-pos))) (begin (set stage-pos (i64- p 1)) p))))
+
+(define stage-past! (subr cwrite (i64) i64)
+  (lambda (n) (let ((p (get stage-off))) (begin (set stage-off (i64+ p n)) p))))
+
+(define-rec
+  (size-of-written (subr kfx ((listof char acyclic)) i64)
+    (lambda (cs)
+      (cond ((null? cs) 0)
+            ((or (char=? (car cs) #\") (char=? (car cs) #\\) (char=? (car cs) #\newline) (char=? (car cs) #\tab)) (i64+ 2 (size-of-written (cdr cs))))
+            (else (i64+ 1 (size-of-written (cdr cs))))))))
+
+(define written-length (subr kfx ((listof char acyclic)) i64)
+  (lambda (cs)
+    "A string's length written, quoted, `\"`, `\\` and a newline escaped."
+    (i64+ 2 (size-of-written cs))))
+
+(define char-length (subr kfx (char) i64)
+  (lambda (c)
+    (cond ((char=? c #\space) 7) ((char=? c #\newline) 9) ((char=? c #\tab) 5) (else 3))))
+
+(define-rec
+  (word-sexp (subr cwrite (i64) sexp)
+    (lambda (w)
+      "A datum's word as the reader would have read it, each part placed."
+      (let* ((p (get stage-off))
+             (x (cond ((is-fixnum? w) (begin (stage-past! (string-length-i64 (i64->string (fix-val w)))) (num (fix-val w) (i64->string (fix-val w)) p)))
+                      ((i64= w v-true) (begin (stage-past! 2) (sym "#t" stage-file p)))
+                      ((i64= w v-false) (begin (stage-past! 2) (sym "#f" stage-file p)))
+                      ((i64= w v-unit-word) (begin (stage-past! 2) (sym "#u" stage-file p)))
+                      ((i64= w v-null) (begin (stage-past! 2) (lst nil stage-file 1 p)))
+                      ((is-kind? w k-keyword)
+                       (let ((n (string-append "#:" (symbol-text (slot-of w 2)))))
+                         (begin (stage-past! (string-length-i64 n)) (sym n stage-file p))))
+                      ((is-kind? w k-symbol)
+                       (let ((n (symbol-text w))) (begin (stage-past! (string-length-i64 n)) (sym n stage-file p))))
+                      ((is-char? w) (begin (stage-past! (char-length (i64->char (i64-shr w 8)))) (chr (i64->char (i64-shr w 8)) stage-file p)))
+                      ((is-kind? w k-string) (begin (stage-past! (written-length (string-chars (string-text w)))) (str (string-text w) stage-file p)))
+                      ((is-big? w) (let ((t (int->string (int-of w)))) (begin (stage-past! (string-length-i64 t)) (big t stage-file p))))
+                      ((is-flonum? w) (let ((t (f64->string (flonum-of w)))) (begin (stage-past! (string-length-i64 t)) (real t stage-file p))))
+                      ((is-pair? w) (begin (stage-past! 1) (let ((xs (pair-sexps w #t))) (begin (stage-past! 1) (lst xs stage-file 1 p)))))
+                      (else (begin (stage-past! 7) (sym "%unread" stage-file p))))))
+        (begin (set stage-spans (cons (code-place p (get stage-off)) (get stage-spans))) x))))
+  (pair-sexps (subr cwrite (i64 bool) sexps)
+    (lambda (w first)
+      (cond ((i64= w v-null) nil)
+            ((is-pair? w)
+             (begin (if first #u (begin (stage-past! 1) #u))
+                    (let ((a (word-sexp (pair-car w)))) (cons a (pair-sexps (pair-cdr w) #f)))))
+            (else (begin (stage-past! 3) (list (sym "." stage-file -1) (word-sexp w))))))))
+
+(define code-sexp! (subr cwrite (i64) sexp)
+  (lambda (w)
+    "The code `w`, a datum, placed past a base of its own."
+    (begin
+      (set stage-base (get stage-off))
+      (set stage-spans nil)
+      (let ((x (word-sexp w))) (begin (stage-past! 1) x)))))
+
+(define-rec
+  (span-end (subr kfx ((listof code-place acyclic) i64) i64)
+    (lambda (ss p)
+      "Where the part placed at `p` ends; -1 if no part is."
+      (cond ((null? ss) -1)
+            ((tagcase (car ss) (code-place (a z) (i64= a p))) (tagcase (car ss) (code-place (a z) z)))
+            (else (span-end (cdr ss) p))))))
+
+(define code-span (subr cwrite (i64) code-place)
+  (lambda (p)
+    "The place a refusal at `p` is in the code: its part's, from the code's
+     start; the whole code where kayak's own (wrapping it) is refused."
+    (let ((whole (code-place 0 (i64- (span-end (get stage-spans) (get stage-base)) (get stage-base)))))
+      (if (i64< p 0)
+          whole
+          (let ((z (span-end (get stage-spans) p)))
+            (if (i64< z 0) whole (code-place (i64- p (get stage-base)) (i64- z (get stage-base)))))))))
+
+"What the staged code is checked as: `(lambda (stage-module) (lambda ()
+ (with stage-module CODE)))`, against `(subr pure (M) (subr E () R))`."
+(define staged-thunk (subr cwrite (sexp) sexp)
+  (lambda (code)
+    (let ((s (lambda ((n string)) (sym n stage-file (stage-at!))))
+          (l (lambda ((xs sexps)) (lst xs stage-file 1 (stage-at!)))))
+      (l (list (s "lambda") (l nil) (l (list (s "with") (s "stage-module") code)))))))
+
+(define staged-program (subr cwrite (sexp) sexp)
+  (lambda (thunk)
+    (let ((s (lambda ((n string)) (sym n stage-file (stage-at!))))
+          (l (lambda ((xs sexps)) (lst xs stage-file 1 (stage-at!)))))
+      (l (list (s "lambda") (l (list (s "stage-module"))) thunk)))))
+
+"The checker's environment a stage's code is checked in: the standard
+ one alone, nothing of the program's but the module given."
+(define stage-cv (subr kfx () cv)
+  (lambda ()
+    (let ((empty (cv nil nil nil nil "a type" nil "staged code" 0 nil nil 0 (bempty) nil)))
+      (with-binds empty (prim-binds empty)))))
+
+"The check: its state, whose facts the lowering reads; a refusal fails."
+(define stage-checked (subr kfx (sexp ty) st)
+  (lambda (prog t)
+    (tagcase ((with expressions check) (at (stage-cv) "staged code" nil) (new-state) prog t) (res (u es s) s))))
+
+(define stage-verdict (subr kfx (sexp ty) string)
+  (lambda (prog t) (begin (stage-checked prog t) "")))
+
+(define-rec
+  (begins-with? (subr kfx (chars chars) bool)
+    (lambda (cs pat) (or (null? pat) (and (not (null? cs)) (char=? (car cs) (car pat)) (begins-with? (cdr cs) (cdr pat)))))))
+
+(define-rec
+  (after-said (subr kfx (chars chars) chars)
+    (lambda (cs pat)
+      "What follows the first `in staged code: ` of a refusal; all of it if none."
+      (cond ((null? cs) nil)
+            ((begins-with? cs pat) (drop-chars cs (size pat)))
+            (else (after-said (cdr cs) pat))))))
+
+(define* stage-refused (subr pure (string) string) (lambda (m) (if (string=? m "") "refused" m)))
+
+(define refusal-said (subr kfx (string) string)
+  (lambda (m)
+    "A refusal as its words alone: what the checker says after where, `in
+     staged code: `, or a definition's, `<stage>:LINE: in NAME: `."
+    (let ((said (list->string (after-said (string-chars m) (string-chars "in staged code: ")))))
+      (cond ((not (string=? said "")) said)
+            ((not (null? (after-said (string-chars m) (string-chars "<stage>@"))))
+             (let ((past (after-said (after-said (string-chars m) (string-chars ": in ")) (string-chars ": "))))
+               (if (null? past) m (list->string past))))
+            (else m)))))
+
+(define* stage-worked (subr (maxeff (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet spin (read @globals)) (sexp ty) string)
+  (lambda (prog t)
+    "The check by a worker, whose watcher, a relay of one message, puts what
+     it is sent where this waits: `` if it passed, else the refusal."
+    (let* ((out (the (icell string @q) (make-icell)))
+           (relay (the (addr string @q) (spawn (box string r) (icell-put! out (receive box))))))
+      (begin
+        (the (addr unit @w) (spawn-monitored relay stage-refused (box unit r) (send relay (stage-verdict prog t))))
+        (icell-get out)))))
+
+"The labels of `stage-failure`'s product, made at loading."
+(define stage-failure-labels (ref i64 @c) (new -1))
+
+(define stage-failure-word! (subr calloc (string) i64)
+  (lambda (m)
+    "`(sum failed (product (kind (sum refused #u)) (message m) (start 0) (end 0)))`:
+     the place in the code no refusal of kayak's says yet."
+    (let* ((k (staged-sum! "refused" v-unit-word)) (msg (make-string! m)))
+      (staged-sum! "failed" (staged-product! (list k msg (fix 0) (fix 0)))))))
+
+(define stage-failed-at-word! (subr calloc (string string i64 i64) i64)
+  (lambda (kind m a z)
+    "`(sum failed (product (kind (sum KIND #u)) (message m) (start a) (end z)))`."
+    (let* ((k (staged-sum! kind v-unit-word)) (msg (make-string! m)))
+      (staged-sum! "failed" (staged-product! (list k msg (fix a) (fix z)))))))
+
+(define stage-failed-word! (subr calloc (string string) i64)
+  (lambda (kind m) (stage-failed-at-word! kind m 0 0)))
+
+(define-rec
+  (place-digits (subr kfx ((listof char acyclic) i64) i64)
+    (lambda (cs n)
+      (if (or (null? cs) (not (char-numeric? (car cs)))) n (place-digits (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+(define refusal-place (subr kfx (string) i64)
+  (lambda (m)
+    "Where in the code a refusal is, its `<stage>@N`; -1, the code itself,
+     if it says none."
+    (let ((cs (after-said (string-chars m) (string-chars "<stage>@"))))
+      (cond ((null? cs) -1)
+            ((char=? (car cs) #\-) -1)
+            (else (place-digits cs 0))))))
+
+(define refused-word! (subr calloc (string) i64)
+  (lambda (why)
+    "A refusal of the code, its words and where it is (C312)."
+    (tagcase (code-span (refusal-place why))
+      (code-place (a z) (stage-failed-at-word! "refused" (refusal-said why) a z)))))
+
+"Evidence (C307; Fixpt's `docs/fx26.md`, \"Evidence\", and its
+ `fixpt_reps::fill`): a rep's holes filled from the evidence given for
+ the variables they stand for, each piece of evidence a rep whose root is
+ an `evidence` node of what it is of. A hole becomes that; one among an
+ effect's atoms, its atoms, spliced into the set. Then canonical again,
+ and a set's members each once."
+(define-datatype rpe (rpe string rp-nodes (listof symbol acyclic)))
+
+(define-rec
+  (rp-max-slot (subr kfx (rp-nodes int) int)
+    (lambda (ns m) (if (null? ns) m (rp-max-slot (cdr ns) (if (> (extract (car ns) 1) m) (extract (car ns) 1) m))))))
+
+(define-rec
+  (rp-index-in (subr kfx (strings string int) int)
+    (lambda (xs n i) (cond ((null? xs) -1) ((string=? (car xs) n) i) (else (rp-index-in (cdr xs) n (+ i 1)))))))
+
+(define rp-moved (subr kfx (rp-operand int (listof symbol acyclic) strings) rp-operand)
+  (lambda (a off own all)
+    "An evidence's operand, its nodes `off` past, its holes by name in `all`."
+    (tagcase a
+      (node j (the rp-operand (sum node (+ j off))))
+      (bound p (the rp-operand (sum bound (product (1 (+ (extract p 1) off)) (2 (extract p 2))))))
+      (hole h (the rp-operand (sum hole (rp-index-in all (nth-symbol own h) 0))))
+      (else other a))))
+
+(define-rec
+  (rp-evidence-at (subr kfx ((listof rpe acyclic) string) (listof rpe acyclic))
+    (lambda (es n) (cond ((null? es) nil) ((tagcase (car es) (rpe (m ns hs) (string=? m n))) (list (car es))) (else (rp-evidence-at (cdr es) n))))))
+
+"Each evidence placed: its offset, and its root's operand moved."
+(define-datatype rpp (rpp string int rp-nodes (listof symbol acyclic)))
+
+(define-rec
+  (rp-placed (subr kfx ((listof rpe acyclic) int) (listof rpp acyclic))
+    (lambda (es off)
+      (if (null? es)
+          nil
+          (tagcase (car es)
+            (rpe (n ns hs) (cons (rpp n off ns hs) (rp-placed (cdr es) (+ off (+ (rp-max-slot ns 0) 1))))))))))
+
+(define-rec
+  (rp-placed-at (subr kfx ((listof rpp acyclic) string) (listof rpp acyclic))
+    (lambda (ps n) (cond ((null? ps) nil) ((tagcase (car ps) (rpp (m off ns hs) (string=? m n))) (list (car ps))) (else (rp-placed-at (cdr ps) n))))))
+
+(define rp-of-evidence (subr kfx (rpp strings) rp-operand)
+  (lambda (p all)
+    "What evidence is of: its root's one operand, moved."
+    (tagcase p
+      (rpp (n off ns hs)
+        (let ((root (rp-node-at ns 0)))
+          (if (null? root)
+              (the rp-operand (sum int 0))
+              (rp-moved (car (extract (car root) 5)) off hs all)))))))
+
+(define-rec
+  (rp-filled-args (subr kfx (rp-operands bool (listof symbol acyclic) (listof rpp acyclic) strings rp-nodes) rp-operands)
+    (lambda (as set holes ps all ns-all)
+      "A node's operands, each filled hole what its evidence is of; in a set,
+       a set's members spliced."
+      (if (null? as)
+          nil
+          (let ((rest (rp-filled-args (cdr as) set holes ps all ns-all)))
+            (tagcase (car as)
+              (hole h
+                (let ((found (rp-placed-at ps (nth-symbol holes h))))
+                  (if (null? found)
+                      (cons (the rp-operand (sum hole (rp-index-in all (nth-symbol holes h) 0))) rest)
+                      (let ((of (rp-of-evidence (car found) all)))
+                        (tagcase of
+                          (node j
+                            (let ((n (rp-node-at ns-all j)))
+                              (if (and set (not (null? n)) (extract (car n) 3))
+                                  (onto (extract (car n) 5) rest)
+                                  (cons of rest))))
+                          (else z (cons of rest)))))))
+              (else other (cons (car as) rest))))))))
+
+(define rp-filled (subr kfx (rexp (listof rpe acyclic)) rexp)
+  (lambda (main es)
+    "Rep `main`'s nodes, its holes filled from evidence `es`."
+    (tagcase main
+      (rexp (ns hs root d)
+        (let* ((ps (rp-placed es (+ (rp-max-slot ns 0) 1)))
+               (left (filter (lambda ((h string)) (null? (rp-placed-at ps h))) hs))
+               (theirs (concat (map (lambda ((p rpp)) (tagcase p (rpp (n off ens ehs) (map (lambda ((y symbol)) (symbol->string y)) ehs)))) ps)))
+               (all (onto left (filter (lambda ((h string)) (not (string-member? h left))) theirs)))
+               (moved (concat (map (lambda ((p rpp))
+                                      (tagcase p
+                                        (rpp (n off ens ehs)
+                                          (map (lambda ((x rp-node))
+                                                 (product (1 (+ (extract x 1) off)) (2 (extract x 2)) (3 (extract x 3)) (4 (extract x 4))
+                                                          (5 (map (lambda ((a rp-operand)) (rp-moved a off ehs all)) (extract x 5)))))
+                                               ens))))
+                                    ps)))
+               (holes (map (lambda ((h string)) (string->symbol h)) hs))
+               (mine (map (lambda ((x rp-node))
+                            (product (1 (extract x 1)) (2 (extract x 2)) (3 (extract x 3)) (4 (extract x 4))
+                                     (5 (rp-filled-args (extract x 5) (extract x 3) holes ps all moved))))
+                          ns)))
+          (rexp (onto mine moved) all root d))))))
+
+(define rp-same? (subr kfx (rp-operand rp-operand) bool)
+  (lambda (a b)
+    (tagcase a
+      (node j (tagcase b (node k (= j k)) (else other #f)))
+      (hole j (tagcase b (hole k (= j k)) (else other #f)))
+      (bound p (tagcase b (bound q (and (= (extract p 1) (extract q 1)) (= (extract p 2) (extract q 2)))) (else other #f)))
+      (else other #f))))
+
+"A canonical rep's nodes, a set's members each once (Fixpt's `fill::dedup`)."
+(define-rec
+  (rp-once (subr kfx (rp-operands) rp-operands)
+    (lambda (as)
+      (cond ((null? as) nil)
+            ((any? (lambda ((b rp-operand)) (rp-same? (car as) b)) (cdr as)) (rp-once (cdr as)))
+            (else (cons (car as) (rp-once (cdr as))))))))
+
+"Evidence's words given: each a rep's binary form, the variable it is for
+ named, in the order `names` says."
+(define-rec
+  (evidence-given (subr calloc (i64 strings i64) (listof rpe acyclic))
+    (lambda (prod names i)
+      (if (null? names)
+          nil
+          (let ((got ((proj rep-nodes @c) (heap-kfx-bytes (slot-of prod (i64+ i 2))) nil)))
+            (cons (rpe (car names) (extract got 1) (extract got 2)) (evidence-given prod (cdr names) (i64+ i 1))))))))
+
+"A region a variable names, given no evidence: one of its own, named
+ afresh, `%region-N`, never another (Fixpt's rule)."
+(define fresh-regions (ref i64 @c) (new 0))
+
+(define-rec
+  (fresh-evidence! (subr cwrite (strings strings) (listof rpe acyclic))
+    (lambda (holes named)
+      (cond ((null? holes) nil)
+            ((or (not (has-prefix? (car holes) "'")) (string-member? (car holes) named)) (fresh-evidence! (cdr holes) named))
+            (else
+             (let ((k (get fresh-regions)))
+               (begin
+                 (set fresh-regions (i64+ k 1))
+                 (cons (rpe (car holes)
+                            (list (product (1 0) (2 'evidence) (3 #f) (4 nil) (5 (list (the rp-operand (sum node 1)))))
+                                  (product (1 1) (2 'rconst) (3 #f) (4 nil)
+                                           (5 (list (the rp-operand (sum sym (string->symbol (string-append "%region-" (i64->string k)))))))))
+                            nil)
+                       (fresh-evidence! (cdr holes) named)))))))))
+
+(define rep-filled! (subr calloc (i64 i64 string) (bytevectorof @c))
+  (lambda (rep given names)
+    "Rep `rep`'s binary form, its holes filled from the evidence `given`
+     holds, for the variables `names` names: canonical, each set's members
+     once."
+    (let* ((got ((proj rep-nodes @c) (heap-kfx-bytes rep) nil))
+           (main (rexp (extract got 1) (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) 0 ""))
+           (named (spaced-words names))
+           (es (onto (evidence-given given named 0)
+                     (fresh-evidence! (map (lambda ((y symbol)) (symbol->string y)) (extract got 2)) named)))
+           (canonical (lambda ((r rexp))
+                   (tagcase r
+                     (rexp (ns hs root d) (the (bytevectorof @c) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root))))))
+           (b (canonical (rp-filled main es)))
+           (again ((proj rep-nodes @c) b nil)))
+      (canonical (rexp (map (lambda ((x rp-node)) (if (extract x 3) (product (1 (extract x 1)) (2 (extract x 2)) (3 #t) (4 (extract x 4)) (5 (rp-once (extract x 5)))) x))
+                       (extract again 1))
+                  (map (lambda ((y symbol)) (symbol->string y)) (extract again 2)) 0 "")))))
+
+"`(%reify given REP names)`: evidence, its rep filled."
+(define reify-run! (subr calloc (i64 i64 i64) i64)
+  (lambda (given rep names) (kfx-bytes-heap! (rep-filled! rep given (string-text names)))))
+

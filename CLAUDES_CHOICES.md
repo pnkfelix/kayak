@@ -9259,3 +9259,26 @@ tier 1 does:
 - **Its cost**: kfx makes tier 1's Rust in 16.9 s, not 4.3; the crate
   rebuilds in 5.3 s, not 2.8; the binary is as it was (2,450,848 bytes,
   not 2,450,792), nothing calling the front end yet.
+
+## C336. Staging's machine-free half shared (2026-11-04; compiled stage (a))
+
+`docs/research/compiled-stage.md`'s question 3, taken as leaned: what of
+`stage` is no machine's moves from the engine's `vstage.kfx` to
+`fx26/staging.kfx`, which both units load (after tier 1's scheduler):
+the code's datum read back as the reader would have read it, each part
+placed (C312); what it is checked as and the check, in a worker first
+(C111); a refusal's words and place, made a `stage-failure`; evidence
+filling a rep (C307). Written over tier 1's heap, which is the engine's
+(C332): its few makers its own (`staged-sum!`, `staged-product!`,
+`heap-kfx-bytes`, `kfx-bytes-heap!`). The engine keeps `stage-run!`, which
+lowers what passed and makes it an engine closure, and sessions (to move
+when tier 1 has them, step 5). The datatype `span` is `code-place`
+(tier 1's hand machine has a `span`). Nothing either machine does
+changes, but for one found on the way:
+- **A symbol tier 1 made had no number for the engine.** The engine kept
+  a symbol's name's number in its global slot (C321, C332), which tier 1's
+  `symbol!` leaves 0: so a failure's tag `failed` that staging made first
+  read as name 0, and a session's `tagcase` of it missed (the REPL's
+  `session.in`). The slot now holds the number plus 1; 0, not set, the
+  number found by the symbol's name (`name-at`), as a tier 1 symbol's in
+  the one heap must be.

@@ -140,7 +140,7 @@
   (lambda (n)
     "Name `n`'s symbol, tier 1's (`symbol!`, C332: one table of them in
      the one heap), found the first time: its name, its hash, and in its
-     global slot, which tier 1 leaves 0, its name's number here."
+     global slot, which tier 1 leaves 0, its name's number here, plus 1."
     (begin
       (set symbol-objects (room-for-name! (get symbol-objects) n))
       (let ((had (flatarray-ref-i64 (get symbol-objects) n)))
@@ -148,12 +148,17 @@
             had
             (let ((sym (symbol! (name-of-number n))))
               (begin
-                (elt-set! sym 2 (fixnum n))
+                (elt-set! sym 2 (fixnum (i64+ n 1)))
                 (flatarray-set-i64! (get symbol-objects) n sym)
                 sym)))))))
 
 (define symbol-number (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
-  (lambda (w) (fixnum-value (obj-ref w 2))))
+  (lambda (w)
+    "A symbol's name's number: what its global slot holds, less 1; one tier
+     1 made (`symbol!`, a stage's failure's tag, C336), its slot 0, by its
+     name, -1 if the engine has none of it."
+    (let ((k (fixnum-value (obj-ref w 2))))
+      (if (i64> k 0) (i64- k 1) (name-at (symbol-text w) 0 (get name-count))))))
 
 (define keyword-word (subr (maxeff hp (alloc @c)) (i64) i64)
   (lambda (n)

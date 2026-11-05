@@ -29,6 +29,8 @@ listing.kfx
 ../cells/numbers.kfx
 ../cells/show.kfx
 ../cells/sched.kfx
+; What staging is no machine's (C336), which tier 1 loads too.
+staging.kfx
 vheap.kfx
 words.kfx
 table.kfx
