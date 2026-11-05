@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"width-frozen-data.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b 46585231060607626c6f626c65740672636f6e7374024062046261736503696e74037265660000040000000406010001000200030100000104020300000104040500000200020001",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/width-frozen-data.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (frozen int (ref int @b)) @b)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"made-too-soon.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/modules/made-too-soon.fx:5:17: `y` uses `x`, defined after it",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

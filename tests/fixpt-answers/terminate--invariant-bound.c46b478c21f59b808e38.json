@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"invariant-bound.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"up 46585231060604737562720863656c6c756c61720665666665637406706172616d73046261736503696e7400000500000004000100020003000401000000020100000300000200040004040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/terminate/invariant-bound.fx:7:1: calling `down` may read any global, `down` too, so `down` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"knot-held-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/redefine/knot-held-module.fx:3:1: `m` keeps a procedure that reads `m`, so it could reach itself through a global: it must say `spin`, and it is a (subr (read (globals m)) () int)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"flat-sum-key.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-sum-key.fx:3:54: a flat sum's key is `u8`, `u16` or `u32`",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

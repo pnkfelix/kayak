@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"width-exact-region.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"r 46585231050503726566046261736503696e740672636f6e73740540686561700000030000000200010002010000010402030000010404",
+"b 46585231070707626c6f626c65740672636f6e7374024062046261736503696e74037265660540686561700000050000000406000001000200030100000104020300000104040500000200020004010000010406",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/width-exact-region.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (ref int @heap)) @b)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

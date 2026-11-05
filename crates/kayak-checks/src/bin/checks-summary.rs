@@ -4,6 +4,7 @@
 //! usage: checks-summary cells [--bless | --bless-drop] [--why] [--list]
 //!                             [--regs-differ] [--regs-declined]
 //!        checks-summary checkers [--list KIND] [--dir DIR] [--why] [--summary]
+//!        checks-summary reps [--bless | --bless-drop] [--list KIND]
 //!
 //! `cells`: the tier 1 tests' findings (tests/cells.rs), in
 //! target/kayak-checks/cells/, for Fixpt's words and kayak's own. A
@@ -400,11 +401,97 @@ fn checkers(flags: &[String]) -> i32 {
     status
 }
 
+/// `reps`: kayak's reps against Fixpt's (tests/reps.rs, C352), in
+/// target/kayak-checks/reps/NAME.fixpt: the programs of each kind, and
+/// with `--list KIND` each named with why. Fails if a program was not run,
+/// or one in tests/reps-passing is no longer `same`; `--bless` rewrites
+/// that list from the programs `same` (dropping one only with
+/// `--bless-drop`).
+fn reps(flags: &[String]) -> i32 {
+    let has = |f: &str| flags.iter().any(|x| x == f);
+    let bless = has("--bless") || has("--bless-drop");
+    let listing = flags
+        .iter()
+        .position(|f| f == "--list")
+        .and_then(|i| flags.get(i + 1))
+        .cloned();
+    let mut programs = fixpt::programs();
+    programs.extend(fixpt::kayak_programs());
+    let dir = root().join("target").join("kayak-checks").join("reps");
+    let mut by: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    let mut missing = Vec::new();
+    for (name, _) in &programs {
+        match std::fs::read_to_string(dir.join(format!("{}.fixpt", name.replace('/', "%")))) {
+            Ok(t) => {
+                let (kind, why) = t.split_once('\n').unwrap_or((t.as_str(), ""));
+                by.entry(kind.to_string())
+                    .or_default()
+                    .push((name.clone(), why.to_string()));
+            }
+            Err(_) => missing.push(name.clone()),
+        }
+    }
+    let mut status = 0;
+    if !missing.is_empty() {
+        println!(
+            "reps: {} program(s) not run, the first {}",
+            missing.len(),
+            missing[0]
+        );
+        status = 1;
+    }
+    let list = root().join("tests").join("reps-passing");
+    let before: Vec<String> = std::fs::read_to_string(&list)
+        .map(|t| t.split_whitespace().map(String::from).collect())
+        .unwrap_or_default();
+    let mut same: Vec<String> = by
+        .get("same")
+        .map(|v| v.iter().map(|(n, _)| n.clone()).collect())
+        .unwrap_or_default();
+    same.sort();
+    let lost: Vec<&String> = before.iter().filter(|n| !same.contains(n)).collect();
+    let counts: Vec<String> = by.iter().map(|(k, v)| format!("{} {k}", v.len())).collect();
+    println!(
+        "reps against Fixpt's: {}; {} on tests/reps-passing",
+        counts.join(", "),
+        before.len()
+    );
+    if let Some(kind) = listing {
+        for (n, why) in by.get(&kind).cloned().unwrap_or_default() {
+            println!("{n}\n  {}", why.trim_end().replace('\n', "\n  "));
+        }
+    }
+    if bless {
+        if !lost.is_empty() && !has("--bless-drop") {
+            for n in &lost {
+                println!("reps: WOULD DROP  {n}");
+            }
+            println!(
+                "reps: --bless would drop {} program(s); nothing written. Fix them, or bless with --bless-drop.",
+                lost.len()
+            );
+            status = 1;
+        } else {
+            for n in &lost {
+                println!("reps: DROPPED  {n}");
+            }
+            std::fs::write(&list, same.join("\n") + "\n").unwrap();
+        }
+    } else {
+        for n in &lost {
+            println!("reps: NO LONGER FIXPT'S  {n}");
+            status = 1;
+        }
+    }
+    status
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let status = match args.first().map(String::as_str) {
         Some("cells") => cells(&args[1..]),
         Some("checkers") => checkers(&args[1..]),
+        Some("reps") => reps(&args[1..]),
         _ => {
             eprintln!(
                 "usage: checks-summary cells [--bless | --bless-drop] [--why] [--list] [--regs-differ] [--regs-declined]"

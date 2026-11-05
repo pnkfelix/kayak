@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"within-writes.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"x 46585231050503726566046261736503696e740672636f6e73740240780000030000000200010002010000010402030000010404",
+""
+],
+"err": [
+"fixpt: <programs>/attempt/within-writes.fx:4:21: an `attempt`'s body may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

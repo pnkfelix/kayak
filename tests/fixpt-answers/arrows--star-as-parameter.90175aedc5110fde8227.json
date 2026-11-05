@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"star-as-parameter.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/arrows/star-as-parameter.fx:3:17: `(->* (param …) result)` is only the type a definition declares (`define`, `define-rec`, `letrec`), its effect found from its `lambda`: here, write `->` or `subr`",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

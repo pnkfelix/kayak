@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"flat-proj.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"h 465852310a0a04706f6c7901660662696e64657204666c617404737562720863656c6c756c61720665666665637406706172616d73046261736503696e74000008000001010200010003020000020002060003000000040000040004000500060007050000000601000007000000080000010409",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-proj.fx:4:2: `f` is bound as a Flat, and the description given is not one",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

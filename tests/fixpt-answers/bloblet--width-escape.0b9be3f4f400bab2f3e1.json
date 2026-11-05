@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"width-escape.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"keep 4658523106060372656607626c6f626c65740672636f6e7374024062046261736503696e74000004000000020001000201000003060000020003020000010403040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/width-escape.fx:9:15: a one is expected here, and this is a (bloblet (fields int (ref int r)) @b)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

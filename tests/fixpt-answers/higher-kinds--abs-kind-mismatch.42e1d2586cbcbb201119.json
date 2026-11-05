@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"abs-kind-mismatch.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m 465852310a0a086d6f64756c656f6601660662696e646572023d3e04747970650564657363730476616c730178046261736503696e7400000700000101030001000400050200000200020600030000020003000304000000050000000600000204070006080000010409",
+""
+],
+"err": [
+"fixpt: <programs>/higher-kinds/abs-kind-mismatch.fx:7:15: `n` is declared a two: a two is expected here, and this is a (moduleof (abs f (=> (type) type)) (val x int))",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

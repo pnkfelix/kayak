@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"defines-twice.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"x 465852310202046261736504626f6f6c000001000000010401",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

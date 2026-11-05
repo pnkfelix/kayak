@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"poly-wrong-kind.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"app 465852310a0a04706f6c7901630662696e64657204636f6e7604737562720863656c6c756c61720665666665637406706172616d73046261736503696e7400000a0000010102000100030200000200020600030000000400000400040005000600090500000006010000070000020007000904000004010000000500080009070000010009080000010409",
+""
+],
+"err": [
+"fixpt: <programs>/conventions/poly-wrong-kind.fx:4:1: `c` is bound as a Conv, and the description given is not one",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

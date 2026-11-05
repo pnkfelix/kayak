@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"latent-alias-less.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"same 46585231070704737562720863656c6c756c61720665666665637406706172616d73046261736503696e7404626f6f6c00000600000004000100020003000501000000020100000300000200040004040000010405040000010406",
+""
+],
+"err": [
+"fixpt: <programs>/sizes/latent-alias-less.fx:6:55: argument 1 is a int, where a nat is expected",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

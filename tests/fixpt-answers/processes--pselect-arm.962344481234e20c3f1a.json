@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"pselect-arm.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"a 465852310505056963656c6c046261736503696e740672636f6e73740240630000030000000200010002010000010402030000010404",
+""
+],
+"err": [
+"fixpt: <programs>/processes/pselect-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)`, `((read-byte) name body …)`, `((process-output process) name body …)`, `((process-exit process) name body …)` or `((process-news) name body …)`",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

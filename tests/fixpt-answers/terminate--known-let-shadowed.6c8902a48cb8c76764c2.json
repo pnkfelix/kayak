@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"known-let-shadowed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"zero 465852310202046261736503696e74000001000000010401",
+""
+],
+"err": [
+"fixpt: <programs>/terminate/known-let-shadowed.fx:5:17: `omega` is declared a T: a T is expected here, and this is a (subr spin (T) int)",
+"  beyond what is expected, it has spin",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

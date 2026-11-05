@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"frozenlist.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"f 46585231080804737562720863656c6c756c61720665666665637406706172616d7306706169726f66046261736503696e740666726f7a656e0000070000000400010002000300050100000002010000030000010004040000040005000400060601050000010406070000010600",
+""
+],
+"err": [
+"fixpt: <programs>/recursive/frozenlist.fx:3:60: argument 1 is a (listof int @r), where a (listof int const) is expected",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

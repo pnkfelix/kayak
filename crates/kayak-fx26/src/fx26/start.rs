@@ -1826,6 +1826,37 @@ pub fn rep_lines_of(v: &'static Cv, ns: Strings) -> Strings {
     }
 }
 
+// The names a form defines, as `fixpt check --reps` lists them (C352): a
+// global's, a `define-rec`'s each, a module's, a datatype's constructors in
+// the order written, a generative type's `up-` and `down-` conversions.
+pub fn rep_names_of(f: &'static Sexp) -> Strings {
+    if module_def_p(f) {
+        kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
+    } else if (head_is_p(f, str_lit("define")) && i64_gt_eq(size(items(f)), 2i64) && has_prefix_p(binder_name(second(items(f))), str_lit("made--"))) {
+        nil::<Str>()
+    } else if (head_is_p(f, str_lit("define-datatype")) && i64_gt_eq(size(items(f)), 2i64)) {
+        map(lambda1s(move |vt: &'static Sexp| {
+            label_of(car(items(vt)))
+        }), cdr(cdr(items(f))))
+    } else if (head_is_p(f, str_lit("define-generative")) && i64_gt_eq(size(items(f)), 2i64)) {
+        let n = {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Lst(xs, a, b, c) => {
+                    sym_name(car(xs))
+                }
+                _ => {
+                    let other = tagcase_;
+                    sym_name(other)
+                }
+            }
+        };
+        kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+    } else {
+        defined_names_of(f)
+    }
+}
+
 // `--reps FILE` (C301): each definition's type as a rep, as kayak's checker
 // exports it, a line each, `NAME HEX`, or `NAME declined`.
 pub fn reps_lines(v: &'static Cv, forms: Sexps) -> Strings {
@@ -1835,7 +1866,16 @@ pub fn reps_lines(v: &'static Cv, forms: Sexps) -> Strings {
         let tagcase_ = check_tops(v, kayak_rt::heap_cons(car(forms), kayak_rt::nil()), nil::<&'static Typed>());
         match *tagcase_ {
             Elab::Elab(v2, found) => {
-                onto(rep_lines_of(v2, defined_names_of(car(forms))), reps_lines(v2, cdr(forms)))
+                onto(if module_def_p(car(forms)) {
+                    let n = binder_name(second(items(car(forms))));
+                    if has_prefix_p(n, str_lit("made--")) {
+                        nil::<Str>()
+                    } else {
+                        kayak_rt::heap_cons(string_append(n, string_append(str_lit(" "), scheme_rep_hex(v2, new_state(), scheme(nil::<Str>(), module_type_of(v2, n))))), kayak_rt::nil())
+                    }
+                } else {
+                    rep_lines_of(v2, rep_names_of(car(forms)))
+                }, reps_lines(v2, cdr(forms)))
             }
         }
     }

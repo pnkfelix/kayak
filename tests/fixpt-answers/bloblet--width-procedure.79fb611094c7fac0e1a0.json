@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"width-procedure.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b 46585231090907626c6f626c65740672636f6e7374024062046261736503696e7404737562720863656c6c756c61720665666665637406706172616d73000007000000040600000100020003010000010402030000010404050000040004000500060002060000000701000008000000",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/width-procedure.fx:6:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (subr pure () int)) @b)",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

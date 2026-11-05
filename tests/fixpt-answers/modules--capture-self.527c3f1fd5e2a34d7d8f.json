@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"capture-self.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"checker 465852310606086d6f64756c656f660564657363730476616c7307636865636b6572046261736503696e740000040000000200010002010000000200000204030003040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/modules/capture-self.fx:4:35: `checker` here is the module's own item, this one, not the `checker` bound outside it",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

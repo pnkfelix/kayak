@@ -86,6 +86,9 @@ step cargo run --release --quiet -p kayak-checks --bin checks-summary -- cells
 # only if kayak's accepts a program Fixpt's refuses; the rest is the
 # measure of §30.
 step cargo run --release --quiet -p kayak-checks --bin checks-summary -- checkers --summary
+# kayak's reps against Fixpt's (`fixpt check --reps`, tests/reps.rs, C352):
+# fails if a program on tests/reps-passing is no longer Fixpt's.
+step cargo run --release --quiet -p kayak-checks --bin checks-summary -- reps
 # Every answer kept was asked for in this check: the rest dropped, and the
 # answers stamped as the pin's.
 if [ -n "$clone" ]; then

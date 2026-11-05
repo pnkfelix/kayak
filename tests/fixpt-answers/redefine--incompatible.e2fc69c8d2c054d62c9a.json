@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"incompatible.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"n 465852310202046261736503696e74000001000000010401",
+"m 465852310202046261736503696e74000001000000010401",
+"p 465852310202046261736504626f6f6c000001000000010401",
+"n 465852310202046261736506737472696e67000001000000010401",
+"p 465852310202046261736504626f6f6c000001000000010401",
+""
+],
+"err": [
+"fixpt: <programs>/redefine/incompatible.fx:5:1: `m` is broken, since `n` was redefined (argument 1 is a string, where a int is expected): define it again to use it",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

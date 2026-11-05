@@ -789,6 +789,21 @@
                       (tagcase (car b) (bind (m sc w) (string-append (car ns) (string-append " " (scheme-rep-hex v (new-state) (tagcase sc (scheme (tvs t) (scheme tvs (mtypes-expanded v (new-state) t))))))))))
                   (rep-lines-of v (cdr ns))))))))
 
+"The names a form defines, as `fixpt check --reps` lists them (C352): a
+ global's, a `define-rec`'s each, a module's, a datatype's constructors in
+ the order written, a generative type's `up-` and `down-` conversions."
+(define rep-names-of (subr kfx (sexp) strings)
+  (lambda (f)
+    (cond ((module-def? f) (list (binder-name (second (items f)))))
+          ;; kayak's own globals of a load (C171), which Fixpt has none of.
+          ((and (head-is? f "define") (i64>= (size (items f)) 2) (has-prefix? (binder-name (second (items f))) "made--")) nil)
+          ((and (head-is? f "define-datatype") (i64>= (size (items f)) 2))
+           (map (lambda ((vt sexp)) (label-of (car (items vt)))) (cdr (cdr (items f)))))
+          ((and (head-is? f "define-generative") (i64>= (size (items f)) 2))
+           (let ((n (tagcase (second (items f)) (lst (xs a b c) (sym-name (car xs))) (else other (sym-name other)))))
+             (list (string-append "up-" n) (string-append "down-" n))))
+          (else (defined-names-of f)))))
+
 "`--reps FILE` (C301): each definition's type as a rep, as kayak's checker
  exports it, a line each, `NAME HEX`, or `NAME declined`."
 (define-rec
@@ -798,7 +813,14 @@
           nil
           (tagcase (check-tops v (list (car forms)) nil)
             (elab (v2 found)
-              (onto (rep-lines-of v2 (defined-names-of (car forms))) (reps-lines v2 (cdr forms)))))))))
+              (onto (if (module-def? (car forms))
+                        ;; A module's type as a value (C352), as Fixpt's rep of it.
+                        (let ((n (binder-name (second (items (car forms))))))
+                          (if (has-prefix? n "made--")
+                              nil
+                              (list (string-append n (string-append " " (scheme-rep-hex v2 (new-state) (scheme nil (module-type-of v2 n))))))))
+                        (rep-lines-of v2 (rep-names-of (car forms))))
+                    (reps-lines v2 (cdr forms)))))))))
 
 (define reps-command (subr (maxeff running working (alloc @heap) (read @heap)) (strings) int)
   (lambda (paths)

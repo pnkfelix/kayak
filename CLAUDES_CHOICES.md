@@ -9615,3 +9615,29 @@ C350). Carried over:
   which kayak's export writes itself); the mark moved.
 The new Fixpt programs (`allof/`, `anyof/`, `unions/oneof-sums*.fx`) are
 not yet kayak's; no passing list dropped.
+
+## C352. Reps against Fixpt's by `fixpt check --reps` (2026-11-05)
+
+The user's "Adapt your workflow to fit its addition of `check --reps`"
+(Fixpt 13114974, kayak's request C350). C346's scratch tool, which
+linked Fixpt's crates, is gone; instead:
+- **`tests/reps.rs`** asks Fixpt `--machine fx-cells-rsinterp check --reps`
+  (through `fixpt::ask`, its answers kept as every other's): a cellular
+  machine, since a plain `subr` takes the machine's convention, the
+  default's `native`, kayak's checker's `cellular`. Each program is
+  `same` (every name's rep the same bytes, or both declined), `differ`,
+  `refused` (kayak refuses what Fixpt takes), `both` or `fixpt-refuses`,
+  kept in target/kayak-checks/reps/NAME.fixpt; it fails if a program on
+  **`tests/reps-passing`** (grows only) is no longer `same`.
+- **`checks-summary reps`** counts them (a step of the check), `--list
+  KIND` names them, `--bless` grows the list (`--bless-drop` to drop).
+- **`kayak-fx26 --reps`** lists names as Fixpt's does (`rep-names-of`):
+  a module's (its type as a value, `module-type-of`), a datatype's
+  constructors, a generative type's `up-` and `down-`; not kayak's own
+  globals of a load (`made--`).
+Now: 431 programs same (on the list), 63 differ, 28 refused (the logical
+types' 15, and four whose module's type as a value kayak cannot read,
+`include-types.fx`, `include-types-inside.fx`, `include-family.fx`,
+`import-list-and-family.fx`), 413 refused by both. Most of the 63 are
+modules' reps, compared now that a module's name is listed: abstract
+types, descriptions, their order.

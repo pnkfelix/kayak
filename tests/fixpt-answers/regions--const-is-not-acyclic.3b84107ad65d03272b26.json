@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"const-is-not-acyclic.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"len 465852310c0c04737562720863656c6c756c617206656666656374047370696e047265616406676c6f62616c036c656e06706172616d7306706169726f66046261736503696e740666726f7a656e00000a00000004000100020006000801000000020100020003000403000000040000010005050000010406070000020007000808000004000800070009060109000001040a0b0000010601",
+""
+],
+"err": [
+"fixpt: <programs>/regions/const-is-not-acyclic.fx:6:6: argument 1 is a (listof int const), where a (listof int acyclic) is expected",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

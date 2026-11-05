@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"include-not-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"n 465852310202046261736503696e74000001000000010401",
+""
+],
+"err": [
+"fixpt: <programs>/top-include/include-not-module.fx:3:10: `include` includes a module, and `n` is a int",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}

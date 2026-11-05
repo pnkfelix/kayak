@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"budget-past.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"p 465852310c0c0970726f647563746f660131013201330134013501360137056f6e656f66046261736503696e7404626f6f6c0000040000000e04010001040200010403000104040001040500010406000104070001080000020002000309000001040a09000001040b",
+""
+],
+"err": [
+"fixpt: <programs>/anyof/budget-past.fx:137:15: `q` is declared a all: a all is expected here, and this is a (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib) (7 ib))",
+""
+],
+"by": [
+"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+]
+}
+]
+}
