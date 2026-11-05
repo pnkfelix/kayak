@@ -9567,3 +9567,23 @@ written stays `@heap`, a default, not the heap's place. Reps: `(heap)`,
 read back as `heap` (`with-shadows-applied.fx` now Fixpt's rep). Test:
 `tests/fx26-kayak/checker/heap-is-not-at-heap.fx`, refused by both. No
 program's answer changed.
+
+## C349. A place binder's kind kept (2026-11-05)
+
+The user's next, after C348. A binder declared `(p place)` was kept as any
+region binder, `'p`, its kind gone once read (the parse's `%place 'p`
+was the body's alone), so its rep said `(binder (region) #f)` where
+Fixpt's says `(place)`, and it printed `(p region)`. Now:
+- **A definition's scheme** keeps `%place 'p` among its binders' marks,
+  after them, as `%distinct 'r` is (C204); `projected`, which a `proj`
+  walks, stops at a mark as `instantiate-vars` does (a mark there crashed
+  it, `cdr: nil`). Renaming the binder itself (`'p%p`) was tried and
+  undone: a body's written names are found among the scheme's binders.
+- **A `poly` type's binder** is named `'p@P%p`, as a distinct one `'r@P%d`.
+- **Printed** `(p place)` (`binder-kind-shown`), and its **rep's** binder
+  `(binder (place) #f)` (`scheme-poly`, marks to marked binders); the
+  import spells one back `'p@rK%p`.
+`binder-kind` still says `region` for a place, as the checker's other
+uses of it want (a place is a region). 1262 of the 1286 definitions'
+reps are Fixpt's; left, C347's list but the places, and a region bound
+within a place (`(binder (region) #f #0.0)`, `caller-place.fx`).

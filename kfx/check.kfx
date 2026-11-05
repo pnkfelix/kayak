@@ -1088,8 +1088,10 @@
 
 (define written-binder (subr kfx (string) string)
   (lambda (n)
-    "A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`."
-    (let ((cs (string-chars (cond ((has-prefix? n "'") (after-prefix n "'")) ((has-prefix? n "#") (after-prefix n "#"))
+    "A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`, a place's
+     `'p%p` `p` (C349)."
+    (let ((cs (string-chars (cond ((and (has-prefix? n "'") (has-suffix? n "%p") (not (has-char-in? n #\@))) (list->string (reverse (cdr (cdr (reverse (cdr (string-chars n))))))))
+                                  ((has-prefix? n "'") (after-prefix n "'")) ((has-prefix? n "#") (after-prefix n "#"))
                                   ((has-prefix? n "~") (after-prefix n "~"))
                                   ((has-prefix? n "^") (list->string (after-caret (cdr (string-chars n)))))
                                   (else n)))))
@@ -1173,7 +1175,10 @@
       (if (has-app? t) (reduced t) t))))
 
 (define binder-kind-shown (subr kfx (string) string)
-  (lambda (n) (if (and (has-prefix? n "'") (has-suffix? n "%d")) "region distinct" (binder-kind n))))
+  (lambda (n)
+    (cond ((and (has-prefix? n "'") (has-suffix? n "%d")) "region distinct")
+          ((and (has-prefix? n "'") (has-suffix? n "%p")) "place")
+          (else (binder-kind n)))))
 
 (define-rec
   (binders-shown (subr kfx (strings) string)
@@ -2992,9 +2997,13 @@
                                                                     nil))
                                              bs)))
                         (body (parse-type v (onto places (onto (map (lambda ((n string)) (string-append "%distinct " n)) distinct) (onto names tvars))) (third xs)))
-                        (at-pos (lambda ((n string)) (string-append n (string-append "@" (string-append (i64->string pos) (if (string-member? n distinct) "%d" ""))))))
-                        (renamed (substitute (map (lambda ((n string)) (string-append n (string-append "@" (i64->string pos)))) distinct)
-                                             (map (lambda ((n string)) (ty-var (at-pos n))) distinct)
+                        ;; A place binder marked `%p` (C349), as a distinct one `%d`:
+                        ;; Fixpt's kind `place`, which its rep and its printing say.
+                        (place-names (map (lambda ((m string)) (after-prefix m "%place ")) places))
+                        (marked (onto distinct place-names))
+                        (at-pos (lambda ((n string)) (string-append n (string-append "@" (string-append (i64->string pos) (cond ((string-member? n distinct) "%d") ((string-member? n place-names) "%p") (else "")))))))
+                        (renamed (substitute (map (lambda ((n string)) (string-append n (string-append "@" (i64->string pos)))) marked)
+                                             (map (lambda ((n string)) (ty-var (at-pos n))) marked)
                                              (fold-renames names pos body))))
                    (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (at-pos n))) names)
                                           (list renamed)))))
@@ -3712,7 +3721,10 @@
   (lambda (v t0 own)
     (let* ((t (flat-poly t0))
            (tvars (poly-binders v t own)))
-      (scheme tvars (parse-type v (onto (place-marks t) tvars) (if (head-is? t "poly") (third (items t)) t))))))
+      ;; Its place binders' marks kept with its binders (C349), as `distinct`'s
+      ;; are: Fixpt's kind `place`, which its rep and its printing say.
+      (scheme (onto tvars (filter (lambda ((m string)) (has-prefix? m "%place ")) (place-marks t)))
+              (parse-type v (onto (place-marks t) tvars) (if (head-is? t "poly") (third (items t)) t))))))
 
 (define parse-scheme (subr kfx (cv sexp) scheme)
   (lambda (v t) (parse-scheme-of v t #t)))

@@ -2442,9 +2442,12 @@ pub fn taken_before(cs: Chars, c: char) -> Chars {
     }
 }
 
-/// A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`.
+/// A poly type's binder as written: `'r@P` is `r`, `#n@P` `n`, a place's
+/// `'p%p` `p` (C349).
 pub fn written_binder(n: Str) -> Str {
-    let cs = string_chars(if has_prefix_p(n, str_lit("'")) {
+    let cs = string_chars(if (has_prefix_p(n, str_lit("'")) && has_suffix_p(n, str_lit("%p")) && not(has_char_in_p(n, '@'))) {
+        list_to_string(reverse(cdr(cdr(reverse(cdr(string_chars(n)))))))
+    } else if has_prefix_p(n, str_lit("'")) {
         after_prefix(n, str_lit("'"))
     } else if has_prefix_p(n, str_lit("#")) {
         after_prefix(n, str_lit("#"))
@@ -2628,10 +2631,11 @@ pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
     }
 }
 
-#[inline]
 pub fn binder_kind_shown(n: Str) -> Str {
     if (has_prefix_p(n, str_lit("'")) && has_suffix_p(n, str_lit("%d"))) {
         str_lit("region distinct")
+    } else if (has_prefix_p(n, str_lit("'")) && has_suffix_p(n, str_lit("%p"))) {
+        str_lit("place")
     } else {
         binder_kind(n)
     }
@@ -6774,18 +6778,24 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     let body = parse_type(v, onto(places, onto(map(lambda1s(move |n: Str| {
                         string_append(str_lit("%distinct "), n)
                     }), distinct), onto(names, tvars))), third(xs));
+                    let place_names = map(lambda1s(move |m: Str| {
+                        after_prefix(m, str_lit("%place "))
+                    }), places);
+                    let marked = onto(distinct, place_names);
                     let at_pos = lambda1s(move |n: Str| {
                         string_append(n, string_append(str_lit("@"), string_append(i64_to_string(pos), if string_member_p(n, distinct) {
                             str_lit("%d")
+                        } else if string_member_p(n, place_names) {
+                            str_lit("%p")
                         } else {
                             str_lit("")
                         })))
                     });
                     let renamed = substitute(map(lambda1s(move |n: Str| {
                         string_append(n, string_append(str_lit("@"), i64_to_string(pos)))
-                    }), distinct), map(lambda1s(move |n: Str| {
+                    }), marked), map(lambda1s(move |n: Str| {
                         ty_var(at_pos(n))
-                    }), distinct), fold_renames(names, pos, body));
+                    }), marked), fold_renames(names, pos, body));
                     return ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
                         ty_var(at_pos(n))
                     }), names), kayak_rt::heap_cons(renamed, kayak_rt::nil())));
@@ -8381,7 +8391,9 @@ pub fn flat_poly(t: &'static Sexp) -> &'static Sexp {
 pub fn parse_scheme_of(v: &'static Cv, t0: &'static Sexp, own: bool) -> &'static Scheme {
     let t = flat_poly(t0);
     let tvars = poly_binders(v, t, own);
-    scheme(tvars, parse_type(v, onto(place_marks(t), tvars), if head_is_p(t, str_lit("poly")) {
+    scheme(onto(tvars, filter(lambda1s(move |m: Str| {
+        has_prefix_p(m, str_lit("%place "))
+    }), place_marks(t))), parse_type(v, onto(place_marks(t), tvars), if head_is_p(t, str_lit("poly")) {
         third(items(t))
     } else {
         t

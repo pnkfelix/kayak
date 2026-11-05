@@ -9906,7 +9906,7 @@ pub mod expressions {
 
     pub fn projected(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps, mut t: &'static Ty) -> &'static Ty {
         loop {
-            if null_p(tvars) {
+            if (null_p(tvars) || has_prefix_p(car(tvars), str_lit("%"))) {
                 if has_app_p(t) {
                     return reduced(t);
                 } else {

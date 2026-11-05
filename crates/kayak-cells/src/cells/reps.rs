@@ -109,10 +109,11 @@ pub fn rx_reserve(x: &'static Rx) -> &'static Rxi {
 // A binder's name as written, as Fixpt's reps name binders (C346): kayak's
 // marks of its kind, its place (`@P`) and its distinctness gone, which its
 // binder node says; a spec's unnamed one empty.
-#[inline]
 pub fn rp_binder_written(b: Str) -> Str {
     if string_eq_p(b, str_lit("%none")) {
         str_lit("")
+    } else if (has_suffix_p(b, str_lit("%p")) || has_suffix_p(b, str_lit("%d"))) {
+        written_binder(list_to_string(reverse(cdr(cdr(reverse(string_chars(b)))))))
     } else {
         written_binder(b)
     }
@@ -508,7 +509,11 @@ pub fn rx_binder_nodes(x: &'static Rx, ns: Strings) -> &'static Rxs {
     if null_p(ns) {
         rxs(x, nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>())
     } else {
-        let tagcase_ = rx_kind_node(x, binder_kind(car(ns)));
+        let tagcase_ = rx_kind_node(x, if (has_prefix_p(car(ns), str_lit("'")) && has_suffix_p(car(ns), str_lit("%p"))) {
+            str_lit("place")
+        } else {
+            binder_kind(car(ns))
+        });
         match *tagcase_ {
             Rxa::Rxa(x, k) => {
                 let tagcase_ = rx_node(x, str_lit("binder"), false, the::<RpOperands>(kayak_rt::heap_cons(k, kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(has_suffix_p(car(ns), str_lit("%d"))))), kayak_rt::nil()))));
@@ -2566,6 +2571,8 @@ pub fn ri_binders_spelt(ns: RpNodes, k: Int, bs: List<Symbol>, r#as: RpOperands)
         });
         kayak_rt::heap_cons(string_to_symbol(string_append(binder_named(kind, symbol_to_string(car(bs))), string_append(str_lit("@r"), string_append(int_to_string(k), if distinct {
             str_lit("%d")
+        } else if string_eq_p(kind, str_lit("place")) {
+            str_lit("%p")
         } else {
             str_lit("")
         })))), ri_binders_spelt(ns, k, cdr(bs), cdr(r#as)))
@@ -3744,6 +3751,34 @@ pub fn ty_declined(v: &'static Cv, s: &'static St, t: &'static Ty) -> Str {
     }
 }
 
+// A scheme's type as a `poly` of its binders (C349): its marks (`%place
+// 'p`, `%distinct 'r`) not binders but each its binder marked, `'p%p` a
+// place, `'r%d` distinct, as a `poly` type's binders are.
+pub fn scheme_poly(tvars: Strings, t: &'static Ty) -> &'static Ty {
+    let bs = filter(lambda1s(move |n: Str| {
+        not(has_prefix_p(n, str_lit("%")))
+    }), tvars);
+    let mark = lambda1s(move |n: Str| {
+        if string_member_p(string_append(str_lit("%place "), n), tvars) {
+            string_append(n, str_lit("%p"))
+        } else if string_member_p(string_append(str_lit("%distinct "), n), tvars) {
+            string_append(n, str_lit("%d"))
+        } else {
+            n
+        }
+    });
+    let marked = map(mark, bs);
+    if null_p(bs) {
+        t
+    } else {
+        ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
+            ty_var(n)
+        }), marked), kayak_rt::heap_cons(substitute(bs, map(lambda1s(move |n: Str| {
+            ty_var(n)
+        }), marked), t), kayak_rt::nil())))
+    }
+}
+
 // A definition's scheme as a rep, its binary form in hexadecimal, and whether
 // it comes back as itself: imported, and exported again, the same rep
 // (`same`) or not (`differs`, and the second); or `declined` if a part of it
@@ -3752,13 +3787,7 @@ pub fn scheme_rep_hex(v: &'static Cv, s: &'static St, sc: &'static Scheme) -> St
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            let t2 = if null_p(tvars) {
-                t
-            } else {
-                ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
-                    ty_var(n)
-                }), tvars), kayak_rt::heap_cons(t, kayak_rt::nil())))
-            };
+            let t2 = scheme_poly(tvars, t);
             let got = (&ty_rep_in)(v, s, t2);
             if null_p(got) {
                 string_append(str_lit("declined: "), ty_declined(v, s, t2))

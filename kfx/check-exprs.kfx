@@ -4368,7 +4368,9 @@
 
       (projected (subr kfx (cv strings sexps ty) ty)
         (lambda (v tvars args t)
-          (if (null? tvars)
+          ;; A binder's mark (`%distinct 'r`, `%place 'p`, C349), after the
+          ;; binders, as `instantiate-vars` reads them: no argument.
+          (if (or (null? tvars) (has-prefix? (car tvars) "%"))
               (if (has-app? t) (reduced t) t)
               (projected v (cdr tvars) (cdr args)
                          (replace-var (car tvars)

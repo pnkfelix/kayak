@@ -44,7 +44,10 @@
  marks of its kind, its place (`@P`) and its distinctness gone, which its
  binder node says; a spec's unnamed one empty."
 (define rp-binder-written (subr kfx (string) string)
-  (lambda (b) (if (string=? b "%none") "" (written-binder b))))
+  (lambda (b)
+    (cond ((string=? b "%none") "")
+          ((or (has-suffix? b "%p") (has-suffix? b "%d")) (written-binder (list->string (reverse (cdr (cdr (reverse (string-chars b))))))))
+          (else (written-binder b)))))
 
 (define rx-fill (subr kfx (rx i64 string bool strings rp-operands) rx)
   (lambda (x slot head set binders args)
@@ -229,7 +232,7 @@
       "Each binder's node: `(binder KIND distinct)`."
       (if (null? ns)
           (rxs x nil)
-          (tagcase (rx-kind-node x (binder-kind (car ns)))
+          (tagcase (rx-kind-node x (if (and (has-prefix? (car ns) "'") (has-suffix? (car ns) "%p")) "place" (binder-kind (car ns))))
             (rxa (x k)
               (tagcase (rx-node x "binder" #f (the rp-operands (list k (the rp-operand (sum flag (has-suffix? (car ns) "%d"))))))
                 (rxa (x b) (tagcase (rx-binder-nodes x (cdr ns)) (rxs (x bs) (rxs x (cons b bs))))))))))))
@@ -872,7 +875,7 @@
                  (distinct (and (not (null? bn)) (not (null? (cdr (extract (car bn) 5))))
                                 (tagcase (car (cdr (extract (car bn) 5))) (flag f f) (else other #f)))))
             (cons (string->symbol (string-append (binder-named kind (symbol->string (car bs)))
-                                                 (string-append "@r" (string-append (int->string k) (if distinct "%d" "")))))
+                                                 (string-append "@r" (string-append (int->string k) (cond (distinct "%d") ((string=? kind "place") "%p") (else ""))))))
                   (ri-binders-spelt ns k (cdr bs) (cdr as))))))))
 
 (define-rec
@@ -1240,6 +1243,22 @@
 (define ty-declined (subr kfx (cv st ty) string)
   (lambda (v s t) (tagcase (rx-ty s (rx-in v) nil t) (rxa (x root) (tagcase x (rx (ns k hs d e) d))))))
 
+"A scheme's type as a `poly` of its binders (C349): its marks (`%place
+ 'p`, `%distinct 'r`) not binders but each its binder marked, `'p%p` a
+ place, `'r%d` distinct, as a `poly` type's binders are."
+(define scheme-poly (subr kfx (strings ty) ty)
+  (lambda (tvars t)
+    (let* ((bs (filter (lambda ((n string)) (not (has-prefix? n "%"))) tvars))
+           (mark (lambda ((n string))
+                   (cond ((string-member? (string-append "%place " n) tvars) (string-append n "%p"))
+                         ((string-member? (string-append "%distinct " n) tvars) (string-append n "%d"))
+                         (else n))))
+           (marked (map mark bs)))
+      (if (null? bs)
+          t
+          (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var n)) marked)
+                                 (list (substitute bs (map (lambda ((n string)) (ty-var n)) marked) t))))))))
+
 "A definition's scheme as a rep, its binary form in hexadecimal, and whether
  it comes back as itself: imported, and exported again, the same rep
  (`same`) or not (`differs`, and the second); or `declined` if a part of it
@@ -1248,7 +1267,7 @@
   (lambda (v s sc)
     (tagcase sc
       (scheme (tvars t)
-        (let* ((t2 (if (null? tvars) t (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var n)) tvars) (list t)))))
+        (let* ((t2 (scheme-poly tvars t))
                (got ((proj ty-rep-in @heap) v s t2)))
           (if (null? got)
               (string-append "declined: " (ty-declined v s t2))
