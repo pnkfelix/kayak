@@ -9,6 +9,7 @@
 //! And by tier 1 (C337, `docs/research/compiled-stage.md`'s (a)): the
 //! program's words with `(main)` last (`kayak-fx26 --cells-run`), run by
 //! `kayak-cells --main`, its staged code compiled to cells where it runs.
+//! Under every tier (`tiers`), each of which runs staged words as cells.
 //! It fails if a program in tests/stage-cells-passing no longer prints what
 //! Fixpt prints there; what it found is kept beside the engine's, `NAME.cells`.
 
@@ -18,6 +19,27 @@ use std::process::Command;
 use std::time::Duration;
 
 const LIMIT: Duration = Duration::from_secs(60);
+
+/// The ways tier 1's words are run (C337, step 3): tier 1, and the tiers
+/// past it, each of which runs staged words as cells; the hand machine's
+/// only where it runs, as the cells test has them; and collections at
+/// every safepoint.
+fn tiers() -> Vec<Vec<&'static str>> {
+    let hand = matches!(
+        (std::env::consts::ARCH, std::env::consts::OS),
+        ("aarch64", "macos") | ("x86_64", "linux")
+    );
+    let mut ways = vec![vec![], vec!["--regs"], vec!["--gc-stress"]];
+    if hand {
+        ways.extend([
+            vec!["--hand"],
+            vec!["--compiled"],
+            vec!["--regs", "--compiled"],
+            vec!["--regs", "--direct"],
+        ]);
+    }
+    ways
+}
 
 fn main() {
     let out = root().join("target").join("kayak-checks").join("stage");
@@ -123,16 +145,22 @@ fn main() {
                 } else {
                     let tmp = out.join(format!("{}.listing", label.replace('/', "%")));
                     std::fs::write(&tmp, &made.stdout).map_err(|e| e.to_string())?;
-                    let ran = fixpt::run(
-                        Command::new(release_bin("kayak-cells"))
-                            .arg(&tmp)
-                            .arg("--main"),
-                        Some(LIMIT),
-                    );
-                    (
-                        ran.code == theirs_code && ran.stdout == theirs,
-                        format!("{}{}", ran.stdout, ran.stderr),
-                    )
+                    let mut said = String::new();
+                    let mut all = true;
+                    for way in tiers() {
+                        let ran = fixpt::run(
+                            Command::new(release_bin("kayak-cells"))
+                                .arg(&tmp)
+                                .arg("--main")
+                                .args(&way),
+                            Some(LIMIT),
+                        );
+                        if !(ran.code == theirs_code && ran.stdout == theirs) {
+                            all = false;
+                            said.push_str(&format!("{:?}:\n{}{}", way, ran.stdout, ran.stderr));
+                        }
+                    }
+                    (all, said)
                 };
                 std::fs::write(
                     out.join(format!("{}.cells", label.replace('/', "%"))),

@@ -9319,3 +9319,15 @@ tier 1's program holds (C335).
   checked. The other ten need evidence (`%reify`, bounds; step 4) or
   sessions (step 5). Staged words run as cells under any tier; the other
   tiers are step 3.
+
+## C338. Staged words under every tier (2026-11-04; compiled stage (a), step 3)
+
+What a stage compiles runs as cells whatever tier runs the program: tier
+2's hand machine hands back what it lacks, and tiers 4 to 6 compile only
+what they loaded, so a stage's words, read in later, are run by tier 1's
+cells. The stage test now runs each staging program seven ways
+(`tiers`): tier 1, `--regs`, `--gc-stress`, and, where the hand machine
+runs (x86_64 Linux, arm64 macOS, as the cells test has it), `--hand`,
+`--compiled`, `--regs --compiled`, `--regs --direct`; each must print
+what Fixpt prints. The 13 of C337 do, every way. Staged words compiled
+to machine code stay later (the note's step 6, after Fixpt's 516abc8e).

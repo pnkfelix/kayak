@@ -135,7 +135,8 @@ apart from this (question 4).
 
 Status (2026-11-04): (a) chosen, the user's ("Start on (a)"), questions 1
 to 3 taken as leaned; step 1 done (C335); the shared half of staging
-(C336); step 2 done (C337), 13 of Fixpt's 23 stage programs on tier 1.
+(C336); step 2 done (C337), 13 of Fixpt's 23 stage programs on tier 1;
+step 3 done (C338), the same under every tier.
 
 1. **The front end in a cells program**: rename the clashes, build the
    combined unit, and measure its build time and binary size. No behaviour
