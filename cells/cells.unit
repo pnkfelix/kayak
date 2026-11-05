@@ -38,5 +38,6 @@ cprims.kfx
 listing-reader.kfx
 hand.kfx
 hand-x64.kfx
+stage.kfx
 machine.kfx
 main.kfx

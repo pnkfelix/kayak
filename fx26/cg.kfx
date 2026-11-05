@@ -755,6 +755,15 @@
             ;; (not simple; a node counted).
             ((string=? h "the") (x-proj (parse-x (car (cdr (cdr xs)))) a))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
+            ((and (string=? h "%stage") (i64= (size xs) 6))
+             "`stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
+              the code, the evidence given, and what the checker noted, its rep's
+              text and the evidence's names, as the engine's lowering writes it."
+             (let ((rest (cdr (cdr (cdr xs)))))
+               (x-app (x-var "%kayak-stage-run" a)
+                      (list (parse-x (car rest)) (parse-x (second rest)) (parse-x (third rest))
+                            (x-str (fact-text (get cg-facts) f a "stage-rep ") a) (x-str (fact-text (get cg-facts) f a "stage-given ") a))
+                      a)))
             ((member-of? h process-heads)
              "A form of processes, a call of the scheduler's (C219), as Fixpt's
               parser makes it."
@@ -1985,6 +1994,7 @@
            (c-prim c name n))
           ;; A conversion (C230, `converted-x`): Fixpt's primitive itself.
           ((string=? name "%fx26-convert") (c-prim c name n))
+          ((string=? name "%kayak-stage-run") (c-prim c name n))
           ((std-eq-name? name) (c-op c "eq"))
           (else
            (let ((p (std-primitive name)))

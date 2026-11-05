@@ -1491,3 +1491,66 @@ pub fn listing_words_x(text: Str) -> i64 {
     }
 }
 
+/// The blocks of `bs` whose words the heap has none of yet; the names it
+/// has, onto `had`, in what is returned's place: see `listing-added!`.
+pub fn blocks_named_anew(mut bs: List<&'static Block>, mut out: List<&'static Block>, mut had: Strings) -> List<&'static Block> {
+    loop {
+        if null_p(bs) {
+            return the::<List<&'static Block>>(reverse(out));
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Block::Block(n, c, e, is) => {
+                    if i64_eq(lookup(get(words()), n), 0i64) {
+                        (bs, out) = (cdr(bs), kayak_rt::heap_cons(car(bs), out));
+                        continue;
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn names_had(mut bs: List<&'static Block>, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(bs) {
+            return acc;
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Block::Block(n, c, e, is) => {
+                    (bs, acc) = (cdr(bs), if i64_eq(lookup(get(words()), n), 0i64) {
+                        acc
+                    } else {
+                        kayak_rt::heap_cons(n, acc)
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// The words of a listing read into the running program (C337: a stage's):
+/// each the heap has none of by its name, made and written; one it has,
+/// its own `program` and the standard words both listings hold, left as it
+/// is, so that nothing running changes.
+pub fn listing_added_x(text: Str) -> () {
+    let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
+    let u = tables_read_x(ls, str_lit(""));
+    let all = blocks(ls, nil::<&'static Block>(), 0i64);
+    let bs = distinct_blocks(all, nil::<&'static Block>());
+    let had = names_had(bs, nil::<Str>());
+    words_made_x(blocks_named_anew(bs, nil::<&'static Block>(), nil::<Str>()));
+    blocks_written_x(all, had);
+    literals_checked_x(get(literals()));
+    if get(regs_on()) {
+        twins_linked_x(get(register_words()))
+    } else {
+        ()
+    }
+}
+

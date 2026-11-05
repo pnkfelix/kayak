@@ -163,6 +163,8 @@
                                                ARGs, its low byte the status
        kayak-fx26 --cells FILE ...             the program's cellular words,
                                                as `fixpt compile` lists its
+       kayak-fx26 --cells-run FILE ...         the same, (main) last, for
+                                               `kayak-cells --main`
        kayak-fx26 --keys FILE                  a REPL session from a script of
                                                keys (tests/repl/)
        kayak-fx26 --help                       this
@@ -192,8 +194,15 @@ and where the time went.
         ((null? paths)
          (begin (write-err usage) (exit 2) 2))
         ;; The program's cellular words, as Fixpt lists its (C133).
-        ((string=? (car as) "--cells")
-         (let* ((forms (with-processes (read-files (cdr as)))) (checked (check-program-as forms sys)))
+        ((or (string=? (car as) "--cells") (string=? (car as) "--cells-run"))
+         "`--cells-run`: the words with `(main)` after the program's forms, if it
+          has a `main`, for `kayak-cells --main` to run as `fixpt run` runs it,
+          its value the exit status (C337)."
+         (let* ((read (with-processes (read-files (cdr as))))
+                (forms (if (and (string=? (car as) "--cells-run") (string-member? "main" (global-names read)))
+                           (onto read (list (sx (list (sy "main")))))
+                           read))
+                (checked (check-program-as forms sys)))
            (tagcase checked
              (verdict (found fs) (begin (compile-cells forms fs) (say-each (cells-listing)) 0)))))
         (else

@@ -62,6 +62,8 @@ pub mod hand;
 pub use hand::*;
 pub mod hand_x64;
 pub use hand_x64::*;
+pub mod stage;
+pub use stage::*;
 pub mod machine;
 pub use machine::*;
 pub mod main;

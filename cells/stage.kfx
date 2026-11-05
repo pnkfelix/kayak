@@ -1,0 +1,63 @@
+"stage.kfx: `stage` on tier 1 (docs/research/compiled-stage.md, (a);
+ C337), as Fixpt's compiled machines have it (`stage.rs`): the code a
+ program gives, a datum, checked as the program runs against the rep the
+ checker noted at the stage (staging.kfx, the engine's too), in a worker
+ first; then compiled to cells by kayak's own compiler, which this program
+ holds (C335), its listing read into the running heap, and the word of
+ its thunk made a closure over the module: `(sum ok THUNK)`; or
+ `(sum failed WHY)`. Staged words run as cells (tier 1), whatever tier
+ runs the program."
+
+"Each stage's global named apart, `%stage-K`; its words are named by its
+ lambdas' places, which are each stage's own (staging.kfx's `stage-at!`)."
+(define stage-count (ref i64 @c) (new 0))
+
+(define-rec
+  (word-suffixed (subr cread ((listof named-slot @c) string) i64)
+    (lambda (ws suf)
+      "The newest word whose name ends `suf`, or 0."
+      (cond ((null? ws) 0)
+            ((tagcase (car ws) (named-slot (n i) (has-suffix? n suf))) (named-value (car ws)))
+            (else (word-suffixed (cdr ws) suf))))))
+
+(define-rec
+  (lines-joined (subr kfx (strings string) string)
+    (lambda (ls acc) (if (null? ls) acc (lines-joined (cdr ls) (string-append acc (string-append (car ls) "\n")))))))
+
+(define rep-of-text! (subr calloc (string) i64)
+  (lambda (text)
+    "A rep's binary form, a bytevector of the heap, from the text of its
+     nodes the checker noted (`stage-rep`), as the engine's loading makes
+     it (C305)."
+    (tagcase (rp-nodes-of-text text)
+      (rexp (ns hs root d)
+        (kfx-bytes-heap! (the (bytevectorof @c) (rep-of-nodes ns (map (lambda ((h string)) (string->symbol h)) hs) root)))))))
+
+(define stage-run-cells! (subr cm (i64 i64 i64 i64 i64) i64)
+  (lambda (m code given rep-text names)
+    "`(%kayak-stage-run m code given REP NAMES)`, as the engine's
+     `stage-run!`: the code checked against the rep filled from the evidence
+     given (C307), compiled as `(define %stage-K (lambda (stage-module)
+     (lambda () (with stage-module CODE))))`, the listing read, and the inner
+     lambda's word, the thunk's, named by its body's place (as kayak's
+     compiler names a lambda's word), made a closure over `m`."
+    (let* ((t ((proj rep-ty @c) (rep-filled! (rep-of-text! (string-text rep-text)) given (string-text names))))
+           (thunk (staged-thunk (code-sexp! code)))
+           (prog (staged-program thunk))
+           (why (stage-worked prog t)))
+      (if (not (string=? why ""))
+          (refused-word! why)
+          (let* ((s (stage-checked prog t))
+                 (fs (tagcase s (st (sbs k fs ns) fs)))
+                 (k (get stage-count))
+                 (name (string-append "%stage-" (i64->string k)))
+                 (form (lst (list (sym "define" stage-file (stage-at!)) (sym name stage-file (stage-at!)) prog) stage-file 1 (stage-at!))))
+            (begin
+              (set stage-count (i64+ k 1))
+              (compile-cells (list form) fs)
+              (listing-added! (lines-joined (cells-listing) ""))
+              (let ((w (word-suffixed (get words) (string-append "/lambda@" (i64->string (datum-pos (last (items thunk))))))))
+                (if (i64= w 0)
+                    (stage-failed-word! "refused" "staged code: compiled to no thunk")
+                    (let ((c (make-bloblet! k-closure 2 0 #t #f)))
+                      (begin (slot-set! c f-word w) (slot-set! c f-free0 m) (staged-sum! "ok" c)))))))))))

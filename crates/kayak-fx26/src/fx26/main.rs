@@ -279,7 +279,7 @@ pub fn load_x(gs: Strings) -> () {
 
 #[inline]
 pub fn usage() -> Str {
-    str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --cells FILE ...             the program's cellular words,\n                                               as `fixpt compile` lists its\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
+    str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --cells FILE ...             the program's cellular words,\n                                               as `fixpt compile` lists its\n       kayak-fx26 --cells-run FILE ...         the same, (main) last, for\n                                               `kayak-cells --main`\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
 }
 
 // The engine run on files (`kayak-fx26 FILE ...`), as `main` (start.kfx) runs
@@ -306,8 +306,16 @@ pub fn engine_main() -> Int {
         write_err(usage());
         match exit(int_lit(2)) {};
         int_lit(2)
-    } else if string_eq_p(car(r#as), str_lit("--cells")) {
-        let forms = with_processes(read_files(cdr(r#as)));
+    } else if (string_eq_p(car(r#as), str_lit("--cells")) || string_eq_p(car(r#as), str_lit("--cells-run"))) {
+        // `--cells-run`: the words with `(main)` after the program's forms, if it
+        // has a `main`, for `kayak-cells --main` to run as `fixpt run` runs it,
+        // its value the exit status (C337).
+        let read = with_processes(read_files(cdr(r#as)));
+        let forms = if (string_eq_p(car(r#as), str_lit("--cells-run")) && string_member_p(str_lit("main"), global_names(read))) {
+            onto(read, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("main")), kayak_rt::nil())), kayak_rt::nil()))
+        } else {
+            read
+        };
         let checked = check_program_as(forms, sys);
         let tagcase_ = checked;
         match *tagcase_ {

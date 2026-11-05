@@ -5,6 +5,12 @@
 //! words (C312). A test each, `stage/NAME`; it fails if a program in
 //! tests/stage-passing no longer prints what Fixpt prints. What each found
 //! is kept in target/kayak-checks/stage: `same`, or `differ` and both.
+//!
+//! And by tier 1 (C337, `docs/research/compiled-stage.md`'s (a)): the
+//! program's words with `(main)` last (`kayak-fx26 --cells-run`), run by
+//! `kayak-cells --main`, its staged code compiled to cells where it runs.
+//! It fails if a program in tests/stage-cells-passing no longer prints what
+//! Fixpt prints there; what it found is kept beside the engine's, `NAME.cells`.
 
 use kayak_checks::fixpt;
 use kayak_checks::{Test, release_bin, root};
@@ -15,14 +21,19 @@ const LIMIT: Duration = Duration::from_secs(60);
 
 fn main() {
     let out = root().join("target").join("kayak-checks").join("stage");
-    let passing: Vec<String> = std::fs::read_to_string(root().join("tests").join("stage-passing"))
-        .map(|t| t.split_whitespace().map(String::from).collect())
-        .unwrap_or_default();
+    let listed = |name: &str| -> Vec<String> {
+        std::fs::read_to_string(root().join("tests").join(name))
+            .map(|t| t.split_whitespace().map(String::from).collect())
+            .unwrap_or_default()
+    };
+    let passing = listed("stage-passing");
+    let cells_passing = listed("stage-cells-passing");
     let tests = fixpt::stage_programs()
         .into_iter()
         .map(|(label, path)| {
             let out = out.clone();
             let was = passing.contains(&label);
+            let cells_was = cells_passing.contains(&label);
             Test::new(format!("stage/{label}"), move || {
                 let args = vec![
                     "--dialect".into(),
@@ -80,6 +91,7 @@ fn main() {
                         format!(
                             "differ\nFixpt:\n{theirs}{}kayak:\n{}{}",
                             refused
+                                .as_ref()
                                 .map(|w| format!("refused: {w}\n"))
                                 .unwrap_or_default(),
                             r.stdout,
@@ -88,8 +100,53 @@ fn main() {
                     },
                 )
                 .map_err(|e| e.to_string())?;
+                // Tier 1: refused as the engine is, when it is checked; else
+                // run, as Fixpt's `run` runs it.
+                let made = fixpt::run(
+                    Command::new(release_bin("kayak-fx26"))
+                        .arg("--cells-run")
+                        .arg(&path),
+                    Some(LIMIT),
+                );
+                let (cells_same, cells_said) = if !made.ok() {
+                    let words = made
+                        .stderr
+                        .lines()
+                        .find(|l| l.starts_with("kayak-fx26:"))
+                        .map(fixpt::kayak_words);
+                    (
+                        refused.is_some() && words.as_deref() == refused.as_deref(),
+                        format!("not compiled:\n{}", made.stderr),
+                    )
+                } else if refused.is_some() {
+                    (false, "compiled, where Fixpt refuses it\n".to_string())
+                } else {
+                    let tmp = out.join(format!("{}.listing", label.replace('/', "%")));
+                    std::fs::write(&tmp, &made.stdout).map_err(|e| e.to_string())?;
+                    let ran = fixpt::run(
+                        Command::new(release_bin("kayak-cells"))
+                            .arg(&tmp)
+                            .arg("--main"),
+                        Some(LIMIT),
+                    );
+                    (
+                        ran.code == theirs_code && ran.stdout == theirs,
+                        format!("{}{}", ran.stdout, ran.stderr),
+                    )
+                };
+                std::fs::write(
+                    out.join(format!("{}.cells", label.replace('/', "%"))),
+                    if cells_same {
+                        "same\n".to_string()
+                    } else {
+                        format!("differ\nFixpt:\n{theirs}tier 1:\n{cells_said}")
+                    },
+                )
+                .map_err(|e| e.to_string())?;
                 if was && !same {
                     Err(format!("{label} no longer runs as Fixpt runs it"))
+                } else if cells_was && !cells_same {
+                    Err(format!("{label} no longer runs on tier 1 as Fixpt runs it"))
                 } else {
                     Ok(())
                 }

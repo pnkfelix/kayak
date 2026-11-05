@@ -18,7 +18,9 @@
 (define-effect cwrite (maxeff cread (write @c)))
 (define-effect calloc (maxeff cwrite (alloc @c)))
 
-(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock) (io native) (io sys) (io stdin) (io stdout) (io stderr) (io fs-read) (io fs-write) (io args) (io exit) (io terminal) (io process) (alloc @heap) (read @heap) (write @heap) (alloc @k) (read @k)))
+(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock) (io native) (io sys) (io stdin) (io stdout) (io stderr) (io fs-read) (io fs-write) (io args) (io exit) (io terminal) (io process) (alloc @heap) (read @heap) (write @heap) (alloc @k) (read @k)
+                          ;; `stage` (C337): kayak's compiler's region, and its check's worker.
+                          (read @g) (write @g) (alloc @g) (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet))
 
 "Tags."
 (define t-fixnum i64 (int->i64 (with lay tag-fixnum)))

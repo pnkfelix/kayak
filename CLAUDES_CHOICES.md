@@ -9282,3 +9282,40 @@ changes, but for one found on the way:
   `session.in`). The slot now holds the number plus 1; 0, not set, the
   number found by the symbol's name (`name-at`), as a tier 1 symbol's in
   the one heap must be.
+
+## C337. `stage` on tier 1 (2026-11-04; compiled stage (a), step 2)
+
+Staged code runs on tier 1 as on Fixpt's compiled machines (`stage.rs`):
+compiled to cells where the program runs, by kayak's own compiler, which
+tier 1's program holds (C335).
+- **Compiled**: the cell generator writes `(%stage E R m code given)` as a
+  call of tier 1's new primitive `%kayak-stage-run` with the module, the
+  code, the evidence given, and the stage's facts as literals, its rep's
+  text and the evidence's names (`stage-rep`, `stage-given`), as the
+  engine's lowering writes `%stage-run` (C305).
+- **Run** (`cells/stage.kfx`, called by the machine's `prim-run!`, as it
+  reads a listing, which `cprims.kfx`, before the reader, cannot): the rep
+  made from its text (`rep-of-text!`) and filled from the evidence; the code
+  read back and checked in a worker (staging.kfx, C336); refused, a
+  `stage-failure` with its places, as the engine's; else checked again for
+  the facts, compiled by `compile-cells` as `(define %stage-K (lambda
+  (stage-module) (lambda () (with stage-module CODE))))`, its listing read
+  into the running heap (`listing-added!`, new in the reader: a word the
+  heap has by its name, its own `program` and the standard words both
+  listings hold, left as it is), and the thunk's word, found by its body's
+  place (as the compiler names a lambda's word; each stage's places are
+  its own), made a closure over the module: `(sum ok THUNK)`.
+- **`cm`, tier 1's effect, grows** by the compiler's region (`@g`) and the
+  check's worker (`@q`, `@w`, `nondet`).
+- **Programs with a `main`, run as `fixpt run` runs them**: `kayak-fx26
+  --cells-run` lists the words with `(main)` last; `kayak-cells --main`
+  writes no value and exits with an integer one.
+- **The stage test runs tier 1 too** (`crates/kayak-checks/tests/stage.rs`):
+  of Fixpt's 23 stage programs, 13 as Fixpt runs them
+  (`tests/stage-cells-passing`): `stage.fx` (refusals' words and places,
+  a procedure made, thirty stages while collections come), `generative`,
+  `in-a-process` (a stage in a process beside another, tiny slices),
+  `kept`, `sealed`, `state`, `tail-across`; and six refused as they are
+  checked. The other ten need evidence (`%reify`, bounds; step 4) or
+  sessions (step 5). Staged words run as cells under any tier; the other
+  tiers are step 3.

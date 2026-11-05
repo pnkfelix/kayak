@@ -598,7 +598,12 @@
           (else
            (let* ((u (safepoint!))
                   (from (i64- (get dsp) count)))
-             (begin (pargs-room! count) (pargs-copied! from 0 count) (set dsp from) (push! (prim-apply! p)) next))))))
+             (begin (pargs-room! count) (pargs-copied! from 0 count) (set dsp from)
+                    (push! (if (i64= (prim-op p) o-kayak-stage)
+                               ;; `stage` (C337), which compiles and reads a listing.
+                               (stage-run-cells! (parg 0) (parg 1) (parg 2) (parg 3) (parg 4))
+                               (prim-apply! p)))
+                    next))))))
 
 (define-rec
   (falses-pushed! (subr cm (i64) unit)

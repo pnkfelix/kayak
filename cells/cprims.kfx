@@ -240,6 +240,9 @@
 (define o-process-signal i64 220)
 (define o-process-exit i64 221)
 (define o-process-news i64 222)
+"`stage` (C337): the machine's own (machine.kfx's `prim-run!`), as staging
+ is stage.kfx's, after this file."
+(define o-kayak-stage i64 223)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -354,7 +357,7 @@
          (pdef "%fx26-string->utf8" 1 1 o-string-utf8) (pdef "%fx26-utf8->string" 1 1 o-utf8-string)
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
-         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
+         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%kayak-stage-run" 5 5 o-kayak-stage) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
          (pdef "%fx26-keyword?" 1 1 o-keyword-p) (pdef "%fx26-symbol->keyword" 1 1 o-symbol-keyword) (pdef "%fx26-keyword->symbol" 1 1 o-keyword-symbol)
          (pdef "%fx26-file-info" 1 1 o-file-info) (pdef "%fx26-read-symlink" 1 1 o-read-symlink)
          (pdef "%fx26-process-start" 2 2 o-process-start) (pdef "%fx26-process-output" 1 1 o-process-output)

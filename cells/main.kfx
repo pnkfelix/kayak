@@ -50,6 +50,8 @@ And:
   --slice N            a task's time slice, N polls (65536)
   --slice-jitter J     each slice N to N+J polls, chosen deterministically
   --gc-stress          collect at every safepoint
+  --main               a listing of `kayak-fx26 --cells-run`: its value not
+                       written, an integer the exit status, as `fixpt run`'s
   --gc-stats           how values are kept, collections, words copied,
                        the machine's entries, words compiled and those
                        of tier 6, on the standard error
@@ -258,5 +260,11 @@ and status 1.
                            #u)
                          #u)))
             (tagcase r
-              (ran-answer (v) (begin (say (string-append (written v) "\n")) 0))
+              (ran-answer (v)
+                ;; `--main` (C337): a listing `kayak-fx26 --cells-run` made, its
+                ;; last form `(main)`, whose value is the exit status, as `fixpt
+                ;; run`'s; nothing written, a program of no `main` too.
+                (cond ((not (string-member? "--main" as)) (begin (say (string-append (written v) "\n")) 0))
+                      ((is-fixnum? v) (begin (exit (i64->int (i64-and (fix-val v) 255))) 0))
+                      (else 0)))
               (ran-failed (m) (begin (write-err (string-append "evaluation failed: " (string-append m "\n"))) 1)))))))))

@@ -3388,6 +3388,12 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_proj(parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
+    } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 6i64)) {
+        // `stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
+        // the code, the evidence given, and what the checker noted, its rep's
+        // text and the evidence's names, as the engine's lowering writes it.
+        let rest = cdr(cdr(cdr(xs)));
+        x_app(x_var(str_lit("%kayak-stage-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a)
     } else if member_of_p(h, process_heads()) {
         // A form of processes, a call of the scheduler's (C219), as Fixpt's
         // parser makes it.
@@ -6230,6 +6236,8 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
     } else if string_member_p(name, c_standard_on_names()) {
         c_prim(c, name, n)
     } else if string_eq_p(name, str_lit("%fx26-convert")) {
+        c_prim(c, name, n)
+    } else if string_eq_p(name, str_lit("%kayak-stage-run")) {
         c_prim(c, name, n)
     } else if std_eq_name_p(name) {
         c_op(c, str_lit("eq"))

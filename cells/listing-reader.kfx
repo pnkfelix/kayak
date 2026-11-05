@@ -734,3 +734,38 @@
         (if (get regs-on) (twins-linked! (get register-words)) #u)
         (let ((p (lookup (get words) "program")))
           (if (i64= p 0) (begin (listing-error "no word is named program") 0) p))))))
+
+(define-rec
+  (blocks-named-anew (subr cread ((listof block acyclic) (listof block acyclic) strings) (listof block acyclic))
+    (lambda (bs out had)
+      "The blocks of `bs` whose words the heap has none of yet; the names it
+       has, onto `had`, in what is returned's place: see `listing-added!`."
+      (if (null? bs)
+          (the (listof block acyclic) (reverse out))
+          (tagcase (car bs)
+            (block (n c e is)
+              (if (i64= (lookup (get words) n) 0)
+                  (blocks-named-anew (cdr bs) (cons (car bs) out) had)
+                  (blocks-named-anew (cdr bs) out had))))))))
+
+(define-rec
+  (names-had (subr cread ((listof block acyclic) strings) strings)
+    (lambda (bs acc)
+      (if (null? bs) acc (tagcase (car bs) (block (n c e is) (names-had (cdr bs) (if (i64= (lookup (get words) n) 0) acc (cons n acc)))))))))
+
+(define listing-added! (subr cm (string) unit)
+  (lambda (text)
+    "The words of a listing read into the running program (C337: a stage's):
+     each the heap has none of by its name, made and written; one it has,
+     its own `program` and the standard words both listings hold, left as it
+     is, so that nothing running changes."
+    (let* ((ls (lines-of (string-chars text) nil nil))
+           (u (tables-read! ls ""))
+           (all (blocks ls nil 0))
+           (bs (distinct-blocks all nil))
+           (had (names-had bs nil)))
+      (begin
+        (words-made! (blocks-named-anew bs nil nil))
+        (blocks-written! all had)
+        (literals-checked! (get literals))
+        (if (get regs-on) (twins-linked! (get register-words)) #u)))))
