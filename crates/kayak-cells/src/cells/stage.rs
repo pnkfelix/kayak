@@ -10,8 +10,8 @@ use super::*;
 // first; then compiled to cells by kayak's own compiler, which this program
 // holds (C335), its listing read into the running heap, and the word of
 // its thunk made a closure over the module: `(sum ok THUNK)`; or
-// `(sum failed WHY)`. Staged words run as cells (tier 1), whatever tier
-// runs the program.
+// `(sum failed WHY)`. Staged words are compiled as the program's are,
+// with `--compiled` on x86_64 (C343); else they run as cells.
 pub fn lines_joined(mut ls: Strings, mut acc: Str) -> Str {
     loop {
         if null_p(ls) {
@@ -70,12 +70,13 @@ pub fn word_prefixed(mut ws: List<&'static NamedSlot>, mut pre: Str) -> i64 {
 
 /// `form` compiled to cells, a session's names its globals (`aliases`), and
 /// its listing read into the running heap.
-#[inline]
 pub fn compiled_read_x(form: &'static Sexp, fs: Facts, aliases: List<Strings>) -> () {
+    let (had_words, had_regs) = (words_counted(get(words()), 0i64), words_counted(get(register_words()), 0i64));
     set(cg_aliases(), aliases);
     compile_cells(kayak_rt::heap_cons(form, kayak_rt::nil()), fs);
     set(cg_aliases(), nil::<List<Str>>());
-    listing_added_x(lines_joined(cells_listing(), str_lit("")))
+    listing_added_x(lines_joined(cells_listing(), str_lit("")));
+    words_read_compiled_x(had_words, had_regs)
 }
 
 /// A closure of word `w` over `frees`, as the machine's `closure` makes one.

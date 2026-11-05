@@ -1777,9 +1777,14 @@
 
 (define hand-code-arm64! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()
-    "The machine, made once: emitted, with the listing's words compiled
-     (`--compiled`), encoded, sealed. First a jump to its entry, then the
-     data, then the code."
+    "The machine, made once: emitted, encoded, sealed. First a jump to its
+     entry, then the data, then the code. No word is compiled, even with
+     `--compiled` (C343): a compiled word's entry is its code since
+     Fixpt's 516abc8e and bb635fe8 (hand-x64.kfx's), which tier 1 and
+     x86_64's machine read so; until this machine's words are its own code
+     bloblets (bb635fe8, not ported, as no arm64 runs here), its words run
+     as cells, as Fixpt's arm64 did at 516abc8e. The table of the words'
+     tables stays, empty, which the routines still read."
     (if (not (null? (get hand-made)))
         (sum made (car (get hand-made)))
         (begin
@@ -1788,8 +1793,7 @@
           (set h-cont -1) (set h-target -1)
           (machine!)
           (set l-materialize (label!)) (materialize! (get l-materialize))
-          (let* ((cts (if (get hand-compiled) (words-compiled! (get words) 0 nil) nil))
-                 (rts (if (get hand-compiled) (registers-compiled! (get register-words) (count-of cts 0) cts) cts))
+          (let* ((rts (the (listof int @c) nil))
                  (u (set words-compiled (count-of rts 0)))
                  (its (the (listof hand-item @c)
                         (cons (label-here (get l-start))

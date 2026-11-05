@@ -3735,6 +3735,44 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     }
 }
 
+// Words read into the running program (C343, step 4 of
+// docs/research/word-code.md: a stage's, a session's), compiled as the
+// listing's were, each to its own code, where the machine is x86_64's and
+// made, with `--compiled`: they are the first of the lists of words, past
+// the counts they had.
+pub fn words_counted(mut ns: List<&'static NamedSlot>, mut k: i64) -> i64 {
+    loop {
+        if null_p(ns) {
+            return k;
+        } else {
+            (ns, k) = (cdr(ns), i64_plus(k, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn named_first(mut ns: List<&'static NamedSlot>, mut k: i64, mut acc: List<&'static NamedSlot>) -> List<&'static NamedSlot> {
+    loop {
+        if (i64_lt_eq(k, 0i64) || null_p(ns)) {
+            return acc;
+        } else {
+            (ns, k, acc) = (cdr(ns), i64_minus(k, 1i64), kayak_rt::heap_cons(car(ns), acc));
+            continue;
+        }
+    }
+}
+
+pub fn words_read_compiled_x(had_words: i64, had_regs: i64) -> () {
+    if (get(hand_compiled()) && get(code_on()) && _gt(get(y_machine_labels()), int_lit(0))) {
+        let ws = get(words());
+        let rs = get(register_words());
+        let k = ywords_compiled_x(named_first(ws, i64_minus(words_counted(ws, 0i64), had_words), nil::<&'static NamedSlot>()), get(words_compiled()));
+        set(words_compiled(), yregisters_compiled_x(named_first(rs, i64_minus(words_counted(rs, 0i64), had_regs), nil::<&'static NamedSlot>()), k))
+    } else {
+        ()
+    }
+}
+
 /// Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or
 /// x86_64's; elsewhere none.
 pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {

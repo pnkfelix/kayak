@@ -4409,9 +4409,14 @@ pub fn hand_made() -> Ref<List<HandCode>> {
     })
 }
 
-/// The machine, made once: emitted, with the listing's words compiled
-/// (`--compiled`), encoded, sealed. First a jump to its entry, then the
-/// data, then the code.
+/// The machine, made once: emitted, encoded, sealed. First a jump to its
+/// entry, then the data, then the code. No word is compiled, even with
+/// `--compiled` (C343): a compiled word's entry is its code since
+/// Fixpt's 516abc8e and bb635fe8 (hand-x64.kfx's), which tier 1 and
+/// x86_64's machine read so; until this machine's words are its own code
+/// bloblets (bb635fe8, not ported, as no arm64 runs here), its words run
+/// as cells, as Fixpt's arm64 did at 516abc8e. The table of the words'
+/// tables stays, empty, which the routines still read.
 pub fn hand_code_arm64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     if not(null_p(get(hand_made()))) {
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(car(get(hand_made()))))
@@ -4427,16 +4432,7 @@ pub fn hand_code_arm64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         machine_x();
         set(l_materialize(), label_x());
         materialize_x(get(l_materialize()));
-        let cts = if get(hand_compiled()) {
-            words_compiled_x(get(words()), int_lit(0), nil::<Int>())
-        } else {
-            nil::<Int>()
-        };
-        let rts = if get(hand_compiled()) {
-            registers_compiled_x(get(register_words()), count_of(cts, int_lit(0)), cts)
-        } else {
-            cts
-        };
+        let rts = the::<List<Int>>(nil::<Int>());
         let u = set(words_compiled(), count_of(rts, int_lit(0)));
         let its = the::<List<&'static HandItem>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<&'static HandItem>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));

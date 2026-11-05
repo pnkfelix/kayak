@@ -1,7 +1,7 @@
 # A compiled word's code in its own bloblet (Fixpt's 516abc8e, bb635fe8)
 
-Status: steps 1 to 3 done on x86_64 (C342, C343, 2026-11-05); step 4
-next. The user's "go ahead" (the port, after the pin move to 8616f2f) and
+Status: done (C342 to C344, 2026-11-05), arm64 on Fixpt's interim
+(compiling nothing) until it can be run; bb635fe8's port to arm64 open. The user's "go ahead" (the port, after the pin move to 8616f2f) and
 "go for it" (this plan: arm64 on Fixpt's interim, the port in steps). Step 6 of `docs/research/compiled-stage.md`:
 staged words compiled to machine code need it, as Fixpt's sessions did.
 
@@ -97,3 +97,30 @@ compiled: it runs as cells (C338).
   `NEXT`'s word, a resume, register code's call of a twin, tier 6's invoke;
   tier 1's `enter!` too. The block's table of words and its export gone.
   Where the code area is not (no `code:exec-view/1`), nothing is compiled.
+- **Step 4** (C344): `compiled-read!` (stage.kfx), which reads a stage's
+  and a session's listing into the running heap, then compiles the words
+  it added (`words-read-compiled!`: the first of the lists of words, past
+  the counts they had), as the listing's were. `cli-stage/stage.fx`:
+  77 words compiled on `--compiled` (the program's and its stages'), 150
+  on `--regs --direct`, 69 of them tier 6.
+- **Step 5** (C344): arm64 compiles no word (Fixpt's interim at
+  516abc8e); its machine keeps its empty table of words, which its
+  routines read. Its words run as cells until bb635fe8 is ported, which
+  needs an arm64 to run on.
+- **Step 6** (C344): best of 5, whole process, ms, Fixpt's benchmarks
+  scaled up (`fib 34`, `tak 26 18 10`, `count 100000000`, `main 30000`,
+  `rounds 30000`, `rounds 200000`), C342's build against C344's:
+
+  | program  | `--compiled` | `--regs --compiled` | `--regs --direct` |
+  |----------|--------------|---------------------|-------------------|
+  | fib      | 368 → 375    | 137 → 143           | 85 → 83           |
+  | tak      | 56 → 56      | 29 → 29             | 18 → 19           |
+  | loop     | 1207 → 1235  | 345 → 346           | 178 → 179         |
+  | closures | 1389 → 1424  | 550 → 530           | 334 → 333         |
+  | lists    | 915 → 922    | 351 → 346           | 197 → 199         |
+  | captures | 621 → 621    | 595 → 600           | 596 → 603         |
+
+  Compiled cells some 2% dearer (the entry's tag tested, the table found
+  from it; Fixpt measured some 10%); register code as it was (Fixpt's got
+  faster, `fib 32` 38 to 34 ms, from what its port changed besides). The
+  8-aligned suffix costs nothing measurable here.

@@ -5,8 +5,8 @@
  first; then compiled to cells by kayak's own compiler, which this program
  holds (C335), its listing read into the running heap, and the word of
  its thunk made a closure over the module: `(sum ok THUNK)`; or
- `(sum failed WHY)`. Staged words run as cells (tier 1), whatever tier
- runs the program."
+ `(sum failed WHY)`. Staged words are compiled as the program's are,
+ with `--compiled` on x86_64 (C343); else they run as cells."
 
 (define-rec
   (lines-joined (subr kfx (strings string) string)
@@ -39,11 +39,14 @@
   (lambda (form fs aliases)
     "`form` compiled to cells, a session's names its globals (`aliases`), and
      its listing read into the running heap."
-    (begin
-      (set cg-aliases aliases)
-      (compile-cells (list form) fs)
-      (set cg-aliases nil)
-      (listing-added! (lines-joined (cells-listing) "")))))
+    (let ((had-words (words-counted (get words) 0)) (had-regs (words-counted (get register-words) 0)))
+      (begin
+        (set cg-aliases aliases)
+        (compile-cells (list form) fs)
+        (set cg-aliases nil)
+        (listing-added! (lines-joined (cells-listing) ""))
+        ;; Compiled as the listing's words were (C343).
+        (words-read-compiled! had-words had-regs)))))
 
 (define closure-over! (subr cwrite (i64 (listof i64 acyclic)) i64)
   (lambda (w frees)

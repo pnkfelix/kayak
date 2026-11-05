@@ -1665,6 +1665,25 @@
                        #u)
                    (sum made p)))))))
 
+"Words read into the running program (C343, step 4 of
+ docs/research/word-code.md: a stage's, a session's), compiled as the
+ listing's were, each to its own code, where the machine is x86_64's and
+ made, with `--compiled`: they are the first of the lists of words, past
+ the counts they had."
+(define-rec
+  (words-counted (->* ((listof named-slot @c) i64) i64)
+    (lambda (ns k) (if (null? ns) k (words-counted (cdr ns) (i64+ k 1))))))
+(define-rec
+  (named-first (->* ((listof named-slot @c) i64 (listof named-slot @c)) (listof named-slot @c))
+    (lambda (ns k acc) (if (or (i64<= k 0) (null? ns)) acc (named-first (cdr ns) (i64- k 1) (cons (car ns) acc))))))
+(define words-read-compiled! (->* (i64 i64) unit)
+  (lambda (had-words had-regs)
+    (if (and (get hand-compiled) (get code-on) (> (get y-machine-labels) 0))
+        (let* ((ws (get words)) (rs (get register-words))
+               (k (ywords-compiled! (named-first ws (i64- (words-counted ws 0) had-words) nil) (get words-compiled))))
+          (set words-compiled (yregisters-compiled! (named-first rs (i64- (words-counted rs 0) had-regs) nil) k)))
+        #u)))
+
 (define hand-code! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()
     "Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or

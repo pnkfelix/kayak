@@ -9445,3 +9445,23 @@ bloblets cannot run until step 3's dispatch reads them), Fixpt's 516abc8e:
 fib, tak, loop, closures, lists and captures on `--compiled`, `--regs
 --compiled`, `--regs --direct` time as before, but whole-process runs of
 10 to 160 ms say little: step 6 measures. The cells tests (1817) pass.
+
+## C344. Words read as the program runs compiled too; arm64 on Fixpt's interim (2026-11-05; word code, steps 4 to 6)
+
+The rest of `docs/research/word-code.md`:
+- **Compiled as read** (step 4): `compiled-read!`, through which a stage's
+  and a session's listing reach the running heap (C337, C340), compiles
+  the words `listing-added!` made (`words-read-compiled!`: the first of
+  `words` and `register-words`, past the counts they had before), with
+  `--compiled`, where x86_64's machine is made. So staged code runs as
+  machine code on tiers 4 to 6, as on Fixpt's sessions; stage.kfx's
+  "staged words run as cells" is gone. `cli-stage/stage.fx` compiles 77
+  words on `--compiled`, 150 on `--regs --direct` (69 tier 6); the 23 stage
+  programs pass on all seven tiers.
+- **arm64** (step 5): the user's choice, Fixpt's interim at 516abc8e. Its
+  machine compiles no word, so that no entry of it is a slot number, which
+  tier 1's `enter!` no longer reads as compiled (C343); its empty table of
+  words stays, which its routines read. bb635fe8's port is TODO, for an
+  arm64 to run it on: code nobody has run is a guess.
+- **Measured** (step 6): within 5% either way on every program and tier,
+  compiled cells some 2% dearer; the table in word-code.md.
