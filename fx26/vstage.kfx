@@ -26,95 +26,11 @@
                    (bloblet-value-set! p 0 (code-word l)) (bloblet-value-set! p 1 e)
                    (sum-word! "ok" p)))))))
 
-
-"Sessions (C310; Fixpt's `docs/fx26.md`, \"Sessions\", and its
- `sessions.rs`, lowered): definitions that last between pieces of code a
- program stages against a module. A session's state is the checker's
- environment of the standard one and the session's own definitions, its
- globals, past the program's, and its definitions' forms, which the
- redefinition rules of the `--check` driver (C202) read: a definition
- again at a type its users can take assigns its global; at another,
- `shadow` makes it a new one, what used the old keeping it, and `rerun`
- checks the users again, each that checks run again, the rest broken.
- The session, a vector `#(m index)`, names its state by its index here,
- made at its first use, when the module's type is known: a global holding
- `m`, and one for each of `m`'s values, which the session's own may
- shadow; defined again as a new global, `fx26-session-K:NAME:2`, ... (C313).
- A pending definition is `#(session index)`, its index among
- `pendings`. Reading a session's global is reading the session, which its
- forms' types say (`(read r)`), not part of the code's `E`: the checker's
- `%session` mark (`naming-effs`)."
-
-(define-datatype defn (defn strings sexp))
-(define-type defns (listof defn acyclic))
-(define-datatype rerun-out (rerun-out cv strings))
-
-(define defn-names (subr kfx (defn) strings) (lambda (d) (tagcase d (defn (ns f) ns))))
-
-(define defined-names-of (subr kfx (sexp) strings)
-  (lambda (f)
-    "The globals a top-level form defines: a `define`'s, a `define*`'s, a
-     `define-rec`'s."
-    (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64>= (size (items f)) 3)
-                (not (module-def? f)))
-           (list (binder-name (second (items f)))))
-          ((head-is? f "define-rec") (map (lambda ((g sexp)) (binder-name (car (items g)))) (cdr (items f))))
-          (else nil))))
-
-(define rerun-needed? (subr kfx (cv cv strings) bool)
-  (lambda (old new names)
-    "Whether a global of `names`, defined before, is now at a type its uses
-     may not take."
-    (any? (lambda ((n string))
-            (let ((a (scope-bind n old)) (b (scope-bind n new)))
-              (and (not (null? a)) (not (null? b))
-                   (tagcase (car a)
-                     (bind (n1 sa wa)
-                       (and (or (string=? wa "global") (string=? wa "broken"))
-                            (tagcase (car b)
-                              (bind (n2 sb wb)
-                                (not (or (string=? (scheme-text sa) (scheme-text sb)) (narrower-effect? sb sa)))))))))))
-          names)))
-
-(define-rec
-  (users-of (subr kfx (defns strings) defns)
-    (lambda (ds used)
-      "The definitions among `ds` that use a name of `used`, and those that
-       use theirs, oldest first."
-      (cond ((null? ds) nil)
-            ((tagcase (car ds) (defn (ns f) (any? (lambda ((n string)) (string-member? n used)) (names-in f))))
-             (cons (car ds) (users-of (cdr ds) (onto (defn-names (car ds)) used))))
-            (else (users-of (cdr ds) used))))))
-
-(define broken-binds (subr kfx (cv strings) binds)
-  (lambda (v names)
-    (concat (map (lambda ((n string))
-                   (let ((b (scope-bind n v)))
-                     (if (null? b) nil (tagcase (car b) (bind (m sc w) (the binds (list (bind n sc "broken"))))))))
-                 names))))
-
 "The machine's globals and their names (vm.kfx's, here since a session
  makes globals, C310)."
 (define globals (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
 (define global-name-table (ref (arrayof string @c) @c) (new (make-array 1 "")))
 
-"A session's global: a name and its index."
-(define-datatype sglobal (sglobal string i64))
-(define-type sglobals (listof sglobal acyclic))
-
-"A session's state: its checker's environment, its globals (the newest
- first), its definitions (the oldest first) and how many commits it has
- had."
-(define-datatype sess (sess cv sglobals defns i64))
-(define-type sesss (listof sess acyclic))
-
-"A pending definition: its session's index, the generation it was checked
- at, its name, its form, its type, and whether it was committed."
-(define-datatype pend (pend i64 i64 string sexp ty bool))
-(define-type pends (listof pend acyclic))
-
-(define sessions (ref sesss @c) (new nil))
-(define pendings (ref pends @c) (new nil))
 "The machine's globals' names, an index each, as `lower.kfx` has them: a
  program's, made at loading (`load!`); the REPL's, which grow as it
  defines (C65); and the sessions' (C310), each named as Fixpt's lowering
@@ -124,53 +40,12 @@
 "The labels of `session-redefinition`'s product, made at loading."
 (define redefinition-labels (ref i64 @c) (new -1))
 
-(define-rec
-  (nth-sess (subr kfx (sesss i64) sess)
-    (lambda (ss i) (if (i64= i 0) (car ss) (nth-sess (cdr ss) (i64- i 1))))))
-(define-rec
-  (sess-replaced (subr kfx (sesss i64 sess) sesss)
-    (lambda (ss i x) (if (i64= i 0) (cons x (cdr ss)) (cons (car ss) (sess-replaced (cdr ss) (i64- i 1) x))))))
-(define-rec
-  (nth-pend (subr kfx (pends i64) pend)
-    (lambda (ps i) (if (i64= i 0) (car ps) (nth-pend (cdr ps) (i64- i 1))))))
-(define-rec
-  (pend-replaced (subr kfx (pends i64 pend) pends)
-    (lambda (ps i x) (if (i64= i 0) (cons x (cdr ps)) (cons (car ps) (pend-replaced (cdr ps) (i64- i 1) x))))))
-
-(define-rec
-  (sglobal-of (subr kfx (sglobals string) i64)
-    (lambda (gl n)
-      "The index of the session's global named `n`, the newest; -1 if none."
-      (cond ((null? gl) -1)
-            ((tagcase (car gl) (sglobal (m i) (string=? m n))) (tagcase (car gl) (sglobal (m i) i)))
-            (else (sglobal-of (cdr gl) n))))))
-
-(define-rec
-  (sglobal-name (subr kfx (sglobals sglobals i64) string)
-    (lambda (gl all i)
-      "The name of the session's global `i` if it is its name's newest; ``
-       if not, or none."
-      (cond ((null? gl) "")
-            ((tagcase (car gl) (sglobal (m j) (i64= i j)))
-             (tagcase (car gl) (sglobal (m j) (if (i64= (sglobal-of all m) i) m ""))))
-            (else (sglobal-name (cdr gl) all i))))))
-
 (define session-gs (subr hp (sglobals facts) strings)
   (lambda (gl fs)
     "The globals' names a session's code is lowered with: the program's
      unnamed, which it cannot see; the session's, each by its name where
      it is its name's newest; then the facts' entries (`with-entries`)."
     (onto (map (lambda ((i i64)) (sglobal-name gl gl i)) (counting 0 (size (get machine-globals)))) (with-entries fs))))
-
-(define session-prefix (subr kfx (i64) string)
-  (lambda (k) (string-append "fx26-session-" (string-append (i64->string k) ":"))))
-
-(define numbered-global (subr kfx (string strings) string)
-  (lambda (base gs)
-    "A session's global named `base`, or, defined again as a new global,
-     `base:2`, `base:3`, ..., as Fixpt's `Globals::define` names it."
-    (let ((n (size (filter (lambda ((g string)) (or (string=? g base) (has-prefix? g (string-append base ":")))) gs))))
-      (if (i64= n 0) base (string-append base (string-append ":" (i64->string (i64+ n 1))))))))
 
 (define session-global! (subr (maxeff hp (alloc @c)) (i64 string i64) i64)
   (lambda (k n w)
@@ -195,18 +70,6 @@
         (flatarray-set-i64! (get globals) i w)
         i))))
 
-(define session-marks (subr kfx () binds)
-  (lambda ()
-    (list (bind "%session" (scheme nil (ty-unit)) "mark") (bind "%reruns" (scheme nil (ty-unit)) "mark"))))
-
-(define session-top (subr kfx (cv sexp) cv)
-  (lambda (v form)
-    "A session's definition checked, as the REPL checks a form: one written
-     with no type, its type found (`check-untyped`)."
-    (if (untyped? form)
-        (tagcase (check-untyped v form) (elab (v2 more) (at v2 "staged code" nil)))
-        (check-top v form))))
-
 (define-rec
   (seeded (subr (maxeff hp (alloc @c)) (i64 cv sglobals i64 strings i64) sess)
     (lambda (k v gl m ns i)
@@ -222,23 +85,6 @@
                  (v2 (session-top v form))
                  (g (session-global! k n (bloblet-value m i))))
             (seeded k v2 (cons (sglobal n g) gl) m (cdr ns) (i64+ i 1)))))))
-
-(define module-types-opened (subr kfx (cv ty) cv)
-  (lambda (v mt)
-    "`v` with module type `mt`'s types and effects in scope, as a `with` of
-     the module opens them (`mtype-opened`, C315): each abstract type and
-     description a type of its name, each effect description an effect."
-    (with-type-binds v
-      (concat (map (lambda ((x ty))
-                     (if (or (string=? (mitem-kind x) "%desc") (string=? (mitem-kind x) "%abs"))
-                         (tagcase x (ty-data (d args) (the binds (list (type-bind (mitem-name x) (car args))))) (else other nil))
-                         nil))
-                   (mtype-items mt)))
-      (concat (map (lambda ((x ty))
-                     (if (string=? (mitem-kind x) "%edesc")
-                         (tagcase x (ty-data (d args) (the effdefs (list (effdef (mitem-name x) (tagcase (car args) (ty-proc (es ps r) es) (else other nil)))))) (else other nil))
-                         nil))
-                   (mtype-items mt))))))
 
 (define session-state! (subr (maxeff hp (alloc @c)) (i64 ty) i64)
   (lambda (sw mt)
@@ -265,31 +111,6 @@
               (obj-set! sw 1 (fixnum k2))
               k2))))))
 
-(define make-session-word! (subr (maxeff hp (alloc @c)) (i64) i64)
-  (lambda (m)
-    "`(make-session m)`: `#(m -1)`, its state made at its first use."
-    (let ((s (alloc! ob-vector 2))) (begin (obj-set! s 0 m) (obj-set! s 1 (fixnum -1)) s))))
-
-"A check by a worker, as `stage-worked`'s: `` if it passed, else the
- refusal. `kind` 0, `form` an expression checked against `t`; 1, a
- top-level form."
-(define session-verdict (subr kfx (cv sexp ty i64) string)
-  (lambda (v form t kind)
-    (begin
-      (if (i64= kind 0)
-          (begin ((with expressions check) (at v "staged code" nil) (new-state) form t) #u)
-          (begin (session-top v form) #u))
-      "")))
-
-(define* session-worked (subr (maxeff (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet spin (read @globals)) (cv sexp ty i64) string)
-  (lambda (v form t kind)
-    (let* ((out (the (icell string @q) (make-icell)))
-           (relay (the (addr string @q) (spawn (box string r) (icell-put! out (receive box))))))
-      (begin
-        (the (addr unit @w) (spawn-monitored relay stage-refused (box unit r) (send relay (session-verdict v form t kind))))
-        (icell-get out)))))
-
-
 (define thunk-word! (subr (maxeff vm loading) (ir) i64)
   (lambda (lam)
     "Procedure `lam`, lowered at the top, a closure over nothing."
@@ -299,10 +120,6 @@
              p))))
 
 (define session-scope (subr kfx () scope) (lambda () (list (list "%session"))))
-
-(define session-thunk (subr hp (sexp) sexp)
-  (lambda (e)
-    (lst (list (sym "lambda" stage-file (stage-at!)) (lst nil stage-file 1 (stage-at!)) e) stage-file 1 (stage-at!))))
 
 (define session-expression! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 sess sexp ty) i64)
   (lambda (k st code t)
@@ -320,44 +137,6 @@
                      (p (thunk-word! (lower thunk (session-scope) gs))))
                 (sum-word! "ok" (sum-word! "expression" p)))))))))
 
-(define definition-parts (subr kfx (sexp) sexps)
-  (lambda (code)
-    "`(define name init)` or `(define name type init)`: its name and its
-     initializer; none if neither."
-    (let ((xs (items code)))
-      (if (and (or (i64= (size xs) 3) (i64= (size xs) 4)) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
-          (list (second xs) (last xs))
-          nil))))
-
-(define session-define! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 i64 sess sexp ty) i64)
-  (lambda (sw k st code t)
-    "A definition in session `k`, checked against it as it is, its
-     initializer, unless a `lambda`, within `E` (`t` is `(subr E () R)`):
-     `(sum ok (sum definition d))`, `d` pending; or why not."
-    (tagcase st
-      (sess (v gl ds g)
-        (let ((parts (definition-parts code)))
-          (if (null? parts)
-              (stage-failed-word! "malformed" "a definition is `(define name init)` or `(define name type init)`")
-              (let* ((name (sym-name (car parts)))
-                     (init (second parts))
-                     (why (session-worked v code t 1)))
-                (if (not (string=? why ""))
-                    (refused-word! why)
-                    (let* ((v2 (session-top v code))
-                           (found (scope-bind name v2))
-                           (dt (if (null? found) (ty-unit) (tagcase (car found) (bind (n sc w) (tagcase sc (scheme (tvs u) u))))))
-                           (es (tagcase t (ty-proc (es ps r) es) (else other nil)))
-                           (bounded (if (head-is? init "lambda") "" (session-worked v (session-thunk init) (ty-proc es nil dt) 0))))
-                      (if (not (string=? bounded ""))
-                          (refused-word! bounded)
-                          (let* ((i (size (get pendings)))
-                                 (d (alloc! ob-vector 2)))
-                            (begin
-                              (set pendings (onto (get pendings) (list (pend k g name code dt #f))))
-                              (obj-set! d 0 sw) (obj-set! d 1 (fixnum i))
-                              (sum-word! "ok" (sum-word! "definition" d))))))))))))))
-
 (define session-run! (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (i64 i64 i64 i64 i64) i64)
   (lambda (sw code given rep names)
     "`(%session-run s code given rep names)`, `session-check`'s: the code an
@@ -372,64 +151,6 @@
       (if (head-is? c "define")
           (session-define! sw k st c t)
           (session-expression! k st c t)))))
-
-(define pending-of (subr hp (i64) pend)
-  (lambda (d) (nth-pend (get pendings) (fixnum-value (obj-ref d 1)))))
-
-(define-rec
-  (direct-users (subr kfx (defns string) strings)
-    (lambda (ds n)
-      "The names the definitions among `ds` define that use `n`, not
-       defining it themselves."
-      (if (null? ds)
-          nil
-          (tagcase (car ds)
-            (defn (ns f)
-              (onto (if (and (string-member? n (names-in f)) (not (string-member? n ns))) ns nil)
-                    (direct-users (cdr ds) n))))))))
-
-(define redefines-word! (subr (maxeff hp (alloc @c)) (i64 i64) i64)
-  (lambda (sw d)
-    "`(session-redefines s d)`: `(sum fresh #u)`, or `(sum redefines r)`, `r`
-     the name, its type and the new one, and the session's definitions
-     that use it."
-    (tagcase (pending-of d)
-      (pend (k g name form dt used)
-        (let* ((st (nth-sess (get sessions) k))
-               (found (tagcase st (sess (v gl ds g2) (scope-bind name v)))))
-          (if (or (null? found) (tagcase (car found) (bind (n sc w) (not (or (string=? w "global") (string=? w "broken"))))))
-              (sum-word! "fresh" w-unit)
-              (let* ((old (tagcase (car found) (bind (n sc w) (tagcase sc (scheme (tvs u) (show-ty (new-state) u))))))
-                     (users (tagcase st (sess (v gl ds g2) (direct-users ds name)))))
-                (sum-word! "redefines" (product-of! (list (string-word! name) (string-word! old) (string-word! (show-ty (new-state) dt)) (strings-word! users)))))))))))
-
-"What a commit runs: each definition, its global and its form."
-(define-datatype runs (runs i64 sexp))
-(define-type runss (listof runs acyclic))
-
-(define-datatype rerun-made (rerun-made cv sglobals runss))
-
-(define-rec
-  (session-reruns (subr (maxeff vm loading (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet) (cv sglobals defns string runss) rerun-made)
-    (lambda (v gl us redefined made)
-      "Each user in turn checked again: each that checks run again, at its
-       global; each that does not broken, as Fixpt says it."
-      (if (null? us)
-          (rerun-made v gl made)
-          (tagcase (car us)
-            (defn (ns form)
-              (let ((why (session-worked v form (ty-unit) 1)))
-                (if (string=? why "")
-                    (session-reruns (session-top v form) gl (cdr us) redefined
-                                    (onto made (map (lambda ((n string)) (runs (sglobal-of gl n) form)) ns)))
-                    (session-reruns (with-binds v (onto (broken-binds v ns)
-                                                        (map (lambda ((n string)) (bind (string-append "%broken-why " n) (scheme nil (ty-unit))
-                                                                                        (string-append "since `" (string-append redefined (string-append "` was redefined (" (string-append (refusal-said why) ")"))))))
-                                                             ns)))
-                                    gl (cdr us) redefined made)))))))))
-
-(define decision-tag (subr hp (i64) string)
-  (lambda (w) (if (is-obj? w ob-sum) (name-of-number (sum-tag-number w)) "")))
 
 (define run-ir (subr kfx (strings runs) ir)
   (lambda (gs r)
@@ -476,7 +197,3 @@
                                  (set pendings (pend-replaced (get pendings) (fixnum-value (obj-ref d 1)) (pend k g name form dt #t)))
                                  (sum-word! "go" p))))))))))))))))
 
-(define committed-word! (subr (maxeff hp (alloc @c)) (i64 i64) i64)
-  (lambda (sw d)
-    "`(%session-committed! s d)`: `(sum defined NAME)`."
-    (tagcase (pending-of d) (pend (k g name form dt used) (sum-word! "defined" (string-word! name))))))

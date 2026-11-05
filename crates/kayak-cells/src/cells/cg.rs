@@ -3402,6 +3402,25 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
             lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
         }), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
         x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a)
+    } else if (string_eq_p(h, str_lit("%kayak-global-set")) && i64_eq(size(xs), 3i64)) {
+        // A session's commit (C340): global `NAME`, written in full, given the
+        // value, unit after; a form kayak's own, not a program's.
+        x_bloblet(string_append(str_lit("%global-set:"), {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Str(t, f2, p2) => {
+                    t
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }), 0i64, kayak_rt::heap_cons(parse_x(third(xs)), kayak_rt::nil()), a)
+    } else if (string_eq_p(h, str_lit("%session-check")) && i64_eq(size(xs), 6i64)) {
+        // `session-check` (C340): as `%stage`, tier 1's `%kayak-session-run`.
+        let rest = cdr(cdr(cdr(xs)));
+        x_app(x_var(str_lit("%kayak-session-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a)
     } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 6i64)) {
         // `stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
         // the code, the evidence given, and what the checker noted, its rep's
@@ -5545,11 +5564,38 @@ pub fn globals_reset_x() -> () {
     set(cg_global_table(), make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
 }
 
-// Where `n` is: in the locals, else in the globals; none means standard.
+// A session's names (C340), each with its global's full name,
+// `fx26-session-K:NAME` (Fixpt's): what code a session checks is compiled
+// with, set by the caller around `compile-cells`; none else.
+#[inline]
+pub fn cg_aliases() -> Ref<List<Strings>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<Strings>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<List<Str>>())
+    })
+}
+
+pub fn alias_of(mut al: List<Strings>, mut n: Str) -> Str {
+    loop {
+        if null_p(al) {
+            return str_lit("");
+        } else if string_eq_p(car(car(al)), n) {
+            return second_word(car(al));
+        } else {
+            al = cdr(al);
+            continue;
+        }
+    }
+}
+
+// Where `n` is: in the locals, else a session's global (C340), else in the
+// globals; none means standard.
 pub fn c_where(e: Cenv, n: Str) -> Found {
     let l = c_find(e, n);
     if not(null_p(l)) {
         l
+    } else if not(string_eq_p(alias_of(get(cg_aliases()), n), str_lit(""))) {
+        kayak_rt::heap_cons(at_global(alias_of(get(cg_aliases()), n)), kayak_rt::nil())
     } else if global_p(n) {
         kayak_rt::heap_cons(at_global(n), kayak_rt::nil())
     } else {
@@ -6251,7 +6297,7 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
         c_prim(c, name, n)
     } else if string_eq_p(name, str_lit("%fx26-convert")) {
         c_prim(c, name, n)
-    } else if (string_eq_p(name, str_lit("%kayak-stage-run")) || string_eq_p(name, str_lit("%kayak-reify"))) {
+    } else if (string_eq_p(name, str_lit("%kayak-stage-run")) || string_eq_p(name, str_lit("%kayak-reify")) || string_eq_p(name, str_lit("%kayak-session-run"))) {
         c_prim(c, name, n)
     } else if std_eq_name_p(name) {
         c_op(c, str_lit("eq"))
@@ -7134,6 +7180,10 @@ pub fn c_bloblet(op: Str, i: i64, xs: Cxs, e: Cenv, depth: i64, c: Code) -> () {
     } else if string_eq_p(op, str_lit("bloblet-ref")) {
         c_exps(xs, e, depth, c);
         c_field(c, i64_plus(i, 2i64))
+    } else if has_prefix_p(op, str_lit("%global-set:")) {
+        c_exps(xs, e, depth, c);
+        c_op1(c, str_lit("global!"), o_global(after_prefix(op, str_lit("%global-set:"))));
+        c_lit(c, l_unit())
     } else if string_eq_p(op, str_lit("bloblet-set!")) {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i64_plus(i, 2i64));

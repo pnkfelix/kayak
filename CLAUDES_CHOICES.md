@@ -9344,3 +9344,32 @@ Fixpt's does, to `%fx26-evidence-bound`, which tier 1 lacked: the
 evidence as it is. Of Fixpt's stage programs, 16 now run on tier 1 as
 Fixpt runs them, every way (`evidence`, `evidence-bound`,
 `evidence-region` more); the seven left need sessions.
+
+## C340. Sessions on tier 1 (2026-11-04; compiled stage (a), step 5)
+
+Sessions (C310, C311, C313) run on tier 1 as on the engine, compiled.
+- **Their machine-free half to staging.kfx** (as C336 did for `stage`): a
+  session's state (its checker's environment, globals, definitions,
+  generation), the pending definitions, the checks in a worker, the
+  redefinition rules and the reruns, `make-session`, `session-redefines`,
+  `%session-committed!`, over tier 1's heap (a session and a pending
+  definition each a vector), and an effect, `staging`, which both
+  machines' have. The engine keeps its globals and its lowering.
+- **Tier 1's half** (`cells/stage.kfx`): a session's globals are tier 1's
+  global cells, named as Fixpt names them, `fx26-session-K:NAME`, numbered
+  when defined again as a new one, a global's index its place in
+  `session-names`; its code compiled with the session's names as their
+  globals' (the cell generator's new `cg-aliases`, consulted after the
+  locals); a commit compiled to a procedure of `(%kayak-global-set FULL
+  init)` forms, kayak's own, which the generator writes as `global!`
+  (an `x-bloblet` of its own, which register code declines, so the word
+  runs as cells). `session-check` compiles to `%kayak-session-run`, as
+  `%stage` does; it and `%session-ready` are the machine's, as `stage` is.
+- **Staged code compiled as `(define %stage-K unit X)`**, `stage`'s too:
+  written with a type (whatever it is: the generator notes only that it
+  has one), its words are named for `%stage-K`, not by their places, which
+  a staged code's, counted from its own base, may share with the
+  program's (`lambda@P`).
+Of Fixpt's 23 stage programs, 22 run on tier 1 as Fixpt runs them, every
+way: the engine's 22 (`tests/stage-cells-passing` is `tests/stage-passing`);
+`session.fx` differs on both only in a refusal's type printed (TODO).

@@ -8,30 +8,56 @@
  `(sum failed WHY)`. Staged words run as cells (tier 1), whatever tier
  runs the program."
 
-"Each stage's global named apart, `%stage-K`; its words are named by its
- lambdas' places, which are each stage's own (staging.kfx's `stage-at!`)."
-(define stage-count (ref i64 @c) (new 0))
-
-(define-rec
-  (word-suffixed (subr cread ((listof named-slot @c) string) i64)
-    (lambda (ws suf)
-      "The newest word whose name ends `suf`, or 0."
-      (cond ((null? ws) 0)
-            ((tagcase (car ws) (named-slot (n i) (has-suffix? n suf))) (named-value (car ws)))
-            (else (word-suffixed (cdr ws) suf))))))
-
 (define-rec
   (lines-joined (subr kfx (strings string) string)
     (lambda (ls acc) (if (null? ls) acc (lines-joined (cdr ls) (string-append acc (string-append (car ls) "\n")))))))
+
+"Each stage's code compiled as `(define %stage-K unit PROCEDURE)`, K its
+ own: written with a type (whatever it is, the compiler notes only that
+ there is one), so that its words are named for `%stage-K`, not by their
+ places, which a program's may share."
+(define stage-count (ref i64 @c) (new 0))
+
+(define stage-form! (subr cwrite (sexp) sexp)
+  (lambda (x)
+    (let* ((k (get stage-count)) (name (string-append "%stage-" (i64->string k))))
+      (begin
+        (set stage-count (i64+ k 1))
+        (lst (list (sym "define" stage-file (stage-at!)) (sym name stage-file (stage-at!)) (sym "unit" stage-file (stage-at!)) x) stage-file 1 (stage-at!))))))
+
+(define stage-name (subr kfx (sexp) string) (lambda (form) (sym-name (second (items form)))))
+
+(define-rec
+  (word-prefixed (subr cread ((listof named-slot @c) string) i64)
+    (lambda (ws pre)
+      "The newest word whose name begins `pre`, or 0."
+      (cond ((null? ws) 0)
+            ((tagcase (car ws) (named-slot (n i) (has-prefix? n pre))) (named-value (car ws)))
+            (else (word-prefixed (cdr ws) pre))))))
+
+(define compiled-read! (subr cm (sexp facts (listof strings acyclic)) unit)
+  (lambda (form fs aliases)
+    "`form` compiled to cells, a session's names its globals (`aliases`), and
+     its listing read into the running heap."
+    (begin
+      (set cg-aliases aliases)
+      (compile-cells (list form) fs)
+      (set cg-aliases nil)
+      (listing-added! (lines-joined (cells-listing) "")))))
+
+(define closure-over! (subr cwrite (i64 (listof i64 acyclic)) i64)
+  (lambda (w frees)
+    "A closure of word `w` over `frees`, as the machine's `closure` makes one."
+    (let ((c (make-bloblet! k-closure (i64+ (size frees) 1) 0 #t #f)))
+      (begin (slot-set! c f-word w) (staged-filled! c f-free0 frees) c))))
 
 (define stage-run-cells! (subr cm (i64 i64 i64 i64 i64) i64)
   (lambda (m code given rep-text names)
     "`(%kayak-stage-run m code given REP NAMES)`, as the engine's
      `stage-run!`: the code checked against the rep filled from the evidence
-     given (C307), compiled as `(define %stage-K (lambda (stage-module)
+     given (C307), compiled as `(define %stage-K unit (lambda (stage-module)
      (lambda () (with stage-module CODE))))`, the listing read, and the inner
-     lambda's word, the thunk's, named by its body's place (as kayak's
-     compiler names a lambda's word), made a closure over `m`."
+     lambda's word, the thunk's, made a closure over `m`."
     (let* ((t ((proj rep-ty @c) (rep-filled! (rep-of-text! (string-text rep-text)) given (string-text names))))
            (thunk (staged-thunk (code-sexp! code)))
            (prog (staged-program thunk))
@@ -39,16 +65,171 @@
       (if (not (string=? why ""))
           (refused-word! why)
           (let* ((s (stage-checked prog t))
-                 (fs (tagcase s (st (sbs k fs ns) fs)))
-                 (k (get stage-count))
-                 (name (string-append "%stage-" (i64->string k)))
-                 (form (lst (list (sym "define" stage-file (stage-at!)) (sym name stage-file (stage-at!)) prog) stage-file 1 (stage-at!))))
+                 (form (stage-form! prog)))
             (begin
-              (set stage-count (i64+ k 1))
-              (compile-cells (list form) fs)
-              (listing-added! (lines-joined (cells-listing) ""))
-              (let ((w (word-suffixed (get words) (string-append "/lambda@" (i64->string (datum-pos (last (items thunk))))))))
+              (compiled-read! form (tagcase s (st (sbs k fs ns) fs)) nil)
+              ;; The thunk, the one lambda inside: `%stage-K/lambda@P`.
+              (let ((w (word-prefixed (get words) (string-append (stage-name form) "/lambda@"))))
                 (if (i64= w 0)
                     (stage-failed-word! "refused" "staged code: compiled to no thunk")
-                    (let ((c (make-bloblet! k-closure 2 0 #t #f)))
-                      (begin (slot-set! c f-word w) (slot-set! c f-free0 m) (staged-sum! "ok" c)))))))))))
+                    (staged-sum! "ok" (closure-over! w (list m)))))))))))
+
+"Sessions on tier 1 (C340; the engine's, C310, C311, C313, vstage.kfx):
+ what is no machine's is staging.kfx's; here, a session's globals, tier 1's
+ global cells, each named as Fixpt names it, `fx26-session-K:NAME`, and
+ numbered when defined again as a new one (`numbered-global`); and its code
+ compiled, the session's names its globals' (the compiler's `cg-aliases`).
+ A session's global's index (`sglobal`) is its place in `session-names`."
+(define session-names (ref strings @c) (new nil))
+
+(define-rec
+  (session-name-at (subr kfx (strings i64) string)
+    (lambda (ns i) (cond ((null? ns) "") ((i64= i 0) (car ns)) (else (session-name-at (cdr ns) (i64- i 1)))))))
+
+(define session-global-cell! (subr cm (i64 string i64) i64)
+  (lambda (k n w)
+    "A new global of session `k`, its name `n` there, of value `w`: its index."
+    (let* ((i (size (get session-names)))
+           (full (numbered-global (string-append (session-prefix k) n) (get session-names)))
+           (g (global-named full)))
+      (begin
+        (set session-names (onto (get session-names) (list full)))
+        (slot-set! g f-value w)
+        (slot-set! g f-writes (fix (i64+ (fix-val (slot-of g f-writes)) 1)))
+        i))))
+
+(define-rec
+  (session-aliases (subr cread (sglobals sglobals) (listof strings acyclic))
+    (lambda (gl all)
+      "Each name the session gives, its newest global's full name."
+      (if (null? gl)
+          nil
+          (tagcase (car gl)
+            (sglobal (n i)
+              (if (i64= (sglobal-of all n) i)
+                  (cons (list n (session-name-at (get session-names) i)) (session-aliases (cdr gl) all))
+                  (session-aliases (cdr gl) all))))))))
+
+(define-rec
+  (seeded-cells (subr cm (i64 cv sglobals i64 strings i64) sess)
+    (lambda (k v gl m ns i)
+      "`m`'s values each defined in the session, as the engine's `seeded`."
+      (if (null? ns)
+          (sess v gl nil 0)
+          (let* ((n (car ns))
+                 (form (lst (list (sym "define" stage-file 0) (sym n stage-file 0)
+                                  (lst (list (sym "with" stage-file 0) (sym "stage-module" stage-file 0) (sym n stage-file 0)) stage-file 1 (stage-at!)))
+                            stage-file 1 (stage-at!)))
+                 (v2 (session-top v form))
+                 (g (session-global-cell! k n (slot-of m (i64+ i 2)))))
+            (seeded-cells k v2 (cons (sglobal n g) gl) m (cdr ns) (i64+ i 1)))))))
+
+(define session-state-cells! (subr cm (i64 ty) i64)
+  (lambda (sw mt)
+    "The index of session `sw`'s state, made first if it has none, of module
+     type `mt`, as the engine's `session-state!`."
+    (let ((k (fix-val (elt-ref sw 1))))
+      (if (i64>= k 0)
+          k
+          (let* ((k2 (size (get sessions)))
+                 (m (elt-ref sw 0))
+                 (rp-abs (data-names-with "rp.." mt))
+                 (mt (data-renamed rp-abs (map (lambda ((n string)) (string-append "stage-module.." (after-prefix n "rp.."))) rp-abs) mt))
+                 (v (module-types-opened
+                     (with-binds (stage-cv) (cons (bind "stage-module" (scheme nil mt) "global") (session-marks)))
+                     mt))
+                 (gm (session-global-cell! k2 "stage-module" m))
+                 (vals (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) (mtype-items mt))))
+                 (made (seeded-cells k2 v (list (sglobal "stage-module" gm)) m vals 0)))
+            (begin
+              (set sessions (onto (get sessions) (list made)))
+              (elt-set! sw 1 (fix k2))
+              k2))))))
+
+(define session-expression-cells! (subr cm (i64 sess sexp ty) i64)
+  (lambda (k st code t)
+    "An expression in session `k`: `(sum ok (sum expression p))`, `p` its
+     thunk compiled, a closure over nothing; or why not."
+    (tagcase st
+      (sess (v gl ds g)
+        (let* ((thunk (session-thunk code))
+               (why (session-worked v thunk t 0)))
+          (if (not (string=? why ""))
+              (refused-word! why)
+              (let* ((s (tagcase ((with expressions check) (at v "staged code" nil) (new-state) thunk t) (res (u es s) s)))
+                     (form (stage-form! thunk)))
+                (begin
+                  (compiled-read! form (onto (tagcase s (st (sbs n fs ns) fs)) (cv-facts v)) (session-aliases gl gl))
+                  (let ((w (lookup (get words) (stage-name form))))
+                    (if (i64= w 0)
+                        (stage-failed-word! "refused" "staged code: compiled to no thunk")
+                        (staged-sum! "ok" (staged-sum! "expression" (closure-over! w nil)))))))))))))
+
+(define session-run-cells! (subr cm (i64 i64 i64 i64 i64) i64)
+  (lambda (sw code given rep-text names)
+    "`(%kayak-session-run s code given REP NAMES)`, `session-check`'s, as the
+     engine's `session-run!`."
+    (let* ((whole ((proj rep-ty @c) (rep-filled! (rep-of-text! (string-text rep-text)) given (string-text names))))
+           (mt (tagcase whole (ty-proc (es ps r) (car ps)) (else other whole)))
+           (t (tagcase whole (ty-proc (es ps r) r) (else other whole)))
+           (k (session-state-cells! sw mt))
+           (st (nth-sess (get sessions) k))
+           (c (code-sexp! code)))
+      (if (head-is? c "define")
+          (session-define! sw k st c t)
+          (session-expression-cells! k st c t)))))
+
+(define run-set (subr cwrite (runs) sexp)
+  (lambda (r)
+    "A form a commit runs, its global given its initializer's value."
+    (tagcase r
+      (runs (i form)
+        (lst (list (sym "%kayak-global-set" stage-file (stage-at!)) (str (session-name-at (get session-names) i) stage-file (stage-at!)) (last (items form)))
+             stage-file 1 (stage-at!))))))
+
+(define-rec
+  (run-sets (subr cwrite ((listof runs acyclic)) sexps)
+    (lambda (rs) (if (null? rs) nil (cons (run-set (car rs)) (run-sets (cdr rs)))))))
+
+(define ready-cells! (subr cm (i64 i64 i64) i64)
+  (lambda (sw d decision)
+    "`(%session-ready s d decision)`, as the engine's `ready-word!`: `d`
+     committed as `decision` says, then `(sum go p)`, `p` the definition and
+     what runs again compiled, a closure over nothing; or why not."
+    (tagcase (pending-of d)
+      (pend (k g name form dt used)
+        (let ((st (nth-sess (get sessions) k)))
+          (tagcase st
+            (sess (v gl ds g2)
+              (let* ((found (scope-bind name v))
+                     (existed (and (not (null? found)) (tagcase (car found) (bind (n sc w) (or (string=? w "global") (string=? w "broken"))))))
+                     (how (decision-tag decision)))
+                (cond ((not (i64= (elt-ref d 0) sw)) (stage-failed-word! "stale" "this definition was checked against another session"))
+                      (used (stage-failed-word! "stale" "this definition was committed already"))
+                      ((not (i64= g g2)) (stage-failed-word! "stale" "the session changed since this definition was checked: check it again"))
+                      ((and existed (string=? how "refuse"))
+                       (stage-failed-word! "refused" (string-append "`" (string-append name "` is defined already, and the redefinition was refused"))))
+                      (else
+                       (let* ((v2 (session-top v form))
+                              (needed (and existed (rerun-needed? v v2 (list name))))
+                              (i (if (and existed (not needed)) (sglobal-of gl name) (session-global-cell! k name v-unbound)))
+                              (gl2 (if (and existed (not needed)) gl (cons (sglobal name i) gl)))
+                              (kept (filter (lambda ((x defn)) (not (string-member? name (defn-names x)))) ds))
+                              (again (if (and needed (string=? how "rerun"))
+                                         (session-reruns v2 gl2 (users-of kept (list name)) name nil)
+                                         (rerun-made v2 gl2 nil))))
+                         (tagcase again
+                           (rerun-made (v3 gl3 more)
+                             (let* ((body (lst (onto (cons (sym "begin" stage-file (stage-at!)) (run-sets (cons (runs i form) more)))
+                                                     (list (sym "#u" stage-file (stage-at!))))
+                                               stage-file 1 (stage-at!)))
+                                    (lam (lst (list (sym "lambda" stage-file (stage-at!)) (lst nil stage-file 1 (stage-at!)) body) stage-file 1 (stage-at!)))
+                                    (top (stage-form! lam)))
+                               (begin
+                                 (compiled-read! top (cv-facts v3) (session-aliases gl3 gl3))
+                                 (set sessions (sess-replaced (get sessions) k (sess v3 gl3 (onto kept (list (defn (list name) form))) (i64+ g2 1))))
+                                 (set pendings (pend-replaced (get pendings) (fix-val (elt-ref d 1)) (pend k g name form dt #t)))
+                                 (let ((w (lookup (get words) (stage-name top))))
+                                   (if (i64= w 0)
+                                       (stage-failed-word! "refused" "staged code: compiled to no thunk")
+                                       (staged-sum! "go" (closure-over! w nil)))))))))))))))))))

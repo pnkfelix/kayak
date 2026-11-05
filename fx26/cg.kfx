@@ -765,6 +765,17 @@
                (x-app (x-var "%kayak-reify" a)
                       (list (parse-x prod) (x-str (fact-text (get cg-facts) f a "reify-rep ") a) (x-str (fact-text (get cg-facts) f a "reify-given ") a))
                       a)))
+            ((and (string=? h "%kayak-global-set") (i64= (size xs) 3))
+             "A session's commit (C340): global `NAME`, written in full, given the
+              value, unit after; a form kayak's own, not a program's."
+             (x-bloblet (string-append "%global-set:" (tagcase (second xs) (str (t f2 p2) t) (else other ""))) 0 (list (parse-x (third xs))) a))
+            ((and (string=? h "%session-check") (i64= (size xs) 6))
+             "`session-check` (C340): as `%stage`, tier 1's `%kayak-session-run`."
+             (let ((rest (cdr (cdr (cdr xs)))))
+               (x-app (x-var "%kayak-session-run" a)
+                      (list (parse-x (car rest)) (parse-x (second rest)) (parse-x (third rest))
+                            (x-str (fact-text (get cg-facts) f a "stage-rep ") a) (x-str (fact-text (get cg-facts) f a "stage-given ") a))
+                      a)))
             ((and (string=? h "%stage") (i64= (size xs) 6))
              "`stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
               the code, the evidence given, and what the checker noted, its rep's
@@ -1704,11 +1715,25 @@
 (define globals-reset! (subr gen () unit)
   (lambda () (begin (set cg-globals nil) (set cg-global-count 0) (set cg-global-table (make-array global-buckets (the gbucket nil))))))
 
-"Where `n` is: in the locals, else in the globals; none means standard."
+"A session's names (C340), each with its global's full name,
+ `fx26-session-K:NAME` (Fixpt's): what code a session checks is compiled
+ with, set by the caller around `compile-cells`; none else."
+(define cg-aliases (ref (listof strings acyclic) @g) (new nil))
+
+(define-rec
+  (alias-of (subr kfx ((listof strings acyclic) string) string)
+    (lambda (al n)
+      (cond ((null? al) "")
+            ((string=? (car (car al)) n) (second-word (car al)))
+            (else (alias-of (cdr al) n))))))
+
+"Where `n` is: in the locals, else a session's global (C340), else in the
+ globals; none means standard."
 (define c-where (subr gen (cenv string) found)
   (lambda (e n)
     (let ((l (c-find e n)))
       (cond ((not (null? l)) l)
+            ((not (string=? (alias-of (get cg-aliases) n) "")) (list (at-global (alias-of (get cg-aliases) n))))
             ((global? n) (list (at-global n)))
             (else nil)))))
 
@@ -2004,7 +2029,7 @@
            (c-prim c name n))
           ;; A conversion (C230, `converted-x`): Fixpt's primitive itself.
           ((string=? name "%fx26-convert") (c-prim c name n))
-          ((or (string=? name "%kayak-stage-run") (string=? name "%kayak-reify")) (c-prim c name n))
+          ((or (string=? name "%kayak-stage-run") (string=? name "%kayak-reify") (string=? name "%kayak-session-run")) (c-prim c name n))
           ((std-eq-name? name) (c-op c "eq"))
           (else
            (let ((p (std-primitive name)))
@@ -2404,6 +2429,8 @@
       (cond ((string=? op "make-bloblet") (c-prim c "%make-bloblet" (c-exps xs e depth c)))
             ((string=? op "rmake-bloblet") (c-prim c "%region-make-bloblet" (c-exps xs e depth c)))
             ((string=? op "bloblet-ref") (begin (c-exps xs e depth c) (c-field c (i64+ i 2))))
+            ((has-prefix? op "%global-set:")
+             (begin (c-exps xs e depth c) (c-op1 c "global!" (o-global (after-prefix op "%global-set:"))) (c-lit c (l-unit))))
             ((string=? op "bloblet-set!")
              (begin (c-exp (car xs) e depth c #f) (c-int c (i64+ i 2)) (c-exp (second-cx xs) e (i64+ depth 2) c #f)
                     (c-prim c "%bloblet-set!" 3) (c-unit-after c)))

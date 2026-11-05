@@ -1,3 +1,4 @@
+cli-stage/commit.fx
 cli-stage/evidence-bound.fx
 cli-stage/evidence-bound-region.fx
 cli-stage/evidence-bound-reify.fx
@@ -5,11 +6,16 @@ cli-stage/evidence-bound-taken.fx
 cli-stage/evidence.fx
 cli-stage/evidence-missing.fx
 cli-stage/evidence-region.fx
+cli-stage/evidence-session.fx
 cli-stage/generative.fx
 cli-stage/in-a-process.fx
 cli-stage/kept.fx
+cli-stage/named-effect.fx
 cli-stage/not-a-module.fx
 cli-stage/sealed.fx
+cli-stage/session-conditions.fx
+cli-stage/session-knot.fx
+cli-stage/session-types.fx
 cli-stage/stage.fx
 cli-stage/state.fx
 cli-stage/tail-across.fx

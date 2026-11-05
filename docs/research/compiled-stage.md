@@ -137,7 +137,8 @@ Status (2026-11-04): (a) chosen, the user's ("Start on (a)"), questions 1
 to 3 taken as leaned; step 1 done (C335); the shared half of staging
 (C336); step 2 done (C337), 13 of Fixpt's 23 stage programs on tier 1;
 step 3 done (C338), the same under every tier; step 4 done (C339), 16 of
-23, the seven left sessions'.
+23; step 5 done (C340), 22 of 23, the engine's 22. Left: step 6, staged
+words compiled to machine code, after Fixpt's 516abc8e.
 
 1. **The front end in a cells program**: rename the clashes, build the
    combined unit, and measure its build time and binary size. No behaviour

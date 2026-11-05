@@ -248,6 +248,15 @@
  `%fx26-evidence-bound`, evidence as it is."
 (define o-kayak-reify i64 224)
 (define o-evidence-bound i64 225)
+"Sessions (C340): Fixpt's operations, `make-session`, `session-redefines`
+ and `%session-committed!` here (staging.kfx's); a check and a commit,
+ which compile, the machine's (`%kayak-session-run`, `%session-ready`), as
+ `stage` is."
+(define o-make-session i64 226)
+(define o-session-redefines i64 227)
+(define o-session-committed i64 228)
+(define o-kayak-session i64 229)
+(define o-session-ready i64 230)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -362,7 +371,10 @@
          (pdef "%fx26-string->utf8" 1 1 o-string-utf8) (pdef "%fx26-utf8->string" 1 1 o-utf8-string)
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
-         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%kayak-stage-run" 5 5 o-kayak-stage) (pdef "%kayak-reify" 3 3 o-kayak-reify) (pdef "%fx26-evidence-bound" 1 1 o-evidence-bound) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
+         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%kayak-stage-run" 5 5 o-kayak-stage) (pdef "%kayak-reify" 3 3 o-kayak-reify) (pdef "%fx26-evidence-bound" 1 1 o-evidence-bound)
+         (pdef "%fx26-make-session" 1 1 o-make-session) (pdef "%fx26-session-redefines" 2 2 o-session-redefines)
+         (pdef "%fx26-session-committed!" 2 2 o-session-committed) (pdef "%kayak-session-run" 5 5 o-kayak-session)
+         (pdef "%fx26-session-ready" 3 3 o-session-ready) (pdef "%fx26-intern-datum" 1 1 o-intern-datum)
          (pdef "%fx26-keyword?" 1 1 o-keyword-p) (pdef "%fx26-symbol->keyword" 1 1 o-symbol-keyword) (pdef "%fx26-keyword->symbol" 1 1 o-keyword-symbol)
          (pdef "%fx26-file-info" 1 1 o-file-info) (pdef "%fx26-read-symlink" 1 1 o-read-symlink)
          (pdef "%fx26-process-start" 2 2 o-process-start) (pdef "%fx26-process-output" 1 1 o-process-output)
@@ -2318,6 +2330,9 @@
          (io-op! op a b (parg 2)))
         ((i64= op o-kayak-reify) (reify-run! (parg 0) (rep-of-text! (string-text (parg 1))) (parg 2)))
         ((i64= op o-evidence-bound) (parg 0))
+        ((i64= op o-make-session) (make-session-word! (parg 0)))
+        ((i64= op o-session-redefines) (redefines-word! (parg 0) (parg 1)))
+        ((i64= op o-session-committed) (committed-word! (parg 0) (parg 1)))
         ((i64= op o-convert)
          "A procedure already of the convention itself; one of the other, an
           adapter (C230; Fixpt's `%fx26-convert`, `adapt`); anything else

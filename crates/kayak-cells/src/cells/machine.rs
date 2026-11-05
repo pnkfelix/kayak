@@ -1155,6 +1155,10 @@ pub fn prim_run_x(n: i64, p: i64, count: i64) -> i64 {
         set(dsp(), from);
         push_x(if i64_eq(prim_op(p), o_kayak_stage()) {
             stage_run_cells_x(parg(0i64), parg(1i64), parg(2i64), parg(3i64), parg(4i64))
+        } else if i64_eq(prim_op(p), o_kayak_session()) {
+            session_run_cells_x(parg(0i64), parg(1i64), parg(2i64), parg(3i64), parg(4i64))
+        } else if i64_eq(prim_op(p), o_session_ready()) {
+            ready_cells_x(parg(0i64), parg(1i64), parg(2i64))
         } else {
             prim_apply_x(p)
         });

@@ -12,38 +12,6 @@ use super::*;
 // its thunk made a closure over the module: `(sum ok THUNK)`; or
 // `(sum failed WHY)`. Staged words run as cells (tier 1), whatever tier
 // runs the program.
-
-// Each stage's global named apart, `%stage-K`; its words are named by its
-// lambdas' places, which are each stage's own (staging.kfx's `stage-at!`).
-#[inline]
-pub fn stage_count() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
-    })
-}
-
-/// The newest word whose name ends `suf`, or 0.
-pub fn word_suffixed(mut ws: List<&'static NamedSlot>, mut suf: Str) -> i64 {
-    loop {
-        if null_p(ws) {
-            return 0i64;
-        } else if {
-            let tagcase_ = car(ws);
-            match *tagcase_ {
-                NamedSlot::NamedSlot(n, i) => {
-                    has_suffix_p(n, suf)
-                }
-            }
-        } {
-            return named_value(car(ws));
-        } else {
-            ws = cdr(ws);
-            continue;
-        }
-    }
-}
-
 pub fn lines_joined(mut ls: Strings, mut acc: Str) -> Str {
     loop {
         if null_p(ls) {
@@ -55,12 +23,74 @@ pub fn lines_joined(mut ls: Strings, mut acc: Str) -> Str {
     }
 }
 
+// Each stage's code compiled as `(define %stage-K unit PROCEDURE)`, K its
+// own: written with a type (whatever it is, the compiler notes only that
+// there is one), so that its words are named for `%stage-K`, not by their
+// places, which a program's may share.
+#[inline]
+pub fn stage_count() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn stage_form_x(x: &'static Sexp) -> &'static Sexp {
+    let k = get(stage_count());
+    let name = string_append(str_lit("%stage-"), i64_to_string(k));
+    set(stage_count(), i64_plus(k, 1i64));
+    lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), stage_at_x()), kayak_rt::heap_cons(sym(name, stage_file(), stage_at_x()), kayak_rt::heap_cons(sym(str_lit("unit"), stage_file(), stage_at_x()), kayak_rt::heap_cons(x, kayak_rt::nil())))), stage_file(), 1i64, stage_at_x())
+}
+
+#[inline]
+pub fn stage_name(form: &'static Sexp) -> Str {
+    sym_name(second(items(form)))
+}
+
+/// The newest word whose name begins `pre`, or 0.
+pub fn word_prefixed(mut ws: List<&'static NamedSlot>, mut pre: Str) -> i64 {
+    loop {
+        if null_p(ws) {
+            return 0i64;
+        } else if {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                NamedSlot::NamedSlot(n, i) => {
+                    has_prefix_p(n, pre)
+                }
+            }
+        } {
+            return named_value(car(ws));
+        } else {
+            ws = cdr(ws);
+            continue;
+        }
+    }
+}
+
+/// `form` compiled to cells, a session's names its globals (`aliases`), and
+/// its listing read into the running heap.
+#[inline]
+pub fn compiled_read_x(form: &'static Sexp, fs: Facts, aliases: List<Strings>) -> () {
+    set(cg_aliases(), aliases);
+    compile_cells(kayak_rt::heap_cons(form, kayak_rt::nil()), fs);
+    set(cg_aliases(), nil::<List<Str>>());
+    listing_added_x(lines_joined(cells_listing(), str_lit("")))
+}
+
+/// A closure of word `w` over `frees`, as the machine's `closure` makes one.
+pub fn closure_over_x(w: i64, frees: List<i64>) -> i64 {
+    let c = make_bloblet_x(k_closure(), i64_plus(size(frees), 1i64), 0i64, true, false);
+    slot_set_x(c, f_word(), w);
+    staged_filled_x(c, f_free0(), frees);
+    c
+}
+
 /// `(%kayak-stage-run m code given REP NAMES)`, as the engine's
 /// `stage-run!`: the code checked against the rep filled from the evidence
-/// given (C307), compiled as `(define %stage-K (lambda (stage-module)
+/// given (C307), compiled as `(define %stage-K unit (lambda (stage-module)
 /// (lambda () (with stage-module CODE))))`, the listing read, and the inner
-/// lambda's word, the thunk's, named by its body's place (as kayak's
-/// compiler names a lambda's word), made a closure over `m`.
+/// lambda's word, the thunk's, made a closure over `m`.
 pub fn stage_run_cells_x(m: i64, code: i64, given: i64, rep_text: i64, names: i64) -> i64 {
     let t = (&rep_ty)(rep_filled_x(rep_of_text_x(string_text(rep_text)), given, string_text(names)));
     let thunk = staged_thunk(code_sexp_x(code));
@@ -70,28 +100,290 @@ pub fn stage_run_cells_x(m: i64, code: i64, given: i64, rep_text: i64, names: i6
         refused_word_x(why)
     } else {
         let s = stage_checked(prog, t);
-        let fs = {
+        let form = stage_form_x(prog);
+        compiled_read_x(form, {
             let tagcase_ = s;
             match *tagcase_ {
                 St::St(sbs, k, fs, ns) => {
                     fs
                 }
             }
-        };
-        let k = get(stage_count());
-        let name = string_append(str_lit("%stage-"), i64_to_string(k));
-        let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), stage_at_x()), kayak_rt::heap_cons(sym(name, stage_file(), stage_at_x()), kayak_rt::heap_cons(prog, kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
-        set(stage_count(), i64_plus(k, 1i64));
-        compile_cells(kayak_rt::heap_cons(form, kayak_rt::nil()), fs);
-        listing_added_x(lines_joined(cells_listing(), str_lit("")));
-        let w = word_suffixed(get(words()), string_append(str_lit("/lambda@"), i64_to_string(datum_pos(last(items(thunk))))));
+        }, nil::<List<Str>>());
+        let w = word_prefixed(get(words()), string_append(stage_name(form), str_lit("/lambda@")));
         if i64_eq(w, 0i64) {
             stage_failed_word_x(str_lit("refused"), str_lit("staged code: compiled to no thunk"))
         } else {
-            let c = make_bloblet_x(k_closure(), 2i64, 0i64, true, false);
-            slot_set_x(c, f_word(), w);
-            slot_set_x(c, f_free0(), m);
-            staged_sum_x(str_lit("ok"), c)
+            staged_sum_x(str_lit("ok"), closure_over_x(w, kayak_rt::heap_cons(m, kayak_rt::nil())))
+        }
+    }
+}
+
+// Sessions on tier 1 (C340; the engine's, C310, C311, C313, vstage.kfx):
+// what is no machine's is staging.kfx's; here, a session's globals, tier 1's
+// global cells, each named as Fixpt names it, `fx26-session-K:NAME`, and
+// numbered when defined again as a new one (`numbered-global`); and its code
+// compiled, the session's names its globals' (the compiler's `cg-aliases`).
+// A session's global's index (`sglobal`) is its place in `session-names`.
+#[inline]
+pub fn session_names() -> Ref<Strings> {
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Str>())
+    })
+}
+
+pub fn session_name_at(mut ns: Strings, mut i: i64) -> Str {
+    loop {
+        if null_p(ns) {
+            return str_lit("");
+        } else if i64_eq(i, 0i64) {
+            return car(ns);
+        } else {
+            (ns, i) = (cdr(ns), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// A new global of session `k`, its name `n` there, of value `w`: its index.
+pub fn session_global_cell_x(k: i64, n: Str, w: i64) -> i64 {
+    let i = size(get(session_names()));
+    let full = numbered_global(string_append(session_prefix(k), n), get(session_names()));
+    let g = global_named(full);
+    set(session_names(), onto(get(session_names()), kayak_rt::heap_cons(full, kayak_rt::nil())));
+    slot_set_x(g, f_value(), w);
+    slot_set_x(g, f_writes(), fix(i64_plus(fix_val(slot_of(g, f_writes())), 1i64)));
+    i
+}
+
+/// Each name the session gives, its newest global's full name.
+pub fn session_aliases(mut gl: Sglobals, mut all: Sglobals) -> List<Strings> {
+    loop {
+        if null_p(gl) {
+            return nil::<List<Str>>();
+        } else {
+            let tagcase_ = car(gl);
+            match *tagcase_ {
+                Sglobal::Sglobal(n, i) => {
+                    if i64_eq(sglobal_of(all, n), i) {
+                        return kayak_rt::heap_cons(kayak_rt::heap_cons(n, kayak_rt::heap_cons(session_name_at(get(session_names()), i), kayak_rt::nil())), session_aliases(cdr(gl), all));
+                    } else {
+                        gl = cdr(gl);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `m`'s values each defined in the session, as the engine's `seeded`.
+pub fn seeded_cells(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings, mut i: i64) -> &'static Sess {
+    loop {
+        if null_p(ns) {
+            return sess(v, gl, nil::<&'static Defn>(), 0i64);
+        } else {
+            let n = car(ns);
+            let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
+            let v2 = session_top(v, form);
+            let g = session_global_cell_x(k, n, slot_of(m, i64_plus(i, 2i64)));
+            (v, gl, ns, i) = (v2, kayak_rt::heap_cons(sglobal(n, g), gl), cdr(ns), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The index of session `sw`'s state, made first if it has none, of module
+/// type `mt`, as the engine's `session-state!`.
+pub fn session_state_cells_x(sw: i64, mt: &'static Ty) -> i64 {
+    let k = fix_val(elt_ref(sw, 1i64));
+    if i64_gt_eq(k, 0i64) {
+        k
+    } else {
+        let k2 = size(get(sessions()));
+        let m = elt_ref(sw, 0i64);
+        let rp_abs = data_names_with(str_lit("rp.."), mt);
+        let mt = data_renamed(rp_abs, map(lambda1s(move |n: Str| {
+            string_append(str_lit("stage-module.."), after_prefix(n, str_lit("rp..")))
+        }), rp_abs), mt);
+        let v = module_types_opened(with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks())), mt);
+        let gm = session_global_cell_x(k2, str_lit("stage-module"), m);
+        let vals = map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
+            string_eq_p(mitem_kind(x), str_lit("%val"))
+        }), mtype_items(mt)));
+        let made = seeded_cells(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals, 0i64);
+        set(sessions(), onto(get(sessions()), kayak_rt::heap_cons(made, kayak_rt::nil())));
+        elt_set_x(sw, 1i64, fix(k2));
+        k2
+    }
+}
+
+/// An expression in session `k`: `(sum ok (sum expression p))`, `p` its
+/// thunk compiled, a closure over nothing; or why not.
+pub fn session_expression_cells_x(k: i64, st: &'static Sess, code: &'static Sexp, t: &'static Ty) -> i64 {
+    let tagcase_ = st;
+    match *tagcase_ {
+        Sess::Sess(v, gl, ds, g) => {
+            let thunk = session_thunk(code);
+            let why = session_worked(v, thunk, t, 0i64);
+            if not(string_eq_p(why, str_lit(""))) {
+                refused_word_x(why)
+            } else {
+                let s = {
+                    let tagcase_ = (&expressions::check)(at(v, str_lit("staged code"), nil::<Str>()), new_state(), thunk, t);
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            s
+                        }
+                    }
+                };
+                let form = stage_form_x(thunk);
+                compiled_read_x(form, onto({
+                    let tagcase_ = s;
+                    match *tagcase_ {
+                        St::St(sbs, n, fs, ns) => {
+                            fs
+                        }
+                    }
+                }, cv_facts(v)), session_aliases(gl, gl));
+                let w = lookup(get(words()), stage_name(form));
+                if i64_eq(w, 0i64) {
+                    stage_failed_word_x(str_lit("refused"), str_lit("staged code: compiled to no thunk"))
+                } else {
+                    staged_sum_x(str_lit("ok"), staged_sum_x(str_lit("expression"), closure_over_x(w, nil::<i64>())))
+                }
+            }
+        }
+    }
+}
+
+/// `(%kayak-session-run s code given REP NAMES)`, `session-check`'s, as the
+/// engine's `session-run!`.
+pub fn session_run_cells_x(sw: i64, code: i64, given: i64, rep_text: i64, names: i64) -> i64 {
+    let whole = (&rep_ty)(rep_filled_x(rep_of_text_x(string_text(rep_text)), given, string_text(names)));
+    let mt = {
+        let tagcase_ = whole;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                car(ps)
+            }
+            _ => {
+                let other = tagcase_;
+                whole
+            }
+        }
+    };
+    let t = {
+        let tagcase_ = whole;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                r
+            }
+            _ => {
+                let other = tagcase_;
+                whole
+            }
+        }
+    };
+    let k = session_state_cells_x(sw, mt);
+    let st = nth_sess(get(sessions()), k);
+    let c = code_sexp_x(code);
+    if head_is_p(c, str_lit("define")) {
+        session_define_x(sw, k, st, c, t)
+    } else {
+        session_expression_cells_x(k, st, c, t)
+    }
+}
+
+/// A form a commit runs, its global given its initializer's value.
+pub fn run_set(r: &'static Runs) -> &'static Sexp {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Runs::Runs(i, form) => {
+            lst(kayak_rt::heap_cons(sym(str_lit("%kayak-global-set"), stage_file(), stage_at_x()), kayak_rt::heap_cons(str(session_name_at(get(session_names()), i), stage_file(), stage_at_x()), kayak_rt::heap_cons(last(items(form)), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x())
+        }
+    }
+}
+
+#[inline]
+pub fn run_sets(rs: List<&'static Runs>) -> Sexps {
+    if null_p(rs) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(run_set(car(rs)), run_sets(cdr(rs)))
+    }
+}
+
+/// `(%session-ready s d decision)`, as the engine's `ready-word!`: `d`
+/// committed as `decision` says, then `(sum go p)`, `p` the definition and
+/// what runs again compiled, a closure over nothing; or why not.
+pub fn ready_cells_x(sw: i64, d: i64, decision: i64) -> i64 {
+    let tagcase_ = pending_of(d);
+    match *tagcase_ {
+        Pend::Pend(k, g, name, form, dt, used) => {
+            let st = nth_sess(get(sessions()), k);
+            let tagcase_ = st;
+            match *tagcase_ {
+                Sess::Sess(v, gl, ds, g2) => {
+                    let found = scope_bind(name, v);
+                    let existed = (not(null_p(found)) && {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("broken")))
+                            }
+                        }
+                    });
+                    let how = decision_tag(decision);
+                    if not(i64_eq(elt_ref(d, 0i64), sw)) {
+                        stage_failed_word_x(str_lit("stale"), str_lit("this definition was checked against another session"))
+                    } else if used {
+                        stage_failed_word_x(str_lit("stale"), str_lit("this definition was committed already"))
+                    } else if not(i64_eq(g, g2)) {
+                        stage_failed_word_x(str_lit("stale"), str_lit("the session changed since this definition was checked: check it again"))
+                    } else if (existed && string_eq_p(how, str_lit("refuse"))) {
+                        stage_failed_word_x(str_lit("refused"), string_append(str_lit("`"), string_append(name, str_lit("` is defined already, and the redefinition was refused"))))
+                    } else {
+                        let v2 = session_top(v, form);
+                        let needed = (existed && rerun_needed_p(v, v2, kayak_rt::heap_cons(name, kayak_rt::nil())));
+                        let i = if (existed && not(needed)) {
+                            sglobal_of(gl, name)
+                        } else {
+                            session_global_cell_x(k, name, v_unbound())
+                        };
+                        let gl2 = if (existed && not(needed)) {
+                            gl
+                        } else {
+                            kayak_rt::heap_cons(sglobal(name, i), gl)
+                        };
+                        let kept = filter(lambda1s(move |x: &'static Defn| {
+                            not(string_member_p(name, defn_names(x)))
+                        }), ds);
+                        let again = if (needed && string_eq_p(how, str_lit("rerun"))) {
+                            session_reruns(v2, gl2, users_of(kept, kayak_rt::heap_cons(name, kayak_rt::nil())), name, nil::<&'static Runs>())
+                        } else {
+                            rerun_made(v2, gl2, nil::<&'static Runs>())
+                        };
+                        let tagcase_ = again;
+                        match *tagcase_ {
+                            RerunMade::RerunMade(v3, gl3, more) => {
+                                let body = lst(onto(kayak_rt::heap_cons(sym(str_lit("begin"), stage_file(), stage_at_x()), run_sets(kayak_rt::heap_cons(runs(i, form), more))), kayak_rt::heap_cons(sym(str_lit("#u"), stage_file(), stage_at_x()), kayak_rt::nil())), stage_file(), 1i64, stage_at_x());
+                                let lam = lst(kayak_rt::heap_cons(sym(str_lit("lambda"), stage_file(), stage_at_x()), kayak_rt::heap_cons(lst(nil::<&'static Sexp>(), stage_file(), 1i64, stage_at_x()), kayak_rt::heap_cons(body, kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
+                                let top = stage_form_x(lam);
+                                compiled_read_x(top, cv_facts(v3), session_aliases(gl3, gl3));
+                                set(sessions(), sess_replaced(get(sessions()), k, sess(v3, gl3, onto(kept, kayak_rt::heap_cons(defn(kayak_rt::heap_cons(name, kayak_rt::nil()), form), kayak_rt::nil())), i64_plus(g2, 1i64))));
+                                set(pendings(), pend_replaced(get(pendings()), fix_val(elt_ref(d, 1i64)), pend(k, g, name, form, dt, true)));
+                                let w = lookup(get(words()), stage_name(top));
+                                if i64_eq(w, 0i64) {
+                                    stage_failed_word_x(str_lit("refused"), str_lit("staged code: compiled to no thunk"))
+                                } else {
+                                    staged_sum_x(str_lit("go"), closure_over_x(w, nil::<i64>()))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
