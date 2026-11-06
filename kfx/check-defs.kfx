@@ -257,7 +257,7 @@
     (map (lambda ((p sexp))
            (let ((xs (items p)))
              (bind (name-of v (car xs)) (parse-scheme-of v (second xs) #f) wher)))
-         (read-all (string-chars table) file 1))))
+         (read-all table file 1))))
 
 (define prim-binds (subr kfx (cv) binds)
   (lambda (v0)
@@ -787,7 +787,7 @@
   (split-words-check (subr kfx (string) strings)
     (lambda (s)
       "`s`'s words, split at spaces."
-      (map (lambda ((x sexp)) (sym-name x)) (read-all (string-chars s) "" 1)))))
+      (map (lambda ((x sexp)) (sym-name x)) (read-all s "" 1)))))
 
 (define with-group-needs (subr kfx (cv sexps i64) cv)
   (lambda (v bindings before)
@@ -2250,7 +2250,13 @@
     (lambda (s) (tagcase s (nempty () nil) (nnode (l k r) (onto (nset-names l) (cons k (nset-names r))))))))
 
 (define nset-without (subr kfx (nset strings) nset)
-  (lambda (s out) (nset-of (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) (nset-names s))))))
+  (lambda (s out)
+    "`s` without `out`; `s` itself if it has none of them, as a `lambda`'s
+     parameters mostly are not items' names (C363): made again at each, the
+     set was most of what a compile made."
+    (if (any? (lambda ((n string)) (in-nset? n s)) out)
+        (nset-of (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) (nset-names s))))
+        s)))
 
 (define-rec
   (refs-in (subr kfx (sexp nset sexps binds) strings)
@@ -2622,7 +2628,7 @@
           (concat (map (lambda ((g sexp))
                          (let ((members (concat (map (lambda ((p sexp)) (form-at (tagcase p (num (k f q) (i64+ k (first-position forms))) (else other -1)) forms)) (cdr (items g))))))
                            (onto (if (head-is? g "s") members (rec-of members)) (selected-after forms members))))
-                       (read-all (string-chars code) "" 1))))))
+                       (read-all code "" 1))))))
 
 "A module checked (C91): its scope made (`module-prep`), its items checked
  in order, and what it gives the forms after it (`module-finish`); split so
@@ -3218,7 +3224,7 @@
                                      (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded)))))
                       (if (null? found)
                           (error (string-append "kfx: cannot read " path))
-                          (let ((es (read-all (string-chars (car found)) path 1)))
+                          (let ((es (read-all (car found) path 1)))
                             (if (not (i64= (size es) 1))
                                 (error (string-append "kfx: " (string-append path ": not a file of one expression")))
                                 (let* ((inner (spliced (imports-in (car es)) (directory-of path) loaded (cons path chain) known))
@@ -3260,7 +3266,7 @@
                                (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
                               ((null? found) (error (string-append "kfx: cannot read " path)))
                               (else
-                               (let* ((forms (import-items (read-all (string-chars (car found)) path 1)))
+                               (let* ((forms (import-items (read-all (car found) path 1)))
                                       (its (run-items (parameters-given forms args path)))
                                       (inner (spliced-each its (directory-of path) loaded (cons path chain) known nil nil f l p))
                                       (name (string-append "made--load--" (string-append (i64->string (size (spliced-known inner))) (string-append "--" (file-tag f)))))
@@ -3426,7 +3432,7 @@
                    (es (if (string=? text "")
                            (error (string-append "kfx: " (string-append fl (string-append ": cannot read " path))))
                            (map (lambda ((x sexp)) (imports-in (if (built-in-path? path) x (loads-from x (directory-of path)))))
-                                (read-all (string-chars text) path 1))))
+                                (read-all text path 1))))
                    (e (if (i64= (size es) 1) (car es) (error (string-append "kfx: " (string-append path ": not a file of one expression")))))
                    (bound (if (head-is? e "let") (items (second (items e))) nil))
                    (body (if (head-is? e "let") (third (items e)) e))
@@ -3582,11 +3588,11 @@
              (else (lst ys f l p)))))
         (else other e)))))
 
-(define program-read (subr kfx (chars string i64) sexps)
-  (lambda (cs file line)
+(define program-read (subr kfx (string string i64) sexps)
+  (lambda (text file line)
     "Forms as `read-all` reads them, their labels unkeyworded (C291), for
      what reads a program but `with-loads`: the REPL's entries."
-    (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded f))) (read-all cs file line))))
+    (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded f))) (read-all text file line))))
 
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)

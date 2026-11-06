@@ -121,12 +121,12 @@
             ((any? (lambda ((s filed)) (tagcase s (filed (n t) (string=? n (car todo))))) done) (loads-read rt (cdr todo) done))
             (else
              (let ((text (read-text rt (car todo))))
-               (loads-read rt (onto (load-paths-all (read-all (string-chars text) (car todo) 1) (directory-of (car todo))) (cdr todo))
+               (loads-read rt (onto (load-paths-all (read-all text (car todo) 1) (directory-of (car todo))) (cdr todo))
                            (cons (filed (car todo) text) done))))))))
 
 (define loaded-for (subr driver (drt string string) fileds)
   (lambda (rt file text)
-    (loads-read rt (load-paths-all (read-all (string-chars text) file 1) (directory-of file)) nil)))
+    (loads-read rt (load-paths-all (read-all text file 1) (directory-of file)) nil)))
 
 "Whether a manifest says its program is a runtime's own, which may
  declare syscalls (C225): a line `--syscalls`, as Fixpt's flag."

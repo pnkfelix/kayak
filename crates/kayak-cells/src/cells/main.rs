@@ -76,7 +76,7 @@ pub fn option_of(mut r#as: List<Str>, mut name: Str, mut otherwise: i64) -> i64 
             if string_eq_p(car(cdr(r#as)), str_lit("none")) {
                 return 9223372036854775807i64;
             } else {
-                let ds = read_all(string_chars(car(cdr(r#as))), str_lit("<args>"), 1i64);
+                let ds = read_all(car(cdr(r#as)), str_lit("<args>"), 1i64);
                 let tagcase_ = car(ds);
                 match *tagcase_ {
                     Sexp::Num(n, f, p) => {

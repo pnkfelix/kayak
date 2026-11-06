@@ -2807,14 +2807,27 @@ pub fn rust_type_names() -> Strings {
     kayak_rt::heap_cons(str_lit("Str"), kayak_rt::heap_cons(str_lit("List"), kayak_rt::heap_cons(str_lit("Cons"), kayak_rt::heap_cons(str_lit("Int"), kayak_rt::heap_cons(str_lit("Tag"), kayak_rt::heap_cons(str_lit("Unwind"), kayak_rt::heap_cons(str_lit("Ref"), kayak_rt::heap_cons(str_lit("FlatArray"), kayak_rt::heap_cons(str_lit("Knot"), kayak_rt::heap_cons(str_lit("Show"), kayak_rt::heap_cons(str_lit("OnceCell"), kayak_rt::heap_cons(str_lit("Fn"), kayak_rt::heap_cons(str_lit("Result"), kayak_rt::heap_cons(str_lit("Ok"), kayak_rt::heap_cons(str_lit("Err"), kayak_rt::heap_cons(str_lit("String"), kayak_rt::heap_cons(str_lit("Copy"), kayak_rt::heap_cons(str_lit("Clone"), kayak_rt::heap_cons(str_lit("Self"), kayak_rt::heap_cons(str_lit("Module"), kayak_rt::heap_cons(str_lit("Void"), kayak_rt::heap_cons(str_lit("Bloblet"), kayak_rt::heap_cons(str_lit("BlobRef"), kayak_rt::heap_cons(str_lit("Arena"), kayak_rt::heap_cons(str_lit("Holds"), kayak_rt::heap_cons(str_lit("ListAt"), kayak_rt::heap_cons(str_lit("RefAt"), kayak_rt::heap_cons(str_lit("TBloblet"), kayak_rt::heap_cons(str_lit("FlatArr"), kayak_rt::heap_cons(str_lit("Flat"), kayak_rt::heap_cons(str_lit("Owner"), kayak_rt::heap_cons(str_lit("Default"), kayak_rt::heap_cons(str_lit("Procedure"), kayak_rt::heap_cons(str_lit("Native"), kayak_rt::heap_cons(str_lit("NativeFields"), kayak_rt::heap_cons(str_lit("Sealed"), kayak_rt::heap_cons(str_lit("Written"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))
 }
 
+// The Rust names kayak-rt or the emitter writes, which no KFX name may
+// mangle as; made once (C363).
+pub fn rust_written_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("bloblet_written"), kayak_rt::heap_cons(str_lit("native_procedure0"), kayak_rt::heap_cons(str_lit("native_procedure1"), kayak_rt::heap_cons(str_lit("native_procedure2"), kayak_rt::heap_cons(str_lit("native_procedure3"), kayak_rt::heap_cons(str_lit("native_procedure4"), kayak_rt::nil())))))))))))))))))))))))))))
+    })
+}
+
+pub fn name_chars_from_p(n: Str, i: i64, k: i64) -> bool {
+    (i64_eq(i, k) || ({
+        let c = string_ref_i64(n, i);
+        (char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c))
+    } && name_chars_from_p(n, i64_plus(i, 1i64), k)))
+}
+
 /// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
 /// character first, then those, digits and `-`; no `--` (the emitter's
 /// `__`); and none whose Rust name kayak-rt or the emitter writes.
 pub fn kfx_name_p(n: Str) -> bool {
-    let cs = string_chars(n);
-    (not(null_p(cs)) && not(rust_keyword_clash_p(n)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1s(move |c: char| {
-        not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
-    }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("bloblet_written"), kayak_rt::heap_cons(str_lit("native_procedure0"), kayak_rt::heap_cons(str_lit("native_procedure1"), kayak_rt::heap_cons(str_lit("native_procedure2"), kayak_rt::heap_cons(str_lit("native_procedure3"), kayak_rt::heap_cons(str_lit("native_procedure4"), kayak_rt::nil()))))))))))))))))))))))))))))))
+    (i64_gt(string_length_i64(n), 0i64) && not(rust_keyword_clash_p(n)) && (char_lower_p(string_ref_i64(n, 0i64)) || has_char_in_p(str_lit("?!<>=+*/%-"), string_ref_i64(n, 0i64))) && name_chars_from_p(n, 0i64, string_length_i64(n)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), rust_written_names())))
 }
 
 // Names `kfx-reserved` tests against, made once (C264): a list written in place is
@@ -5907,7 +5920,7 @@ pub fn specified_type(v: &'static Cv, pnames: Strings, plain: &'static Ty, claus
 // complete: past a depth of cases, it shows nothing.
 #[inline]
 pub fn spec_parts(d: Str) -> Sexps {
-    items(car(read_all(string_chars(after_prefix(d, str_lit("%spec "))), str_lit("%spec"), 0i64)))
+    items(car(read_all(after_prefix(d, str_lit("%spec ")), str_lit("%spec"), 0i64)))
 }
 
 pub fn logic_lin(x: &'static Sexp) -> &'static Lin {
@@ -7084,16 +7097,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }
                 } else if (string_eq_p(s, str_lit("io-error")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
-                    t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
+                    t = car(read_all(io_error_text(), str_lit(""), 1i64));
                     continue;
                 } else if (string_eq_p(s, str_lit("stage-failure")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
-                    t = car(read_all(string_chars(stage_failure_text()), str_lit(""), 1i64));
+                    t = car(read_all(stage_failure_text(), str_lit(""), 1i64));
                     continue;
                 } else if (string_eq_p(s, str_lit("session-decision")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
-                    t = car(read_all(string_chars(session_decision_text()), str_lit(""), 1i64));
+                    t = car(read_all(session_decision_text(), str_lit(""), 1i64));
                     continue;
                 } else if (string_eq_p(s, str_lit("session-redefinition")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
-                    t = car(read_all(string_chars(session_redefinition_text()), str_lit(""), 1i64));
+                    t = car(read_all(session_redefinition_text(), str_lit(""), 1i64));
                     continue;
                 } else if dt_named_p(s, cv_dts(v)) {
                     let found = find_family(s, cv_dts(v));
@@ -8316,13 +8329,13 @@ pub fn kind_text(v: &'static Cv, k: &'static Sexp) -> Str {
 /// An arrow kind's parameters' kinds.
 #[inline]
 pub fn kind_params(k: Str) -> Strings {
-    let xs = items(car(read_all(string_chars(k), str_lit(""), 1i64)));
+    let xs = items(car(read_all(k, str_lit(""), 1i64)));
     map(&show_sexp, items(second(xs)))
 }
 
 #[inline]
 pub fn kind_result(k: Str) -> Str {
-    show_sexp(third(items(car(read_all(string_chars(k), str_lit(""), 1i64)))))
+    show_sexp(third(items(car(read_all(k, str_lit(""), 1i64)))))
 }
 
 /// A function's kind (C173).
@@ -14733,36 +14746,61 @@ pub fn operator_char_p(c: char) -> bool {
     has_char_in_p(str_lit("?!<>=+*/%"), c)
 }
 
-/// Whether another name might mangle as `n` does: one with an operator's
-/// character, or one whose mangling has what such a character's has.
-pub fn might_clash_p(n: Str) -> bool {
-    (any_p(&operator_char_p, string_chars(n)) || {
-        let m = mangle(n);
-        any_p(lambda1s(move |part: Str| {
-            string_has_p(m, part)
-        }), kayak_rt::heap_cons(str_lit("_p"), kayak_rt::heap_cons(str_lit("_x"), kayak_rt::heap_cons(str_lit("_to_"), kayak_rt::heap_cons(str_lit("_plus"), kayak_rt::heap_cons(str_lit("_star"), kayak_rt::heap_cons(str_lit("_slash"), kayak_rt::heap_cons(str_lit("_lt"), kayak_rt::heap_cons(str_lit("_gt"), kayak_rt::heap_cons(str_lit("_eq"), kayak_rt::heap_cons(str_lit("_pct"), kayak_rt::heap_cons(str_lit("_minus"), kayak_rt::nil()))))))))))))
+// The parts of a mangled name an operator's character's mangling has, made
+// once (C363).
+#[inline]
+pub fn clash_parts() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("_p"), kayak_rt::heap_cons(str_lit("_x"), kayak_rt::heap_cons(str_lit("_to_"), kayak_rt::heap_cons(str_lit("_plus"), kayak_rt::heap_cons(str_lit("_star"), kayak_rt::heap_cons(str_lit("_slash"), kayak_rt::heap_cons(str_lit("_lt"), kayak_rt::heap_cons(str_lit("_gt"), kayak_rt::heap_cons(str_lit("_eq"), kayak_rt::heap_cons(str_lit("_pct"), kayak_rt::heap_cons(str_lit("_minus"), kayak_rt::nil())))))))))))
     })
 }
 
+#[inline]
+pub fn operator_from_p(n: Str, i: i64, k: i64) -> bool {
+    (i64_lt(i, k) && (operator_char_p(string_ref_i64(n, i)) || operator_from_p(n, i64_plus(i, 1i64), k)))
+}
+
+/// Whether another name might mangle as `n` does: one with an operator's
+/// character, or one whose mangling has what such a character's has.
+pub fn might_clash_p(n: Str) -> bool {
+    (operator_from_p(n, 0i64, string_length_i64(n)) || {
+        let m = mangle(n);
+        any_p(lambda1s(move |part: Str| {
+            string_has_p(m, part)
+        }), clash_parts())
+    })
+}
+
+/// The first of `bs` that Rust names `m` as `n`, as `mangled-clash` says
+/// it; a list made only for it (C363).
+pub fn first_clash(mut n: Str, mut m: Str, mut bs: Binds) -> Strings {
+    loop {
+        if null_p(bs) {
+            return nil::<Str>();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(x, sc, w) => {
+                    if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && i64_eq(mangled_length(x), string_length_i64(m)) && string_eq_p(mangle(x), m)) {
+                        return the::<Strings>(kayak_rt::heap_cons(string_append(n, string_append(str_lit(" and "), x)), kayak_rt::nil()));
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Another name in scope, spelled otherwise, that Rust names as `n`: two
-/// KFX names one Rust name, one hiding the other (C27).
+/// KFX names one Rust name, one hiding the other (C27). The first such.
 pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
     if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ') || not(might_clash_p(n))) {
         nil::<Str>()
     } else {
-        let m = mangle(n);
-        concat(map(lambda1s(move |b: &'static Bind| {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Bind::Bind(x, sc, w) => {
-                    if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && i64_eq(mangled_length(x), string_length_i64(m)) && string_eq_p(mangle(x), m)) {
-                        the::<Strings>(kayak_rt::heap_cons(string_append(n, string_append(str_lit(" and "), x)), kayak_rt::nil()))
-                    } else {
-                        nil::<Str>()
-                    }
-                }
-            }
-        }), bs))
+        first_clash(n, mangle(n), bs)
     }
 }
 

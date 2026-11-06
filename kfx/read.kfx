@@ -41,29 +41,33 @@
           ((char=? (car cs) #\newline) (here cs 0 pos))
           (else (skip-line (cdr cs) (i64+ pos 1))))))
 
+(define skip-at (subr kfx (chars i64 i64) here)
+  (lambda (cs line pos)
+    "Skips whitespace and comments, counting lines and characters; a `here`
+     made only where they end (C363)."
+    (cond ((null? cs) (here cs line pos))
+          ((char=? (car cs) #\newline) (skip-at (cdr cs) (i64+ line 1) (i64+ pos 1)))
+          ((char-whitespace? (car cs)) (skip-at (cdr cs) line (i64+ pos 1)))
+          ((char=? (car cs) #\;)
+           (tagcase (skip-line (cdr cs) (i64+ pos 1))
+             (here (rest zero after) (skip-at rest line after))))
+          (else (here cs line pos)))))
+
 (define skip (subr kfx (here) here)
-  (lambda (h)
-    "Skips whitespace and comments, counting lines and characters."
-    (tagcase h
-      (here (cs line pos)
-        (cond ((null? cs) h)
-              ((char=? (car cs) #\newline) (skip (here (cdr cs) (i64+ line 1) (i64+ pos 1))))
-              ((char-whitespace? (car cs)) (skip (here (cdr cs) line (i64+ pos 1))))
-              ((char=? (car cs) #\;)
-               (tagcase (skip-line (cdr cs) (i64+ pos 1))
-                 (here (rest zero after) (skip (here rest line after)))))
-              (else h))))))
+  (lambda (h) (tagcase h (here (cs line pos) (skip-at cs line pos)))))
 
 (define delimiter? (subr kfx (char) bool)
   (lambda (c)
     (or (char-whitespace? c) (char=? c #\() (char=? c #\)) (char=? c #\") (char=? c #\;))))
 
-(define token-chars (subr kfx (chars chars i64) tok)
-  (lambda (cs acc n)
-    "A token's characters, onto `acc`, newest first, and `n`, how many."
+(define token-at (subr kfx (chars string i64 i64) tok)
+  (lambda (cs text from n)
+    "A token, `n` characters of it already read, from offset `from` of
+     `text`, whose rest is `cs`: its text, a `substring` of `text` (C363),
+     and `n`, how many."
     (if (or (null? cs) (delimiter? (car cs)))
-        (tok (rev->string acc) cs n)
-        (token-chars (cdr cs) (cons (car cs) acc) (i64+ n 1)))))
+        (tok (substring text (i64->int from) (i64->int (i64+ from n))) cs n)
+        (token-at (cdr cs) text from (i64+ n 1)))))
 
 (define unescape (subr kfx (char) char)
   (lambda (c) (case c ((#\n) #\newline) ((#\t) #\tab) ((#\r) (i64->char 13)) (else c))))
@@ -85,23 +89,28 @@
                                      (else 0)))
                          (i64+ k 1)))))))
 
-(define string-body (subr kfx (chars chars string i64 i64 i64 i64) got)
-  (lambda (cs acc file start at line pos)
+(define string-body (subr kfx (chars string strings i64 string i64 i64 i64 i64) got)
+  (lambda (cs text runs from file start at line pos)
     "A string's characters, after its opening quote on line `start`, at
-     offset `at`."
+     offset `at`: its runs between escapes, `substring`s of `text` (C363),
+     newest first, the one now from `from`."
     (cond ((null? cs) (read-error file start "a string is not closed"))
-          ((char=? (car cs) #\") (got (str (rev->string acc) file at) (here (cdr cs) line (i64+ pos 1))))
+          ((char=? (car cs) #\")
+           (got (str (string-list-append (reverse (cons (substring text (i64->int from) (i64->int pos)) runs))) file at)
+                (here (cdr cs) line (i64+ pos 1))))
           ((and (char=? (car cs) #\\) (not (null? (cdr cs))) (i64= (char->i64 (car (cdr cs))) 120))
            (tagcase (hex-escape (cdr (cdr cs)) 0 0)
-             (tok (text rest k)
-               (if (string=? text "")
+             (tok (t rest k)
+               (if (string=? t "")
                    (read-error file start "a string's hex escape is not closed by ;")
-                   (string-body rest (cons (string-ref-i64 text 0) acc) file start at line (i64+ pos (i64+ k 2)))))))
+                   (string-body rest text (cons t (cons (substring text (i64->int from) (i64->int pos)) runs))
+                                (i64+ pos (i64+ k 2)) file start at line (i64+ pos (i64+ k 2)))))))
           ((char=? (car cs) #\\)
-           (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc) file start at line (i64+ pos 2)))
+           (string-body (cdr (cdr cs)) text (cons (char->string (unescape (car (cdr cs)))) (cons (substring text (i64->int from) (i64->int pos)) runs))
+                        (i64+ pos 2) file start at line (i64+ pos 2)))
           ((char=? (car cs) #\newline)
-           (string-body (cdr cs) (cons (car cs) acc) file start at (i64+ line 1) (i64+ pos 1)))
-          (else (string-body (cdr cs) (cons (car cs) acc) file start at line (i64+ pos 1))))))
+           (string-body (cdr cs) text runs from file start at (i64+ line 1) (i64+ pos 1)))
+          (else (string-body (cdr cs) text runs from file start at line (i64+ pos 1))))))
 
 (define digits-value (subr kfx (chars i64 string i64) i64)
   (lambda (cs n file line)
@@ -273,20 +282,21 @@
           (else (read-error file line (string-append "no character is named " s))))))
 
 (define-rec
-  (read-datum (subr kfx (here string) got)
-    (lambda (h file)
-      "A datum at the start of `h`'s text, which `file` holds."
+  (read-datum (subr kfx (here string string) got)
+    (lambda (h text file)
+      "A datum at the start of `h`'s text, the rest of `text`, which `file`
+       holds."
       (tagcase h
         (here (cs line pos)
           (let ((c (car cs)))
             (cond ((char=? c #\()
-                   (tagcase (read-items (here (cdr cs) line (i64+ pos 1)) file)
+                   (tagcase (read-items (here (cdr cs) line (i64+ pos 1)) text file)
                      (gots (xs after) (got (lst xs file line pos) after))))
                   ((char=? c #\)) (read-error file line "a ) with no ("))
                   ((and (i64= (char->i64 c) 39) (not (null? (cdr cs))) (not (string=? file "")))
                    "`'d`, FX-26's `(quote d)` (C56), in a program's text; in the
                     checker's own (a file named ``), `'r` is a region binder's name."
-                   (tagcase (read-datum (skip (here (cdr cs) line (i64+ pos 1))) file)
+                   (tagcase (read-datum (skip-at (cdr cs) line (i64+ pos 1)) text file)
                      (got (x after) (got (lst (list (sym "quote" file pos) x) file line pos) after))))
                   ((and (or (i64= (char->i64 c) 96) (i64= (char->i64 c) 44)) (not (null? (cdr cs))) (not (string=? file "")))
                    "`` `d ``, `,d` and `,@d`: FX-26's `quasiquote`, `unquote` and
@@ -294,48 +304,48 @@
                    (let* ((splice (and (i64= (char->i64 c) 44) (char=? (car (cdr cs)) #\@)))
                           (rest (if splice (cdr (cdr cs)) (cdr cs)))
                           (head (cond ((i64= (char->i64 c) 96) "quasiquote") (splice "unquote-splicing") (else "unquote"))))
-                     (tagcase (read-datum (skip (here rest line (i64+ pos (if splice 2 1)))) file)
+                     (tagcase (read-datum (skip-at rest line (i64+ pos (if splice 2 1))) text file)
                        (got (x after) (got (lst (list (sym head file pos) x) file line pos) after)))))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\() (not (string=? file "")))
                    "`#(d ...)`, a vector (C80): `(#vector d ...)`, a head no KFX name
                     is, which only a quote takes."
-                   (tagcase (read-items (here (cdr (cdr cs)) line (i64+ pos 2)) file)
+                   (tagcase (read-items (here (cdr (cdr cs)) line (i64+ pos 2)) text file)
                      (gots (xs after) (got (lst (cons (sym "#vector" file pos) xs) file line pos) after))))
-                  ((char=? c #\") (string-body (cdr cs) nil file line pos line (i64+ pos 1)))
+                  ((char=? c #\") (string-body (cdr cs) text nil (i64+ pos 1) file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))
-                     (tagcase (token-chars (cdr name) (list (car name)) 1)
+                     (tagcase (token-at (cdr name) text (i64+ pos 2) 1)
                        (tok (s after n) (got (chr (char-named s file line) file pos) (here after line (i64+ pos (i64+ n 2))))))))
                   (else
-                   (tagcase (token-chars cs nil 0)
+                   (tagcase (token-at cs text pos 0)
                      (tok (s after n) (got (token-atom s file line pos) (here after line (i64+ pos n))))))))))))
-  (read-items (subr kfx (here string) gots)
-    (lambda (h file)
+  (read-items (subr kfx (here string string) gots)
+    (lambda (h text file)
       (let ((h (skip h)))
         (tagcase h
           (here (cs line pos)
             (cond ((null? cs) (read-error file line "a ( with no )"))
                   ((char=? (car cs) #\)) (gots nil (here (cdr cs) line (i64+ pos 1))))
                   (else
-                   (tagcase (read-datum h file)
+                   (tagcase (read-datum h text file)
                      (got (x after)
-                       (tagcase (read-items after file)
+                       (tagcase (read-items after text file)
                          (gots (xs rest) (gots (cons x xs) rest)))))))))))))
 
-(define read-from (subr kfx (here string) sexps)
-  (lambda (h file)
+(define read-from (subr kfx (here string string) sexps)
+  (lambda (h text file)
     (let ((h (skip h)))
       (tagcase h
         (here (cs line pos)
           (if (null? cs)
               nil
-              (tagcase (read-datum h file)
-                (got (x after) (cons x (read-from after file))))))))))
+              (tagcase (read-datum h text file)
+                (got (x after) (cons x (read-from after text file))))))))))
 
-(define read-all (subr kfx (chars string i64) sexps)
-  (lambda (cs file line)
-    "Every datum in `cs`, the text of `file` from `line`."
-    (read-from (here cs line 0) file)))
+(define read-all (subr kfx (string string i64) sexps)
+  (lambda (text file line)
+    "Every datum in `text`, of `file` from `line`."
+    (read-from (here (string-chars text) line 0) text file)))
 
 "Taking `sexp`s apart"
 

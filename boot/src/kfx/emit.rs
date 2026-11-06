@@ -1530,7 +1530,7 @@ pub mod emitter {
         if string_eq_p(found, str_lit("")) {
             acc
         } else {
-            put(str_lit(">"), put_types(c, read_all(string_chars(found), str_lit(""), 1i64), put(str_lit("::<"), acc)))
+            put(str_lit(">"), put_types(c, read_all(found, str_lit(""), 1i64), put(str_lit("::<"), acc)))
         }
     }
 
@@ -1726,7 +1726,7 @@ pub mod emitter {
         if string_eq_p(found, str_lit("")) {
             params
         } else {
-            map2_params(params, items(car(read_all(string_chars(found), str_lit(""), 1i64))))
+            map2_params(params, items(car(read_all(found, str_lit(""), 1i64))))
         }
     }
 
@@ -1992,7 +1992,7 @@ pub mod emitter {
         if string_eq_p(found, str_lit("")) {
             nil::<&'static Sexp>()
         } else {
-            typed_flat(c, car(read_all(string_chars(found), str_lit(""), 1i64)))
+            typed_flat(c, car(read_all(found, str_lit(""), 1i64)))
         }
     }
 
@@ -2069,7 +2069,7 @@ pub mod emitter {
     /// The type a union is unboxed at (C75): a list's element type, for
     /// `unbox_list`; Rust's to find, for `nil`'s.
     pub fn put_unboxed_type(c: &'static Ctx, how: Str, text: Str, acc: Chars) -> Chars {
-        let t = car(read_all(string_chars(text), str_lit(""), 1i64));
+        let t = car(read_all(text, str_lit(""), 1i64));
         if not(string_eq_p(how, str_lit("unbox_list"))) {
             put_type(c, t, acc)
         } else if head_is_p(t, str_lit("listof")) {
@@ -2886,7 +2886,7 @@ pub mod emitter {
                     } else if string_eq_p(s, str_lit("string")) {
                         return put(str_lit("Str"), acc);
                     } else if (string_eq_p(s, str_lit("io-error")) && string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
-                        t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
+                        t = car(read_all(io_error_text(), str_lit(""), 1i64));
                         continue;
                     } else if not(null_p(dotted(s))) {
                         return put(type_path(c, car(dotted(s)), car(cdr(dotted(s)))), acc);
@@ -3266,7 +3266,7 @@ pub mod emitter {
             match *tagcase_ {
                 Fact::Fact(file, pos, what) => {
                     if has_prefix_p(what, str_lit("blob-at ")) {
-                        let ts = read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64);
+                        let ts = read_all(after_prefix(what, str_lit("blob-at ")), str_lit(""), 1i64);
                         if string_eq_p(owner_key(c, car(ts)), key) {
                             the::<List<&'static Fact>>(kayak_rt::heap_cons(f, kayak_rt::nil()))
                         } else {
@@ -3285,7 +3285,7 @@ pub mod emitter {
                 let tagcase_ = f;
                 match *tagcase_ {
                     Fact::Fact(file, pos, what) => {
-                        second(read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64))
+                        second(read_all(after_prefix(what, str_lit("blob-at ")), str_lit(""), 1i64))
                     }
                 }
             });
@@ -3315,7 +3315,7 @@ pub mod emitter {
                 let tagcase_ = f;
                 match *tagcase_ {
                     Fact::Fact(file, pos, what) => {
-                        (has_prefix_p(what, str_lit("blob-raw ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-raw "))), str_lit(""), 1i64))), key))
+                        (has_prefix_p(what, str_lit("blob-raw ")) && string_eq_p(owner_key(c, car(read_all(after_prefix(what, str_lit("blob-raw ")), str_lit(""), 1i64))), key))
                     }
                 }
             }), fs);
@@ -3323,7 +3323,7 @@ pub mod emitter {
                 let tagcase_ = f;
                 match *tagcase_ {
                     Fact::Fact(file, pos, what) => {
-                        (has_prefix_p(what, str_lit("blob-make ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-make "))), str_lit(""), 1i64))), key) && {
+                        (has_prefix_p(what, str_lit("blob-make ")) && string_eq_p(owner_key(c, car(read_all(after_prefix(what, str_lit("blob-make ")), str_lit(""), 1i64))), key) && {
                             let bytes = fact_at_place(c, file, pos, str_lit("blob-bytes "));
                             (string_eq_p(bytes, str_lit("")) || i64_lt(digits_number(bytes), digits_number(size)))
                         })
@@ -3814,7 +3814,7 @@ pub mod emitter {
         } else if (not(string_eq_p(fact_in(fs, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
             // A procedure given where one of a union's parameters or result is
             // wanted (C82): a closure boxing each argument and the result.
-            let hows = map(&sym_name, read_all(string_chars(fact_in(fs, e, str_lit("wrap "))), str_lit(""), 1i64));
+            let hows = map(&sym_name, read_all(fact_in(fs, e, str_lit("wrap ")), str_lit(""), 1i64));
             let arity = i64_minus(size(hows), 1i64);
             let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), if fact_at_p(c, e, str_lit("wrap-sync")) {
                 str_lit("s(move |")
@@ -3950,7 +3950,7 @@ pub mod emitter {
                     } else if not(string_eq_p(fact_with(c, e, str_lit("head-unbox ")), str_lit(""))) {
                         // A call of a union narrowed to its procedure (C75).
                         let acc = put(str_lit("(kayak_rt::value::unbox_other::<"), acc);
-                        let acc = put_type(c, car(read_all(string_chars(fact_with(c, e, str_lit("head-unbox "))), str_lit(""), 1i64)), acc);
+                        let acc = put_type(c, car(read_all(fact_with(c, e, str_lit("head-unbox ")), str_lit(""), 1i64)), acc);
                         let acc = put(str_lit(">("), acc);
                         let acc = put_var(c, h, acc);
                         let acc = put(str_lit("))("), acc);
@@ -4628,7 +4628,7 @@ pub mod emitter {
                 } else {
                     xs
                 }, n, acc);
-            } else if (not(string_eq_p(fact_with(c, e, str_lit("rdata-type ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && heap_made_p(c, car(read_all(string_chars(fact_with(c, e, str_lit("rdata-type "))), str_lit(""), 1i64)))) {
+            } else if (not(string_eq_p(fact_with(c, e, str_lit("rdata-type ")), str_lit(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && heap_made_p(c, car(read_all(fact_with(c, e, str_lit("rdata-type ")), str_lit(""), 1i64)))) {
                 // A datatype's value at no region of a lifetime (C271): its heap
                 // twin, `TAG_heap`, in the heap's arena.
                 return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(string_append(mangle(h), str_lit("_heap")), acc))));
@@ -4692,7 +4692,7 @@ pub mod emitter {
             } else if string_eq_p(h, str_lit("sum")) {
                 // A sum's enum written with its type's arguments, which only the type
                 // expected, as the checker found it, says.
-                let ty = car(read_all(string_chars(fact_with(c, e, str_lit("sum-type "))), str_lit(""), 1i64));
+                let ty = car(read_all(fact_with(c, e, str_lit("sum-type ")), str_lit(""), 1i64));
                 let fs = map(&items, cdr(items(ty)));
                 let acc = put(heap_alloc(c), acc);
                 let acc = put(shape_name(false, map(lambda1s(move |f: Sexps| {
@@ -4753,7 +4753,7 @@ pub mod emitter {
             } else if (string_eq_p(h, str_lit("the")) && head_is_p(second(xs), str_lit("native-procedure")) && string_eq_p(local_kind(str_lit("native-procedure"), ctx_locals(c)), str_lit(""))) {
                 // `native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
                 // of the type `the` says.
-                let ts = items(car(read_all(string_chars(fact_with(c, second(xs), str_lit("native-types "))), str_lit(""), 1i64)));
+                let ts = items(car(read_all(fact_with(c, second(xs), str_lit("native-types ")), str_lit(""), 1i64)));
                 let acc = put(string_append(str_lit("kayak_rt::native_procedure"), string_append(i64_to_string(i64_minus(size(ts), 1i64)), str_lit("::<"))), acc);
                 let acc = put_sep(lambda2s(move |p: &'static Sexp, acc: List<char>| {
                     if head_is_p(p, str_lit("subr")) {
@@ -4941,7 +4941,7 @@ pub mod emitter {
             string_append(t, str_lit(": Copy + 'static"))
         }), tvars)), str_lit(", "));
         let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
-        let types = read_all(string_chars(fact_with(c, e, str_lit("letrena-locals "))), str_lit(""), 1i64);
+        let types = read_all(fact_with(c, e, str_lit("letrena-locals ")), str_lit(""), 1i64);
         let fallible = fact_at_p(c, e, str_lit("fallible"));
         let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(if fallible {
             str_lit("%fallible")
@@ -4971,9 +4971,9 @@ pub mod emitter {
         let acc = put_letrena_params(inner, names, types, acc);
         let acc = put(str_lit(") -> "), acc);
         let acc = if fallible {
-            put(str_lit(", Unwind>"), put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), put(str_lit("Result<"), acc)))
+            put(str_lit(", Unwind>"), put_type(inner, car(read_all(fact_with(c, e, str_lit("letrena-type ")), str_lit(""), 1i64)), put(str_lit("Result<"), acc)))
         } else {
-            put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), acc)
+            put_type(inner, car(read_all(fact_with(c, e, str_lit("letrena-type ")), str_lit(""), 1i64)), acc)
         };
         let acc = put(str_lit(" "), acc);
         let acc = put_block(inner, cdr(xs), n1, if fallible {
@@ -5006,7 +5006,7 @@ pub mod emitter {
     pub fn put_process(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
         let header = items(car(xs));
         let r#box = sym_name(car(header));
-        let m = car(read_all(string_chars(fact_with(c, e, str_lit("spawn "))), str_lit(""), 1i64));
+        let m = car(read_all(fact_with(c, e, str_lit("spawn ")), str_lit(""), 1i64));
         let acc = put(str_lit("move |"), acc);
         let acc = put(mangle(r#box), acc);
         let acc = put(str_lit(": kayak_rt::Inbox<"), acc);
@@ -5159,7 +5159,7 @@ pub mod emitter {
             };
             let kind = car(split_at_char(rest, '@'));
             let after = after_prefix(rest, string_append(kind, str_lit("@")));
-            let ws = read_all(string_chars(after), str_lit(""), 1i64);
+            let ws = read_all(after, str_lit(""), 1i64);
             if (string_eq_p(sym_name(car(ws)), place) && (not(string_eq_p(kind, str_lit("data"))) || {
                 let tagcase_ = second(ws);
                 match *tagcase_ {
@@ -5203,7 +5203,7 @@ pub mod emitter {
     /// What an allocation in region `r` makes, as Rust's type: a pair,
     /// `Cons<'r, T>`, or a reference's cell, `Cell<T>`.
     pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
-        let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
+        let t = car(read_all(fact_with(c, call, str_lit("rheld ")), str_lit(""), 1i64));
         if head_is_p(call, str_lit("rcons")) {
             string_append(str_lit("Cons<"), string_append(lifetime(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
         } else if (head_is_p(call, str_lit("rmake-bloblet")) && not(null_p(typed_flat(c, t)))) {

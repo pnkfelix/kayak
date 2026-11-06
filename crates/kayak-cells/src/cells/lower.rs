@@ -31,7 +31,7 @@ pub fn binder_name(p: &'static Sexp) -> Str {
 
 #[inline]
 pub fn read_one(text: Str) -> &'static Sexp {
-    car(read_all(string_chars(text), str_lit(""), 1i64))
+    car(read_all(text, str_lit(""), 1i64))
 }
 
 #[inline]

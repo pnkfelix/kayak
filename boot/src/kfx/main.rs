@@ -201,14 +201,14 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
             continue;
         } else {
             let text = kayak_rt::suspend::body(read_text(rt, car(todo))).await?;
-            (todo, done) = (onto(load_paths_all(read_all(string_chars(text), car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
+            (todo, done) = (onto(load_paths_all(read_all(text, car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
             continue;
         }
     }
 }
 
 pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind> {
-    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(string_chars(text), file, 1i64), directory_of(file)), nil::<&'static Filed>())).await?)
+    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<&'static Filed>())).await?)
 }
 
 // Whether a manifest says its program is a runtime's own, which may

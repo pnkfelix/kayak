@@ -3414,7 +3414,7 @@ pub mod expressions {
         map(lambda1s(move |p: &'static Sexp| {
             let xs = items(p);
             bind(name_of(v, car(xs)), parse_scheme_of(v, second(xs), false), str_lit("prim"))
-        }), read_all(string_chars(control_schemes()), str_lit("kfx's control primitives"), 1i64))
+        }), read_all(control_schemes(), str_lit("kfx's control primitives"), 1i64))
     }
 
     /// A type as written: for the emitter, which reads no effects, so a
@@ -3586,7 +3586,7 @@ pub mod expressions {
             match *tagcase_ {
                 Fact::Fact(file, pos, what) => {
                     if has_prefix_p(what, str_lit("%metas ")) {
-                        let ws = read_all(string_chars(after_prefix(what, str_lit("%metas "))), str_lit(""), 1i64);
+                        let ws = read_all(after_prefix(what, str_lit("%metas ")), str_lit(""), 1i64);
                         fact(file, pos, string_append(sym_name(car(ws)), string_append(str_lit(" "), words_of(map(lambda1s(move |m: &'static Sexp| {
                             show_sexp(settled_sexp(s, ty_meta(meta_number(sym_name(m))), false))
                         }), cdr(ws))))))
@@ -10121,7 +10121,7 @@ pub mod expressions {
                                                 let w = lambda1s(move |x: &'static Sexp| {
                                                     show_sexp(x)
                                                 });
-                                                return res(parse_type(v, cv_tvars(v), car(read_all(string_chars(pair_op_text(n, w(second(xs)), w(third(xs)), w(fourth(xs)))), str_lit(""), 1i64))), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a proj of "), string_append(n, str_lit(" at a region and two types, FX-26's pairs, which KFX's lists are not (C200)")))));
+                                                return res(parse_type(v, cv_tvars(v), car(read_all(pair_op_text(n, w(second(xs)), w(third(xs)), w(fourth(xs))), str_lit(""), 1i64))), nil::<Str>(), kfx_restricted(v, s, string_append(str_lit("a proj of "), string_append(n, str_lit(" at a region and two types, FX-26's pairs, which KFX's lists are not (C200)")))));
                                             } else {
                                                 if not(i64_eq(size(filter(lambda1s(move |b: Str| {
                                                     not(has_prefix_p(b, str_lit("%")))
@@ -10198,7 +10198,7 @@ pub mod expressions {
     /// it, or within it, so that it will not outlive it, as FX-26 has it.
     pub fn bounds_kept(v: &'static Cv, s: &'static St, n: Str, region_of_binder: &'static (dyn Fn(Str) -> &'static Ty + Send + Sync)) -> () {
         map(lambda1s(move |rest: Str| {
-            let ws = read_all(string_chars(rest), str_lit(""), 1i64);
+            let ws = read_all(rest, str_lit(""), 1i64);
             let r = {
                 let tagcase_ = walk(s, region_of_binder(sym_name(car(ws))));
                 match *tagcase_ {
@@ -10241,7 +10241,7 @@ pub mod expressions {
                 if null_p(needs) {
                     return s;
                 } else {
-                    let ws = read_all(string_chars(car(needs)), str_lit(""), 1i64);
+                    let ws = read_all(car(needs), str_lit(""), 1i64);
                     let place = projected(v, tvars, args, ty_var(sym_name(car(ws))));
                     let need = projected(v, tvars, args, parse_type(v, onto(map(lambda1s(move |x: Str| {
                         string_append(str_lit("%place "), x)
@@ -12719,7 +12719,7 @@ pub mod expressions {
             if null_p(needs) {
                 return s;
             } else {
-                let ws = read_all(string_chars(car(needs)), str_lit(""), 1i64);
+                let ws = read_all(car(needs), str_lit(""), 1i64);
                 let place = sym_name(car(ws));
                 let kind = sym_name(second(ws));
                 let need = instantiated(tvars, from, parse_type(v, onto(map(lambda1s(move |x: Str| {

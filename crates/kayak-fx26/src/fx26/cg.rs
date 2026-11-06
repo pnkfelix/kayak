@@ -6126,7 +6126,7 @@ pub fn cg_primitive_forms() -> Ref<List<Sexps>> {
 
 pub fn primitive_forms() -> Sexps {
     if null_p(get(cg_primitive_forms())) {
-        let fs = read_all(string_chars(primitives()), str_lit("kayak-rt's primitives"), 1i64);
+        let fs = read_all(primitives(), str_lit("kayak-rt's primitives"), 1i64);
         set(cg_primitive_forms(), kayak_rt::heap_cons(fs, kayak_rt::nil()));
         fs
     } else {

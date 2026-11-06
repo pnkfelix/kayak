@@ -57,12 +57,14 @@ pub mod incremental {
         -3750763034362895579i64
     }
 
-    pub fn fnv_onto(mut cs: Chars, mut h: i64) -> i64 {
+    /// `s`'s characters from `i`, of `n`, onto `h`, a character at a time,
+    /// without a list of them (C363).
+    pub fn fnv_from(mut s: Str, mut i: i64, mut n: i64, mut h: i64) -> i64 {
         loop {
-            if null_p(cs) {
+            if i64_eq(i, n) {
                 return h;
             } else {
-                (cs, h) = (cdr(cs), i64_star(i64_xor(h, char_to_i64(car(cs))), 1099511628211i64));
+                (i, h) = (i64_plus(i, 1i64), i64_star(i64_xor(h, char_to_i64(string_ref_i64(s, i))), 1099511628211i64));
                 continue;
             }
         }
@@ -72,7 +74,7 @@ pub mod incremental {
     /// not one string.
     #[inline]
     pub fn fnv_string(s: Str, h: i64) -> i64 {
-        fnv_onto(string_chars(s), i64_star(i64_xor(h, 31i64), 1099511628211i64))
+        fnv_from(s, 0i64, string_length_i64(s), i64_star(i64_xor(h, 31i64), 1099511628211i64))
     }
 
     pub fn fnv_strings(mut ss: Strings, mut h: i64) -> i64 {
@@ -832,7 +834,7 @@ pub mod incremental {
     }
 
     pub fn change_applied(v: &'static Cv, text: Str, uncode: &'static (dyn Fn(&'static Sexp) -> &'static Fact + Send + Sync)) -> &'static Redone {
-        let parts = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
+        let parts = items(car(read_all(text, str_lit(""), 1i64)));
         let new_binds = map(&code_bind, items(car(parts)));
         let new_effs = map(&code_effdef, items(second(parts)));
         let new_facts = map(uncode, items(third(parts)));
@@ -1217,18 +1219,17 @@ pub mod incremental {
         }
     }
 
-    /// `starts`, the forms' offsets in order; `cs` the text from offset `at`.
-    pub fn form_texts(cs: Chars, at: i64, starts: List<i64>) -> Strings {
+    /// `starts`, the forms' offsets in order, in `text`, of `n` characters:
+    /// each form's text, to the next's start, a `substring` (C363).
+    pub fn form_texts(text: Str, n: i64, starts: List<i64>) -> Strings {
         if null_p(starts) {
             nil::<Str>()
         } else {
-            let from = drop_to(cs, at, car(starts));
-            let end = if null_p(cdr(starts)) {
-                end_of_file()
+            kayak_rt::heap_cons(substring(text, i64_to_int(car(starts)), i64_to_int(if null_p(cdr(starts)) {
+                n
             } else {
                 car(cdr(starts))
-            };
-            kayak_rt::heap_cons(rev_to_string(take_to(from, car(starts), end, nil::<char>())), form_texts(drop_to(from, car(starts), end), end, cdr(starts)))
+            })), form_texts(text, n, cdr(starts)))
         }
     }
 

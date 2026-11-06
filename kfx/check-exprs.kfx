@@ -1469,7 +1469,7 @@
       (define control-binds (subr kfx (cv) binds)
         (lambda (v)
           (map (lambda ((p sexp)) (let ((xs (items p))) (bind (name-of v (car xs)) (parse-scheme-of v (second xs) #f) "prim")))
-               (read-all (string-chars control-schemes) "kfx's control primitives" 1)))))
+               (read-all control-schemes "kfx's control primitives" 1)))))
 
     (define-rec
       (ty-sexp (subr kfx (cv st ty) sexp)
@@ -1547,7 +1547,7 @@
                (tagcase f
                  (fact (file pos what)
                    (if (has-prefix? what "%metas ")
-                       (let ((ws (read-all (string-chars (after-prefix what "%metas ")) "" 1)))
+                       (let ((ws (read-all (after-prefix what "%metas ") "" 1)))
                          (fact file pos
                                (string-append (sym-name (car ws))
                                  (string-append " "
@@ -4472,7 +4472,7 @@
                            `(poly ((r region)) (poly ((t1 type) (t2 type)) ...))`, its
                            pair's tail any type; KFX's are lists'."
                           (let ((w (lambda ((x sexp)) (show-sexp x))))
-                            (res (parse-type v (cv-tvars v) (car (read-all (string-chars (pair-op-text n (w (second xs)) (w (third xs)) (w (fourth xs)))) "" 1)))
+                            (res (parse-type v (cv-tvars v) (car (read-all (pair-op-text n (w (second xs)) (w (third xs)) (w (fourth xs))) "" 1)))
                                  nil
                                  (kfx-restricted v s (string-append "a proj of " (string-append n " at a region and two types, FX-26's pairs, which KFX's lists are not (C200)"))))))
                          (else
@@ -4505,7 +4505,7 @@
            it, or within it, so that it will not outlive it, as FX-26 has it."
           (begin
             (map (lambda ((rest string))
-                           (let* ((ws (read-all (string-chars rest) "" 1))
+                           (let* ((ws (read-all rest "" 1))
                                   (r (tagcase (walk s (region-of-binder (sym-name (car ws)))) (ty-var (x) x) (else other "")))
                                   (p (tagcase (walk s (region-of-binder (sym-name (second ws)))) (ty-var (x) x) (else other ""))))
                              (if (or (string=? r "") (string=? p "") (string=? r p)
@@ -4524,7 +4524,7 @@
                          (lambda (s needs)
                            (if (null? needs)
                                s
-                               (let* ((ws (read-all (string-chars (car needs)) "" 1))
+                               (let* ((ws (read-all (car needs) "" 1))
                                       (place (projected v tvars args (ty-var (sym-name (car ws)))))
                                       (need (projected v tvars args (parse-type v (onto (map (lambda ((x string)) (string-append "%place " x)) tvars) tvars) (third ws)))))
                                  (go (note-types s (cv-file v) (cv-pos v) (string-append "rneed-" (string-append (sym-name (second ws)) (string-append "@" (region-string s place)))) (list need))
@@ -5668,7 +5668,7 @@
         (lambda (v s tvars from needs)
           (if (null? needs)
               s
-              (let* ((ws (read-all (string-chars (car needs)) "" 1))
+              (let* ((ws (read-all (car needs) "" 1))
                      (place (sym-name (car ws)))
                      (kind (sym-name (second ws)))
                      (need (instantiated tvars from (parse-type v (onto (map (lambda ((x string)) (string-append "%place " x)) tvars) tvars) (third ws))))

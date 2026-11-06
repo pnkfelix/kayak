@@ -1283,22 +1283,33 @@
           "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Default" "Procedure"
           "Native" "NativeFields" "Sealed" "Written")))
 
+"The Rust names kayak-rt or the emitter writes, which no KFX name may
+ mangle as; made once (C363)."
+(define rust-written-names strings
+  (list "str_lit" "int_lit" "int_text" "unreachable_unwind"
+        "kfx_toplevel" "once" "alloc" "the" "unwind" "knot" "lambda0" "lambda1"
+        "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
+        "make_continuation_prompt_tag" "nil" "cons" "bloblet_written"
+        "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3" "native_procedure4"))
+
+(define-rec
+  (name-chars-from? (subr kfx (string i64 i64) bool)
+    (lambda (n i k)
+      (or (i64= i k)
+          (and (let ((c (string-ref-i64 n i))) (or (char-lower? c) (char-numeric? c) (has-char-in? "?!<>=+*/%-" c)))
+               (name-chars-from? n (i64+ i 1) k))))))
+
 (define kfx-name? (subr kfx (string) bool)
   (lambda (n)
     "Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
      character first, then those, digits and `-`; no `--` (the emitter's
      `__`); and none whose Rust name kayak-rt or the emitter writes."
-    (let ((cs (string-chars n)))
-      (and (not (null? cs))
-           (not (rust-keyword-clash? n))
-           (or (char-lower? (car cs)) (has-char-in? "?!<>=+*/%-" (car cs)))
-           (not (any? (lambda ((c char)) (not (or (char-lower? c) (char-numeric? c) (has-char-in? "?!<>=+*/%-" c)))) cs))
-           (not (string-has? n "--"))
-           (not (string-member? (mangle n) (list "str_lit" "int_lit" "int_text" "unreachable_unwind"
-                                                 "kfx_toplevel" "once" "alloc" "the" "unwind" "knot" "lambda0" "lambda1"
-                                                 "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
-                                                 "make_continuation_prompt_tag" "nil" "cons" "bloblet_written"
-                                                 "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3" "native_procedure4")))))))
+    (and (i64> (string-length-i64 n) 0)
+         (not (rust-keyword-clash? n))
+         (or (char-lower? (string-ref-i64 n 0)) (has-char-in? "?!<>=+*/%-" (string-ref-i64 n 0)))
+         (name-chars-from? n 0 (string-length-i64 n))
+         (not (string-has? n "--"))
+         (not (string-member? (mangle n) rust-written-names)))))
 
 "Names `kfx-reserved` tests against, made once (C264): a list written in place is
  made at each call."
@@ -2523,7 +2534,7 @@
  have no solution by Fourier–Motzkin, a `bool` named a flag. Sound, not
  complete: past a depth of cases, it shows nothing."
 (define spec-parts (subr kfx (string) sexps)
-  (lambda (d) (items (car (read-all (string-chars (after-prefix d "%spec ")) "%spec" 0)))))
+  (lambda (d) (items (car (read-all (after-prefix d "%spec ") "%spec" 0)))))
 
 (define-rec
   (logic-lin (subr kfx (sexp) lin)
@@ -3026,13 +3037,13 @@
                  "A type a module gives, in a `with` of it or inside it (C170)."
                  (tagcase (car (scope-bind (string-append "%type " s) v)) (bind (n sc w) (tagcase sc (scheme (tv u) u)))))
                 ((and (string=? s "io-error") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
-                 (parse-type v tvars (car (read-all (string-chars io-error-text) "" 1))))
+                 (parse-type v tvars (car (read-all io-error-text "" 1))))
                 ((and (string=? s "stage-failure") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
-                 (parse-type v tvars (car (read-all (string-chars stage-failure-text) "" 1))))
+                 (parse-type v tvars (car (read-all stage-failure-text "" 1))))
                 ((and (string=? s "session-decision") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
-                 (parse-type v tvars (car (read-all (string-chars session-decision-text) "" 1))))
+                 (parse-type v tvars (car (read-all session-decision-text "" 1))))
                 ((and (string=? s "session-redefinition") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
-                 (parse-type v tvars (car (read-all (string-chars session-redefinition-text) "" 1))))
+                 (parse-type v tvars (car (read-all session-redefinition-text "" 1))))
                 ((dt-named? s (cv-dts v))
                  (let ((found (find-family s (cv-dts v))))
                    (typecase found
@@ -3578,10 +3589,10 @@
   (kind-params (subr kfx (string) strings)
     (lambda (k)
       "An arrow kind's parameters' kinds."
-      (let ((xs (items (car (read-all (string-chars k) "" 1)))))
+      (let ((xs (items (car (read-all k "" 1)))))
         (map show-sexp (items (second xs))))))
   (kind-result (subr kfx (string) string)
-    (lambda (k) (show-sexp (third (items (car (read-all (string-chars k) "" 1)))))))
+    (lambda (k) (show-sexp (third (items (car (read-all k "" 1)))))))
   (fun-kind (subr kfx (cv ty) string)
     (lambda (v f)
       "A function's kind (C173)."
@@ -6062,31 +6073,44 @@
 (define operator-char? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "?!<>=+*/%" c)))
 
+"The parts of a mangled name an operator's character's mangling has, made
+ once (C363)."
+(define clash-parts strings (list "_p" "_x" "_to_" "_plus" "_star" "_slash" "_lt" "_gt" "_eq" "_pct" "_minus"))
+
+(define-rec
+  (operator-from? (subr kfx (string i64 i64) bool)
+    (lambda (n i k) (and (i64< i k) (or (operator-char? (string-ref-i64 n i)) (operator-from? n (i64+ i 1) k))))))
+
 (define might-clash? (subr kfx (string) bool)
   (lambda (n)
     "Whether another name might mangle as `n` does: one with an operator's
      character, or one whose mangling has what such a character's has."
-    (or (any? operator-char? (string-chars n))
+    (or (operator-from? n 0 (string-length-i64 n))
         (let ((m (mangle n)))
-          (any? (lambda ((part string)) (string-has? m part))
-                (list "_p" "_x" "_to_" "_plus" "_star" "_slash" "_lt" "_gt" "_eq" "_pct" "_minus"))))))
+          (any? (lambda ((part string)) (string-has? m part)) clash-parts)))))
+
+(define-rec
+  (first-clash (subr kfx (string string binds) strings)
+    (lambda (n m bs)
+      "The first of `bs` that Rust names `m` as `n`, as `mangled-clash` says
+       it; a list made only for it (C363)."
+      (if (null? bs)
+          nil
+          (tagcase (car bs)
+            (bind (x sc w)
+              (if (and (not (string=? x n)) (not (has-prefix? x "%")) (not (has-char-in? x #\space))
+                       (i64= (mangled-length x) (string-length-i64 m))
+                       (string=? (mangle x) m))
+                  (the strings (list (string-append n (string-append " and " x))))
+                  (first-clash n m (cdr bs)))))))))
 
 (define mangled-clash (subr kfx (string binds) strings)
   (lambda (n bs)
     "Another name in scope, spelled otherwise, that Rust names as `n`: two
-     KFX names one Rust name, one hiding the other (C27)."
+     KFX names one Rust name, one hiding the other (C27). The first such."
     (if (or (has-prefix? n "%") (has-char-in? n #\space) (not (might-clash? n)))
         nil
-        (let ((m (mangle n)))
-          (concat (map (lambda ((b bind))
-                         (tagcase b
-                           (bind (x sc w)
-                             (if (and (not (string=? x n)) (not (has-prefix? x "%")) (not (has-char-in? x #\space))
-                                      (i64= (mangled-length x) (string-length-i64 m))
-                                      (string=? (mangle x) m))
-                                 (the strings (list (string-append n (string-append " and " x))))
-                                 nil))))
-                       bs))))))
+        (first-clash n (mangle n) bs))))
 
 (define-rec
   (remove-bind (subr kfx (bind binds) binds)

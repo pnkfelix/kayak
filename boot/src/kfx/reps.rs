@@ -493,7 +493,7 @@ pub fn rx_kind_sexps(x: &'static Rx, ks: Sexps) -> &'static Rxs {
 
 pub fn rx_kind_node(x: &'static Rx, kind: Str) -> &'static Rxa {
     if has_prefix_p(kind, str_lit("(")) {
-        let forms = read_all(string_chars(kind), str_lit(""), 1i64);
+        let forms = read_all(kind, str_lit(""), 1i64);
         if null_p(forms) {
             rx_node(x, str_lit("?"), false, the::<RpOperands>(nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()))
         } else {
@@ -858,7 +858,7 @@ pub fn rp_standard_gdecl(v: &'static Cv, n: Str) -> List<&'static Gdecl> {
     if not(string_member_p(n, rp_standard_generatives())) {
         nil::<&'static Gdecl>()
     } else {
-        let forms = read_all(string_chars(rp_nth_string(rp_generative_decls(), rp_index_of(rp_standard_generatives(), n, 0i64))), str_lit(""), 1i64);
+        let forms = read_all(rp_nth_string(rp_generative_decls(), rp_index_of(rp_standard_generatives(), n, 0i64)), str_lit(""), 1i64);
         let ps = cdr(items(car(forms)));
         let names = map(lambda1s(move |p: &'static Sexp| {
             sym_name(car(items(p)))
@@ -3741,7 +3741,7 @@ pub fn rp_node_of(e: &'static Sexp) -> RpNode {
 }
 
 pub fn rp_nodes_of_text(text: Str) -> &'static Rexp {
-    let xs = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
+    let xs = items(car(read_all(text, str_lit(""), 1i64)));
     rexp(map(&rp_node_of, cdr(cdr(xs))), map(&sexp_string, items(second(xs))), i64_to_int(sexp_int(car(xs))), str_lit(""))
 }
 

@@ -12,7 +12,7 @@
   (lambda (p) (tagcase p (sym (n f x) n) (lst (xs f l x) (sym-name (car xs))) (else other ""))))
 
 (define read-one (subr kfx (string) sexp)
-  (lambda (text) (car (read-all (string-chars text) "" 1))))
+  (lambda (text) (car (read-all text "" 1))))
 
 (define sx (subr kfx (sexps) sexp) (lambda (xs) (lst xs "" 0 0)))
 (define sy (subr kfx (string) sexp) (lambda (n) (sym n "" 0)))

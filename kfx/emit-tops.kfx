@@ -194,7 +194,7 @@
                  (bounds (lambda ((p string))
                            (distinct-strings
                              (concat (map (lambda ((n string))
-                                            (let ((ws (read-all (string-chars n) "" 1)))
+                                            (let ((ws (read-all n "" 1)))
                                               (if (and (string=? (sym-name (car ws)) (string-append "'" p))
                                                        ;; A datatype's value only where it has lived regions (C270).
                                                        (or (not (sym-is? (second ws) "data"))
@@ -351,7 +351,7 @@
                  (written (fact-said c defined "def-type "))
                  (typ (without-conv (if (string=? written "")
                                         (family-expanded c (unpoly typ))
-                                        (car (read-all (string-chars written) "" 1)))))
+                                        (car (read-all written "" 1)))))
                  (defined (unpoly defined))
                  (lambda? (head-is? defined "lambda"))
                  (body (if lambda? (cdr (cdr (items defined))) (the sexps (list defined))))
@@ -616,7 +616,7 @@
                                                    (tagcase f
                                                      (fact (ff fp fw)
                                                        (if (has-prefix? fw "sum-type ")
-                                                           (read-all (string-chars (after-prefix fw "sum-type ")) "" 1)
+                                                           (read-all (after-prefix fw "sum-type ") "" 1)
                                                            nil))))
                                                  fs)))
                               (shapes-in-all forms nil))

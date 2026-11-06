@@ -393,7 +393,7 @@ pub mod writing {
         }), binders));
         let bounds = lambda1s(move |p: Str| {
             distinct_strings(concat(map(lambda1s(move |n: Str| {
-                let ws = read_all(string_chars(n), str_lit(""), 1i64);
+                let ws = read_all(n, str_lit(""), 1i64);
                 if (string_eq_p(sym_name(car(ws)), string_append(str_lit("'"), p)) && (not(sym_is_p(second(ws), str_lit("data"))) || {
                     let tagcase_ = third(ws);
                     match *tagcase_ {
@@ -685,7 +685,7 @@ pub mod writing {
         let typ = without_conv(if string_eq_p(written, str_lit("")) {
             family_expanded(c, unpoly(typ))
         } else {
-            car(read_all(string_chars(written), str_lit(""), 1i64))
+            car(read_all(written, str_lit(""), 1i64))
         });
         let defined = unpoly(defined);
         let lambda_p = head_is_p(defined, str_lit("lambda"));
@@ -1141,7 +1141,7 @@ pub mod writing {
                     match *tagcase_ {
                         Fact::Fact(ff, fp, fw) => {
                             if has_prefix_p(fw, str_lit("sum-type ")) {
-                                read_all(string_chars(after_prefix(fw, str_lit("sum-type "))), str_lit(""), 1i64)
+                                read_all(after_prefix(fw, str_lit("sum-type ")), str_lit(""), 1i64)
                             } else {
                                 nil::<&'static Sexp>()
                             }

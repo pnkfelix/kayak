@@ -1943,7 +1943,7 @@
 (define primitive-forms (subr gen () sexps)
   (lambda ()
     (if (null? (get cg-primitive-forms))
-        (let ((fs (read-all (string-chars primitives) "kayak-rt's primitives" 1)))
+        (let ((fs (read-all primitives "kayak-rt's primitives" 1)))
           (begin (set cg-primitive-forms (list fs)) fs))
         (car (get cg-primitive-forms)))))
 

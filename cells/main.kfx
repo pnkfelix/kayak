@@ -70,7 +70,7 @@ and status 1.
             ((string=? (car as) name)
              (if (string=? (car (cdr as)) "none")
                  9223372036854775807
-                 (let ((ds (read-all (string-chars (car (cdr as))) "<args>" 1)))
+                 (let ((ds (read-all (car (cdr as)) "<args>" 1)))
                    (tagcase (car ds) (num (n f p) (if (i64> n 0) n otherwise)) (else other otherwise)))))
             (else (option-of (cdr as) name otherwise))))))
 

@@ -19,9 +19,98 @@ use super::*;
 pub mod restrictions {
     use super::*;
 
+    // The names the pass looks for, each list made once (C363): written in
+    // place, each was made again at every symbol of the program.
+    #[inline]
+    pub fn control_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-current-continuation"), kayak_rt::heap_cons(str_lit("call/cc"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::nil()))))))
+        })
+    }
+
+    #[inline]
+    pub fn mark_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))
+        })
+    }
+
+    #[inline]
+    pub fn keyword_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("symbol->keyword"), kayak_rt::heap_cons(str_lit("keyword->symbol"), kayak_rt::nil())))
+        })
+    }
+
+    #[inline]
+    pub fn evidence_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("effect-bound"), kayak_rt::heap_cons(str_lit("type-bound"), kayak_rt::nil()))
+        })
+    }
+
+    #[inline]
+    pub fn session_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("make-session"), kayak_rt::heap_cons(str_lit("session-redefines"), kayak_rt::heap_cons(str_lit("%session-ready"), kayak_rt::heap_cons(str_lit("%session-committed!"), kayak_rt::heap_cons(str_lit("%session-check"), kayak_rt::nil())))))
+        })
+    }
+
+    pub fn not_yet_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::heap_cons(str_lit("char-in?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::heap_cons(str_lit("certify-nat"), kayak_rt::heap_cons(str_lit("rmake-icell"), kayak_rt::heap_cons(str_lit("pair-identity"), kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-ref"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::heap_cons(str_lit("flatarray-length"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::nil())))))))))))))))))))))))
+        })
+    }
+
+    #[inline]
+    pub fn copied_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))
+        })
+    }
+
+    #[inline]
+    pub fn region_heads() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::nil()))))))))))))))
+        })
+    }
+
+    #[inline]
+    pub fn kind_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::heap_cons(str_lit("conv"), kayak_rt::nil()))))
+        })
+    }
+
+    #[inline]
+    pub fn string_writer_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("make-string"), kayak_rt::heap_cons(str_lit("rmake-string"), kayak_rt::heap_cons(str_lit("string-set!"), kayak_rt::heap_cons(str_lit("string-fill!"), kayak_rt::heap_cons(str_lit("string-copy"), kayak_rt::heap_cons(str_lit("string-copy!"), kayak_rt::nil())))))))
+        })
+    }
+
+    #[inline]
+    pub fn prompt_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil())))
+        })
+    }
+
     #[inline]
     pub fn control_primitive_p(n: Str) -> bool {
-        string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-current-continuation"), kayak_rt::heap_cons(str_lit("call/cc"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::nil())))))))
+        string_member_p(n, control_names())
     }
 
     /// The control primitive a chain of `proj`s instantiates, or none.
@@ -94,21 +183,21 @@ pub mod restrictions {
             Sexp::Sym(n, f, p) => {
                 if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc")) || string_eq_p(n, str_lit("cwcc"))) {
                     match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))) {
+                } else if string_member_p(n, mark_names()) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
-                } else if (keyword_name_p(n) || string_member_p(n, kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("symbol->keyword"), kayak_rt::heap_cons(str_lit("keyword->symbol"), kayak_rt::nil()))))) {
+                } else if (keyword_name_p(n) || string_member_p(n, keyword_names())) {
                     match restriction_refused(file, line, string_append(n, str_lit(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("effect-bound"), kayak_rt::heap_cons(str_lit("type-bound"), kayak_rt::nil()))) {
+                } else if string_member_p(n, evidence_names()) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's evidence, which KFX has not yet (C308)"))) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-session"), kayak_rt::heap_cons(str_lit("session-redefines"), kayak_rt::heap_cons(str_lit("%session-ready"), kayak_rt::heap_cons(str_lit("%session-committed!"), kayak_rt::heap_cons(str_lit("%session-check"), kayak_rt::nil())))))) {
+                } else if string_member_p(n, session_names()) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's sessions, which KFX has not yet (C309)"))) {}
                 } else if string_eq_p(n, str_lit("%stage")) {
                     match restriction_refused(file, line, str_lit("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {}
                 } else if string_eq_p(n, str_lit("list")) {
                     match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::heap_cons(str_lit("char-in?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::heap_cons(str_lit("certify-nat"), kayak_rt::heap_cons(str_lit("rmake-icell"), kayak_rt::heap_cons(str_lit("pair-identity"), kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-ref"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::heap_cons(str_lit("flatarray-length"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::nil())))))))))))))))))))))))) {
+                } else if string_member_p(n, not_yet_names()) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))) {
+                } else if string_member_p(n, copied_names()) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
                 } else {
                     ()
@@ -153,7 +242,7 @@ pub mod restrictions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Sexp::Sym(h, f2, p2) => {
-                            string_member_p(h, kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::nil())))))))))))))))
+                            string_member_p(h, region_heads())
                         }
                         _ => {
                             let other = tagcase_;
@@ -168,7 +257,7 @@ pub mod restrictions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Sexp::Sym(h, f2, p2) => {
-                            string_member_p(h, kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::nil())))))))))))))))
+                            string_member_p(h, region_heads())
                         }
                         _ => {
                             let other = tagcase_;
@@ -225,7 +314,7 @@ pub mod restrictions {
                                     let tagcase_ = second(ys);
                                     match *tagcase_ {
                                         Sexp::Sym(k, f3, p3) => {
-                                            string_member_p(k, kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::heap_cons(str_lit("conv"), kayak_rt::nil())))))
+                                            string_member_p(k, kind_names())
                                         }
                                         _ => {
                                             let other = tagcase_;
@@ -265,7 +354,7 @@ pub mod restrictions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
-                            string_member_p(n, kayak_rt::heap_cons(str_lit("stringof"), kayak_rt::heap_cons(str_lit("make-string"), kayak_rt::heap_cons(str_lit("rmake-string"), kayak_rt::heap_cons(str_lit("string-set!"), kayak_rt::heap_cons(str_lit("string-fill!"), kayak_rt::heap_cons(str_lit("string-copy"), kayak_rt::heap_cons(str_lit("string-copy!"), kayak_rt::nil()))))))))
+                            string_member_p(n, string_writer_names())
                         }
                         _ => {
                             let other = tagcase_;
@@ -280,7 +369,7 @@ pub mod restrictions {
                     match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
                 } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {
                     match restriction_refused(f, l, str_lit("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {}
-                } else if (head_is_p(car(xs), str_lit("proj")) && string_member_p(projected_control(car(xs)), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil()))))) {
+                } else if (head_is_p(car(xs), str_lit("proj")) && string_member_p(projected_control(car(xs)), prompt_names())) {
                     // An abort or an escape through `proj`s, called: the emitter writes
                     // it as the primitive's call (C105).
                     restricted_all(cdr(xs), f, l)
@@ -462,7 +551,7 @@ pub mod restrictions {
     pub fn primitive_names() -> Strings {
         map(lambda1s(move |p: &'static Sexp| {
             sym_name(car(items(p)))
-        }), onto(read_all(string_chars(primitives()), str_lit(""), 1i64), read_all(string_chars(prelude()), str_lit(""), 1i64)))
+        }), onto(read_all(primitives(), str_lit(""), 1i64), read_all(prelude(), str_lit(""), 1i64)))
     }
 
     /// Each definition among `forms`, as the list that says where it is: a

@@ -778,7 +778,7 @@
           (let ((found (fact-with c e "turbofish ")))
             (if (string=? found "")
                 acc
-                (put ">" (put-types c (read-all (string-chars found) "" 1) (put "::<" acc)))))))
+                (put ">" (put-types c (read-all found "" 1) (put "::<" acc)))))))
 
       (define plain-callee? (subr kfx (ctx string) bool)
         (lambda (c h)
@@ -887,7 +887,7 @@
           (let ((found (fact-with c e "param-types ")))
             (if (string=? found "")
                 params
-                (map2-params params (items (car (read-all (string-chars found) "" 1))))))))
+                (map2-params params (items (car (read-all found "" 1))))))))
 
       (define-rec
         (projected-name (subr kfx (sexp) string)
@@ -1059,7 +1059,7 @@
           "The flat of the typed suffix (C32) of the owner the checker noted at
            `e` under `prefix`, as a list of one; or none."
           (let ((found (fact-with c e prefix)))
-            (if (string=? found "") nil (typed-flat c (car (read-all (string-chars found) "" 1)))))))
+            (if (string=? found "") nil (typed-flat c (car (read-all found "" 1)))))))
 
       (define-rec
         (name-in? (subr kfx (string sexp) bool)
@@ -1101,7 +1101,7 @@
         (lambda (c how text acc)
           "The type a union is unboxed at (C75): a list's element type, for
            `unbox_list`; Rust's to find, for `nil`'s."
-          (let ((t (car (read-all (string-chars text) "" 1))))
+          (let ((t (car (read-all text "" 1))))
             (cond ((not (string=? how "unbox_list")) (put-type c t acc))
                   ((head-is? t "listof") (put-type c (second (items t)) acc))
                   (else (put "_" acc))))))
@@ -1499,7 +1499,7 @@
                     ((string=? s "string") (put "Str" acc))
                     ((and (string=? s "io-error") (string=? (opener (string-append "%type " s) (ctx-locals c)) "")
                           (null? (desc-type c s (ctx-locals c))) (not (string-member? s (ctx-datatypes c))))
-                     (put-type c (car (read-all (string-chars io-error-text) "" 1)) acc))
+                     (put-type c (car (read-all io-error-text "" 1)) acc))
                     ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
                     ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
                     ((not (null? (desc-type c s (ctx-locals c)))) (put-type c (car (desc-type c s (ctx-locals c))) acc))
@@ -1713,13 +1713,13 @@
                                      (tagcase f
                                        (fact (file pos what)
                                          (if (has-prefix? what "blob-at ")
-                                             (let ((ts (read-all (string-chars (after-prefix what "blob-at ")) "" 1)))
+                                             (let ((ts (read-all (after-prefix what "blob-at ") "" 1)))
                                                (if (string=? (owner-key c (car ts)) key) (the (listof fact acyclic) (list f)) nil))
                                              nil))))
                                    fs))))
             (if (or (string=? key "") (null? ats))
                 nil
-                (let* ((flat-of (lambda ((f fact)) (tagcase f (fact (file pos what) (second (read-all (string-chars (after-prefix what "blob-at ")) "" 1))))))
+                (let* ((flat-of (lambda ((f fact)) (tagcase f (fact (file pos what) (second (read-all (after-prefix what "blob-at ") "" 1))))))
                        (first (expand-aliases c (flat-of (car ats))))
                        (text (if (has-sum? first) "" (rev->string (put-flat c first nil))))
                        (size (tagcase (car ats) (fact (file pos what) (fact-at-place c file pos "blob-size "))))
@@ -1734,13 +1734,13 @@
                                     (tagcase f
                                       (fact (file pos what)
                                         (and (has-prefix? what "blob-raw ")
-                                             (string=? (owner-key c (car (read-all (string-chars (after-prefix what "blob-raw ")) "" 1))) key)))))
+                                             (string=? (owner-key c (car (read-all (after-prefix what "blob-raw ") "" 1))) key)))))
                                   fs))
                        (short (any? (lambda ((f fact))
                                       (tagcase f
                                         (fact (file pos what)
                                           (and (has-prefix? what "blob-make ")
-                                               (string=? (owner-key c (car (read-all (string-chars (after-prefix what "blob-make ")) "" 1))) key)
+                                               (string=? (owner-key c (car (read-all (after-prefix what "blob-make ") "" 1))) key)
                                                (let ((bytes (fact-at-place c file pos "blob-bytes ")))
                                                  (or (string=? bytes "")
                                                      (i64< (digits-number bytes) (digits-number size))))))))
@@ -2002,7 +2002,7 @@
                       (not (string-member? (string-append "%wrapped " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
                  "A procedure given where one of a union's parameters or result is
                   wanted (C82): a closure boxing each argument and the result."
-                 (let* ((hows (map sym-name (read-all (string-chars (fact-in fs e "wrap ")) "" 1)))
+                 (let* ((hows (map sym-name (read-all (fact-in fs e "wrap ") "" 1)))
                         (arity (i64- (size hows) 1))
                         (acc (put (string-append "lambda" (string-append (i64->string arity) (if (fact-at? c e "wrap-sync") "s(move |" "(move |"))) acc))
                         (acc (put-arg-names 0 arity acc))
@@ -2094,7 +2094,7 @@
                     ((not (string=? (fact-with c e "head-unbox ") ""))
                      "A call of a union narrowed to its procedure (C75)."
                      (let* ((acc (put "(kayak_rt::value::unbox_other::<" acc))
-                            (acc (put-type c (car (read-all (string-chars (fact-with c e "head-unbox ")) "" 1)) acc))
+                            (acc (put-type c (car (read-all (fact-with c e "head-unbox ") "" 1)) acc))
                             (acc (put ">(" acc))
                             (acc (put-var c h acc))
                             (acc (put "))(" acc)))
@@ -2544,7 +2544,7 @@
                   one."
                  (put-placed-list c (mangle (fact-with c e "rlist-in ")) (if (string=? h "cons") xs nil) (if (string=? h "cons") nil xs) n acc))
                 ((and (not (string=? (fact-with c e "rdata-type ") "")) (string=? (local-kind h (ctx-locals c)) "")
-                      (heap-made? c (car (read-all (string-chars (fact-with c e "rdata-type ")) "" 1))))
+                      (heap-made? c (car (read-all (fact-with c e "rdata-type ") "" 1))))
                  "A datatype's value at no region of a lifetime (C271): its heap
                   twin, `TAG_heap`, in the heap's arena."
                  (put ")" (put-joined c xs ", " n (put "(" (put (string-append (mangle h) "_heap") acc)))))
@@ -2599,7 +2599,7 @@
                 ((string=? h "sum")
                  "A sum's enum written with its type's arguments, which only the type
                   expected, as the checker found it, says."
-                 (let* ((ty (car (read-all (string-chars (fact-with c e "sum-type ")) "" 1)))
+                 (let* ((ty (car (read-all (fact-with c e "sum-type ") "" 1)))
                         (fs (map items (cdr (items ty))))
                         (acc (put (heap-alloc c) acc))
                         (acc (put (shape-name #f (map (lambda ((f sexps)) (label-of (car f))) fs)) acc))
@@ -2627,7 +2627,7 @@
                 ((and (string=? h "the") (head-is? (second xs) "native-procedure") (string=? (local-kind "native-procedure" (ctx-locals c)) ""))
                  "`native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
                   of the type `the` says."
-                 (let* ((ts (items (car (read-all (string-chars (fact-with c (second xs) "native-types ")) "" 1))))
+                 (let* ((ts (items (car (read-all (fact-with c (second xs) "native-types ") "" 1))))
                         (acc (put (string-append "kayak_rt::native_procedure" (string-append (i64->string (i64- (size ts) 1)) "::<")) acc))
                         (acc (put-sep (lambda ((p sexp) acc) (if (head-is? p "subr") (put "_" acc) (put-type c p acc))) ", " ts acc))
                         (acc (put ">(" acc))
@@ -2737,7 +2737,7 @@
                  (lives (words-of-sep (onto (cons life outer) tvars) ", "))
                  (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", "))
                  (names (split-words (fact-with c e "letrena-names ")))
-                 (types (read-all (string-chars (fact-with c e "letrena-locals ")) "" 1))
+                 (types (read-all (fact-with c e "letrena-locals ") "" 1))
                  (fallible (fact-at? c e "fallible"))
                  (inner (with-locals c (cons (string-append "%letrena " r) (cons "%sync" (cons (if fallible "%fallible" "%infallible") (cons r names))))))
                  (held (distinct-strings (concat (map (lambda ((x sexp)) (held-at inner (string-append "'" r) x)) (datums-in (cdr xs))))))
@@ -2758,8 +2758,8 @@
                  (acc (put-letrena-params inner names types acc))
                  (acc (put ") -> " acc))
                  (acc (if fallible
-                          (put ", Unwind>" (put-type inner (car (read-all (string-chars (fact-with c e "letrena-type ")) "" 1)) (put "Result<" acc)))
-                          (put-type inner (car (read-all (string-chars (fact-with c e "letrena-type ")) "" 1)) acc)))
+                          (put ", Unwind>" (put-type inner (car (read-all (fact-with c e "letrena-type ") "" 1)) (put "Result<" acc)))
+                          (put-type inner (car (read-all (fact-with c e "letrena-type ") "" 1)) acc)))
                  (acc (put " " acc))
                  (acc (put-block inner (cdr xs) n1 (if fallible (ok-value) (value)) acc))
                  (acc (put-nl n1 acc))
@@ -2781,7 +2781,7 @@
            at the `spawn`; the body's value dropped."
           (let* ((header (items (car xs)))
                  (box (sym-name (car header)))
-                 (m (car (read-all (string-chars (fact-with c e "spawn ")) "" 1)))
+                 (m (car (read-all (fact-with c e "spawn ") "" 1)))
                  (acc (put "move |" acc))
                  (acc (put (mangle box) acc))
                  (acc (put ": kayak_rt::Inbox<" acc))
@@ -2898,7 +2898,7 @@
                          (let* ((rest (if (has-prefix? w "rheld-") (after-prefix w "rheld-") (after-prefix w "rneed-")))
                                 (kind (car (split-at-char rest #\@)))
                                 (after (after-prefix rest (string-append kind "@")))
-                                (ws (read-all (string-chars after) "" 1)))
+                                (ws (read-all after "" 1)))
                            (if (and (string=? (sym-name (car ws)) place)
                                     ;; A datatype's value only where it has lived regions,
                                     ;; and so is made in the place (C270).
@@ -2928,7 +2928,7 @@
         (lambda (c r call)
           "What an allocation in region `r` makes, as Rust's type: a pair,
            `Cons<'r, T>`, or a reference's cell, `Cell<T>`."
-          (let ((t (car (read-all (string-chars (fact-with c call "rheld ")) "" 1))))
+          (let ((t (car (read-all (fact-with c call "rheld ") "" 1))))
             (cond ((head-is? call "rcons")
                    (string-append "Cons<" (string-append (lifetime r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
                   ((and (head-is? call "rmake-bloblet") (not (null? (typed-flat c t))))

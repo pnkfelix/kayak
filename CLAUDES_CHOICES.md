@@ -9922,3 +9922,40 @@ of a 3.3 s warm compile of the compiler.
   kayak's own cache, but the escapes cost little once taken in runs.
 Memos read 0.25 s to 0.08 s, written 0.41 s to 0.07 s; the compiler on
 itself warm 3.3 s to 2.95 s; the output the same with memos and without.
+
+## C363. The compile's allocation cut (2026-11-06)
+
+The user's "start on step 1" (the allocation, before any Salsa-like query
+layer): a warm compile of the compiler was 1.2 s of its own work and 1.7 s
+of the kernel's, faulting in 2.5 GB the heap never frees (75 M
+allocations, 1.6 GB, half of it a list cell a character). Each change
+keeps the output the same, with memos and without; measured with the
+`heap-stats` build's counts and samples.
+- **The reader** (`read.kfx`): a token's and a string's text taken as a
+  `substring` of the source (`token-at`; `string-body` in runs between
+  escapes) rather than a list of its characters; whitespace skipped
+  without a `here` made at each character (`skip-at`). `read-all` and
+  `program-read` take the text as a string, every caller changed.
+- **A form's text** (`form-texts`): a `substring` from its start to the
+  next's, not the source's characters dropped and taken.
+- **Fingerprints** (`fnv-from`): a string hashed a character at a time by
+  index, not by its list.
+- **The restriction pass**: its lists of names, written in place, were
+  made again at every symbol of the program (240 MB); now constants.
+- **`nset-without`** (`refs-in`, which walks every item's body): it
+  flattened, sorted and rebuilt the module's set of names at every
+  `lambda`; now it gives the set back unchanged when none of the names
+  removed is in it, as a `lambda`'s parameters mostly are not.
+- **`with-binds`' clash check**: `mangled-clash` made a list over every
+  name in scope for each name bound, and `might-clash?` and `kfx-name?` a
+  character list and a literal list each call; now the first clash found
+  by a walk, the names indexed, the lists constants.
+- **Not chosen**: `mmap`ing the sources (the user's question): they are
+  1.7 MB, read in milliseconds; the cost was what the reader made of
+  them. The emitter's output a list cell a character (`put`, and a
+  module's body copied at each enclosing module, `put-module-around`),
+  `mangle`'s character lists, and the heap's arenas initialising each
+  chunk whole (a chunk twice the last, so up to half of the last unused
+  but faulted in) are left, in TODO.
+The compiler on itself: warm 2.96 s to 1.99 s (its memory 2.57 GB to
+1.52 GB), plain 4.1 s to 3.3 s (3.2 GB to 2.1 GB).

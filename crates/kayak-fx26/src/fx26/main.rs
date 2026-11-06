@@ -98,7 +98,7 @@ pub fn loads_read(mut todo: Strings, mut done: Fileds) -> Fileds {
             continue;
         } else {
             let text = read_text(car(todo));
-            (todo, done) = (onto(load_paths_all(read_all(string_chars(text), car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
+            (todo, done) = (onto(load_paths_all(read_all(text, car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
             continue;
         }
     }
@@ -109,7 +109,7 @@ pub fn read_files(paths: Strings) -> Sexps {
     if null_p(paths) {
         nil::<&'static Sexp>()
     } else {
-        let forms = read_all(string_chars(read_text(car(paths))), car(paths), 1i64);
+        let forms = read_all(read_text(car(paths)), car(paths), 1i64);
         let loaded = loads_read(load_paths_all(forms, directory_of(car(paths))), nil::<&'static Filed>());
         onto(with_loads(forms, car(paths), loaded), read_files(cdr(paths)))
     }
@@ -148,7 +148,7 @@ pub fn forms_mention_p(es: Sexps, heads: Strings) -> bool {
 #[inline]
 pub fn with_processes(forms: Sexps) -> Sexps {
     if forms_mention_p(forms, process_heads()) {
-        onto(with_loads(read_all(string_chars(str_lit("(define %processes (load-module \"fx26:processes.fx\"))")), str_lit("<scheduler>"), 1i64), str_lit("<scheduler>"), nil::<&'static Filed>()), forms)
+        onto(with_loads(read_all(str_lit("(define %processes (load-module \"fx26:processes.fx\"))"), str_lit("<scheduler>"), 1i64), str_lit("<scheduler>"), nil::<&'static Filed>()), forms)
     } else {
         forms
     }

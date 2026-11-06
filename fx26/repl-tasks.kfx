@@ -567,16 +567,16 @@ an entry naming one that has not ended waits for it.")
           (tagcase j
             (check-entry (v gs k text label)
               (let* ((file (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label))
-                     (forms (program-read (string-chars text) file 1)))
+                     (forms (program-read text file 1)))
                 (entry-checked v gs k forms "" "" #t (concat (map named-results forms)) file)))
             (type-of (v text)
-              (let ((forms (program-read (string-chars text) "<,type>" 1)))
+              (let ((forms (program-read text "<,type>" 1)))
                 (if (null? forms) (begin (error "nothing to type") (shown-done "")) (shown-done (form-type v (car forms))))))
             (try (v gs text finished)
               ;; Checked after what the entries before it defined; if finished,
               ;; an expression's type and effect found, and it lowered, as the
               ;; machine will lower it to run it early; definitions' lines.
-              (let* ((forms (program-read (string-chars text) "<draft>" 1))
+              (let* ((forms (program-read text "<draft>" 1))
                      (v2 (checked-all v forms)))
                 (cond ((or (not finished) (null? forms)) (tried-none))
                       ((and (null? (cdr forms)) (not (definition-form? (car forms))))
@@ -591,7 +591,7 @@ an entry naming one that has not ended waits for it.")
             (hole-items (text)
               ;; The innermost open list's items so far, read: how many, and its
               ;; operator, if a name.
-              (let* ((inner (program-read (string-chars text) "<hint>" 1))
+              (let* ((inner (program-read text "<hint>" 1))
                      (xs (if (null? inner) nil (items (car inner)))))
                 (items-done (size xs) (if (null? xs) "" (tagcase (car xs) (sym (op f p) (if (form-keyword? op) "" op)) (else other "")))))))))
 
@@ -760,7 +760,7 @@ an entry naming one that has not ended waits for it.")
           (begin
             (m-spec-dropped!)
             (set repl-count k)
-            (let* ((forms (program-read (string-chars text) (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1))
+            (let* ((forms (program-read text (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1))
                    (tops (lowered! k forms nil facts)))
               (if (get engine-failed)
                   (set m-entries (cons (m-made k typed defined quiet needs st-refused nil (failure-taken!) timed now) (get m-entries)))
@@ -777,7 +777,7 @@ an entry naming one that has not ended waits for it.")
             (set m-spec-marks (list (get node-count) (get kid-count) (get armx-count) (get constant-count)))
             ;; Ended until it starts: the tables given back even if numbering fails.
             (set m-spec-state 2)
-            (let ((forms (program-read (string-chars text) "<draft>" 1)))
+            (let ((forms (program-read text "<draft>" 1)))
               (if (null? forms)
                   #u
                   (let ((ns (number-tops! (lower-tops (list (car forms)) (onto (get machine-globals) (onto (get machine-modules) facts))))))

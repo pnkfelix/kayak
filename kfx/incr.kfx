@@ -32,15 +32,17 @@
       (define fnv-offset i64 -3750763034362895579)
 
       (define-rec
-        (fnv-onto (subr kfx (chars i64) i64)
-          (lambda (cs h)
-            (if (null? cs) h (fnv-onto (cdr cs) (i64* (i64-xor h (char->i64 (car cs))) 1099511628211))))))
+        (fnv-from (subr kfx (string i64 i64 i64) i64)
+          (lambda (s i n h)
+            "`s`'s characters from `i`, of `n`, onto `h`, a character at a time,
+             without a list of them (C363)."
+            (if (i64= i n) h (fnv-from s (i64+ i 1) n (i64* (i64-xor h (char->i64 (string-ref-i64 s i))) 1099511628211))))))
 
       (define fnv-string (subr kfx (string i64) i64)
         (lambda (s h)
           "`s` onto fingerprint `h`, after a separator, so that two strings are
            not one string."
-          (fnv-onto (string-chars s) (i64* (i64-xor h 31) 1099511628211))))
+          (fnv-from s 0 (string-length-i64 s) (i64* (i64-xor h 31) 1099511628211))))
 
       (define-rec
         (fnv-strings (subr kfx (strings i64) i64)
@@ -443,7 +445,7 @@
 
       (define change-applied (subr kfx (cv string (subr kfx (sexp) fact)) redone)
         (lambda (v text uncode)
-          (let* ((parts (items (car (read-all (string-chars text) "" 1))))
+          (let* ((parts (items (car (read-all text "" 1))))
                  (new-binds (map code-bind (items (car parts))))
                  (new-effs (map code-effdef (items (second parts))))
                  (new-facts (map uncode (items (third parts))))
@@ -642,15 +644,14 @@
               fnv-offset)))))
 
     (define-rec
-      (form-texts (subr kfx (chars i64 (listof i64 acyclic)) strings)
-        (lambda (cs at starts)
-          "`starts`, the forms' offsets in order; `cs` the text from offset `at`."
+      (form-texts (subr kfx (string i64 (listof i64 acyclic)) strings)
+        (lambda (text n starts)
+          "`starts`, the forms' offsets in order, in `text`, of `n` characters:
+           each form's text, to the next's start, a `substring` (C363)."
           (if (null? starts)
               nil
-              (let* ((from (drop-to cs at (car starts)))
-                     (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
-                (cons (rev->string (take-to from (car starts) end nil))
-                      (form-texts (drop-to from (car starts) end) end (cdr starts))))))))
+              (cons (substring text (i64->int (car starts)) (i64->int (if (null? (cdr starts)) n (car (cdr starts)))))
+                    (form-texts text n (cdr starts)))))))
 
     (define-rec
       (facts-of-file (subr kfx (facts string) facts)

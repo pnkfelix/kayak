@@ -108,32 +108,38 @@ pub fn skip_line(mut cs: Chars, mut pos: i64) -> &'static Here {
     }
 }
 
-/// Skips whitespace and comments, counting lines and characters.
-pub fn skip(mut h: &'static Here) -> &'static Here {
+/// Skips whitespace and comments, counting lines and characters; a `here`
+/// made only where they end (C363).
+pub fn skip_at(mut cs: Chars, mut line: i64, mut pos: i64) -> &'static Here {
     loop {
-        let tagcase_ = h;
-        match *tagcase_ {
-            Here::Here(cs, line, pos) => {
-                if null_p(cs) {
-                    return h;
-                } else if char_eq_p(car(cs), '\n') {
-                    h = here(cdr(cs), i64_plus(line, 1i64), i64_plus(pos, 1i64));
+        if null_p(cs) {
+            return here(cs, line, pos);
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, line, pos) = (cdr(cs), i64_plus(line, 1i64), i64_plus(pos, 1i64));
+            continue;
+        } else if char_whitespace_p(car(cs)) {
+            (cs, pos) = (cdr(cs), i64_plus(pos, 1i64));
+            continue;
+        } else if char_eq_p(car(cs), ';') {
+            let tagcase_ = skip_line(cdr(cs), i64_plus(pos, 1i64));
+            match *tagcase_ {
+                Here::Here(rest, zero, after) => {
+                    (cs, pos) = (rest, after);
                     continue;
-                } else if char_whitespace_p(car(cs)) {
-                    h = here(cdr(cs), line, i64_plus(pos, 1i64));
-                    continue;
-                } else if char_eq_p(car(cs), ';') {
-                    let tagcase_ = skip_line(cdr(cs), i64_plus(pos, 1i64));
-                    match *tagcase_ {
-                        Here::Here(rest, zero, after) => {
-                            h = here(rest, line, after);
-                            continue;
-                        }
-                    }
-                } else {
-                    return h;
                 }
             }
+        } else {
+            return here(cs, line, pos);
+        }
+    }
+}
+
+#[inline]
+pub fn skip(h: &'static Here) -> &'static Here {
+    let tagcase_ = h;
+    match *tagcase_ {
+        Here::Here(cs, line, pos) => {
+            skip_at(cs, line, pos)
         }
     }
 }
@@ -143,13 +149,15 @@ pub fn delimiter_p(c: char) -> bool {
     (char_whitespace_p(c) || char_eq_p(c, '(') || char_eq_p(c, ')') || char_eq_p(c, '"') || char_eq_p(c, ';'))
 }
 
-/// A token's characters, onto `acc`, newest first, and `n`, how many.
-pub fn token_chars(mut cs: Chars, mut acc: Chars, mut n: i64) -> &'static Tok {
+/// A token, `n` characters of it already read, from offset `from` of
+/// `text`, whose rest is `cs`: its text, a `substring` of `text` (C363),
+/// and `n`, how many.
+pub fn token_at(mut cs: Chars, mut text: Str, mut from: i64, mut n: i64) -> &'static Tok {
     loop {
         if (null_p(cs) || delimiter_p(car(cs))) {
-            return tok(rev_to_string(acc), cs, n);
+            return tok(substring(text, i64_to_int(from), i64_to_int(i64_plus(from, n))), cs, n);
         } else {
-            (cs, acc, n) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc), i64_plus(n, 1i64));
+            (cs, n) = (cdr(cs), i64_plus(n, 1i64));
             continue;
         }
     }
@@ -200,33 +208,34 @@ pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> &'static Tok {
 }
 
 /// A string's characters, after its opening quote on line `start`, at
-/// offset `at`.
-pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64, mut at: i64, mut line: i64, mut pos: i64) -> &'static Got {
+/// offset `at`: its runs between escapes, `substring`s of `text` (C363),
+/// newest first, the one now from `from`.
+pub fn string_body(mut cs: Chars, mut text: Str, mut runs: Strings, mut from: i64, mut file: Str, mut start: i64, mut at: i64, mut line: i64, mut pos: i64) -> &'static Got {
     loop {
         if null_p(cs) {
             return match read_error(file, start, str_lit("a string is not closed")) {};
         } else if char_eq_p(car(cs), '"') {
-            return got(str(rev_to_string(acc), file, at), here(cdr(cs), line, i64_plus(pos, 1i64)));
+            return got(str(string_list_append(reverse(kayak_rt::heap_cons(substring(text, i64_to_int(from), i64_to_int(pos)), runs))), file, at), here(cdr(cs), line, i64_plus(pos, 1i64)));
         } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && i64_eq(char_to_i64(car(cdr(cs))), 120i64)) {
             let tagcase_ = hex_escape(cdr(cdr(cs)), 0i64, 0i64);
             match *tagcase_ {
-                Tok::Tok(text, rest, k) => {
-                    if string_eq_p(text, str_lit("")) {
+                Tok::Tok(t, rest, k) => {
+                    if string_eq_p(t, str_lit("")) {
                         return match read_error(file, start, str_lit("a string's hex escape is not closed by ;")) {};
                     } else {
-                        (cs, acc, pos) = (rest, kayak_rt::heap_cons(string_ref_i64(text, 0i64), acc), i64_plus(pos, i64_plus(k, 2i64)));
+                        (cs, runs, from, pos) = (rest, kayak_rt::heap_cons(t, kayak_rt::heap_cons(substring(text, i64_to_int(from), i64_to_int(pos)), runs)), i64_plus(pos, i64_plus(k, 2i64)), i64_plus(pos, i64_plus(k, 2i64)));
                         continue;
                     }
                 }
             }
         } else if char_eq_p(car(cs), '\\') {
-            (cs, acc, pos) = (cdr(cdr(cs)), kayak_rt::heap_cons(unescape(car(cdr(cs))), acc), i64_plus(pos, 2i64));
+            (cs, runs, from, pos) = (cdr(cdr(cs)), kayak_rt::heap_cons(char_to_string(unescape(car(cdr(cs)))), kayak_rt::heap_cons(substring(text, i64_to_int(from), i64_to_int(pos)), runs)), i64_plus(pos, 2i64), i64_plus(pos, 2i64));
             continue;
         } else if char_eq_p(car(cs), '\n') {
-            (cs, acc, line, pos) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc), i64_plus(line, 1i64), i64_plus(pos, 1i64));
+            (cs, line, pos) = (cdr(cs), i64_plus(line, 1i64), i64_plus(pos, 1i64));
             continue;
         } else {
-            (cs, acc, pos) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc), i64_plus(pos, 1i64));
+            (cs, pos) = (cdr(cs), i64_plus(pos, 1i64));
             continue;
         }
     }
@@ -538,14 +547,15 @@ pub fn char_named(s: Str, file: Str, line: i64) -> char {
     }
 }
 
-/// A datum at the start of `h`'s text, which `file` holds.
-pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
+/// A datum at the start of `h`'s text, the rest of `text`, which `file`
+/// holds.
+pub fn read_datum(h: &'static Here, text: Str, file: Str) -> &'static Got {
     let tagcase_ = h;
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
             let c = car(cs);
             if char_eq_p(c, '(') {
-                let tagcase_ = read_items(here(cdr(cs), line, i64_plus(pos, 1i64)), file);
+                let tagcase_ = read_items(here(cdr(cs), line, i64_plus(pos, 1i64)), text, file);
                 match *tagcase_ {
                     Gots::Gots(xs, after) => {
                         got(lst(xs, file, line, pos), after)
@@ -556,7 +566,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
             } else if (i64_eq(char_to_i64(c), 39i64) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit("")))) {
                 // `'d`, FX-26's `(quote d)` (C56), in a program's text; in the
                 // checker's own (a file named ``), `'r` is a region binder's name.
-                let tagcase_ = read_datum(skip(here(cdr(cs), line, i64_plus(pos, 1i64))), file);
+                let tagcase_ = read_datum(skip_at(cdr(cs), line, i64_plus(pos, 1i64)), text, file);
                 match *tagcase_ {
                     Got::Got(x, after) => {
                         got(lst(kayak_rt::heap_cons(sym(str_lit("quote"), file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
@@ -578,11 +588,11 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                 } else {
                     str_lit("unquote")
                 };
-                let tagcase_ = read_datum(skip(here(rest, line, i64_plus(pos, if splice {
+                let tagcase_ = read_datum(skip_at(rest, line, i64_plus(pos, if splice {
                     2i64
                 } else {
                     1i64
-                }))), file);
+                })), text, file);
                 match *tagcase_ {
                     Got::Got(x, after) => {
                         got(lst(kayak_rt::heap_cons(sym(head, file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
@@ -591,24 +601,24 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '(') && not(string_eq_p(file, str_lit("")))) {
                 // `#(d ...)`, a vector (C80): `(#vector d ...)`, a head no KFX name
                 // is, which only a quote takes.
-                let tagcase_ = read_items(here(cdr(cdr(cs)), line, i64_plus(pos, 2i64)), file);
+                let tagcase_ = read_items(here(cdr(cdr(cs)), line, i64_plus(pos, 2i64)), text, file);
                 match *tagcase_ {
                     Gots::Gots(xs, after) => {
                         got(lst(kayak_rt::heap_cons(sym(str_lit("#vector"), file, pos), xs), file, line, pos), after)
                     }
                 }
             } else if char_eq_p(c, '"') {
-                string_body(cdr(cs), nil::<char>(), file, line, pos, line, i64_plus(pos, 1i64))
+                string_body(cdr(cs), text, nil::<Str>(), i64_plus(pos, 1i64), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
                 let name = cdr(cdr(cs));
-                let tagcase_ = token_chars(cdr(name), kayak_rt::heap_cons(car(name), kayak_rt::nil()), 1i64);
+                let tagcase_ = token_at(cdr(name), text, i64_plus(pos, 2i64), 1i64);
                 match *tagcase_ {
                     Tok::Tok(s, after, n) => {
                         got(chr(char_named(s, file, line), file, pos), here(after, line, i64_plus(pos, i64_plus(n, 2i64))))
                     }
                 }
             } else {
-                let tagcase_ = token_chars(cs, nil::<char>(), 0i64);
+                let tagcase_ = token_at(cs, text, pos, 0i64);
                 match *tagcase_ {
                     Tok::Tok(s, after, n) => {
                         got(token_atom(s, file, line, pos), here(after, line, i64_plus(pos, n)))
@@ -619,7 +629,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
     }
 }
 
-pub fn read_items(h: &'static Here, file: Str) -> &'static Gots {
+pub fn read_items(h: &'static Here, text: Str, file: Str) -> &'static Gots {
     let h = skip(h);
     let tagcase_ = h;
     match *tagcase_ {
@@ -629,10 +639,10 @@ pub fn read_items(h: &'static Here, file: Str) -> &'static Gots {
             } else if char_eq_p(car(cs), ')') {
                 gots(nil::<&'static Sexp>(), here(cdr(cs), line, i64_plus(pos, 1i64)))
             } else {
-                let tagcase_ = read_datum(h, file);
+                let tagcase_ = read_datum(h, text, file);
                 match *tagcase_ {
                     Got::Got(x, after) => {
-                        let tagcase_ = read_items(after, file);
+                        let tagcase_ = read_items(after, text, file);
                         match *tagcase_ {
                             Gots::Gots(xs, rest) => {
                                 gots(kayak_rt::heap_cons(x, xs), rest)
@@ -645,7 +655,7 @@ pub fn read_items(h: &'static Here, file: Str) -> &'static Gots {
     }
 }
 
-pub fn read_from(h: &'static Here, file: Str) -> Sexps {
+pub fn read_from(h: &'static Here, text: Str, file: Str) -> Sexps {
     let h = skip(h);
     let tagcase_ = h;
     match *tagcase_ {
@@ -653,10 +663,10 @@ pub fn read_from(h: &'static Here, file: Str) -> Sexps {
             if null_p(cs) {
                 nil::<&'static Sexp>()
             } else {
-                let tagcase_ = read_datum(h, file);
+                let tagcase_ = read_datum(h, text, file);
                 match *tagcase_ {
                     Got::Got(x, after) => {
-                        kayak_rt::heap_cons(x, read_from(after, file))
+                        kayak_rt::heap_cons(x, read_from(after, text, file))
                     }
                 }
             }
@@ -664,10 +674,10 @@ pub fn read_from(h: &'static Here, file: Str) -> Sexps {
     }
 }
 
-/// Every datum in `cs`, the text of `file` from `line`.
+/// Every datum in `text`, of `file` from `line`.
 #[inline]
-pub fn read_all(cs: Chars, file: Str, line: i64) -> Sexps {
-    read_from(here(cs, line, 0i64), file)
+pub fn read_all(text: Str, file: Str, line: i64) -> Sexps {
+    read_from(here(string_chars(text), line, 0i64), text, file)
 }
 
 // Taking `sexp`s apart

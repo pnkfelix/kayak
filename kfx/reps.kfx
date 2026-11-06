@@ -223,7 +223,7 @@
 (define rx-kind-node (subr kfx (rx string) rxa)
   (lambda (x kind)
     (if (has-prefix? kind "(")
-        (let ((forms (read-all (string-chars kind) "" 1))) (if (null? forms) (rx-node x "?" #f (the rp-operands nil)) (rx-kind-sexp x (car forms))))
+        (let ((forms (read-all kind "" 1))) (if (null? forms) (rx-node x "?" #f (the rp-operands nil)) (rx-kind-sexp x (car forms))))
         (rx-node x kind #f (the rp-operands nil)))))
 
 (define-rec
@@ -376,7 +376,7 @@
   (lambda (v n)
     (if (not (string-member? n rp-standard-generatives))
         nil
-        (let* ((forms (read-all (string-chars (rp-nth-string rp-generative-decls (rp-index-of rp-standard-generatives n 0))) "" 1))
+        (let* ((forms (read-all (rp-nth-string rp-generative-decls (rp-index-of rp-standard-generatives n 0)) "" 1))
                (ps (cdr (items (car forms))))
                (names (map (lambda ((p sexp)) (sym-name (car (items p)))) ps))
                (kinds (map (lambda ((p sexp)) (sym-name (second (items p)))) ps))
@@ -1238,7 +1238,7 @@
                (5 (map rp-arg-of (items (car (cdr (cdr (cdr (cdr xs))))))))))))
 (define rp-nodes-of-text (subr kfx (string) rexp)
   (lambda (text)
-    (let ((xs (items (car (read-all (string-chars text) "" 1)))))
+    (let ((xs (items (car (read-all text "" 1)))))
       (rexp (map rp-node-of (cdr (cdr xs))) (map sexp-string (items (second xs))) (i64->int (sexp-int (car xs))) ""))))
 
 "Why type `t` is declined: the first part a rep does not take, or none."

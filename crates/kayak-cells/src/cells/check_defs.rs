@@ -35,7 +35,7 @@ pub fn table_binds(v: &'static Cv, table: Str, file: Str, wher: Str) -> Binds {
     map(lambda1s(move |p: &'static Sexp| {
         let xs = items(p);
         bind(name_of(v, car(xs)), parse_scheme_of(v, second(xs), false), wher)
-    }), read_all(string_chars(table), file, 1i64))
+    }), read_all(table, file, 1i64))
 }
 
 /// The standard bindings, their types read in the standard scope, as
@@ -1032,7 +1032,7 @@ pub fn with_place_needs(v: &'static Cv, name: Str, sc: &'static Scheme, before: 
 pub fn split_words_check(s: Str) -> Strings {
     map(lambda1s(move |x: &'static Sexp| {
         sym_name(x)
-    }), read_all(string_chars(s), str_lit(""), 1i64))
+    }), read_all(s, str_lit(""), 1i64))
 }
 
 /// A define-rec's procedures given places (C34): its members call each
@@ -4048,14 +4048,23 @@ pub fn nset_names(s: &'static Nset) -> Strings {
     }
 }
 
+/// `s` without `out`; `s` itself if it has none of them, as a `lambda`'s
+/// parameters mostly are not items' names (C363): made again at each, the
+/// set was most of what a compile made.
 pub fn nset_without(s: &'static Nset, out: Strings) -> &'static Nset {
-    nset_of(concat(map(lambda1s(move |n: Str| {
-        if string_member_p(n, out) {
-            nil::<Str>()
-        } else {
-            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-        }
-    }), nset_names(s))))
+    if any_p(lambda1s(move |n: Str| {
+        in_nset_p(n, s)
+    }), out) {
+        nset_of(concat(map(lambda1s(move |n: Str| {
+            if string_member_p(n, out) {
+                nil::<Str>()
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+            }
+        }), nset_names(s))))
+    } else {
+        s
+    }
 }
 
 /// The items among `names` that `e` names; in a `(with m ...)` of a
@@ -4979,7 +4988,7 @@ pub fn order_from_code(forms: Sexps, code: Str) -> Sexps {
         } else {
             rec_of(members)
         }, selected_after(forms, members))
-    }), read_all(string_chars(code), str_lit(""), 1i64))))
+    }), read_all(code, str_lit(""), 1i64))))
 }
 
 // A module checked (C91): its scope made (`module-prep`), its items checked
@@ -6324,7 +6333,7 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                         if null_p(found) {
                             return error(string_append(str_lit("kfx: cannot read "), path));
                         } else {
-                            let es = read_all(string_chars(car(found)), path, 1i64);
+                            let es = read_all(car(found), path, 1i64);
                             if not(i64_eq(size(es), 1i64)) {
                                 return error(string_append(str_lit("kfx: "), string_append(path, str_lit(": not a file of one expression"))));
                             } else {
@@ -6428,7 +6437,7 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                         } else if null_p(found) {
                             return error(string_append(str_lit("kfx: cannot read "), path));
                         } else {
-                            let forms = import_items(read_all(string_chars(car(found)), path, 1i64));
+                            let forms = import_items(read_all(car(found), path, 1i64));
                             let its = run_items(parameters_given(forms, args, path));
                             let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
                             let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
@@ -6719,7 +6728,7 @@ pub fn input_expanded(f: &'static Sexp, dir: Str, loaded: Fileds) -> Sexps {
                         } else {
                             loads_from(x, directory_of(path))
                         })
-                    }), read_all(string_chars(text), path, 1i64))
+                    }), read_all(text, path, 1i64))
                 };
                 let e = if i64_eq(size(es), 1i64) {
                     car(es)
@@ -7003,10 +7012,10 @@ pub fn stage_expanded(e: &'static Sexp) -> &'static Sexp {
 /// Forms as `read-all` reads them, their labels unkeyworded (C291), for
 /// what reads a program but `with-loads`: the REPL's entries.
 #[inline]
-pub fn program_read(cs: Chars, file: Str, line: i64) -> Sexps {
+pub fn program_read(text: Str, file: Str, line: i64) -> Sexps {
     map(lambda1s(move |f: &'static Sexp| {
         stage_expanded(labels_unkeyworded(f))
-    }), read_all(cs, file, line))
+    }), read_all(text, file, line))
 }
 
 /// A program's forms: what it loads spliced in (C88), and what its modules

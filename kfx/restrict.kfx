@@ -14,10 +14,40 @@
 (define restrictions
   (module
     (hide
+      "The names the pass looks for, each list made once (C363): written in
+       place, each was made again at every symbol of the program."
+      (define control-names strings
+        (list "call-with-composable-continuation" "call-with-current-continuation" "call/cc"
+              "abort-current-continuation" "make-continuation-prompt-tag" "escape"))
+      (define mark-names strings
+        (list "current-marks" "marks-of"))
+      (define keyword-names strings
+        (list "keyword?" "symbol->keyword" "keyword->symbol"))
+      (define evidence-names strings
+        (list "effect-bound" "type-bound"))
+      (define session-names strings
+        (list "make-session" "session-redefines" "%session-ready" "%session-committed!" "%session-check"))
+      (define not-yet-names strings
+        (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "assume" "assert"
+              "char-in?" "nat?" "certify-nat" "rmake-icell" "pair-identity" "make-flatarray"
+              "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout" "i32-flat" "u32-flat"
+              "i64-flat" "u64-flat" "f32-flat" "f64-flat" "narrayof"))
+      (define copied-names strings
+        (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
+      (define region-heads strings
+        (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr"
+              "inbox" "read" "write" "alloc" "init"))
+      (define kind-names strings
+        (list "data" "sendable" "flat" "conv"))
+      (define string-writer-names strings
+        (list "stringof" "make-string" "rmake-string" "string-set!" "string-fill!" "string-copy"
+              "string-copy!"))
+      (define prompt-names strings
+        (list "abort-current-continuation" "escape" "make-continuation-prompt-tag"))
+
       (define control-primitive? (subr kfx (string) bool)
         (lambda (n)
-          (string-member? n (list "call-with-composable-continuation" "call-with-current-continuation" "call/cc"
-                                  "abort-current-continuation" "make-continuation-prompt-tag" "escape"))))
+          (string-member? n control-names)))
 
       (define-rec
         (projected-control (subr kfx (sexp) string)
@@ -43,23 +73,21 @@
               (sym (n f p)
                 (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc") (string=? n "cwcc"))
                        (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
-                      ((string-member? n (list "current-marks" "marks-of"))
+                      ((string-member? n mark-names)
                        (restriction-refused file line (string-append n ", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)")))
-                      ((or (keyword-name? n) (string-member? n (list "keyword?" "symbol->keyword" "keyword->symbol")))
+                      ((or (keyword-name? n) (string-member? n keyword-names))
                        (restriction-refused file line (string-append n ", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)")))
-                      ((string-member? n (list "effect-bound" "type-bound"))
+                      ((string-member? n evidence-names)
                        (restriction-refused file line (string-append n ", FX-26's evidence, which KFX has not yet (C308)")))
-                      ((string-member? n (list "make-session" "session-redefines" "%session-ready" "%session-committed!" "%session-check"))
+                      ((string-member? n session-names)
                        (restriction-refused file line (string-append n ", FX-26's sessions, which KFX has not yet (C309)")))
                       ((string=? n "%stage")
                        (restriction-refused file line "`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)"))
                       ((string=? n "list")
                        (restriction-refused file line "list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)"))
-                      ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "assume" "assert"
-                                              "char-in?" "nat?" "certify-nat" "rmake-icell" "pair-identity" "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
-                                              "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat" "narrayof"))
+                      ((string-member? n not-yet-names)
                        (restriction-refused file line (string-append n ", FX-26's, which KFX has not yet (C156)")))
-                      ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
+                      ((string-member? n copied-names)
                        (restriction-refused file line (string-append n ", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy")))
                       (else #u)))
               (lst (xs f l p)
@@ -74,10 +102,10 @@
                        (restriction-refused f l "a distinct region binder, FX-26's, which KFX has not yet (C204)"))
                       ((and (sym-is? (car xs) "bloblet") (any? (lambda ((a sexp)) (head-is? a "frozen")) (cdr xs)))
                        (restriction-refused f l "a frozen bloblet, FX-26's, which KFX has not yet (C201)"))
-                      ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
+                      ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h region-heads)) (else other #f))
                             (any? (lambda ((a sexp)) (and (or (head-is? a "const") (head-is? a "acyclic")) (not (sym-is? (second (items a)) "heap")))) (cdr xs)))
                        (restriction-refused f l "data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)"))
-                      ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
+                      ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h region-heads)) (else other #f))
                             (any? (lambda ((a sexp)) (sym-is? a "heap")) (cdr xs)))
                        (restriction-refused f l "the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)"))
                       ((or (sym-is? (car xs) "confirm-nat") (sym-is? (car xs) "confirm-length")
@@ -97,7 +125,7 @@
                                             ((and (or (sym-is? (car xs) "define-type") (sym-is? (car xs) "define-generative")) (i64> (size xs) 1)) (cdr-items-of (second xs)))
                                             (else nil))))
                          (any? (lambda ((b sexp)) (tagcase b
-                                                    (lst (ys f2 l2 p2) (and (i64= (size ys) 2) (tagcase (second ys) (sym (k f3 p3) (string-member? k (list "data" "sendable" "flat" "conv"))) (else other #f))))
+                                                    (lst (ys f2 l2 p2) (and (i64= (size ys) 2) (tagcase (second ys) (sym (k f3 p3) (string-member? k kind-names)) (else other #f))))
                                                     (else other #f)))
                                binders))
                        (restriction-refused f l "a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)"))
@@ -111,7 +139,7 @@
                       ((or (sym-is? (car xs) "=>") (sym-is? (car xs) "dlambda"))
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)")))
                       ((tagcase (car xs)
-                         (sym (n f2 p2) (string-member? n (list "stringof" "make-string" "rmake-string" "string-set!" "string-fill!" "string-copy" "string-copy!")))
+                         (sym (n f2 p2) (string-member? n string-writer-names))
                          (else other #f))
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C285)")))
                       ((or (sym-is? (car xs) "allof") (sym-is? (car xs) "anyof"))
@@ -121,7 +149,7 @@
                       ((and (sym-is? (car xs) "poly") (i64= (size xs) 3) (head-is? (third xs) "poly"))
                        (restriction-refused f l "a poly in a poly, which KFX's Rust writes as one: write it so (C70)"))
                       ((and (head-is? (car xs) "proj")
-                            (string-member? (projected-control (car xs)) (list "abort-current-continuation" "escape" "make-continuation-prompt-tag")))
+                            (string-member? (projected-control (car xs)) prompt-names))
                        "An abort or an escape through `proj`s, called: the emitter writes
                         it as the primitive's call (C105)."
                        (restricted-all (cdr xs) f l))
@@ -205,7 +233,7 @@
       (define primitive-names (subr kfx () strings)
         (lambda ()
           (map (lambda ((p sexp)) (sym-name (car (items p))))
-               (onto (read-all (string-chars primitives) "" 1) (read-all (string-chars prelude) "" 1)))))
+               (onto (read-all primitives "" 1) (read-all prelude "" 1)))))
 
       (define-rec
         (defined-names (subr kfx (sexps) (listof sexp acyclic))

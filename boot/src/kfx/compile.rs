@@ -39,7 +39,7 @@ pub fn restrict_checked(checked: &'static Verdict, forms: Sexps) -> &'static Ver
 
 /// The same, its messages naming `file`; the files it loads, `loaded`.
 pub fn compile_named(file: Str, src: Str, loaded: Fileds) -> Str {
-    let forms = with_loads(read_all(string_chars(src), file, 1i64), file, loaded);
+    let forms = with_loads(read_all(src, file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
     let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
     rev_to_string(writing::put_module_impls(c, writing::put_tops(c, forms, writing::put_shapes(c, forms, false, put(header(), nil::<char>())))))
@@ -48,7 +48,7 @@ pub fn compile_named(file: Str, src: Str, loaded: Fileds) -> Str {
 /// A program of one file, as Rust, with its top-level expressions as
 /// `kfx_toplevel`, which writes their values (emit.kfx).
 pub fn compile_toplevel(file: Str, src: Str, loaded: Fileds) -> Str {
-    let forms = with_loads(read_all(string_chars(src), file, 1i64), file, loaded);
+    let forms = with_loads(read_all(src, file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
     let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
     rev_to_string(writing::put_toplevel(c, forms, writing::put_module_impls(c, writing::put_tops(emitter::with_locals(c, kayak_rt::heap_cons(str_lit("%toplevel"), kayak_rt::nil())), forms, writing::put_shapes(c, forms, true, put(header(), nil::<char>()))))))
@@ -69,11 +69,12 @@ pub fn compile(src: Str) -> Str {
 // A file's name, without `.kfx`, and its text; a Rust file's name, and its
 // text.
 /// A file's forms, the modules made in place defined before theirs (C90).
+#[inline]
 pub fn source_forms(s: &'static Source) -> Sexps {
     let tagcase_ = s;
     match *tagcase_ {
         Source::Source(name, text) => {
-            with_loads(read_all(string_chars(text), string_append(name, str_lit(".kfx")), 1i64), string_append(name, str_lit(".kfx")), nil::<&'static Filed>())
+            with_loads(read_all(text, string_append(name, str_lit(".kfx")), 1i64), string_append(name, str_lit(".kfx")), nil::<&'static Filed>())
         }
     }
 }
@@ -151,7 +152,7 @@ pub fn memo_modules(mut c: &'static Ctx, mut fs: Facts, mut global: i64, mut old
                     let starts = map(lambda1s(move |f: &'static Sexp| {
                         datum_pos(f)
                     }), forms);
-                    let texts = incremental::form_texts(string_chars(text), 0i64, starts);
+                    let texts = incremental::form_texts(text, string_length_i64(text), starts);
                     let tagcase_ = incremental::put_tops_memo(c, incremental::facts_of_file(fs, file), global, old, forms, texts, starts, put(module_header(), nil::<char>()), made);
                     match *tagcase_ {
                         Emitted::Emitted(acc, made2) => {
@@ -181,7 +182,7 @@ pub fn source_texts(s: &'static Source) -> Strings {
     let tagcase_ = s;
     match *tagcase_ {
         Source::Source(name, text) => {
-            incremental::form_texts(string_chars(text), 0i64, map(lambda1s(move |f: &'static Sexp| {
+            incremental::form_texts(text, string_length_i64(text), map(lambda1s(move |f: &'static Sexp| {
                 datum_pos(f)
             }), source_forms(s)))
         }
