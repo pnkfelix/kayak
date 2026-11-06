@@ -44,6 +44,13 @@ from clones: `~/Dev/Rust/kayak-refs/fixpt` and `~/Dev/Rust/kayak-refs/coopt`
 (at `c366857`, read only, for its design). Citations (`fixpt/docs/fx26.md`)
 are to the clones.
 
+**Coopt's pin is `COOPT_REV`** (C368): its clone `../kayak-refs/coopt`,
+fetched from its GitHub origin; the crates taken from it
+(`crates/kayak-base`, `kayak-trace`, `kayak-sched`, more as
+`docs/research/coopt-adoption.md` §7 goes on) mark each file
+`coopt-source: PATH@REV`, and `scripts/coopt-drift.py` lists what changed
+upstream since, as `fixpt-drift.py` does for Fixpt.
+
 **The Fixpt pin is `FIXPT_REV`**, the full hash of the commit stage 0
 runs. `scripts/fixpt.sh` checks that the clone's `HEAD` is that commit,
 with no changes of its own, builds it (quick when nothing changed), and

@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "kayak-base"
+version = "0.1.0"
+
+[[package]]
 name = "kayak-cells"
 version = "0.1.0"
 dependencies = [
@@ -38,7 +42,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "kayak-sched"
+version = "0.1.0"
+dependencies = [
+ "kayak-base",
+ "kayak-trace",
+]
+
+[[package]]
 name = "kayak-sync"
+version = "0.1.0"
+
+[[package]]
+name = "kayak-trace"
 version = "0.1.0"
 
 [[package]]

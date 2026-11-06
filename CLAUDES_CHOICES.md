@@ -10103,3 +10103,25 @@ knows, the definitions the libraries', each once).
 - **A mirror for now**: the copies are checked against the table, not yet
   made from it; the runtime written in step 2 on reads its vocabulary
   from it. The pin's move runs `--update` (PLAN.md).
+
+## C368. Coopt pinned; its base, trace and scheduler taken (2026-11-06)
+
+Step 2 of docs/research/coopt-adoption.md §7, begun, with the note's
+answer 2: Coopt's code copied into kayak, marked, from a pinned clone.
+- **The pin**: `../kayak-refs/coopt`, cloned from Coopt's GitHub origin
+  (as Fixpt's is), at 9283bba, the commit the note was read at;
+  `COOPT_REV`. `scripts/fixpt-drift.py` now knows two upstreams (its
+  `UPSTREAMS`), and `scripts/coopt-drift.py` runs it for Coopt's
+  `coopt-source: PATH@REV` marks; in the full check where the clone is.
+- **Taken whole**: `coopt-base` (fixed hashers, the seeded generator,
+  fingerprints, stable encoding), `coopt-trace` (the event stream) and
+  `coopt-sched` (futures as tasks, fuel, priorities, effects, the virtual
+  clock, the inbox, stress), as `kayak-base`, `kayak-trace`,
+  `kayak-sched`: renamed, each file marked, nothing else changed. Their
+  46 tests pass, as in Coopt; kayak's rustfmt and clippy take them as they
+  are. The fingerprint key stays Coopt's ("coopt fp…"), so that the two
+  fingerprint alike.
+- **Not yet**: the runner (it needs `coopt-sys`, with `libc`, which would be
+  kayak's first dependency from outside the workspace: kayak-jit makes its
+  system calls without one), and KFX's tasks and
+  the compiler's I/O moved onto the scheduler (step 2's rest).

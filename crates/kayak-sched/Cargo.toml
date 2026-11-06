@@ -1,0 +1,14 @@
+# coopt-source: crates/coopt-sched/Cargo.toml@9283bba
+[package]
+name = "kayak-sched"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+kayak-base = { path = "../kayak-base" }
+kayak-trace = { path = "../kayak-trace" }
+
+[lints]
+workspace = true
