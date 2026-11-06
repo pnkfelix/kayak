@@ -151,8 +151,9 @@ cellular machine (`cells/`: its heap, Cheney collector, interpreter,
 hand machine, compiled words, about 10,400 lines) and the IR engine
 (`fx26/v*`, `vm`, `words`, `table`, about 2,400) are KFX ports of Fixpt's
 Rust runtime, routine by routine. They have what Coopt treats as
-foundations late or not at all: no prompts, continuations or marks on
-the machine ("Not yet", `machine.kfx`); no fuel-driven, effect-aware
+foundations late or not at all: prompts, continuations and marks on the
+machine but for five routines (51-55; `machine.kfx`'s header, which says
+"Not yet", is stale); no fuel-driven, effect-aware
 scheduler shared with GC and compiling; a collector with no barrier and
 no branded rooting; native code running on tier 1's state, so circular
 to self-host on. Two runtimes, neither Coopt's shape. What carries over:
@@ -167,6 +168,7 @@ one, as Coopt's REPL is a client of its queries.
 
 So the order becomes: restore the self-hosting check on today's machine
 (step 1, small, and the compiler half's fix carries over); then the
-Coopt-adoption note, now with lang items in it and the runtime in Rust;
+Coopt-adoption note (`docs/research/coopt-adoption.md`), now with lang
+items in it and the runtime in Rust;
 then the new runtime, the compiler half kept and retargeted, the old
 runtime retired once the new one passes the corpus and self-hosts.
