@@ -9694,3 +9694,34 @@ and every tier. Not yet: `swap.fx`, refused for a gap of kayak's own, not
 `allof`'s: kayak's termination check does not see recursion through a
 recursive sum's payloads (`tagcase`, then `extract`) end, which Fixpt's
 does; the same `swap` at one plain type is refused alike (TODO).
+
+## C355. U2: `anyof` (2026-11-05; logical types, step 3)
+
+The user's "Do anyof first" (before the termination gap of C354). Fixpt's
+U2 (1d3b33a4) with U3b's sums kept as written (bcc6ecea), in kayak's
+checker:
+- **One node with `oneof`'s**, `%union`, printed `oneof` where no two
+  members share a shape (`members-apart?`), else `anyof`. Its normal form
+  (`anyof-trimmed`): flattened, `void` and a member the same as one before
+  it (`ty-same?`, structural, as Fixpt's `k-same-type?`: the parse has no
+  subtyping) dropped; sums kept as written. Each member's shape known; a
+  member that may be written (`may-be-written?`: a cell, an array, a
+  bloblet, a pair or list not frozen) told apart from every other by its
+  shape, else refused in Fixpt's words, members named as written.
+- **A member of a shape** (`member-of-shape`) only where one alone has it,
+  as Fixpt's inference; a test keeps every member of the shape it proves
+  (`narrowed-to`, `members-of-shape`): their union.
+- **Below a union**: of several members of a value's shape (a list's for
+  `nil` or a pair), the first it is below (`quick-fits?`, which now sees
+  through a recursive type, and takes `nil`, a pair and `false`); a list
+  written where several lists are, found then fitted.
+- **A union of sums as one sum** where one is needed (`union-as-sum`, U3b):
+  `tagcase` takes it apart, and a `sum` given for it is made of it, each tag
+  once, a shared tag's payload the union of its payloads.
+Fixpt's `anyof/` tests: `oneof-same`, `overlap`, `sub-sum`, `sums-share`
+give Fixpt's answers on the engine and tiers 1 and 6; `cells`,
+`written-lists`, `shown` refused in Fixpt's words, `mixed-list` refused
+(naming `ib` written out). Left: U2b's splits (`distribute*`, `budget*`)
+and greatest member (`greatest-pair`), U3's rule 5 (`car-split`,
+`allof-split`, `swap-anyof`), and `recursive-sums`, `swap-anyof` on C354's
+termination gap.

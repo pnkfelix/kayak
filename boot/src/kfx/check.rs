@@ -3808,6 +3808,373 @@ pub fn allof_conv(t: &'static Ty) -> Str {
     }
 }
 
+// Two types the same, as written (C355; Fixpt's `k-same-type?`): what an
+// `anyof`'s normal form drops a repeated member by, as the parse has no
+// subtyping yet.
+pub fn ty_same_p(a: &'static Ty, b: &'static Ty) -> bool {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Ty::TyI64() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyI64() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyInt() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyInt() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyNat() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyNat() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyF64() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyF64() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyBool() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyBool() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyChar() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyChar() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyUnit() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyUnit() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyString() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyString() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyVoid() => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyVoid() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyList(x, r) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyList(y, q) => {
+                    (ty_same_p(x, y) && ty_same_p(r, q))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyData(d, r#as) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyData(e, bs) => {
+                    (string_eq_p(d, e) && tys_same_p(r#as, bs))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyFlat(x, r) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyFlat(y, q) => {
+                    (ty_same_p(x, y) && ty_same_p(r, q))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyRef(x, r) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyRef(y, q) => {
+                    (ty_same_p(x, y) && ty_same_p(r, q))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyRconst(n) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyRconst(m) => {
+                    string_eq_p(n, m)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyTag(x, h, es, r) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyTag(y, g, fs, q) => {
+                    (ty_same_p(x, y) && ty_same_p(h, g) && string_eq_p(words_of(es), words_of(fs)) && ty_same_p(r, q))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyProc(es, ps, r) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyProc(fs, qs, q) => {
+                    (string_eq_p(words_of(es), words_of(fs)) && tys_same_p(ps, qs) && ty_same_p(r, q))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyShape(p, ls, ts) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyShape(q, ms, us) => {
+                    (if p {
+                        q
+                    } else {
+                        not(q)
+                    } && string_eq_p(words_of(ls), words_of(ms)) && tys_same_p(ts, us))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyVar(n) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyVar(m) => {
+                    string_eq_p(n, m)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyMeta(k) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    i64_eq(k, j)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+    }
+}
+
+pub fn tys_same_p(r#as: Tys, bs: Tys) -> bool {
+    if (null_p(r#as) && null_p(bs)) {
+        true
+    } else if (null_p(r#as) || null_p(bs)) {
+        false
+    } else {
+        (ty_same_p(car(r#as), car(bs)) && tys_same_p(cdr(r#as), cdr(bs)))
+    }
+}
+
+/// An `anyof`'s members without `void`, and without one the same as one
+/// before it (Fixpt's `k-anyof-trimmed`).
+pub fn anyof_trimmed(mut ms: Tys, mut kept: Tys) -> Tys {
+    loop {
+        if null_p(ms) {
+            return reverse(kept);
+        } else if ({
+            let tagcase_ = car(ms);
+            match *tagcase_ {
+                Ty::TyVoid() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } || any_p(lambda1s(move |k: &'static Ty| {
+            ty_same_p(k, car(ms))
+        }), kept)) {
+            ms = cdr(ms);
+            continue;
+        } else {
+            (ms, kept) = (cdr(ms), kayak_rt::heap_cons(car(ms), kept));
+            continue;
+        }
+    }
+}
+
+/// Whether a value of `t` may be written: a cell, an array, a bloblet, or
+/// a pair or list not frozen (Fixpt's `k-may-be-written?`).
+pub fn may_be_written_p(mut t: &'static Ty) -> bool {
+    loop {
+        let thawed_p = lambda1s(move |r: &'static Ty| {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Ty::TyRconst(n) => {
+                    not((string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const"))))
+                }
+                Ty::TyData(d, r#as) => {
+                    not(string_eq_p(d, str_lit("%frozen")))
+                }
+                _ => {
+                    let other = tagcase_;
+                    true
+                }
+            }
+        });
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyRef(a, r) => {
+                return true;
+            }
+            Ty::TyFlat(a, r) => {
+                return true;
+            }
+            Ty::TyList(e, r) => {
+                return thawed_p(r);
+            }
+            Ty::TyData(d, r#as) => {
+                if (has_prefix_p(d, str_lit("%named ")) && not(null_p(r#as))) {
+                    t = car(r#as);
+                    continue;
+                } else if string_member_p(d, kayak_rt::heap_cons(str_lit("%array"), kayak_rt::heap_cons(str_lit("%narray"), kayak_rt::heap_cons(str_lit("%bloblet"), kayak_rt::heap_cons(str_lit("%fbloblet"), kayak_rt::heap_cons(str_lit("%icell"), kayak_rt::heap_cons(str_lit("%mark-key"), kayak_rt::heap_cons(str_lit("%place"), kayak_rt::heap_cons(str_lit("%flat-array"), kayak_rt::nil()))))))))) {
+                    return true;
+                } else if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(r#as), 3i64)) {
+                    return thawed_p(car(cdr(cdr(r#as))));
+                } else {
+                    return false;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// Two shapes a test cannot tell apart: the same, or a list's with `nil` or
+/// a pair's.
+pub fn shapes_alike_p(a: Str, b: Str) -> bool {
+    (string_eq_p(a, b) || (string_eq_p(a, str_lit("list")) && string_member_p(b, kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::nil())))) || (string_eq_p(b, str_lit("list")) && string_member_p(a, kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::nil())))))
+}
+
+/// Two members, by name as written, one that may be written and another
+/// of its shape, as a list of two; none if none.
+pub fn anyof_written_clash(mut ms: Tys, mut shapes: Strings, mut names: Strings) -> Strings {
+    loop {
+        if (null_p(ms) || null_p(shapes) || null_p(names)) {
+            return nil::<Str>();
+        } else {
+            let rest = anyof_clash_with(car(ms), car(shapes), car(names), cdr(ms), cdr(shapes), cdr(names));
+            if null_p(rest) {
+                (ms, shapes, names) = (cdr(ms), cdr(shapes), cdr(names));
+                continue;
+            } else {
+                return rest;
+            }
+        }
+    }
+}
+
+pub fn anyof_clash_with(mut m: &'static Ty, mut sh: Str, mut n: Str, mut ms: Tys, mut shapes: Strings, mut names: Strings) -> Strings {
+    loop {
+        if (null_p(ms) || null_p(shapes) || null_p(names)) {
+            return nil::<Str>();
+        } else if ((may_be_written_p(m) || may_be_written_p(car(ms))) && shapes_alike_p(sh, car(shapes))) {
+            return kayak_rt::heap_cons(n, kayak_rt::heap_cons(car(names), kayak_rt::nil()));
+        } else {
+            (ms, shapes, names) = (cdr(ms), cdr(shapes), cdr(names));
+            continue;
+        }
+    }
+}
+
 // A `oneof`'s sums (Fixpt's U0, C353; `check-unions.fx`'s
 // `k-union-sums-merged`): two sums with no tag in common are told apart by
 // their tags, so they may be members, made one sum where the `oneof` is
@@ -3970,6 +4337,61 @@ pub fn datum_members() -> Tys {
     kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit("symbol"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("keyword"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("nil"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_rconst(str_lit("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit("vector"), nil::<&'static Ty>()), kayak_rt::nil()))))))))))
 }
 
+// A union of sums as the one sum `tagcase` takes apart, and a `sum` is
+// made of (Fixpt's U3b, C355): each tag once, at its first place, its
+// payload the union of the payloads the sums have for it. Else, as it is.
+pub fn union_as_sum(t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if (string_eq_p(d, str_lit("%union")) && not(null_p(args)) && all_p(lambda1s(move |m: &'static Ty| {
+                not(null_p(sum_of_member(m)))
+            }), args)) {
+                let sums = concat(map(&sum_of_member, args));
+                let ls = union_tags(concat(map(&sum_labels, sums)), nil::<Str>());
+                ty_shape(false, ls, map(lambda1s(move |l: Str| {
+                    union_payload(l, sums)
+                }), ls))
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+pub fn union_tags(mut ls: Strings, mut seen: Strings) -> Strings {
+    loop {
+        if null_p(ls) {
+            return reverse(seen);
+        } else if string_member_p(car(ls), seen) {
+            ls = cdr(ls);
+            continue;
+        } else {
+            (ls, seen) = (cdr(ls), kayak_rt::heap_cons(car(ls), seen));
+            continue;
+        }
+    }
+}
+
+pub fn union_payload(l: Str, sums: Tys) -> &'static Ty {
+    let ps = anyof_trimmed(concat(map(lambda1s(move |u: &'static Ty| {
+        if string_member_p(l, sum_labels(u)) {
+            the::<Tys>(kayak_rt::heap_cons(label_type(l, sum_labels(u), sum_types(u)), kayak_rt::nil()))
+        } else {
+            nil::<&'static Ty>()
+        }
+    }), sums)), nil::<&'static Ty>());
+    if null_p(cdr(ps)) {
+        car(ps)
+    } else {
+        ty_data(str_lit("%union"), ps)
+    }
+}
+
 /// A union's members; `datum`'s; or none.
 pub fn members_of(t: &'static Ty) -> Tys {
     let tagcase_ = t;
@@ -4015,17 +4437,35 @@ pub fn generative_p(v: &'static Cv, t: &'static Ty) -> bool {
     }
 }
 
-pub fn member_of_shape(mut ts: Tys, mut shape: Str) -> Tys {
+/// The member of `shape`, if one alone has it (an `anyof`'s may share
+/// one, C355: Fixpt's inference takes it only then).
+pub fn member_of_shape(ts: Tys, shape: Str) -> Tys {
+    let all = members_of_shape(ts, shape);
+    if (not(null_p(all)) && null_p(cdr(all))) {
+        all
+    } else {
+        nil::<&'static Ty>()
+    }
+}
+
+pub fn members_of_shape(mut ts: Tys, mut shape: Str) -> Tys {
     loop {
         if null_p(ts) {
             return nil::<&'static Ty>();
         } else if string_eq_p(shape_of(car(ts)), shape) {
-            return kayak_rt::heap_cons(car(ts), kayak_rt::nil());
+            return kayak_rt::heap_cons(car(ts), members_of_shape(cdr(ts), shape));
         } else {
             ts = cdr(ts);
             continue;
         }
     }
+}
+
+/// Whether no two members share a shape: a union printed `oneof`.
+pub fn members_apart_p(ts: Tys) -> bool {
+    (null_p(ts) || (null_p(filter(lambda1s(move |m: &'static Ty| {
+        shapes_alike_p(shape_of(m), shape_of(car(ts)))
+    }), cdr(ts))) && members_apart_p(cdr(ts))))
 }
 
 // Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
@@ -7077,6 +7517,42 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         return ty_data(str_lit("%allof"), ms);
                     }
+                } else if sym_is_p(car(xs), str_lit("anyof")) {
+                    // A true union (Fixpt's U2, C355; `logical-types.md` §8.5): a value
+                    // of one of its members, no test needed to tell which, so they may
+                    // overlap. One node with `oneof`'s, `%union`, printed `oneof` where
+                    // no two members share a shape. Normal form: flattened, `void` and a
+                    // member the same as one before it dropped; its sums kept as
+                    // written (Fixpt's U3b), made one where one sum is needed. Each
+                    // member's shape known; one that may be written told apart from
+                    // every other by its shape (question 14).
+                    let written = anyof_trimmed(union_members(parse_types(v, tvars, cdr(xs))), nil::<&'static Ty>());
+                    let shapes = map(lambda1s(move |m: &'static Ty| {
+                        mu_member_shape(v, tvars, m)
+                    }), written);
+                    let names = map(lambda1s(move |x: &'static Sexp| {
+                        show_sexp(x)
+                    }), cdr(xs));
+                    let clash = anyof_written_clash(written, shapes, if i64_eq(size(names), size(written)) {
+                        names
+                    } else {
+                        map(lambda1s(move |m: &'static Ty| {
+                            str_lit("?")
+                        }), written)
+                    });
+                    if i64_lt(size(cdr(xs)), 2i64) {
+                        return match refuse(v, string_append(str_lit("a union of fewer than two members: "), show_sexp(t))) {};
+                    } else if (string_member_p(str_lit(""), shapes) || any_p(lambda1s(move |m: &'static Ty| {
+                        generative_p(v, m)
+                    }), written)) {
+                        return match refuse(v, string_append(str_lit("a union's member with no shape known (a type variable, an abstract or generative type, a tag): "), show_sexp(t))) {};
+                    } else if not(null_p(clash)) {
+                        return match refuse(v, string_append(str_lit("an `anyof`'s members that may be written must be told apart at run time: a "), string_append(car(clash), string_append(str_lit(" and a "), string_append(car(cdr(clash)), str_lit(" cannot be")))))) {};
+                    } else if null_p(cdr(written)) {
+                        return car(written);
+                    } else {
+                        return ty_data(str_lit("%union"), written);
+                    }
                 } else if (sym_is_p(car(xs), str_lit("oneof")) || sym_is_p(car(xs), str_lit("union"))) {
                     let each = parse_types(v, tvars, cdr(xs));
                     let written = union_members(each);
@@ -8944,7 +9420,11 @@ pub fn show_ty(mut s: &'static St, mut t: &'static Ty) -> Str {
                 } else if string_eq_p(d, str_lit("%array")) {
                     return string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%union")) {
-                    return string_append(str_lit("(oneof "), string_append(show_tys(s, args), str_lit(")")));
+                    return string_append(if members_apart_p(args) {
+                        str_lit("(oneof ")
+                    } else {
+                        str_lit("(anyof ")
+                    }, string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%allof")) {
                     return string_append(str_lit("(allof "), string_append(show_tys(s, args), str_lit(")")));
                 } else if string_eq_p(d, str_lit("%pairof")) {
@@ -11477,8 +11957,20 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
             }
         }
     } else if (string_eq_p(shape_of(e), str_lit("union")) && not(string_eq_p(member_shape(a), str_lit("")))) {
-        // A member below its union: the member of its shape (C62).
-        let m = member_of_shape(members_of(e), member_shape(a));
+        // A member below its union: the member of its shape (C62); of an
+        // `anyof`'s several, the first it is below (C355).
+        let all = onto(members_of_shape(members_of(e), member_shape(a)), if string_member_p(member_shape(a), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::nil()))) {
+            members_of_shape(members_of(e), str_lit("list"))
+        } else {
+            nil::<&'static Ty>()
+        });
+        let m = if (null_p(all) || null_p(cdr(all))) {
+            all
+        } else {
+            filter(lambda1s(move |x: &'static Ty| {
+                quick_fits_p(s, a, x)
+            }), all)
+        };
         if null_p(m) {
             mismatch(v, s, a, e)
         } else {
@@ -11633,6 +12125,7 @@ pub fn fits_all_members(mut v: &'static Cv, mut s: &'static St, mut a: &'static 
     }
 }
 
+/// `t`, seen through an abbreviation, and a recursive type unfolded once.
 pub fn named_seen(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
     loop {
         let tagcase_ = walk(s, t);
@@ -11641,6 +12134,8 @@ pub fn named_seen(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
                 if (has_prefix_p(d, str_lit("%named ")) && not(null_p(args))) {
                     t = car(args);
                     continue;
+                } else if mu_p(walk(s, t)) {
+                    return unfold_mu(walk(s, t));
                 } else {
                     return walk(s, t);
                 }
@@ -11792,6 +12287,50 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                     any_p(lambda1s(move |m: &'static Ty| {
                         quick_fits_p(s, m, e)
                     }), args)
+                } else if string_eq_p(d, str_lit("nil")) {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Ty::TyList(y, q) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } else if string_eq_p(d, str_lit("false")) {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Ty::TyBool() => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(args), 3i64)) {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Ty::TyList(y, q) => {
+                            (quick_fits_p(s, car(args), y) && quick_fits_p(s, car(cdr(args)), e) && ({
+                                let tagcase_ = walk(s, car(cdr(cdr(args))));
+                                match *tagcase_ {
+                                    Ty::TyMeta(k) => {
+                                        true
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            } || string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, q)))))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
                 } else {
                     false
                 }
@@ -11814,7 +12353,18 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Ty::TyList(y, q) => {
-                        (quick_fits_p(s, x, y) && string_eq_p(show_ty(s, zonk(s, r)), show_ty(s, zonk(s, q))))
+                        (quick_fits_p(s, x, y) && ({
+                            let tagcase_ = walk(s, r);
+                            match *tagcase_ {
+                                Ty::TyMeta(k) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } || string_eq_p(show_ty(s, zonk(s, r)), show_ty(s, zonk(s, q)))))
                     }
                     _ => {
                         let other = tagcase_;

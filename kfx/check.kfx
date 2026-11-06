@@ -1727,6 +1727,89 @@
             "?"))
       (else other "?"))))
 
+"Two types the same, as written (C355; Fixpt's `k-same-type?`): what an
+ `anyof`'s normal form drops a repeated member by, as the parse has no
+ subtyping yet."
+(define-rec
+  (ty-same? (subr kfx (ty ty) bool)
+    (lambda (a b)
+      (tagcase a
+        (ty-i64 () (tagcase b (ty-i64 () #t) (else other #f)))
+        (ty-int () (tagcase b (ty-int () #t) (else other #f)))
+        (ty-nat () (tagcase b (ty-nat () #t) (else other #f)))
+        (ty-f64 () (tagcase b (ty-f64 () #t) (else other #f)))
+        (ty-bool () (tagcase b (ty-bool () #t) (else other #f)))
+        (ty-char () (tagcase b (ty-char () #t) (else other #f)))
+        (ty-unit () (tagcase b (ty-unit () #t) (else other #f)))
+        (ty-string () (tagcase b (ty-string () #t) (else other #f)))
+        (ty-void () (tagcase b (ty-void () #t) (else other #f)))
+        (ty-list (x r) (tagcase b (ty-list (y q) (and (ty-same? x y) (ty-same? r q))) (else other #f)))
+        (ty-data (d as) (tagcase b (ty-data (e bs) (and (string=? d e) (tys-same? as bs))) (else other #f)))
+        (ty-flat (x r) (tagcase b (ty-flat (y q) (and (ty-same? x y) (ty-same? r q))) (else other #f)))
+        (ty-ref (x r) (tagcase b (ty-ref (y q) (and (ty-same? x y) (ty-same? r q))) (else other #f)))
+        (ty-rconst (n) (tagcase b (ty-rconst (m) (string=? n m)) (else other #f)))
+        (ty-tag (x h es r) (tagcase b (ty-tag (y g fs q) (and (ty-same? x y) (ty-same? h g) (string=? (words-of es) (words-of fs)) (ty-same? r q))) (else other #f)))
+        (ty-proc (es ps r) (tagcase b (ty-proc (fs qs q) (and (string=? (words-of es) (words-of fs)) (tys-same? ps qs) (ty-same? r q))) (else other #f)))
+        (ty-shape (p ls ts) (tagcase b (ty-shape (q ms us) (and (if p q (not q)) (string=? (words-of ls) (words-of ms)) (tys-same? ts us))) (else other #f)))
+        (ty-var (n) (tagcase b (ty-var (m) (string=? n m)) (else other #f)))
+        (ty-meta (k) (tagcase b (ty-meta (j) (i64= k j)) (else other #f))))))
+  (tys-same? (subr kfx (tys tys) bool)
+    (lambda (as bs)
+      (cond ((and (null? as) (null? bs)) #t)
+            ((or (null? as) (null? bs)) #f)
+            (else (and (ty-same? (car as) (car bs)) (tys-same? (cdr as) (cdr bs))))))))
+
+(define-rec
+  (anyof-trimmed (subr kfx (tys tys) tys)
+    (lambda (ms kept)
+      "An `anyof`'s members without `void`, and without one the same as one
+       before it (Fixpt's `k-anyof-trimmed`)."
+      (cond ((null? ms) (reverse kept))
+            ((or (tagcase (car ms) (ty-void () #t) (else other #f)) (any? (lambda ((k ty)) (ty-same? k (car ms))) kept))
+             (anyof-trimmed (cdr ms) kept))
+            (else (anyof-trimmed (cdr ms) (cons (car ms) kept)))))))
+
+(define-rec
+  (may-be-written? (subr kfx (ty) bool)
+    (lambda (t)
+      "Whether a value of `t` may be written: a cell, an array, a bloblet, or
+       a pair or list not frozen (Fixpt's `k-may-be-written?`)."
+      (let ((thawed? (lambda ((r ty)) (tagcase r (ty-rconst (n) (not (or (string=? n "acyclic") (string=? n "const"))))
+                                                (ty-data (d as) (not (string=? d "%frozen")))
+                                                (else other #t)))))
+        (tagcase t
+          (ty-ref (a r) #t)
+          (ty-flat (a r) #t)
+          (ty-list (e r) (thawed? r))
+          (ty-data (d as)
+            (cond ((and (has-prefix? d "%named ") (not (null? as))) (may-be-written? (car as)))
+                  ((string-member? d (list "%array" "%narray" "%bloblet" "%fbloblet" "%icell" "%mark-key" "%place" "%flat-array")) #t)
+                  ((and (string=? d "%pairof") (i64= (size as) 3)) (thawed? (car (cdr (cdr as)))))
+                  (else #f)))
+          (else other #f))))))
+
+(define shapes-alike? (subr kfx (string string) bool)
+  (lambda (a b)
+    "Two shapes a test cannot tell apart: the same, or a list's with `nil` or
+     a pair's."
+    (or (string=? a b)
+        (and (string=? a "list") (string-member? b (list "nil" "pair")))
+        (and (string=? b "list") (string-member? a (list "nil" "pair"))))))
+
+(define-rec
+  (anyof-written-clash (subr kfx (tys strings strings) strings)
+    (lambda (ms shapes names)
+      "Two members, by name as written, one that may be written and another
+       of its shape, as a list of two; none if none."
+      (if (or (null? ms) (null? shapes) (null? names))
+          nil
+          (let ((rest (anyof-clash-with (car ms) (car shapes) (car names) (cdr ms) (cdr shapes) (cdr names))))
+            (if (null? rest) (anyof-written-clash (cdr ms) (cdr shapes) (cdr names)) rest)))))
+  (anyof-clash-with (subr kfx (ty string string tys strings strings) strings)
+    (lambda (m sh n ms shapes names)
+      (cond ((or (null? ms) (null? shapes) (null? names)) nil)
+            ((and (or (may-be-written? m) (may-be-written? (car ms))) (shapes-alike? sh (car shapes))) (list n (car names)))
+            (else (anyof-clash-with m sh n (cdr ms) (cdr shapes) (cdr names)))))))
 "A `oneof`'s sums (Fixpt's U0, C353; `check-unions.fx`'s
  `k-union-sums-merged`): two sums with no tag in common are told apart by
  their tags, so they may be members, made one sum where the `oneof` is
@@ -1795,6 +1878,30 @@
           (ty-data "%pairof" (list (ty-data "datum" nil) (ty-data "datum" nil) (ty-rconst "acyclic")))
           (ty-data "vector" nil))))
 
+"A union of sums as the one sum `tagcase` takes apart, and a `sum` is
+ made of (Fixpt's U3b, C355): each tag once, at its first place, its
+ payload the union of the payloads the sums have for it. Else, as it is."
+(define-rec
+  (union-as-sum (subr kfx (ty) ty)
+    (lambda (t)
+      (tagcase t
+        (ty-data (d args)
+          (if (and (string=? d "%union") (not (null? args)) (all? (lambda ((m ty)) (not (null? (sum-of-member m)))) args))
+              (let* ((sums (concat (map sum-of-member args)))
+                     (ls (union-tags (concat (map sum-labels sums)) nil)))
+                (ty-shape #f ls (map (lambda ((l string)) (union-payload l sums)) ls)))
+              t))
+        (else other t))))
+  (union-tags (subr kfx (strings strings) strings)
+    (lambda (ls seen)
+      (cond ((null? ls) (reverse seen))
+            ((string-member? (car ls) seen) (union-tags (cdr ls) seen))
+            (else (union-tags (cdr ls) (cons (car ls) seen))))))
+  (union-payload (subr kfx (string tys) ty)
+    (lambda (l sums)
+      (let ((ps (anyof-trimmed (concat (map (lambda ((u ty)) (if (string-member? l (sum-labels u)) (the tys (list (label-type l (sum-labels u) (sum-types u)))) nil)) sums)) nil)))
+        (if (null? (cdr ps)) (car ps) (ty-data "%union" ps))))))
+
 (define members-of (subr kfx (ty) tys)
   (lambda (t)
     "A union's members; `datum`'s; or none."
@@ -1815,9 +1922,20 @@
 (define-rec
   (member-of-shape (subr kfx (tys string) tys)
     (lambda (ts shape)
+      "The member of `shape`, if one alone has it (an `anyof`'s may share
+       one, C355: Fixpt's inference takes it only then)."
+      (let ((all (members-of-shape ts shape))) (if (and (not (null? all)) (null? (cdr all))) all nil))))
+  (members-of-shape (subr kfx (tys string) tys)
+    (lambda (ts shape)
       (cond ((null? ts) nil)
-            ((string=? (shape-of (car ts)) shape) (list (car ts)))
-            (else (member-of-shape (cdr ts) shape))))))
+            ((string=? (shape-of (car ts)) shape) (cons (car ts) (members-of-shape (cdr ts) shape)))
+            (else (members-of-shape (cdr ts) shape)))))
+  (members-apart? (subr kfx (tys) bool)
+    (lambda (ts)
+      "Whether no two members share a shape: a union printed `oneof`."
+      (or (null? ts)
+          (and (null? (filter (lambda ((m ty)) (shapes-alike? (shape-of m) (shape-of (car ts)))) (cdr ts)))
+               (members-apart? (cdr ts)))))))
 
 "Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
  a linear expression over local names, a constant and each name's
@@ -3143,6 +3261,27 @@
                          ((not (null? (filter (lambda ((m ty)) (not (string=? (allof-conv m) (allof-conv (car ms))))) ms)))
                           (refuse v "an `allof`'s members have one convention"))
                          (else (ty-data "%allof" ms)))))
+                ((sym-is? (car xs) "anyof")
+                 "A true union (Fixpt's U2, C355; `logical-types.md` §8.5): a value
+                  of one of its members, no test needed to tell which, so they may
+                  overlap. One node with `oneof`'s, `%union`, printed `oneof` where
+                  no two members share a shape. Normal form: flattened, `void` and a
+                  member the same as one before it dropped; its sums kept as
+                  written (Fixpt's U3b), made one where one sum is needed. Each
+                  member's shape known; one that may be written told apart from
+                  every other by its shape (question 14)."
+                 (let* ((written (anyof-trimmed (union-members (parse-types v tvars (cdr xs))) nil))
+                        (shapes (map (lambda ((m ty)) (mu-member-shape v tvars m)) written))
+                        (names (map (lambda ((x sexp)) (show-sexp x)) (cdr xs)))
+                        (clash (anyof-written-clash written shapes (if (i64= (size names) (size written)) names (map (lambda ((m ty)) "?") written)))))
+                   (cond ((i64< (size (cdr xs)) 2) (refuse v (string-append "a union of fewer than two members: " (show-sexp t))))
+                         ((or (string-member? "" shapes) (any? (lambda ((m ty)) (generative? v m)) written))
+                          (refuse v (string-append "a union's member with no shape known (a type variable, an abstract or generative type, a tag): " (show-sexp t))))
+                         ((not (null? clash))
+                          (refuse v (string-append "an `anyof`'s members that may be written must be told apart at run time: a "
+                                      (string-append (car clash) (string-append " and a " (string-append (car (cdr clash)) " cannot be"))))))
+                         ((null? (cdr written)) (car written))
+                         (else (ty-data "%union" written)))))
                 ;; `oneof` (Fixpt's U0, C351), `union` still read as it, as Fixpt's.
                 ((or (sym-is? (car xs) "oneof") (sym-is? (car xs) "union"))
                  (let* ((each (parse-types v tvars (cdr xs)))
@@ -3954,7 +4093,7 @@
                      "string"
                      (string-append "(stringof " (string-append (show-ty s (car args)) ")"))))
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
-                ((string=? d "%union") (string-append "(oneof " (string-append (show-tys s args) ")")))
+                ((string=? d "%union") (string-append (if (members-apart? args) "(oneof " "(anyof ") (string-append (show-tys s args) ")")))
                 ((string=? d "%allof") (string-append "(allof " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
@@ -4929,8 +5068,12 @@
                (ty-list (x r) (fits v (fits v s (ty-data "nil" nil) e) (ty-data "%pairof" (list x a r)) e))
                (else other (mismatch v s a e))))
             ((and (string=? (shape-of e) "union") (not (string=? (member-shape a) "")))
-             "A member below its union: the member of its shape (C62)."
-             (let ((m (member-of-shape (members-of e) (member-shape a))))
+             "A member below its union: the member of its shape (C62); of an
+              `anyof`'s several, the first it is below (C355)."
+             (let* ((all (onto (members-of-shape (members-of e) (member-shape a))
+                               ;; `nil` or a pair, below a list member too.
+                               (if (string-member? (member-shape a) (list "nil" "pair")) (members-of-shape (members-of e) "list") nil)))
+                    (m (if (or (null? all) (null? (cdr all))) all (filter (lambda ((x ty)) (quick-fits? s a x)) all))))
                (if (null? m) (mismatch v s a e) (fits v s a (car m)))))
             ((and (tagcase a (ty-data (d args) (string=? d "false")) (else other #f)) (tagcase e (ty-bool () #t) (else other #f)))
              "`false` below `bool`."
@@ -4958,8 +5101,12 @@
     (lambda (v s a ms) (if (null? ms) s (fits-all-members v (fits v s a (car ms)) a (cdr ms)))))
   (named-seen (subr kfx (st ty) ty)
     (lambda (s t)
+      "`t`, seen through an abbreviation, and a recursive type unfolded once."
       (tagcase (walk s t)
-        (ty-data (d args) (if (and (has-prefix? d "%named ") (not (null? args))) (named-seen s (car args)) (walk s t)))
+        (ty-data (d args)
+          (cond ((and (has-prefix? d "%named ") (not (null? args))) (named-seen s (car args)))
+                ((mu? (walk s t)) (unfold-mu (walk s t)))
+                (else (walk s t))))
         (else other (walk s t)))))
   (quick-fits? (subr kfx (st ty ty) bool)
     (lambda (s a0 e0)
@@ -4989,6 +5136,16 @@
                  (ty-data (d args)
                    (cond ((string=? d "%union") (all? (lambda ((m ty)) (quick-fits? s m e)) args))
                          ((string=? d "%allof") (any? (lambda ((m ty)) (quick-fits? s m e)) args))
+                         ;; `nil` below a list; `false` below `bool`.
+                         ((string=? d "nil") (tagcase e (ty-list (y q) #t) (else other #f)))
+                         ((string=? d "false") (tagcase e (ty-bool () #t) (else other #f)))
+                         ;; A pair below a list: its head below the elements, its tail the list.
+                         ((and (string=? d "%pairof") (i64= (size args) 3))
+                          (tagcase e
+                            (ty-list (y q) (and (quick-fits? s (car args) y) (quick-fits? s (car (cdr args)) e)
+                                                (or (tagcase (walk s (car (cdr (cdr args)))) (ty-meta (k) #t) (else other #f))
+                                                    (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s q))))))
+                            (else other #f)))
                          (else #f)))
                  (ty-proc (ea pa ra)
                    (tagcase e
@@ -4998,7 +5155,9 @@
                      (else other #f)))
                  (ty-list (x r)
                    (tagcase e
-                     (ty-list (y q) (and (quick-fits? s x y) (string=? (show-ty s (zonk s r)) (show-ty s (zonk s q)))))
+                     (ty-list (y q) (and (quick-fits? s x y)
+                                         (or (tagcase (walk s r) (ty-meta (k) #t) (else other #f))
+                                             (string=? (show-ty s (zonk s r)) (show-ty s (zonk s q))))))
                      (else other #f)))
                  (else other #f)))))))
   (quick-fits-each? (subr kfx (st tys tys) bool)

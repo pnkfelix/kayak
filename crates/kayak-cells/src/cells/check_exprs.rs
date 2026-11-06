@@ -1669,10 +1669,10 @@ pub mod expressions {
 
     /// The member a test of `shape` proves; a list for `nil` or `pair`.
     pub fn narrowed_to(ms: Tys, shape: Str) -> Tys {
-        if ((string_eq_p(shape, str_lit("nil")) || string_eq_p(shape, str_lit("pair"))) && null_p(member_of_shape(ms, shape))) {
-            member_of_shape(ms, str_lit("list"))
+        if ((string_eq_p(shape, str_lit("nil")) || string_eq_p(shape, str_lit("pair"))) && null_p(members_of_shape(ms, shape))) {
+            members_of_shape(ms, str_lit("list"))
         } else {
-            member_of_shape(ms, shape)
+            members_of_shape(ms, shape)
         }
     }
 
@@ -7055,6 +7055,15 @@ pub mod expressions {
             // A list where a union with a list member is expected (C77): that
             // member, its elements checked against its own.
             check(v, s, e, car(member_of_shape(members_of(walk(s, expected)), str_lit("list"))))
+        } else if (string_eq_p(h, str_lit("list")) && string_eq_p(shape_of(walk(s, expected)), str_lit("union")) && not(null_p(members_of_shape(members_of(walk(s, expected)), str_lit("list"))))) {
+            // A list where an `anyof` of several lists is expected (C355): found,
+            // then below the first of them it is (`fits`).
+            let tagcase_ = synth(v, s, e);
+            match *tagcase_ {
+                Res::Res(t, es, s2) => {
+                    res(t, es, fits(v, s2, t, expected))
+                }
+            }
         } else if (string_eq_p(h, str_lit("list")) && {
             let tagcase_ = expected;
             match *tagcase_ {
@@ -7398,7 +7407,7 @@ pub mod expressions {
             let tagcase_ = synth(v, s, car(xs));
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    let tagcase_ = walk_mu(s, t);
+                    let tagcase_ = union_as_sum(walk_mu(s, t));
                     match *tagcase_ {
                         Ty::TyData(d, args) => {
                             if string_eq_p(d, str_lit("%blobref")) {
@@ -7656,8 +7665,12 @@ pub mod expressions {
                     }
                 }
                 Ty::TyData(d, args) => {
-                    if (string_eq_p(d, str_lit("%union")) && not(null_p(member_of_shape(args, str_lit("sum"))))) {
-                        expected = car(member_of_shape(args, str_lit("sum")));
+                    if (string_eq_p(d, str_lit("%union")) && not(null_p(members_of_shape(args, str_lit("sum"))))) {
+                        expected = if null_p(cdr(members_of_shape(args, str_lit("sum")))) {
+                            car(members_of_shape(args, str_lit("sum")))
+                        } else {
+                            union_as_sum(ty_data(str_lit("%union"), members_of_shape(args, str_lit("sum"))))
+                        };
                         continue;
                     } else {
                         if (not(null_p(xs)) && draft_hole_p(car(xs))) {

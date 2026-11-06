@@ -727,7 +727,7 @@
       (define narrowed-to (subr kfx (tys string) tys)
         (lambda (ms shape)
           "The member a test of `shape` proves; a list for `nil` or `pair`."
-          (if (and (or (string=? shape "nil") (string=? shape "pair")) (null? (member-of-shape ms shape))) (member-of-shape ms "list") (member-of-shape ms shape))))
+          (if (and (or (string=? shape "nil") (string=? shape "pair")) (null? (members-of-shape ms shape))) (members-of-shape ms "list") (members-of-shape ms shape))))
 
       (define narrowed-from (subr kfx (tys string) tys)
         (lambda (ms shape)
@@ -3190,6 +3190,11 @@
                  "A list where a union with a list member is expected (C77): that
                   member, its elements checked against its own."
                  (check v s e (car (member-of-shape (members-of (walk s expected)) "list"))))
+                ((and (string=? h "list") (string=? (shape-of (walk s expected)) "union")
+                      (not (null? (members-of-shape (members-of (walk s expected)) "list"))))
+                 "A list where an `anyof` of several lists is expected (C355): found,
+                  then below the first of them it is (`fits`)."
+                 (tagcase (synth v s e) (res (t es s2) (res t es (fits v s2 t expected)))))
                 ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
                  (list-placed v (tagcase expected
                    (ty-list (el r)
@@ -3333,7 +3338,8 @@
                 (else
                  (tagcase (synth v s (car xs))
                    (res (t es s)
-                     (tagcase (walk-mu s t)
+                     ;; A union of sums, the one sum it is made here (C355, U3b).
+                     (tagcase (union-as-sum (walk-mu s t))
                        (ty-data (d args)
                          (if (string=? d "%blobref")
                              (let ((flat (walk s (car (cdr args))))
@@ -3443,9 +3449,11 @@
                         (res expected es (note-fact s (cv-file v) (cv-pos v)
                                                     (string-append "sum-type " (show-sexp (ty-sexp v s (zonk s expected))))))))))))
             (ty-data (d args)
-              (if (and (string=? d "%union") (not (null? (member-of-shape args "sum"))))
-                  ;; A `oneof`'s sum (C353: its sums made one where it is written).
-                  (sum-form v s xs (car (member-of-shape args "sum")))
+              (if (and (string=? d "%union") (not (null? (members-of-shape args "sum"))))
+                  ;; A `oneof`'s sum (C353: its sums made one where it is written);
+                  ;; an `anyof`'s sums, made one here (C355, Fixpt's U3b).
+                  ;; Its sum's type, which `check` boxes for the union (C75).
+                  (sum-form v s xs (if (null? (cdr (members-of-shape args "sum"))) (car (members-of-shape args "sum")) (union-as-sum (ty-data "%union" (members-of-shape args "sum")))))
                   (if (and (not (null? xs)) (draft-hole? (car xs)))
                       (refuse v "the hole: a tag, then an expression")
                       (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))))
