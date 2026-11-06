@@ -54,7 +54,9 @@ clone at the new commit, write it into `FIXPT_REV`, run
 modules, the native convention, the object layout) and
 `scripts/fixpt-drift.py` (what changed upstream in the sources kayak
 ported, each marked `fixpt-source: PATH@REV`, C121: carry each change
-over or decide against it, and move the mark to the pin), then
+over or decide against it, and move the mark to the pin) and
+`scripts/lang-items.py --update` (the lang items Fixpt defines, C367:
+each changed row carried to the copies that disagree), then
 `scripts/check.sh`, and commit, saying what changed in Fixpt.
 
 ---

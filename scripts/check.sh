@@ -70,6 +70,10 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
     # KFX is a sublanguage of FX-26: each of kayak's KFX units (the
     # compiler, the engine, tier 1) Fixpt's checkers accept too (C254).
     step python3 -I scripts/fixpt-accepts.py
+    # The lang items (C367): one table of what compiler, runtimes and
+    # standard library name across their boundaries, and every copy of it
+    # checked against it.
+    step python3 -I scripts/lang-items.py --check
 fi
 # Those that kfx accepts, run both ways.
 step python3 -I scripts/run-fixpt-programs.py

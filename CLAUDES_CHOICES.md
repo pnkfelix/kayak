@@ -10070,3 +10070,36 @@ had stopped working, unnoticed, as it was in no check.
   be, so that a run that grows stops rather than starving the machine.
   `kayak-cells` now reports kayak-rt's heap with `heap-stats`, and the
   sampler sees tier 1's frames (`kayak_cells::cells::`).
+
+## C367. The lang items, over the vocabularies kayak has (2026-11-06)
+
+Step 1 of docs/research/coopt-adoption.md §7, the user's approval of the
+note ("Everything here sounds right") with its defaults: one table,
+`lang/items.sexp`, an s-expression file the build reads (no syntax added
+to KFX, which stays a subset of FX-26), of what the compiler, the runtimes
+and the standard library name across their boundaries, after rustc's
+lang items (`rustc_attr_ir/src/lang_items.rs`: a closed list the compiler
+knows, the definitions the libraries', each once).
+- **Its rows**, each from where it is defined today
+  (`scripts/lang-items.py --update`): Fixpt's runtime primitives and their
+  arities (its `PRIMITIVES`, the first of a name, as Fixpt finds them) and
+  tier 1's own; Fixpt's immediates (`value.rs`); kayak-rt's syscalls with
+  their canonical types; each KFX name `check-defs.kfx` types, as a
+  kayak-rt function of its mangled name or the emitter's own; the
+  kayak-rt functions the emitter's Rust calls. 1,003 rows.
+- **Checked** (`--check`, in the full check where there is a clone): the
+  table is what its sources make; tier 1's primitives are rows, of their
+  arity; the immediates' three hand-kept copies (`cells/layout.kfx`,
+  `fx26/vheap.kfx`, kayak-jit) are the table's; each declared syscall is
+  the registry's, declared alike in each of the six files that declare
+  one; each typed name's function is kayak-rt's; no kayak-rt function is
+  called by the emitter that the table does not list. Two planted drifts
+  (an immediate, an arity) were each caught.
+- **Found**: Fixpt's `PRIMITIVES` names `%fx26-string-copy` twice
+  (`prim.rs:1431`, 3 arguments, and `:2358`, 1 argument); Fixpt finds the
+  first, so the second is unreachable. Said by the check as a note, not
+  a failure: Fixpt's to fix (to be passed to the Fixpt team). Tier 1
+  agrees with the first.
+- **A mirror for now**: the copies are checked against the table, not yet
+  made from it; the runtime written in step 2 on reads its vocabulary
+  from it. The pin's move runs `--update` (PLAN.md).

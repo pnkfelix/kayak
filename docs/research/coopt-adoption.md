@@ -1,7 +1,8 @@
 # Coopt's runtime for kayak: what to take, what to keep, in what order
 
-Status: draft for the user's review, 2026-11-06. Step 2 of
-`docs/direction.md` §5. No code until the user has answered §8.
+Status: approved by the user, 2026-11-06 ("Everything here sounds
+right"), with §8's defaults as its answers (§9). Step 2 of
+`docs/direction.md` §5.
 
 Sources: Coopt at `~/Dev/LangPlay/coopt` (9283bba; read for this note,
 its code as well as its PLAN), kayak at 680e53eab, Fixpt's pin (1311497),
@@ -194,6 +195,7 @@ Each step ends with the full check, the self-hosting check among it.
 1. **Lang items over what exists** (§6): the table, generated from and
    checked against today's vocabularies, with no runtime change. Small;
    catches drift now; every later step builds on it.
+   Done (C367): `lang/items.sexp`, `scripts/lang-items.py`.
 2. **Scheduler, trace, runners in Rust** (`kayak-sched`, `kayak-trace`,
    `kayak-runner`), Coopt's taken over with marks as Fixpt's code is
    (`coopt-source: PATH@REV`, a pinned clone, a drift script). KFX's
@@ -229,3 +231,15 @@ build; 4-6 bring the same to the FX-26 build.
 5. **Threads**: Coopt is single-threaded but for jobs; kayak runs FX-26
    processes as OS threads and `par` on scoped threads. Take Coopt's
    model (processes as tasks, parallelism later, its R10 design)?
+
+## 9. The answers (2026-11-06)
+
+The user approved the note as written; its defaults stand:
+1. Fixpt's formats where Coopt's differ.
+2. Coopt's code copied into kayak with `coopt-source: PATH@REV` marks, from
+   a pinned clone, as Fixpt's is.
+3. Lang items first (§7, step 1).
+4. The table an s-expression data file the build reads (kayak's reader
+   and the Rust side's tests alike); it mirrors Fixpt's tables until the
+   single source can replace them (G1).
+5. Coopt's single-threaded model: processes as tasks, parallelism later.
