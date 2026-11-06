@@ -116,14 +116,47 @@ pub fn alloc<'a, T: 'a>(v: T) -> &'a T {
     Box::leak(Box::new(v))
 }
 
+/// The bytes the next strings are copied into: a string's text is never
+/// freed, so strings are made by bumping, as the heap's other data are
+/// (C364), and not a `malloc` each (and a `realloc`, to shrink it).
+const STRING_CHUNK: usize = 1 << 20;
+
+thread_local! {
+    static STRING_BYTES: Cell<Option<&'static mut [u8]>> = const { Cell::new(None) };
+}
+
+/// `parts`, one after another, as one string kept for the run.
+pub fn str_of_parts(parts: &[&str]) -> Str {
+    let n: usize = parts.iter().map(|p| p.len()).sum();
+    stats::note::<Str>(n);
+    if n == 0 {
+        return str_lit("");
+    }
+    let bytes: &'static mut [u8] = if n >= STRING_CHUNK / 16 {
+        // A long one its own, leaving the chunk to the short ones.
+        Box::leak(vec![0u8; n].into_boxed_slice())
+    } else {
+        let free = STRING_BYTES.take().filter(|b| b.len() >= n);
+        let free = free.unwrap_or_else(|| Box::leak(vec![0u8; STRING_CHUNK].into_boxed_slice()));
+        let (bytes, rest) = free.split_at_mut(n);
+        STRING_BYTES.set(Some(rest));
+        bytes
+    };
+    let mut at = 0;
+    for p in parts {
+        bytes[at..at + p.len()].copy_from_slice(p.as_bytes());
+        at += p.len();
+    }
+    let ascii = bytes.is_ascii();
+    match std::str::from_utf8(bytes) {
+        Ok(text) => Str { text, ascii },
+        Err(_) => fail("a string's parts are not UTF-8"),
+    }
+}
+
 #[inline]
 pub fn leak_string(s: String) -> Str {
-    let ascii = s.is_ascii();
-    stats::note::<Str>(s.len());
-    Str {
-        text: Box::leak(s.into_boxed_str()),
-        ascii,
-    }
+    str_of_parts(&[&s])
 }
 
 /// FX-26's `error`: a run-time error, which ends the run.
@@ -581,11 +614,7 @@ pub fn string_eq_p(a: Str, b: Str) -> bool {
 
 #[inline]
 pub fn string_append(a: Str, b: Str) -> Str {
-    // Sized once (C266): `format!` grew it as it wrote.
-    let mut s = String::with_capacity(a.text.len() + b.text.len());
-    s.push_str(a.text);
-    s.push_str(b.text);
-    leak_string(s)
+    str_of_parts(&[a.text, b.text])
 }
 
 /// `nat`s, which are `Int`s: a string's length in characters, a list's.

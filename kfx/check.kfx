@@ -238,7 +238,10 @@
   (lambda (cs n) (if (or (null? cs) (i64= n 0)) nil (cons (car cs) (take-chars (cdr cs) (i64- n 1))))))
 
 (define substring-of (subr kfx (string i64) string)
-  (lambda (x n) (list->string (take-chars (string->list x) n))))
+  (lambda (x n)
+    "`x`'s first `n` characters, or all of them if it has fewer; a
+     `substring`, not a list of them (C364)."
+    (substring x 0 (i64->int (if (i64< n (string-length-i64 x)) n (string-length-i64 x))))))
 
 (define-rec
   (same-from? (subr kfx (string string i64 i64) bool)

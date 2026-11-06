@@ -66,21 +66,33 @@
                    (acc (put m acc)))
               (put-mods (cdr ss) (put "::*;\n" acc))))))))
 
+"Each file's forms, read once (C364): each was read again for its module's
+ Rust, and with memos for its forms' texts too."
+(define-type sources-forms (listof (listof sexp acyclic) acyclic))
+
+(define-rec
+  (modules-put (subr kfx (ctx sources sources-forms) outputs)
+    (lambda (c ss fss)
+      "Each file's module, its forms `fss`'s."
+      (if (null? ss)
+          nil
+          (tagcase (car ss)
+            (source (name text)
+              (cons (output (string-append (mangle name) ".rs")
+                            (rev->string (with writing (put-tops c (car fss) (put module-header nil)))))
+                    (modules-put c (cdr ss) (cdr fss)))))))))
+
 (define compile-units-as (subr kfx (sources bool) outputs)
   (lambda (ss runtime)
     "A program of several files, as Rust: its modules, then their `mod.rs`.
      The whole program is checked, and each file written as a module. A
      `runtime`'s own may declare syscalls (C225: its manifest says
      `--syscalls`)."
-    (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
+    (let* ((fss (map source-forms ss))
+           (forms (concat fss))
            (checked (restrict-checked (check-program-as forms runtime) forms))
            (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) (fidx-of (verdict-facts checked)) nil nil nil))))
-           (modules (map (lambda ((s source))
-                           (tagcase s
-                             (source (name text)
-                               (output (string-append (mangle name) ".rs")
-                                       (rev->string (with writing (put-tops c (source-forms s) (put module-header nil))))))))
-                         ss)))
+           (modules (modules-put c ss fss)))
       (onto modules
             (list (output "mod.rs"
                           (rev->string
@@ -95,38 +107,44 @@
 (define-datatype compiled (compiled outputs memos))
 
 (define-rec
-  (memo-modules (subr kfx (ctx facts i64 memos sources outputs memos) compiled)
-    (lambda (c fs global old ss outs made)
+  (memo-modules (subr kfx (ctx facts i64 memos sources sources-forms outputs memos) compiled)
+    (lambda (c fs global old ss fss outs made)
       (if (null? ss)
           (compiled (reverse-outputs outs nil) made)
           (tagcase (car ss)
             (source (name text)
               (let* ((file (string-append name ".kfx"))
-                     (forms (source-forms (car ss)))
+                     (forms (car fss))
                      (starts (map (lambda ((f sexp)) (datum-pos f)) forms))
                      (texts (with incremental (form-texts text (string-length-i64 text) starts))))
                 (tagcase (with incremental (put-tops-memo c (with incremental (facts-of-file fs file)) global old forms texts starts (put module-header nil) made))
                   (emitted (acc made2)
-                    (memo-modules c fs global old (cdr ss)
+                    (memo-modules c fs global old (cdr ss) (cdr fss)
                                   (cons (output (string-append (mangle name) ".rs") (rev->string acc)) outs)
                                   made2)))))))))
   (reverse-outputs (subr kfx (outputs outputs) outputs)
     (lambda (xs acc) (if (null? xs) acc (reverse-outputs (cdr xs) (cons (car xs) acc))))))
 
-(define source-texts (subr kfx (source) strings)
-  (lambda (s)
-    "Each of a file's forms' text (incr.kfx)."
-    (tagcase s
-      (source (name text) (with incremental (form-texts text (string-length-i64 text) (map (lambda ((f sexp)) (datum-pos f)) (source-forms s))))))))
+(define-rec
+  (sources-texts (subr kfx (sources sources-forms) strings)
+    (lambda (ss fss)
+      "Each of the files' forms' text, in order (incr.kfx)."
+      (if (null? ss)
+          nil
+          (tagcase (car ss)
+            (source (name text)
+              (onto (with incremental (form-texts text (string-length-i64 text) (map (lambda ((f sexp)) (datum-pos f)) (car fss))))
+                    (sources-texts (cdr ss) (cdr fss)))))))))
 
 (define compile-units-memo (subr kfx (sources memos bool) compiled)
   (lambda (ss old runtime)
-    (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
-           (texts (concat (map source-texts ss))))
+    (let* ((fss (map source-forms ss))
+           (forms (concat fss))
+           (texts (sources-texts ss fss)))
       (tagcase (let ((c (with incremental (check-program-memo forms texts old runtime)))) (begin (with restrictions (restrict forms (tagcase c (checked-memo (done found checks) (cv-facts done))))) c))
         (checked-memo (done found checks)
           (let ((c (with emitter (collect forms (ctx nil nil nil nil found (cv-facts done) (fidx-of (cv-facts done)) nil nil nil)))))
-            (tagcase (memo-modules c (cv-facts done) (with incremental (ctx-fingerprint c)) old ss nil checks)
+            (tagcase (memo-modules c (cv-facts done) (with incremental (ctx-fingerprint c)) old ss fss nil checks)
               (compiled (modules made)
                 (compiled (onto modules
                                 (list (output "mod.rs"

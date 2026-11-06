@@ -59,36 +59,6 @@ pub fn mangle_char(c: char) -> Str {
     }
 }
 
-pub fn mangle_chars(mut cs: Chars, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else if (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '>')) {
-            (cs, acc) = (cdr(cdr(cs)), put(str_lit("_to_"), acc));
-            continue;
-        } else if (char_eq_p(car(cs), '-') && null_p(cdr(cs))) {
-            return put(str_lit("_minus"), acc);
-        } else {
-            (cs, acc) = (cdr(cs), put(mangle_char(car(cs)), acc));
-            continue;
-        }
-    }
-}
-
-/// A KFX name as a Rust value's: `string->list` is `string_to_list`.
-pub fn mangle(s: Str) -> Str {
-    if string_eq_p(s, str_lit("-")) {
-        str_lit("_minus")
-    } else if (string_eq_p(s, str_lit("self")) || string_eq_p(s, str_lit("super")) || string_eq_p(s, str_lit("crate")) || string_eq_p(s, str_lit("Self"))) {
-        // Keywords no raw identifier may be: a trailing `_`.
-        string_append(s, str_lit("_"))
-    } else if rust_keyword_p(s) {
-        string_append(str_lit("r#"), s)
-    } else {
-        rev_to_string(mangle_chars(string_chars(s), nil::<char>()))
-    }
-}
-
 /// `mangle-char`'s length, making nothing.
 pub fn mangled_char_length(c: char) -> i64 {
     match c {
@@ -125,6 +95,49 @@ pub fn mangled_char_length(c: char) -> i64 {
         _ => {
             1i64
         }
+    }
+}
+
+/// `s`'s Rust name, newest first, in runs: each a `substring` of `s`
+/// from `from` to a character that mangles as another, then its
+/// mangling (C364); `s` itself if none does.
+pub fn mangle_runs(mut s: Str, mut from: i64, mut i: i64, mut n: i64, mut acc: Strings) -> Strings {
+    loop {
+        if i64_eq(i, n) {
+            return kayak_rt::heap_cons(if i64_eq(from, 0i64) {
+                s
+            } else {
+                substring(s, i64_to_int(from), i64_to_int(n))
+            }, acc);
+        } else {
+            let c = string_ref_i64(s, i);
+            if (char_eq_p(c, '-') && i64_lt(i64_plus(i, 1i64), n) && char_eq_p(string_ref_i64(s, i64_plus(i, 1i64)), '>')) {
+                (from, i, acc) = (i64_plus(i, 2i64), i64_plus(i, 2i64), kayak_rt::heap_cons(str_lit("_to_"), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc)));
+                continue;
+            } else if (char_eq_p(c, '-') && i64_eq(i64_plus(i, 1i64), n)) {
+                return kayak_rt::heap_cons(str_lit("_minus"), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc));
+            } else if (char_eq_p(c, '-') || i64_gt(mangled_char_length(c), 1i64)) {
+                (from, i, acc) = (i64_plus(i, 1i64), i64_plus(i, 1i64), kayak_rt::heap_cons(mangle_char(c), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc)));
+                continue;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
+    }
+}
+
+/// A KFX name as a Rust value's: `string->list` is `string_to_list`.
+pub fn mangle(s: Str) -> Str {
+    if string_eq_p(s, str_lit("-")) {
+        str_lit("_minus")
+    } else if (string_eq_p(s, str_lit("self")) || string_eq_p(s, str_lit("super")) || string_eq_p(s, str_lit("crate")) || string_eq_p(s, str_lit("Self"))) {
+        // Keywords no raw identifier may be: a trailing `_`.
+        string_append(s, str_lit("_"))
+    } else if rust_keyword_p(s) {
+        string_append(str_lit("r#"), s)
+    } else {
+        string_list_append(reverse(mangle_runs(s, 0i64, 0i64, string_length_i64(s), nil::<Str>())))
     }
 }
 

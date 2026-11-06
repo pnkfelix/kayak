@@ -550,9 +550,15 @@ pub fn take_chars(cs: List<char>, n: i64) -> List<char> {
     }
 }
 
+/// `x`'s first `n` characters, or all of them if it has fewer; a
+/// `substring`, not a list of them (C364).
 #[inline]
 pub fn substring_of(x: Str, n: i64) -> Str {
-    list_to_string(take_chars(string_to_list(x), n))
+    substring(x, int_lit(0), i64_to_int(if i64_lt(n, string_length_i64(x)) {
+        n
+    } else {
+        string_length_i64(x)
+    }))
 }
 
 pub fn same_from_p(x: Str, p: Str, i: i64, n: i64) -> bool {

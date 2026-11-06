@@ -20,13 +20,29 @@
       ((#\/) "_slash") ((#\<) "_lt") ((#\>) "_gt") ((#\=) "_eq") ((#\%) "_pct") ((#\:) "_colon")
       (else (char->string c)))))
 
-(define mangle-chars (subr kfx (chars chars) chars)
-  (lambda (cs acc)
-    (cond ((null? cs) acc)
-          ((and (char=? (car cs) #\-) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\>))
-           (mangle-chars (cdr (cdr cs)) (put "_to_" acc)))
-          ((and (char=? (car cs) #\-) (null? (cdr cs))) (put "_minus" acc))
-          (else (mangle-chars (cdr cs) (put (mangle-char (car cs)) acc))))))
+(define mangled-char-length (subr kfx (char) i64)
+  (lambda (c)
+    "`mangle-char`'s length, making nothing."
+    (case c
+      ((#\?) 2) ((#\!) 2) ((#\+) 5) ((#\*) 5) ((#\/) 6) ((#\<) 3) ((#\>) 3) ((#\=) 3) ((#\%) 4) ((#\:) 6)
+      (else 1))))
+
+(define-rec
+  (mangle-runs (subr kfx (string i64 i64 i64 strings) strings)
+    (lambda (s from i n acc)
+      "`s`'s Rust name, newest first, in runs: each a `substring` of `s`
+       from `from` to a character that mangles as another, then its
+       mangling (C364); `s` itself if none does."
+      (if (i64= i n)
+          (cons (if (i64= from 0) s (substring s (i64->int from) (i64->int n))) acc)
+          (let ((c (string-ref-i64 s i)))
+            (cond ((and (char=? c #\-) (i64< (i64+ i 1) n) (char=? (string-ref-i64 s (i64+ i 1)) #\>))
+                   (mangle-runs s (i64+ i 2) (i64+ i 2) n (cons "_to_" (cons (substring s (i64->int from) (i64->int i)) acc))))
+                  ((and (char=? c #\-) (i64= (i64+ i 1) n))
+                   (cons "_minus" (cons (substring s (i64->int from) (i64->int i)) acc)))
+                  ((or (char=? c #\-) (i64> (mangled-char-length c) 1))
+                   (mangle-runs s (i64+ i 1) (i64+ i 1) n (cons (mangle-char c) (cons (substring s (i64->int from) (i64->int i)) acc))))
+                  (else (mangle-runs s from (i64+ i 1) n acc))))))))
 
 (define mangle (subr kfx (string) string)
   (lambda (s)
@@ -36,14 +52,7 @@
            "Keywords no raw identifier may be: a trailing `_`."
            (string-append s "_"))
           ((rust-keyword? s) (string-append "r#" s))
-          (else (rev->string (mangle-chars (string-chars s) nil))))))
-
-(define mangled-char-length (subr kfx (char) i64)
-  (lambda (c)
-    "`mangle-char`'s length, making nothing."
-    (case c
-      ((#\?) 2) ((#\!) 2) ((#\+) 5) ((#\*) 5) ((#\/) 6) ((#\<) 3) ((#\>) 3) ((#\=) 3) ((#\%) 4) ((#\:) 6)
-      (else 1))))
+          (else (string-list-append (reverse (mangle-runs s 0 0 (string-length-i64 s) nil)))))))
 
 (define-rec
   (mangled-length-from (subr kfx (string i64 i64 i64) i64)

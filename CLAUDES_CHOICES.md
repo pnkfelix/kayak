@@ -9959,3 +9959,37 @@ keeps the output the same, with memos and without; measured with the
   but faulted in) are left, in TODO.
 The compiler on itself: warm 2.96 s to 1.99 s (its memory 2.57 GB to
 1.52 GB), plain 4.1 s to 3.3 s (3.2 GB to 2.1 GB).
+
+## C364. Names, arenas, strings, and the sources read once (2026-11-06)
+
+The user's "Go for it", after C363, to the emitter's output as the next
+cost. Measured first: the emitter's own `put` was no longer what made
+most; `mangle` was (80 MB of character lists), the arenas' unused chunk
+space (a third of the memory faulted in), a `malloc` for every string,
+and the sources read two or three times a compile.
+- **`mangle`** (`names.kfx`): a name's Rust in runs, `substring`s between
+  the characters that mangle as others (`mangle-runs`), the name itself
+  if it has none; `mangle-chars` gone. `substring-of` a `substring`.
+- **The arenas** (`kayak-rt/src/arena.rs`): a chunk past `BLOCK` (4096)
+  cells made in blocks, each when first reached; a chunk was made whole,
+  twice the last, so up to half of each type's last chunk written and
+  never used (570 MB of 1.7 GB on a plain compile of the compiler). One
+  more `OnceCell` reached per allocation; 1024 and 65536 cells were
+  measured too, and came out the same.
+- **Strings** (`str_of_parts`): a string's text copied into chunks of
+  1 MB by bumping, as the heap's other data are (a long one, 64 KB or
+  more, its own), not a `malloc` each and a `realloc` to shrink it;
+  `leak_string`, `string-append` and `substring` make theirs so.
+- **The sources read once** (`compile.kfx`): `compile-units-as` read each
+  file again for its module's Rust, and `compile-units-memo` read each a
+  second and third time, for its forms' texts and its Rust; now each
+  file's forms are read once and passed on (`modules-put`,
+  `sources-texts`, `memo-modules`).
+- **Not done**: a module's body copied for each module around it
+  (`put-module-around`, 40 MB): indenting it without the copy wants a
+  walk as deep as the body, which Fixpt's stage 0 runs too. The output
+  turned to a string at the end (`rev->string`, 40 MB) would want a
+  primitive Fixpt has not.
+The compiler on itself: warm 1.99 s to 1.34 s (1.52 GB to 0.91 GB),
+plain 3.3 s to 2.55 s (2.1 GB to 1.27 GB); the output the same with
+memos and without.

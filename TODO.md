@@ -137,17 +137,17 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **The compile's remaining cost** (C361-C363): the compiler on
-     itself, warm with memos 2.0 s, plain 3.3 s; of either, about half is
-     the kernel faulting in memory the heap never frees (warm 1.5 GB,
-     plain 2.1 GB). What still makes most: the emitter's output, a list
-     cell a character, a module's body copied again at each module
-     around it (`put-module-around`); `mangle`, a character list a name
-     (and `mangled-clash` mangling every name in scope of a length);
-     the checker's `bix` index (180 MB plain); the heap's arenas, each
-     chunk initialised whole when made (twice the last, so up to half of
-     the last faulted in unused: a chunk's cells made as used, or chunks
-     of a fixed size past some size). Huge pages for the heap
+   - **The compile's remaining cost** (C361-C364): the compiler on
+     itself, warm with memos 1.34 s (0.91 GB), plain 2.55 s (1.27 GB);
+     of either, about a third is still the kernel faulting in memory the
+     heap never frees. What makes most now (plain, 1.19 GB in all): list
+     cells of characters (290 MB: the emitter's output, a module's body
+     copied at each module around it in `put-module-around`, the output
+     made a string by `rev->string`), the checker's `bix` index
+     (180 MB), lists of strings (127 MB), the read forms (110 MB). Of
+     the time left in kfx's own code, `mangled-clash` walks every name in
+     scope of a length for each name bound (`mangled-length`, the most
+     of any one function). Huge pages for the heap
      (`GLIBC_TUNABLES=glibc.malloc.hugetlb=1` took a warm run 2.96 s to
      2.29 s, C362's) would want `unsafe` in kayak-rt, which has none. A
      form's facts from the emitter's tree (`fidx`) instead of a scan of

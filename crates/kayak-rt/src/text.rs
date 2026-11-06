@@ -98,7 +98,7 @@ pub fn substring(s: Str, start: Int, end: Int) -> Str {
     let Some((b0, b1)) = bytes else {
         fail("substring range out of bounds")
     };
-    leak_string(s.as_str()[b0..b1].to_string())
+    crate::str_of_parts(&[&s.as_str()[b0..b1]])
 }
 
 /// `symbol`: a name, compared by its text, which is what FX-26's

@@ -6,7 +6,11 @@
 //! checker keeps the region out of the body's type.
 //!
 //! In safe Rust: an arena holds one type, in chunks of `OnceCell`s, each
-//! chunk twice the last, hung on a `OnceCell` of the one before. Nothing
+//! chunk twice the last, hung on a `OnceCell` of the one before; a chunk
+//! past [`BLOCK`] cells in blocks of that many, each made when first
+//! reached (C364), so that the chunk's unused part is not made, as a chunk
+//! made whole was: a third of a compile's memory, written and never used.
+//! Nothing
 //! is ever taken out of a `OnceCell`, so a value's reference is good for
 //! as long as the arena is borrowed. KFX's values are `Copy`, so no
 //! destructor is ever wanted.
@@ -17,13 +21,22 @@ use std::cell::{Cell, OnceCell};
 /// The first chunk's cells; each chunk after has twice the last's.
 const FIRST: usize = 16;
 
+/// The most cells a chunk makes at once: a block of a larger chunk.
+const BLOCK: usize = FIRST << 8;
+
 /// Chunks enough for any arena memory could hold: the last alone is
 /// `FIRST << 47` cells.
 const CHUNKS: usize = 48;
 
+/// A block's cells, each filled once.
+type Block<T> = Box<[OnceCell<T>]>;
+
+/// A chunk's blocks, each made when first reached.
+type Chunk<T> = Box<[OnceCell<Block<T>>]>;
+
 /// Values of one type, freed together when the arena is.
 pub struct Arena<T> {
-    chunks: [OnceCell<Box<[OnceCell<T>]>>; CHUNKS],
+    chunks: [OnceCell<Chunk<T>>; CHUNKS],
     used: Cell<usize>,
 }
 
@@ -54,9 +67,12 @@ impl<T> Arena<T> {
         let i = self.used.get();
         self.used.set(i + 1);
         let (k, at) = place(i);
-        let chunk =
-            self.chunks[k].get_or_init(|| (0..FIRST << k).map(|_| OnceCell::new()).collect());
-        chunk[at].get_or_init(|| v)
+        let size = FIRST << k;
+        let len = size.min(BLOCK);
+        let blocks =
+            self.chunks[k].get_or_init(|| (0..size / len).map(|_| OnceCell::new()).collect());
+        let block = blocks[at / len].get_or_init(|| (0..len).map(|_| OnceCell::new()).collect());
+        block[at % len].get_or_init(|| v)
     }
 }
 
@@ -124,11 +140,11 @@ mod tests {
         let region = Region::default();
         let r = &region;
         let mut xs = nil();
-        for i in 0..10_000 {
+        for i in 0..100_000 {
             xs = rcons(r, i, xs);
         }
         let c = rnew(r, 0i64);
         c.set(sum(xs));
-        assert_eq!(c.get(), 49_995_000);
+        assert_eq!(c.get(), 4_999_950_000);
     }
 }
