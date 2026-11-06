@@ -1,0 +1,24 @@
+# coopt-source: crates/coopt-sys/Cargo.toml@9283bba
+[package]
+name = "kayak-sys"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+libc = "0.2.189"
+
+[lints]
+workspace = true
+
+# On Linux a signal is caught only if every thread blocks it, and libtest
+# runs tests on threads of its own: each of these is its process's only
+# thread.
+[[test]]
+name = "signals"
+harness = false
+
+[[test]]
+name = "watchdog"
+harness = false

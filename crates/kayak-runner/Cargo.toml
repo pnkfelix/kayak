@@ -1,0 +1,16 @@
+# coopt-source: crates/coopt-runner/Cargo.toml@9283bba
+[package]
+name = "kayak-runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+kayak-base = { path = "../kayak-base" }
+kayak-sched = { path = "../kayak-sched" }
+kayak-sys = { path = "../kayak-sys" }
+kayak-trace = { path = "../kayak-trace" }
+
+[lints]
+workspace = true

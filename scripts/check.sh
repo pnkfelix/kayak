@@ -75,10 +75,10 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
     # checked against it.
     step python3 -I scripts/lang-items.py --check
 fi
-# What kayak took from Coopt (C368), each source at Coopt's pin, where there
-# is a clone of it.
+# What kayak took from Coopt (C368): forks, kayak's own to change (the
+# user, C369), so what changed upstream since is said, not required.
 if [ -d "${KAYAK_COOPT_CLONE:-../kayak-refs/coopt}/.git" ]; then
-    step python3 -I scripts/coopt-drift.py --check
+    step python3 -I scripts/coopt-drift.py
 fi
 # Those that kfx accepts, run both ways.
 step python3 -I scripts/run-fixpt-programs.py

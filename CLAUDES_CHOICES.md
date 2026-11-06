@@ -10125,3 +10125,26 @@ answer 2: Coopt's code copied into kayak, marked, from a pinned clone.
   kayak's first dependency from outside the workspace: kayak-jit makes its
   system calls without one), and KFX's tasks and
   the compiler's I/O moved onto the scheduler (step 2's rest).
+
+## C369. Coopt's crates are kayak's forks (2026-11-06)
+
+The user, asked whether kayak's syscalls make `libc` unneeded for Coopt's
+runner: "I think you should opt to fork coopts crates at will, rather than
+treat them as 3rd deps to preserve and maintain."
+- **Chosen**: the crates taken from Coopt are kayak's own, changed as
+  kayak needs; their `coopt-source:` marks stay, as provenance, and
+  `scripts/coopt-drift.py` runs in the full check without `--check`:
+  what changed upstream is said, not required (Fixpt's ports keep their
+  duty, as FX-26 is Fixpt's to define).
+- **`libc`**, with `coopt-sys`: kayak's syscalls are the typed bridge from
+  FX-26 code to the host's operations, which says what a program may ask;
+  the Rust behind them still reaches the OS, and epoll, kqueue, signalfd,
+  termios and the window size take structs whose layout differs by
+  platform, which `libc` holds. Kept in the one `unsafe` crate, as Coopt
+  keeps it; replaceable, the fork being kayak's.
+- **Forked too**: `coopt-sys` and `coopt-runner`, as `kayak-sys` (with
+  `#![allow(unsafe_code)]`, as in Coopt, and `libc`) and `kayak-runner`
+  (sim, replay and live runners, the log, the worker pool), marked as
+  C368's. The five forks' 86 tests pass under nextest (one skipped, as in
+  Coopt). Not yet used by kayak-rt: moving FX-26's processes onto the
+  scheduler and its I/O onto the runners is next.

@@ -237,7 +237,11 @@ build; 4-6 bring the same to the FX-26 build.
 The user approved the note as written; its defaults stand:
 1. Fixpt's formats where Coopt's differ.
 2. Coopt's code copied into kayak with `coopt-source: PATH@REV` marks, from
-   a pinned clone, as Fixpt's is.
+   a pinned clone. Then (the user, later the same day): forked at will,
+   "rather than treat them as 3rd deps to preserve and maintain"; the
+   marks say where each came from, and upstream's changes are read, not
+   owed (C369). `libc` comes with `coopt-sys`: the platforms' struct
+   layouts are what it is for, and kayak may replace it, owning the fork.
 3. Lang items first (§7, step 1).
 4. The table an s-expression data file the build reads (kayak's reader
    and the Rust side's tests alike); it mirrors Fixpt's tables until the
