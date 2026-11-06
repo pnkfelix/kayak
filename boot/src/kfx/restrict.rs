@@ -982,11 +982,15 @@ pub mod restrictions {
                         }
                     }
                 }), binders));
-                let theirs = map(lambda1s(move |t: Str| {
-                    camel(bare_type_name(string_chars(t), nil::<char>()))
-                }), map(&after_file, filter(lambda1s(move |t: Str| {
-                    has_prefix_p(t, string_append(f, str_lit("|")))
-                }), types)));
+                let theirs = if null_p(names) {
+                    nil::<Str>()
+                } else {
+                    map(lambda1s(move |t: Str| {
+                        camel(bare_type_name(string_chars(t), nil::<char>()))
+                    }), map(&after_file, filter(lambda1s(move |t: Str| {
+                        has_prefix_p(t, string_append(f, str_lit("|")))
+                    }), types)))
+                };
                 let bad = filter(lambda1s(move |n: Str| {
                     (not(kfx_name_p(n)) || string_member_p(camel(n), rust_type_names()) || string_member_p(camel(n), theirs))
                 }), names);
@@ -1117,14 +1121,14 @@ pub mod restrictions {
         noted_restricted(reverse(fs));
         names_restricted(forms);
         restricted_all(forms, str_lit("the program"), 0i64);
-        let types = concat(type_scopes(forms));
+        let (types, fts) = (concat(type_scopes(forms)), file_types(forms));
         map(lambda1s(move |f: &'static Sexp| {
             specs_restricted(f, types)
         }), forms);
         map(&moduleof_restricted, forms);
         recursion_restricted(forms);
         map(lambda1s(move |f: &'static Sexp| {
-            binders_restricted(file_types(forms), f)
+            binders_restricted(fts, f)
         }), forms);
         map(lambda1s(move |f: &'static Sexp| {
             if (head_is_p(f, str_lit("define")) && {

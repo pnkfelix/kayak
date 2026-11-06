@@ -9869,3 +9869,28 @@ taken). The incremental test (`define-rec-item`) as C359 left it.
 Found on the way, not this change's: a warm memo compile of the compiler
 is slower than a plain one (15.4 s against 8.4 s; so too at df07641e,
 14.8 s against 8.2 s). TODO.
+
+## C361. Where the compile's time went (2026-11-06)
+
+The user's "investigate where the cost is coming from and how to make it
+more efficient", after C360 found a warm memo compile of the compiler
+slower than a plain one (15.4 s against 8.4 s). Measured with `perf`, then
+phase by phase (a scratch build of the generated Rust with timers around
+`compile-units-memo`'s parts and the memo file's reading and writing, not
+kept). Two causes, both fixed:
+- **`put` indexed its string** (`base.kfx`): it added a string to the
+  output a character at a time by `string-ref-i64`, which for a string not
+  ASCII counts from the start at each (C14), so a long one cost its length
+  squared. The emitter's memos are whole forms' Rust, some long and with a
+  comment's `…`: `string_ref_i64` was half of a warm compile. Now one pass
+  (`string->list`, then onto the output). Warm 15.4 s to 8.1 s.
+- **The restriction pass, 4.3 s of every compile** (`restrict.kfx`, no
+  memo): `binders-restricted`, at every list of every form, filtered the
+  whole program's types to its file's and camel-cased them, though nearly
+  no list binds a type variable; and its caller made `file-types` of all
+  the forms once for each form. Now the file's types only where there are
+  binders, and `file-types` once. 4.3 s to 0.3 s.
+The compiler on itself: plain 8.4 s to 4.1 s, warm 15.4 s to 3.3 s, its
+peak memory 6.4 GB to 2.9 GB; the output the same as before, with memos and
+without. What is left, phase by phase, in TODO.md; a form's facts found
+from the emitter's tree rather than its list was tried and was slower.

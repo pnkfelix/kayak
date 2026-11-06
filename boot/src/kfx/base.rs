@@ -168,10 +168,12 @@ pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
     }
 }
 
-/// Adds `s` to the output `acc`.
+/// Adds `s` to the output `acc`, its characters in one pass (C361): indexed,
+/// a string not ASCII counts from its start at each, so that a long one
+/// (a memo's Rust, with a comment's `…`) cost its length squared.
 #[inline]
 pub fn put(s: Str, acc: Chars) -> Chars {
-    put_from(s, 0i64, string_length_i64(s), acc)
+    rev_onto(string_to_list(s), acc)
 }
 
 /// Each of `xs` added to `acc` by `each`, separated by `sep`.

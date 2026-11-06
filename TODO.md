@@ -137,13 +137,17 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **The compiler's memos make it slower, not faster** (found
-     2026-11-05, C360): on itself, a warm `kfx --cache` compile takes
-     15.4 s, a plain one 8.4 s (the compiler at df07641e alike: 14.8 s
-     against 8.2 s). C55 measured 0.12 s warm against 0.73 s plain, when
-     the compiler was far smaller. Not looked into: reading and writing a
-     3.3 MB memo file, finding memos by a list (`memo-find` is linear over
-     some 3400), or chains that miss.
+   - **The compile's remaining cost** (C361): the compiler on itself, warm
+     with memos 3.3 s, plain 4.1 s. Warm: reading the sources 0.68 s
+     (every run), the check's memos 0.64 s (the passes before the forms
+     run always: `declare-types`, `type-names-free`, `datatype-names`,
+     `declare-datatypes`), the emitter's memos 0.64 s, writing the memo
+     file 0.41 s and reading it 0.25 s (3.3 MB, a list cell a character:
+     `string-search` and `substring` would split it by lines), the
+     restriction pass 0.30 s (every run, no memo). A form's facts from the
+     emitter's tree (`fidx`) instead of a scan of the whole list was tried,
+     and was slower (0.94 s against 0.64 s): the tree mixes files'
+     positions.
    - **Reps byte for byte Fixpt's** (C346-C349, C352): checked against
      `fixpt check --reps` (`tests/reps-passing`, `checks-summary reps`):
      431 programs the same, 63 differ (mostly modules' reps: abstract

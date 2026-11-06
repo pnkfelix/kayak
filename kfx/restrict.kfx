@@ -397,9 +397,12 @@
                                                                                        nil))
                                                                 (else other nil)))
                                            binders)))
-                       (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil)))
-                                    ;; The types of the binder's own file: its Rust scope's (C189).
-                                    (map after-file (filter (lambda ((t string)) (has-prefix? t (string-append f "|"))) types))))
+                       ;; The types of the binder's own file, its Rust scope's (C189):
+                       ;; found only where there are binders (C361), not at every list.
+                       (theirs (if (null? names)
+                                   nil
+                                   (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil)))
+                                        (map after-file (filter (lambda ((t string)) (has-prefix? t (string-append f "|"))) types)))))
                        (bad (filter (lambda ((n string)) (or (not (kfx-name? n)) (string-member? (camel n) (rust-type-names)) (string-member? (camel n) theirs))) names)))
                   (cond ((not (null? bad))
                          (restriction-refused f l (string-append "a type variable named as KFX's Rust cannot have it (C27): " (car bad))))
@@ -471,9 +474,11 @@
          not (`kfx-restricted`, C154), the first noted first; names; then
          what each uses."
         (begin (noted-restricted (reverse fs)) (names-restricted forms) (restricted-all forms "the program" 0)
-               (let ((types (concat (type-scopes forms))))
+               (let ((types (concat (type-scopes forms)))
+                     ;; Found once, not once a form (C361).
+                     (fts (file-types forms)))
                  (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) (map moduleof-restricted forms) (recursion-restricted forms)
-                        (map (lambda ((f sexp)) (binders-restricted (file-types forms) f)) forms)
+                        (map (lambda ((f sexp)) (binders-restricted fts f)) forms)
                         (map (lambda ((f sexp))
                                (if (and (head-is? f "define") (tagcase (second (items f)) (sym (n f2 p2) (has-prefix? n "%shared:input:")) (else other #f)))
                                    (tagcase f (lst (xs f2 l2 p2) (restriction-refused f2 l2 "a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) (else other #u))
