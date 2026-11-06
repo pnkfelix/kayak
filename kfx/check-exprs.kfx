@@ -5116,13 +5116,13 @@
           "A call of a name, taken apart by a union argument's members where it
            cannot take the union whole (Fixpt's U3, rule 5, C357), else as it
            is (`synth-call-whole`)."
-          (let ((at (split-argument v s h args)))
+          (let ((at (split-argument v s h args expected)))
             (if (null? at)
                 (synth-call-whole v s h args expected)
                 (split-call v s h args expected (car at))))))
 
-      (split-argument (subr kfx (cv st string sexps) strings)
-        (lambda (v s h args)
+      (split-argument (subr kfx (cv st string sexps tys) strings)
+        (lambda (v s h args expected)
           "The argument, a local of a union, that the callee `h`'s parameter
            takes no whole but takes each member of (`qf`), as a list of one;
            none if none is."
@@ -5139,19 +5139,25 @@
                                            (ty-proc (le ps r) (list (walk-mu s2 t)))
                                            (ty-data (d ms) (if (string=? d "%allof") ms nil))
                                            (else other nil))))
-                              (split-argument-at v s2 procs args 0)))))))))))
+                              (split-argument-at v s2 procs args 0 expected)))))))))))
 
-      (split-argument-at (subr kfx (cv st tys sexps i64) strings)
-        (lambda (v s procs args i)
+      (split-argument-at (subr kfx (cv st tys sexps i64 tys) strings)
+        (lambda (v s procs args i expected)
+          "Taken whole, the call fails: no procedure's parameter takes the union,
+           or, where a result is expected, none that takes it gives one below
+           it (as Fixpt's call is checked against what is expected)."
           (cond ((or (null? args) (null? procs)) nil)
                 ((tagcase (car args) (sym (n f p) #t) (else other #f))
-                 (let ((ms (union-local v s (car args))))
+                 (let* ((ms (union-local v s (car args)))
+                        (whole (if (i64> (size ms) 1) (filter (lambda ((pr ty)) (not (null? (qf-param s pr i (ty-data "%union" ms))))) procs) nil)))
                    (if (and (i64> (size ms) 1)
-                            (null? (filter (lambda ((pr ty)) (not (null? (qf-param s pr i (ty-data "%union" ms))))) procs))
+                            (or (null? whole)
+                                (and (not (null? expected))
+                                     (not (any? (lambda ((pr ty)) (tagcase pr (ty-proc (le ps r) (quick-fits? s r (car expected))) (else other #f))) whole))))
                             (all? (lambda ((m ty)) (any? (lambda ((pr ty)) (not (null? (qf-param s pr i m)))) procs)) ms))
                        (list (tagcase (car args) (sym (n f p) n) (else other "")))
-                       (split-argument-at v s procs (cdr args) (i64+ i 1)))))
-                (else (split-argument-at v s procs (cdr args) (i64+ i 1))))))
+                       (split-argument-at v s procs (cdr args) (i64+ i 1) expected))))
+                (else (split-argument-at v s procs (cdr args) (i64+ i 1) expected)))))
 
       (qf-param (subr kfx (st ty i64 ty) (listof qenv acyclic))
         (lambda (s pr i a)

@@ -470,6 +470,22 @@ pub mod termination {
                                 }
                             }
                         }), tracked_of(c, second(xs))));
+                    } else if (sym_is_p(car(xs), str_lit("extract")) && i64_eq(size(xs), 3i64)) {
+                        // A product's field, `(extract e l)` (C358; Fixpt's terminate.rs): of
+                        // a part, a part, strictly smaller, a product being immutable
+                        // and in no region; its type not known here.
+                        return concat(map(lambda1s(move |t: &'static Tracked| {
+                            let tagcase_ = t;
+                            match *tagcase_ {
+                                Tracked::Part(p, strict, ty) => {
+                                    the::<Trackeds>(kayak_rt::heap_cons(part(p, true, nil::<&'static Ty>()), kayak_rt::nil()))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<&'static termination::Tracked>()
+                                }
+                            }
+                        }), tracked_of(c, second(xs))));
                     } else if ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64)) {
                         let (a, b) = (second(xs), third(xs));
                         if not(null_p(literal_of(b))) {
@@ -1447,8 +1463,78 @@ pub mod termination {
 
     /// Whether every run of the group ends: `names`, their types, and their
     /// lambdas. A member not a lambda, or named other than as a call's
-    /// operator, and it does not.
+    /// operator, and it does not. A member of an `allof`'s type, judged at
+    /// each of its members' (C358; Fixpt's U1).
     pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) -> bool {
+        let at = allof_at(types, 0i64);
+        if i64_gt_eq(at, 0i64) {
+            all_p(lambda1s(move |m: &'static Ty| {
+                terminates_p(v, names, types_put(types, at, m), defined)
+            }), {
+                let tagcase_ = types_nth(types, at);
+                match *tagcase_ {
+                    Ty::TyData(d, ms) => {
+                        ms
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Ty>()
+                    }
+                }
+            })
+        } else {
+            terminates_plain_p(v, names, types, defined)
+        }
+    }
+
+    pub fn allof_at(mut ts: Tys, mut i: i64) -> i64 {
+        loop {
+            if null_p(ts) {
+                return -1i64;
+            } else if {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Ty::TyData(d, ms) => {
+                        string_eq_p(d, str_lit("%allof"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                return i;
+            } else {
+                (ts, i) = (cdr(ts), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn types_put(ts: Tys, i: i64, m: &'static Ty) -> Tys {
+        if null_p(ts) {
+            nil::<&'static Ty>()
+        } else if i64_eq(i, 0i64) {
+            kayak_rt::heap_cons(m, cdr(ts))
+        } else {
+            kayak_rt::heap_cons(car(ts), types_put(cdr(ts), i64_minus(i, 1i64), m))
+        }
+    }
+
+    pub fn types_nth(mut ts: Tys, mut i: i64) -> &'static Ty {
+        loop {
+            if null_p(ts) {
+                return ty_void();
+            } else if i64_eq(i, 0i64) {
+                return car(ts);
+            } else {
+                (ts, i) = (cdr(ts), i64_minus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn terminates_plain_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) -> bool {
         let lambdas = map(&lambda_of, defined);
         if any_p(lambda1s(move |l: Sexps| {
             null_p(l)

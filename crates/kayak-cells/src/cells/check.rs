@@ -3742,14 +3742,15 @@ pub fn union_members(ts: Tys) -> Tys {
     }
 }
 
-// Facts only KFX's emitter reads (`emit.kfx`), which an `allof`'s members
-// may note apart (C354): the Rust types of a lambda's parameters, of a
-// `tagcase`'s sum. The FX-26 compilers (`fx26/`) read none of them.
+// Facts only KFX's emitter reads (`emit.kfx`, `emit-tops.kfx`), which an
+// `allof`'s members may note apart (C354): the Rust types of a lambda's
+// parameters, of a `tagcase`'s sum, of a sum built (C358). The FX-26
+// compilers (`fx26/`) read none of them.
 #[inline]
 pub fn allof_emitter_only() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("param-types "), kayak_rt::heap_cons(str_lit("tagcase-sum "), kayak_rt::nil()))
+        kayak_rt::heap_cons(str_lit("param-types "), kayak_rt::heap_cons(str_lit("tagcase-sum "), kayak_rt::heap_cons(str_lit("sum-type "), kayak_rt::nil())))
     })
 }
 
@@ -4189,6 +4190,18 @@ pub fn sum_of_member(mut t: &'static Ty) -> Tys {
                 if (has_prefix_p(d, str_lit("%named ")) && not(null_p(args))) {
                     t = car(args);
                     continue;
+                } else if (string_eq_p(d, str_lit("%mu")) && i64_eq(size(args), 2i64)) {
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyVar(n) => {
+                            t = substitute(kayak_rt::heap_cons(n, kayak_rt::nil()), kayak_rt::heap_cons(t, kayak_rt::nil()), car(cdr(args)));
+                            continue;
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return nil::<&'static Ty>();
+                        }
+                    }
                 } else {
                     return nil::<&'static Ty>();
                 }
@@ -12150,13 +12163,36 @@ pub fn named_seen(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
     }
 }
 
+#[inline]
+pub fn quick_fits_p(s: &'static St, a: &'static Ty, e: &'static Ty) -> bool {
+    quick_fits_at_p(s, a, e, 0i64)
+}
+
+#[inline]
+pub fn quick_fits_next_p(depth: i64, s: &'static St, a: &'static Ty, e: &'static Ty) -> bool {
+    quick_fits_at_p(s, a, e, i64_plus(depth, 1i64))
+}
+
+pub fn quick_fits_each_at_p(depth: i64, s: &'static St, r#as: Tys, es: Tys) -> bool {
+    if (null_p(r#as) && null_p(es)) {
+        true
+    } else if (null_p(r#as) || null_p(es)) {
+        false
+    } else {
+        (quick_fits_at_p(s, car(r#as), car(es), i64_plus(depth, 1i64)) && quick_fits_each_at_p(depth, s, cdr(r#as), cdr(es)))
+    }
+}
+
 /// Whether a value of type `a` may stand where `e` is, answered without
 /// refusing, so that an `allof`'s members may each be tried (C354; Fixpt's
 /// `k-tes-below?`). Where it cannot tell, no: the call then fits fewer
 /// members, or none, and says so; never one more.
-pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
+pub fn quick_fits_at_p(s: &'static St, a0: &'static Ty, e0: &'static Ty, depth: i64) -> bool {
     let (a, e) = (named_seen(s, a0), named_seen(s, e0));
-    if string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e))) {
+    if i64_gt(depth, 64i64) {
+        // Two recursive types unfolded so deep: not shown.
+        false
+    } else if string_eq_p(show_ty(s, zonk(s, a)), show_ty(s, zonk(s, e))) {
         true
     } else if {
         let tagcase_ = a;
@@ -12227,7 +12263,7 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
         match *tagcase_ {
             Ty::TyData(d, args) => {
                 any_p(lambda1s(move |m: &'static Ty| {
-                    quick_fits_p(s, a, m)
+                    quick_fits_next_p(depth, s, a, m)
                 }), args)
             }
             _ => {
@@ -12251,7 +12287,7 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
         match *tagcase_ {
             Ty::TyData(d, args) => {
                 all_p(lambda1s(move |m: &'static Ty| {
-                    quick_fits_p(s, a, m)
+                    quick_fits_next_p(depth, s, a, m)
                 }), args)
             }
             _ => {
@@ -12267,10 +12303,10 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                 match *tagcase_ {
                     Ty::TyShape(pe, le, te) => {
                         if pa {
-                            (pe && string_eq_p(words_of(la), words_of(le)) && quick_fits_each_p(s, ta, te))
+                            (pe && string_eq_p(words_of(la), words_of(le)) && quick_fits_each_at_p(depth, s, ta, te))
                         } else {
                             (not(pe) && all_p(lambda1s(move |l: Str| {
-                                (string_member_p(l, le) && quick_fits_p(s, label_type(l, la, ta), label_type(l, le, te)))
+                                (string_member_p(l, le) && quick_fits_next_p(depth, s, label_type(l, la, ta), label_type(l, le, te)))
                             }), la))
                         }
                     }
@@ -12283,11 +12319,11 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
             Ty::TyData(d, args) => {
                 if string_eq_p(d, str_lit("%union")) {
                     all_p(lambda1s(move |m: &'static Ty| {
-                        quick_fits_p(s, m, e)
+                        quick_fits_next_p(depth, s, m, e)
                     }), args)
                 } else if string_eq_p(d, str_lit("%allof")) {
                     any_p(lambda1s(move |m: &'static Ty| {
-                        quick_fits_p(s, m, e)
+                        quick_fits_next_p(depth, s, m, e)
                     }), args)
                 } else if string_eq_p(d, str_lit("nil")) {
                     let tagcase_ = e;
@@ -12315,7 +12351,7 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                     let tagcase_ = e;
                     match *tagcase_ {
                         Ty::TyList(y, q) => {
-                            (quick_fits_p(s, car(args), y) && quick_fits_p(s, car(cdr(args)), e) && ({
+                            (quick_fits_next_p(depth, s, car(args), y) && quick_fits_next_p(depth, s, car(cdr(args)), e) && ({
                                 let tagcase_ = walk(s, car(cdr(cdr(args))));
                                 match *tagcase_ {
                                     Ty::TyMeta(k) => {
@@ -12329,7 +12365,7 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                             } || string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, q)))))
                         }
                         Ty::TyData(d2, bs) => {
-                            (string_eq_p(d2, str_lit("%pairof")) && i64_eq(size(bs), 3i64) && string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, car(cdr(cdr(bs)))))) && string_member_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::nil()))) && quick_fits_p(s, car(args), car(bs)) && quick_fits_p(s, car(cdr(args)), car(cdr(bs))))
+                            (string_eq_p(d2, str_lit("%pairof")) && i64_eq(size(bs), 3i64) && string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, car(cdr(cdr(bs)))))) && string_member_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::nil()))) && quick_fits_next_p(depth, s, car(args), car(bs)) && quick_fits_next_p(depth, s, car(cdr(args)), car(cdr(bs))))
                         }
                         _ => {
                             let other = tagcase_;
@@ -12344,7 +12380,7 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Ty::TyProc(ee, pe, re) => {
-                        (i64_eq(size(pa), size(pe)) && quick_fits_each_p(s, pe, pa) && quick_fits_p(s, ra, re) && all_p(lambda1s(move |x: Str| {
+                        (i64_eq(size(pa), size(pe)) && quick_fits_each_at_p(depth, s, pe, pa) && quick_fits_next_p(depth, s, ra, re) && all_p(lambda1s(move |x: Str| {
                             string_member_p(x, ee)
                         }), ea))
                     }
@@ -12358,7 +12394,7 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Ty::TyList(y, q) => {
-                        (quick_fits_p(s, x, y) && ({
+                        (quick_fits_next_p(depth, s, x, y) && ({
                             let tagcase_ = walk(s, r);
                             match *tagcase_ {
                                 Ty::TyMeta(k) => {
@@ -14938,9 +14974,11 @@ pub fn qf_seen(mut s: &'static St, mut env: Qenv, mut t: &'static Ty) -> &'stati
     }
 }
 
-pub fn qf(s: &'static St, a0: &'static Ty, e0: &'static Ty, env: Qenv) -> List<Qenv> {
-    let (a, e, ok) = (qf_seen(s, env, a0), qf_seen(s, env, e0), the::<List<Qenv>>(kayak_rt::heap_cons(env, kayak_rt::nil())));
-    if {
+pub fn qf(s: &'static St, a0: &'static Ty, e0: &'static Ty, env0: Qenv) -> List<Qenv> {
+    let (a, e, env, ok) = (qf_seen(s, env0, a0), qf_seen(s, env0, e0), kayak_rt::heap_cons(qbind(-1i64, ty_void()), env0), the::<List<Qenv>>(kayak_rt::heap_cons(kayak_rt::heap_cons(qbind(-1i64, ty_void()), env0), kayak_rt::nil())));
+    if i64_gt(size(env0), 200i64) {
+        nil::<List<&'static Qbind>>()
+    } else if {
         let tagcase_ = a;
         match *tagcase_ {
             Ty::TyMeta(k) => {

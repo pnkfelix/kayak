@@ -11475,7 +11475,7 @@ pub mod expressions {
     /// cannot take the union whole (Fixpt's U3, rule 5, C357), else as it
     /// is (`synth-call-whole`).
     pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
-        let at = split_argument(v, s, h, args);
+        let at = split_argument(v, s, h, args, expected);
         if null_p(at) {
             synth_call_whole(v, s, h, args, expected)
         } else {
@@ -11486,7 +11486,7 @@ pub mod expressions {
     /// The argument, a local of a union, that the callee `h`'s parameter
     /// takes no whole but takes each member of (`qf`), as a list of one;
     /// none if none is.
-    pub fn split_argument(v: &'static Cv, s: &'static St, h: Str, args: Sexps) -> Strings {
+    pub fn split_argument(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> Strings {
         let found = scope_bind(h, v);
         if (null_p(found) || null_p(args) || string_eq_p(cv_file(v), str_lit("<draft>"))) {
             nil::<Str>()
@@ -11519,7 +11519,7 @@ pub mod expressions {
                                         }
                                     }
                                 };
-                                split_argument_at(v, s2, procs, args, 0i64)
+                                split_argument_at(v, s2, procs, args, 0i64, expected)
                             }
                         }
                     }
@@ -11528,7 +11528,10 @@ pub mod expressions {
         }
     }
 
-    pub fn split_argument_at(mut v: &'static Cv, mut s: &'static St, mut procs: Tys, mut args: Sexps, mut i: i64) -> Strings {
+    /// Taken whole, the call fails: no procedure's parameter takes the union,
+    /// or, where a result is expected, none that takes it gives one below
+    /// it (as Fixpt's call is checked against what is expected).
+    pub fn split_argument_at(mut v: &'static Cv, mut s: &'static St, mut procs: Tys, mut args: Sexps, mut i: i64, mut expected: Tys) -> Strings {
         loop {
             if (null_p(args) || null_p(procs)) {
                 return nil::<Str>();
@@ -11545,9 +11548,25 @@ pub mod expressions {
                 }
             } {
                 let ms = union_local(v, s, car(args));
-                if (i64_gt(size(ms), 1i64) && null_p(filter(lambda1s(move |pr: &'static Ty| {
-                    not(null_p(qf_param(s, pr, i, ty_data(str_lit("%union"), ms))))
-                }), procs)) && all_p(lambda1s(move |m: &'static Ty| {
+                let whole = if i64_gt(size(ms), 1i64) {
+                    filter(lambda1s(move |pr: &'static Ty| {
+                        not(null_p(qf_param(s, pr, i, ty_data(str_lit("%union"), ms))))
+                    }), procs)
+                } else {
+                    nil::<&'static Ty>()
+                };
+                if (i64_gt(size(ms), 1i64) && (null_p(whole) || (not(null_p(expected)) && not(any_p(lambda1s(move |pr: &'static Ty| {
+                    let tagcase_ = pr;
+                    match *tagcase_ {
+                        Ty::TyProc(le, ps, r) => {
+                            quick_fits_p(s, r, car(expected))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }), whole)))) && all_p(lambda1s(move |m: &'static Ty| {
                     any_p(lambda1s(move |pr: &'static Ty| {
                         not(null_p(qf_param(s, pr, i, m)))
                     }), procs)

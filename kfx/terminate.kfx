@@ -207,6 +207,12 @@
                                                             (else other2 nil)))))))))
                                           (else other nil)))
                                       (tracked-of c (second xs)))))
+                        ((and (sym-is? (car xs) "extract") (i64= (size xs) 3))
+                         "A product's field, `(extract e l)` (C358; Fixpt's terminate.rs): of
+                          a part, a part, strictly smaller, a product being immutable
+                          and in no region; its type not known here."
+                         (concat (map (lambda ((t tracked)) (tagcase t (part (p strict ty) (the trackeds (list (part p #t nil)))) (else other nil)))
+                                      (tracked-of c (second xs)))))
                         ((and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3))
                          (let ((a (second xs)) (b (third xs)))
                            (cond ((not (null? (literal-of b)))
@@ -680,7 +686,27 @@
       (lambda (v names types defined)
         "Whether every run of the group ends: `names`, their types, and their
          lambdas. A member not a lambda, or named other than as a call's
-         operator, and it does not."
+         operator, and it does not. A member of an `allof`'s type, judged at
+         each of its members' (C358; Fixpt's U1)."
+        (let ((at (allof-at types 0)))
+          (if (i64>= at 0)
+              (all? (lambda ((m ty)) (terminates? v names (types-put types at m) defined))
+                    (tagcase (types-nth types at) (ty-data (d ms) ms) (else other nil)))
+              (terminates-plain? v names types defined)))))
+
+    (define-rec
+      (allof-at (subr kfx (tys i64) i64)
+        (lambda (ts i)
+          (cond ((null? ts) -1)
+                ((tagcase (car ts) (ty-data (d ms) (string=? d "%allof")) (else other #f)) i)
+                (else (allof-at (cdr ts) (i64+ i 1))))))
+      (types-put (subr kfx (tys i64 ty) tys)
+        (lambda (ts i m) (cond ((null? ts) nil) ((i64= i 0) (cons m (cdr ts))) (else (cons (car ts) (types-put (cdr ts) (i64- i 1) m))))))
+      (types-nth (subr kfx (tys i64) ty)
+        (lambda (ts i) (cond ((null? ts) (ty-void)) ((i64= i 0) (car ts)) (else (types-nth (cdr ts) (i64- i 1)))))))
+
+    (define terminates-plain? (subr kfx (cv strings tys sexps) bool)
+      (lambda (v names types defined)
         (let ((lambdas (map lambda-of defined)))
           (if (any? (lambda ((l sexps)) (null? l)) lambdas)
               #f

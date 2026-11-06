@@ -1,3 +1,17 @@
+allof/meet.fx
+allof/swap.fx
+anyof/allof-split.fx
+anyof/budget-within.fx
+anyof/car-split.fx
+anyof/distribute-product.fx
+anyof/distribute.fx
+anyof/greatest-pair.fx
+anyof/oneof-same.fx
+anyof/overlap.fx
+anyof/recursive-sums.fx
+anyof/sub-sum.fx
+anyof/sums-share.fx
+anyof/swap-anyof.fx
 attempt/error.fx
 attempt/evaluator-after-failure.fx
 attempt/handler-io.fx
@@ -424,6 +438,7 @@ unions/more-shapes.fx
 unions/nil-or-pair.fx
 unions/not-and-or-narrow.fx
 unions/null-narrows.fx
+unions/oneof-sums.fx
 unions/paths-narrow.fx
 unions/shapes-narrow.fx
 unions/typecase.fx

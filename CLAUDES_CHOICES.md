@@ -9784,3 +9784,37 @@ did not; nor did this entry's change, which seemed to. Twice
 hand without `--cache` were at the fixed point; with the memos
 (`target/kfx-memos-*`) deleted, it passed. A failed attempt's memos, kept
 by the same compiler, were taken for other source (TODO).
+
+## C358. Recursion through a product's fields ends; an `allof` judged at each member (2026-11-05)
+
+C354's gap, after `anyof` (the user's order), and what it held up:
+- **A product's field of a part is a part** (`terminate.kfx`'s
+  `tracked-of`, `(extract e l)`): strictly smaller, a product being
+  immutable and in no region, as Fixpt's termination check has it. With
+  the sum arm's binding already a part, `swap` at one plain type, and
+  Fixpt's `anyof/recursive-sums.fx`, are seen to end.
+- **A group with an `allof`'s type ends if it does at each member's**
+  (`terminates?`), as Fixpt's U1 has it.
+- **`sum-type`** joins the facts only KFX's emitter reads, which rule 3
+  (C354) passes over: an `allof`'s members note a sum built at their own
+  types.
+- **Rule 5 (C357) counts a result below no expected type as failing
+  whole**: Fixpt checks a call against what is expected, so a union
+  argument some member takes whole is still taken apart where that
+  member's result is not what is expected (`swap` of an `(anyof expr op)`,
+  whose `sexp` member takes it whole).
+- **A union's sums seen through a recursive member** (`sum-of-member`
+  unfolds a `%mu` once), so that `tagcase` takes apart an `(anyof expr
+  op)` whose `expr` is recursive.
+Fixpt's `allof/swap`, `anyof/swap-anyof`, `anyof/recursive-sums` now give
+its answers, on the engine and tiers 1 and 6: of Fixpt's 28 logical-types
+programs, 25 as Fixpt's, and three refused as Fixpt refuses them but in
+other words (`dead-in-all`, `distribute-missing`, `mixed-list`: kayak's
+types keep no abbreviation's name, so it writes `ab`, `ib` out).
+Found by the check (`recursive/mu-and-name.fx` hung): rule 5's decision
+had been made to try `qf` on a call's argument before knowing it was a
+union, and `qf`, with no trail of what it assumes, compared `ilist` with
+its `mu` written out unfolding each forever. Now `qf` is tried only of a
+union, and both quiet tests are bounded: `qf` past 200 steps, and
+`quick-fits?` past 64 unfoldings deep, answer no (so a call fits fewer
+members, or splits less, never more).

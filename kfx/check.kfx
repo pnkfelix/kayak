@@ -1700,10 +1700,11 @@
             (ty-data (d args) (if (string=? d "%union") (onto (union-members args) (union-members (cdr ts))) (cons (car ts) (union-members (cdr ts)))))
             (else other (cons (car ts) (union-members (cdr ts)))))))))
 
-"Facts only KFX's emitter reads (`emit.kfx`), which an `allof`'s members
- may note apart (C354): the Rust types of a lambda's parameters, of a
- `tagcase`'s sum. The FX-26 compilers (`fx26/`) read none of them."
-(define allof-emitter-only strings (list "param-types " "tagcase-sum "))
+"Facts only KFX's emitter reads (`emit.kfx`, `emit-tops.kfx`), which an
+ `allof`'s members may note apart (C354): the Rust types of a lambda's
+ parameters, of a `tagcase`'s sum, of a sum built (C358). The FX-26
+ compilers (`fx26/`) read none of them."
+(define allof-emitter-only strings (list "param-types " "tagcase-sum " "sum-type "))
 
 "An `allof`'s members (C354): an `allof` among them its members; and a
  member's convention, `` for a plain `subr`, a convention's own, or `?` for
@@ -1820,7 +1821,12 @@
     (lambda (t)
       "Member `t`'s sum, seen through an abbreviation, as a list of one."
       (tagcase t
-        (ty-data (d args) (if (and (has-prefix? d "%named ") (not (null? args))) (sum-of-member (car args)) nil))
+        (ty-data (d args)
+          (cond ((and (has-prefix? d "%named ") (not (null? args))) (sum-of-member (car args)))
+                ;; A recursive type, unfolded once (C358).
+                ((and (string=? d "%mu") (i64= (size args) 2))
+                 (tagcase (car args) (ty-var (n) (sum-of-member (substitute (list n) (list t) (car (cdr args))))) (else other nil)))
+                (else nil)))
         (ty-shape (p ls ts) (if p nil (list t)))
         (else other nil)))))
 (define sum-labels (subr kfx (ty) strings) (lambda (t) (tagcase t (ty-shape (p ls ts) ls) (else other nil))))
@@ -5112,40 +5118,50 @@
                 (else (walk s t))))
         (else other (walk s t)))))
   (quick-fits? (subr kfx (st ty ty) bool)
-    (lambda (s a0 e0)
+    (lambda (s a e) (quick-fits-at? s a e 0)))
+  (quick-fits-next? (subr kfx (i64 st ty ty) bool)
+    (lambda (depth s a e) (quick-fits-at? s a e (i64+ depth 1))))
+  (quick-fits-each-at? (subr kfx (i64 st tys tys) bool)
+    (lambda (depth s as es)
+      (cond ((and (null? as) (null? es)) #t)
+            ((or (null? as) (null? es)) #f)
+            (else (and (quick-fits-at? s (car as) (car es) (i64+ depth 1)) (quick-fits-each-at? depth s (cdr as) (cdr es)))))))
+  (quick-fits-at? (subr kfx (st ty ty i64) bool)
+    (lambda (s a0 e0 depth)
       "Whether a value of type `a` may stand where `e` is, answered without
        refusing, so that an `allof`'s members may each be tried (C354; Fixpt's
        `k-tes-below?`). Where it cannot tell, no: the call then fits fewer
        members, or none, and says so; never one more."
       (let ((a (named-seen s a0)) (e (named-seen s e0)))
-        (cond ((string=? (show-ty s (zonk s a)) (show-ty s (zonk s e))) #t)
+        (cond ((i64> depth 64) "Two recursive types unfolded so deep: not shown." #f)
+              ((string=? (show-ty s (zonk s a)) (show-ty s (zonk s e))) #t)
               ((tagcase a (ty-void () #t) (ty-meta (k) #t) (else other #f)) #t)
               ((tagcase e (ty-meta (k) #t) (else other #f)) #t)
               ((and (tagcase a (ty-nat () #t) (else other #f)) (tagcase e (ty-int () #t) (else other #f))) #t)
               ((tagcase e (ty-data (d args) (string=? d "%union")) (else other #f))
-               (tagcase e (ty-data (d args) (any? (lambda ((m ty)) (quick-fits? s a m)) args)) (else other #f)))
+               (tagcase e (ty-data (d args) (any? (lambda ((m ty)) (quick-fits-next? depth s a m)) args)) (else other #f)))
               ((tagcase e (ty-data (d args) (string=? d "%allof")) (else other #f))
-               (tagcase e (ty-data (d args) (all? (lambda ((m ty)) (quick-fits? s a m)) args)) (else other #f)))
+               (tagcase e (ty-data (d args) (all? (lambda ((m ty)) (quick-fits-next? depth s a m)) args)) (else other #f)))
               (else
                (tagcase a
                  (ty-shape (pa la ta)
                    (tagcase e
                      (ty-shape (pe le te)
                        (if pa
-                           (and pe (string=? (words-of la) (words-of le)) (quick-fits-each? s ta te))
+                           (and pe (string=? (words-of la) (words-of le)) (quick-fits-each-at? depth s ta te))
                            (and (not pe)
-                                (all? (lambda ((l string)) (and (string-member? l le) (quick-fits? s (label-type l la ta) (label-type l le te)))) la))))
+                                (all? (lambda ((l string)) (and (string-member? l le) (quick-fits-next? depth s (label-type l la ta) (label-type l le te)))) la))))
                      (else other #f)))
                  (ty-data (d args)
-                   (cond ((string=? d "%union") (all? (lambda ((m ty)) (quick-fits? s m e)) args))
-                         ((string=? d "%allof") (any? (lambda ((m ty)) (quick-fits? s m e)) args))
+                   (cond ((string=? d "%union") (all? (lambda ((m ty)) (quick-fits-next? depth s m e)) args))
+                         ((string=? d "%allof") (any? (lambda ((m ty)) (quick-fits-next? depth s m e)) args))
                          ;; `nil` below a list; `false` below `bool`.
                          ((string=? d "nil") (tagcase e (ty-list (y q) #t) (else other #f)))
                          ((string=? d "false") (tagcase e (ty-bool () #t) (else other #f)))
                          ;; A pair below a list: its head below the elements, its tail the list.
                          ((and (string=? d "%pairof") (i64= (size args) 3))
                           (tagcase e
-                            (ty-list (y q) (and (quick-fits? s (car args) y) (quick-fits? s (car (cdr args)) e)
+                            (ty-list (y q) (and (quick-fits-next? depth s (car args) y) (quick-fits-next? depth s (car (cdr args)) e)
                                                 (or (tagcase (walk s (car (cdr (cdr args)))) (ty-meta (k) #t) (else other #f))
                                                     (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s q))))))
                             ;; Below a pair: part by part where immutable, else the same.
@@ -5153,18 +5169,18 @@
                               (and (string=? d2 "%pairof") (i64= (size bs) 3)
                                    (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s (car (cdr (cdr bs))))))
                                    (string-member? (show-ty s (zonk s (car (cdr (cdr args))))) (list "acyclic" "const"))
-                                   (quick-fits? s (car args) (car bs)) (quick-fits? s (car (cdr args)) (car (cdr bs)))))
+                                   (quick-fits-next? depth s (car args) (car bs)) (quick-fits-next? depth s (car (cdr args)) (car (cdr bs)))))
                             (else other #f)))
                          (else #f)))
                  (ty-proc (ea pa ra)
                    (tagcase e
                      (ty-proc (ee pe re)
-                       (and (i64= (size pa) (size pe)) (quick-fits-each? s pe pa) (quick-fits? s ra re)
+                       (and (i64= (size pa) (size pe)) (quick-fits-each-at? depth s pe pa) (quick-fits-next? depth s ra re)
                             (all? (lambda ((x string)) (string-member? x ee)) ea)))
                      (else other #f)))
                  (ty-list (x r)
                    (tagcase e
-                     (ty-list (y q) (and (quick-fits? s x y)
+                     (ty-list (y q) (and (quick-fits-next? depth s x y)
                                          (or (tagcase (walk s r) (ty-meta (k) #t) (else other #f))
                                              (string=? (show-ty s (zonk s r)) (show-ty s (zonk s q))))))
                      (else other #f)))
@@ -6169,9 +6185,12 @@
           (else other w))))))
 (define-rec
   (qf (subr kfx (st ty ty qenv) (listof qenv acyclic))
-    (lambda (s a0 e0 env)
-      (let ((a (qf-seen s env a0)) (e (qf-seen s env e0)) (ok (the (listof qenv acyclic) (list env))))
-        (cond ((tagcase a (ty-meta (k) #t) (else other #f)) (tagcase a (ty-meta (k) (list (cons (qbind k e) env))) (else other nil)))
+    (lambda (s a0 e0 env0)
+      ;; Each step counted in the environment (`qbind -1`), so that two
+      ;; recursive types, unfolded again and again, end: past 200, not shown.
+      (let ((a (qf-seen s env0 a0)) (e (qf-seen s env0 e0)) (env (cons (qbind -1 (ty-void)) env0)) (ok (the (listof qenv acyclic) (list (cons (qbind -1 (ty-void)) env0)))))
+        (cond ((i64> (size env0) 200) nil)
+              ((tagcase a (ty-meta (k) #t) (else other #f)) (tagcase a (ty-meta (k) (list (cons (qbind k e) env))) (else other nil)))
               ((tagcase e (ty-meta (k) #t) (else other #f)) (tagcase e (ty-meta (k) (list (cons (qbind k a) env))) (else other nil)))
               ((ty-same? a e) ok)
               ((tagcase a (ty-void () #t) (else other #f)) ok)

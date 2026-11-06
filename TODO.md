@@ -137,11 +137,6 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **Recursion through a recursive sum's payloads not seen to end**
-     (found 2026-11-05, C354): `(tagcase s (lam p … (swap a b (extract p
-     2))))` over `(define-type expr (sumof … (lam (productof (1 symbol) (2
-     expr)))))` is refused `pure` (it may spin), where Fixpt's termination
-     check takes it. Fixpt's `allof/swap.fx` waits on it.
    - **The incremental compile's memos outlive a change** (found
      2026-11-05, C357): twice `scripts/regen.sh` failed at generation 2
      (some 400 Rust errors, `refuse` a `Void` where a `Res` is expected),
