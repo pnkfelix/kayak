@@ -142,13 +142,15 @@ section below where it has one; here the order, and what each is.
      2))))` over `(define-type expr (sumof … (lam (productof (1 symbol) (2
      expr)))))` is refused `pure` (it may spin), where Fixpt's termination
      check takes it. Fixpt's `allof/swap.fx` waits on it.
-   - **A `cond` clause that broke the bootstrap** (C356): in
-     check-exprs.kfx's `pair-expected`, `((and (string=? (shape-of x)
-     "union") (not (null? (greatest-of-shape s (members-of x) "pair"))))
-     (greatest-of-shape s (members-of x) "pair"))` made generation 2's Rust
-     fail to build (403 errors, `refuse` a `Void` where a `Res` is
-     expected); written as its own `define`, it builds. A checker or
-     emitter bug, not looked into.
+   - **The incremental compile's memos outlive a change** (found
+     2026-11-05, C357): twice `scripts/regen.sh` failed at generation 2
+     (some 400 Rust errors, `refuse` a `Void` where a `Res` is expected),
+     where the same generations built by hand without `--cache` were at
+     the fixed point; with `target/kfx-memos-*` deleted, regen passed. The
+     memos are keyed by the compiler's own code, so a failed attempt's
+     memos, made by the same compiler of other source, were taken. What a
+     memo's key leaves out is not found yet (C356 first blamed a `cond`
+     clause; wrongly).
    - **Reps byte for byte Fixpt's** (C346-C349, C352): checked against
      `fixpt check --reps` (`tests/reps-passing`, `checks-summary reps`):
      431 programs the same, 63 differ (mostly modules' reps: abstract

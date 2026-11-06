@@ -14876,6 +14876,353 @@ pub fn local(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
     bind(name, scheme(nil::<Str>(), mtype_named(name, t)), str_lit("local"))
 }
 
+// Rule 5's test (C357): whether `a` fits `e`, each inference variable given
+// one type and kept to it (`qbind`s), answered without refusing: so that a
+// union argument that one parameter cannot take whole (`car`'s `?t1` both
+// an `int` and a `bool`) is told from one it can. A list of one environment
+// if it fits, none if not; where it cannot tell, none.
+pub enum Qbind {
+    Qbind(i64, &'static Ty),
+}
+
+pub fn qbind(f0: i64, f1: &'static Ty) -> &'static Qbind {
+    kayak_rt::heap_alloc(Qbind::Qbind(f0, f1))
+}
+
+pub type Qenv = List<&'static Qbind>;
+
+pub fn qf_bound(mut env: Qenv, mut k: i64) -> Tys {
+    loop {
+        if null_p(env) {
+            return nil::<&'static Ty>();
+        } else if {
+            let tagcase_ = car(env);
+            match *tagcase_ {
+                Qbind::Qbind(j, t) => {
+                    i64_eq(j, k)
+                }
+            }
+        } {
+            let tagcase_ = car(env);
+            match *tagcase_ {
+                Qbind::Qbind(j, t) => {
+                    return kayak_rt::heap_cons(t, kayak_rt::nil());
+                }
+            }
+        } else {
+            env = cdr(env);
+            continue;
+        }
+    }
+}
+
+pub fn qf_seen(mut s: &'static St, mut env: Qenv, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let w = named_seen(s, t);
+        let tagcase_ = w;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                let b = qf_bound(env, k);
+                if null_p(b) {
+                    return w;
+                } else {
+                    t = car(b);
+                    continue;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return w;
+            }
+        }
+    }
+}
+
+pub fn qf(s: &'static St, a0: &'static Ty, e0: &'static Ty, env: Qenv) -> List<Qenv> {
+    let (a, e, ok) = (qf_seen(s, env, a0), qf_seen(s, env, e0), the::<List<Qenv>>(kayak_rt::heap_cons(env, kayak_rt::nil())));
+    if {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                kayak_rt::heap_cons(kayak_rt::heap_cons(qbind(k, e), env), kayak_rt::nil())
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<&'static Qbind>>()
+            }
+        }
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                kayak_rt::heap_cons(kayak_rt::heap_cons(qbind(k, a), env), kayak_rt::nil())
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<&'static Qbind>>()
+            }
+        }
+    } else if ty_same_p(a, e) {
+        ok
+    } else if {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyVoid() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        ok
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyNat() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        ok
+    } else if {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%union"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                qf_all(s, args, e, env)
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<&'static Qbind>>()
+            }
+        }
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%union"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                qf_any(s, a, args, env)
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<&'static Qbind>>()
+            }
+        }
+    } else {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("nil")) {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Ty::TyList(y, q) => {
+                            ok
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<List<&'static Qbind>>()
+                        }
+                    }
+                } else if string_eq_p(d, str_lit("false")) {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Ty::TyBool() => {
+                            ok
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<List<&'static Qbind>>()
+                        }
+                    }
+                } else if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(args), 3i64)) {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Ty::TyList(y, q) => {
+                            qf_seq(s, kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::heap_cons(car(cdr(cdr(args))), kayak_rt::nil()))), kayak_rt::heap_cons(y, kayak_rt::heap_cons(e, kayak_rt::heap_cons(q, kayak_rt::nil()))), env)
+                        }
+                        Ty::TyData(d2, bs) => {
+                            if (string_eq_p(d2, str_lit("%pairof")) && i64_eq(size(bs), 3i64)) {
+                                qf_seq(s, args, bs, env)
+                            } else {
+                                nil::<List<&'static Qbind>>()
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<List<&'static Qbind>>()
+                        }
+                    }
+                } else {
+                    nil::<List<&'static Qbind>>()
+                }
+            }
+            Ty::TyList(x, r) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyList(y, q) => {
+                        qf_seq(s, kayak_rt::heap_cons(x, kayak_rt::heap_cons(r, kayak_rt::nil())), kayak_rt::heap_cons(y, kayak_rt::heap_cons(q, kayak_rt::nil())), env)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<List<&'static Qbind>>()
+                    }
+                }
+            }
+            Ty::TyShape(pa, la, ta) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyShape(pe, le, te) => {
+                        if (pa && pe && string_eq_p(words_of(la), words_of(le))) {
+                            qf_seq(s, ta, te, env)
+                        } else if (not(pa) && not(pe) && all_p(lambda1s(move |l: Str| {
+                            string_member_p(l, le)
+                        }), la)) {
+                            qf_seq(s, ta, map(lambda1s(move |l: Str| {
+                                label_type(l, le, te)
+                            }), la), env)
+                        } else {
+                            nil::<List<&'static Qbind>>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<List<&'static Qbind>>()
+                    }
+                }
+            }
+            Ty::TyProc(ea, pa, ra) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyProc(ee, pe, re) => {
+                        if i64_eq(size(pa), size(pe)) {
+                            qf_seq(s, kayak_rt::heap_cons(ra, pe), kayak_rt::heap_cons(re, pa), env)
+                        } else {
+                            nil::<List<&'static Qbind>>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<List<&'static Qbind>>()
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<&'static Qbind>>()
+            }
+        }
+    }
+}
+
+pub fn qf_seq(mut s: &'static St, mut r#as: Tys, mut es: Tys, mut env: Qenv) -> List<Qenv> {
+    loop {
+        if (null_p(r#as) && null_p(es)) {
+            return kayak_rt::heap_cons(env, kayak_rt::nil());
+        } else if (null_p(r#as) || null_p(es)) {
+            return nil::<List<&'static Qbind>>();
+        } else {
+            let r = qf(s, car(r#as), car(es), env);
+            if null_p(r) {
+                return nil::<List<&'static Qbind>>();
+            } else {
+                (r#as, es, env) = (cdr(r#as), cdr(es), car(r));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn qf_all(mut s: &'static St, mut ms: Tys, mut e: &'static Ty, mut env: Qenv) -> List<Qenv> {
+    loop {
+        if null_p(ms) {
+            return kayak_rt::heap_cons(env, kayak_rt::nil());
+        } else {
+            let r = qf(s, car(ms), e, env);
+            if null_p(r) {
+                return nil::<List<&'static Qbind>>();
+            } else {
+                (ms, env) = (cdr(ms), car(r));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn qf_any(mut s: &'static St, mut a: &'static Ty, mut ms: Tys, mut env: Qenv) -> List<Qenv> {
+    loop {
+        if null_p(ms) {
+            return nil::<List<&'static Qbind>>();
+        } else {
+            let r = qf(s, a, car(ms), env);
+            if null_p(r) {
+                ms = cdr(ms);
+                continue;
+            } else {
+                return r;
+            }
+        }
+    }
+}
+
 /// A local narrowed by a test (C62): the same Rust local, its type known
 /// better, unboxed where it is named if a union's (C75).
 #[inline]

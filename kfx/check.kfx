@@ -6147,6 +6147,73 @@
      module's, its abstract types named for it (C170)."
     (bind name (scheme nil (mtype-named name t)) "local")))
 
+"Rule 5's test (C357): whether `a` fits `e`, each inference variable given
+ one type and kept to it (`qbind`s), answered without refusing: so that a
+ union argument that one parameter cannot take whole (`car`'s `?t1` both
+ an `int` and a `bool`) is told from one it can. A list of one environment
+ if it fits, none if not; where it cannot tell, none."
+(define-datatype qbind (qbind i64 ty))
+(define-type qenv (listof qbind acyclic))
+(define-rec
+  (qf-bound (subr kfx (qenv i64) tys)
+    (lambda (env k)
+      (cond ((null? env) nil)
+            ((tagcase (car env) (qbind (j t) (i64= j k))) (tagcase (car env) (qbind (j t) (list t))))
+            (else (qf-bound (cdr env) k))))))
+(define-rec
+  (qf-seen (subr kfx (st qenv ty) ty)
+    (lambda (s env t)
+      (let ((w (named-seen s t)))
+        (tagcase w
+          (ty-meta (k) (let ((b (qf-bound env k))) (if (null? b) w (qf-seen s env (car b)))))
+          (else other w))))))
+(define-rec
+  (qf (subr kfx (st ty ty qenv) (listof qenv acyclic))
+    (lambda (s a0 e0 env)
+      (let ((a (qf-seen s env a0)) (e (qf-seen s env e0)) (ok (the (listof qenv acyclic) (list env))))
+        (cond ((tagcase a (ty-meta (k) #t) (else other #f)) (tagcase a (ty-meta (k) (list (cons (qbind k e) env))) (else other nil)))
+              ((tagcase e (ty-meta (k) #t) (else other #f)) (tagcase e (ty-meta (k) (list (cons (qbind k a) env))) (else other nil)))
+              ((ty-same? a e) ok)
+              ((tagcase a (ty-void () #t) (else other #f)) ok)
+              ((and (tagcase a (ty-nat () #t) (else other #f)) (tagcase e (ty-int () #t) (else other #f))) ok)
+              ((tagcase a (ty-data (d args) (string=? d "%union")) (else other #f))
+               (tagcase a (ty-data (d args) (qf-all s args e env)) (else other nil)))
+              ((tagcase e (ty-data (d args) (string=? d "%union")) (else other #f))
+               (tagcase e (ty-data (d args) (qf-any s a args env)) (else other nil)))
+              (else
+               (tagcase a
+                 (ty-data (d args)
+                   (cond ((string=? d "nil") (tagcase e (ty-list (y q) ok) (else other nil)))
+                         ((string=? d "false") (tagcase e (ty-bool () ok) (else other nil)))
+                         ((and (string=? d "%pairof") (i64= (size args) 3))
+                          (tagcase e
+                            (ty-list (y q) (qf-seq s (list (car args) (car (cdr args)) (car (cdr (cdr args)))) (list y e q) env))
+                            (ty-data (d2 bs) (if (and (string=? d2 "%pairof") (i64= (size bs) 3)) (qf-seq s args bs env) nil))
+                            (else other nil)))
+                         (else nil)))
+                 (ty-list (x r) (tagcase e (ty-list (y q) (qf-seq s (list x r) (list y q) env)) (else other nil)))
+                 (ty-shape (pa la ta)
+                   (tagcase e
+                     (ty-shape (pe le te)
+                       (cond ((and pa pe (string=? (words-of la) (words-of le))) (qf-seq s ta te env))
+                             ((and (not pa) (not pe) (all? (lambda ((l string)) (string-member? l le)) la))
+                              (qf-seq s ta (map (lambda ((l string)) (label-type l le te)) la) env))
+                             (else nil)))
+                     (else other nil)))
+                 (ty-proc (ea pa ra) (tagcase e (ty-proc (ee pe re) (if (i64= (size pa) (size pe)) (qf-seq s (cons ra pe) (cons re pa) env) nil)) (else other nil)))
+                 (else other nil)))))))
+  (qf-seq (subr kfx (st tys tys qenv) (listof qenv acyclic))
+    (lambda (s as es env)
+      (cond ((and (null? as) (null? es)) (list env))
+            ((or (null? as) (null? es)) nil)
+            (else (let ((r (qf s (car as) (car es) env))) (if (null? r) nil (qf-seq s (cdr as) (cdr es) (car r))))))))
+  (qf-all (subr kfx (st tys ty qenv) (listof qenv acyclic))
+    (lambda (s ms e env)
+      (if (null? ms) (list env) (let ((r (qf s (car ms) e env))) (if (null? r) nil (qf-all s (cdr ms) e (car r)))))))
+  (qf-any (subr kfx (st ty tys qenv) (listof qenv acyclic))
+    (lambda (s a ms env)
+      (if (null? ms) nil (let ((r (qf s a (car ms) env))) (if (null? r) (qf-any s a (cdr ms) env) r))))))
+
 (define narrowed (subr kfx (cv string ty) bind)
   (lambda (v name t)
     "A local narrowed by a test (C62): the same Rust local, its type known

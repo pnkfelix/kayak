@@ -9753,3 +9753,34 @@ made the bootstrap's second generation not build (403 errors in the Rust
 it emitted: `refuse` found `Void` where a `Res` is expected, `filter`'s
 lambdas mistyped), where the same written as its own `define`
 (`union-pair-expected`) builds. TODO.
+
+## C357. U3: rule 5, a call's union argument taken apart (2026-11-05; logical types, step 5)
+
+Fixpt's U3 (a647790c; `logical-types.md` §8.5, rule 5): where a call
+cannot take a union argument whole, an argument that is a variable of a
+union is narrowed to each member in turn and the call checked again; the
+call's type the union of theirs, its effect theirs together, what the
+compilers read of it alike under each (as an `allof`'s body, C354, and
+refused in Fixpt's words otherwise). kayak cannot check a call, see it
+fail and try again (a refusal ends the run), so it decides first
+(`split-argument`): an argument that is a local of a union the callee's
+parameter (an `allof`'s, each member's) takes no whole but takes each
+member of. The test (`qf`) gives each inference variable one type and
+keeps to it, unlike `quick-fits?` (C354), so that `car`'s `?t1` cannot be
+both an `int` and a `bool`. Else the call goes as before, and its own
+error stands (`car-split-misfit.fx`).
+
+With it, `narrowed-from` (a test's other branch) now drops every member of
+the shape tested, not only one alone: an `anyof` of lists, split as `nil`
+and pairs, had kept its `nil`s past a `null?`.
+
+Fixpt's tests: `car-split` (7 1 0), `allof-split` (5 #t),
+`car-split-misfit` refused as Fixpt's. `swap-anyof` and `recursive-sums`
+wait on C354's termination gap.
+
+A correction to C356: the `cond` clause I found breaking the bootstrap
+did not; nor did this entry's change, which seemed to. Twice
+`scripts/regen.sh` failed at generation 2 where the generations built by
+hand without `--cache` were at the fixed point; with the memos
+(`target/kfx-memos-*`) deleted, it passed. A failed attempt's memos, kept
+by the same compiler, were taken for other source (TODO).

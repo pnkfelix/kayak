@@ -746,7 +746,7 @@
 
       (define narrowed-from (subr kfx (tys string) tys)
         (lambda (ms shape)
-          (if (and (or (string=? shape "nil") (string=? shape "pair")) (null? (member-of-shape ms shape))) ms (members-but ms shape))))
+          (if (and (or (string=? shape "nil") (string=? shape "pair")) (not (any? (lambda ((m ty)) (string=? (shape-of m) shape)) ms))) ms (members-but ms shape))))
 
       (define literal-shape (subr kfx (sexp) string)
         (lambda (e)
@@ -5112,6 +5112,89 @@
                     (else other r)))))))
 
       (synth-call (subr kfx (cv st string sexps tys) res)
+        (lambda (v s h args expected)
+          "A call of a name, taken apart by a union argument's members where it
+           cannot take the union whole (Fixpt's U3, rule 5, C357), else as it
+           is (`synth-call-whole`)."
+          (let ((at (split-argument v s h args)))
+            (if (null? at)
+                (synth-call-whole v s h args expected)
+                (split-call v s h args expected (car at))))))
+
+      (split-argument (subr kfx (cv st string sexps) strings)
+        (lambda (v s h args)
+          "The argument, a local of a union, that the callee `h`'s parameter
+           takes no whole but takes each member of (`qf`), as a list of one;
+           none if none is."
+          (let ((found (scope-bind h v)))
+            (if (or (null? found) (null? args) (string=? (cv-file v) "<draft>"))
+                nil
+                (tagcase (car found)
+                  (bind (n sc w)
+                    (if (not (or (string=? w "prim") (string=? w "global") (string=? w "local") (string=? w "item")))
+                        nil
+                        (tagcase (instantiate s sc)
+                          (inst (t s2 rs es)
+                            (let ((procs (tagcase (walk-mu s2 t)
+                                           (ty-proc (le ps r) (list (walk-mu s2 t)))
+                                           (ty-data (d ms) (if (string=? d "%allof") ms nil))
+                                           (else other nil))))
+                              (split-argument-at v s2 procs args 0)))))))))))
+
+      (split-argument-at (subr kfx (cv st tys sexps i64) strings)
+        (lambda (v s procs args i)
+          (cond ((or (null? args) (null? procs)) nil)
+                ((tagcase (car args) (sym (n f p) #t) (else other #f))
+                 (let ((ms (union-local v s (car args))))
+                   (if (and (i64> (size ms) 1)
+                            (null? (filter (lambda ((pr ty)) (not (null? (qf-param s pr i (ty-data "%union" ms))))) procs))
+                            (all? (lambda ((m ty)) (any? (lambda ((pr ty)) (not (null? (qf-param s pr i m)))) procs)) ms))
+                       (list (tagcase (car args) (sym (n f p) n) (else other "")))
+                       (split-argument-at v s procs (cdr args) (i64+ i 1)))))
+                (else (split-argument-at v s procs (cdr args) (i64+ i 1))))))
+
+      (qf-param (subr kfx (st ty i64 ty) (listof qenv acyclic))
+        (lambda (s pr i a)
+          (tagcase pr
+            (ty-proc (le ps r) (if (i64< i (size ps)) (qf s a (tys-nth ps i) nil) nil))
+            (else other nil))))
+
+      (split-call (subr kfx (cv st string sexps tys string) res)
+        (lambda (v s h args expected x)
+          "The call checked once for each member of `x`'s union, `x` narrowed
+           to it: its type the union of theirs, its effect theirs together,
+           and what the compilers read of it alike under each (as an `allof`'s
+           body, rule 3)."
+          (let* ((ms (union-local v s (sym x "" 0)))
+                 (key (string-append "%allof-mark " (string-append (i64->string (cv-pos v)) " split"))))
+            (tagcase (split-each v s h args expected x ms 0 key nil)
+              (res (t es s2)
+                (let ((segs (allof-segments (st-facts s2) key nil nil)))
+                  (begin
+                    (split-agree v s2 x ms segs)
+                    (res t es (tagcase s2 (st (b n fs xs) (st b n (filter (lambda ((f fact)) (not (allof-mark? f))) fs) xs)))))))))))
+
+      (split-each (subr kfx (cv st string sexps tys string tys i64 string tys) res)
+        (lambda (v s h args expected x ms i key got)
+          (if (null? ms)
+              (let ((ts (anyof-trimmed (reverse got) nil)))
+                (res (if (null? (cdr ts)) (car ts) (ty-data "%union" ts)) nil s))
+              (tagcase (synth-call-whole (with-binds v (list (narrowed v x (car ms))))
+                                         (note-fact s "%allof" 0 (string-append key (string-append " " (i64->string i))))
+                                         h args expected)
+                (res (t es s2)
+                  (tagcase (split-each v s2 h args expected x (cdr ms) (i64+ i 1) key (cons (zonk s2 t) got))
+                    (res (t2 es2 s3) (res t2 (effs-union es es2) s3))))))))
+
+      (split-agree (subr kfx (cv st string tys (listof facts acyclic)) unit)
+        (lambda (v s x ms segs)
+          (cond ((or (null? ms) (null? segs) (null? (cdr ms)) (null? (cdr segs))) #u)
+                ((all? (lambda ((g facts)) (allof-alike? (car segs) g)) (cdr segs)) #u)
+                (else
+                 (refuse v (string-append "this call, taken apart by `" (string-append x (string-append "`'s members, would be compiled differently with a "
+                             (string-append (show-ty s (car ms)) (string-append " and with a " (show-ty s (car (cdr ms)))))))))))))
+
+      (synth-call-whole (subr kfx (cv st string sexps tys) res)
         (lambda (v s h args expected)
           "A call of a name: a procedure in this group is `spin`, one that is a
            local's value is a call of a procedure not known, so `spin` too. A
