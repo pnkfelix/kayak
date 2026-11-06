@@ -130,6 +130,25 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
     }
 }
 
+/// Each form's tops in turn, as `c-tops`, its file the form's file
+/// (C366).
+pub fn c_filed(mut fts: List<&'static Ftops>, mut c: Code, mut has_value: bool) -> bool {
+    loop {
+        if null_p(fts) {
+            return has_value;
+        } else {
+            let tagcase_ = car(fts);
+            match *tagcase_ {
+                Ftops::Ftops(f, ts) => {
+                    set(cg_form_file(), f);
+                    (fts, has_value) = (cdr(fts), c_tops(ts, c, has_value));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
 // A program's one word, which runs it and leaves the value of its last
 // expression (unit, if it has none), and the words it makes.
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
@@ -140,6 +159,8 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     } else {
         datum_file(car(forms))
     });
+    set(cg_form_file(), get(cg_source()));
+    set(cg_files(), nil::<Str>());
     set(cg_qnodes(), nil::<&'static Qnode>());
     set(cg_convert_facts(), filter(lambda1s(move |x: &'static Fact| {
         let tagcase_ = x;
@@ -188,7 +209,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     set(cg_consts(), nil::<&'static Rgconst>());
     set(cg_form_lambdas(), nil::<&'static Lword>());
     set(cg_standard_twins(), nil::<&'static Stwin>());
-    if c_tops(parse_tops(forms), c, false) {
+    if c_filed(parse_tops_filed(forms), c, false) {
         ()
     } else {
         c_lit(c, l_unit())

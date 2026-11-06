@@ -789,11 +789,11 @@ pub fn r_make_copy_x(sp: &'static Rspecial, lps: Strings, lbody: &'static Cx, fv
     let tagcase_ = sp;
     match *tagcase_ {
         Rspecial::Rspecial(n, ps, body, genv, k, ar, at) => {
-            if not(null_p(r_copy_of(get(cg_copies()), n, cx_start(lbody), fv, -1i64))) {
+            if not(null_p(r_copy_of(get(cg_copies()), n, filed_place(cx_start(lbody)), fv, -1i64))) {
                 ()
             } else {
                 let lambdas = get(cg_form_lambdas());
-                set(c_word_name(), kayak_rt::heap_cons(string_append(n, string_append(str_lit("@lambda@"), i64_to_string(cx_start(lbody)))), kayak_rt::nil()));
+                set(c_word_name(), kayak_rt::heap_cons(string_append(n, string_append(str_lit("@lambda@"), filed_place_written(cx_start(lbody)))), kayak_rt::nil()));
                 set(cg_lambda_at(), at);
                 let tagcase_ = c_lambda_word(ps, body, nil::<&'static Centry>(), nil::<Str>());
                 match *tagcase_ {
@@ -802,7 +802,7 @@ pub fn r_make_copy_x(sp: &'static Rspecial, lps: Strings, lbody: &'static Cx, fv
                         set(cg_twins(), nil::<&'static Twin>());
                         set(cg_standard_twins(), nil::<&'static Stwin>());
                         set(cg_form_lambdas(), lambdas);
-                        set(cg_copies(), kayak_rt::heap_cons(rcopy(n, cx_start(lbody), fv, -1i64, w), get(cg_copies())));
+                        set(cg_copies(), kayak_rt::heap_cons(rcopy(n, filed_place(cx_start(lbody)), fv, -1i64, w), get(cg_copies())));
                         r_copy_twins_made_x(ts, kayak_rt::heap_cons(rspec(sp, lps, lbody, fv, -1i64), kayak_rt::nil()));
                         r_standard_twins_made_x(ss)
                     }

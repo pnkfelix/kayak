@@ -1169,6 +1169,16 @@ pub fn o_session_ready() -> i64 {
 }
 
 #[inline]
+pub fn o_rep_of_nodes() -> i64 {
+    231i64
+}
+
+#[inline]
+pub fn o_rep_nodes() -> i64 {
+    232i64
+}
+
+#[inline]
 pub fn o_fixed() -> i64 {
     1000i64
 }
@@ -1252,7 +1262,7 @@ pub fn fixed_families(ws: List<Str>, w: i64) -> List<&'static Pdef> {
 pub fn prims() -> List<&'static Pdef> {
     static ONCE: std::sync::OnceLock<List<&'static Pdef>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        onto(kayak_rt::heap_cons(pdef(str_lit("list"), 0i64, -1i64, o_list()), kayak_rt::heap_cons(pdef(str_lit("%make-box"), 1i64, 1i64, o_make_box()), kayak_rt::heap_cons(pdef(str_lit("%region-enter"), 0i64, 0i64, o_region_enter()), kayak_rt::heap_cons(pdef(str_lit("%region-exit"), 2i64, 2i64, o_region_exit()), kayak_rt::heap_cons(pdef(str_lit("%region-cons"), 3i64, 3i64, o_region_cons()), kayak_rt::heap_cons(pdef(str_lit("%make-frozen"), 1i64, -1i64, o_make_frozen()), kayak_rt::heap_cons(pdef(str_lit("%fx26-mul"), 2i64, 2i64, o_mul()), kayak_rt::heap_cons(pdef(str_lit("%fx26-quotient"), 2i64, 2i64, o_quotient()), kayak_rt::heap_cons(pdef(str_lit("%fx26-remainder"), 2i64, 2i64, o_remainder()), kayak_rt::heap_cons(pdef(str_lit("%fx26-zero?"), 1i64, 1i64, o_zero()), kayak_rt::heap_cons(pdef(str_lit("set-car!"), 2i64, 2i64, o_set_car()), kayak_rt::heap_cons(pdef(str_lit("set-cdr!"), 2i64, 2i64, o_set_cdr()), kayak_rt::heap_cons(pdef(str_lit("length"), 1i64, 1i64, o_length()), kayak_rt::heap_cons(pdef(str_lit("pair?"), 1i64, 1i64, o_pair()), kayak_rt::heap_cons(pdef(str_lit("exact-integer?"), 1i64, 1i64, o_exact_integer()), kayak_rt::heap_cons(pdef(str_lit("%fx26-nat?"), 1i64, 1i64, o_nat()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list-copy"), 1i64, 1i64, o_list_copy()), kayak_rt::heap_cons(pdef(str_lit("boolean?"), 1i64, 1i64, o_boolean()), kayak_rt::heap_cons(pdef(str_lit("null?"), 1i64, 1i64, o_null()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int-less"), 2i64, 2i64, o_int_less()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int-eq"), 2i64, 2i64, o_int_eq()), kayak_rt::heap_cons(pdef(str_lit("%fx26-add"), 2i64, 2i64, o_add()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sub"), 2i64, 2i64, o_sub()), kayak_rt::heap_cons(pdef(str_lit("modulo"), 2i64, 2i64, o_modulo()), kayak_rt::heap_cons(pdef(str_lit("%fx26-max"), 2i64, 2i64, o_max()), kayak_rt::heap_cons(pdef(str_lit("%fx26-min"), 2i64, 2i64, o_min()), kayak_rt::heap_cons(pdef(str_lit("%fx26-arithmetic-shift"), 2i64, 2i64, o_shift()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-and"), 2i64, 2i64, o_bit_and()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-ior"), 2i64, 2i64, o_bit_ior()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-xor"), 2i64, 2i64, o_bit_xor()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-not"), 1i64, 1i64, o_bit_not()), kayak_rt::heap_cons(pdef(str_lit("number->string"), 1i64, 2i64, o_number_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-fixnum?"), 1i64, 1i64, o_fixnum()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int->f64"), 1i64, 1i64, o_int_f64()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int->f32"), 1i64, 1i64, o_int_f32()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f64->f32"), 1i64, 1i64, o_f64_f32()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f64->bits"), 1i64, 1i64, o_f64_bits()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bits->f64"), 1i64, 1i64, o_bits_f64()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f32->bits"), 1i64, 1i64, o_f32_bits()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bits->f32"), 1i64, 1i64, o_bits_f32()), kayak_rt::heap_cons(pdef(str_lit("append"), 0i64, -1i64, o_append()), kayak_rt::heap_cons(pdef(str_lit("reverse"), 1i64, 1i64, o_reverse()), kayak_rt::heap_cons(pdef(str_lit("list->vector"), 1i64, 1i64, o_list_vector()), kayak_rt::heap_cons(pdef(str_lit("%fx26-append-list"), 1i64, 1i64, o_append_list()), kayak_rt::heap_cons(pdef(str_lit("%fx26-length-is?"), 2i64, 2i64, o_length_is()), kayak_rt::heap_cons(pdef(str_lit("%fx26-first"), 2i64, 2i64, o_first()), kayak_rt::heap_cons(pdef(str_lit("%fx26-acyclic?"), 1i64, 1i64, o_acyclic()), kayak_rt::heap_cons(pdef(str_lit("eq?"), 2i64, 2i64, o_eq()), kayak_rt::heap_cons(pdef(str_lit("not"), 1i64, 1i64, o_not()), kayak_rt::heap_cons(pdef(str_lit("symbol?"), 1i64, 1i64, o_symbol()), kayak_rt::heap_cons(pdef(str_lit("string?"), 1i64, 1i64, o_string()), kayak_rt::heap_cons(pdef(str_lit("char?"), 1i64, 1i64, o_char()), kayak_rt::heap_cons(pdef(str_lit("vector?"), 1i64, 1i64, o_vector()), kayak_rt::heap_cons(pdef(str_lit("bytevector?"), 1i64, 1i64, o_bytevector()), kayak_rt::heap_cons(pdef(str_lit("%fx26-procedure?"), 1i64, 1i64, o_procedure()), kayak_rt::heap_cons(pdef(str_lit("%fx26-array?"), 1i64, 1i64, o_array()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f32?"), 1i64, 1i64, o_f32()), kayak_rt::heap_cons(pdef(str_lit("%fx26-box?"), 1i64, 1i64, o_box()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sum?"), 1i64, 1i64, o_sum()), kayak_rt::heap_cons(pdef(str_lit("%fx26-product?"), 1i64, 1i64, o_product()), kayak_rt::heap_cons(pdef(str_lit("%fx26-datum-f64?"), 1i64, 1i64, o_datum_f64()), kayak_rt::heap_cons(pdef(str_lit("string-length"), 1i64, 1i64, o_string_length()), kayak_rt::heap_cons(pdef(str_lit("string-ref"), 2i64, 2i64, o_string_ref()), kayak_rt::heap_cons(pdef(str_lit("string-append"), 0i64, -1i64, o_string_append()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-append-list"), 1i64, 1i64, o_string_append_list()), kayak_rt::heap_cons(pdef(str_lit("substring"), 3i64, 3i64, o_substring()), kayak_rt::heap_cons(pdef(str_lit("string"), 0i64, -1i64, o_make_string_of()), kayak_rt::heap_cons(pdef(str_lit("string=?"), 1i64, -1i64, o_string_eq()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string<?"), 2i64, 2i64, o_string_lt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string<=?"), 2i64, 2i64, o_string_le()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string>?"), 2i64, 2i64, o_string_gt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string>=?"), 2i64, 2i64, o_string_ge()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-compare"), 2i64, 2i64, o_string_compare()), kayak_rt::heap_cons(pdef(str_lit("%string-hash"), 1i64, 1i64, o_string_hash()), kayak_rt::heap_cons(pdef(str_lit("%symbol-hash"), 1i64, 1i64, o_symbol_hash()), kayak_rt::heap_cons(pdef(str_lit("char->integer"), 1i64, 1i64, o_char_integer()), kayak_rt::heap_cons(pdef(str_lit("integer->char"), 1i64, 1i64, o_integer_char()), kayak_rt::heap_cons(pdef(str_lit("char-upcase"), 1i64, 1i64, o_char_upcase()), kayak_rt::heap_cons(pdef(str_lit("char-downcase"), 1i64, 1i64, o_char_downcase()), kayak_rt::heap_cons(pdef(str_lit("char-numeric?"), 1i64, 1i64, o_char_numeric()), kayak_rt::heap_cons(pdef(str_lit("char-alphabetic?"), 1i64, 1i64, o_char_alphabetic()), kayak_rt::heap_cons(pdef(str_lit("char-whitespace?"), 1i64, 1i64, o_char_whitespace()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char<?"), 2i64, 2i64, o_char_lt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char<=?"), 2i64, 2i64, o_char_le()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char>?"), 2i64, 2i64, o_char_gt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char>=?"), 2i64, 2i64, o_char_ge()), kayak_rt::heap_cons(pdef(str_lit("%fx26-error"), 1i64, 1i64, o_error()), kayak_rt::heap_cons(pdef(str_lit("%make-bloblet"), 1i64, -1i64, o_make_bloblet()), kayak_rt::heap_cons(pdef(str_lit("%make-bloblet-filled"), 3i64, 3i64, o_make_bloblet_filled()), kayak_rt::heap_cons(pdef(str_lit("%bloblet?"), 1i64, 1i64, o_bloblet()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-kind"), 1i64, 1i64, o_bloblet_kind()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-fields"), 1i64, 1i64, o_bloblet_fields()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-bytes"), 1i64, 1i64, o_bloblet_bytes()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-ref"), 2i64, 2i64, o_bloblet_ref()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-set!"), 3i64, 3i64, o_bloblet_set()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-byte"), 2i64, 2i64, o_bloblet_byte()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-set-byte!"), 3i64, 3i64, o_bloblet_set_byte()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-freeze!"), 3i64, 3i64, o_bloblet_freeze()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-frozen?"), 1i64, 1i64, o_bloblet_frozen()), kayak_rt::heap_cons(pdef(str_lit("%fx26-array->list"), 1i64, 1i64, o_array_list()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list->array"), 1i64, 1i64, o_list_array()), kayak_rt::heap_cons(pdef(str_lit("%stay-cellular"), 1i64, 1i64, o_stay_cellular()), kayak_rt::heap_cons(pdef(str_lit("%fx26-native-code?"), 0i64, 0i64, o_native_code()), kayak_rt::heap_cons(pdef(str_lit("%fx26-native-convention"), 0i64, 0i64, o_native_convention()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-eqtable"), 1i64, 1i64, o_make_eqtable()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-ref"), 3i64, 3i64, o_eqtable_ref()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-has?"), 2i64, 2i64, o_eqtable_has()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-count"), 1i64, 1i64, o_eqtable_count()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-set!"), 3i64, 3i64, o_eqtable_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-delete!"), 2i64, 2i64, o_eqtable_delete()), kayak_rt::heap_cons(pdef(str_lit("%fx26-assume"), 1i64, 1i64, o_assume()), kayak_rt::heap_cons(pdef(str_lit("list->string"), 1i64, 1i64, o_list_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-assert"), 1i64, 1i64, o_assert()), kayak_rt::heap_cons(pdef(str_lit("string->symbol"), 1i64, 1i64, o_string_symbol()), kayak_rt::heap_cons(pdef(str_lit("string->list"), 1i64, 1i64, o_string_list()), kayak_rt::heap_cons(pdef(str_lit("symbol->string"), 1i64, 1i64, o_symbol_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-syscall-require"), 3i64, 3i64, o_syscall_require()), kayak_rt::heap_cons(pdef(str_lit("%fx26-syscall-available?"), 2i64, 2i64, o_syscall_available()), kayak_rt::heap_cons(pdef(str_lit("%fx26-syscall"), 3i64, 9i64, o_syscall()), kayak_rt::heap_cons(pdef(str_lit("%fx26-seal-code"), 1i64, 1i64, o_seal_code()), kayak_rt::heap_cons(pdef(str_lit("%fx26-native-procedure"), 1i64, 1i64, o_native_procedure()), kayak_rt::heap_cons(pdef(str_lit("%reap-enter"), 0i64, 0i64, o_reap_enter()), kayak_rt::heap_cons(pdef(str_lit("%region-new"), 2i64, 2i64, o_region_new()), kayak_rt::heap_cons(pdef(str_lit("%region-make-array"), 3i64, 3i64, o_region_make_array()), kayak_rt::heap_cons(pdef(str_lit("%region-make-bloblet"), 2i64, -1i64, o_region_make_bloblet()), kayak_rt::heap_cons(pdef(str_lit("%region-closure"), 2i64, -1i64, o_region_closure()), kayak_rt::heap_cons(pdef(str_lit("%fx26-vlambda"), 1i64, 1i64, o_vlambda()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-icell"), 0i64, 0i64, o_make_icell()), kayak_rt::heap_cons(pdef(str_lit("%region-make-icell"), 1i64, 1i64, o_region_make_icell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-icell-get"), 1i64, 1i64, o_icell_get()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref"), 2i64, 2i64, o_suffix_ref()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref?"), 1i64, 1i64, o_suffix_ref_p()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref+"), 2i64, 2i64, o_suffix_ref_add()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-owner"), 1i64, 1i64, o_suffix_ref_owner()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-offset"), 1i64, 1i64, o_suffix_ref_offset()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-fits"), 2i64, 2i64, o_suffix_fits()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-length"), 2i64, 2i64, o_suffix_ref_length()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-get"), 2i64, 2i64, o_suffix_ref_get()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-index"), 3i64, 3i64, o_suffix_ref_index()), kayak_rt::heap_cons(pdef(str_lit("%fx26-blobref-index"), 3i64, 3i64, o_blobref_index()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-set!"), 3i64, 3i64, o_suffix_ref_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-tag"), 2i64, 2i64, o_flat_tag()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-variant!"), 3i64, 3i64, o_flat_variant()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-no-arm"), 1i64, 1i64, o_flat_no_arm()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u8"), 1i64, 1i64, o_suffix_u8()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u32"), 1i64, 1i64, o_suffix_u32()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u64"), 1i64, 1i64, o_suffix_u64()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-f64"), 1i64, 1i64, o_suffix_f64()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u8-set!"), 2i64, 2i64, o_suffix_u8_set()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u32-set!"), 2i64, 2i64, o_suffix_u32_set()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u64-set!"), 2i64, 2i64, o_suffix_u64_set()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-f64-set!"), 2i64, 2i64, o_suffix_f64_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-i32"), 0i64, 0i64, o_flat_code()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-u32"), 0i64, 0i64, i64_plus(o_flat_code(), 1i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-i64"), 0i64, 0i64, i64_plus(o_flat_code(), 2i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-u64"), 0i64, 0i64, i64_plus(o_flat_code(), 3i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-f32"), 0i64, 0i64, i64_plus(o_flat_code(), 4i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-f64"), 0i64, 0i64, i64_plus(o_flat_code(), 5i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-flatarray"), 3i64, 3i64, o_make_flatarray()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flatarray-ref"), 2i64, 2i64, o_flatarray_ref()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flatarray-set!"), 3i64, 3i64, o_flatarray_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flatarray-length"), 1i64, 1i64, o_flatarray_length()), kayak_rt::heap_cons(pdef(str_lit("make-bytevector"), 1i64, 2i64, o_make_bytevector()), kayak_rt::heap_cons(pdef(str_lit("bytevector-length"), 1i64, 1i64, o_bytevector_length()), kayak_rt::heap_cons(pdef(str_lit("bytevector-u8-ref"), 2i64, 2i64, o_bytevector_ref()), kayak_rt::heap_cons(pdef(str_lit("bytevector-u8-set!"), 3i64, 3i64, o_bytevector_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector-u8-set!"), 3i64, 3i64, o_fx26_bytevector_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector-copy"), 3i64, 3i64, o_bytevector_copy()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector-copy!"), 5i64, 5i64, o_bytevector_copy_into()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector=?"), 2i64, 2i64, o_bytevector_equal()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-string"), 2i64, 2i64, o_make_string()), kayak_rt::heap_cons(pdef(str_lit("%region-make-string"), 3i64, 3i64, o_region_make_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-set!"), 3i64, 3i64, o_string_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-fill!"), 2i64, 2i64, o_string_fill()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-copy"), 3i64, 3i64, o_string_copy()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-copy!"), 5i64, 5i64, o_string_copy_into()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string->utf8"), 1i64, 1i64, o_string_utf8()), kayak_rt::heap_cons(pdef(str_lit("%fx26-utf8->string"), 1i64, 1i64, o_utf8_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector"), 1i64, 1i64, o_bytevector_of()), kayak_rt::heap_cons(pdef(str_lit("%fx26-byte?"), 1i64, 1i64, o_byte()), kayak_rt::heap_cons(pdef(str_lit("%fx26-unit-cell"), 0i64, 0i64, o_unit_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-nil-cell"), 0i64, 0i64, o_nil_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sum-cell"), 2i64, 2i64, o_sum_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-pair-cell"), 2i64, 2i64, o_pair_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-product-cell"), 1i64, 1i64, o_product_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list?"), 1i64, 1i64, o_list_p()), kayak_rt::heap_cons(pdef(str_lit("%fx26-convert"), 2i64, 2i64, o_convert()), kayak_rt::heap_cons(pdef(str_lit("%kayak-stage-run"), 5i64, 5i64, o_kayak_stage()), kayak_rt::heap_cons(pdef(str_lit("%kayak-reify"), 3i64, 3i64, o_kayak_reify()), kayak_rt::heap_cons(pdef(str_lit("%fx26-evidence-bound"), 1i64, 1i64, o_evidence_bound()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-session"), 1i64, 1i64, o_make_session()), kayak_rt::heap_cons(pdef(str_lit("%fx26-session-redefines"), 2i64, 2i64, o_session_redefines()), kayak_rt::heap_cons(pdef(str_lit("%fx26-session-committed!"), 2i64, 2i64, o_session_committed()), kayak_rt::heap_cons(pdef(str_lit("%kayak-session-run"), 5i64, 5i64, o_kayak_session()), kayak_rt::heap_cons(pdef(str_lit("%fx26-session-ready"), 3i64, 3i64, o_session_ready()), kayak_rt::heap_cons(pdef(str_lit("%fx26-intern-datum"), 1i64, 1i64, o_intern_datum()), kayak_rt::heap_cons(pdef(str_lit("%fx26-keyword?"), 1i64, 1i64, o_keyword_p()), kayak_rt::heap_cons(pdef(str_lit("%fx26-symbol->keyword"), 1i64, 1i64, o_symbol_keyword()), kayak_rt::heap_cons(pdef(str_lit("%fx26-keyword->symbol"), 1i64, 1i64, o_keyword_symbol()), kayak_rt::heap_cons(pdef(str_lit("%fx26-file-info"), 1i64, 1i64, o_file_info()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-symlink"), 1i64, 1i64, o_read_symlink()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-start"), 2i64, 2i64, o_process_start()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-output"), 1i64, 1i64, o_process_output()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-status"), 1i64, 1i64, o_process_status()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-write"), 2i64, 2i64, o_process_write()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-close-input"), 1i64, 1i64, o_process_close_input()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-signal"), 2i64, 2i64, o_process_signal()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-exit"), 1i64, 1i64, o_process_exit()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-news"), 0i64, 0i64, o_process_news()), kayak_rt::heap_cons(pdef(str_lit("%fx26-write-out"), 1i64, 1i64, o_write_out()), kayak_rt::heap_cons(pdef(str_lit("%fx26-write-err"), 1i64, 1i64, o_write_err()), kayak_rt::heap_cons(pdef(str_lit("%fx26-exit"), 1i64, 1i64, o_exit()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-line"), 0i64, 0i64, o_read_line()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-byte"), 0i64, 0i64, o_read_byte()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-bytes"), 3i64, 3i64, o_read_bytes()), kayak_rt::heap_cons(pdef(str_lit("%fx26-stdin-ready?"), 0i64, 0i64, o_stdin_ready()), kayak_rt::heap_cons(pdef(str_lit("%fx26-terminal-raw"), 0i64, 0i64, o_terminal_raw()), kayak_rt::heap_cons(pdef(str_lit("%fx26-terminal-restore"), 0i64, 0i64, o_terminal_restore()), kayak_rt::heap_cons(pdef(str_lit("%fx26-terminal-size"), 0i64, 0i64, o_terminal_size()), kayak_rt::heap_cons(pdef(str_lit("%fx26-args"), 0i64, 0i64, o_args()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-file"), 1i64, 1i64, o_read_file()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list-dir"), 1i64, 1i64, o_list_dir()), kayak_rt::heap_cons(pdef(str_lit("%fx26-write-file"), 2i64, 2i64, o_write_file()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sched"), 3i64, 3i64, o_sched()), kayak_rt::heap_cons(pdef(str_lit("%fx26-icell-put!"), 2i64, 2i64, o_icell_put()), kayak_rt::heap_cons(pdef(str_lit("%fx26-preempt-done"), 0i64, 0i64, o_preempt_done()), kayak_rt::heap_cons(pdef(str_lit("%fx26-clock"), 0i64, 0i64, o_clock()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sleep-until"), 1i64, 1i64, o_sleep_until()), kayak_rt::heap_cons(pdef(str_lit("%fx26-address-identity"), 0i64, 0i64, o_address_identity()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char-in?"), 2i64, 2i64, o_char_in()), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))), onto(fixed_families(fixed_widths(), 0i64), onto(family(str_lit("%fx26-f64"), f64_suffixes(), o_f64(), 0i64, 13i64), family(str_lit("%fx26-f32"), f32_suffixes(), o_f32_ops(), 0i64, 13i64))))
+        onto(kayak_rt::heap_cons(pdef(str_lit("list"), 0i64, -1i64, o_list()), kayak_rt::heap_cons(pdef(str_lit("%make-box"), 1i64, 1i64, o_make_box()), kayak_rt::heap_cons(pdef(str_lit("%region-enter"), 0i64, 0i64, o_region_enter()), kayak_rt::heap_cons(pdef(str_lit("%region-exit"), 2i64, 2i64, o_region_exit()), kayak_rt::heap_cons(pdef(str_lit("%region-cons"), 3i64, 3i64, o_region_cons()), kayak_rt::heap_cons(pdef(str_lit("%make-frozen"), 1i64, -1i64, o_make_frozen()), kayak_rt::heap_cons(pdef(str_lit("%fx26-mul"), 2i64, 2i64, o_mul()), kayak_rt::heap_cons(pdef(str_lit("%fx26-quotient"), 2i64, 2i64, o_quotient()), kayak_rt::heap_cons(pdef(str_lit("%fx26-remainder"), 2i64, 2i64, o_remainder()), kayak_rt::heap_cons(pdef(str_lit("%fx26-zero?"), 1i64, 1i64, o_zero()), kayak_rt::heap_cons(pdef(str_lit("set-car!"), 2i64, 2i64, o_set_car()), kayak_rt::heap_cons(pdef(str_lit("set-cdr!"), 2i64, 2i64, o_set_cdr()), kayak_rt::heap_cons(pdef(str_lit("length"), 1i64, 1i64, o_length()), kayak_rt::heap_cons(pdef(str_lit("pair?"), 1i64, 1i64, o_pair()), kayak_rt::heap_cons(pdef(str_lit("exact-integer?"), 1i64, 1i64, o_exact_integer()), kayak_rt::heap_cons(pdef(str_lit("%fx26-nat?"), 1i64, 1i64, o_nat()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list-copy"), 1i64, 1i64, o_list_copy()), kayak_rt::heap_cons(pdef(str_lit("boolean?"), 1i64, 1i64, o_boolean()), kayak_rt::heap_cons(pdef(str_lit("null?"), 1i64, 1i64, o_null()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int-less"), 2i64, 2i64, o_int_less()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int-eq"), 2i64, 2i64, o_int_eq()), kayak_rt::heap_cons(pdef(str_lit("%fx26-add"), 2i64, 2i64, o_add()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sub"), 2i64, 2i64, o_sub()), kayak_rt::heap_cons(pdef(str_lit("modulo"), 2i64, 2i64, o_modulo()), kayak_rt::heap_cons(pdef(str_lit("%fx26-max"), 2i64, 2i64, o_max()), kayak_rt::heap_cons(pdef(str_lit("%fx26-min"), 2i64, 2i64, o_min()), kayak_rt::heap_cons(pdef(str_lit("%fx26-arithmetic-shift"), 2i64, 2i64, o_shift()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-and"), 2i64, 2i64, o_bit_and()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-ior"), 2i64, 2i64, o_bit_ior()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-xor"), 2i64, 2i64, o_bit_xor()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bitwise-not"), 1i64, 1i64, o_bit_not()), kayak_rt::heap_cons(pdef(str_lit("number->string"), 1i64, 2i64, o_number_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-fixnum?"), 1i64, 1i64, o_fixnum()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int->f64"), 1i64, 1i64, o_int_f64()), kayak_rt::heap_cons(pdef(str_lit("%fx26-int->f32"), 1i64, 1i64, o_int_f32()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f64->f32"), 1i64, 1i64, o_f64_f32()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f64->bits"), 1i64, 1i64, o_f64_bits()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bits->f64"), 1i64, 1i64, o_bits_f64()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f32->bits"), 1i64, 1i64, o_f32_bits()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bits->f32"), 1i64, 1i64, o_bits_f32()), kayak_rt::heap_cons(pdef(str_lit("append"), 0i64, -1i64, o_append()), kayak_rt::heap_cons(pdef(str_lit("reverse"), 1i64, 1i64, o_reverse()), kayak_rt::heap_cons(pdef(str_lit("list->vector"), 1i64, 1i64, o_list_vector()), kayak_rt::heap_cons(pdef(str_lit("%fx26-append-list"), 1i64, 1i64, o_append_list()), kayak_rt::heap_cons(pdef(str_lit("%fx26-length-is?"), 2i64, 2i64, o_length_is()), kayak_rt::heap_cons(pdef(str_lit("%fx26-first"), 2i64, 2i64, o_first()), kayak_rt::heap_cons(pdef(str_lit("%fx26-acyclic?"), 1i64, 1i64, o_acyclic()), kayak_rt::heap_cons(pdef(str_lit("eq?"), 2i64, 2i64, o_eq()), kayak_rt::heap_cons(pdef(str_lit("not"), 1i64, 1i64, o_not()), kayak_rt::heap_cons(pdef(str_lit("symbol?"), 1i64, 1i64, o_symbol()), kayak_rt::heap_cons(pdef(str_lit("string?"), 1i64, 1i64, o_string()), kayak_rt::heap_cons(pdef(str_lit("char?"), 1i64, 1i64, o_char()), kayak_rt::heap_cons(pdef(str_lit("vector?"), 1i64, 1i64, o_vector()), kayak_rt::heap_cons(pdef(str_lit("bytevector?"), 1i64, 1i64, o_bytevector()), kayak_rt::heap_cons(pdef(str_lit("%fx26-procedure?"), 1i64, 1i64, o_procedure()), kayak_rt::heap_cons(pdef(str_lit("%fx26-array?"), 1i64, 1i64, o_array()), kayak_rt::heap_cons(pdef(str_lit("%fx26-f32?"), 1i64, 1i64, o_f32()), kayak_rt::heap_cons(pdef(str_lit("%fx26-box?"), 1i64, 1i64, o_box()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sum?"), 1i64, 1i64, o_sum()), kayak_rt::heap_cons(pdef(str_lit("%fx26-product?"), 1i64, 1i64, o_product()), kayak_rt::heap_cons(pdef(str_lit("%fx26-datum-f64?"), 1i64, 1i64, o_datum_f64()), kayak_rt::heap_cons(pdef(str_lit("string-length"), 1i64, 1i64, o_string_length()), kayak_rt::heap_cons(pdef(str_lit("string-ref"), 2i64, 2i64, o_string_ref()), kayak_rt::heap_cons(pdef(str_lit("string-append"), 0i64, -1i64, o_string_append()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-append-list"), 1i64, 1i64, o_string_append_list()), kayak_rt::heap_cons(pdef(str_lit("substring"), 3i64, 3i64, o_substring()), kayak_rt::heap_cons(pdef(str_lit("string"), 0i64, -1i64, o_make_string_of()), kayak_rt::heap_cons(pdef(str_lit("string=?"), 1i64, -1i64, o_string_eq()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string<?"), 2i64, 2i64, o_string_lt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string<=?"), 2i64, 2i64, o_string_le()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string>?"), 2i64, 2i64, o_string_gt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string>=?"), 2i64, 2i64, o_string_ge()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-compare"), 2i64, 2i64, o_string_compare()), kayak_rt::heap_cons(pdef(str_lit("%string-hash"), 1i64, 1i64, o_string_hash()), kayak_rt::heap_cons(pdef(str_lit("%symbol-hash"), 1i64, 1i64, o_symbol_hash()), kayak_rt::heap_cons(pdef(str_lit("char->integer"), 1i64, 1i64, o_char_integer()), kayak_rt::heap_cons(pdef(str_lit("integer->char"), 1i64, 1i64, o_integer_char()), kayak_rt::heap_cons(pdef(str_lit("char-upcase"), 1i64, 1i64, o_char_upcase()), kayak_rt::heap_cons(pdef(str_lit("char-downcase"), 1i64, 1i64, o_char_downcase()), kayak_rt::heap_cons(pdef(str_lit("char-numeric?"), 1i64, 1i64, o_char_numeric()), kayak_rt::heap_cons(pdef(str_lit("char-alphabetic?"), 1i64, 1i64, o_char_alphabetic()), kayak_rt::heap_cons(pdef(str_lit("char-whitespace?"), 1i64, 1i64, o_char_whitespace()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char<?"), 2i64, 2i64, o_char_lt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char<=?"), 2i64, 2i64, o_char_le()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char>?"), 2i64, 2i64, o_char_gt()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char>=?"), 2i64, 2i64, o_char_ge()), kayak_rt::heap_cons(pdef(str_lit("%fx26-error"), 1i64, 1i64, o_error()), kayak_rt::heap_cons(pdef(str_lit("%make-bloblet"), 1i64, -1i64, o_make_bloblet()), kayak_rt::heap_cons(pdef(str_lit("%make-bloblet-filled"), 3i64, 3i64, o_make_bloblet_filled()), kayak_rt::heap_cons(pdef(str_lit("%bloblet?"), 1i64, 1i64, o_bloblet()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-kind"), 1i64, 1i64, o_bloblet_kind()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-fields"), 1i64, 1i64, o_bloblet_fields()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-bytes"), 1i64, 1i64, o_bloblet_bytes()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-ref"), 2i64, 2i64, o_bloblet_ref()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-set!"), 3i64, 3i64, o_bloblet_set()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-byte"), 2i64, 2i64, o_bloblet_byte()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-set-byte!"), 3i64, 3i64, o_bloblet_set_byte()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-freeze!"), 3i64, 3i64, o_bloblet_freeze()), kayak_rt::heap_cons(pdef(str_lit("%bloblet-frozen?"), 1i64, 1i64, o_bloblet_frozen()), kayak_rt::heap_cons(pdef(str_lit("%fx26-array->list"), 1i64, 1i64, o_array_list()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list->array"), 1i64, 1i64, o_list_array()), kayak_rt::heap_cons(pdef(str_lit("%stay-cellular"), 1i64, 1i64, o_stay_cellular()), kayak_rt::heap_cons(pdef(str_lit("%fx26-native-code?"), 0i64, 0i64, o_native_code()), kayak_rt::heap_cons(pdef(str_lit("%fx26-native-convention"), 0i64, 0i64, o_native_convention()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-eqtable"), 1i64, 1i64, o_make_eqtable()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-ref"), 3i64, 3i64, o_eqtable_ref()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-has?"), 2i64, 2i64, o_eqtable_has()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-count"), 1i64, 1i64, o_eqtable_count()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-set!"), 3i64, 3i64, o_eqtable_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-eqtable-delete!"), 2i64, 2i64, o_eqtable_delete()), kayak_rt::heap_cons(pdef(str_lit("%fx26-assume"), 1i64, 1i64, o_assume()), kayak_rt::heap_cons(pdef(str_lit("list->string"), 1i64, 1i64, o_list_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-rep-of-nodes"), 3i64, 3i64, o_rep_of_nodes()), kayak_rt::heap_cons(pdef(str_lit("%fx26-rep-nodes"), 2i64, 2i64, o_rep_nodes()), kayak_rt::heap_cons(pdef(str_lit("%fx26-assert"), 1i64, 1i64, o_assert()), kayak_rt::heap_cons(pdef(str_lit("string->symbol"), 1i64, 1i64, o_string_symbol()), kayak_rt::heap_cons(pdef(str_lit("string->list"), 1i64, 1i64, o_string_list()), kayak_rt::heap_cons(pdef(str_lit("symbol->string"), 1i64, 1i64, o_symbol_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-syscall-require"), 3i64, 3i64, o_syscall_require()), kayak_rt::heap_cons(pdef(str_lit("%fx26-syscall-available?"), 2i64, 2i64, o_syscall_available()), kayak_rt::heap_cons(pdef(str_lit("%fx26-syscall"), 3i64, 9i64, o_syscall()), kayak_rt::heap_cons(pdef(str_lit("%fx26-seal-code"), 1i64, 1i64, o_seal_code()), kayak_rt::heap_cons(pdef(str_lit("%fx26-native-procedure"), 1i64, 1i64, o_native_procedure()), kayak_rt::heap_cons(pdef(str_lit("%reap-enter"), 0i64, 0i64, o_reap_enter()), kayak_rt::heap_cons(pdef(str_lit("%region-new"), 2i64, 2i64, o_region_new()), kayak_rt::heap_cons(pdef(str_lit("%region-make-array"), 3i64, 3i64, o_region_make_array()), kayak_rt::heap_cons(pdef(str_lit("%region-make-bloblet"), 2i64, -1i64, o_region_make_bloblet()), kayak_rt::heap_cons(pdef(str_lit("%region-closure"), 2i64, -1i64, o_region_closure()), kayak_rt::heap_cons(pdef(str_lit("%fx26-vlambda"), 1i64, 1i64, o_vlambda()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-icell"), 0i64, 0i64, o_make_icell()), kayak_rt::heap_cons(pdef(str_lit("%region-make-icell"), 1i64, 1i64, o_region_make_icell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-icell-get"), 1i64, 1i64, o_icell_get()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref"), 2i64, 2i64, o_suffix_ref()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref?"), 1i64, 1i64, o_suffix_ref_p()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref+"), 2i64, 2i64, o_suffix_ref_add()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-owner"), 1i64, 1i64, o_suffix_ref_owner()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-offset"), 1i64, 1i64, o_suffix_ref_offset()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-fits"), 2i64, 2i64, o_suffix_fits()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-length"), 2i64, 2i64, o_suffix_ref_length()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-get"), 2i64, 2i64, o_suffix_ref_get()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-index"), 3i64, 3i64, o_suffix_ref_index()), kayak_rt::heap_cons(pdef(str_lit("%fx26-blobref-index"), 3i64, 3i64, o_blobref_index()), kayak_rt::heap_cons(pdef(str_lit("%fx26-suffix-ref-set!"), 3i64, 3i64, o_suffix_ref_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-tag"), 2i64, 2i64, o_flat_tag()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-variant!"), 3i64, 3i64, o_flat_variant()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-no-arm"), 1i64, 1i64, o_flat_no_arm()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u8"), 1i64, 1i64, o_suffix_u8()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u32"), 1i64, 1i64, o_suffix_u32()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u64"), 1i64, 1i64, o_suffix_u64()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-f64"), 1i64, 1i64, o_suffix_f64()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u8-set!"), 2i64, 2i64, o_suffix_u8_set()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u32-set!"), 2i64, 2i64, o_suffix_u32_set()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-u64-set!"), 2i64, 2i64, o_suffix_u64_set()), kayak_rt::heap_cons(pdef(str_lit("%suffix-ref-f64-set!"), 2i64, 2i64, o_suffix_f64_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-i32"), 0i64, 0i64, o_flat_code()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-u32"), 0i64, 0i64, i64_plus(o_flat_code(), 1i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-i64"), 0i64, 0i64, i64_plus(o_flat_code(), 2i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-u64"), 0i64, 0i64, i64_plus(o_flat_code(), 3i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-f32"), 0i64, 0i64, i64_plus(o_flat_code(), 4i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-flat-f64"), 0i64, 0i64, i64_plus(o_flat_code(), 5i64)), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-flatarray"), 3i64, 3i64, o_make_flatarray()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flatarray-ref"), 2i64, 2i64, o_flatarray_ref()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flatarray-set!"), 3i64, 3i64, o_flatarray_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-flatarray-length"), 1i64, 1i64, o_flatarray_length()), kayak_rt::heap_cons(pdef(str_lit("make-bytevector"), 1i64, 2i64, o_make_bytevector()), kayak_rt::heap_cons(pdef(str_lit("bytevector-length"), 1i64, 1i64, o_bytevector_length()), kayak_rt::heap_cons(pdef(str_lit("bytevector-u8-ref"), 2i64, 2i64, o_bytevector_ref()), kayak_rt::heap_cons(pdef(str_lit("bytevector-u8-set!"), 3i64, 3i64, o_bytevector_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector-u8-set!"), 3i64, 3i64, o_fx26_bytevector_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector-copy"), 3i64, 3i64, o_bytevector_copy()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector-copy!"), 5i64, 5i64, o_bytevector_copy_into()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector=?"), 2i64, 2i64, o_bytevector_equal()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-string"), 2i64, 2i64, o_make_string()), kayak_rt::heap_cons(pdef(str_lit("%region-make-string"), 3i64, 3i64, o_region_make_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-set!"), 3i64, 3i64, o_string_set()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-fill!"), 2i64, 2i64, o_string_fill()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-copy"), 3i64, 3i64, o_string_copy()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string-copy!"), 5i64, 5i64, o_string_copy_into()), kayak_rt::heap_cons(pdef(str_lit("%fx26-string->utf8"), 1i64, 1i64, o_string_utf8()), kayak_rt::heap_cons(pdef(str_lit("%fx26-utf8->string"), 1i64, 1i64, o_utf8_string()), kayak_rt::heap_cons(pdef(str_lit("%fx26-bytevector"), 1i64, 1i64, o_bytevector_of()), kayak_rt::heap_cons(pdef(str_lit("%fx26-byte?"), 1i64, 1i64, o_byte()), kayak_rt::heap_cons(pdef(str_lit("%fx26-unit-cell"), 0i64, 0i64, o_unit_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-nil-cell"), 0i64, 0i64, o_nil_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sum-cell"), 2i64, 2i64, o_sum_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-pair-cell"), 2i64, 2i64, o_pair_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-product-cell"), 1i64, 1i64, o_product_cell()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list?"), 1i64, 1i64, o_list_p()), kayak_rt::heap_cons(pdef(str_lit("%fx26-convert"), 2i64, 2i64, o_convert()), kayak_rt::heap_cons(pdef(str_lit("%kayak-stage-run"), 5i64, 5i64, o_kayak_stage()), kayak_rt::heap_cons(pdef(str_lit("%kayak-reify"), 3i64, 3i64, o_kayak_reify()), kayak_rt::heap_cons(pdef(str_lit("%fx26-evidence-bound"), 1i64, 1i64, o_evidence_bound()), kayak_rt::heap_cons(pdef(str_lit("%fx26-make-session"), 1i64, 1i64, o_make_session()), kayak_rt::heap_cons(pdef(str_lit("%fx26-session-redefines"), 2i64, 2i64, o_session_redefines()), kayak_rt::heap_cons(pdef(str_lit("%fx26-session-committed!"), 2i64, 2i64, o_session_committed()), kayak_rt::heap_cons(pdef(str_lit("%kayak-session-run"), 5i64, 5i64, o_kayak_session()), kayak_rt::heap_cons(pdef(str_lit("%fx26-session-ready"), 3i64, 3i64, o_session_ready()), kayak_rt::heap_cons(pdef(str_lit("%fx26-intern-datum"), 1i64, 1i64, o_intern_datum()), kayak_rt::heap_cons(pdef(str_lit("%fx26-keyword?"), 1i64, 1i64, o_keyword_p()), kayak_rt::heap_cons(pdef(str_lit("%fx26-symbol->keyword"), 1i64, 1i64, o_symbol_keyword()), kayak_rt::heap_cons(pdef(str_lit("%fx26-keyword->symbol"), 1i64, 1i64, o_keyword_symbol()), kayak_rt::heap_cons(pdef(str_lit("%fx26-file-info"), 1i64, 1i64, o_file_info()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-symlink"), 1i64, 1i64, o_read_symlink()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-start"), 2i64, 2i64, o_process_start()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-output"), 1i64, 1i64, o_process_output()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-status"), 1i64, 1i64, o_process_status()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-write"), 2i64, 2i64, o_process_write()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-close-input"), 1i64, 1i64, o_process_close_input()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-signal"), 2i64, 2i64, o_process_signal()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-exit"), 1i64, 1i64, o_process_exit()), kayak_rt::heap_cons(pdef(str_lit("%fx26-process-news"), 0i64, 0i64, o_process_news()), kayak_rt::heap_cons(pdef(str_lit("%fx26-write-out"), 1i64, 1i64, o_write_out()), kayak_rt::heap_cons(pdef(str_lit("%fx26-write-err"), 1i64, 1i64, o_write_err()), kayak_rt::heap_cons(pdef(str_lit("%fx26-exit"), 1i64, 1i64, o_exit()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-line"), 0i64, 0i64, o_read_line()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-byte"), 0i64, 0i64, o_read_byte()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-bytes"), 3i64, 3i64, o_read_bytes()), kayak_rt::heap_cons(pdef(str_lit("%fx26-stdin-ready?"), 0i64, 0i64, o_stdin_ready()), kayak_rt::heap_cons(pdef(str_lit("%fx26-terminal-raw"), 0i64, 0i64, o_terminal_raw()), kayak_rt::heap_cons(pdef(str_lit("%fx26-terminal-restore"), 0i64, 0i64, o_terminal_restore()), kayak_rt::heap_cons(pdef(str_lit("%fx26-terminal-size"), 0i64, 0i64, o_terminal_size()), kayak_rt::heap_cons(pdef(str_lit("%fx26-args"), 0i64, 0i64, o_args()), kayak_rt::heap_cons(pdef(str_lit("%fx26-read-file"), 1i64, 1i64, o_read_file()), kayak_rt::heap_cons(pdef(str_lit("%fx26-list-dir"), 1i64, 1i64, o_list_dir()), kayak_rt::heap_cons(pdef(str_lit("%fx26-write-file"), 2i64, 2i64, o_write_file()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sched"), 3i64, 3i64, o_sched()), kayak_rt::heap_cons(pdef(str_lit("%fx26-icell-put!"), 2i64, 2i64, o_icell_put()), kayak_rt::heap_cons(pdef(str_lit("%fx26-preempt-done"), 0i64, 0i64, o_preempt_done()), kayak_rt::heap_cons(pdef(str_lit("%fx26-clock"), 0i64, 0i64, o_clock()), kayak_rt::heap_cons(pdef(str_lit("%fx26-sleep-until"), 1i64, 1i64, o_sleep_until()), kayak_rt::heap_cons(pdef(str_lit("%fx26-address-identity"), 0i64, 0i64, o_address_identity()), kayak_rt::heap_cons(pdef(str_lit("%fx26-char-in?"), 2i64, 2i64, o_char_in()), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))), onto(fixed_families(fixed_widths(), 0i64), onto(family(str_lit("%fx26-f64"), f64_suffixes(), o_f64(), 0i64, 13i64), family(str_lit("%fx26-f32"), f32_suffixes(), o_f32_ops(), 0i64, 13i64))))
     })
 }
 
@@ -2140,22 +2150,65 @@ pub fn width_name(w: i64) -> Str {
     }
 }
 
-/// `x`'s low bits, sign-extended if the width is signed (`Width::wrap`).
+// Each width's range, its least value and one past its greatest, made once
+// (C366): made at each call, a 64-bit width's were bignums, never freed,
+// two at every `i64` operation tier 1 ran.
+pub fn width_ranges() -> List<Int> {
+    static ONCE: std::sync::OnceLock<List<Int>> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(int_lit(-128), kayak_rt::heap_cons(int_lit(128), kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(256), kayak_rt::heap_cons(int_lit(-2147483648), kayak_rt::heap_cons(int_lit(2147483648), kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(4294967296), kayak_rt::heap_cons(_minus(int_lit(0), arithmetic_shift(int_lit(1), int_lit(63))), kayak_rt::heap_cons(arithmetic_shift(int_lit(1), int_lit(63)), kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(arithmetic_shift(int_lit(1), int_lit(64)), kayak_rt::nil()))))))))))))
+    })
+}
+
+pub fn int_nth(mut xs: List<Int>, mut k: i64) -> Int {
+    loop {
+        if i64_eq(k, 0i64) {
+            return car(xs);
+        } else {
+            (xs, k) = (cdr(xs), i64_minus(k, 1i64));
+            continue;
+        }
+    }
+}
+
+/// `x`'s low bits, sign-extended if the width is signed (`Width::wrap`);
+/// `x` itself, if it is of the width already.
 pub fn int_wrapped(w: i64, x: Int) -> Int {
-    let b = i64_to_int(width_bits(w));
-    let m = arithmetic_shift(int_lit(1), b);
-    let low = modulo(x, m);
-    if (width_signed_p(w) && _gt_eq(low, arithmetic_shift(int_lit(1), _minus(b, int_lit(1))))) {
-        _minus(low, m)
+    if (_gt_eq(x, int_nth(width_ranges(), i64_star(2i64, w))) && _lt(x, int_nth(width_ranges(), i64_plus(i64_star(2i64, w), 1i64)))) {
+        x
     } else {
-        low
+        let b = i64_to_int(width_bits(w));
+        let m = arithmetic_shift(int_lit(1), b);
+        let low = modulo(x, m);
+        if (width_signed_p(w) && _gt_eq(low, arithmetic_shift(int_lit(1), _minus(b, int_lit(1))))) {
+            _minus(low, m)
+        } else {
+            low
+        }
+    }
+}
+
+/// Whether fixnum value `x` (61 bits) is of width `w`: by `i64`s alone
+/// (C366), where `int-wrapped`'s `int`s made a bignum, never freed, for
+/// each check of a 64-bit width, at every `i64` operation.
+pub fn fixnum_in_p(w: i64, x: i64) -> bool {
+    let b = width_bits(w);
+    if i64_eq(b, 64i64) {
+        (width_signed_p(w) || i64_gt_eq(x, 0i64))
+    } else if width_signed_p(w) {
+        (i64_gt_eq(x, i64_minus(0i64, i64_shl(1i64, i64_to_int(i64_minus(b, 1i64))))) && i64_lt(x, i64_shl(1i64, i64_to_int(i64_minus(b, 1i64)))))
+    } else {
+        (i64_gt_eq(x, 0i64) && i64_lt(x, i64_shl(1i64, i64_to_int(b))))
     }
 }
 
 /// Whether `v` is a value of width `w` (`fixed_in`).
-#[inline]
 pub fn fixed_in_p(w: i64, v: i64) -> bool {
-    (is_integer_p(v) && _eq(int_wrapped(w, int_of(v)), int_of(v)))
+    if is_fixnum_p(v) {
+        fixnum_in_p(w, fix_val(v))
+    } else {
+        (is_integer_p(v) && _eq(int_wrapped(w, int_of(v)), int_of(v)))
+    }
 }
 
 // A list in the heap of the characters `cs`.
@@ -2409,21 +2462,26 @@ pub fn tier1_page_words() -> i64 {
 }
 
 // `list->string`'s (C220): whether a proper list's elements are all
-// characters; their text.
+// characters; their text, made once from them (C366): appended a
+// character at a time, each step a new string, never freed, the compiler's
+// output of a module cost its length squared.
 #[inline]
 pub fn chars_p(l: i64) -> bool {
     (not(is_pair_p(l)) || (is_char_p(pair_car(l)) && chars_p(pair_cdr(l))))
 }
 
-pub fn chars_text(mut l: i64, mut acc: Str) -> Str {
-    loop {
-        if is_pair_p(l) {
-            (l, acc) = (pair_cdr(l), string_append(acc, char_to_string(i64_to_char(char_code(pair_car(l))))));
-            continue;
-        } else {
-            return acc;
-        }
+#[inline]
+pub fn heap_chars(l: i64) -> Chars {
+    if is_pair_p(l) {
+        kayak_rt::heap_cons(i64_to_char(char_code(pair_car(l))), heap_chars(pair_cdr(l)))
+    } else {
+        nil::<char>()
     }
+}
+
+#[inline]
+pub fn chars_text(l: i64) -> Str {
+    list_to_string(heap_chars(l))
 }
 
 // Tables keyed by identity (C220), Fixpt's (`eqtable.rs`, C329): a bloblet
@@ -4395,6 +4453,179 @@ pub fn flats_filled_x(mut arr: i64, mut size: i64, mut bits: i64, mut i: i64, mu
     }
 }
 
+// Fixpt's `%fx26-rep-of-nodes` and `%fx26-rep-nodes` (C366; its
+// `fixpt-reps`, which kayak-rt has whole): tier 1's nodes, products and sums
+// of its heap, made KFX's for kayak-rt's `rep-of-nodes`, and `rep-nodes`'
+// made tier 1's again. A product's field K in slot K+1, a sum's tag and
+// value in slots 2 and 3, as `frozen2!` and `fx26-sum!` make them. The
+// compiler uses them since its types became reps (C301), so that without
+// them it could not run on tier 1.
+#[inline]
+pub fn rp_int(w: i64) -> Int {
+    if is_fixnum_p(w) {
+        i64_to_int(fix_val(w))
+    } else {
+        expected_x(str_lit("a fixnum"));
+        i64_to_int(0i64)
+    }
+}
+
+pub fn rp_operand_of(s: i64) -> RpOperand {
+    let (tag, v) = (symbol_text(slot_of(s, 2i64)), slot_of(s, 3i64));
+    if string_eq_p(tag, str_lit("node")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(rp_int(v))))
+    } else if string_eq_p(tag, str_lit("bound")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Bound(Product_11_12(rp_int(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64))))))
+    } else if string_eq_p(tag, str_lit("hole")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(rp_int(v))))
+    } else if string_eq_p(tag, str_lit("const")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Const(Product_11_12_13(string_text(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)), string_text(slot_of(v, 4i64))))))
+    } else if string_eq_p(tag, str_lit("sym")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(string_to_symbol(symbol_text(v)))))
+    } else if string_eq_p(tag, str_lit("int")) {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(rp_int(v))))
+    } else {
+        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(i64_eq(v, v_true()))))
+    }
+}
+
+#[inline]
+pub fn rp_symbols_of(l: i64) -> List<Symbol> {
+    if is_pair_p(l) {
+        kayak_rt::heap_cons(string_to_symbol(symbol_text(pair_car(l))), rp_symbols_of(pair_cdr(l)))
+    } else {
+        nil::<Symbol>()
+    }
+}
+
+#[inline]
+pub fn rp_strings_of(l: i64) -> Strings {
+    if is_pair_p(l) {
+        kayak_rt::heap_cons(string_text(pair_car(l)), rp_strings_of(pair_cdr(l)))
+    } else {
+        nil::<Str>()
+    }
+}
+
+#[inline]
+pub fn rp_operands_of(l: i64) -> RpOperands {
+    if is_pair_p(l) {
+        kayak_rt::heap_cons(rp_operand_of(pair_car(l)), rp_operands_of(pair_cdr(l)))
+    } else {
+        nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()
+    }
+}
+
+pub fn rp_nodes_of(l: i64) -> RpNodes {
+    if is_pair_p(l) {
+        let n = pair_car(l);
+        kayak_rt::heap_cons(the::<RpNode>(Product_11_12_13_14_15(rp_int(slot_of(n, 2i64)), string_to_symbol(symbol_text(slot_of(n, 3i64))), i64_eq(slot_of(n, 4i64), v_true()), rp_symbols_of(slot_of(n, 5i64)), rp_operands_of(slot_of(n, 6i64)))), rp_nodes_of(pair_cdr(l)))
+    } else {
+        nil::<Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>>>()
+    }
+}
+
+#[inline]
+pub fn rp_word(n: Int) -> i64 {
+    fix(int_to_i64(n))
+}
+
+pub fn frozen3_x(k: i64, x: i64, y: i64, z: i64) -> i64 {
+    let b = make_bloblet_x(k, 3i64, 0i64, true, false);
+    slot_set_x(b, 2i64, x);
+    slot_set_x(b, 3i64, y);
+    slot_set_x(b, 4i64, z);
+    frozen_whole_x(b);
+    b
+}
+
+pub fn frozen5_x(k: i64, v: i64, w: i64, x: i64, y: i64, z: i64) -> i64 {
+    let b = make_bloblet_x(k, 5i64, 0i64, true, false);
+    slot_set_x(b, 2i64, v);
+    slot_set_x(b, 3i64, w);
+    slot_set_x(b, 4i64, x);
+    slot_set_x(b, 5i64, y);
+    slot_set_x(b, 6i64, z);
+    frozen_whole_x(b);
+    b
+}
+
+pub fn rp_operand_word_x(o: RpOperand) -> i64 {
+    let tagcase_ = o;
+    match *tagcase_ {
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(n) => {
+            fx26_sum_x(str_lit("node"), rp_word(n))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
+            fx26_sum_x(str_lit("bound"), frozen2_x(k_product(), rp_word(p.0), rp_word(p.1)))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(n) => {
+            fx26_sum_x(str_lit("hole"), rp_word(n))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Const(p) => {
+            fx26_sum_x(str_lit("const"), frozen3_x(k_product(), make_string_x(p.0), rp_word(p.1), make_string_x(p.2)))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Sym(y) => {
+            fx26_sum_x(str_lit("sym"), symbol_x(symbol_to_string(y)))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Int(n) => {
+            fx26_sum_x(str_lit("int"), rp_word(n))
+        }
+        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Flag(b) => {
+            fx26_sum_x(str_lit("flag"), boolean(b))
+        }
+    }
+}
+
+pub fn rp_symbols_word_x(ys: List<Symbol>) -> i64 {
+    if null_p(ys) {
+        v_null()
+    } else {
+        let rest = rp_symbols_word_x(cdr(ys));
+        cons_x(symbol_x(symbol_to_string(car(ys))), rest)
+    }
+}
+
+#[inline]
+pub fn rp_operands_word_x(os: RpOperands) -> i64 {
+    if null_p(os) {
+        v_null()
+    } else {
+        let rest = rp_operands_word_x(cdr(os));
+        cons_x(rp_operand_word_x(car(os)), rest)
+    }
+}
+
+pub fn rp_nodes_word_x(ns: RpNodes) -> i64 {
+    if null_p(ns) {
+        v_null()
+    } else {
+        let rest = rp_nodes_word_x(cdr(ns));
+        let n = car(ns);
+        let w = frozen5_x(k_product(), rp_word(n.0), symbol_x(symbol_to_string(n.1)), boolean(n.2), rp_symbols_word_x(n.3), rp_operands_word_x(n.4));
+        cons_x(w, rest)
+    }
+}
+
+pub fn rep_of_nodes_x(ns: i64, hs: i64, root: i64) -> i64 {
+    let kb = the::<Bytes>(rep_of_nodes(rp_nodes_of(ns), rp_symbols_of(hs), rp_int(root)));
+    let n = int_to_i64(bytevector_length(kb));
+    let v = make_bv_x(n);
+    bytes_from_kfx_x(kb, v, 0i64, 0i64, n);
+    v
+}
+
+pub fn rep_nodes_x(b: i64, names: i64) -> i64 {
+    if not(is_kind_p(b, k_bytevector())) {
+        expected_x(str_lit("a bytevector"))
+    } else {
+        let kb = the::<Bytes>(make_bytevector(i64_to_int(bv_length(b)), int_to_u8(int_lit(0))));
+        kfx_bytes_of_x(kb, b, 0i64, bv_length(b));
+        let got = (&rep_nodes)(kb, rp_strings_of(names));
+        frozen2_x(k_product(), rp_nodes_word_x(got.0), rp_symbols_word_x(got.1))
+    }
+}
+
 /// Primitive `p` given its arguments, `pargs`: its value.
 pub fn prim_apply_x(p: i64) -> i64 {
     let op = prim_op(p);
@@ -5073,7 +5304,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else if not(chars_p(a)) {
             expected_x(str_lit("a character"))
         } else {
-            make_string_x(chars_text(a, str_lit("")))
+            make_string_x(chars_text(a))
         }
     } else if (i64_eq(op, o_eqtable_ref()) || i64_eq(op, o_eqtable_has()) || i64_eq(op, o_eqtable_count()) || i64_eq(op, o_eqtable_set()) || i64_eq(op, o_eqtable_delete())) {
         if not(is_kind_p(a, k_eqtable())) {
@@ -5520,6 +5751,10 @@ pub fn prim_apply_x(p: i64) -> i64 {
         io_op_x(op, a, b, parg(2i64))
     } else if i64_eq(op, o_kayak_reify()) {
         reify_run_x(parg(0i64), rep_of_text_x(string_text(parg(1i64))), parg(2i64))
+    } else if i64_eq(op, o_rep_of_nodes()) {
+        rep_of_nodes_x(a, b, c)
+    } else if i64_eq(op, o_rep_nodes()) {
+        rep_nodes_x(a, b)
     } else if i64_eq(op, o_evidence_bound()) {
         parg(0i64)
     } else if i64_eq(op, o_make_session()) {

@@ -1100,7 +1100,7 @@
                     (r-decline g)
                     (tagcase (car m)
                       (rmade (w fv)
-                        (let ((copy (r-copy-of (get cg-copies) (rspecial-name sp) (cx-start lbody) fv (r-genv env))))
+                        (let ((copy (r-copy-of (get cg-copies) (rspecial-name sp) (filed-place (cx-start lbody)) fv (r-genv env))))
                           (if (null? copy) (r-decline g) (r-specialized-call g (rspecial-name sp) (car copy) args env te tail))))))))
             (else y (r-decline g)))))))
   (r-specialized-call (subr gen (rgen string string cxs renv cenv bool) unit)

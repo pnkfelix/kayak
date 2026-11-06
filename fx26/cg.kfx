@@ -216,6 +216,44 @@
 (define cg-facts (ref facts @g) (new nil))
 "The program's file, for its words' line tables (C245)."
 (define cg-source (ref string @g) (new ""))
+
+"The file of the form being compiled, and the files met after the
+ program's own, in order (C366). A word named for a place, and a copy
+ keyed by one, take its file too where it is not the program's: two
+ files' lambdas at one offset had one name, and could have shared one
+ copy. Fixpt writes such a place `FILE:START`, its file's number and its
+ byte offset; kayak the file's number here and its character offset."
+(define cg-form-file (ref string @g) (new ""))
+(define cg-files (ref strings @g) (new nil))
+
+(define-rec
+  (file-number (subr kfx (strings string i64) i64)
+    (lambda (fs f k) (cond ((null? fs) -1) ((string=? (car fs) f) k) (else (file-number (cdr fs) f (i64+ k 1)))))))
+
+(define form-file-number! (subr gen () i64)
+  (lambda ()
+    "The form's file's number: 0, the program's own; else from 1, in the
+     order met."
+    (let ((f (get cg-form-file)))
+      (if (or (string=? f "") (string=? f (get cg-source)))
+          0
+          (let ((k (file-number (get cg-files) f 1)))
+            (if (i64> k 0)
+                k
+                (begin (set cg-files (onto (get cg-files) (list f))) (size (get cg-files)))))))))
+
+(define filed-place (subr gen (i64) i64)
+  (lambda (p)
+    "Place `p` of the form being compiled, its file's number above its
+     offset; the offset alone in the program's own file."
+    (i64+ (i64* (form-file-number!) 4294967296) p)))
+
+(define filed-place-written (subr gen (i64) string)
+  (lambda (p)
+    "Place `p` as a word's name has it: `FILE:OFFSET` outside the program's
+     own file, as Fixpt's `cellular.rs` writes it, the offset alone in it."
+    (let ((k (form-file-number!)))
+      (if (i64= k 0) (i64->string p) (string-append (i64->string k) (string-append ":" (i64->string p)))))))
 "The source position of the expression being compiled (C245)."
 (define cg-at (ref i64 @g) (new 0))
 
@@ -1907,7 +1945,7 @@
 
 (define c-word-symbol (subr gen (string strings cx) string)
   (lambda (base named body)
-    (if (null? named) (string-append base (string-append "@" (i64->string (cx-start body)))) (car named))))
+    (if (null? named) (string-append base (string-append "@" (filed-place-written (cx-start body)))) (car named))))
 
 ;;; ------------------------------------------------- standard operations
 
@@ -2703,9 +2741,11 @@
     (lambda (bs) (if (null? bs) #u (tagcase (car bs) (cbind (n x) (begin (c-push-global! n) (c-rec-globals! (cdr bs)))))))))
 
 
+"Each form's tops, with its file (C366)."
+(define-datatype ftops (ftops string (listof ctop acyclic)))
 (define-rec
-  (parse-tops (subr gen (sexps) (listof ctop acyclic))
-    (lambda (fs) (if (null? fs) nil (let ((t (parse-top (car fs)))) (onto t (parse-tops (cdr fs))))))))
+  (parse-tops-filed (subr gen (sexps) (listof ftops acyclic))
+    (lambda (fs) (if (null? fs) nil (let ((t (parse-top (car fs)))) (cons (ftops (datum-file (car fs)) t) (parse-tops-filed (cdr fs))))))))
 
 "A word's line table (C245): `; at FILE CELL:POS …`, each where an
  expression's code begins and its source position, the source the

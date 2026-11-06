@@ -257,6 +257,8 @@
 (define o-session-committed i64 228)
 (define o-kayak-session i64 229)
 (define o-session-ready i64 230)
+(define o-rep-of-nodes i64 231)
+(define o-rep-nodes i64 232)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -340,6 +342,7 @@
          (pdef "%fx26-eqtable-has?" 2 2 o-eqtable-has) (pdef "%fx26-eqtable-count" 1 1 o-eqtable-count)
          (pdef "%fx26-eqtable-set!" 3 3 o-eqtable-set) (pdef "%fx26-eqtable-delete!" 2 2 o-eqtable-delete)
          (pdef "%fx26-assume" 1 1 o-assume) (pdef "list->string" 1 1 o-list-string)
+         (pdef "%fx26-rep-of-nodes" 3 3 o-rep-of-nodes) (pdef "%fx26-rep-nodes" 2 2 o-rep-nodes)
          (pdef "%fx26-assert" 1 1 o-assert) (pdef "string->symbol" 1 1 o-string-symbol)
          (pdef "string->list" 1 1 o-string-list) (pdef "symbol->string" 1 1 o-symbol-string)
          (pdef "%fx26-syscall-require" 3 3 o-syscall-require) (pdef "%fx26-syscall-available?" 2 2 o-syscall-available)
@@ -781,15 +784,40 @@
 (define width-signed? (subr kfx (i64) bool) (lambda (w) (i64= (i64-remainder w 2) 0)))
 (define width-name (subr kfx (i64) string)
   (lambda (w) (cond ((i64= w 0) "an i8") ((i64= w 1) "a u8") ((i64= w 2) "an i32") ((i64= w 3) "a u32") ((i64= w 4) "an i64") (else "a u64"))))
+"Each width's range, its least value and one past its greatest, made once
+ (C366): made at each call, a 64-bit width's were bignums, never freed,
+ two at every `i64` operation tier 1 ran."
+(define width-ranges (listof int acyclic)
+  (list -128 128 0 256 -2147483648 2147483648 0 4294967296
+        (- 0 (arithmetic-shift 1 63)) (arithmetic-shift 1 63) 0 (arithmetic-shift 1 64)))
+(define-rec
+  (int-nth (subr kfx ((listof int acyclic) i64) int)
+    (lambda (xs k) (if (i64= k 0) (car xs) (int-nth (cdr xs) (i64- k 1))))))
 (define int-wrapped (subr kfx (i64 int) int)
   (lambda (w x)
-    "`x`'s low bits, sign-extended if the width is signed (`Width::wrap`)."
-    (let* ((b (i64->int (width-bits w)))
-           (m (arithmetic-shift 1 b))
-           (low (modulo x m)))
-      (if (and (width-signed? w) (>= low (arithmetic-shift 1 (- b 1)))) (- low m) low))))
+    "`x`'s low bits, sign-extended if the width is signed (`Width::wrap`);
+     `x` itself, if it is of the width already."
+    (if (and (>= x (int-nth width-ranges (i64* 2 w))) (< x (int-nth width-ranges (i64+ (i64* 2 w) 1))))
+        x
+        (let* ((b (i64->int (width-bits w)))
+               (m (arithmetic-shift 1 b))
+               (low (modulo x m)))
+          (if (and (width-signed? w) (>= low (arithmetic-shift 1 (- b 1)))) (- low m) low)))))
+(define fixnum-in? (subr kfx (i64 i64) bool)
+  (lambda (w x)
+    "Whether fixnum value `x` (61 bits) is of width `w`: by `i64`s alone
+     (C366), where `int-wrapped`'s `int`s made a bignum, never freed, for
+     each check of a 64-bit width, at every `i64` operation."
+    (let ((b (width-bits w)))
+      (cond ((i64= b 64) (or (width-signed? w) (i64>= x 0)))
+            ((width-signed? w) (and (i64>= x (i64- 0 (i64-shl 1 (i64->int (i64- b 1))))) (i64< x (i64-shl 1 (i64->int (i64- b 1))))))
+            (else (and (i64>= x 0) (i64< x (i64-shl 1 (i64->int b)))))))))
 (define fixed-in? (subr cm (i64 i64) bool)
-  (lambda (w v) "Whether `v` is a value of width `w` (`fixed_in`)." (and (is-integer? v) (= (int-wrapped w (int-of v)) (int-of v)))))
+  (lambda (w v)
+    "Whether `v` is a value of width `w` (`fixed_in`)."
+    (if (is-fixnum? v)
+        (fixnum-in? w (fix-val v))
+        (and (is-integer? v) (= (int-wrapped w (int-of v)) (int-of v))))))
 
 "A list in the heap of the characters `cs`."
 (define-rec
@@ -914,15 +942,15 @@
   (lambda () (int->i64 (page-words))))
 
 "`list->string`'s (C220): whether a proper list's elements are all
- characters; their text."
+ characters; their text, made once from them (C366): appended a
+ character at a time, each step a new string, never freed, the compiler's
+ output of a module cost its length squared."
 (define-rec
   (chars? (subr cm (i64) bool)
     (lambda (l) (or (not (is-pair? l)) (and (is-char? (pair-car l)) (chars? (pair-cdr l))))))
-  (chars-text (subr cm (i64 string) string)
-    (lambda (l acc)
-      (if (is-pair? l)
-          (chars-text (pair-cdr l) (string-append acc (char->string (i64->char (char-code (pair-car l))))))
-          acc))))
+  (heap-chars (subr cm (i64) chars)
+    (lambda (l) (if (is-pair? l) (cons (i64->char (char-code (pair-car l))) (heap-chars (pair-cdr l))) nil))))
+(define chars-text (subr cm (i64) string) (lambda (l) (list->string (heap-chars l))))
 
 "Tables keyed by identity (C220), Fixpt's (`eqtable.rs`, C329): a bloblet
  of kind `eqtable`, no trailer, its slots the count of collections when its
@@ -1839,6 +1867,90 @@
     (lambda (arr size bits i n)
       (if (i64>= i n) #u (begin (bytes-put! (address arr) (i64* i size) size bits 0) (flats-filled! arr size bits (i64+ i 1) n))))))
 
+"Fixpt's `%fx26-rep-of-nodes` and `%fx26-rep-nodes` (C366; its
+ `fixpt-reps`, which kayak-rt has whole): tier 1's nodes, products and sums
+ of its heap, made KFX's for kayak-rt's `rep-of-nodes`, and `rep-nodes`'
+ made tier 1's again. A product's field K in slot K+1, a sum's tag and
+ value in slots 2 and 3, as `frozen2!` and `fx26-sum!` make them. The
+ compiler uses them since its types became reps (C301), so that without
+ them it could not run on tier 1."
+(define rp-int (subr cm (i64) int)
+  (lambda (w) (if (is-fixnum? w) (i64->int (fix-val w)) (begin (expected! "a fixnum") (i64->int 0)))))
+(define rp-operand-of (subr cm (i64) rp-operand)
+  (lambda (s)
+    (let ((tag (symbol-text (slot-of s 2))) (v (slot-of s 3)))
+      (cond ((string=? tag "node") (the rp-operand (sum node (rp-int v))))
+            ((string=? tag "bound") (the rp-operand (sum bound (product (1 (rp-int (slot-of v 2))) (2 (rp-int (slot-of v 3)))))))
+            ((string=? tag "hole") (the rp-operand (sum hole (rp-int v))))
+            ((string=? tag "const")
+             (the rp-operand (sum const (product (1 (string-text (slot-of v 2))) (2 (rp-int (slot-of v 3))) (3 (string-text (slot-of v 4)))))))
+            ((string=? tag "sym") (the rp-operand (sum sym (string->symbol (symbol-text v)))))
+            ((string=? tag "int") (the rp-operand (sum int (rp-int v))))
+            (else (the rp-operand (sum flag (i64= v v-true))))))))
+(define-rec
+  (rp-symbols-of (subr cm (i64) (listof symbol acyclic))
+    (lambda (l) (if (is-pair? l) (cons (string->symbol (symbol-text (pair-car l))) (rp-symbols-of (pair-cdr l))) nil)))
+  (rp-strings-of (subr cm (i64) strings)
+    (lambda (l) (if (is-pair? l) (cons (string-text (pair-car l)) (rp-strings-of (pair-cdr l))) nil)))
+  (rp-operands-of (subr cm (i64) rp-operands)
+    (lambda (l) (if (is-pair? l) (cons (rp-operand-of (pair-car l)) (rp-operands-of (pair-cdr l))) nil)))
+  (rp-nodes-of (subr cm (i64) rp-nodes)
+    (lambda (l)
+      (if (is-pair? l)
+          (let ((n (pair-car l)))
+            (cons (the rp-node (product (1 (rp-int (slot-of n 2))) (2 (string->symbol (symbol-text (slot-of n 3))))
+                                        (3 (i64= (slot-of n 4) v-true)) (4 (rp-symbols-of (slot-of n 5))) (5 (rp-operands-of (slot-of n 6)))))
+                  (rp-nodes-of (pair-cdr l))))
+          nil))))
+(define rp-word (subr cm (int) i64) (lambda (n) (fix (int->i64 n))))
+(define frozen3! (subr cm (i64 i64 i64 i64) i64)
+  (lambda (k x y z)
+    (let ((b (make-bloblet! k 3 0 #t #f)))
+      (begin (slot-set! b 2 x) (slot-set! b 3 y) (slot-set! b 4 z) (frozen-whole! b) b))))
+(define frozen5! (subr cm (i64 i64 i64 i64 i64 i64) i64)
+  (lambda (k v w x y z)
+    (let ((b (make-bloblet! k 5 0 #t #f)))
+      (begin (slot-set! b 2 v) (slot-set! b 3 w) (slot-set! b 4 x) (slot-set! b 5 y) (slot-set! b 6 z) (frozen-whole! b) b))))
+(define rp-operand-word! (subr cm (rp-operand) i64)
+  (lambda (o)
+    (tagcase o
+      (node n (fx26-sum! "node" (rp-word n)))
+      (bound p (fx26-sum! "bound" (frozen2! k-product (rp-word (extract p 1)) (rp-word (extract p 2)))))
+      (hole n (fx26-sum! "hole" (rp-word n)))
+      (const p (fx26-sum! "const" (frozen3! k-product (make-string! (extract p 1)) (rp-word (extract p 2)) (make-string! (extract p 3)))))
+      (sym y (fx26-sum! "sym" (symbol! (symbol->string y))))
+      (int n (fx26-sum! "int" (rp-word n)))
+      (flag b (fx26-sum! "flag" (boolean b))))))
+(define-rec
+  (rp-symbols-word! (subr cm ((listof symbol acyclic)) i64)
+    (lambda (ys) (if (null? ys) v-null (let ((rest (rp-symbols-word! (cdr ys)))) (cons! (symbol! (symbol->string (car ys))) rest)))))
+  (rp-operands-word! (subr cm (rp-operands) i64)
+    (lambda (os) (if (null? os) v-null (let ((rest (rp-operands-word! (cdr os)))) (cons! (rp-operand-word! (car os)) rest)))))
+  (rp-nodes-word! (subr cm (rp-nodes) i64)
+    (lambda (ns)
+      (if (null? ns)
+          v-null
+          (let* ((rest (rp-nodes-word! (cdr ns)))
+                 (n (car ns))
+                 (w (frozen5! k-product (rp-word (extract n 1)) (symbol! (symbol->string (extract n 2))) (boolean (extract n 3))
+                              (rp-symbols-word! (extract n 4)) (rp-operands-word! (extract n 5)))))
+            (cons! w rest))))))
+(define rep-of-nodes! (subr cm (i64 i64 i64) i64)
+  (lambda (ns hs root)
+    (let* ((kb (the (bytevectorof @c) (rep-of-nodes (rp-nodes-of ns) (rp-symbols-of hs) (rp-int root))))
+           (n (int->i64 (bytevector-length kb)))
+           (v (make-bv! n)))
+      (begin (bytes-from-kfx! kb v 0 0 n) v))))
+(define rep-nodes! (subr cm (i64 i64) i64)
+  (lambda (b names)
+    (if (not (is-kind? b k-bytevector))
+        (expected! "a bytevector")
+        (let ((kb (the (bytevectorof @c) (make-bytevector (i64->int (bv-length b)) (int->u8 0)))))
+          (begin
+            (kfx-bytes-of! kb b 0 (bv-length b))
+            (let ((got ((proj rep-nodes @c) kb (rp-strings-of names))))
+              (frozen2! k-product (rp-nodes-word! (extract got 1)) (rp-symbols-word! (extract got 2)))))))))
+
 (define prim-apply! (subr cm (i64) i64)
   (lambda (p)
     "Primitive `p` given its arguments, `pargs`: its value."
@@ -2141,7 +2253,7 @@
          "A proper list first, then of characters, as Fixpt's errors are."
          (cond ((i64< (proper-length a) 0) (expected! "a proper list"))
                ((not (chars? a)) (expected! "a character"))
-               (else (make-string! (chars-text a "")))))
+               (else (make-string! (chars-text a)))))
         ((or (i64= op o-eqtable-ref) (i64= op o-eqtable-has) (i64= op o-eqtable-count) (i64= op o-eqtable-set) (i64= op o-eqtable-delete))
          (if (not (is-kind? a k-eqtable))
              (expected! "an eqtable")
@@ -2329,6 +2441,8 @@
         ((or (and (i64>= op o-write-out) (i64<= op o-write-file)) (and (i64>= op o-file-info) (i64<= op o-process-news)))
          (io-op! op a b (parg 2)))
         ((i64= op o-kayak-reify) (reify-run! (parg 0) (rep-of-text! (string-text (parg 1))) (parg 2)))
+        ((i64= op o-rep-of-nodes) (rep-of-nodes! a b c))
+        ((i64= op o-rep-nodes) (rep-nodes! a b))
         ((i64= op o-evidence-bound) (parg 0))
         ((i64= op o-make-session) (make-session-word! (parg 0)))
         ((i64= op o-session-redefines) (redefines-word! (parg 0) (parg 1)))

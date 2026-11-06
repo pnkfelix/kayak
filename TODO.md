@@ -491,6 +491,11 @@ Phase C, FX-26's runtime:
   heap, composable continuations; an interpreter of the IR, kept as the
   reference (Q8); its tasks on the one scheduler.
 - **K6**: Fixpt's programs on it, compared with Fixpt.
+- **The second self-hosting** (C366): restored on tier 1, checked in the
+  full check (`scripts/selfhost-cells.sh`, 97 s, 7.5 GB); the IR engine's
+  path (`scripts/selfhost-engine.sh`, C66) is broken (no `rep-nodes`) and
+  left, as docs/direction.md §7 retires that engine. Tier 1's start-up
+  never frees its listing's text or its compiled words (4 GB).
 - **The second self-hosting**: the compiler on kayak's runtime, built
   into an image, its output compared with the Rust build's.
 

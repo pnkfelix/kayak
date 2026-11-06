@@ -57,6 +57,16 @@
             (t-exp (x) (begin (if has-value (c-op c "drop") #u) (set cg-form-writes nil) (c-exp x nil 0 c #f) (regs-form-twins!) (c-tops (cdr ts) c #t)))
             (t-none () (c-tops (cdr ts) c has-value)))))))
 
+(define-rec
+  (c-filed (subr gen ((listof ftops acyclic) code bool) bool)
+    (lambda (fts c has-value)
+      "Each form's tops in turn, as `c-tops`, its file the form's file
+       (C366)."
+      (if (null? fts)
+          has-value
+          (tagcase (car fts)
+            (ftops (f ts) (begin (set cg-form-file f) (c-filed (cdr fts) c (c-tops ts c has-value)))))))))
+
 "A program's one word, which runs it and leaves the value of its last
  expression (unit, if it has none), and the words it makes."
 (define compile-cells (subr gen (sexps facts) unit)
@@ -65,6 +75,8 @@
       (begin
         (set cg-facts fs)
         (set cg-source (if (null? forms) "" (datum-file (car forms))))
+        (set cg-form-file (get cg-source))
+        (set cg-files nil)
         (set cg-qnodes nil)
         (set cg-convert-facts
              (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "convert ") (has-prefix? what "convention "))))) fs))
@@ -83,7 +95,7 @@
         (set c-this-params -1)
         (set cg-twins nil) (set cg-defining nil) (set cg-lambda-at -1) (set cg-define-at nil)
         (set cg-writes nil) (set cg-form-writes nil) (set cg-reg-codes nil) (set cg-inlines nil) (set cg-unrolls nil) (set cg-specials nil) (set cg-copies nil) (set cg-consts nil) (set cg-form-lambdas nil) (set cg-standard-twins nil)
-        (if (c-tops (parse-tops forms) c #f) #u (c-lit c (l-unit)))
+        (if (c-filed (parse-tops-filed forms) c #f) #u (c-lit c (l-unit)))
         (c-op c "exit")
         (c-assemble c "program")
         #u))))

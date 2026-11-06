@@ -2145,6 +2145,76 @@ pub fn cg_source() -> Ref<Str> {
     })
 }
 
+// The file of the form being compiled, and the files met after the
+// program's own, in order (C366). A word named for a place, and a copy
+// keyed by one, take its file too where it is not the program's: two
+// files' lambdas at one offset had one name, and could have shared one
+// copy. Fixpt writes such a place `FILE:START`, its file's number and its
+// byte offset; kayak the file's number here and its character offset.
+#[inline]
+pub fn cg_form_file() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
+}
+
+#[inline]
+pub fn cg_files() -> Ref<Strings> {
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Str>())
+    })
+}
+
+pub fn file_number(mut fs: Strings, mut f: Str, mut k: i64) -> i64 {
+    loop {
+        if null_p(fs) {
+            return -1i64;
+        } else if string_eq_p(car(fs), f) {
+            return k;
+        } else {
+            (fs, k) = (cdr(fs), i64_plus(k, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The form's file's number: 0, the program's own; else from 1, in the
+/// order met.
+pub fn form_file_number_x() -> i64 {
+    let f = get(cg_form_file());
+    if (string_eq_p(f, str_lit("")) || string_eq_p(f, get(cg_source()))) {
+        0i64
+    } else {
+        let k = file_number(get(cg_files()), f, 1i64);
+        if i64_gt(k, 0i64) {
+            k
+        } else {
+            set(cg_files(), onto(get(cg_files()), kayak_rt::heap_cons(f, kayak_rt::nil())));
+            size(get(cg_files()))
+        }
+    }
+}
+
+/// Place `p` of the form being compiled, its file's number above its
+/// offset; the offset alone in the program's own file.
+#[inline]
+pub fn filed_place(p: i64) -> i64 {
+    i64_plus(i64_star(form_file_number_x(), 4294967296i64), p)
+}
+
+/// Place `p` as a word's name has it: `FILE:OFFSET` outside the program's
+/// own file, as Fixpt's `cellular.rs` writes it, the offset alone in it.
+pub fn filed_place_written(p: i64) -> Str {
+    let k = form_file_number_x();
+    if i64_eq(k, 0i64) {
+        i64_to_string(p)
+    } else {
+        string_append(i64_to_string(k), string_append(str_lit(":"), i64_to_string(p)))
+    }
+}
+
 // The source position of the expression being compiled (C245).
 #[inline]
 pub fn cg_at() -> Ref<i64> {
@@ -6061,7 +6131,7 @@ pub fn c_word_base(named: Strings, own: Strings, bound: Strings) -> Str {
 #[inline]
 pub fn c_word_symbol(base: Str, named: Strings, body: &'static Cx) -> Str {
     if null_p(named) {
-        string_append(base, string_append(str_lit("@"), i64_to_string(cx_start(body))))
+        string_append(base, string_append(str_lit("@"), filed_place_written(cx_start(body))))
     } else {
         car(named)
     }
@@ -7641,13 +7711,21 @@ pub fn c_rec_globals_x(mut bs: Cbinds) -> () {
     }
 }
 
-#[inline]
-pub fn parse_tops(fs: Sexps) -> List<&'static Ctop> {
+// Each form's tops, with its file (C366).
+pub enum Ftops {
+    Ftops(Str, List<&'static Ctop>),
+}
+
+pub fn ftops(f0: Str, f1: List<&'static Ctop>) -> &'static Ftops {
+    kayak_rt::heap_alloc(Ftops::Ftops(f0, f1))
+}
+
+pub fn parse_tops_filed(fs: Sexps) -> List<&'static Ftops> {
     if null_p(fs) {
-        nil::<&'static Ctop>()
+        nil::<&'static Ftops>()
     } else {
         let t = parse_top(car(fs));
-        onto(t, parse_tops(cdr(fs)))
+        kayak_rt::heap_cons(ftops(datum_file(car(fs)), t), parse_tops_filed(cdr(fs)))
     }
 }
 

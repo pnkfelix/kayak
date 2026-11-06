@@ -10021,3 +10021,52 @@ in the check, `with-binds` a seventh, half of it `mangled-clash`.
   binding, and the modules' rebuilds were not most of the tree.
 The compiler on itself: plain 2.55 s to 2.38 s; warm 1.34 s to 1.36 s
 (noise); the output the same with memos and without.
+
+## C366. The second self-hosting restored, on tier 1 (2026-11-06)
+
+The user's direction (docs/direction.md, written this day after the user
+said kayak had "forgotten that element of the plot"): kayak exists so that
+one KFX source replaces Fixpt's two FX-26 implementations, eventually; its
+runtime to be rewritten in Coopt's async style; self-hosting driven, and
+first. The second self-hosting (C66, the compiler on kayak's own runtime)
+had stopped working, unnoticed, as it was in no check.
+- **The IR engine's path** (`kayak-fx26 --run`, C66's): "nothing is named
+  rep-nodes", a primitive the compiler has used since its types became
+  reps (C301). Left: direction.md §7 retires that engine.
+- **The cellular path**, chosen: the compiler, its prelude first as
+  Fixpt's stage 0 reads it, compiled to cellular words by `kayak-fx26
+  --cells-run` (a 19.7 MB listing, 3 s) and run by `kayak-cells --main
+  --compiled`. What stood in its way, each fixed:
+  - **Two files' lambdas, one name**: a lambda's word was named for its
+    procedure and its offset, which two files can share
+    (`map@lambda@24085`), and a copy keyed so (`r-copy-of`) could have been
+    shared by them, wrong code. Now each form is compiled knowing its file
+    (`parse-tops-filed`, `c-filed`), and outside the program's own file a
+    name's place is `FILE:OFFSET` (`filed-place-written`), as Fixpt's
+    `cellular.rs` writes it, and a copy's key carries the file
+    (`filed-place`). The program's own file is number 0, its names as
+    before, so single-file listings are Fixpt's as they were. Differs from
+    Fixpt: kayak's file number is by order met and its offset in
+    characters, Fixpt's in bytes. A lambda inlined from another file's
+    procedure is keyed by the form's file, not its own.
+  - **Fixpt's `%fx26-rep-of-nodes` and `%fx26-rep-nodes`** were not tier
+    1's: now its heap's nodes made KFX's for kayak-rt's `rep-of-nodes` and
+    back (`cprims.kfx`, `rep-of-nodes!`, `rep-nodes!`).
+  - **Memory**: the run filled a 32 GB cap (and, uncapped, the machine).
+    Tier 1 is KFX, so whatever its primitives make in KFX is kayak-rt's,
+    never freed: every `i64` operation made two bignums (`int-wrapped`,
+    `(arithmetic-shift 1 64)`; 31 M on one small file), and `list->string`
+    appended a character at a time (`chars-text`), a module's output its
+    length squared. Now a width's bounds are constants and an in-range
+    value is not wrapped, a fixnum's width checked by `i64`s
+    (`fixnum-in?`), and `list->string` one pass.
+- **Measured**: the compiler on tier 1 makes `boot/src/kfx/` byte for byte,
+  97 s, 7.5 GB (the Rust build 2.4 s). Of the 7.5 GB, some 4 GB is
+  start-up's, never freed: the listing read (2 GB of characters) and the
+  words compiled to x64 (2.2 GB); direction.md §7's runtime would collect
+  them.
+- **Kept checked**: `scripts/selfhost-cells.sh`, in the full check beside
+  the fixpoint (not `--quick`), its memory capped by systemd where it can
+  be, so that a run that grows stops rather than starving the machine.
+  `kayak-cells` now reports kayak-rt's heap with `heap-stats`, and the
+  sampler sees tier 1's frames (`kayak_cells::cells::`).

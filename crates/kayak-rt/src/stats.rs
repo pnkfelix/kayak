@@ -24,7 +24,7 @@ mod on {
 
     /// With `KAYAK_HEAP_SAMPLE=TYPE`, every millionth allocation of the
     /// type named so (`*`: of any) (every `KAYAK_HEAP_EVERY`th, if that is set): the
-    /// program's frames that made it (the KFX compiler's or the engine's,
+    /// program's frames that made it (the KFX compiler's, the engine's or tier 1's,
     /// `KAYAK_HEAP_DEPTH` of them, 4 if not set), a line each, with the
     /// bytes the samples there were given.
     fn sample(name: &'static str, bytes: usize) {
@@ -49,7 +49,9 @@ mod on {
             .lines()
             .map(str::trim)
             .filter(|l| {
-                (l.contains("kfx::kfx::") || l.contains("kayak_fx26::fx26::"))
+                (l.contains("kfx::kfx::")
+                    || l.contains("kayak_fx26::fx26::")
+                    || l.contains("kayak_cells::cells::"))
                     && !l.starts_with("at ")
             })
             .map(|l| l.split_once(": ").map_or(l, |(_, f)| f))

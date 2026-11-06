@@ -2845,7 +2845,7 @@ pub fn r_specialize(g: &'static Rgen, c: &'static Rcall, args: Cxs, env: Renv, t
                         let tagcase_ = car(m);
                         match *tagcase_ {
                             Rmade::Rmade(w, fv) => {
-                                let copy = r_copy_of(get(cg_copies()), rspecial_name(sp), cx_start(lbody), fv, r_genv(env));
+                                let copy = r_copy_of(get(cg_copies()), rspecial_name(sp), filed_place(cx_start(lbody)), fv, r_genv(env));
                                 if null_p(copy) {
                                     r_decline(g)
                                 } else {

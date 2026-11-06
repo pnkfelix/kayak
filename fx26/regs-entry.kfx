@@ -331,18 +331,18 @@
   (lambda (sp lps lbody fv)
     (tagcase sp
       (rspecial (n ps body genv k ar at)
-        (if (not (null? (r-copy-of (get cg-copies) n (cx-start lbody) fv -1)))
+        (if (not (null? (r-copy-of (get cg-copies) n (filed-place (cx-start lbody)) fv -1)))
             #u
             (let ((lambdas (get cg-form-lambdas)))
               (begin
-                (set c-word-name (list (string-append n (string-append "@lambda@" (i64->string (cx-start lbody))))))
+                (set c-word-name (list (string-append n (string-append "@lambda@" (filed-place-written (cx-start lbody))))))
                 (set cg-lambda-at at)
                 (tagcase (c-lambda-word ps body nil nil)
                   (cclosing (w cfv)
                     (let ((ts (the (listof twin acyclic) (reverse (get cg-twins)))) (ss (the (listof stwin acyclic) (reverse (get cg-standard-twins)))))
                       (begin
                         (set cg-twins nil) (set cg-standard-twins nil) (set cg-form-lambdas lambdas)
-                        (set cg-copies (cons (rcopy n (cx-start lbody) fv -1 w) (get cg-copies)))
+                        (set cg-copies (cons (rcopy n (filed-place (cx-start lbody)) fv -1 w) (get cg-copies)))
                         (r-copy-twins-made! ts (list (rspec sp lps lbody fv -1)))
                         (r-standard-twins-made! ss))))))))))))
 

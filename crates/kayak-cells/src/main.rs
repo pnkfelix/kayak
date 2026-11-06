@@ -49,5 +49,6 @@ fn main() {
     kayak_rt::set_host_foreign(host_foreign);
     let status = with_big_stack(|| int_to_i64(cells::cells_main()));
     kayak_rt::finish();
+    kayak_rt::heap_stats_report();
     std::process::exit((status & 0xff) as i32);
 }
