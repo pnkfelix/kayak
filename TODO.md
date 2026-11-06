@@ -137,14 +137,13 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **The compile's remaining cost** (C361): the compiler on itself, warm
-     with memos 3.3 s, plain 4.1 s. Warm: reading the sources 0.68 s
-     (every run), the check's memos 0.64 s (the passes before the forms
-     run always: `declare-types`, `type-names-free`, `datatype-names`,
-     `declare-datatypes`), the emitter's memos 0.64 s, writing the memo
-     file 0.41 s and reading it 0.25 s (3.3 MB, a list cell a character:
-     `string-search` and `substring` would split it by lines), the
-     restriction pass 0.30 s (every run, no memo). A form's facts from the
+   - **The compile's remaining cost** (C361, C362): the compiler on
+     itself, warm with memos 2.95 s, plain 4.1 s. Warm: reading the
+     sources 0.68 s (every run), the check's memos 0.57-0.64 s (the passes
+     before the forms run always: `declare-types`, `type-names-free`,
+     `datatype-names`, `declare-datatypes`), the emitter's memos
+     0.64-0.76 s, the restriction pass 0.30-0.41 s (every run, no memo),
+     the memo file read 0.08 s and written 0.07 s (C362). A form's facts from the
      emitter's tree (`fidx`) instead of a scan of the whole list was tried,
      and was slower (0.94 s against 0.64 s): the tree mixes files'
      positions.

@@ -2,7 +2,7 @@
 //! symbols beside those in `lib.rs` (Fixpt 17ac0c5's `standard.rs`, each as
 //! its runtime has it; `CLAUDES_CHOICES.md` C56).
 
-use crate::{Int, Show, Str, fail, i64_to_int, int_to_i64, leak_string};
+use crate::{Int, Show, Str, char_byte, cursor_at, fail, i64_to_int, int_to_i64, leak_string};
 
 /// FX-26's `char->integer` and `integer->char`, at `int`.
 #[inline]
@@ -68,19 +68,17 @@ pub fn string_compare(a: Str, b: Str) -> Int {
 /// Where `sub` first occurs in `s` at or after character `from`, in
 /// characters; or -1.
 pub fn string_search(s: Str, sub: Str, from: Int) -> Int {
-    let (s, sub, from) = (s.as_str(), sub.as_str(), int_to_i64(from).max(0));
-    let Some((start, _)) = s
-        .char_indices()
-        .chain(std::iter::once((s.len(), ' ')))
-        .nth(from as usize)
-    else {
+    let from = int_to_i64(from).max(0);
+    let Some(start) = char_byte(s, from as usize) else {
         return i64_to_int(-1);
     };
-    i64_to_int(
-        s[start..]
-            .find(sub)
-            .map_or(-1, |b| from + s[start..start + b].chars().count() as i64),
-    )
+    let t = s.as_str();
+    let Some(b) = t[start..].find(sub.as_str()) else {
+        return i64_to_int(-1);
+    };
+    let at = from as usize + t[start..start + b].chars().count();
+    cursor_at(s, at, start + b);
+    i64_to_int(at as i64)
 }
 
 pub fn string_ci_eq_p(a: Str, b: Str) -> bool {
@@ -94,17 +92,13 @@ pub fn string_downcase(s: Str) -> Str {
 /// The characters from `start` to `end`.
 pub fn substring(s: Str, start: Int, end: Int) -> Str {
     let (start, end) = (int_to_i64(start), int_to_i64(end));
-    let n = s.as_str().chars().count() as i64;
-    if start < 0 || end < start || end > n {
+    let bytes = (start >= 0 && end >= start)
+        .then(|| Some((char_byte(s, start as usize)?, char_byte(s, end as usize)?)))
+        .flatten();
+    let Some((b0, b1)) = bytes else {
         fail("substring range out of bounds")
-    }
-    leak_string(
-        s.as_str()
-            .chars()
-            .skip(start as usize)
-            .take((end - start) as usize)
-            .collect(),
-    )
+    };
+    leak_string(s.as_str()[b0..b1].to_string())
 }
 
 /// `symbol`: a name, compared by its text, which is what FX-26's
@@ -167,4 +161,39 @@ pub fn symbol_eq_p(a: Symbol, b: Symbol) -> bool {
 
 pub fn symbol_compare(a: Symbol, b: Symbol) -> Int {
     string_compare(a.0, b.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{int_lit, string_length_i64, string_ref_i64};
+
+    /// Each character, search and substring of a non-ASCII string, in any
+    /// order, as counting from the start gives.
+    #[test]
+    fn counted_from_the_cursor() {
+        let t = "a…b§c\n§§x…\nend";
+        let s = leak_string(t.to_string());
+        let cs: Vec<char> = t.chars().collect();
+        let n = cs.len();
+        assert_eq!(string_length_i64(s), n as i64);
+        for &i in &[3, 0, 9, 10, 2, 13, 13, 1, 7, 4, 12, 5] {
+            assert_eq!(string_ref_i64(s, i as i64), cs[i]);
+        }
+        for a in 0..=n {
+            for b in a..=n {
+                let want: String = cs[a..b].iter().collect();
+                let got = substring(s, int_lit(a as i64), int_lit(b as i64));
+                assert_eq!(got.as_str(), want);
+            }
+        }
+        for from in 0..=n + 1 {
+            let want = (from..n).find(|&i| cs[i] == '\n').map_or(-1, |i| i as i64);
+            let got = string_search(s, crate::str_lit("\n"), int_lit(from as i64));
+            assert_eq!(int_to_i64(got), want);
+            if want >= 0 {
+                assert_eq!(string_ref_i64(s, want), '\n');
+            }
+        }
+    }
 }

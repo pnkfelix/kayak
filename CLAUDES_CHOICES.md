@@ -9894,3 +9894,31 @@ The compiler on itself: plain 8.4 s to 4.1 s, warm 15.4 s to 3.3 s, its
 peak memory 6.4 GB to 2.9 GB; the output the same as before, with memos and
 without. What is left, phase by phase, in TODO.md; a form's facts found
 from the emitter's tree rather than its list was tried and was slower.
+
+## C362. The memo file read and written in runs (2026-11-06)
+
+The user's "Yes please" to C361's next step: the memo file (3.3 MB) was
+written a list cell a character (`escape-onto`, then `rev->string`) and
+read the same way (`string-chars` of the whole file), 0.41 s and 0.25 s
+of a 3.3 s warm compile of the compiler.
+- **Chosen:** each memo's text written and read in runs, a `substring`
+  from one escape (a newline, a backslash) to the next, the runs joined by
+  `string-list-append` (`incr.kfx`: `escaped-runs`, `memos-runs`,
+  `memo-lines`, `memo-text`, `char-from`). The file's format is the same.
+- **And in kayak's runtime** (`kayak-rt`): `string-ref`, `substring` and
+  `string-search` at a character index of a string not ASCII counted from
+  its start each time (C14), so scanning such a string by index (as the
+  reader now does; the file holds comments' `…` and `§`) cost its length
+  squared. Now the last index counted to is kept (`char_byte`'s cursor:
+  the string's text's address and length, the character, its byte), and
+  the next is counted from it, or from the start if nearer. A string is
+  never changed or freed (`leak_string`), so its address names it.
+  `substring` no longer counts the whole string for its bounds. FX-26's
+  meaning is the same; a test, `counted_from_the_cursor`, compares every
+  index, part and search of a mixed string with counting from the start.
+- **Not chosen:** `string-search` for the line ends: Fixpt's copies its
+  whole string at each call (its performance.md, 2026-10-06), and stage 0
+  runs this code too. A different file format (no escapes): the file is
+  kayak's own cache, but the escapes cost little once taken in runs.
+Memos read 0.25 s to 0.08 s, written 0.41 s to 0.07 s; the compiler on
+itself warm 3.3 s to 2.95 s; the output the same with memos and without.

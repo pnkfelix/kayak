@@ -374,14 +374,66 @@ pub fn string_length_i64(s: Str) -> i64 {
     }
 }
 
-/// The `i`th character: at once if the string is ASCII, else counted to.
+thread_local! {
+    /// Where the last character counted to in a non-ASCII string was: the
+    /// string's text's address and length, the character, its byte. A
+    /// program reading a string through (a line at a time, a character at
+    /// a time) counts each from the last rather than from the start.
+    static CURSOR: Cell<(usize, usize, usize, usize)> = const { Cell::new((0, 0, 0, 0)) };
+}
+
+/// Where the `i`th character of `s` starts, in bytes; `s.len()` for the
+/// character after the last; `None` past that.
+pub fn char_byte(s: Str, i: usize) -> Option<usize> {
+    let t = s.text;
+    if s.ascii {
+        return (i <= t.len()).then_some(i);
+    }
+    let key = (t.as_ptr() as usize, t.len());
+    let (ptr, len, ci, bi) = CURSOR.get();
+    let (mut ci, mut bi) = if (ptr, len) == key && i.abs_diff(ci) < i {
+        (ci, bi)
+    } else {
+        (0, 0)
+    };
+    let b = t.as_bytes();
+    while ci < i {
+        if bi >= t.len() {
+            return None;
+        }
+        bi += 1;
+        while bi < t.len() && (b[bi] & 0xc0) == 0x80 {
+            bi += 1;
+        }
+        ci += 1;
+    }
+    while ci > i {
+        bi -= 1;
+        while (b[bi] & 0xc0) == 0x80 {
+            bi -= 1;
+        }
+        ci -= 1;
+    }
+    CURSOR.set((key.0, key.1, ci, bi));
+    Some(bi)
+}
+
+/// That the `i`th character of `s` starts at byte `b`, for `char_byte`.
+pub(crate) fn cursor_at(s: Str, i: usize, b: usize) {
+    if !s.ascii {
+        CURSOR.set((s.text.as_ptr() as usize, s.text.len(), i, b));
+    }
+}
+
+/// The `i`th character: at once if the string is ASCII, else counted to
+/// (from the last counted to, `char_byte`).
 #[inline]
 pub fn string_ref_i64(s: Str, i: i64) -> char {
     let found = usize::try_from(i).ok().and_then(|i| {
         if s.ascii {
             s.text.as_bytes().get(i).map(|&b| b as char)
         } else {
-            s.text.chars().nth(i)
+            char_byte(s, i).and_then(|b| s.text[b..].chars().next())
         }
     });
     found.unwrap_or_else(|| fail("string-ref: out of range"))
