@@ -318,6 +318,43 @@
                 (fact file (i64+ start (code-number (second xs))) (code-text (third xs)))
                 (fact (code-text (second xs)) (code-number (third xs)) (code-text (fourth xs)))))))
 
+      "A group's facts (C360): of a `define-rec` the order made, whose items may
+       be apart in the text, each fact in an item kept at its offset from that
+       item's start (a 2 first, then the item's place among the group's
+       `starts-of`), so that it is given where that item is, wherever the
+       items have moved; a fact in none of them, where it is (a 0 first)."
+
+      (define-rec
+        (member-at (subr kfx (i64 (listof i64 acyclic) (listof i64 acyclic) i64) i64)
+          (lambda (p ss es i)
+            "The place among `ss` of the item whose span (`ss` to `es`) holds `p`;
+             -1 for none."
+            (cond ((or (null? ss) (null? es)) (the i64 -1))
+                  ((and (i64>= p (car ss)) (i64< p (car es))) i)
+                  (else (member-at p (cdr ss) (cdr es) (i64+ i 1)))))))
+      (define-rec
+        (i64-nth (subr kfx ((listof i64 acyclic) i64) i64)
+          (lambda (xs i) (cond ((null? xs) 0) ((i64= i 0) (car xs)) (else (i64-nth (cdr xs) (i64- i 1)))))))
+
+      (define fact-code-at (subr kfx (string (listof i64 acyclic) (listof i64 acyclic) fact) string)
+        (lambda (file ss es f)
+          (tagcase f
+            (fact (ff p w)
+              (let ((i (if (string=? ff file) (member-at p ss es 0) (the i64 -1))))
+                (if (i64>= i 0)
+                    (string-append "(2 " (string-append (i64->string i) (string-append " " (string-append (i64->string (i64- p (i64-nth ss i)))
+                      (string-append " " (string-append (quoted w) ")"))))))
+                    (string-append "(0 " (string-append (quoted ff) (string-append " " (string-append (i64->string p)
+                      (string-append " " (string-append (quoted w) ")"))))))))))))
+
+      (define code-fact-at (subr kfx (string (listof i64 acyclic) sexp) fact)
+        (lambda (file ss e)
+          (let ((xs (items e)))
+            (cond ((i64= (code-number (car xs)) 2)
+                   (fact file (i64+ (i64-nth ss (code-number (second xs))) (code-number (third xs))) (code-text (fourth xs))))
+                  ((i64= (code-number (car xs)) 1) (fact file (i64+ (i64-nth ss 0) (code-number (second xs))) (code-text (third xs))))
+                  (else (fact (code-text (second xs)) (code-number (third xs)) (code-text (fourth xs))))))))
+
       (define typed-code (subr kfx (typed) string)
         (lambda (x) (tagcase x (typed (n t) (string-append "(" (string-append (quoted n) (string-append " " (string-append (show-sexp t) ")"))))))))
 
@@ -361,8 +398,8 @@
                             (concat (map (lambda ((x fact)) (if (interface-fact? x) (the facts (list x)) nil))
                                          (leading fs (i64- (size fs) (size (cv-facts before)))))))))))
 
-      (define change-of (subr kfx (cv cv typeds string i64) change)
-        (lambda (before after found file start)
+      (define change-of (subr kfx (cv cv typeds (subr kfx (fact) string)) change)
+        (lambda (before after found code)
           (tagcase after
             (cv (bs ds als es here group f line fs tv at ix mk)
               (let* ((new-binds (leading bs (i64- (size bs) (size (cv-binds before)))))
@@ -372,7 +409,7 @@
                   (concat-strings
                     (list "((" (words-of (map bind-code new-binds))
                           ") (" (words-of (map effdef-code new-effs))
-                          ") (" (words-of (map (lambda ((x fact)) (fact-code file start x)) new-facts))
+                          ") (" (words-of (map code new-facts))
                           ") (" (words-of (map typed-code found))
                           ") " (where-text here group tv)
                           " " (quoted f) " " (i64->string line) " " (i64->string at) ")"))
@@ -382,12 +419,12 @@
 
       (define-datatype redone (redone cv typeds string))
 
-      (define change-applied (subr kfx (cv string string i64) redone)
-        (lambda (v text file start)
+      (define change-applied (subr kfx (cv string (subr kfx (sexp) fact)) redone)
+        (lambda (v text uncode)
           (let* ((parts (items (car (read-all (string-chars text) "" 1))))
                  (new-binds (map code-bind (items (car parts))))
                  (new-effs (map code-effdef (items (second parts))))
-                 (new-facts (map (lambda ((e sexp)) (code-fact file start e)) (items (third parts))))
+                 (new-facts (map uncode (items (third parts))))
                  (found (map code-typed (items (fourth parts))))
                  (rest (cdr (cdr (cdr (cdr parts)))))
                  (here (code-text (car rest)))
@@ -490,21 +527,22 @@
                        ;; A `define-rec` the order made (`rec-of`): every item's text in it.
                        (ss (if placed (starts-of start (if (head-is? it "define-rec") (map datum-pos (cdr (items it))) nil) positions) nil))
                        (own (if placed (concat-strings (map slice ss)) (show-sexp it)))
-                       ;; And where each of its items is from its start (C359): its facts
-                       ;; are kept at offsets from `start`, so an edit to an item between
-                       ;; two of its own, which moves the later, must miss the memo.
-                       (layout (words-of (map (lambda ((q i64)) (i64->string (i64- q start))) ss)))
-                       (key (fnv-string own (fnv-string layout (fnv-string "item" chain))))
+                       ;; Each item's span, for its facts, kept at offsets from its own
+                       ;; start (C360): the memo's key its text alone, so that an edit to
+                       ;; an item between two of the group's, which moves the later, still
+                       ;; finds it, and gives their facts where they are now.
+                       (es (map (lambda ((q i64)) (position-after q positions end)) ss))
+                       (key (fnv-string own (fnv-string "item" chain)))
                        (hit (memo-find old key)))
                   (if (not (null? hit))
                       (tagcase (car hit)
                         (memo (h text)
-                          (tagcase (change-applied v text file start)
+                          (tagcase (change-applied v text (if placed (lambda ((e sexp)) (code-fact-at file ss e)) (lambda ((e sexp)) (code-fact file start e))))
                             (redone (v2 more forward)
                               (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (car hit) made) src from positions end)))))
                       (tagcase (check-item v m it)
                         (elab (v2 more)
-                          (tagcase (change-of v v2 more file start)
+                          (tagcase (change-of v v2 more (if placed (lambda ((x fact)) (fact-code-at file ss es x)) (lambda ((x fact)) (fact-code file start x))))
                             (change (text2 forward)
                               (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (memo key text2) made) src from positions end)))))))))))
 
@@ -545,7 +583,7 @@
                         ((not (null? hit))
                          (tagcase (car hit)
                            (memo (h text)
-                             (tagcase (change-applied v text file start)
+                             (tagcase (change-applied v text (lambda ((e sexp)) (code-fact file start e)))
                                (redone (v2 more forward)
                                  (check-tops-memo v2 (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found)
                                                   (cons (car hit) made)))))))
@@ -559,7 +597,7 @@
                                           (elab (check-top v form) nil))))
                            (tagcase done
                              (elab (v2 more)
-                               (tagcase (change-of v v2 more file start)
+                               (tagcase (change-of v v2 more (lambda ((x fact)) (fact-code file start x)))
                                  (change (text forward)
                                    (check-tops-memo v2 (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found)
                                                     (cons (memo key text) made)))))))))))))))

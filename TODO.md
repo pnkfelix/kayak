@@ -137,6 +137,13 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
+   - **The compiler's memos make it slower, not faster** (found
+     2026-11-05, C360): on itself, a warm `kfx --cache` compile takes
+     15.4 s, a plain one 8.4 s (the compiler at df07641e alike: 14.8 s
+     against 8.2 s). C55 measured 0.12 s warm against 0.73 s plain, when
+     the compiler was far smaller. Not looked into: reading and writing a
+     3.3 MB memo file, finding memos by a list (`memo-find` is linear over
+     some 3400), or chains that miss.
    - **Reps byte for byte Fixpt's** (C346-C349, C352): checked against
      `fixpt check --reps` (`tests/reps-passing`, `checks-summary reps`):
      431 programs the same, 63 differ (mostly modules' reps: abstract

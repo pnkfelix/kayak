@@ -9846,3 +9846,26 @@ it. Now the same: the memo compile and the plain one. The incremental test
 a string put between two of the group's items, and taken away; with the
 compiler before the fix, it differs. No fact in a memo file lies before
 its form (no negative offset).
+
+## C360. A group's facts kept at each item's offsets (2026-11-05)
+
+The user's "Why aren't you using a hash of the content as the cache key
+instead of just spans?" The key was a hash of the content; what C359
+mended was a value that depended on where the group's items were (facts
+at offsets from its start), with the key made to hold that layout too. So
+an edit between two of a group's items made the whole group be checked
+again, though nothing in it changed. Now the value does not depend on it:
+each fact of a group's memo is kept at its offset from the start of the
+item it is in (`fact-code-at`: a 2, the item's place among the group's
+`starts-of`, the offset; `code-fact-at` back), a fact in none of them where
+it is; the key is the items' texts and the chain again, no layout. As top
+forms' and the emitter's memos already were, each item's own.
+
+Checked: the same compiler on the source, then on it with a string put
+between two of check-exprs.kfx's great group's items, on one memo file:
+the output the same as without memos, and of 3456 memos 2 new (the group's
+taken). The incremental test (`define-rec-item`) as C359 left it.
+
+Found on the way, not this change's: a warm memo compile of the compiler
+is slower than a plain one (15.4 s against 8.4 s; so too at df07641e,
+14.8 s against 8.2 s). TODO.

@@ -638,6 +638,68 @@ pub mod incremental {
         }
     }
 
+    // A group's facts (C360): of a `define-rec` the order made, whose items may
+    // be apart in the text, each fact in an item kept at its offset from that
+    // item's start (a 2 first, then the item's place among the group's
+    // `starts-of`), so that it is given where that item is, wherever the
+    // items have moved; a fact in none of them, where it is (a 0 first).
+    /// The place among `ss` of the item whose span (`ss` to `es`) holds `p`;
+    /// -1 for none.
+    pub fn member_at(mut p: i64, mut ss: List<i64>, mut es: List<i64>, mut i: i64) -> i64 {
+        loop {
+            if (null_p(ss) || null_p(es)) {
+                return the::<i64>(-1i64);
+            } else if (i64_gt_eq(p, car(ss)) && i64_lt(p, car(es))) {
+                return i;
+            } else {
+                (ss, es, i) = (cdr(ss), cdr(es), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn i64_nth(mut xs: List<i64>, mut i: i64) -> i64 {
+        loop {
+            if null_p(xs) {
+                return 0i64;
+            } else if i64_eq(i, 0i64) {
+                return car(xs);
+            } else {
+                (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn fact_code_at(file: Str, ss: List<i64>, es: List<i64>, f: &'static Fact) -> Str {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, p, w) => {
+                let i = if string_eq_p(ff, file) {
+                    member_at(p, ss, es, 0i64)
+                } else {
+                    the::<i64>(-1i64)
+                };
+                if i64_gt_eq(i, 0i64) {
+                    string_append(str_lit("(2 "), string_append(i64_to_string(i), string_append(str_lit(" "), string_append(i64_to_string(i64_minus(p, i64_nth(ss, i))), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
+                } else {
+                    string_append(str_lit("(0 "), string_append(quoted(ff), string_append(str_lit(" "), string_append(i64_to_string(p), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
+                }
+            }
+        }
+    }
+
+    pub fn code_fact_at(file: Str, ss: List<i64>, e: &'static Sexp) -> &'static Fact {
+        let xs = items(e);
+        if i64_eq(code_number(car(xs)), 2i64) {
+            fact(file, i64_plus(i64_nth(ss, code_number(second(xs))), code_number(third(xs))), code_text(fourth(xs)))
+        } else if i64_eq(code_number(car(xs)), 1i64) {
+            fact(file, i64_plus(i64_nth(ss, 0i64), code_number(second(xs))), code_text(third(xs)))
+        } else {
+            fact(code_text(second(xs)), code_number(third(xs)), code_text(fourth(xs)))
+        }
+    }
+
     pub fn typed_code(x: &'static Typed) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
@@ -721,16 +783,14 @@ pub mod incremental {
         }
     }
 
-    pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, file: Str, start: i64) -> &'static Change {
+    pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, code: &'static (dyn Fn(&'static Fact) -> Str + Send + Sync)) -> &'static Change {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
                 let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
                 let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
                 let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
-                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(lambda1s(move |x: &'static Fact| {
-                    fact_code(file, start, x)
-                }), new_facts)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), forward_text(new_binds, new_effs, here, group, tv, new_facts))
+                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(code, new_facts)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), forward_text(new_binds, new_effs, here, group, tv, new_facts))
             }
         }
     }
@@ -744,13 +804,11 @@ pub mod incremental {
         kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
     }
 
-    pub fn change_applied(v: &'static Cv, text: Str, file: Str, start: i64) -> &'static Redone {
+    pub fn change_applied(v: &'static Cv, text: Str, uncode: &'static (dyn Fn(&'static Sexp) -> &'static Fact + Send + Sync)) -> &'static Redone {
         let parts = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
         let new_binds = map(&code_bind, items(car(parts)));
         let new_effs = map(&code_effdef, items(second(parts)));
-        let new_facts = map(lambda1s(move |e: &'static Sexp| {
-            code_fact(file, start, e)
-        }), items(third(parts)));
+        let new_facts = map(uncode, items(third(parts)));
         let found = map(&code_typed, items(fourth(parts)));
         let rest = cdr(cdr(cdr(cdr(parts))));
         let here = code_text(car(rest));
@@ -947,16 +1005,24 @@ pub mod incremental {
                 } else {
                     show_sexp(it)
                 };
-                let layout = words_of(map(lambda1s(move |q: i64| {
-                    i64_to_string(i64_minus(q, start))
-                }), ss));
-                let key = fnv_string(own, fnv_string(layout, fnv_string(str_lit("item"), chain)));
+                let es = map(lambda1s(move |q: i64| {
+                    position_after(q, positions, end)
+                }), ss);
+                let key = fnv_string(own, fnv_string(str_lit("item"), chain));
                 let hit = memo_find(old, key);
                 if not(null_p(hit)) {
                     let tagcase_ = car(hit);
                     match *tagcase_ {
                         Memo::Memo(h, text) => {
-                            let tagcase_ = change_applied(v, text, file, start);
+                            let tagcase_ = change_applied(v, text, if placed {
+                                lambda1s(move |e: &'static Sexp| {
+                                    code_fact_at(file, ss, e)
+                                })
+                            } else {
+                                lambda1s(move |e: &'static Sexp| {
+                                    code_fact(file, start, e)
+                                })
+                            });
                             match *tagcase_ {
                                 Redone::Redone(v2, more, forward) => {
                                     (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(car(hit), made));
@@ -969,7 +1035,15 @@ pub mod incremental {
                     let tagcase_ = check_item(v, m, it);
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            let tagcase_ = change_of(v, v2, more, file, start);
+                            let tagcase_ = change_of(v, v2, more, if placed {
+                                lambda1s(move |x: &'static Fact| {
+                                    fact_code_at(file, ss, es, x)
+                                })
+                            } else {
+                                lambda1s(move |x: &'static Fact| {
+                                    fact_code(file, start, x)
+                                })
+                            });
                             match *tagcase_ {
                                 Change::Change(text2, forward) => {
                                     (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text2), made));
@@ -1039,7 +1113,9 @@ pub mod incremental {
                     let tagcase_ = car(hit);
                     match *tagcase_ {
                         Memo::Memo(h, text) => {
-                            let tagcase_ = change_applied(v, text, file, start);
+                            let tagcase_ = change_applied(v, text, lambda1s(move |e: &'static Sexp| {
+                                code_fact(file, start, e)
+                            }));
                             match *tagcase_ {
                                 Redone::Redone(v2, more, forward) => {
                                     (v, forms, texts, chain, found, made) = (v2, cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(car(hit), made));
@@ -1071,7 +1147,9 @@ pub mod incremental {
                     let tagcase_ = done;
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            let tagcase_ = change_of(v, v2, more, file, start);
+                            let tagcase_ = change_of(v, v2, more, lambda1s(move |x: &'static Fact| {
+                                fact_code(file, start, x)
+                            }));
                             match *tagcase_ {
                                 Change::Change(text, forward) => {
                                     (v, forms, texts, chain, found, made) = (v2, cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));

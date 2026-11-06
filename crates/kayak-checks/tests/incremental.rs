@@ -280,7 +280,8 @@ fn main() {
                     // An item between two of a group's, not of it, made longer:
                     // the group's text the same, its later items moved (C359:
                     // their facts, kept at offsets from the group's start, were
-                    // taken where they had been).
+                    // given where they had been; C360, each item's from its own
+                    // start, so the memo is taken and right).
                     found(
                         x,
                         ("a string between a define-rec group's items", |s| {
