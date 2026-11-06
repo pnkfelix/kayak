@@ -5074,7 +5074,10 @@
                                ;; `nil` or a pair, below a list member too.
                                (if (string-member? (member-shape a) (list "nil" "pair")) (members-of-shape (members-of e) "list") nil)))
                     (m (if (or (null? all) (null? (cdr all))) all (filter (lambda ((x ty)) (quick-fits? s a x)) all))))
-               (if (null? m) (mismatch v s a e) (fits v s a (car m)))))
+               (cond ((not (null? m)) (fits v s a (car m)))
+                     ;; None takes it whole: split, to show each piece below (C356).
+                     ((i64>= (split-fits s a e 64) 0) s)
+                     (else (mismatch v s a e)))))
             ((and (tagcase a (ty-data (d args) (string=? d "false")) (else other #f)) (tagcase e (ty-bool () #t) (else other #f)))
              "`false` below `bool`."
              s)
@@ -5145,6 +5148,12 @@
                             (ty-list (y q) (and (quick-fits? s (car args) y) (quick-fits? s (car (cdr args)) e)
                                                 (or (tagcase (walk s (car (cdr (cdr args)))) (ty-meta (k) #t) (else other #f))
                                                     (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s q))))))
+                            ;; Below a pair: part by part where immutable, else the same.
+                            (ty-data (d2 bs)
+                              (and (string=? d2 "%pairof") (i64= (size bs) 3)
+                                   (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s (car (cdr (cdr bs))))))
+                                   (string-member? (show-ty s (zonk s (car (cdr (cdr args))))) (list "acyclic" "const"))
+                                   (quick-fits? s (car args) (car bs)) (quick-fits? s (car (cdr args)) (car (cdr bs)))))
                             (else other #f)))
                          (else #f)))
                  (ty-proc (ea pa ra)
@@ -5160,6 +5169,88 @@
                                              (string=? (show-ty s (zonk s r)) (show-ty s (zonk s q))))))
                      (else other #f)))
                  (else other #f)))))))
+  (split-fields (subr kfx (st ty) (listof tys acyclic))
+    (lambda (s a)
+      "The fields a value of `a` may be split at, as a list of one: a
+       product's or a sum's, a frozen pair's head and tail (Fixpt's
+       `k-split-fields`)."
+      (tagcase (named-seen s a)
+        (ty-shape (p ls ts) (list ts))
+        (ty-data (d args)
+          (if (and (string=? d "%pairof") (i64= (size args) 3)
+                   (string-member? (show-ty s (zonk s (car (cdr (cdr args))))) (list "acyclic" "const")))
+              (list (list (car args) (car (cdr args))))
+              nil))
+        (else other nil))))
+  (kin-fields (subr kfx (st ty tys) (listof tys acyclic))
+    (lambda (s a ns)
+      "The fields of each of `ns` of `a`'s kind that match `a`'s: a product of
+       its labels, a sum with each of its tags (their payloads), a pair."
+      (if (null? ns)
+          nil
+          (let ((rest (kin-fields s a (cdr ns))) (n (named-seen s (car ns))))
+            (tagcase (named-seen s a)
+              (ty-shape (p ls ts)
+                (tagcase n
+                  (ty-shape (q ms us)
+                    (cond ((and p q (string=? (words-of ls) (words-of ms))) (cons us rest))
+                          ((and (not p) (not q) (all? (lambda ((l string)) (string-member? l ms)) ls))
+                           (cons (map (lambda ((l string)) (label-type l ms us)) ls) rest))
+                          (else rest)))
+                  (else other rest)))
+              (ty-data (d args)
+                (tagcase n
+                  (ty-data (e bs) (if (and (string=? d "%pairof") (string=? e "%pairof") (i64= (size bs) 3)) (cons (list (car bs) (car (cdr bs))) rest) rest))
+                  (else other rest)))
+              (else other rest))))))
+  (with-field (subr kfx (st ty i64 ty) ty)
+    (lambda (s a i m)
+      "`a` with its `i`th field (`split-fields`) of type `m`."
+      (tagcase (named-seen s a)
+        (ty-shape (p ls ts) (ty-shape p ls (tys-put ts i m)))
+        (ty-data (d args) (if (string=? d "%pairof") (ty-data d (tys-put args i m)) a))
+        (else other a))))
+  (tys-put (subr kfx (tys i64 ty) tys)
+    (lambda (ts i m) (cond ((null? ts) nil) ((i64= i 0) (cons m (cdr ts))) (else (cons (car ts) (tys-put (cdr ts) (i64- i 1) m))))))
+  (split-fits (subr kfx (st ty ty i64) i64)
+    (lambda (s a e budget)
+      "Whether `a` is below union `e` (C356; Fixpt's U2b, `logical-types.md`
+       §8.8): a member of its shape takes it whole, else, a product, a sum or
+       a frozen pair, it is split at its first field whose type is a union
+       and on which the members of its kind differ, each piece below `e`.
+       Each split spends one of `budget` (64 a question, as Fixpt's): what is
+       left, or -1 if it is not shown."
+      (let ((ms (members-of (walk s e))))
+        (if (any? (lambda ((m ty)) (quick-fits? s a m)) ms)
+            budget
+            (let ((fs (split-fields s a)) (kin (kin-fields s a ms)))
+              (if (or (i64<= budget 0) (null? fs) (null? kin) (null? (cdr kin)))
+                  -1
+                  (split-at s a e (car fs) kin 0 budget)))))))
+  (split-at (subr kfx (st ty ty tys (listof tys acyclic) i64 i64) i64)
+    (lambda (s a e fs kin i budget)
+      (cond ((null? fs) -1)
+            ((and (string=? (shape-of (named-seen s (car fs))) "union")
+                  (not (all? (lambda ((k tys)) (ty-same? (tys-nth k i) (tys-nth (car kin) i))) kin)))
+             (pieces-fit s a e i (members-of (named-seen s (car fs))) (i64- budget 1)))
+            (else (split-at s a e (cdr fs) kin (i64+ i 1) budget)))))
+  (pieces-fit (subr kfx (st ty ty i64 tys i64) i64)
+    (lambda (s a e i ms budget)
+      (cond ((i64< budget 0) -1)
+            ((null? ms) budget)
+            (else (pieces-fit s a e i (cdr ms) (split-fits s (with-field s a i (car ms)) e budget))))))
+  (tys-nth (subr kfx (tys i64) ty)
+    (lambda (ts i) (cond ((null? ts) (ty-void)) ((i64= i 0) (car ts)) (else (tys-nth (cdr ts) (i64- i 1))))))
+  (greatest-of-shape (subr kfx (st tys string) tys)
+    (lambda (s ms shape)
+      "The member of `shape` inference takes (Fixpt's U2b piece 2, C356;
+       `k-greatest-of`): the one alone, else the one every other of the shape
+       is below; none if none is."
+      (let ((all (members-of-shape ms shape)))
+        (if (or (null? all) (null? (cdr all)))
+            all
+            (let ((g (filter (lambda ((m ty)) (all? (lambda ((o ty)) (quick-fits? s o m)) all)) all)))
+              (if (null? g) nil (list (car g))))))))
   (quick-fits-each? (subr kfx (st tys tys) bool)
     (lambda (s as es)
       (cond ((and (null? as) (null? es)) #t)

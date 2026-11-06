@@ -11971,10 +11971,12 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 quick_fits_p(s, a, x)
             }), all)
         };
-        if null_p(m) {
-            mismatch(v, s, a, e)
-        } else {
+        if not(null_p(m)) {
             fits(v, s, a, car(m))
+        } else if i64_gt_eq(split_fits(s, a, e, 64i64), 0i64) {
+            s
+        } else {
+            mismatch(v, s, a, e)
         }
     } else if ({
         let tagcase_ = a;
@@ -12326,6 +12328,9 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                                 }
                             } || string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, q)))))
                         }
+                        Ty::TyData(d2, bs) => {
+                            (string_eq_p(d2, str_lit("%pairof")) && i64_eq(size(bs), 3i64) && string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, car(cdr(cdr(bs)))))) && string_member_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::nil()))) && quick_fits_p(s, car(args), car(bs)) && quick_fits_p(s, car(cdr(args)), car(cdr(bs))))
+                        }
                         _ => {
                             let other = tagcase_;
                             false
@@ -12376,6 +12381,199 @@ pub fn quick_fits_p(s: &'static St, a0: &'static Ty, e0: &'static Ty) -> bool {
                 let other = tagcase_;
                 false
             }
+        }
+    }
+}
+
+/// The fields a value of `a` may be split at, as a list of one: a
+/// product's or a sum's, a frozen pair's head and tail (Fixpt's
+/// `k-split-fields`).
+pub fn split_fields(s: &'static St, a: &'static Ty) -> List<Tys> {
+    let tagcase_ = named_seen(s, a);
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            kayak_rt::heap_cons(ts, kayak_rt::nil())
+        }
+        Ty::TyData(d, args) => {
+            if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(args), 3i64) && string_member_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), kayak_rt::heap_cons(str_lit("acyclic"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::nil())))) {
+                kayak_rt::heap_cons(kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::nil())), kayak_rt::nil())
+            } else {
+                nil::<List<&'static Ty>>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<List<&'static Ty>>()
+        }
+    }
+}
+
+/// The fields of each of `ns` of `a`'s kind that match `a`'s: a product of
+/// its labels, a sum with each of its tags (their payloads), a pair.
+pub fn kin_fields(s: &'static St, a: &'static Ty, ns: Tys) -> List<Tys> {
+    if null_p(ns) {
+        nil::<List<&'static Ty>>()
+    } else {
+        let (rest, n) = (kin_fields(s, a, cdr(ns)), named_seen(s, car(ns)));
+        let tagcase_ = named_seen(s, a);
+        match *tagcase_ {
+            Ty::TyShape(p, ls, ts) => {
+                let tagcase_ = n;
+                match *tagcase_ {
+                    Ty::TyShape(q, ms, us) => {
+                        if (p && q && string_eq_p(words_of(ls), words_of(ms))) {
+                            kayak_rt::heap_cons(us, rest)
+                        } else if (not(p) && not(q) && all_p(lambda1s(move |l: Str| {
+                            string_member_p(l, ms)
+                        }), ls)) {
+                            kayak_rt::heap_cons(map(lambda1s(move |l: Str| {
+                                label_type(l, ms, us)
+                            }), ls), rest)
+                        } else {
+                            rest
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        rest
+                    }
+                }
+            }
+            Ty::TyData(d, args) => {
+                let tagcase_ = n;
+                match *tagcase_ {
+                    Ty::TyData(e, bs) => {
+                        if (string_eq_p(d, str_lit("%pairof")) && string_eq_p(e, str_lit("%pairof")) && i64_eq(size(bs), 3i64)) {
+                            kayak_rt::heap_cons(kayak_rt::heap_cons(car(bs), kayak_rt::heap_cons(car(cdr(bs)), kayak_rt::nil())), rest)
+                        } else {
+                            rest
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        rest
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                rest
+            }
+        }
+    }
+}
+
+/// `a` with its `i`th field (`split-fields`) of type `m`.
+pub fn with_field(s: &'static St, a: &'static Ty, i: i64, m: &'static Ty) -> &'static Ty {
+    let tagcase_ = named_seen(s, a);
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            ty_shape(p, ls, tys_put(ts, i, m))
+        }
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%pairof")) {
+                ty_data(d, tys_put(args, i, m))
+            } else {
+                a
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            a
+        }
+    }
+}
+
+pub fn tys_put(ts: Tys, i: i64, m: &'static Ty) -> Tys {
+    if null_p(ts) {
+        nil::<&'static Ty>()
+    } else if i64_eq(i, 0i64) {
+        kayak_rt::heap_cons(m, cdr(ts))
+    } else {
+        kayak_rt::heap_cons(car(ts), tys_put(cdr(ts), i64_minus(i, 1i64), m))
+    }
+}
+
+/// Whether `a` is below union `e` (C356; Fixpt's U2b, `logical-types.md`
+/// §8.8): a member of its shape takes it whole, else, a product, a sum or
+/// a frozen pair, it is split at its first field whose type is a union
+/// and on which the members of its kind differ, each piece below `e`.
+/// Each split spends one of `budget` (64 a question, as Fixpt's): what is
+/// left, or -1 if it is not shown.
+pub fn split_fits(s: &'static St, a: &'static Ty, e: &'static Ty, budget: i64) -> i64 {
+    let ms = members_of(walk(s, e));
+    if any_p(lambda1s(move |m: &'static Ty| {
+        quick_fits_p(s, a, m)
+    }), ms) {
+        budget
+    } else {
+        let (fs, kin) = (split_fields(s, a), kin_fields(s, a, ms));
+        if (i64_lt_eq(budget, 0i64) || null_p(fs) || null_p(kin) || null_p(cdr(kin))) {
+            -1i64
+        } else {
+            split_at(s, a, e, car(fs), kin, 0i64, budget)
+        }
+    }
+}
+
+pub fn split_at(mut s: &'static St, mut a: &'static Ty, mut e: &'static Ty, mut fs: Tys, mut kin: List<Tys>, mut i: i64, mut budget: i64) -> i64 {
+    loop {
+        if null_p(fs) {
+            return -1i64;
+        } else if (string_eq_p(shape_of(named_seen(s, car(fs))), str_lit("union")) && not(all_p(lambda1s(move |k: Tys| {
+            ty_same_p(tys_nth(k, i), tys_nth(car(kin), i))
+        }), kin))) {
+            return pieces_fit(s, a, e, i, members_of(named_seen(s, car(fs))), i64_minus(budget, 1i64));
+        } else {
+            (fs, i) = (cdr(fs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn pieces_fit(mut s: &'static St, mut a: &'static Ty, mut e: &'static Ty, mut i: i64, mut ms: Tys, mut budget: i64) -> i64 {
+    loop {
+        if i64_lt(budget, 0i64) {
+            return -1i64;
+        } else if null_p(ms) {
+            return budget;
+        } else {
+            (ms, budget) = (cdr(ms), split_fits(s, with_field(s, a, i, car(ms)), e, budget));
+            continue;
+        }
+    }
+}
+
+pub fn tys_nth(mut ts: Tys, mut i: i64) -> &'static Ty {
+    loop {
+        if null_p(ts) {
+            return ty_void();
+        } else if i64_eq(i, 0i64) {
+            return car(ts);
+        } else {
+            (ts, i) = (cdr(ts), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The member of `shape` inference takes (Fixpt's U2b piece 2, C356;
+/// `k-greatest-of`): the one alone, else the one every other of the shape
+/// is below; none if none is.
+pub fn greatest_of_shape(s: &'static St, ms: Tys, shape: Str) -> Tys {
+    let all = members_of_shape(ms, shape);
+    if (null_p(all) || null_p(cdr(all))) {
+        all
+    } else {
+        let g = filter(lambda1s(move |m: &'static Ty| {
+            all_p(lambda1s(move |o: &'static Ty| {
+                quick_fits_p(s, o, m)
+            }), all)
+        }), all);
+        if null_p(g) {
+            nil::<&'static Ty>()
+        } else {
+            kayak_rt::heap_cons(car(g), kayak_rt::nil())
         }
     }
 }

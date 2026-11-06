@@ -9725,3 +9725,31 @@ give Fixpt's answers on the engine and tiers 1 and 6; `cells`,
 and greatest member (`greatest-pair`), U3's rule 5 (`car-split`,
 `allof-split`, `swap-anyof`), and `recursive-sums`, `swap-anyof` on C354's
 termination gap.
+
+## C356. U2b: a union's greatest member, and splits (2026-11-05; logical types, step 4)
+
+Fixpt's U2b (96dd3d1f, 7f459806; `logical-types.md` §8.8):
+- **The greatest member of a shape** (`greatest-of-shape`): where
+  inference takes a union's member of a shape (a pair it is taken apart as,
+  `pair-member`; one `cons` builds, `pair-expected`, now also an `anyof`
+  of several lists' greatest's pair, `union-pair-expected`; a list written
+  where one is), of several the one every other is below (`quick-fits?`,
+  now immutable pairs part by part too); none if none is.
+- **Splits** (`split-fits`): a value below a union none of whose members
+  of its shape takes it whole, if a product, a sum or a frozen pair, is
+  split at its first field whose type is a union and on which the
+  members of its kind differ (`kin-fields`), each piece then below the
+  union; 64 splits a question, as Fixpt's (question 17). A list is not
+  split along its tail. Shown so, the value is taken without its
+  inference variables solved by it (it has none where a split is tried:
+  its fields' unions are written).
+Fixpt's tests: `distribute`, `distribute-product`, `budget-within`,
+`greatest-pair` give Fixpt's answers; `distribute-missing`, `budget-past`,
+`mixed-list` refused (kayak names `ib` written out).
+
+Found on the way, not looked into: `pair-expected` written with a `cond`
+clause `((and (string=? (shape-of x) "union") (not (null? (F …)))) (F …))`
+made the bootstrap's second generation not build (403 errors in the Rust
+it emitted: `refuse` found `Void` where a `Res` is expected, `filter`'s
+lambdas mistyped), where the same written as its own `define`
+(`union-pair-expected`) builds. TODO.

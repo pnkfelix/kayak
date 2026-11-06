@@ -676,8 +676,23 @@
         (lambda (s t)
           (let ((x (walk s t)))
             (cond ((string=? (shape-of x) "pair") (list x))
-                  ((string=? (shape-of x) "union") (member-of-shape (members-of x) "pair"))
+                  ((string=? (shape-of x) "union") (union-pair-expected s (members-of x)))
                   (else nil)))))
+
+      (define union-pair-expected (subr kfx (st tys) tys)
+        (lambda (s ms)
+          "A union's pair member, the greatest of several (C356); of an `anyof`
+           of several lists and no pair, the greatest list's pair, as `cons`
+           builds it."
+          (let ((p (greatest-of-shape s ms "pair")))
+            (if (or (not (null? p)) (i64< (size (members-of-shape ms "list")) 2))
+                p
+                (let ((l (greatest-of-shape s ms "list")))
+                  (if (null? l)
+                      nil
+                      (tagcase (car l)
+                        (ty-list (e r) (list (ty-data "%pairof" (list e (car l) r))))
+                        (else other nil))))))))
 
       "Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
        in its `if`'s first branch, and its `cond`'s clause, that `x` is the
@@ -798,10 +813,11 @@
             (cond ((general-pair? s x) (list x))
                   ((string=? (shape-of x) "union")
                    (let ((ms (members-of x)))
-                     (cond ((not (null? (member-of-shape ms "pair"))) (member-of-shape ms "pair"))
-                           ((not (null? (member-of-shape ms "list")))
-                            (tagcase (car (member-of-shape ms "list"))
-                              (ty-list (e r) (list (ty-data "%pairof" (list e (car (member-of-shape ms "list")) r))))
+                     ;; Of several, the greatest (C356).
+                     (cond ((not (null? (greatest-of-shape s ms "pair"))) (greatest-of-shape s ms "pair"))
+                           ((not (null? (greatest-of-shape s ms "list")))
+                            (tagcase (car (greatest-of-shape s ms "list"))
+                              (ty-list (e r) (list (ty-data "%pairof" (list e (car (greatest-of-shape s ms "list")) r))))
                               (else other nil)))
                            (else nil))))
                   (else nil)))))
@@ -3186,10 +3202,11 @@
                   `acyclic`, given as it is."
                  (check v s e (ty-list (ty-data "datum" nil) (ty-rconst "acyclic"))))
                 ((and (string=? h "list") (string=? (shape-of (walk s expected)) "union")
-                      (not (null? (member-of-shape (members-of (walk s expected)) "list"))))
+                      (not (null? (greatest-of-shape s (members-of (walk s expected)) "list"))))
                  "A list where a union with a list member is expected (C77): that
-                  member, its elements checked against its own."
-                 (check v s e (car (member-of-shape (members-of (walk s expected)) "list"))))
+                  member, its elements checked against its own; of several, the
+                  greatest (C356)."
+                 (check v s e (car (greatest-of-shape s (members-of (walk s expected)) "list"))))
                 ((and (string=? h "list") (string=? (shape-of (walk s expected)) "union")
                       (not (null? (members-of-shape (members-of (walk s expected)) "list"))))
                  "A list where an `anyof` of several lists is expected (C355): found,

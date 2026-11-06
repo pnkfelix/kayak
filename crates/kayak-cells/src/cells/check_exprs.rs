@@ -1528,9 +1528,35 @@ pub mod expressions {
         if string_eq_p(shape_of(x), str_lit("pair")) {
             kayak_rt::heap_cons(x, kayak_rt::nil())
         } else if string_eq_p(shape_of(x), str_lit("union")) {
-            member_of_shape(members_of(x), str_lit("pair"))
+            union_pair_expected(s, members_of(x))
         } else {
             nil::<&'static Ty>()
+        }
+    }
+
+    /// A union's pair member, the greatest of several (C356); of an `anyof`
+    /// of several lists and no pair, the greatest list's pair, as `cons`
+    /// builds it.
+    pub fn union_pair_expected(s: &'static St, ms: Tys) -> Tys {
+        let p = greatest_of_shape(s, ms, str_lit("pair"));
+        if (not(null_p(p)) || i64_lt(size(members_of_shape(ms, str_lit("list"))), 2i64)) {
+            p
+        } else {
+            let l = greatest_of_shape(s, ms, str_lit("list"));
+            if null_p(l) {
+                nil::<&'static Ty>()
+            } else {
+                let tagcase_ = car(l);
+                match *tagcase_ {
+                    Ty::TyList(e, r) => {
+                        kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(car(l), kayak_rt::heap_cons(r, kayak_rt::nil())))), kayak_rt::nil())
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Ty>()
+                    }
+                }
+            }
         }
     }
 
@@ -1815,13 +1841,13 @@ pub mod expressions {
             kayak_rt::heap_cons(x, kayak_rt::nil())
         } else if string_eq_p(shape_of(x), str_lit("union")) {
             let ms = members_of(x);
-            if not(null_p(member_of_shape(ms, str_lit("pair")))) {
-                member_of_shape(ms, str_lit("pair"))
-            } else if not(null_p(member_of_shape(ms, str_lit("list")))) {
-                let tagcase_ = car(member_of_shape(ms, str_lit("list")));
+            if not(null_p(greatest_of_shape(s, ms, str_lit("pair")))) {
+                greatest_of_shape(s, ms, str_lit("pair"))
+            } else if not(null_p(greatest_of_shape(s, ms, str_lit("list")))) {
+                let tagcase_ = car(greatest_of_shape(s, ms, str_lit("list")));
                 match *tagcase_ {
                     Ty::TyList(e, r) => {
-                        kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(car(member_of_shape(ms, str_lit("list"))), kayak_rt::heap_cons(r, kayak_rt::nil())))), kayak_rt::nil())
+                        kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(car(greatest_of_shape(s, ms, str_lit("list"))), kayak_rt::heap_cons(r, kayak_rt::nil())))), kayak_rt::nil())
                     }
                     _ => {
                         let other = tagcase_;
@@ -7051,10 +7077,11 @@ pub mod expressions {
             // A list where a datum is expected (C77): a list of datums, at
             // `acyclic`, given as it is.
             check(v, s, e, ty_list(ty_data(str_lit("datum"), nil::<&'static Ty>()), ty_rconst(str_lit("acyclic"))))
-        } else if (string_eq_p(h, str_lit("list")) && string_eq_p(shape_of(walk(s, expected)), str_lit("union")) && not(null_p(member_of_shape(members_of(walk(s, expected)), str_lit("list"))))) {
+        } else if (string_eq_p(h, str_lit("list")) && string_eq_p(shape_of(walk(s, expected)), str_lit("union")) && not(null_p(greatest_of_shape(s, members_of(walk(s, expected)), str_lit("list"))))) {
             // A list where a union with a list member is expected (C77): that
-            // member, its elements checked against its own.
-            check(v, s, e, car(member_of_shape(members_of(walk(s, expected)), str_lit("list"))))
+            // member, its elements checked against its own; of several, the
+            // greatest (C356).
+            check(v, s, e, car(greatest_of_shape(s, members_of(walk(s, expected)), str_lit("list"))))
         } else if (string_eq_p(h, str_lit("list")) && string_eq_p(shape_of(walk(s, expected)), str_lit("union")) && not(null_p(members_of_shape(members_of(walk(s, expected)), str_lit("list"))))) {
             // A list where an `anyof` of several lists is expected (C355): found,
             // then below the first of them it is (`fits`).
