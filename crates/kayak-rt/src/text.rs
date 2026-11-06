@@ -168,6 +168,24 @@ mod tests {
     use super::*;
     use crate::{int_lit, string_length_i64, string_ref_i64};
 
+    /// Numbers, characters and lists of characters made into strings, as
+    /// Rust writes them.
+    #[test]
+    fn made_in_place() {
+        for n in [0, 7, -7, 10, 1234567890, i64::MAX, i64::MIN] {
+            assert_eq!(crate::i64_to_string(n).as_str(), n.to_string());
+        }
+        for c in ['a', '…', '§', '\u{1F600}'] {
+            assert_eq!(crate::char_to_string(c).as_str(), c.to_string());
+        }
+        let t = "a…b§\u{1F600}c";
+        assert_eq!(
+            crate::list_to_string(crate::string_to_list(crate::str_lit(t))).as_str(),
+            t
+        );
+        assert_eq!(crate::list_to_string(crate::nil()).as_str(), "");
+    }
+
     /// Each character, search and substring of a non-ASCII string, in any
     /// order, as counting from the start gives.
     #[test]

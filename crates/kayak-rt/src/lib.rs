@@ -128,6 +128,17 @@ thread_local! {
 /// `parts`, one after another, as one string kept for the run.
 pub fn str_of_parts(parts: &[&str]) -> Str {
     let n: usize = parts.iter().map(|p| p.len()).sum();
+    str_made(n, |bytes| {
+        let mut at = 0;
+        for p in parts {
+            bytes[at..at + p.len()].copy_from_slice(p.as_bytes());
+            at += p.len();
+        }
+    })
+}
+
+/// A string of `n` bytes, which `fill` writes, kept for the run.
+fn str_made(n: usize, fill: impl FnOnce(&mut [u8])) -> Str {
     stats::note::<Str>(n);
     if n == 0 {
         return str_lit("");
@@ -142,11 +153,7 @@ pub fn str_of_parts(parts: &[&str]) -> Str {
         STRING_BYTES.set(Some(rest));
         bytes
     };
-    let mut at = 0;
-    for p in parts {
-        bytes[at..at + p.len()].copy_from_slice(p.as_bytes());
-        at += p.len();
-    }
+    fill(bytes);
     let ascii = bytes.is_ascii();
     match std::str::from_utf8(bytes) {
         Ok(text) => Str { text, ascii },
@@ -488,7 +495,20 @@ pub fn i64_to_char(n: i64) -> char {
 
 #[inline]
 pub fn i64_to_string(n: i64) -> Str {
-    leak_string(n.to_string())
+    // Written on the stack, then kept (C365): `to_string` was a `malloc`.
+    let mut buf = [0u8; 20];
+    let mut at = buf.len();
+    let mut m = n.unsigned_abs();
+    loop {
+        at -= 1;
+        buf[at] = b'0' + (m % 10) as u8;
+        m /= 10;
+        if m == 0 {
+            break;
+        }
+    }
+    let digits = std::str::from_utf8(&buf[at..]).unwrap_or("");
+    str_of_parts(&[if n < 0 { "-" } else { "" }, digits])
 }
 
 // Mutable data: references and flat arrays. Regions are erased (every
@@ -602,7 +622,7 @@ pub fn char_upcase(c: char) -> char {
 
 #[inline]
 pub fn char_to_string(c: char) -> Str {
-    leak_string(c.to_string())
+    str_of_parts(&[c.encode_utf8(&mut [0u8; 4])])
 }
 
 // Strings.
@@ -683,13 +703,22 @@ pub fn string_to_list(s: Str) -> List<char> {
 }
 
 #[inline]
-pub fn list_to_string(mut cs: List<char>) -> Str {
-    let mut s = String::new();
-    while let Some(p) = cs {
-        s.push(p.car);
-        cs = p.cdr;
+pub fn list_to_string(cs: List<char>) -> Str {
+    // Measured, then written in place (C365): a `String` grown a character
+    // at a time was a `malloc` and `realloc`s.
+    let mut n = 0;
+    let mut at = cs;
+    while let Some(p) = at {
+        n += p.car.len_utf8();
+        at = p.cdr;
     }
-    leak_string(s)
+    str_made(n, |bytes| {
+        let (mut i, mut at) = (0, cs);
+        while let Some(p) = at {
+            i += p.car.encode_utf8(&mut bytes[i..]).len();
+            at = p.cdr;
+        }
+    })
 }
 
 /// Runs `f` on a thread with a stack of 1 GiB: KFX-0 has no loops, and

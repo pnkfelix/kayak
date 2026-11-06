@@ -9993,3 +9993,31 @@ and the sources read two or three times a compile.
 The compiler on itself: warm 1.99 s to 1.34 s (1.52 GB to 0.91 GB),
 plain 3.3 s to 2.55 s (2.1 GB to 1.27 GB); the output the same with
 memos and without.
+
+## C365. Clashes looked up, numbers and lists written in place (2026-11-06)
+
+The user's "keep going", after C364. A frame-pointer build's profile:
+checking is half of a plain compile of the compiler, emitting a seventh;
+in the check, `with-binds` a seventh, half of it `mangled-clash`.
+- **`mangled-clash` by the index** (`scope-mangled-clash`): for each name
+  bound, every name in scope of the same mangled length was mangled and
+  compared. Now the names that may mangle as it are made (`unmangled`: at
+  each `_`, each mangling that begins there, a `-` and a `_`; a Rust
+  keyword's `r#`, `self_`, `-`'s `_minus`), each looked up in the scope,
+  and mangled to be sure; if one is bound the scope is walked as before,
+  so that the refusal names the same two. A name of more than 6 `_`s
+  (64 names or more to look up) is walked as before. Tried on each kind
+  of mangling (`->`, a last `-`, `=`, `?`, past 6 `_`s).
+- **The runtime's string makers**: `list->string` measured its list, then
+  wrote it in place, where a `String` grew a character at a time;
+  `i64->string` and `char->string` written on the stack, then kept, where
+  `to_string` was a `malloc`; a test, `made_in_place`.
+- **Tried and backed out**: the scope's index (`bix`, 180 MB, the most of
+  any one type) leaving a scope's newest bindings unindexed and walked,
+  put in the tree together past 16 (and 64, 256); and a module's check
+  growing the outer scope's index rather than making it again
+  (`cv-reindexed`, twice a module). Neither measured above the noise
+  (2.36-2.43 s plain): the batches still copy a path of the tree for each
+  binding, and the modules' rebuilds were not most of the tree.
+The compiler on itself: plain 2.55 s to 2.38 s; warm 1.34 s to 1.36 s
+(noise); the output the same with memos and without.

@@ -6115,6 +6115,73 @@
         nil
         (first-clash n (mangle n) bs))))
 
+"A mangled name's parts after a `_`, and what each mangles; a `_`
+ itself, a name's own (an FX-26 name may have one), last (C365)."
+(define unmangle-pieces strings (list "_to_" "_minus" "_plus" "_star" "_slash" "_colon" "_pct" "_lt" "_gt" "_eq" "_p" "_x" "_" "_"))
+(define unmangle-chars strings (list "->" "-" "+" "*" "/" ":" "%" "<" ">" "=" "?" "!" "-" "_"))
+
+(define-rec
+  (has-at? (subr kfx (string i64 string i64 i64) bool)
+    (lambda (m i p j k)
+      "Whether `m` has `p` from `i`; `j` of `p`'s `k` characters matched."
+      (or (i64= j k)
+          (and (i64< (i64+ i j) (string-length-i64 m))
+               (char=? (string-ref-i64 m (i64+ i j)) (string-ref-i64 p j))
+               (has-at? m i p (i64+ j 1) k)))))
+  (unmangled-from (subr kfx (string i64 i64) strings)
+    (lambda (m i n)
+      "Every name `mangle-runs` might have made `m` of, from `i` of `n`
+       characters: a superset, each to be mangled again to be sure."
+      (cond ((i64= i n) (the strings (list "")))
+            ((char=? (string-ref-i64 m i) #\_) (unmangled-pieces m i n unmangle-pieces unmangle-chars))
+            (else
+             (let ((j (char-from-or-end m #\_ i n)))
+               (map (lambda ((rest string)) (string-append (substring m (i64->int i) (i64->int j)) rest))
+                    (unmangled-from m j n)))))))
+  (unmangled-pieces (subr kfx (string i64 i64 strings strings) strings)
+    (lambda (m i n ps cs)
+      (cond ((null? ps) nil)
+            ((has-at? m i (car ps) 0 (string-length-i64 (car ps)))
+             (onto (map (lambda ((rest string)) (string-append (car cs) rest))
+                        (unmangled-from m (i64+ i (string-length-i64 (car ps))) n))
+                   (unmangled-pieces m i n (cdr ps) (cdr cs))))
+            (else (unmangled-pieces m i n (cdr ps) (cdr cs))))))
+  (char-from-or-end (subr kfx (string char i64 i64) i64)
+    (lambda (m c i n) (cond ((i64= i n) n) ((char=? (string-ref-i64 m i) c) i) (else (char-from-or-end m c (i64+ i 1) n))))))
+
+(define-rec
+  (underscores (subr kfx (string i64 i64 i64) i64)
+    (lambda (m i n k) (if (i64= i n) k (underscores m (i64+ i 1) n (if (char=? (string-ref-i64 m i) #\_) (i64+ k 1) k))))))
+
+(define unmangled (subr kfx (string) strings)
+  (lambda (m)
+    "The names that may mangle as `m`: `unmangled-from`'s, and a Rust
+     keyword's or `-`'s, which `mangle` writes apart."
+    (onto (cond ((string=? m "_minus") (the strings (list "-")))
+                ((has-prefix? m "r#") (the strings (list (after-prefix m "r#"))))
+                ((string-member? m (list "self_" "super_" "crate_" "Self_")) (the strings (list (substring-of m (i64- (string-length-i64 m) 1)))))
+                (else nil))
+          (unmangled-from m 0 (string-length-i64 m)))))
+
+(define scope-mangled-clash (subr kfx (string cv) strings)
+  (lambda (n v)
+    "`mangled-clash` of `n` and `v`'s scope, by its index (C365): the names
+     that may mangle as `n` does looked up, rather than every name in scope
+     mangled. If one is bound, the scope walked as `mangled-clash` walks it,
+     to name the same; a name with more than 6 `_`s (2^6 names or more that may
+     mangle as it), walked so too."
+    (if (or (has-prefix? n "%") (has-char-in? n #\space) (not (might-clash? n)))
+        nil
+        (let ((m (mangle n)))
+          (if (or (i64> (underscores m 0 (string-length-i64 m) 0) 6)
+                  (any? (lambda ((x string))
+                          (and (not (string=? x n)) (not (has-prefix? x "%")) (not (has-char-in? x #\space))
+                               (not (null? (scope-bind x v)))
+                               (string=? (mangle x) m)))
+                        (unmangled m)))
+              (first-clash n m (cv-binds v))
+              nil)))))
+
 (define-rec
   (remove-bind (subr kfx (bind binds) binds)
     (lambda (b bs)
@@ -6136,7 +6203,7 @@
               more)
         (refuse v (string-append "a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "
                                  (car (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (kfx-name? n) nil (the strings (list n)))))) more)))))
-        (let ((clash (onto (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (cv-binds v))))) more))
+        (let ((clash (onto (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (scope-mangled-clash n v)))) more))
                            (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (remove-bind b more))))) more)))))
           (if (not (null? clash))
               (refuse v (string-append "two names that are one in Rust: " (car clash)))

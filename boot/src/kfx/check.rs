@@ -14810,6 +14810,121 @@ pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
     }
 }
 
+// A mangled name's parts after a `_`, and what each mangles; a `_`
+// itself, a name's own (an FX-26 name may have one), last (C365).
+#[inline]
+pub fn unmangle_pieces() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("_to_"), kayak_rt::heap_cons(str_lit("_minus"), kayak_rt::heap_cons(str_lit("_plus"), kayak_rt::heap_cons(str_lit("_star"), kayak_rt::heap_cons(str_lit("_slash"), kayak_rt::heap_cons(str_lit("_colon"), kayak_rt::heap_cons(str_lit("_pct"), kayak_rt::heap_cons(str_lit("_lt"), kayak_rt::heap_cons(str_lit("_gt"), kayak_rt::heap_cons(str_lit("_eq"), kayak_rt::heap_cons(str_lit("_p"), kayak_rt::heap_cons(str_lit("_x"), kayak_rt::heap_cons(str_lit("_"), kayak_rt::heap_cons(str_lit("_"), kayak_rt::nil()))))))))))))))
+    })
+}
+
+#[inline]
+pub fn unmangle_chars() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("/"), kayak_rt::heap_cons(str_lit(":"), kayak_rt::heap_cons(str_lit("%"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("?"), kayak_rt::heap_cons(str_lit("!"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("_"), kayak_rt::nil()))))))))))))))
+    })
+}
+
+/// Whether `m` has `p` from `i`; `j` of `p`'s `k` characters matched.
+pub fn has_at_p(m: Str, i: i64, p: Str, j: i64, k: i64) -> bool {
+    (i64_eq(j, k) || (i64_lt(i64_plus(i, j), string_length_i64(m)) && char_eq_p(string_ref_i64(m, i64_plus(i, j)), string_ref_i64(p, j)) && has_at_p(m, i, p, i64_plus(j, 1i64), k)))
+}
+
+/// Every name `mangle-runs` might have made `m` of, from `i` of `n`
+/// characters: a superset, each to be mangled again to be sure.
+pub fn unmangled_from(m: Str, i: i64, n: i64) -> Strings {
+    if i64_eq(i, n) {
+        the::<Strings>(kayak_rt::heap_cons(str_lit(""), kayak_rt::nil()))
+    } else if char_eq_p(string_ref_i64(m, i), '_') {
+        unmangled_pieces(m, i, n, unmangle_pieces(), unmangle_chars())
+    } else {
+        let j = char_from_or_end(m, '_', i, n);
+        map(lambda1s(move |rest: Str| {
+            string_append(substring(m, i64_to_int(i), i64_to_int(j)), rest)
+        }), unmangled_from(m, j, n))
+    }
+}
+
+pub fn unmangled_pieces(mut m: Str, mut i: i64, mut n: i64, mut ps: Strings, mut cs: Strings) -> Strings {
+    loop {
+        if null_p(ps) {
+            return nil::<Str>();
+        } else if has_at_p(m, i, car(ps), 0i64, string_length_i64(car(ps))) {
+            return onto(map(lambda1s(move |rest: Str| {
+                string_append(car(cs), rest)
+            }), unmangled_from(m, i64_plus(i, string_length_i64(car(ps))), n)), unmangled_pieces(m, i, n, cdr(ps), cdr(cs)));
+        } else {
+            (ps, cs) = (cdr(ps), cdr(cs));
+            continue;
+        }
+    }
+}
+
+pub fn char_from_or_end(mut m: Str, mut c: char, mut i: i64, mut n: i64) -> i64 {
+    loop {
+        if i64_eq(i, n) {
+            return n;
+        } else if char_eq_p(string_ref_i64(m, i), c) {
+            return i;
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn underscores(mut m: Str, mut i: i64, mut n: i64, mut k: i64) -> i64 {
+    loop {
+        if i64_eq(i, n) {
+            return k;
+        } else {
+            (i, k) = (i64_plus(i, 1i64), if char_eq_p(string_ref_i64(m, i), '_') {
+                i64_plus(k, 1i64)
+            } else {
+                k
+            });
+            continue;
+        }
+    }
+}
+
+/// The names that may mangle as `m`: `unmangled-from`'s, and a Rust
+/// keyword's or `-`'s, which `mangle` writes apart.
+pub fn unmangled(m: Str) -> Strings {
+    onto(if string_eq_p(m, str_lit("_minus")) {
+        the::<Strings>(kayak_rt::heap_cons(str_lit("-"), kayak_rt::nil()))
+    } else if has_prefix_p(m, str_lit("r#")) {
+        the::<Strings>(kayak_rt::heap_cons(after_prefix(m, str_lit("r#")), kayak_rt::nil()))
+    } else if string_member_p(m, kayak_rt::heap_cons(str_lit("self_"), kayak_rt::heap_cons(str_lit("super_"), kayak_rt::heap_cons(str_lit("crate_"), kayak_rt::heap_cons(str_lit("Self_"), kayak_rt::nil()))))) {
+        the::<Strings>(kayak_rt::heap_cons(substring_of(m, i64_minus(string_length_i64(m), 1i64)), kayak_rt::nil()))
+    } else {
+        nil::<Str>()
+    }, unmangled_from(m, 0i64, string_length_i64(m)))
+}
+
+/// `mangled-clash` of `n` and `v`'s scope, by its index (C365): the names
+/// that may mangle as `n` does looked up, rather than every name in scope
+/// mangled. If one is bound, the scope walked as `mangled-clash` walks it,
+/// to name the same; a name with more than 6 `_`s (2^6 names or more that may
+/// mangle as it), walked so too.
+pub fn scope_mangled_clash(n: Str, v: &'static Cv) -> Strings {
+    if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ') || not(might_clash_p(n))) {
+        nil::<Str>()
+    } else {
+        let m = mangle(n);
+        if (i64_gt(underscores(m, 0i64, string_length_i64(m), 0i64), 6i64) || any_p(lambda1s(move |x: Str| {
+            (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && not(null_p(scope_bind(x, v))) && string_eq_p(mangle(x), m))
+        }), unmangled(m))) {
+            first_clash(n, m, cv_binds(v))
+        } else {
+            nil::<Str>()
+        }
+    }
+}
+
 /// `bs` but the first of them named as `b`: the others bound with it.
 pub fn remove_bind(b: &'static Bind, bs: Binds) -> Binds {
     if null_p(bs) {
@@ -14862,7 +14977,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    mangled_clash(n, cv_binds(v))
+                    scope_mangled_clash(n, v)
                 }
             }
         }), more)), concat(map(lambda1s(move |b: &'static Bind| {

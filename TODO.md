@@ -137,17 +137,18 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **The compile's remaining cost** (C361-C364): the compiler on
-     itself, warm with memos 1.34 s (0.91 GB), plain 2.55 s (1.27 GB);
+   - **The compile's remaining cost** (C361-C365): the compiler on
+     itself, warm with memos 1.36 s (0.92 GB), plain 2.38 s (1.26 GB);
      of either, about a third is still the kernel faulting in memory the
      heap never frees. What makes most now (plain, 1.19 GB in all): list
      cells of characters (290 MB: the emitter's output, a module's body
      copied at each module around it in `put-module-around`, the output
      made a string by `rev->string`), the checker's `bix` index
-     (180 MB), lists of strings (127 MB), the read forms (110 MB). Of
-     the time left in kfx's own code, `mangled-clash` walks every name in
-     scope of a length for each name bound (`mangled-length`, the most
-     of any one function). Huge pages for the heap
+     (180 MB: a path of the tree copied for each binding, and batching
+     the bindings did not help, C365), lists of strings (112 MB), the
+     read forms. The time left in kfx's own code is spread thin: no
+     function has more than 2% of it (C365's profile); checking is half
+     of a plain compile, emitting a seventh. Huge pages for the heap
      (`GLIBC_TUNABLES=glibc.malloc.hugetlb=1` took a warm run 2.96 s to
      2.29 s, C362's) would want `unsafe` in kayak-rt, which has none. A
      form's facts from the emitter's tree (`fidx`) instead of a scan of
