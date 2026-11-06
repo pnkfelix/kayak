@@ -137,15 +137,6 @@ section below where it has one; here the order, and what each is.
      C301, so `kayak-fx26 --run kfx/… -- arith.kfx …` (C63) fails, and no
      check runs it. The ops, then a check that runs it, and
      `scripts/engine-bench.py`'s row for it.
-   - **The incremental compile's memos outlive a change** (found
-     2026-11-05, C357): twice `scripts/regen.sh` failed at generation 2
-     (some 400 Rust errors, `refuse` a `Void` where a `Res` is expected),
-     where the same generations built by hand without `--cache` were at
-     the fixed point; with `target/kfx-memos-*` deleted, regen passed. The
-     memos are keyed by the compiler's own code, so a failed attempt's
-     memos, made by the same compiler of other source, were taken. What a
-     memo's key leaves out is not found yet (C356 first blamed a `cond`
-     clause; wrongly).
    - **Reps byte for byte Fixpt's** (C346-C349, C352): checked against
      `fixpt check --reps` (`tests/reps-passing`, `checks-summary reps`):
      431 programs the same, 63 differ (mostly modules' reps: abstract

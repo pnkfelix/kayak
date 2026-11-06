@@ -932,16 +932,25 @@ pub mod incremental {
                 let slice = lambda1s(move |p: i64| {
                     rev_to_string(take_to(drop_to(src, from, p), p, position_after(p, positions, end), nil::<char>()))
                 });
-                let own = if (i64_gt_eq(start, from) && i64_lt(start, end)) {
-                    concat_strings(map(slice, starts_of(start, if head_is_p(it, str_lit("define-rec")) {
+                let placed = (i64_gt_eq(start, from) && i64_lt(start, end));
+                let ss = if placed {
+                    starts_of(start, if head_is_p(it, str_lit("define-rec")) {
                         map(&datum_pos, cdr(items(it)))
                     } else {
                         nil::<i64>()
-                    }, positions)))
+                    }, positions)
+                } else {
+                    nil::<i64>()
+                };
+                let own = if placed {
+                    concat_strings(map(slice, ss))
                 } else {
                     show_sexp(it)
                 };
-                let key = fnv_string(own, fnv_string(str_lit("item"), chain));
+                let layout = words_of(map(lambda1s(move |q: i64| {
+                    i64_to_string(i64_minus(q, start))
+                }), ss));
+                let key = fnv_string(own, fnv_string(layout, fnv_string(str_lit("item"), chain)));
                 let hit = memo_find(old, key);
                 if not(null_p(hit)) {
                     let tagcase_ = car(hit);

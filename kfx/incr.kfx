@@ -486,11 +486,15 @@
                        (file (datum-file it))
                        (start (datum-pos it))
                        (slice (lambda ((p i64)) (rev->string (take-to (drop-to src from p) p (position-after p positions end) nil))))
+                       (placed (and (i64>= start from) (i64< start end)))
                        ;; A `define-rec` the order made (`rec-of`): every item's text in it.
-                       (own (if (and (i64>= start from) (i64< start end))
-                                (concat-strings (map slice (starts-of start (if (head-is? it "define-rec") (map datum-pos (cdr (items it))) nil) positions)))
-                                (show-sexp it)))
-                       (key (fnv-string own (fnv-string "item" chain)))
+                       (ss (if placed (starts-of start (if (head-is? it "define-rec") (map datum-pos (cdr (items it))) nil) positions) nil))
+                       (own (if placed (concat-strings (map slice ss)) (show-sexp it)))
+                       ;; And where each of its items is from its start (C359): its facts
+                       ;; are kept at offsets from `start`, so an edit to an item between
+                       ;; two of its own, which moves the later, must miss the memo.
+                       (layout (words-of (map (lambda ((q i64)) (i64->string (i64- q start))) ss)))
+                       (key (fnv-string own (fnv-string layout (fnv-string "item" chain))))
                        (hit (memo-find old key)))
                   (if (not (null? hit))
                       (tagcase (car hit)

@@ -276,6 +276,27 @@ fn main() {
                             )
                         }),
                     ),
+
+                    // An item between two of a group's, not of it, made longer:
+                    // the group's text the same, its later items moved (C359:
+                    // their facts, kept at offsets from the group's start, were
+                    // taken where they had been).
+                    found(
+                        x,
+                        ("a string between a define-rec group's items", |s| {
+                            s.replacen(
+                                "      (define narrowed-from",
+                                "      \"An edit, between a group's items.\"\n      (define narrowed-from",
+                                1,
+                            )
+                        }),
+                    ),
+                    found(
+                        x,
+                        ("that string taken away", |s| {
+                            s.replacen("      \"An edit, between a group's items.\"\n", "", 1)
+                        }),
+                    ),
                 ],
             )
         }));

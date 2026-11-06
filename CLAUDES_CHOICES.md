@@ -9818,3 +9818,31 @@ its `mu` written out unfolding each forever. Now `qf` is tried only of a
 union, and both quiet tests are bounded: `qf` past 200 steps, and
 `quick-fits?` past 64 unfoldings deep, answer no (so a call fits fewer
 members, or splits less, never more).
+
+## C359. A check memo of a group whose items are apart (2026-11-05)
+
+The user's "get to the bottom of that caching issue" (C357's TODO). The
+cause: a module's items are checked in the order the checker makes
+(`module-order-memo`), mutually recursive ones as one `define-rec` group
+(`rec-of`), whose items may be apart in the text, other items between
+them (check-exprs.kfx's great group of `synth`, `check` and the rest, with
+`narrowed-from` among them). The group's check memo (`check-items-memo`)
+was keyed by its items' texts joined, gaps left out, and kept its facts at
+offsets from the group's start. An edit to an item between two of the
+group's, not of it, left the key the same but moved the group's later
+items: the memo was taken, and their facts given where they had been, so
+the emitter found none (`nil()` for `nil::<T>()`, `refuse(…)` for `match
+refuse(…) {}`), and the Rust did not build. It showed in
+`scripts/regen.sh`, whose memo file is kept from run to run for the same
+compiler: generation 1 compiled the edited source with the memos the
+earlier source made. Not "a failed attempt's memos" (C357's guess), nor a
+`cond` clause (C356's).
+
+Reproduced: the same compiler, the earlier source then the new on one memo
+file, against no memos, the outputs apart. Fixed: the key holds where each
+of the group's items is from its start (`layout`), so such an edit misses
+it. Now the same: the memo compile and the plain one. The incremental test
+(`tests/incremental.rs`, `define-rec-item`) gained the edit that shows it,
+a string put between two of the group's items, and taken away; with the
+compiler before the fix, it differs. No fact in a memo file lies before
+its form (no negative offset).
