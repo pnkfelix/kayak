@@ -2158,7 +2158,8 @@
                 (scheme (tv t)
                   (tagcase t
                     (ty-proc (es ps r)
-                      (let ((s (note-fact s file pos (string-append "proc-value " (i64->string (size ps))))))
+                      (let* ((s (note-fact s file pos (string-append "proc-value " (i64->string (size ps)))))
+                             (s (if (escapes? es) (note-fact s file pos "proc-value-fallible") s)))
                         (if (string=? wher "prim") (note-fact s file pos "prim-ref") s)))
                     (else other s)))))))
 

@@ -561,8 +561,19 @@ pub fn substring_of(x: Str, n: i64) -> Str {
     }))
 }
 
-pub fn same_from_p(x: Str, p: Str, i: i64, n: i64) -> bool {
-    (i64_eq(i, n) || (char_eq_p(string_ref_i64(x, i), string_ref_i64(p, i)) && same_from_p(x, p, i64_plus(i, 1i64), n)))
+pub fn same_from_p(mut x: Str, mut p: Str, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_eq(i, n) {
+            return true;
+        } else {
+            if char_eq_p(string_ref_i64(x, i), string_ref_i64(p, i)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// Whether `x` begins `p`: compared in place, making nothing (the compiler
@@ -712,9 +723,19 @@ pub fn after_dots(x: Str) -> Str {
     list_to_string(chars_after_dots(string_chars(x)))
 }
 
-#[inline]
-pub fn char_from_p(s: Str, c: char, i: i64, n: i64) -> bool {
-    (i64_lt(i, n) && (char_eq_p(string_ref_i64(s, i), c) || char_from_p(s, c, i64_plus(i, 1i64), n)))
+pub fn char_from_p(mut s: Str, mut c: char, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_lt(i, n) {
+            if char_eq_p(string_ref_i64(s, i), c) {
+                return true;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 #[inline]
@@ -722,9 +743,19 @@ pub fn has_char_in_p(s: Str, c: char) -> bool {
     char_from_p(s, c, 0i64, string_length_i64(s))
 }
 
-#[inline]
-pub fn repeated_p(xs: Strings) -> bool {
-    (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
+pub fn repeated_p(mut xs: Strings) -> bool {
+    loop {
+        if not(null_p(xs)) {
+            if string_member_p(car(xs), cdr(xs)) {
+                return true;
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// The first of `xs` that is there again later, or ``.
@@ -741,53 +772,77 @@ pub fn first_repeated(mut xs: Strings) -> Str {
     }
 }
 
-pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
-    if null_p(a) {
-        null_p(b)
-    } else if null_p(b) {
-        false
-    } else {
-        (string_eq_p(car(a), car(b)) && strings_eq_p(cdr(a), cdr(b)))
+pub fn strings_eq_p(mut a: Strings, mut b: Strings) -> bool {
+    loop {
+        if null_p(a) {
+            return null_p(b);
+        } else if null_p(b) {
+            return false;
+        } else {
+            if string_eq_p(car(a), car(b)) {
+                (a, b) = (cdr(a), cdr(b));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
 /// Whether type `t` names variable `n`.
-pub fn ty_names_p(t: &'static Ty, n: Str) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Ty::TyVar(m) => {
-            string_eq_p(m, n)
-        }
-        Ty::TyList(e, r) => {
-            (ty_names_p(e, n) || ty_names_p(r, n))
-        }
-        Ty::TyFlat(e, r) => {
-            (ty_names_p(e, n) || ty_names_p(r, n))
-        }
-        Ty::TyRef(e, r) => {
-            (ty_names_p(e, n) || ty_names_p(r, n))
-        }
-        Ty::TyTag(a, h, es, r) => {
-            (ty_names_p(a, n) || ty_names_p(h, n) || ty_names_p(r, n) || string_member_p(n, es))
-        }
-        Ty::TyProc(es, ps, r) => {
-            (string_member_p(n, es) || ty_names_p(r, n) || any_p(lambda1s(move |p: &'static Ty| {
-                ty_names_p(p, n)
-            }), ps))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                ty_names_p(x, n)
-            }), ts)
-        }
-        Ty::TyData(d, args) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                ty_names_p(x, n)
-            }), args)
-        }
-        _ => {
-            let other = tagcase_;
-            false
+pub fn ty_names_p(mut t: &'static Ty, mut n: Str) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyVar(m) => {
+                return string_eq_p(m, n);
+            }
+            Ty::TyList(e, r) => {
+                if ty_names_p(e, n) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyFlat(e, r) => {
+                if ty_names_p(e, n) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyRef(e, r) => {
+                if ty_names_p(e, n) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return (ty_names_p(a, n) || ty_names_p(h, n) || ty_names_p(r, n) || string_member_p(n, es));
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (string_member_p(n, es) || ty_names_p(r, n) || any_p(lambda1s(move |p: &'static Ty| {
+                    ty_names_p(p, n)
+                }), ps));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    ty_names_p(x, n)
+                }), ts);
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    ty_names_p(x, n)
+                }), args);
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
 }
@@ -911,8 +966,19 @@ pub fn absorbed(es: Strings) -> Strings {
 /// Whether effect `a` is within `b`: a read of one global is within a
 /// read of all of them, and an I-cell's fill within a write of its region
 /// (C101: FX's `init`, told apart from a write by `par` alone).
-pub fn effs_within_p(a: Strings, b: Strings) -> bool {
-    (null_p(a) || ((string_member_p(car(a), b) || string_eq_p(car(a), str_lit("~!")) || (global_atom_p(car(a)) && string_member_p(str_lit("@globals"), b)) || (has_prefix_p(car(a), str_lit("init:")) && string_member_p(string_append(str_lit("write:"), after_prefix(car(a), str_lit("init:"))), b))) && effs_within_p(cdr(a), b)))
+pub fn effs_within_p(mut a: Strings, mut b: Strings) -> bool {
+    loop {
+        if null_p(a) {
+            return true;
+        } else {
+            if (string_member_p(car(a), b) || string_eq_p(car(a), str_lit("~!")) || (global_atom_p(car(a)) && string_member_p(str_lit("@globals"), b)) || (has_prefix_p(car(a), str_lit("init:")) && string_member_p(string_append(str_lit("write:"), after_prefix(car(a), str_lit("init:"))), b))) {
+                a = cdr(a);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 pub fn words_of(xs: Strings) -> Str {
@@ -2615,7 +2681,12 @@ pub fn has_app_p(mut t: &'static Ty) -> bool {
                 return any_p(&has_app_p, ts);
             }
             Ty::TyTag(a, h, es, r) => {
-                return (has_app_p(a) || has_app_p(h));
+                if has_app_p(a) {
+                    return true;
+                } else {
+                    t = h;
+                    continue;
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -2775,12 +2846,34 @@ pub fn char_lower_p(c: char) -> bool {
     has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
 }
 
-pub fn same_at_p(s: Str, part: Str, at: i64, i: i64, n: i64) -> bool {
-    (i64_eq(i, n) || (char_eq_p(string_ref_i64(s, i64_plus(at, i)), string_ref_i64(part, i)) && same_at_p(s, part, at, i64_plus(i, 1i64), n)))
+pub fn same_at_p(mut s: Str, mut part: Str, mut at: i64, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_eq(i, n) {
+            return true;
+        } else {
+            if char_eq_p(string_ref_i64(s, i64_plus(at, i)), string_ref_i64(part, i)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
-pub fn has_from_p(s: Str, part: Str, at: i64) -> bool {
-    (not(i64_lt(i64_minus(string_length_i64(s), at), string_length_i64(part))) && (same_at_p(s, part, at, 0i64, string_length_i64(part)) || has_from_p(s, part, i64_plus(at, 1i64))))
+pub fn has_from_p(mut s: Str, mut part: Str, mut at: i64) -> bool {
+    loop {
+        if not(i64_lt(i64_minus(string_length_i64(s), at), string_length_i64(part))) {
+            if same_at_p(s, part, at, 0i64, string_length_i64(part)) {
+                return true;
+            } else {
+                at = i64_plus(at, 1i64);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// Whether `part` is in `s`: compared in place, making nothing.
@@ -2822,11 +2915,22 @@ pub fn rust_written_names() -> Strings {
     })
 }
 
-pub fn name_chars_from_p(n: Str, i: i64, k: i64) -> bool {
-    (i64_eq(i, k) || ({
-        let c = string_ref_i64(n, i);
-        (char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c))
-    } && name_chars_from_p(n, i64_plus(i, 1i64), k)))
+pub fn name_chars_from_p(mut n: Str, mut i: i64, mut k: i64) -> bool {
+    loop {
+        if i64_eq(i, k) {
+            return true;
+        } else {
+            if {
+                let c = string_ref_i64(n, i);
+                (char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c))
+            } {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
@@ -3201,7 +3305,16 @@ pub fn unsized_p(mut t: &'static Ty) -> bool {
                 }
             }
             Ty::TyShape(p, ls, ts) => {
-                return (p && not(null_p(ts)) && unsized_p(last(ts)));
+                if p {
+                    if not(null_p(ts)) {
+                        t = last(ts);
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -3239,7 +3352,16 @@ pub fn length_named_p(mut t: &'static Ty) -> bool {
                 }
             }
             Ty::TyShape(p, ls, ts) => {
-                return (p && not(null_p(ts)) && length_named_p(last(ts)));
+                if p {
+                    if not(null_p(ts)) {
+                        t = last(ts);
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -3831,251 +3953,297 @@ pub fn allof_conv(t: &'static Ty) -> Str {
 // Two types the same, as written (C355; Fixpt's `k-same-type?`): what an
 // `anyof`'s normal form drops a repeated member by, as the parse has no
 // subtyping yet.
-pub fn ty_same_p(a: &'static Ty, b: &'static Ty) -> bool {
-    let tagcase_ = a;
-    match *tagcase_ {
-        Ty::TyI64() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyI64() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyInt() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyInt() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+pub fn ty_same_p(mut a: &'static Ty, mut b: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyI64() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyI64() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyNat() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyNat() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyF64() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyF64() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyInt() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyInt() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyBool() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyBool() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyChar() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyChar() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyNat() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyNat() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyUnit() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyUnit() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyString() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyString() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyF64() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyF64() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyVoid() => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyVoid() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyList(x, r) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyList(y, q) => {
-                    (ty_same_p(x, y) && ty_same_p(r, q))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyBool() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyBool() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyData(d, r#as) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyData(e, bs) => {
-                    (string_eq_p(d, e) && tys_same_p(r#as, bs))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyFlat(x, r) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyFlat(y, q) => {
-                    (ty_same_p(x, y) && ty_same_p(r, q))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyChar() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyChar() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyRef(x, r) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyRef(y, q) => {
-                    (ty_same_p(x, y) && ty_same_p(r, q))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyRconst(n) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyRconst(m) => {
-                    string_eq_p(n, m)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyUnit() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyUnit() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyTag(x, h, es, r) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyTag(y, g, fs, q) => {
-                    (ty_same_p(x, y) && ty_same_p(h, g) && string_eq_p(words_of(es), words_of(fs)) && ty_same_p(r, q))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Ty::TyProc(es, ps, r) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyProc(fs, qs, q) => {
-                    (string_eq_p(words_of(es), words_of(fs)) && tys_same_p(ps, qs) && ty_same_p(r, q))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyString() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyString() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyShape(p, ls, ts) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyShape(q, ms, us) => {
-                    (if p {
-                        q
-                    } else {
-                        not(q)
-                    } && string_eq_p(words_of(ls), words_of(ms)) && tys_same_p(ts, us))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyVoid() => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyVoid() => {
+                        return true;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyVar(n) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyVar(m) => {
-                    string_eq_p(n, m)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+            Ty::TyList(x, r) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyList(y, q) => {
+                        if ty_same_p(x, y) {
+                            (a, b) = (r, q);
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
-        }
-        Ty::TyMeta(k) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Ty::TyMeta(j) => {
-                    i64_eq(k, j)
+            Ty::TyData(d, r#as) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyData(e, bs) => {
+                        return (string_eq_p(d, e) && tys_same_p(r#as, bs));
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
-                _ => {
-                    let other = tagcase_;
-                    false
+            }
+            Ty::TyFlat(x, r) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyFlat(y, q) => {
+                        if ty_same_p(x, y) {
+                            (a, b) = (r, q);
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyRef(x, r) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyRef(y, q) => {
+                        if ty_same_p(x, y) {
+                            (a, b) = (r, q);
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyRconst(n) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyRconst(m) => {
+                        return string_eq_p(n, m);
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyTag(x, h, es, r) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyTag(y, g, fs, q) => {
+                        if ty_same_p(x, y) {
+                            if ty_same_p(h, g) {
+                                if string_eq_p(words_of(es), words_of(fs)) {
+                                    (a, b) = (r, q);
+                                    continue;
+                                } else {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyProc(es, ps, r) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyProc(fs, qs, q) => {
+                        if string_eq_p(words_of(es), words_of(fs)) {
+                            if tys_same_p(ps, qs) {
+                                (a, b) = (r, q);
+                                continue;
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyShape(q, ms, us) => {
+                        return (if p {
+                            q
+                        } else {
+                            not(q)
+                        } && string_eq_p(words_of(ls), words_of(ms)) && tys_same_p(ts, us));
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyVar(n) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyVar(m) => {
+                        return string_eq_p(n, m);
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+            Ty::TyMeta(k) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Ty::TyMeta(j) => {
+                        return i64_eq(k, j);
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
                 }
             }
         }
     }
 }
 
-pub fn tys_same_p(r#as: Tys, bs: Tys) -> bool {
-    if (null_p(r#as) && null_p(bs)) {
-        true
-    } else if (null_p(r#as) || null_p(bs)) {
-        false
-    } else {
-        (ty_same_p(car(r#as), car(bs)) && tys_same_p(cdr(r#as), cdr(bs)))
+pub fn tys_same_p(mut r#as: Tys, mut bs: Tys) -> bool {
+    loop {
+        if (null_p(r#as) && null_p(bs)) {
+            return true;
+        } else if (null_p(r#as) || null_p(bs)) {
+            return false;
+        } else {
+            if ty_same_p(car(r#as), car(bs)) {
+                (r#as, bs) = (cdr(r#as), cdr(bs));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -4494,10 +4662,21 @@ pub fn members_of_shape(mut ts: Tys, mut shape: Str) -> Tys {
 }
 
 /// Whether no two members share a shape: a union printed `oneof`.
-pub fn members_apart_p(ts: Tys) -> bool {
-    (null_p(ts) || (null_p(filter(lambda1s(move |m: &'static Ty| {
-        shapes_alike_p(shape_of(m), shape_of(car(ts)))
-    }), cdr(ts))) && members_apart_p(cdr(ts))))
+pub fn members_apart_p(mut ts: Tys) -> bool {
+    loop {
+        if null_p(ts) {
+            return true;
+        } else {
+            if null_p(filter(lambda1s(move |m: &'static Ty| {
+                shapes_alike_p(shape_of(m), shape_of(car(ts)))
+            }), cdr(ts))) {
+                ts = cdr(ts);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 // Sizes' facts (C157; Fixpt's `sizes.rs`, `check-test-facts.fx`, N5b, N5c):
@@ -4763,11 +4942,18 @@ pub fn no_solution_p(mut ls: Lins, mut budget: i64) -> bool {
 
 /// Whether facts `ges` (each `>= 0`) and `nes` (each `/= 0`, split into
 /// `>= 1` and `<= -1`) show `goal >= 0`.
-pub fn lin_shown_p(ges: Lins, nes: Lins, goal: &'static Lin) -> bool {
-    if null_p(nes) {
-        no_solution_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), goal, -1i64), ges), 64i64)
-    } else {
-        (lin_shown_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes), goal) && lin_shown_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes), goal))
+pub fn lin_shown_p(mut ges: Lins, mut nes: Lins, mut goal: &'static Lin) -> bool {
+    loop {
+        if null_p(nes) {
+            return no_solution_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), goal, -1i64), ges), 64i64);
+        } else {
+            if lin_shown_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes), goal) {
+                (ges, nes) = (kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -5991,11 +6177,18 @@ pub fn ptodo(f0: &'static Sexp, f1: bool) -> &'static Ptodo {
 pub type Ptodos = List<&'static Ptodo>;
 
 /// Whether `ges` (each `>= 0`) and `nes` (each `/= 0`) have no solution.
-pub fn logic_infeasible_p(ges: Lins, nes: Lins) -> bool {
-    if null_p(nes) {
-        no_solution_p(ges, 64i64)
-    } else {
-        (logic_infeasible_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes)) && logic_infeasible_p(kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes)))
+pub fn logic_infeasible_p(mut ges: Lins, mut nes: Lins) -> bool {
+    loop {
+        if null_p(nes) {
+            return no_solution_p(ges, 64i64);
+        } else {
+            if logic_infeasible_p(kayak_rt::heap_cons(lin_add(car(nes), lin(-1i64, nil::<&'static Lterm>()), 1i64), ges), cdr(nes)) {
+                (ges, nes) = (kayak_rt::heap_cons(lin_add(lin(-1i64, nil::<&'static Lterm>()), car(nes), -1i64), ges), cdr(nes));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -6664,7 +6857,12 @@ pub fn tvar_in_p(mut x: Str, mut t: &'static Ty) -> bool {
                 }), ts);
             }
             Ty::TyTag(a, h, es, r) => {
-                return (tvar_in_p(x, a) || tvar_in_p(x, h));
+                if tvar_in_p(x, a) {
+                    return true;
+                } else {
+                    t = h;
+                    continue;
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -6734,39 +6932,52 @@ pub fn list_nth(mut xs: Tys, mut i: i64) -> &'static Ty {
 /// `poly-only?`, and through a generative type whose representation is
 /// one of its parameters, what is given there (Fixpt's
 /// `generative/unguarded-cycle.fx`; C188): no constructor between.
-pub fn unguarded_p(v: &'static Cv, x: Str, t: &'static Ty) -> bool {
-    (poly_only_p(x, t) || {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Ty::TyData(d, args) => {
-                let found = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
-                if null_p(found) {
-                    false
-                } else {
-                    let tagcase_ = car(found);
-                    match *tagcase_ {
-                        Bind::Bind(n, sc, w) => {
-                            let tagcase_ = sc;
-                            match *tagcase_ {
-                                Scheme::Scheme(tvars, u) => {
-                                    let tagcase_ = u;
-                                    match *tagcase_ {
-                                        Ty::TyProc(es, ps, r) => {
-                                            let tagcase_ = r;
-                                            match *tagcase_ {
-                                                Ty::TyVar(p) => {
-                                                    let i = index_of_string(p, tvars, 0i64);
-                                                    (i64_gt_eq(i, 0i64) && i64_lt(i, size(args)) && unguarded_p(v, x, list_nth(args, i)))
-                                                }
-                                                _ => {
-                                                    let other = tagcase_;
-                                                    false
+pub fn unguarded_p(mut v: &'static Cv, mut x: Str, mut t: &'static Ty) -> bool {
+    loop {
+        if poly_only_p(x, t) {
+            return true;
+        } else {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    let found = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                    if null_p(found) {
+                        return false;
+                    } else {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                let tagcase_ = sc;
+                                match *tagcase_ {
+                                    Scheme::Scheme(tvars, u) => {
+                                        let tagcase_ = u;
+                                        match *tagcase_ {
+                                            Ty::TyProc(es, ps, r) => {
+                                                let tagcase_ = r;
+                                                match *tagcase_ {
+                                                    Ty::TyVar(p) => {
+                                                        let i = index_of_string(p, tvars, 0i64);
+                                                        if i64_gt_eq(i, 0i64) {
+                                                            if i64_lt(i, size(args)) {
+                                                                t = list_nth(args, i);
+                                                                continue;
+                                                            } else {
+                                                                return false;
+                                                            }
+                                                        } else {
+                                                            return false;
+                                                        }
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        return false;
+                                                    }
                                                 }
                                             }
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            false
+                                            _ => {
+                                                let other = tagcase_;
+                                                return false;
+                                            }
                                         }
                                     }
                                 }
@@ -6774,13 +6985,13 @@ pub fn unguarded_p(v: &'static Cv, x: Str, t: &'static Ty) -> bool {
                         }
                     }
                 }
-            }
-            _ => {
-                let other = tagcase_;
-                false
+                _ => {
+                    let other = tagcase_;
+                    return false;
+                }
             }
         }
-    })
+    }
 }
 
 /// Type `u` of the abbreviation `name` (or `(mu name u)`): recursive, a
@@ -9182,9 +9393,19 @@ pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
     parse_scheme_of(v, t, true)
 }
 
-#[inline]
-pub fn digits_only_p(cs: Chars) -> bool {
-    (null_p(cs) || (char_numeric_p(car(cs)) && digits_only_p(cdr(cs))))
+pub fn digits_only_p(mut cs: Chars) -> bool {
+    loop {
+        if null_p(cs) {
+            return true;
+        } else {
+            if char_numeric_p(car(cs)) {
+                cs = cdr(cs);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// A product's or sum's label as a type shows it (C291; Fixpt's
@@ -9934,42 +10155,68 @@ pub fn frozen_region_p(s: &'static St, r: &'static Ty) -> bool {
 }
 
 /// Whether `t` has an inference variable not solved yet.
-pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyMeta(k) => {
-            true
-        }
-        Ty::TyList(e, r) => {
-            (has_meta_p(s, e) || has_meta_p(s, r))
-        }
-        Ty::TyFlat(e, r) => {
-            (has_meta_p(s, e) || has_meta_p(s, r))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                has_meta_p(s, x)
-            }), ts)
-        }
-        Ty::TyTag(a, h, d, r) => {
-            (has_meta_p(s, a) || has_meta_p(s, h) || has_meta_p(s, r))
-        }
-        Ty::TyData(d, args) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                has_meta_p(s, x)
-            }), args)
-        }
-        Ty::TyRef(e, r) => {
-            (has_meta_p(s, e) || has_meta_p(s, r))
-        }
-        Ty::TyProc(es, ps, r) => {
-            (has_meta_p(s, r) || any_p(lambda1s(move |p: &'static Ty| {
-                has_meta_p(s, p)
-            }), ps))
-        }
-        _ => {
-            let other = tagcase_;
-            false
+pub fn has_meta_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                return true;
+            }
+            Ty::TyList(e, r) => {
+                if has_meta_p(s, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyFlat(e, r) => {
+                if has_meta_p(s, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    has_meta_p(s, x)
+                }), ts);
+            }
+            Ty::TyTag(a, h, d, r) => {
+                if has_meta_p(s, a) {
+                    return true;
+                } else {
+                    if has_meta_p(s, h) {
+                        return true;
+                    } else {
+                        t = r;
+                        continue;
+                    }
+                }
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    has_meta_p(s, x)
+                }), args);
+            }
+            Ty::TyRef(e, r) => {
+                if has_meta_p(s, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (has_meta_p(s, r) || any_p(lambda1s(move |p: &'static Ty| {
+                    has_meta_p(s, p)
+                }), ps));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
 }
@@ -10169,15 +10416,24 @@ pub fn said_as(mut ss: Saids, mut k: i64) -> Str {
     }
 }
 
-pub fn said_by_p(ss: Saids, n: Str) -> bool {
-    (not(null_p(ss)) && {
-        let tagcase_ = car(ss);
-        match *tagcase_ {
-            Said::Said(j, m) => {
-                (string_eq_p(m, n) || said_by_p(cdr(ss), n))
+pub fn said_by_p(mut ss: Saids, mut n: Str) -> bool {
+    loop {
+        if not(null_p(ss)) {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Said::Said(j, m) => {
+                    if string_eq_p(m, n) {
+                        return true;
+                    } else {
+                        ss = cdr(ss);
+                        continue;
+                    }
+                }
             }
+        } else {
+            return false;
         }
-    })
+    }
 }
 
 pub fn unsaid(mut ss: Saids, mut n: Str) -> Str {
@@ -10272,42 +10528,68 @@ pub fn solve(s: &'static St, k: i64, t: &'static Ty) -> &'static St {
     }
 }
 
-pub fn occurs_p(s: &'static St, k: i64, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyMeta(j) => {
-            i64_eq(j, k)
-        }
-        Ty::TyList(e, r) => {
-            (occurs_p(s, k, e) || occurs_p(s, k, r))
-        }
-        Ty::TyFlat(e, r) => {
-            (occurs_p(s, k, e) || occurs_p(s, k, r))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                occurs_p(s, k, x)
-            }), ts)
-        }
-        Ty::TyTag(a, h, d, r) => {
-            (occurs_p(s, k, a) || occurs_p(s, k, h) || occurs_p(s, k, r))
-        }
-        Ty::TyData(d, args) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                occurs_p(s, k, x)
-            }), args)
-        }
-        Ty::TyRef(e, r) => {
-            (occurs_p(s, k, e) || occurs_p(s, k, r))
-        }
-        Ty::TyProc(es, ps, r) => {
-            (occurs_p(s, k, r) || any_p(lambda1s(move |p: &'static Ty| {
-                occurs_p(s, k, p)
-            }), ps))
-        }
-        _ => {
-            let other = tagcase_;
-            false
+pub fn occurs_p(mut s: &'static St, mut k: i64, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyMeta(j) => {
+                return i64_eq(j, k);
+            }
+            Ty::TyList(e, r) => {
+                if occurs_p(s, k, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyFlat(e, r) => {
+                if occurs_p(s, k, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    occurs_p(s, k, x)
+                }), ts);
+            }
+            Ty::TyTag(a, h, d, r) => {
+                if occurs_p(s, k, a) {
+                    return true;
+                } else {
+                    if occurs_p(s, k, h) {
+                        return true;
+                    } else {
+                        t = r;
+                        continue;
+                    }
+                }
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    occurs_p(s, k, x)
+                }), args);
+            }
+            Ty::TyRef(e, r) => {
+                if occurs_p(s, k, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (occurs_p(s, k, r) || any_p(lambda1s(move |p: &'static Ty| {
+                    occurs_p(s, k, p)
+                }), ps));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
 }
@@ -10481,40 +10763,49 @@ pub fn native_crossing_p(mut s: &'static St, mut t: &'static Ty) -> bool {
 /// Whether a value of type `t` may be given to native code: one that
 /// crosses, or a procedure of the fx convention whose parameters and
 /// result cross, which native code calls back by `foreign` (C116).
-pub fn native_given_p(s: &'static St, t: &'static Ty) -> bool {
-    (native_crossing_p(s, t) || {
-        let tagcase_ = walk(s, t);
-        match *tagcase_ {
-            Ty::TyData(d, args) => {
-                (string_eq_p(d, str_lit("%fx")) && native_given_p(s, car(args)))
-            }
-            Ty::TyFlat(e, r) => {
-                // An `i64` flat array, shared, laid out as Fixpt's (C126):
-                // native code reads and writes the elements KFX does.
-                let tagcase_ = walk(s, e);
-                match *tagcase_ {
-                    Ty::TyI64() => {
-                        true
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
+pub fn native_given_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+    loop {
+        if native_crossing_p(s, t) {
+            return true;
+        } else {
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    if string_eq_p(d, str_lit("%fx")) {
+                        t = car(args);
+                        continue;
+                    } else {
+                        return false;
                     }
                 }
-            }
-            Ty::TyProc(es, ps, r) => {
-                // A procedure of KFX's own, as one of the fx convention is: in a
-                // code bloblet's field, made code calls it by `foreign`.
-                (i64_lt(size(ps), 4i64) && native_crossing_p(s, r) && not(escapes_p(es)) && not(suspends_p(es)) && not(any_p(lambda1s(move |p: &'static Ty| {
-                    not(native_crossing_p(s, p))
-                }), ps)))
-            }
-            _ => {
-                let other = tagcase_;
-                false
+                Ty::TyFlat(e, r) => {
+                    // An `i64` flat array, shared, laid out as Fixpt's (C126):
+                    // native code reads and writes the elements KFX does.
+                    let tagcase_ = walk(s, e);
+                    match *tagcase_ {
+                        Ty::TyI64() => {
+                            return true;
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return false;
+                        }
+                    }
+                }
+                Ty::TyProc(es, ps, r) => {
+                    // A procedure of KFX's own, as one of the fx convention is: in a
+                    // code bloblet's field, made code calls it by `foreign`.
+                    return (i64_lt(size(ps), 4i64) && native_crossing_p(s, r) && not(escapes_p(es)) && not(suspends_p(es)) && not(any_p(lambda1s(move |p: &'static Ty| {
+                        not(native_crossing_p(s, p))
+                    }), ps)));
+                }
+                _ => {
+                    let other = tagcase_;
+                    return false;
+                }
             }
         }
-    })
+    }
 }
 
 /// A variadic procedure called with `n` arguments, as the procedure of `n`
@@ -12192,13 +12483,20 @@ pub fn quick_fits_next_p(depth: i64, s: &'static St, a: &'static Ty, e: &'static
     quick_fits_at_p(s, a, e, i64_plus(depth, 1i64))
 }
 
-pub fn quick_fits_each_at_p(depth: i64, s: &'static St, r#as: Tys, es: Tys) -> bool {
-    if (null_p(r#as) && null_p(es)) {
-        true
-    } else if (null_p(r#as) || null_p(es)) {
-        false
-    } else {
-        (quick_fits_at_p(s, car(r#as), car(es), i64_plus(depth, 1i64)) && quick_fits_each_at_p(depth, s, cdr(r#as), cdr(es)))
+pub fn quick_fits_each_at_p(mut depth: i64, mut s: &'static St, mut r#as: Tys, mut es: Tys) -> bool {
+    loop {
+        if (null_p(r#as) && null_p(es)) {
+            return true;
+        } else if (null_p(r#as) || null_p(es)) {
+            return false;
+        } else {
+            if quick_fits_at_p(s, car(r#as), car(es), i64_plus(depth, 1i64)) {
+                (r#as, es) = (cdr(r#as), cdr(es));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -12633,13 +12931,20 @@ pub fn greatest_of_shape(s: &'static St, ms: Tys, shape: Str) -> Tys {
     }
 }
 
-pub fn quick_fits_each_p(s: &'static St, r#as: Tys, es: Tys) -> bool {
-    if (null_p(r#as) && null_p(es)) {
-        true
-    } else if (null_p(r#as) || null_p(es)) {
-        false
-    } else {
-        (quick_fits_p(s, car(r#as), car(es)) && quick_fits_each_p(s, cdr(r#as), cdr(es)))
+pub fn quick_fits_each_p(mut s: &'static St, mut r#as: Tys, mut es: Tys) -> bool {
+    loop {
+        if (null_p(r#as) && null_p(es)) {
+            return true;
+        } else if (null_p(r#as) || null_p(es)) {
+            return false;
+        } else {
+            if quick_fits_p(s, car(r#as), car(es)) {
+                (r#as, es) = (cdr(r#as), cdr(es));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -13892,46 +14197,53 @@ pub fn fields_after(mut ts: Tys, mut n: i64) -> Tys {
 /// `bloblet/width-*.fx`): no procedure, no type variable, and no region
 /// but `r`'s own, `acyclic` and `const`, so that the wider type says all
 /// the storage it holds and no knot.
-pub fn forgettable_p(s: &'static St, r: &'static Ty, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyVar(n) => {
-            (has_prefix_p(n, str_lit("'")) && same_region_p(s, r, t))
-        }
-        Ty::TyMeta(k) => {
-            false
-        }
-        Ty::TyRconst(n) => {
-            (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")) || same_region_p(s, r, t))
-        }
-        Ty::TyProc(es, ps, rt) => {
-            false
-        }
-        Ty::TyList(x, xr) => {
-            (forgettable_p(s, r, x) && forgettable_p(s, r, xr))
-        }
-        Ty::TyRef(x, xr) => {
-            (forgettable_p(s, r, x) && same_region_p(s, r, xr))
-        }
-        Ty::TyFlat(x, xr) => {
-            (forgettable_p(s, r, x) && same_region_p(s, r, xr))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            not(any_p(lambda1s(move |x: &'static Ty| {
-                not(forgettable_p(s, r, x))
-            }), ts))
-        }
-        Ty::TyData(d, args) => {
-            (not((conv_wrapper_p(d) || has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%vsubr")) || string_eq_p(d, str_lit("%poly")) || string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot")))) && not(any_p(lambda1s(move |x: &'static Ty| {
-                not(forgettable_p(s, r, x))
-            }), args)))
-        }
-        Ty::TyTag(x, h, es, rr) => {
-            false
-        }
-        _ => {
-            let other = tagcase_;
-            true
+pub fn forgettable_p(mut s: &'static St, mut r: &'static Ty, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                return (has_prefix_p(n, str_lit("'")) && same_region_p(s, r, t));
+            }
+            Ty::TyMeta(k) => {
+                return false;
+            }
+            Ty::TyRconst(n) => {
+                return (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")) || same_region_p(s, r, t));
+            }
+            Ty::TyProc(es, ps, rt) => {
+                return false;
+            }
+            Ty::TyList(x, xr) => {
+                if forgettable_p(s, r, x) {
+                    t = xr;
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+            Ty::TyRef(x, xr) => {
+                return (forgettable_p(s, r, x) && same_region_p(s, r, xr));
+            }
+            Ty::TyFlat(x, xr) => {
+                return (forgettable_p(s, r, x) && same_region_p(s, r, xr));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return not(any_p(lambda1s(move |x: &'static Ty| {
+                    not(forgettable_p(s, r, x))
+                }), ts));
+            }
+            Ty::TyData(d, args) => {
+                return (not((conv_wrapper_p(d) || has_prefix_p(d, str_lit("%spec ")) || string_eq_p(d, str_lit("%vsubr")) || string_eq_p(d, str_lit("%poly")) || string_eq_p(d, str_lit("%composable")) || string_eq_p(d, str_lit("%oneshot")))) && not(any_p(lambda1s(move |x: &'static Ty| {
+                    not(forgettable_p(s, r, x))
+                }), args)));
+            }
+            Ty::TyTag(x, h, es, rr) => {
+                return false;
+            }
+            _ => {
+                let other = tagcase_;
+                return true;
+            }
         }
     }
 }
@@ -14182,42 +14494,73 @@ pub fn vars_count(n: Str, ts: List<&'static Ty>) -> i64 {
 
 /// Whether `t` has a region variable (named with a `'` first), past its
 /// latent effects: a letrena's, a place's, a region binder's (C42).
-pub fn region_var_in_p(s: &'static St, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyVar(m) => {
-            has_prefix_p(m, str_lit("'"))
-        }
-        Ty::TyList(e, r) => {
-            (region_var_in_p(s, e) || region_var_in_p(s, r))
-        }
-        Ty::TyFlat(e, r) => {
-            (region_var_in_p(s, e) || region_var_in_p(s, r))
-        }
-        Ty::TyRef(e, r) => {
-            (region_var_in_p(s, e) || region_var_in_p(s, r))
-        }
-        Ty::TyData(d, args) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                region_var_in_p(s, x)
-            }), args)
-        }
-        Ty::TyTag(a, h, es, r) => {
-            (region_var_in_p(s, a) || (region_var_in_p(s, h) || region_var_in_p(s, r)))
-        }
-        Ty::TyProc(es, ps, r) => {
-            (any_p(lambda1s(move |x: &'static Ty| {
-                region_var_in_p(s, x)
-            }), ps) || region_var_in_p(s, r))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                region_var_in_p(s, x)
-            }), ts)
-        }
-        _ => {
-            let other = tagcase_;
-            false
+pub fn region_var_in_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyVar(m) => {
+                return has_prefix_p(m, str_lit("'"));
+            }
+            Ty::TyList(e, r) => {
+                if region_var_in_p(s, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyFlat(e, r) => {
+                if region_var_in_p(s, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyRef(e, r) => {
+                if region_var_in_p(s, e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    region_var_in_p(s, x)
+                }), args);
+            }
+            Ty::TyTag(a, h, es, r) => {
+                if region_var_in_p(s, a) {
+                    return true;
+                } else {
+                    if region_var_in_p(s, h) {
+                        return true;
+                    } else {
+                        t = r;
+                        continue;
+                    }
+                }
+            }
+            Ty::TyProc(es, ps, r) => {
+                if any_p(lambda1s(move |x: &'static Ty| {
+                    region_var_in_p(s, x)
+                }), ps) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    region_var_in_p(s, x)
+                }), ts);
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
 }
@@ -14296,50 +14639,59 @@ pub fn only_called_p(e: &'static Sexp, k: Str) -> bool {
 }
 
 /// Whether `cwcc`'s arguments are one receiver that can only leave.
-pub fn escape_only_p(args: Sexps) -> bool {
-    (not(null_p(args)) && null_p(cdr(args)) && {
-        let r = car(args);
-        if (head_is_p(r, str_lit("the")) && i64_eq(size(items(r)), 3i64)) {
-            escape_only_p(cdr(cdr(items(r))))
-        } else if (head_is_p(r, str_lit("lambda")) && i64_gt(size(items(r)), 2i64)) {
-            let ps = items(second(items(r)));
-            (i64_eq(size(ps), 1i64) && {
-                let k = {
-                    let tagcase_ = car(ps);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f, p) => {
-                            n
-                        }
-                        Sexp::Lst(ys, f, l, p) => {
-                            if null_p(ys) {
-                                str_lit("")
-                            } else {
-                                let tagcase_ = car(ys);
-                                match *tagcase_ {
-                                    Sexp::Sym(n, f2, p2) => {
-                                        n
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
+pub fn escape_only_p(mut args: Sexps) -> bool {
+    loop {
+        if not(null_p(args)) {
+            if null_p(cdr(args)) {
+                let r = car(args);
+                if (head_is_p(r, str_lit("the")) && i64_eq(size(items(r)), 3i64)) {
+                    args = cdr(cdr(items(r)));
+                    continue;
+                } else if (head_is_p(r, str_lit("lambda")) && i64_gt(size(items(r)), 2i64)) {
+                    let ps = items(second(items(r)));
+                    return (i64_eq(size(ps), 1i64) && {
+                        let k = {
+                            let tagcase_ = car(ps);
+                            match *tagcase_ {
+                                Sexp::Sym(n, f, p) => {
+                                    n
+                                }
+                                Sexp::Lst(ys, f, l, p) => {
+                                    if null_p(ys) {
                                         str_lit("")
+                                    } else {
+                                        let tagcase_ = car(ys);
+                                        match *tagcase_ {
+                                            Sexp::Sym(n, f2, p2) => {
+                                                n
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                str_lit("")
+                                            }
+                                        }
                                     }
                                 }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
                             }
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit("")
-                        }
-                    }
-                };
-                (not(string_eq_p(k, str_lit(""))) && not(sexp_mentions_p(r, str_lit("cwcc"))) && not(sexp_mentions_p(r, str_lit("call-with-composable-continuation"))) && not(sexp_mentions_p(r, str_lit("call-with-oneshot-continuation"))) && not(any_p(lambda1s(move |b: &'static Sexp| {
-                    not(only_called_p(b, k))
-                }), cdr(cdr(items(r))))))
-            })
+                        };
+                        (not(string_eq_p(k, str_lit(""))) && not(sexp_mentions_p(r, str_lit("cwcc"))) && not(sexp_mentions_p(r, str_lit("call-with-composable-continuation"))) && not(sexp_mentions_p(r, str_lit("call-with-oneshot-continuation"))) && not(any_p(lambda1s(move |b: &'static Sexp| {
+                            not(only_called_p(b, k))
+                        }), cdr(cdr(items(r))))))
+                    });
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
         } else {
-            false
+            return false;
         }
-    })
+    }
 }
 
 #[inline]
@@ -14762,9 +15114,19 @@ pub fn clash_parts() -> Strings {
     })
 }
 
-#[inline]
-pub fn operator_from_p(n: Str, i: i64, k: i64) -> bool {
-    (i64_lt(i, k) && (operator_char_p(string_ref_i64(n, i)) || operator_from_p(n, i64_plus(i, 1i64), k)))
+pub fn operator_from_p(mut n: Str, mut i: i64, mut k: i64) -> bool {
+    loop {
+        if i64_lt(i, k) {
+            if operator_char_p(string_ref_i64(n, i)) {
+                return true;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// Whether another name might mangle as `n` does: one with an operator's
@@ -14829,8 +15191,23 @@ pub fn unmangle_chars() -> Strings {
 }
 
 /// Whether `m` has `p` from `i`; `j` of `p`'s `k` characters matched.
-pub fn has_at_p(m: Str, i: i64, p: Str, j: i64, k: i64) -> bool {
-    (i64_eq(j, k) || (i64_lt(i64_plus(i, j), string_length_i64(m)) && char_eq_p(string_ref_i64(m, i64_plus(i, j)), string_ref_i64(p, j)) && has_at_p(m, i, p, i64_plus(j, 1i64), k)))
+pub fn has_at_p(mut m: Str, mut i: i64, mut p: Str, mut j: i64, mut k: i64) -> bool {
+    loop {
+        if i64_eq(j, k) {
+            return true;
+        } else {
+            if i64_lt(i64_plus(i, j), string_length_i64(m)) {
+                if char_eq_p(string_ref_i64(m, i64_plus(i, j)), string_ref_i64(p, j)) {
+                    j = i64_plus(j, 1i64);
+                    continue;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// Every name `mangle-runs` might have made `m` of, from `i` of `n`
@@ -15626,7 +16003,12 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                 return false;
             }
             Ty::TyTag(a, h, d, r) => {
-                return (holds_procedure_p(v, s, a, seen) || holds_procedure_p(v, s, h, seen));
+                if holds_procedure_p(v, s, a, seen) {
+                    return true;
+                } else {
+                    t = h;
+                    continue;
+                }
             }
             Ty::TyShape(p, ls, ts) => {
                 return any_p(lambda1s(move |x: &'static Ty| {
@@ -15634,58 +16016,65 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                 }), ts);
             }
             Ty::TyData(d, args) => {
-                return (any_p(lambda1s(move |x: &'static Ty| {
+                if any_p(lambda1s(move |x: &'static Ty| {
                     holds_procedure_p(v, s, x, seen)
-                }), args) || (not(string_member_p(d, seen)) && {
-                    let found = find_family(d, cv_dts(v));
-                    if kayak_rt::value::null_p(found) {
-                        false
-                    } else {
-                        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
-                        match *tagcase_ {
-                            Dt::Dt(n, ps, vs) => {
-                                if null_p(vs) {
-                                    let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
-                                    if null_p(down) {
-                                        not(has_prefix_p(d, str_lit("%module ")))
-                                    } else {
-                                        let tagcase_ = car(down);
-                                        match *tagcase_ {
-                                            Bind::Bind(n2, sc, w) => {
-                                                let tagcase_ = sc;
-                                                match *tagcase_ {
-                                                    Scheme::Scheme(tv, tt) => {
-                                                        let tagcase_ = tt;
-                                                        match *tagcase_ {
-                                                            Ty::TyProc(es, xs, r) => {
-                                                                holds_procedure_p(v, s, substitute(ps, args, r), kayak_rt::heap_cons(d, seen))
-                                                            }
-                                                            _ => {
-                                                                let other = tagcase_;
-                                                                true
+                }), args) {
+                    return true;
+                } else {
+                    if not(string_member_p(d, seen)) {
+                        let found = find_family(d, cv_dts(v));
+                        if kayak_rt::value::null_p(found) {
+                            return false;
+                        } else {
+                            let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                            match *tagcase_ {
+                                Dt::Dt(n, ps, vs) => {
+                                    if null_p(vs) {
+                                        let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                        if null_p(down) {
+                                            return not(has_prefix_p(d, str_lit("%module ")));
+                                        } else {
+                                            let tagcase_ = car(down);
+                                            match *tagcase_ {
+                                                Bind::Bind(n2, sc, w) => {
+                                                    let tagcase_ = sc;
+                                                    match *tagcase_ {
+                                                        Scheme::Scheme(tv, tt) => {
+                                                            let tagcase_ = tt;
+                                                            match *tagcase_ {
+                                                                Ty::TyProc(es, xs, r) => {
+                                                                    (t, seen) = (substitute(ps, args, r), kayak_rt::heap_cons(d, seen));
+                                                                    continue;
+                                                                }
+                                                                _ => {
+                                                                    let other = tagcase_;
+                                                                    return true;
+                                                                }
                                                             }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-                                } else {
-                                    any_p(lambda1s(move |x: &'static Variant| {
-                                        let tagcase_ = x;
-                                        match *tagcase_ {
-                                            Variant::Variant(tag, fs) => {
-                                                any_p(lambda1s(move |f: &'static Ty| {
-                                                    holds_procedure_p(v, s, substitute(ps, args, f), kayak_rt::heap_cons(d, seen))
-                                                }), fs)
+                                    } else {
+                                        return any_p(lambda1s(move |x: &'static Variant| {
+                                            let tagcase_ = x;
+                                            match *tagcase_ {
+                                                Variant::Variant(tag, fs) => {
+                                                    any_p(lambda1s(move |f: &'static Ty| {
+                                                        holds_procedure_p(v, s, substitute(ps, args, f), kayak_rt::heap_cons(d, seen))
+                                                    }), fs)
+                                                }
                                             }
-                                        }
-                                    }), vs)
+                                        }), vs);
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        return false;
                     }
-                }));
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -15762,9 +16151,14 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
             let tagcase_ = x;
             match *tagcase_ {
                 Ty::TyProc(es, ps, r) => {
-                    return (any_p(lambda1s(move |p: &'static Ty| {
+                    if any_p(lambda1s(move |p: &'static Ty| {
                         cyclic_walk(v, s, p, true, ts)
-                    }), ps) || cyclic_walk(v, s, r, crossed, ts));
+                    }), ps) {
+                        return true;
+                    } else {
+                        t = r;
+                        continue;
+                    }
                 }
                 Ty::TyList(e, r) => {
                     t = e;
@@ -15784,7 +16178,12 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                     }), fs);
                 }
                 Ty::TyTag(a, h, d, r) => {
-                    return (cyclic_walk(v, s, a, crossed, ts) || cyclic_walk(v, s, h, crossed, ts));
+                    if cyclic_walk(v, s, a, crossed, ts) {
+                        return true;
+                    } else {
+                        t = h;
+                        continue;
+                    }
                 }
                 Ty::TyVar(n) => {
                     // A recursive type's own mention (C174): met again, as a datatype's
@@ -15977,8 +16376,19 @@ pub fn tag_part(mut l: Str, mut xs: Tparts) -> Tparts {
     }
 }
 
-pub fn tags_within_p(a: Tparts, b: Tparts) -> bool {
-    (null_p(a) || (not(null_p(tag_part(tpart_tag(car(a)), b))) && tags_within_p(cdr(a), b)))
+pub fn tags_within_p(mut a: Tparts, mut b: Tparts) -> bool {
+    loop {
+        if null_p(a) {
+            return true;
+        } else {
+            if not(null_p(tag_part(tpart_tag(car(a)), b))) {
+                a = cdr(a);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// Whether branches of types `t` and `rest` join as sums (C292; Fixpt's
@@ -16157,42 +16567,59 @@ pub fn masked(mut es: Strings, mut r: Str) -> Strings {
 }
 
 /// Whether type `t` mentions region `r`, latent effects included.
-pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyVar(n) => {
-            string_eq_p(n, r)
-        }
-        Ty::TyList(e, x) => {
-            (mentions_p(s, e, r) || mentions_p(s, x, r))
-        }
-        Ty::TyFlat(e, x) => {
-            (mentions_p(s, e, r) || mentions_p(s, x, r))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1s(move |x: &'static Ty| {
-                mentions_p(s, x, r)
-            }), ts)
-        }
-        Ty::TyTag(a, h, d, x) => {
-            (mentions_p(s, a, r) || mentions_p(s, h, r) || mentions_p(s, x, r) || not(string_eq_p(words_of(masked(d, r)), words_of(d))))
-        }
-        Ty::TyRef(e, x) => {
-            (mentions_p(s, e, r) || mentions_p(s, x, r))
-        }
-        Ty::TyData(d, args) => {
-            any_p(lambda1s(move |a: &'static Ty| {
-                mentions_p(s, a, r)
-            }), args)
-        }
-        Ty::TyProc(es, ps, x) => {
-            (not(string_eq_p(words_of(masked(es, r)), words_of(es))) || mentions_p(s, x, r) || any_p(lambda1s(move |p: &'static Ty| {
-                mentions_p(s, p, r)
-            }), ps))
-        }
-        _ => {
-            let other = tagcase_;
-            false
+pub fn mentions_p(mut s: &'static St, mut t: &'static Ty, mut r: Str) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                return string_eq_p(n, r);
+            }
+            Ty::TyList(e, x) => {
+                if mentions_p(s, e, r) {
+                    return true;
+                } else {
+                    t = x;
+                    continue;
+                }
+            }
+            Ty::TyFlat(e, x) => {
+                if mentions_p(s, e, r) {
+                    return true;
+                } else {
+                    t = x;
+                    continue;
+                }
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1s(move |x: &'static Ty| {
+                    mentions_p(s, x, r)
+                }), ts);
+            }
+            Ty::TyTag(a, h, d, x) => {
+                return (mentions_p(s, a, r) || mentions_p(s, h, r) || mentions_p(s, x, r) || not(string_eq_p(words_of(masked(d, r)), words_of(d))));
+            }
+            Ty::TyRef(e, x) => {
+                if mentions_p(s, e, r) {
+                    return true;
+                } else {
+                    t = x;
+                    continue;
+                }
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1s(move |a: &'static Ty| {
+                    mentions_p(s, a, r)
+                }), args);
+            }
+            Ty::TyProc(es, ps, x) => {
+                return (not(string_eq_p(words_of(masked(es, r)), words_of(es))) || mentions_p(s, x, r) || any_p(lambda1s(move |p: &'static Ty| {
+                    mentions_p(s, p, r)
+                }), ps));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
 }
@@ -16231,30 +16658,42 @@ pub fn nat_typed_p(s: &'static St, t: &'static Ty) -> bool {
 
 /// Whether `t`, as written (no variable solved looked through), has an
 /// inference variable in it.
-pub fn holds_meta_p(t: &'static Ty) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Ty::TyMeta(k) => {
-            true
-        }
-        Ty::TyList(e, r) => {
-            (holds_meta_p(e) || holds_meta_p(r))
-        }
-        Ty::TyRef(e, r) => {
-            (holds_meta_p(e) || holds_meta_p(r))
-        }
-        Ty::TyData(d, args) => {
-            any_p(&holds_meta_p, args)
-        }
-        Ty::TyProc(es, ps, r) => {
-            (holds_meta_p(r) || any_p(&holds_meta_p, ps))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            any_p(&holds_meta_p, ts)
-        }
-        _ => {
-            let other = tagcase_;
-            false
+pub fn holds_meta_p(mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                return true;
+            }
+            Ty::TyList(e, r) => {
+                if holds_meta_p(e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyRef(e, r) => {
+                if holds_meta_p(e) {
+                    return true;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+            Ty::TyData(d, args) => {
+                return any_p(&holds_meta_p, args);
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (holds_meta_p(r) || any_p(&holds_meta_p, ps));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(&holds_meta_p, ts);
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
 }
@@ -16463,7 +16902,12 @@ pub fn pair_made_p(mut e: &'static Sexp) -> bool {
                     e = car(the::<Sexps>(reverse(xs)));
                     continue;
                 } else if (sym_is_p(car(xs), str_lit("if")) && i64_eq(size(xs), 4i64)) {
-                    return (pair_made_p(third(xs)) && pair_made_p(fourth(xs)));
+                    if pair_made_p(third(xs)) {
+                        e = fourth(xs);
+                        continue;
+                    } else {
+                        return false;
+                    }
                 } else {
                     return false;
                 }

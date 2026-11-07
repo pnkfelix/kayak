@@ -393,10 +393,24 @@ pub fn r_closure_free_p(mut x: &'static Cx) -> bool {
                 continue;
             }
             Cx::XIf(t, th, el, a) => {
-                return (r_closure_free_p(t) && r_closure_free_p(th) && r_closure_free_p(el));
+                if r_closure_free_p(t) {
+                    if r_closure_free_p(th) {
+                        x = el;
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
             Cx::XLet(bs, body, a) => {
-                return (r_closure_free_all_p(c_bound_exps(bs)) && r_closure_free_p(body));
+                if r_closure_free_all_p(c_bound_exps(bs)) {
+                    x = body;
+                    continue;
+                } else {
+                    return false;
+                }
             }
             Cx::XBegin(es, a) => {
                 return r_closure_free_all_p(es);
@@ -433,20 +447,41 @@ pub fn r_closure_free_p(mut x: &'static Cx) -> bool {
     }
 }
 
-#[inline]
-pub fn r_closure_free_all_p(es: Cxs) -> bool {
-    (null_p(es) || (r_closure_free_p(car(es)) && r_closure_free_all_p(cdr(es))))
-}
-
-pub fn fact_at_p(fs: Facts, pos: i64, what: Str) -> bool {
-    (not(null_p(fs)) && ({
-        let tagcase_ = car(fs);
-        match *tagcase_ {
-            Fact::Fact(f, p, w) => {
-                (i64_eq(p, pos) && string_eq_p(w, what))
+pub fn r_closure_free_all_p(mut es: Cxs) -> bool {
+    loop {
+        if null_p(es) {
+            return true;
+        } else {
+            if r_closure_free_p(car(es)) {
+                es = cdr(es);
+                continue;
+            } else {
+                return false;
             }
         }
-    } || fact_at_p(cdr(fs), pos, what)))
+    }
+}
+
+pub fn fact_at_p(mut fs: Facts, mut pos: i64, mut what: Str) -> bool {
+    loop {
+        if not(null_p(fs)) {
+            if {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(f, p, w) => {
+                        (i64_eq(p, pos) && string_eq_p(w, what))
+                    }
+                }
+            } {
+                return true;
+            } else {
+                fs = cdr(fs);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 // Whether a fast version is sound, as far as the body says: no global can

@@ -476,8 +476,19 @@ pub fn shift_room(a: i64, b: i64) -> i64 {
     })
 }
 
-pub fn same_chars_p(a: i64, b: i64, i: i64) -> bool {
-    (i64_gt_eq(i, raw_length(a)) || (i64_eq(raw_ref(a, i), raw_ref(b, i)) && same_chars_p(a, b, i64_plus(i, 1i64))))
+pub fn same_chars_p(mut a: i64, mut b: i64, mut i: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, raw_length(a)) {
+            return true;
+        } else {
+            if i64_eq(raw_ref(a, i), raw_ref(b, i)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 #[inline]

@@ -413,9 +413,19 @@ pub fn reversed_onto_x(mut l: i64, mut acc: i64) -> i64 {
 // item `e` is matched: `e` is `x` (0); its car is (1); its cdr is (2);
 // either is (3); its car is an item of list `x` (4); its car is a time
 // not after `x` (5).
-#[inline]
-pub fn heap_member_p(l: i64, x: i64) -> bool {
-    (is_pair_p(l) && (i64_eq(pair_car(l), x) || heap_member_p(pair_cdr(l), x)))
+pub fn heap_member_p(mut l: i64, mut x: i64) -> bool {
+    loop {
+        if is_pair_p(l) {
+            if i64_eq(pair_car(l), x) {
+                return true;
+            } else {
+                l = pair_cdr(l);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 pub fn matches_p(e: i64, how: i64, x: i64) -> bool {
@@ -434,9 +444,19 @@ pub fn matches_p(e: i64, how: i64, x: i64) -> bool {
     }
 }
 
-#[inline]
-pub fn any_match_p(l: i64, how: i64, x: i64) -> bool {
-    (is_pair_p(l) && (matches_p(pair_car(l), how, x) || any_match_p(pair_cdr(l), how, x)))
+pub fn any_match_p(mut l: i64, mut how: i64, mut x: i64) -> bool {
+    loop {
+        if is_pair_p(l) {
+            if matches_p(pair_car(l), how, x) {
+                return true;
+            } else {
+                l = pair_cdr(l);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// The items of `l` that match (`keep`) or not, reversed, onto `acc`.
@@ -478,9 +498,19 @@ pub fn only_x(l: i64, how: i64, x: i64) -> i64 {
     reversed_onto_x(sifted_x(l, how, x, true, v_null()), v_null())
 }
 
-#[inline]
-pub fn i64_in_p(xs: List<i64>, x: i64) -> bool {
-    (not(null_p(xs)) && (i64_eq(car(xs), x) || i64_in_p(cdr(xs), x)))
+pub fn i64_in_p(mut xs: List<i64>, mut x: i64) -> bool {
+    loop {
+        if not(null_p(xs)) {
+            if i64_eq(car(xs), x) {
+                return true;
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 // The run queue.
@@ -969,9 +999,19 @@ pub fn timer_add_x(t: i64, w: i64) -> i64 {
     v_unit_word()
 }
 
-#[inline]
-pub fn due_in_p(l: i64, now: i64) -> bool {
-    (is_pair_p(l) && (i64_lt_eq(fix_val(pair_car(pair_car(l))), now) || due_in_p(pair_cdr(l), now)))
+pub fn due_in_p(mut l: i64, mut now: i64) -> bool {
+    loop {
+        if is_pair_p(l) {
+            if i64_lt_eq(fix_val(pair_car(pair_car(l))), now) {
+                return true;
+            } else {
+                l = pair_cdr(l);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// Whether a timer is due; the clock not read if none is set.

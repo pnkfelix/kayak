@@ -264,9 +264,19 @@ pub fn numeric_p(cs: Chars) -> bool {
     (not(null_p(cs)) && (char_numeric_p(car(cs)) || (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs))))))
 }
 
-#[inline]
-pub fn has_char_p(cs: Chars, c: char) -> bool {
-    (not(null_p(cs)) && (char_eq_p(car(cs), c) || has_char_p(cdr(cs), c)))
+pub fn has_char_p(mut cs: Chars, mut c: char) -> bool {
+    loop {
+        if not(null_p(cs)) {
+            if char_eq_p(car(cs), c) {
+                return true;
+            } else {
+                cs = cdr(cs);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// How many points `cs` has, or -1 if it has a character that is no
@@ -350,9 +360,19 @@ pub fn fits_i64_p(cs: Chars) -> bool {
 // Reals as FX-26 reads them past KFX's own (C155): its point first, `.5`,
 // or an exponent, `1e-3`, as Rust's `f64` syntax has them. kfx's
 // restriction pass refuses both, KFX writing a real as it is written.
-#[inline]
-pub fn all_digits_p(cs: Chars) -> bool {
-    (null_p(cs) || (char_numeric_p(car(cs)) && all_digits_p(cdr(cs))))
+pub fn all_digits_p(mut cs: Chars) -> bool {
+    loop {
+        if null_p(cs) {
+            return true;
+        } else {
+            if char_numeric_p(car(cs)) {
+                cs = cdr(cs);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 pub fn point_first_real_p(cs: Chars) -> bool {

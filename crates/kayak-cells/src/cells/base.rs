@@ -30,14 +30,34 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + S
     }
 }
 
-#[inline]
-pub fn any_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), xs: List<A>) -> bool {
-    (not(null_p(xs)) && (p(car(xs)) || any_p(p, cdr(xs))))
+pub fn any_p<A: Copy + 'static>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> bool {
+    loop {
+        if not(null_p(xs)) {
+            if p(car(xs)) {
+                return true;
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
-#[inline]
-pub fn all_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), xs: List<A>) -> bool {
-    (null_p(xs) || (p(car(xs)) && all_p(p, cdr(xs))))
+pub fn all_p<A: Copy + 'static>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> bool {
+    loop {
+        if null_p(xs) {
+            return true;
+        } else {
+            if p(car(xs)) {
+                xs = cdr(xs);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 pub fn filter<A: Copy + 'static>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> List<A> {
@@ -190,12 +210,18 @@ pub fn put_sep<A: Copy + 'static>(mut each: &'static (dyn Fn(A, Chars) -> Chars 
     }
 }
 
-#[inline]
-pub fn string_member_p(s: Str, xs: Strings) -> bool {
-    if null_p(xs) {
-        false
-    } else {
-        (string_eq_p(s, car(xs)) || string_member_p(s, cdr(xs)))
+pub fn string_member_p(mut s: Str, mut xs: Strings) -> bool {
+    loop {
+        if null_p(xs) {
+            return false;
+        } else {
+            if string_eq_p(s, car(xs)) {
+                return true;
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
     }
 }
 

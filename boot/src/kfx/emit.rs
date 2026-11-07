@@ -1058,8 +1058,23 @@ pub mod emitter {
         }
     }
 
-    pub fn chars_prefix_p(p: Chars, cs: Chars) -> bool {
-        (null_p(p) || (not(null_p(cs)) && char_eq_p(car(p), car(cs)) && chars_prefix_p(cdr(p), cdr(cs))))
+    pub fn chars_prefix_p(mut p: Chars, mut cs: Chars) -> bool {
+        loop {
+            if null_p(p) {
+                return true;
+            } else {
+                if not(null_p(cs)) {
+                    if char_eq_p(car(p), car(cs)) {
+                        (p, cs) = (cdr(p), cdr(cs));
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
     }
 
     pub fn chars_after(mut cs: Chars, mut n: i64) -> Chars {
@@ -2221,41 +2236,38 @@ pub mod emitter {
     // Every writer of an expression takes `n`, the indentation of the line it
     // starts on, and `t`, where the expression stands.
     /// Whether a written effect may abort, its abbreviations seen through: a
-    /// procedure of it returns a `Result` (docs/research/escapes.md); any,
-    /// in the async mode.
+    /// procedure of it returns a `Result` (docs/research/escapes.md).
     pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-        (async_mode_p(c) || {
-            let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Sym(n, at_file, at_pos) => {
-                    (effect_binder_p(c, n) || any_p(lambda1s(move |x: &'static Typed| {
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Typed::Typed(m, body) => {
-                                (string_eq_p(m, n) && fallible_effect_p(c, body))
-                            }
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                (effect_binder_p(c, n) || any_p(lambda1s(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(m, body) => {
+                            (string_eq_p(m, n) && fallible_effect_p(c, body))
                         }
-                    }), ctx_effects(c)))
-                }
-                Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    if sym_is_p(car(xs), str_lit("goto")) {
-                        true
-                    } else if sym_is_p(car(xs), str_lit("comefrom")) {
-                        true
-                    } else if sym_is_p(car(xs), str_lit("maxeff")) {
-                        any_p(lambda1s(move |x: &'static Sexp| {
-                            fallible_effect_p(c, x)
-                        }), cdr(xs))
-                    } else {
-                        false
                     }
-                }
-                _ => {
-                    let other = tagcase_;
+                }), ctx_effects(c)))
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                if sym_is_p(car(xs), str_lit("goto")) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("comefrom")) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("maxeff")) {
+                    any_p(lambda1s(move |x: &'static Sexp| {
+                        fallible_effect_p(c, x)
+                    }), cdr(xs))
+                } else {
                     false
                 }
             }
-        })
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
     }
 
     /// Whether a written effect is one a process may have (C101), as the
@@ -2449,16 +2461,17 @@ pub mod emitter {
     }
 
     /// The checker's fact `what` at `e`, as the emitter's mode reads it: in the
-    /// async mode every procedure suspends and may abort, and so does every
-    /// call of a KFX procedure, and none is `Send + Sync`.
+    /// async mode every procedure suspends, and so does every call of a KFX
+    /// procedure, and none is `Send + Sync`; what may abort is what its
+    /// effect says (C372: a preemption is no abort).
     pub fn mfact_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
         if not(async_mode_p(c)) {
             fact_at_p(c, e, what)
-        } else if (string_eq_p(what, str_lit("suspends")) || string_eq_p(what, str_lit("fallible")) || string_eq_p(what, str_lit("suspending-body"))) {
+        } else if (string_eq_p(what, str_lit("suspends")) || string_eq_p(what, str_lit("suspending-body"))) {
             true
         } else if (string_eq_p(what, str_lit("sync")) || string_eq_p(what, str_lit("wrap-sync"))) {
             false
-        } else if (string_eq_p(what, str_lit("suspending-call")) || string_eq_p(what, str_lit("fallible-call"))) {
+        } else if string_eq_p(what, str_lit("suspending-call")) {
             (kfx_callee_p(c, e) || fact_at_p(c, e, what))
         } else {
             fact_at_p(c, e, what)
@@ -3108,7 +3121,15 @@ pub mod emitter {
                         }, put(effect_lifetime(c, second(xs)), put(str_lit("&"), acc)));
                         let acc = put_types(c, items(third(xs)), acc);
                         let acc = put(str_lit(") -> "), acc);
-                        if suspending_effect_p(c, second(xs)) {
+                        if (suspending_effect_p(c, second(xs)) && async_mode_p(c) && not(fallible_effect_p(c, second(xs)))) {
+                            // In the async mode, of an effect that cannot abort: a future of its
+                            // value plainly (C372).
+                            return put(if sync {
+                                str_lit("> + Send + Sync)")
+                            } else {
+                                str_lit(">")
+                            }, put_type(c, fourth(xs), put(str_lit("kayak_rt::suspend::Fut<"), acc)));
+                        } else if suspending_effect_p(c, second(xs)) {
                             return put(if sync {
                                 str_lit("> + Send + Sync)")
                             } else {
@@ -3773,7 +3794,12 @@ pub mod emitter {
                 return true;
             } else if head_is_p(e, str_lit("if")) {
                 let xs = cdr(items(e));
-                return (tail_calls_p(t, second(xs)) || tail_calls_p(t, third(xs)));
+                if tail_calls_p(t, second(xs)) {
+                    return true;
+                } else {
+                    e = third(xs);
+                    continue;
+                }
             } else if head_is_p(e, str_lit("cond")) {
                 return arms_tail_calls_p(t, cdr(items(e)));
             } else if head_is_p(e, str_lit("case")) {
@@ -3790,6 +3816,15 @@ pub mod emitter {
             } else if (head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("letfreeze"))) {
                 e = last(cdr(cdr(items(e))));
                 continue;
+            } else if (head_is_p(e, str_lit("and")) || head_is_p(e, str_lit("or"))) {
+                // An `and`'s or an `or`'s last part stands where the form does (C372):
+                // written as the `if`s it is (`as-ifs`), it loops.
+                if not(null_p(cdr(items(e)))) {
+                    e = last(cdr(items(e)));
+                    continue;
+                } else {
+                    return false;
+                }
             } else {
                 return false;
             }
@@ -3810,28 +3845,35 @@ pub mod emitter {
         }
     }
 
-    pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
-        if null_p(arms) {
-            false
-        } else {
-            let arm = items(car(arms));
-            let bound = if (sym_is_p(car(arm), str_lit("else")) || {
-                let tagcase_ = second(arm);
-                match *tagcase_ {
-                    Sexp::Sym(x, at_file, at_pos) => {
-                        true
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
-                    }
-                }
-            }) {
-                the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
+    pub fn tag_arms_tail_calls_p(mut t: &'static Tail, mut arms: Sexps) -> bool {
+        loop {
+            if null_p(arms) {
+                return false;
             } else {
-                map(&sym_name, items(second(arm)))
-            };
-            (tail_calls_p(hide(t, bound), last(cdr(cdr(arm)))) || tag_arms_tail_calls_p(t, cdr(arms)))
+                let arm = items(car(arms));
+                let bound = if (sym_is_p(car(arm), str_lit("else")) || {
+                    let tagcase_ = second(arm);
+                    match *tagcase_ {
+                        Sexp::Sym(x, at_file, at_pos) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
+                } else {
+                    map(&sym_name, items(second(arm)))
+                };
+                if tail_calls_p(hide(t, bound), last(cdr(cdr(arm)))) {
+                    return true;
+                } else {
+                    arms = cdr(arms);
+                    continue;
+                }
+            }
         }
     }
 
@@ -3850,6 +3892,32 @@ pub mod emitter {
         }
     }
 
+    /// An `and` or an `or` as the `if`s it is, KFX's being of `bool`s (C372):
+    /// `(and a b ...)` is `(if a (and b ...) #f)`, `(or a b ...)` is
+    /// `(if a #t (or b ...))`, and of one part, that part.
+    pub fn as_ifs(e: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                let xs = cdr(ys);
+                if null_p(cdr(xs)) {
+                    car(xs)
+                } else {
+                    let rest = as_ifs(lst(kayak_rt::heap_cons(car(ys), cdr(xs)), f, l, p));
+                    if sym_is_p(car(ys), str_lit("and")) {
+                        lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(rest, kayak_rt::heap_cons(sym(str_lit("#f"), f, p), kayak_rt::nil())))), f, l, p)
+                    } else {
+                        lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(str_lit("#t"), f, p), kayak_rt::heap_cons(rest, kayak_rt::nil())))), f, l, p)
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                e
+            }
+        }
+    }
+
     /// The facts at `e` found once, here: the clauses below ask of them
     /// alone, not of all the program's (C84: seven searches of every fact
     /// for each expression had made kfx three times slower).
@@ -3857,6 +3925,8 @@ pub mod emitter {
         let (fs, e) = (facts_at(c, e), unprojected(c, e));
         if self_call_p(t, e) {
             put_continue(c, cdr(items(e)), n, t, acc)
+        } else if (returns_p(t) && (head_is_p(e, str_lit("and")) || head_is_p(e, str_lit("or"))) && tail_calls_p(t, e)) {
+            put_exp(c, as_ifs(e), n, t, acc)
         } else if (returns_p(t) && abort_p(c, e)) {
             put(str_lit(";"), put_exp(c, e, n, value(), acc))
         } else if (returns_p(t) && not(control_p(e))) {
@@ -4036,12 +4106,17 @@ pub mod emitter {
                             str_lit("async-global ")
                         }));
                         let prim = (async_mode_p(c) && (fact_at_p(c, e, str_lit("prim-ref")) || string_member_p(s, prelude_names())));
+                        let fallible = (not(async_mode_p(c)) || fact_at_p(c, e, str_lit("proc-value-fallible")));
                         let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
                         let acc = put_arg_names(0i64, arity, acc);
-                        let acc = put(if prim {
-                            str_lit("| kayak_rt::suspend::body(async move { Ok(")
-                        } else {
+                        let acc = put(if (prim && fallible) {
+                            str_lit("| kayak_rt::suspend::body(async move { (")
+                        } else if prim {
+                            str_lit("| kayak_rt::suspend::boxed(async move { (")
+                        } else if fallible {
                             str_lit("| kayak_rt::suspend::body(")
+                        } else {
+                            str_lit("| kayak_rt::suspend::boxed(")
                         }, acc);
                         let acc = put(mangle(s), acc);
                         let acc = put(str_lit("("), acc);
@@ -4069,6 +4144,17 @@ pub mod emitter {
                     }
                 }
             }
+        }
+    }
+
+    /// The box of a call's future: `body`, of a `Result`'s; in the async
+    /// mode, `boxed` where the call cannot abort (C372).
+    #[inline]
+    pub fn call_box(c: &'static Ctx, e: &'static Sexp) -> Str {
+        if (async_mode_p(c) && not(fact_at_p(c, e, str_lit("fallible-call")))) {
+            str_lit("kayak_rt::suspend::boxed(")
+        } else {
+            str_lit("kayak_rt::suspend::body(")
         }
     }
 
@@ -4103,9 +4189,9 @@ pub mod emitter {
                     } else if (async_here_p(c) && not(boxed_call_p(c, e))) {
                         return put_form(c, e, h, cdr(xs), n, t, acc);
                     } else if async_here_p(c) {
-                        return put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc));
+                        return put_form(c, e, h, cdr(xs), n, t, put(call_box(c, e), acc));
                     } else {
-                        return put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc));
+                        return put_form(c, e, h, cdr(xs), n, t, put(call_box(c, e), put(str_lit("kayak_rt::suspend::block("), acc)));
                     }
                 }
                 _ => {
@@ -4115,9 +4201,9 @@ pub mod emitter {
                     } else if (async_here_p(c) && not(boxed_call_p(c, e))) {
                         acc
                     } else if async_here_p(c) {
-                        put(str_lit("kayak_rt::suspend::body("), acc)
+                        put(call_box(c, e), acc)
                     } else {
-                        put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc)
+                        put(call_box(c, e), put(str_lit("kayak_rt::suspend::block("), acc))
                     };
                     let acc = put(str_lit("("), acc);
                     let acc = put_exp(c, head, n, value(), acc);
@@ -4567,9 +4653,13 @@ pub mod emitter {
         }, acc);
         let acc = put_lambda_params(c, lambda_params_typed(c, e, params), acc);
         let acc = put(str_lit("| "), acc);
-        if mfact_p(c, e, str_lit("suspends")) {
+        if (mfact_p(c, e, str_lit("suspends")) && (not(async_mode_p(c)) || fact_at_p(c, e, str_lit("fallible")))) {
             // One that may suspend returns its body as a future, boxed (C45).
             put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), put(str_lit("kayak_rt::suspend::body(async move "), acc)))
+        } else if mfact_p(c, e, str_lit("suspends")) {
+            // In the async mode, one that cannot abort: a future of its value
+            // plainly (C372).
+            put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params)))), body, n, value(), put(str_lit("kayak_rt::suspend::boxed(async move "), acc)))
         } else if mfact_p(c, e, str_lit("fallible")) {
             put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), acc))
         } else {
@@ -4679,10 +4769,12 @@ pub mod emitter {
                 }
             }
         }), str_lit(", "), params, acc);
-        let acc = put(if suspends {
+        let acc = put(if not(suspends) {
+            str_lit("| {")
+        } else if fallible {
             str_lit("| kayak_rt::suspend::body(async move {")
         } else {
-            str_lit("| {")
+            str_lit("| kayak_rt::suspend::boxed(async move {")
         }, acc);
         let acc = put_nl(i64_plus(n, 2i64), put(str_lit("loop {"), put_nl(i64_plus(n, 1i64), acc)));
         let acc = put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc);

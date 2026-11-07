@@ -71,13 +71,20 @@ pub fn lines_of(mut cs: Chars, mut acc: Chars, mut out: List<Chars>) -> List<Cha
     }
 }
 
-pub fn starts_p(cs: Chars, prefix: Chars) -> bool {
-    if null_p(prefix) {
-        true
-    } else if null_p(cs) {
-        false
-    } else {
-        (char_eq_p(car(cs), car(prefix)) && starts_p(cdr(cs), cdr(prefix)))
+pub fn starts_p(mut cs: Chars, mut prefix: Chars) -> bool {
+    loop {
+        if null_p(prefix) {
+            return true;
+        } else if null_p(cs) {
+            return false;
+        } else {
+            if char_eq_p(car(cs), car(prefix)) {
+                (cs, prefix) = (cdr(cs), cdr(prefix));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -1193,13 +1200,20 @@ pub fn instruction_x(w: i64, rw: i64, il: &'static Iline) -> () {
     }
 }
 
-pub fn chars_eq_p(a: Chars, b: Chars) -> bool {
-    if null_p(a) {
-        null_p(b)
-    } else if null_p(b) {
-        false
-    } else {
-        (char_eq_p(car(a), car(b)) && chars_eq_p(cdr(a), cdr(b)))
+pub fn chars_eq_p(mut a: Chars, mut b: Chars) -> bool {
+    loop {
+        if null_p(a) {
+            return null_p(b);
+        } else if null_p(b) {
+            return false;
+        } else {
+            if char_eq_p(car(a), car(b)) {
+                (a, b) = (cdr(a), cdr(b));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -1231,25 +1245,32 @@ pub fn unlabelled(mut cs: Chars, mut acc: Chars) -> Chars {
     }
 }
 
-pub fn ilines_eq_p(a: List<&'static Iline>, b: List<&'static Iline>) -> bool {
-    if null_p(a) {
-        null_p(b)
-    } else if null_p(b) {
-        false
-    } else {
-        ({
-            let tagcase_ = car(a);
-            match *tagcase_ {
-                Iline::Iline(x, xs) => {
-                    let tagcase_ = car(b);
-                    match *tagcase_ {
-                        Iline::Iline(y, ys) => {
-                            (i64_eq(x, y) && chars_eq_p(unlabelled(xs, nil::<char>()), unlabelled(ys, nil::<char>())))
+pub fn ilines_eq_p(mut a: List<&'static Iline>, mut b: List<&'static Iline>) -> bool {
+    loop {
+        if null_p(a) {
+            return null_p(b);
+        } else if null_p(b) {
+            return false;
+        } else {
+            if {
+                let tagcase_ = car(a);
+                match *tagcase_ {
+                    Iline::Iline(x, xs) => {
+                        let tagcase_ = car(b);
+                        match *tagcase_ {
+                            Iline::Iline(y, ys) => {
+                                (i64_eq(x, y) && chars_eq_p(unlabelled(xs, nil::<char>()), unlabelled(ys, nil::<char>())))
+                            }
                         }
                     }
                 }
+            } {
+                (a, b) = (cdr(a), cdr(b));
+                continue;
+            } else {
+                return false;
             }
-        } && ilines_eq_p(cdr(a), cdr(b)))
+        }
     }
 }
 

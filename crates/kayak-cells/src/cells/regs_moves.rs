@@ -331,11 +331,20 @@ pub fn par_move_items(mut ms: Rmoves, mut acc: Ritems) -> Ritems {
 
 // Whether moves form a cycle: some left when every move whose destination
 // no other reads is taken away.
-pub fn moves_cycle_p(ms: Rmoves) -> bool {
-    (not(null_p(ms)) && {
-        let k = free_move(ms, ms, 0i64);
-        (i64_lt(k, 0i64) || moves_cycle_p(drop_move(ms, k, 0i64)))
-    })
+pub fn moves_cycle_p(mut ms: Rmoves) -> bool {
+    loop {
+        if not(null_p(ms)) {
+            let k = free_move(ms, ms, 0i64);
+            if i64_lt(k, 0i64) {
+                return true;
+            } else {
+                ms = drop_move(ms, k, 0i64);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 #[inline]

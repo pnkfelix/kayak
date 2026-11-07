@@ -10209,3 +10209,37 @@ the Rust is as before, byte for byte.
   procedures that cannot reach a suspension (leaves, bounded work) kept
   synchronous; fuel charged and the tasks the scheduler's; the corpus in
   both modes.
+
+## C372. The async mode apart from aborting; `and`/`or` tails loop (2026-11-07)
+
+The user's "Go ahead" to C371's next step: in C45's design, to suspend was
+to capture to a prompt, which aborts, so the async mode made every
+procedure return a `Result` and every call `?`'d. A preemption is no
+abort.
+- **Fallible only where the effect says**: in the async mode, procedures,
+  lambdas and calls are fallible as the checker's facts say (`fallible`,
+  `fallible-call`), as in the synchronous mode; written types too
+  (`fallible-effect?`). A future of a plain value has a type and a box of
+  its own (kayak-rt's `suspend::Fut<R>` and `suspend::boxed`, beside
+  `Body<R>` and `body`): a lambda that cannot abort is `boxed(async move
+  ..)` of its value; a call's box is `body` or `boxed` as the call may
+  abort or not (`call-box`); a named procedure as a value is wrapped as
+  its effect says (the checker's new `proc-value-fallible`). Prompt
+  bodies stay fallible: an abort to a prompt is what `Result` is for.
+  The async compiler's Rust has 461 `?`s, from 18,604; it builds in 68 s
+  from 87 s; it runs in 4.76 s from 7.3-8.5 s.
+- **`and` and `or` in a looping tail** (both modes): the emitter followed
+  a self tail call through `if`, `cond`, `tagcase`, `let`, `begin`, not
+  through `and` and `or`, which it wrote as `&&` and `||`, so `any?`,
+  `all?` and what is made of them recursed. KFX's `and` and `or` are of
+  `bool`s, so in a looping procedure's tail one whose last part makes a
+  self tail call is written as the `if`s it is (`as-ifs`): 46 more
+  procedures loop (460 to 506). In the async mode each of their steps had
+  been a boxed future.
+- **Measured** (the compiler on itself): synchronous 2.11 s to 2.03 s (the
+  4% C371 cost, made back); async 4.76 s to 3.69 s, 1.8x the synchronous.
+  The async compiler's output in plain mode is the synchronous one's, and
+  its own async Rust again (`scripts/async-check.sh`).
+- **A lang item more**: `boxed`, an `emitter-call` (lang/items.sexp, C367):
+  the table's check found the emitter calling a kayak-rt function it did
+  not list, as it is meant to.

@@ -3121,29 +3121,36 @@ pub fn direct_op_p(op: i64, a: i64, b: i64, c: i64, allocs: bool, fuller: bool) 
 
 /// Whether every instruction of `rw` from `i`, of `n` cells, is tier 6's
 /// (with `allocs` and `fuller`, `direct-op?`'s).
-pub fn direct_able_p(rw: i64, i: i64, n: i64, allocs: bool, fuller: bool) -> bool {
-    if i64_gt_eq(i, n) {
-        true
-    } else {
-        let kk = i64_plus(f_cell0(), i);
-        let op = fix_val(slot_of(rw, kk));
-        let ops = rop_operands(op);
-        let a = if i64_gt_eq(ops, 1i64) {
-            fix_val(slot_of(rw, i64_plus(kk, 1i64)))
+pub fn direct_able_p(mut rw: i64, mut i: i64, mut n: i64, mut allocs: bool, mut fuller: bool) -> bool {
+    loop {
+        if i64_gt_eq(i, n) {
+            return true;
         } else {
-            the::<i64>(0i64)
-        };
-        let b = if i64_gt_eq(ops, 2i64) {
-            fix_val(slot_of(rw, i64_plus(kk, 2i64)))
-        } else {
-            the::<i64>(0i64)
-        };
-        let c = if i64_gt_eq(ops, 3i64) {
-            fix_val(slot_of(rw, i64_plus(kk, 3i64)))
-        } else {
-            the::<i64>(0i64)
-        };
-        (direct_op_p(op, a, b, c, allocs, fuller) && direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n, allocs, fuller))
+            let kk = i64_plus(f_cell0(), i);
+            let op = fix_val(slot_of(rw, kk));
+            let ops = rop_operands(op);
+            let a = if i64_gt_eq(ops, 1i64) {
+                fix_val(slot_of(rw, i64_plus(kk, 1i64)))
+            } else {
+                the::<i64>(0i64)
+            };
+            let b = if i64_gt_eq(ops, 2i64) {
+                fix_val(slot_of(rw, i64_plus(kk, 2i64)))
+            } else {
+                the::<i64>(0i64)
+            };
+            let c = if i64_gt_eq(ops, 3i64) {
+                fix_val(slot_of(rw, i64_plus(kk, 3i64)))
+            } else {
+                the::<i64>(0i64)
+            };
+            if direct_op_p(op, a, b, c, allocs, fuller) {
+                i = i64_plus(i, i64_plus(1i64, ops));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -3310,12 +3317,23 @@ pub fn h_6_len() -> Ref<FlatArray<i64>> {
 /// from instruction `i`, the one after a `save`, in its block (C251):
 /// tier 6 runs nothing between that may give back or collect, so the
 /// slot need not be filled with `#f` first.
-pub fn stored_after_save_p(rw: i64, i: i64, n: i64, s: i64) -> bool {
-    if (i64_gt_eq(i, n) || i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64)) {
-        false
-    } else {
-        let kk = i64_plus(f_cell0(), i);
-        (i64_eq(fix_val(slot_of(rw, kk)), ro_store()) && (i64_eq(fix_val(slot_of(rw, i64_plus(kk, 2i64))), s) || stored_after_save_p(rw, i64_plus(i, 3i64), n, s)))
+pub fn stored_after_save_p(mut rw: i64, mut i: i64, mut n: i64, mut s: i64) -> bool {
+    loop {
+        if (i64_gt_eq(i, n) || i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64)) {
+            return false;
+        } else {
+            let kk = i64_plus(f_cell0(), i);
+            if i64_eq(fix_val(slot_of(rw, kk)), ro_store()) {
+                if i64_eq(fix_val(slot_of(rw, i64_plus(kk, 2i64))), s) {
+                    return true;
+                } else {
+                    i = i64_plus(i, 3i64);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
     }
 }
 

@@ -1327,25 +1327,32 @@ pub mod termination {
         fold_edges(a, b, nil::<&'static termination::Edge>())
     }
 
-    pub fn edges_eq_p(a: Edges, b: Edges) -> bool {
-        if null_p(a) {
-            null_p(b)
-        } else if null_p(b) {
-            false
-        } else {
-            ({
-                let tagcase_ = car(a);
-                match *tagcase_ {
-                    Edge::Edge(x, y, s) => {
-                        let tagcase_ = car(b);
-                        match *tagcase_ {
-                            Edge::Edge(x2, y2, s2) => {
-                                (i64_eq(x, x2) && i64_eq(y, y2) && eqv_bool_p(s, s2))
+    pub fn edges_eq_p(mut a: Edges, mut b: Edges) -> bool {
+        loop {
+            if null_p(a) {
+                return null_p(b);
+            } else if null_p(b) {
+                return false;
+            } else {
+                if {
+                    let tagcase_ = car(a);
+                    match *tagcase_ {
+                        Edge::Edge(x, y, s) => {
+                            let tagcase_ = car(b);
+                            match *tagcase_ {
+                                Edge::Edge(x2, y2, s2) => {
+                                    (i64_eq(x, x2) && i64_eq(y, y2) && eqv_bool_p(s, s2))
+                                }
                             }
                         }
                     }
+                } {
+                    (a, b) = (cdr(a), cdr(b));
+                    continue;
+                } else {
+                    return false;
                 }
-            } && edges_eq_p(cdr(a), cdr(b)))
+            }
         }
     }
 

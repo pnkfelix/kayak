@@ -1860,9 +1860,19 @@ pub fn scalar_p(n: i64) -> bool {
     (i64_gt_eq(n, 0i64) && i64_lt_eq(n, 1114111i64) && not((i64_gt_eq(n, 55296i64) && i64_lt_eq(n, 57343i64))))
 }
 
-#[inline]
-pub fn args_chars_p(i: i64) -> bool {
-    (i64_gt_eq(i, get(pargc())) || (is_char_p(parg(i)) && args_chars_p(i64_plus(i, 1i64))))
+pub fn args_chars_p(mut i: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, get(pargc())) {
+            return true;
+        } else {
+            if is_char_p(parg(i)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// Each argument from `i`, a character, code point `i` of `v`.
@@ -2465,9 +2475,19 @@ pub fn tier1_page_words() -> i64 {
 // characters; their text, made once from them (C366): appended a
 // character at a time, each step a new string, never freed, the compiler's
 // output of a module cost its length squared.
-#[inline]
-pub fn chars_p(l: i64) -> bool {
-    (not(is_pair_p(l)) || (is_char_p(pair_car(l)) && chars_p(pair_cdr(l))))
+pub fn chars_p(mut l: i64) -> bool {
+    loop {
+        if not(is_pair_p(l)) {
+            return true;
+        } else {
+            if is_char_p(pair_car(l)) {
+                l = pair_cdr(l);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 #[inline]
@@ -2712,12 +2732,34 @@ pub fn elements_hash(mut v: i64, mut i: i64, mut n: i64, mut h: i64) -> i64 {
     }
 }
 
-pub fn words_same_p(p: i64, q: i64, i: i64, n: i64) -> bool {
-    (i64_gt_eq(i, n) || (i64_eq(word_at(i64_plus(p, i)), word_at(i64_plus(q, i))) && words_same_p(p, q, i64_plus(i, 1i64), n)))
+pub fn words_same_p(mut p: i64, mut q: i64, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, n) {
+            return true;
+        } else {
+            if i64_eq(word_at(i64_plus(p, i)), word_at(i64_plus(q, i))) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
-pub fn elements_same_p(a: i64, b: i64, i: i64, n: i64) -> bool {
-    (i64_gt_eq(i, n) || (i64_eq(elt_ref(a, i), elt_ref(b, i)) && elements_same_p(a, b, i64_plus(i, 1i64), n)))
+pub fn elements_same_p(mut a: i64, mut b: i64, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, n) {
+            return true;
+        } else {
+            if i64_eq(elt_ref(a, i), elt_ref(b, i)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// An interned object's hash: of a pair's parts, a string's words, a

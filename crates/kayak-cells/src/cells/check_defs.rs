@@ -3988,8 +3988,23 @@ pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
 // their references allow, each set of procedures that reach one another a
 // `define-rec` (so `spin` and termination are as a group's); Rust's items
 // are in no order, and the emitter writes them as they were.
-pub fn marked_in_p(cs: List<char>) -> bool {
-    (not(null_p(cs)) && not(null_p(cdr(cs))) && ((char_eq_p(car(cs), ' ') && char_eq_p(car(cdr(cs)), '%')) || marked_in_p(cdr(cs))))
+pub fn marked_in_p(mut cs: List<char>) -> bool {
+    loop {
+        if not(null_p(cs)) {
+            if not(null_p(cdr(cs))) {
+                if (char_eq_p(car(cs), ' ') && char_eq_p(car(cdr(cs)), '%')) {
+                    return true;
+                } else {
+                    cs = cdr(cs);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 
 /// A binding's name that is a marker, `%x`, or a module's marker, `m %x`

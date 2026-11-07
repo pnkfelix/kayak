@@ -358,8 +358,23 @@ pub fn stage_verdict(prog: &'static Sexp, t: &'static Ty) -> Str {
     str_lit("")
 }
 
-pub fn begins_with_p(cs: Chars, pat: Chars) -> bool {
-    (null_p(pat) || (not(null_p(cs)) && char_eq_p(car(cs), car(pat)) && begins_with_p(cdr(cs), cdr(pat))))
+pub fn begins_with_p(mut cs: Chars, mut pat: Chars) -> bool {
+    loop {
+        if null_p(pat) {
+            return true;
+        } else {
+            if not(null_p(cs)) {
+                if char_eq_p(car(cs), car(pat)) {
+                    (cs, pat) = (cdr(cs), cdr(pat));
+                    continue;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// What follows the first `in staged code: ` of a refusal; all of it if none.

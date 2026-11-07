@@ -57,6 +57,16 @@ pub fn body<R>(f: impl Future<Output = Result<R, Unwind>> + 'static) -> Body<R> 
     Box::pin(f)
 }
 
+/// A future of a plain value, boxed: what a procedure value of the emitter's
+/// async mode returns where its effect cannot abort (C372), and the box of
+/// a call of such a procedure that may close a cycle.
+pub type Fut<R> = Pin<Box<dyn Future<Output = R>>>;
+
+/// `body`'s, for a future of a plain value (C372).
+pub fn boxed<R>(f: impl Future<Output = R> + 'static) -> Fut<R> {
+    Box::pin(f)
+}
+
 /// The capture's future: `Pending` once, having registered; then the value
 /// the continuation was resumed with.
 struct Capture<V: 'static> {

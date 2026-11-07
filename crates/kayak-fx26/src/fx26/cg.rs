@@ -2708,19 +2708,34 @@ pub fn case_sort_key(k: i64, d: &'static Sexp) -> i64 {
 }
 
 // Whether every datum has a sort value: integers only if fixnums.
-pub fn case_all_keyed_p(k: i64, clauses: Sexps) -> bool {
-    (not(i64_eq(k, 0i64)) || null_p(cdr(clauses)) || (not(any_p(lambda1s(move |d: &'static Sexp| {
-        let tagcase_ = d;
-        match *tagcase_ {
-            Sexp::Num(n, f, p) => {
-                (i64_lt(n, -1152921504606846976i64) || i64_gt(n, 1152921504606846975i64))
-            }
-            _ => {
-                let other = tagcase_;
-                true
+pub fn case_all_keyed_p(mut k: i64, mut clauses: Sexps) -> bool {
+    loop {
+        if not(i64_eq(k, 0i64)) {
+            return true;
+        } else {
+            if null_p(cdr(clauses)) {
+                return true;
+            } else {
+                if not(any_p(lambda1s(move |d: &'static Sexp| {
+                    let tagcase_ = d;
+                    match *tagcase_ {
+                        Sexp::Num(n, f, p) => {
+                            (i64_lt(n, -1152921504606846976i64) || i64_gt(n, 1152921504606846975i64))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }), items(car(items(car(clauses)))))) {
+                    clauses = cdr(clauses);
+                    continue;
+                } else {
+                    return false;
+                }
             }
         }
-    }), items(car(items(car(clauses)))))) && case_all_keyed_p(k, cdr(clauses))))
+    }
 }
 
 // `e` into `sorted`, after those of no greater value: a stable sort.
@@ -3307,33 +3322,57 @@ pub fn q_inner(items: Sexps, depth: i64) -> i64 {
 }
 
 /// Whether no `unquote` or `unquote-splicing` at depth 1 is in `x`.
-pub fn q_free_p(x: &'static Sexp, depth: i64) -> bool {
-    (null_p(q_unquoted(x, depth)) && {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Sexp::Lst(ys, f, l, p) => {
-                if head_is_p(x, str_lit("#vector")) {
-                    q_items_free_p(cdr(ys), depth, depth)
-                } else if q_dotted_p(ys) {
-                    (q_items_free_p(q_before_dot(ys), depth, q_inner(q_before_dot(ys), depth)) && q_free_p(q_dot_tail(ys), depth))
-                } else {
-                    q_items_free_p(ys, depth, q_inner(ys, depth))
+pub fn q_free_p(mut x: &'static Sexp, mut depth: i64) -> bool {
+    loop {
+        if null_p(q_unquoted(x, depth)) {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    if head_is_p(x, str_lit("#vector")) {
+                        return q_items_free_p(cdr(ys), depth, depth);
+                    } else if q_dotted_p(ys) {
+                        if q_items_free_p(q_before_dot(ys), depth, q_inner(q_before_dot(ys), depth)) {
+                            x = q_dot_tail(ys);
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return q_items_free_p(ys, depth, q_inner(ys, depth));
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return true;
                 }
             }
-            _ => {
-                let other = tagcase_;
-                true
-            }
+        } else {
+            return false;
         }
-    })
+    }
 }
 
-pub fn q_items_free_p(items: Sexps, depth: i64, inner: i64) -> bool {
-    (null_p(items) || (null_p(if i64_eq(depth, 1i64) {
-        q_unquote_of(car(items), str_lit("unquote-splicing"))
-    } else {
-        nil::<&'static Sexp>()
-    }) && q_free_p(car(items), depth) && q_items_free_p(cdr(items), inner, inner)))
+pub fn q_items_free_p(mut items: Sexps, mut depth: i64, mut inner: i64) -> bool {
+    loop {
+        if null_p(items) {
+            return true;
+        } else {
+            if null_p(if i64_eq(depth, 1i64) {
+                q_unquote_of(car(items), str_lit("unquote-splicing"))
+            } else {
+                nil::<&'static Sexp>()
+            }) {
+                if q_free_p(car(items), depth) {
+                    (items, depth) = (cdr(items), inner);
+                    continue;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 /// `e`, converted where the checker found it converted (C230).
@@ -5741,31 +5780,61 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
                 return (string_member_p(f, ps) || c_calls_only_inside(body, f, n, loops));
             }
             Cx::XApp(fun, args, a) => {
-                return (c_calls_only_all(args, f, n, loops) && {
+                if c_calls_only_all(args, f, n, loops) {
                     let tagcase_ = fun;
                     match *tagcase_ {
                         Cx::XVar(m, a2) => {
                             if string_eq_p(m, f) {
-                                ((tail || not(loops)) && i64_eq(size(args), n))
+                                return ((tail || not(loops)) && i64_eq(size(args), n));
                             } else {
-                                true
+                                return true;
                             }
                         }
                         _ => {
                             let y = tagcase_;
-                            c_calls_only(fun, f, n, false, loops)
+                            (x, tail) = (fun, false);
+                            continue;
                         }
                     }
-                });
+                } else {
+                    return false;
+                }
             }
             Cx::XIf(t, th, el, a) => {
-                return (c_calls_only(t, f, n, false, loops) && c_calls_only(th, f, n, tail, loops) && c_calls_only(el, f, n, tail, loops));
+                if c_calls_only(t, f, n, false, loops) {
+                    if c_calls_only(th, f, n, tail, loops) {
+                        x = el;
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
             Cx::XLetrec(bs, body, a) => {
-                return (string_member_p(f, c_bound_names(bs, nil::<Str>())) || (c_calls_only_all(c_bound_exps(bs), f, n, loops) && c_calls_only(body, f, n, tail, loops)));
+                if string_member_p(f, c_bound_names(bs, nil::<Str>())) {
+                    return true;
+                } else {
+                    if c_calls_only_all(c_bound_exps(bs), f, n, loops) {
+                        x = body;
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
             }
             Cx::XLet(bs, body, a) => {
-                return (c_calls_only_all(c_bound_exps(bs), f, n, loops) && (string_member_p(f, c_bound_names(bs, nil::<Str>())) || c_calls_only(body, f, n, tail, loops)));
+                if c_calls_only_all(c_bound_exps(bs), f, n, loops) {
+                    if string_member_p(f, c_bound_names(bs, nil::<Str>())) {
+                        return true;
+                    } else {
+                        x = body;
+                        continue;
+                    }
+                } else {
+                    return false;
+                }
             }
             Cx::XBegin(es, a) => {
                 return c_calls_only_begin(es, f, n, tail, loops);
@@ -5794,10 +5863,20 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
                 return (c_calls_only(t, f, n, false, loops) && c_calls_only(h, f, n, false, loops) && c_calls_only_inside(body, f, n, loops));
             }
             Cx::XRegion(k, r, body, a) => {
-                return (string_eq_p(r, f) || c_calls_only(body, f, n, false, loops));
+                if string_eq_p(r, f) {
+                    return true;
+                } else {
+                    (x, tail) = (body, false);
+                    continue;
+                }
             }
             Cx::XRlambda(r, l, a) => {
-                return (c_calls_only(r, f, n, false, loops) && c_calls_only(l, f, n, false, loops));
+                if c_calls_only(r, f, n, false, loops) {
+                    (x, tail) = (l, false);
+                    continue;
+                } else {
+                    return false;
+                }
             }
             Cx::XModule(its, a) => {
                 return false;
@@ -5826,30 +5905,58 @@ pub fn c_calls_only_inside(x: &'static Cx, f: Str, n: i64, loops: bool) -> bool 
     }
 }
 
-#[inline]
-pub fn c_calls_only_all(es: Cxs, f: Str, n: i64, loops: bool) -> bool {
-    (null_p(es) || (c_calls_only(car(es), f, n, false, loops) && c_calls_only_all(cdr(es), f, n, loops)))
-}
-
-pub fn c_calls_only_begin(es: Cxs, f: Str, n: i64, tail: bool, loops: bool) -> bool {
-    if null_p(es) {
-        true
-    } else if null_p(cdr(es)) {
-        c_calls_only(car(es), f, n, tail, loops)
-    } else {
-        (c_calls_only(car(es), f, n, false, loops) && c_calls_only_begin(cdr(es), f, n, tail, loops))
+pub fn c_calls_only_all(mut es: Cxs, mut f: Str, mut n: i64, mut loops: bool) -> bool {
+    loop {
+        if null_p(es) {
+            return true;
+        } else {
+            if c_calls_only(car(es), f, n, false, loops) {
+                es = cdr(es);
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
-pub fn c_calls_only_arms(arms: List<&'static Carm>, f: Str, n: i64, tail: bool, loops: bool) -> bool {
-    (null_p(arms) || ({
-        let tagcase_ = car(arms);
-        match *tagcase_ {
-            Carm::Carm(t, p, ns, body) => {
-                (string_member_p(f, ns) || c_calls_only(body, f, n, tail, loops))
+pub fn c_calls_only_begin(mut es: Cxs, mut f: Str, mut n: i64, mut tail: bool, mut loops: bool) -> bool {
+    loop {
+        if null_p(es) {
+            return true;
+        } else if null_p(cdr(es)) {
+            return c_calls_only(car(es), f, n, tail, loops);
+        } else {
+            if c_calls_only(car(es), f, n, false, loops) {
+                es = cdr(es);
+                continue;
+            } else {
+                return false;
             }
         }
-    } && c_calls_only_arms(cdr(arms), f, n, tail, loops)))
+    }
+}
+
+pub fn c_calls_only_arms(mut arms: List<&'static Carm>, mut f: Str, mut n: i64, mut tail: bool, mut loops: bool) -> bool {
+    loop {
+        if null_p(arms) {
+            return true;
+        } else {
+            if {
+                let tagcase_ = car(arms);
+                match *tagcase_ {
+                    Carm::Carm(t, p, ns, body) => {
+                        (string_member_p(f, ns) || c_calls_only(body, f, n, tail, loops))
+                    }
+                }
+            } {
+                arms = cdr(arms);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 pub fn c_calls_only_else(els: Cbinds, f: Str, n: i64, tail: bool, loops: bool) -> bool {

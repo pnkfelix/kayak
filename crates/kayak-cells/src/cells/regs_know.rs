@@ -1462,13 +1462,20 @@ pub fn r_same_operand_p(x: &'static Rloc, y: &'static Rloc) -> bool {
     }
 }
 
-pub fn r_same_operands_p(xs: Rlocs, ys: Rlocs) -> bool {
-    if null_p(xs) {
-        null_p(ys)
-    } else if null_p(ys) {
-        false
-    } else {
-        (r_same_operand_p(car(xs), car(ys)) && r_same_operands_p(cdr(xs), cdr(ys)))
+pub fn r_same_operands_p(mut xs: Rlocs, mut ys: Rlocs) -> bool {
+    loop {
+        if null_p(xs) {
+            return null_p(ys);
+        } else if null_p(ys) {
+            return false;
+        } else {
+            if r_same_operand_p(car(xs), car(ys)) {
+                (xs, ys) = (cdr(xs), cdr(ys));
+                continue;
+            } else {
+                return false;
+            }
+        }
     }
 }
 
@@ -1481,24 +1488,35 @@ pub fn rtest(f0: Str, f1: Rlocs) -> &'static Rtest {
     kayak_rt::heap_alloc(Rtest::Rtest(f0, f1))
 }
 
-pub fn r_tests_in_p(env: Renv) -> bool {
-    (not(null_p(env)) && ({
-        let tagcase_ = car(env);
-        match *tagcase_ {
-            Rbind::Rbind(n, l) => {
-                let tagcase_ = l;
+pub fn r_tests_in_p(mut env: Renv) -> bool {
+    loop {
+        if not(null_p(env)) {
+            if {
+                let tagcase_ = car(env);
                 match *tagcase_ {
-                    Rloc::RlTest(m, o, v) => {
-                        true
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        false
+                    Rbind::Rbind(n, l) => {
+                        let tagcase_ = l;
+                        match *tagcase_ {
+                            Rloc::RlTest(m, o, v) => {
+                                true
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                false
+                            }
+                        }
                     }
                 }
+            } {
+                return true;
+            } else {
+                env = cdr(env);
+                continue;
             }
+        } else {
+            return false;
         }
-    } || r_tests_in_p(cdr(env))))
+    }
 }
 
 // The value of the test `d` describes, if one in `env` is it, the newest.
@@ -1865,15 +1883,26 @@ pub fn r_plain_callee_p(f: &'static Cx, args: Cxs, e: Cenv) -> bool {
 }
 
 // Whether no binding of `bs` but the `i`th mentions `name`.
-pub fn r_unmentioned_p(bs: Cbinds, name: Str, i: i64, k: i64) -> bool {
-    (null_p(bs) || ((i64_eq(k, i) || {
-        let tagcase_ = car(bs);
-        match *tagcase_ {
-            Cbind::Cbind(n, x) => {
-                not(c_mentions_p(x, name))
+pub fn r_unmentioned_p(mut bs: Cbinds, mut name: Str, mut i: i64, mut k: i64) -> bool {
+    loop {
+        if null_p(bs) {
+            return true;
+        } else {
+            if (i64_eq(k, i) || {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        not(c_mentions_p(x, name))
+                    }
+                }
+            }) {
+                (bs, k) = (cdr(bs), i64_plus(k, 1i64));
+                continue;
+            } else {
+                return false;
             }
         }
-    }) && r_unmentioned_p(cdr(bs), name, i, i64_plus(k, 1i64))))
+    }
 }
 
 pub fn r_nth_bind(mut bs: Cbinds, mut i: i64) -> &'static Cbind {
@@ -1923,9 +1952,19 @@ pub fn r_join_flags(bs: Cbinds, body: &'static Cx, tail: bool) -> List<bool> {
     r_join_flags_from(bs, body, tail, 0i64, size(bs))
 }
 
-#[inline]
-pub fn r_all_p(fs: List<bool>) -> bool {
-    (null_p(fs) || (car(fs) && r_all_p(cdr(fs))))
+pub fn r_all_p(mut fs: List<bool>) -> bool {
+    loop {
+        if null_p(fs) {
+            return true;
+        } else {
+            if car(fs) {
+                fs = cdr(fs);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
 }
 
 // `te` with each of `bs`' names a loop, as a join point is to the stack
@@ -2031,10 +2070,24 @@ pub fn r_collects(mut v: &'static Rview, mut x: &'static Cx, mut e: Cenv, mut me
                 }
             }
             Cx::XIf(t, th, el, a) => {
-                return (r_collects(v, t, e, me, false) || r_collects(v, th, e, me, tail) || r_collects(v, el, e, me, tail));
+                if r_collects(v, t, e, me, false) {
+                    return true;
+                } else {
+                    if r_collects(v, th, e, me, tail) {
+                        return true;
+                    } else {
+                        x = el;
+                        continue;
+                    }
+                }
             }
             Cx::XLet(bs, body, a) => {
-                return (r_collects_all(v, c_bound_exps(bs), e, me) || r_collects(v, body, e, me, tail));
+                if r_collects_all(v, c_bound_exps(bs), e, me) {
+                    return true;
+                } else {
+                    x = body;
+                    continue;
+                }
             }
             Cx::XBegin(es, a) => {
                 return r_collects_begin(v, es, e, me, tail);
@@ -2067,14 +2120,25 @@ pub fn r_collects(mut v: &'static Rview, mut x: &'static Cx, mut e: Cenv, mut me
                 }
             }
             Cx::XTagcase(s, arms, els, k, a) => {
-                return (r_collects(v, s, e, me, false) || r_collects_arms(v, arms, e, me, tail) || (not(null_p(els)) && {
-                    let tagcase_ = car(els);
-                    match *tagcase_ {
-                        Cbind::Cbind(n, y) => {
-                            r_collects(v, y, e, me, tail)
+                if r_collects(v, s, e, me, false) {
+                    return true;
+                } else {
+                    if r_collects_arms(v, arms, e, me, tail) {
+                        return true;
+                    } else {
+                        if not(null_p(els)) {
+                            let tagcase_ = car(els);
+                            match *tagcase_ {
+                                Cbind::Cbind(n, y) => {
+                                    x = y;
+                                    continue;
+                                }
+                            }
+                        } else {
+                            return false;
                         }
                     }
-                }));
+                }
             }
             Cx::XApp(f, args, a) => {
                 let n = size(args);
@@ -2127,47 +2191,87 @@ pub fn r_call_is_free_p(v: &'static Rview, f: &'static Cx, n: i64, e: Cenv, tail
 
 /// Whether any of `bs`' lambdas' bodies, their parameters bound in `e`,
 /// calls or calls out.
-pub fn r_collects_joins(v: &'static Rview, bs: Cbinds, e: Cenv, me: Rthis) -> bool {
-    (not(null_p(bs)) && ({
-        let tagcase_ = car(bs);
-        match *tagcase_ {
-            Cbind::Cbind(n, x) => {
-                let l = lambda_of(x);
-                (null_p(l) || {
-                    let tagcase_ = car(l);
-                    match *tagcase_ {
-                        Lparts::Lparts(ps, lbody, region) => {
-                            r_collects(v, lbody, r_locals(ps, e), me, true)
-                        }
+pub fn r_collects_joins(mut v: &'static Rview, mut bs: Cbinds, mut e: Cenv, mut me: Rthis) -> bool {
+    loop {
+        if not(null_p(bs)) {
+            if {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        let l = lambda_of(x);
+                        (null_p(l) || {
+                            let tagcase_ = car(l);
+                            match *tagcase_ {
+                                Lparts::Lparts(ps, lbody, region) => {
+                                    r_collects(v, lbody, r_locals(ps, e), me, true)
+                                }
+                            }
+                        })
                     }
-                })
+                }
+            } {
+                return true;
+            } else {
+                bs = cdr(bs);
+                continue;
             }
+        } else {
+            return false;
         }
-    } || r_collects_joins(v, cdr(bs), e, me)))
-}
-
-pub fn r_collects_all(v: &'static Rview, es: Cxs, e: Cenv, me: Rthis) -> bool {
-    (not(null_p(es)) && (r_collects(v, car(es), e, me, false) || r_collects_all(v, cdr(es), e, me)))
-}
-
-pub fn r_collects_begin(v: &'static Rview, es: Cxs, e: Cenv, me: Rthis, tail: bool) -> bool {
-    if null_p(es) {
-        false
-    } else if null_p(cdr(es)) {
-        r_collects(v, car(es), e, me, tail)
-    } else {
-        (r_collects(v, car(es), e, me, false) || r_collects_begin(v, cdr(es), e, me, tail))
     }
 }
 
-pub fn r_collects_arms(v: &'static Rview, arms: List<&'static Carm>, e: Cenv, me: Rthis, tail: bool) -> bool {
-    (not(null_p(arms)) && ({
-        let tagcase_ = car(arms);
-        match *tagcase_ {
-            Carm::Carm(t, p, ns, body) => {
-                r_collects(v, body, e, me, tail)
+pub fn r_collects_all(mut v: &'static Rview, mut es: Cxs, mut e: Cenv, mut me: Rthis) -> bool {
+    loop {
+        if not(null_p(es)) {
+            if r_collects(v, car(es), e, me, false) {
+                return true;
+            } else {
+                es = cdr(es);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
+}
+
+pub fn r_collects_begin(mut v: &'static Rview, mut es: Cxs, mut e: Cenv, mut me: Rthis, mut tail: bool) -> bool {
+    loop {
+        if null_p(es) {
+            return false;
+        } else if null_p(cdr(es)) {
+            return r_collects(v, car(es), e, me, tail);
+        } else {
+            if r_collects(v, car(es), e, me, false) {
+                return true;
+            } else {
+                es = cdr(es);
+                continue;
             }
         }
-    } || r_collects_arms(v, cdr(arms), e, me, tail)))
+    }
+}
+
+pub fn r_collects_arms(mut v: &'static Rview, mut arms: List<&'static Carm>, mut e: Cenv, mut me: Rthis, mut tail: bool) -> bool {
+    loop {
+        if not(null_p(arms)) {
+            if {
+                let tagcase_ = car(arms);
+                match *tagcase_ {
+                    Carm::Carm(t, p, ns, body) => {
+                        r_collects(v, body, e, me, tail)
+                    }
+                }
+            } {
+                return true;
+            } else {
+                arms = cdr(arms);
+                continue;
+            }
+        } else {
+            return false;
+        }
+    }
 }
 

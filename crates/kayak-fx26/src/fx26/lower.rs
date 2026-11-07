@@ -301,7 +301,12 @@ pub fn unquoted_p(mut d: &'static Sexp, mut depth: i64) -> bool {
                 if null_p(ys) {
                     return false;
                 } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
-                    return (i64_eq(depth, 1i64) || unquoted_p(second(ys), i64_minus(depth, 1i64)));
+                    if i64_eq(depth, 1i64) {
+                        return true;
+                    } else {
+                        (d, depth) = (second(ys), i64_minus(depth, 1i64));
+                        continue;
+                    }
                 } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
                     (d, depth) = (second(ys), i64_plus(depth, 1i64));
                     continue;

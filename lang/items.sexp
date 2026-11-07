@@ -973,6 +973,7 @@
 (emitter-call "blobref_plus" kayak)
 (emitter-call "block" kayak)
 (emitter-call "body" kayak)
+(emitter-call "boxed" kayak)
 (emitter-call "boxed_list" kayak)
 (emitter-call "cons" kayak)
 (emitter-call "datum_list_to_vector" kayak)

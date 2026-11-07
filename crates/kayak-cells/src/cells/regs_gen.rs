@@ -1007,22 +1007,33 @@ pub fn r_count_named(mut env: Renv, mut n: Str, mut k: i64) -> i64 {
 }
 
 // Whether any of `args` is a constant list (`nil`, as kayak knows them).
-pub fn r_any_const_list_p(env: Renv, args: Cxs) -> bool {
-    (not(null_p(args)) && ({
-        let k = r_known(env, car(args));
-        (not(null_p(k)) && {
-            let tagcase_ = car(k);
-            match *tagcase_ {
-                Rconst::RcNil() => {
-                    true
-                }
-                _ => {
-                    let y = tagcase_;
-                    false
-                }
+pub fn r_any_const_list_p(mut env: Renv, mut args: Cxs) -> bool {
+    loop {
+        if not(null_p(args)) {
+            if {
+                let k = r_known(env, car(args));
+                (not(null_p(k)) && {
+                    let tagcase_ = car(k);
+                    match *tagcase_ {
+                        Rconst::RcNil() => {
+                            true
+                        }
+                        _ => {
+                            let y = tagcase_;
+                            false
+                        }
+                    }
+                })
+            } {
+                return true;
+            } else {
+                args = cdr(args);
+                continue;
             }
-        })
-    } || r_any_const_list_p(env, cdr(args))))
+        } else {
+            return false;
+        }
+    }
 }
 
 // A call of global `f` on `args` unrolled (C252, Fixpt's `r-unrolled`):
@@ -1671,20 +1682,32 @@ pub fn rleaf(f0: Rmoves, f1: List<&'static Rlate>) -> &'static Rleaf {
     kayak_rt::heap_alloc(Rleaf::Rleaf(f0, f1))
 }
 
-pub fn r_written_p(k: i64, ms: Rmoves, late: List<&'static Rlate>) -> bool {
-    if not(null_p(ms)) {
-        (i64_eq(move_to(car(ms)), k) || r_written_p(k, cdr(ms), late))
-    } else if null_p(late) {
-        false
-    } else {
-        ({
-            let tagcase_ = car(late);
-            match *tagcase_ {
-                Rlate::Rlate(r, x) => {
-                    i64_eq(r, k)
-                }
+pub fn r_written_p(mut k: i64, mut ms: Rmoves, mut late: List<&'static Rlate>) -> bool {
+    loop {
+        if not(null_p(ms)) {
+            if i64_eq(move_to(car(ms)), k) {
+                return true;
+            } else {
+                ms = cdr(ms);
+                continue;
             }
-        } || r_written_p(k, ms, cdr(late)))
+        } else if null_p(late) {
+            return false;
+        } else {
+            if {
+                let tagcase_ = car(late);
+                match *tagcase_ {
+                    Rlate::Rlate(r, x) => {
+                        i64_eq(r, k)
+                    }
+                }
+            } {
+                return true;
+            } else {
+                late = cdr(late);
+                continue;
+            }
+        }
     }
 }
 
