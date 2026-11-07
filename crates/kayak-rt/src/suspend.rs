@@ -331,9 +331,16 @@ impl Charge {
 /// the async mode's top level, where the synchronous mode's is a call.
 /// Still pending when nothing can run, a capture with no prompt for its
 /// tag, an error, as `block` says it.
+///
+/// The program's processes, in the async mode, are tasks of the same
+/// scheduler (`async_process`, C380): the run ends when `main` does, as the
+/// program's threads end with it in the synchronous mode; a process's
+/// failure is the program's; and when no task can run and none waits for
+/// a deadline or the standard input, `main`'s wait is a deadlock.
 pub fn run<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
     let mut sched =
         kayak_sched::Scheduler::new(kayak_sched::Config::default(), kayak_trace::Discard).quiet();
+    let f = crate::async_process::program(f);
     let mut main = sched.spawn_join(kayak_sched::Spawn::new("main"), |cx| async move {
         struct Running;
         impl Drop for Running {
@@ -345,11 +352,23 @@ pub fn run<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
         let _running = Running;
         f.await
     });
-    sched.run(u64::MAX);
+    while !main.is_finished() {
+        crate::async_process::check_failed();
+        if sched.step() == kayak_sched::Step::Idle && !crate::async_process::waited() {
+            break;
+        }
+    }
+    crate::async_process::check_failed();
     match main.try_take() {
         Some(v) => v,
-        None => crate::fail("abort-with-continuation: no prompt for the tag"),
+        None => crate::fail(crate::async_process::stuck()),
     }
+}
+
+/// The scheduler's handle of the task this thread runs, if it runs one
+/// (`run`): what a process is spawned by (C380).
+pub(crate) fn task_cx() -> Option<kayak_sched::Cx> {
+    TASK.with(|t| t.borrow().clone())
 }
 
 /// A synchronous procedure, a native one (C116), as the emitter's async

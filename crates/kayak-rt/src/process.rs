@@ -60,7 +60,7 @@ fn lock() -> MutexGuard<'static, Sched> {
     SCHED.lock().unwrap_or_else(|p| p.into_inner())
 }
 
-fn held<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn held<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|p| p.into_inner())
 }
 
@@ -105,7 +105,7 @@ fn group() -> Option<&'static Group> {
 /// Whether this thread is a monitored process's, whose failure no panic
 /// hook should say.
 pub(crate) fn monitored() -> bool {
-    group().is_some_and(|g| g.monitored)
+    group().is_some_and(|g| g.monitored) || crate::async_process::monitored()
 }
 
 /// A task's failure, `e`: its group's, if the first, said by the group's
@@ -240,7 +240,7 @@ fn wait_until<R>(
 /// `(icell T R)`: empty until its one write. Shared between threads only
 /// when `T` is `Send`, as a transmissible type's Rust is.
 pub struct ICellBox<T> {
-    value: Mutex<Option<T>>,
+    pub(crate) value: Mutex<Option<T>>,
 }
 
 pub type ICell<T> = &'static ICellBox<T>;
@@ -282,7 +282,7 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
 /// A process's mailbox: `(addr M R)` the right to send to it, `(inbox M
 /// r)` the right to take from it, its process's alone.
 pub struct MailboxBox<M> {
-    queue: Mutex<VecDeque<M>>,
+    pub(crate) queue: Mutex<VecDeque<M>>,
 }
 
 pub type Addr<M> = &'static MailboxBox<M>;
@@ -449,7 +449,7 @@ pub fn sync(events: &[&dyn Waitable]) -> usize {
 /// A thread's stack, as big as the main thread's is made.
 const STACK: usize = 1 << 30;
 
-fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
+pub(crate) fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>()
         .cloned()
         .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))

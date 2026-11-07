@@ -10471,3 +10471,41 @@ cliques".
   longer looks through a module's every name in the locals of each of
   its procedures.
 
+## C380. Processes as tasks in the async mode (2026-11-07)
+
+The user's go-ahead for the next step after C379: the program's
+processes on the scheduler its fuel preempts (C378), as
+coopt-adoption.md's step 2 has it, rather than OS threads.
+- **Chosen**: in the async mode, a process is a task of the scheduler
+  `suspend::run` runs `main` on (kayak-rt's `async_process`; not `tasks`,
+  a name the FX-26 front end's own module has, which kayak-rt's glob
+  import would make ambiguous). `receive`, `icell-get` and `pselect` are
+  futures: not ready, each keeps its task's waker and is pending; `send`
+  and `icell-put!` wake every waiter, which looks again, as the threads'
+  condition variable does. `par`'s branches are futures of the same task,
+  joined (`par2`), not threads. The synchronous mode keeps its threads
+  (`process`), unchanged.
+- **Where a process's body is async**: its `spawn` closure gives an
+  `async move` block, and a `letrena` (a process's body is one, of its
+  place) is an `async fn`, awaited, wherever it is written in what is
+  `async` (`tasks-here?`); in what is not (a `block`), as before.
+- **Processes are spawned pure**: a task preempted by fuel keeps its
+  section open, and kayak-sched runs no task whose effect interferes
+  meanwhile; with an unknown effect, processes would interleave only at
+  their waits. A process shares with the rest only what is transmissible,
+  which none writes, and mailboxes and I-cells, which it reaches only at
+  its waits.
+- **The run**: `suspend::run` steps the scheduler until `main` ends (a
+  process that runs on ends with the program, as threads do). A failure
+  is caught at each poll of a process: an unmonitored one's fails the
+  program, a monitored one's is sent to its watcher. When no task can
+  run, a wait for a deadline or for the standard input sleeps until it
+  may be ready; with none, `main`'s wait is a deadlock, said as the
+  threads' runtime says it.
+- Tried by hand beside the corpus (whose `processes`, `monitors` and
+  `frozen-shared` now run as tasks): a deadlock on an I-cell is said as
+  before; a failing process fails the program, its message said twice as
+  in the synchronous mode; a process that loops for ever does not keep
+  `main` from ending, fuel preempting it. The compiler, which spawns no
+  process, is unchanged (22.0 G instructions).
+

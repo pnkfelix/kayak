@@ -1516,6 +1516,13 @@ pub mod emitter {
         innermost_async(ctx_locals(c))
     }
 
+    /// Whether processes are tasks here (C380): in the async mode, where
+    /// what is written is `async`, so that a wait is awaited.
+    #[inline]
+    pub fn tasks_here_p(c: &'static Ctx) -> bool {
+        (async_mode_p(c) && async_here_p(c))
+    }
+
     /// Whether the function or closure being written returns a `Result`: the
     /// innermost's mark says.
     #[inline]
@@ -5093,17 +5100,33 @@ pub mod emitter {
                 return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit(", "), put(mangle(fact_with(c, e, str_lit("rbytes-in "))), put(str_lit("("), put(string_append(mangle(h), str_lit("_in")), acc))))));
             } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
+            } else if (process_call_p(h) && tasks_here_p(c)) {
+                // In the async mode, a task's (C380): a wait, `receive` or
+                // `icell-get`, a future awaited.
+                return put(if (string_eq_p(h, str_lit("receive")) || string_eq_p(h, str_lit("icell-get"))) {
+                    str_lit(").await")
+                } else {
+                    str_lit(")")
+                }, put_joined(c, xs, str_lit(", "), n, put(string_append(str_lit("kayak_rt::async_process::"), string_append(mangle(h), str_lit("("))), acc)));
             } else if process_call_p(h) {
                 // A form of processes that is a call (C101): the runtime's, whatever
                 // the program names so.
                 return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(string_append(str_lit("kayak_rt::process::"), string_append(mangle(h), str_lit("("))), acc)));
             } else if string_eq_p(h, str_lit("spawn")) {
-                return put_process(c, e, xs, n, put(str_lit("kayak_rt::process::spawn("), acc));
+                return put_process(c, e, xs, n, put(if async_mode_p(c) {
+                    str_lit("kayak_rt::async_process::spawn(")
+                } else {
+                    str_lit("kayak_rt::process::spawn(")
+                }, acc));
             } else if string_eq_p(h, str_lit("spawn-monitored")) {
                 // `(spawn-monitored w on-failure (box M r) body ...)` (C108): the
                 // watcher and what makes its message, then the process as `spawn`'s;
                 // in the async mode, the message made at once (`blocking1`, C376).
-                let acc = put(str_lit("kayak_rt::process::spawn_monitored("), acc);
+                let acc = put(if async_mode_p(c) {
+                    str_lit("kayak_rt::async_process::spawn_monitored(")
+                } else {
+                    str_lit("kayak_rt::process::spawn_monitored(")
+                }, acc);
                 let acc = put(str_lit(", "), put_exp(c, car(xs), n, value(), acc));
                 let acc = if async_mode_p(c) {
                     put(str_lit("), "), put_exp(c, second(xs), n, value(), put(str_lit("kayak_rt::suspend::blocking1("), acc)))
@@ -5409,7 +5432,12 @@ pub mod emitter {
         let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
         let types = read_all(fact_with(c, e, str_lit("letrena-locals ")), str_lit(""), 1i64);
         let fallible = mfact_p(c, e, str_lit("fallible"));
-        let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(if fallible {
+        let r#async = (async_mode_p(c) && async_here_p(c));
+        let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(if r#async {
+            str_lit("%async")
+        } else {
+            str_lit("%sync")
+        }, kayak_rt::heap_cons(if fallible {
             str_lit("%fallible")
         } else {
             str_lit("%infallible")
@@ -5430,7 +5458,11 @@ pub mod emitter {
         }), counting(0i64, size(held)))), str_lit("phantom_: std::marker::PhantomData } } }"))))))))))), acc);
         let acc = put_held_impls(held, 0i64, region, lives, lives_bounded, n1, acc);
         let acc = put_nl(n1, acc);
-        let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle_bare(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::heap_cons(life, kayak_rt::nil())), map(lambda1s(move |t: Str| {
+        let acc = put(string_append(if r#async {
+            str_lit("async fn letrena__")
+        } else {
+            str_lit("fn letrena__")
+        }, string_append(mangle_bare(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::heap_cons(life, kayak_rt::nil())), map(lambda1s(move |t: Str| {
             string_append(t, str_lit(": Copy + 'static"))
         }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
         let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
@@ -5458,7 +5490,11 @@ pub mod emitter {
         let acc = put_sep(lambda2s(move |x: Str, acc: List<char>| {
             put_var(c, x, put(str_lit(", "), acc))
         }), str_lit(""), names, acc);
-        let acc = put(str_lit(")"), acc);
+        let acc = put(if r#async {
+            str_lit(").await")
+        } else {
+            str_lit(")")
+        }, acc);
         let acc = if not(fallible) {
             acc
         } else if fallible_here_p(c) {
@@ -5481,10 +5517,18 @@ pub mod emitter {
         let acc = put(mangle(r#box), acc);
         let acc = put(str_lit(": kayak_rt::Inbox<"), acc);
         let acc = put_type(c, m, acc);
-        let acc = put(str_lit(">| {"), acc);
+        let acc = put(if async_mode_p(c) {
+            str_lit(">| async move {")
+        } else {
+            str_lit(">| {")
+        }, acc);
         let acc = put_nl(i64_plus(n, 1i64), acc);
         let acc = put(str_lit("let _ = "), acc);
-        let acc = put_letrena(with_locals(c, kayak_rt::heap_cons(r#box, kayak_rt::nil())), e, kayak_rt::heap_cons(third(header), cdr(xs)), i64_plus(n, 1i64), acc);
+        let acc = put_letrena(with_locals(c, if async_mode_p(c) {
+            kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%infallible"), kayak_rt::heap_cons(r#box, kayak_rt::nil())))
+        } else {
+            kayak_rt::heap_cons(r#box, kayak_rt::nil())
+        }), e, kayak_rt::heap_cons(third(header), cdr(xs)), i64_plus(n, 1i64), acc);
         put(str_lit("})"), put_nl(n, put(str_lit(";"), acc)))
     }
 
@@ -5516,13 +5560,19 @@ pub mod emitter {
         let acc = put(str_lit("let "), acc);
         let acc = put_par_pattern(names, acc);
         let acc = put(str_lit(" = "), acc);
-        let acc = put_par_tree(if async_mode_p(c) {
-            with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::nil()))
+        let acc = if tasks_here_p(c) {
+            put(str_lit(".await"), put_par_futures(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::nil())), map(lambda1s(move |b: &'static Sexp| {
+                second(items(b))
+            }), bindings), n1, acc))
         } else {
-            c
-        }, op, map(lambda1s(move |b: &'static Sexp| {
-            second(items(b))
-        }), bindings), n1, acc);
+            put_par_tree(if async_mode_p(c) {
+                with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::nil()))
+            } else {
+                c
+            }, op, map(lambda1s(move |b: &'static Sexp| {
+                second(items(b))
+            }), bindings), n1, acc)
+        };
         let acc = put_nl(n1, put(str_lit(";"), acc));
         let acc = put_stmts(with_locals(c, names), cdr(xs), n1, hide(t, names), acc);
         put(str_lit("}"), put_nl(n, acc))
@@ -5547,6 +5597,19 @@ pub mod emitter {
             let acc = put_exp(c, car(es), n, value(), acc);
             let acc = put(str_lit(", move || "), acc);
             let acc = put_par_tree(c, op, cdr(es), n, acc);
+            put(str_lit(")"), acc)
+        }
+    }
+
+    /// `par2(async move { e1 }, par2(async move { e2 }, async move { e3 }))`.
+    pub fn put_par_futures(c: &'static Ctx, es: Sexps, n: i64, acc: Chars) -> Chars {
+        if null_p(cdr(es)) {
+            put(str_lit(" }"), put_exp(c, car(es), n, value(), put(str_lit("async move { "), acc)))
+        } else {
+            let acc = put(str_lit("kayak_rt::async_process::par2(async move { "), acc);
+            let acc = put_exp(c, car(es), n, value(), acc);
+            let acc = put(str_lit(" }, "), acc);
+            let acc = put_par_futures(c, cdr(es), n, acc);
             put(str_lit(")"), acc)
         }
     }
@@ -5589,11 +5652,19 @@ pub mod emitter {
                 put_exp(c, second(w), n1, value(), acc)
             }))
         }), str_lit(""), ks, acc);
-        let acc = put(str_lit("match kayak_rt::process::sync(&["), acc);
+        let acc = put(if tasks_here_p(c) {
+            str_lit("match kayak_rt::async_process::sync(&[")
+        } else {
+            str_lit("match kayak_rt::process::sync(&[")
+        }, acc);
         let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {
             put(string_append(str_lit("sel_"), string_append(i64_to_string(k), str_lit("__ as &dyn kayak_rt::process::Waitable"))), acc)
         }), str_lit(", "), ks, acc);
-        let acc = put(str_lit("]) {"), acc);
+        let acc = put(if tasks_here_p(c) {
+            str_lit("]).await {")
+        } else {
+            str_lit("]) {")
+        }, acc);
         let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {
             let arm = items(sexp_at(arms, k));
             let w = items(car(arm));
@@ -5601,7 +5672,16 @@ pub mod emitter {
             let acc = put_nl(n2, acc);
             let acc = put(string_append(i64_to_string(k), str_lit(" => {")), acc);
             let acc = put_nl(i64_plus(n2, 1i64), acc);
-            let acc = put(string_append(str_lit("let "), string_append(mangle(x), string_append(str_lit(" = kayak_rt::process::"), string_append(mangle(sym_name(car(w))), string_append(str_lit("(sel_"), string_append(i64_to_string(k), str_lit("__);"))))))), acc);
+            let task_wait = (tasks_here_p(c) && (sym_is_p(car(w), str_lit("receive")) || sym_is_p(car(w), str_lit("icell-get"))));
+            let acc = put(string_append(str_lit("let "), string_append(mangle(x), string_append(if task_wait {
+                str_lit(" = kayak_rt::async_process::")
+            } else {
+                str_lit(" = kayak_rt::process::")
+            }, string_append(mangle(sym_name(car(w))), string_append(str_lit("(sel_"), string_append(i64_to_string(k), if task_wait {
+                str_lit("__).await;")
+            } else {
+                str_lit("__);")
+            })))))), acc);
             let acc = put_nl(i64_plus(n2, 1i64), acc);
             let acc = put_stmts(with_locals(c, kayak_rt::heap_cons(x, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n2, 1i64), hide(t, kayak_rt::heap_cons(x, kayak_rt::nil())), acc);
             put(str_lit("}"), put_nl(n2, acc))
