@@ -14,12 +14,24 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
     kayak_rt::heap_alloc(Mparts::Mparts(f0, f1))
 }
 
+// A top-level procedure probed for being a leaf (C377): its name and the
+// names of the program's procedures it calls.
+pub enum Calling {
+    Calling(Str, Strings),
+}
+
+pub fn calling(f0: Str, f1: Strings) -> &'static Calling {
+    kayak_rt::heap_alloc(Calling::Calling(f0, f1))
+}
+
+pub type Callings = List<&'static Calling>;
+
 // Writing the top level is a module (C92): the emitter included, hidden;
 // its helpers hidden too.
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, comefrom_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, kfx_callee_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_constructors, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, named_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, as_ifs, put_exp, put_ok_lift, call_box, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, comefrom_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, kfx_callee_p, kfx_call_head_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_constructors, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, named_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, as_ifs, put_exp, put_ok_lift, call_box, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -731,7 +743,7 @@ pub mod writing {
             body
         };
         let fallible = (lambda_p && fallible_effect_p(c, second(items(typ))));
-        let suspends = (lambda_p && suspending_effect_p(c, second(items(typ))));
+        let suspends = (lambda_p && suspending_effect_p(c, second(items(typ))) && not((in_async_mode_p(c) && fact_at_p(c, name, str_lit("leaf")))));
         let mparams = if lambda_p {
             module_params(c, items(second(items(defined))), items(third(items(typ))))
         } else {
@@ -1963,6 +1975,267 @@ pub mod writing {
                 }, acc));
             } else {
                 (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));
+                continue;
+            }
+        }
+    }
+
+    // Leaves (C377): in the async mode, a top-level procedure that calls only
+    // primitives, constructors and leaves is a plain `fn`: it can wait for
+    // nothing. Found by the emitter itself: each procedure written once with
+    // every call of the program's procedures taken as a leaf's; one whose
+    // Rust awaits nothing is a candidate (calling itself only in a tail call,
+    // a loop), and the leaves are the least set of candidates whose callees,
+    // but themselves, are leaves (no recursion but loops, then). A leaf's loop
+    // is no point to be preempted at: when fuel is charged, a leaf charges it
+    // and yields to none. Said by facts: `leaf` at its name, `leaf-call` at
+    // each call of it, `leaf-ref` at each use of it as a value. `main` is not
+    // one, as its caller awaits it.
+    pub fn leaf_facts(c: &'static Ctx, forms: Sexps) -> Facts {
+        let defs = concat(map(&leaf_definitions, forms));
+        let probed = concat(map(lambda1s(move |d: &'static Sexp| {
+            if leaf_candidate_p(c, d) {
+                let n = sym_name(car(items(d)));
+                the::<Callings>(kayak_rt::heap_cons(calling(n, without(calls_in(c, kayak_rt::heap_cons(third(items(d)), kayak_rt::nil()), nil::<Str>()), kayak_rt::heap_cons(n, kayak_rt::nil()))), kayak_rt::nil()))
+            } else {
+                nil::<&'static Calling>()
+            }
+        }), defs));
+        let leaves = least_leaves(probed, nil::<Str>());
+        if null_p(leaves) {
+            nil::<&'static Fact>()
+        } else {
+            onto(concat(map(lambda1s(move |d: &'static Sexp| {
+                let n = car(items(d));
+                if string_member_p(sym_name(n), leaves) {
+                    the::<Facts>(kayak_rt::heap_cons(fact(datum_file(n), datum_pos(n), str_lit("leaf")), kayak_rt::nil()))
+                } else {
+                    nil::<&'static Fact>()
+                }
+            }), defs)), leaf_uses(c, leaves, forms, nil::<&'static Fact>()))
+        }
+    }
+
+    /// A top-level form's procedures, each `(name type lambda group ...)`:
+    /// a `define`'s, of no group; each of a `define-rec`'s, its group the
+    /// names it defines.
+    pub fn leaf_definitions(f: &'static Sexp) -> Sexps {
+        if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_eq(size(items(f)), 4i64)) {
+            the::<Sexps>(kayak_rt::heap_cons(lst(cdr(items(f)), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+        } else if head_is_p(f, str_lit("define-rec")) {
+            let group = map(lambda1s(move |b: &'static Sexp| {
+                car(items(b))
+            }), cdr(items(f)));
+            map(lambda1s(move |b: &'static Sexp| {
+                lst(onto(items(b), group), str_lit(""), 0i64, 0i64)
+            }), cdr(items(f)))
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }
+
+    pub fn leaf_candidate_p(c: &'static Ctx, d: &'static Sexp) -> bool {
+        let xs = items(d);
+        (i64_gt_eq(size(xs), 3i64) && {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, at_file, at_pos) => {
+                    not(string_eq_p(n, str_lit("main")))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && head_is_p(unpoly(third(xs)), str_lit("lambda")) && head_is_p(unpoly(second(xs)), str_lit("subr")) && not(comefrom_effect_p(c, second(items(unpoly(second(xs)))))) && {
+            let group = map(lambda1s(move |g: &'static Sexp| {
+                string_append(str_lit("%rec "), sym_name(g))
+            }), cdr(cdr(cdr(xs))));
+            let written = put_define(with_locals(c, kayak_rt::heap_cons(str_lit("%probe"), group)), car(xs), second(xs), third(xs), nil::<char>());
+            not(chars_have_p(written, string_chars(str_lit("tiawa."))))
+        })
+    }
+
+    /// Whether `p` is in `cs` (no `string-search`, which tier 1 has not,
+    /// where the compiler runs as FX-26).
+    pub fn chars_have_p(mut cs: Chars, mut p: Chars) -> bool {
+        loop {
+            if null_p(cs) {
+                return false;
+            } else if chars_start_p(cs, p) {
+                return true;
+            } else {
+                cs = cdr(cs);
+                continue;
+            }
+        }
+    }
+
+    pub fn chars_start_p(mut cs: Chars, mut p: Chars) -> bool {
+        loop {
+            if null_p(p) {
+                return true;
+            } else {
+                if not(null_p(cs)) {
+                    if char_eq_p(car(cs), car(p)) {
+                        (cs, p) = (cdr(cs), cdr(p));
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+
+    /// Onto `acc`, the names of the program's procedures `es` calls.
+    pub fn calls_in(mut c: &'static Ctx, mut es: Sexps, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(es) {
+                return acc;
+            } else {
+                (es, acc) = (cdr(es), {
+                    let tagcase_ = car(es);
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f, l, p) => {
+                            calls_in(c, xs, if kfx_call_head_p(c, car(es)) {
+                                kayak_rt::heap_cons(sym_name(car(xs)), acc)
+                            } else {
+                                acc
+                            })
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            acc
+                        }
+                    }
+                });
+                continue;
+            }
+        }
+    }
+
+    /// The candidates `cs` whose callees are all leaves, added to `leaves`
+    /// until none is.
+    pub fn least_leaves(mut cs: Callings, mut leaves: Strings) -> Strings {
+        loop {
+            let more = concat(map(lambda1s(move |x: &'static Calling| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Calling::Calling(n, callees) => {
+                        if (not(string_member_p(n, leaves)) && all_p(lambda1s(move |m: Str| {
+                            string_member_p(m, leaves)
+                        }), callees)) {
+                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                }
+            }), cs));
+            if null_p(more) {
+                return leaves;
+            } else {
+                leaves = onto(more, leaves);
+                continue;
+            }
+        }
+    }
+
+    /// Onto `acc`, the names `define`d, at any depth, in `es`.
+    pub fn names_defined_in(mut es: Sexps, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(es) {
+                return acc;
+            } else {
+                (es, acc) = (cdr(es), {
+                    let tagcase_ = car(es);
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f, l, p) => {
+                            names_defined_in(xs, if ((head_is_p(car(es), str_lit("define")) || head_is_p(car(es), str_lit("define*"))) && not(null_p(cdr(xs)))) {
+                                let tagcase_ = second(xs);
+                                match *tagcase_ {
+                                    Sexp::Sym(n, nf, np) => {
+                                        kayak_rt::heap_cons(n, acc)
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        acc
+                                    }
+                                }
+                            } else if head_is_p(car(es), str_lit("define-rec")) {
+                                onto(concat(map(lambda1s(move |b: &'static Sexp| {
+                                    let tagcase_ = b;
+                                    match *tagcase_ {
+                                        Sexp::Lst(bs, bf, bl, bp) => {
+                                            let tagcase_ = car(bs);
+                                            match *tagcase_ {
+                                                Sexp::Sym(n, nf, np) => {
+                                                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    nil::<Str>()
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            nil::<Str>()
+                                        }
+                                    }
+                                }), cdr(xs))), acc)
+                            } else {
+                                acc
+                            })
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            acc
+                        }
+                    }
+                });
+                continue;
+            }
+        }
+    }
+
+    /// Onto `acc`, the facts at each call of a leaf in `es` and each use of
+    /// one as a value.
+    pub fn leaf_uses(mut c: &'static Ctx, mut leaves: Strings, mut es: Sexps, mut acc: Facts) -> Facts {
+        loop {
+            if null_p(es) {
+                return acc;
+            } else {
+                (es, acc) = (cdr(es), {
+                    let tagcase_ = car(es);
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f, l, p) => {
+                            leaf_uses(c, if (module_def_p(car(es)) || maker_form_p(c, car(es))) {
+                                without(leaves, names_defined_in(xs, nil::<Str>()))
+                            } else {
+                                leaves
+                            }, xs, if (kfx_call_head_p(c, car(es)) && string_member_p(sym_name(car(xs)), leaves)) {
+                                kayak_rt::heap_cons(fact(f, p, str_lit("leaf-call")), acc)
+                            } else {
+                                acc
+                            })
+                        }
+                        Sexp::Sym(n, f, p) => {
+                            if (not(string_eq_p(n, str_lit(""))) && not(string_eq_p(fact_said(c, car(es), str_lit("proc-value ")), str_lit(""))) && string_member_p(n, leaves)) {
+                                kayak_rt::heap_cons(fact(f, p, str_lit("leaf-ref")), acc)
+                            } else {
+                                acc
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            acc
+                        }
+                    }
+                });
                 continue;
             }
         }

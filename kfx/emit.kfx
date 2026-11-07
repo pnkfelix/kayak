@@ -1292,12 +1292,28 @@
          found bound to one the program defines (`kfx-call`, C373), but the
          prelude's, whose Rust is kayak-rt's, and a constructor's."
         (tagcase (car (items e))
-          (sym (h f p) (or (let ((k (local-kind h (ctx-locals c))))
-                             (and (not (string=? k "")) (not (and (string=? k "item") (item-constructor? c h)))))
-                           (and (fact-at? c e "kfx-call")
-                                (not (or (string-member? h prelude-names)
-                                         (any? (lambda ((x tagof)) (tagcase x (tagof (t d) (string=? t h)))) (ctx-tags c)))))))
+          (sym (h f p)
+            (let ((k (local-kind h (ctx-locals c))))
+              (cond ((not (string=? k "")) (not (and (string=? k "item") (item-constructor? c h))))
+                    ((not (kfx-call-head? c e)) #f)
+                    ;; A leaf's (C377), no future, of its group or not.
+                    ((fact-at? c e "leaf-call") #f)
+                    ((string-member? (string-append "%rec " h) (ctx-locals c)) #t)
+                    ;; Probing for leaves, the program's procedures taken as leaves.
+                    ((string-member? "%probe" (ctx-locals c)) #f)
+                    (else #t))))
           (else other #t))))
+
+    (define kfx-call-head? (subr kfx (ctx sexp) bool)
+      (lambda (c e)
+        "Whether call `e` is of a name the checker found bound to a procedure
+         the program defines (`kfx-call`, C373): not the prelude's, whose Rust
+         is kayak-rt's, nor a constructor."
+        (tagcase (if (null? (items e)) (sym "" "" 0) (car (items e)))
+          (sym (h f p) (and (fact-at? c e "kfx-call")
+                            (not (or (string-member? h prelude-names)
+                                     (any? (lambda ((x tagof)) (tagcase x (tagof (t d) (string=? t h)))) (ctx-tags c))))))
+          (else other #f))))
 
     (define mfact? (subr kfx (ctx sexp string) bool)
       (lambda (c e what)
@@ -2208,6 +2224,7 @@
                              primitive's lifted, its value a ready future."
                             (let* ((arity (digits-number (fact-in fs e (if (async-mode? c) "proc-value " "async-global "))))
                                    (prim (and (async-mode? c) (or (fact-at? c e "prim-ref") (string-member? s prelude-names)
+                                                                   (fact-at? c e "leaf-ref")
                                                                    (and (string=? (local-kind s (ctx-locals c)) "item") (item-constructor? c s)))))
                                    (fallible (or (not (async-mode? c)) (fact-at? c e "proc-value-fallible")))
                                    ;; Capturing nothing, `Send + Sync` whatever is wanted

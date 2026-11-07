@@ -493,8 +493,11 @@ Phase C, FX-26's runtime:
 - **K6**: Fixpt's programs on it, compared with Fixpt.
 - **The emitter's async mode** (C371-C376): every procedure an `async
   fn`; the compiler built so makes itself, and each corpus program gives
-  Fixpt's answer (`scripts/async-check.sh`, in the full check). Next:
-  leaf and bounded procedures kept synchronous; fuel charged, programs
+  Fixpt's answer (`scripts/async-check.sh`, in the full check). Leaves
+  are plain `fn`s (C377: 494 of the compiler's; 3.65 s to 3.43 s, the
+  synchronous build 2.1 s). Next: the rest of the overhead, futures'
+  boxes and moves in recursive walks and in higher-order procedures
+  (`any?`, `map`) given procedure values; fuel charged, programs
   run as `kayak-sched` tasks; `--async` with `--cache` (the mode in the
   memo key); a maker's poly or failing items; native code calling back a
   procedure that may abort.

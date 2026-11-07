@@ -2439,21 +2439,51 @@ pub mod emitter {
         let tagcase_ = car(items(e));
         match *tagcase_ {
             Sexp::Sym(h, f, p) => {
-                ({
-                    let k = local_kind(h, ctx_locals(c));
-                    (not(string_eq_p(k, str_lit(""))) && not((string_eq_p(k, str_lit("item")) && item_constructor_p(c, h))))
-                } || (fact_at_p(c, e, str_lit("kfx-call")) && not((string_member_p(h, prelude_names()) || any_p(lambda1s(move |x: &'static Tagof| {
+                let k = local_kind(h, ctx_locals(c));
+                if not(string_eq_p(k, str_lit(""))) {
+                    not((string_eq_p(k, str_lit("item")) && item_constructor_p(c, h)))
+                } else if not(kfx_call_head_p(c, e)) {
+                    false
+                } else if fact_at_p(c, e, str_lit("leaf-call")) {
+                    false
+                } else if string_member_p(string_append(str_lit("%rec "), h), ctx_locals(c)) {
+                    true
+                } else if string_member_p(str_lit("%probe"), ctx_locals(c)) {
+                    false
+                } else {
+                    true
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                true
+            }
+        }
+    }
+
+    /// Whether call `e` is of a name the checker found bound to a procedure
+    /// the program defines (`kfx-call`, C373): not the prelude's, whose Rust
+    /// is kayak-rt's, nor a constructor.
+    pub fn kfx_call_head_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+        let tagcase_ = if null_p(items(e)) {
+            sym(str_lit(""), str_lit(""), 0i64)
+        } else {
+            car(items(e))
+        };
+        match *tagcase_ {
+            Sexp::Sym(h, f, p) => {
+                (fact_at_p(c, e, str_lit("kfx-call")) && not((string_member_p(h, prelude_names()) || any_p(lambda1s(move |x: &'static Tagof| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Tagof::Tagof(t, d) => {
                             string_eq_p(t, h)
                         }
                     }
-                }), ctx_tags(c))))))
+                }), ctx_tags(c)))))
             }
             _ => {
                 let other = tagcase_;
-                true
+                false
             }
         }
     }
@@ -4173,7 +4203,7 @@ pub mod emitter {
                         } else {
                             str_lit("async-global ")
                         }));
-                        let prim = (async_mode_p(c) && (fact_at_p(c, e, str_lit("prim-ref")) || string_member_p(s, prelude_names()) || (string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) && item_constructor_p(c, s))));
+                        let prim = (async_mode_p(c) && (fact_at_p(c, e, str_lit("prim-ref")) || string_member_p(s, prelude_names()) || fact_at_p(c, e, str_lit("leaf-ref")) || (string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) && item_constructor_p(c, s))));
                         let fallible = (not(async_mode_p(c)) || fact_at_p(c, e, str_lit("proc-value-fallible")));
                         let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), if async_mode_p(c) {
                             str_lit("s(move |")

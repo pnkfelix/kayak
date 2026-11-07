@@ -38,6 +38,19 @@
 (define moded-facts (subr kfx (facts bool) facts)
   (lambda (fs async) (if async (cons (fact "" -1 "async-mode") fs) (sync-facts fs nil))))
 
+(define leafed (subr kfx (ctx sexps bool) ctx)
+  (lambda (c forms async)
+    "In the async mode, `c` with its leaves' facts (C377): procedures kept
+     synchronous."
+    (if (not async)
+        c
+        (let ((more (with writing (leaf-facts c forms))))
+          (if (null? more)
+              c
+              (tagcase c
+                (ctx (ds ts ks ls xs fs fx ms es mods)
+                  (let ((all (onto more fs))) (ctx ds ts ks ls xs all (fidx-of all) ms es mods)))))))))
+
 (define compile-named (subr kfx (string string fileds bool) string)
   (lambda (file src loaded async)
     "The same, its messages naming `file`; the files it loads, `loaded`;
@@ -45,7 +58,7 @@
     (let* ((forms (with-loads (read-all src file 1) file loaded))
            (checked (restrict-checked (check-program forms) forms))
            (fs (moded-facts (verdict-facts checked) async))
-           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) fs (fidx-of fs) nil nil nil)))))
+           (c (leafed (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) fs (fidx-of fs) nil nil nil))) forms async)))
       (rev->string (with writing (put-module-impls c (with writing (put-tops c forms (with writing (put-shapes c forms #f (put header nil)))))))))))
 
 (define compile-toplevel (subr kfx (string string fileds) string)
@@ -118,7 +131,7 @@
            (forms (concat fss))
            (checked (restrict-checked (check-program-as forms runtime) forms))
            (fs (moded-facts (verdict-facts checked) async))
-           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) fs (fidx-of fs) nil nil nil))))
+           (c (leafed (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) fs (fidx-of fs) nil nil nil))) forms async))
            (modules (modules-put c ss fss)))
       (onto modules
             (list (output "mod.rs"

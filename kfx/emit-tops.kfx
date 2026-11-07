@@ -4,6 +4,11 @@
 
 (define-datatype mparts (mparts ctx sexps))
 
+"A top-level procedure probed for being a leaf (C377): its name and the
+ names of the program's procedures it calls."
+(define-datatype calling (calling string strings))
+(define-type callings (listof calling acyclic))
+
 "Writing the top level is a module (C92): the emitter included, hidden;
  its helpers hidden too."
 (define writing
@@ -364,7 +369,9 @@
                  (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
                  (body (if doc? (cdr body) body))
                  (fallible (and lambda? (fallible-effect? c (second (items typ)))))
-                 (suspends (and lambda? (suspending-effect? c (second (items typ)))))
+                 ;; A leaf, in the async mode, is no `async fn` (C377).
+                 (suspends (and lambda? (suspending-effect? c (second (items typ)))
+                                (not (and (in-async-mode? c) (fact-at? c name "leaf")))))
                  (mparams (if lambda? (module-params c (items (second (items defined))) (items (third (items typ)))) nil))
                  (t (if lambda?
                         (returns (sym-name name) (map param-name (items (second (items defined)))) (null? mparams) fallible)
@@ -1123,6 +1130,143 @@
                         (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
                    (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
                 (else (put-tops c (cdr forms) (put-top c (car forms) acc)))))))
+
+    "Leaves (C377): in the async mode, a top-level procedure that calls only
+     primitives, constructors and leaves is a plain `fn`: it can wait for
+     nothing. Found by the emitter itself: each procedure written once with
+     every call of the program's procedures taken as a leaf's; one whose
+     Rust awaits nothing is a candidate (calling itself only in a tail call,
+     a loop), and the leaves are the least set of candidates whose callees,
+     but themselves, are leaves (no recursion but loops, then). A leaf's loop
+     is no point to be preempted at: when fuel is charged, a leaf charges it
+     and yields to none. Said by facts: `leaf` at its name, `leaf-call` at
+     each call of it, `leaf-ref` at each use of it as a value. `main` is not
+     one, as its caller awaits it."
+    (define leaf-facts (subr kfx (ctx sexps) facts)
+      (lambda (c forms)
+        (let* ((defs (concat (map leaf-definitions forms)))
+               (probed (concat (map (lambda ((d sexp))
+                                      (if (leaf-candidate? c d)
+                                          ;; Its calls of itself, loops (a call that is no tail call awaits).
+                                          (let ((n (sym-name (car (items d)))))
+                                            (the callings (list (calling n (without (calls-in c (list (third (items d))) nil) (list n))))))
+                                          nil))
+                                    defs)))
+               (leaves (least-leaves probed nil)))
+          (if (null? leaves)
+              nil
+              (onto (concat (map (lambda ((d sexp))
+                                   (let ((n (car (items d))))
+                                     (if (string-member? (sym-name n) leaves)
+                                         (the facts (list (fact (datum-file n) (datum-pos n) "leaf")))
+                                         nil)))
+                                 defs))
+                    (leaf-uses c leaves forms nil))))))
+
+    (define leaf-definitions (subr kfx (sexp) sexps)
+      (lambda (f)
+        "A top-level form's procedures, each `(name type lambda group ...)`:
+         a `define`'s, of no group; each of a `define-rec`'s, its group the
+         names it defines."
+        (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64= (size (items f)) 4))
+               (the sexps (list (lst (cdr (items f)) "" 0 0))))
+              ((head-is? f "define-rec")
+               (let ((group (map (lambda ((b sexp)) (car (items b))) (cdr (items f)))))
+                 (map (lambda ((b sexp)) (lst (onto (items b) group) "" 0 0)) (cdr (items f)))))
+              (else nil))))
+
+    (define leaf-candidate? (subr kfx (ctx sexp) bool)
+      (lambda (c d)
+        (let ((xs (items d)))
+          (and (i64>= (size xs) 3)
+               (tagcase (car xs) (sym (n at-file at-pos) (not (string=? n "main"))) (else other #f))
+               (head-is? (unpoly (third xs)) "lambda")
+               (head-is? (unpoly (second xs)) "subr")
+               (not (comefrom-effect? c (second (items (unpoly (second xs))))))
+               (let* ((group (map (lambda ((g sexp)) (string-append "%rec " (sym-name g))) (cdr (cdr (cdr xs)))))
+                      (written (put-define (with-locals c (cons "%probe" group)) (car xs) (second xs) (third xs) nil)))
+                 ;; The Rust newest first, so `.await` backwards.
+                 (not (chars-have? written (string-chars "tiawa."))))))))
+
+    (define-rec
+      (chars-have? (subr kfx (chars chars) bool)
+        (lambda (cs p)
+          "Whether `p` is in `cs` (no `string-search`, which tier 1 has not,
+           where the compiler runs as FX-26)."
+          (cond ((null? cs) #f)
+                ((chars-start? cs p) #t)
+                (else (chars-have? (cdr cs) p))))))
+
+    (define-rec
+      (chars-start? (subr kfx (chars chars) bool)
+        (lambda (cs p)
+          (or (null? p)
+              (and (not (null? cs)) (char=? (car cs) (car p)) (chars-start? (cdr cs) (cdr p)))))))
+
+    (define-rec
+      (calls-in (subr kfx (ctx sexps strings) strings)
+        (lambda (c es acc)
+          "Onto `acc`, the names of the program's procedures `es` calls."
+          (if (null? es)
+              acc
+              (calls-in c (cdr es)
+                (tagcase (car es)
+                  (lst (xs f l p)
+                    (calls-in c xs (if (kfx-call-head? c (car es)) (cons (sym-name (car xs)) acc) acc)))
+                  (else other acc)))))))
+
+    (define-rec
+      (least-leaves (subr kfx (callings strings) strings)
+        (lambda (cs leaves)
+          "The candidates `cs` whose callees are all leaves, added to `leaves`
+           until none is."
+          (let ((more (concat (map (lambda ((x calling))
+                                     (tagcase x
+                                       (calling (n callees)
+                                         (if (and (not (string-member? n leaves))
+                                                  (all? (lambda ((m string)) (string-member? m leaves)) callees))
+                                             (the strings (list n))
+                                             nil))))
+                                   cs))))
+            (if (null? more) leaves (least-leaves cs (onto more leaves)))))))
+
+    (define-rec
+      (names-defined-in (subr kfx (sexps strings) strings)
+        (lambda (es acc)
+          "Onto `acc`, the names `define`d, at any depth, in `es`."
+          (if (null? es)
+              acc
+              (names-defined-in (cdr es)
+                (tagcase (car es)
+                  (lst (xs f l p)
+                    (names-defined-in xs
+                      (cond ((and (or (head-is? (car es) "define") (head-is? (car es) "define*")) (not (null? (cdr xs))))
+                             (tagcase (second xs) (sym (n nf np) (cons n acc)) (else other acc)))
+                            ((head-is? (car es) "define-rec")
+                             (onto (concat (map (lambda ((b sexp)) (tagcase b (lst (bs bf bl bp) (tagcase (car bs) (sym (n nf np) (the strings (list n))) (else other nil))) (else other nil))) (cdr xs))) acc))
+                            (else acc))))
+                  (else other acc)))))))
+
+    (define-rec
+      (leaf-uses (subr kfx (ctx strings sexps facts) facts)
+        (lambda (c leaves es acc)
+          "Onto `acc`, the facts at each call of a leaf in `es` and each use of
+           one as a value."
+          (if (null? es)
+              acc
+              (leaf-uses c leaves (cdr es)
+                (tagcase (car es)
+                  (lst (xs f l p)
+                    ;; In a module, or a maker's, not the leaves its own names hide.
+                    (leaf-uses c (if (or (module-def? (car es)) (maker-form? c (car es))) (without leaves (names-defined-in xs nil)) leaves) xs
+                               (if (and (kfx-call-head? c (car es)) (string-member? (sym-name (car xs)) leaves))
+                                   (cons (fact f p "leaf-call") acc)
+                                   acc)))
+                  (sym (n f p)
+                    (if (and (not (string=? n "")) (not (string=? (fact-said c (car es) "proc-value ") "")) (string-member? n leaves))
+                        (cons (fact f p "leaf-ref") acc)
+                        acc))
+                  (else other acc)))))))
 
     (define put-toplevel (subr kfx (ctx sexps chars) chars)
       (lambda (c forms acc)

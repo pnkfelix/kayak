@@ -10371,3 +10371,34 @@ machine's, 91 of 96, every procedure async, gives Fixpt's answer.
 Synchronous output is unchanged: every change asks the mode, and boot's
 Rust changes only for the new procedures.
 
+## C377. Leaves synchronous in the async mode (2026-11-07)
+
+The user's go-ahead for the next of C376's steps: procedures that need no
+`async` kept plain `fn`s, so that their calls box and poll nothing.
+- **Chosen**: the emitter decides, as it decides each call. Each top-level
+  procedure (a `define`'s, or a `define-rec`'s, its group `%rec`) is
+  written once as a probe, every call of the program's procedures taken as
+  synchronous; one whose Rust has no `.await` is a candidate, and the
+  leaves are the least set of candidates whose callees, but themselves,
+  are leaves. So no recursion but a procedure's own tail calls, which are
+  loops. Facts say it to the emitter proper (`leaf`, `leaf-call`,
+  `leaf-ref`), added in the async mode only (`leafed`, compile.kfx); in a
+  module, the leaves its own definitions hide are left out. `main` is
+  never a leaf, as its caller awaits it.
+- **Loops in leaves**: with them left out ("leaf and bounded", as C376's
+  next step put it), the compiler has almost no leaves, since its loops are
+  `define-rec`s. With them, 494 of its procedures are leaves (1,549 async
+  left), and the compiler built async compiles itself in 3.43 s, not
+  3.65 s (the synchronous build, 2.1 s). The cost: a leaf's loop is no
+  point to be preempted at. When fuel is charged, a leaf will charge it
+  and yield to none, its caller yielding after it.
+- What is left of the overhead is, by a profile, futures' boxes,
+  polls and moves (21% of samples) in recursive walks and in the
+  higher-order procedures (`any?`, `map`) given procedure values, which no
+  leaf rule reaches.
+- The probe costs the synchronous compiler a little: `kfx --async` on the
+  compiler 4.1 s before, 4.2 s after. It looks for `.await` in the probe's
+  characters itself, newest first: `string-search` would be cheaper (4.0
+  s), but tier 1, where the compiler runs as FX-26 in the second
+  self-hosting, has no such primitive yet.
+
