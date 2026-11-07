@@ -17,4 +17,5 @@ incr.kfx
 compile.kfx
 ../lib/runner.kfx
 ../lib/live.kfx
+identity.kfx
 main.kfx

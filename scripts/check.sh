@@ -77,6 +77,8 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
     # checked against it.
     step python3 -I scripts/lang-items.py --check
 fi
+# The compiler's identity, its sources' (C387): its memo files its own.
+step python3 -I scripts/compiler-identity.py --check
 # What kayak took from Coopt (C368): forks, kayak's own to change (the
 # user, C369), so what changed upstream since is said, not required.
 if [ -d "${KAYAK_COOPT_CLONE:-../kayak-refs/coopt}/.git" ]; then

@@ -34,6 +34,8 @@ pub mod runner;
 pub use runner::*;
 pub mod live;
 pub use live::*;
+pub mod identity;
+pub use identity::*;
 pub mod main;
 pub use main::*;
 #[allow(non_camel_case_types)]

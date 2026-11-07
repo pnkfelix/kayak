@@ -476,10 +476,9 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
 - **Incremental compiling** (Q5, answered; `docs/research/queries.md`):
   `Emit(form)` and `Check(form)` kept between compiles (C54, C55), each
   keyed by what the form reads, by name (C384), the machinery a library,
-  `lib/query.kfx`. Next: the library's names given in Rust (kayak-rt, from
-  Coopt's `coopt-query`: coopt-adoption.md step 3's second stage); the
-  compiler's identity in the memo file, so that the driver, not its
-  caller, keeps one compiler's memos from another's; query runs as tasks
+  `lib/query.kfx`; the compiler's identity in the memo file (C387). Next: the library's names given in Rust (kayak-rt, from
+  Coopt's `coopt-query`: coopt-adoption.md step 3's second stage), when a
+  long-running compiler wants them; query runs as tasks
   when the compiler has a reason to wait. A warm compile's cost now is spread out
   (C386): emitting and checking from memos, the reader, the keys.
 

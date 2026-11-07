@@ -94,6 +94,8 @@ restore() {
     echo "regen: generation $1 failed; boot/src/kfx/ is as it was" >&2
     exit 1
 }
+# The compiler's identity, of its sources as they are now (C387).
+step python3 -I scripts/compiler-identity.py
 generation=0
 while [ $generation -lt 4 ]; do
     generation=$((generation + 1))

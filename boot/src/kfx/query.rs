@@ -53,7 +53,12 @@ pub mod queries {
     // file of another format gives no memos, as none at all.
     #[inline]
     pub fn memos_format() -> Str {
-        str_lit("kayak memos 3\n")
+        str_lit("kayak memos 3")
+    }
+
+    #[inline]
+    pub fn memos_head(whose: Str) -> Str {
+        string_append(memos_format(), string_append(str_lit(" "), string_append(whose, str_lit("\n"))))
     }
 
     pub fn memos_runs(mut ms: Memos, mut acc: Strings) -> Strings {
@@ -306,14 +311,20 @@ pub mod queries {
         }
     }
 
+    /// The memos as text, `whose` they are (C387: the compiler's identity)
+    /// in the first line.
     #[inline]
-    pub fn memos_text(ms: Memos) -> Str {
-        string_list_append(reverse(memos_runs(ms, kayak_rt::heap_cons(memos_format(), kayak_rt::nil()))))
+    pub fn memos_text(ms: Memos, whose: Str) -> Str {
+        string_list_append(reverse(memos_runs(ms, kayak_rt::heap_cons(memos_head(whose), kayak_rt::nil()))))
     }
 
-    pub fn memos_of_text(s: Str) -> Memos {
-        let (n, h) = (string_length_i64(s), string_length_i64(memos_format()));
-        if (i64_gt_eq(n, h) && string_eq_p(substring(s, int_lit(0), i64_to_int(h)), memos_format())) {
+    /// The memos of `s`, if its first line says they are `whose`; else none,
+    /// as a file of another format, or another's, has none for this one.
+    pub fn memos_of_text(s: Str, whose: Str) -> Memos {
+        let head = memos_head(whose);
+        let n = string_length_i64(s);
+        let h = string_length_i64(head);
+        if (i64_gt_eq(n, h) && string_eq_p(substring(s, int_lit(0), i64_to_int(h)), head)) {
             memo_records(s, h, n, nil::<&'static Memo>())
         } else {
             nil::<&'static Memo>()

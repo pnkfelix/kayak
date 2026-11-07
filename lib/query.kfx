@@ -31,7 +31,10 @@
        they were (C362), was looked at a character at a time both ways. A
        file of another format gives no memos, as none at all."
 
-      (define memos-format string "kayak memos 3\n")
+      (define memos-format string "kayak memos 3")
+
+      (define memos-head (subr kfx (string) string)
+        (lambda (whose) (string-append memos-format (string-append " " (string-append whose "\n")))))
 
       (define-rec
         (memos-runs (subr kfx (memos strings) strings)
@@ -152,13 +155,19 @@
             (fm-none () 0)
             (fm-node (l k x h r) (cond ((string=? n k) x) ((string<? n k) (fmap-get l n)) (else (fmap-get r n))))))))
 
-    (define memos-text (subr kfx (memos) string)
-      (lambda (ms) (string-list-append (reverse (memos-runs ms (list memos-format))))))
+    (define memos-text (subr kfx (memos string) string)
+      (lambda (ms whose)
+        "The memos as text, `whose` they are (C387: the compiler's identity)
+         in the first line."
+        (string-list-append (reverse (memos-runs ms (list (memos-head whose)))))))
 
-    (define memos-of-text (subr kfx (string) memos)
-      (lambda (s)
-        (let ((n (string-length-i64 s))
-              (h (string-length-i64 memos-format)))
-          (if (and (i64>= n h) (string=? (substring s 0 (i64->int h)) memos-format))
+    (define memos-of-text (subr kfx (string string) memos)
+      (lambda (s whose)
+        "The memos of `s`, if its first line says they are `whose`; else none,
+         as a file of another format, or another's, has none for this one."
+        (let* ((head (memos-head whose))
+               (n (string-length-i64 s))
+               (h (string-length-i64 head)))
+          (if (and (i64>= n h) (string=? (substring s 0 (i64->int h)) head))
               (memo-records s h n nil)
               nil))))))
