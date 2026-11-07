@@ -13,9 +13,15 @@
 //!   (`world`), when a read wants more; so a line, a byte and `pselect`'s
 //!   key arm take from it as they do there, and answer alike.
 //! - **`sleep-until`** waits as a task, for its deadline.
-//!
-//! Files, programs run beside this one and the terminal's modes are as
-//! the synchronous mode's, for now (`TODO.md`).
+//! - **Files and the terminal's modes** (C382): what the system is asked
+//!   (a read, a write, a listing, `stty`) is a job the runner runs on a
+//!   worker of its own, the task waiting for its answer; the answer, a
+//!   KFX value, is made back on the program's thread, whose heap it is in.
+//! - **Programs run beside this one** (C382): their readers' news wakes
+//!   the runner's reactor, so that a task waiting for one (`pselect`'s
+//!   arms, `process-exit`) looks again when there is news, not by the
+//!   millisecond; a write to one's input, which waits for it to read, is
+//!   a worker's.
 
 use crate::world::{
     BytesAt, IoError, Sum_4byte_3eof_6failed, Sum_4done_6failed, Sum_4line_3eof_6failed,
@@ -26,6 +32,7 @@ use kayak_runner::live::Live;
 use kayak_runner::{Answer, Fd, Op, Runner, STDIN};
 use kayak_sched::Inbox;
 use std::cell::{Cell, RefCell};
+use std::sync::{Arc, Mutex};
 
 thread_local! {
     /// The run's runner and its scheduler's inbox, while a run is.
@@ -43,8 +50,26 @@ pub(crate) fn installed() -> bool {
     LIVE.with(|l| l.borrow().is_some())
 }
 
+/// A runner's waker, kept as what calls it.
+type Wake = Box<dyn Fn() + Send + Sync>;
+
+/// What wakes the runner's reactor, from any thread, while a run is.
+static WAKE: Mutex<Option<Wake>> = Mutex::new(None);
+
+/// News from outside the runner's sight (a program run beside this one):
+/// its reactor woken, if a run is.
+pub(crate) fn wake() {
+    if let Some(w) = WAKE.lock().unwrap_or_else(|p| p.into_inner()).as_ref() {
+        w();
+    }
+}
+
 /// The run's runner, `live`, answering through `inbox`.
 pub(crate) fn install(live: Live, inbox: Inbox) {
+    let waker = live.waker();
+    *WAKE.lock().unwrap_or_else(|p| p.into_inner()) = Some(Box::new(move || {
+        let _ = waker.wake();
+    }));
     LIVE.with(|l| *l.borrow_mut() = Some((live, inbox)));
     PUMPING.with(|p| p.set(false));
     WANTED.with(|w| w.set(false));
@@ -53,6 +78,7 @@ pub(crate) fn install(live: Live, inbox: Inbox) {
 /// The run's end: what is written all written, and the runner gone.
 pub(crate) fn uninstall() {
     drain();
+    *WAKE.lock().unwrap_or_else(|p| p.into_inner()) = None;
     if let Some((mut live, _)) = LIVE.with(|l| l.borrow_mut().take()) {
         live.finish(&kayak_runner::Outcome::Returned);
     }
@@ -283,4 +309,119 @@ pub async fn read_bytes(
 /// `(sleep-until t)`: the task waiting for the clock to reach `t`.
 pub async fn sleep_until(t: i64) {
     crate::async_process::wait_until_clock(t).await
+}
+
+/// `f()`, run by a worker of the runner's (a job), the task waiting for
+/// it; here, where nothing may wait or no run is.
+async fn on_worker<R: Send + 'static>(
+    name: &'static str,
+    f: impl FnOnce() -> R + Send + 'static,
+) -> R {
+    let Some(cx) = crate::suspend::task_cx().filter(|_| installed()) else {
+        return f();
+    };
+    let out: Arc<Mutex<Option<R>>> = Arc::default();
+    let into = out.clone();
+    let (job, _) = kayak_sched::Job::new(name, move || {
+        *into.lock().unwrap_or_else(|p| p.into_inner()) = Some(f());
+    });
+    let token = submit(Op::Job(job));
+    if let Answer::Err(m) = Answer::decode(&cx.completion(token).await) {
+        crate::fail(&m)
+    }
+    let r = out.lock().unwrap_or_else(|p| p.into_inner()).take();
+    r.unwrap_or_else(|| crate::fail("a worker's job gave nothing"))
+}
+
+/// `(read-file path)`.
+pub async fn read_file(
+    path: Str,
+) -> &'static crate::world::Sum_4data_6failed<crate::world::Bytes, IoError> {
+    let path = path.as_str().to_string();
+    crate::world::read_file_answer(on_worker("read-file", move || std::fs::read(path)).await)
+}
+
+/// `(write-file path data)`: the bytes taken now, written by a worker.
+pub async fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<(), IoError> {
+    let (path, bytes) = (path.as_str().to_string(), crate::world::to_vec(data));
+    crate::world::written(
+        on_worker("write-file", move || {
+            crate::world::write_file_bytes(&path, &bytes)
+        })
+        .await,
+    )
+}
+
+/// `(list-dir path)`.
+pub async fn list_dir(
+    path: Str,
+) -> &'static crate::world::Sum_5names_6failed<crate::List<Str>, IoError> {
+    let path = path.as_str().to_string();
+    crate::world::list_dir_answer(
+        on_worker("list-dir", move || crate::world::list_dir_names(&path)).await,
+    )
+}
+
+/// `(file-info path)`.
+pub async fn file_info(
+    path: Str,
+) -> &'static crate::world::Sum_4info_6failed<crate::world::FileInfo, IoError> {
+    let path = path.as_str().to_string();
+    crate::world::file_info_answer(
+        on_worker("file-info", move || std::fs::symlink_metadata(path)).await,
+    )
+}
+
+/// `(read-symlink path)`.
+pub async fn read_symlink(path: Str) -> &'static crate::world::Sum_6target_6failed<Str, IoError> {
+    let path = path.as_str().to_string();
+    crate::world::read_symlink_answer(
+        on_worker("read-symlink", move || std::fs::read_link(path)).await,
+    )
+}
+
+/// `(terminal-raw)`.
+pub async fn terminal_raw()
+-> &'static crate::world::Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    crate::world::moded(on_worker("terminal-raw", crate::world::terminal_raw_stty).await)
+}
+
+/// `(terminal-restore)`.
+pub async fn terminal_restore()
+-> &'static crate::world::Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    crate::world::moded(on_worker("terminal-restore", crate::world::terminal_restore_stty).await)
+}
+
+/// `(terminal-size)`.
+pub async fn terminal_size() -> &'static crate::world::Sum_4size_14not_a_terminal_6failed<
+    crate::world::Product_4rows_7columns<Int, Int>,
+    (),
+    IoError,
+> {
+    crate::world::terminal_size_answer(
+        on_worker("terminal-size", || crate::world::stty(&["size"])).await,
+    )
+}
+
+/// `(process-write p text)`: written by a worker, which waits for the
+/// process to read it.
+pub async fn process_write(p: Int, text: Str) -> &'static Sum_4done_6failed<(), IoError> {
+    let (input, bytes) = (
+        crate::world::process_input(p),
+        text.as_str().as_bytes().to_vec(),
+    );
+    crate::world::written(
+        on_worker("process-write", move || {
+            crate::world::process_write_bytes(input, &bytes)
+        })
+        .await,
+    )
+}
+
+/// `(process-exit p)`: the task waiting until process `p` has ended and
+/// its output is all read.
+pub async fn process_exit(
+    p: Int,
+) -> &'static crate::world::Sum_6exited_9signalled_7unknown<Int, Int, ()> {
+    crate::async_process::wait_for_outside(move || crate::world::process_exited(p)).await
 }

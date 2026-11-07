@@ -499,7 +499,7 @@ Phase C, FX-26's runtime:
   yields so that no Rust frame holds a KFX reference (roots: suspended
   futures, globals, thread-locals), opaque closures and futures scanned
   conservatively; Coopt's precise `Value<'gc>` heap the end state.
-- **The emitter's async mode** (C371-C381): every procedure an `async
+- **The emitter's async mode** (C371-C382): every procedure an `async
   fn`; the compiler built so makes itself, and each corpus program gives
   Fixpt's answer (`scripts/async-check.sh`, in the full check). Leaves
   are plain `fn`s (C377: 494 of the compiler's; 3.65 s to 3.43 s, the
@@ -510,11 +510,10 @@ Phase C, FX-26's runtime:
   recursion groups, the call graph's strongly connected components
   (C379: 21.9 G instructions, the synchronous build 12.1 G), and
   processes are tasks of the same scheduler (C380), and the standard
-  streams and `sleep-until` go through kayak-runner (C381). Next: files,
-  programs run beside this one and the terminal's modes through the
-  runner too (ops it lacks: whole-file writes, listings, file info);
-  waits in what is synchronous in the async mode (a `block`) fail as
-  captures do;
+  streams and `sleep-until` go through kayak-runner (C381), and so do
+  files, the terminal's modes and programs run beside this one (C382).
+  Next: waits in what is synchronous in the async mode (a `block`) fail
+  as captures do;
   `--async` with `--cache` (the mode in the memo key); a maker's poly or failing items; native code calling back a
   procedure that may abort.
 - **The second self-hosting** (C366): restored on tier 1, checked in the

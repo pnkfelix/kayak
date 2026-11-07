@@ -105,6 +105,19 @@ pub(crate) fn wait_for_input<R>(
     }
 }
 
+/// A wait for news from outside the runner's sight (a program run beside
+/// this one), which wakes the runner when it comes (C382).
+pub(crate) fn wait_for_outside<R>(
+    ready: impl FnMut() -> Option<R> + Unpin,
+) -> impl Future<Output = R> {
+    Wait {
+        ready,
+        deadline: None,
+        outside: true,
+        deadlock: "a wait for a program run beside this one that cannot end",
+    }
+}
+
 /// A wait until the clock (`world::clock`'s) reaches `t`.
 pub(crate) fn wait_until_clock(t: i64) -> impl Future<Output = ()> {
     Wait {
@@ -331,9 +344,9 @@ pub(crate) fn waited() -> bool {
     let outside = OUTSIDE.with(Cell::get);
     if crate::async_io::installed() {
         // The runner waits for what comes (C381): input, or a write taken;
-        // what comes from outside it, a program run beside this one, is
-        // looked for again soon.
-        let soon = outside.then(|| crate::world::clock() + 1_000_000);
+        // news of a program run beside this one wakes it too (C382), so a
+        // wait for one is looked at again within a second, at the latest.
+        let soon = outside.then(|| crate::world::clock() + 1_000_000_000);
         let until = match (deadline, soon) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),

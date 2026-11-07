@@ -408,7 +408,7 @@ pub(crate) fn counted(k: usize) -> &'static Sum_5count_3eof_6failed<Int, (), IoE
     }
 }
 
-fn written(r: std::io::Result<()>) -> &'static Sum_4done_6failed<(), IoError> {
+pub(crate) fn written(r: std::io::Result<()>) -> &'static Sum_4done_6failed<(), IoError> {
     match r {
         Ok(()) => &Sum_4done_6failed::Done(()),
         Err(e) => heap_alloc(Sum_4done_6failed::Failed(io_error(&e))),
@@ -941,7 +941,7 @@ static SAVED: Mutex<Option<String>> = Mutex::new(None);
 
 /// `stty` with `args`, on the standard input: what it says; none if the
 /// standard input is no terminal.
-fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
+pub(crate) fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
     use std::io::IsTerminal;
     if !std::io::stdin().is_terminal() {
         return None;
@@ -964,7 +964,7 @@ fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
     )
 }
 
-fn moded(
+pub(crate) fn moded(
     r: Option<std::io::Result<String>>,
 ) -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
     match r {
@@ -976,32 +976,48 @@ fn moded(
 
 /// The terminal in raw mode, its modes before saved the first time.
 pub fn terminal_raw() -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    moded(terminal_raw_stty())
+}
+
+/// What `stty` said, putting the terminal in raw mode.
+pub(crate) fn terminal_raw_stty() -> Option<std::io::Result<String>> {
     let mut saved = SAVED.lock().unwrap_or_else(|p| p.into_inner());
     if saved.is_none() {
         match stty(&["-g"]) {
             Some(Ok(modes)) => *saved = Some(modes),
-            other => return moded(other),
+            other => return other,
         }
     }
-    moded(stty(&[
+    stty(&[
         "-echo", "-icanon", "-iexten", "-isig", "-ixon", "-icrnl", "-brkint", "-inpck", "-istrip",
         "cs8", "min", "1", "time", "0",
-    ]))
+    ])
 }
 
 /// The terminal's modes as before raw mode, if it was asked for.
 pub fn terminal_restore() -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    moded(terminal_restore_stty())
+}
+
+/// What `stty` said, putting the terminal's modes back.
+pub(crate) fn terminal_restore_stty() -> Option<std::io::Result<String>> {
     let saved = SAVED.lock().unwrap_or_else(|p| p.into_inner()).take();
     match saved {
-        Some(modes) => moded(stty(&[modes.as_str()])),
-        None => moded(stty(&["-g"])),
+        Some(modes) => stty(&[modes.as_str()]),
+        None => stty(&["-g"]),
     }
 }
 
 /// The terminal's rows and columns.
 pub fn terminal_size()
 -> &'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), IoError> {
-    heap_alloc(match stty(&["size"]) {
+    terminal_size_answer(stty(&["size"]))
+}
+
+pub(crate) fn terminal_size_answer(
+    said: Option<std::io::Result<String>>,
+) -> &'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), IoError> {
+    heap_alloc(match said {
         None => Sum_4size_14not_a_terminal_6failed::NotATerminal(()),
         Some(Err(e)) => Sum_4size_14not_a_terminal_6failed::Failed(io_error(&e)),
         Some(Ok(s)) => {
@@ -1066,7 +1082,16 @@ pub fn args() -> List<Str> {
 }
 
 pub fn read_file(path: Str) -> &'static Sum_4data_6failed<Bytes, IoError> {
-    heap_alloc(match std::fs::read(path.as_str()) {
+    read_file_answer(std::fs::read(path.as_str()))
+}
+
+/// `read-file`'s answer, of what the system gave (C381: in the async mode,
+/// a worker of the runner's reads it; the answer is made here, in the
+/// program's heap).
+pub(crate) fn read_file_answer(
+    r: std::io::Result<Vec<u8>>,
+) -> &'static Sum_4data_6failed<Bytes, IoError> {
+    heap_alloc(match r {
         Ok(v) => Sum_4data_6failed::Data(bytes_of(v)),
         Err(e) => Sum_4data_6failed::Failed(io_error(&e)),
     })
@@ -1075,7 +1100,11 @@ pub fn read_file(path: Str) -> &'static Sum_4data_6failed<Bytes, IoError> {
 /// The names, sorted by their bytes; a name not UTF-8 an `invalid-data`
 /// failure.
 pub fn list_dir(path: Str) -> &'static Sum_5names_6failed<List<Str>, IoError> {
-    let names = std::fs::read_dir(path.as_str()).and_then(|d| {
+    list_dir_answer(list_dir_names(path.as_str()))
+}
+
+pub(crate) fn list_dir_names(path: &str) -> std::io::Result<Vec<String>> {
+    std::fs::read_dir(path).and_then(|d| {
         d.map(|e| {
             e.and_then(|e| {
                 e.file_name().into_string().map_err(|_| {
@@ -1084,7 +1113,12 @@ pub fn list_dir(path: Str) -> &'static Sum_5names_6failed<List<Str>, IoError> {
             })
         })
         .collect::<std::io::Result<Vec<String>>>()
-    });
+    })
+}
+
+pub(crate) fn list_dir_answer(
+    names: std::io::Result<Vec<String>>,
+) -> &'static Sum_5names_6failed<List<Str>, IoError> {
     heap_alloc(match names {
         Ok(mut ns) => {
             ns.sort();
@@ -1107,9 +1141,15 @@ pub type FileKind = &'static Sum_4file_9directory_7symlink_5other<(), (), (), ()
 pub type FileInfo = Product_4kind_4size_8modified_4mode<FileKind, Int, Int, Int>;
 
 pub fn file_info(path: Str) -> &'static Sum_4info_6failed<FileInfo, IoError> {
+    file_info_answer(std::fs::symlink_metadata(path.as_str()))
+}
+
+pub(crate) fn file_info_answer(
+    r: std::io::Result<std::fs::Metadata>,
+) -> &'static Sum_4info_6failed<FileInfo, IoError> {
     use std::os::unix::fs::MetadataExt;
     type K = Sum_4file_9directory_7symlink_5other<(), (), (), ()>;
-    heap_alloc(match std::fs::symlink_metadata(path.as_str()) {
+    heap_alloc(match r {
         Ok(m) => {
             let t = m.file_type();
             let kind: FileKind = heap_alloc(if t.is_symlink() {
@@ -1135,7 +1175,13 @@ pub fn file_info(path: Str) -> &'static Sum_4info_6failed<FileInfo, IoError> {
 /// The target of the symbolic link `path` names, as written; one not UTF-8
 /// an `invalid-data` failure (Fixpt's `read_symlink`).
 pub fn read_symlink(path: Str) -> &'static Sum_6target_6failed<Str, IoError> {
-    heap_alloc(match std::fs::read_link(path.as_str()) {
+    read_symlink_answer(std::fs::read_link(path.as_str()))
+}
+
+pub(crate) fn read_symlink_answer(
+    r: std::io::Result<std::path::PathBuf>,
+) -> &'static Sum_6target_6failed<Str, IoError> {
+    heap_alloc(match r {
         Ok(t) => match t.into_os_string().into_string() {
             Ok(t) => Sum_6target_6failed::Target(leak_string(t)),
             Err(_) => Sum_6target_6failed::Failed(invalid_data("a target that is not UTF-8")),
@@ -1147,20 +1193,24 @@ pub fn read_symlink(path: Str) -> &'static Sum_6target_6failed<Str, IoError> {
 /// Replaces the file whole and atomically: written beside it, flushed to
 /// the disk, and renamed over it.
 pub fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<(), IoError> {
-    let path = std::path::Path::new(path.as_str());
+    written(write_file_bytes(path.as_str(), &to_vec(data)))
+}
+
+pub(crate) fn write_file_bytes(path: &str, bytes: &[u8]) -> std::io::Result<()> {
+    let path = std::path::Path::new(path);
     let mut beside = path.as_os_str().to_owned();
     beside.push(format!(".kayak-{}.tmp", std::process::id()));
     let beside = std::path::PathBuf::from(beside);
     let r = (|| {
         let mut f = std::fs::File::create(&beside)?;
-        f.write_all(&to_vec(data))?;
+        f.write_all(bytes)?;
         f.sync_all()?;
         std::fs::rename(&beside, path)
     })();
     if r.is_err() {
         let _ = std::fs::remove_file(&beside);
     }
-    written(r)
+    r
 }
 
 /// Programs run beside this one (C295; Heist's F4 and F6, Fixpt's
@@ -1171,7 +1221,9 @@ pub fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<()
 /// and its end found by polling.
 struct Child {
     child: std::process::Child,
-    input: Option<std::process::ChildStdin>,
+    /// Its own lock, so that a write that waits for the process to read
+    /// holds no other (C381: in the async mode, a worker writes it).
+    input: Option<std::sync::Arc<std::sync::Mutex<std::process::ChildStdin>>>,
     output: std::sync::Arc<std::sync::Mutex<ChildOutput>>,
     status: Option<std::process::ExitStatus>,
     seen_end: bool,
@@ -1195,6 +1247,9 @@ static CHILD_NEWS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::
 fn child_news() {
     CHILD_NEWS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     crate::process::input_changed();
+    // In the async mode, the runner's reactor woken, so that tasks waiting
+    // for a child look again (C381).
+    crate::async_io::wake();
 }
 
 #[allow(non_camel_case_types)]
@@ -1257,7 +1312,10 @@ pub fn process_start(
         }
         let mut child = command.spawn()?;
         drop(command);
-        let input = child.stdin.take();
+        let input = child
+            .stdin
+            .take()
+            .map(|i| std::sync::Arc::new(std::sync::Mutex::new(i)));
         let output = std::sync::Arc::new(std::sync::Mutex::new(ChildOutput::default()));
         let out = output.clone();
         std::thread::spawn(move || {
@@ -1396,24 +1454,32 @@ pub fn process_status(
 /// How process `p` ended, waiting until it has and its reader has read
 /// all it wrote (F6).
 pub fn process_exit(p: Int) -> &'static Sum_6exited_9signalled_7unknown<Int, Int, ()> {
-    type S = Sum_6exited_9signalled_7unknown<Int, Int, ()>;
     loop {
-        let how = with_child(p, Some(None), |c| {
-            ended(c).map(|how| {
-                c.seen_end = true;
-                Some(how)
-            })
-        });
-        match how {
+        match process_exited(p) {
+            Some(how) => return how,
             None => std::thread::sleep(std::time::Duration::from_millis(1)),
-            Some(None) => return heap_alloc(S::Unknown(())),
-            Some(Some((Some(code), _))) => return heap_alloc(S::Exited(i64_to_int(code.into()))),
-            Some(Some((None, Some(sig)))) => {
-                return heap_alloc(S::Signalled(i64_to_int(sig.into())));
-            }
-            Some(Some((None, None))) => return heap_alloc(S::Unknown(())),
         }
     }
+}
+
+/// How process `p` ended, if it has and its output is all read; else none
+/// (C381: in the async mode, a task waits for it).
+pub(crate) fn process_exited(
+    p: Int,
+) -> Option<&'static Sum_6exited_9signalled_7unknown<Int, Int, ()>> {
+    type S = Sum_6exited_9signalled_7unknown<Int, Int, ()>;
+    let how = with_child(p, Some(None), |c| {
+        ended(c).map(|how| {
+            c.seen_end = true;
+            Some(how)
+        })
+    })?;
+    Some(heap_alloc(match how {
+        None => S::Unknown(()),
+        Some((Some(code), _)) => S::Exited(i64_to_int(code.into())),
+        Some((None, Some(sig))) => S::Signalled(i64_to_int(sig.into())),
+        Some((None, None)) => S::Unknown(()),
+    }))
 }
 
 /// The first process with news (F6): output to take, or an end the
@@ -1481,19 +1547,35 @@ pub fn process_wait(until: i64, stdin: bool) -> bool {
 
 /// `text` written to process `p`'s input.
 pub fn process_write(p: Int, text: Str) -> &'static Sum_4done_6failed<(), IoError> {
+    written(process_write_bytes(
+        process_input(p),
+        text.as_str().as_bytes(),
+    ))
+}
+
+/// Process `p`'s input, if it is open.
+pub(crate) fn process_input(
+    p: Int,
+) -> Option<std::sync::Arc<std::sync::Mutex<std::process::ChildStdin>>> {
+    with_child(p, None, |c| c.input.clone())
+}
+
+/// `bytes` written to a process's `input`, waiting for it to read them.
+pub(crate) fn process_write_bytes(
+    input: Option<std::sync::Arc<std::sync::Mutex<std::process::ChildStdin>>>,
+    bytes: &[u8],
+) -> std::io::Result<()> {
     use std::io::Write as _;
-    let broken = || {
-        Err(std::io::Error::new(
+    match input {
+        Some(input) => {
+            let mut input = input.lock().unwrap_or_else(|p| p.into_inner());
+            input.write_all(bytes).and_then(|()| input.flush())
+        }
+        None => Err(std::io::Error::new(
             std::io::ErrorKind::BrokenPipe,
             "the process's input is closed",
-        ))
-    };
-    written(with_child(p, broken(), |c| match c.input.as_mut() {
-        Some(input) => input
-            .write_all(text.as_str().as_bytes())
-            .and_then(|()| input.flush()),
-        None => broken(),
-    }))
+        )),
+    }
 }
 
 /// Process `p`'s input closed: it reads its end.

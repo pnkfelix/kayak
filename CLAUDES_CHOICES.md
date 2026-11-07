@@ -10556,3 +10556,34 @@ waiting for input or for its output to be taken waits as a task.
   one, the terminal's modes; a read of the standard input where nothing
   may wait (a `block`) fails, as a capture there does.
 
+## C382. The rest of I/O through the runner (2026-11-07)
+
+The user: "Yeah do rest of I/O": after C381's standard streams, files,
+the terminal's modes and programs run beside this one, in the async mode.
+- **Files and the terminal's modes**: what the system is asked (a read,
+  a write made atomic, a listing, `lstat`, `readlink`, `stty`) runs as a
+  job of the runner's (kayak-runner's `Op::Job`, on its worker pool), the
+  task waiting for its completion; the job fills a slot of kayak-rt's
+  own and gives `()`, so no stable encoding is needed of what it read.
+  The answer, a KFX value, is made back on the program's thread: the
+  heap's arenas are a thread's. So each of world.rs's operations is now
+  its system part (plain Rust data) and its answer, which the synchronous
+  mode composes as before.
+- **Programs run beside this one**: each one's reader threads say their
+  news (output read, the end found) to the runner's reactor too (a waker
+  of `Live`'s, a fork change), so a task waiting for one (`pselect`'s
+  arms, `process-exit`, now a task's wait, not a sleeping loop) looks
+  again when there is news; the run's wait for them is a second at the
+  most, not C381's millisecond polling. A write to one's input, which
+  waits for it to read, is a worker's job, the input under a lock of its
+  own rather than the table of programs', so that the job holds nothing
+  the program's thread needs. Starting one, its output, status, news and
+  signals do not wait, and are as before.
+- **The emitter**: `read-file`, `write-file`, `list-dir`, `file-info`,
+  `read-symlink`, `terminal-raw`, `terminal-restore`, `terminal-size`,
+  `process-write` and `process-exit` join C381's list.
+- **Checked**: the 8 I/O programs, as the synchronous build makes them
+  (`async-io-programs.py`), the processes ones taking the same time (0.20
+  s), so news wakes the run; the async corpus; the compiler built async,
+  which reads and writes its files so, unchanged (22.0 G instructions).
+

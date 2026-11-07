@@ -1301,7 +1301,10 @@
         (and (async-mode? c) (not (string-member? "%probe" (ctx-locals c))))))
 
     (define runner-io-names strings
-      (list "write-out" "write-err" "read-line" "read-byte" "read-bytes" "sleep-until"))
+      (list "write-out" "write-err" "read-line" "read-byte" "read-bytes" "sleep-until"
+            ;; Files, the terminal's modes, programs run beside this one (C382).
+            "read-file" "write-file" "list-dir" "file-info" "read-symlink"
+            "terminal-raw" "terminal-restore" "terminal-size" "process-write" "process-exit"))
 
     (define charge-statement string "if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; }")
 

@@ -712,6 +712,12 @@ fn worker(waker: Waker, done: Done) -> mpsc::Sender<(u64, u32)> {
 }
 
 impl Live {
+    /// What wakes this runner's reactor, from any thread (kayak's, C381):
+    /// news from outside it, a program run beside the program.
+    pub fn waker(&self) -> kayak_sys::Waker {
+        self.poller.waker()
+    }
+
     /// Nanoseconds since this runner began: its clock (kayak's, C381).
     pub fn now(&self) -> u64 {
         self.ticks()

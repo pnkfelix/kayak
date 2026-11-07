@@ -2452,7 +2452,7 @@ pub mod emitter {
     pub fn runner_io_names() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("read-byte"), kayak_rt::heap_cons(str_lit("read-bytes"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::nil()))))))
+            kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("read-byte"), kayak_rt::heap_cons(str_lit("read-bytes"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::heap_cons(str_lit("read-file"), kayak_rt::heap_cons(str_lit("write-file"), kayak_rt::heap_cons(str_lit("list-dir"), kayak_rt::heap_cons(str_lit("file-info"), kayak_rt::heap_cons(str_lit("read-symlink"), kayak_rt::heap_cons(str_lit("terminal-raw"), kayak_rt::heap_cons(str_lit("terminal-restore"), kayak_rt::heap_cons(str_lit("terminal-size"), kayak_rt::heap_cons(str_lit("process-write"), kayak_rt::heap_cons(str_lit("process-exit"), kayak_rt::nil()))))))))))))))))
         })
     }
 
