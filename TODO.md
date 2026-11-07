@@ -479,9 +479,9 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
   `lib/query.kfx`. Next: the library's names given in Rust (kayak-rt, from
   Coopt's `coopt-query`: coopt-adoption.md step 3's second stage); the
   compiler's identity in the memo file, so that the driver, not its
-  caller, keeps one compiler's memos from another's; memo lookups by a
-  table, not a list (`memo-find`); query runs as tasks when the compiler
-  has a reason to wait.
+  caller, keeps one compiler's memos from another's; query runs as tasks
+  when the compiler has a reason to wait. A warm compile's cost now is
+  reading the sources and the memos' texts (C385).
 
 Phase B, the compiler for two languages:
 - **The front end shared**: the checker grown to FX-26's, KFX's

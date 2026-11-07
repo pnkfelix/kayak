@@ -254,6 +254,13 @@ pub mod queries {
         fnv_from(s, 0i64, string_length_i64(s), i64_star(i64_xor(h, 31i64), 1099511628211i64))
     }
 
+    /// `x`, a number, onto fingerprint `h`, as one step of FNV-1a: no text
+    /// made of it.
+    #[inline]
+    pub fn fnv_i64(x: i64, h: i64) -> i64 {
+        i64_star(i64_xor(h, x), 1099511628211i64)
+    }
+
     pub fn fnv_strings(mut ss: Strings, mut h: i64) -> i64 {
         loop {
             if null_p(ss) {

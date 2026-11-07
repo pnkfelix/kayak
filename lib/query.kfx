@@ -133,6 +133,12 @@
          not one string."
         (fnv-from s 0 (string-length-i64 s) (i64* (i64-xor h 31) 1099511628211))))
 
+    (define fnv-i64 (subr kfx (i64 i64) i64)
+      (lambda (x h)
+        "`x`, a number, onto fingerprint `h`, as one step of FNV-1a: no text
+         made of it."
+        (i64* (i64-xor h x) 1099511628211)))
+
     (define-rec
       (fnv-strings (subr kfx (strings i64) i64)
         (lambda (ss h) (if (null? ss) h (fnv-strings (cdr ss) (fnv-string (car ss) h))))))

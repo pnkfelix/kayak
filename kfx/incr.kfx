@@ -420,6 +420,35 @@
       (define reads-chain (subr kfx (reads) i64)
         (lambda (r) (tagcase r (reads (fm cm am als chain) chain))))
 
+      (define-rec
+        (names-walk (subr kfx (sexps bix fmap read-key) read-key)
+          (lambda (es ix am acc)
+            "Onto `acc`'s key, for each name in `es` as it comes, its bindings'
+             and abbreviation's fingerprints (the text says which names, in
+             which order); the bindings' made, or made longer, if they are not
+             yet, or are more."
+            (if (null? es)
+                acc
+                (names-walk (cdr es) ix am
+                  (tagcase (car es)
+                    (sym (n f p) (name-read n ix am acc))
+                    (lst (xs f l p) (names-walk xs ix am acc))
+                    (else other acc))))))
+        (name-read (subr kfx (string bix fmap read-key) read-key)
+          (lambda (n ix am acc)
+            (tagcase acc
+              (read-key (h rd)
+                (tagcase rd
+                  (reads (fm cm am2 als3 chain2)
+                    (let* ((bs (bix-at ix n))
+                           (c (size bs))
+                           (old (fmap-get cm n))
+                           (fp (cond ((i64= c old) (fmap-get fm n))
+                                     ((i64> c old) (binds-folded (reverse (leading bs (i64- c old))) (fmap-get fm n)))
+                                     (else (binds-folded (reverse bs) 0))))
+                           (rd2 (if (i64= c old) rd (reads (fmap-put fm n fp) (fmap-put cm n c) am2 als3 chain2))))
+                      (read-key (fnv-i64 (fmap-get am n) (fnv-i64 fp h)) rd2)))))))))
+
       (define reads-key (subr kfx (cv reads sexp i64) read-key)
         (lambda (v r form h)
           (tagcase v
@@ -428,46 +457,10 @@
                 (reads (fm cm am als2 chain)
                   ;; The markers, as the checker reads them (`scope-bind`): the
                   ;; innermost of each kind.
-                  (names-key (form-names (list form) (fm-none)) ix am als2 chain
+                  (names-walk (list form) ix am
                              (read-key (fnv-strings (map bind-code (concat (map (lambda ((k string)) (find-bind k mk)) marker-names)))
                                                     (fnv-string (where-text here group tv) (fnv-string (i64->string chain) h)))
                                        r))))))))
-
-      (define-rec
-        (names-key (subr kfx (fmap bix fmap aliases i64 read-key) read-key)
-          (lambda (names ix am als chain acc)
-            "Onto `acc`'s key, in order, each name of `names`, and its bindings'
-             and abbreviation's fingerprints; the bindings' made, or made
-             longer, if they are not yet, or are more."
-            (tagcase names
-              (fm-none () acc)
-              (fm-node (l n x d r)
-                (tagcase (names-key l ix am als chain acc)
-                  (read-key (h rd)
-                    (tagcase rd
-                      (reads (fm cm am2 als3 chain2)
-                        (let* ((bs (bix-at ix n))
-                               (c (size bs))
-                               (old (fmap-get cm n))
-                               (fp (cond ((i64= c old) (fmap-get fm n))
-                                         ((i64> c old) (binds-folded (reverse (leading bs (i64- c old))) (fmap-get fm n)))
-                                         (else (binds-folded (reverse bs) 0))))
-                               (rd2 (if (i64= c old) rd (reads (fmap-put fm n fp) (fmap-put cm n c) am2 als3 chain2))))
-                          (names-key r ix am als chain
-                                     (read-key (fnv-string (i64->string (fmap-get am n)) (fnv-string (i64->string fp) (fnv-string n h)))
-                                            rd2))))))))))))
-
-      (define-rec
-        (form-names (subr kfx (sexps fmap) fmap)
-          (lambda (es acc)
-            "The names in `es`, at any depth, as a set."
-            (if (null? es)
-                acc
-                (form-names (cdr es)
-                  (tagcase (car es)
-                    (sym (n f p) (fmap-put acc n 0))
-                    (lst (xs f l p) (form-names xs acc))
-                    (else other acc)))))))
 
       (define change-of (subr kfx (cv cv typeds (subr kfx (fact) string)) change)
         (lambda (before after found code)
@@ -751,15 +744,21 @@
     (define emit-key (subr kfx (ereads sexp) i64)
       (lambda (r form)
         "What `form`'s Rust reads of the emitter's context, `r`."
-        (tagcase r (ereads (idx h) (emitted-names (form-names (list form) (fm-none)) idx h)))))
+        (tagcase r (ereads (idx h) (emitted-walk (list form) idx h)))))
 
     (define-rec
-      (emitted-names (subr kfx (fmap fmap i64) i64)
-        (lambda (names idx h)
-          (tagcase names
-            (fm-none () h)
-            (fm-node (l n x d r)
-              (emitted-names r idx (fnv-string (i64->string (fmap-get idx n)) (fnv-string n (emitted-names l idx h)))))))))
+      (emitted-walk (subr kfx (sexps fmap i64) i64)
+        (lambda (es idx h)
+          "Onto `h`, each name's entries' fingerprint, for each name in `es`
+           as it comes: the text says which names, in which order, so the
+           names themselves are not taken again, nor made a set."
+          (if (null? es)
+              h
+              (emitted-walk (cdr es) idx
+                (tagcase (car es)
+                  (sym (n f p) (fnv-i64 (fmap-get idx n) h))
+                  (lst (xs f l p) (emitted-walk xs idx h))
+                  (else other h)))))))
 
     (define-rec
       (form-texts (subr kfx (string i64 (listof i64 acyclic)) strings)

@@ -77,7 +77,7 @@ pub mod incremental {
 
     use super::writing::{made_here_p, put_module_impls, definition_p, maker_defs, maker_item_type, place_given, maker_item_lambda, put_shapes, put_show_generatives, put_top, put_maker, types_once, put_module, module_parts, put_module_around, put_tops, rec_facts, module_bodies, scope_rec_facts, scope_definitions, group_of, callees_of, sccs, finish_all, visit, visit_each, components, leaf_facts, leaf_definitions, leaf_candidate_p, calls_in, least_leaves, names_defined_in, leaf_uses, put_toplevel};
 
-    use super::queries::{fnv_offset, fnv_from, fnv_string, fnv_strings, memo_find, fmap_put, fmap_get, memos_text, memos_of_text};
+    use super::queries::{fnv_offset, fnv_from, fnv_string, fnv_i64, fnv_strings, memo_find, fmap_put, fmap_get, memos_text, memos_of_text};
 
     // The context's fingerprint: everything in it but the facts, which are
     // taken form by form.
@@ -807,67 +807,11 @@ pub mod incremental {
         }
     }
 
-    pub fn reads_key(v: &'static Cv, r: &'static Reads, form: &'static Sexp, h: i64) -> &'static ReadKey {
-        let tagcase_ = v;
-        match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                let tagcase_ = r;
-                match *tagcase_ {
-                    Reads::Reads(fm, cm, am, als2, chain) => {
-                        names_key(form_names(kayak_rt::heap_cons(form, kayak_rt::nil()), fm_none()), ix, am, als2, chain, read_key(fnv_strings(map(&bind_code, concat(map(lambda1s(move |k: Str| {
-                            find_bind(k, mk)
-                        }), marker_names()))), fnv_string(where_text(here, group, tv), fnv_string(i64_to_string(chain), h))), r))
-                    }
-                }
-            }
-        }
-    }
-
-    /// Onto `acc`'s key, in order, each name of `names`, and its bindings'
-    /// and abbreviation's fingerprints; the bindings' made, or made
-    /// longer, if they are not yet, or are more.
-    pub fn names_key(mut names: &'static Fmap, mut ix: &'static Bix, mut am: &'static Fmap, mut als: Aliases, mut chain: i64, mut acc: &'static ReadKey) -> &'static ReadKey {
-        loop {
-            let tagcase_ = names;
-            match *tagcase_ {
-                Fmap::FmNone() => {
-                    return acc;
-                }
-                Fmap::FmNode(l, n, x, d, r) => {
-                    let tagcase_ = names_key(l, ix, am, als, chain, acc);
-                    match *tagcase_ {
-                        ReadKey::ReadKey(h, rd) => {
-                            let tagcase_ = rd;
-                            match *tagcase_ {
-                                Reads::Reads(fm, cm, am2, als3, chain2) => {
-                                    let bs = bix_at(ix, n);
-                                    let c = size(bs);
-                                    let old = fmap_get(cm, n);
-                                    let fp = if i64_eq(c, old) {
-                                        fmap_get(fm, n)
-                                    } else if i64_gt(c, old) {
-                                        binds_folded(reverse(leading(bs, i64_minus(c, old))), fmap_get(fm, n))
-                                    } else {
-                                        binds_folded(reverse(bs), 0i64)
-                                    };
-                                    let rd2 = if i64_eq(c, old) {
-                                        rd
-                                    } else {
-                                        reads(fmap_put(fm, n, fp), fmap_put(cm, n, c), am2, als3, chain2)
-                                    };
-                                    (names, acc) = (r, read_key(fnv_string(i64_to_string(fmap_get(am, n)), fnv_string(i64_to_string(fp), fnv_string(n, h))), rd2));
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// The names in `es`, at any depth, as a set.
-    pub fn form_names(mut es: Sexps, mut acc: &'static Fmap) -> &'static Fmap {
+    /// Onto `acc`'s key, for each name in `es` as it comes, its bindings'
+    /// and abbreviation's fingerprints (the text says which names, in
+    /// which order); the bindings' made, or made longer, if they are not
+    /// yet, or are more.
+    pub fn names_walk(mut es: Sexps, mut ix: &'static Bix, mut am: &'static Fmap, mut acc: &'static ReadKey) -> &'static ReadKey {
         loop {
             if null_p(es) {
                 return acc;
@@ -876,10 +820,10 @@ pub mod incremental {
                     let tagcase_ = car(es);
                     match *tagcase_ {
                         Sexp::Sym(n, f, p) => {
-                            fmap_put(acc, n, 0i64)
+                            name_read(n, ix, am, acc)
                         }
                         Sexp::Lst(xs, f, l, p) => {
-                            form_names(xs, acc)
+                            names_walk(xs, ix, am, acc)
                         }
                         _ => {
                             let other = tagcase_;
@@ -888,6 +832,51 @@ pub mod incremental {
                     }
                 });
                 continue;
+            }
+        }
+    }
+
+    pub fn name_read(n: Str, ix: &'static Bix, am: &'static Fmap, acc: &'static ReadKey) -> &'static ReadKey {
+        let tagcase_ = acc;
+        match *tagcase_ {
+            ReadKey::ReadKey(h, rd) => {
+                let tagcase_ = rd;
+                match *tagcase_ {
+                    Reads::Reads(fm, cm, am2, als3, chain2) => {
+                        let bs = bix_at(ix, n);
+                        let c = size(bs);
+                        let old = fmap_get(cm, n);
+                        let fp = if i64_eq(c, old) {
+                            fmap_get(fm, n)
+                        } else if i64_gt(c, old) {
+                            binds_folded(reverse(leading(bs, i64_minus(c, old))), fmap_get(fm, n))
+                        } else {
+                            binds_folded(reverse(bs), 0i64)
+                        };
+                        let rd2 = if i64_eq(c, old) {
+                            rd
+                        } else {
+                            reads(fmap_put(fm, n, fp), fmap_put(cm, n, c), am2, als3, chain2)
+                        };
+                        read_key(fnv_i64(fmap_get(am, n), fnv_i64(fp, h)), rd2)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn reads_key(v: &'static Cv, r: &'static Reads, form: &'static Sexp, h: i64) -> &'static ReadKey {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                let tagcase_ = r;
+                match *tagcase_ {
+                    Reads::Reads(fm, cm, am, als2, chain) => {
+                        names_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), ix, am, read_key(fnv_strings(map(&bind_code, concat(map(lambda1s(move |k: Str| {
+                            find_bind(k, mk)
+                        }), marker_names()))), fnv_string(where_text(here, group, tv), fnv_string(i64_to_string(chain), h))), r))
+                    }
+                }
             }
         }
     }
@@ -1407,22 +1396,35 @@ pub mod incremental {
         let tagcase_ = r;
         match *tagcase_ {
             Ereads::Ereads(idx, h) => {
-                emitted_names(form_names(kayak_rt::heap_cons(form, kayak_rt::nil()), fm_none()), idx, h)
+                emitted_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), idx, h)
             }
         }
     }
 
-    pub fn emitted_names(mut names: &'static Fmap, mut idx: &'static Fmap, mut h: i64) -> i64 {
+    /// Onto `h`, each name's entries' fingerprint, for each name in `es`
+    /// as it comes: the text says which names, in which order, so the
+    /// names themselves are not taken again, nor made a set.
+    pub fn emitted_walk(mut es: Sexps, mut idx: &'static Fmap, mut h: i64) -> i64 {
         loop {
-            let tagcase_ = names;
-            match *tagcase_ {
-                Fmap::FmNone() => {
-                    return h;
-                }
-                Fmap::FmNode(l, n, x, d, r) => {
-                    (names, h) = (r, fnv_string(i64_to_string(fmap_get(idx, n)), fnv_string(n, emitted_names(l, idx, h))));
-                    continue;
-                }
+            if null_p(es) {
+                return h;
+            } else {
+                (es, h) = (cdr(es), {
+                    let tagcase_ = car(es);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            fnv_i64(fmap_get(idx, n), h)
+                        }
+                        Sexp::Lst(xs, f, l, p) => {
+                            emitted_walk(xs, idx, h)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            h
+                        }
+                    }
+                });
+                continue;
             }
         }
     }

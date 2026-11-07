@@ -10643,3 +10643,16 @@ too, with a Rust implementation of the same names to come under them.
   abbreviation a form names in its body alone, changed; with the
   abbreviations left out of the keys, it fails, so it is a test of them.
 
+## C385. Keys made walking the form (2026-11-07)
+
+After C384, the user's go-ahead for the cheap speedups first. Measured
+first: the memo lookup by list (`memo-find`) is not in a warm compile's
+profile; the keys are, a set of each form's names built as a tree
+(`form-names`, 7%) and each fingerprint written as decimal text to be
+hashed. Neither is needed: the form's text, in the key already, says
+which names it has and in which order. So a key walks the form and folds
+in each name's fingerprint as a number (`fnv-i64`, in `lib/query.kfx`),
+no set made, no text. A warm compile of the compiler with memos, 9.16 G
+instructions to 8.77 G; what is left is reading the sources and the
+memos' texts. The incremental verifier, every file, as before.
+
