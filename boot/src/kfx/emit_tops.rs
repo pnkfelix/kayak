@@ -143,7 +143,9 @@ pub mod writing {
     }
 
     /// `fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`; of a
-    /// `poly`, generic as a top-level procedure is (C119).
+    /// `poly`, generic as a top-level procedure is (C119); a procedure's an
+    /// `async fn` in the async mode (C375), as every procedure is, its
+    /// module parameters being types, never `dyn`.
     pub fn put_val_sig(c0: &'static Ctx, val: Sexps, descs: List<Sexps>, acc: Chars) -> Chars {
         let t0 = subst_descs(third(val), descs);
         let binders = if head_is_p(t0, str_lit("poly")) {
@@ -165,7 +167,11 @@ pub mod writing {
         } else {
             t0
         };
-        let acc = put_generics(binders, true, put(mangle(sym_name(second(val))), put(str_lit("fn "), acc)));
+        let acc = put_generics(binders, true, put(mangle(sym_name(second(val))), put(if (in_async_mode_p(c) && head_is_p(t, str_lit("subr"))) {
+            str_lit("async fn ")
+        } else {
+            str_lit("fn ")
+        }, acc)));
         if head_is_p(t, str_lit("subr")) {
             let acc = put(str_lit(") -> "), put_arg_params(c, items(third(items(t))), 0i64, put(str_lit("("), acc)));
             if fallible_effect_p(c, second(items(t))) {
@@ -251,7 +257,11 @@ pub mod writing {
                 acc
             };
             let acc = if head_is_p(t, str_lit("subr")) {
-                put(str_lit(")"), put_arg_names(0i64, size(items(third(items(t)))), put(str_lit("("), acc)))
+                put(if in_async_mode_p(c) {
+                    str_lit(").await")
+                } else {
+                    str_lit(")")
+                }, put_arg_names(0i64, size(items(third(items(t)))), put(str_lit("("), acc)))
             } else {
                 acc
             };

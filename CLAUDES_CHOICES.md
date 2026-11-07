@@ -10308,3 +10308,25 @@ accumulator?"
   fact the checker notes kept, no overflow, its output `boot/src/kfx`.
 - C373's dropping of the async mode's facts before the synchronous
   emitter stays: they are its work, not the other's.
+
+## C375. Module types' procedures async (2026-11-07)
+
+The largest of C373's buckets: a module type is a Rust trait (C24) whose
+procedure items were written `fn`, so the async mode's awaited calls of a
+module parameter's items (`Mod_M::inc(..).await`) had no future. Rust has
+`async fn` in traits (1.75) for static dispatch, which is all KFX's module
+parameters are (a type parameter `Mod_M: Steps`, a top-level module given
+as its type argument; C170 keeps first-class module values out of the
+Rust build, so none is ever `dyn`).
+- **Chosen**: in the async mode a module type's procedure item is an
+  `async fn` in its trait (`put-val-sig`) and in each module's impl, whose
+  body awaits the module's own procedure (`put-impl`); a value item stays
+  a plain `fn`. The user asked whether first-class modules (Sheldon and
+  Gifford's, FX's) would want `dyn` traits instead: in the Rust build they
+  are refused; should they come, a module value as a record of procedure
+  values, which the async mode makes futures already.
+- The async corpus's rustc errors 64 to 40: module parameters' programs
+  build. Left, each an interaction: regions (a boxed future is `'static`),
+  C45's lifts of a value already async, native procedures' values,
+  constructors reached by `with`, procedure values given to the runtime's
+  own functions (`spawn-monitored`), a module's `define-rec`.

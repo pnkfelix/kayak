@@ -72,7 +72,9 @@
       (define put-val-sig (subr kfx (ctx sexps (listof sexps acyclic) chars) chars)
         (lambda (c0 val descs acc)
           "`fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`; of a
-           `poly`, generic as a top-level procedure is (C119)."
+           `poly`, generic as a top-level procedure is (C119); a procedure's an
+           `async fn` in the async mode (C375), as every procedure is, its
+           module parameters being types, never `dyn`."
           (let* ((t0 (subst-descs (third val) descs))
                  (binders (if (head-is? t0 "poly") (items (second (items t0))) nil))
                  (c (with-locals c0 (concat (map (lambda ((b sexp))
@@ -81,7 +83,8 @@
                                                          (else nil)))
                                                  binders))))
                  (t (if (head-is? t0 "poly") (third (items t0)) t0))
-                 (acc (put-generics binders #t (put (mangle (sym-name (second val))) (put "fn " acc)))))
+                 (acc (put-generics binders #t (put (mangle (sym-name (second val)))
+                                                    (put (if (and (in-async-mode? c) (head-is? t "subr")) "async fn " "fn ") acc)))))
             (if (head-is? t "subr")
                 (let ((acc (put ") -> " (put-arg-params c (items (third (items t))) 0 (put "(" acc)))))
                   (if (fallible-effect? c (second (items t)))
@@ -133,7 +136,7 @@
                                         (acc (put (mangle name) (put "::" (put (mangle m) acc))))
                                         (acc (if (string-member? name consts) (put "()" acc) acc))
                                         (acc (if (head-is? t "subr")
-                                                 (put ")" (put-arg-names 0 (size (items (third (items t)))) (put "(" acc)))
+                                                 (put (if (in-async-mode? c) ").await" ")") (put-arg-names 0 (size (items (third (items t)))) (put "(" acc)))
                                                  acc)))
                                    (put "\n    }\n" acc)))
                                "" (spec-of spec "val") acc)))
