@@ -230,7 +230,14 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
     } else if i64_eq(size(r#as), 2i64) {
         let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(r#as)), lines_from(string_chars(text), nil::<char>()))).await?;
-        kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units_as(program, runtime_unit_p(text)))).await?;
+        kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units_as(program, runtime_unit_p(text), false))).await?;
+        Ok(int_lit(0))
+    } else if (i64_eq(size(r#as), 3i64) && string_eq_p(car(r#as), str_lit("--async"))) {
+        // Every procedure an `async fn` (C371); not with memos yet, whose keys
+        // would not tell the modes apart.
+        let text = kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?;
+        let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(cdr(r#as))), lines_from(string_chars(text), nil::<char>()))).await?;
+        kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(r#as))), compile_units_as(program, runtime_unit_p(text), true))).await?;
         Ok(int_lit(0))
     } else if (i64_eq(size(r#as), 4i64) && string_eq_p(car(r#as), str_lit("--cache"))) {
         let cache = car(cdr(r#as));
@@ -258,7 +265,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
             }
         }
     } else {
-        match fail_with(str_lit("usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE] PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
+        match fail_with(str_lit("usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
         Ok(int_lit(2))
     }
 }

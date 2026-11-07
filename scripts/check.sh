@@ -34,15 +34,17 @@ step python3 -I scripts/fx26-tests.py --reset
 # workspace built first, so that no stage builds it under another.
 cargo build --release --quiet --workspace
 logs=$(mktemp -d)
-fixpoint=; tests=; selfhost=
-# Should a stage fail first, the three and everything they started stopped.
+fixpoint=; tests=; selfhost=; asyncs=
+# Should a stage fail first, the four and everything they started stopped.
 killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
-trap 'for p in $fixpoint $tests $selfhost; do killed "$p"; done; rm -rf "$logs"' EXIT
+trap 'for p in $fixpoint $tests $selfhost $asyncs; do killed "$p"; done; rm -rf "$logs"' EXIT
 step scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
 # The second self-hosting (C366): the compiler on tier 1 makes itself; not
 # with --quick, for its 100 s.
 if [ -z "$quick" ]; then
     step scripts/selfhost-cells.sh > "$logs/selfhost" 2>&1 & selfhost=$!
+    # The emitter's async mode (C371): the compiler built async makes itself.
+    step scripts/async-check.sh > "$logs/asyncs" 2>&1 & asyncs=$!
 fi
 rm -rf target/kayak-checks
 step env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
@@ -83,8 +85,8 @@ fi
 # Those that kfx accepts, run both ways.
 step python3 -I scripts/run-fixpt-programs.py
 step python3 -I scripts/refused-fixpt-programs.py
-# The three beside the rest, in order.
-for job in fixpoint tests selfhost; do
+# The four beside the rest, in order.
+for job in fixpoint tests selfhost asyncs; do
     eval pid=\$$job
     [ -n "$pid" ] || continue
     status=0
@@ -92,7 +94,7 @@ for job in fixpoint tests selfhost; do
     cat "$logs/$job"
     [ $status = 0 ] || { echo "check: $job failed" >&2; exit 1; }
 done
-fixpoint=; tests=; selfhost=
+fixpoint=; tests=; selfhost=; asyncs=
 # Tier 1, Fixpt's cellular machine in KFX, on Fixpt's own words (C122) and
 # on kayak's own (C133): what the tests found (crates/kayak-checks/tests/
 # cells.rs), counted.

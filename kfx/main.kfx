@@ -142,7 +142,13 @@
           ((i64= (size as) 2)
            (let* ((text (read-text rt (car as)))
                   (program (sources-of rt (directory-of (car as)) (lines-from (string-chars text) nil))))
-             (begin (write-outputs rt (car (cdr as)) (compile-units-as program (runtime-unit? text))) 0)))
+             (begin (write-outputs rt (car (cdr as)) (compile-units-as program (runtime-unit? text) #f)) 0)))
+          ((and (i64= (size as) 3) (string=? (car as) "--async"))
+           "Every procedure an `async fn` (C371); not with memos yet, whose keys
+            would not tell the modes apart."
+           (let* ((text (read-text rt (car (cdr as))))
+                  (program (sources-of rt (directory-of (car (cdr as))) (lines-from (string-chars text) nil))))
+             (begin (write-outputs rt (car (cdr (cdr as))) (compile-units-as program (runtime-unit? text) #t)) 0)))
           ((and (i64= (size as) 4) (string=? (car as) "--cache"))
            (let* ((cache (car (cdr as)))
                   (unit (car (cdr (cdr as))))
@@ -157,7 +163,7 @@
                         (write-text rt cache (with incremental (memos-text made)))
                         0)))))
           (else
-           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE] PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
+           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
 
 (define reverse-log (subr (maxeff kfx (read @io) (alloc @io)) ((log @io) (log @io)) (log @io))
   (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))

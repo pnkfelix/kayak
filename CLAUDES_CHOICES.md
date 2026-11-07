@@ -10166,3 +10166,46 @@ is allowed. The experiment found it worth having without async too, and so:
 - **Not yet**: the accounting per task the experiment proposed (bytes
   charged to the task polling), for when kayak-rt's tasks are the
   scheduler's.
+
+## C371. The emitter's async mode, on main (2026-11-07)
+
+The user, after the async-everywhere experiment (branch
+`experiment/async-everywhere`, its `docs/research/async-everywhere.md`):
+"this async codegen is promising", "keep going". The experiment's switch,
+a constant, made a mode of the one emitter: `kfx --async PROGRAM.unit DIR`
+writes every procedure as an `async fn` that returns a `Result`; without it,
+the Rust is as before, byte for byte.
+- **The mode** is a fact the driver adds (`moded-facts`: `async-mode` at no
+  place, -1), read through the emitter's fact index (`async-mode?`), so
+  that no structure changed. Not with `--cache` yet: the memos' keys would
+  not tell the modes apart.
+- **The checker, the same in both modes**: what a program means is not the
+  mode's. It now notes, whatever the mode, a primitive's call (`prim-call`,
+  where a call's head is found a primitive) and a named procedure that is
+  no local used as a value (`proc-value N`, and `prim-ref` for a
+  primitive's), which only the async mode reads.
+- **The emitter reads facts through `mfact?`**: in the async mode every
+  procedure, lambda, handler and prompt body suspends and may abort; a call
+  is awaited and `?`'d if its callee is a KFX procedure (`kfx-callee?`: a
+  local, a procedure value, or a name no form's keyword, no primitive's,
+  no prelude's, no constructor's), and its future boxed only if the callee
+  is of the group being written (`boxed-call?`, `%rec`: a definition sees
+  only those before it, so only a group's calls close a cycle); a named
+  procedure as a value is a closure of its future, a primitive's lifted;
+  nothing is `Send + Sync` (the scheduler is one thread's). The written
+  types say so too (`suspending-effect?`, `fallible-effect?`,
+  `crossing-effect?`).
+- **A latent bug fixed**: a procedure type both suspending (or fallible) and
+  of an effect a process may have lost its closing ` + Send + Sync)`.
+- **Checked** (`scripts/async-check.sh`, in the full check beside the
+  self-hosting run, 105 s): the compiler compiled `--async`, built as a
+  crate of its own, makes `boot/src/kfx/` in plain mode, as the
+  synchronous one does, and its own async Rust again with `--async`.
+- **Measured**: the async compiler on itself 7.3-8.5 s (the experiment's
+  6.7 s had none of the mode's tests); the synchronous one 2.03 s to
+  2.11 s for the facts now noted in both modes and the mode's test at each
+  fact read, 4%.
+- **Next**: fallibility apart from asynchrony (a preemption is no abort);
+  procedures that cannot reach a suspension (leaves, bounded work) kept
+  synchronous; fuel charged and the tasks the scheduler's; the corpus in
+  both modes.

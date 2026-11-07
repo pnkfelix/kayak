@@ -4744,6 +4744,7 @@ pub mod expressions {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc, wher) => {
+                    let s = mode_free_value_facts(s, file, pos, wher, sc);
                     if string_eq_p(wher, str_lit("global")) {
                         let tagcase_ = sc;
                         match *tagcase_ {
@@ -4766,6 +4767,36 @@ pub mod expressions {
                         }
                     } else {
                         s
+                    }
+                }
+            }
+        }
+    }
+
+    /// A named procedure, not a local, as a value (C371): `proc-value N`, for
+    /// the emitter's async mode, which makes every procedure value a future;
+    /// and `prim-ref` if it is a primitive's, whose Rust is a plain function.
+    pub fn mode_free_value_facts(s: &'static St, file: Str, pos: i64, wher: Str, sc: &'static Scheme) -> &'static St {
+        if (string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("narrowed")) || string_eq_p(wher, str_lit("broken")) || string_eq_p(wher, str_lit("module"))) {
+            s
+        } else {
+            let tagcase_ = sc;
+            match *tagcase_ {
+                Scheme::Scheme(tv, t) => {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            let s = note_fact(s, file, pos, string_append(str_lit("proc-value "), i64_to_string(size(ps))));
+                            if string_eq_p(wher, str_lit("prim")) {
+                                note_fact(s, file, pos, str_lit("prim-ref"))
+                            } else {
+                                s
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            s
+                        }
                     }
                 }
             }
@@ -11681,6 +11712,18 @@ pub mod expressions {
             scope_bind(string_append(str_lit("%form "), h), v)
         } else {
             scope_bind(h, v)
+        };
+        let s = if (not(null_p(found)) && {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    string_eq_p(w, str_lit("prim"))
+                }
+            }
+        }) {
+            note_fact(s, cv_file(v), cv_pos(v), str_lit("prim-call"))
+        } else {
+            s
         };
         if (not(null_p(found)) && {
             let tagcase_ = car(found);

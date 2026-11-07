@@ -79,6 +79,25 @@
 
 (define-datatype ctx (ctx strings tagofs strings strings typeds facts fidx families typeds typeds))
 
+"The async mode (C371): the prelude's names (kfx/prelude.fx), which the
+ checker binds as globals though kayak-rt's functions are their Rust, so
+ that their calls are not awaited; made once (a `cons` first: a constant is
+ kept only if it is seen to make pairs or allocate)."
+(define prelude-names strings
+  (cons "%prelude-names" (map (lambda ((e sexp)) (sym-name (car (items e)))) (read-all prelude "" 1))))
+
+"The async mode: the names the checker types as primitives (check-defs.kfx,
+ the lang items' `runtime-fn` and `emitted` rows), which the checker's
+ `prim-call` does not mark where the emitter writes the call itself (a
+ `cons`, a pair's operations), and the three control primitives typed by
+ rules of their own (check-exprs.kfx's `control-schemes`); made once."
+(define primitive-names strings
+  (cons "make-continuation-prompt-tag"
+        (cons "abort-current-continuation"
+              (cons "escape"
+                    (map (lambda ((e sexp)) (sym-name (car (items e))))
+                         (onto (read-all primitives "" 1) (read-all process-forms "" 1)))))))
+
 (define-datatype tail
   (value)
   (returns string strings bool bool)
@@ -146,6 +165,12 @@
               (any? (lambda ((f fact))
                       (tagcase f (fact (ff fp fw) (and (i64= fp pos) (string=? fw what) (string=? ff file)))))
                     (fidx-at fx pos))))))
+
+      (define async-mode? (subr kfx (ctx) bool)
+        (lambda (c)
+          "Whether every procedure is an `async fn` (C371, `kfx --async`): as if
+           each may suspend, and so abort; what the program means the same."
+          (ctx-fact? c "" -1 "async-mode")))
 
       (define-rec
         (first-fact (subr kfx (facts string i64 string) string)
@@ -791,7 +816,7 @@
         (lambda (c e h acc)
           "A call's operator, and its turbofish if it is a function's path."
           (let ((acc (if (and (string=? h "with-mark") (string=? (local-kind h (ctx-locals c)) "")
-                              (ctx-fact? c (datum-file e) (datum-pos e) "suspending-call"))
+                              (or (async-mode? c) (ctx-fact? c (datum-file e) (datum-pos e) "suspending-call")))
                          ;; Its body may suspend: its mark pushed for each poll (C106).
                          (put "with_mark_async" acc)
                          (put (callee c h) acc))))
@@ -1168,8 +1193,9 @@
       (fallible-effect? (subr kfx (ctx sexp) bool)
         (lambda (c e)
           "Whether a written effect may abort, its abbreviations seen through: a
-           procedure of it returns a `Result` (docs/research/escapes.md)."
-          (tagcase e
+           procedure of it returns a `Result` (docs/research/escapes.md); any,
+           in the async mode."
+          (or (async-mode? c) (tagcase e
             (sym (n at-file at-pos) (or (effect-binder? c n)
                                         (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (fallible-effect? c body)))))
                                               (ctx-effects c))))
@@ -1178,15 +1204,16 @@
                     ((sym-is? (car xs) "comefrom") #t)
                     ((sym-is? (car xs) "maxeff") (any? (lambda ((x sexp)) (fallible-effect? c x)) (cdr xs)))
                     (else #f)))
-            (else other #f))))
+            (else other #f)))))
       (crossing-effect? (subr kfx (ctx sexp) bool)
         (lambda (c e)
           "Whether a written effect is one a process may have (C101), as the
            checker's `crossing?` says of the same effect: a procedure of it is
            `Send + Sync` in Rust, so that it may be held on another thread
            (C102). `pure` is one, and so the checker writes such an effect,
-           and `%local` any other that neither aborts nor suspends."
-          (tagcase e
+           and `%local` any other that neither aborts nor suspends. None, in the
+           async mode, whose scheduler is one thread's (C371)."
+          (and (not (async-mode? c)) (tagcase e
             (sym (n at-file at-pos)
               (cond ((or (string=? n "pure") (string=? n "spin") (string=? n "nondet")) #t)
                     ((or (string=? n "%local") (effect-binder? c n)) #f)
@@ -1201,12 +1228,13 @@
                            (head-is? (second xs) "const") (head-is? (second xs) "acyclic")))
                       ((sym-is? (car xs) "alloc") (or (has-prefix? at "@") (string=? at "acyclic")))
                       (else #f))))
-            (else other #f))))
+            (else other #f)))))
       (suspending-effect? (subr kfx (ctx sexp) bool)
         (lambda (c e)
           "Whether a written effect may suspend, a `comefrom` (C45): a procedure
-           of it is an `async fn`, or as a value returns a boxed future."
-          (tagcase e
+           of it is an `async fn`, or as a value returns a boxed future; any, in
+           the async mode."
+          (or (async-mode? c) (tagcase e
             (sym (n at-file at-pos) (or (effect-binder? c n)
                                         (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (suspending-effect? c body)))))
                                               (ctx-effects c))))
@@ -1214,12 +1242,13 @@
               (cond ((sym-is? (car xs) "comefrom") #t)
                     ((sym-is? (car xs) "maxeff") (any? (lambda ((x sexp)) (suspending-effect? c x)) (cdr xs)))
                     (else #f)))
-            (else other #f)))))
+            (else other #f))))))
 
     (define fact-at? (subr kfx (ctx sexp string) bool)
       (lambda (c e what)
         "Whether the checker found `what` about the datum `e`."
         (ctx-fact? c (datum-file e) (datum-pos e) what)))
+
 
     (define maker-form? (subr kfx (ctx sexp) bool)
       (lambda (c form)
@@ -1251,6 +1280,44 @@
 
     (define ctx-locals (subr kfx (ctx) strings)
       (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) ls))))
+
+    (define in-async-mode? (subr kfx (ctx) bool)
+      (lambda (c) "`async-mode?`, for the modules that include this one." (async-mode? c)))
+
+    (define kfx-callee? (subr kfx (ctx sexp) bool)
+      (lambda (c e)
+        "Whether call `e`'s callee is a KFX procedure, whose Rust the async mode
+         makes a future: a local, a procedure value, or a name that is no
+         form's keyword, no primitive's (`prim-call`), no prelude's and no
+         constructor's."
+        (tagcase (car (items e))
+          (sym (h f p) (or (not (string=? (local-kind h (ctx-locals c)) ""))
+                           (not (or (fact-at? c e "prim-call") (form-keyword? h) (string-member? h prelude-names) (string-member? h primitive-names)
+                                    (any? (lambda ((x tagof)) (tagcase x (tagof (t d) (string=? t h)))) (ctx-tags c))))))
+          (else other #t))))
+
+    (define mfact? (subr kfx (ctx sexp string) bool)
+      (lambda (c e what)
+        "The checker's fact `what` at `e`, as the emitter's mode reads it: in the
+         async mode every procedure suspends and may abort, and so does every
+         call of a KFX procedure, and none is `Send + Sync`."
+        (cond ((not (async-mode? c)) (fact-at? c e what))
+              ((or (string=? what "suspends") (string=? what "fallible") (string=? what "suspending-body")) #t)
+              ((or (string=? what "sync") (string=? what "wrap-sync")) #f)
+              ((or (string=? what "suspending-call") (string=? what "fallible-call")) (or (kfx-callee? c e) (fact-at? c e what)))
+              (else (fact-at? c e what)))))
+
+    (define boxed-call? (subr kfx (ctx sexp) bool)
+      (lambda (c e)
+        "Whether call `e`'s future is boxed: always, but in the async mode, where
+         only a call of a member of the group being written is (`put-rec`,
+         `%rec`), the only calls that may close a cycle, since a definition
+         sees only those before it; a procedure value's call returns a boxed
+         future already."
+        (or (not (async-mode? c))
+            (tagcase (car (items e))
+              (sym (h f p) (string-member? (string-append "%rec " h) (ctx-locals c)))
+              (else other #f)))))
 
     (define module-body (subr kfx (ctx string) sexps)
       (lambda (c name)
@@ -1568,9 +1635,9 @@
                             (acc (put-types c (items (third xs)) acc))
                             (acc (put ") -> " acc)))
                        (cond ((suspending-effect? c (second xs))
-                              (put ">" (put-type c (fourth xs) (put "kayak_rt::suspend::Body<" acc))))
+                              (put (if sync "> + Send + Sync)" ">") (put-type c (fourth xs) (put "kayak_rt::suspend::Body<" acc))))
                              ((fallible-effect? c (second xs))
-                              (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc))))
+                              (put (if sync ", Unwind> + Send + Sync)" ", Unwind>") (put-type c (fourth xs) (put "Result<" acc))))
                              (sync (put " + Send + Sync)" (put-type c (fourth xs) acc)))
                              (else (put-type c (fourth xs) acc)))))
                     ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (unquoted (sym-name (second xs)))) (ctx-locals c)))
@@ -2004,7 +2071,7 @@
                   wanted (C82): a closure boxing each argument and the result."
                  (let* ((hows (map sym-name (read-all (fact-in fs e "wrap ") "" 1)))
                         (arity (i64- (size hows) 1))
-                        (acc (put (string-append "lambda" (string-append (i64->string arity) (if (fact-at? c e "wrap-sync") "s(move |" "(move |"))) acc))
+                        (acc (put (string-append "lambda" (string-append (i64->string arity) (if (mfact? c e "wrap-sync") "s(move |" "(move |"))) acc))
                         (acc (put-arg-names 0 arity acc))
                         (acc (put "| " acc))
                         (acc (put-box-open (last hows) acc))
@@ -2062,15 +2129,19 @@
                    (sym (s at-file at-pos)
                      (cond ((and (string=? s "nil") (string=? (local-kind s (ctx-locals c)) ""))
                             (put "()" (put-turbofish c e (put "nil" acc))))
-                           ((not (string=? (fact-in fs e "async-global ") ""))
-                            (let* ((arity (digits-number (fact-in fs e "async-global ")))
+                           ((not (string=? (fact-in fs e (if (async-mode? c) "proc-value " "async-global ")) ""))
+                            "A named procedure that may suspend, as a value: a closure that
+                             boxes its future (C46); in the async mode any (C371), a
+                             primitive's lifted, its value a ready future."
+                            (let* ((arity (digits-number (fact-in fs e (if (async-mode? c) "proc-value " "async-global "))))
+                                   (prim (and (async-mode? c) (or (fact-at? c e "prim-ref") (string-member? s prelude-names))))
                                    (acc (put (string-append "lambda" (string-append (i64->string arity) "(move |")) acc))
                                    (acc (put-arg-names 0 arity acc))
-                                   (acc (put "| kayak_rt::suspend::body(" acc))
+                                   (acc (put (if prim "| kayak_rt::suspend::body(async move { Ok(" "| kayak_rt::suspend::body(") acc))
                                    (acc (put (mangle s) acc))
                                    (acc (put "(" acc))
                                    (acc (put-arg-names 0 arity acc)))
-                              (put ")))" acc)))
+                              (put (if prim ")) }))" ")))") acc)))
                            (else (put-var c s acc))))
                    (lst (xs src-file src-line src-pos)
                      (cond ((and (fact-in? fs e "void-call") (not (abort? c e))) (put " {}" (put-call c e xs n t (put "match " acc))))
@@ -2099,11 +2170,13 @@
                             (acc (put-var c h acc))
                             (acc (put "))(" acc)))
                        (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc))))))
-                    ((not (fact-at? c e "suspending-call")) (put-form c e h (cdr xs) n t acc))
+                    ((not (mfact? c e "suspending-call")) (put-form c e h (cdr xs) n t acc))
+                    ((and (async-here? c) (not (boxed-call? c e))) (put-form c e h (cdr xs) n t acc))
                     ((async-here? c) (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::body(" acc)))
                     (else (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::block(kayak_rt::suspend::body(" acc)))))
             (else head
-              (let* ((acc (cond ((not (fact-at? c e "suspending-call")) acc)
+              (let* ((acc (cond ((not (mfact? c e "suspending-call")) acc)
+                                ((and (async-here? c) (not (boxed-call? c e))) acc)
                                 ((async-here? c) (put "kayak_rt::suspend::body(" acc))
                                 (else (put "kayak_rt::suspend::block(kayak_rt::suspend::body(" acc))))
                      (acc (put "(" acc))
@@ -2411,14 +2484,14 @@
            `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity."
           (let* ((acc (put "lambda" acc))
                  (acc (put (i64->string (size params)) acc))
-                 (acc (put (if (fact-at? c e "sync") "s(move |" "(move |") acc))
+                 (acc (put (if (mfact? c e "sync") "s(move |" "(move |") acc))
                  (acc (put-lambda-params c (lambda-params-typed c e params) acc))
                  (acc (put "| " acc)))
-            (cond ((fact-at? c e "suspends")
+            (cond ((mfact? c e "suspends")
                    "One that may suspend returns its body as a future, boxed (C45)."
                    (put "))" (put-block (with-locals c (cons "%async" (cons "%fallible" (map param-name params)))) body n (ok-value)
                                         (put "kayak_rt::suspend::body(async move " acc))))
-                  ((fact-at? c e "fallible")
+                  ((mfact? c e "fallible")
                    (put ")" (put-block (with-locals c (cons "%sync" (cons "%fallible" (map param-name params)))) body n (ok-value) acc)))
                   (else (put ")" (put-block (with-locals c (cons "%sync" (cons "%infallible" (map param-name params)))) body n (value) acc)))))))
 
@@ -2467,7 +2540,7 @@
            top-level procedure's is, so that it grows no stack."
           (let* ((xs (items lam))
                  (names (map param-name (items (second xs)))))
-            (tail-calls? (returns f names #t (fact-at? c lam "fallible")) (last (cdr (cdr xs)))))))
+            (tail-calls? (returns f names #t (mfact? c lam "fallible")) (last (cdr (cdr xs)))))))
 
       (put-looping-lambda (subr kfx (ctx string sexp i64 chars) chars)
         (lambda (c f lam n acc)
@@ -2477,11 +2550,11 @@
           (let* ((xs (items lam))
                  (params (lambda-params-typed c lam (items (second xs))))
                  (names (map param-name params))
-                 (fallible (fact-at? c lam "fallible"))
-                 (suspends (fact-at? c lam "suspends"))
+                 (fallible (mfact? c lam "fallible"))
+                 (suspends (mfact? c lam "suspends"))
                  (t (returns f names #t fallible))
                  (inner (with-locals c (cons (if suspends "%async" "%sync") (cons (if fallible "%fallible" "%infallible") names))))
-                 (acc (put (string-append "lambda" (string-append (i64->string (size params)) (if (fact-at? c lam "sync") "s(move |" "(move |"))) acc))
+                 (acc (put (string-append "lambda" (string-append (i64->string (size params)) (if (mfact? c lam "sync") "s(move |" "(move |"))) acc))
                  (acc (put-sep (lambda ((p sexp) acc)
                                  (tagcase p
                                    (lst (pt f2 l2 p2) (put-type c (second pt) (put ": " (put (mangle (sym-name (car pt))) (put "mut " acc)))))
@@ -2738,7 +2811,7 @@
                  (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", "))
                  (names (split-words (fact-with c e "letrena-names ")))
                  (types (read-all (fact-with c e "letrena-locals ") "" 1))
-                 (fallible (fact-at? c e "fallible"))
+                 (fallible (mfact? c e "fallible"))
                  (inner (with-locals c (cons (string-append "%letrena " r) (cons "%sync" (cons (if fallible "%fallible" "%infallible") (cons r names))))))
                  (held (distinct-strings (concat (map (lambda ((x sexp)) (held-at inner (string-append "'" r) x)) (datums-in (cdr xs))))))
                  (n1 (i64+ n 1))
@@ -2944,7 +3017,7 @@
            `Result`, and its abort to the tag handled; any other abort passed on,
            if the function written may abort, else none can come (the checker
            found the prompt contains every abort its body may make)."
-          (if (fact-at? c e "suspending-body")
+          (if (mfact? c e "suspending-body")
               (put-suspending-prompt c e xs n acc)
           (let* ((inner (with-locals c (list "%sync" "%fallible")))
                  (acc (put-nl (i64+ n 1) (put "{" acc)))
@@ -3004,8 +3077,8 @@
         (lambda (c h payload n acc)
           "A prompt's handler called on the payload: awaited if it may suspend,
            and `?`ed if it may abort (C46), as a call of a procedure value."
-          (let* ((suspends (fact-at? c h "suspends"))
-                 (fallible (fact-at? c h "fallible"))
+          (let* ((suspends (mfact? c h "suspends"))
+                 (fallible (mfact? c h "fallible"))
                  (acc (if (and suspends (not (async-here? c))) (put "kayak_rt::suspend::block(" acc) acc))
                  (acc (put "(" acc))
                  (acc (put-exp c h n (value) acc))
@@ -3042,10 +3115,11 @@
         (lambda (c e acc)
           "A call the checker found may abort takes a `?`; one that may suspend
            is awaited first, its future boxed if it is a named procedure's."
-          (let ((acc (cond ((not (fact-at? c e "suspending-call")) acc)
+          (let ((acc (cond ((not (mfact? c e "suspending-call")) acc)
+                           ((and (async-here? c) (not (boxed-call? c e))) (put ".await" acc))
                            ((async-here? c) (put ").await" acc))
                            (else (put "))" acc)))))
-          (cond ((not (fact-at? c e "fallible-call")) acc)
+          (cond ((not (mfact? c e "fallible-call")) acc)
                 ((fallible-here? c) (put "?" acc))
                 (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc))))))
 

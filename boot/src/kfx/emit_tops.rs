@@ -19,7 +19,7 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, kfx_callee_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -642,8 +642,14 @@ pub mod writing {
 
     /// A definition, a `fn`: a procedure's of its parameters; a constant's of
     /// none, run at each use, or, if it allocates, made at its first use and
-    /// kept (C21).
+    /// kept (C21). It may call itself: in the async mode, of its own group
+    /// (`%rec`, C371).
     pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
+        let c = if in_async_mode_p(c) {
+            with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%rec "), sym_name(name)), kayak_rt::nil()))
+        } else {
+            c
+        };
         let binders = if head_is_p(typ, str_lit("poly")) {
             items(second(items(typ)))
         } else {
@@ -800,7 +806,7 @@ pub mod writing {
         }
     }
 
-    pub fn put_rec(mut c: &'static Ctx, mut bindings: Sexps, mut acc: Chars) -> Chars {
+    pub fn put_rec_each(mut c: &'static Ctx, mut bindings: Sexps, mut acc: Chars) -> Chars {
         loop {
             if null_p(bindings) {
                 return acc;
@@ -810,6 +816,18 @@ pub mod writing {
                 continue;
             }
         }
+    }
+
+    /// A group's definitions; in the async mode, each knowing the group
+    /// (`%rec NAME`), whose calls of one another are boxed (C371).
+    pub fn put_rec(c: &'static Ctx, bindings: Sexps, acc: Chars) -> Chars {
+        put_rec_each(if in_async_mode_p(c) {
+            with_locals(c, map(lambda1s(move |b: &'static Sexp| {
+                string_append(str_lit("%rec "), sym_name(car(items(b))))
+            }), bindings))
+        } else {
+            c
+        }, bindings, acc)
     }
 
     pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
@@ -1316,7 +1334,7 @@ pub mod writing {
                 return put(str_lit("    kayak_rt::process::quiesce();\n"), acc);
             } else if toplevel_form_p(car(forms)) {
                 let acc = put(str_lit("    kayak_rt::process::quiesce();\n"), acc);
-                if fact_at_p(c, car(forms), str_lit("suspends")) {
+                if mfact_p(c, car(forms), str_lit("suspends")) {
                     if fact_at_p(c, car(forms), str_lit("void")) {
                         let acc = put(str_lit("    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = "), acc);
                         let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
@@ -1359,7 +1377,7 @@ pub mod writing {
     /// A typed global's value, of no type parameters, no procedure and not
     /// suspending: a Rust `fn` of no arguments.
     pub fn made_here_p(c: &'static Ctx, f: &'static Sexp) -> bool {
-        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(fact_at_p(c, f, str_lit("suspends"))) && not(any_p(lambda1s(move |h: Str| {
+        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(mfact_p(c, f, str_lit("suspends"))) && not(any_p(lambda1s(move |h: Str| {
             head_is_p(third(items(f)), h)
         }), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("dsubr"), kayak_rt::nil()))))))) && not(any_p(lambda1s(move |h: Str| {
             head_is_p(fourth(items(f)), h)

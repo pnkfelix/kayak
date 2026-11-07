@@ -2138,13 +2138,29 @@
                 s
                 (tagcase (car found)
                   (bind (n sc wher)
+                   (let ((s (mode-free-value-facts s file pos wher sc)))
                     (if (string=? wher "global")
                         (tagcase sc
                           (scheme (tv t)
                             (tagcase t
                               (ty-proc (es ps r) (if (suspends? es) (note-fact s file pos (string-append "async-global " (i64->string (size ps)))) s))
                               (else other s))))
-                        s)))))))
+                        s))))))))
+
+      (mode-free-value-facts (subr kfx (st string i64 string scheme) st)
+        (lambda (s file pos wher sc)
+          "A named procedure, not a local, as a value (C371): `proc-value N`, for
+           the emitter's async mode, which makes every procedure value a future;
+           and `prim-ref` if it is a primitive's, whose Rust is a plain function."
+          (if (or (string=? wher "local") (string=? wher "narrowed") (string=? wher "broken") (string=? wher "module"))
+              s
+              (tagcase sc
+                (scheme (tv t)
+                  (tagcase t
+                    (ty-proc (es ps r)
+                      (let ((s (note-fact s file pos (string-append "proc-value " (i64->string (size ps))))))
+                        (if (string=? wher "prim") (note-fact s file pos "prim-ref") s)))
+                    (else other s)))))))
 
       (synth-name (subr kfx (cv st string i64) res)
         (lambda (v s name at-pos)
@@ -5206,9 +5222,14 @@
            local's value is a call of a procedure not known, so `spin` too. A
            form of processes that is a call is the form, whatever the program
            binds its name to, as FX-26 parses it (C101)."
-          (let ((found (if (process-call? h)
-                           (scope-bind (string-append "%form " h) v)
-                           (scope-bind h v))))
+          (let* ((found (if (process-call? h)
+                            (scope-bind (string-append "%form " h) v)
+                            (scope-bind h v)))
+                 ;; A primitive's call (C371): Rust's function, which the
+                 ;; emitter's async mode neither awaits nor boxes.
+                 (s (if (and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "prim"))))
+                        (note-fact s (cv-file v) (cv-pos v) "prim-call")
+                        s)))
             (cond ((and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "broken"))))
                    "A call of a global broken by a redefinition (C202)."
                    (refuse v (broken-said v h)))
