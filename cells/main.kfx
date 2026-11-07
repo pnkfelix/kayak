@@ -192,6 +192,17 @@ and status 1.
                 (most-shown t total (i64- n 1) what
                             (string-append out (string-append "  " (string-append (padded-to (i64->string c) 12) (string-append (padded-to (percent c total) 8) (string-append "  " (string-append (what (flatarray-ref-i64 t at)) "\n"))))))))))))))
 
+"On a stack overflow (C373), the words most often on the return stack,
+ each entry's word the one it returns into: what recursed too deep."
+(define-rec
+  (rs-tallied! (subr cm ((flatarrayof i64 @c) i64 i64) (flatarrayof i64 @c))
+    (lambda (into i n) (if (i64>= i n) into (rs-tallied! (tally-added! into (rs-at (i64* 4 i)) 0 1) (i64+ i 1) n)))))
+(define overflow-shown (subr cm () string)
+  (lambda ()
+    (let ((n (i64-quotient (get rsp) 4)))
+      (most-shown (rs-tallied! (tally-made 256) 0 n) n 8 (lambda ((w i64)) (word-name-of (get words) w))
+                  "the return stack's words, most first:\n"))))
+
 (define profile-shown! (subr driving () unit)
   (lambda ()
     (let* ((total (tally-total (get profile) 0 0))
@@ -267,4 +278,6 @@ and status 1.
                 (cond ((not (string-member? "--main" as)) (begin (say (string-append (written v) "\n")) 0))
                       ((is-fixnum? v) (begin (exit (i64->int (i64-and (fix-val v) 255))) 0))
                       (else 0)))
-              (ran-failed (m) (begin (write-err (string-append "evaluation failed: " (string-append m "\n"))) 1)))))))))
+              (ran-failed (m) (begin (write-err (string-append "evaluation failed: " (string-append m "\n")))
+                                     (if (string-has? m "stack overflow") (begin (write-err (overflow-shown)) #u) #u)
+                                     1)))))))))

@@ -357,6 +357,26 @@ pub fn most_shown(mut t: FlatArray<i64>, mut total: i64, mut n: i64, mut what: &
     }
 }
 
+// On a stack overflow (C373), the words most often on the return stack,
+// each entry's word the one it returns into: what recursed too deep.
+pub fn rs_tallied_x(mut into: FlatArray<i64>, mut i: i64, mut n: i64) -> FlatArray<i64> {
+    loop {
+        if i64_gt_eq(i, n) {
+            return into;
+        } else {
+            (into, i) = (tally_added_x(into, rs_at(i64_star(4i64, i)), 0i64, 1i64), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn overflow_shown() -> Str {
+    let n = i64_quotient(get(rsp()), 4i64);
+    most_shown(rs_tallied_x(tally_made(256i64), 0i64, n), n, 8i64, lambda1(move |w: i64| {
+        word_name_of(get(words()), w)
+    }), str_lit("the return stack's words, most first:\n"))
+}
+
 pub fn profile_shown_x() -> () {
     let total = tally_total(get(profile()), 0i64, 0i64);
     let ws = words_tallied_x(get(profile()), tally_made(256i64), 0i64);
@@ -480,6 +500,12 @@ pub fn cells_main() -> Int {
             }
             Ran::RanFailed(m) => {
                 write_err(string_append(str_lit("evaluation failed: "), string_append(m, str_lit("\n"))));
+                if string_has_p(m, str_lit("stack overflow")) {
+                    write_err(overflow_shown());
+                    ()
+                } else {
+                    ()
+                };
                 int_lit(1)
             }
         }

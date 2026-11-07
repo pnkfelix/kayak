@@ -10285,3 +10285,26 @@ code, generative types).
   makes back their cost; the walk that recursed is not yet found, and
   more facts would find it again (TODO).
 - The synchronous mode's Rust is unchanged, byte for byte.
+
+## C374. `map` no deeper than 4,096 (2026-11-07)
+
+C373's open question, the walk of the facts that overflowed tier 1's stack,
+and the user's "can you rewrite that function to be tail recursive with an
+accumulator?"
+- **Found**, by a report tier 1 now gives on a stack overflow (cells/
+  main.kfx's `overflow-shown`: the words most often on the return stack):
+  `map`, 43,626 of its frames, 99.9% of the stack. `kfx/base.kfx`'s `map`
+  was `(cons (f x) (map f xs))`, as deep as its list, and the facts are
+  mapped over in a dozen places (the `(concat (map ...))` filters).
+- **Tried, as asked**: `map` as a loop with an accumulator (`map-onto`) and
+  one `reverse`. No overflow; but every map then made its list twice, and
+  kayak-rt's heap never frees the first: the compiler on itself 2.07 s to
+  2.6 s, 120 MB more.
+- **Chosen**: `map` recursive for its first `map-deepest` (4,096) elements,
+  which is all of nearly every list it is given, made once; past that, the
+  rest by `map-onto`'s loop and one `reverse` (`map-at`). As deep as 4,096
+  whatever the list. The compiler on itself 2.14 s (2.07 s before; the
+  depth counted at each step), the same memory; on tier 1, with every
+  fact the checker notes kept, no overflow, its output `boot/src/kfx`.
+- C373's dropping of the async mode's facts before the synchronous
+  emitter stays: they are its work, not the other's.

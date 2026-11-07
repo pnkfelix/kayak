@@ -21,13 +21,43 @@ pub type Chars = List<char>;
 pub type Strings = List<Str>;
 
 // Lists, of anything
+
+// `map`'s loop (C373): `f` of each of `xs`, in order, onto `acc` reversed.
+// As `(cons (f x) (map f xs))` alone, `map` was as deep as its list, and on
+// tier 1, whose return stack is 65,536 entries, a list of the program's
+// facts overflowed it.
+pub fn map_onto<A: Copy + 'static, B: Copy + 'static>(mut f: &'static (dyn Fn(A) -> B + Send + Sync), mut xs: List<A>, mut acc: List<B>) -> List<B> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(f(car(xs)), acc));
+            continue;
+        }
+    }
+}
+
+// `map` of a short list recursive, as deep as it, which builds the list
+// once; past `map-deepest` elements, the rest by `map-onto` and one
+// `reverse`, so as deep as `map-deepest` whatever the list.
 #[inline]
-pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map_deepest() -> i64 {
+    4096i64
+}
+
+pub fn map_at<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>, d: i64) -> List<B> {
     if null_p(xs) {
         nil::<B>()
+    } else if i64_gt(d, map_deepest()) {
+        the::<List<B>>(reverse(map_onto(f, xs, nil::<B>())))
     } else {
-        kayak_rt::heap_cons(f(car(xs)), map(f, cdr(xs)))
+        kayak_rt::heap_cons(f(car(xs)), map_at(f, cdr(xs), i64_plus(d, 1i64)))
     }
+}
+
+#[inline]
+pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+    map_at(f, xs, 0i64)
 }
 
 pub fn any_p<A: Copy + 'static>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> bool {

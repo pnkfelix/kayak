@@ -491,12 +491,6 @@ Phase C, FX-26's runtime:
   heap, composable continuations; an interpreter of the IR, kept as the
   reference (Q8); its tasks on the one scheduler.
 - **K6**: Fixpt's programs on it, compared with Fixpt.
-- **A walk of the facts as deep as the list** (C373): with a fact at
-  every call, the compiler run on tier 1 overflowed its stack (65,536
-  return-stack entries). The facts that caused it are dropped in the
-  synchronous mode now; the non-tail recursion over the facts (the
-  emitter's index, `fidx-of`'s sort or `grouped`, or a filter) is to be
-  found and made a loop.
 - **The second self-hosting** (C366): restored on tier 1, checked in the
   full check (`scripts/selfhost-cells.sh`, 97 s, 7.5 GB); the IR engine's
   path (`scripts/selfhost-engine.sh`, C66) is broken (no `rep-nodes`) and

@@ -18,9 +18,29 @@
 
 "Lists, of anything"
 
+"`map`'s loop (C373): `f` of each of `xs`, in order, onto `acc` reversed.
+ As `(cons (f x) (map f xs))` alone, `map` was as deep as its list, and on
+ tier 1, whose return stack is 65,536 entries, a list of the program's
+ facts overflowed it."
+(define map-onto (poly ((a type) (b type))
+                   (subr kfx ((subr kfx (a) b) (listof a acyclic) (listof b acyclic)) (listof b acyclic)))
+  (lambda (f xs acc) (if (null? xs) acc (map-onto f (cdr xs) (cons (f (car xs)) acc)))))
+
+"`map` of a short list recursive, as deep as it, which builds the list
+ once; past `map-deepest` elements, the rest by `map-onto` and one
+ `reverse`, so as deep as `map-deepest` whatever the list."
+(define map-deepest i64 4096)
+
+(define map-at (poly ((a type) (b type))
+                 (subr kfx ((subr kfx (a) b) (listof a acyclic) i64) (listof b acyclic)))
+  (lambda (f xs d)
+    (cond ((null? xs) nil)
+          ((i64> d map-deepest) (the (listof b acyclic) (reverse (map-onto f xs nil))))
+          (else (cons (f (car xs)) (map-at f (cdr xs) (i64+ d 1)))))))
+
 (define map (poly ((a type) (b type))
               (subr kfx ((subr kfx (a) b) (listof a acyclic)) (listof b acyclic)))
-  (lambda (f xs) (if (null? xs) nil (cons (f (car xs)) (map f (cdr xs))))))
+  (lambda (f xs) (map-at f xs 0)))
 
 (define any? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
   (lambda (p xs) (and (not (null? xs)) (or (p (car xs)) (any? p (cdr xs))))))
