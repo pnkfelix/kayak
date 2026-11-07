@@ -38,18 +38,24 @@
 (define moded-facts (subr kfx (facts bool) facts)
   (lambda (fs async) (if async (cons (fact "" -1 "async-mode") fs) (sync-facts fs nil))))
 
+(define ctx-with-facts (subr kfx (ctx facts) ctx)
+  (lambda (c more)
+    "`c` with the facts `more` too, its index made again."
+    (if (null? more)
+        c
+        (tagcase c
+          (ctx (ds ts ks ls xs fs fx ms es mods)
+            (let ((all (onto more fs))) (ctx ds ts ks ls xs all (fidx-of all) ms es mods)))))))
+
 (define leafed (subr kfx (ctx sexps bool) ctx)
   (lambda (c forms async)
-    "In the async mode, `c` with its leaves' facts (C377): procedures kept
-     synchronous."
+    "In the async mode, `c` with its recursion groups' facts (C379), then its
+     leaves' (C377): procedures kept synchronous."
     (if (not async)
         c
-        (let ((more (with writing (leaf-facts c forms))))
-          (if (null? more)
-              c
-              (tagcase c
-                (ctx (ds ts ks ls xs fs fx ms es mods)
-                  (let ((all (onto more fs))) (ctx ds ts ks ls xs all (fidx-of all) ms es mods)))))))))
+        (let ((c (ctx-with-facts c (with writing (rec-facts c forms)))))
+          (ctx-with-facts c (with writing (leaf-facts c forms)))))))
+
 
 (define compile-named (subr kfx (string string fileds bool) string)
   (lambda (file src loaded async)

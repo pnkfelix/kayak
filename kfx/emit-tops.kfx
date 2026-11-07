@@ -9,6 +9,10 @@
 (define-datatype calling (calling string strings))
 (define-type callings (listof calling acyclic))
 
+"A depth-first search's state (C379): the names seen, and those finished,
+ latest first."
+(define-datatype visited (visited strings strings))
+
 "Writing the top level is a module (C92): the emitter included, hidden;
  its helpers hidden too."
 (define writing
@@ -339,9 +343,13 @@
         (lambda (c name typ defined acc)
           "A definition, a `fn`: a procedure's of its parameters; a constant's of
            none, run at each use, or, if it allocates, made at its first use and
-           kept (C21). It may call itself: in the async mode, of its own group
-           (`%rec`, C371)."
-          (let* ((c (if (in-async-mode? c) (with-locals c (list (string-append "%rec " (sym-name name)))) c))
+           kept (C21). It may call itself: in the async mode, it and the
+           procedures of its recursion group (`recs`, C379) are `%rec`, whose
+           calls are boxed (C371)."
+          (let* ((c (if (in-async-mode? c)
+                        (with-locals c (cons (string-append "%rec " (sym-name name))
+                                             (map (lambda ((x string)) (string-append "%rec " x)) (split-words (fact-said c name "recs ")))))
+                        c))
                  (binders (if (head-is? typ "poly") (items (second (items typ))) nil))
                  (places (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) binders)))
                  (lives (if (may-suspend? c binders typ) nil (free-regions binders)))
@@ -435,12 +443,10 @@
 
       (define put-rec (subr kfx (ctx sexps chars) chars)
         (lambda (c bindings acc)
-          "A group's definitions; in the async mode, each knowing the group
-           (`%rec NAME`), whose calls of one another are boxed (C371)."
-          (put-rec-each (if (in-async-mode? c)
-                            (with-locals c (map (lambda ((b sexp)) (string-append "%rec " (sym-name (car (items b))))) bindings))
-                            c)
-                        bindings acc)))
+          "A group's definitions; in the async mode, each knowing its own
+           recursion group, which may be less than the group (`put-define`,
+           C379)."
+          (put-rec-each c bindings acc)))
 
       (define put-variants (subr kfx (ctx sexps chars) chars)
         (lambda (c variants acc)
@@ -994,9 +1000,7 @@
                                      (let ((found (module-body c (string-append "%maker-iface " iface-name)))) (if (null? found) nil (cdr (items (car found))))))))
                  (defs (maker-defs (cdr (items (third (items lam))))))
                  (siblings (map (lambda ((d sexp)) (sym-name (car (items d)))) defs))
-                 ;; In the async mode, its items one group (`%rec`, C376).
-                 (c (with-locals c (cons (string-append "%maker-needs " name)
-                                         (if (in-async-mode? c) (map (lambda ((x string)) (string-append "%rec " x)) siblings) nil))))
+                 (c (with-locals c (list (string-append "%maker-needs " name))))
                  (cp (with-locals c (list (string-append "%letrena " p) (string-append "%placeparam " p))))
                  (pt (string-append "Place_" (camel p)))
                  (named (concat-strings (list iface "<" (lifetime p) ", " pt ">")))
@@ -1103,15 +1107,7 @@
                                                              forms))
                                                 (without ks (item-values forms)))
                                           ls xs fs fx ms es mods)))))
-            ;; In the async mode, its procedures one group (`%rec`, C376): they
-            ;; may call each other with no `define-rec`.
-            (mparts (with-locals (collect forms outer)
-                                 (cons (string-append "%in " m)
-                                       (if (in-async-mode? c)
-                                           (map (lambda ((x string)) (string-append "%rec " x))
-                                                (without (without (item-values forms) (item-constants forms)) (item-constructors forms)))
-                                           nil)))
-                    forms))))
+            (mparts (with-locals (collect forms outer) (list (string-append "%in " m))) forms))))
 
       (put-module-around (subr kfx (ctx string chars chars) chars)
         (lambda (c m body acc)
@@ -1134,6 +1130,118 @@
                         (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
                    (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
                 (else (put-tops c (cdr forms) (put-top c (car forms) acc)))))))
+
+    "Recursion groups (C379): in the async mode, a call is boxed only where
+     a cycle of calls may pass, as Rust needs (E0733), and fuel is paid
+     there (C378). A scope's procedures, the program's top level or a
+     module's body (a maker's too), may call each other with no
+     `define-rec` in a module, and a `define-rec`'s members need not all
+     recur: the groups are the strongly connected components of the
+     scope's graph of direct calls (Kosaraju's two passes). Each procedure
+     of a group of more than one, or that calls itself, has the fact `recs
+     NAME ...` at its name, its group's names."
+    (define rec-facts (subr kfx (ctx sexps) facts)
+      (lambda (c forms)
+        (concat (map (lambda ((scope sexps)) (scope-rec-facts c scope))
+                     (cons forms (module-bodies forms nil))))))
+
+    (define-rec
+      (module-bodies (subr kfx (sexps (listof sexps acyclic)) (listof sexps acyclic))
+        (lambda (es acc)
+          "Onto `acc`, the body of each `module` form in `es`, at any depth."
+          (if (null? es)
+              acc
+              (module-bodies (cdr es)
+                (tagcase (car es)
+                  (lst (xs f l p)
+                    (module-bodies xs (if (head-is? (car es) "module") (cons (cdr xs) acc) acc)))
+                  (else other acc)))))))
+
+    (define scope-rec-facts (subr kfx (ctx sexps) facts)
+      (lambda (c scope)
+        (let* ((defs (concat (map scope-definitions scope)))
+               (names (map (lambda ((d sexp)) (sym-name (car (items d)))) defs))
+               (graph (map (lambda ((d sexp))
+                             (let ((callees (calls-in c (cdr (items d)) nil)))
+                               (calling (sym-name (car (items d))) (filter (lambda ((m string)) (string-member? m names)) callees))))
+                           defs))
+               (groups (sccs graph)))
+          (concat (map (lambda ((d sexp))
+                         (let* ((n (car (items d)))
+                                (group (group-of (sym-name n) groups graph)))
+                           (if (null? group) nil (the facts (list (fact (datum-file n) (datum-pos n) (string-append "recs " (words-of group))))))))
+                       defs)))))
+
+    (define scope-definitions (subr kfx (sexp) sexps)
+      (lambda (f)
+        "A scope's form's procedures, each `(name body ...)`: a `define`'s, a
+         `define-rec`'s members, those in a `hide`."
+        (cond ((head-is? f "hide") (concat (map scope-definitions (cdr (items f)))))
+              ((and (or (head-is? f "define") (head-is? f "define*")) (i64>= (size (items f)) 3))
+               (tagcase (second (items f))
+                 (sym (n nf np) (the sexps (list (lst (cdr (items f)) "" 0 0))))
+                 (else other nil)))
+              ((head-is? f "define-rec")
+               (concat (map (lambda ((b sexp)) (tagcase b (lst (bs bf bl bp) (the sexps (list b))) (else other nil))) (cdr (items f)))))
+              (else nil))))
+
+    (define group-of (subr kfx (string (listof strings acyclic) callings) strings)
+      (lambda (n groups graph)
+        "`n`'s group, if it is more than `n`, or `n` calls itself; else none."
+        (let ((found (concat (map (lambda ((g strings)) (if (string-member? n g) (the (listof strings acyclic) (list g)) nil)) groups))))
+          (cond ((null? found) nil)
+                ((not (null? (cdr (car found)))) (car found))
+                ((string-member? n (callees-of n graph)) (car found))
+                (else nil)))))
+
+    (define callees-of (subr kfx (string callings) strings)
+      (lambda (n graph)
+        (let ((found (concat (map (lambda ((x calling)) (tagcase x (calling (m cs) (if (string=? m n) cs nil)))) graph))))
+          found)))
+
+    (define sccs (subr kfx (callings) (listof strings acyclic))
+      (lambda (graph)
+        "The graph's strongly connected components: names in the order a
+         depth-first search finishes them, then, latest first, each not yet
+         placed with all it reaches in the graph reversed and not yet placed."
+        (let* ((order (finish-all graph (map (lambda ((x calling)) (tagcase x (calling (n cs) n))) graph) nil nil))
+               (reversed (map (lambda ((x calling))
+                                (tagcase x
+                                  (calling (n cs)
+                                    (calling n (concat (map (lambda ((y calling)) (tagcase y (calling (m ds) (if (string-member? n ds) (the strings (list m)) nil)))) graph))))))
+                              graph)))
+          (components reversed order nil nil))))
+
+    (define-rec
+      (finish-all (subr kfx (callings strings strings strings) strings)
+        (lambda (graph todo seen done)
+          "`done`, the names finished, latest first, after a search from each
+           of `todo` not `seen`."
+          (if (null? todo)
+              done
+              (if (string-member? (car todo) seen)
+                  (finish-all graph (cdr todo) seen done)
+                  (tagcase (visit graph (car todo) seen done)
+                    (visited (seen2 done2) (finish-all graph (cdr todo) seen2 done2)))))))
+      (visit (subr kfx (callings string strings strings) visited)
+        (lambda (graph n seen done)
+          "A search from `n`: what is seen then, and `n` finished after all it reaches."
+          (tagcase (visit-each graph (callees-of n graph) (cons n seen) done)
+            (visited (seen2 done2) (visited seen2 (cons n done2))))))
+      (visit-each (subr kfx (callings strings strings strings) visited)
+        (lambda (graph ns seen done)
+          (cond ((null? ns) (visited seen done))
+                ((string-member? (car ns) seen) (visit-each graph (cdr ns) seen done))
+                (else (tagcase (visit graph (car ns) seen done)
+                        (visited (seen2 done2) (visit-each graph (cdr ns) seen2 done2))))))))
+
+    (define-rec
+      (components (subr kfx (callings strings strings (listof strings acyclic)) (listof strings acyclic))
+        (lambda (reversed order placed acc)
+          (cond ((null? order) acc)
+                ((string-member? (car order) placed) (components reversed (cdr order) placed acc))
+                (else (tagcase (visit reversed (car order) placed nil)
+                        (visited (placed2 group) (components reversed (cdr order) placed2 (cons group acc)))))))))
 
     "Leaves (C377): in the async mode, a top-level procedure that calls only
      primitives, constructors and leaves is a plain `fn`: it can wait for
@@ -1187,8 +1295,7 @@
                (head-is? (unpoly (third xs)) "lambda")
                (head-is? (unpoly (second xs)) "subr")
                (not (comefrom-effect? c (second (items (unpoly (second xs))))))
-               (let* ((group (map (lambda ((g sexp)) (string-append "%rec " (sym-name g))) (cdr (cdr (cdr xs)))))
-                      (written (put-define (with-locals c (cons "%probe" group)) (car xs) (second xs) (third xs) nil)))
+               (let ((written (put-define (with-locals c (list "%probe")) (car xs) (second xs) (third xs) nil)))
                  ;; The Rust newest first, so `.await` backwards.
                  (not (chars-have? written (string-chars "tiawa."))))))))
 

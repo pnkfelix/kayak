@@ -77,24 +77,29 @@ pub fn moded_facts(fs: Facts, r#async: bool) -> Facts {
     }
 }
 
-/// In the async mode, `c` with its leaves' facts (C377): procedures kept
-/// synchronous.
+/// `c` with the facts `more` too, its index made again.
+pub fn ctx_with_facts(c: &'static Ctx, more: Facts) -> &'static Ctx {
+    if null_p(more) {
+        c
+    } else {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                let all = onto(more, fs);
+                ctx(ds, ts, ks, ls, xs, all, fidx_of(all), ms, es, mods)
+            }
+        }
+    }
+}
+
+/// In the async mode, `c` with its recursion groups' facts (C379), then its
+/// leaves' (C377): procedures kept synchronous.
 pub fn leafed(c: &'static Ctx, forms: Sexps, r#async: bool) -> &'static Ctx {
     if not(r#async) {
         c
     } else {
-        let more = writing::leaf_facts(c, forms);
-        if null_p(more) {
-            c
-        } else {
-            let tagcase_ = c;
-            match *tagcase_ {
-                Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
-                    let all = onto(more, fs);
-                    ctx(ds, ts, ks, ls, xs, all, fidx_of(all), ms, es, mods)
-                }
-            }
-        }
+        let c = ctx_with_facts(c, writing::rec_facts(c, forms));
+        ctx_with_facts(c, writing::leaf_facts(c, forms))
     }
 }
 

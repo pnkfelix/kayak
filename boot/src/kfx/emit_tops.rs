@@ -26,6 +26,16 @@ pub fn calling(f0: Str, f1: Strings) -> &'static Calling {
 
 pub type Callings = List<&'static Calling>;
 
+// A depth-first search's state (C379): the names seen, and those finished,
+// latest first.
+pub enum Visited {
+    Visited(Strings, Strings),
+}
+
+pub fn visited(f0: Strings, f1: Strings) -> &'static Visited {
+    kayak_rt::heap_alloc(Visited::Visited(f0, f1))
+}
+
 // Writing the top level is a module (C92): the emitter included, hidden;
 // its helpers hidden too.
 pub mod writing {
@@ -673,11 +683,14 @@ pub mod writing {
 
     /// A definition, a `fn`: a procedure's of its parameters; a constant's of
     /// none, run at each use, or, if it allocates, made at its first use and
-    /// kept (C21). It may call itself: in the async mode, of its own group
-    /// (`%rec`, C371).
+    /// kept (C21). It may call itself: in the async mode, it and the
+    /// procedures of its recursion group (`recs`, C379) are `%rec`, whose
+    /// calls are boxed (C371).
     pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
         let c = if in_async_mode_p(c) {
-            with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%rec "), sym_name(name)), kayak_rt::nil()))
+            with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%rec "), sym_name(name)), map(lambda1s(move |x: Str| {
+                string_append(str_lit("%rec "), x)
+            }), split_words(fact_said(c, name, str_lit("recs "))))))
         } else {
             c
         };
@@ -853,16 +866,12 @@ pub mod writing {
         }
     }
 
-    /// A group's definitions; in the async mode, each knowing the group
-    /// (`%rec NAME`), whose calls of one another are boxed (C371).
+    /// A group's definitions; in the async mode, each knowing its own
+    /// recursion group, which may be less than the group (`put-define`,
+    /// C379).
+    #[inline]
     pub fn put_rec(c: &'static Ctx, bindings: Sexps, acc: Chars) -> Chars {
-        put_rec_each(if in_async_mode_p(c) {
-            with_locals(c, map(lambda1s(move |b: &'static Sexp| {
-                string_append(str_lit("%rec "), sym_name(car(items(b))))
-            }), bindings))
-        } else {
-            c
-        }, bindings, acc)
+        put_rec_each(c, bindings, acc)
     }
 
     pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
@@ -1791,13 +1800,7 @@ pub mod writing {
         let siblings = map(lambda1s(move |d: &'static Sexp| {
             sym_name(car(items(d)))
         }), defs);
-        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), if in_async_mode_p(c) {
-            map(lambda1s(move |x: Str| {
-                string_append(str_lit("%rec "), x)
-            }), siblings)
-        } else {
-            nil::<Str>()
-        }));
+        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::nil()));
         let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
         let pt = string_append(str_lit("Place_"), camel(p));
         let named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
@@ -1939,13 +1942,7 @@ pub mod writing {
                 }
             }
         };
-        mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), if in_async_mode_p(c) {
-            map(lambda1s(move |x: Str| {
-                string_append(str_lit("%rec "), x)
-            }), without(without(item_values(forms), item_constants(forms)), item_constructors(forms)))
-        } else {
-            nil::<Str>()
-        })), forms)
+        mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), kayak_rt::nil())), forms)
     }
 
     /// A module's `pub mod`, around its items' Rust, `body`, newest first.
@@ -1980,6 +1977,247 @@ pub mod writing {
             } else {
                 (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));
                 continue;
+            }
+        }
+    }
+
+    // Recursion groups (C379): in the async mode, a call is boxed only where
+    // a cycle of calls may pass, as Rust needs (E0733), and fuel is paid
+    // there (C378). A scope's procedures, the program's top level or a
+    // module's body (a maker's too), may call each other with no
+    // `define-rec` in a module, and a `define-rec`'s members need not all
+    // recur: the groups are the strongly connected components of the
+    // scope's graph of direct calls (Kosaraju's two passes). Each procedure
+    // of a group of more than one, or that calls itself, has the fact `recs
+    // NAME ...` at its name, its group's names.
+    #[inline]
+    pub fn rec_facts(c: &'static Ctx, forms: Sexps) -> Facts {
+        concat(map(lambda1s(move |scope: Sexps| {
+            scope_rec_facts(c, scope)
+        }), kayak_rt::heap_cons(forms, module_bodies(forms, nil::<List<&'static Sexp>>()))))
+    }
+
+    /// Onto `acc`, the body of each `module` form in `es`, at any depth.
+    pub fn module_bodies(mut es: Sexps, mut acc: List<Sexps>) -> List<Sexps> {
+        loop {
+            if null_p(es) {
+                return acc;
+            } else {
+                (es, acc) = (cdr(es), {
+                    let tagcase_ = car(es);
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f, l, p) => {
+                            module_bodies(xs, if head_is_p(car(es), str_lit("module")) {
+                                kayak_rt::heap_cons(cdr(xs), acc)
+                            } else {
+                                acc
+                            })
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            acc
+                        }
+                    }
+                });
+                continue;
+            }
+        }
+    }
+
+    pub fn scope_rec_facts(c: &'static Ctx, scope: Sexps) -> Facts {
+        let defs = concat(map(&scope_definitions, scope));
+        let names = map(lambda1s(move |d: &'static Sexp| {
+            sym_name(car(items(d)))
+        }), defs);
+        let graph = map(lambda1s(move |d: &'static Sexp| {
+            let callees = calls_in(c, cdr(items(d)), nil::<Str>());
+            calling(sym_name(car(items(d))), filter(lambda1s(move |m: Str| {
+                string_member_p(m, names)
+            }), callees))
+        }), defs);
+        let groups = sccs(graph);
+        concat(map(lambda1s(move |d: &'static Sexp| {
+            let n = car(items(d));
+            let group = group_of(sym_name(n), groups, graph);
+            if null_p(group) {
+                nil::<&'static Fact>()
+            } else {
+                the::<Facts>(kayak_rt::heap_cons(fact(datum_file(n), datum_pos(n), string_append(str_lit("recs "), words_of(group))), kayak_rt::nil()))
+            }
+        }), defs))
+    }
+
+    /// A scope's form's procedures, each `(name body ...)`: a `define`'s, a
+    /// `define-rec`'s members, those in a `hide`.
+    pub fn scope_definitions(f: &'static Sexp) -> Sexps {
+        if head_is_p(f, str_lit("hide")) {
+            concat(map(&scope_definitions, cdr(items(f))))
+        } else if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt_eq(size(items(f)), 3i64)) {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, nf, np) => {
+                    the::<Sexps>(kayak_rt::heap_cons(lst(cdr(items(f)), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        } else if head_is_p(f, str_lit("define-rec")) {
+            concat(map(lambda1s(move |b: &'static Sexp| {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Sexp::Lst(bs, bf, bl, bp) => {
+                        the::<Sexps>(kayak_rt::heap_cons(b, kayak_rt::nil()))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sexp>()
+                    }
+                }
+            }), cdr(items(f))))
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }
+
+    /// `n`'s group, if it is more than `n`, or `n` calls itself; else none.
+    pub fn group_of(n: Str, groups: List<Strings>, graph: Callings) -> Strings {
+        let found = concat(map(lambda1s(move |g: Strings| {
+            if string_member_p(n, g) {
+                the::<List<Strings>>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+            } else {
+                nil::<List<Str>>()
+            }
+        }), groups));
+        if null_p(found) {
+            nil::<Str>()
+        } else if not(null_p(cdr(car(found)))) {
+            car(found)
+        } else if string_member_p(n, callees_of(n, graph)) {
+            car(found)
+        } else {
+            nil::<Str>()
+        }
+    }
+
+    pub fn callees_of(n: Str, graph: Callings) -> Strings {
+        let found = concat(map(lambda1s(move |x: &'static Calling| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Calling::Calling(m, cs) => {
+                    if string_eq_p(m, n) {
+                        cs
+                    } else {
+                        nil::<Str>()
+                    }
+                }
+            }
+        }), graph));
+        found
+    }
+
+    /// The graph's strongly connected components: names in the order a
+    /// depth-first search finishes them, then, latest first, each not yet
+    /// placed with all it reaches in the graph reversed and not yet placed.
+    pub fn sccs(graph: Callings) -> List<Strings> {
+        let order = finish_all(graph, map(lambda1s(move |x: &'static Calling| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Calling::Calling(n, cs) => {
+                    n
+                }
+            }
+        }), graph), nil::<Str>(), nil::<Str>());
+        let reversed = map(lambda1s(move |x: &'static Calling| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Calling::Calling(n, cs) => {
+                    calling(n, concat(map(lambda1s(move |y: &'static Calling| {
+                        let tagcase_ = y;
+                        match *tagcase_ {
+                            Calling::Calling(m, ds) => {
+                                if string_member_p(n, ds) {
+                                    the::<Strings>(kayak_rt::heap_cons(m, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }
+                        }
+                    }), graph)))
+                }
+            }
+        }), graph);
+        components(reversed, order, nil::<Str>(), nil::<List<Str>>())
+    }
+
+    /// `done`, the names finished, latest first, after a search from each
+    /// of `todo` not `seen`.
+    pub fn finish_all(mut graph: Callings, mut todo: Strings, mut seen: Strings, mut done: Strings) -> Strings {
+        loop {
+            if null_p(todo) {
+                return done;
+            } else {
+                if string_member_p(car(todo), seen) {
+                    todo = cdr(todo);
+                    continue;
+                } else {
+                    let tagcase_ = visit(graph, car(todo), seen, done);
+                    match *tagcase_ {
+                        Visited::Visited(seen2, done2) => {
+                            (todo, seen, done) = (cdr(todo), seen2, done2);
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// A search from `n`: what is seen then, and `n` finished after all it reaches.
+    pub fn visit(graph: Callings, n: Str, seen: Strings, done: Strings) -> &'static Visited {
+        let tagcase_ = visit_each(graph, callees_of(n, graph), kayak_rt::heap_cons(n, seen), done);
+        match *tagcase_ {
+            Visited::Visited(seen2, done2) => {
+                visited(seen2, kayak_rt::heap_cons(n, done2))
+            }
+        }
+    }
+
+    pub fn visit_each(mut graph: Callings, mut ns: Strings, mut seen: Strings, mut done: Strings) -> &'static Visited {
+        loop {
+            if null_p(ns) {
+                return visited(seen, done);
+            } else if string_member_p(car(ns), seen) {
+                ns = cdr(ns);
+                continue;
+            } else {
+                let tagcase_ = visit(graph, car(ns), seen, done);
+                match *tagcase_ {
+                    Visited::Visited(seen2, done2) => {
+                        (ns, seen, done) = (cdr(ns), seen2, done2);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn components(mut reversed: Callings, mut order: Strings, mut placed: Strings, mut acc: List<Strings>) -> List<Strings> {
+        loop {
+            if null_p(order) {
+                return acc;
+            } else if string_member_p(car(order), placed) {
+                order = cdr(order);
+                continue;
+            } else {
+                let tagcase_ = visit(reversed, car(order), placed, nil::<Str>());
+                match *tagcase_ {
+                    Visited::Visited(placed2, group) => {
+                        (order, placed, acc) = (cdr(order), placed2, kayak_rt::heap_cons(group, acc));
+                        continue;
+                    }
+                }
             }
         }
     }
@@ -2052,10 +2290,7 @@ pub mod writing {
                 }
             }
         } && head_is_p(unpoly(third(xs)), str_lit("lambda")) && head_is_p(unpoly(second(xs)), str_lit("subr")) && not(comefrom_effect_p(c, second(items(unpoly(second(xs)))))) && {
-            let group = map(lambda1s(move |g: &'static Sexp| {
-                string_append(str_lit("%rec "), sym_name(g))
-            }), cdr(cdr(cdr(xs))));
-            let written = put_define(with_locals(c, kayak_rt::heap_cons(str_lit("%probe"), group)), car(xs), second(xs), third(xs), nil::<char>());
+            let written = put_define(with_locals(c, kayak_rt::heap_cons(str_lit("%probe"), kayak_rt::nil())), car(xs), second(xs), third(xs), nil::<char>());
             not(chars_have_p(written, string_chars(str_lit("tiawa."))))
         })
     }

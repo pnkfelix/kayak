@@ -10445,3 +10445,29 @@ the fuel preempts.
   (and now charged); the real groups, the call graph's strongly
   connected components, would box only calls that can recur.
 
+## C379. Recursion groups, minimal (2026-11-07)
+
+C378's cost was half at boxed calls, and those were too many: C376 made a
+module's procedures one `%rec` group, since in a module they may call
+each other with no `define-rec`, so every call within a module was boxed,
+and now charged. The user: the groups should be the written `define-rec`s
+where there are some, and otherwise "surely you can compute the minimal
+cliques".
+- **Chosen**: in the async mode, the groups are the strongly connected
+  components of each scope's graph of direct calls (the program's top
+  level; each `module` form's body, a maker's included, its `hide`s
+  flattened), by Kosaraju's two depth-first passes, as facts (`recs NAME
+  ...` at each procedure's name in a group of more than one, or that
+  calls itself; `rec-facts`, before the leaves', `leafed`). `put-define`
+  makes its own group `%rec`, and nothing else does: not a module's
+  whole body (C376), a maker's items (C376), nor a `define-rec`'s written
+  group (C371), which may hold members that do not recur. The leaves'
+  probe takes the same groups.
+- The compiler's boxed calls in the async mode, 3,881 to 1,878. Built
+  async, with fuel, it compiles itself in 21.9 G instructions, 14.2 G
+  cycles, 3.58 s (C378: 23.2 G and 15.3 G; without fuel then, 21.1 G):
+  fuel now costs 4% over C377's build. The synchronous build: 12.1 G,
+  about 2.1 s. And `kfx --async` itself, 4.2 s to 3.2 s: the emitter no
+  longer looks through a module's every name in the locals of each of
+  its procedures.
+
