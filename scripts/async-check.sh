@@ -38,3 +38,6 @@ echo "async-check: the compiler built async makes boot/src/kfx/ again, and its o
 # And the corpus in the async mode (C373, C376): each program, every
 # procedure async, gives Fixpt's answer.
 python3 -I scripts/async-corpus.py
+# And the I/O programs (C381): each, every procedure async, its I/O the
+# runner's, does as the synchronous build does.
+python3 -I scripts/async-io-programs.py

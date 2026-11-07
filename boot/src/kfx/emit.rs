@@ -2449,6 +2449,14 @@ pub mod emitter {
     }
 
     #[inline]
+    pub fn runner_io_names() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("read-byte"), kayak_rt::heap_cons(str_lit("read-bytes"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::nil()))))))
+        })
+    }
+
+    #[inline]
     pub fn charge_statement() -> Str {
         str_lit("if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; }")
     }
@@ -5100,6 +5108,10 @@ pub mod emitter {
                 return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit(", "), put(mangle(fact_with(c, e, str_lit("rbytes-in "))), put(str_lit("("), put(string_append(mangle(h), str_lit("_in")), acc))))));
             } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
+            } else if (string_member_p(h, runner_io_names()) && tasks_here_p(c) && fact_at_p(c, e, str_lit("prim-call")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // In the async mode, I/O that may wait, the runner's (C381): a
+                // future awaited, the task waiting as a task.
+                return put_question(c, e, put(str_lit(").await"), put_joined(c, xs, str_lit(", "), n, put(string_append(str_lit("kayak_rt::async_io::"), string_append(mangle(h), str_lit("("))), acc))));
             } else if (process_call_p(h) && tasks_here_p(c)) {
                 // In the async mode, a task's (C380): a wait, `receive` or
                 // `icell-get`, a future awaited.

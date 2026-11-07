@@ -11,6 +11,7 @@
 
 mod arena;
 mod array;
+pub mod async_io;
 pub mod async_process;
 mod blob;
 mod eqtable;

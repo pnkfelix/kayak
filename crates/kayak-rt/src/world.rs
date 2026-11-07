@@ -195,7 +195,7 @@ pub type IoKind = &'static Sum_9not_found_17permission_denied_14already_exists_1
 /// `io-error`: its kind, for a `tagcase`, and the system's words.
 pub type IoError = Product_4kind_6detail<IoKind, Str>;
 
-fn io_error(e: &std::io::Error) -> IoError {
+pub(crate) fn io_error(e: &std::io::Error) -> IoError {
     use std::io::ErrorKind as K;
     type S = Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<
         (),
@@ -220,7 +220,7 @@ fn io_error(e: &std::io::Error) -> IoError {
     Product_4kind_6detail(kind, leak_string(e.to_string()))
 }
 
-fn invalid_data(what: &str) -> IoError {
+pub(crate) fn invalid_data(what: &str) -> IoError {
     io_error(&std::io::Error::new(std::io::ErrorKind::InvalidData, what))
 }
 
@@ -273,7 +273,7 @@ fn index(n: Int, what: &str) -> usize {
     }
 }
 
-fn span(b: BytesAt<'_>, start: Int, end: Int, what: &str) -> (usize, usize) {
+pub(crate) fn span(b: BytesAt<'_>, start: Int, end: Int, what: &str) -> (usize, usize) {
     let (s, e) = (index(start, what), index(end, what));
     if s > e || e > b.0.len() {
         fail(what)
@@ -400,7 +400,7 @@ static COUNTS: [Sum_5count_3eof_6failed<Int, (), IoError>; COUNTS_KEPT + 1] = {
     a
 };
 
-fn counted(k: usize) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
+pub(crate) fn counted(k: usize) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
     if k <= COUNTS_KEPT {
         &COUNTS[k]
     } else {
@@ -416,6 +416,9 @@ fn written(r: std::io::Result<()>) -> &'static Sum_4done_6failed<(), IoError> {
 }
 
 pub fn write_out(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+    if crate::async_io::installed() {
+        return crate::async_io::write_now(1, s);
+    }
     let mut out = std::io::stdout().lock();
     written(
         out.write_all(s.as_str().as_bytes())
@@ -424,6 +427,9 @@ pub fn write_out(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
 }
 
 pub fn write_err(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+    if crate::async_io::installed() {
+        return crate::async_io::write_now(2, s);
+    }
     let mut err = std::io::stderr().lock();
     written(
         err.write_all(s.as_str().as_bytes())
@@ -433,6 +439,7 @@ pub fn write_err(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
 
 /// Ends the run at once, with `n`'s low byte.
 pub fn exit(n: Int) -> Void {
+    crate::async_io::drain();
     let _ = std::io::stdout().flush();
     std::process::exit((int_to_i64(n) & 0xff) as i32)
 }
@@ -442,13 +449,13 @@ pub fn exit(n: Int) -> Void {
 // whether a read would wait is known without one (a `pselect`'s key arm).
 // Safe Rust has no read that does not wait, nor a poll: the thread is how.
 
-struct Input {
+pub(crate) struct Input {
     /// Read and not yet taken.
-    buf: VecDeque<u8>,
+    pub(crate) buf: VecDeque<u8>,
     /// The input is at its end, or failed, once `buf` is taken.
-    ended: bool,
+    pub(crate) ended: bool,
     /// The failure the next read gives, once `buf` is taken.
-    error: Option<std::io::Error>,
+    pub(crate) error: Option<std::io::Error>,
 }
 
 static INPUT: Mutex<Input> = Mutex::new(Input {
@@ -462,16 +469,21 @@ static ARRIVED: Condvar = Condvar::new();
 /// whole (C233: a program reading a long input in bounded space does so
 /// here too).
 static TAKEN: Condvar = Condvar::new();
-const READ_AHEAD: usize = 1 << 16;
+pub(crate) const READ_AHEAD: usize = 1 << 16;
 static READER: Once = Once::new();
 
-fn input() -> MutexGuard<'static, Input> {
+pub(crate) fn input() -> MutexGuard<'static, Input> {
     INPUT.lock().unwrap_or_else(|p| p.into_inner())
 }
 
 /// The reader's thread, started at the first read or question: each
 /// chunk as it comes, and the end; every waiter told.
 fn reading() {
+    // In the async mode, a task reads it, through the runner (C381).
+    if crate::async_io::installed() {
+        crate::async_io::want_input();
+        return;
+    }
     READER.call_once(|| {
         let started = std::thread::Builder::new()
             .name("kayak-stdin".to_string())
@@ -517,6 +529,12 @@ fn reading() {
 fn arrived() -> MutexGuard<'static, Input> {
     reading();
     let mut i = input();
+    if crate::async_io::installed() && i.buf.is_empty() && !i.ended {
+        drop(i);
+        crate::fail(
+            "a read of the standard input where nothing may wait (the async mode's `block`)",
+        )
+    }
     while i.buf.is_empty() && !i.ended {
         i = ARRIVED.wait(i).unwrap_or_else(|p| p.into_inner());
     }
@@ -532,8 +550,8 @@ pub fn stdin_ready_p() -> bool {
     reading();
     {
         let i = input();
-        if !i.buf.is_empty() || i.ended {
-            return true;
+        if !i.buf.is_empty() || i.ended || crate::async_io::installed() {
+            return !i.buf.is_empty() || i.ended;
         }
     }
     if kayak_jit::stdin_readable() {
@@ -571,7 +589,14 @@ pub fn stdin_wait(until: i64) -> bool {
 /// The next line, its ending (`\n` or `\r\n`) left off; a line not UTF-8
 /// an `invalid-data` failure, reading going on after it.
 pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
-    match read_line_bytes() {
+    line_answer(read_line_bytes())
+}
+
+/// A line read, as `read-line` answers it.
+pub(crate) fn line_answer(
+    r: std::io::Result<Option<Vec<u8>>>,
+) -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
+    match r {
         Ok(None) => &Sum_4line_3eof_6failed::Eof(()),
         Ok(Some(line)) => heap_alloc(match String::from_utf8(line) {
             Ok(s) => Sum_4line_3eof_6failed::Line(leak_string(s)),
@@ -583,7 +608,7 @@ pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
 
 /// The next line's bytes, its ending left off; none at the end; or the
 /// failure the reader met.
-fn read_line_bytes() -> std::io::Result<Option<Vec<u8>>> {
+pub(crate) fn read_line_bytes() -> std::io::Result<Option<Vec<u8>>> {
     let mut line = Vec::new();
     let mut i = arrived();
     loop {

@@ -1300,6 +1300,9 @@
          make none a leaf."
         (and (async-mode? c) (not (string-member? "%probe" (ctx-locals c))))))
 
+    (define runner-io-names strings
+      (list "write-out" "write-err" "read-line" "read-byte" "read-bytes" "sleep-until"))
+
     (define charge-statement string "if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; }")
 
     (define put-charged-loop (subr kfx (chars i64 chars) chars)
@@ -2816,6 +2819,11 @@
                  (put ")" (put-joined c xs ", " n
                    (put ", " (put (mangle (fact-with c e "rbytes-in ")) (put "(" (put (string-append (mangle h) "_in") acc)))))))
                 ((and (string=? h "rlambda") (string=? (local-kind h (ctx-locals c)) "")) (put-lambda c e (items (second xs)) (cdr (cdr xs)) n acc))
+                ((and (string-member? h runner-io-names) (tasks-here? c) (fact-at? c e "prim-call")
+                      (string=? (local-kind h (ctx-locals c)) ""))
+                 "In the async mode, I/O that may wait, the runner's (C381): a
+                  future awaited, the task waiting as a task."
+                 (put-question c e (put ").await" (put-joined c xs ", " n (put (string-append "kayak_rt::async_io::" (string-append (mangle h) "(")) acc)))))
                 ((and (process-call? h) (tasks-here? c))
                  "In the async mode, a task's (C380): a wait, `receive` or
                   `icell-get`, a future awaited."

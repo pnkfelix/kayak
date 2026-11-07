@@ -352,8 +352,24 @@ pub fn run<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
         let _running = Running;
         f.await
     });
+    // Its I/O the runner's (C381), whose writes are all written at its
+    // end, however it ends.
+    struct Installed;
+    impl Drop for Installed {
+        fn drop(&mut self) {
+            crate::async_io::uninstall();
+        }
+    }
+    let _installed = match kayak_runner::live::Live::cooked() {
+        Ok(live) => {
+            crate::async_io::install(live, sched.inbox());
+            Some(Installed)
+        }
+        Err(_) => None,
+    };
     while !main.is_finished() {
         crate::async_process::check_failed();
+        crate::async_io::poll();
         if sched.step() == kayak_sched::Step::Idle && !crate::async_process::waited() {
             break;
         }

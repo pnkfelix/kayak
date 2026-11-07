@@ -45,7 +45,7 @@ pub(crate) fn monitored() -> bool {
 }
 
 /// A change a waiter may be waiting for: every waiter looks again.
-fn changed() {
+pub(crate) fn changed() {
     let woken = WAITERS.with(|w| std::mem::take(&mut *w.borrow_mut()));
     DEADLINE.with(|d| d.set(None));
     OUTSIDE.with(|o| o.set(false));
@@ -80,6 +80,38 @@ impl<R, F: FnMut() -> Option<R> + Unpin> Future for Wait<F> {
             STUCK.with(|s| s.set(self.deadlock));
         }
         Poll::Pending
+    }
+}
+
+/// A task's wait until `ready` gives a value (`async_io`, C381).
+pub(crate) fn wait_for<R>(ready: impl FnMut() -> Option<R> + Unpin) -> impl Future<Output = R> {
+    Wait {
+        ready,
+        deadline: None,
+        outside: false,
+        deadlock: "a wait no task is left to end: a deadlock",
+    }
+}
+
+/// A wait for the standard input, which comes from outside.
+pub(crate) fn wait_for_input<R>(
+    ready: impl FnMut() -> Option<R> + Unpin,
+) -> impl Future<Output = R> {
+    Wait {
+        ready,
+        deadline: None,
+        outside: true,
+        deadlock: "a read of the standard input that cannot end",
+    }
+}
+
+/// A wait until the clock (`world::clock`'s) reaches `t`.
+pub(crate) fn wait_until_clock(t: i64) -> impl Future<Output = ()> {
+    Wait {
+        ready: move || (crate::world::clock() >= t).then_some(()),
+        deadline: Some(t),
+        outside: false,
+        deadlock: "a sleep that cannot end",
     }
 }
 
@@ -297,6 +329,19 @@ pub(crate) fn check_failed() {
 pub(crate) fn waited() -> bool {
     let deadline = DEADLINE.with(Cell::get);
     let outside = OUTSIDE.with(Cell::get);
+    if crate::async_io::installed() {
+        // The runner waits for what comes (C381): input, or a write taken;
+        // what comes from outside it, a program run beside this one, is
+        // looked for again soon.
+        let soon = outside.then(|| crate::world::clock() + 1_000_000);
+        let until = match (deadline, soon) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        };
+        let more = crate::async_io::idle(until);
+        changed();
+        return more;
+    }
     if deadline.is_none() && !outside {
         return false;
     }

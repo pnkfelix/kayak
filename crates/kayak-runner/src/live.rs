@@ -195,16 +195,36 @@ pub struct Live {
 impl Live {
     /// The live runner on this process's standard input and output.
     pub fn new() -> io::Result<Live> {
+        Live::open(true)
+    }
+
+    /// The live runner for a program of its own (kayak's, C381): a
+    /// terminal left as it is, its input read a line at a time, as the
+    /// program has not asked for keys; and no signal watched, so that a
+    /// ^C ends the program at once, as it ends one that does no I/O
+    /// through a runner.
+    pub fn cooked() -> io::Result<Live> {
+        Live::open(false)
+    }
+
+    /// `keys`: the REPL's, a terminal put in raw mode, and signals watched.
+    fn open(keys: bool) -> io::Result<Live> {
         let mut poller = Poller::new()?;
         // Before any thread exists (R4 §3).
-        poller.watch(&[Sig::Int, Sig::Winch, Sig::Term, Sig::Hup])?;
+        if keys {
+            poller.watch(&[Sig::Int, Sig::Winch, Sig::Term, Sig::Hup])?;
+        }
         let stdin = io::stdin();
         let done: Done = Arc::default();
         let (input, raw) = match kind(stdin.as_fd())? {
             Kind::Tty => {
                 let tty = reopen_tty(stdin.as_fd())?;
-                let raw = RawMode::enter(stdin.as_fd())?;
-                (Input::Reactor { tty: Some(tty) }, Some(raw))
+                let raw = if keys {
+                    Some(RawMode::enter(stdin.as_fd())?)
+                } else {
+                    None
+                };
+                (Input::Reactor { tty: Some(tty) }, raw)
             }
             Kind::Pipe | Kind::Socket => (Input::Reactor { tty: None }, None),
             Kind::Regular | Kind::Other => {
@@ -212,16 +232,18 @@ impl Live {
             }
         };
         let ints = Arc::new(AtomicU64::new(0));
-        let restorer = raw.as_ref().map(RawMode::restorer);
-        kayak_sys::watch_int(&mut poller, ints.clone(), move || {
-            if let Some(r) = restorer {
-                r.restore();
-            }
-            let msg = "\r\n; ^C again, and the first not yet seen: the session ends\r\n";
-            let _ = kayak_sys::write(io::stderr().as_fd(), msg.as_bytes());
-            // 128 + SIGINT, as a shell reports a process SIGINT ended.
-            kayak_sys::exit_now(130);
-        })?;
+        if keys {
+            let restorer = raw.as_ref().map(RawMode::restorer);
+            kayak_sys::watch_int(&mut poller, ints.clone(), move || {
+                if let Some(r) = restorer {
+                    r.restore();
+                }
+                let msg = "\r\n; ^C again, and the first not yet seen: the session ends\r\n";
+                let _ = kayak_sys::write(io::stderr().as_fd(), msg.as_bytes());
+                // 128 + SIGINT, as a shell reports a process SIGINT ended.
+                kayak_sys::exit_now(130);
+            })?;
+        }
         Ok(Live {
             poller,
             start: Instant::now(),
@@ -690,6 +712,21 @@ fn worker(waker: Waker, done: Done) -> mpsc::Sender<(u64, u32)> {
 }
 
 impl Live {
+    /// Nanoseconds since this runner began: its clock (kayak's, C381).
+    pub fn now(&self) -> u64 {
+        self.ticks()
+    }
+
+    /// Turns the reactor until every write submitted is written (kayak's,
+    /// C381): before a run's end, or an `exit`.
+    pub fn drain_writes(&mut self) {
+        while self.outs.iter().any(|o| !o.queue.is_empty()) {
+            if self.turn(Some(Duration::from_millis(10))).is_err() {
+                return;
+            }
+        }
+    }
+
     /// Whether keys come from a terminal (so a REPL may draw on it), not a
     /// pipe or a file.
     pub fn is_terminal(&self) -> bool {

@@ -10509,3 +10509,50 @@ coopt-adoption.md's step 2 has it, rather than OS threads.
   `main` from ending, fuel preempting it. The compiler, which spawns no
   process, is unchanged (22.0 G instructions).
 
+## C381. I/O through kayak-runner in the async mode (2026-11-07)
+
+The user's go-ahead ("Yeah let's do I/O next"): the rest of
+coopt-adoption.md's step 2, the run's I/O a runner's, so that a task
+waiting for input or for its output to be taken waits as a task.
+- **The runner** is kayak-runner's `Live` (Coopt's): a reactor on the
+  standard streams, a worker for an input it cannot wait on, and writes
+  queued in order. Two changes to the fork: `Live::cooked()`, for a
+  program of its own, leaves a terminal as it is (the REPL's runner puts
+  it in raw mode for keys; a KFX program asks for that itself,
+  `terminal-raw`) and watches no signal, so that a ^C ends the program
+  at once, as before; and `now()`, `drain_writes()`. `suspend::run`
+  installs one for the run, polls it before each step, and, when no task
+  can run, waits on it until something comes or a deadline (a
+  `sleep-until`, a `pselect`'s), or soon if a wait is for what it does
+  not see (a program run beside this one, still polled); with nothing to
+  come, `main`'s wait is a deadlock. Not kayak-runner's `drive`, whose
+  loop has no place for the program's own end, failures and deadlocks.
+- **Writes** go to the runner at once, in order, the reactor turned so
+  that what can be written is; a task awaits the answer, so a pipe no
+  one reads holds up only its writer. One where nothing may wait (in a
+  `block`) is not awaited, its answer abandoned (kayak-sched's
+  `abandon`). Each is written before the run ends, however it ends, and
+  before an `exit`. Writing at once keeps them in order with a failure's
+  message, which the panic hook says when it happens.
+- **The standard input** is read by a task of its own, through the
+  runner, into the very buffer the synchronous mode's reader thread
+  fills (`world`), when a read wants more and less than its read-ahead is
+  there; so `read-line`, `read-byte`, `read-bytes`, `stdin-ready?` and
+  `pselect`'s key arm take from it as they do there, and answer alike.
+- **`sleep-until`** waits as a task, for its deadline.
+- **The emitter**: in the async mode, where it writes what is `async`, a
+  call of `write-out`, `write-err`, `read-line`, `read-byte`,
+  `read-bytes` or `sleep-until` (the checker's `prim-call`, its name
+  not a local's) is `kayak_rt::async_io::NAME(...).await`.
+- **Checked**: `scripts/async-io-programs.py`, now at the end of
+  `scripts/async-check.sh`, builds each of `tests/kfx-io` with `kfx
+  --async` and compares its output, status and files with the
+  synchronous build's (which `io-programs.py` keeps Fixpt's): all 8 alike.
+  By hand: a process printing ticks while `main` waits for a line that
+  comes late prints them first, as the synchronous build does. The
+  compiler built async: unchanged (22.0 G instructions), its compile
+  errors said as before.
+- **Left as the synchronous mode's**: files, programs run beside this
+  one, the terminal's modes; a read of the standard input where nothing
+  may wait (a `block`) fails, as a capture there does.
+
