@@ -28,6 +28,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+pub mod alloc;
+pub use alloc::Alloc;
+
 #[cfg(any(target_os = "linux", target_os = "android"))]
 mod epoll;
 #[cfg(target_os = "macos")]

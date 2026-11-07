@@ -10148,3 +10148,21 @@ treat them as 3rd deps to preserve and maintain."
   C368's. The five forks' 86 tests pass under nextest (one skipped, as in
   Coopt). Not yet used by kayak-rt: moving FX-26's processes onto the
   scheduler and its I/O onto the runners is next.
+
+## C370. kayak's own allocator, for the binaries (2026-11-07)
+
+From the async-everywhere experiment (branch `experiment/async-everywhere`,
+`docs/research/async-everywhere.md` there), where `malloc` and `free` were
+38% of the async compiler's run: `kayak-sys`'s `Alloc`, a `GlobalAlloc` of
+per-thread free lists by size class (16 to 1024 bytes, by 16), refilled
+by bumping through 1 MB chunks from the system, which are never given back;
+larger or more aligned blocks the system's. In the one crate where `unsafe`
+is allowed. The experiment found it worth having without async too, and so:
+- **Chosen**: the `#[global_allocator]` of kfx, kayak-fx26 and kayak-cells.
+  The compiler on itself: plain 2.38 s to 1.97 s (1.26 GB to 1.11 GB), warm
+  1.36 s to 1.04 s; the output the same. A test of its own
+  (`crates/kayak-sys/tests/alloc.rs`: each size and alignment, blocks used
+  again, freed on another thread).
+- **Not yet**: the accounting per task the experiment proposed (bytes
+  charged to the task polling), for when kayak-rt's tasks are the
+  scheduler's.

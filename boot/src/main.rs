@@ -12,6 +12,10 @@ mod kfx;
 
 use kayak_rt::{int_to_i64, suspend::block, unreachable_unwind, with_big_stack};
 
+/// kayak's own allocator (C370): small blocks from per-thread size classes.
+#[global_allocator]
+static ALLOC: kayak_sys::Alloc = kayak_sys::Alloc;
+
 fn main() {
     let status =
         with_big_stack(|| int_to_i64(block(kfx::main()).unwrap_or_else(|u| unreachable_unwind(u))));

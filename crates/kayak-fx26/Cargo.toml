@@ -9,6 +9,7 @@ workspace = true
 
 [dependencies]
 kayak-rt = { path = "../kayak-rt" }
+kayak-sys = { path = "../kayak-sys" }
 
 [features]
 # C103's REPL, its two threads and catching in Rust, to compare with C111's

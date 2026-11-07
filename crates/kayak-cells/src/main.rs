@@ -10,6 +10,10 @@ mod cells;
 
 use kayak_rt::{int_to_i64, with_big_stack};
 
+/// kayak's own allocator (C370): small blocks from per-thread size classes.
+#[global_allocator]
+static ALLOC: kayak_sys::Alloc = kayak_sys::Alloc;
+
 /// A procedure of tier 1's that native code calls by the convention's
 /// `foreign` routine (C227, C229): given to kayak-jit, through kayak-rt, as
 /// the host's; run by `cells/machine.kfx`'s `native-callback`, its words in

@@ -12,3 +12,4 @@ heap-stats = ["kayak-rt/heap-stats"]
 
 [dependencies]
 kayak-rt = { path = "../crates/kayak-rt" }
+kayak-sys = { path = "../crates/kayak-sys" }

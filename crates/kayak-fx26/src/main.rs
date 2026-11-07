@@ -18,6 +18,10 @@ mod rust_repl;
 
 use kayak_rt::{int_to_i64, with_big_stack};
 
+/// kayak's own allocator (C370): small blocks from per-thread size classes.
+#[global_allocator]
+static ALLOC: kayak_sys::Alloc = kayak_sys::Alloc;
+
 #[cfg(feature = "rust-repl")]
 fn run(args: Vec<String>) -> i64 {
     match args.as_slice() {

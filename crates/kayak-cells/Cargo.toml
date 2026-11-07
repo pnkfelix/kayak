@@ -9,3 +9,4 @@ workspace = true
 
 [dependencies]
 kayak-rt = { path = "../kayak-rt" }
+kayak-sys = { path = "../kayak-sys" }
