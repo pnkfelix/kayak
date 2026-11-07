@@ -491,6 +491,13 @@ Phase C, FX-26's runtime:
   heap, composable continuations; an interpreter of the IR, kept as the
   reference (Q8); its tasks on the one scheduler.
 - **K6**: Fixpt's programs on it, compared with Fixpt.
+- **The emitter's async mode** (C371-C376): every procedure an `async
+  fn`; the compiler built so makes itself, and each corpus program gives
+  Fixpt's answer (`scripts/async-check.sh`, in the full check). Next:
+  leaf and bounded procedures kept synchronous; fuel charged, programs
+  run as `kayak-sched` tasks; `--async` with `--cache` (the mode in the
+  memo key); a maker's poly or failing items; native code calling back a
+  procedure that may abort.
 - **The second self-hosting** (C366): restored on tier 1, checked in the
   full check (`scripts/selfhost-cells.sh`, 97 s, 7.5 GB); the IR engine's
   path (`scripts/selfhost-engine.sh`, C66) is broken (no `rep-nodes`) and

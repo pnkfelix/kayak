@@ -243,6 +243,30 @@ macro_rules! given {
                 fail("native code: gave a procedure, which kayak cannot yet take back")
             }
         }
+        /// One of the emitter's async mode (C376), its answer a future:
+        /// native code waits for it, `block`.
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static dyn Fn($($a),*) -> crate::suspend::Fut<R> {
+            fn word(self) -> u64 {
+                kayak_jit::foreign_procedure(Box::new(move |args: &[u64]| {
+                    if args.len() != given!(@count $($a)*) {
+                        fail("native code: called a procedure with the wrong number of arguments");
+                    }
+                    crate::suspend::block(self($($a::of_word(args[$i])),*)).word()
+                }))
+            }
+            fn of_word(_: u64) -> Self {
+                fail("native code: gave a procedure, which kayak cannot yet take back")
+            }
+        }
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static (dyn Fn($($a),*) -> crate::suspend::Fut<R> + Send + Sync) {
+            fn word(self) -> u64 {
+                let f: &'static dyn Fn($($a),*) -> crate::suspend::Fut<R> = self;
+                f.word()
+            }
+            fn of_word(_: u64) -> Self {
+                fail("native code: gave a procedure, which kayak cannot yet take back")
+            }
+        }
     };
     (@count) => { 0 };
     (@count $x:ident $($y:ident)*) => { 1 + given!(@count $($y)*) };

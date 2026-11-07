@@ -253,6 +253,22 @@ pub fn lambda4s<'a, A, B, C, D, R>(
     alloc(f)
 }
 
+/// Of five, as a primitive of five lifted to a value is in the emitter's
+/// async mode (C376).
+#[inline]
+pub fn lambda5<'a, A, B, C, D, E, R>(
+    f: impl Fn(A, B, C, D, E) -> R + 'a,
+) -> &'a dyn Fn(A, B, C, D, E) -> R {
+    alloc(f)
+}
+
+#[inline]
+pub fn lambda5s<'a, A, B, C, D, E, R>(
+    f: impl Fn(A, B, C, D, E) -> R + Send + Sync + 'a,
+) -> &'a (dyn Fn(A, B, C, D, E) -> R + Send + Sync) {
+    alloc(f)
+}
+
 /// A `letrec`'s knot: a procedure's place, empty until the procedure is
 /// made, so that the procedures of a group, closures that cannot name
 /// themselves, can name each other through it. FX-26's `letrec` binds only

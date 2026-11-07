@@ -10330,3 +10330,44 @@ Rust build, so none is ever `dyn`).
   C45's lifts of a value already async, native procedures' values,
   constructors reached by `with`, procedure values given to the runtime's
   own functions (`spawn-monitored`), a module's `define-rec`.
+
+## C376. The corpus in the async mode, whole (2026-11-07)
+
+C375 left 40 rustc errors in the async corpus, each an interaction of the
+async mode with something older. Each is settled, and the corpus is in the
+full check (at the end of `scripts/async-check.sh`): every program of this
+machine's, 91 of 96, every procedure async, gives Fixpt's answer.
+- **Regions**: a boxed future was `'static` (`Fut`, `Body`); kayak-rt's
+  are now generic in a lifetime (`FutAt<'a, R>`, `BodyAt`, `boxed` and
+  `body` of any `'a`). A procedure's future type is at the `letrena`
+  region its latent effect names; at the innermost region only where the
+  checker wrote the effect without its regions (`%local`), and otherwise
+  `'static`, since `Fn`'s result is fixed and a `'static` procedure must
+  still coerce to one at a region. C46's erasure of a suspending
+  procedure's region lifetimes now asks whether it may really suspend
+  (`comefrom-effect?`, a `comefrom` in either mode), not whether the mode
+  makes it `async`, so region-poly procedures keep their lifetimes. A
+  `letrena`'s parameters, which come from outside it, are written at
+  their types outside it.
+- **C45's lifts**: in the async mode each procedure value is a future's
+  already, so a lift supplies only fallibility (`Fut` to `Body`, the
+  answer `Ok`), and a lift from one that may abort does nothing.
+- **Native procedures** (C116) are synchronous: `readyN`/`readyN_body`
+  give their answers as futures ready at once, and a procedure of the async
+  mode given to native code is `Native` too, its future run to its end
+  (`block`) when native code calls it. `lambda5`/`lambda5s` for a primitive
+  of five lifted.
+- **Constructors reached by `with`**: a module's constructor is no KFX
+  callee (`item-constructor?`): not awaited, and boxed as a ready future
+  when it is a value.
+- **The runtime's own functions**: `spawn-monitored`'s `on-failure` is
+  wanted synchronous, so it is given through `blocking1`.
+- **Module items calling each other** without `define-rec`, and a module
+  maker's items, are one `%rec` group in the async mode, so their calls
+  are boxed; a maker's methods are `async fn` (C274's refusal now of a
+  maker's item that may really suspend).
+- **Unions' wraps** (C82): the result boxed from the procedure's
+  future.
+Synchronous output is unchanged: every change asks the mode, and boot's
+Rust changes only for the new procedures.
+

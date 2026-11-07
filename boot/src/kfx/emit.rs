@@ -1472,6 +1472,13 @@ pub mod emitter {
         }
     }
 
+    /// Whether a module's value, named in a `with`, is a constructor of
+    /// its datatypes: Rust's, no future in the async mode (C376).
+    pub fn item_constructor_p(c: &'static Ctx, s: Str) -> bool {
+        let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
+        (not(string_member_p(string_append(str_lit("%maker-value "), m), ctx_locals(c))) && string_member_p(s, item_constructors(module_items(c, m))))
+    }
+
     pub fn innermost_fallible(mut ls: Strings) -> bool {
         loop {
             if null_p(ls) {
@@ -2316,40 +2323,45 @@ pub mod emitter {
         }
     }
 
-    /// Whether a written effect may suspend, a `comefrom` (C45): a procedure
-    /// of it is an `async fn`, or as a value returns a boxed future; any, in
-    /// the async mode.
+    /// Whether a procedure of a written effect is an `async fn`, or as a
+    /// value returns a boxed future: one that may suspend, or any, in the
+    /// async mode.
+    #[inline]
     pub fn suspending_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-        (async_mode_p(c) || {
-            let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Sym(n, at_file, at_pos) => {
-                    (effect_binder_p(c, n) || any_p(lambda1s(move |x: &'static Typed| {
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Typed::Typed(m, body) => {
-                                (string_eq_p(m, n) && suspending_effect_p(c, body))
-                            }
+        (async_mode_p(c) || comefrom_effect_p(c, e))
+    }
+
+    /// Whether a written effect may suspend, a `comefrom` (C45), in either
+    /// mode: its future may be captured, so `'static` (C46, C376).
+    pub fn comefrom_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                (effect_binder_p(c, n) || any_p(lambda1s(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(m, body) => {
+                            (string_eq_p(m, n) && comefrom_effect_p(c, body))
                         }
-                    }), ctx_effects(c)))
-                }
-                Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    if sym_is_p(car(xs), str_lit("comefrom")) {
-                        true
-                    } else if sym_is_p(car(xs), str_lit("maxeff")) {
-                        any_p(lambda1s(move |x: &'static Sexp| {
-                            suspending_effect_p(c, x)
-                        }), cdr(xs))
-                    } else {
-                        false
                     }
-                }
-                _ => {
-                    let other = tagcase_;
+                }), ctx_effects(c)))
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                if sym_is_p(car(xs), str_lit("comefrom")) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("maxeff")) {
+                    any_p(lambda1s(move |x: &'static Sexp| {
+                        comefrom_effect_p(c, x)
+                    }), cdr(xs))
+                } else {
                     false
                 }
             }
-        })
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
     }
 
     /// Whether the checker found `what` about the datum `e`.
@@ -2427,7 +2439,10 @@ pub mod emitter {
         let tagcase_ = car(items(e));
         match *tagcase_ {
             Sexp::Sym(h, f, p) => {
-                (not(string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) || (fact_at_p(c, e, str_lit("kfx-call")) && not((string_member_p(h, prelude_names()) || any_p(lambda1s(move |x: &'static Tagof| {
+                ({
+                    let k = local_kind(h, ctx_locals(c));
+                    (not(string_eq_p(k, str_lit(""))) && not((string_eq_p(k, str_lit("item")) && item_constructor_p(c, h))))
+                } || (fact_at_p(c, e, str_lit("kfx-call")) && not((string_member_p(h, prelude_names()) || any_p(lambda1s(move |x: &'static Tagof| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Tagof::Tagof(t, d) => {
@@ -2614,6 +2629,19 @@ pub mod emitter {
         concat(map(lambda1s(move |f: &'static Sexp| {
             if (head_is_p(f, str_lit("define")) && not(lambda_form_p(last(items(f))))) {
                 the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), forms))
+    }
+
+    /// The names of a module's datatypes' constructors.
+    pub fn item_constructors(forms: Sexps) -> Strings {
+        concat(map(lambda1s(move |f: &'static Sexp| {
+            if head_is_p(f, str_lit("define-datatype")) {
+                map(lambda1s(move |vt: &'static Sexp| {
+                    sym_name(car(items(vt)))
+                }), cdr(cdr(items(f))))
             } else {
                 nil::<Str>()
             }
@@ -3095,11 +3123,29 @@ pub mod emitter {
                         // A procedure: a `dyn Fn`, `Send + Sync` if its effect is one a process
                         // may have (C102).
                         let sync = crossing_effect_p(c, second(xs));
+                        let life = effect_lifetime(c, second(xs));
+                        let named = if not(async_mode_p(c)) {
+                            str_lit("")
+                        } else if sym_is_p(second(xs), str_lit("%local")) {
+                            life
+                        } else {
+                            named_lifetime(c, second(xs))
+                        };
+                        let fut = if string_eq_p(named, str_lit("")) {
+                            str_lit("kayak_rt::suspend::Fut<")
+                        } else {
+                            string_append(str_lit("kayak_rt::suspend::FutAt<"), string_append(named, str_lit(", ")))
+                        };
+                        let body = if string_eq_p(named, str_lit("")) {
+                            str_lit("kayak_rt::suspend::Body<")
+                        } else {
+                            string_append(str_lit("kayak_rt::suspend::BodyAt<"), string_append(named, str_lit(", ")))
+                        };
                         let acc = put(if sync {
                             str_lit(" (dyn Fn(")
                         } else {
                             str_lit(" dyn Fn(")
-                        }, put(effect_lifetime(c, second(xs)), put(str_lit("&"), acc)));
+                        }, put(life, put(str_lit("&"), acc)));
                         let acc = put_types(c, items(third(xs)), acc);
                         let acc = put(str_lit(") -> "), acc);
                         if (suspending_effect_p(c, second(xs)) && async_mode_p(c) && not(fallible_effect_p(c, second(xs)))) {
@@ -3109,13 +3155,13 @@ pub mod emitter {
                                 str_lit("> + Send + Sync)")
                             } else {
                                 str_lit(">")
-                            }, put_type(c, fourth(xs), put(str_lit("kayak_rt::suspend::Fut<"), acc)));
+                            }, put_type(c, fourth(xs), put(fut, acc)));
                         } else if suspending_effect_p(c, second(xs)) {
                             return put(if sync {
                                 str_lit("> + Send + Sync)")
                             } else {
                                 str_lit(">")
-                            }, put_type(c, fourth(xs), put(str_lit("kayak_rt::suspend::Body<"), acc)));
+                            }, put_type(c, fourth(xs), put(body, acc)));
                         } else if fallible_effect_p(c, second(xs)) {
                             return put(if sync {
                                 str_lit(", Unwind> + Send + Sync)")
@@ -3480,7 +3526,21 @@ pub mod emitter {
     /// A procedure's lifetime: a `letrena` region's its latent effect names
     /// (calling it reads that region, so it may hold what is there), or
     /// the innermost one's (C38, C39).
+    #[inline]
     pub fn effect_lifetime(c: &'static Ctx, eff: &'static Sexp) -> Str {
+        let named = named_lifetime(c, eff);
+        if string_eq_p(named, str_lit("")) {
+            innermost_lifetime(ctx_locals(c))
+        } else {
+            named
+        }
+    }
+
+    /// The lifetime of a `letrena` region a latent effect names, or ``: what
+    /// a call's future may hold, in the async mode (C376); a procedure
+    /// that may only hold what is at the innermost's gives a `'static`
+    /// one, as its type must be the same at each, `Fn`'s result fixed.
+    pub fn named_lifetime(c: &'static Ctx, eff: &'static Sexp) -> Str {
         let named = concat(map(lambda1s(move |x: &'static Sexp| {
             let l = region_lifetime(c, x);
             if string_eq_p(l, str_lit("")) {
@@ -3490,7 +3550,7 @@ pub mod emitter {
             }
         }), atoms_in(eff)));
         if null_p(named) {
-            innermost_lifetime(ctx_locals(c))
+            str_lit("")
         } else {
             car(named)
         }
@@ -3928,22 +3988,30 @@ pub mod emitter {
             } else {
                 fact_in(fs, e, str_lit("lift-suspend "))
             });
-            let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
-            let acc = put(str_lit("(move |"), acc);
-            let acc = put_arg_names(0i64, lift, acc);
-            let acc = put(if fallible {
-                str_lit("| kayak_rt::suspend::body(async move { (")
+            let lifted = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil()));
+            if (async_mode_p(c) && fallible) {
+                // In the async mode, a future that may abort already (C376).
+                put_exp(lifted, e, n, value(), acc)
+            } else if async_mode_p(c) {
+                put_ok_lift(lifted, e, n, lift, acc)
             } else {
-                str_lit("| kayak_rt::suspend::body(async move { Ok((")
-            }, acc);
-            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-            let acc = put(str_lit(")("), acc);
-            let acc = put_arg_names(0i64, lift, acc);
-            put(if fallible {
-                str_lit(") }))")
-            } else {
-                str_lit(")) }))")
-            }, acc)
+                let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+                let acc = put(str_lit("(move |"), acc);
+                let acc = put_arg_names(0i64, lift, acc);
+                let acc = put(if fallible {
+                    str_lit("| kayak_rt::suspend::body(async move { (")
+                } else {
+                    str_lit("| kayak_rt::suspend::body(async move { Ok((")
+                }, acc);
+                let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+                let acc = put(str_lit(")("), acc);
+                let acc = put_arg_names(0i64, lift, acc);
+                put(if fallible {
+                    str_lit(") }))")
+                } else {
+                    str_lit(")) }))")
+                }, acc)
+            }
         } else if ((not(string_eq_p(fact_in(fs, e, str_lit("mark-unlift ")), str_lit(""))) || not(string_eq_p(fact_in(fs, e, str_lit("mark-unlift-fallible ")), str_lit("")))) && not(string_member_p(string_append(str_lit("%unlifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
             // A mark's procedure, a future's (C106), where one that cannot suspend
             // is wanted: a closure that runs it to its end.
@@ -3968,22 +4036,27 @@ pub mod emitter {
         } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
             // A procedure that cannot abort where one that may is wanted: a
             // closure that returns its value `Ok`.
-            let lift = digits_number(fact_in(fs, e, str_lit("lift ")));
-            let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
-            let acc = put(str_lit("(move |"), acc);
-            let acc = put_arg_names(0i64, lift, acc);
-            let acc = put(str_lit("| Ok(("), acc);
-            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-            let acc = put(str_lit(")("), acc);
-            let acc = put_arg_names(0i64, lift, acc);
-            put(str_lit(")))"), acc)
+            if async_mode_p(c) {
+                put_ok_lift(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, digits_number(fact_in(fs, e, str_lit("lift "))), acc)
+            } else {
+                let lift = digits_number(fact_in(fs, e, str_lit("lift ")));
+                let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+                let acc = put(str_lit("(move |"), acc);
+                let acc = put_arg_names(0i64, lift, acc);
+                let acc = put(str_lit("| Ok(("), acc);
+                let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+                let acc = put(str_lit(")("), acc);
+                let acc = put_arg_names(0i64, lift, acc);
+                put(str_lit(")))"), acc)
+            }
         } else if not(string_eq_p(fact_in(fs, e, str_lit("box none ")), str_lit(""))) {
             error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot give for it yet (C75): "), fact_in(fs, e, str_lit("box none "))))))
         } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-none ")), str_lit(""))) {
             error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot take out of it yet (C75): "), fact_in(fs, e, str_lit("unbox-none "))))))
         } else if (not(string_eq_p(fact_in(fs, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
             // A procedure given where one of a union's parameters or result is
-            // wanted (C82): a closure boxing each argument and the result.
+            // wanted (C82): a closure boxing each argument and the result; in
+            // the async mode, the result its future's (C376).
             let hows = map(&sym_name, read_all(fact_in(fs, e, str_lit("wrap ")), str_lit(""), 1i64));
             let arity = i64_minus(size(hows), 1i64);
             let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), if mfact_p(c, e, str_lit("wrap-sync")) {
@@ -3993,13 +4066,27 @@ pub mod emitter {
             })), acc);
             let acc = put_arg_names(0i64, arity, acc);
             let acc = put(str_lit("| "), acc);
+            let acc = if async_mode_p(c) {
+                put(str_lit("kayak_rt::suspend::boxed(async move { "), acc)
+            } else {
+                acc
+            };
             let acc = put_box_open(last(hows), acc);
             let acc = put(str_lit("("), acc);
             let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
             let acc = put(str_lit(")("), acc);
             let acc = put_boxed_args(hows, 0i64, arity, acc);
-            let acc = put(str_lit(")"), acc);
-            put(str_lit(")"), put_box_close(last(hows), acc))
+            let acc = put(if async_mode_p(c) {
+                str_lit(").await")
+            } else {
+                str_lit(")")
+            }, acc);
+            let acc = put_box_close(last(hows), acc);
+            put(if async_mode_p(c) {
+                str_lit(" }))")
+            } else {
+                str_lit(")")
+            }, acc)
         } else if string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("nil")) {
             // `nil` given for a union's `nil` member (C84): the empty value,
             // which no expression of type `nil` computes otherwise.
@@ -4086,7 +4173,7 @@ pub mod emitter {
                         } else {
                             str_lit("async-global ")
                         }));
-                        let prim = (async_mode_p(c) && (fact_at_p(c, e, str_lit("prim-ref")) || string_member_p(s, prelude_names())));
+                        let prim = (async_mode_p(c) && (fact_at_p(c, e, str_lit("prim-ref")) || string_member_p(s, prelude_names()) || (string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) && item_constructor_p(c, s))));
                         let fallible = (not(async_mode_p(c)) || fact_at_p(c, e, str_lit("proc-value-fallible")));
                         let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), if async_mode_p(c) {
                             str_lit("s(move |")
@@ -4134,6 +4221,20 @@ pub mod emitter {
                 }
             }
         }
+    }
+
+    /// In the async mode, a procedure that cannot abort where one that may
+    /// is wanted (C376): each already a future's, so a closure whose future
+    /// awaits the other's and gives its answer `Ok`.
+    pub fn put_ok_lift(c: &'static Ctx, e: &'static Sexp, n: i64, lift: i64, acc: Chars) -> Chars {
+        let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+        let acc = put(str_lit("(move |"), acc);
+        let acc = put_arg_names(0i64, lift, acc);
+        let acc = put(str_lit("| kayak_rt::suspend::body(async move { Ok(("), acc);
+        let acc = put_exp(c, e, n, value(), acc);
+        let acc = put(str_lit(")("), acc);
+        let acc = put_arg_names(0i64, lift, acc);
+        put(str_lit(").await) }))"), acc)
     }
 
     /// The box of a call's future: `body`, of a `Result`'s; in the async
@@ -4885,10 +4986,15 @@ pub mod emitter {
                 return put_process(c, e, xs, n, put(str_lit("kayak_rt::process::spawn("), acc));
             } else if string_eq_p(h, str_lit("spawn-monitored")) {
                 // `(spawn-monitored w on-failure (box M r) body ...)` (C108): the
-                // watcher and what makes its message, then the process as `spawn`'s.
+                // watcher and what makes its message, then the process as `spawn`'s;
+                // in the async mode, the message made at once (`blocking1`, C376).
                 let acc = put(str_lit("kayak_rt::process::spawn_monitored("), acc);
                 let acc = put(str_lit(", "), put_exp(c, car(xs), n, value(), acc));
-                let acc = put(str_lit(", "), put_exp(c, second(xs), n, value(), acc));
+                let acc = if async_mode_p(c) {
+                    put(str_lit("), "), put_exp(c, second(xs), n, value(), put(str_lit("kayak_rt::suspend::blocking1("), acc)))
+                } else {
+                    put(str_lit(", "), put_exp(c, second(xs), n, value(), acc))
+                };
                 return put_process(c, e, cdr(cdr(xs)), n, acc);
             } else if string_eq_p(h, str_lit("self")) {
                 // `(self box)` (C108): the mailbox's address, the same in Rust.
@@ -4980,9 +5086,22 @@ pub mod emitter {
                 }
             } else if (string_eq_p(h, str_lit("the")) && head_is_p(second(xs), str_lit("native-procedure")) && string_eq_p(local_kind(str_lit("native-procedure"), ctx_locals(c)), str_lit(""))) {
                 // `native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
-                // of the type `the` says.
+                // of the type `the` says; in the async mode, its answers futures
+                // ready at once (`readyN`, C376).
                 let ts = items(car(read_all(fact_with(c, second(xs), str_lit("native-types ")), str_lit(""), 1i64)));
-                let acc = put(string_append(str_lit("kayak_rt::native_procedure"), string_append(i64_to_string(i64_minus(size(ts), 1i64)), str_lit("::<"))), acc);
+                let arity = i64_to_string(i64_minus(size(ts), 1i64));
+                let typ = without_conv(expand_aliases(c, car(xs)));
+                let ready = (async_mode_p(c) && head_is_p(typ, str_lit("subr")));
+                let acc = if ready {
+                    put(string_append(str_lit("kayak_rt::suspend::ready"), string_append(arity, if fallible_effect_p(c, second(items(typ))) {
+                        str_lit("_body(")
+                    } else {
+                        str_lit("(")
+                    })), acc)
+                } else {
+                    acc
+                };
+                let acc = put(string_append(str_lit("kayak_rt::native_procedure"), string_append(arity, str_lit("::<"))), acc);
                 let acc = put_sep(lambda2s(move |p: &'static Sexp, acc: List<char>| {
                     if head_is_p(p, str_lit("subr")) {
                         put(str_lit("_"), acc)
@@ -4992,7 +5111,11 @@ pub mod emitter {
                 }), str_lit(", "), ts, acc);
                 let acc = put(str_lit(">("), acc);
                 let acc = put_exp(c, second(items(second(xs))), n, value(), acc);
-                return put(str_lit(")"), acc);
+                return put(if ready {
+                    str_lit("))")
+                } else {
+                    str_lit(")")
+                }, acc);
             } else if string_eq_p(h, str_lit("the")) {
                 // `the::<T>(e)`: the type said to rustc too, which may need it where
                 // FX-26's checker did (a tag's payload, a list nothing else types).
@@ -5196,7 +5319,11 @@ pub mod emitter {
             string_append(t, str_lit(": Copy + 'static"))
         }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
         let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
-        let acc = put_letrena_params(inner, names, types, acc);
+        let acc = put_letrena_params(if async_mode_p(c) {
+            c
+        } else {
+            inner
+        }, names, types, acc);
         let acc = put(str_lit(") -> "), acc);
         let acc = if fallible {
             put(str_lit(", Unwind>"), put_type(inner, car(read_all(fact_with(c, e, str_lit("letrena-type ")), str_lit(""), 1i64)), put(str_lit("Result<"), acc)))

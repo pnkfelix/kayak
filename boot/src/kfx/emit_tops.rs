@@ -19,7 +19,7 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, kfx_callee_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, as_ifs, put_exp, call_box, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, comefrom_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, kfx_callee_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_constructors, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, named_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, as_ifs, put_exp, put_ok_lift, call_box, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -459,7 +459,7 @@ pub mod writing {
                 Sexp::Lst(xs, f, l, p) => {
                     if null_p(xs) {
                         return false;
-                    } else if (sym_is_p(car(xs), str_lit("subr")) && suspending_effect_p(c, second(xs))) {
+                    } else if (sym_is_p(car(xs), str_lit("subr")) && comefrom_effect_p(c, second(xs))) {
                         return true;
                     } else if sym_is_p(car(xs), str_lit("subr")) {
                         if any_p(lambda1s(move |x: &'static Sexp| {
@@ -1775,7 +1775,13 @@ pub mod writing {
         let siblings = map(lambda1s(move |d: &'static Sexp| {
             sym_name(car(items(d)))
         }), defs);
-        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::nil()));
+        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), if in_async_mode_p(c) {
+            map(lambda1s(move |x: Str| {
+                string_append(str_lit("%rec "), x)
+            }), siblings)
+        } else {
+            nil::<Str>()
+        }));
         let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
         let pt = string_append(str_lit("Place_"), camel(p));
         let named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
@@ -1790,10 +1796,15 @@ pub mod writing {
             let ys = items(d);
             let t = unpoly(second(ys));
             let params = items(second(items(third(ys))));
-            if (head_is_p(second(ys), str_lit("poly")) || not(head_is_p(t, str_lit("subr"))) || not(i64_eq(size(items(t)), 4i64)) || fallible_effect_p(c, second(items(t))) || suspending_effect_p(c, second(items(t)))) {
+            if (head_is_p(second(ys), str_lit("poly")) || not(head_is_p(t, str_lit("subr"))) || not(i64_eq(size(items(t)), 4i64)) || fallible_effect_p(c, second(items(t))) || comefrom_effect_p(c, second(items(t)))) {
                 error(string_append(str_lit("kfx: a module maker's item poly, or failing, or suspending, which KFX writes not yet (C274): "), sym_name(car(ys))))
             } else {
-                let acc = put(string_append(str_lit("    pub fn "), string_append(mangle(sym_name(car(ys))), str_lit("(self"))), acc);
+                let r#async = in_async_mode_p(c);
+                let acc = put(string_append(if r#async {
+                    str_lit("    pub async fn ")
+                } else {
+                    str_lit("    pub fn ")
+                }, string_append(mangle(sym_name(car(ys))), str_lit("(self"))), acc);
                 let acc = if null_p(params) {
                     acc
                 } else {
@@ -1801,7 +1812,11 @@ pub mod writing {
                 };
                 let acc = put_type(cp, fourth(items(t)), put(str_lit(") -> "), acc));
                 let acc = put(concat_strings(kayak_rt::heap_cons(str_lit(" {\n        "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit("(self.0"), kayak_rt::nil())))))), acc);
-                put(str_lit(")\n    }\n"), put_sep(lambda2s(move |x: &'static Sexp, acc: Chars| {
+                put(if r#async {
+                    str_lit(").await\n    }\n")
+                } else {
+                    str_lit(")\n    }\n")
+                }, put_sep(lambda2s(move |x: &'static Sexp, acc: Chars| {
                     put(mangle(param_name(x)), put(str_lit(", "), acc))
                 }), str_lit(""), params, acc))
             }
@@ -1908,7 +1923,13 @@ pub mod writing {
                 }
             }
         };
-        mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), kayak_rt::nil())), forms)
+        mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), if in_async_mode_p(c) {
+            map(lambda1s(move |x: Str| {
+                string_append(str_lit("%rec "), x)
+            }), without(without(item_values(forms), item_constants(forms)), item_constructors(forms)))
+        } else {
+            nil::<Str>()
+        })), forms)
     }
 
     /// A module's `pub mod`, around its items' Rust, `body`, newest first.

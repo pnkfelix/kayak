@@ -972,6 +972,7 @@
 (emitter-call "blobref_at" kayak)
 (emitter-call "blobref_plus" kayak)
 (emitter-call "block" kayak)
+(emitter-call "blocking1" kayak)
 (emitter-call "body" kayak)
 (emitter-call "boxed" kayak)
 (emitter-call "boxed_list" kayak)

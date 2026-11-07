@@ -35,3 +35,6 @@ diff -r "$tmp/plain" boot/src/kfx
 $cap "$bin" --async kfx/kfx.unit "$tmp/again"
 diff -r "$tmp/again" "$tmp/async"
 echo "async-check: the compiler built async makes boot/src/kfx/ again, and its own async Rust"
+# And the corpus in the async mode (C373, C376): each program, every
+# procedure async, gives Fixpt's answer.
+python3 -I scripts/async-corpus.py

@@ -21,7 +21,11 @@ use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
 /// A prompt's body, or a continuation's: its answer, or an abort.
-pub type Body<R> = Pin<Box<dyn Future<Output = Result<R, Unwind>>>>;
+pub type Body<R> = BodyAt<'static, R>;
+
+/// `Body`, of a future that may hold what lives for `'a` (C376): a
+/// `letrena` region's data, in the emitter's async mode.
+pub type BodyAt<'a, R> = Pin<Box<dyn Future<Output = Result<R, Unwind>> + 'a>>;
 
 /// A capture on its way to its prompt: the tag's identity, and what makes
 /// the abort's payload from the body (erased: the prompt downcasts it).
@@ -53,17 +57,20 @@ pub type Resume<V, R> = &'static dyn Fn(V) -> Body<R>;
 /// A future, boxed: what a procedure value that may suspend returns, and a
 /// call of a procedure that may suspend awaits (so that an `async fn` may
 /// call itself).
-pub fn body<R>(f: impl Future<Output = Result<R, Unwind>> + 'static) -> Body<R> {
+pub fn body<'a, R>(f: impl Future<Output = Result<R, Unwind>> + 'a) -> BodyAt<'a, R> {
     Box::pin(f)
 }
 
 /// A future of a plain value, boxed: what a procedure value of the emitter's
 /// async mode returns where its effect cannot abort (C372), and the box of
 /// a call of such a procedure that may close a cycle.
-pub type Fut<R> = Pin<Box<dyn Future<Output = R>>>;
+pub type Fut<R> = FutAt<'static, R>;
+
+/// `Fut`, of a future that may hold what lives for `'a` (C376).
+pub type FutAt<'a, R> = Pin<Box<dyn Future<Output = R> + 'a>>;
 
 /// `body`'s, for a future of a plain value (C372).
-pub fn boxed<R>(f: impl Future<Output = R> + 'static) -> Fut<R> {
+pub fn boxed<'a, R>(f: impl Future<Output = R> + 'a) -> FutAt<'a, R> {
     Box::pin(f)
 }
 
@@ -207,6 +214,40 @@ pub fn block<R>(f: impl Future<Output = R>) -> R {
         Poll::Ready(r) => r,
         Poll::Pending => crate::fail("abort-with-continuation: no prompt for the tag"),
     }
+}
+
+/// A synchronous procedure, a native one (C116), as the emitter's async
+/// mode calls procedures (C376): each answer a future ready at once, a
+/// `Body` if `readyN_body`'s.
+macro_rules! ready {
+    ($name:ident, $body:ident, $($a:ident $x:ident),*) => {
+        pub fn $name<'a, $($a: 'a,)* R: 'a>(
+            f: &'a (dyn Fn($($a),*) -> R + Send + Sync),
+        ) -> &'a (dyn Fn($($a),*) -> FutAt<'a, R> + Send + Sync) {
+            crate::alloc(move |$($x: $a),*| boxed(std::future::ready(f($($x),*))))
+        }
+
+        pub fn $body<'a, $($a: 'a,)* R: 'a>(
+            f: &'a (dyn Fn($($a),*) -> R + Send + Sync),
+        ) -> &'a (dyn Fn($($a),*) -> BodyAt<'a, R> + Send + Sync) {
+            crate::alloc(move |$($x: $a),*| body(std::future::ready(Ok(f($($x),*)))))
+        }
+    };
+}
+
+ready!(ready0, ready0_body,);
+ready!(ready1, ready1_body, A a);
+ready!(ready2, ready2_body, A a, B b);
+ready!(ready3, ready3_body, A a, B b, C c);
+ready!(ready4, ready4_body, A a, B b, C c, D d);
+
+/// The other way, a procedure of the async mode where the runtime wants
+/// one that answers at once (`spawn-monitored`'s `on-failure`, C376): each
+/// call run to its end, as `block` runs one.
+pub fn blocking1<A, R>(
+    f: &'static (dyn Fn(A) -> Fut<R> + Send + Sync),
+) -> impl Fn(A) -> R + Send + Sync + 'static {
+    move |a| block(f(a))
 }
 
 #[cfg(test)]
