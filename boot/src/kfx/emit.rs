@@ -2431,6 +2431,70 @@ pub mod emitter {
         async_mode_p(c)
     }
 
+    /// Whether fuel is charged (C378): in the async mode, where a closure
+    /// begins, at each turn of a loop, and before each boxed call,
+    /// which every cycle of calls passes, as Rust boxes a recursive
+    /// future; not in a probe for leaves (C377), whose own charges would
+    /// make none a leaf.
+    #[inline]
+    pub fn charging_p(c: &'static Ctx) -> bool {
+        (async_mode_p(c) && not(string_member_p(str_lit("%probe"), ctx_locals(c))))
+    }
+
+    #[inline]
+    pub fn charge_statement() -> Str {
+        str_lit("if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; }")
+    }
+
+    /// Where fuel is charged, a loop's body, `body`, written apart, onto
+    /// `acc`, after its head: and first a charge (C378), if the body awaits
+    /// already. One that awaits nothing is as a leaf's loop (C377), no point
+    /// to be preempted at, its state kept in registers, where a charge's
+    /// `.await` would keep it in the future. Put on by loops, as long as
+    /// the body is (`onto` would recur as deep).
+    #[inline]
+    pub fn put_charged_loop(body: Chars, n: i64, acc: Chars) -> Chars {
+        rev_onto(rev_onto(body, nil::<char>()), if chars_have_p(body, string_chars(str_lit("tiawa."))) {
+            put_nl(n, put(charge_statement(), acc))
+        } else {
+            acc
+        })
+    }
+
+    /// Whether `p` is in `cs` (no `string-search`, which tier 1 has not,
+    /// where the compiler runs as FX-26).
+    pub fn chars_have_p(mut cs: Chars, mut p: Chars) -> bool {
+        loop {
+            if null_p(cs) {
+                return false;
+            } else if chars_start_p(cs, p) {
+                return true;
+            } else {
+                cs = cdr(cs);
+                continue;
+            }
+        }
+    }
+
+    pub fn chars_start_p(mut cs: Chars, mut p: Chars) -> bool {
+        loop {
+            if null_p(p) {
+                return true;
+            } else {
+                if not(null_p(cs)) {
+                    if char_eq_p(car(cs), car(p)) {
+                        (cs, p) = (cdr(cs), cdr(p));
+                        continue;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+
     /// Whether call `e`'s callee is a KFX procedure, whose Rust the async mode
     /// makes a future: a procedure value, a local, or a name the checker
     /// found bound to one the program defines (`kfx-call`, C373), but the
@@ -4271,10 +4335,11 @@ pub mod emitter {
     /// mode, a plain `Box::pin` where it is awaited, which needs no
     /// `'static` future, so a region's data may be in it (C373), and none
     /// where it is run to its end (`block`).
-    #[inline]
     pub fn call_box(c: &'static Ctx, e: &'static Sexp) -> Str {
         if not(async_mode_p(c)) {
             str_lit("kayak_rt::suspend::body(")
+        } else if (async_here_p(c) && charging_p(c)) {
+            str_lit("{ if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } Box::pin(")
         } else if async_here_p(c) {
             str_lit("Box::pin(")
         } else {
@@ -4779,11 +4844,27 @@ pub mod emitter {
         let acc = put(str_lit("| "), acc);
         if (mfact_p(c, e, str_lit("suspends")) && (not(async_mode_p(c)) || fact_at_p(c, e, str_lit("fallible")))) {
             // One that may suspend returns its body as a future, boxed (C45).
-            put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), put(str_lit("kayak_rt::suspend::body(async move "), acc)))
+            put(if charging_p(c) {
+                str_lit(" }))")
+            } else {
+                str_lit("))")
+            }, put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), put(if charging_p(c) {
+                str_lit("kayak_rt::suspend::body(async move { if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } ")
+            } else {
+                str_lit("kayak_rt::suspend::body(async move ")
+            }, acc)))
         } else if mfact_p(c, e, str_lit("suspends")) {
             // In the async mode, one that cannot abort: a future of its value
             // plainly (C372).
-            put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params)))), body, n, value(), put(str_lit("kayak_rt::suspend::boxed(async move "), acc)))
+            put(if charging_p(c) {
+                str_lit(" }))")
+            } else {
+                str_lit("))")
+            }, put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params)))), body, n, value(), put(if charging_p(c) {
+                str_lit("kayak_rt::suspend::boxed(async move { if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } ")
+            } else {
+                str_lit("kayak_rt::suspend::boxed(async move ")
+            }, acc)))
         } else if mfact_p(c, e, str_lit("fallible")) {
             put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), acc))
         } else {
@@ -4901,7 +4982,11 @@ pub mod emitter {
             str_lit("| kayak_rt::suspend::boxed(async move {")
         }, acc);
         let acc = put_nl(i64_plus(n, 2i64), put(str_lit("loop {"), put_nl(i64_plus(n, 1i64), acc)));
-        let acc = put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc);
+        let acc = if (suspends && charging_p(c)) {
+            put_charged_loop(put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, nil::<char>()), i64_plus(n, 2i64), acc)
+        } else {
+            put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc)
+        };
         put(if suspends {
             str_lit("}))")
         } else {
@@ -5740,7 +5825,11 @@ pub mod emitter {
         } else if (async_here_p(c) && not(boxed_call_p(c, e))) {
             put(str_lit(".await"), acc)
         } else if async_here_p(c) {
-            put(str_lit(").await"), acc)
+            put(if charging_p(c) {
+                str_lit(") }.await")
+            } else {
+                str_lit(").await")
+            }, acc)
         } else {
             put(str_lit("))"), acc)
         };

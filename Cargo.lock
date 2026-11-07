@@ -40,7 +40,9 @@ version = "0.1.0"
 dependencies = [
  "kayak-jit",
  "kayak-reps",
+ "kayak-sched",
  "kayak-sync",
+ "kayak-trace",
 ]
 
 [[package]]

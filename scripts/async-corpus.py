@@ -90,7 +90,8 @@ def main():
         if machine is not None:
             lib.append('#[cfg(target_arch = "%s")]' % machine)
         lib.append("fn %s_main() -> kayak_rt::Str {" % m)
-        lib.append("    kayak_rt::suspend::block(%s::main())%s" %
+        # A task of a scheduler of its own, which its fuel preempts (C378).
+        lib.append("    kayak_rt::suspend::run(%s::main())%s" %
                    (m, ".unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))" if fallible else ""))
         lib.append("}")
     lib.append("pub const PROGRAMS: &[(&str, Main)] = &[")

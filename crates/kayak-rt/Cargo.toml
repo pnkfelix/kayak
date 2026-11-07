@@ -7,6 +7,8 @@ license.workspace = true
 [dependencies]
 kayak-jit = { path = "../kayak-jit" }
 kayak-reps = { path = "../kayak-reps" }
+kayak-sched = { path = "../kayak-sched" }
+kayak-trace = { path = "../kayak-trace" }
 kayak-sync = { path = "../kayak-sync", optional = true }
 
 [features]

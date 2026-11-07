@@ -10402,3 +10402,46 @@ The user's go-ahead for the next of C376's steps: procedures that need no
   s), but tier 1, where the compiler runs as FX-26 in the second
   self-hosting, has no such primitive yet.
 
+## C378. Fuel in the async mode (2026-11-07)
+
+The user's go-ahead ("Yeah fuel sounds good"): the async mode's programs
+pay fuel, and run as tasks of kayak-sched (Coopt's scheduler, C368), which
+the fuel preempts.
+- **The charge** is kayak-rt's, not kayak-sched's `Cx::charge`, which
+  borrows a `RefCell` and is reached through a `Cx` the generated code does
+  not have. `suspend::spent()` decrements a thread-local count; once in
+  `QUANTUM` (1,024) units it is spent, and `settle().await` pays the
+  quantum, and what was owed, to the scheduler of the task the thread runs
+  (`suspend::run`), whose own `Charge` may end the slice: `Pending`, and
+  the task polled again in a later slice. In `block`, which cannot yield,
+  a spent quantum is only owed, paid at the next charge that may.
+- **Where it is charged**: where a closure begins (`boxed`/`body(async
+  move { ... })`), at each turn of a loop whose body awaits already, and
+  before each boxed call (`{ if spent() { settle().await; } Box::pin(..)
+  }.await`). Async Rust boxes every cycle of calls (E0733) and every call
+  of a procedure value is a closure's, so a program that runs on passes
+  a charge at each round. Not at each `async fn`'s beginning: a call that
+  cannot recur need not pay. Not in a loop that awaits nothing: as a
+  leaf's (C377), no point to be preempted at, its state kept in registers,
+  where a charge's `.await` would keep it in the future. Not in the probe
+  for leaves (`charging?`).
+- **`suspend::run`** runs `main` as a task of a scheduler of its own
+  (quiet: kayak-sched's report of a failing test is not a program's to
+  say, a kayak change to the fork), and fails as `block` did if the task
+  is still pending when nothing can run. boot's `main.rs` and the async
+  corpus use it; in the synchronous build nothing charges, and it polls
+  once. A test (`fuel_preempts`) shows a task that charges for long
+  ended at a quantum and another run before it ends.
+- **The cost**, by instructions (the machine was loaded, so not by
+  time): the compiler built async, compiling itself, 21.1 G without fuel,
+  23.2 G with (10%): about 1.1 G at boxed calls, 1.0 G at closures and
+  loops; 99 million charges, 97,000 quanta. The synchronous build is
+  12.1 G. Tried and no better: an awaited `Charge` future at every
+  `async fn`'s beginning (23.9 G), the same split into `spent()` and
+  `settle()` (23.7 G), a wrapper future that pays before it polls (23.4
+  G), loops charged whatever their bodies (23.4 G).
+- Next, which would cut both boxes and charges: C376 made a module's
+  procedures one `%rec` group, so every call within a module is boxed
+  (and now charged); the real groups, the call graph's strongly
+  connected components, would box only calls that can recur.
+

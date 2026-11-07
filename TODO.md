@@ -491,15 +491,26 @@ Phase C, FX-26's runtime:
   heap, composable continuations; an interpreter of the IR, kept as the
   reference (Q8); its tasks on the one scheduler.
 - **K6**: Fixpt's programs on it, compared with Fixpt.
-- **The emitter's async mode** (C371-C376): every procedure an `async
+- **Reclaiming kayak-rt's heap: tabled** (the user, 2026-11-07: "until
+  it seems like it is unacceptable overhead"). Nothing is freed but a
+  `letrena`'s arena. When it is taken up: a heap census first (how much
+  is still reachable while the compiler compiles itself); then a
+  non-moving mark-sweep in kayak-rt and kayak-sys, collecting at tasks'
+  yields so that no Rust frame holds a KFX reference (roots: suspended
+  futures, globals, thread-locals), opaque closures and futures scanned
+  conservatively; Coopt's precise `Value<'gc>` heap the end state.
+- **The emitter's async mode** (C371-C378): every procedure an `async
   fn`; the compiler built so makes itself, and each corpus program gives
   Fixpt's answer (`scripts/async-check.sh`, in the full check). Leaves
   are plain `fn`s (C377: 494 of the compiler's; 3.65 s to 3.43 s, the
   synchronous build 2.1 s). Next: the rest of the overhead, futures'
   boxes and moves in recursive walks and in higher-order procedures
-  (`any?`, `map`) given procedure values; fuel charged, programs
-  run as `kayak-sched` tasks; `--async` with `--cache` (the mode in the
-  memo key); a maker's poly or failing items; native code calling back a
+  (`any?`, `map`) given procedure values. Fuel is charged and `main` is a
+  `kayak-sched` task (C378; 10% more instructions). Next: a module's
+  real recursion groups (strongly connected components), not all its
+  procedures one (C376), so that fewer calls are boxed and charged;
+  processes as tasks of the same scheduler (coopt-adoption step 2);
+  `--async` with `--cache` (the mode in the memo key); a maker's poly or failing items; native code calling back a
   procedure that may abort.
 - **The second self-hosting** (C366): restored on tier 1, checked in the
   full check (`scripts/selfhost-cells.sh`, 97 s, 7.5 GB); the IR engine's

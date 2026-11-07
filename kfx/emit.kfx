@@ -1285,6 +1285,45 @@
     (define in-async-mode? (subr kfx (ctx) bool)
       (lambda (c) "`async-mode?`, for the modules that include this one." (async-mode? c)))
 
+    (define charging? (subr kfx (ctx) bool)
+      (lambda (c)
+        "Whether fuel is charged (C378): in the async mode, where a closure
+         begins, at each turn of a loop, and before each boxed call,
+         which every cycle of calls passes, as Rust boxes a recursive
+         future; not in a probe for leaves (C377), whose own charges would
+         make none a leaf."
+        (and (async-mode? c) (not (string-member? "%probe" (ctx-locals c))))))
+
+    (define charge-statement string "if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; }")
+
+    (define put-charged-loop (subr kfx (chars i64 chars) chars)
+      (lambda (body n acc)
+        "Where fuel is charged, a loop's body, `body`, written apart, onto
+         `acc`, after its head: and first a charge (C378), if the body awaits
+         already. One that awaits nothing is as a leaf's loop (C377), no point
+         to be preempted at, its state kept in registers, where a charge's
+         `.await` would keep it in the future. Put on by loops, as long as
+         the body is (`onto` would recur as deep)."
+        (rev-onto (rev-onto body nil)
+                  (if (chars-have? body (string-chars "tiawa."))
+                      (put-nl n (put charge-statement acc))
+                      acc))))
+
+    (define-rec
+      (chars-have? (subr kfx (chars chars) bool)
+        (lambda (cs p)
+          "Whether `p` is in `cs` (no `string-search`, which tier 1 has not,
+           where the compiler runs as FX-26)."
+          (cond ((null? cs) #f)
+                ((chars-start? cs p) #t)
+                (else (chars-have? (cdr cs) p))))))
+
+    (define-rec
+      (chars-start? (subr kfx (chars chars) bool)
+        (lambda (cs p)
+          (or (null? p)
+              (and (not (null? cs)) (char=? (car cs) (car p)) (chars-start? (cdr cs) (cdr p)))))))
+
     (define kfx-callee? (subr kfx (ctx sexp) bool)
       (lambda (c e)
         "Whether call `e`'s callee is a KFX procedure, whose Rust the async mode
@@ -2270,6 +2309,8 @@
            `'static` future, so a region's data may be in it (C373), and none
            where it is run to its end (`block`)."
           (cond ((not (async-mode? c)) "kayak_rt::suspend::body(")
+                ;; Fuel paid where a cycle of calls may pass (C378), before it.
+                ((and (async-here? c) (charging? c)) "{ if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } Box::pin(")
                 ((async-here? c) "Box::pin(")
                 (else "("))))
 
@@ -2612,13 +2653,15 @@
                  (acc (put "| " acc)))
             (cond ((and (mfact? c e "suspends") (or (not (async-mode? c)) (fact-at? c e "fallible")))
                    "One that may suspend returns its body as a future, boxed (C45)."
-                   (put "))" (put-block (with-locals c (cons "%async" (cons "%fallible" (map param-name params)))) body n (ok-value)
-                                        (put "kayak_rt::suspend::body(async move " acc))))
+                   (put (if (charging? c) " }))" "))")
+                        (put-block (with-locals c (cons "%async" (cons "%fallible" (map param-name params)))) body n (ok-value)
+                                   (put (if (charging? c) "kayak_rt::suspend::body(async move { if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } " "kayak_rt::suspend::body(async move ") acc))))
                   ((mfact? c e "suspends")
                    "In the async mode, one that cannot abort: a future of its value
                     plainly (C372)."
-                   (put "))" (put-block (with-locals c (cons "%async" (cons "%infallible" (map param-name params)))) body n (value)
-                                        (put "kayak_rt::suspend::boxed(async move " acc))))
+                   (put (if (charging? c) " }))" "))")
+                        (put-block (with-locals c (cons "%async" (cons "%infallible" (map param-name params)))) body n (value)
+                                   (put (if (charging? c) "kayak_rt::suspend::boxed(async move { if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } " "kayak_rt::suspend::boxed(async move ") acc))))
                   ((mfact? c e "fallible")
                    (put ")" (put-block (with-locals c (cons "%sync" (cons "%fallible" (map param-name params)))) body n (ok-value) acc)))
                   (else (put ")" (put-block (with-locals c (cons "%sync" (cons "%infallible" (map param-name params)))) body n (value) acc)))))))
@@ -2690,7 +2733,9 @@
                                ", " params acc))
                  (acc (put (cond ((not suspends) "| {") (fallible "| kayak_rt::suspend::body(async move {") (else "| kayak_rt::suspend::boxed(async move {")) acc))
                  (acc (put-nl (i64+ n 2) (put "loop {" (put-nl (i64+ n 1) acc))))
-                 (acc (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t acc)))
+                 (acc (if (and suspends (charging? c))
+                          (put-charged-loop (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t nil) (i64+ n 2) acc)
+                          (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t acc))))
             (put (if suspends "}))" "})") (put-nl n (put "}" (put-nl (i64+ n 1) acc)))))))
 
       (put-placed-list (subr kfx (ctx string sexps sexps i64 chars) chars)
@@ -3260,7 +3305,7 @@
            is awaited first, its future boxed if it is a named procedure's."
           (let ((acc (cond ((not (mfact? c e "suspending-call")) acc)
                            ((and (async-here? c) (not (boxed-call? c e))) (put ".await" acc))
-                           ((async-here? c) (put ").await" acc))
+                           ((async-here? c) (put (if (charging? c) ") }.await" ").await") acc))
                            (else (put "))" acc)))))
           (cond ((not (mfact? c e "fallible-call")) acc)
                 ((fallible-here? c) (put "?" acc))

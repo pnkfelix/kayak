@@ -409,7 +409,10 @@
                  (acc (put " {" acc)))
             (if loops?
                 (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
-                       (acc (put-stmts inner body 2 t acc)))
+                       ;; Fuel, each turn, if it awaits (C378).
+                       (acc (if (and suspends (charging? c))
+                                (put-charged-loop (put-stmts inner body 2 t nil) 2 acc)
+                                (put-stmts inner body 2 t acc))))
                   (put "\n    }\n}\n\n" acc))
                 (if (and (not lambda?) (fact-at? c defined "once"))
                     (let* ((acc (put-nl 1 acc))
@@ -420,7 +423,8 @@
                            (acc (put "once(&ONCE, || {" acc))
                            (acc (put-stmts inner body 2 (value) (put-nl 2 acc))))
                       (put "\n    })\n}\n\n" acc))
-                    (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value)) (put-nl 1 acc))))))))
+                    (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value))
+                                                (put-nl 1 acc))))))))
 
       (define put-rec-each (subr kfx (ctx sexps chars) chars)
         (lambda (c bindings acc)
@@ -1187,21 +1191,6 @@
                       (written (put-define (with-locals c (cons "%probe" group)) (car xs) (second xs) (third xs) nil)))
                  ;; The Rust newest first, so `.await` backwards.
                  (not (chars-have? written (string-chars "tiawa."))))))))
-
-    (define-rec
-      (chars-have? (subr kfx (chars chars) bool)
-        (lambda (cs p)
-          "Whether `p` is in `cs` (no `string-search`, which tier 1 has not,
-           where the compiler runs as FX-26)."
-          (cond ((null? cs) #f)
-                ((chars-start? cs p) #t)
-                (else (chars-have? (cdr cs) p))))))
-
-    (define-rec
-      (chars-start? (subr kfx (chars chars) bool)
-        (lambda (cs p)
-          (or (null? p)
-              (and (not (null? cs)) (char=? (car cs) (car p)) (chars-start? (cdr cs) (cdr p)))))))
 
     (define-rec
       (calls-in (subr kfx (ctx sexps strings) strings)

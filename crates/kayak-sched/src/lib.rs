@@ -605,6 +605,9 @@ pub struct Scheduler<S: Sink> {
 /// scheduler, when it is dropped in the panic, on stderr, which the test
 /// harness shows with the failure, and its name.
 struct Report {
+    /// Said nothing (kayak's, C378): a program run as a task, whose failure
+    /// is its own message alone.
+    quiet: bool,
     seed: u64,
     quantum: u64,
     stress: Option<Stress>,
@@ -615,7 +618,7 @@ struct Report {
 
 impl Drop for Report {
     fn drop(&mut self) {
-        if !std::thread::panicking() {
+        if self.quiet || !std::thread::panicking() {
             return;
         }
         let stress = match &self.stress {
@@ -644,6 +647,7 @@ impl<S: Sink> Scheduler<S> {
         let fuel_is_time = config.clock == ClockMode::Auto;
         Scheduler {
             report: Report {
+                quiet: false,
                 seed: config.seed,
                 quantum: config.quantum,
                 stress: config.stress.clone(),
@@ -845,6 +849,13 @@ impl<S: Sink> Scheduler<S> {
         self.report.hash.update(&e);
         self.report.step = e.step;
         self.sink.record(&e);
+    }
+
+    /// One whose failing test says nothing of the scheduler (kayak's,
+    /// C378): a program's own run, whose failure is the program's.
+    pub fn quiet(mut self) -> Scheduler<S> {
+        self.report.quiet = true;
+        self
     }
 
     /// The hash of the event stream so far.

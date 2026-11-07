@@ -207,12 +207,148 @@ impl<R: 'static, H: Copy + 'static> Future for PromptFuture<R, H> {
 /// a procedure that cannot suspend): run to its end. Nothing waits on the
 /// outside world yet, so one poll does: a capture still pending has no
 /// prompt for its tag, an error, as in FX-26.
+///
+/// Fuel charged in it is never settled with a scheduler, as it cannot
+/// yield: it is owed, and paid at the next charge that may (C378).
 pub fn block<R>(f: impl Future<Output = R>) -> R {
+    struct Blocking;
+    impl Drop for Blocking {
+        fn drop(&mut self) {
+            BLOCKING.with(|b| b.set(b.get() - 1));
+        }
+    }
+    BLOCKING.with(|b| b.set(b.get() + 1));
+    let _blocking = Blocking;
     let mut f = std::pin::pin!(f);
     let mut cx = Context::from_waker(Waker::noop());
     match f.as_mut().poll(&mut cx) {
         Poll::Ready(r) => r,
         Poll::Pending => crate::fail("abort-with-continuation: no prompt for the tag"),
+    }
+}
+
+/// How much fuel a thread spends before it settles with its scheduler
+/// (C378): a charge is a decrement of a thread local, and only one in
+/// `QUANTUM` asks the scheduler, which may end the task's slice there.
+pub const QUANTUM: u64 = 1024;
+
+thread_local! {
+    /// What is left of this thread's quantum.
+    static FUEL: Cell<u64> = const { Cell::new(QUANTUM) };
+    /// Quanta spent where no scheduler could be paid (in `block`, or with
+    /// none), to pay at the next settling.
+    static OWED: Cell<u64> = const { Cell::new(0) };
+    /// How many `block`s this thread is in.
+    static BLOCKING: Cell<u32> = const { Cell::new(0) };
+    /// The scheduler's handle of the task this thread runs (`run`).
+    static TASK: RefCell<Option<kayak_sched::Cx>> = const { RefCell::new(None) };
+}
+
+/// Fuel, one unit (C378): what the async mode's procedures pay as they
+/// begin, and each turn of a loop, so that a program, however long it
+/// runs, reaches a point where its scheduler may preempt it. Ready at once
+/// but at the end of a quantum, when it settles with the scheduler of
+/// the task it runs in (`run`), which may end the task's slice: then
+/// `Pending`, and polled again in the next.
+#[inline]
+pub fn charge() -> Charge {
+    Charge { settling: None }
+}
+
+/// `charge`'s first half, as the emitter writes it: one unit spent, and
+/// whether the quantum is, so that its end is settled (`settle().await`);
+/// a decrement, where an awaited `charge` is a future polled each time.
+#[inline]
+pub fn spent() -> bool {
+    let left = FUEL.with(Cell::get);
+    if left > 0 {
+        FUEL.with(|f| f.set(left - 1));
+        false
+    } else {
+        true
+    }
+}
+
+/// `charge`'s second half: a spent quantum settled with the scheduler.
+#[cold]
+pub fn settle() -> Charge {
+    Charge { settling: None }
+}
+
+pub struct Charge {
+    settling: Option<kayak_sched::Charge>,
+}
+
+impl Future for Charge {
+    type Output = ();
+
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        let this = self.get_mut();
+        if this.settling.is_none() {
+            let left = FUEL.with(Cell::get);
+            if left > 0 {
+                FUEL.with(|f| f.set(left - 1));
+                return Poll::Ready(());
+            }
+        }
+        this.settle(cx)
+    }
+}
+
+impl Charge {
+    #[cold]
+    fn settle(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if self.settling.is_none() {
+            let task = if BLOCKING.with(Cell::get) == 0 {
+                TASK.with(|t| t.borrow().clone())
+            } else {
+                None
+            };
+            let Some(task) = task else {
+                OWED.with(|o| o.set(o.get() + QUANTUM));
+                FUEL.with(|f| f.set(QUANTUM));
+                return Poll::Ready(());
+            };
+            self.settling = Some(task.charge(QUANTUM + OWED.with(|o| o.replace(0))));
+        }
+        let Some(settling) = self.settling.as_mut() else {
+            return Poll::Ready(());
+        };
+        match Pin::new(settling).poll(cx) {
+            Poll::Ready(()) => {
+                self.settling = None;
+                FUEL.with(|f| f.set(QUANTUM));
+                Poll::Ready(())
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+/// A program's `main`, a future, run to its end as a task of a scheduler
+/// of its own (kayak-sched, Coopt's, C368), which its fuel preempts (C378):
+/// the async mode's top level, where the synchronous mode's is a call.
+/// Still pending when nothing can run, a capture with no prompt for its
+/// tag, an error, as `block` says it.
+pub fn run<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
+    let mut sched =
+        kayak_sched::Scheduler::new(kayak_sched::Config::default(), kayak_trace::Discard).quiet();
+    let mut main = sched.spawn_join(kayak_sched::Spawn::new("main"), |cx| async move {
+        struct Running;
+        impl Drop for Running {
+            fn drop(&mut self) {
+                TASK.with(|t| *t.borrow_mut() = None);
+            }
+        }
+        TASK.with(|t| *t.borrow_mut() = Some(cx));
+        let _running = Running;
+        f.await
+    });
+    sched.run(u64::MAX);
+    match main.try_take() {
+        Some(v) => v,
+        None => crate::fail("abort-with-continuation: no prompt for the tag"),
     }
 }
 
@@ -528,5 +664,38 @@ mod tests {
             panic!("aborted")
         };
         assert_eq!(v, 701);
+    }
+
+    /// Fuel preempts (C378): a task that charges for long is ended at a
+    /// quantum, so another (one its open section allows) runs before it
+    /// ends; and in a `block`, what it charges is only owed.
+    #[test]
+    fn fuel_preempts() {
+        use std::rc::Rc;
+        let order: Rc<RefCell<Vec<&str>>> = Rc::default();
+        let mut sched =
+            kayak_sched::Scheduler::new(kayak_sched::Config::default(), kayak_trace::Discard);
+        let (a, b) = (order.clone(), order.clone());
+        sched.spawn(kayak_sched::Spawn::new("long"), move |cx| async move {
+            TASK.with(|t| *t.borrow_mut() = Some(cx));
+            for _ in 0..100 * QUANTUM {
+                charge().await;
+            }
+            block(async {
+                for _ in 0..10 * QUANTUM {
+                    charge().await;
+                }
+            });
+            a.borrow_mut().push("long");
+            TASK.with(|t| *t.borrow_mut() = None);
+        });
+        // Pure, so that the long one's open section does not exclude it.
+        let short = kayak_sched::Spawn::new("short").effect(kayak_sched::Effect::pure());
+        sched.spawn(short, move |_| async move {
+            b.borrow_mut().push("short");
+        });
+        let slices = sched.run(u64::MAX);
+        assert_eq!(*order.borrow(), ["short", "long"]);
+        assert!(slices > 2, "{slices} slices");
     }
 }
