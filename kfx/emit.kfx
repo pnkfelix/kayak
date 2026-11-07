@@ -86,17 +86,6 @@
 (define prelude-names strings
   (cons "%prelude-names" (map (lambda ((e sexp)) (sym-name (car (items e)))) (read-all prelude "" 1))))
 
-"The async mode: the names the checker types as primitives (check-defs.kfx,
- the lang items' `runtime-fn` and `emitted` rows), which the checker's
- `prim-call` does not mark where the emitter writes the call itself (a
- `cons`, a pair's operations), and the three control primitives typed by
- rules of their own (check-exprs.kfx's `control-schemes`); made once."
-(define primitive-names strings
-  (cons "make-continuation-prompt-tag"
-        (cons "abort-current-continuation"
-              (cons "escape"
-                    (map (lambda ((e sexp)) (sym-name (car (items e))))
-                         (onto (read-all primitives "" 1) (read-all process-forms "" 1)))))))
 
 (define-datatype tail
   (value)
@@ -1210,9 +1199,8 @@
            checker's `crossing?` says of the same effect: a procedure of it is
            `Send + Sync` in Rust, so that it may be held on another thread
            (C102). `pure` is one, and so the checker writes such an effect,
-           and `%local` any other that neither aborts nor suspends. None, in the
-           async mode, whose scheduler is one thread's (C371)."
-          (and (not (async-mode? c)) (tagcase e
+           and `%local` any other that neither aborts nor suspends."
+          (tagcase e
             (sym (n at-file at-pos)
               (cond ((or (string=? n "pure") (string=? n "spin") (string=? n "nondet")) #t)
                     ((or (string=? n "%local") (effect-binder? c n)) #f)
@@ -1227,7 +1215,7 @@
                            (head-is? (second xs) "const") (head-is? (second xs) "acyclic")))
                       ((sym-is? (car xs) "alloc") (or (has-prefix? at "@") (string=? at "acyclic")))
                       (else #f))))
-            (else other #f)))))
+            (else other #f))))
       (suspending-effect? (subr kfx (ctx sexp) bool)
         (lambda (c e)
           "Whether a written effect may suspend, a `comefrom` (C45): a procedure
@@ -1286,24 +1274,24 @@
     (define kfx-callee? (subr kfx (ctx sexp) bool)
       (lambda (c e)
         "Whether call `e`'s callee is a KFX procedure, whose Rust the async mode
-         makes a future: a local, a procedure value, or a name that is no
-         form's keyword, no primitive's (`prim-call`), no prelude's and no
-         constructor's."
+         makes a future: a procedure value, a local, or a name the checker
+         found bound to one the program defines (`kfx-call`, C373), but the
+         prelude's, whose Rust is kayak-rt's, and a constructor's."
         (tagcase (car (items e))
           (sym (h f p) (or (not (string=? (local-kind h (ctx-locals c)) ""))
-                           (not (or (fact-at? c e "prim-call") (form-keyword? h) (string-member? h prelude-names) (string-member? h primitive-names)
-                                    (any? (lambda ((x tagof)) (tagcase x (tagof (t d) (string=? t h)))) (ctx-tags c))))))
+                           (and (fact-at? c e "kfx-call")
+                                (not (or (string-member? h prelude-names)
+                                         (any? (lambda ((x tagof)) (tagcase x (tagof (t d) (string=? t h)))) (ctx-tags c)))))))
           (else other #t))))
 
     (define mfact? (subr kfx (ctx sexp string) bool)
       (lambda (c e what)
         "The checker's fact `what` at `e`, as the emitter's mode reads it: in the
          async mode every procedure suspends, and so does every call of a KFX
-         procedure, and none is `Send + Sync`; what may abort is what its
-         effect says (C372: a preemption is no abort)."
+         procedure; what may abort is what its effect says (C372: a preemption
+         is no abort), and what may cross threads too."
         (cond ((not (async-mode? c)) (fact-at? c e what))
               ((or (string=? what "suspends") (string=? what "suspending-body")) #t)
-              ((or (string=? what "sync") (string=? what "wrap-sync")) #f)
               ((string=? what "suspending-call") (or (kfx-callee? c e) (fact-at? c e what)))
               (else (fact-at? c e what)))))
 
@@ -2163,14 +2151,17 @@
                             (let* ((arity (digits-number (fact-in fs e (if (async-mode? c) "proc-value " "async-global "))))
                                    (prim (and (async-mode? c) (or (fact-at? c e "prim-ref") (string-member? s prelude-names))))
                                    (fallible (or (not (async-mode? c)) (fact-at? c e "proc-value-fallible")))
-                                   (acc (put (string-append "lambda" (string-append (i64->string arity) "(move |")) acc))
+                                   ;; Capturing nothing, `Send + Sync` whatever is wanted
+                                   ;; of it, in the async mode (C373).
+                                   (acc (put (string-append "lambda" (string-append (i64->string arity) (if (async-mode? c) "s(move |" "(move |"))) acc))
                                    (acc (put-arg-names 0 arity acc))
                                    (acc (put (cond ((and prim fallible) "| kayak_rt::suspend::body(async move { (")
                                                    (prim "| kayak_rt::suspend::boxed(async move { (")
                                                    (fallible "| kayak_rt::suspend::body(")
                                                    (else "| kayak_rt::suspend::boxed("))
                                              acc))
-                                   (acc (put (mangle s) acc))
+                                   ;; Named as `put-var` names it: a module item by its path.
+                                   (acc (put (if (string=? (local-kind s (ctx-locals c)) "item") (item-path c s) (mangle s)) acc))
                                    (acc (put "(" acc))
                                    (acc (put-arg-names 0 arity acc)))
                               (put (if prim ")) }))" ")))") acc)))
@@ -2185,8 +2176,12 @@
       (call-box (subr kfx (ctx sexp) string)
         (lambda (c e)
           "The box of a call's future: `body`, of a `Result`'s; in the async
-           mode, `boxed` where the call cannot abort (C372)."
-          (if (and (async-mode? c) (not (fact-at? c e "fallible-call"))) "kayak_rt::suspend::boxed(" "kayak_rt::suspend::body(")))
+           mode, a plain `Box::pin` where it is awaited, which needs no
+           `'static` future, so a region's data may be in it (C373), and none
+           where it is run to its end (`block`)."
+          (cond ((not (async-mode? c)) "kayak_rt::suspend::body(")
+                ((async-here? c) "Box::pin(")
+                (else "("))))
 
       (put-call (subr kfx (ctx sexp sexps i64 tail chars) chars)
         (lambda (c e xs n t acc)
@@ -2927,7 +2922,9 @@
                  (acc (put "let " acc))
                  (acc (put-par-pattern names acc))
                  (acc (put " = " acc))
-                 (acc (put-par-tree c op (map (lambda ((b sexp)) (second (items b))) bindings) n1 acc))
+                 ;; Its branches closures that do not suspend, in the async
+                 ;; mode too (C373): what they call is run to its end.
+                 (acc (put-par-tree (if (async-mode? c) (with-locals c (list "%sync")) c) op (map (lambda ((b sexp)) (second (items b))) bindings) n1 acc))
                  (acc (put-nl n1 (put ";" acc)))
                  (acc (put-stmts (with-locals c names) (cdr xs) n1 (hide t names) acc)))
             (put "}" (put-nl n acc)))))

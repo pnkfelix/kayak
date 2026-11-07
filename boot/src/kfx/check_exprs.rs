@@ -11812,17 +11812,28 @@ pub mod expressions {
         } else {
             scope_bind(h, v)
         };
-        let s = if (not(null_p(found)) && {
+        let s = if null_p(found) {
+            s
+        } else if {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
                     string_eq_p(w, str_lit("prim"))
                 }
             }
-        }) {
+        } {
             note_fact(s, cv_file(v), cv_pos(v), str_lit("prim-call"))
-        } else {
+        } else if {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    (string_eq_p(w, str_lit("broken")) || string_eq_p(w, str_lit("module")))
+                }
+            }
+        } {
             s
+        } else {
+            note_fact(s, cv_file(v), cv_pos(v), str_lit("kfx-call"))
         };
         if (not(null_p(found)) && {
             let tagcase_ = car(found);

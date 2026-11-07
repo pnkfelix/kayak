@@ -5226,11 +5226,14 @@
           (let* ((found (if (process-call? h)
                             (scope-bind (string-append "%form " h) v)
                             (scope-bind h v)))
-                 ;; A primitive's call (C371): Rust's function, which the
-                 ;; emitter's async mode neither awaits nor boxes.
-                 (s (if (and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "prim"))))
-                        (note-fact s (cv-file v) (cv-pos v) "prim-call")
-                        s)))
+                 ;; A primitive's call (C371), Rust's function, which the
+                 ;; emitter's async mode neither awaits nor boxes; a call of a
+                 ;; procedure the program binds, a local's, a global's or an
+                 ;; item's (C373), which it awaits. A form's, none.
+                 (s (cond ((null? found) s)
+                          ((tagcase (car found) (bind (n sc w) (string=? w "prim"))) (note-fact s (cv-file v) (cv-pos v) "prim-call"))
+                          ((tagcase (car found) (bind (n sc w) (or (string=? w "broken") (string=? w "module")))) s)
+                          (else (note-fact s (cv-file v) (cv-pos v) "kfx-call")))))
             (cond ((and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "broken"))))
                    "A call of a global broken by a redefinition (C202)."
                    (refuse v (broken-said v h)))

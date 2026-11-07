@@ -10243,3 +10243,45 @@ abort.
 - **A lang item more**: `boxed`, an `emitter-call` (lang/items.sexp, C367):
   the table's check found the emitter calling a kayak-rt function it did
   not list, as it is meant to.
+
+## C373. The corpus in the async mode, begun (2026-11-07)
+
+The user's "Yes go ahead" to checking the corpus in both modes: the
+compiler is the only program the async mode was checked on (C371), and
+the corpus exercises much it does not (regions, processes, modules, native
+code, generative types).
+- **`scripts/async-corpus.py`**: every program of tests/kfx compiled by
+  `kfx --async` (now for a single file too: `kfx --async FILE.kfx`) into a
+  crate of its own under target/async-corpus, nothing kept; each `main`
+  run to its end must give the program's NAME.out, Fixpt's answer. A
+  program of another machine's native convention is skipped, as
+  scripts/corpus.py skips it. Not yet in the check: it does not pass.
+- **Fixed on the way**, each found by it:
+  - **What is a KFX procedure's call** is now said by the checker
+    (`kfx-call`, where a call's head is a local, a global or an item the
+    program binds), not guessed by the emitter by what a name is not: a
+    `par` was taken for one, and wrapped in a box nothing closed.
+  - **Boxes**: an awaited call that may close a cycle is `Box::pin`'d,
+    which needs no `'static` future, so a region's data may be in it; a
+    call run to its end (`block`) is boxed not at all.
+  - **`par`'s branches** are closures that do not suspend, in the async
+    mode too.
+  - **`Send + Sync`** where an effect may cross threads, in the async mode
+    as in the other (processes are still threads); a named procedure
+    wrapped as a value captures nothing, so `lambdaNs`.
+  - **A module item as a value** named by its path, as `put-var` names it.
+  - **Generative conversions, syscalls' wrappers and module makers'
+    functions**, written as plain `fn`s by paths of their own, are `async
+    fn`s in the async mode, as every procedure is.
+  rustc's errors on the corpus's async Rust: 192, then 63, over some 30
+  programs: module makers' parameters (C274: their items are a trait's
+  methods, written `fn`, where the async mode wants `async fn`), regions'
+  lifetimes in futures, lifted procedures, unions, a few native-code ones.
+- **Found by the self-hosting check**: the facts noted at every call
+  (`kfx-call`, `prim-call`) overflowed tier 1's stack (its return stack
+  65,536 entries; the Rust build's stack is 1 GB): some walk of the facts
+  recurses as deep as the list. Now the async mode's own facts are dropped
+  before the synchronous mode's emitter (`sync-facts`, a loop), which also
+  makes back their cost; the walk that recursed is not yet found, and
+  more facts would find it again (TODO).
+- The synchronous mode's Rust is unchanged, byte for byte.

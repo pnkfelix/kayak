@@ -605,7 +605,11 @@ pub mod writing {
         } else {
             put(str_lit(")\n}\n\n"), put_str_lit(text, put(str_lit(", "), put_str_lit(host, put(str_lit("kayak_rt::syscall_available("), acc)))))
         };
-        let acc = put(string_append(str_lit("pub fn "), string_append(mangle(name), str_lit("("))), acc);
+        let acc = put(string_append(if in_async_mode_p(c) {
+            str_lit("pub async fn ")
+        } else {
+            str_lit("pub fn ")
+        }, string_append(mangle(name), str_lit("("))), acc);
         let acc = put_syscall_params(c, params, 1i64, acc);
         let acc = put(str_lit(") -> "), acc);
         let acc = put_type(c, fourth(parts), acc);
@@ -1002,9 +1006,17 @@ pub mod writing {
         }, acc);
         let acc = put_type(c, second(xs), acc);
         let acc = put(if inside {
-            str_lit(");\n\nfn up_")
+            if in_async_mode_p(c) {
+                str_lit(");\n\nasync fn up_")
+            } else {
+                str_lit(");\n\nfn up_")
+            }
         } else {
-            str_lit(");\n\npub fn up_")
+            if in_async_mode_p(c) {
+                str_lit(");\n\npub async fn up_")
+            } else {
+                str_lit(");\n\npub fn up_")
+            }
         }, acc);
         let acc = put(mangle(t), acc);
         let acc = put_generics_of(params, true, acc);
@@ -1016,9 +1028,17 @@ pub mod writing {
         let acc = put(str_lit(" {\n    "), acc);
         let acc = put(camel(t), acc);
         let acc = put(if inside {
-            str_lit("(x)\n}\n\nfn down_")
+            if in_async_mode_p(c) {
+                str_lit("(x)\n}\n\nasync fn down_")
+            } else {
+                str_lit("(x)\n}\n\nfn down_")
+            }
         } else {
-            str_lit("(x)\n}\n\npub fn down_")
+            if in_async_mode_p(c) {
+                str_lit("(x)\n}\n\npub async fn down_")
+            } else {
+                str_lit("(x)\n}\n\npub fn down_")
+            }
         }, acc);
         let acc = put(mangle(t), acc);
         let acc = put_generics_of(params, true, acc);
@@ -1779,7 +1799,11 @@ pub mod writing {
             string_member_p(sym_name(car(items(d))), shown)
         }), defs), acc);
         let acc = put(str_lit("}\n\n"), acc);
-        let acc = put(string_append(str_lit("pub fn "), mangle(name)), acc);
+        let acc = put(string_append(if in_async_mode_p(c) {
+            str_lit("pub async fn ")
+        } else {
+            str_lit("pub fn ")
+        }, mangle(name)), acc);
         let acc = put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), acc);
         put(concat_strings(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(": &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n    "), kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(")\n}\n\n"), kayak_rt::nil())))))))))))))), acc)
     }

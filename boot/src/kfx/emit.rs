@@ -227,20 +227,6 @@ pub fn prelude_names() -> Strings {
     })
 }
 
-// The async mode: the names the checker types as primitives (check-defs.kfx,
-// the lang items' `runtime-fn` and `emitted` rows), which the checker's
-// `prim-call` does not mark where the emitter writes the call itself (a
-// `cons`, a pair's operations), and the three control primitives typed by
-// rules of their own (check-exprs.kfx's `control-schemes`); made once.
-pub fn primitive_names() -> Strings {
-    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
-    once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), map(lambda1s(move |e: &'static Sexp| {
-            sym_name(car(items(e)))
-        }), onto(read_all(primitives(), str_lit(""), 1i64), read_all(process_forms(), str_lit(""), 1i64))))))
-    })
-}
-
 pub enum Tail {
     Value(),
     Returns(Str, Strings, bool, bool),
@@ -2274,63 +2260,60 @@ pub mod emitter {
     /// checker's `crossing?` says of the same effect: a procedure of it is
     /// `Send + Sync` in Rust, so that it may be held on another thread
     /// (C102). `pure` is one, and so the checker writes such an effect,
-    /// and `%local` any other that neither aborts nor suspends. None, in the
-    /// async mode, whose scheduler is one thread's (C371).
+    /// and `%local` any other that neither aborts nor suspends.
     pub fn crossing_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-        (not(async_mode_p(c)) && {
-            let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Sym(n, at_file, at_pos) => {
-                    if (string_eq_p(n, str_lit("pure")) || string_eq_p(n, str_lit("spin")) || string_eq_p(n, str_lit("nondet"))) {
-                        true
-                    } else if (string_eq_p(n, str_lit("%local")) || effect_binder_p(c, n)) {
-                        false
-                    } else {
-                        any_p(lambda1s(move |x: &'static Typed| {
-                            let tagcase_ = x;
-                            match *tagcase_ {
-                                Typed::Typed(m, body) => {
-                                    (string_eq_p(m, n) && crossing_effect_p(c, body))
-                                }
-                            }
-                        }), ctx_effects(c))
-                    }
-                }
-                Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    let at = if i64_eq(size(xs), 2i64) {
-                        let tagcase_ = second(xs);
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                if (string_eq_p(n, str_lit("pure")) || string_eq_p(n, str_lit("spin")) || string_eq_p(n, str_lit("nondet"))) {
+                    true
+                } else if (string_eq_p(n, str_lit("%local")) || effect_binder_p(c, n)) {
+                    false
+                } else {
+                    any_p(lambda1s(move |x: &'static Typed| {
+                        let tagcase_ = x;
                         match *tagcase_ {
-                            Sexp::Sym(n, f, p) => {
-                                n
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                str_lit("")
+                            Typed::Typed(m, body) => {
+                                (string_eq_p(m, n) && crossing_effect_p(c, body))
                             }
                         }
-                    } else {
-                        str_lit("")
-                    };
-                    if sym_is_p(car(xs), str_lit("maxeff")) {
-                        not(any_p(lambda1s(move |x: &'static Sexp| {
-                            not(crossing_effect_p(c, x))
-                        }), cdr(xs)))
-                    } else if (sym_is_p(car(xs), str_lit("send")) || sym_is_p(car(xs), str_lit("init")) || sym_is_p(car(xs), str_lit("await")) || sym_is_p(car(xs), str_lit("io"))) {
-                        true
-                    } else if sym_is_p(car(xs), str_lit("read")) {
-                        (string_eq_p(at, str_lit("@globals")) || string_eq_p(at, str_lit("acyclic")) || string_eq_p(at, str_lit("const")) || head_is_p(second(xs), str_lit("globals")) || head_is_p(second(xs), str_lit("const")) || head_is_p(second(xs), str_lit("acyclic")))
-                    } else if sym_is_p(car(xs), str_lit("alloc")) {
-                        (has_prefix_p(at, str_lit("@")) || string_eq_p(at, str_lit("acyclic")))
-                    } else {
-                        false
-                    }
+                    }), ctx_effects(c))
                 }
-                _ => {
-                    let other = tagcase_;
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                let at = if i64_eq(size(xs), 2i64) {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                } else {
+                    str_lit("")
+                };
+                if sym_is_p(car(xs), str_lit("maxeff")) {
+                    not(any_p(lambda1s(move |x: &'static Sexp| {
+                        not(crossing_effect_p(c, x))
+                    }), cdr(xs)))
+                } else if (sym_is_p(car(xs), str_lit("send")) || sym_is_p(car(xs), str_lit("init")) || sym_is_p(car(xs), str_lit("await")) || sym_is_p(car(xs), str_lit("io"))) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("read")) {
+                    (string_eq_p(at, str_lit("@globals")) || string_eq_p(at, str_lit("acyclic")) || string_eq_p(at, str_lit("const")) || head_is_p(second(xs), str_lit("globals")) || head_is_p(second(xs), str_lit("const")) || head_is_p(second(xs), str_lit("acyclic")))
+                } else if sym_is_p(car(xs), str_lit("alloc")) {
+                    (has_prefix_p(at, str_lit("@")) || string_eq_p(at, str_lit("acyclic")))
+                } else {
                     false
                 }
             }
-        })
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
     }
 
     /// Whether a written effect may suspend, a `comefrom` (C45): a procedure
@@ -2437,21 +2420,21 @@ pub mod emitter {
     }
 
     /// Whether call `e`'s callee is a KFX procedure, whose Rust the async mode
-    /// makes a future: a local, a procedure value, or a name that is no
-    /// form's keyword, no primitive's (`prim-call`), no prelude's and no
-    /// constructor's.
+    /// makes a future: a procedure value, a local, or a name the checker
+    /// found bound to one the program defines (`kfx-call`, C373), but the
+    /// prelude's, whose Rust is kayak-rt's, and a constructor's.
     pub fn kfx_callee_p(c: &'static Ctx, e: &'static Sexp) -> bool {
         let tagcase_ = car(items(e));
         match *tagcase_ {
             Sexp::Sym(h, f, p) => {
-                (not(string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) || not((fact_at_p(c, e, str_lit("prim-call")) || form_keyword_p(h) || string_member_p(h, prelude_names()) || string_member_p(h, primitive_names()) || any_p(lambda1s(move |x: &'static Tagof| {
+                (not(string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) || (fact_at_p(c, e, str_lit("kfx-call")) && not((string_member_p(h, prelude_names()) || any_p(lambda1s(move |x: &'static Tagof| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Tagof::Tagof(t, d) => {
                             string_eq_p(t, h)
                         }
                     }
-                }), ctx_tags(c)))))
+                }), ctx_tags(c))))))
             }
             _ => {
                 let other = tagcase_;
@@ -2462,15 +2445,13 @@ pub mod emitter {
 
     /// The checker's fact `what` at `e`, as the emitter's mode reads it: in the
     /// async mode every procedure suspends, and so does every call of a KFX
-    /// procedure, and none is `Send + Sync`; what may abort is what its
-    /// effect says (C372: a preemption is no abort).
+    /// procedure; what may abort is what its effect says (C372: a preemption
+    /// is no abort), and what may cross threads too.
     pub fn mfact_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
         if not(async_mode_p(c)) {
             fact_at_p(c, e, what)
         } else if (string_eq_p(what, str_lit("suspends")) || string_eq_p(what, str_lit("suspending-body"))) {
             true
-        } else if (string_eq_p(what, str_lit("sync")) || string_eq_p(what, str_lit("wrap-sync"))) {
-            false
         } else if string_eq_p(what, str_lit("suspending-call")) {
             (kfx_callee_p(c, e) || fact_at_p(c, e, what))
         } else {
@@ -4107,7 +4088,11 @@ pub mod emitter {
                         }));
                         let prim = (async_mode_p(c) && (fact_at_p(c, e, str_lit("prim-ref")) || string_member_p(s, prelude_names())));
                         let fallible = (not(async_mode_p(c)) || fact_at_p(c, e, str_lit("proc-value-fallible")));
-                        let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
+                        let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), if async_mode_p(c) {
+                            str_lit("s(move |")
+                        } else {
+                            str_lit("(move |")
+                        })), acc);
                         let acc = put_arg_names(0i64, arity, acc);
                         let acc = put(if (prim && fallible) {
                             str_lit("| kayak_rt::suspend::body(async move { (")
@@ -4118,7 +4103,11 @@ pub mod emitter {
                         } else {
                             str_lit("| kayak_rt::suspend::boxed(")
                         }, acc);
-                        let acc = put(mangle(s), acc);
+                        let acc = put(if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
+                            item_path(c, s)
+                        } else {
+                            mangle(s)
+                        }, acc);
                         let acc = put(str_lit("("), acc);
                         let acc = put_arg_names(0i64, arity, acc);
                         put(if prim {
@@ -4148,13 +4137,17 @@ pub mod emitter {
     }
 
     /// The box of a call's future: `body`, of a `Result`'s; in the async
-    /// mode, `boxed` where the call cannot abort (C372).
+    /// mode, a plain `Box::pin` where it is awaited, which needs no
+    /// `'static` future, so a region's data may be in it (C373), and none
+    /// where it is run to its end (`block`).
     #[inline]
     pub fn call_box(c: &'static Ctx, e: &'static Sexp) -> Str {
-        if (async_mode_p(c) && not(fact_at_p(c, e, str_lit("fallible-call")))) {
-            str_lit("kayak_rt::suspend::boxed(")
-        } else {
+        if not(async_mode_p(c)) {
             str_lit("kayak_rt::suspend::body(")
+        } else if async_here_p(c) {
+            str_lit("Box::pin(")
+        } else {
+            str_lit("(")
         }
     }
 
@@ -5281,7 +5274,11 @@ pub mod emitter {
         let acc = put(str_lit("let "), acc);
         let acc = put_par_pattern(names, acc);
         let acc = put(str_lit(" = "), acc);
-        let acc = put_par_tree(c, op, map(lambda1s(move |b: &'static Sexp| {
+        let acc = put_par_tree(if async_mode_p(c) {
+            with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::nil()))
+        } else {
+            c
+        }, op, map(lambda1s(move |b: &'static Sexp| {
             second(items(b))
         }), bindings), n1, acc);
         let acc = put_nl(n1, put(str_lit(";"), acc));

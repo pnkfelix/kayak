@@ -14,12 +14,38 @@
     "A program checked, then KFX's restrictions (restrict.kfx, C60)."
     (begin (with restrictions (restrict forms (verdict-facts checked))) checked)))
 
-(define compile-named (subr kfx (string string fileds) string)
-  (lambda (file src loaded)
-    "The same, its messages naming `file`; the files it loads, `loaded`."
+"The facts only the async mode reads (C371, C373): a call's callee's kind,
+ a named procedure as a value. Noted by the checker whatever the mode, they
+ are dropped before the synchronous mode's emitter: a fact at every call,
+ they made every walk of the facts longer, and one too deep for tier 1's
+ stack, where the compiler runs as FX-26."
+(define-rec
+  (sync-facts (subr kfx (facts facts) facts)
+    (lambda (fs acc)
+      "`fs` but the async mode's, onto `acc` reversed: a loop, so as deep as
+       nothing."
+      (if (null? fs)
+          (reverse acc)
+          (tagcase (car fs)
+            (fact (f p w)
+              (if (or (string=? w "kfx-call") (string=? w "prim-call") (string=? w "prim-ref") (has-prefix? w "proc-value"))
+                  (sync-facts (cdr fs) acc)
+                  (sync-facts (cdr fs) (cons (car fs) acc)))))))))
+
+"The emitter's mode as a fact (C371): at no place, `async-mode`, in the
+ facts it is given; in its synchronous mode, none, and the async mode's own
+ facts dropped."
+(define moded-facts (subr kfx (facts bool) facts)
+  (lambda (fs async) (if async (cons (fact "" -1 "async-mode") fs) (sync-facts fs nil))))
+
+(define compile-named (subr kfx (string string fileds bool) string)
+  (lambda (file src loaded async)
+    "The same, its messages naming `file`; the files it loads, `loaded`;
+     `async`, every procedure an `async fn` (C371)."
     (let* ((forms (with-loads (read-all src file 1) file loaded))
            (checked (restrict-checked (check-program forms) forms))
-           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) (fidx-of (verdict-facts checked)) nil nil nil)))))
+           (fs (moded-facts (verdict-facts checked) async))
+           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) fs (fidx-of fs) nil nil nil)))))
       (rev->string (with writing (put-module-impls c (with writing (put-tops c forms (with writing (put-shapes c forms #f (put header nil)))))))))))
 
 (define compile-toplevel (subr kfx (string string fileds) string)
@@ -34,7 +60,7 @@
 (define compile (subr kfx (string) string)
   (lambda (src)
     "A KFX-0 program of one file, as one file of Rust."
-    (compile-named "the program" src nil)))
+    (compile-named "the program" src nil #f)))
 
 "Programs of several files. A program is files in order, as a manifest
  (NAME.unit) lists them: to FX-26, the files one after another, so that a
@@ -81,11 +107,6 @@
               (cons (output (string-append (mangle name) ".rs")
                             (rev->string (with writing (put-tops c (car fss) (put module-header nil)))))
                     (modules-put c (cdr ss) (cdr fss)))))))))
-
-"The emitter's mode as a fact (C371): at no place, `async-mode`, in the
- facts it is given; none in its synchronous mode."
-(define moded-facts (subr kfx (facts bool) facts)
-  (lambda (fs async) (if async (cons (fact "" -1 "async-mode") fs) fs)))
 
 (define compile-units-as (subr kfx (sources bool bool) outputs)
   (lambda (ss runtime async)

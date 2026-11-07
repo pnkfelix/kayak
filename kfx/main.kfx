@@ -136,7 +136,9 @@
 (define compile-with (subr driver (drt strings) int)
   (lambda (rt as)
     (cond ((i64= (size as) 1)
-           (let ((text (read-text rt (car as)))) (begin (put-out rt (compile-named (car as) text (loaded-for rt (car as) text))) 0)))
+           (let ((text (read-text rt (car as)))) (begin (put-out rt (compile-named (car as) text (loaded-for rt (car as) text) #f)) 0)))
+          ((and (i64= (size as) 2) (string=? (car as) "--async"))
+           (let ((text (read-text rt (car (cdr as))))) (begin (put-out rt (compile-named (car (cdr as)) text (loaded-for rt (car (cdr as)) text) #t)) 0)))
           ((and (i64= (size as) 2) (string=? (car as) "--toplevel"))
            (let ((text (read-text rt (car (cdr as))))) (begin (put-out rt (compile-toplevel (car (cdr as)) text (loaded-for rt (car (cdr as)) text))) 0)))
           ((i64= (size as) 2)
@@ -163,7 +165,7 @@
                         (write-text rt cache (with incremental (memos-text made)))
                         0)))))
           (else
-           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
+           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] ([--async] FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
 
 (define reverse-log (subr (maxeff kfx (read @io) (alloc @io)) ((log @io) (log @io)) (log @io))
   (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))

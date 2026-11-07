@@ -307,7 +307,7 @@
                  (acc (if required
                           (put ");\n    true\n}\n\n" (put-str-lit text (put ", " (put-str-lit host (put ", " (put-str-lit label (put "kayak_rt::syscall_require(" acc)))))))
                           (put ")\n}\n\n" (put-str-lit text (put ", " (put-str-lit host (put "kayak_rt::syscall_available(" acc)))))))
-                 (acc (put (string-append "pub fn " (string-append (mangle name) "(")) acc))
+                 (acc (put (string-append (if (in-async-mode? c) "pub async fn " "pub fn ") (string-append (mangle name) "(")) acc))
                  (acc (put-syscall-params c params 1 acc))
                  (acc (put ") -> " acc))
                  (acc (put-type c (fourth parts) acc))
@@ -536,7 +536,8 @@
                  (acc (put-generics-of params #t acc))
                  (acc (put (if inside "(" "(pub ") acc))
                  (acc (put-type c (second xs) acc))
-                 (acc (put (if inside ");\n\nfn up_" ");\n\npub fn up_") acc))
+                 ;; In the async mode (C373), as every procedure, `async`.
+                 (acc (put (if inside (if (in-async-mode? c) ");\n\nasync fn up_" ");\n\nfn up_") (if (in-async-mode? c) ");\n\npub async fn up_" ");\n\npub fn up_")) acc))
                  (acc (put (mangle t) acc))
                  (acc (put-generics-of params #t acc))
                  (acc (put "(x: " acc))
@@ -546,7 +547,7 @@
                  (acc (put-generics-of params #f acc))
                  (acc (put " {\n    " acc))
                  (acc (put (camel t) acc))
-                 (acc (put (if inside "(x)\n}\n\nfn down_" "(x)\n}\n\npub fn down_") acc))
+                 (acc (put (if inside (if (in-async-mode? c) "(x)\n}\n\nasync fn down_" "(x)\n}\n\nfn down_") (if (in-async-mode? c) "(x)\n}\n\npub async fn down_" "(x)\n}\n\npub fn down_")) acc))
                  (acc (put (mangle t) acc))
                  (acc (put-generics-of params #t acc))
                  (acc (put "(x: " acc))
@@ -1008,7 +1009,7 @@
                                          (put ")\n    }\n" (put-sep (lambda ((x sexp) (acc chars)) (put (mangle (param-name x)) (put ", " acc))) "" params acc))))))
                                "\n" (filter (lambda ((d sexp)) (string-member? (sym-name (car (items d))) shown)) defs) acc))
                  (acc (put "}\n\n" acc))
-                 (acc (put (string-append "pub fn " (mangle name)) acc))
+                 (acc (put (string-append (if (in-async-mode? c) "pub async fn " "pub fn ") (mangle name)) acc))
                  (acc (put-place-generics c name binders nil (list p) acc)))
             (put (concat-strings (list "(" (mangle p) ": &" (lifetime p) " " pt ") -> " named " {\n    " iface "(" (mangle p) ")\n}\n\n")) acc))))
 

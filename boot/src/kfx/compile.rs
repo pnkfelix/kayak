@@ -37,11 +37,53 @@ pub fn restrict_checked(checked: &'static Verdict, forms: Sexps) -> &'static Ver
     checked
 }
 
-/// The same, its messages naming `file`; the files it loads, `loaded`.
-pub fn compile_named(file: Str, src: Str, loaded: Fileds) -> Str {
+// The facts only the async mode reads (C371, C373): a call's callee's kind,
+// a named procedure as a value. Noted by the checker whatever the mode, they
+// are dropped before the synchronous mode's emitter: a fact at every call,
+// they made every walk of the facts longer, and one too deep for tier 1's
+// stack, where the compiler runs as FX-26.
+/// `fs` but the async mode's, onto `acc` reversed: a loop, so as deep as
+/// nothing.
+pub fn sync_facts(mut fs: Facts, mut acc: Facts) -> Facts {
+    loop {
+        if null_p(fs) {
+            return reverse(acc);
+        } else {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                Fact::Fact(f, p, w) => {
+                    if (string_eq_p(w, str_lit("kfx-call")) || string_eq_p(w, str_lit("prim-call")) || string_eq_p(w, str_lit("prim-ref")) || has_prefix_p(w, str_lit("proc-value"))) {
+                        fs = cdr(fs);
+                        continue;
+                    } else {
+                        (fs, acc) = (cdr(fs), kayak_rt::heap_cons(car(fs), acc));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The emitter's mode as a fact (C371): at no place, `async-mode`, in the
+// facts it is given; in its synchronous mode, none, and the async mode's own
+// facts dropped.
+#[inline]
+pub fn moded_facts(fs: Facts, r#async: bool) -> Facts {
+    if r#async {
+        kayak_rt::heap_cons(fact(str_lit(""), -1i64, str_lit("async-mode")), fs)
+    } else {
+        sync_facts(fs, nil::<&'static Fact>())
+    }
+}
+
+/// The same, its messages naming `file`; the files it loads, `loaded`;
+/// `async`, every procedure an `async fn` (C371).
+pub fn compile_named(file: Str, src: Str, loaded: Fileds, r#async: bool) -> Str {
     let forms = with_loads(read_all(src, file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
-    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
+    let fs = moded_facts(verdict_facts(checked), r#async);
+    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), fs, fidx_of(fs), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
     rev_to_string(writing::put_module_impls(c, writing::put_tops(c, forms, writing::put_shapes(c, forms, false, put(header(), nil::<char>())))))
 }
 
@@ -57,7 +99,7 @@ pub fn compile_toplevel(file: Str, src: Str, loaded: Fileds) -> Str {
 /// A KFX-0 program of one file, as one file of Rust.
 #[inline]
 pub fn compile(src: Str) -> Str {
-    compile_named(str_lit("the program"), src, nil::<&'static Filed>())
+    compile_named(str_lit("the program"), src, nil::<&'static Filed>(), false)
 }
 
 // Programs of several files. A program is files in order, as a manifest
@@ -117,17 +159,6 @@ pub fn modules_put(c: &'static Ctx, ss: Sources, fss: SourcesForms) -> Outputs {
                 kayak_rt::heap_cons(output(string_append(mangle(name), str_lit(".rs")), rev_to_string(writing::put_tops(c, car(fss), put(module_header(), nil::<char>())))), modules_put(c, cdr(ss), cdr(fss)))
             }
         }
-    }
-}
-
-// The emitter's mode as a fact (C371): at no place, `async-mode`, in the
-// facts it is given; none in its synchronous mode.
-#[inline]
-pub fn moded_facts(fs: Facts, r#async: bool) -> Facts {
-    if r#async {
-        kayak_rt::heap_cons(fact(str_lit(""), -1i64, str_lit("async-mode")), fs)
-    } else {
-        fs
     }
 }
 
