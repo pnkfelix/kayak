@@ -474,12 +474,14 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
   bytevector at a letrena's region; `rmake-bytevector` when Fixpt has it.
 - **Corpus programs**, compared with Fixpt.
 - **Incremental compiling** (Q5, answered; `docs/research/queries.md`):
-  `Emit(form)` and `Check(form)` kept between compiles (C54, C55). Next:
-  checks keyed by the names they read, not the whole chain; the
+  `Emit(form)` and `Check(form)` kept between compiles (C54, C55), each
+  keyed by what the form reads, by name (C384), the machinery a library,
+  `lib/query.kfx`. Next: the library's names given in Rust (kayak-rt, from
+  Coopt's `coopt-query`: coopt-adoption.md step 3's second stage); the
   compiler's identity in the memo file, so that the driver, not its
-  caller, keeps one compiler's memos from another's; queries as a library
-  for KFX programs (`lib/query.kfx`); query runs as tasks when the
-  compiler has a reason to wait.
+  caller, keeps one compiler's memos from another's; memo lookups by a
+  table, not a list (`memo-find`); query runs as tasks when the compiler
+  has a reason to wait.
 
 Phase B, the compiler for two languages:
 - **The front end shared**: the checker grown to FX-26's, KFX's

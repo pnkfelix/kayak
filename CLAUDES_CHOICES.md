@@ -10587,3 +10587,59 @@ the terminal's modes and programs run beside this one, in the async mode.
   s), so news wakes the run; the async corpus; the compiler built async,
   which reads and writes its files so, unchanged (22.0 G instructions).
 
+## C383. KFX's runner library kept (2026-11-07)
+
+coopt-adoption.md's step 2 said `lib/tasks.kfx` and `lib/runner.kfx`
+would be retired. Looked at before doing it: `lib/runner.kfx` and
+`lib/live.kfx` are the compiler's I/O layer (`kfx/kfx.unit`), which
+records a compile and replays it with no I/O, on Fixpt as in Rust (the
+fixpoint check's "the compile recorded replays, as Rust and on Fixpt");
+kayak-runner is kayak-rt's Rust alone, so the driver on it would run on
+Fixpt no more, against the single source (KFX a subset of FX-26). And in
+the async mode the two stack already: `lib/live.kfx`'s answers are
+`write-out`, `read-file` and the rest, which go through kayak-runner
+(C381, C382). Chosen, the user agreeing ("Fine"): both kept, retired only
+if FX-26 comes to have runners of its own (Fixpt first); `lib/tasks.kfx`
+kept while the FX-26 REPL's loop is built on it. The note's step 2 says
+so.
+
+## C384. Queries keyed by what they read; `lib/query.kfx` (2026-11-07)
+
+coopt-adoption.md's step 3, the compiler as queries, its first stage (the
+user chose C83's way C, "Go ahead"): the queries in KFX, which run on Fixpt
+too, with a Rust implementation of the same names to come under them.
+- **What was coarse** (C55): a form's check was keyed by its text and a
+  chain of every earlier form's change to the checker, so a change to an
+  early interface re-checked every form after it; a form's Rust was keyed
+  by a fingerprint of the emitter's whole context, so a definition added
+  re-emitted every form.
+- **Chosen: keys by name.** A form's check is keyed by its text, the
+  bindings of each name it mentions as the checker finds them (its index,
+  `bix-at`), the abbreviations of those names, the innermost marker of
+  each kind (all the checker reads of them, `scope-bind`), where the
+  checker is, and a chain of only what no name reaches: effects named and
+  the facts the checker reads again (`place-needs`, `region-within`); and
+  the context made before every form but its bindings and abbreviations
+  (the datatypes, effects). A form's Rust is keyed by its text, its facts,
+  each name's entries in the emitter's context (built once per scope as a
+  name index, `emit-reads`), and the scope's locals. A binding's type
+  names only types, so names one level deep suffice. Early cutoff is what
+  it was: a body edited, its interface the same, changes no other key.
+- **Made cheap**: a name's fingerprint is made when a form first names it
+  and kept with how many bindings it was of (between modules the checker
+  only adds bindings; at a module's start and end the cache starts over);
+  the chain moves only when something ambient is added, so that it counts
+  no forms. Measured, the compiler on itself, warm with memos: a
+  definition added first in `base.kfx`, 4.01 s before, 1.54 s now; its
+  type changed, 3.97 s to 1.55 s; a warm compile 1.34 s to 1.53 s, the
+  keys' cost.
+- **`lib/query.kfx`**, the module `queries` (not `query`, the name of its
+  file's Rust module): the fingerprints, a table of names and
+  fingerprints, the memo table and its text, out of `incr.kfx`, which
+  includes it. The names a Rust implementation can give later, as
+  kayak-rt gives the prelude's.
+- **Checked**: the incremental verifier (`crates/kayak-checks/tests/
+  incremental.rs`), every file, 21 chains, with a new step: an
+  abbreviation a form names in its body alone, changed; with the
+  abbreviations left out of the keys, it fails, so it is a test of them.
+

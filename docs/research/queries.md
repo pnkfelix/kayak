@@ -73,3 +73,16 @@ added early, 0.28 s.
    generic in its value, fingerprints, and a store kept by a runner;
    `lib/query.kfx`. Then the compiler's queries as tasks (Coopt's I4),
    when the compiler has a reason to wait: a REPL, or work in parallel.
+
+## The third step (C384)
+
+Keys by what a form reads, by name (§Next, 1 and 2): a check by its text,
+the bindings and abbreviations of each name it mentions, the markers and
+where the checker is, and a chain of only what no name reaches; a form's
+Rust by its text, facts and each name's entries in the emitter's context.
+A definition added, or its type changed, re-checks and re-emits only the
+forms that name it. The library (§Next, 3), as far as the compiler needs
+it: `lib/query.kfx`. Left: queries as tasks of the scheduler, and Coopt's
+in-process revisions for a REPL; a Rust implementation of the library's
+names (coopt-adoption.md, step 3's second stage).
+

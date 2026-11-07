@@ -1,0 +1,167 @@
+"lib/query.kfx: queries kept between runs, in KFX (C384; coopt-adoption.md
+ step 3, its first stage; docs/research/queries.md). What a query's memo is
+ kept by is a fingerprint of all its value was made from (content
+ addressing): a memo kept on disk is checked against what it was made from,
+ not against revisions it never saw, as Coopt's in-process queries are. The
+ fingerprints, a table of names and fingerprints, and memos as text, which
+ a runner keeps (a compile's `--cache FILE`).
+
+ Fingerprints are 64-bit FNV-1a, in `i64`, whose arithmetic wraps alike in
+ FX-26 and Rust (C49's rule). A collision would reuse another's memo; at
+ 2^-64 for a pair, it is not guarded against. In FX-26 alone, so that a
+ program using it runs on Fixpt as in kayak; kayak-rt may give the same
+ names in Rust (the second stage), as it gives the prelude's."
+
+(define-datatype memo (memo i64 string))
+
+(define-type memos (listof memo acyclic))
+
+"Names and a fingerprint each (C384): a persistent AVL tree, by name, as
+ the checker's index of its bindings is (check.kfx's `bix`)."
+(define-datatype fmap (fm-none) (fm-node fmap string i64 i64 fmap))
+
+(define queries
+  (module
+    (hide
+      "Memos as text, a line each: the fingerprint, a tab, the Rust escaped
+       (a backslash before `n` for a newline, before itself for itself); and
+       back. The driver keeps them in a file. Each is written and read in
+       runs, a `substring` from one escape to the next, joined by
+       `string-list-append` (C362): a list cell a character, as they were,
+       cost most of the reading and writing of a 3 MB file."
+
+      (define-rec
+        (escaped-runs (subr kfx (string i64 i64 i64 strings) strings)
+          (lambda (t from i n acc)
+            "`t`'s runs from `from`, escaped, added to `acc` newest first; `i`
+             the character looked at, of `n`."
+            (cond ((i64= i n) (cons (substring t (i64->int from) (i64->int n)) acc))
+                  ((char=? (string-ref-i64 t i) #\newline)
+                   (escaped-runs t (i64+ i 1) (i64+ i 1) n (cons "\\n" (cons (substring t (i64->int from) (i64->int i)) acc))))
+                  ((char=? (string-ref-i64 t i) #\\)
+                   (escaped-runs t (i64+ i 1) (i64+ i 1) n (cons "\\\\" (cons (substring t (i64->int from) (i64->int i)) acc))))
+                  (else (escaped-runs t from (i64+ i 1) n acc))))))
+
+      (define-rec
+        (memos-runs (subr kfx (memos strings) strings)
+          (lambda (ms acc)
+            (if (null? ms)
+                acc
+                (tagcase (car ms)
+                  (memo (h t) (memos-runs (cdr ms) (cons "\n" (escaped-runs t 0 0 (string-length-i64 t) (cons "\t" (cons (i64->string h) acc)))))))))))
+
+      (define-rec
+        (memo-lines (subr kfx (string i64 i64 memos) memos)
+          (lambda (s i n ms)
+            "The memos of `s`'s lines from `i`, of `n` characters, onto `ms`; a
+             line with no tab is none, nor one with no newline after it."
+            (let ((tab (char-from s i n #\tab)))
+              (cond ((i64= tab n) ms)
+                    ((i64< (char-from s i tab #\newline) tab) (memo-lines s (i64+ (char-from s i tab #\newline) 1) n ms))
+                    (else (memo-text s (number-of-chars (string-chars (substring s (i64->int i) (i64->int tab))) 0 #f)
+                                     (i64+ tab 1) (i64+ tab 1) n nil ms))))))
+        (memo-text (subr kfx (string i64 i64 i64 i64 strings memos) memos)
+          (lambda (s key from i n runs ms)
+            "The text of a memo, `key`'s, read from `from` to the line's end, its
+             `runs` so far newest first; `i` the character looked at."
+            (cond ((i64= i n) ms)
+                  ((char=? (string-ref-i64 s i) #\newline)
+                   (memo-lines s (i64+ i 1) n
+                               (cons (memo key (string-list-append (reverse (cons (substring s (i64->int from) (i64->int i)) runs)))) ms)))
+                  ((and (char=? (string-ref-i64 s i) #\\) (i64< (i64+ i 1) n))
+                   (memo-text s key (i64+ i 2) (i64+ i 2) n
+                              (cons (if (char=? (string-ref-i64 s (i64+ i 1)) #\n) "\n" (substring s (i64->int (i64+ i 1)) (i64->int (i64+ i 2))))
+                                    (cons (substring s (i64->int from) (i64->int i)) runs))
+                              ms))
+                  (else (memo-text s key from (i64+ i 1) n runs ms)))))
+        (char-from (subr kfx (string i64 i64 char) i64)
+          (lambda (s i n c)
+            "Where `c` is first in `s` from `i`; else `n`."
+            (cond ((i64= i n) n) ((char=? (string-ref-i64 s i) c) i) (else (char-from s (i64+ i 1) n c)))))
+        (number-of-chars (subr kfx (chars i64 bool) i64)
+          (lambda (cs n negative)
+            (cond ((null? cs) (if negative (i64- 0 n) n))
+                  ((char=? (car cs) #\-) (number-of-chars (cdr cs) n #t))
+                  (else (number-of-chars (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) negative))))))
+
+      (define fmap-height (subr kfx (fmap) i64)
+        (lambda (t) (tagcase t (fm-none () 0) (fm-node (l k x h r) h))))
+
+      (define fmap-node (subr kfx (fmap string i64 fmap) fmap)
+        (lambda (l k x r)
+          (let ((hl (fmap-height l)) (hr (fmap-height r)))
+            (fm-node l k x (i64+ 1 (if (i64> hl hr) hl hr)) r))))
+
+      (define fmap-balanced (subr kfx (fmap string i64 fmap) fmap)
+        (lambda (l k x r)
+          "As `bix-balanced` (check.kfx)."
+          (let ((hl (fmap-height l)) (hr (fmap-height r)))
+            (cond ((i64> hl (i64+ hr 1))
+                   (tagcase l
+                     (fm-node (ll lk lx lh lr)
+                       (if (i64>= (fmap-height ll) (fmap-height lr))
+                           (fmap-node ll lk lx (fmap-node lr k x r))
+                           (tagcase lr
+                             (fm-node (rl rk rx rh rr) (fmap-node (fmap-node ll lk lx rl) rk rx (fmap-node rr k x r)))
+                             (fm-none () (fmap-node l k x r)))))
+                     (fm-none () (fmap-node l k x r))))
+                  ((i64> hr (i64+ hl 1))
+                   (tagcase r
+                     (fm-node (rl rk rx rh rr)
+                       (if (i64>= (fmap-height rr) (fmap-height rl))
+                           (fmap-node (fmap-node l k x rl) rk rx rr)
+                           (tagcase rl
+                             (fm-node (ml mk2 mx mh mr) (fmap-node (fmap-node l k x ml) mk2 mx (fmap-node mr rk rx rr)))
+                             (fm-none () (fmap-node l k x r)))))
+                     (fm-none () (fmap-node l k x r))))
+                  (else (fmap-node l k x r))))))
+
+      )
+
+    (define fnv-offset i64 -3750763034362895579)
+
+    (define-rec
+      (fnv-from (subr kfx (string i64 i64 i64) i64)
+        (lambda (s i n h)
+          "`s`'s characters from `i`, of `n`, onto `h`, a character at a time,
+           without a list of them (C363)."
+          (if (i64= i n) h (fnv-from s (i64+ i 1) n (i64* (i64-xor h (char->i64 (string-ref-i64 s i))) 1099511628211))))))
+
+    (define fnv-string (subr kfx (string i64) i64)
+      (lambda (s h)
+        "`s` onto fingerprint `h`, after a separator, so that two strings are
+         not one string."
+        (fnv-from s 0 (string-length-i64 s) (i64* (i64-xor h 31) 1099511628211))))
+
+    (define-rec
+      (fnv-strings (subr kfx (strings i64) i64)
+        (lambda (ss h) (if (null? ss) h (fnv-strings (cdr ss) (fnv-string (car ss) h))))))
+
+    (define-rec
+      (memo-find (subr kfx (memos i64) memos)
+        (lambda (ms k)
+          (cond ((null? ms) nil)
+                ((tagcase (car ms) (memo (h t) (i64= h k))) (list (car ms)))
+                (else (memo-find (cdr ms) k))))))
+
+    (define-rec
+      (fmap-put (subr kfx (fmap string i64) fmap)
+        (lambda (t n x)
+          (tagcase t
+            (fm-none () (fm-node (fm-none) n x 1 (fm-none)))
+            (fm-node (l k y h r)
+              (cond ((string=? n k) (fm-node l k x h r))
+                    ((string<? n k) (fmap-balanced (fmap-put l n x) k y r))
+                    (else (fmap-balanced l k y (fmap-put r n x))))))))
+      (fmap-get (subr kfx (fmap string) i64)
+        (lambda (t n)
+          "`n`'s fingerprint; 0 for a name with none."
+          (tagcase t
+            (fm-none () 0)
+            (fm-node (l k x h r) (cond ((string=? n k) x) ((string<? n k) (fmap-get l n)) (else (fmap-get r n))))))))
+
+    (define memos-text (subr kfx (memos) string)
+      (lambda (ms) (string-list-append (reverse (memos-runs ms nil)))))
+
+    (define memos-of-text (subr kfx (string) memos)
+      (lambda (s) (memo-lines s 0 (string-length-i64 s) nil)))))

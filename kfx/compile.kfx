@@ -153,7 +153,7 @@
 (define-datatype compiled (compiled outputs memos))
 
 (define-rec
-  (memo-modules (subr kfx (ctx facts i64 memos sources sources-forms outputs memos) compiled)
+  (memo-modules (subr kfx (ctx facts ereads memos sources sources-forms outputs memos) compiled)
     (lambda (c fs global old ss fss outs made)
       (if (null? ss)
           (compiled (reverse-outputs outs nil) made)
@@ -190,7 +190,7 @@
       (tagcase (let ((c (with incremental (check-program-memo forms texts old runtime)))) (begin (with restrictions (restrict forms (tagcase c (checked-memo (done found checks) (cv-facts done))))) c))
         (checked-memo (done found checks)
           (let ((c (with emitter (collect forms (ctx nil nil nil nil found (cv-facts done) (fidx-of (cv-facts done)) nil nil nil)))))
-            (tagcase (memo-modules c (cv-facts done) (with incremental (ctx-fingerprint c)) old ss fss nil checks)
+            (tagcase (memo-modules c (cv-facts done) (with incremental (emit-reads c 0)) old ss fss nil checks)
               (compiled (modules made)
                 (compiled (onto modules
                                 (list (output "mod.rs"

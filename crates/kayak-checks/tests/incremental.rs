@@ -318,6 +318,15 @@ fn main() {
                     s.replace("() i64) (lambda () 7))", "() i32) (lambda () 7))")
                 })),
                 step(&first, ("its body changed, its type the same", |s| s.replace("(lambda () 7))", "(lambda () 8))"))),
+                // A form keyed by the names it mentions (C384): one that reaches
+                // an abbreviation only through its type, the abbreviation changed.
+                step(&first, ("an abbreviation, read later", |s| {
+                    format!("{s}\n(define-type incr-num i64)\n")
+                })),
+                step(&last, ("a definition that names it in its body alone", |s| {
+                    format!("{s}\n(define incr-same (subr (maxeff (read @globals) spin) () i64) (lambda () (begin (the incr-num 5) 7)))\n")
+                })),
+                step(&first, ("the abbreviation changed", |s| s.replace("(define-type incr-num i64)", "(define-type incr-num i32)"))),
             ],
         )
     }));

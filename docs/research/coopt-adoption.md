@@ -200,10 +200,25 @@ Each step ends with the full check, the self-hosting check among it.
    `kayak-runner`), Coopt's taken over with marks as Fixpt's code is
    (`coopt-source: PATH@REV`, a pinned clone, a drift script). KFX's
    tasks and the compiler's I/O moved onto them; the emitter inserting
-   fuel. `lib/tasks.kfx`, `lib/runner.kfx` retired.
+   fuel. Done for the emitter's async mode (C378-C382): fuel, processes
+   as tasks, the standard streams, files, the terminal and programs run
+   beside the program all through kayak-sched and kayak-runner.
+   `lib/runner.kfx` and `lib/live.kfx` are kept, not retired (revised,
+   C383, the user agreeing): they are the compiler's record and replay,
+   which run on Fixpt too, and in the async mode they sit above
+   kayak-runner, whose I/O their live answers use; they go only if FX-26
+   comes to have runners of its own (Fixpt first). `lib/tasks.kfx` stays
+   while the FX-26 REPL's loop is built on it; FX-26's processes could
+   replace it.
 3. **The compiler as queries** (`kayak-query`), replacing `incr.kfx`'s
    memos, persisted between runs; the Salsa-like layer the user asked
    about, now on the shared scheduler.
+   Revised (C383, C384, the user choosing): in two stages, so that the
+   compiler still runs on Fixpt. First the queries in KFX
+   (`lib/query.kfx`), the compiler's memos keyed by what each form reads,
+   by name: done (C384). Then a Rust implementation of the same names in
+   kayak-rt, forked from Coopt's `coopt-query`, as the prelude's names
+   are given in Rust.
 4. **`kayak-heap`**: Coopt's collector over Fixpt's format.
 5. **`kayak-machine`**: Fixpt's cellular machine in Rust, as a task on
    `kayak-heap`; the corpus against Fixpt; the self-hosting check moved
