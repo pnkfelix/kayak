@@ -44,29 +44,16 @@ pub fn fm_node(f0: &'static Fmap, f1: Str, f2: i64, f3: i64, f4: &'static Fmap) 
 pub mod queries {
     use super::*;
 
-    // Memos as text, a line each: the fingerprint, a tab, the Rust escaped
-    // (a backslash before `n` for a newline, before itself for itself); and
-    // back. The driver keeps them in a file. Each is written and read in
-    // runs, a `substring` from one escape to the next, joined by
-    // `string-list-append` (C362): a list cell a character, as they were,
-    // cost most of the reading and writing of a 3 MB file.
-    /// `t`'s runs from `from`, escaped, added to `acc` newest first; `i`
-    /// the character looked at, of `n`.
-    pub fn escaped_runs(mut t: Str, mut from: i64, mut i: i64, mut n: i64, mut acc: Strings) -> Strings {
-        loop {
-            if i64_eq(i, n) {
-                return kayak_rt::heap_cons(substring(t, i64_to_int(from), i64_to_int(n)), acc);
-            } else if char_eq_p(string_ref_i64(t, i), '\n') {
-                (from, i, acc) = (i64_plus(i, 1i64), i64_plus(i, 1i64), kayak_rt::heap_cons(str_lit("\\n"), kayak_rt::heap_cons(substring(t, i64_to_int(from), i64_to_int(i)), acc)));
-                continue;
-            } else if char_eq_p(string_ref_i64(t, i), '\\') {
-                (from, i, acc) = (i64_plus(i, 1i64), i64_plus(i, 1i64), kayak_rt::heap_cons(str_lit("\\\\"), kayak_rt::heap_cons(substring(t, i64_to_int(from), i64_to_int(i)), acc)));
-                continue;
-            } else {
-                i = i64_plus(i, 1i64);
-                continue;
-            }
-        }
+    // Memos as text (C386): a first line saying the format, then each memo
+    // as its fingerprint, a tab, its text's length in characters, a newline,
+    // the text as it is, and a newline. The driver keeps them in a file.
+    // Written by joining the parts, with nothing escaped; read by a
+    // `substring` each, the text not looked at: an escaped line each, as
+    // they were (C362), was looked at a character at a time both ways. A
+    // file of another format gives no memos, as none at all.
+    #[inline]
+    pub fn memos_format() -> Str {
+        str_lit("kayak memos 3\n")
     }
 
     pub fn memos_runs(mut ms: Memos, mut acc: Strings) -> Strings {
@@ -77,7 +64,7 @@ pub mod queries {
                 let tagcase_ = car(ms);
                 match *tagcase_ {
                     Memo::Memo(h, t) => {
-                        (ms, acc) = (cdr(ms), kayak_rt::heap_cons(str_lit("\n"), escaped_runs(t, 0i64, 0i64, string_length_i64(t), kayak_rt::heap_cons(str_lit("\t"), kayak_rt::heap_cons(i64_to_string(h), acc)))));
+                        (ms, acc) = (cdr(ms), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(i64_to_string(string_length_i64(t)), kayak_rt::heap_cons(str_lit("\t"), kayak_rt::heap_cons(i64_to_string(h), acc)))))));
                         continue;
                     }
                 }
@@ -85,40 +72,25 @@ pub mod queries {
         }
     }
 
-    /// The memos of `s`'s lines from `i`, of `n` characters, onto `ms`; a
-    /// line with no tab is none, nor one with no newline after it.
-    pub fn memo_lines(mut s: Str, mut i: i64, mut n: i64, mut ms: Memos) -> Memos {
+    /// The memos of `s` from `i`, of `n` characters, onto `ms`; a record
+    /// cut short ends them.
+    pub fn memo_records(mut s: Str, mut i: i64, mut n: i64, mut ms: Memos) -> Memos {
         loop {
             let tab = char_from(s, i, n, '\t');
-            if i64_eq(tab, n) {
+            let nl = char_from(s, tab, n, '\n');
+            if i64_gt_eq(nl, n) {
                 return ms;
-            } else if i64_lt(char_from(s, i, tab, '\n'), tab) {
-                i = i64_plus(char_from(s, i, tab, '\n'), 1i64);
-                continue;
             } else {
-                return memo_text(s, number_of_chars(string_chars(substring(s, i64_to_int(i), i64_to_int(tab))), 0i64, false), i64_plus(tab, 1i64), i64_plus(tab, 1i64), n, nil::<Str>(), ms);
-            }
-        }
-    }
-
-    /// The text of a memo, `key`'s, read from `from` to the line's end, its
-    /// `runs` so far newest first; `i` the character looked at.
-    pub fn memo_text(mut s: Str, mut key: i64, mut from: i64, mut i: i64, mut n: i64, mut runs: Strings, mut ms: Memos) -> Memos {
-        loop {
-            if i64_eq(i, n) {
-                return ms;
-            } else if char_eq_p(string_ref_i64(s, i), '\n') {
-                return memo_lines(s, i64_plus(i, 1i64), n, kayak_rt::heap_cons(memo(key, string_list_append(reverse(kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), runs)))), ms));
-            } else if (char_eq_p(string_ref_i64(s, i), '\\') && i64_lt(i64_plus(i, 1i64), n)) {
-                (from, i, runs) = (i64_plus(i, 2i64), i64_plus(i, 2i64), kayak_rt::heap_cons(if char_eq_p(string_ref_i64(s, i64_plus(i, 1i64)), 'n') {
-                    str_lit("\n")
+                let key = number_from(s, i, tab, 0i64, false);
+                let len = number_from(s, i64_plus(tab, 1i64), nl, 0i64, false);
+                let from = i64_plus(nl, 1i64);
+                let to = i64_plus(from, len);
+                if i64_gt(to, n) {
+                    return ms;
                 } else {
-                    substring(s, i64_to_int(i64_plus(i, 1i64)), i64_to_int(i64_plus(i, 2i64)))
-                }, kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), runs)));
-                continue;
-            } else {
-                i = i64_plus(i, 1i64);
-                continue;
+                    (i, ms) = (i64_plus(to, 1i64), kayak_rt::heap_cons(memo(key, substring(s, i64_to_int(from), i64_to_int(to))), ms));
+                    continue;
+                }
             }
         }
     }
@@ -126,7 +98,7 @@ pub mod queries {
     /// Where `c` is first in `s` from `i`; else `n`.
     pub fn char_from(mut s: Str, mut i: i64, mut n: i64, mut c: char) -> i64 {
         loop {
-            if i64_eq(i, n) {
+            if i64_gt_eq(i, n) {
                 return n;
             } else if char_eq_p(string_ref_i64(s, i), c) {
                 return i;
@@ -137,19 +109,20 @@ pub mod queries {
         }
     }
 
-    pub fn number_of_chars(mut cs: Chars, mut n: i64, mut negative: bool) -> i64 {
+    /// The decimal number of `s` from `i` to `end`.
+    pub fn number_from(mut s: Str, mut i: i64, mut end: i64, mut n: i64, mut negative: bool) -> i64 {
         loop {
-            if null_p(cs) {
+            if i64_gt_eq(i, end) {
                 if negative {
                     return i64_minus(0i64, n);
                 } else {
                     return n;
                 }
-            } else if char_eq_p(car(cs), '-') {
-                (cs, negative) = (cdr(cs), true);
+            } else if char_eq_p(string_ref_i64(s, i), '-') {
+                (i, negative) = (i64_plus(i, 1i64), true);
                 continue;
             } else {
-                (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+                (i, n) = (i64_plus(i, 1i64), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(string_ref_i64(s, i)), 48i64)));
                 continue;
             }
         }
@@ -335,12 +308,16 @@ pub mod queries {
 
     #[inline]
     pub fn memos_text(ms: Memos) -> Str {
-        string_list_append(reverse(memos_runs(ms, nil::<Str>())))
+        string_list_append(reverse(memos_runs(ms, kayak_rt::heap_cons(memos_format(), kayak_rt::nil()))))
     }
 
-    #[inline]
     pub fn memos_of_text(s: Str) -> Memos {
-        memo_lines(s, 0i64, string_length_i64(s), nil::<&'static Memo>())
+        let (n, h) = (string_length_i64(s), string_length_i64(memos_format()));
+        if (i64_gt_eq(n, h) && string_eq_p(substring(s, int_lit(0), i64_to_int(h)), memos_format())) {
+            memo_records(s, h, n, nil::<&'static Memo>())
+        } else {
+            nil::<&'static Memo>()
+        }
     }
 }
 

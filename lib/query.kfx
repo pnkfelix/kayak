@@ -23,24 +23,15 @@
 (define queries
   (module
     (hide
-      "Memos as text, a line each: the fingerprint, a tab, the Rust escaped
-       (a backslash before `n` for a newline, before itself for itself); and
-       back. The driver keeps them in a file. Each is written and read in
-       runs, a `substring` from one escape to the next, joined by
-       `string-list-append` (C362): a list cell a character, as they were,
-       cost most of the reading and writing of a 3 MB file."
+      "Memos as text (C386): a first line saying the format, then each memo
+       as its fingerprint, a tab, its text's length in characters, a newline,
+       the text as it is, and a newline. The driver keeps them in a file.
+       Written by joining the parts, with nothing escaped; read by a
+       `substring` each, the text not looked at: an escaped line each, as
+       they were (C362), was looked at a character at a time both ways. A
+       file of another format gives no memos, as none at all."
 
-      (define-rec
-        (escaped-runs (subr kfx (string i64 i64 i64 strings) strings)
-          (lambda (t from i n acc)
-            "`t`'s runs from `from`, escaped, added to `acc` newest first; `i`
-             the character looked at, of `n`."
-            (cond ((i64= i n) (cons (substring t (i64->int from) (i64->int n)) acc))
-                  ((char=? (string-ref-i64 t i) #\newline)
-                   (escaped-runs t (i64+ i 1) (i64+ i 1) n (cons "\\n" (cons (substring t (i64->int from) (i64->int i)) acc))))
-                  ((char=? (string-ref-i64 t i) #\\)
-                   (escaped-runs t (i64+ i 1) (i64+ i 1) n (cons "\\\\" (cons (substring t (i64->int from) (i64->int i)) acc))))
-                  (else (escaped-runs t from (i64+ i 1) n acc))))))
+      (define memos-format string "kayak memos 3\n")
 
       (define-rec
         (memos-runs (subr kfx (memos strings) strings)
@@ -48,41 +39,36 @@
             (if (null? ms)
                 acc
                 (tagcase (car ms)
-                  (memo (h t) (memos-runs (cdr ms) (cons "\n" (escaped-runs t 0 0 (string-length-i64 t) (cons "\t" (cons (i64->string h) acc)))))))))))
+                  (memo (h t)
+                    (memos-runs (cdr ms)
+                                (cons "\n" (cons t (cons "\n" (cons (i64->string (string-length-i64 t)) (cons "\t" (cons (i64->string h) acc)))))))))))))
 
       (define-rec
-        (memo-lines (subr kfx (string i64 i64 memos) memos)
+        (memo-records (subr kfx (string i64 i64 memos) memos)
           (lambda (s i n ms)
-            "The memos of `s`'s lines from `i`, of `n` characters, onto `ms`; a
-             line with no tab is none, nor one with no newline after it."
-            (let ((tab (char-from s i n #\tab)))
-              (cond ((i64= tab n) ms)
-                    ((i64< (char-from s i tab #\newline) tab) (memo-lines s (i64+ (char-from s i tab #\newline) 1) n ms))
-                    (else (memo-text s (number-of-chars (string-chars (substring s (i64->int i) (i64->int tab))) 0 #f)
-                                     (i64+ tab 1) (i64+ tab 1) n nil ms))))))
-        (memo-text (subr kfx (string i64 i64 i64 i64 strings memos) memos)
-          (lambda (s key from i n runs ms)
-            "The text of a memo, `key`'s, read from `from` to the line's end, its
-             `runs` so far newest first; `i` the character looked at."
-            (cond ((i64= i n) ms)
-                  ((char=? (string-ref-i64 s i) #\newline)
-                   (memo-lines s (i64+ i 1) n
-                               (cons (memo key (string-list-append (reverse (cons (substring s (i64->int from) (i64->int i)) runs)))) ms)))
-                  ((and (char=? (string-ref-i64 s i) #\\) (i64< (i64+ i 1) n))
-                   (memo-text s key (i64+ i 2) (i64+ i 2) n
-                              (cons (if (char=? (string-ref-i64 s (i64+ i 1)) #\n) "\n" (substring s (i64->int (i64+ i 1)) (i64->int (i64+ i 2))))
-                                    (cons (substring s (i64->int from) (i64->int i)) runs))
-                              ms))
-                  (else (memo-text s key from (i64+ i 1) n runs ms)))))
+            "The memos of `s` from `i`, of `n` characters, onto `ms`; a record
+             cut short ends them."
+            (let* ((tab (char-from s i n #\tab))
+                   (nl (char-from s tab n #\newline)))
+              (if (i64>= nl n)
+                  ms
+                  (let* ((key (number-from s i tab 0 #f))
+                         (len (number-from s (i64+ tab 1) nl 0 #f))
+                         (from (i64+ nl 1))
+                         (to (i64+ from len)))
+                    (if (i64> to n)
+                        ms
+                        (memo-records s (i64+ to 1) n (cons (memo key (substring s (i64->int from) (i64->int to))) ms))))))))
         (char-from (subr kfx (string i64 i64 char) i64)
           (lambda (s i n c)
             "Where `c` is first in `s` from `i`; else `n`."
-            (cond ((i64= i n) n) ((char=? (string-ref-i64 s i) c) i) (else (char-from s (i64+ i 1) n c)))))
-        (number-of-chars (subr kfx (chars i64 bool) i64)
-          (lambda (cs n negative)
-            (cond ((null? cs) (if negative (i64- 0 n) n))
-                  ((char=? (car cs) #\-) (number-of-chars (cdr cs) n #t))
-                  (else (number-of-chars (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) negative))))))
+            (cond ((i64>= i n) n) ((char=? (string-ref-i64 s i) c) i) (else (char-from s (i64+ i 1) n c)))))
+        (number-from (subr kfx (string i64 i64 i64 bool) i64)
+          (lambda (s i end n negative)
+            "The decimal number of `s` from `i` to `end`."
+            (cond ((i64>= i end) (if negative (i64- 0 n) n))
+                  ((char=? (string-ref-i64 s i) #\-) (number-from s (i64+ i 1) end n #t))
+                  (else (number-from s (i64+ i 1) end (i64+ (i64* n 10) (i64- (char->i64 (string-ref-i64 s i)) 48)) negative))))))
 
       (define fmap-height (subr kfx (fmap) i64)
         (lambda (t) (tagcase t (fm-none () 0) (fm-node (l k x h r) h))))
@@ -167,7 +153,12 @@
             (fm-node (l k x h r) (cond ((string=? n k) x) ((string<? n k) (fmap-get l n)) (else (fmap-get r n))))))))
 
     (define memos-text (subr kfx (memos) string)
-      (lambda (ms) (string-list-append (reverse (memos-runs ms nil)))))
+      (lambda (ms) (string-list-append (reverse (memos-runs ms (list memos-format))))))
 
     (define memos-of-text (subr kfx (string) memos)
-      (lambda (s) (memo-lines s 0 (string-length-i64 s) nil)))))
+      (lambda (s)
+        (let ((n (string-length-i64 s))
+              (h (string-length-i64 memos-format)))
+          (if (and (i64>= n h) (string=? (substring s 0 (i64->int h)) memos-format))
+              (memo-records s h n nil)
+              nil))))))

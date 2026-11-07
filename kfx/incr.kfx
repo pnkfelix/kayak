@@ -31,6 +31,12 @@
  and what it reads by no name (its locals)."
 (define-datatype ereads (ereads fmap i64))
 
+"A fact as a memo keeps it (C386): its kind (0, where it is; 1, at an
+ offset from the form's start; 2, from one of a group's items'), two
+ numbers, the file of a kind 0, and what it says."
+(define-datatype fact-rec (fact-rec i64 i64 i64 string string))
+(define-type fact-recs (listof fact-rec acyclic))
+
 "A key, and what was learned making it."
 (define-datatype read-key (read-key i64 reads))
 
@@ -84,13 +90,18 @@
 
       (define end-of-file i64 9223372036854775807)
 
-      (define-rec
-        (drop-to (subr kfx (chars i64 i64) chars)
-          (lambda (cs at to) (if (or (null? cs) (i64>= at to)) cs (drop-to (cdr cs) (i64+ at 1) to)))))
+      (define text-between (subr kfx (string i64 i64 i64) string)
+        (lambda (text from p q)
+          "What of `text`, which begins at offset `from`, is from offset `p` to
+           `q`, or its end: a `substring` (C386), where each item's text was
+           cut, a character at a time, from a list of the module's."
+          (let* ((n (string-length-i64 text))
+                 (a (i64- p from))
+                 (b (i64- q from))
+                 (b (if (i64> b n) n b))
+                 (a (if (i64> a b) b a)))
+            (substring text (i64->int a) (i64->int b)))))
 
-      (define-rec
-        (take-to (subr kfx (chars i64 i64 chars) chars)
-          (lambda (cs at to acc) (if (or (null? cs) (i64>= at to)) acc (take-to (cdr cs) (i64+ at 1) to (cons (car cs) acc))))))
 
       "A file's facts, and those of one form, as text, their offsets from the
        form's start."
@@ -110,7 +121,7 @@
        took, which are all the next run is given."
 
       (define-rec
-        (put-items-memo (subr kfx (ctx facts ereads memos sexps chars i64 i64 chars memos) emitted)
+        (put-items-memo (subr kfx (ctx facts ereads memos sexps string i64 i64 chars memos) emitted)
           (lambda (c fs global old its text start end acc made)
             "A module's items, as `put-tops-memo` writes forms: `text` the module's
              own, from offset `start` to `end`. An item the compiler made (no place
@@ -124,7 +135,7 @@
                    (let* ((p (datum-pos (car its)))
                           (placed (and (i64>= p start) (i64< p end)))
                           (next (item-end (cdr its) start end))
-                          (own (if placed (rev->string (take-to (drop-to text start p) p next nil)) (show-sexp (car its))))
+                          (own (if placed (text-between text start p next) (show-sexp (car its))))
                           (key (fnv-strings (if placed (facts-text fs p next) nil) (fnv-string own (emit-key global (car its)))))
                           (found (memo-find old key))
                           (out (if (null? found) (rev->string (put-top c (car its) nil)) (tagcase (car found) (memo (h t) t)))))
@@ -258,16 +269,53 @@
           (tagcase f
             (fact (ff p w)
               (if (string=? ff file)
-                  (string-append "(1 " (string-append (i64->string (i64- p start)) (string-append " " (string-append (quoted w) ")"))))
-                  (string-append "(0 " (string-append (quoted ff) (string-append " " (string-append (i64->string p)
-                    (string-append " " (string-append (quoted w) ")")))))))))))
+                  (fact-record 1 (i64- p start) 0 "" w)
+                  (fact-record 0 p 0 ff w))))))
 
-      (define code-fact (subr kfx (string i64 sexp) fact)
-        (lambda (file start e)
-          (let ((xs (items e)))
-            (if (i64= (code-number (car xs)) 1)
-                (fact file (i64+ start (code-number (second xs))) (code-text (third xs)))
-                (fact (code-text (second xs)) (code-number (third xs)) (code-text (fourth xs)))))))
+      (define fact-record (subr kfx (i64 i64 i64 string string) string)
+        (lambda (kind a b file what)
+          "A fact as a memo keeps it (C386): a line of its kind, its numbers and
+           its strings' lengths, then the strings as they are, so that it is
+           read by `substring`s, nothing escaped."
+          (concat-strings (list (i64->string kind) " " (i64->string a) " " (i64->string b) " "
+                                (i64->string (string-length-i64 file)) " " (i64->string (string-length-i64 what)) "\n"
+                                file what))))
+
+      (define-rec
+        (fact-records (subr kfx (string i64 i64 fact-recs) fact-recs)
+          (lambda (s i n acc)
+            "The facts of `s` from `i`, of `n` characters, onto `acc`, newest
+             first."
+            (if (i64>= i n)
+                acc
+                (let* ((e1 (char-from-memo s i n #\space))
+                       (e2 (char-from-memo s (i64+ e1 1) n #\space))
+                       (e3 (char-from-memo s (i64+ e2 1) n #\space))
+                       (e4 (char-from-memo s (i64+ e3 1) n #\space))
+                       (e5 (char-from-memo s (i64+ e4 1) n #\newline))
+                       (fl (decimal-at s (i64+ e3 1) e4))
+                       (wl (decimal-at s (i64+ e4 1) e5))
+                       (from (i64+ e5 1)))
+                  (fact-records s (i64+ (i64+ from fl) wl) n
+                                (cons (fact-rec (decimal-at s i e1) (decimal-at s (i64+ e1 1) e2) (decimal-at s (i64+ e2 1) e3)
+                                                (substring s (i64->int from) (i64->int (i64+ from fl)))
+                                                (substring s (i64->int (i64+ from fl)) (i64->int (i64+ (i64+ from fl) wl))))
+                                      acc))))))
+        (char-from-memo (subr kfx (string i64 i64 char) i64)
+          (lambda (s i n c) (cond ((i64>= i n) n) ((char=? (string-ref-i64 s i) c) i) (else (char-from-memo s (i64+ i 1) n c)))))
+        (decimal-at (subr kfx (string i64 i64) i64)
+          (lambda (s i end)
+            (if (and (i64< i end) (char=? (string-ref-i64 s i) #\-))
+                (i64- 0 (digits-at s (i64+ i 1) end 0))
+                (digits-at s i end 0))))
+        (digits-at (subr kfx (string i64 i64 i64) i64)
+          (lambda (s i end n)
+            (if (i64>= i end) n (digits-at s (i64+ i 1) end (i64+ (i64* n 10) (i64- (char->i64 (string-ref-i64 s i)) 48)))))))
+
+      (define code-fact (subr kfx (string i64 fact-rec) fact)
+        (lambda (file start r)
+          (tagcase r
+            (fact-rec (k a b ff w) (if (i64= k 1) (fact file (i64+ start a) w) (fact ff a w))))))
 
       "A group's facts (C360): of a `define-rec` the order made, whose items may
        be apart in the text, each fact in an item kept at its offset from that
@@ -293,18 +341,16 @@
             (fact (ff p w)
               (let ((i (if (string=? ff file) (member-at p ss es 0) (the i64 -1))))
                 (if (i64>= i 0)
-                    (string-append "(2 " (string-append (i64->string i) (string-append " " (string-append (i64->string (i64- p (i64-nth ss i)))
-                      (string-append " " (string-append (quoted w) ")"))))))
-                    (string-append "(0 " (string-append (quoted ff) (string-append " " (string-append (i64->string p)
-                      (string-append " " (string-append (quoted w) ")"))))))))))))
+                    (fact-record 2 i (i64- p (i64-nth ss i)) "" w)
+                    (fact-record 0 p 0 ff w)))))))
 
-      (define code-fact-at (subr kfx (string (listof i64 acyclic) sexp) fact)
-        (lambda (file ss e)
-          (let ((xs (items e)))
-            (cond ((i64= (code-number (car xs)) 2)
-                   (fact file (i64+ (i64-nth ss (code-number (second xs))) (code-number (third xs))) (code-text (fourth xs))))
-                  ((i64= (code-number (car xs)) 1) (fact file (i64+ (i64-nth ss 0) (code-number (second xs))) (code-text (third xs))))
-                  (else (fact (code-text (second xs)) (code-number (third xs)) (code-text (fourth xs))))))))
+      (define code-fact-at (subr kfx (string (listof i64 acyclic) fact-rec) fact)
+        (lambda (file ss r)
+          (tagcase r
+            (fact-rec (k a b ff w)
+              (cond ((i64= k 2) (fact file (i64+ (i64-nth ss a) b) w))
+                    ((i64= k 1) (fact file (i64+ (i64-nth ss 0) a) w))
+                    (else (fact ff a w)))))))
 
       (define typed-code (subr kfx (typed) string)
         (lambda (x) (tagcase x (typed (n t) (string-append "(" (string-append (quoted n) (string-append " " (string-append (show-sexp t) ")"))))))))
@@ -471,26 +517,29 @@
                      (new-facts (leading fs (i64- (size fs) (size (cv-facts before))))))
                 (change
                   (concat-strings
+                    ;; The facts after the rest, a line, in their own format (C386).
                     (list "((" (words-of (map bind-code new-binds))
                           ") (" (words-of (map effdef-code new-effs))
-                          ") (" (words-of (map code new-facts))
                           ") (" (words-of (map typed-code found))
                           ") " (where-text here group tv)
-                          " " (quoted f) " " (i64->string line) " " (i64->string at) ")"))
+                          " " (quoted f) " " (i64->string line) " " (i64->string at) ")\n"
+                          (concat-strings (map code new-facts))))
                   (ambient-text new-effs new-facts)))))))
 
       "A memo's change made again: the checker after the form, and the types found."
 
       (define-datatype redone (redone cv typeds string))
 
-      (define change-applied (subr kfx (cv string (subr kfx (sexp) fact)) redone)
+      (define change-applied (subr kfx (cv string (subr kfx (fact-rec) fact)) redone)
         (lambda (v text uncode)
-          (let* ((parts (items (car (read-all text "" 1))))
+          (let* ((n (string-length-i64 text))
+                 (nl (char-from-memo text 0 n #\newline))
+                 (parts (items (car (read-all (substring text 0 (i64->int nl)) "" 1))))
                  (new-binds (map code-bind (items (car parts))))
                  (new-effs (map code-effdef (items (second parts))))
-                 (new-facts (map uncode (items (third parts))))
-                 (found (map code-typed (items (fourth parts))))
-                 (rest (cdr (cdr (cdr (cdr parts)))))
+                 (new-facts (map uncode (reverse (fact-records text (i64+ nl 1) n nil))))
+                 (found (map code-typed (items (third parts))))
+                 (rest (cdr (cdr (cdr parts))))
                  (here (code-text (car rest)))
                  (group (code-strings (second rest)))
                  (tv (code-strings (third rest)))
@@ -597,7 +646,7 @@
                   (if (or (i64< q 0) (any? (lambda ((r i64)) (i64= r q)) rest)) rest (onto rest (list q))))))))
 
       (define-rec
-        (check-items-memo (subr kfx (cv string sexps memos reads typeds memos chars i64 (listof i64 acyclic) i64) checked-memo)
+        (check-items-memo (subr kfx (cv string sexps memos reads typeds memos string i64 (listof i64 acyclic) i64) checked-memo)
           (lambda (v m its old r found made src from positions end)
             "A module's items, as `check-items` (check-defs.kfx), each its memo's
              change if it has one, keyed by its printed form and the chain."
@@ -606,7 +655,7 @@
                 (let* ((it (car its))
                        (file (datum-file it))
                        (start (datum-pos it))
-                       (slice (lambda ((p i64)) (rev->string (take-to (drop-to src from p) p (position-after p positions end) nil))))
+                       (slice (lambda ((p i64)) (text-between src from p (position-after p positions end))))
                        (placed (and (i64>= start from) (i64< start end)))
                        ;; A `define-rec` the order made (`rec-of`): every item's text in it.
                        (ss (if placed (starts-of start (if (head-is? it "define-rec") (map datum-pos (cdr (items it))) nil) positions) nil))
@@ -623,7 +672,7 @@
                   (if (not (null? hit))
                       (tagcase (car hit)
                         (memo (h text)
-                          (tagcase (change-applied v text (if placed (lambda ((e sexp)) (code-fact-at file ss e)) (lambda ((e sexp)) (code-fact file start e))))
+                          (tagcase (change-applied v text (if placed (lambda ((e fact-rec)) (code-fact-at file ss e)) (lambda ((e fact-rec)) (code-fact file start e))))
                             (redone (v2 more ambient)
                               (check-items-memo v2 m (cdr its) old (reads-after r v2 ambient) (onto more found) (cons (car hit) made) src from positions end)))))
                       (tagcase (check-item v m it)
@@ -660,7 +709,7 @@
                                                         (fnv-string "module" (reads-chain r)))))
                                (tagcase (check-items-memo inner (prep-name p) (order-memo-forms ordering) old
                                                           (reads-anew r inner (i64->string scope)) nil (order-memo-made ordering)
-                                                    (string-chars (car texts)) start
+                                                    (car texts) start
                                                     (sorted-positions (map datum-pos (unhidden (module-written form))) nil)
                                                     (if (null? (cdr texts)) end-of-file (i64+ start (string-length-i64 (car texts)))))
                                  (checked-memo (done items-found made2)
@@ -671,7 +720,7 @@
                         ((not (null? hit))
                          (tagcase (car hit)
                            (memo (h text)
-                             (tagcase (change-applied v text (lambda ((e sexp)) (code-fact file start e)))
+                             (tagcase (change-applied v text (lambda ((e fact-rec)) (code-fact file start e)))
                                (redone (v2 more ambient)
                                  (check-tops-memo v2 (cdr forms) (cdr texts) old (reads-after (keyed-reads kd) v2 ambient) (onto more found)
                                                   (cons (car hit) made)))))))
@@ -797,7 +846,7 @@
                    (tagcase (module-parts c m (module-noted (car forms)))
                      (mparts (inner its)
                        (tagcase (put-items-memo inner fs (emit-reads inner (fnv-strings (concat (map item-signature (module-written (car forms)))) (fnv-string m fnv-offset)))
-                                            old its (string-chars (car texts)) start end nil made)
+                                            old its (car texts) start end nil made)
                          (emitted (body made2)
                            (let ((body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives its body) body)))
                              (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put-module-around c m body acc) made2))))))))

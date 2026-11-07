@@ -10656,3 +10656,34 @@ no set made, no text. A warm compile of the compiler with memos, 9.16 G
 instructions to 8.77 G; what is left is reading the sources and the
 memos' texts. The incremental verifier, every file, as before.
 
+## C386. The memo format, made for reading (2026-11-07)
+
+The user: profile what is left, and if nothing else, the memo format.
+Profiled, a warm compile of the compiler with memos (8.77 G instructions
+after C385): the memo machinery a quarter of it, by three parts.
+- **Item texts by `substring`**: a module's items' texts, for their keys,
+  were cut from a list of the module's characters, a character at a time
+  (`drop-to`, `take-to`); now `text-between`, a `substring`. 8.77 G to
+  8.12 G.
+- **The memo file, length-prefixed**: a first line naming the format
+  (`kayak memos 3`), then each memo's fingerprint, its text's length in
+  characters, and the text as it is: written by joining the parts, read by
+  a `substring` each, nothing escaped. Each memo was an escaped line,
+  looked at a character at a time, writing and reading. A file of another
+  format gives no memos, never a misread one. 8.12 G to 6.85 G.
+- **A change's facts in a format of their own**: a memo of a form's check
+  was one s-expression, its facts most of it, read by the reader. Now the
+  rest is the s-expression, a line, and the facts follow, each a line of
+  numbers (its kind, two numbers, its strings' lengths) and its strings as
+  they are (`fact-record`, `fact-records`). 6.85 G to 5.90 G.
+- So a warm compile of the compiler, 9.16 G instructions before C385 to
+  5.90 G; 1.53 s to 1.17 s, below what it was before C384 (1.34 s) with
+  C384's finer keys. A definition added first in `base.kfx`, its type
+  changed, a body edited: each 1.15 s. The output is boot/'s; the
+  incremental verifier, every file, as before.
+- What is left, spread out: emitting from memos (the emitter's index,
+  each module's text indented again) and checking from memos (22% and 21%
+  of samples), the reader on the sources and on the changes' small
+  s-expressions (13%), the keys (10%), and lists of characters some
+  string helpers make (`words-of`, indenting).
+

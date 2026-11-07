@@ -59,6 +59,19 @@ pub fn ereads(f0: &'static Fmap, f1: i64) -> &'static Ereads {
     kayak_rt::heap_alloc(Ereads::Ereads(f0, f1))
 }
 
+// A fact as a memo keeps it (C386): its kind (0, where it is; 1, at an
+// offset from the form's start; 2, from one of a group's items'), two
+// numbers, the file of a kind 0, and what it says.
+pub enum FactRec {
+    FactRec(i64, i64, i64, Str, Str),
+}
+
+pub fn fact_rec(f0: i64, f1: i64, f2: i64, f3: Str, f4: Str) -> &'static FactRec {
+    kayak_rt::heap_alloc(FactRec::FactRec(f0, f1, f2, f3, f4))
+}
+
+pub type FactRecs = List<&'static FactRec>;
+
 // A key, and what was learned making it.
 pub enum ReadKey {
     ReadKey(i64, &'static Reads),
@@ -159,26 +172,24 @@ pub mod incremental {
         9223372036854775807i64
     }
 
-    pub fn drop_to(mut cs: Chars, mut at: i64, mut to: i64) -> Chars {
-        loop {
-            if (null_p(cs) || i64_gt_eq(at, to)) {
-                return cs;
-            } else {
-                (cs, at) = (cdr(cs), i64_plus(at, 1i64));
-                continue;
-            }
-        }
-    }
-
-    pub fn take_to(mut cs: Chars, mut at: i64, mut to: i64, mut acc: Chars) -> Chars {
-        loop {
-            if (null_p(cs) || i64_gt_eq(at, to)) {
-                return acc;
-            } else {
-                (cs, at, acc) = (cdr(cs), i64_plus(at, 1i64), kayak_rt::heap_cons(car(cs), acc));
-                continue;
-            }
-        }
+    /// What of `text`, which begins at offset `from`, is from offset `p` to
+    /// `q`, or its end: a `substring` (C386), where each item's text was
+    /// cut, a character at a time, from a list of the module's.
+    pub fn text_between(text: Str, from: i64, p: i64, q: i64) -> Str {
+        let n = string_length_i64(text);
+        let a = i64_minus(p, from);
+        let b = i64_minus(q, from);
+        let b = if i64_gt(b, n) {
+            n
+        } else {
+            b
+        };
+        let a = if i64_gt(a, b) {
+            b
+        } else {
+            a
+        };
+        substring(text, i64_to_int(a), i64_to_int(b))
     }
 
     // A file's facts, and those of one form, as text, their offsets from the
@@ -208,7 +219,7 @@ pub mod incremental {
     /// A module's items, as `put-tops-memo` writes forms: `text` the module's
     /// own, from offset `start` to `end`. An item the compiler made (no place
     /// in the module's text) is keyed by its printed form.
-    pub fn put_items_memo(mut c: &'static Ctx, mut fs: Facts, mut global: &'static Ereads, mut old: Memos, mut its: Sexps, mut text: Chars, mut start: i64, mut end: i64, mut acc: Chars, mut made: Memos) -> &'static Emitted {
+    pub fn put_items_memo(mut c: &'static Ctx, mut fs: Facts, mut global: &'static Ereads, mut old: Memos, mut its: Sexps, mut text: Str, mut start: i64, mut end: i64, mut acc: Chars, mut made: Memos) -> &'static Emitted {
         loop {
             if null_p(its) {
                 return emitted(acc, made);
@@ -225,7 +236,7 @@ pub mod incremental {
                 let placed = (i64_gt_eq(p, start) && i64_lt(p, end));
                 let next = item_end(cdr(its), start, end);
                 let own = if placed {
-                    rev_to_string(take_to(drop_to(text, start, p), p, next, nil::<char>()))
+                    text_between(text, start, p, next)
                 } else {
                     show_sexp(car(its))
                 };
@@ -510,20 +521,84 @@ pub mod incremental {
         match *tagcase_ {
             Fact::Fact(ff, p, w) => {
                 if string_eq_p(ff, file) {
-                    string_append(str_lit("(1 "), string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))
+                    fact_record(1i64, i64_minus(p, start), 0i64, str_lit(""), w)
                 } else {
-                    string_append(str_lit("(0 "), string_append(quoted(ff), string_append(str_lit(" "), string_append(i64_to_string(p), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
+                    fact_record(0i64, p, 0i64, ff, w)
                 }
             }
         }
     }
 
-    pub fn code_fact(file: Str, start: i64, e: &'static Sexp) -> &'static Fact {
-        let xs = items(e);
-        if i64_eq(code_number(car(xs)), 1i64) {
-            fact(file, i64_plus(start, code_number(second(xs))), code_text(third(xs)))
+    /// A fact as a memo keeps it (C386): a line of its kind, its numbers and
+    /// its strings' lengths, then the strings as they are, so that it is
+    /// read by `substring`s, nothing escaped.
+    pub fn fact_record(kind: i64, a: i64, b: i64, file: Str, what: Str) -> Str {
+        concat_strings(kayak_rt::heap_cons(i64_to_string(kind), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(a), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(b), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(file)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(what)), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(file, kayak_rt::heap_cons(what, kayak_rt::nil())))))))))))))
+    }
+
+    /// The facts of `s` from `i`, of `n` characters, onto `acc`, newest
+    /// first.
+    pub fn fact_records(mut s: Str, mut i: i64, mut n: i64, mut acc: FactRecs) -> FactRecs {
+        loop {
+            if i64_gt_eq(i, n) {
+                return acc;
+            } else {
+                let e1 = char_from_memo(s, i, n, ' ');
+                let e2 = char_from_memo(s, i64_plus(e1, 1i64), n, ' ');
+                let e3 = char_from_memo(s, i64_plus(e2, 1i64), n, ' ');
+                let e4 = char_from_memo(s, i64_plus(e3, 1i64), n, ' ');
+                let e5 = char_from_memo(s, i64_plus(e4, 1i64), n, '\n');
+                let fl = decimal_at(s, i64_plus(e3, 1i64), e4);
+                let wl = decimal_at(s, i64_plus(e4, 1i64), e5);
+                let from = i64_plus(e5, 1i64);
+                (i, acc) = (i64_plus(i64_plus(from, fl), wl), kayak_rt::heap_cons(fact_rec(decimal_at(s, i, e1), decimal_at(s, i64_plus(e1, 1i64), e2), decimal_at(s, i64_plus(e2, 1i64), e3), substring(s, i64_to_int(from), i64_to_int(i64_plus(from, fl))), substring(s, i64_to_int(i64_plus(from, fl)), i64_to_int(i64_plus(i64_plus(from, fl), wl)))), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn char_from_memo(mut s: Str, mut i: i64, mut n: i64, mut c: char) -> i64 {
+        loop {
+            if i64_gt_eq(i, n) {
+                return n;
+            } else if char_eq_p(string_ref_i64(s, i), c) {
+                return i;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
+    }
+
+    pub fn decimal_at(s: Str, i: i64, end: i64) -> i64 {
+        if (i64_lt(i, end) && char_eq_p(string_ref_i64(s, i), '-')) {
+            i64_minus(0i64, digits_at(s, i64_plus(i, 1i64), end, 0i64))
         } else {
-            fact(code_text(second(xs)), code_number(third(xs)), code_text(fourth(xs)))
+            digits_at(s, i, end, 0i64)
+        }
+    }
+
+    pub fn digits_at(mut s: Str, mut i: i64, mut end: i64, mut n: i64) -> i64 {
+        loop {
+            if i64_gt_eq(i, end) {
+                return n;
+            } else {
+                (i, n) = (i64_plus(i, 1i64), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(string_ref_i64(s, i)), 48i64)));
+                continue;
+            }
+        }
+    }
+
+    pub fn code_fact(file: Str, start: i64, r: &'static FactRec) -> &'static Fact {
+        let tagcase_ = r;
+        match *tagcase_ {
+            FactRec::FactRec(k, a, b, ff, w) => {
+                if i64_eq(k, 1i64) {
+                    fact(file, i64_plus(start, a), w)
+                } else {
+                    fact(ff, a, w)
+                }
+            }
         }
     }
 
@@ -570,22 +645,26 @@ pub mod incremental {
                     the::<i64>(-1i64)
                 };
                 if i64_gt_eq(i, 0i64) {
-                    string_append(str_lit("(2 "), string_append(i64_to_string(i), string_append(str_lit(" "), string_append(i64_to_string(i64_minus(p, i64_nth(ss, i))), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
+                    fact_record(2i64, i, i64_minus(p, i64_nth(ss, i)), str_lit(""), w)
                 } else {
-                    string_append(str_lit("(0 "), string_append(quoted(ff), string_append(str_lit(" "), string_append(i64_to_string(p), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
+                    fact_record(0i64, p, 0i64, ff, w)
                 }
             }
         }
     }
 
-    pub fn code_fact_at(file: Str, ss: List<i64>, e: &'static Sexp) -> &'static Fact {
-        let xs = items(e);
-        if i64_eq(code_number(car(xs)), 2i64) {
-            fact(file, i64_plus(i64_nth(ss, code_number(second(xs))), code_number(third(xs))), code_text(fourth(xs)))
-        } else if i64_eq(code_number(car(xs)), 1i64) {
-            fact(file, i64_plus(i64_nth(ss, 0i64), code_number(second(xs))), code_text(third(xs)))
-        } else {
-            fact(code_text(second(xs)), code_number(third(xs)), code_text(fourth(xs)))
+    pub fn code_fact_at(file: Str, ss: List<i64>, r: &'static FactRec) -> &'static Fact {
+        let tagcase_ = r;
+        match *tagcase_ {
+            FactRec::FactRec(k, a, b, ff, w) => {
+                if i64_eq(k, 2i64) {
+                    fact(file, i64_plus(i64_nth(ss, a), b), w)
+                } else if i64_eq(k, 1i64) {
+                    fact(file, i64_plus(i64_nth(ss, 0i64), a), w)
+                } else {
+                    fact(ff, a, w)
+                }
+            }
         }
     }
 
@@ -888,7 +967,7 @@ pub mod incremental {
                 let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
                 let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
                 let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
-                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(code, new_facts)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), ambient_text(new_effs, new_facts))
+                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::heap_cons(concat_strings(map(code, new_facts)), kayak_rt::nil()))))))))))))))))), ambient_text(new_effs, new_facts))
             }
         }
     }
@@ -902,13 +981,15 @@ pub mod incremental {
         kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
     }
 
-    pub fn change_applied(v: &'static Cv, text: Str, uncode: &'static (dyn Fn(&'static Sexp) -> &'static Fact + Send + Sync)) -> &'static Redone {
-        let parts = items(car(read_all(text, str_lit(""), 1i64)));
+    pub fn change_applied(v: &'static Cv, text: Str, uncode: &'static (dyn Fn(&'static FactRec) -> &'static Fact + Send + Sync)) -> &'static Redone {
+        let n = string_length_i64(text);
+        let nl = char_from_memo(text, 0i64, n, '\n');
+        let parts = items(car(read_all(substring(text, int_lit(0), i64_to_int(nl)), str_lit(""), 1i64)));
         let new_binds = map(&code_bind, items(car(parts)));
         let new_effs = map(&code_effdef, items(second(parts)));
-        let new_facts = map(uncode, items(third(parts)));
-        let found = map(&code_typed, items(fourth(parts)));
-        let rest = cdr(cdr(cdr(cdr(parts))));
+        let new_facts = map(uncode, reverse(fact_records(text, i64_plus(nl, 1i64), n, nil::<&'static FactRec>())));
+        let found = map(&code_typed, items(third(parts)));
+        let rest = cdr(cdr(cdr(parts)));
         let here = code_text(car(rest));
         let group = code_strings(second(rest));
         let tv = code_strings(third(rest));
@@ -1106,7 +1187,7 @@ pub mod incremental {
 
     /// A module's items, as `check-items` (check-defs.kfx), each its memo's
     /// change if it has one, keyed by its printed form and the chain.
-    pub fn check_items_memo(v: &'static Cv, m: Str, its: Sexps, old: Memos, r: &'static Reads, found: Typeds, made: Memos, src: Chars, from: i64, positions: List<i64>, end: i64) -> &'static CheckedMemo {
+    pub fn check_items_memo(v: &'static Cv, m: Str, its: Sexps, old: Memos, r: &'static Reads, found: Typeds, made: Memos, src: Str, from: i64, positions: List<i64>, end: i64) -> &'static CheckedMemo {
         if null_p(its) {
             checked_memo(v, found, made)
         } else {
@@ -1114,7 +1195,7 @@ pub mod incremental {
             let file = datum_file(it);
             let start = datum_pos(it);
             let slice = lambda1s(move |p: i64| {
-                rev_to_string(take_to(drop_to(src, from, p), p, position_after(p, positions, end), nil::<char>()))
+                text_between(src, from, p, position_after(p, positions, end))
             });
             let placed = (i64_gt_eq(start, from) && i64_lt(start, end));
             let ss = if placed {
@@ -1143,11 +1224,11 @@ pub mod incremental {
                 match *tagcase_ {
                     Memo::Memo(h, text) => {
                         let tagcase_ = change_applied(v, text, if placed {
-                            lambda1s(move |e: &'static Sexp| {
+                            lambda1s(move |e: &'static FactRec| {
                                 code_fact_at(file, ss, e)
                             })
                         } else {
-                            lambda1s(move |e: &'static Sexp| {
+                            lambda1s(move |e: &'static FactRec| {
                                 code_fact(file, start, e)
                             })
                         });
@@ -1212,7 +1293,7 @@ pub mod incremental {
                                     nil::<Str>()
                                 }
                             }), unhidden(module_written(form))))), fnv_string(str_lit("module"), reads_chain(r)));
-                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<&'static Typed>(), order_memo_made(ordering), string_chars(car(texts)), start, sorted_positions(map(&datum_pos, unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
+                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<&'static Typed>(), order_memo_made(ordering), car(texts), start, sorted_positions(map(&datum_pos, unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
                                 end_of_file()
                             } else {
                                 i64_plus(start, string_length_i64(car(texts)))
@@ -1239,7 +1320,7 @@ pub mod incremental {
                     let tagcase_ = car(hit);
                     match *tagcase_ {
                         Memo::Memo(h, text) => {
-                            let tagcase_ = change_applied(v, text, lambda1s(move |e: &'static Sexp| {
+                            let tagcase_ = change_applied(v, text, lambda1s(move |e: &'static FactRec| {
                                 code_fact(file, start, e)
                             }));
                             match *tagcase_ {
@@ -1491,7 +1572,7 @@ pub mod incremental {
                 let tagcase_ = module_parts(c, m, module_noted(car(forms)));
                 match *tagcase_ {
                     Mparts::Mparts(inner, its) => {
-                        let tagcase_ = put_items_memo(inner, fs, emit_reads(inner, fnv_strings(concat(map(&item_signature, module_written(car(forms)))), fnv_string(m, fnv_offset()))), old, its, string_chars(car(texts)), start, end, nil::<char>(), made);
+                        let tagcase_ = put_items_memo(inner, fs, emit_reads(inner, fnv_strings(concat(map(&item_signature, module_written(car(forms)))), fnv_string(m, fnv_offset()))), old, its, car(texts), start, end, nil::<char>(), made);
                         match *tagcase_ {
                             Emitted::Emitted(body, made2) => {
                                 let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
