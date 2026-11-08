@@ -33,11 +33,26 @@ as its own atoms: `receive`, `icell-get`, a `pselect`, `read-line`,
 not wait-free, in the sense of wait-free algorithms: it may not finish
 until another party acts, or time passes. A procedure that must stay
 responsive is then one of an effect without `wait`, and `clock`, which
-does not wait, no longer goes with `sleep-until`. (A write that blocks
-until the other end takes it, `process-write`, we would count; file
-operations, bounded by the machine rather than another party, we would
-not. That is your call.) It is a bare atom, not an `(io …)` one, as most
-waits are on other processes, not on the world.
+does not wait, no longer goes with `sleep-until`. A write that blocks
+until the other end takes it we would count too: `process-write`, and
+`write-out` and `write-err`, which wait when what they write to is a pipe
+no one is reading (as they do in kayak's async mode, where such a write
+is a task waiting on its runner). File operations, bounded by the machine
+rather than another party, we would not. That is your call. It is a bare
+atom, not an `(io …)` one, as most waits are on other processes, not on
+the world.
+
+With it, wait-freedom in the usual sense (every call ends in a finite
+number of its own steps, whatever others do) is an effect without `wait`
+and without `spin`. Without `wait`, a procedure blocks on no one; but
+it may still loop until another party moves (polling `stdin-ready?`, say),
+which never blocks and still depends on others. Without `spin` too, your
+termination check has found that it ends; and as FX-26 has no mutable
+memory processes share (what crosses is transmissible and never written;
+mailboxes and I-cells are reached only by what waits; `par`'s branches'
+writes are checked for interference), how long it takes depends on no
+one else. That is wait-freedom, not a bound on its steps, which no effect
+gives.
 
 ## 2. A supertype of evidence that a syscall may take
 

@@ -10780,3 +10780,14 @@ inspection of evidence asks one thing, whether `wait` is there. The
 request's first ask is now that. kayak's own `waits?` (C388) keeps its
 list of kinds until FX-26 has the atom.
 
+## C391. `wait` and wait-freedom, in the request (2026-11-07)
+
+The user asked whether the effect system can check wait-freedom, or
+whether that conflates notions. Answered, and added to the request at the
+user's word: no `wait` is non-blocking; with no `spin` too (FX-26's
+termination check, C20) and no mutable memory processes share, a call
+ends in a finite number of its own steps whatever others do, which is
+wait-freedom, though not a bound on its steps. And `write-out` and
+`write-err` should have `wait` as `process-write` would: a write to a pipe
+no one reads waits, a task waiting on its runner in the async mode.
+
