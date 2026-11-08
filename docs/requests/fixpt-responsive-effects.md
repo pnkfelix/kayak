@@ -28,33 +28,46 @@ do. We ask for a separate effect for sleeping, say `(io sleep)`, for
 for reading the clock. A program that writes `(io clock)` where it sleeps
 would need the new effect too.
 
-## 2. Evidence that can be inspected
+## 2. A supertype of evidence that a syscall may take
 
 This is the dynamic form. An event loop generic in its handlers' effect,
 `(poly ((e effect)) …)`, cannot tell whether a handler may wait. Evidence
 reflects the effect into a runtime object, `(effectrep e)`, but nothing
 can look inside one: it is made only by `reify-effect` and used only by
-`stage`.
+`stage`. Syscalls are FX-26's way for a runtime to add a capability
+without a change to the language, but none can take evidence. A
+syscall's type may be polymorphic over regions alone, so it cannot name
+`(effectrep e)` for any `e`; and its arguments are plain data, compared as
+canonical text.
 
-We ask for a test of evidence against an effect that also narrows a
-procedure's type when it passes, so that the loop can call a wait-free
-handler directly and hand any other to a worker:
+We ask for one standard type, say `rep`, that all evidence is a subtype
+of: `(effectrep e)`, `(typerep t)`, `(regionrep r)`, `(effectbound e)`
+and `(typebound t)`. `rep` has no parameter, so a syscall's type may name
+it and still be compared as text, as `(subr (io sys) (rep string) bool)`.
+It would cross to the runtime as what evidence already is at run time,
+the canonical text of what it is evidence of. A `rep` can be inspected
+but never made evidence again: there is no conversion back, so a syscall
+can learn what evidence says but never forge it.
 
-```
-(effect-narrow f er (reify-effect E))
-  ; f   : (subr e (A …) R)
-  ; er  : (effectrep e)
-  ; ->    (sumof (within (subr E (A …) R)) (beyond unit))
-```
+With it, a runtime could offer an optional syscall such as
+`kayak:effect-within/1`, which says whether evidence's effect is within an
+effect given as text. A program would ask `syscall-available?` and fall
+back where a runtime has none, so nothing about Fixpt's runtime need
+change unless you want it to. kayak would offer one only once FX-26 has
+`rep`.
 
-`within` if `e`, as `er` is evidence of it, is within `E`; else `beyond`.
-A test that gives only a `bool` would not be enough, because the call
-must still check against the loop's declared effect.
+What a syscall cannot do is narrow a procedure's static type: telling
+the program that a handler may not wait still leaves its type at `e`, so
+the checker still refuses calling it from code of a wait-free effect. For
+that there is `stage`, which checks code against a type made of evidence
+as the program runs and gives the code at that type (kayak's engine runs
+it; its Rust build has no checker at run time), and the static form,
+which follows.
 
 ## 3. Bounded effect variables
 
-This is the static form, and it makes (2) unnecessary where the bound is
-known when the program is written:
+This is the static form. It narrows where the bound is known when the
+program is written:
 
 ```
 (poly ((e effect (within (maxeff (send @w) (alloc @r))))) …)

@@ -10750,3 +10750,18 @@ reflect the effect into a runtime object that can be inspected ("reps").
   (C307, C308) but is abstract by design, made by `reify-effect` and used
   by `stage` alone.
 
+## C389. A supertype of evidence for syscalls, asked of Fixpt (2026-11-07)
+
+The user asked whether kayak could add a syscall to inspect evidence: it
+controls its runtime and front end. Not under the rules, which the user
+chose to keep: a syscall's type is polymorphic over regions alone and its
+arguments plain data, so none can take `(effectrep e)`, and KFX accepts no
+declaration Fixpt refuses. The user's question: whether the reified reps
+need a supertype a syscall declaration can name. Yes: one standard type,
+`rep`, without a parameter, of which all evidence is a subtype, crossing
+as the canonical text evidence already is at run time; inspected, never
+made evidence again. `docs/requests/fixpt-responsive-effects.md`'s second
+ask is now that, in place of a new `effect-narrow` form; narrowing a
+procedure's type stays `stage`'s with evidence, or bounded effect
+variables'.
+
