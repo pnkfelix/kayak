@@ -1,0 +1,32 @@
+"Responsiveness by effects (C388): a handler that must not wait says so by
+ its type, an effect with no `receive`, no `await`, no standard input. It
+ hands what would wait to a process, a worker of its own, and only sends;
+ the checker refuses a call there of anything that waits
+ (`tests/kfx-refused/responsive-handler-waits.kfx`). What it was asked for
+ comes back as an I-cell, waited for at one place, the caller's."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type req (productof (n int) (reply (icell int @r))))
+
+"The worker: it waits, for each request, and answers it."
+(define* start-worker (subr (maxeff (alloc @srv) (init @r) nondet spin) () (addr req @srv))
+  (lambda ()
+    (spawn (box req p)
+      (letrec ((serve (subr (maxeff (receive p) (init @r) nondet spin) () unit)
+                 (lambda ()
+                   (let ((m (receive box)))
+                     (begin (icell-put! (extract m reply) (* 2 (extract m n))) (serve))))))
+        (serve)))))
+
+"The handler: of an effect that may send and make a cell, never wait."
+(define* handle (subr (maxeff (send @srv) (alloc @r)) ((addr req @srv) int) (icell int @r))
+  (lambda (worker n)
+    (let ((c (the (icell int @r) (make-icell))))
+      (begin (send worker (product (n n) (reply c))) c))))
+
+(define main (subr (maxeff kfx (alloc @srv) (alloc @r) (send @srv) (init @r) (await @r) nondet) () string)
+  (lambda ()
+    (let* ((worker (start-worker))
+           (a (handle worker 20))
+           (b (handle worker 1)))
+      (int->string (+ (icell-get a) (icell-get b))))))

@@ -36,8 +36,16 @@ thread_local! {
     static MONITORED: Cell<bool> = const { Cell::new(false) };
     /// What the program's latest wait says if no task can end it.
     static STUCK: Cell<&'static str> = const { Cell::new("abort-with-continuation: no prompt for the tag") };
+    /// Whether a wait was left pending since `block` last asked (C388).
+    static WAITED: Cell<bool> = const { Cell::new(false) };
     /// An unmonitored process's failure, the program's.
     static FAILED: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// Whether a wait was left pending since the last asking, which forgets it:
+/// `block`'s, to say what it could not run to its end (C388).
+pub(crate) fn wait_pending() -> bool {
+    WAITED.with(|w| w.replace(false))
 }
 
 pub(crate) fn monitored() -> bool {
@@ -79,6 +87,7 @@ impl<R, F: FnMut() -> Option<R> + Unpin> Future for Wait<F> {
         if PROGRAM.with(Cell::get) {
             STUCK.with(|s| s.set(self.deadlock));
         }
+        WAITED.with(|w| w.set(true));
         Poll::Pending
     }
 }

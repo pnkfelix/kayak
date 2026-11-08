@@ -906,6 +906,18 @@ pub fn escapes_p(es: Strings) -> bool {
     }), es)
 }
 
+/// Whether effect `es` may wait on what only another task can make ready
+/// (C388): a `receive`, an `await` (an I-cell), the standard input, a
+/// `comefrom` (a capture), or an effect variable, which may stand for any.
+/// What runs to its end where nothing may suspend (a native procedure's
+/// callback) may do none of them; a sleep, a file, a program run beside
+/// this one hold the thread for a time, as the synchronous mode's do.
+pub fn waits_p(es: Strings) -> bool {
+    any_p(lambda1s(move |x: Str| {
+        (has_prefix_p(x, str_lit("receive:")) || has_prefix_p(x, str_lit("await:")) || has_prefix_p(x, str_lit("comefrom:")) || string_eq_p(x, str_lit("io:stdin")) || has_prefix_p(x, str_lit("~")))
+    }), es)
+}
+
 /// Whether effect `es` may suspend: a `comefrom` on some region, or an
 /// effect variable, which may stand for one (C46). Such a procedure, in
 /// Rust, is an `async fn` (C45).

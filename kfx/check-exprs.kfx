@@ -2604,8 +2604,9 @@
           "`(spawn-monitored w on-failure (box M r) body ...)` (C108): `spawn`,
            but a failure of the process is no failure of the program: its
            watcher, `w`, an `(addr W R)`, is sent `(on-failure message)`,
-           `on-failure` a `(subr pure (string) W)`, found, not checked, as
-           FX-26 finds it. The effect `spawn`'s, the two's, and `(send R)`
+           `on-failure` a `(subr pure (string) W)`, its type found and fitted
+           to that, as FX-26 does: pure, so it never waits, as what the
+           runtime runs to its end must not (C388). The effect `spawn`'s, the two's, and `(send R)`
            (`synth_spawn_monitored`)."
           (if (i64< (size xs) 4)
               (refuse v "`(spawn-monitored watcher on-failure (mailbox message-type place) body …)`")
@@ -5885,6 +5886,10 @@
                                                (note-fact (cond ((i64> (size ps) 4)
                                                                  ;; What kayak-jit cannot call yet: KFX's alone (C208).
                                                                  (kfx-restricted v s0 "a native procedure of more than four parameters, which KFX does not have yet (C116)"))
+                                                                ;; A callback runs to its end in native code's frame (C388).
+                                                                ((any? (lambda ((t ty)) (callback-waits? s0 t)) ps)
+                                                                 (kfx-restricted v s0 (string-append "a native procedure given a procedure that may wait (`receive`, `icell-get`, the standard input, a capture): native code runs it to its end, where nothing may wait, so give it one of an effect without them: "
+                                                                                                     (show-ty s0 want))))
                                                                 ((or (not (native-crossing? s0 r)) (any? (lambda ((t ty)) (not (native-given? s0 t))) ps))
                                                                  (kfx-restricted v s0 (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
                                                                                                      (show-ty s0 want))))
@@ -5895,6 +5900,15 @@
                                           (refuse v (string-append "native-procedure of what is not a bloblet: " (show-ty s0 t)))))))))
                          (else other (refuse v "native-procedure of a type not of the native convention"))))
                      (else other (refuse v "native-procedure of a type not of the native convention"))))))))
+
+      (callback-waits? (subr kfx (st ty) bool)
+        (lambda (s t)
+          "Whether `t`, a native procedure's parameter, is a procedure that may
+           wait (`waits?`, C388), of whichever convention."
+          (tagcase (walk s t)
+            (ty-data (d args) (and (or (string=? d "%fx") (string=? d "%native")) (not (null? args)) (callback-waits? s (car args))))
+            (ty-proc (es ps r) (waits? (map (lambda ((a string)) (resolve-atom s a)) es)))
+            (else other #f))))
 
       (seal-call (subr kfx (cv st sexps) res)
         (lambda (v s args)

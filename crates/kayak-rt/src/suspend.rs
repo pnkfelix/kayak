@@ -221,8 +221,16 @@ pub fn block<R>(f: impl Future<Output = R>) -> R {
     let _blocking = Blocking;
     let mut f = std::pin::pin!(f);
     let mut cx = Context::from_waker(Waker::noop());
+    let _ = crate::async_process::wait_pending();
     match f.as_mut().poll(&mut cx) {
         Poll::Ready(r) => r,
+        // A wait (C388): the checker refuses one where nothing may wait (a
+        // constant's value, a native procedure's callback, a monitor's
+        // `on-failure`), so this is a program it did not see so.
+        Poll::Pending if crate::async_process::wait_pending() => crate::fail(
+            "a wait where nothing may wait (a constant's value, a callback of native code, \
+             a monitor's on-failure): it could only be waited for by another task",
+        ),
         Poll::Pending => crate::fail("abort-with-continuation: no prompt for the tag"),
     }
 }
@@ -732,5 +740,16 @@ mod tests {
         let slices = sched.run(u64::MAX);
         assert_eq!(*order.borrow(), ["short", "long"]);
         assert!(slices > 2, "{slices} slices");
+    }
+
+    /// A wait `block` cannot run to its end is said to be one (C388), not
+    /// a capture with no prompt.
+    #[test]
+    #[should_panic(expected = "a wait where nothing may wait")]
+    fn a_wait_in_block_is_said_so() {
+        let mailbox: crate::process::Inbox<i64> = crate::alloc(crate::process::MailboxBox {
+            queue: std::sync::Mutex::new(std::collections::VecDeque::new()),
+        });
+        block(crate::async_process::receive(mailbox));
     }
 }

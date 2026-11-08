@@ -5832,8 +5832,9 @@ pub mod expressions {
     /// `(spawn-monitored w on-failure (box M r) body ...)` (C108): `spawn`,
     /// but a failure of the process is no failure of the program: its
     /// watcher, `w`, an `(addr W R)`, is sent `(on-failure message)`,
-    /// `on-failure` a `(subr pure (string) W)`, found, not checked, as
-    /// FX-26 finds it. The effect `spawn`'s, the two's, and `(send R)`
+    /// `on-failure` a `(subr pure (string) W)`, its type found and fitted
+    /// to that, as FX-26 does: pure, so it never waits, as what the
+    /// runtime runs to its end must not (C388). The effect `spawn`'s, the two's, and `(send R)`
     /// (`synth_spawn_monitored`).
     pub fn spawn_monitored_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
         if i64_lt(size(xs), 4i64) {
@@ -13340,6 +13341,10 @@ pub mod expressions {
                                     } {
                                         res(want, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es0), note_fact(if i64_gt(size(ps), 4i64) {
                                             kfx_restricted(v, s0, str_lit("a native procedure of more than four parameters, which KFX does not have yet (C116)"))
+                                        } else if any_p(lambda1s(move |t: &'static Ty| {
+                                            callback_waits_p(s0, t)
+                                        }), ps) {
+                                            kfx_restricted(v, s0, string_append(str_lit("a native procedure given a procedure that may wait (`receive`, `icell-get`, the standard input, a capture): native code runs it to its end, where nothing may wait, so give it one of an effect without them: "), show_ty(s0, want)))
                                         } else if (not(native_crossing_p(s0, r)) || any_p(lambda1s(move |t: &'static Ty| {
                                             not(native_given_p(s0, t))
                                         }), ps)) {
@@ -13364,6 +13369,37 @@ pub mod expressions {
                 _ => {
                     let other = tagcase_;
                     match refuse(v, str_lit("native-procedure of a type not of the native convention")) {}
+                }
+            }
+        }
+    }
+
+    /// Whether `t`, a native procedure's parameter, is a procedure that may
+    /// wait (`waits?`, C388), of whichever convention.
+    pub fn callback_waits_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+        loop {
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    if (string_eq_p(d, str_lit("%fx")) || string_eq_p(d, str_lit("%native"))) {
+                        if not(null_p(args)) {
+                            t = car(args);
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                Ty::TyProc(es, ps, r) => {
+                    return waits_p(map(lambda1s(move |a: Str| {
+                        resolve_atom(s, a)
+                    }), es));
+                }
+                _ => {
+                    let other = tagcase_;
+                    return false;
                 }
             }
         }

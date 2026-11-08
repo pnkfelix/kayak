@@ -1,0 +1,14 @@
+"A native procedure given a procedure that may wait, here on the standard
+ input (C388): native code calls it and wants its answer at once, running
+ it to its end where nothing may wait, so in kayak's async mode it could
+ never be waited for. KFX refuses it; FX-26 takes it. A callback of an
+ effect without `receive`, `await`, the standard input, a capture or an
+ effect variable is taken, as `made-frames-x86_64.kfx`'s is."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type waiter (subr (conv fx) (maxeff (io stdin) spin) (int) int))
+(define-type runner (subr (conv native) (maxeff (read @globals) spin) (int waiter) int))
+(define* make (subr (maxeff (read @globals) (alloc @heap) (write @heap) (read @heap) spin (io native)) () runner)
+  (lambda ()
+    (let ((b (the (bloblet (fields) @heap) (make-bloblet 1))))
+      (the runner (native-procedure (seal-code b))))))
+(define main (subr kfx () string) (lambda () "x"))

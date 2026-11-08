@@ -513,8 +513,10 @@ Phase C, FX-26's runtime:
   processes are tasks of the same scheduler (C380), and the standard
   streams and `sleep-until` go through kayak-runner (C381), and so do
   files, the terminal's modes and programs run beside this one (C382).
-  Next: waits in what is synchronous in the async mode (a `block`) fail
-  as captures do;
+  Waits where nothing may wait: refused by effect where kayak's code runs
+  to its end (C388); `docs/requests/fixpt-responsive-effects.md` asks
+  Fixpt for sleeping apart from the clock, inspectable evidence and
+  bounded effect variables. Next:
   `--async` with `--cache` (the mode in the memo key); a maker's poly or failing items; native code calling back a
   procedure that may abort.
 - **The second self-hosting** (C366): restored on tier 1, checked in the

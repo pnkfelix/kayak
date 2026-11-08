@@ -395,6 +395,19 @@
      Rust, returns a `Result` (emit.kfx)."
     (any? (lambda ((x string)) (or (has-prefix? x "goto:") (has-prefix? x "comefrom:") (has-prefix? x "~"))) es)))
 
+(define waits? (subr kfx (strings) bool)
+  (lambda (es)
+    "Whether effect `es` may wait on what only another task can make ready
+     (C388): a `receive`, an `await` (an I-cell), the standard input, a
+     `comefrom` (a capture), or an effect variable, which may stand for any.
+     What runs to its end where nothing may suspend (a native procedure's
+     callback) may do none of them; a sleep, a file, a program run beside
+     this one hold the thread for a time, as the synchronous mode's do."
+    (any? (lambda ((x string))
+            (or (has-prefix? x "receive:") (has-prefix? x "await:") (has-prefix? x "comefrom:")
+                (string=? x "io:stdin") (has-prefix? x "~")))
+          es)))
+
 (define suspends? (subr kfx (strings) bool)
   (lambda (es)
     "Whether effect `es` may suspend: a `comefrom` on some region, or an

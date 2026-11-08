@@ -428,6 +428,11 @@ pub mod reps;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/responsive.rs"]
+pub mod responsive;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/rlambda.rs"]
 pub mod rlambda;
 
@@ -609,6 +614,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("region-poly", region_poly::main),
     ("replay", replay_main),
     ("reps", reps::main),
+    ("responsive", responsive::main),
     ("rlambda", rlambda::main),
     ("rust-keywords", rust_keywords::main),
     ("seeded", seeded_main),

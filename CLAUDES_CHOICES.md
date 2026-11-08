@@ -10715,3 +10715,38 @@ memo files apart (`regen.sh` naming its file by the generated compiler).
   (3.66 s, as with none) and is written again as this compiler's; the next,
   warm (1.04 s). The output is boot/'s.
 
+## C388. Code that must not wait, by its effect (2026-11-07)
+
+The user asked whether the type and effect system can ensure that what
+waits runs only on another thread or task, so that a routine trying to
+stay responsive never calls it directly; and, where it cannot yet, to
+reflect the effect into a runtime object that can be inspected ("reps").
+- **Already so in FX-26**: waiting is an effect (`(receive r)`, `(await
+  r)`, `(io stdin)`, a `comefrom`), a procedure's declared effect bounds
+  what it calls, and `spawn` keeps a process's waits out of its spawner's
+  effect. A handler of an effect with none of them can only hand work to
+  a process and send; the checker refuses it a wait.
+  `tests/kfx/responsive.kfx` (Fixpt's answer, 42; in the async corpus
+  too) and `tests/kfx-refused/responsive-handler-waits.kfx` show each.
+- **kayak's own places that run code to its end** (C376's `block`): a
+  constant's value, already only reading globals and allocating in KFX;
+  a monitor's `on-failure`, already `pure` (its note said "not checked",
+  meaning found: corrected); a native procedure's callback, unrestricted.
+  Now KFX refuses a native procedure type whose procedure parameters may
+  wait (`waits?`: `receive`, `await`, the standard input, a `comefrom`, an
+  effect variable); a sleep, a file, a program run beside this one hold
+  the thread a time, as the synchronous mode's do, and are allowed.
+  `tests/kfx-stricter/native-callback-waits.kfx`, which Fixpt accepts.
+- **`block`** says "a wait where nothing may wait" when what it runs was
+  left pending by a wait (`wait_pending`), not "no prompt for the tag",
+  which is a capture's. A kayak-rt test makes one.
+- **Not done, FX-26's to have first** (the user's rule; and a KFX program
+  using a kayak-only primitive would be one Fixpt refuses):
+  `docs/requests/fixpt-responsive-effects.md` asks for sleeping as an
+  effect apart from reading the clock; evidence that can be inspected,
+  the reps the user means, as `effect-narrow`, which tests a procedure's
+  evidence against an effect and gives it at that effect if within; and
+  bounded effect variables, the same at check time. Evidence exists
+  (C307, C308) but is abstract by design, made by `reify-effect` and used
+  by `stage` alone.
+

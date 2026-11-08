@@ -1,0 +1,9 @@
+"A handler that must not wait (its effect says so: no `await`) waiting for
+ its answer itself (C388; `tests/kfx/responsive.kfx` hands it back instead):
+ refused, the `await` beyond what it may do."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type req (productof (n int) (reply (icell int @r))))
+(define* handle (subr (maxeff (send @srv) (alloc @r)) ((addr req @srv) int) int)
+  (lambda (worker n)
+    (let ((c (the (icell int @r) (make-icell))))
+      (begin (send worker (product (n n) (reply c))) (icell-get c)))))
