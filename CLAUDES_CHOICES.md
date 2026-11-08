@@ -10765,3 +10765,18 @@ ask is now that, in place of a new `effect-narrow` form; narrowing a
 procedure's type stays `stage`'s with evidence, or bounded effect
 variables'.
 
+## C390. Asked of Fixpt: an effect `wait` (2026-11-07)
+
+The user, on the request (C388, C389): why not call the effect "wait",
+the natural word, as in wait-free algorithms? Better than the `(io
+sleep)` the request asked for, which only took sleeping apart from the
+clock: one bare atom, `wait`, beside `spin` and `nondet`, which every
+operation that may block until something else happens has besides its
+own (`receive`, `icell-get`, `pselect`, the standard input's reads,
+`sleep-until`, `process-exit`; a blocking write we would count, files
+not, Fixpt's call). A responsive procedure is then one of an effect
+without `wait`; `clock` no longer goes with `sleep-until`; and an
+inspection of evidence asks one thing, whether `wait` is there. The
+request's first ask is now that. kayak's own `waits?` (C388) keeps its
+list of kinds until FX-26 has the atom.
+

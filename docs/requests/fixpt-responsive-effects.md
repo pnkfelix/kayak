@@ -19,19 +19,31 @@ each.
 Three things are missing. Each is a change to FX-26, so we ask before
 kayak uses any of them.
 
-## 1. Sleeping apart from reading the clock
+## 1. An effect `wait`
 
-`clock` and `sleep-until` are both `(io clock)`. So a handler that must
-read the time is also allowed to sleep, which a responsive one must not
-do. We ask for a separate effect for sleeping, say `(io sleep)`, for
-`sleep-until` and for a `pselect`'s `sleep-until` arm, leaving `(io clock)`
-for reading the clock. A program that writes `(io clock)` where it sleeps
-would need the new effect too.
+Waiting is in FX-26's effects already, but by kind: `(receive r)`,
+`(await r)`, `(io stdin)`, and `(io clock)`, which `sleep-until` shares
+with `clock`. So a handler that must not wait has to leave out each kind
+by name, and one that must read the time is also allowed to sleep.
+
+We ask for one effect atom, `wait`, beside `spin` and `nondet`, which
+every operation that may block until something else happens has as well
+as its own atoms: `receive`, `icell-get`, a `pselect`, `read-line`,
+`read-byte`, `read-bytes`, `sleep-until`, `process-exit`. What has it is
+not wait-free, in the sense of wait-free algorithms: it may not finish
+until another party acts, or time passes. A procedure that must stay
+responsive is then one of an effect without `wait`, and `clock`, which
+does not wait, no longer goes with `sleep-until`. (A write that blocks
+until the other end takes it, `process-write`, we would count; file
+operations, bounded by the machine rather than another party, we would
+not. That is your call.) It is a bare atom, not an `(io …)` one, as most
+waits are on other processes, not on the world.
 
 ## 2. A supertype of evidence that a syscall may take
 
 This is the dynamic form. An event loop generic in its handlers' effect,
-`(poly ((e effect)) …)`, cannot tell whether a handler may wait. Evidence
+`(poly ((e effect)) …)`, cannot tell whether a handler may wait, whether
+`e` holds `wait`. Evidence
 reflects the effect into a runtime object, `(effectrep e)`, but nothing
 can look inside one: it is made only by `reify-effect` and used only by
 `stage`. Syscalls are FX-26's way for a runtime to add a capability
@@ -51,7 +63,7 @@ can learn what evidence says but never forge it.
 
 With it, a runtime could offer an optional syscall such as
 `kayak:effect-within/1`, which says whether evidence's effect is within an
-effect given as text. A program would ask `syscall-available?` and fall
+effect given as text: whether a handler's holds `wait`, say. A program would ask `syscall-available?` and fall
 back where a runtime has none, so nothing about Fixpt's runtime need
 change unless you want it to. kayak would offer one only once FX-26 has
 `rep`.
