@@ -10791,3 +10791,36 @@ wait-freedom, though not a bound on its steps. And `write-out` and
 `write-err` should have `wait` as `process-write` would: a write to a pipe
 no one reads waits, a task waiting on its runner in the async mode.
 
+## C392. Fixpt's answer: effect markers (2026-11-09)
+
+Fixpt answered the request (C388-C391) with a design note,
+`docs/research/effect-markers.md` (Fixpt a95025ad), nothing built yet:
+markers derived from an effect's atoms by a fixed table, as Rust's
+`Send` from a type's fields (`nonblocking`, `terminating`,
+`deterministic`, `wait-free`, the last kayak's sense), in place of an
+atom `wait`, which would unlock nothing and have to be kept in step by
+hand; the three `io` capabilities that both wait and do not split; masking
+a wait leaves `spin` (their finding from our write-up: a private I-cell
+awaited after spawning its filler masked to an effect that seemed not to
+wait); bounded effect variables with markers as bounds, `(e effect
+wait-free)`; and `effect-case`, a test of evidence narrowing `e` in the
+branch that passes, in place of `rep`. kayak's answers to their
+questions, given to the user to pass on:
+- **The standard streams' writes**: honest, waiting. A write that buffers
+  without bound trades the wait for unbounded memory; if a `wait-free`
+  handler must log, a separate bounded write answering `full`, with a
+  flush that waits. kayak needs none now; its async mode awaits each write.
+- **`rep`**: not needed beyond this use, which `effect-case` covers.
+- **`comefrom`**: no wait, agreed; kayak's restriction on native callbacks
+  keeps refusing captures, for its own reason (no capture crosses native
+  code's frame).
+- **Their open question, `nonblocking` alone**: wanted. kayak's code run
+  to its end (native callbacks) loops (`made-frames-x86_64`'s callback has
+  `spin`), so `wait-free` would refuse it; `nonblocking` is the marker it
+  wants. A private wait there passes it (masked to `spin`) and fails as it
+  runs, saying so (C388's `block`): rare, and said plainly, so no residue
+  of its own is asked for.
+When it lands: the pin moved, kayak's checker and built-in types split as
+Fixpt's are, `waits?` (C388) replaced by the table, and kayak-rt's file
+operations refusing what is not a regular file, as Fixpt recommends.
+

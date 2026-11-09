@@ -1,6 +1,17 @@
 # A request to the Fixpt team: effects for code that must stay responsive
 
-Status: proposed 2026-11-07 by kayak (C388), on Fixpt 13114974.
+Status: proposed 2026-11-07 by kayak (C388-C391), on Fixpt 13114974.
+Answered 2026-11-09 by Fixpt's design note `docs/research/effect-markers.md`
+(Fixpt a95025ad), nothing built yet: properties of effects as markers
+derived from their atoms by a fixed table (`nonblocking`, `terminating`,
+`deterministic`, `wait-free`), not an atom `wait`; `(io clock)`, `(io
+stdin)`, `(io process)` split into their waiting and non-waiting parts;
+masking a wait leaves `spin`, so a private wait is not `wait-free`;
+bounded effect variables with markers as a second kind of bound; and
+`effect-case`, a test of evidence that narrows `e`, in place of `rep`.
+kayak's answers to its questions (C392): the standard streams' writes
+honest, waiting; `rep` not needed; `comefrom` no wait; `nonblocking` wanted
+for code run to its end, a private wait there failing as it runs.
 
 ## What we want to say
 
