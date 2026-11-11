@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"own-macros-base.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define one : int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@eed406e0bbc7cfc14500b26ee5f4dd3916163c0d"
+]
+}
+]
+}

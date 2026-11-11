@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"own-macros-params.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/module-files/own-macros-params.fx:6:2: unbound variable `module-parameters`",
+""
+],
+"by": [
+"x86_64-linux@eed406e0bbc7cfc14500b26ee5f4dd3916163c0d"
+]
+}
+]
+}

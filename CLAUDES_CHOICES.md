@@ -10914,3 +10914,15 @@ Fixpt's own answers again.
   level, templates' `bloblet-*` forms) touch no source kayak ports; their
   programs come with the sync.
 
+## C395. The pin moved to Fixpt eed406e (2026-11-11)
+
+The user: "Pull Fixpt from github main again". b41109e to eed406e, two
+commits, Heist's macro items: a file of module parameters that takes
+modules uses its own macros (the FX-26 parser leaves its `define-syntax`es
+out of the items it reads), `import-with-syntax` in a module file refused
+rather than a panic, a use that binds a keyword, a file of macros alone
+imported. Drift: `parser-exps.fx` alone, its `without-syntax` on an input
+file's forms, not carried: kayak's port of the FX-26 parser
+(`fx26/cg.kfx`) reads no macros, so it has no such path. Its mark at
+eed406e; the new programs come with the sync.
+
