@@ -1211,6 +1211,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-count")) => {
                         str_lit("%fx26-eqtable-count")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("provenance-id")) => {
+                        str_lit("%provenance-id")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-routine")) => {
                         str_lit("%fx26-identity")
                     }

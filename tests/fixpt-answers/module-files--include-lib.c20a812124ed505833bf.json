@@ -26,14 +26,17 @@
 "out": [
 "up-t : (subr pure (int) t) ! pure",
 "down-t : (subr pure (t) int) ! pure",
+"secret : int ! pure",
+"zero : t ! (read (globals secret up-t))",
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/module-files/include-lib.fx:5:2: unbound variable `hide`",
+"fixpt: <programs>/module-files/include-lib.fx:7:35: `value` is declared a (subr pure (t) int): a (subr pure (t) int) is expected here, and this is a (subr (read (globals down-t)) (t) int)",
+"  beyond what is expected, it has (read (globals down-t))",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

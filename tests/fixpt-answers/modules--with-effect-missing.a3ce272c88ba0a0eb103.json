@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/with-effect-missing.fx:4:20: `nope` is not an effect",
+"fixpt: <programs>/modules/with-effect-missing.fx:4:20: `nope` is not an effect",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

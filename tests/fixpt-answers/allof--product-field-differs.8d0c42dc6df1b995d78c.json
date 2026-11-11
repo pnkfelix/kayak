@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/product-field-differs.fx:4:18: an `allof`'s members differ at `n`, a int and a string: only procedures, and products of them, may",
+"fixpt: <programs>/allof/product-field-differs.fx:4:18: an `allof`'s members differ at `n`, a int and a string: only procedures, and products of them, may",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

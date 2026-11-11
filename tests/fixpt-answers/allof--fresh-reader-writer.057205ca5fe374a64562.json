@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/fresh-reader-writer.fx:14:11: this call fits a (subr (alloc @h) (ab) (productof (#:w (subr (write @h) (ab) unit)) (#:r (subr (read @h) () ab)))) and a (subr (alloc @h) (ac) (productof (#:w (subr (write @h) (ac) unit)) (#:r (subr (read @h) () ac)))), whose results are procedures that may keep what the call allocates: one value would be both",
+"fixpt: <programs>/allof/fresh-reader-writer.fx:14:11: this call fits a (subr (alloc @h) (ab) (productof (#:w (subr (write @h) (ab) unit)) (#:r (subr (read @h) () ab)))) and a (subr (alloc @h) (ac) (productof (#:w (subr (write @h) (ac) unit)) (#:r (subr (read @h) () ac)))), whose results are procedures that may keep what the call allocates: one value would be both",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

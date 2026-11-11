@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/cell-eqtable.fx:9:1: this call fits a (subr (alloc @t) () (eqtable (ref int @k) ab @k @t)) and a (subr (alloc @t) () (eqtable (ref int @k) ac @k @t)), whose results have no meet",
+"fixpt: <programs>/allof/cell-eqtable.fx:9:1: this call fits a (subr (alloc @t) () (eqtable (ref int @k) ab @k @t)) and a (subr (alloc @t) () (eqtable (ref int @k) ac @k @t)), whose results have no meet",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

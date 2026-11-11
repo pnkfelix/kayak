@@ -24,8 +24,8 @@
 {
 "code": 0,
 "out": [
-"m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx))",
-"m-q : (moduleof (val four (subr pure () int)) (val six (subr pure () int))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-qualified.fx m-base))",
+"m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
+"m-q : (moduleof (val four (subr pure () int)) (val six (subr pure () int))) ! (read (globals %shared:input:<programs>/modules/../module-files/mp-qualified.fx m-base))",
 "10 : int ! (read (globals m-q))",
 ""
 ],
@@ -33,7 +33,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

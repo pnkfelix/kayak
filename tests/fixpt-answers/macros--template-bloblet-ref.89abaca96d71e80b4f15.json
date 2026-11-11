@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"template-bloblet-ref.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"bl : (bloblet (fields int int) @t) ! (alloc @t)",
+"33 : int ! (maxeff (read @t) (read (globals bl)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
+]
+}
+]
+}

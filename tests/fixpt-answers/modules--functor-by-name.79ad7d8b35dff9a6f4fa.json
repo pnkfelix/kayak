@@ -18,22 +18,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t))) ! pure",
-"twice : (subr pure (counters (select $1 t)) (select $1 t)) ! pure",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/functor-by-name.fx:12:1: argument 1 is a module the procedure's types depend on: give it by name (bind it with `let` first)",
-""
-],
-"by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

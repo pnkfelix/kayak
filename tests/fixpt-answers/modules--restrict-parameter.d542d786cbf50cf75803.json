@@ -16,21 +16,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"%shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/made-tickets.fx : (moduleof (val input (poly ((ed region) (world effect)) (subr pure ((moduleof (abs %hidden:ticket type) (val issue (subr (maxeff (read ed) (write ed)) () %hidden:ticket)) (val number (subr pure (%hidden:ticket) int)))) (moduleof (val next (subr (maxeff (read ed) (write ed)) () int))))))) ! pure",
-""
-],
-"err": [
-"! evaluation failed: check: in `../module-files/made-tickets.fx`, 6:21: the names `core` gives are not known before it is checked: give it a type where it is bound, `(the (moduleof …) e)` or a parameter's",
-""
-],
-"by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

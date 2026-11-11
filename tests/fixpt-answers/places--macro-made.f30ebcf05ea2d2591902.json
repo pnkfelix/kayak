@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"macro-made.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"f : (subr pure (int) int) ! pure",
+"g : (subr pure (int) int) ! pure",
+"20 : int ! (read (globals f g))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
+]
+}
+]
+}

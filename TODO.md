@@ -1504,7 +1504,6 @@ keys' `letrena`, and `pair-identity` until allowed.
   checkers: kayak's checker refuses them, stricter, as yet.
 - `allof` calls fitting a member by conversion or a module's reshape, and
   a `lambda` argument of no types (Fixpt d667f281): kayak refuses them.
-- To report to Fixpt: its evaluator's checker refuses binding shapes
-  `fixpt check` takes (`module-files/made-buffer.fx` and six more); the
-  cells test's `shapes_bug` workaround goes when it is fixed.
+- Macro provenance (`%provenance-id`, the heap's provenances, Fixpt
+  9e75efab): with procedural macros, if kayak's front end takes them.
 

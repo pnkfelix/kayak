@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/with-shape-unknown.fx:5:59: the names `m` gives are not known before it is checked: give it a type where it is bound, `(the (moduleof …) e)` or a parameter's",
+"fixpt: <programs>/modules/with-shape-unknown.fx:5:59: the names `m` gives are not known before it is checked: give it a type where it is bound, `(the (moduleof …) e)` or a parameter's",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

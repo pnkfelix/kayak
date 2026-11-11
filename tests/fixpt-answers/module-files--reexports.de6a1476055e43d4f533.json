@@ -19,23 +19,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"m : (moduleof (desc num int) (val bump (subr pure (int) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/bump.fx))",
-"bump : (subr pure (int) int) ! (read (globals m))",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/module-files/reexports.fx:6:37: `twice` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (read (globals bump)) (int) int)",
-"  beyond what is expected, it has (read (globals bump))",
-""
-],
-"by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

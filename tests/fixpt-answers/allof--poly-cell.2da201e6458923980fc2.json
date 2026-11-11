@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/poly-cell.fx:4:57: `c` is declared a (poly ((t type)) (ref (listof t acyclic) @h)): a `plambda` body must be pure, and this one has (alloc @h)",
+"fixpt: <programs>/allof/poly-cell.fx:4:57: `c` is declared a (poly ((t type)) (ref (listof t acyclic) @h)): a `plambda` body must be pure, and this one has (alloc @h)",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

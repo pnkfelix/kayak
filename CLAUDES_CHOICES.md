@@ -10894,3 +10894,23 @@ bounded effect variables), procedural macros and hygiene, binding shapes,
   engine on all 211; beyond KFX 299 agree (292); of Fixpt's 528 refused,
   kfx refuses every one; Fixpt accepts kfx.unit, fx26.unit, cells.unit.
 
+## C394. The pin moved to Fixpt b41109e: its fix of the bug C393 found (2026-11-11)
+
+The user: "Pull Fixpt from github; they say theyve addressed the bugs you
+found". 0d933ff to b41109e, four commits. Fixpt's b41109e1 is the fix
+(bisected there to 97400f83, binding shapes' step 2 in FX-26): its
+expander took a module-parameters file's function's shape for the module
+it makes. All seven programs C393 named now evaluate in Fixpt as they
+state (`modules/load-moduleof.fx` 15, `restrict-parameter.fx` 3,
+`module-parameters-modules.fx` 57, `load-moduleof-define-type.fx` 1; the
+three `module-files/made-*.fx` a procedure), so the cells test's
+`shapes_bug` workaround is gone, and those programs are compared with
+Fixpt's own answers again.
+- **Drift**: `prim.rs`'s `%provenance-id` and `heap.rs`'s provenances
+  (9e75efab, macro provenance on the native-convention machines), not
+  taken: kayak's FX-26 front end has no procedural macros, so nothing it
+  makes asks for a provenance. Both marks at b41109e (`heap.rs`'s were at
+  19b31f1, unchanged until now). The other commits (`hide` at the top
+  level, templates' `bloblet-*` forms) touch no source kayak ports; their
+  programs come with the sync.
+

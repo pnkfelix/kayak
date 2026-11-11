@@ -12,12 +12,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/len-heap-pure.fx:9:14: `len` is declared a (allof (subr pure ((listof int acyclic)) int) (subr (read @heap) (heap-ints) int)): a (subr (read @heap) (heap-ints) int) is expected here, and this is a (subr (maxeff (read @heap) spin) (heap-ints) int)",
+"fixpt: <programs>/allof/len-heap-pure.fx:9:14: `len` is declared a (allof (subr pure ((listof int acyclic)) int) (subr (read @heap) (heap-ints) int)): a (subr (read @heap) (heap-ints) int) is expected here, and this is a (subr (maxeff (read @heap) spin) (heap-ints) int)",
 "  beyond what is expected, it has spin; it may not end: nothing smaller, or related, is passed by the call of `len` in `len` (a part of a list that may be written is no smaller: it may be cyclic)",
 ""
 ],
 "by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]

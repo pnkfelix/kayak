@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"template-bloblet-ref.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define bl : (bloblet (fields int int) @t) ! (alloc @t)",
+"int ! (maxeff (read (globals bl)) (read @t))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
+]
+}
+]
+}

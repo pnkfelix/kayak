@@ -19,23 +19,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 0,
-"out": [
-"r : (moduleof (desc num int) (val m (moduleof (desc num int) (val bump (subr pure (int) int)))) (val bump (subr pure (int) int)) (val twice (subr pure (int) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/reexports.fx))",
-"twice : (subr pure (int) int) ! (read (globals r))",
-"bump : (subr pure (int) int) ! (read (globals r))",
-"4 : int ! (read (globals bump twice))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@b41109e16fd8c251cce8fb6d2b357aee9ea2cfe4"
 ]
 }
 ]
