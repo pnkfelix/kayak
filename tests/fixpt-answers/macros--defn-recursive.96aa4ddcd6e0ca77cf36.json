@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defn-recursive.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define fact : (subr (maxeff (read (globals fact)) spin) (int) int) ! pure",
+"define fact2 : (subr (maxeff (read (globals fact2)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals fact fact2)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

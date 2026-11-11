@@ -1,0 +1,56 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"swap.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (55 cells, cellular):",
+"     0: lit 1",
+"     2: prim %make-box 1",
+"     5: lit 2",
+"     7: prim %make-box 1",
+"    10: slot 0",
+"    12: field 2",
+"    14: slot 0",
+"    16: slot 1",
+"    18: field 2",
+"    20: swap",
+"    21: lit 2",
+"    23: field!",
+"    24: lit |#u|",
+"    26: drop",
+"    27: slot 1",
+"    29: slot 2",
+"    31: swap",
+"    32: lit 2",
+"    34: field!",
+"    35: lit |#u|",
+"    37: slot! 2",
+"    39: drop",
+"    40: slot 0",
+"    42: field 2",
+"    44: slot 1",
+"    46: field 2",
+"    48: prim list 2",
+"    51: slot! 0",
+"    53: drop",
+"    54: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

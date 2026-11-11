@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"quote-constant.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define xs : datum ! pure",
+"define ys : datum ! pure",
+"define long : datum ! pure",
+"define count : (subr pure (datum int) int) ! pure",
+"define bit : (subr pure (bool int) int) ! pure",
+"int ! (read (globals bit count long xs ys))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

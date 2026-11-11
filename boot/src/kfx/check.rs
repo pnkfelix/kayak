@@ -16564,6 +16564,21 @@ pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i
     }
 }
 
+/// `kept`, what is left of `es` once masking dropped some of it, with
+/// `spin` where a wait, an `await` or a `receive`, was dropped (Fixpt
+/// 0d933ff, `Effect::waits_dropped`, its TODO §224; C393): a wait on what
+/// nothing outside sees is, to anything outside, work of unbounded length,
+/// and never ends if nothing fills what it waits on.
+pub fn waits_dropped(es: Strings, kept: Strings) -> Strings {
+    if any_p(lambda1s(move |a: Str| {
+        ((has_prefix_p(a, str_lit("await:")) || has_prefix_p(a, str_lit("receive:"))) && not(string_member_p(a, kept)))
+    }), es) {
+        effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), kept)
+    } else {
+        kept
+    }
+}
+
 /// Effects, those on region `r` removed.
 pub fn masked(mut es: Strings, mut r: Str) -> Strings {
     loop {
@@ -16576,6 +16591,15 @@ pub fn masked(mut es: Strings, mut r: Str) -> Strings {
             return kayak_rt::heap_cons(car(es), masked(cdr(es), r));
         }
     }
+}
+
+/// `masked`, as a `letregion`, a `letrena` or a `letfreeze` masks, a wait
+/// it drops leaving `spin` (`waits-dropped`). A `spawn` masks its
+/// process's place with `masked` alone: a wait there is the process's, in
+/// its own time, and the spawner waits for none of it.
+#[inline]
+pub fn masked_waiting(es: Strings, r: Str) -> Strings {
+    waits_dropped(es, masked(es, r))
 }
 
 /// Whether type `t` mentions region `r`, latent effects included.

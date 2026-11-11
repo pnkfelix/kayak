@@ -21,22 +21,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"up-tree : (poly ((a type)) (subr pure ((sumof (#:leaf a) (#:node (productof (#:l (tree a)) (#:r (tree a)))))) (tree a))) ! pure",
-"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (#:leaf a) (#:node (productof (#:l (tree a)) (#:r (tree a))))))) ! pure",
-""
-],
-"err": [
-"fixpt: <programs>/lemmas/swapped.fx:4:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff spin (read (globals bad down-tree up-tree))) ((subr spin (a) b) (tree a)) (tree b))",
-"  beyond what is expected, it has (read (globals bad down-tree up-tree))",
-""
-],
-"by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
-]
 }
 ]
 }

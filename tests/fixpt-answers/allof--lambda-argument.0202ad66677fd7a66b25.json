@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"lambda-argument.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define twice : (allof (subr pure ((subr pure (int) int) int) int) (subr pure ((subr pure (string) string) string) string)) ! pure",
+"define both : (allof (subr pure ((subr pure (int) int)) (subr pure (int) int)) (subr pure ((subr pure (string) string)) (subr pure (string) string))) ! pure",
+"define id : (allof (subr pure (int) int) (subr pure (string) string)) ! (read (globals both))",
+"(listof string acyclic) ! (read (globals id twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -18,8 +18,22 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"c : (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/shared-counter.fx))",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/module-files/shared-twice.fx:3:45: `bump` is declared a (subr pure (shared-counter.fx..t) int): a (subr pure (shared-counter.fx..t) int) is expected here, and this is a (subr (read (globals c)) (shared-counter.fx..t) int)",
+"  beyond what is expected, it has (read (globals c))",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

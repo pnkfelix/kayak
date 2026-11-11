@@ -38,12 +38,12 @@
     (lambda (xs n) (if (null? xs) n (ritems-size (cdr xs) (i64+ n (ritem-size (car xs))))))))
 
 (define-rec
-  (rplaces-of (subr kfx (ritems i64 (listof place acyclic)) (listof place acyclic))
+  (rplaces-of (subr kfx (ritems i64 (listof label-at acyclic)) (listof label-at acyclic))
     (lambda (xs at acc)
       (if (null? xs)
           acc
           (rplaces-of (cdr xs) (i64+ at (ritem-size (car xs)))
-                      (tagcase (car xs) (ri-label (n) (cons (place n at) acc)) (else y acc)))))))
+                      (tagcase (car xs) (ri-label (n) (cons (label-at n at) acc)) (else y acc)))))))
 
 (define-rec
   (rpadded (subr kfx (string i64) string)
@@ -68,7 +68,7 @@
 "A word's register code's lines, and the words they name, in order;
  `frame` the frame's size."
 (define-rec
-  (rlines-of (subr kfx (ritems i64 (listof place acyclic) i64 strings strings) wsaid)
+  (rlines-of (subr kfx (ritems i64 (listof label-at acyclic) i64 strings strings) wsaid)
     (lambda (xs at ps frame out named)
       (if (null? xs)
           (wsaid (put-sep-lines (reverse out)) (reverse named))

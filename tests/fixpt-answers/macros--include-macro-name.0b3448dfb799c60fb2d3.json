@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-macro-name.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (val clamp int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/macros/include-macro-name.fx:6:1: `clamp` is a macro's name, which is not defined again",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

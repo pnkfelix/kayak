@@ -306,7 +306,7 @@ pub fn w_at_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Bytes
 }
 
 // A word's lines (`lines-of-items`), each then a newline.
-pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<&'static Place>) -> () {
+pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<&'static LabelAt>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -348,7 +348,7 @@ pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefA
 }
 
 // Register code's lines (`rlines-of`), each then a newline.
-pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<&'static Place>, mut frame: i64) -> () {
+pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<&'static LabelAt>, mut frame: i64) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -450,7 +450,7 @@ pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
     w_str_x(p, b, n, str_lit(" ("));
     w_i64_x(p, b, n, cells_of(xs, 0i64));
     w_str_x(p, b, n, str_lit(" cells, cellular):\n"));
-    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()));
+    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<&'static LabelAt>()));
     {
         let rc = reg_code_of(get(cg_reg_codes()), name);
         if null_p(rc) {
@@ -462,7 +462,7 @@ pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
                     w_str_x(p, b, n, str_lit("  its register code ("));
                     w_i64_x(p, b, n, ritems_size(rs, 0i64));
                     w_str_x(p, b, n, str_lit(" cells, not compiled):\n"));
-                    w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<&'static Place>()), frame);
+                    w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<&'static LabelAt>()), frame);
                     w_table_x(p, b, n, str_lit("; regs at "), rtable_entries(rs, 0i64, nil::<&'static Tentry>()))
                 }
             }

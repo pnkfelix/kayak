@@ -1082,7 +1082,27 @@ pub fn args() -> List<Str> {
 }
 
 pub fn read_file(path: Str) -> &'static Sum_4data_6failed<Bytes, IoError> {
-    read_file_answer(std::fs::read(path.as_str()))
+    read_file_answer(read_regular_file(path.as_str()))
+}
+
+/// A regular file's bytes; a directory, or anything else that could wait
+/// on another program (a FIFO, a device), refused, as Fixpt's
+/// `read_regular_file` refuses it (Fixpt 0d933ff, its TODO §225; C393).
+/// Asked before opening, so that a FIFO no one writes is never opened.
+pub(crate) fn read_regular_file(path: &str) -> std::io::Result<Vec<u8>> {
+    let meta = std::fs::metadata(path)?;
+    if meta.is_dir() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::IsADirectory,
+            "is a directory",
+        ));
+    }
+    if !meta.is_file() {
+        return Err(std::io::Error::other(
+            "not a regular file, which could wait on another program",
+        ));
+    }
+    std::fs::read(path)
 }
 
 /// `read-file`'s answer, of what the system gave (C381: in the async mode,

@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"lambda-argument.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"twice : (allof (subr pure ((subr pure (int) int) int) int) (subr pure ((subr pure (string) string) string) string)) ! pure",
+"both : (allof (subr pure ((subr pure (int) int)) (subr pure (int) int)) (subr pure ((subr pure (string) string)) (subr pure (string) string))) ! pure",
+"id : (allof (subr pure (int) int) (subr pure (string) string)) ! (read (globals both))",
+"(\"5\" \"a\" \"7\") : (listof string acyclic) ! (read (globals id twice))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

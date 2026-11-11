@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"split-er.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define f : (allof (subr pure (int int) int) (subr pure (string int) int)) ! pure",
+"define g : (subr (read (globals f)) ((oneof int string)) int) ! pure",
+"(listof int acyclic) ! (read (globals f g))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

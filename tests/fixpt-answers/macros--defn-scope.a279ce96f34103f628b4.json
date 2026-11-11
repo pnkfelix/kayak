@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defn-scope.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define a : int ! pure",
+"define b : int ! (read (globals a))",
+"int ! (read (globals a b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"many-chain.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"(7 7) : (listof (nat 7) acyclic) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

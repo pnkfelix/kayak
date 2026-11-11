@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"lambda-dependent.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"int-order : (moduleof (desc t int) (val less (subr pure (int int) bool))) ! pure",
+"3 : int ! (read (globals int-order))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

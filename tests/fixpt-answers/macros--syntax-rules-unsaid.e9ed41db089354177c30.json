@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"syntax-rules-unsaid.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: <programs>/macros/syntax-rules-unsaid.fx:4:34: a macro's clauses are a transformer's: `(syntax-rules (literal …) ((_ . pattern) template) …)`, after its signature if it is written",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

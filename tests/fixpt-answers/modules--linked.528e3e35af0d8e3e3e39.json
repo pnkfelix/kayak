@@ -25,8 +25,8 @@
 {
 "code": 0,
 "out": [
-"dep : (select user-file dep-sig) ! (read (globals %shared:<programs>/modules/../module-files/linked-dep.fx))",
-"user-file : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))) (val sigs (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))))) (val make (subr spin (dep-sig) (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int))))) ! (read (globals %shared:<programs>/modules/../module-files/linked-user.fx))",
+"dep : (select user-file dep-sig) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/linked-dep.fx))",
+"user-file : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))) (val sigs (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))))) (val make (subr spin (dep-sig) (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/linked-user.fx))",
 "user : (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int)) ! (maxeff spin (read (globals dep user-file)))",
 "17 : int ! (read (globals user))",
 ""
@@ -35,7 +35,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

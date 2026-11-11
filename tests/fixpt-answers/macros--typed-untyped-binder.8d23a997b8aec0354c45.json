@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"typed-untyped-binder.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: <programs>/macros/typed-untyped-binder.fx:6:10: `x` binds a variable `body` is in the scope of: its type is written, `(bvar #:type T)`, where a macro's parts are typed",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fresh-closure-masked.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/allof/fresh-closure-masked.fx:13:19: this call fits a (subr (alloc r) (ab) (subr pure () (ref ab r))) and a (subr (alloc r) (ac) (subr pure () (ref ac r))), whose results are procedures that may keep what the call allocates: one value would be both",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-define-type-family.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"xs : (listof int acyclic) ! pure",
+"2 : nat ! (read (globals xs))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

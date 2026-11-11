@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"len-by-member.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define len : (allof (subr pure ((listof int acyclic)) int) (subr (maxeff (read @heap) spin) (heap-ints) int)) ! pure",
+"define xs : heap-ints ! (alloc @heap)",
+"(listof int acyclic) ! (maxeff (read (globals len xs)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

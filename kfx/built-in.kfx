@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 1311497. Written by scripts/built-in.py: edit that, not this."
+ 0d933ff. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -2138,7 +2138,6 @@
       ((6)
        (case n
          ((\"length\") \"length\")
-         ((\"%quote\") \"%fx26-intern-datum\")
          ((\"array?\") \"%fx26-array?\")
          ((\"modulo\") \"modulo\")
          ((\"%stage\") \"%fx26-stage\")
@@ -2351,6 +2350,7 @@
          ((\"eqtable-ref\") \"%fx26-eqtable-ref\")
          ((\"string-hash\") \"%string-hash\")
          ((\"disassemble\") \"%disassemble\")
+         ((\"wcell-datum\") \"%fx26-identity\")
          ((\"make-global\") \"%fx26-make-global\")
          (else \"\")))
       ((12)
@@ -2447,6 +2447,8 @@
          ((\"make-bytevector\") \"make-bytevector\")
          ((\"bytevector-copy\") \"%fx26-bytevector-copy\")
          ((\"string-downcase\") \"%fx26-string-downcase\")
+         ((\"datum-rational?\") \"rational?\")
+         ((\"datum-numerator\") \"%numerator\")
          ((\"certify-acyclic\") \"%fx26-identity\")
          ((\"symbol->keyword\") \"%fx26-symbol->keyword\")
          ((\"keyword->symbol\") \"%fx26-keyword->symbol\")
@@ -2471,6 +2473,7 @@
          ((\"session-redefines\") \"%fx26-session-redefines\")
          ((\"bytevector-length\") \"bytevector-length\")
          ((\"bytevector-u8-ref\") \"bytevector-u8-ref\")
+         ((\"datum-denominator\") \"%denominator\")
          ((\"set-register-twin\") \"%set-register-twin\")
          ((\"runtime-primitive\") \"%runtime-primitive\")
          (else \"\")))
@@ -2492,6 +2495,7 @@
          (else \"\")))
       ((20)
        (case n
+         ((\"datum-bytevector-ref\") \"bytevector-u8-ref\")
          ((\"set-register-twin-at\") \"%set-register-twin\")
          (else \"\")))
       ((22)
@@ -2501,11 +2505,16 @@
       ((23)
        (case n
          ((\"%session-eval-redefines\") \"%fx26-session-redefines\")
+         ((\"datum-bytevector-length\") \"bytevector-length\")
          ((\"runtime-primitive-arity\") \"%runtime-primitive-arity\")
          (else \"\")))
       ((24)
        (case n
          ((\"%session-eval-committed!\") \"%fx26-session-committed!\")
+         (else \"\")))
+      ((25)
+       (case n
+         ((\"%macros:expand-procedural\") \"%fx26-expand-procedural\")
          (else \"\")))
       (else \"\")))))
 ")

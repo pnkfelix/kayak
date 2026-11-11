@@ -1,0 +1,43 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"toplevel-shadowed-standard.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (11 cells, cellular):",
+"     0: closure word +@197 over 0",
+"     3: lit 6",
+"     5: lit 1",
+"     7: int-add",
+"     8: slot! 0",
+"    10: exit",
+"",
+"word +@197 (8 cells, cellular):",
+"     0: slot 0",
+"     2: slot 1",
+"     4: prim %fx26-mul 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 2",
+"       2: reg 1",
+"       4: prim2 %fx26-mul 2",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

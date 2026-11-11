@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define rows : (listof (listof int acyclic) acyclic) ! pure",
+"define deep : tree ! pure",
+"nat ! (read (globals rows))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"lambda-argument-refused.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"both : (allof (subr pure ((subr pure (int) int)) (subr pure (int) int)) (subr pure ((subr pure (string) string)) (subr pure (string) string))) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/lambda-argument-refused.fx:7:22: argument 1 is a string, where a int is expected",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

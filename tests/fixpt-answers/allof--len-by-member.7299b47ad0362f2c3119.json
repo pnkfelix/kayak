@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"len-by-member.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"len : (allof (subr pure ((listof int acyclic)) int) (subr (maxeff (read @heap) spin) (heap-ints) int)) ! pure",
+"xs : heap-ints ! (alloc @heap)",
+"(3 2) : (listof int acyclic) ! (maxeff (read @heap) spin (read (globals len xs)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

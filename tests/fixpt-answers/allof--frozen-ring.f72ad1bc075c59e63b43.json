@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-ring.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define ring2 : (poly ((t type)) (subr pure (t) (listof t const))) ! pure",
+"define mk : (allof (subr (read (globals ring2)) (ab) (subr pure () (listof ab const))) (subr (read (globals ring2)) (ac) (subr pure () (listof ac const)))) ! pure",
+"define g : (allof (subr pure () (listof ab const)) (subr pure () (listof ac const))) ! (read (globals mk ring2))",
+"define as-ab : (subr pure () (listof ab const)) ! (read (globals g))",
+"define as-ac : (subr pure () (listof ac const)) ! (read (globals g))",
+"(listof int acyclic) ! (read (globals as-ab as-ac))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"ellipsis-deeper-name.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"dbl : (subr pure (int) int) ! pure",
+"2 : int ! (read (globals dbl))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

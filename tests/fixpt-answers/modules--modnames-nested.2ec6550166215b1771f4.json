@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"modnames-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define outer : (moduleof (val inner (moduleof (val a int) (val b int))) (val y int) (val z int)) ! pure",
+"define s : (moduleof (val inner (moduleof (val a int) (val b int))) (val y int)) ! (read (globals outer))",
+"int ! (read (globals s))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

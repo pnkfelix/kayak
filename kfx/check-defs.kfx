@@ -364,10 +364,36 @@
              (declare-types v (cdr forms) (cons (alias (string-append "%conv " n) nil (sym "native" "" 0)) als))))
           (else (declare-types v (cdr forms) als)))))
 
+"The names of FX-26's type forms, which no variant may be named (Fixpt
+ 0d933ff's `dt-type-forms`, its TODO §190; C393): a variant named `place`
+ would be a variant, not the type it looks like."
+(define type-form-names strings
+  (list "arrayof" "narrayof" "bloblet" "composable" "dletrec" "icell" "listof" "mark-key" "moduleof" "mu"
+        "nat" "nlist" "oneshot" "pairof" "place" "poly" "productof" "prompt-tag" "proves" "ref" "select" "subr"
+        "sumof" "tupleof" "bool" "oneof" "union" "anyof" "allof" "->" "->*" "restrict" "modnames"))
+
+(define no-type-form-variants (subr kfx (cv sexp) bool)
+  (lambda (v f)
+    "#t, once no variant of `define-datatype` `f` is named for a type form."
+    (let ((name (tagcase (second (items f)) (lst (ys fl l p) (car ys)) (else other (second (items f))))))
+      (all? (lambda ((vt sexp))
+              (let ((tag (tagcase vt (lst (ys fl l p) (if (null? ys) vt (car ys))) (else other vt))))
+                (tagcase tag
+                  (sym (t tf tp)
+                    (if (string-member? t type-form-names)
+                        (begin (refuse v (string-append "`" (string-append t (string-append "` is a type form: this would be a variant named `"
+                                 (string-append t (string-append "`, not the type; to name a type, write `(define-type "
+                                   (string-append (show-sexp name) (string-append " (" (string-append t " …))`"))))))))) #f)
+                        #t))
+                  (else other #t))))
+            (cdr (cdr (items f)))))))
+
 (define datatype-names (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
     "The datatypes' names, before their variants' types can be read."
     (cond ((null? forms) ds)
+          ((and (head-is? (car forms) "define-datatype") (not (no-type-form-variants v (car forms))))
+           ds)
           ((or (head-is? (car forms) "define-datatype") (head-is? (car forms) "define-generative"))
            (datatype-names v (cdr forms)
                            (cons (dt (type-name v (car forms)) (type-params v (car forms)) nil) ds)))
@@ -695,6 +721,27 @@
                      ps)))
       (else other nil))))
 
+(define-rec
+  (rlambda-under? (subr kfx (sexp) bool)
+    (lambda (e)
+      "Whether `e` is an `rlambda`, under `plambda`s and `the`s."
+      (cond ((head-is? e "rlambda") #t)
+            ((and (or (head-is? e "plambda") (head-is? e "the")) (i64= (size (items e)) 3)) (rlambda-under? (third (items e))))
+            (else #f)))))
+
+(define plambda-body-pure (subr kfx (cv sexp strings) unit)
+  (lambda (v body es)
+    "A `plambda`'s body may be generalized only if its effect is reads of
+     globals alone, or it is an `rlambda` (under `plambda`s and `the`s),
+     which may allocate besides; else refused, as Fixpt refuses it (its
+     `generalizable`, Fixpt 0d933ff; C393): no cell is polymorphic, the value
+     restriction."
+    (let ((reads-global (lambda ((a string)) (or (string=? a "@globals") (global-atom? a)))))
+      (if (or (all? reads-global es)
+              (and (rlambda-under? body) (all? (lambda ((a string)) (or (reads-global a) (has-prefix? a "alloc:"))) es)))
+          #u
+          (begin (refuse v (string-append "a `plambda` body must be pure, and this one has " (show-effs es))) #u)))))
+
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
     "A procedure's lambda against its type; `v` already has its name."
@@ -712,7 +759,9 @@
                 (res (u es s) (with-facts v (with expressions (settle-facts s)))))
           (if (and (head-is? defined "plambda") (not (lambda-form? (third (items defined)))))
               (tagcase (with expressions (check (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (third (items defined)) t))
-                (res (u es s) (with-facts v (with expressions (settle-facts s)))))
+                (res (u es s)
+                  (begin (plambda-body-pure v (third (items defined)) (map (lambda ((a string)) (resolve-atom s a)) es))
+                         (with-facts v (with expressions (settle-facts s))))))
               (tagcase (with expressions (check-lambda (saying-here (with-tvars v (onto (place-marks-of t) tvars)) (declared-said v t)) (new-state) (items (second lam)) (cdr (cdr lam)) t))
                 (res (u es s) (with-facts v (with expressions (settle-facts s))))))))))))
 
@@ -3182,6 +3231,12 @@
                          (import-defs g)
                          (the sexps (list (imports-in g)))))
                    its))))
+  (numbered-fields (subr kfx (sexps i64 string i64 i64) sexps)
+    (lambda (xs k f l p)
+      "Each of `xs` a field labelled by its place, from `k`: `(k x)`."
+      (if (null? xs)
+          nil
+          (cons (lst (list (num k f p) (imports-in (car xs))) f l p) (numbered-fields (cdr xs) (i64+ k 1) f l p)))))
   (imports-in (subr kfx (sexp) sexp)
     (lambda (e)
       "Imports expanded; and FX-26's procedure types written short (Fixpt
@@ -3197,6 +3252,12 @@
                  (lst (cons (car xs) (import-items (cdr xs))) f l p))
                 ((and (or (head-is? e "->") (head-is? e "->*")) (i64= (size xs) 3))
                  (lst (list (sym "subr" f p) (sym (if (head-is? e "->") "pure" "%found") f p) (imports-in (second xs)) (imports-in (third xs))) f l p))
+                ((or (head-is? e "tupleof") (head-is? e "tuple"))
+                 "`(tupleof T ...)` and `(tuple e ...)` (Fixpt 0d933ff, its TODO §191;
+                  C393): `(productof (1 T) ...)` and `(product (1 e) ...)`."
+                 (lst (cons (sym (if (head-is? e "tupleof") "productof" "product") f p)
+                            (numbered-fields (cdr xs) 1 f l p))
+                      f l p))
                 (else (lst (map imports-in xs) f l p))))
         (else other e)))))
 

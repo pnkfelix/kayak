@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"acyclic-by-default.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define sum-of : (subr pure (ints) int) ! pure",
+"define xs : ints ! pure",
+"define ys : ints ! (read (globals xs))",
+"ints ! (read (globals sum-of xs ys))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

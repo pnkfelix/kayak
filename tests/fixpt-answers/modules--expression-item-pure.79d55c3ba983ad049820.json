@@ -23,15 +23,15 @@
 {
 "code": 1,
 "out": [
-"m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
+"m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx))",
 ""
 ],
 "err": [
-"fixpt: <programs>/modules/expression-item-pure.fx:5:12: in `../module-files/mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/expression-item-pure.fx:5:12: in `../module-files/mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

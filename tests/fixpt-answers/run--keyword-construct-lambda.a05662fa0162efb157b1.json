@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"keyword-construct-lambda.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"ok : (subr pure (int) (sumof (#:ok int))) ! pure",
+"2 : int ! (read (globals ok))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

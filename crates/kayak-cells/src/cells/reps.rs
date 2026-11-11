@@ -832,7 +832,7 @@ pub fn gdecl(f0: Strings, f1: Strings, f2: Strings, f3: &'static Ty) -> &'static
     kayak_rt::heap_alloc(Gdecl::Gdecl(f0, f1, f2, f3))
 }
 
-// fixpt-source: crates/fixpt-fx26/src/check.rs@1311497
+// fixpt-source: crates/fixpt-fx26/src/check.rs@0d933ff
 #[inline]
 pub fn rp_generative_decls() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();

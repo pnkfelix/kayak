@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"effect-within-poly-stricter.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"run : (poly ((r region) (e effect (within (read r)))) (subr (read r) ((subr e () int)) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/higher-kinds/effect-within-poly-stricter.fx:9:3: `wider` is declared a (poly ((r region) (e effect (within (maxeff (read r) (write r))))) (subr (maxeff (read r) (write r)) ((subr e () int)) int)): `e` is bound within (read r), and e is not: it has e",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

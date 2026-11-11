@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"generative.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define up-ty-id : (subr pure (int) ty-id) ! pure",
+"define down-ty-id : (subr pure (ty-id) int) ! pure",
+"define up-tree : (poly ((a type)) (subr pure ((sumof (#:leaf a) (#:node (productof (1 (tree a)) (2 (tree a)))))) (tree a))) ! pure",
+"define down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (#:leaf a) (#:node (productof (1 (tree a)) (2 (tree a))))))) ! pure",
+"define total : (subr (read (globals down-tree)) ((tree int)) int) ! pure",
+"define leaf : (subr (read (globals up-tree)) (int) (tree int)) ! pure",
+"int ! (read (globals down-tree down-ty-id leaf total up-tree up-ty-id))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

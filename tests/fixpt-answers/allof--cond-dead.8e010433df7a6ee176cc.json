@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cond-dead.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define swap : (allof (subr pure (symbol symbol symbol) symbol) (subr pure (symbol symbol syms) syms)) ! pure",
+"(pairof symbol (pairof symbol syms acyclic) acyclic) ! (read (globals swap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

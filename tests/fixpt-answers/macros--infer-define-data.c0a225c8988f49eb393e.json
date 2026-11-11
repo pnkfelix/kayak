@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"infer-define-data.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"circle : (subr pure (int) shape) ! pure",
+"rect : (subr pure (int int) shape) ! pure",
+"none : (subr pure () shape) ! pure",
+"area : (subr pure (shape) int) ! pure",
+"18 : int ! (read (globals area circle none rect))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

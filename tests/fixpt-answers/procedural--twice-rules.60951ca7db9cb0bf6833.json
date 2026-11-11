@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"twice-rules.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"helper : (subr pure (int) int) ! pure",
+"(22 101) : (listof int acyclic) ! (read (globals helper))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

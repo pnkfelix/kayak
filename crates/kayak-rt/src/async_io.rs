@@ -338,7 +338,9 @@ pub async fn read_file(
     path: Str,
 ) -> &'static crate::world::Sum_4data_6failed<crate::world::Bytes, IoError> {
     let path = path.as_str().to_string();
-    crate::world::read_file_answer(on_worker("read-file", move || std::fs::read(path)).await)
+    crate::world::read_file_answer(
+        on_worker("read-file", move || crate::world::read_regular_file(&path)).await,
+    )
 }
 
 /// `(write-file path data)`: the bytes taken now, written by a worker.

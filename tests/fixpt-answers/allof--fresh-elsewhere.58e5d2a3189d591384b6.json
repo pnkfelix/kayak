@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fresh-elsewhere.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define mk : (allof (subr (maxeff (alloc @h) (read @h)) (ab) (subr pure () ab)) (subr (maxeff (alloc @h) (read @h)) (ac) (subr pure () ac))) ! pure",
+"define g : (allof (subr pure () ab) (subr pure () ac)) ! (maxeff (alloc @h) (read (globals mk)) (read @h))",
+"define as-ab : (subr pure () ab) ! (read (globals g))",
+"define as-ac : (subr pure () ac) ! (read (globals g))",
+"(listof int acyclic) ! (read (globals as-ab as-ac))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

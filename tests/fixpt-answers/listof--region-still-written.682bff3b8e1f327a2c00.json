@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"region-still-written.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"xs 46585231050506706169726f66046261736503696e740672636f6e7374054068656170000003000000040001000000020601010000010402030000010404",
+""
+],
+"err": [
+"fixpt: <programs>/listof/region-still-written.fx:6:19: a (listof int acyclic) is expected here, and this is a ints",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

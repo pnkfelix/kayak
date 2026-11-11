@@ -27,11 +27,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/modules/restrict-unknown.fx:3:47: the module gives no `nope`",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/restrict-unknown.fx:3:47: the module gives no `nope`",
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

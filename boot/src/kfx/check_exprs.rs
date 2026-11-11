@@ -559,6 +559,22 @@ pub mod expressions {
         }
     }
 
+    /// Whether labels `ls` are `k`, `k`+1, … in order, a `tupleof`'s.
+    pub fn positional_labels_p(mut ls: Strings, mut k: i64) -> bool {
+        loop {
+            if null_p(ls) {
+                return true;
+            } else {
+                if string_eq_p(car(ls), i64_to_string(k)) {
+                    (ls, k) = (cdr(ls), i64_plus(k, 1i64));
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+
     /// A sum's tags as variants: a member taken apart by its arm, `(tag (x y)
     /// ...)`, of the fields of the product it is; else of the member.
     pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Variants {
@@ -587,10 +603,12 @@ pub mod expressions {
                 let tagcase_ = car(ts);
                 match *tagcase_ {
                     Ty::TyShape(p, ms, us) => {
-                        if p {
-                            us
-                        } else {
+                        if not(p) {
                             match refuse(v, string_append(str_lit("the arm for "), string_append(car(ls), str_lit(" takes apart a sum")))) {}
+                        } else if not(positional_labels_p(ms, 1i64)) {
+                            match refuse(v, string_append(str_lit("`"), string_append(car(ls), string_append(str_lit("` carries a product with names of its own, ("), string_append(words_of(ms), string_append(str_lit("), which cannot be taken apart into "), string_append(i64_to_string(size(items(second(items(car(arm)))))), str_lit(" name(s): only a product labelled 1, 2, …, a `tupleof`, is taken apart by position; bind it to one name and `extract` its fields")))))))) {}
+                        } else {
+                            us
                         }
                     }
                     _ => {
@@ -4667,7 +4685,11 @@ pub mod expressions {
                         if null_p(dropped) {
                             r
                         } else {
-                            res(t, kept, s)
+                            res(t, waits_dropped(map(lambda1s(move |a: Str| {
+                                resolve_atom(s, a)
+                            }), es), map(lambda1s(move |a: Str| {
+                                resolve_atom(s, a)
+                            }), kept)), s)
                         }
                     }
                 }
@@ -8898,7 +8920,7 @@ pub mod expressions {
                     if mentions_p(s, t, name) {
                         match refuse(v, string_append(str_lit("a letregion whose value's type mentions its region "), r)) {}
                     } else {
-                        res(t, masked(es, name), s)
+                        res(t, masked_waiting(es, name), s)
                     }
                 }
             }
@@ -8995,7 +9017,7 @@ pub mod expressions {
                         let tagcase_ = found_then_fitted(v, res(frozen, nil::<Str>(), s), expected);
                         match *tagcase_ {
                             Res::Res(u, es2, s2) => {
-                                res(u, masked(es, name), s2)
+                                res(u, masked_waiting(es, name), s2)
                             }
                         }
                     }
@@ -9133,7 +9155,7 @@ pub mod expressions {
                             if suspends_p(es) {
                                 match refuse(v, str_lit("a suspension inside a letrena, whose data a suspended task would outlive (C45; Fixpt's async note, finding 4)")) {}
                             } else {
-                                res(t, masked(es, name), s)
+                                res(t, masked_waiting(es, name), s)
                             }
                         }
                     }
@@ -13786,7 +13808,9 @@ pub mod expressions {
                     }), cv_binds(v)))))) {
                         match refuse(v, str_lit("a plambda's region escapes it, in a type found outside it")) {}
                     } else {
-                        res(expected, es, s2)
+                        plambda_pure(v, s2, second(xs), map(lambda1s(move |a: Str| {
+                            resolve_atom(s2, a)
+                        }), es), res(expected, es, s2))
                     }
                 }
             }
@@ -13896,13 +13920,52 @@ pub mod expressions {
                         }), cv_binds(v))))) {
                             match refuse(v, str_lit("a plambda's binder escapes it, in a type found outside it")) {}
                         } else {
-                            let pos = cv_pos(v);
+                            let (pos, r) = (cv_pos(v), plambda_pure(v, s2, second(xs), map(lambda1s(move |a: Str| {
+                                resolve_atom(s2, a)
+                            }), es), res(ty_unit(), es, s2)));
                             res(ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
                                 ty_var(string_append(n, string_append(str_lit("@"), i64_to_string(pos))))
                             }), names), kayak_rt::heap_cons(fold_renames(names, pos, zonk(s2, t)), kayak_rt::nil()))), es, s2)
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// `r`, if a `plambda`'s body of effect `es` may be generalized: its
+    /// effect but reads of globals (the body is run once, a `plambda`
+    /// being erased, so its value is every instance's); or an `rlambda`,
+    /// under `plambda`s and `the`s, which may allocate besides. Else
+    /// refused, as Fixpt refuses it (its `generalizable`, Fixpt 0d933ff;
+    /// C393): no cell is polymorphic, the value restriction, else one
+    /// could be taken at another type under each of an `allof`'s members.
+    pub fn plambda_pure(v: &'static Cv, s: &'static St, body: &'static Sexp, es: Strings, r: &'static Res) -> &'static Res {
+        let reads_global = lambda1s(move |a: Str| {
+            (string_eq_p(a, str_lit("@globals")) || global_atom_p(a))
+        });
+        if (all_p(reads_global, es) || (rlambda_under_p(body) && all_p(lambda1s(move |a: Str| {
+            (reads_global(a) || has_prefix_p(a, str_lit("alloc:")))
+        }), es))) {
+            r
+        } else {
+            match refuse(v, string_append(str_lit("a `plambda` body must be pure, and this one has "), show_effs(es))) {}
+        }
+    }
+
+    /// Whether `e` is an `rlambda`, under `plambda`s and `the`s.
+    pub fn rlambda_under_p(mut e: &'static Sexp) -> bool {
+        loop {
+            if head_is_p(e, str_lit("rlambda")) {
+                return true;
+            } else if (head_is_p(e, str_lit("plambda")) && i64_eq(size(items(e)), 3i64)) {
+                e = third(items(e));
+                continue;
+            } else if (head_is_p(e, str_lit("the")) && i64_eq(size(items(e)), 3i64)) {
+                e = third(items(e));
+                continue;
+            } else {
+                return false;
             }
         }
     }
@@ -14161,6 +14224,9 @@ pub mod expressions {
                             }
                         }
                     }), ms);
+                    let made = allof_made_once(v, s, ts, map(&allof_params, filter(lambda1s(move |m: &'static Ty| {
+                        allof_fits_adapted_p(s, ts, m)
+                    }), ms)), 1i64);
                     if null_p(fits) {
                         match refuse(v, string_append(str_lit("this call fits no member of a "), string_append(show_ty(s, zonk(s, t)), string_append(str_lit(": its arguments are "), words_joined(map(lambda1s(move |u: &'static Ty| {
                             string_append(str_lit("a "), show_ty(s, u))
@@ -14182,6 +14248,79 @@ pub mod expressions {
             _ => {
                 let other = tagcase_;
                 t
+            }
+        }
+    }
+
+    #[inline]
+    pub fn allof_params(m: &'static Ty) -> Tys {
+        let tagcase_ = m;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                ps
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
+        }
+    }
+
+    /// Whether a value of type `a` is taken where `e` is only converted:
+    /// its procedure made one of `e`'s convention (Fixpt's `conversion`).
+    pub fn allof_converts_p(s: &'static St, a: &'static Ty, e: &'static Ty) -> bool {
+        let (a, e) = (walk(s, a), walk(s, e));
+        let (ca, ce) = (convention_of(a), convention_of(e));
+        (not(string_eq_p(ca, str_lit(""))) && not(string_eq_p(ce, str_lit(""))) && not(string_eq_p(ca, ce)) && quick_fits_p(s, procedure_within(a), procedure_within(e)))
+    }
+
+    /// Whether the member `m` takes arguments of the types `ts`, each as
+    /// it is or converted.
+    pub fn allof_fits_adapted_p(s: &'static St, ts: Tys, m: &'static Ty) -> bool {
+        let tagcase_ = m;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                (i64_eq(size(ps), size(ts)) && all_p(lambda1s(move |b: bool| {
+                    b
+                }), map2(lambda2s(move |a: &'static Ty, p: &'static Ty| {
+                    (quick_fits_p(s, a, p) || allof_converts_p(s, a, p))
+                }), ts, ps)))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// An argument a member this call fits takes only converted is one
+    /// value made once: so only where every member it fits, `pss` their
+    /// parameters from the `i`th, takes the same type there; else refused,
+    /// as Fixpt refuses it (d667f281, C393). kayak's call then fits only
+    /// the members that take it as it is.
+    pub fn allof_made_once(mut v: &'static Cv, mut s: &'static St, mut ts: Tys, mut pss: List<Tys>, mut i: i64) -> bool {
+        loop {
+            if (null_p(ts) || null_p(pss) || null_p(car(pss))) {
+                return true;
+            } else {
+                let t = car(ts);
+                let heads = map(lambda1s(move |ps: Tys| {
+                    car(ps)
+                }), pss);
+                let p0 = car(heads);
+                let other = filter(lambda1s(move |p: &'static Ty| {
+                    not(string_eq_p(show_ty(s, zonk(s, p)), show_ty(s, zonk(s, p0))))
+                }), heads);
+                if (any_p(lambda1s(move |p: &'static Ty| {
+                    (not(quick_fits_p(s, t, p)) && allof_converts_p(s, t, p))
+                }), heads) && not(null_p(other))) {
+                    return match refuse(v, string_append(str_lit("argument "), string_append(i64_to_string(i), string_append(str_lit(" is a "), string_append(show_ty(s, zonk(s, t)), string_append(str_lit(", made a "), string_append(show_ty(s, zonk(s, p0)), string_append(str_lit(" for one member this call fits and a "), string_append(show_ty(s, zonk(s, car(other))), str_lit(" for another: one value cannot be both")))))))))) {};
+                } else {
+                    (ts, pss, i) = (cdr(ts), map(lambda1s(move |ps: Tys| {
+                        cdr(ps)
+                    }), pss), i64_plus(i, 1i64));
+                    continue;
+                }
             }
         }
     }

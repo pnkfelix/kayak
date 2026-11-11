@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"cell-pair.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk : (allof (subr (alloc @h) () (pairof ab int @h)) (subr (alloc @h) () (pairof ac int @h))) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/cell-pair.fx:9:10: this call fits a (subr (alloc @h) () (pairof ab int @h)) and a (subr (alloc @h) () (pairof ac int @h)), whose results have no meet",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

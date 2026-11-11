@@ -15,11 +15,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/module-files/include-in-file.fx:2:10: a top-level `include` names a module bound here: `(include m)`",
+"fixpt: <programs>/module-files/include-in-file.fx:2:10: a top-level `include` names a module bound here: `(include m)`, or `(include m (only name …))` or `(except name …)`",
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

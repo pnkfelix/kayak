@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"well-founded.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"len : (subr pure ((listof int acyclic) int) int) ! pure",
+"count : (subr pure (int) int) ! pure",
+"up : (subr pure (int int) int) ! pure",
+"total : (subr pure (tree) int) ! pure",
+"ev : (subr pure (int) bool) ! pure",
+"ack : (subr pure (int int) int) ! pure",
+"built : (subr pure (int) (listof int acyclic)) ! pure",
+"63 : int ! (read (globals ack built count ev len total up))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

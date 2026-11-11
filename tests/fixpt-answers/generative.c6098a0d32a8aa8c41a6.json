@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"generative.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"41",
+"6",
+"refused: argument 1 is a int, where a id is expected",
+"10",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

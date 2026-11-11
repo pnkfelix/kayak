@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"desc-family-qualified.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define g : (poly ((box (=> (type) type))) (subr pure () nat)) ! pure",
+"nat ! (read (globals g))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

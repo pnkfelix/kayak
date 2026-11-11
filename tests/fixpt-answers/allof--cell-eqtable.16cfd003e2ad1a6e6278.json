@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cell-eqtable.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/allof/cell-eqtable.fx:9:1: this call fits a (subr (alloc @t) () (eqtable (ref int @k) ab @k @t)) and a (subr (alloc @t) () (eqtable (ref int @k) ac @k @t)), whose results have no meet",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

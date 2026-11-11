@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tuple.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"p : pt ! pure",
+"q : pt ! (read (globals p))",
+"(\"1\" \"a\" \"aa\") : (listof string acyclic) ! (read (globals p q))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

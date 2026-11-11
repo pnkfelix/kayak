@@ -16,6 +16,12 @@ pub enum Sum_6circle_4rect<A0, A1> {
     Rect(A1),
 }
 
+#[allow(non_camel_case_types)]
+pub enum Sum_4span_4none<A0, A1> {
+    Span(A0),
+    None(A1),
+}
+
 // FX-26's products and sums, structural: a generic Rust type for each list
 // of labels, `Product_x_y<A0, A1>` a tuple struct, `Sum_circle_rect<A0, A1>`
 // an enum whose values are references.
@@ -24,18 +30,36 @@ pub type Point = Product_1x_1y<i64, i64>;
 
 pub type Shape = &'static Sum_6circle_4rect<i64, Product_1w_1h<i64, i64>>;
 
-// A member taken apart, `(rect (w h) ...)`, or bound whole, `(rect q ...)`.
-#[inline]
+// A member bound whole, `(rect q ...)`, its fields `extract`ed: a product
+// with names of its own is not taken apart by position (Fixpt's TODO §191,
+// C393).
 pub fn area(s: Shape) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
         Sum_6circle_4rect::Circle(r) => {
             i64_star(3i64, i64_star(r, r))
         }
-        Sum_6circle_4rect::Rect(product_) => {
-            let w = product_.0;
-            let h = product_.1;
-            i64_star(w, h)
+        Sum_6circle_4rect::Rect(q) => {
+            i64_star(q.0, q.1)
+        }
+    }
+}
+
+// A product labelled by position, a `tupleof`, taken apart, `(span (a b)
+// ...)`; made by `tuple`.
+pub type Stretch = &'static Sum_4span_4none<Product_11_12<i64, i64>, ()>;
+
+#[inline]
+pub fn span_length(s: Stretch) -> i64 {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Sum_4span_4none::Span(product_) => {
+            let a = product_.0;
+            let b = product_.1;
+            i64_minus(b, a)
+        }
+        Sum_4span_4none::None(u) => {
+            0i64
         }
     }
 }
@@ -72,6 +96,6 @@ pub fn swap(p: Product_11_12<i64, i64>) -> Product_11_12<i64, i64> {
 
 pub fn main() -> Str {
     let shapes = the::<List<Shape>>(kayak_rt::heap_cons(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(3i64, 4i64))), kayak_rt::heap_cons(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Circle(2i64)), kayak_rt::nil())));
-    i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(5i64, 6i64))))), i64_star(10000i64, swap(pair(7i64, 8i64)).0)))))
+    i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(5i64, 6i64))))), i64_plus(i64_star(10000i64, swap(pair(7i64, 8i64)).0), i64_star(100000i64, span_length(kayak_rt::heap_alloc(Sum_4span_4none::<Product_11_12<i64, i64>, ()>::Span(Product_11_12(2i64, 9i64))))))))))
 }
 

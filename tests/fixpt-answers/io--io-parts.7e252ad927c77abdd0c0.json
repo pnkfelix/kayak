@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"io-parts.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define now : (subr (io clock-read) () i64) ! pure",
+"define ready : (subr (io stdin-poll) () bool) ! pure",
+"define news : (subr (io process-control) () int) ! pure",
+"define old : (subr (io clock) () i64) ! pure",
+"define nap : (subr (io clock) () unit) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

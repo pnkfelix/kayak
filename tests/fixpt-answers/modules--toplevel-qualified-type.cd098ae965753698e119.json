@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"toplevel-qualified-type.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"g : (poly ((idx type)) (subr pure (idx) int)) ! pure",
+"6 : int ! (read (globals g))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

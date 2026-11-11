@@ -15,11 +15,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`, `process`",
+"fixpt: <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`, `process`, `clock-read`, `stdin-poll`, `process-control`",
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

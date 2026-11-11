@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"converted-argument.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define inc-fx : (subr (conv fx) pure (int) int) ! pure",
+"define run : (allof (subr pure ((subr pure (int) int) int) int) (subr pure ((subr pure (string) string) string) string)) ! pure",
+"int ! (read (globals inc-fx run))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

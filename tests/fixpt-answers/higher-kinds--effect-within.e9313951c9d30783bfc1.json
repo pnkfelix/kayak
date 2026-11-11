@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"effect-within.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define run : (poly ((r region) (e effect (within (maxeff (read r) (write r))))) (subr (maxeff (read r) (write r)) ((subr e () int)) int)) ! pure",
+"(listof int acyclic) ! (read (globals run))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

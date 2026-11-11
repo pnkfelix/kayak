@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"toplevel-qualified-effect.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define cell : (ref int @heap) ! (alloc @heap)",
+"define g : (poly ((loud effect)) (subr (maxeff (read (globals cell)) (read @heap)) () int)) ! pure",
+"int ! (maxeff (read (globals cell g)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

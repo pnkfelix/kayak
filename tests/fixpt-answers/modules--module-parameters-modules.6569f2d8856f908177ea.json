@@ -28,20 +28,19 @@
 ]
 },
 {
-"code": 0,
+"code": 1,
 "out": [
 "m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<programs>/modules/../module-files/mp-base.fx))",
 "m-buffer : (moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (select m-base pt)))) ! (maxeff (read @c) (write @c) (alloc @c) (read (globals %shared:input:<programs>/modules/../module-files/mp-buffer.fx m-base)))",
 "m-mixed : (moduleof (val cell (subr (alloc @q) (int) (ref int @q)))) ! (read (globals %shared:input:<programs>/modules/../module-files/mp-mixed.fx m-base))",
-"seen-of : (subr (read @c) ((moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (select m-base pt))))) int) ! pure",
-"57 : int ! (maxeff (read @q) (read @c) (alloc @q) (read (globals m-buffer m-mixed seen-of)))",
 ""
 ],
 "err": [
+"fixpt: <programs>/modules/module-parameters-modules.fx:1:1: the checkers disagree: the Rust checker takes `seen-of`'s definition, and the one written in FX-26 refuses it: `m` gives other names than were read from the program before it was checked: its type gives `seen`, which the program took to be bound outside it",
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

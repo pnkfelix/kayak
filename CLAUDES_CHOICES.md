@@ -10824,3 +10824,73 @@ When it lands: the pin moved, kayak's checker and built-in types split as
 Fixpt's are, `waits?` (C388) replaced by the table, and kayak-rt's file
 operations refusing what is not a regular file, as Fixpt recommends.
 
+## C393. The pin moved to Fixpt 0d933ff (2026-11-11)
+
+The user: "Pull from origin main" (kayak's own origin had nothing new; so
+Fixpt's, the pin moving when the user asks). 13114974 to 0d933ff, 118
+commits: Fixpt's first answers to the responsive-effects request (masking a
+wait leaves `spin`, the `io` kinds split into parts that never wait,
+bounded effect variables), procedural macros and hygiene, binding shapes,
+`tupleof`, and more. What it took:
+- **New refusals ported to kayak's checker**, so that KFX still accepts
+  nothing FX-26 refuses:
+  - a wait masked away leaves `spin` (`waits-dropped`, `masked-waiting`:
+    `letregion`, `letrena`, `letfreeze` and a compound expression's
+    masking; not `spawn`'s, whose process's waits take not the spawner's
+    time): `processes/wait-masked.fx`;
+  - a `plambda` body must be pure but for reading globals, or an
+    `rlambda` that may allocate (`plambda-pure`, `plambda-body-pure`: the
+    value restriction): `allof/poly-cell.fx`;
+  - no variant named for a type form (`type-form-names`): kayak's own
+    `fx26/cg.kfx` had `(define-datatype place (place i64 i64))`, now
+    `label-at`, which Fixpt had refused, so `fx26.unit` and `cells.unit`
+    with it;
+  - a `tagcase` arm takes apart by position only a product labelled 1,
+    2, …, a `tupleof` (`positional-labels?`): the corpus's `shapes.kfx`
+    binds its named product whole and `extract`s its fields, and takes a
+    new `tupleof` member apart (its answer, 785224, made the shared one:
+    no machine's own).
+- **New syntax**: `(tupleof T …)` and `(tuple e …)`, rewritten early
+  (`imports-in`) to `(productof (1 T) …)` and `(product (1 e) …)`; Fixpt's
+  programs that took named products apart now use them, and the engine
+  agrees with Fixpt on them again (`generative/tree-walk.fx`,
+  `run/generative.fx`).
+- **kayak-rt**: `read-file` refuses a directory, or anything not a regular
+  file, which could wait on another program, as Fixpt's
+  `read_regular_file` does; asked of the file's metadata before opening,
+  as kayak-rt has no `libc` for `O_NONBLOCK`. `tests/kfx-io/read-directory.kfx`,
+  Fixpt's words alike.
+- **Drift**, each source read: `check.rs`'s generative declarations, the
+  only part ported, unchanged; `prim.rs`, `read-file`'s rule carried, the
+  dead one-argument `%fx26-string-copy` dropped (our report; tier 1 never
+  had it), `%fx26-expand-procedural` (procedural macros' transformers) not
+  taken, as kayak's FX-26 front end has no procedural macros; the two
+  `cellular.rs`, profiling's bookkeeping alone; the FX-26 compiler's and
+  parser's sources (`fx26/cg.kfx`'s), Fixpt's own reorganizing (path
+  keys, binding shapes' records, hygiene) and a quoted list made one
+  constant, an optimization not taken yet. Every mark at 0d933ff.
+- **An `allof` call's argument converted is one value made once**
+  (Fixpt d667f281): where a member the call fits takes an argument only
+  converted to another convention, every member it fits must take the
+  same type there (`allof-made-once`), in Fixpt's words;
+  `allof/converted-twice.fx`, which kayak had taken (a K1 breach the full
+  check found). The rest of that commit (a member fitting by conversion
+  or a reshape, a `lambda` argument of no types) not taken: kayak refuses
+  those, a gap, not a breach.
+- **A Fixpt bug, worked around in the test only**: at 0d933ff (and its
+  head, 9e75efab) Fixpt's evaluator's checker, the one written in FX-26,
+  refuses a module's binding shape that `fixpt check` takes, both checkers
+  agreeing: "`core` gives other names than were read from the program
+  before it was checked" and "the names `core` gives are not known before
+  it is checked", or, where a program loads such a file, "the checkers
+  disagree" (`module-files/made-buffer.fx`, `made-client.fx`,
+  `made-tickets.fx`; `modules/load-moduleof.fx`, `restrict-parameter.fx`,
+  `module-parameters-modules.fx`, `load-moduleof-define-type.fx`, which
+  state `;; => 15` and so on). The cells test (`shapes_bug`) takes the
+  stated value for Fixpt's, as `run-fixpt-programs` does for C223's bug,
+  and kayak's engine agrees with it on all four; one that states none is
+  Fixpt's refusal. Worth reporting to the Fixpt team.
+- Measured: 211 of Fixpt's programs kfx accepts, all agreeing (209), the
+  engine on all 211; beyond KFX 299 agree (292); of Fixpt's 528 refused,
+  kfx refuses every one; Fixpt accepts kfx.unit, fx26.unit, cells.unit.
+

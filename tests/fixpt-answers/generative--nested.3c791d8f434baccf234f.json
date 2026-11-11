@@ -23,20 +23,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"! <programs>/generative/nested.fx:7:1: calling `size` may read any global, `size` too, so `size` may reach itself through a global: its type must say `spin`",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
-]
 }
 ]
 }

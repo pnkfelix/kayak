@@ -514,7 +514,10 @@ Phase C, FX-26's runtime:
   streams and `sleep-until` go through kayak-runner (C381), and so do
   files, the terminal's modes and programs run beside this one (C382).
   Waits where nothing may wait: refused by effect where kayak's code runs
-  to its end (C388); `docs/requests/fixpt-responsive-effects.md` asks
+  to its end (C388); Fixpt's markers in progress (masking a wait leaves
+  `spin` and the `io` split are in at 0d933ff, C393; markers, marker
+  bounds and `effect-case` to come), then `waits?` replaced by their
+  table; `docs/requests/fixpt-responsive-effects.md` asks
   Fixpt for sleeping apart from the clock, inspectable evidence and
   bounded effect variables. Next:
   `--async` with `--cache` (the mode in the memo key); a maker's poly or failing items; native code calling back a
@@ -1490,4 +1493,18 @@ Checks: corpus programs with Fixpt's answers: a frozen list shared by
 to a process refused (choice a); an eq-table keyed by refs, with deletes
 and counts, inside and outside a `letrena`; refused, a table outliving its
 keys' `letrena`, and `pair-identity` until allowed.
+
+## 50. Taken from Fixpt 0d933ff in part (C393)
+
+- Procedural macros (`%fx26-expand-procedural`, Fixpt's TODO §228) and
+  hygiene, binding shapes: kayak's FX-26 front end has neither.
+- A quoted list or vector compiled as one constant (Fixpt's TODO §229), in
+  `fx26/cg.kfx`'s port: an optimization, not taken yet.
+- Bounded effect variables, `(e effect (within E))` (TODO §226), in Fixpt's
+  checkers: kayak's checker refuses them, stricter, as yet.
+- `allof` calls fitting a member by conversion or a module's reshape, and
+  a `lambda` argument of no types (Fixpt d667f281): kayak refuses them.
+- To report to Fixpt: its evaluator's checker refuses binding shapes
+  `fixpt check` takes (`module-files/made-buffer.fx` and six more); the
+  cells test's `shapes_bug` workaround goes when it is fixed.
 

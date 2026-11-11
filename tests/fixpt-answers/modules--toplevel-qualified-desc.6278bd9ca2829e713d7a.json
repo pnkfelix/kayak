@@ -1,0 +1,54 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"toplevel-qualified-desc.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (15 cells, cellular):",
+"     0: closure word id over 0",
+"     3: global! id",
+"     5: closure word g over 0",
+"     8: global! g",
+"    10: global g",
+"    12: tcall 0",
+"    14: exit",
+"",
+"word g (6 cells, cellular):",
+"     0: lit 4",
+"     2: global id",
+"     4: ttailcall 1",
+"  its register code (15 cells, not compiled):",
+"       0: args 0",
+"       2: global id",
+"       4: setreg 2",
+"       6: const 4",
+"       8: setreg 1",
+"      10: reg 2",
+"      12: tailinvoke 1 1",
+"",
+"word id (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

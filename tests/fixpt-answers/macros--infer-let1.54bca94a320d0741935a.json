@@ -1,0 +1,32 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"infer-let1.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (10 cells, cellular):",
+"     0: lit 3",
+"     2: slot 0",
+"     4: lit 4",
+"     6: int-add",
+"     7: slot! 0",
+"     9: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

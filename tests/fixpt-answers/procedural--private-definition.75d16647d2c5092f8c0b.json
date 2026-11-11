@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"private-definition.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define %~1:n : int ! pure",
+"int ! (read (globals %~1:n))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

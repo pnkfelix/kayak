@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"modnames-nested-fewer.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"outer : (moduleof (val inner (moduleof (val a int) (val b int))) (val y int)) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/modnames-nested-fewer.fx:4:21: `inner` gives more than this names of it: a `modnames` seals a module's own names, not yet those of one inside it; name all of `inner`'s here, or seal it where it is defined",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

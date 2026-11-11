@@ -1,0 +1,30 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"private-definition.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (7 cells, cellular):",
+"     0: lit 1",
+"     2: global! %~1:n",
+"     4: global %~1:n",
+"     6: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

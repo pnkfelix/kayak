@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-shadows-macro-nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/macros/with-shadows-macro-nested.fx:7:25: `clamp` is a macro here, and `m` gives a value of that name, which this `with` would seem to call",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"free-reference-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/procedural/free-reference-missing.fx:5:1: `nosuch` is not defined at the top level",
+"  in the expansion of `bad` at <programs>/procedural/free-reference-missing.fx:5:1",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

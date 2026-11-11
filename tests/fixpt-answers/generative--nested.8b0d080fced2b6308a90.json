@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/generative/nested.fx:7:1: calling `size` may read any global, `size` too, so `size` may reach itself through a global: its type must say `spin`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

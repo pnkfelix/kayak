@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"effect-within-poly-loose.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"any : (poly ((r region) (e effect)) (subr (maxeff (read r) e) ((subr e () int)) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/higher-kinds/effect-within-poly-loose.fx:8:3: `loose` is declared a (poly ((r region) (e effect)) (subr (read r) ((subr e () int)) int)): a (subr (read r) ((subr e () int)) int) is expected here, and this is a (subr (maxeff (read r) e) ((subr (maxeff (read r) e) () int)) int)",
+"  beyond what is expected, it has e",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

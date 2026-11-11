@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"cell-icell.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk : (allof (subr (alloc @h) () (icell ab @h)) (subr (alloc @h) () (icell ac @h))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/allof/cell-icell.fx:9:10: this call fits a (subr (alloc @h) () (icell ab @h)) and a (subr (alloc @h) () (icell ac @h)), whose results have no meet",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"desc-macro.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define x : (productof (1 int) (2 bool)) ! pure",
+"int ! (read (globals x))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

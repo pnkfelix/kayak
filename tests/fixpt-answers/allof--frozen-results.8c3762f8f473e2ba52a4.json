@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"frozen-results.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"mk : (allof (subr pure (ab) (subr pure () (listof ab acyclic))) (subr pure (ac) (subr pure () (listof ac acyclic)))) ! pure",
+"g : (allof (subr pure () (listof ab acyclic)) (subr pure () (listof ac acyclic))) ! (read (globals mk))",
+"as-ab : (subr pure () (listof ab acyclic)) ! (read (globals g))",
+"as-ac : (subr pure () (listof ac acyclic)) ! (read (globals g))",
+"(1 1) : (listof int acyclic) ! (read (globals as-ab as-ac))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

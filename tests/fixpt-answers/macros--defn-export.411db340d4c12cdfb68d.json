@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defn-export.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define x : int ! pure",
+"define %x:1 : int ! pure",
+"define y : int ! (read (globals %x:1))",
+"int ! (read (globals y))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

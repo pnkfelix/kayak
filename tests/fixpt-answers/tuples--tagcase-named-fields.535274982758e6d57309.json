@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tagcase-named-fields.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/tuples/tagcase-named-fields.fx:4:63: `rect` carries a (productof (#:w int) (#:h int)), which cannot be taken apart into 2 name(s): only a product labelled 1, 2, …, a `tupleof`, is taken apart by position; bind it to one name and `extract` its fields",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

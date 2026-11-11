@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-macro-not-given.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (val double (subr pure (int) int)) (val clamp int)) ! pure",
+"define n : (moduleof (val double (subr pure (int) int))) ! pure",
+"int ! (read (globals m n))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

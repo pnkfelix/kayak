@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cell-list.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/allof/cell-list.fx:9:10: this call fits a (subr (alloc @h) () (listof ab @h)) and a (subr (alloc @h) () (listof ac @h)), whose results have no meet",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

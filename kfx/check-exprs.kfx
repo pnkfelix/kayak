@@ -243,6 +243,12 @@
         (unholed (subr kfx (sexps) sexps)
           (lambda (xs) (cond ((null? xs) nil) ((draft-hole? (car xs)) (unholed (cdr xs))) (else (cons (car xs) (unholed (cdr xs))))))))
 
+      (define-rec
+        (positional-labels? (subr kfx (strings i64) bool)
+          (lambda (ls k)
+            "Whether labels `ls` are `k`, `k`+1, … in order, a `tupleof`'s."
+            (or (null? ls) (and (string=? (car ls) (i64->string k)) (positional-labels? (cdr ls) (i64+ k 1)))))))
+
       (define sum-variants (subr kfx (cv strings tys sexps) variants)
         (lambda (v ls ts arms)
           "A sum's tags as variants: a member taken apart by its arm, `(tag (x y)
@@ -256,7 +262,16 @@
                                (if (and (not (null? arm)) (i64> (size (items (car arm))) 1)
                                         (tagcase (second (items (car arm))) (lst (xs f l p) #t) (else other #f)))
                                    (tagcase (car ts)
-                                     (ty-shape (p ms us) (if p us (refuse v (string-append "the arm for " (string-append (car ls) " takes apart a sum")))))
+                                     (ty-shape (p ms us)
+                                       (cond ((not p) (refuse v (string-append "the arm for " (string-append (car ls) " takes apart a sum"))))
+                                             ;; Only a `tupleof` by position (Fixpt 0d933ff, its TODO
+                                             ;; §191; C393): a product with names of its own is
+                                             ;; bound to one name, its fields `extract`ed.
+                                             ((not (positional-labels? ms 1))
+                                              (refuse v (string-append "`" (string-append (car ls) (string-append "` carries a product with names of its own, ("
+                                                (string-append (words-of ms) (string-append "), which cannot be taken apart into "
+                                                  (string-append (i64->string (size (items (second (items (car arm)))))) " name(s): only a product labelled 1, 2, …, a `tupleof`, is taken apart by position; bind it to one name and `extract` its fields"))))))))
+                                             (else us)))
                                      (else other (refuse v (string-append "the arm for " (string-append (car ls) " takes apart no product")))))
                                    (list (car ts))))
                       (sum-variants v (cdr ls) (cdr ts) arms))))))
@@ -2066,9 +2081,12 @@
                                                                                 (list "read:" "write:" "alloc:" "goto:" "comefrom:")))))))
                                                es))
                                  (dropped (filter (lambda ((a string)) (not (string-member? a kept))) es)))
+                            ;; A wait dropped leaves `spin` (C393).
                             (if (null? dropped)
                                 r
-                                (res t kept s)))))))))))
+                                (res t (waits-dropped (map (lambda ((a string)) (resolve-atom s a)) es)
+                                                      (map (lambda ((a string)) (resolve-atom s a)) kept))
+                                     s)))))))))))
 
       (masking-form? (subr kfx (sexp) bool)
         (lambda (e)
@@ -3909,7 +3927,7 @@
                   (res (t es s)
                     (if (mentions? s t name)
                         (refuse v (string-append "a letregion whose value's type mentions its region " r))
-                        (res t (masked es name) s))))))))
+                        (res t (masked-waiting es name) s))))))))
 
       (letfreeze-form (subr kfx (cv st sexps tys) res)
         (lambda (v s xs expected)
@@ -3945,7 +3963,7 @@
                         (if (writes-region? s (zonk s t) name)
                             (refuse v (string-append "the value of `letfreeze " (string-append r (string-append "` could still write its region's data: its type is " (show-ty s t)))))
                         (tagcase (found-then-fitted v (res frozen nil s) expected)
-                          (res (u es2 s2) (res u (masked es name) s2))))))))))))
+                          (res (u es2 s2) (res u (masked-waiting es name) s2))))))))))))
 
       (writes-region? (subr kfx (st ty string) bool)
           (lambda (s t r)
@@ -4006,7 +4024,7 @@
                                          (s (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
                                     (if (suspends? es)
                                         (refuse v "a suspension inside a letrena, whose data a suspended task would outlive (C45; Fixpt's async note, finding 4)")
-                                        (res t (masked es name) s)))))))))))))
+                                        (res t (masked-waiting es name) s)))))))))))))
 
       (place-region (subr kfx (st ty) bool)
         (lambda (s t)
@@ -6102,7 +6120,7 @@
                                                  (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (string=? w "local") (tagcase sc (scheme (tv u) (metas-of u))) nil))))
                                                               (cv-binds v))))))
                              (refuse v "a plambda's region escapes it, in a type found outside it")
-                             (res expected es s2))))))))))
+                             (plambda-pure v s2 (second xs) (map (lambda ((a string)) (resolve-atom s2 a)) es) (res expected es s2)))))))))))
 
       (plambda-synth (subr kfx (cv st sexps) res)
         (lambda (v s xs)
@@ -6144,10 +6162,33 @@
                                             (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (string=? w "local") (tagcase sc (scheme (tv u) (metas-of u))) nil))))
                                                          (cv-binds v)))))
                               (refuse v "a plambda's binder escapes it, in a type found outside it")
-                              (let ((pos (cv-pos v)))
+                              (let ((pos (cv-pos v)) (r (plambda-pure v s2 (second xs) (map (lambda ((a string)) (resolve-atom s2 a)) es) (res (ty-unit) es s2))))
                                 (res (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (string-append n (string-append "@" (i64->string pos))))) names)
                                                             (list (fold-renames names pos (zonk s2 t)))))
                                      es s2)))))))))))
+
+      (plambda-pure (subr kfx (cv st sexp strings res) res)
+        (lambda (v s body es r)
+          "`r`, if a `plambda`'s body of effect `es` may be generalized: its
+           effect but reads of globals (the body is run once, a `plambda`
+           being erased, so its value is every instance's); or an `rlambda`,
+           under `plambda`s and `the`s, which may allocate besides. Else
+           refused, as Fixpt refuses it (its `generalizable`, Fixpt 0d933ff;
+           C393): no cell is polymorphic, the value restriction, else one
+           could be taken at another type under each of an `allof`'s members."
+          (let ((reads-global (lambda ((a string)) (or (string=? a "@globals") (global-atom? a)))))
+            (if (or (all? reads-global es)
+                    (and (rlambda-under? body) (all? (lambda ((a string)) (or (reads-global a) (has-prefix? a "alloc:"))) es)))
+                r
+                (refuse v (string-append "a `plambda` body must be pure, and this one has " (show-effs es)))))))
+
+      (rlambda-under? (subr kfx (sexp) bool)
+        (lambda (e)
+          "Whether `e` is an `rlambda`, under `plambda`s and `the`s."
+          (cond ((head-is? e "rlambda") #t)
+                ((and (head-is? e "plambda") (i64= (size (items e)) 3)) (rlambda-under? (third (items e))))
+                ((and (head-is? e "the") (i64= (size (items e)) 3)) (rlambda-under? (third (items e))))
+                (else #f))))
 
       (escape-tag-parts (subr kfx (st ty) tys)
         (lambda (s t)
@@ -6273,7 +6314,8 @@
                                          (tagcase m
                                            (ty-proc (es ps r) (and (i64= (size ps) (size ts)) (all? (lambda ((x ty)) #t) ps) (quick-fits-each? s ts ps)))
                                            (else other #f)))
-                                       ms)))
+                                       ms))
+                         (made (allof-made-once v s ts (map allof-params (filter (lambda ((m ty)) (allof-fits-adapted? s ts m)) ms)) 1)))
                     (if (null? fits)
                         (refuse v (string-append "this call fits no member of a " (string-append (show-ty s (zonk s t))
                                     (string-append ": its arguments are " (words-joined (map (lambda ((u ty)) (string-append "a " (show-ty s u))) ts) ", ")))))
@@ -6282,6 +6324,45 @@
                             (ty-proc (allof-least s fits fits) ps0 (allof-results-met v s (car fits) (cdr fits) r0)))
                           (else other t))))))
             (else other t))))
+
+      (allof-params (subr kfx (ty) tys)
+        (lambda (m) (tagcase m (ty-proc (es ps r) ps) (else other nil))))
+
+      (allof-converts? (subr kfx (st ty ty) bool)
+        (lambda (s a e)
+          "Whether a value of type `a` is taken where `e` is only converted:
+           its procedure made one of `e`'s convention (Fixpt's `conversion`)."
+          (let ((a (walk s a)) (e (walk s e)))
+            (let ((ca (convention-of a)) (ce (convention-of e)))
+              (and (not (string=? ca "")) (not (string=? ce "")) (not (string=? ca ce))
+                   (quick-fits? s (procedure-within a) (procedure-within e)))))))
+
+      (allof-fits-adapted? (subr kfx (st tys ty) bool)
+        (lambda (s ts m)
+          "Whether the member `m` takes arguments of the types `ts`, each as
+           it is or converted."
+          (tagcase m
+            (ty-proc (es ps r)
+              (and (i64= (size ps) (size ts))
+                   (all? (lambda ((b bool)) b) (map2 (lambda ((a ty) (p ty)) (or (quick-fits? s a p) (allof-converts? s a p))) ts ps))))
+            (else other #f))))
+
+      (allof-made-once (subr kfx (cv st tys (listof tys acyclic) i64) bool)
+        (lambda (v s ts pss i)
+          "An argument a member this call fits takes only converted is one
+           value made once: so only where every member it fits, `pss` their
+           parameters from the `i`th, takes the same type there; else refused,
+           as Fixpt refuses it (d667f281, C393). kayak's call then fits only
+           the members that take it as it is."
+          (if (or (null? ts) (null? pss) (null? (car pss)))
+              #t
+              (let* ((t (car ts)) (heads (map (lambda ((ps tys)) (car ps)) pss)) (p0 (car heads))
+                     (other (filter (lambda ((p ty)) (not (string=? (show-ty s (zonk s p)) (show-ty s (zonk s p0))))) heads)))
+                (if (and (any? (lambda ((p ty)) (and (not (quick-fits? s t p)) (allof-converts? s t p))) heads) (not (null? other)))
+                    (refuse v (string-append "argument " (string-append (i64->string i) (string-append " is a " (string-append (show-ty s (zonk s t))
+                                (string-append ", made a " (string-append (show-ty s (zonk s p0)) (string-append " for one member this call fits and a "
+                                  (string-append (show-ty s (zonk s (car other))) " for another: one value cannot be both")))))))))
+                    (allof-made-once v s (cdr ts) (map (lambda ((ps tys)) (cdr ps)) pss) (i64+ i 1)))))))
 
       (allof-results-met (subr kfx (cv st ty tys ty) ty)
         (lambda (v s m0 fits r)

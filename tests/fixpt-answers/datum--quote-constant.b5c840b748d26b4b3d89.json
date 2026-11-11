@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"quote-constant.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"xs : datum ! pure",
+"ys : datum ! pure",
+"long : datum ! pure",
+"count : (subr pure (datum int) int) ! pure",
+"bit : (subr pure (bool int) int) ! pure",
+"33007 : int ! (read (globals bit count long xs ys))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

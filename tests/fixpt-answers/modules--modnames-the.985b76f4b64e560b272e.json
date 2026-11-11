@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"modnames-the.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc touches (read @heap)) (val x int) (val y int)) ! pure",
+"s : (moduleof (desc touches (read @heap)) (val x int)) ! (read (globals m))",
+"1 : int ! (read (globals s))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

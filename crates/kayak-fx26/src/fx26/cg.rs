@@ -22,13 +22,13 @@ use super::*;
 // lifting. Bloblets and floats: C152. Register code, each lambda's word's
 // twin, the `regs-*.kfx` files' (C248), from the twins noted here
 // (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
-// fixpt-source: crates/fixpt-fx26/src/compile.fx@19b31f1
-// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@19b31f1
-// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
-// fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@19b31f1
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@19b31f1
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@19b31f1
+// fixpt-source: crates/fixpt-fx26/src/compile.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@0d933ff
 
 // The generator's data lives at `@g`.
 
@@ -381,9 +381,6 @@ pub mod made__load__0__cg {
                 match n {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("length")) => {
                         str_lit("length")
-                    }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%quote")) => {
-                        str_lit("%fx26-intern-datum")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("array?")) => {
                         str_lit("%fx26-array?")
@@ -1011,6 +1008,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("disassemble")) => {
                         str_lit("%disassemble")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-datum")) => {
+                        str_lit("%fx26-identity")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("make-global")) => {
                         str_lit("%fx26-make-global")
                     }
@@ -1291,6 +1291,12 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("string-downcase")) => {
                         str_lit("%fx26-string-downcase")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-rational?")) => {
+                        str_lit("rational?")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-numerator")) => {
+                        str_lit("%numerator")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("certify-acyclic")) => {
                         str_lit("%fx26-identity")
                     }
@@ -1359,6 +1365,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-u8-ref")) => {
                         str_lit("bytevector-u8-ref")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-denominator")) => {
+                        str_lit("%denominator")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("set-register-twin")) => {
                         str_lit("%set-register-twin")
                     }
@@ -1416,6 +1425,9 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(20)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-bytevector-ref")) => {
+                        str_lit("bytevector-u8-ref")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("set-register-twin-at")) => {
                         str_lit("%set-register-twin")
                     }
@@ -1439,6 +1451,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-redefines")) => {
                         str_lit("%fx26-session-redefines")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-bytevector-length")) => {
+                        str_lit("bytevector-length")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("runtime-primitive-arity")) => {
                         str_lit("%runtime-primitive-arity")
                     }
@@ -1451,6 +1466,16 @@ pub mod made__load__0__cg {
                 match n {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-committed!")) => {
                         str_lit("%fx26-session-committed!")
+                    }
+                    _ => {
+                        str_lit("")
+                    }
+                }
+            }
+            case_ if kayak_rt::_eq(case_, int_lit(25)) => {
+                match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%macros:expand-procedural")) => {
+                        str_lit("%fx26-expand-procedural")
                     }
                     _ => {
                         str_lit("")
@@ -5223,15 +5248,15 @@ pub fn item_size(i: &'static Item) -> i64 {
 }
 
 // Where each label is: a list of (label, cell) pairs.
-pub enum Place {
-    Place(i64, i64),
+pub enum LabelAt {
+    LabelAt(i64, i64),
 }
 
-pub fn place(f0: i64, f1: i64) -> &'static Place {
-    kayak_rt::heap_alloc(Place::Place(f0, f1))
+pub fn label_at(f0: i64, f1: i64) -> &'static LabelAt {
+    kayak_rt::heap_alloc(LabelAt::LabelAt(f0, f1))
 }
 
-pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static Place>) -> List<&'static Place> {
+pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static LabelAt>) -> List<&'static LabelAt> {
     loop {
         if null_p(xs) {
             return acc;
@@ -5240,7 +5265,7 @@ pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static Place>) -> 
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Item::ItLabel(n) => {
-                        kayak_rt::heap_cons(place(n, at), acc)
+                        kayak_rt::heap_cons(label_at(n, at), acc)
                     }
                     _ => {
                         let y = tagcase_;
@@ -5253,21 +5278,21 @@ pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static Place>) -> 
     }
 }
 
-pub fn place_at(mut ps: List<&'static Place>, mut n: i64) -> i64 {
+pub fn place_at(mut ps: List<&'static LabelAt>, mut n: i64) -> i64 {
     loop {
         if null_p(ps) {
             return -1i64;
         } else if {
             let tagcase_ = car(ps);
             match *tagcase_ {
-                Place::Place(m, at) => {
+                LabelAt::LabelAt(m, at) => {
                     i64_eq(m, n)
                 }
             }
         } {
             let tagcase_ = car(ps);
             match *tagcase_ {
-                Place::Place(m, at) => {
+                LabelAt::LabelAt(m, at) => {
                     return at;
                 }
             }
@@ -5387,7 +5412,7 @@ pub fn wsaid(f0: Str, f1: Strings) -> &'static Wsaid {
     kayak_rt::heap_alloc(Wsaid::Wsaid(f0, f1))
 }
 
-pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static Place>, mut out: Strings, mut named: Strings) -> &'static Wsaid {
+pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static LabelAt>, mut out: Strings, mut named: Strings) -> &'static Wsaid {
     loop {
         if null_p(xs) {
             return wsaid(put_sep_lines(reverse(out)), reverse(named));
@@ -5424,7 +5449,7 @@ pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static Place>,
 // A word's lines, as the listing writes them.
 #[inline]
 pub fn word_text(xs: Citems) -> Str {
-    let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
+    let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static LabelAt>()), nil::<Str>(), nil::<Str>());
     match *tagcase_ {
         Wsaid::Wsaid(text, named) => {
             text

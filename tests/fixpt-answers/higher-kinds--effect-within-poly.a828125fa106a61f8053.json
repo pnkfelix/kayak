@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"effect-within-poly.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define any : (poly ((r region) (e effect)) (subr (maxeff (read r) e) ((subr e () int)) int)) ! pure",
+"define tight : (poly ((r region) (e effect (within (read r)))) (subr (read r) ((subr e () int)) int)) ! (read (globals any))",
+"int ! (read (globals tight))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

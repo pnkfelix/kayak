@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"with-type-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"a 465852310606086d6f64756c656f660564657363730476616c730178046261736503696e740000040000000200010002010000000200000204030003040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/modules/with-type-missing.fx:4:14: `nope` is not a type",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

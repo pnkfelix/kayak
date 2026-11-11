@@ -17,13 +17,13 @@
  lifting. Bloblets and floats: C152. Register code, each lambda's word's
  twin, the `regs-*.kfx` files' (C248), from the twins noted here
  (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
- fixpt-source: crates/fixpt-fx26/src/compile.fx@19b31f1
- fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@19b31f1
- fixpt-source: crates/fixpt-fx26/src/compile-state.fx@d28cc6d
- fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
- fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@19b31f1
- fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@19b31f1
- fixpt-source: crates/fixpt-fx26/src/parser.fx@19b31f1"
+ fixpt-source: crates/fixpt-fx26/src/compile.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile-state.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@0d933ff"
 
 "The generator's data lives at `@g`."
 (define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))
@@ -1596,16 +1596,16 @@
   (lambda (i) (tagcase i (it-ins (r os) (i64+ 1 (size os))) (it-label (n) 0) (it-branch (n) 2) (it-zbranch (n) 2) (it-pos (p) 0))))
 
 "Where each label is: a list of (label, cell) pairs."
-(define-datatype place (place i64 i64))
+(define-datatype label-at (label-at i64 i64))
 (define-rec
-  (places-of (subr kfx (citems i64 (listof place acyclic)) (listof place acyclic))
+  (places-of (subr kfx (citems i64 (listof label-at acyclic)) (listof label-at acyclic))
     (lambda (xs at acc)
       (if (null? xs) acc
           (places-of (cdr xs) (i64+ at (item-size (car xs)))
-                     (tagcase (car xs) (it-label (n) (cons (place n at) acc)) (else y acc)))))))
+                     (tagcase (car xs) (it-label (n) (cons (label-at n at) acc)) (else y acc)))))))
 (define-rec
-  (place-at (subr kfx ((listof place acyclic) i64) i64)
-    (lambda (ps n) (cond ((null? ps) -1) ((tagcase (car ps) (place (m at) (i64= m n))) (tagcase (car ps) (place (m at) at))) (else (place-at (cdr ps) n))))))
+  (place-at (subr kfx ((listof label-at acyclic) i64) i64)
+    (lambda (ps n) (cond ((null? ps) -1) ((tagcase (car ps) (label-at (m at) (i64= m n))) (tagcase (car ps) (label-at (m at) at))) (else (place-at (cdr ps) n))))))
 
 (define-rec
   (range-from (subr kfx (i64 i64) (listof i64 acyclic))
@@ -1650,7 +1650,7 @@
 (define-datatype wsaid (wsaid string strings))
 
 (define-rec
-  (lines-of-items (subr kfx (citems i64 (listof place acyclic) strings strings) wsaid)
+  (lines-of-items (subr kfx (citems i64 (listof label-at acyclic) strings strings) wsaid)
     (lambda (xs at ps out named)
       (if (null? xs)
           (wsaid (put-sep-lines (reverse out)) (reverse named))

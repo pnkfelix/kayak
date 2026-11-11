@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"frozen-ring.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"ring2 : (poly ((t type)) (subr pure (t) (listof t const))) ! pure",
+"mk : (allof (subr (read (globals ring2)) (ab) (subr pure () (listof ab const))) (subr (read (globals ring2)) (ac) (subr pure () (listof ac const)))) ! pure",
+"g : (allof (subr pure () (listof ab const)) (subr pure () (listof ac const))) ! (read (globals mk ring2))",
+"as-ab : (subr pure () (listof ab const)) ! (read (globals g))",
+"as-ac : (subr pure () (listof ac const)) ! (read (globals g))",
+"(1 1) : (listof int acyclic) ! (read (globals as-ab as-ac))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

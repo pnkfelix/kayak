@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"typecase-dead.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"swap : (allof (subr pure (symbol symbol syms) syms) (subr pure (symbol symbol symbol) symbol)) ! pure",
+"(y b y x) : (pairof symbol (pairof symbol syms acyclic) acyclic) ! (read (globals swap))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

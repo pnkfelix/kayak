@@ -29,8 +29,33 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"bit : (subr pure (bool int) int) ! pure",
+"kind-of : (subr pure (io-error) int) ! pure",
+"buf : (bytevectorof @b) ! (alloc @b)",
+"w : int ! (io stdout)",
+"l : int ! (io stdin)",
+"b : int ! (io stdin)",
+"n0 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"n1 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"r : int ! (io stdin-poll)",
+"a : int ! (io args)",
+"f : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"d : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"t : int ! (io terminal)",
+"1023 : int ! (read (globals a b d f l n0 n1 r t w))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

@@ -93,7 +93,7 @@ pub fn ritems_size(mut xs: Ritems, mut n: i64) -> i64 {
     }
 }
 
-pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<&'static Place>) -> List<&'static Place> {
+pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<&'static LabelAt>) -> List<&'static LabelAt> {
     loop {
         if null_p(xs) {
             return acc;
@@ -102,7 +102,7 @@ pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<&'static Place>) ->
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Ritem::RiLabel(n) => {
-                        kayak_rt::heap_cons(place(n, at), acc)
+                        kayak_rt::heap_cons(label_at(n, at), acc)
                     }
                     _ => {
                         let y = tagcase_;
@@ -169,7 +169,7 @@ pub fn rop_text(name: Str, os: List<&'static Opnd>) -> Str {
 
 // A word's register code's lines, and the words they name, in order;
 // `frame` the frame's size.
-pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<&'static Place>, mut frame: i64, mut out: Strings, mut named: Strings) -> &'static Wsaid {
+pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<&'static LabelAt>, mut frame: i64, mut out: Strings, mut named: Strings) -> &'static Wsaid {
     loop {
         if null_p(xs) {
             return wsaid(put_sep_lines(reverse(out)), reverse(named));
@@ -282,7 +282,7 @@ pub fn rcode_said(rc: &'static Rcode) -> &'static Wsaid {
     let tagcase_ = rc;
     match *tagcase_ {
         Rcode::Rcode(xs, frame) => {
-            let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<&'static Place>()), frame, nil::<Str>(), nil::<Str>());
+            let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<&'static LabelAt>()), frame, nil::<Str>(), nil::<Str>());
             match *tagcase_ {
                 Wsaid::Wsaid(text, named) => {
                     wsaid(string_append(str_lit("  its register code ("), string_append(i64_to_string(ritems_size(xs, 0i64)), string_append(str_lit(" cells, not compiled):\n"), text))), named)

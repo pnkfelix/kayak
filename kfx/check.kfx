@@ -6680,6 +6680,19 @@
             (res (r rn s)
               (name-regions v s (heap-frozen (rename-atoms es k (region-string s r))) (cdr regions) keep)))))))
 
+(define waits-dropped (subr kfx (strings strings) strings)
+  (lambda (es kept)
+    "`kept`, what is left of `es` once masking dropped some of it, with
+     `spin` where a wait, an `await` or a `receive`, was dropped (Fixpt
+     0d933ff, `Effect::waits_dropped`, its TODO §224; C393): a wait on what
+     nothing outside sees is, to anything outside, work of unbounded length,
+     and never ends if nothing fills what it waits on."
+    (if (any? (lambda ((a string))
+                (and (or (has-prefix? a "await:") (has-prefix? a "receive:")) (not (string-member? a kept))))
+              es)
+        (effs-union (list "spin") kept)
+        kept)))
+
 (define masked (subr kfx (strings string) strings)
   (lambda (es r)
     "Effects, those on region `r` removed."
@@ -6689,6 +6702,14 @@
                                             (and (frozen-place? (atom-region (car es))) (string=? (frozen-place-of (atom-region (car es))) r))))
            (masked (cdr es) r))
           (else (cons (car es) (masked (cdr es) r))))))
+
+(define masked-waiting (subr kfx (strings string) strings)
+  (lambda (es r)
+    "`masked`, as a `letregion`, a `letrena` or a `letfreeze` masks, a wait
+     it drops leaving `spin` (`waits-dropped`). A `spawn` masks its
+     process's place with `masked` alone: a wait there is the process's, in
+     its own time, and the spawner waits for none of it."
+    (waits-dropped es (masked es r))))
 
 (define-rec
   (mentions? (subr kfx (st ty string) bool)

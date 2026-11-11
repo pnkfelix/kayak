@@ -1,0 +1,15 @@
+"A directory read as a file (C393; Fixpt's read_regular_file, its TODO
+ §225): refused, its kind `is-a-directory` and its words Fixpt's, as what
+ is not a regular file could wait on another program."
+
+(define said (subr (io stdout) (string) unit)
+  (lambda (s) (tagcase (write-out (string-append s "\n")) (done u #u) (failed e #u))))
+
+(define main (subr (maxeff (io fs-read) (io stdout) (read @globals) spin) () int)
+  (lambda ()
+    (tagcase (read-file ".")
+      (data b (begin (said "read") 1))
+      (failed e
+        (begin (said (tagcase (extract e kind) (is-a-directory u "is-a-directory") (else k "other")))
+               (said (extract e detail))
+               0)))))

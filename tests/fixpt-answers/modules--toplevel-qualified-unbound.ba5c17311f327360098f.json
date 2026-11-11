@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"toplevel-qualified-unbound.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/toplevel-qualified-unbound.fx:4:35: `t` is not a type",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

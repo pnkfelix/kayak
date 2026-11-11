@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"members-alternate.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/members-alternate.fx:8:14: `f` is declared a (allof (subr pure (symbol nat) int) (subr pure (int nat) int)): a (subr pure (symbol nat) int) is expected here, and this is a (subr spin (symbol nat) int)",
+"  beyond what is expected, it has spin; it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (it counts up, but nothing fixed bounds the count above)",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

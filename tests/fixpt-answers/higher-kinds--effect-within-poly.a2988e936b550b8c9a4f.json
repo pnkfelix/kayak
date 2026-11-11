@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"effect-within-poly.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"any : (poly ((r region) (e effect)) (subr (maxeff (read r) e) ((subr e () int)) int)) ! pure",
+"tight : (poly ((r region) (e effect (within (read r)))) (subr (read r) ((subr e () int)) int)) ! (read (globals any))",
+"7 : int ! (read (globals tight))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -17,8 +17,21 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/same-name-apart.fx:15:7: a (moduleof (abs susp type) (val delay (subr (maxeff (alloc @heap) f) ((subr f () int)) susp)) (val force (subr (maxeff (read @heap) f) (susp) int))) is expected here, and this is a (moduleof (abs susp type) (val delay (subr (maxeff (alloc @heap) f') ((subr f' () int)) susp)) (val force (subr (maxeff (read @heap) f') (susp) int)))",
+"  `f` and `f'` are different variables, each named `f`",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

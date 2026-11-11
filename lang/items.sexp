@@ -553,6 +553,7 @@
 (primitive "%fx26-dump-heap" 2 2 fixpt)
 (primitive "%fx26-rep-cell" 1 1 fixpt)
 (primitive "%fx26-rep-of-hex" 1 1 fixpt)
+(primitive "%fx26-expand-procedural" 1 1 fixpt)
 (primitive "%fx26-syscall" 3 9 kayak)
 (primitive "%kayak-stage-run" 5 5 kayak)
 (primitive "%kayak-reify" 3 3 kayak)

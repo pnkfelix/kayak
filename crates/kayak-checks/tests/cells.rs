@@ -264,8 +264,33 @@ fn one(name: &str, path: &Path, ours: bool) -> Found {
         Ok(r) => r,
         Err(e) => return found("fixpt-refuses", e),
     };
-    let want_fail = failure(&format!("{}\n{}", ev.stdout, ev.stderr));
-    if !ev.ok() && want_fail.is_none() {
+    let mut want_fail = failure(&format!("{}\n{}", ev.stdout, ev.stderr));
+    // A Fixpt bug, worked around in the test only (C393): at 0d933ff its
+    // evaluator's checker, the one written in FX-26, refuses a module's
+    // binding shape that `fixpt check` takes, both checkers agreeing. The
+    // program's stated value (`;; => V`) for Fixpt's, as C223's
+    // `run-fixpt-programs` takes it; none stated, Fixpt's refusal.
+    let mut stated = None;
+    if shapes_bug(&format!("{}\n{}", ev.stdout, ev.stderr)) {
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        let said: Vec<&str> = text
+            .lines()
+            .filter_map(|l| l.strip_prefix(";; => "))
+            .collect();
+        match said.as_slice() {
+            [v] => {
+                stated = Some(v.trim().to_string());
+                want_fail = None;
+            }
+            _ => {
+                return found(
+                    "fixpt-refuses",
+                    "its evaluator refuses what its checkers take (C393)",
+                );
+            }
+        }
+    }
+    if !ev.ok() && want_fail.is_none() && stated.is_none() {
         return found("fixpt-refuses", "");
     }
     let lines: Vec<&str> = ev
@@ -273,13 +298,15 @@ fn one(name: &str, path: &Path, ours: bool) -> Found {
         .lines()
         .filter(|l| !l.trim().is_empty() && !l.starts_with(';'))
         .collect();
-    if want_fail.is_none() && (lines.is_empty() || last_defines(path)) {
+    if want_fail.is_none() && stated.is_none() && (lines.is_empty() || last_defines(path)) {
         return found("no-value", "");
     }
-    let want = want_fail.is_none().then(|| {
-        let l = lines[lines.len() - 1];
-        let l = l.rsplit_once(" ! ").map_or(l, |x| x.0);
-        l.rsplit_once(" : ").map_or(l, |x| x.0).to_string()
+    let want = stated.or_else(|| {
+        want_fail.is_none().then(|| {
+            let l = lines[lines.len() - 1];
+            let l = l.rsplit_once(" ! ").map_or(l, |x| x.0);
+            l.rsplit_once(" : ").map_or(l, |x| x.0).to_string()
+        })
     });
     let mut args = strs(&MACHINE);
     args.extend(strs(&["compile", "--full-literals"]));
@@ -379,6 +406,13 @@ fn one(name: &str, path: &Path, ours: bool) -> Found {
     f.same_words = same_words;
     f.regs = regs;
     f
+}
+
+/// Whether Fixpt's evaluation failed by the bug C393 works around: its
+/// evaluator's checker refusing a module's binding shape.
+fn shapes_bug(said: &str) -> bool {
+    said.contains("gives other names than were read from the program before it was checked")
+        || said.contains("gives are not known before it is checked")
 }
 
 /// The ways a program's answer must be the same, all run at once: agree,

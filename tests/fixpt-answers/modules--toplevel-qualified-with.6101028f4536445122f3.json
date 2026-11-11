@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"toplevel-qualified-with.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"a : (moduleof (desc idx bool)) ! pure",
+"5 : int ! (read (globals a))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

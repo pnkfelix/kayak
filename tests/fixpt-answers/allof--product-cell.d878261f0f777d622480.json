@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"product-cell.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/allof/product-cell.fx:4:18: an `allof`'s members differ at `c`, a (ref int @heap) and a (ref string @heap): only procedures, and products of them, may",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

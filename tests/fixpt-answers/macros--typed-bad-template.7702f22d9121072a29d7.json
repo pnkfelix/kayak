@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"typed-bad-template.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/macros/typed-bad-template.fx:4:69: argument 1 is a bool, where a int is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

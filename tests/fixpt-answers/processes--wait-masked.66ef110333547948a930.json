@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"wait-masked.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/processes/wait-masked.fx:6:3: `ask-self` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"  beyond what is expected, it has spin; it may not end: it waits, (await @q), on what nothing outside it sees",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

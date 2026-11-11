@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"fresh-nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk : (allof (subr (alloc @h) () (subr (alloc @h) () (ref ab @h))) (subr (alloc @h) () (subr (alloc @h) () (ref ac @h)))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/allof/fresh-nested.fx:11:1: this call fits a (subr (alloc @h) () (subr (alloc @h) () (ref ab @h))) and a (subr (alloc @h) () (subr (alloc @h) () (ref ac @h))), whose results are procedures that may keep what the call allocates: one value would be both",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

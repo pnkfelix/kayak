@@ -149,7 +149,7 @@
 
 "A word's lines (`lines-of-items`), each then a newline."
 (define-rec
-  (w-lines! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) citems i64 (listof place acyclic)) unit))
+  (w-lines! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) citems i64 (listof label-at acyclic)) unit))
     (lambda (p b n xs at ps)
       (if (null? xs)
           #u
@@ -165,7 +165,7 @@
 
 "Register code's lines (`rlines-of`), each then a newline."
 (define-rec
-  (w-rlines! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) ritems i64 (listof place acyclic) i64) unit))
+  (w-rlines! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) ritems i64 (listof label-at acyclic) i64) unit))
     (lambda (p b n xs at ps frame)
       (if (null? xs)
           #u

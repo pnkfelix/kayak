@@ -20,8 +20,24 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"define c : (icell int @c) ! (alloc @c)",
+"define w : (addr int @w) ! (maxeff (alloc @w) (init @c) (read (globals c)) nondet)",
+"unit ! (maxeff (read (globals w)) (send @w))",
+"int ! spin",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

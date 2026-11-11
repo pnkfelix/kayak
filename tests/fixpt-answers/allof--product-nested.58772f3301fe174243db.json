@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"product-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"t : twice ! pure",
+"g : (allof (subr pure (int) int) (subr pure (string) string)) ! (read (globals t))",
+"(\"2\" \"bb\") : (listof string acyclic) ! (read (globals g))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-export-given.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"four : int ! pure",
+"eight : int ! (read (globals four))",
+"8 : int ! (read (globals eight))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"modnames-kind.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (desc t int) (val x int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/modnames-kind.fx:5:23: `t` is a transparent type of (moduleof (desc t int) (val x int)): `(desc t)`",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

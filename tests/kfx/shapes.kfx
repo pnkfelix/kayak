@@ -8,9 +8,18 @@
 
 (define-type shape (sumof (circle i64) (rect (productof (w i64) (h i64)))))
 
-"A member taken apart, `(rect (w h) ...)`, or bound whole, `(rect q ...)`."
+"A member bound whole, `(rect q ...)`, its fields `extract`ed: a product
+ with names of its own is not taken apart by position (Fixpt's TODO §191,
+ C393)."
 (define area (subr pure (shape) i64)
-  (lambda (s) (tagcase s (circle r (i64* 3 (i64* r r))) (rect (w h) (i64* w h)))))
+  (lambda (s) (tagcase s (circle r (i64* 3 (i64* r r))) (rect q (i64* (extract q w) (extract q h))))))
+
+"A product labelled by position, a `tupleof`, taken apart, `(span (a b)
+ ...)`; made by `tuple`."
+(define-type stretch (sumof (span (tupleof i64 i64)) (none unit)))
+
+(define span-length (subr pure (stretch) i64)
+  (lambda (s) (tagcase s (span (a b) (i64- b a)) (none u 0))))
 
 (define width (subr pure (shape) i64)
   (lambda (s) (tagcase s (rect q (extract q w)) (else z 0))))
@@ -31,4 +40,5 @@
        (i64+ (i64+ (area (car shapes)) (area (car (cdr shapes))))
              (i64+ (i64* 100 (extract origin y))
                    (i64+ (i64* 1000 (width (sum rect (product (w 5) (h 6)))))
-                         (i64* 10000 (extract (swap (pair 7 8)) 1)))))))))
+                         (i64+ (i64* 10000 (extract (swap (pair 7 8)) 1))
+                               (i64* 100000 (span-length (sum span (tuple 2 9))))))))))))

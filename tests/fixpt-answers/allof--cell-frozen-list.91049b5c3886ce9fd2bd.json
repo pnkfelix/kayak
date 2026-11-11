@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"cell-frozen-list.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk : (allof (subr (alloc @h) () (listof (ref ab @h) acyclic)) (subr (alloc @h) () (listof (ref ac @h) acyclic))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/allof/cell-frozen-list.fx:10:15: this call fits a (subr (alloc @h) () (listof (ref ab @h) acyclic)) and a (subr (alloc @h) () (listof (ref ac @h) acyclic)), whose results have no meet",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

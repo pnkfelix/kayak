@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"generative.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"up-ty-id : (subr pure (int) ty-id) ! pure",
+"down-ty-id : (subr pure (ty-id) int) ! pure",
+"up-tree : (poly ((a type)) (subr pure ((sumof (#:leaf a) (#:node (productof (1 (tree a)) (2 (tree a)))))) (tree a))) ! pure",
+"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (#:leaf a) (#:node (productof (1 (tree a)) (2 (tree a))))))) ! pure",
+"total : (subr (read (globals down-tree)) ((tree int)) int) ! pure",
+"leaf : (subr (read (globals up-tree)) (int) (tree int)) ! pure",
+"42 : int ! (read (globals down-tree down-ty-id leaf total up-tree up-ty-id))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

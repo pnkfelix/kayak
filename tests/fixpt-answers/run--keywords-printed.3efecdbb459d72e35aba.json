@@ -11,22 +11,9 @@
 "code": 0,
 "out": [
 "",
-"word program (27 cells, cellular):",
-"     0: lit |a|",
-"     2: prim %fx26-symbol->keyword 1",
-"     5: lit |b|",
-"     7: lit |c|",
-"     9: prim %fx26-symbol->keyword 1",
-"    12: lit ()",
-"    14: cons",
-"    15: lit \"d\"",
-"    17: lit ()",
-"    19: cons",
-"    20: cons",
-"    21: cons",
-"    22: cons",
-"    23: prim %fx26-intern-datum 1",
-"    26: exit",
+"word program (3 cells, cellular):",
+"     0: lit (#bloblet(keyword (#trailer 2 |a|) #u8()) . (|b| . ((#bloblet(keyword (#trailer 2 |c|) #u8()) . ()) . (\"d\" . ()))))",
+"     2: exit",
 "; both compilers made this",
 ""
 ],
@@ -34,7 +21,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
 ]
 }
 ]

@@ -237,10 +237,71 @@ pub fn declare_types(mut v: &'static Cv, mut forms: Sexps, mut als: Aliases) -> 
     }
 }
 
+// The names of FX-26's type forms, which no variant may be named (Fixpt
+// 0d933ff's `dt-type-forms`, its TODO §190; C393): a variant named `place`
+// would be a variant, not the type it looks like.
+pub fn type_form_names() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("narrayof"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("composable"), kayak_rt::heap_cons(str_lit("dletrec"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("mark-key"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("mu"), kayak_rt::heap_cons(str_lit("nat"), kayak_rt::heap_cons(str_lit("nlist"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("place"), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("productof"), kayak_rt::heap_cons(str_lit("prompt-tag"), kayak_rt::heap_cons(str_lit("proves"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("select"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("sumof"), kayak_rt::heap_cons(str_lit("tupleof"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("oneof"), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("anyof"), kayak_rt::heap_cons(str_lit("allof"), kayak_rt::heap_cons(str_lit("->"), kayak_rt::heap_cons(str_lit("->*"), kayak_rt::heap_cons(str_lit("restrict"), kayak_rt::heap_cons(str_lit("modnames"), kayak_rt::nil())))))))))))))))))))))))))))))))))
+    })
+}
+
+/// #t, once no variant of `define-datatype` `f` is named for a type form.
+pub fn no_type_form_variants(v: &'static Cv, f: &'static Sexp) -> bool {
+    let name = {
+        let tagcase_ = second(items(f));
+        match *tagcase_ {
+            Sexp::Lst(ys, fl, l, p) => {
+                car(ys)
+            }
+            _ => {
+                let other = tagcase_;
+                second(items(f))
+            }
+        }
+    };
+    all_p(lambda1s(move |vt: &'static Sexp| {
+        let tag = {
+            let tagcase_ = vt;
+            match *tagcase_ {
+                Sexp::Lst(ys, fl, l, p) => {
+                    if null_p(ys) {
+                        vt
+                    } else {
+                        car(ys)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    vt
+                }
+            }
+        };
+        let tagcase_ = tag;
+        match *tagcase_ {
+            Sexp::Sym(t, tf, tp) => {
+                if string_member_p(t, type_form_names()) {
+                    match refuse(v, string_append(str_lit("`"), string_append(t, string_append(str_lit("` is a type form: this would be a variant named `"), string_append(t, string_append(str_lit("`, not the type; to name a type, write `(define-type "), string_append(show_sexp(name), string_append(str_lit(" ("), string_append(t, str_lit(" …))`")))))))))) {};
+                    false
+                } else {
+                    true
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                true
+            }
+        }
+    }), cdr(cdr(items(f))))
+}
+
 /// The datatypes' names, before their variants' types can be read.
 pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts {
     loop {
         if null_p(forms) {
+            return ds;
+        } else if (head_is_p(car(forms), str_lit("define-datatype")) && not(no_type_form_variants(v, car(forms)))) {
             return ds;
         } else if (head_is_p(car(forms), str_lit("define-datatype")) || head_is_p(car(forms), str_lit("define-generative"))) {
             (forms, ds) = (cdr(forms), kayak_rt::heap_cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil::<&'static Variant>()), ds));
@@ -869,6 +930,39 @@ pub fn place_marks_of(t: &'static Ty) -> Strings {
     }
 }
 
+/// Whether `e` is an `rlambda`, under `plambda`s and `the`s.
+pub fn rlambda_under_p(mut e: &'static Sexp) -> bool {
+    loop {
+        if head_is_p(e, str_lit("rlambda")) {
+            return true;
+        } else if ((head_is_p(e, str_lit("plambda")) || head_is_p(e, str_lit("the"))) && i64_eq(size(items(e)), 3i64)) {
+            e = third(items(e));
+            continue;
+        } else {
+            return false;
+        }
+    }
+}
+
+/// A `plambda`'s body may be generalized only if its effect is reads of
+/// globals alone, or it is an `rlambda` (under `plambda`s and `the`s),
+/// which may allocate besides; else refused, as Fixpt refuses it (its
+/// `generalizable`, Fixpt 0d933ff; C393): no cell is polymorphic, the value
+/// restriction.
+pub fn plambda_body_pure(v: &'static Cv, body: &'static Sexp, es: Strings) -> () {
+    let reads_global = lambda1s(move |a: Str| {
+        (string_eq_p(a, str_lit("@globals")) || global_atom_p(a))
+    });
+    if (all_p(reads_global, es) || (rlambda_under_p(body) && all_p(lambda1s(move |a: Str| {
+        (reads_global(a) || has_prefix_p(a, str_lit("alloc:")))
+    }), es))) {
+        ()
+    } else {
+        match refuse(v, string_append(str_lit("a `plambda` body must be pure, and this one has "), show_effs(es))) {};
+        ()
+    }
+}
+
 /// A procedure's lambda against its type; `v` already has its name.
 pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
     let (lam, v) = (items(if head_is_p(defined, str_lit("plambda")) {
@@ -902,6 +996,9 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
                     let tagcase_ = expressions::check(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), third(items(defined)), t);
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
+                            plambda_body_pure(v, third(items(defined)), map(lambda1s(move |a: Str| {
+                                resolve_atom(s, a)
+                            }), es));
                             with_facts(v, expressions::settle_facts(s))
                         }
                     }
@@ -6238,6 +6335,15 @@ pub fn import_items(its: Sexps) -> Sexps {
     }), its))
 }
 
+/// Each of `xs` a field labelled by its place, from `k`: `(k x)`.
+pub fn numbered_fields(xs: Sexps, k: i64, f: Str, l: i64, p: i64) -> Sexps {
+    if null_p(xs) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(lst(kayak_rt::heap_cons(num(k, f, p), kayak_rt::heap_cons(imports_in(car(xs)), kayak_rt::nil())), f, l, p), numbered_fields(cdr(xs), i64_plus(k, 1i64), f, l, p))
+    }
+}
+
 /// Imports expanded; and FX-26's procedure types written short (Fixpt
 /// 2a0e6fd, 38df01e): `(-> (T ...) R)` as `(subr pure (T ...) R)`, which
 /// it is, and `(->* (T ...) R)` as `(subr %found (T ...) R)`, whose
@@ -6258,6 +6364,14 @@ pub fn imports_in(e: &'static Sexp) -> &'static Sexp {
                 } else {
                     str_lit("%found")
                 }, f, p), kayak_rt::heap_cons(imports_in(second(xs)), kayak_rt::heap_cons(imports_in(third(xs)), kayak_rt::nil())))), f, l, p)
+            } else if (head_is_p(e, str_lit("tupleof")) || head_is_p(e, str_lit("tuple"))) {
+                // `(tupleof T ...)` and `(tuple e ...)` (Fixpt 0d933ff, its TODO §191;
+                // C393): `(productof (1 T) ...)` and `(product (1 e) ...)`.
+                lst(kayak_rt::heap_cons(sym(if head_is_p(e, str_lit("tupleof")) {
+                    str_lit("productof")
+                } else {
+                    str_lit("product")
+                }, f, p), numbered_fields(cdr(xs), 1i64, f, l, p)), f, l, p)
             } else {
                 lst(map(&imports_in, xs), f, l, p)
             }

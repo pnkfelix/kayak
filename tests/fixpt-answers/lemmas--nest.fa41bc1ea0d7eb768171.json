@@ -23,24 +23,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"define up-nest : (poly ((a type)) (subr pure ((sumof (#:none unit) (#:more (productof (#:hd a) (#:tl (nest (productof (#:l a) (#:r a)))))))) (nest a))) ! pure",
-"define down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (#:none unit) (#:more (productof (#:hd a) (#:tl (nest (productof (#:l a) (#:r a))))))))) ! pure",
-"define nest-up : (poly ((a type) (b type)) (subr (maxeff (read (globals down-nest nest-up up-nest)) spin) ((subr spin (a) b) (nest a)) (nest b))) ! pure",
-"define small : (nest (sumof (#:x int))) ! (read (globals up-nest))",
-"define wide : (nest (sumof (#:x int) (#:y bool))) ! (read (globals small))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@13114974ad17d2edd75c6fc4690a5e870970287b"
-]
 }
 ]
 }

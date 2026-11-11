@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"well-founded.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define len : (subr pure ((listof int acyclic) int) int) ! pure",
+"define count : (subr pure (int) int) ! pure",
+"define up : (subr pure (int int) int) ! pure",
+"define total : (subr pure (tree) int) ! pure",
+"define ev : (subr pure (int) bool) ! pure",
+"define ack : (subr pure (int int) int) ! pure",
+"define built : (subr pure (int) (listof int acyclic)) ! pure",
+"int ! (read (globals ack built count ev len total up))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

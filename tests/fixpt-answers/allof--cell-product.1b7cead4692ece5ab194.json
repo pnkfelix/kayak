@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"cell-product.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk : (allof (subr (alloc @h) () (productof (1 (ref ab @h)))) (subr (alloc @h) () (productof (1 (ref ac @h))))) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/cell-product.fx:11:19: this call fits a (subr (alloc @h) () (productof (1 (ref ab @h)))) and a (subr (alloc @h) () (productof (1 (ref ac @h)))), whose results have no meet",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"io-part-sleeps.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/io/io-part-sleeps.fx:3:46: `stamp` is declared a (subr (io clock-read) () unit): a (subr (io clock-read) () unit) is expected here, and this is a (subr (io clock) () unit)",
+"  beyond what is expected, it has (io clock)",
+""
+],
+"by": [
+"x86_64-linux@0d933ff89534035d88c673d846a747c42e473a7e"
+]
+}
+]
+}
