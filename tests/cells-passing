@@ -214,6 +214,7 @@ macros/typed-letrec.fx
 macros/typed-pure-twice.fx
 macros/typed-unless.fx
 macros/unit-literal.fx
+macros/use-binds-keyword.fx
 macros/where.fx
 macros/with-macro-not-given.fx
 macros/with-value.fx
@@ -303,6 +304,7 @@ modules/module-parameters-none.fx
 modules/module-parameters-qualified.fx
 modules/mutual.fx
 modules/nested.fx
+modules/own-macros-params.fx
 modules/own-name.fx
 modules/param-define-type.fx
 modules/param-select.fx
