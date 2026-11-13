@@ -79,6 +79,8 @@
              (ids (ref kmap @q))
              (next (ref i64 @q))
              (payload (ref string @q))
+             (graph (ref string @q))
+             (dirty (ref bool @q))
              (frames (ref (listof frame acyclic) @q))
              (last (ref (listof i64 acyclic) @q))
              (runs (ref i64 @q))
@@ -302,6 +304,71 @@
             ((tagcase (car fs) (frame (fk ds du) (i64= fk k))) #t)
             (else (id-in? k (cdr fs)))))))
 
+"The graph's scanner's first parts (C417)."
+(define-datatype scanned (scanned i64 i64))
+(define sc-char (subr kfx (string i64 i64) i64)
+  (lambda (s i n) (if (i64< i n) (char->i64 (string-ref-i64 s i)) -1)))
+
+(define-rec
+  (sc-ws (subr kfx (string i64 i64) i64)
+    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64= c 32) (i64= c 10)) (sc-ws s (i64+ i 1) n) i)))))
+
+(define-rec
+  (sc-close (subr kfx (string i64 i64) i64)
+    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64< c 0) (i64= c 41)) i (sc-close s (i64+ i 1) n))))))
+
+(define-rec
+  (sc-digits (subr kfx (string i64 i64 i64) scanned)
+    (lambda (s i n acc)
+      (let ((c (sc-char s i n)))
+        (if (and (i64>= c 48) (i64<= c 57)) (sc-digits s (i64+ i 1) n (i64+ (i64* acc 10) (i64- c 48))) (scanned acc i))))))
+
+"The number at `i`, after any spaces; and where it ends."
+(define sc-int (subr kfx (string i64 i64) scanned)
+  (lambda (s i n)
+    (let ((i (sc-ws s i n)))
+      (if (i64= (sc-char s i n) 45)
+          (tagcase (sc-digits s (i64+ i 1) n 0) (scanned (v e) (scanned (i64- 0 v) e)))
+          (sc-digits s i n 0)))))
+
+(define-rec
+  (labels-scanned (subr kfx (string i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (s i n acc)
+      "The `#N#`s of a node's reads, to their `)`, in order."
+      (let ((i (sc-ws s i n)))
+        (if (not (i64= (sc-char s i n) 35))
+            (reverse acc)
+            (tagcase (sc-digits s (i64+ i 1) n 0)
+              (scanned (k e) (labels-scanned s (i64+ e 1) n (cons k acc)))))))))
+
+(define-rec
+  (sc-ints (subr kfx (string i64 i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (s i n count acc)
+      (if (i64<= count 0)
+          (reverse (cons i acc))
+          (tagcase (sc-int s i n) (scanned (v e) (sc-ints s e n (i64- count 1) (cons v acc))))))))
+
+"A node's record of the graph at offset `i` (C417): `(LEN #N# INPUT
+ VERIFIED CHANGED FINGERPRINT DURABILITY (#M# ...) VALUE)`, its key `key`."
+(define node-record (subr kfx (string i64 sexp) node)
+  (lambda (s i key)
+    (let ((n (string-length-i64 s)))
+      (tagcase (sc-int s (i64+ i 1) n)
+        (scanned (len b)
+          (tagcase (sc-digits s (i64+ b 2) n 0)
+            (scanned (k e)
+              (let* ((ns (sc-ints s (i64+ e 1) n 5 nil))
+                     (p (sc-ws s (db-nth ns 5) n))
+                     (deps (labels-scanned s (i64+ p 1) n nil))
+                     (v (sc-ws s (i64+ (sc-close s (i64+ p 1) n) 1) n))
+                     (val (if (i64= (sc-char s v n) 40)
+                              (let* ((x (i64= (sc-char s (i64+ v 3) n) 120))
+                                     (o (sc-int s (i64+ v (if x 4 3)) n)))
+                                (tagcase o
+                                  (scanned (off e2) (tagcase (sc-int s e2 n) (scanned (l e3) (v-at off l x))))))
+                              (v-none))))
+                (node key (i64= (db-nth ns 0) 1) (db-nth ns 1) (db-nth ns 2) (db-nth ns 3) deps (db-nth ns 4) val)))))))))
+
 ;;; ------------------------------------------------------------ the database
 
 (define db-make (subr qe () db)
@@ -311,6 +378,8 @@
              (ids (the (ref kmap @q) (new (km-none))))
              (next (the (ref i64 @q) (new 0)))
              (payload (the (ref string @q) (new "")))
+             (graph (the (ref string @q) (new "")))
+             (dirty (the (ref bool @q) (new #f)))
              (frames (the (ref (listof frame acyclic) @q) (new nil)))
              (last (the (ref (listof i64 acyclic) @q) (new (zeros durabilities))))
              (runs (the (ref i64 @q) (new 0)))
@@ -334,14 +403,34 @@
               (set (extract d next) (i64+ n 1))
               n))))))
 
+"A node by number; one read with the database but not yet looked at (its
+ record noted, C417: its revision verified -1, its record's offset in the
+ graph as its revision of change) read from its record the first time it is
+ asked for; one whose key has no record, none."
 (define db-node-at (subr qe (db i64) (listof node acyclic))
-  (lambda (d i) (im-get (get (extract d nodes)) i)))
+  (lambda (d i)
+    (let ((n (im-get (get (extract d nodes)) i)))
+      (if (or (null? n) (not (i64= (node-verified (car n)) -1)))
+          n
+          (if (i64< (node-changed (car n)) 0)
+              nil
+              (let ((x (node-record (get (extract d graph)) (node-changed (car n)) (node-key (car n)))))
+                (begin
+                  (set (extract d nodes) (im-put (get (extract d nodes)) i x))
+                  (list x))))))))
 
 (define db-node (subr qe (db sexp) (listof node acyclic))
   (lambda (d k) (db-node-at d (db-id d k))))
 
 (define db-put! (subr qe (db i64 node) unit)
-  (lambda (d i n) (set (extract d nodes) (im-put (get (extract d nodes)) i n))))
+  (lambda (d i n)
+    (begin
+      (set (extract d dirty) #t)
+      (set (extract d nodes) (im-put (get (extract d nodes)) i n)))))
+
+"Whether a node has changed since the database was made or read: if not,
+ its files are as they were, and need not be written (C417)."
+(define db-dirty? (subr qe (db) bool) (lambda (d) (get (extract d dirty))))
 
 (define-rec
   (ascii-escaped (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
@@ -603,6 +692,8 @@
           m
           (tagcase m
             (made-files (keys nodes payload seen labels at)
+              (if (null? (db-node-at d (car is)))
+                  (nodes-files d (cdr is) keep m)
               (let ((n (car (db-node-at d (car is)))))
                 (tagcase (key-written (node-key n) seen labels (list (string-append "#" (string-append (i64->string (car is)) "="))))
                   (keyed-out (key-parts seen2 labels2)
@@ -630,7 +721,7 @@
                                                   ")")))
                                           nodes)
                                     (if kept (cons x payload) payload)
-                                    seen2 labels2 (if kept (i64+ at len) at)))))))))))))
+                                    seen2 labels2 (if kept (i64+ at len) at))))))))))))))
 
 (define-rec
   (numbers-text (subr kfx ((listof i64 acyclic)) (listof string acyclic))
@@ -657,7 +748,6 @@
  of its characters, nor a datum: it is ASCII alone, so an offset is a
  character's. A key's text, by which it is interned, is made of its parts as
  written, which the writer wrote as `key-text` writes them."
-(define-datatype scanned (scanned i64 i64))
 (define-datatype atom (atom sexp string))
 (define-datatype amap (am-none) (am-node amap i64 atom i64 amap))
 (define-datatype part (part sexp string amap i64))
@@ -698,31 +788,6 @@
       (tagcase t
         (am-none () nil)
         (am-node (l k x h r) (cond ((i64= n k) (list x)) ((i64< n k) (am-get l n)) (else (am-get r n))))))))
-
-(define sc-char (subr kfx (string i64 i64) i64)
-  (lambda (s i n) (if (i64< i n) (char->i64 (string-ref-i64 s i)) -1)))
-
-(define-rec
-  (sc-ws (subr kfx (string i64 i64) i64)
-    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64= c 32) (i64= c 10)) (sc-ws s (i64+ i 1) n) i)))))
-
-(define-rec
-  (sc-close (subr kfx (string i64 i64) i64)
-    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64< c 0) (i64= c 41)) i (sc-close s (i64+ i 1) n))))))
-
-(define-rec
-  (sc-digits (subr kfx (string i64 i64 i64) scanned)
-    (lambda (s i n acc)
-      (let ((c (sc-char s i n)))
-        (if (and (i64>= c 48) (i64<= c 57)) (sc-digits s (i64+ i 1) n (i64+ (i64* acc 10) (i64- c 48))) (scanned acc i))))))
-
-"The number at `i`, after any spaces; and where it ends."
-(define sc-int (subr kfx (string i64 i64) scanned)
-  (lambda (s i n)
-    (let ((i (sc-ws s i n)))
-      (if (i64= (sc-char s i n) 45)
-          (tagcase (sc-digits s (i64+ i 1) n 0) (scanned (v e) (scanned (i64- 0 v) e)))
-          (sc-digits s i n 0)))))
 
 (define-rec
   (sc-str-end (subr kfx (string i64 i64 i64) scanned)
@@ -822,53 +887,25 @@
                                 (text (string-append "(" (string-append (string-list-append (texts-spaced ts nil)) ")"))))
                             (begin
                               (set (extract d ids) (km-put (get (extract d ids)) text k))
-                              (set (extract d nodes) (im-put (get (extract d nodes)) k (node key #f 0 0 0 nil 0 (v-none))))
+                              (set (extract d nodes) (im-put (get (extract d nodes)) k (node key #f -1 -1 0 nil 0 (v-none))))
                               (keys-scanned! d s after n atoms2 (if (i64> k top) k top))))))))))))))))
-
-(define-rec
-  (labels-scanned (subr kfx (string i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
-    (lambda (s i n acc)
-      "The `#N#`s of a node's reads, to their `)`, in order."
-      (let ((i (sc-ws s i n)))
-        (if (not (i64= (sc-char s i n) 35))
-            (reverse acc)
-            (tagcase (sc-digits s (i64+ i 1) n 0)
-              (scanned (k e) (labels-scanned s (i64+ e 1) n (cons k acc)))))))))
-
-(define-rec
-  (sc-ints (subr kfx (string i64 i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
-    (lambda (s i n count acc)
-      (if (i64<= count 0)
-          (reverse (cons i acc))
-          (tagcase (sc-int s i n) (scanned (v e) (sc-ints s e n (i64- count 1) (cons v acc))))))))
 
 (define-rec
   (nodes-scanned! (subr qe (db string i64 i64) unit)
     (lambda (d s i n)
-      "Each record `(LEN #N# INPUT VERIFIED CHANGED FINGERPRINT DURABILITY
-       (#M# ...) VALUE)` of the nodes, to their `)`."
+      "Each record of the nodes, to their `)`: its offset noted in its key's
+       node, the record stepped over by its length, not read (C417)."
       (let ((i (sc-ws s i n)))
         (if (not (i64= (sc-char s i n) 40))
             #u
             (tagcase (sc-int s (i64+ i 1) n)
               (scanned (len b)
-                (let ((after (i64+ (i64+ b 1) len)))
-                  (tagcase (sc-digits s (i64+ b 2) n 0)
-                    (scanned (k e)
-                      (let* ((ns (sc-ints s (i64+ e 1) n 5 nil))
-                             (p (sc-ws s (db-nth ns 5) n))
-                             (deps (labels-scanned s (i64+ p 1) n nil))
-                             (v (sc-ws s (i64+ (sc-close s (i64+ p 1) n) 1) n))
-                             (val (if (i64= (sc-char s v n) 40)
-                                      (let* ((x (i64= (sc-char s (i64+ v 3) n) 120))
-                                             (o (sc-int s (i64+ v (if x 4 3)) n)))
-                                        (tagcase o
-                                          (scanned (off e2) (tagcase (sc-int s e2 n) (scanned (l e3) (v-at off l x))))))
-                                      (v-none)))
-                             (key (node-key (car (db-node-at d k)))))
-                        (begin
-                          (db-put! d k (node key (i64= (db-nth ns 0) 1) (db-nth ns 1) (db-nth ns 2) (db-nth ns 3) deps (db-nth ns 4) val))
-                          (nodes-scanned! d s after n)))))))))))))
+                (tagcase (sc-digits s (i64+ b 2) n 0)
+                  (scanned (k e)
+                    (let ((x (car (im-get (get (extract d nodes)) k))))
+                      (begin
+                        (set (extract d nodes) (im-put (get (extract d nodes)) k (node (node-key x) #f -1 i 0 nil 0 (v-none))))
+                        (nodes-scanned! d s (i64+ (i64+ b 1) len) n))))))))))))
 
 (define db-of-files (subr qe (string string string) db)
   (lambda (graph payload whose)
@@ -899,6 +936,7 @@
                                 (set (extract d rev) (db-nth ns 0))
                                 (set (extract d last) (reverse (cdr (reverse lasts))))
                                 (set (extract d payload) payload)
+                                (set (extract d graph) graph)
                                 (set (extract d next) (i64+ t 1))
                                 ;; `(nodes`, then its records.
                                 (nodes-scanned! d graph (i64+ (sc-ws graph e3 n) 6) n)

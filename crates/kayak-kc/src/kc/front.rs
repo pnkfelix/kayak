@@ -251,29 +251,14 @@ pub mod kc_front {
     // form no longer there, `()`. An input set to what it was is no change
     // (`db-set!`), so a run with the text as it was changes nothing.
     pub fn kc_load_x(d: Db, run: Runner, path: Str, text: Str) -> () {
-        let kd = lambda1s(move |x: &'static Sexp| {
-            let tagcase_ = car(items(x));
-            match *tagcase_ {
-                Sexp::Sym(n, f, p) => {
-                    n
-                }
-                _ => {
-                    let other = tagcase_;
-                    str_lit("")
-                }
-            }
-        });
-        let keyed = map(lambda1s(move |t: Str| {
-            car(read_all(t, str_lit("forms"), 1i64))
-        }), reverse(forms_keyed(read_all(text, path, 1i64), 0i64, nil::<Str>())));
-        let keys = map(kd, keyed);
-        let keys_text = string_append(str_lit("("), string_append(words_of(keys), str_lit(")")));
-        let old = db_node(d, key1(str_lit("keys"), path));
-        let old_keys = if null_p(old) {
-            nil::<Str>()
+        if {
+            let t = db_node(d, key1(str_lit("text"), path));
+            (not(null_p(t)) && string_eq_p(node_value(d, car(t)), text))
+        } {
+            ()
         } else {
-            map(lambda1s(move |x: &'static Sexp| {
-                let tagcase_ = x;
+            let kd = lambda1s(move |x: &'static Sexp| {
+                let tagcase_ = car(items(x));
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
                         n
@@ -283,18 +268,40 @@ pub mod kc_front {
                         str_lit("")
                     }
                 }
-            }), items(car(read_all(node_value(d, car(old)), str_lit("keys"), 1i64))))
-        };
-        db_set_x(d, key1(str_lit("text"), path), text, 0i64);
-        kc_set_forms_x(d, path, keyed, 0i64);
-        if (not(null_p(old)) && not(string_eq_p(node_value(d, car(old)), keys_text))) {
-            kc_unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
-                not(string_member_p(k, keys))
-            }), old_keys))
-        } else {
-            ()
-        };
-        db_set_x(d, key1(str_lit("keys"), path), keys_text, 0i64)
+            });
+            let keyed = map(lambda1s(move |t: Str| {
+                car(read_all(t, str_lit("forms"), 1i64))
+            }), reverse(forms_keyed(read_all(text, path, 1i64), 0i64, nil::<Str>())));
+            let keys = map(kd, keyed);
+            let keys_text = string_append(str_lit("("), string_append(words_of(keys), str_lit(")")));
+            let old = db_node(d, key1(str_lit("keys"), path));
+            let old_keys = if null_p(old) {
+                nil::<Str>()
+            } else {
+                map(lambda1s(move |x: &'static Sexp| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }), items(car(read_all(node_value(d, car(old)), str_lit("keys"), 1i64))))
+            };
+            db_set_x(d, key1(str_lit("text"), path), text, 0i64);
+            kc_set_forms_x(d, path, keyed, 0i64);
+            if (not(null_p(old)) && not(string_eq_p(node_value(d, car(old)), keys_text))) {
+                kc_unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
+                    not(string_member_p(k, keys))
+                }), old_keys))
+            } else {
+                ()
+            };
+            db_set_x(d, key1(str_lit("keys"), path), keys_text, 0i64)
+        }
     }
 
     pub fn kc_keys(d: Db, run: Runner, path: Str) -> List<Str> {
@@ -315,12 +322,12 @@ pub mod kc_front {
     // `form PATH KEY` of a key `kc-load!` set none of: a name the program does
     // not define, `()`; and `position PATH KEY`, -1 (C414).
     #[inline]
-    pub fn q_form(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+    pub fn q_form(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
         str_lit("()")
     }
 
     #[inline]
-    pub fn q_position(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+    pub fn q_position(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
         str_lit("-1")
     }
 
@@ -354,7 +361,7 @@ pub mod kc_front {
     }
 
     // `interface PATH KEY`.
-    pub fn q_interface(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+    pub fn q_interface(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
         let f = kc_form(d, run, a_path, a_key);
         if string_eq_p(form_name(f), str_lit("")) {
             str_lit("(expr)")
@@ -429,7 +436,7 @@ pub mod kc_front {
     // written with none (C407); or `(refused MESSAGE)`, the checker's refusal
     // (C415), a value as any other, so that a run that meets one ends as any
     // other does, its work kept, and a `kc serve` goes on.
-    pub fn q_checked(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
+    pub fn q_checked(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
         let text = db_get(d, run, key1(str_lit("text"), path));
         let forms = read_all(text, path, 1i64);
         let texts = incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms));
@@ -481,7 +488,7 @@ pub mod kc_front {
 
     // `type PATH NAME`: a definition's type, as written, or as the checker
     // found it (C407).
-    pub fn q_type(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+    pub fn q_type(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
         let path = a_path;
         let name = a_key;
         let f = kc_form(d, run, path, name);
@@ -506,7 +513,7 @@ pub mod kc_front {
 
     // `kfx PATH`: the file checked and passing KFX's restrictions, whatever its
     // name says, as the Rust back end needs it; `ok`.
-    pub fn q_kfx(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
+    pub fn q_kfx(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
         if string_eq_p(kc_language(path), str_lit("kfx")) {
             db_get(d, run, key1(str_lit("checked"), path));
             str_lit("ok")

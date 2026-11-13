@@ -11841,3 +11841,32 @@ it possible, as the user suggested; a whole build verifies every node, so
 it helps a partial one); `kc build`, each form's code an object file of its
 own, reused while its fingerprint is (the user: "detect that the generated
 object code is actually unchanged in order to avoid downstream work").
+
+## C418. The graph read as it is needed; a database written only when changed (2026-11-13)
+
+The user: "Go for it" (C417's next: a graph record read only when its node
+is asked for; `kc build`).
+
+Measured first, an unchanged run at 5000 procedures (0.79 s): over half of
+it the kernel's (pages for strings made and dropped), the rest strings
+built, text checked to be UTF-8, the program's text read again. What an
+unchanged run made was the files as they were, written whole again, and the
+source's forms read again to set inputs to what they were.
+
+- **A database written only when it changed** (`db-dirty?`, set by any
+  write of a node since it was made or read): a run that changed no node
+  leaves its files as they were.
+- **The source read again only when its text changed** (`kc-load!`): the
+  text compared with the `text` input first; as it was, its forms'
+  inputs are too.
+- **A record read as it is needed** (`db-node-at`): at a load, each node's
+  record is noted, its offset kept in its key's node (verified -1, its
+  offset as its revision of change), and stepped over by its length (C417's
+  length-first records, the user's suggestion); read the first time the
+  node is asked for (`node-record`). An unchanged run asks for the output's
+  node alone, current at once, its revision the database's.
+
+**Measured** (5000 procedures): an unchanged run 0.17 s on the command line
+(0.79 s at C417), 15 ms in serve (0.26 s); edits as they were (1.77 s a body
+on the command line, 1.14 s in serve): what is left of theirs is the
+memoized check's walk over every form, and the files written.

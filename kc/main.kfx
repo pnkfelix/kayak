@@ -162,9 +162,9 @@
               (line s
                 (let* ((ws (words-in (string-chars s) nil nil))
                        (n (size ws)))
-                  (cond ((and (i64= n 1) (string=? (car ws) "quit")) (begin (if (string=? dbp "") #u (save-db d dbp)) 0))
+                  (cond ((and (i64= n 1) (string=? (car ws) "quit")) (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) 0))
                         ((and (i64= n 1) (string=? (car ws) "save"))
-                         (begin (if (string=? dbp "") #u (save-db d dbp)) (said "ok 0") (serve d dbp stats)))
+                         (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) (said "ok 0") (serve d dbp stats)))
                         ((or (and (i64= n 2) (string=? (car ws) "check"))
                              (and (i64= n 3) (or (string=? (car ws) "asm") (string=? (car ws) "rust"))))
                          (tagcase (request d (car ws) (car (cdr ws)) (if (i64= n 3) (car (cdr (cdr ws))) ""))
@@ -175,8 +175,8 @@
                                                                (if stats (string-append "\t" names) ""))))
                                (serve d dbp stats)))))
                         (else (begin (said (string-append "error not a request: " s)) (serve d dbp stats))))))
-              (eof u (begin (if (string=? dbp "") #u (save-db d dbp)) 0))
-              (failed e (begin (if (string=? dbp "") #u (save-db d dbp)) 1)))))))
+              (eof u (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) 0))
+              (failed e (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) 1)))))))
 
     (define kc-main (subr driving () int)
       (lambda ()
@@ -201,7 +201,7 @@
                                (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string k) (string-append " query bodies ran:" (string-append names "\n")))))
                                            (done u #u) (failed e #u))
                                    #u)
-                               (if (string=? dbp "") #u (save-db d dbp))
+                               (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                                (if no (begin (tagcase (write-err (string-append msg "\n")) (done u #u) (failed e #u)) 1) 0)))))))))))))))
 
 (import kc-driver (effect driving))

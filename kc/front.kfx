@@ -161,6 +161,11 @@
      (`db-set!`), so a run with the text as it was changes nothing."
     (define kc-load! (subr qe (db runner string string) unit)
       (lambda (d run path text)
+        (if (let ((t (db-node d (key1 "text" path))))
+              (and (not (null? t)) (string=? (node-value d (car t)) text)))
+            ;; The text as it was (C417): its forms' inputs are too, not read
+            ;; again.
+            #u
         (let* ((kd (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
                (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (read-all text path 1) 0 nil))))
                (keys (map kd keyed))
@@ -175,7 +180,7 @@
             (if (and (not (null? old)) (not (string=? (node-value d (car old)) keys-text)))
                 (kc-unset-forms! d path (filter (lambda ((k string)) (not (string-member? k keys))) old-keys))
                 #u)
-            (db-set! d (key1 "keys" path) keys-text 0)))))
+            (db-set! d (key1 "keys" path) keys-text 0))))))
 
     (define kc-keys (subr qe (db runner string) (listof string acyclic))
       (lambda (d run path)
