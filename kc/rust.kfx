@@ -36,6 +36,9 @@
     "A term as a Rust expression of kayak-rt's."
     (let ((h (term-head t)) (n (term-number t)))
       (cond ((string=? h "var") (rust-variable t))
+            ((string=? h "if")
+             (let ((ps (if-parts t)))
+               (string-list-append (list "if " (rust-of (car ps)) " { " (rust-of (second ps)) " } else { " (rust-of (third ps)) " }"))))
             ((string=? h "let")
              ;; Each binder's name its own (`l0`'s numbers), so Rust's `let`s
              ;; in turn are the parallel `let`'s bindings (C404).

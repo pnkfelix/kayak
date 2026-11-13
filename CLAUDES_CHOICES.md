@@ -11240,3 +11240,22 @@ Ghuloum's fifth step: local variables.
 - Tests: `tests/kc/step5/`, 19 programs (three KFX); 91 in all, every one
   Fixpt's answer on each back end.
 
+## C405. kc, step 6: `if` and the derived conditionals (2026-11-12)
+
+Ghuloum's sixth step, as FX-26 has it: a test is a `bool` (no Scheme
+truthiness; `(if 1 2 3)` is refused), `if` has its three parts, `and` and
+`or` take any number of bools, `cond` must end with `else`.
+- **The core language**: `(if T C E)` alone; `l0` makes `and`, `or`,
+  `cond` and `case` `if`s: `(and a b ...)` `(if a (and b ...) #f)`, `(or a
+  b ...)` `(if a #t (or b ...))`, a `cond` clause an `if` of its body; a
+  `case` its key bound once (a binder of its own) and each clause's data
+  compared with it, each by its kind's equality (`=` of an integer,
+  `char=?` of a character, `eq?` else: kayak-rt's `Int` has no `==`, as
+  `eq?` of big integers would be identity).
+- **Native**: the test's word compared with `#f`'s, a jump to the else.
+- **Rust**: `if T { C } else { E }`.
+- Tests: `tests/kc/step6/`, 26 programs (four KFX), among them `and` and
+  `or` not making what they need not, a `case`'s key made once, and an
+  untaken branch's failure not happening; 117 in all, every one Fixpt's
+  answer on each back end.
+

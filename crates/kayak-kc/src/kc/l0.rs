@@ -16,7 +16,9 @@ use super::*;
 // other in the program, its uses `(var K NAME)` (so that what follows
 // never meets two binders of one name); `let*` as `let`s nested; a body of
 // more than one expression, and `begin`, `(seq E ...)`. A name a binding
-// form binds is a variable, shadowing a primitive's or `nil`'s.
+// form binds is a variable, shadowing a primitive's or `nil`'s. Step 6:
+// `(if T C E)` (C405); `and`, `or`, `cond` (which must end with `else`)
+// and `case` made `if`s.
 #[inline]
 pub fn fixnum_max() -> i64 {
     1152921504606846975i64
@@ -185,6 +187,48 @@ pub fn l0_of(mut path: Str, mut env: List<&'static L0Bound>, mut next: i64, mut 
                     continue;
                 } else if string_eq_p(h, str_lit("begin")) {
                     return l0_seq(path, env, next, cdr(xs), nil::<Str>());
+                } else if (string_eq_p(h, str_lit("if")) && i64_eq(size(xs), 4i64)) {
+                    let tagcase_ = l0_of(path, env, next, second(xs));
+                    match *tagcase_ {
+                        L0Made::L0Made(a, n1) => {
+                            let tagcase_ = l0_of(path, env, n1, third(xs));
+                            match *tagcase_ {
+                                L0Made::L0Made(b, n2) => {
+                                    let tagcase_ = l0_of(path, env, n2, fourth(xs));
+                                    match *tagcase_ {
+                                        L0Made::L0Made(c, n3) => {
+                                            return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(if "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(c, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n3);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if string_eq_p(h, str_lit("and")) {
+                    e = if null_p(cdr(xs)) {
+                        sym(str_lit("#t"), f, p)
+                    } else if null_p(cdr(cdr(xs))) {
+                        second(xs)
+                    } else {
+                        lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p), kayak_rt::heap_cons(sym(str_lit("#f"), f, p), kayak_rt::nil())))), f, l, p)
+                    };
+                    continue;
+                } else if string_eq_p(h, str_lit("or")) {
+                    e = if null_p(cdr(xs)) {
+                        sym(str_lit("#f"), f, p)
+                    } else if null_p(cdr(cdr(xs))) {
+                        second(xs)
+                    } else {
+                        lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(sym(str_lit("#t"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p), kayak_rt::nil())))), f, l, p)
+                    };
+                    continue;
+                } else if string_eq_p(h, str_lit("cond")) {
+                    e = l0_cond_as_if(path, cdr(xs), f, l, p);
+                    continue;
+                } else if (string_eq_p(h, str_lit("case")) && i64_gt_eq(size(xs), 3i64)) {
+                    let key = string_append(str_lit("%case"), i64_to_string(next));
+                    e = lst(kayak_rt::heap_cons(sym(str_lit("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(cdr(xs)), f, l, p), kayak_rt::nil()))), f, l, p);
+                    continue;
                 } else if (i64_eq(size(xs), 2i64) && string_member_p(h, unary_primitives())) {
                     let tagcase_ = l0_of(path, env, next, second(xs));
                     match *tagcase_ {
@@ -212,6 +256,50 @@ pub fn l0_of(mut path: Str, mut env: List<&'static L0Bound>, mut next: i64, mut 
                 let other = tagcase_;
                 return l0_made(not_yet(path, str_lit("this expression")), next);
             }
+        }
+    }
+}
+
+/// `cond`'s clauses as `if`s; it must end with `else`, as Fixpt has it.
+pub fn l0_cond_as_if(path: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> &'static Sexp {
+    if null_p(clauses) {
+        sym(not_yet(path, str_lit("a cond with no else")), f, p)
+    } else {
+        let c = items(car(clauses));
+        if sym_is_p(car(c), str_lit("else")) {
+            lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p)
+        } else {
+            lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(car(c), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_cond_as_if(path, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
+        }
+    }
+}
+
+/// `case`'s clauses as `if`s on the key's binder `key`.
+pub fn l0_case_as_if(path: Str, key: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> &'static Sexp {
+    if null_p(clauses) {
+        sym(not_yet(path, str_lit("a case with no else")), f, p)
+    } else {
+        let c = items(car(clauses));
+        if sym_is_p(car(c), str_lit("else")) {
+            lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p)
+        } else {
+            lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("or"), f, p), map(lambda1s(move |d: &'static Sexp| {
+                lst(kayak_rt::heap_cons(sym({
+                    let tagcase_ = d;
+                    match *tagcase_ {
+                        Sexp::Num(k, f2, p2) => {
+                            str_lit("=")
+                        }
+                        Sexp::Chr(ch, f2, p2) => {
+                            str_lit("char=?")
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("eq?")
+                        }
+                    }
+                }, f, p), kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons(d, kayak_rt::nil()))), f, l, p)
+            }), items(car(c)))), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
         }
     }
 }
@@ -378,6 +466,20 @@ pub fn let_body(t: &'static Sexp) -> &'static Sexp {
         _ => {
             let other = tagcase_;
             t
+        }
+    }
+}
+
+#[inline]
+pub fn if_parts(t: &'static Sexp) -> Sexps {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            cdr(xs)
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Sexp>()
         }
     }
 }

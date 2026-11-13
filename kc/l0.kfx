@@ -11,7 +11,9 @@
  other in the program, its uses `(var K NAME)` (so that what follows
  never meets two binders of one name); `let*` as `let`s nested; a body of
  more than one expression, and `begin`, `(seq E ...)`. A name a binding
- form binds is a variable, shadowing a primitive's or `nil`'s."
+ form binds is a variable, shadowing a primitive's or `nil`'s. Step 6:
+ `(if T C E)` (C405); `and`, `or`, `cond` (which must end with `else`)
+ and `case` made `if`s."
 
 (define fixnum-max i64 1152921504606846975)
 
@@ -74,6 +76,33 @@
                                            (lst (cons (sym "let*" f p) (cons (lst (cdr bs) f l p) (cdr (cdr xs)))) f l p))
                                      f l p)))))
                   ((string=? h "begin") (l0-seq path env next (cdr xs) nil))
+                  ((and (string=? h "if") (i64= (size xs) 4))
+                   (tagcase (l0-of path env next (second xs))
+                     (l0-made (a n1)
+                       (tagcase (l0-of path env n1 (third xs))
+                         (l0-made (b n2)
+                           (tagcase (l0-of path env n2 (fourth xs))
+                             (l0-made (c n3) (l0-made (string-list-append (list "(if " a " " b " " c ")")) n3))))))))
+                  ;; The derived conditionals, as `if`s (C405).
+                  ((string=? h "and")
+                   (l0-of path env next
+                          (cond ((null? (cdr xs)) (sym "#t" f p))
+                                ((null? (cdr (cdr xs))) (second xs))
+                                (else (lst (list (sym "if" f p) (second xs) (lst (cons (car xs) (cdr (cdr xs))) f l p) (sym "#f" f p)) f l p)))))
+                  ((string=? h "or")
+                   (l0-of path env next
+                          (cond ((null? (cdr xs)) (sym "#f" f p))
+                                ((null? (cdr (cdr xs))) (second xs))
+                                (else (lst (list (sym "if" f p) (second xs) (sym "#t" f p) (lst (cons (car xs) (cdr (cdr xs))) f l p)) f l p)))))
+                  ((string=? h "cond") (l0-of path env next (l0-cond-as-if path (cdr xs) f l p)))
+                  ((and (string=? h "case") (i64>= (size xs) 3))
+                   ;; The key once, in a binder of its own, then each clause's
+                   ;; data compared with it, each by its kind's equality.
+                   (let ((key (string-append "%case" (i64->string next))))
+                     (l0-of path env next
+                            (lst (list (sym "let" f p) (lst (list (lst (list (sym key f p) (second xs)) f l p)) f l p)
+                                       (l0-case-as-if path key (cdr (cdr xs)) f l p))
+                                 f l p))))
                   ((and (i64= (size xs) 2) (string-member? h unary-primitives))
                    (tagcase (l0-of path env next (second xs))
                      (l0-made (a n1) (l0-made (string-list-append (list "(prim " h " " a ")")) n1))))
@@ -84,6 +113,37 @@
                          (l0-made (b n2) (l0-made (string-list-append (list "(prim " h " " a " " b ")")) n2))))))
                   (else (l0-made (not-yet path (string-append "a form, " h)) next)))))
         (else other (l0-made (not-yet path "this expression") next)))))
+
+  (l0-cond-as-if (subr kfx (string sexps string i64 i64) sexp)
+    (lambda (path clauses f l p)
+      "`cond`'s clauses as `if`s; it must end with `else`, as Fixpt has it."
+      (if (null? clauses)
+          (sym (not-yet path "a cond with no else") f p)
+          (let ((c (items (car clauses))))
+            (if (sym-is? (car c) "else")
+                (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                (lst (list (sym "if" f p) (car c) (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                           (l0-cond-as-if path (cdr clauses) f l p))
+                     f l p))))))
+
+  (l0-case-as-if (subr kfx (string string sexps string i64 i64) sexp)
+    (lambda (path key clauses f l p)
+      "`case`'s clauses as `if`s on the key's binder `key`."
+      (if (null? clauses)
+          (sym (not-yet path "a case with no else") f p)
+          (let ((c (items (car clauses))))
+            (if (sym-is? (car c) "else")
+                (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                (lst (list (sym "if" f p)
+                           (lst (cons (sym "or" f p)
+                                      (map (lambda ((d sexp))
+                                             ;; Each datum by its own kind's equality.
+                                             (lst (list (sym (tagcase d (num (k f2 p2) "=") (chr (ch f2 p2) "char=?") (else other "eq?")) f p) (sym key f p) d) f l p))
+                                           (items (car c))))
+                                f l p)
+                           (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                           (l0-case-as-if path key (cdr clauses) f l p))
+                     f l p))))))
 
   (l0-let (subr kfx (string (listof l0-bound acyclic) i64 sexps sexps (listof string acyclic) (listof l0-bound acyclic)) l0-made)
     (lambda (path env next bindings body done inner)
@@ -135,6 +195,8 @@
   (lambda (t) (tagcase t (lst (xs f l p) (items (second xs))) (else other nil))))
 (define let-body (subr kfx (sexp) sexp)
   (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t))))
+(define if-parts (subr kfx (sexp) sexps)
+  (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
 (define seq-terms (subr kfx (sexp) sexps)
   (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
 

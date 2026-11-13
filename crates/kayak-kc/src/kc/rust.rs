@@ -85,6 +85,9 @@ pub fn rust_of(t: &'static Sexp) -> Str {
     let (h, n) = (term_head(t), term_number(t));
     if string_eq_p(h, str_lit("var")) {
         rust_variable(t)
+    } else if string_eq_p(h, str_lit("if")) {
+        let ps = if_parts(t);
+        string_list_append(kayak_rt::heap_cons(str_lit("if "), kayak_rt::heap_cons(rust_of(car(ps)), kayak_rt::heap_cons(str_lit(" { "), kayak_rt::heap_cons(rust_of(second(ps)), kayak_rt::heap_cons(str_lit(" } else { "), kayak_rt::heap_cons(rust_of(third(ps)), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil()))))))))
     } else if string_eq_p(h, str_lit("let")) {
         string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |b: &'static Sexp| {
             string_list_append(kayak_rt::heap_cons(str_lit("let "), kayak_rt::heap_cons(rust_variable(b), kayak_rt::heap_cons(str_lit(" = "), kayak_rt::heap_cons(rust_of(third(items(b))), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))))

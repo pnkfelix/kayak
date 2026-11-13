@@ -253,6 +253,20 @@ pub fn x64_emit_expr(c: &'static X64Code, t: &'static Sexp, si: i64, env: List<&
         }
     } else if string_eq_p(h, str_lit("var")) {
         x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(x64_slot_of(var_number(t), env)), str_lit(", %rax"))))
+    } else if string_eq_p(h, str_lit("if")) {
+        let ps = if_parts(t);
+        let k = x64_fresh_label(c);
+        let no = x64_label_text(str_lit("else"), k);
+        let past = x64_label_text(str_lit("fi"), k);
+        let c = x64_labelled(c);
+        let c = x64_emit_expr(c, car(ps), si, env);
+        let c = x64_emit(c, string_append(str_lit("cmpq $"), string_append(i64_to_string(x64_word_false()), str_lit(", %rax"))));
+        let c = x64_emit(c, string_append(str_lit("je "), no));
+        let c = x64_emit_expr(c, second(ps), si, env);
+        let c = x64_emit(c, string_append(str_lit("jmp "), past));
+        let c = x64_emit_label(c, no);
+        let c = x64_emit_expr(c, third(ps), si, env);
+        x64_emit_label(c, past)
     } else if string_eq_p(h, str_lit("let")) {
         x64_emit_let(c, let_bindings(t), let_body(t), si, env, env)
     } else if string_eq_p(h, str_lit("seq")) {
