@@ -1233,6 +1233,25 @@ pub fn db_execute(d: Db, run: Runner, i: i64, k: &'static Sexp, old: List<&'stat
     x
 }
 
+// `k` made current, its value's fingerprint, and that the query being run
+// read it (C418): a reader of a fingerprint is run again when it changes,
+// as a reader of a value is when that does, the two changing together (a
+// node's revision of change moves when its fingerprint does, early cutoff);
+// the value neither read nor made. For a query of what has been made by
+// name of its content (`kc build`'s objects).
+pub fn db_get_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
+    let i = db_id(d, k);
+    if id_in_p(i, get(d.7)) {
+        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
+        0i64
+    } else {
+        db_made_current(d, run, i, k);
+        let n = car(db_node_at(d, i));
+        note_read_x(d, i, node_durability(n));
+        node_fp(n)
+    }
+}
+
 // `k` made current, and its value's fingerprint, its value neither read nor
 // made (C417): so that a client holding a value already (a file it wrote)
 // may know it is as it was.

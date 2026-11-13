@@ -5,8 +5,8 @@ pinned Fixpt's `eval`, on the fx-cells-rsinterp machine).
 
 usage: python3 -I scripts/kc-steps.py
 
-  native  every program: `kc --asm`, assembled and linked with the system's
-          cc against crates/kayak-kcrt, run;
+  native  every program: `kc build` (C419), its objects assembled and
+          linked by kc with the system's cc against crates/kayak-kcrt, run;
   rust    the KFX programs (`.kfx`): `kc --rust`, each a module of one
           crate (target/kc-rust), built once and run.
 
@@ -124,16 +124,12 @@ def main():
                 got = "! " + got[len("! evaluation failed: "):]
             if got != want:
                 wrong.append("%s: states %s, Fixpt gives %s" % (name, want, got))
-        s = os.path.join(WORK, name.replace("/", "--") + ".s")
-        exe = s[:-2]
-        r = run([KC, "--db", db, "--stats", "--asm", p, s])
+        exe = os.path.join(WORK, name.replace("/", "--"))
+        # `kc build` (C419): its objects assembled and linked by kc.
+        r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
         ran += int(r.stderr.split("kc: ")[-1].split()[0]) if "query bodies ran" in r.stderr else 0
         if r.returncode != 0:
-            wrong.append("%s: kc --asm: %s" % (name, r.stderr.strip()))
-            continue
-        r = run(["cc", "-o", exe, s, RT] + LIBS)
-        if r.returncode != 0:
-            wrong.append("%s: cc: %s" % (name, r.stderr.strip()))
+            wrong.append("%s: kc build: %s" % (name, r.stderr.strip()))
             continue
         r = run([exe])
         # Each top-level expression's value on a line; the last is stated.

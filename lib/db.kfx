@@ -607,6 +607,22 @@
                                    fp (reverse ds) du (v-text x)))))
             x))))))
 
+"`k` made current, its value's fingerprint, and that the query being run
+ read it (C418): a reader of a fingerprint is run again when it changes,
+ as a reader of a value is when that does, the two changing together (a
+ node's revision of change moves when its fingerprint does, early cutoff);
+ the value neither read nor made. For a query of what has been made by
+ name of its content (`kc build`'s objects)."
+(define db-get-fingerprint (subr qe (db runner sexp) i64)
+  (lambda (d run k)
+    (let ((i (db-id d k)))
+      (if (id-in? i (get (extract d frames)))
+          (begin (error (string-append "a cycle of queries, through " (key-text k))) 0)
+          (begin
+            (db-made-current d run i k)
+            (let ((n (car (db-node-at d i))))
+              (begin (note-read! d i (node-durability n)) (node-fp n))))))))
+
 "`k` made current, and its value's fingerprint, its value neither read nor
  made (C417): so that a client holding a value already (a file it wrote)
  may know it is as it was."

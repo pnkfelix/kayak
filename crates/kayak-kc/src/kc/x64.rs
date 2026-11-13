@@ -1000,6 +1000,13 @@ pub mod kc_x64 {
         }
     }
 
+    // A global's cell: in `.bss`, `.globl`, so that a procedure in an object of
+    // its own (`kc build`, C419) reads it.
+    #[inline]
+    pub fn x64_cell(n: Str) -> Str {
+        string_list_append(kayak_rt::heap_cons(str_lit("    .globl "), kayak_rt::heap_cons(x64_global_symbol(n), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(x64_global_symbol(n), kayak_rt::heap_cons(str_lit(":\n    .quad 0\n"), kayak_rt::nil()))))))
+    }
+
     // `asm PATH`: the program: each global's cell; each procedure; then
     // `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
     // value definitions and expressions in order.
@@ -1014,7 +1021,7 @@ pub mod kc_x64 {
         }), its), 0i64));
         string_list_append(append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n    .bss\n    .p2align 3\n"), kayak_rt::nil()))), append(map2(lambda2s(move |k: Str, n: Str| {
             if string_eq_p(k, str_lit("global")) {
-                string_append(x64_global_symbol(n), str_lit(":\n    .quad 0\n"))
+                x64_cell(n)
             } else {
                 str_lit("")
             }
@@ -1037,6 +1044,102 @@ pub mod kc_x64 {
                 x64_part(x, 3i64)
             }
         }), kinds, its), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))))))
+    }
+
+    // `asm-entry PATH` (C419): the object of what is no procedure's: each
+    // global's cell; `kc_entry`, which keeps the heap in `%r15` and `%r14` and
+    // makes the value definitions and expressions in order; their failures'
+    // calls. With each procedure's object (`x64-object-text`), what `asm`
+    // writes as one file, `kc build` assembles apart.
+    pub fn q_asm_entry(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
+        let keys = kc_keys()(d, run, path);
+        let ifs = kc_items_of()(d, run, str_lit("interface"), path, keys);
+        let kinds = map(item_kind(), ifs);
+        let names = map(item_name(), ifs);
+        let rest = x64_not_procs(keys, kinds, nil::<Str>());
+        let its = kc_items_of()(d, run, str_lit("asm-item"), path, rest);
+        let frame = x64_frame(x64_max_slots(filter(lambda1s(move |x: &'static Sexp| {
+            i64_gt(x64_slots_of(x), -1i64)
+        }), its), 0i64));
+        string_list_append(append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n    .bss\n    .p2align 3\n"), kayak_rt::nil()))), append(map2(lambda2s(move |k: Str, n: Str| {
+            if string_eq_p(k, str_lit("value")) {
+                x64_cell(n)
+            } else {
+                str_lit("")
+            }
+        }), kinds, names), append(kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"), kayak_rt::heap_cons(str_lit("    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil())))), append(map(lambda1s(move |x: &'static Sexp| {
+            x64_part(x, 2i64)
+        }), its), append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil()))), append(map(lambda1s(move |x: &'static Sexp| {
+            x64_part(x, 3i64)
+        }), its), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))))
+    }
+
+    // A procedure's object's assembly (C419), of its `asm-item`.
+    #[inline]
+    pub fn x64_object_text(x: &'static Sexp) -> Str {
+        string_list_append(kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(x64_part(x, 2i64), kayak_rt::heap_cons(x64_part(x, 3i64), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil())))))
+    }
+
+    pub fn x64_not_procs(mut ks: List<Str>, mut kinds: List<Str>, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if (null_p(ks) || null_p(kinds)) {
+                return reverse(acc);
+            } else if string_eq_p(car(kinds), str_lit("proc")) {
+                (ks, kinds) = (cdr(ks), cdr(kinds));
+                continue;
+            } else {
+                (ks, kinds, acc) = (cdr(ks), cdr(kinds), kayak_rt::heap_cons(car(ks), acc));
+                continue;
+            }
+        }
+    }
+
+    // How many procedures an object holds, at most (C419): one each would
+    // start the assembler once for each and give the linker as many (25 s
+    // cold at 5000 procedures); a run of them, in order, reassembled whole
+    // when one of them changes.
+    #[inline]
+    pub fn x64_chunk() -> i64 {
+        64i64
+    }
+
+    /// The objects: each a run of up to `x64-chunk` procedures, in order,
+    /// `((KEY ...) FP)`, FP its members' code's fingerprints folded.
+    pub fn x64_object_lines(mut d: Db, mut run: Runner, mut path: Str, mut ks: List<Str>, mut kinds: List<Str>, mut members: List<Str>, mut n: i64, mut fp: i64, mut acc: List<Str>) -> List<Str> {
+        loop {
+            let done = lambda1s(move |acc: List<Str>| {
+                if null_p(members) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(lambda1s(move |k: Str| {
+                        kc_datum()(str(k, str_lit(""), 0i64))
+                    }), reverse(members))), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(i64_to_string(fp), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc)
+                }
+            });
+            if (null_p(ks) || null_p(kinds)) {
+                return reverse(done(acc));
+            } else if not(string_eq_p(car(kinds), str_lit("proc"))) {
+                (ks, kinds) = (cdr(ks), cdr(kinds));
+                continue;
+            } else if i64_gt_eq(n, x64_chunk()) {
+                (members, n, fp, acc) = (nil::<Str>(), 0i64, queries::fnv_offset(), done(acc));
+                continue;
+            } else {
+                (ks, kinds, members, n, fp) = (cdr(ks), cdr(kinds), kayak_rt::heap_cons(car(ks), members), i64_plus(n, 1i64), (&queries::fnv_i64)(db_get_fingerprint(d, run, key2(str_lit("asm-item"), path, car(ks))), fp));
+                continue;
+            }
+        }
+    }
+
+    // `objects PATH` (C419): the program's objects, each by the fingerprint of
+    // what it is assembled from, read without that being read: `((KEY ...)
+    // FP)` of each run of procedures (their `asm-item`s'), then `(() FP)` of
+    // what is no procedure's (`asm-entry`'s). An edit that leaves every
+    // procedure's code as it was leaves this as it was.
+    pub fn q_objects(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
+        let keys = kc_keys()(d, run, path);
+        let kinds = map(item_kind(), kc_items_of()(d, run, str_lit("interface"), path, keys));
+        string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::nil()), append(x64_object_lines(d, run, path, keys, kinds, nil::<Str>(), 0i64, queries::fnv_offset(), nil::<Str>()), kayak_rt::heap_cons(str_lit("(() "), kayak_rt::heap_cons(i64_to_string(db_get_fingerprint(d, run, key1(str_lit("asm-entry"), path))), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))))
     }
 }
 

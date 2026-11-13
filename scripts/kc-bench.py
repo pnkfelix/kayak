@@ -13,11 +13,11 @@ A program of N procedures is made (each a small arithmetic procedure, the
 last expression calling a few), then put through a session of edits, each
 timed end to end as a person at the keyboard meets it, best of R:
 
-  kc     `kc --db DB --stats --asm`, then `cc` against kayak-kcrt, then the
+  kc     `kc --db DB --stats build` (C419: each procedure an object of its
+         own, assembled once; linked only if an object is new), then the
          program run: the edit's answer, or its error;
-  serve  the same compile asked of one `kc --stats serve` (C415), which keeps
-         its database in memory for the whole session: no database read or
-         written whole at each edit;
+  serve  the same build asked of one `kc --stats serve` (C415), which keeps
+         its database in memory for the whole session;
   Fixpt  `fixpt eval FILE` on its fastest machine: the same answer, or
          error (its own caches, its `.fasl`s, as it keeps them).
 
@@ -35,9 +35,8 @@ session, each step from the one before:
   fix-forward   fixed another way: a body neither `body`'s nor the error's
   add           a procedure added at the end, and called
 
-Each row: the step; kc's ms, its compile alone, then serve's, then the
-link and the run (`cc` takes most of that, which a service compiling in
-memory would not); Fixpt's ms; kc's bodies run, and those beyond the need
+Each row: the step; kc's ms, its build (compile, assemble, link), then
+serve's, then the run's; Fixpt's ms; kc's bodies run, and those beyond the need
 (serve's are the same, or said apart). With --record, each size's rows are
 appended to bench/kc.tsv with the commit, so that the numbers are kept
 step by step (they gate nothing: a speed's change is for discussion).
@@ -89,7 +88,8 @@ def session(n):
         "(p0 3)))\n", "(extra 3)))\n")
     # The edited form's own queries, and the whole program's: no other
     # form's.
-    one = ["asm", "asm-item", "checked", "interface", "l0-item"]
+    # (`objects`, C419: what a build is assembled of, by fingerprint.)
+    one = ["asm-item", "checked", "interface", "l0-item", "objects"]
     return [
         ("cold", base, None),
         ("same", base, []),
@@ -150,16 +150,14 @@ def counted(names):
 
 
 def kc_step(src, db, path, exe):
-    """kc's compile, then the link and run, in seconds; its bodies; its answer."""
+    """`kc build` (C419: assembling and linking only what is new), then the
+    run, in seconds; its bodies; its answer."""
     t0 = time.perf_counter()
-    r = run([KC, "--db", db, "--stats", "--asm", path, exe + ".s"])
+    r = run([KC, "--db", db, "--rt", RT, "--stats", "build", path, exe])
     t1 = time.perf_counter()
     bodies = ran(r.stderr)
     if r.returncode != 0:
         return t1 - t0, 0.0, bodies, said(r.stderr, [".fx:", "kc: "])
-    r2 = run(["cc", "-o", exe, exe + ".s", RT] + LIBS)
-    if r2.returncode != 0:
-        return t1 - t0, time.perf_counter() - t1, bodies, "! cc"
     r3 = run([exe])
     return t1 - t0, time.perf_counter() - t1, bodies, (r3.stdout.strip().splitlines() or ["?"])[-1]
 
@@ -168,7 +166,7 @@ class Serve:
     """One `kc --stats serve`, asked a line at a time."""
 
     def __init__(self):
-        self.p = subprocess.Popen([KC, "--stats", "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        self.p = subprocess.Popen([KC, "--rt", RT, "--stats", "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
 
     def ask(self, line):
         t0 = time.perf_counter()
@@ -217,7 +215,7 @@ def bench(n, runs, fx):
             sp = os.path.join(d, "serve", "prog.fx")
             os.makedirs(os.path.dirname(sp), exist_ok=True)
             open(sp, "w").write(text)
-            sv_t, sv_bodies, sv_head = server.ask("asm %s %s" % (sp, sp[:-3] + ".s"))
+            sv_t, sv_bodies, sv_head = server.ask("build %s %s" % (sp, sp[:-3]))
             if sorted(sv_bodies) != sorted(bodies):
                 kgot = kgot + " (serve ran %s)" % counted(sv_bodies)
             ft, fgot = fixpt_step(fx, fp) if fx else (float("nan"), "-")
@@ -252,7 +250,7 @@ def main():
     out = []
     for n in sizes:
         print("kc-bench: %d procedures, best of %d (ms)" % (n, runs))
-        print("  %-12s %8s %8s %8s %8s %7s  %-24s %s" % ("step", "kc", "serve", "+link", "Fixpt", "bodies", "beyond the need", "answers (kc / Fixpt)"))
+        print("  %-12s %8s %8s %8s %8s %7s  %-24s %s" % ("step", "kc", "serve", "+run", "Fixpt", "bodies", "beyond the need", "answers (kc / Fixpt)"))
         for name, kc_t, link_t, ft, nb, over, kgot, fgot, need, sv_t in bench(n, runs, fx):
             extra = "-" if need is None else (counted(over) or "none")
             print("  %-12s %8.1f %8.1f %8.1f %8.1f %7d  %-24s %s / %s" % (name, kc_t * 1000, sv_t * 1000, link_t * 1000,

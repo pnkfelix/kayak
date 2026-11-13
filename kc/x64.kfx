@@ -547,6 +547,11 @@
         (x64-max-slots (subr kfx (sexps i64) i64)
           (lambda (xs m) (if (null? xs) m (x64-max-slots (cdr xs) (let ((k (x64-slots-of (car xs)))) (if (i64> k m) k m))))))))
 
+    "A global's cell: in `.bss`, `.globl`, so that a procedure in an object of
+     its own (`kc build`, C419) reads it."
+    (define x64-cell (subr kfx (string) string)
+      (lambda (n) (string-list-append (list "    .globl " (x64-global-symbol n) "\n" (x64-global-symbol n) ":\n    .quad 0\n"))))
+
     "`asm PATH`: the program: each global's cell; each procedure; then
      `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
      value definitions and expressions in order."
@@ -560,7 +565,7 @@
                (frame (x64-frame (x64-max-slots (filter (lambda ((x sexp)) (i64> (x64-slots-of x) -1)) its) 0))))
           (string-list-append
             (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\n")
-             (append (map2 (lambda ((k string) (n string)) (if (string=? k "global") (string-append (x64-global-symbol n) ":\n    .quad 0\n") "")) kinds names)
+             (append (map2 (lambda ((k string) (n string)) (if (string=? k "global") (x64-cell n) "")) kinds names)
               (append (list "    .text\n")
                (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
                 (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
@@ -568,4 +573,78 @@
                  (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
                   (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
                    (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
-                           (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))))
+                           (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
+
+    "`asm-entry PATH` (C419): the object of what is no procedure's: each
+     global's cell; `kc_entry`, which keeps the heap in `%r15` and `%r14` and
+     makes the value definitions and expressions in order; their failures'
+     calls. With each procedure's object (`x64-object-text`), what `asm`
+     writes as one file, `kc build` assembles apart."
+    (define q-asm-entry qbody
+      (lambda (d run path a-key)
+        (let* ((keys (kc-keys d run path))
+               (ifs (kc-items-of d run "interface" path keys))
+               (kinds (map item-kind ifs))
+               (names (map item-name ifs))
+               (rest (x64-not-procs keys kinds nil))
+               (its (kc-items-of d run "asm-item" path rest))
+               (frame (x64-frame (x64-max-slots (filter (lambda ((x sexp)) (i64> (x64-slots-of x) -1)) its) 0))))
+          (string-list-append
+            (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\n")
+             (append (map2 (lambda ((k string) (n string)) (if (string=? k "value") (x64-cell n) "")) kinds names)
+              (append (list "    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
+                            "    subq $" (i64->string frame) ", %rsp\n")
+               (append (map (lambda ((x sexp)) (x64-part x 2)) its)
+                (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+                 (append (map (lambda ((x sexp)) (x64-part x 3)) its)
+                         (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))
+
+    "A procedure's object's assembly (C419), of its `asm-item`."
+    (define x64-object-text (subr kfx (sexp) string)
+      (lambda (x)
+        (string-list-append (list "    .text\n" (x64-part x 2) (x64-part x 3) "    .section .note.GNU-stack,\"\",@progbits\n"))))
+
+    (hide
+      (define-rec
+        (x64-not-procs (subr kfx ((listof string acyclic) (listof string acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (ks kinds acc)
+            (cond ((or (null? ks) (null? kinds)) (reverse acc))
+                  ((string=? (car kinds) "proc") (x64-not-procs (cdr ks) (cdr kinds) acc))
+                  (else (x64-not-procs (cdr ks) (cdr kinds) (cons (car ks) acc)))))))
+
+      "How many procedures an object holds, at most (C419): one each would
+       start the assembler once for each and give the linker as many (25 s
+       cold at 5000 procedures); a run of them, in order, reassembled whole
+       when one of them changes."
+      (define x64-chunk i64 64)
+
+      (define-rec
+        (x64-object-lines (subr qe (db runner string (listof string acyclic) (listof string acyclic) (listof string acyclic) i64 i64 (listof string acyclic)) (listof string acyclic))
+          (lambda (d run path ks kinds members n fp acc)
+            "The objects: each a run of up to `x64-chunk` procedures, in order,
+             `((KEY ...) FP)`, FP its members' code's fingerprints folded."
+            (let ((done (lambda ((acc (listof string acyclic)))
+                          (if (null? members)
+                              acc
+                              (cons (string-list-append (list "((" (words-of (map (lambda ((k string)) (kc-datum (str k "" 0))) (reverse members))) ") " (i64->string fp) ")")) acc)))))
+              (cond ((or (null? ks) (null? kinds)) (reverse (done acc)))
+                    ((not (string=? (car kinds) "proc")) (x64-object-lines d run path (cdr ks) (cdr kinds) members n fp acc))
+                    ((i64>= n x64-chunk) (x64-object-lines d run path ks kinds nil 0 (with queries fnv-offset) (done acc)))
+                    (else
+                     (x64-object-lines d run path (cdr ks) (cdr kinds) (cons (car ks) members) (i64+ n 1)
+                                       ((with queries fnv-i64) (db-get-fingerprint d run (key2 "asm-item" path (car ks))) fp)
+                                       acc))))))))
+
+    "`objects PATH` (C419): the program's objects, each by the fingerprint of
+     what it is assembled from, read without that being read: `((KEY ...)
+     FP)` of each run of procedures (their `asm-item`s'), then `(() FP)` of
+     what is no procedure's (`asm-entry`'s). An edit that leaves every
+     procedure's code as it was leaves this as it was."
+    (define q-objects qbody
+      (lambda (d run path a-key)
+        (let* ((keys (kc-keys d run path))
+               (kinds (map item-kind (kc-items-of d run "interface" path keys))))
+          (string-list-append
+            (append (list "(")
+              (append (x64-object-lines d run path keys kinds nil 0 (with queries fnv-offset) nil)
+                (list "(() " (i64->string (db-get-fingerprint d run (key1 "asm-entry" path))) "))")))))))))

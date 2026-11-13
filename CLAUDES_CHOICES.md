@@ -11870,3 +11870,47 @@ source's forms read again to set inputs to what they were.
 (0.79 s at C417), 15 ms in serve (0.26 s); edits as they were (1.77 s a body
 on the command line, 1.14 s in serve): what is left of theirs is the
 memoized check's walk over every form, and the files written.
+
+## C419. `kc build`: objects by fingerprint, assembled and linked only when new (2026-11-13)
+
+The user: "are you architecting kc to compile each Rust crate to its own .o
+file? I'm wondering if we can go so far as to detect that the generated
+object code is actually unchanged in order to avoid downstream work"
+(C417 made the KFX side's: Rust left as it was is not written, so rustc
+does not run), then "Go for it"; and, of the chunks below: "I assume the
+chunking is for cold builds? Ie warm builds work at finer grain?"
+
+**`kc [--rt RUNTIME] build FILE EXE`** (and `build FILE EXE` in serve):
+the program checked, then `objects PATH`, a query of what the program is
+assembled of, each object named by the fingerprint of its code: runs of up
+to 64 procedures, in order (their `asm-item`s' fingerprints folded), and
+`asm-entry`, what is no procedure's (the globals' cells, `.globl` now, and
+`kc_entry` with the value definitions and expressions). `objects` reads
+fingerprints, not values (`db-get-fingerprint`, a read recorded as any is:
+a node's revision of change moves when its fingerprint does, so the
+reader runs again exactly when a reader of the value would). If the list,
+and the runtime, are those `EXE.objects` says EXE was last linked of, and
+EXE is there, nothing more is done; else each object not yet in
+`EXE.o.d/` is written as assembly there, all of them assembled by one `cc
+-c`, and the program linked (FX-26's `process-start` and `process-exit`).
+A comment, an undo, an edit whose code is as it was: nothing assembled,
+nothing linked; a body edited: its run of procedures assembled, and the
+link.
+
+**Why runs of 64, cold and warm alike**: an object each started the
+assembler once for each procedure and gave the linker as many: 25 s cold
+at 5000 procedures, and each edit's link of 5001 objects 0.6 s. A run of 64
+is 80 objects at 5000; reassembling one, the edit's, takes under 10 ms
+(measured: 58 KB of assembly), so a finer grain would spare nothing seen.
+If it ever would: a run's procedures as weak symbols, an edited one an
+object of its own, strong, linked beside its run, until the runs are made
+again.
+
+**Measured** (`bench/kc.tsv`, best of 3; the bench's kc and serve columns
+are whole builds now, the third the run's alone): at 5000 procedures, cold
+6.05 s (Fixpt's eval 4.82 s); unchanged 0.16 s, 6 ms in serve; a body edited
+1.68 s, 1.00 s in serve (C418's 1.77 s compile and 0.25 s link before);
+a comment 1.43 s with nothing assembled or linked. kc-steps builds every
+program by `kc build`.
+
+Not yet: objects no longer listed are left in `EXE.o.d/` (no pruning).

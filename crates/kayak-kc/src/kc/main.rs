@@ -8,6 +8,12 @@ use super::*;
 // kc [--db DB] --check FILE         the file checked
 // kc [--db DB] --rust FILE OUT      its Rust, to OUT (KFX)
 // kc [--db DB] --asm FILE OUT       its x86-64 assembly, to OUT
+// kc [--db DB] [--rt RT] build FILE EXE
+// its program built to EXE (C419): each
+// procedure an object of its own, made
+// once; linked only if its objects are
+// new; RT the runtime's library
+// (target/release/libkayak_kcrt.a)
 // kc [--db DB] serve                requests, a line each, on the
 // standard input (C415)
 //
@@ -94,6 +100,21 @@ pub mod kc_driver {
     #[inline]
     pub fn q_asm() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
         &kc_x64::q_asm
+    }
+
+    #[inline]
+    pub fn q_asm_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+        &kc_x64::q_asm_entry
+    }
+
+    #[inline]
+    pub fn q_objects() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+        &kc_x64::q_objects
+    }
+
+    #[inline]
+    pub fn x64_object_text() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_x64::x64_object_text
     }
 
     // Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399).
@@ -210,6 +231,10 @@ pub mod kc_driver {
             q_asm_item()(d, &kc_run, a, b)
         } else if string_eq_p(q, str_lit("asm")) {
             q_asm()(d, &kc_run, a, b)
+        } else if string_eq_p(q, str_lit("asm-entry")) {
+            q_asm_entry()(d, &kc_run, a, b)
+        } else if string_eq_p(q, str_lit("objects")) {
+            q_objects()(d, &kc_run, a, b)
         } else {
             error(string_append(str_lit("kc: no query "), key_text(k)));
             str_lit("")
@@ -226,19 +251,22 @@ pub mod kc_driver {
     }
 
     pub enum Opts {
-        Opts(Str, bool, List<Str>),
+        Opts(Str, bool, Str, List<Str>),
     }
 
-    pub fn opts(f0: Str, f1: bool, f2: List<Str>) -> &'static Opts {
-        kayak_rt::heap_alloc(Opts::Opts(f0, f1, f2))
+    pub fn opts(f0: Str, f1: bool, f2: Str, f3: List<Str>) -> &'static Opts {
+        kayak_rt::heap_alloc(Opts::Opts(f0, f1, f2, f3))
     }
 
-    pub fn opts_of(mut r#as: List<Str>, mut db: Str, mut stats: bool, mut rest: List<Str>) -> &'static Opts {
+    pub fn opts_of(mut r#as: List<Str>, mut db: Str, mut stats: bool, mut rt: Str, mut rest: List<Str>) -> &'static Opts {
         loop {
             if null_p(r#as) {
-                return opts(db, stats, reverse(rest));
+                return opts(db, stats, rt, reverse(rest));
             } else if (string_eq_p(car(r#as), str_lit("--db")) && not(null_p(cdr(r#as)))) {
                 (r#as, db) = (cdr(cdr(r#as)), car(cdr(r#as)));
+                continue;
+            } else if (string_eq_p(car(r#as), str_lit("--rt")) && not(null_p(cdr(r#as)))) {
+                (r#as, rt) = (cdr(cdr(r#as)), car(cdr(r#as)));
                 continue;
             } else if string_eq_p(car(r#as), str_lit("--stats")) {
                 (r#as, stats) = (cdr(r#as), true);
@@ -297,14 +325,202 @@ pub mod kc_driver {
         }
     }
 
-    /// `what` (`check`, `asm`, `rust`) of `file`, its output to `out`: the
-    /// file read, its forms set (`kc-load!`), checked, and, if it passes,
-    /// its code asked for.
-    pub fn request(d: Db, what: Str, file: Str, out: Str) -> &'static Answer {
+    // `kc build` (C419; the user: "I'm wondering if we can go so far as to
+    // detect that the generated object code is actually unchanged in order
+    // to avoid downstream work"): each procedure an object of its own and
+    // what is no procedure's one more, each named by the fingerprint of what
+    // it is made from (`objects`), so that an object made once is made no
+    // more; the program linked only when its objects, or the runtime, are not
+    // those it was last linked of (`EXE.objects` says which).
+    pub fn strings_at_io(xs: List<Str>) -> List<Str> {
+        if null_p(xs) {
+            the::<List<Str>>(nil::<Str>())
+        } else {
+            the::<List<Str>>(kayak_rt::heap_cons(car(xs), strings_at_io(cdr(xs))))
+        }
+    }
+
+    /// A program run in `dir` to its end: `` if it exits 0; else what it said.
+    pub fn run_command(argv: List<Str>, dir: Str) -> Str {
+        let tagcase_ = process_start(strings_at_io(argv), dir);
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("started") } {
+            let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            let tagcase_ = process_exit(p);
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("exited") } {
+                let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                if i64_eq(int_to_i64(c), 0i64) {
+                    str_lit("")
+                } else {
+                    string_append(car(argv), string_append(str_lit(" failed:\n"), process_output(p)))
+                }
+            } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+                let g: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                string_append(car(argv), str_lit(" was signalled"))
+            } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                string_append(car(argv), str_lit(" ended, how is not known"))
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            string_append(str_lit("cannot run "), string_append(car(argv), string_append(str_lit(": "), e.1)))
+        } else { unreachable!() }
+    }
+
+    /// Each object's name, `oFP` (`o_FP` of a negative), in order.
+    pub fn object_names(mut os: Sexps, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(os) {
+                return reverse(acc);
+            } else {
+                let fp = {
+                    let tagcase_ = second(items(car(os)));
+                    match *tagcase_ {
+                        Sexp::Num(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            the::<i64>(0i64)
+                        }
+                    }
+                };
+                (os, acc) = (cdr(os), kayak_rt::heap_cons(if i64_lt(fp, 0i64) {
+                    string_append(str_lit("o_"), i64_to_string(i64_minus(0i64, fp)))
+                } else {
+                    string_append(str_lit("o"), i64_to_string(fp))
+                }, acc));
+                continue;
+            }
+        }
+    }
+
+    /// A run of procedures' objects' assembly, one after another.
+    pub fn members_text(mut d: Db, mut file: Str, mut ks: Sexps, mut acc: List<Str>) -> Str {
+        loop {
+            if null_p(ks) {
+                return string_list_append(reverse(acc));
+            } else {
+                (ks, acc) = (cdr(ks), kayak_rt::heap_cons(x64_object_text()(car(read_all(db_get(d, &kc_run, key2(str_lit("asm-item"), file, {
+                    let tagcase_ = car(ks);
+                    match *tagcase_ {
+                        Sexp::Str(t, f, p) => {
+                            t
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                })), str_lit("asm"), 1i64))), acc));
+                continue;
+            }
+        }
+    }
+
+    /// The assembly of each object not made yet, written to `dir`; their
+    /// files' names.
+    pub fn objects_written(mut d: Db, mut file: Str, mut dir: Str, mut os: Sexps, mut names: List<Str>, mut have: List<Str>, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(os) {
+                return reverse(acc);
+            } else {
+                if string_member_p(string_append(car(names), str_lit(".o")), have) {
+                    (os, names) = (cdr(os), cdr(names));
+                    continue;
+                } else {
+                    let ks = items(car(items(car(os))));
+                    let text = if null_p(ks) {
+                        db_get(d, &kc_run, key1(str_lit("asm-entry"), file))
+                    } else {
+                        members_text(d, file, ks, nil::<Str>())
+                    };
+                    let s = string_append(car(names), str_lit(".s"));
+                    write_text(string_append(dir, string_append(str_lit("/"), s)), text);
+                    (os, names, acc) = (cdr(os), cdr(names), kayak_rt::heap_cons(s, acc));
+                    continue;
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn strings_from_io(xs: List<Str>) -> List<Str> {
+        if null_p(xs) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(car(xs), strings_from_io(cdr(xs)))
+        }
+    }
+
+    pub fn listed(dir: Str) -> List<Str> {
+        let tagcase_ = the::<kayak_rt::Sum>(list_dir(dir));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("names") } {
+            let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
+            strings_from_io(ns)
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            nil::<Str>()
+        } else { unreachable!() }
+    }
+
+    pub fn exists_p(path: Str) -> bool {
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            true
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            false
+        } else { unreachable!() }
+    }
+
+    /// The program of `file` built to `exe`, on the runtime `rt`: `` if
+    /// it is, else what went wrong.
+    pub fn build(d: Db, file: Str, exe: Str, rt: Str) -> Str {
+        let objs_text = db_get(d, &kc_run, key1(str_lit("objects"), file));
+        let manifest = string_append(objs_text, string_append(str_lit("\n"), rt));
+        let record = string_append(exe, str_lit(".objects"));
+        let dir = string_append(exe, str_lit(".o.d"));
+        if (string_eq_p(manifest, read_text_or_none(record)) && exists_p(exe)) {
+            str_lit("")
+        } else {
+            let os = items(car(read_all(objs_text, str_lit("objects"), 1i64)));
+            let names = object_names(os, nil::<Str>());
+            let made = run_command(kayak_rt::heap_cons(str_lit("mkdir"), kayak_rt::heap_cons(str_lit("-p"), kayak_rt::heap_cons(dir, kayak_rt::nil()))), str_lit(""));
+            let new = objects_written(d, file, dir, os, names, listed(dir), nil::<Str>());
+            let assembled = if null_p(new) {
+                str_lit("")
+            } else {
+                run_command(kayak_rt::heap_cons(str_lit("cc"), kayak_rt::heap_cons(str_lit("-c"), new)), dir)
+            };
+            if not(string_eq_p(assembled, str_lit(""))) {
+                assembled
+            } else {
+                let linked = run_command(append(kayak_rt::heap_cons(str_lit("cc"), kayak_rt::heap_cons(str_lit("-o"), kayak_rt::heap_cons(exe, kayak_rt::nil()))), append(map(lambda1s(move |n: Str| {
+                    string_append(dir, string_append(str_lit("/"), string_append(n, str_lit(".o"))))
+                }), names), kayak_rt::heap_cons(rt, kayak_rt::heap_cons(str_lit("-lgcc_s"), kayak_rt::heap_cons(str_lit("-lutil"), kayak_rt::heap_cons(str_lit("-lrt"), kayak_rt::heap_cons(str_lit("-lpthread"), kayak_rt::heap_cons(str_lit("-lm"), kayak_rt::heap_cons(str_lit("-ldl"), kayak_rt::heap_cons(str_lit("-lc"), kayak_rt::nil())))))))))), str_lit(""));
+                if string_eq_p(linked, str_lit("")) {
+                    write_text(record, manifest);
+                    str_lit("")
+                } else {
+                    linked
+                }
+            }
+        }
+    }
+
+    /// `what` (`check`, `asm`, `rust`, `build`) of `file`, its output to
+    /// `out`: the file read, its forms set (`kc-load!`), checked, and, if
+    /// it passes, its code asked for, or built (on the runtime `rt`).
+    pub fn request(d: Db, what: Str, file: Str, out: Str, rt: Str) -> &'static Answer {
         let before = db_runs(d);
         kc_load_x()(d, &kc_run, file, read_text(file));
         let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
-        if (string_eq_p(refused, str_lit("")) && not(string_eq_p(what, str_lit("check")))) {
+        if (string_eq_p(refused, str_lit("")) && not(string_eq_p(what, str_lit("check"))) && not(string_eq_p(what, str_lit("build")))) {
             let key = key1(if string_eq_p(what, str_lit("rust")) {
                 str_lit("rust")
             } else {
@@ -320,7 +536,12 @@ pub mod kc_driver {
         } else {
             ()
         };
-        answer(not(string_eq_p(refused, str_lit(""))), refused, i64_minus(db_runs(d), before), ran_names(db_ran(d), i64_minus(db_runs(d), before)))
+        let failed = if (string_eq_p(refused, str_lit("")) && string_eq_p(what, str_lit("build"))) {
+            build(d, file, out, rt)
+        } else {
+            refused
+        };
+        answer(not(string_eq_p(failed, str_lit(""))), failed, i64_minus(db_runs(d), before), ran_names(db_ran(d), i64_minus(db_runs(d), before)))
     }
 
     #[inline]
@@ -337,7 +558,7 @@ pub mod kc_driver {
     }
 
     /// Requests until the input ends, or `quit`.
-    pub fn serve(mut d: Db, mut dbp: Str, mut stats: bool) -> Int {
+    pub fn serve(mut d: Db, mut dbp: Str, mut stats: bool, mut rt: Str) -> Int {
         loop {
             let tagcase_ = read_line();
             let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -360,12 +581,12 @@ pub mod kc_driver {
                     };
                     said(str_lit("ok 0"));
                     continue;
-                } else if ((i64_eq(n, 2i64) && string_eq_p(car(ws), str_lit("check"))) || (i64_eq(n, 3i64) && (string_eq_p(car(ws), str_lit("asm")) || string_eq_p(car(ws), str_lit("rust"))))) {
+                } else if ((i64_eq(n, 2i64) && string_eq_p(car(ws), str_lit("check"))) || (i64_eq(n, 3i64) && (string_eq_p(car(ws), str_lit("asm")) || string_eq_p(car(ws), str_lit("rust")) || string_eq_p(car(ws), str_lit("build"))))) {
                     let tagcase_ = request(d, car(ws), car(cdr(ws)), if i64_eq(n, 3i64) {
                         car(cdr(cdr(ws)))
                     } else {
                         str_lit("")
-                    });
+                    }, rt);
                     match *tagcase_ {
                         Answer::Answer(no, msg, k, names) => {
                             said(string_list_append(kayak_rt::heap_cons(if no {
@@ -409,18 +630,18 @@ pub mod kc_driver {
     }
 
     pub fn kc_main() -> Int {
-        let tagcase_ = opts_of(the::<List<Str>>(args()), str_lit(""), false, nil::<Str>());
+        let tagcase_ = opts_of(the::<List<Str>>(args()), str_lit(""), false, str_lit("target/release/libkayak_kcrt.a"), nil::<Str>());
         match *tagcase_ {
-            Opts::Opts(dbp, stats, rest) => {
+            Opts::Opts(dbp, stats, rt, rest) => {
                 let d = if string_eq_p(dbp, str_lit("")) {
                     db_make()
                 } else {
                     db_of_files(read_text_or_none(dbp), read_text_or_none(string_append(dbp, str_lit(".payload"))), kc_whose())
                 };
                 if null_p(rest) {
-                    match fail_with(str_lit("usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT | serve)"), int_lit(2)) {}
+                    match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)"), int_lit(2)) {}
                 } else if string_eq_p(car(rest), str_lit("serve")) {
-                    serve(d, dbp, stats)
+                    serve(d, dbp, stats, rt)
                 } else {
                     let what = car(rest);
                     let file = if null_p(cdr(rest)) {
@@ -433,7 +654,7 @@ pub mod kc_driver {
                     } else {
                         ()
                     };
-                    if not((string_eq_p(what, str_lit("--check")) || string_eq_p(what, str_lit("--rust")) || string_eq_p(what, str_lit("--asm")))) {
+                    if not((string_eq_p(what, str_lit("--check")) || string_eq_p(what, str_lit("--rust")) || string_eq_p(what, str_lit("--asm")) || string_eq_p(what, str_lit("build")))) {
                         match fail_with(string_append(str_lit("not an option: "), what), int_lit(2)) {}
                     } else {
                         ()
@@ -445,17 +666,17 @@ pub mod kc_driver {
                     };
                     let tagcase_ = request(d, if string_eq_p(what, str_lit("--check")) {
                         str_lit("check")
+                    } else if string_eq_p(what, str_lit("--rust")) {
+                        str_lit("rust")
+                    } else if string_eq_p(what, str_lit("build")) {
+                        str_lit("build")
                     } else {
-                        if string_eq_p(what, str_lit("--rust")) {
-                            str_lit("rust")
-                        } else {
-                            str_lit("asm")
-                        }
+                        str_lit("asm")
                     }, file, if string_eq_p(what, str_lit("--check")) {
                         str_lit("")
                     } else {
                         car(cdr(cdr(rest)))
-                    });
+                    }, rt);
                     match *tagcase_ {
                         Answer::Answer(no, msg, k, names) => {
                             if stats {
