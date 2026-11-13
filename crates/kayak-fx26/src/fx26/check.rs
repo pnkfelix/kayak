@@ -368,6 +368,29 @@ pub fn marker_p(n: Str) -> bool {
     string_member_p(n, marker_names())
 }
 
+// The markers' innermost bindings, one of each kind (C420): only the
+// innermost of a kind is read (`scope-bind`; `incr-check.kfx`'s `reads-key`),
+// so a new one takes an older one's place, and the list is never more than
+// one of each kind long. It grew a `%toplevel` with every top-level form,
+// and each search for a kind it had none of walked it whole: quadratic in a
+// program's forms (15% of a check of 5000 procedures).
+pub fn marks_without(n: Str, mk: Binds) -> Binds {
+    if null_p(mk) {
+        nil::<&'static Bind>()
+    } else if {
+        let tagcase_ = car(mk);
+        match *tagcase_ {
+            Bind::Bind(m, sc, w) => {
+                string_eq_p(m, n)
+            }
+        }
+    } {
+        cdr(mk)
+    } else {
+        kayak_rt::heap_cons(car(mk), marks_without(n, cdr(mk)))
+    }
+}
+
 pub fn marks_adds(mut mk: Binds, mut bs: Binds) -> Binds {
     loop {
         if null_p(bs) {
@@ -380,7 +403,14 @@ pub fn marks_adds(mut mk: Binds, mut bs: Binds) -> Binds {
                 }
             }
         } {
-            (mk, bs) = (kayak_rt::heap_cons(car(bs), mk), cdr(bs));
+            (mk, bs) = (kayak_rt::heap_cons(car(bs), {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        marks_without(n, mk)
+                    }
+                }
+            }), cdr(bs));
             continue;
         } else {
             bs = cdr(bs);
@@ -15627,12 +15657,41 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
     }
 }
 
+// How many bindings `bs` has (C420): those before the newest `%toplevel`
+// marker, counted, then the marker's own count, and itself; so that a
+// marker before each top-level form costs what the forms since the last one
+// bound, not the program's bindings each.
+pub fn binds_counted(mut bs: Binds, mut k: i64) -> i64 {
+    loop {
+        if null_p(bs) {
+            return k;
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    if string_eq_p(n, str_lit("%toplevel")) {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                return i64_plus(k, i64_plus(1i64, string_to_i64(car(tv))));
+                            }
+                        }
+                    } else {
+                        (bs, k) = (cdr(bs), i64_plus(k, 1i64));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Each top-level form's marker (`toplevel-sizes`).
 pub fn toplevel_marked(v: &'static Cv) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-            with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplevel"), scheme(kayak_rt::heap_cons(i64_to_string(size(bs)), kayak_rt::heap_cons(i64_to_string(size(als)), kayak_rt::heap_cons(i64_to_string(size(es)), kayak_rt::nil()))), ty_unit()), str_lit("mark")), kayak_rt::nil()))
+            with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplevel"), scheme(kayak_rt::heap_cons(i64_to_string(binds_counted(bs, 0i64)), kayak_rt::heap_cons(i64_to_string(size(als)), kayak_rt::heap_cons(i64_to_string(size(es)), kayak_rt::nil()))), ty_unit()), str_lit("mark")), kayak_rt::nil()))
         }
     }
 }

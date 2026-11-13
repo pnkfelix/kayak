@@ -146,11 +146,25 @@
 (define marker? (subr kfx (string) bool)
   (lambda (n) (string-member? n marker-names)))
 
+"The markers' innermost bindings, one of each kind (C420): only the
+ innermost of a kind is read (`scope-bind`; `incr-check.kfx`'s `reads-key`),
+ so a new one takes an older one's place, and the list is never more than
+ one of each kind long. It grew a `%toplevel` with every top-level form,
+ and each search for a kind it had none of walked it whole: quadratic in a
+ program's forms (15% of a check of 5000 procedures)."
+(define-rec
+  (marks-without (subr kfx (string binds) binds)
+    (lambda (n mk)
+      (cond ((null? mk) nil)
+            ((tagcase (car mk) (bind (m sc w) (string=? m n))) (cdr mk))
+            (else (cons (car mk) (marks-without n (cdr mk))))))))
+
 (define-rec
   (marks-adds (subr kfx (binds binds) binds)
     (lambda (mk bs)
       (cond ((null? bs) mk)
-            ((tagcase (car bs) (bind (n sc w) (marker? n))) (marks-adds (cons (car bs) mk) (cdr bs)))
+            ((tagcase (car bs) (bind (n sc w) (marker? n)))
+             (marks-adds (cons (car bs) (tagcase (car bs) (bind (n sc w) (marks-without n mk)))) (cdr bs)))
             (else (marks-adds mk (cdr bs)))))))
 
 (define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts strings i64 bix binds))
@@ -6307,12 +6321,27 @@
               (refuse v (string-append "two names that are one in Rust: " (car clash)))
               (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv (bind-onto more bs) ds als es here group file line fs tv at (bix-adds ix more) (marks-adds mk more)))))))))
 
+"How many bindings `bs` has (C420): those before the newest `%toplevel`
+ marker, counted, then the marker's own count, and itself; so that a
+ marker before each top-level form costs what the forms since the last one
+ bound, not the program's bindings each."
+(define-rec
+  (binds-counted (subr kfx (binds i64) i64)
+    (lambda (bs k)
+      (if (null? bs)
+          k
+          (tagcase (car bs)
+            (bind (n sc w)
+              (if (string=? n "%toplevel")
+                  (tagcase sc (scheme (tv t) (i64+ k (i64+ 1 (string->i64 (car tv))))))
+                  (binds-counted (cdr bs) (i64+ k 1)))))))))
+
 "Each top-level form's marker (`toplevel-sizes`)."
 (define toplevel-marked (subr kfx (cv) cv)
   (lambda (v)
     (tagcase v
       (cv (bs ds als es here group file line fs tv at ix mk)
-        (with-binds v (list (bind "%toplevel" (scheme (list (i64->string (size bs)) (i64->string (size als)) (i64->string (size es))) (ty-unit)) "mark")))))))
+        (with-binds v (list (bind "%toplevel" (scheme (list (i64->string (binds-counted bs 0)) (i64->string (size als)) (i64->string (size es))) (ty-unit)) "mark")))))))
 
 (define place-key (subr kfx (sexp) string)
   (lambda (e) (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e))))))

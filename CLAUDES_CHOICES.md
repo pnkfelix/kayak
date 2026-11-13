@@ -11914,3 +11914,33 @@ a comment 1.43 s with nothing assembled or linked. kc-steps builds every
 program by `kc build`.
 
 Not yet: objects no longer listed are left in `EXE.o.d/` (no pruning).
+
+## C420. The checker's walk over a program's forms, no longer quadratic (2026-11-13)
+
+The user, of kc's next steps (each form's check a query of its own, to
+spare the memoized check's walk over every form; then types in kc's core):
+"Yes".
+
+Profiled first (a comment added to 5000 procedures, `--check`): 17% of the
+run was one closure of `incr-check.kfx`'s `reads-key`, nearly all its own
+time, and 5.5% `toplevel-marked`: quadratic, both. Before each top-level
+form the checker binds a `%toplevel` marker, and kept every marker in its
+list of markers (`cv`'s `mk`, `marks-adds`); `reads-key` looked each other
+kind of marker up in it (`find-bind`), and a kind a program has none of
+(`%module`, `%loaded`, `%instance`, `%toplambda`) walked it whole, at
+every form. And `toplevel-marked` counted the bindings, all of them, at
+every form.
+
+- **One marker of each kind** (`marks-adds`): only the innermost of a
+  kind is read (`scope-bind`, `reads-key`), so a new one takes an older's
+  place; the binding list keeps them all, as before.
+- **Bindings counted from the last marker** (`binds-counted`): those since
+  the newest `%toplevel`, and its own count, and itself.
+
+The compiler's fixed point as it was, every answer as it was. At 5000
+procedures, a comment's check in serve 0.52 s (0.82 s); a body edited 0.89
+s (1.00 s). The walk is now some 2.5% of a check: what is left of one is the
+source read twice (`kc-load!`'s inputs, `checked`'s check), the memos read
+from text and written again, and on the command line the database's files.
+So each form's check as a query of its own, which would spare the walk, no
+longer pays for itself: not done.
