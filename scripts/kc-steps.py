@@ -68,6 +68,12 @@ def ran(stderr):
     return None
 
 
+TWO = """(define inc (subr pure (int) int) (lambda (n) %s))
+(define dbl (subr pure (int) int) (lambda (n) (* n 2)))
+(dbl (inc 3))
+"""
+
+
 def cutoff():
     """What runs again after edits: the wrongs found."""
     p = os.path.join(WORK, "cutoff.fx")
@@ -76,15 +82,21 @@ def cutoff():
     if os.path.exists(db):
         os.remove(db)
     wrong = []
-    for text, want in [("42\n", ["asm", "checked", "l0"]),
-                       ("  42   ; the same value, written otherwise\n", ["checked", "l0"]),
-                       ("42\n", ["checked", "l0"]),
-                       ("43\n", ["asm", "checked", "l0"]),
-                       ("43\n", [])]:
+    for text, want in [("42\n", ["asm", "asm-item", "checked", "form", "forms", "keys", "l0-item", "scope"]),
+                       # The same datum: its forms' text the same, all else spared.
+                       ("  42   ; the same value, written otherwise\n", ["checked", "forms"]),
+                       ("42\n", ["checked", "forms"]),
+                       ("43\n", ["asm", "asm-item", "checked", "form", "forms", "keys", "l0-item"]),
+                       ("43\n", []),
+                       # Two procedures and a call: one body edited, the other's
+                       # form, item and code spared; the interfaces the same, so
+                       # no scope again (C407).
+                       (TWO % "(+ n 1)", None),
+                       (TWO % "(+ n 2)", ["asm", "asm-item", "checked", "form", "form", "form", "forms", "interface", "keys", "l0-item"])]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--asm", p, s])
         got = ran(r.stderr)
-        if got != want:
+        if want is not None and got != want:
             wrong.append("cutoff: after %r, ran %s, not %s" % (text, got, want))
     return wrong
 
@@ -120,7 +132,8 @@ def main():
             wrong.append("%s: cc: %s" % (name, r.stderr.strip()))
             continue
         r = run([exe])
-        got = r.stdout.strip()
+        # Each top-level expression's value on a line; the last is stated.
+        got = (r.stdout.strip().splitlines() or [""])[-1]
         if r.returncode != 0:
             # A failure, as `fixpt eval` says one: `! MESSAGE`.
             got = "! " + r.stderr.strip().split("evaluation failed: ")[-1]

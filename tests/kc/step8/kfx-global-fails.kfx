@@ -1,0 +1,2 @@
+;; => ! division by zero
+(define x int (quotient 3 0)) 1

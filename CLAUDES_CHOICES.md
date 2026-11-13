@@ -11285,3 +11285,52 @@ his has none there.
   Fixpt's answer on each back end. **Found on the way**: the checker
   refuses `(cons (list 1) (list 2))`, which Fixpt takes (TODO).
 
+## C407. kc, step 8: procedures, and a query for each form (2026-11-12)
+
+Ghuloum's eighth step: procedures the program defines, and calls of them;
+here also a program of many forms, each compiled by queries of its own,
+so that kc is incremental below the whole program.
+- **Each form a key of its own**: a definition its name, any other form
+  `#expr` and how many came before. The front end's queries: `forms PATH`
+  (each form's key and datum, written by kc's own writer, `kc-datum`,
+  whose characters are by code and strings escaped, so that reading it
+  back gives the same datum: the checker's `show-sexp` does not), `keys`,
+  `form PATH KEY`, `interface PATH KEY` (`(proc NAME ARITY)`, `(value
+  NAME)`, `(expr)`), `scope PATH KEY` (the interfaces before it), `type
+  PATH NAME` (as written, or as the checker found it: `checked` now gives
+  the types of the definitions written with none). Then `l0-item`,
+  `asm-item`, `rust-item` of each form, and `asm` and `rust` of the whole.
+  So an edit of one procedure's body runs again its form's, item's and
+  code's queries and the whole's, the other forms' spared, the interfaces
+  the same so no `scope` again (`kc-steps.py`'s cutoff case); an edit of
+  spacing or a comment, `checked` and `forms` alone.
+- **The core language**: items `(proc NAME ((K NAME) ...) BODY)`,
+  `(global NAME TERM)`, `(expr TERM)`; terms `(gvar NAME)`, a global's
+  value, and `(call NAME ARG ...)`, of a procedure the program defines
+  (its own name in its scope: it may call itself). A procedure as a value,
+  and a call of a value, are step 9's (closures).
+- **Native**, kc's own convention: arguments in `%rdi`, `%rsi`, `%rdx`,
+  `%rcx`, `%r8`, `%r9` (more, not yet), made into the caller's slots first
+  and moved there at the call; the result in `%rax`; each procedure a
+  function `kcp_NAME`, its parameters stored in its frame's first slots,
+  the frame rounded so that it calls aligned; `%r15` and `%r14` the heap's,
+  every procedure sharing them. A global value a cell, `kcg_NAME`, in
+  `.bss`; `kc_entry` makes the value definitions and expressions in order,
+  each expression's value given to the runtime's `kc_show`, which writes
+  it on a line, as `fixpt eval` writes each. Assembly names are a name's
+  letters and digits, any other character `_`, its code in hexadecimal,
+  `_`, so that every name is one the assembler takes and no two are one.
+- **Rust**: a procedure a function, `kcp_NAME`, its types its declared
+  `subr`'s (`int` `Int`, `bool`, `char`, `unit` `()`, `(listof T r)`
+  `List<T>`); a value definition a thread's cell, set as `main` comes to it
+  (made, and failing, where Fixpt makes it), read through `kcg_NAME()`.
+  Still synchronous Rust: the async back end (kfx's async mode, C376-C382)
+  is to come.
+- Tests: `tests/kc/step8/`, 28 programs (six KFX), among them recursion
+  (`fact`, `fib`, a sum to 100), six arguments, a global read by a
+  procedure, failures in a procedure and in a global's value; 172 in all,
+  every one Fixpt's answer on each back end.
+- **Found on the way**: KFX's `map` takes no procedure that reads the
+  database, so kc asks a query of each key by a procedure of its own
+  (`kc-get-all`).
+

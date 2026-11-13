@@ -96,10 +96,26 @@ pub fn kc_run(d: Db, k: Str) -> Str {
         q_checked(d, &kc_run, a)
     } else if string_eq_p(q, str_lit("kfx")) {
         q_kfx(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("l0")) {
-        q_l0(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("forms")) {
+        q_forms(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("keys")) {
+        q_keys(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("form")) {
+        q_form(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("interface")) {
+        q_interface(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("scope")) {
+        q_scope(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("type")) {
+        q_type(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("l0-item")) {
+        q_l0_item(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("rust-item")) {
+        q_rust_item(d, &kc_run, a)
     } else if string_eq_p(q, str_lit("rust")) {
         q_rust(d, &kc_run, a)
+    } else if string_eq_p(q, str_lit("asm-item")) {
+        q_asm_item(d, &kc_run, a)
     } else if string_eq_p(q, str_lit("asm")) {
         q_asm(d, &kc_run, a)
     } else {

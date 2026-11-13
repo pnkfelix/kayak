@@ -6,6 +6,8 @@
 //! in the five bits above it, a payload from bit 8). Step 3: a failure,
 //! `kc_fail`, said as Fixpt says it. Step 7: the heap, given to `kc_entry`,
 //! and pairs (tag 1, the address of a cell of two words) written as lists.
+//! Step 8: a program of many forms, each top-level expression's value
+//! written by `kc_show`, called by kc's code, on a line of its own.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -140,13 +142,19 @@ pub extern "C" fn kc_fail(what: u64) -> ! {
     std::process::exit(1)
 }
 
+/// A top-level expression's value, written on a line of its own, as
+/// `fixpt eval` writes each (C407).
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_show(v: u64) {
+    println!("{}", written(v));
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
     let heap: &'static mut [u64] = Vec::leak(vec![0u64; HEAP_WORDS]);
     let range = heap.as_mut_ptr_range();
     // SAFETY: `kc_entry` is kc's code, which takes the heap's first free
-    // word and its end and gives a value.
-    let v = unsafe { kc_entry(range.start, range.end) };
-    println!("{}", written(v));
+    // word and its end, and writes each top-level expression's value.
+    unsafe { kc_entry(range.start, range.end) };
     0
 }

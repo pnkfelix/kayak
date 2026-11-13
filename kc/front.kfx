@@ -5,7 +5,20 @@
  its key's argument, and reads what it needs only through the database.
  The inputs: `text PATH`, a source file's text. The language of a file is
  its name's: `.kfx` is KFX, anything else FX-26. One checker for both
- (kfx's); KFX is what also passes the restriction pass (`restrict.kfx`)."
+ (kfx's); KFX is what also passes the restriction pass (`restrict.kfx`).
+
+ A program's forms each have a key of their own (C407): a definition its
+ name, any other form `#expr` and how many such came before it. What a
+ later pass needs of a form it asks by that key, so that an edit of one
+ form runs again only what reads it, and an edit that leaves a
+ definition's interface as it was stops there (early cutoff):
+
+   forms PATH            each form's key and datum, as text
+   keys PATH             the keys, in order
+   form PATH KEY         that form's datum
+   interface PATH KEY    a definition's kind: `(proc NAME ARITY)` or
+                         `(value NAME)`; `(expr)` of any other form
+   scope PATH KEY        the interfaces of the forms before it, in order"
 
 "A query's body."
 (define-type qbody (subr qe (db runner string) string))
@@ -28,22 +41,199 @@
 
 (define key-name (subr kfx (string) string) (lambda (k) (before-first-space (string-chars k) nil)))
 
+"A key's argument of two parts, PATH and KEY: the path, and what follows
+ its first space (a path has none, the harness's, as kc's own keys)."
+(define arg-first (subr kfx (string) string) (lambda (a) (key-name a)))
+(define arg-rest (subr kfx (string) string) (lambda (a) (key-arg a)))
+
 (define kc-language (subr kfx (string) string)
   (lambda (path) (if (has-suffix? path ".kfx") "kfx" "fx26")))
+
+;;; ------------------------------------------------------------ data as text
+
+(define-rec
+  (kc-hex (subr kfx (i64 string) string)
+    (lambda (n acc)
+      "`n` in hexadecimal, before `acc`."
+      (let* ((d (i64-remainder n 16))
+             (c (list->string (list (i64->char (if (i64< d 10) (i64+ d 48) (i64+ d 87))))))
+             (acc (string-append c acc)))
+        (if (i64< n 16) acc (kc-hex (i64-quotient n 16) acc))))))
+
+(define-rec
+  (kc-escaped (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs acc)
+      "A string's characters as the reader reads them back, the newest first."
+      (if (null? cs)
+          acc
+          (let* ((c (car cs)) (k (char->i64 c))
+                 (w (cond ((char=? c #\") "\\\"")
+                          ((char=? c #\\) "\\\\")
+                          ((char=? c #\newline) "\\n")
+                          ((char=? c #\tab) "\\t")
+                          ((i64< k 32) (string-append "\\x" (string-append (kc-hex k "") ";")))
+                          (else (list->string (list c))))))
+            (kc-escaped (cdr cs) (cons w acc)))))))
+
+(define-rec
+  (kc-datum (subr kfx (sexp) string)
+    (lambda (e)
+      "A datum as text the reader reads back as it: a character by its code
+       (`#\\x20`), a string with its escapes (C407)."
+      (tagcase e
+        (sym (s f p) s)
+        (num (k f p) (i64->string k))
+        (big (text f p) text)
+        (real (t f p) t)
+        (chr (c f p) (string-append "#\\x" (kc-hex (char->i64 c) "")))
+        (str (s f p) (string-append "\"" (string-append (string-list-append (reverse (kc-escaped (string-chars s) nil))) "\"")))
+        (lst (xs f l p) (string-append "(" (string-append (kc-data xs) ")"))))))
+  (kc-data (subr kfx (sexps) string)
+    (lambda (xs)
+      (cond ((null? xs) "")
+            ((null? (cdr xs)) (kc-datum (car xs)))
+            (else (string-append (kc-datum (car xs)) (string-append " " (kc-data (cdr xs)))))))))
+
+;;; ------------------------------------------------------------ the forms
+
+"Each of `ks` asked of the database after `prefix`, in order: their values
+ (KFX's `map` takes no procedure that reads the database)."
+(define-rec
+  (kc-get-all (subr qe (db runner string (listof string acyclic)) (listof string acyclic))
+    (lambda (d run prefix ks)
+      (if (null? ks) nil (cons (db-get d run (string-append prefix (car ks))) (kc-get-all d run prefix (cdr ks)))))))
+
+"Each of `ks`, of a file's forms, asked as `QUERY PATH KEY`, read as data."
+(define kc-items-of (subr qe (db runner string string (listof string acyclic)) sexps)
+  (lambda (d run query path ks)
+    (map (lambda ((t string)) (car (read-all t query 1)))
+         (kc-get-all d run (string-append query (string-append " " (string-append path " "))) ks))))
 
 "A file's forms, as read."
 (define kc-forms (subr qe (db runner string) sexps)
   (lambda (d run path) (read-all (db-get d run (string-append "text " path)) path 1)))
 
+(define form-name (subr kfx (sexp) string)
+  (lambda (f)
+    "A definition's name; `` of any other form."
+    (tagcase f
+      (lst (xs fl l p)
+        (if (and (i64>= (size xs) 3) (sym-is? (car xs) "define"))
+            (tagcase (second xs) (sym (n f2 p2) n) (else other ""))
+            ""))
+      (else other ""))))
+
+(define-rec
+  (forms-keyed (subr kfx (sexps i64 (listof string acyclic)) (listof string acyclic))
+    (lambda (fs k acc)
+      "Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
+       are no definition came before."
+      (if (null? fs)
+          acc
+          (let ((n (form-name (car fs))))
+            (if (string=? n "")
+                (forms-keyed (cdr fs) (i64+ k 1) (cons (string-list-append (list "(#expr" (i64->string k) " " (kc-datum (car fs)) ")")) acc))
+                (forms-keyed (cdr fs) k (cons (string-list-append (list "(" n " " (kc-datum (car fs)) ")")) acc))))))))
+
+"`forms PATH`."
+(define q-forms qbody
+  (lambda (d run path)
+    (string-append "(" (string-append (words-of (reverse (forms-keyed (kc-forms d run path) 0 nil))) ")"))))
+
+(define keyed-forms (subr qe (db runner string) sexps)
+  (lambda (d run path) (items (car (read-all (db-get d run (string-append "forms " path)) "forms" 1)))))
+
+(define keyed-key (subr kfx (sexp) string)
+  (lambda (x) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
+
+"`keys PATH`."
+(define q-keys qbody
+  (lambda (d run path)
+    (string-append "(" (string-append (words-of (map keyed-key (keyed-forms d run path))) ")"))))
+
+(define kc-keys (subr qe (db runner string) (listof string acyclic))
+  (lambda (d run path)
+    (map (lambda ((x sexp)) (tagcase x (sym (n f p) n) (else other ""))) (items (car (read-all (db-get d run (string-append "keys " path)) "keys" 1))))))
+
+"`form PATH KEY`."
+(define q-form qbody
+  (lambda (d run a)
+    (let ((found (filter (lambda ((x sexp)) (string=? (keyed-key x) (arg-rest a))) (keyed-forms d run (arg-first a)))))
+      (if (null? found) "()" (kc-datum (second (items (car found))))))))
+
+(define kc-form (subr qe (db runner string string) sexp)
+  (lambda (d run path key) (car (read-all (db-get d run (string-append "form " (string-append path (string-append " " key)))) path 1))))
+
+"A definition's value, and whether it is a `lambda` (perhaps under `the`)."
+(define define-value (subr kfx (sexp) sexp)
+  (lambda (f) (car (reverse (items f)))))
+
+(define lambda-of (subr kfx (sexp) sexps)
+  (lambda (v)
+    "A value's `lambda`, as a list of one, or none."
+    (tagcase v
+      (lst (xs f l p)
+        (cond ((and (not (null? xs)) (sym-is? (car xs) "lambda") (i64>= (size xs) 3)) (list v))
+              (else nil)))
+      (else other nil))))
+
+"`interface PATH KEY`."
+(define q-interface qbody
+  (lambda (d run a)
+    (let ((f (kc-form d run (arg-first a) (arg-rest a))))
+      (if (string=? (form-name f) "")
+          "(expr)"
+          (let ((l (lambda-of (define-value f))))
+            (if (null? l)
+                (string-append "(value " (string-append (form-name f) ")"))
+                (string-list-append (list "(proc " (form-name f) " " (i64->string (size (items (second (items (car l)))))) ")"))))))))
+
+(define-rec
+  (keys-before (subr kfx ((listof string acyclic) string (listof string acyclic)) (listof string acyclic))
+    (lambda (ks key acc)
+      (cond ((null? ks) (reverse acc))
+            ((string=? (car ks) key) (reverse acc))
+            (else (keys-before (cdr ks) key (cons (car ks) acc)))))))
+
+"`scope PATH KEY`."
+(define q-scope qbody
+  (lambda (d run a)
+    (let ((path (arg-first a)))
+      (string-append "("
+        (string-append (words-of (kc-get-all d run (string-append "interface " (string-append path " ")) (keys-before (kc-keys d run path) (arg-rest a) nil)))
+                       ")")))))
+
+;;; ------------------------------------------------------------ checking
+
 "`checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;
- `ok`. A refusal ends the run (the checker's, as kfx's), for now."
+ the types the checker found of the definitions written with none, each
+ `(NAME TYPE)` (C407). A refusal ends the run (the checker's, as kfx's),
+ for now."
 (define q-checked qbody
   (lambda (d run path)
     (let* ((forms (kc-forms d run path))
            (v (check-program forms)))
       (begin
         (if (string=? (kc-language path) "kfx") (with restrictions (restrict forms (verdict-facts v))) #u)
-        "ok"))))
+        (string-append "("
+          (string-append (words-of (map (lambda ((t typed)) (tagcase t (typed (n ty) (string-list-append (list "(" n " " (kc-datum ty) ")")))))
+                                        (verdict-typeds v)))
+                         ")"))))))
+
+"`type PATH NAME`: a definition's type, as written, or as the checker
+ found it (C407)."
+(define q-type qbody
+  (lambda (d run a)
+    (let* ((path (arg-first a)) (name (arg-rest a))
+           (f (kc-form d run path name)))
+      (if (i64= (size (items f)) 4)
+          (kc-datum (third (items f)))
+          (let ((found (filter (lambda ((x sexp)) (sym-is? (car (items x)) name))
+                               (items (car (read-all (db-get d run (string-append "checked " path)) "checked" 1))))))
+            (if (null? found) "()" (kc-datum (second (items (car found))))))))))
+
+(define kc-type (subr qe (db runner string string) sexp)
+  (lambda (d run path name) (car (read-all (db-get d run (string-append "type " (string-append path (string-append " " name)))) "type" 1))))
 
 "`kfx PATH`: the file checked and passing KFX's restrictions, whatever its
  name says, as the Rust back end needs it; `ok`."

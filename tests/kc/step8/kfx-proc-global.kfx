@@ -1,0 +1,2 @@
+;; => 8
+(define k int 3) (define f (subr (read (globals k)) (int) int) (lambda (n) (+ n k))) (f 5)

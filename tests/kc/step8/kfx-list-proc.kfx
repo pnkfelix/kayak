@@ -1,0 +1,2 @@
+;; => (2 1)
+(define pair (subr pure (int) (listof int acyclic)) (lambda (n) (list (+ n 1) n))) (pair 1)

@@ -1,0 +1,2 @@
+;; => 12
+(define x int 5) (define y int (+ x 2)) (+ x y)

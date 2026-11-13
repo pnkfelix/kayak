@@ -53,20 +53,21 @@
 "Code so far: its lines, the newest first; the next label's number; how
  many of the frame's slots it uses; and the failures' calls, kept out of
  the line, after the code's `ret` (the newest first)."
-(define-datatype x64-code (x64-code (listof string acyclic) i64 i64 (listof string acyclic)))
+(define-datatype x64-code (x64-code (listof string acyclic) i64 i64 (listof string acyclic) string))
 
 (define x64-emit (subr kfx (x64-code string) x64-code)
-  (lambda (c line) (tagcase c (x64-code (ls n k fs) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n k fs)))))
+  (lambda (c line) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n k fs px)))))
 
 (define x64-emit-label (subr kfx (x64-code string) x64-code)
-  (lambda (c l) (tagcase c (x64-code (ls n k fs) (x64-code (cons (string-append l ":\n") ls) n k fs)))))
+  (lambda (c l) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append l ":\n") ls) n k fs px)))))
 
-(define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n k fs) n))))
-(define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n k fs) (x64-code ls (i64+ n 1) k fs)))))
-(define x64-label-text (subr kfx (string i64) string) (lambda (what n) (string-append ".L" (string-append what (i64->string n)))))
+(define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n k fs px) n))))
+(define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n k fs px) (x64-code ls (i64+ n 1) k fs px)))))
+(define x64-label (subr kfx (x64-code string i64) string)
+  (lambda (c what n) (tagcase c (x64-code (ls k slots fs px) (string-list-append (list ".L" px "_" what (i64->string n)))))))
 
 (define x64-using (subr kfx (x64-code i64) x64-code)
-  (lambda (c slots) (tagcase c (x64-code (ls n k fs) (x64-code ls n (if (i64> slots k) slots k) fs)))))
+  (lambda (c slots) (tagcase c (x64-code (ls n k fs px) (x64-code ls n (if (i64> slots k) slots k) fs px)))))
 
 (define x64-slot (subr kfx (i64) string)
   (lambda (i) (string-append (i64->string (i64* 8 i)) "(%rsp)")))
@@ -82,12 +83,13 @@
   (lambda (c cc what)
     "A jump, if the flags say `cc`, to the failure `what`, whose call is out
      of the line, after the code's `ret`."
-    (let* ((k (x64-fresh-label c)) (bad (x64-label-text "fail" k))
+    (let* ((k (x64-fresh-label c)) (bad (x64-label c "fail" k))
            (c (x64-emit (x64-labelled c) (string-append "j" (string-append cc (string-append " " bad))))))
       (tagcase c
-        (x64-code (ls n slots fs)
+        (x64-code (ls n slots fs px)
           (x64-code ls n slots
-                    (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)))))))
+                    (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)
+                    px))))))
 
 (define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
 
@@ -101,6 +103,35 @@
           ((or (string=? n "<=") (string=? n "char<=?")) "le")
           ((or (string=? n ">") (string=? n "char>?")) "g")
           (else "ge"))))
+
+"A global's assembly names: its value's cell, its procedure. A name's
+ characters but letters and digits each `_` and its code in hexadecimal,
+ so that every name is one the assembler takes and no two are one."
+(define-rec
+  (x64-name-chars (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs acc)
+      (if (null? cs)
+          acc
+          (let ((k (char->i64 (car cs))))
+            (x64-name-chars (cdr cs)
+                            (cons (if (or (and (i64>= k 97) (i64<= k 122)) (and (i64>= k 65) (i64<= k 90)) (and (i64>= k 48) (i64<= k 57)))
+                                      (list->string (list (car cs)))
+                                      (string-append "_" (string-append (kc-hex k "") "_")))
+                                  acc)))))))
+(define x64-name (subr kfx (string) string) (lambda (n) (string-list-append (reverse (x64-name-chars (string-chars n) nil)))))
+(define x64-global-symbol (subr kfx (string) string) (lambda (n) (string-append "kcg_" (x64-name n))))
+(define x64-proc-symbol (subr kfx (string) string) (lambda (n) (string-append "kcp_" (x64-name n))))
+
+"The registers a call's arguments are given in, in order."
+(define x64-arg-registers (listof string acyclic) (list "%rdi" "%rsi" "%rdx" "%rcx" "%r8" "%r9"))
+
+(define-rec
+  (x64-moved-args (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
+    (lambda (c regs si n)
+      "The `n` arguments in the slots from `si` moved to their registers."
+      (if (or (i64<= n 0) (null? regs))
+          c
+          (x64-moved-args (x64-emit c (string-append "movq " (string-append (x64-slot si) (string-append ", " (car regs))))) (cdr regs) (i64+ si 1) (i64- n 1))))))
 
 "Where each variable is: its binder's number and its slot."
 (define-datatype x64-at (x64-at i64 i64))
@@ -131,10 +162,20 @@
                             (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax")))))
                        (x64-emit-binary c (prim-name t))))))
               ((string=? h "var") (x64-emit c (string-append "movq " (string-append (x64-slot (x64-slot-of (var-number t) env)) ", %rax"))))
+              ((string=? h "gvar") (x64-emit c (string-append "movq " (string-append (x64-global-symbol (item-name t)) "(%rip), %rax"))))
+              ((string=? h "call")
+               ;; Each argument made into a slot of its own, then moved to its
+               ;; register, and the procedure called (C407).
+               (let* ((args (call-args t)) (n (size args)))
+                 (if (i64> n 6)
+                     (begin (not-yet "" "a call of more than six arguments") c)
+                     (let* ((c (x64-emit-args c args si env))
+                            (c (x64-moved-args c x64-arg-registers si n)))
+                       (x64-emit c (string-append "call " (x64-proc-symbol (call-name t))))))))
               ((string=? h "if")
                ;; The test, a bool: #f's word to the else, all else to the then (C405).
                (let* ((ps (if-parts t))
-                      (k (x64-fresh-label c)) (no (x64-label-text "else" k)) (past (x64-label-text "fi" k))
+                      (k (x64-fresh-label c)) (no (x64-label c "else" k)) (past (x64-label c "fi" k))
                       (c (x64-labelled c))
                       (c (x64-emit-expr c (car ps) si env))
                       (c (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))))
@@ -159,6 +200,15 @@
                  (c (x64-emit-expr c (third b) si env))
                  (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
             (x64-emit-let c (cdr bs) body (i64+ si 1) env (cons (x64-at k si) inner))))))
+
+  (x64-emit-args (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
+    (lambda (c args si env)
+      "Each argument made into a slot of its own, from `si`."
+      (if (null? args)
+          c
+          (let* ((c (x64-emit-expr c (car args) si env))
+                 (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
+            (x64-emit-args c (cdr args) (i64+ si 1) env)))))
 
   (x64-emit-seq (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
     (lambda (c ts si env)
@@ -237,7 +287,7 @@
                      (else
                       ;; The remainder, of the divisor's sign: where the two
                       ;; differ and it is not 0, the divisor added.
-                      (let* ((k (x64-fresh-label c)) (past (x64-label-text "mod" k))
+                      (let* ((k (x64-fresh-label c)) (past (x64-label c "mod" k))
                              (c (x64-labelled c))
                              (c (x64-emit c "movq %rdx, %rax"))
                              (c (x64-emit c "testq %rax, %rax"))
@@ -255,24 +305,91 @@
 (define x64-frame (subr kfx (i64) i64)
   (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
 
+"A procedure's frame: its slots, rounded so that, entered 8 below a
+ multiple of 16, it calls at one."
+(define x64-frame-of-call (subr kfx (i64) i64)
+  (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
+
+"`asm-item PATH KEY`: a form's code (C407), `(asm SLOTS CODE FAILS)`: a
+ procedure's whole function, its frame in it; a value definition's or an
+ expression's code for `kc_entry`, as many slots as it uses, and what it
+ ends with (a definition's value stored in its cell; an expression's value
+ given to the runtime's `kc_show`, which writes it); its failures' calls."
+(define-rec
+  (x64-params-at (subr kfx (sexps i64 (listof x64-at acyclic)) (listof x64-at acyclic))
+    (lambda (ps i env)
+      (if (null? ps) env
+          (x64-params-at (cdr ps) (i64+ i 1) (cons (x64-at (tagcase (car (items (car ps))) (num (k f p) k) (else other -1)) i) env))))))
+
+(define-rec
+  (x64-stored-params (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
+    (lambda (c regs i n)
+      (if (or (i64>= i n) (null? regs)) c
+          (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
+
+(define x64-asm-item-text (subr kfx (i64 (listof string acyclic) (listof string acyclic)) string)
+  (lambda (slots ls fails)
+    (string-list-append
+      (list "(asm " (i64->string slots) " "
+            (kc-datum (str (string-list-append (reverse ls)) "" 0)) " "
+            (kc-datum (str (string-list-append (reverse fails)) "" 0)) ")"))))
+
+(define q-asm-item qbody
+  (lambda (d run a)
+    (let* ((path (arg-first a)) (key (arg-rest a)) (i (l0-item d run path key)) (k (item-kind i))
+           (px (x64-name key)))
+      (cond ((string=? k "proc")
+             (let* ((ps (item-params i)) (n (size ps)))
+               (if (i64> n 6)
+                   (not-yet path "a procedure of more than six parameters")
+                   (tagcase (x64-emit-expr (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n)
+                                           (item-body i) n (x64-params-at ps 0 nil))
+                     (x64-code (ls m slots fails px2)
+                       (let ((frame (x64-frame-of-call slots)))
+                         (x64-asm-item-text 0
+                           (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" (i64->string frame) ", %rsp\n"))))
+                           ;; Its frame made first, its code after (`ls` is newest first).
+                           (append fails (list (string-list-append (list "    addq $" (i64->string frame) ", %rsp\n    ret\n")))))))))))
+            ((string=? k "global")
+             (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
+               (x64-code (ls m slots fails px2)
+                 (x64-asm-item-text slots (cons (string-list-append (list "    movq %rax, " (x64-global-symbol (item-name i)) "(%rip)\n")) ls) fails))))
+            (else
+             (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
+               (x64-code (ls m slots fails px2)
+                 (x64-asm-item-text slots (cons "    movq %rax, %rdi\n    call kc_show\n" ls) fails))))))))
+
+(define x64-asm-of (subr qe (db runner string string) sexp)
+  (lambda (d run path key) (car (read-all (db-get d run (string-append "asm-item " (string-append path (string-append " " key)))) "asm" 1))))
+
+(define x64-part (subr kfx (sexp i64) string)
+  (lambda (x i) (tagcase (sexp-at (items x) i) (str (s f p) s) (else other ""))))
+(define x64-slots-of (subr kfx (sexp) i64)
+  (lambda (x) (tagcase (second (items x)) (num (k f p) k) (else other 0))))
+
+(define-rec
+  (x64-max-slots (subr kfx (sexps i64) i64)
+    (lambda (xs m) (if (null? xs) m (x64-max-slots (cdr xs) (let ((k (x64-slots-of (car xs)))) (if (i64> k m) k m)))))))
+
+"`asm PATH`: the program: each global's cell; each procedure; then
+ `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
+ value definitions and expressions in order."
 (define q-asm qbody
   (lambda (d run path)
-    (tagcase (x64-emit-expr (x64-code nil 0 0 nil) (l0-term d run path) 0 nil)
-      (x64-code (ls n slots fails)
-        (string-list-append
-          (append (list "# Made by kc (docs/research/kc.md) from " path ".\n"
-                        "    .text\n"
-                        "    .globl kc_entry\n"
-                        "kc_entry:\n"
-                        "    pushq %r15\n"
-                        "    pushq %r14\n"
-                        "    movq %rdi, %r15\n"
-                        "    movq %rsi, %r14\n"
-                        "    subq $" (i64->string (x64-frame slots)) ", %rsp\n")
-                  (append (reverse ls)
-                          (append (list "    addq $" (i64->string (x64-frame slots)) ", %rsp\n"
-                                        "    popq %r14\n"
-                                        "    popq %r15\n"
-                                        "    ret\n")
-                                  (append (reverse fails)
-                                          (list "    .section .note.GNU-stack,\"\",@progbits\n"))))))))))
+    (let* ((keys (kc-keys d run path))
+           (its (kc-items-of d run "asm-item" path keys))
+           (l0s (kc-items-of d run "l0-item" path keys))
+           (kinds (map item-kind l0s))
+           (names (map item-name l0s))
+           (frame (x64-frame (x64-max-slots (filter (lambda ((x sexp)) (i64> (x64-slots-of x) -1)) its) 0))))
+      (string-list-append
+        (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\n")
+         (append (map2 (lambda ((k string) (n string)) (if (string=? k "global") (string-append (x64-global-symbol n) ":\n    .quad 0\n") "")) kinds names)
+          (append (list "    .text\n")
+           (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
+            (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
+                          "    subq $" (i64->string frame) ", %rsp\n")
+             (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
+              (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+               (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
+                       (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
