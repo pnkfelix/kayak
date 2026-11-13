@@ -128,7 +128,7 @@ pub fn symbol_to_string(s: Symbol) -> Str {
 }
 
 // Ported from Fixpt (C121; scripts/fixpt-drift.py):
-// fixpt-source: crates/fixpt-heap/src/heap.rs@b41109e
+// fixpt-source: crates/fixpt-heap/src/heap.rs@4e13016
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 

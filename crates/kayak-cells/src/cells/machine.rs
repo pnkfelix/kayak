@@ -9,7 +9,7 @@ use super::*;
 // the registers `cur k fp clo`. Each check where Fixpt makes it, each trap
 // its message, so a run ends as Fixpt's does. Not yet: prompts, marks,
 // continuations, native code, bignums.
-// fixpt-source: crates/fixpt-engine/src/cellular.rs@0d933ff
+// fixpt-source: crates/fixpt-engine/src/cellular.rs@4e13016
 
 // The limits: values on the data stack, entries on the return stack.
 #[inline]

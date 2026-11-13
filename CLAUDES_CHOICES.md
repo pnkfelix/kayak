@@ -10926,3 +10926,28 @@ file's forms, not carried: kayak's port of the FX-26 parser
 (`fx26/cg.kfx`) reads no macros, so it has no such path. Its mark at
 eed406e; the new programs come with the sync.
 
+## C396. The pin moved to Fixpt 4e13016 (2026-11-12)
+
+The user: "Pull the Fixpt from GitHub main and adapt to it". eed406e to
+4e13016, 23 commits, nearly all of them Fixpt's own machinery: a session
+on a host with no Scheme engine unless lowered code runs (TODO §252), the
+front end native by default and entered from Rust, procedural macros'
+transformers compiled, phase times (`FIXPT_PHASE_TIMES`), tests sharded and
+faster, and the heap's areas (a static area remembered, code a generation
+of its own, globals and symbols in tables of chunks). Two primitives
+added, `%gc-major-every!` and `%gc-code-every!`. Drift, each source read,
+none carried:
+- `check.rs`: a hash set's type only (`IdSet`); its generative
+  declarations, what `kfx/reps.kfx` ports, unchanged.
+- `prim.rs`: primitives that run code a kind of their own (`Reenters`, in
+  place of a list of names), leaves marked as they run, entries called
+  from Rust; the two `%gc-…-every!`, tier 1 having none of the
+  `%gc-every!` family and no program asking for them.
+- The two `cellular.rs` and `x64.rs`: those kinds followed, phases
+  entered, assertions that a leaf runs no code, a code collection apart
+  from a major one; no change to the words or what a cell does.
+- `heap.rs`: its areas and generations (tables, code); the format kayak
+  ports (values' tags, bloblets' layout) and the symbols' hash
+  (`kayak-rt/src/text.rs`) unchanged.
+Every mark at 4e13016.
+
