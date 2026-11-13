@@ -14,212 +14,296 @@ use super::*;
 // and values: only what an edit could have changed runs again. With
 // --stats, how many query bodies ran, and which queries they
 // were, on the standard error.
+pub mod kc_driver {
+    use super::*;
 
-// Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399).
-#[inline]
-pub fn kc_whose() -> Str {
-    string_append(str_lit("kc "), kc_identity())
-}
+    #[inline]
+    pub fn key_arg() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
+        &kc_front::key_arg
+    }
 
-#[inline]
-pub fn fail_with(message: Str, status: Int) -> Void {
-    {
-        let tagcase_ = write_err(string_append(str_lit("kc: "), string_append(message, str_lit("\n"))));
+    #[inline]
+    pub fn key_name() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
+        &kc_front::key_name
+    }
+
+    #[inline]
+    pub fn q_forms() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_forms
+    }
+
+    #[inline]
+    pub fn q_keys() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_keys
+    }
+
+    #[inline]
+    pub fn q_form() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_form
+    }
+
+    #[inline]
+    pub fn q_interface() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_interface
+    }
+
+    #[inline]
+    pub fn q_scope() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_scope
+    }
+
+    #[inline]
+    pub fn q_checked() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_checked
+    }
+
+    #[inline]
+    pub fn q_type() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_type
+    }
+
+    #[inline]
+    pub fn q_kfx() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_kfx
+    }
+
+    #[inline]
+    pub fn q_l0_item() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_l0::q_l0_item
+    }
+
+    #[inline]
+    pub fn q_rust_item() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_rust::q_rust_item
+    }
+
+    #[inline]
+    pub fn q_rust() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_rust::q_rust
+    }
+
+    #[inline]
+    pub fn q_asm_item() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_x64::q_asm_item
+    }
+
+    #[inline]
+    pub fn q_asm() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_x64::q_asm
+    }
+
+    // Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399).
+    #[inline]
+    pub fn kc_whose() -> Str {
+        string_append(str_lit("kc "), kc_identity())
+    }
+
+    #[inline]
+    pub fn fail_with(message: Str, status: Int) -> Void {
+        {
+            let tagcase_ = write_err(string_append(str_lit("kc: "), string_append(message, str_lit("\n"))));
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("done") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                ()
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                ()
+            } else { unreachable!() }
+        };
+        match exit(status) {}
+    }
+
+    pub fn read_text(path: Str) -> Str {
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            let tagcase_ = utf8_to_string(b);
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                s
+            } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                match fail_with(string_append(path, str_lit(": not UTF-8")), int_lit(1)) {}
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+        } else { unreachable!() }
+    }
+
+    pub fn read_text_or_none(path: Str) -> Str {
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            let tagcase_ = utf8_to_string(b);
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                s
+            } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                str_lit("")
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            str_lit("")
+        } else { unreachable!() }
+    }
+
+    pub fn write_text(path: Str, text: Str) -> () {
+        let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("done") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
             ()
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            ()
+            match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
         } else { unreachable!() }
-    };
-    match exit(status) {}
-}
-
-pub fn read_text(path: Str) -> Str {
-    let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
-    let tag_ = kayak_rt::sum_tag(tagcase_);
-    if tag_ == const { kayak_rt::tag_hash("data") } {
-        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        let tagcase_ = utf8_to_string(b);
-        let tag_ = kayak_rt::sum_tag(tagcase_);
-        if tag_ == const { kayak_rt::tag_hash("text") } {
-            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            s
-        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
-            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            match fail_with(string_append(path, str_lit(": not UTF-8")), int_lit(1)) {}
-        } else { unreachable!() }
-    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
-    } else { unreachable!() }
-}
-
-pub fn read_text_or_none(path: Str) -> Str {
-    let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
-    let tag_ = kayak_rt::sum_tag(tagcase_);
-    if tag_ == const { kayak_rt::tag_hash("data") } {
-        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        let tagcase_ = utf8_to_string(b);
-        let tag_ = kayak_rt::sum_tag(tagcase_);
-        if tag_ == const { kayak_rt::tag_hash("text") } {
-            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            s
-        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
-            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            str_lit("")
-        } else { unreachable!() }
-    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        str_lit("")
-    } else { unreachable!() }
-}
-
-pub fn write_text(path: Str, text: Str) -> () {
-    let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
-    let tag_ = kayak_rt::sum_tag(tagcase_);
-    if tag_ == const { kayak_rt::tag_hash("done") } {
-        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        ()
-    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
-    } else { unreachable!() }
-}
-
-// Every query, by name.
-pub fn kc_run(d: Db, k: Str) -> Str {
-    let (q, a) = (key_name(k), key_arg(k));
-    if string_eq_p(q, str_lit("checked")) {
-        q_checked(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("kfx")) {
-        q_kfx(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("forms")) {
-        q_forms(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("keys")) {
-        q_keys(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("form")) {
-        q_form(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("interface")) {
-        q_interface(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("scope")) {
-        q_scope(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("type")) {
-        q_type(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("l0-item")) {
-        q_l0_item(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("rust-item")) {
-        q_rust_item(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("rust")) {
-        q_rust(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("asm-item")) {
-        q_asm_item(d, &kc_run, a)
-    } else if string_eq_p(q, str_lit("asm")) {
-        q_asm(d, &kc_run, a)
-    } else {
-        error(string_append(str_lit("kc: no query "), k));
-        str_lit("")
     }
-}
 
-/// The first `n` of `ks`, oldest first, each after a space.
-pub fn ran_names(ks: List<Str>, n: i64) -> Str {
-    if (null_p(ks) || i64_lt_eq(n, 0i64)) {
-        str_lit("")
-    } else {
-        string_append(ran_names(cdr(ks), i64_minus(n, 1i64)), string_append(str_lit(" "), key_name(car(ks))))
-    }
-}
-
-pub enum Opts {
-    Opts(Str, bool, List<Str>),
-}
-
-pub fn opts(f0: Str, f1: bool, f2: List<Str>) -> &'static Opts {
-    kayak_rt::heap_alloc(Opts::Opts(f0, f1, f2))
-}
-
-pub fn opts_of(mut r#as: List<Str>, mut db: Str, mut stats: bool, mut rest: List<Str>) -> &'static Opts {
-    loop {
-        if null_p(r#as) {
-            return opts(db, stats, reverse(rest));
-        } else if (string_eq_p(car(r#as), str_lit("--db")) && not(null_p(cdr(r#as)))) {
-            (r#as, db) = (cdr(cdr(r#as)), car(cdr(r#as)));
-            continue;
-        } else if string_eq_p(car(r#as), str_lit("--stats")) {
-            (r#as, stats) = (cdr(r#as), true);
-            continue;
+    // Every query, by name.
+    pub fn kc_run(d: Db, k: Str) -> Str {
+        let (q, a) = (key_name()(k), key_arg()(k));
+        if string_eq_p(q, str_lit("checked")) {
+            q_checked()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("kfx")) {
+            q_kfx()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("forms")) {
+            q_forms()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("keys")) {
+            q_keys()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("form")) {
+            q_form()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("interface")) {
+            q_interface()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("scope")) {
+            q_scope()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("type")) {
+            q_type()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("l0-item")) {
+            q_l0_item()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("rust-item")) {
+            q_rust_item()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("rust")) {
+            q_rust()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("asm-item")) {
+            q_asm_item()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("asm")) {
+            q_asm()(d, &kc_run, a)
         } else {
-            (r#as, rest) = (cdr(r#as), kayak_rt::heap_cons(car(r#as), rest));
-            continue;
+            error(string_append(str_lit("kc: no query "), k));
+            str_lit("")
         }
     }
-}
 
-pub fn main() -> Int {
-    let tagcase_ = opts_of(the::<List<Str>>(args()), str_lit(""), false, nil::<Str>());
-    match *tagcase_ {
-        Opts::Opts(dbp, stats, rest) => {
-            let d = if string_eq_p(dbp, str_lit("")) {
-                db_make()
+    /// The first `n` of `ks`, oldest first, each after a space.
+    pub fn ran_names(ks: List<Str>, n: i64) -> Str {
+        if (null_p(ks) || i64_lt_eq(n, 0i64)) {
+            str_lit("")
+        } else {
+            string_append(ran_names(cdr(ks), i64_minus(n, 1i64)), string_append(str_lit(" "), key_name()(car(ks))))
+        }
+    }
+
+    pub enum Opts {
+        Opts(Str, bool, List<Str>),
+    }
+
+    pub fn opts(f0: Str, f1: bool, f2: List<Str>) -> &'static Opts {
+        kayak_rt::heap_alloc(Opts::Opts(f0, f1, f2))
+    }
+
+    pub fn opts_of(mut r#as: List<Str>, mut db: Str, mut stats: bool, mut rest: List<Str>) -> &'static Opts {
+        loop {
+            if null_p(r#as) {
+                return opts(db, stats, reverse(rest));
+            } else if (string_eq_p(car(r#as), str_lit("--db")) && not(null_p(cdr(r#as)))) {
+                (r#as, db) = (cdr(cdr(r#as)), car(cdr(r#as)));
+                continue;
+            } else if string_eq_p(car(r#as), str_lit("--stats")) {
+                (r#as, stats) = (cdr(r#as), true);
+                continue;
             } else {
-                db_of_text(read_text_or_none(dbp), kc_whose())
-            };
-            if null_p(rest) {
-                match fail_with(str_lit("usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT)"), int_lit(2)) {}
-            } else {
-                let what = car(rest);
-                let file = if null_p(cdr(rest)) {
-                    str_lit("")
-                } else {
-                    car(cdr(rest))
-                };
-                if string_eq_p(file, str_lit("")) {
-                    match fail_with(str_lit("a FILE is wanted"), int_lit(2)) {}
-                } else {
-                    ()
-                };
-                db_set_x(d, string_append(str_lit("text "), file), read_text(file), 0i64);
-                let before = db_runs(d);
-                if string_eq_p(what, str_lit("--check")) {
-                    db_get(d, &kc_run, string_append(str_lit("checked "), file));
-                    ()
-                } else if (string_eq_p(what, str_lit("--rust")) || string_eq_p(what, str_lit("--asm"))) {
-                    if null_p(cdr(cdr(rest))) {
-                        match fail_with(str_lit("an OUT is wanted"), int_lit(2)) {}
-                    } else {
-                        write_text(car(cdr(cdr(rest))), db_get(d, &kc_run, string_append(if string_eq_p(what, str_lit("--rust")) {
-                            str_lit("rust ")
-                        } else {
-                            str_lit("asm ")
-                        }, file)))
-                    }
-                } else {
-                    match fail_with(string_append(str_lit("not an option: "), what), int_lit(2)) {}
-                };
-                if stats {
-                    let tagcase_ = write_err(string_append(str_lit("kc: "), string_append(i64_to_string(i64_minus(db_runs(d), before)), string_append(str_lit(" query bodies ran:"), string_append(ran_names(db_ran(d), i64_minus(db_runs(d), before)), str_lit("\n"))))));
-                    let tag_ = kayak_rt::sum_tag(tagcase_);
-                    if tag_ == const { kayak_rt::tag_hash("done") } {
-                        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                        ()
-                    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-                        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                        ()
-                    } else { unreachable!() }
-                } else {
-                    ()
-                };
-                if string_eq_p(dbp, str_lit("")) {
-                    ()
-                } else {
-                    write_text(dbp, db_text(d, kc_whose()))
-                };
-                int_lit(0)
+                (r#as, rest) = (cdr(r#as), kayak_rt::heap_cons(car(r#as), rest));
+                continue;
             }
         }
     }
+
+    pub fn kc_main() -> Int {
+        let tagcase_ = opts_of(the::<List<Str>>(args()), str_lit(""), false, nil::<Str>());
+        match *tagcase_ {
+            Opts::Opts(dbp, stats, rest) => {
+                let d = if string_eq_p(dbp, str_lit("")) {
+                    db_make()
+                } else {
+                    db_of_text(read_text_or_none(dbp), kc_whose())
+                };
+                if null_p(rest) {
+                    match fail_with(str_lit("usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT)"), int_lit(2)) {}
+                } else {
+                    let what = car(rest);
+                    let file = if null_p(cdr(rest)) {
+                        str_lit("")
+                    } else {
+                        car(cdr(rest))
+                    };
+                    if string_eq_p(file, str_lit("")) {
+                        match fail_with(str_lit("a FILE is wanted"), int_lit(2)) {}
+                    } else {
+                        ()
+                    };
+                    db_set_x(d, string_append(str_lit("text "), file), read_text(file), 0i64);
+                    let before = db_runs(d);
+                    if string_eq_p(what, str_lit("--check")) {
+                        db_get(d, &kc_run, string_append(str_lit("checked "), file));
+                        ()
+                    } else if (string_eq_p(what, str_lit("--rust")) || string_eq_p(what, str_lit("--asm"))) {
+                        if null_p(cdr(cdr(rest))) {
+                            match fail_with(str_lit("an OUT is wanted"), int_lit(2)) {}
+                        } else {
+                            write_text(car(cdr(cdr(rest))), db_get(d, &kc_run, string_append(if string_eq_p(what, str_lit("--rust")) {
+                                str_lit("rust ")
+                            } else {
+                                str_lit("asm ")
+                            }, file)))
+                        }
+                    } else {
+                        match fail_with(string_append(str_lit("not an option: "), what), int_lit(2)) {}
+                    };
+                    if stats {
+                        let tagcase_ = write_err(string_append(str_lit("kc: "), string_append(i64_to_string(i64_minus(db_runs(d), before)), string_append(str_lit(" query bodies ran:"), string_append(ran_names(db_ran(d), i64_minus(db_runs(d), before)), str_lit("\n"))))));
+                        let tag_ = kayak_rt::sum_tag(tagcase_);
+                        if tag_ == const { kayak_rt::tag_hash("done") } {
+                            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                            ()
+                        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                            ()
+                        } else { unreachable!() }
+                    } else {
+                        ()
+                    };
+                    if string_eq_p(dbp, str_lit("")) {
+                        ()
+                    } else {
+                        write_text(dbp, db_text(d, kc_whose()))
+                    };
+                    int_lit(0)
+                }
+            }
+        }
+    }
+}
+
+// kc's entry: the driver's.
+#[inline]
+pub fn main() -> Int {
+    kc_driver::kc_main()
 }
 

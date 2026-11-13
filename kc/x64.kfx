@@ -24,372 +24,394 @@
  Integers are fixnums alone, as yet: an operation whose result would be
  past one fails, `not yet` (until the heap, and big integers on it)."
 
-(define x64-immediate (subr kfx (i64 i64) i64)
-  (lambda (kind payload) (i64+ (i64* payload 256) (i64+ (i64* kind 8) 3))))
+(define kc-x64
+  (module
+    (hide
+      (import kc-front arg-first arg-rest kc-hex kc-datum kc-items-of kc-keys (type qbody))
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number)
+      (import kc-rust sexp-at))
 
-(define x64-word-false i64 3)
-(define x64-word-true i64 11)
-(define x64-word-nil i64 19)
-(define x64-fixnum-max i64 1152921504606846975)
+    (hide
+      (define x64-immediate (subr kfx (i64 i64) i64)
+        (lambda (kind payload) (i64+ (i64* payload 256) (i64+ (i64* kind 8) 3))))
 
-"The failures the runtime says, by number (kayak-kcrt's `kc_fail`)."
-(define x64-fail-not-a-char i64 1)
-(define x64-fail-past-fixnum i64 2)
-(define x64-fail-division i64 3)
-(define x64-fail-not-a-pair i64 4)
-(define x64-fail-heap i64 5)
+      (define x64-word-false i64 3)
 
-(define x64-constant-of (subr kfx (sexp) i64)
-  (lambda (t)
-    "A constant term's value, as a word of Fixpt's format."
-    (let ((h (term-head t)) (n (term-number t)))
-      (cond ((string=? h "int") (i64* n 8))
-            ((string=? h "bool") (x64-immediate n 0))
-            ((string=? h "nil") (x64-immediate 2 0))
-            ((string=? h "unit") (x64-immediate 3 0))
-            ((string=? h "char") (x64-immediate 8 n))
-            (else (begin (error (string-append "kc: the native back end has no constant " h)) 0))))))
+      (define x64-word-true i64 11)
 
-"Code so far: its lines, the newest first; the next label's number; how
- many of the frame's slots it uses; and the failures' calls, kept out of
- the line, after the code's `ret` (the newest first)."
-(define-datatype x64-code (x64-code (listof string acyclic) i64 i64 (listof string acyclic) string))
+      (define x64-word-nil i64 19)
 
-(define x64-emit (subr kfx (x64-code string) x64-code)
-  (lambda (c line) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n k fs px)))))
+      (define x64-fixnum-max i64 1152921504606846975)
 
-(define x64-emit-label (subr kfx (x64-code string) x64-code)
-  (lambda (c l) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append l ":\n") ls) n k fs px)))))
+      "The failures the runtime says, by number (kayak-kcrt's `kc_fail`)."
+      (define x64-fail-not-a-char i64 1)
 
-(define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n k fs px) n))))
-(define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n k fs px) (x64-code ls (i64+ n 1) k fs px)))))
-(define x64-label (subr kfx (x64-code string i64) string)
-  (lambda (c what n) (tagcase c (x64-code (ls k slots fs px) (string-list-append (list ".L" px "_" what (i64->string n)))))))
+      (define x64-fail-past-fixnum i64 2)
 
-(define x64-using (subr kfx (x64-code i64) x64-code)
-  (lambda (c slots) (tagcase c (x64-code (ls n k fs px) (x64-code ls n (if (i64> slots k) slots k) fs px)))))
+      (define x64-fail-division i64 3)
 
-(define x64-slot (subr kfx (i64) string)
-  (lambda (i) (string-append (i64->string (i64* 8 i)) "(%rsp)")))
+      (define x64-fail-not-a-pair i64 4)
 
-(define x64-boolean-if (subr kfx (x64-code string) x64-code)
-  (lambda (c cc)
-    "`%rax` made #t if the flags say `cc`, else #f."
-    (x64-emit (x64-emit (x64-emit c (string-append "movl $" (string-append (i64->string x64-word-false) ", %eax")))
-                        (string-append "movl $" (string-append (i64->string x64-word-true) ", %ecx")))
-              (string-append "cmov" (string-append cc " %rcx, %rax")))))
+      (define x64-fail-heap i64 5)
 
-(define x64-failing-if (subr kfx (x64-code string i64) x64-code)
-  (lambda (c cc what)
-    "A jump, if the flags say `cc`, to the failure `what`, whose call is out
-     of the line, after the code's `ret`."
-    (let* ((k (x64-fresh-label c)) (bad (x64-label c "fail" k))
-           (c (x64-emit (x64-labelled c) (string-append "j" (string-append cc (string-append " " bad))))))
-      (tagcase c
-        (x64-code (ls n slots fs px)
-          (x64-code ls n slots
-                    (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)
-                    px))))))
+      (define x64-constant-of (subr kfx (sexp) i64)
+        (lambda (t)
+          "A constant term's value, as a word of Fixpt's format."
+          (let ((h (term-head t)) (n (term-number t)))
+            (cond ((string=? h "int") (i64* n 8))
+                  ((string=? h "bool") (x64-immediate n 0))
+                  ((string=? h "nil") (x64-immediate 2 0))
+                  ((string=? h "unit") (x64-immediate 3 0))
+                  ((string=? h "char") (x64-immediate 8 n))
+                  (else (begin (error (string-append "kc: the native back end has no constant " h)) 0))))))
 
-(define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
+      "Code so far: its lines, the newest first; the next label's number; how
+       many of the frame's slots it uses; and the failures' calls, kept out of
+       the line, after the code's `ret` (the newest first)."
+      (define-datatype x64-code (x64-code (listof string acyclic) i64 i64 (listof string acyclic) string))
 
-(define x64-condition (subr kfx (string) string)
-  (lambda (n)
-    "The condition code of a comparison, its first argument in `%rax`, its
-     second in `%rcx`: characters compare as their words do, the code above
-     the same low bits."
-    (cond ((or (string=? n "=") (string=? n "char=?") (string=? n "eq?")) "e")
-          ((or (string=? n "<") (string=? n "char<?")) "l")
-          ((or (string=? n "<=") (string=? n "char<=?")) "le")
-          ((or (string=? n ">") (string=? n "char>?")) "g")
-          (else "ge"))))
+      (define x64-emit (subr kfx (x64-code string) x64-code)
+        (lambda (c line) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n k fs px)))))
 
-"A global's assembly names: its value's cell, its procedure. A name's
- characters but letters and digits each `_` and its code in hexadecimal,
- so that every name is one the assembler takes and no two are one."
-(define-rec
-  (x64-name-chars (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
-    (lambda (cs acc)
-      (if (null? cs)
-          acc
-          (let ((k (char->i64 (car cs))))
-            (x64-name-chars (cdr cs)
-                            (cons (if (or (and (i64>= k 97) (i64<= k 122)) (and (i64>= k 65) (i64<= k 90)) (and (i64>= k 48) (i64<= k 57)))
-                                      (list->string (list (car cs)))
-                                      (string-append "_" (string-append (kc-hex k "") "_")))
-                                  acc)))))))
-(define x64-name (subr kfx (string) string) (lambda (n) (string-list-append (reverse (x64-name-chars (string-chars n) nil)))))
-(define x64-global-symbol (subr kfx (string) string) (lambda (n) (string-append "kcg_" (x64-name n))))
-(define x64-proc-symbol (subr kfx (string) string) (lambda (n) (string-append "kcp_" (x64-name n))))
+      (define x64-emit-label (subr kfx (x64-code string) x64-code)
+        (lambda (c l) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append l ":\n") ls) n k fs px)))))
 
-"The registers a call's arguments are given in, in order."
-(define x64-arg-registers (listof string acyclic) (list "%rdi" "%rsi" "%rdx" "%rcx" "%r8" "%r9"))
+      (define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n k fs px) n))))
 
-(define-rec
-  (x64-moved-args (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
-    (lambda (c regs si n)
-      "The `n` arguments in the slots from `si` moved to their registers."
-      (if (or (i64<= n 0) (null? regs))
-          c
-          (x64-moved-args (x64-emit c (string-append "movq " (string-append (x64-slot si) (string-append ", " (car regs))))) (cdr regs) (i64+ si 1) (i64- n 1))))))
+      (define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n k fs px) (x64-code ls (i64+ n 1) k fs px)))))
 
-"Where each variable is: its binder's number and its slot."
-(define-datatype x64-at (x64-at i64 i64))
+      (define x64-label (subr kfx (x64-code string i64) string)
+        (lambda (c what n) (tagcase c (x64-code (ls k slots fs px) (string-list-append (list ".L" px "_" what (i64->string n)))))))
 
-(define-rec
-  (x64-slot-of (subr kfx (i64 (listof x64-at acyclic)) i64)
-    (lambda (k env)
-      (cond ((null? env) (the i64 -1))
-            ((tagcase (car env) (x64-at (j s) (i64= j k))) (tagcase (car env) (x64-at (j s) s)))
-            (else (x64-slot-of k (cdr env)))))))
+      (define x64-using (subr kfx (x64-code i64) x64-code)
+        (lambda (c slots) (tagcase c (x64-code (ls n k fs px) (x64-code ls n (if (i64> slots k) slots k) fs px)))))
 
-(define-rec
-  (x64-emit-expr (subr kfx (x64-code sexp i64 (listof x64-at acyclic)) x64-code)
-    (lambda (c t si env)
-      "Code that leaves `t`'s value in `%rax`, using the frame's slots from
-       `si`, its variables where `env` says."
-      (let ((h (term-head t)))
-        (cond ((string=? h "prim")
-               (let ((args (prim-args t)))
-                 (if (null? (cdr args))
-                     (x64-emit-unary (x64-emit-expr c (car args) si env) (prim-name t))
-                     ;; The first in slot `si` while the second is made; then the
-                     ;; first in `%rax`, the second in `%rcx`.
-                     (let* ((c (x64-emit-expr c (car args) si env))
-                            (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
-                            (c (x64-emit-expr c (second args) (i64+ si 1) env))
-                            (c (x64-emit c "movq %rax, %rcx"))
-                            (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax")))))
-                       (x64-emit-binary c (prim-name t))))))
-              ((string=? h "var") (x64-emit c (string-append "movq " (string-append (x64-slot (x64-slot-of (var-number t) env)) ", %rax"))))
-              ((string=? h "gvar") (x64-emit c (string-append "movq " (string-append (x64-global-symbol (item-name t)) "(%rip), %rax"))))
-              ((string=? h "call")
-               ;; Each argument made into a slot of its own, then moved to its
-               ;; register, and the procedure called (C407).
-               (let* ((args (call-args t)) (n (size args)))
-                 (if (i64> n 6)
-                     (begin (not-yet "" "a call of more than six arguments") c)
-                     (let* ((c (x64-emit-args c args si env))
-                            (c (x64-moved-args c x64-arg-registers si n)))
-                       (x64-emit c (string-append "call " (x64-proc-symbol (call-name t))))))))
-              ((string=? h "if")
-               ;; The test, a bool: #f's word to the else, all else to the then (C405).
-               (let* ((ps (if-parts t))
-                      (k (x64-fresh-label c)) (no (x64-label c "else" k)) (past (x64-label c "fi" k))
-                      (c (x64-labelled c))
-                      (c (x64-emit-expr c (car ps) si env))
-                      (c (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))))
-                      (c (x64-emit c (string-append "je " no)))
-                      (c (x64-emit-expr c (second ps) si env))
-                      (c (x64-emit c (string-append "jmp " past)))
-                      (c (x64-emit-label c no))
-                      (c (x64-emit-expr c (third ps) si env)))
-                 (x64-emit-label c past)))
-              ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env))
-              ((string=? h "seq") (x64-emit-seq c (seq-terms t) si env))
-              (else (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))))
+      (define x64-slot (subr kfx (i64) string)
+        (lambda (i) (string-append (i64->string (i64* 8 i)) "(%rsp)")))
 
-  (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic)) x64-code)
-    (lambda (c bs body si env inner)
-      "Each binding's value made where the `let` is (`env`), into a slot of
-       its own; then the body, the binders in scope (`inner`) (C404)."
-      (if (null? bs)
-          (x64-emit-expr c body si inner)
-          (let* ((b (items (car bs)))
-                 (k (tagcase (car b) (num (n f p) n) (else other (the i64 -1))))
-                 (c (x64-emit-expr c (third b) si env))
-                 (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
-            (x64-emit-let c (cdr bs) body (i64+ si 1) env (cons (x64-at k si) inner))))))
+      (define x64-boolean-if (subr kfx (x64-code string) x64-code)
+        (lambda (c cc)
+          "`%rax` made #t if the flags say `cc`, else #f."
+          (x64-emit (x64-emit (x64-emit c (string-append "movl $" (string-append (i64->string x64-word-false) ", %eax")))
+                              (string-append "movl $" (string-append (i64->string x64-word-true) ", %ecx")))
+                    (string-append "cmov" (string-append cc " %rcx, %rax")))))
 
-  (x64-emit-args (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
-    (lambda (c args si env)
-      "Each argument made into a slot of its own, from `si`."
-      (if (null? args)
-          c
-          (let* ((c (x64-emit-expr c (car args) si env))
-                 (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
-            (x64-emit-args c (cdr args) (i64+ si 1) env)))))
+      (define x64-failing-if (subr kfx (x64-code string i64) x64-code)
+        (lambda (c cc what)
+          "A jump, if the flags say `cc`, to the failure `what`, whose call is out
+           of the line, after the code's `ret`."
+          (let* ((k (x64-fresh-label c)) (bad (x64-label c "fail" k))
+                 (c (x64-emit (x64-labelled c) (string-append "j" (string-append cc (string-append " " bad))))))
+            (tagcase c
+              (x64-code (ls n slots fs px)
+                (x64-code ls n slots
+                          (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)
+                          px))))))
 
-  (x64-emit-seq (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
-    (lambda (c ts si env)
-      "Each in turn, the last's value kept."
-      (if (null? ts) c (x64-emit-seq (x64-emit-expr c (car ts) si env) (cdr ts) si env))))
+      (define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
 
-  (x64-emit-unary (subr kfx (x64-code string) x64-code)
-    (lambda (c n)
-      "Code that makes `%rax`, the argument, the primitive `n`'s value."
-      (cond ((string=? n "not") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))) "e"))
-            ((string=? n "null?") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-nil) ", %rax"))) "e"))
-            ((string=? n "zero?") (x64-boolean-if (x64-emit c "testq %rax, %rax") "e"))
-            ;; (c << 8 | 67) >> 5 is c << 3 | 2; the tag bits cleared, a fixnum.
-            ((string=? n "char->integer") (x64-emit (x64-emit c "shrq $5, %rax") "andq $-8, %rax"))
-            ((string=? n "integer->char")
-             ;; A Unicode scalar value: 0 to 0x10ffff, but not 0xd800 to 0xdfff.
-             (let* ((c (x64-emit c "movq %rax, %rdx"))
-                    (c (x64-emit c "sarq $3, %rdx"))
-                    (c (x64-emit c "cmpq $1114111, %rdx"))
-                    (c (x64-failing-if c "a" x64-fail-not-a-char))
-                    (c (x64-emit c "leaq -55296(%rdx), %rcx"))
-                    (c (x64-emit c "cmpq $2047, %rcx"))
-                    (c (x64-failing-if c "be" x64-fail-not-a-char))
-                    (c (x64-emit c "shlq $8, %rdx"))
-                    (c (x64-emit c "orq $67, %rdx")))
-               (x64-emit c "movq %rdx, %rax")))
-            ;; A pair is its cell's address, tag 1: its car at -1 from the
-            ;; value, its cdr at 7 (C406).
-            ((or (string=? n "car") (string=? n "cdr"))
-             (let* ((c (x64-emit c "movq %rax, %rdx"))
-                    (c (x64-emit c "andq $7, %rdx"))
-                    (c (x64-emit c "cmpq $1, %rdx"))
-                    (c (x64-failing-if c "ne" x64-fail-not-a-pair)))
-               (x64-emit c (if (string=? n "car") "movq -1(%rax), %rax" "movq 7(%rax), %rax"))))
-            ((string=? n "pair?")
-             (x64-boolean-if (x64-emit (x64-emit (x64-emit c "movq %rax, %rdx") "andq $7, %rdx") "cmpq $1, %rdx") "e"))
-            (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
+      (define x64-condition (subr kfx (string) string)
+        (lambda (n)
+          "The condition code of a comparison, its first argument in `%rax`, its
+           second in `%rcx`: characters compare as their words do, the code above
+           the same low bits."
+          (cond ((or (string=? n "=") (string=? n "char=?") (string=? n "eq?")) "e")
+                ((or (string=? n "<") (string=? n "char<?")) "l")
+                ((or (string=? n "<=") (string=? n "char<=?")) "le")
+                ((or (string=? n ">") (string=? n "char>?")) "g")
+                (else "ge"))))
 
-  (x64-emit-binary (subr kfx (x64-code string) x64-code)
-    (lambda (c n)
-      "Code that makes `%rax`, the first argument, and `%rcx`, the second,
-       the primitive `n`'s value. A fixnum is its value times 8: a sum or a
-       difference of two is the sum's, its overflow the 64-bit one; a
-       product, one of them shifted back first."
-      (cond ((string-member? n x64-comparisons)
-             (x64-boolean-if (x64-emit c "cmpq %rcx, %rax") (x64-condition n)))
-            ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
-            ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
-            ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
-            ;; Two words from the heap, `%r15` its next free one and `%r14` its
-            ;; end: no collector yet, so a heap used up fails (C406).
-            ((string=? n "cons")
-             (let* ((c (x64-emit c "leaq 16(%r15), %rdx"))
-                    (c (x64-emit c "cmpq %r14, %rdx"))
-                    (c (x64-failing-if c "a" x64-fail-heap))
-                    (c (x64-emit c "movq %rax, 0(%r15)"))
-                    (c (x64-emit c "movq %rcx, 8(%r15)"))
-                    (c (x64-emit c "leaq 1(%r15), %rax")))
-               (x64-emit c "movq %rdx, %r15")))
-            ((string=? n "max") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovl %rcx, %rax"))
-            ((string=? n "min") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovg %rcx, %rax"))
-            ((or (string=? n "quotient") (string=? n "remainder") (string=? n "modulo"))
-             (let* ((c (x64-emit c "testq %rcx, %rcx"))
-                    (c (x64-failing-if c "e" x64-fail-division))
-                    (c (x64-emit c "sarq $3, %rax"))
-                    (c (x64-emit c "sarq $3, %rcx"))
-                    (c (x64-emit c "cqto"))
-                    (c (x64-emit c "idivq %rcx")))
-               (cond ((string=? n "quotient")
-                      ;; Only the least fixnum by -1 is past a fixnum.
-                      (let* ((c (x64-emit c (string-append "movabsq $" (string-append (i64->string x64-fixnum-max) ", %rdx"))))
-                             (c (x64-emit c "cmpq %rdx, %rax"))
-                             (c (x64-failing-if c "g" x64-fail-past-fixnum)))
-                        (x64-emit c "shlq $3, %rax")))
-                     ((string=? n "remainder") (x64-emit (x64-emit c "movq %rdx, %rax") "shlq $3, %rax"))
-                     (else
-                      ;; The remainder, of the divisor's sign: where the two
-                      ;; differ and it is not 0, the divisor added.
-                      (let* ((k (x64-fresh-label c)) (past (x64-label c "mod" k))
-                             (c (x64-labelled c))
-                             (c (x64-emit c "movq %rdx, %rax"))
-                             (c (x64-emit c "testq %rax, %rax"))
-                             (c (x64-emit c (string-append "je " past)))
-                             (c (x64-emit c "movq %rax, %rdx"))
-                             (c (x64-emit c "xorq %rcx, %rdx"))
-                             (c (x64-emit c (string-append "jns " past)))
-                             (c (x64-emit c "addq %rcx, %rax"))
-                             (c (x64-emit-label c past)))
-                        (x64-emit c "shlq $3, %rax"))))))
-            (else (begin (error (string-append "kc: the native back end has no primitive " n)) c))))))
+      "A global's assembly names: its value's cell, its procedure. A name's
+       characters but letters and digits each `_` and its code in hexadecimal,
+       so that every name is one the assembler takes and no two are one."
+      (define-rec
+        (x64-name-chars (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (cs acc)
+            (if (null? cs)
+                acc
+                (let ((k (char->i64 (car cs))))
+                  (x64-name-chars (cdr cs)
+                                  (cons (if (or (and (i64>= k 97) (i64<= k 122)) (and (i64>= k 65) (i64<= k 90)) (and (i64>= k 48) (i64<= k 57)))
+                                            (list->string (list (car cs)))
+                                            (string-append "_" (string-append (kc-hex k "") "_")))
+                                        acc)))))))
 
-"The frame's bytes: its slots, and 8 more if that keeps the stack aligned
- (entered 8 below a multiple of 16, two registers pushed)."
-(define x64-frame (subr kfx (i64) i64)
-  (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
+      (define x64-name (subr kfx (string) string) (lambda (n) (string-list-append (reverse (x64-name-chars (string-chars n) nil)))))
 
-"A procedure's frame: its slots, rounded so that, entered 8 below a
- multiple of 16, it calls at one."
-(define x64-frame-of-call (subr kfx (i64) i64)
-  (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
+      (define x64-global-symbol (subr kfx (string) string) (lambda (n) (string-append "kcg_" (x64-name n))))
 
-"`asm-item PATH KEY`: a form's code (C407), `(asm SLOTS CODE FAILS)`: a
- procedure's whole function, its frame in it; a value definition's or an
- expression's code for `kc_entry`, as many slots as it uses, and what it
- ends with (a definition's value stored in its cell; an expression's value
- given to the runtime's `kc_show`, which writes it); its failures' calls."
-(define-rec
-  (x64-params-at (subr kfx (sexps i64 (listof x64-at acyclic)) (listof x64-at acyclic))
-    (lambda (ps i env)
-      (if (null? ps) env
-          (x64-params-at (cdr ps) (i64+ i 1) (cons (x64-at (tagcase (car (items (car ps))) (num (k f p) k) (else other -1)) i) env))))))
+      (define x64-proc-symbol (subr kfx (string) string) (lambda (n) (string-append "kcp_" (x64-name n))))
 
-(define-rec
-  (x64-stored-params (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
-    (lambda (c regs i n)
-      (if (or (i64>= i n) (null? regs)) c
-          (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
+      "The registers a call's arguments are given in, in order."
+      (define x64-arg-registers (listof string acyclic) (list "%rdi" "%rsi" "%rdx" "%rcx" "%r8" "%r9"))
 
-(define x64-asm-item-text (subr kfx (i64 (listof string acyclic) (listof string acyclic)) string)
-  (lambda (slots ls fails)
-    (string-list-append
-      (list "(asm " (i64->string slots) " "
-            (kc-datum (str (string-list-append (reverse ls)) "" 0)) " "
-            (kc-datum (str (string-list-append (reverse fails)) "" 0)) ")"))))
+      (define-rec
+        (x64-moved-args (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
+          (lambda (c regs si n)
+            "The `n` arguments in the slots from `si` moved to their registers."
+            (if (or (i64<= n 0) (null? regs))
+                c
+                (x64-moved-args (x64-emit c (string-append "movq " (string-append (x64-slot si) (string-append ", " (car regs))))) (cdr regs) (i64+ si 1) (i64- n 1))))))
 
-(define q-asm-item qbody
-  (lambda (d run a)
-    (let* ((path (arg-first a)) (key (arg-rest a)) (i (l0-item d run path key)) (k (item-kind i))
-           (px (x64-name key)))
-      (cond ((string=? k "proc")
-             (let* ((ps (item-params i)) (n (size ps)))
-               (if (i64> n 6)
-                   (not-yet path "a procedure of more than six parameters")
-                   (tagcase (x64-emit-expr (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n)
-                                           (item-body i) n (x64-params-at ps 0 nil))
-                     (x64-code (ls m slots fails px2)
-                       (let ((frame (x64-frame-of-call slots)))
-                         (x64-asm-item-text 0
-                           (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" (i64->string frame) ", %rsp\n"))))
-                           ;; Its frame made first, its code after (`ls` is newest first).
-                           (append fails (list (string-list-append (list "    addq $" (i64->string frame) ", %rsp\n    ret\n")))))))))))
-            ((string=? k "global")
-             (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
-               (x64-code (ls m slots fails px2)
-                 (x64-asm-item-text slots (cons (string-list-append (list "    movq %rax, " (x64-global-symbol (item-name i)) "(%rip)\n")) ls) fails))))
-            (else
-             (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
-               (x64-code (ls m slots fails px2)
-                 (x64-asm-item-text slots (cons "    movq %rax, %rdi\n    call kc_show\n" ls) fails))))))))
+      "Where each variable is: its binder's number and its slot."
+      (define-datatype x64-at (x64-at i64 i64))
 
-(define x64-asm-of (subr qe (db runner string string) sexp)
-  (lambda (d run path key) (car (read-all (db-get d run (string-append "asm-item " (string-append path (string-append " " key)))) "asm" 1))))
+      (define-rec
+        (x64-slot-of (subr kfx (i64 (listof x64-at acyclic)) i64)
+          (lambda (k env)
+            (cond ((null? env) (the i64 -1))
+                  ((tagcase (car env) (x64-at (j s) (i64= j k))) (tagcase (car env) (x64-at (j s) s)))
+                  (else (x64-slot-of k (cdr env)))))))
 
-(define x64-part (subr kfx (sexp i64) string)
-  (lambda (x i) (tagcase (sexp-at (items x) i) (str (s f p) s) (else other ""))))
-(define x64-slots-of (subr kfx (sexp) i64)
-  (lambda (x) (tagcase (second (items x)) (num (k f p) k) (else other 0))))
+      (define-rec
+        (x64-emit-expr (subr kfx (x64-code sexp i64 (listof x64-at acyclic)) x64-code)
+          (lambda (c t si env)
+            "Code that leaves `t`'s value in `%rax`, using the frame's slots from
+             `si`, its variables where `env` says."
+            (let ((h (term-head t)))
+              (cond ((string=? h "prim")
+                     (let ((args (prim-args t)))
+                       (if (null? (cdr args))
+                           (x64-emit-unary (x64-emit-expr c (car args) si env) (prim-name t))
+                           ;; The first in slot `si` while the second is made; then the
+                           ;; first in `%rax`, the second in `%rcx`.
+                           (let* ((c (x64-emit-expr c (car args) si env))
+                                  (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
+                                  (c (x64-emit-expr c (second args) (i64+ si 1) env))
+                                  (c (x64-emit c "movq %rax, %rcx"))
+                                  (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax")))))
+                             (x64-emit-binary c (prim-name t))))))
+                    ((string=? h "var") (x64-emit c (string-append "movq " (string-append (x64-slot (x64-slot-of (var-number t) env)) ", %rax"))))
+                    ((string=? h "gvar") (x64-emit c (string-append "movq " (string-append (x64-global-symbol (item-name t)) "(%rip), %rax"))))
+                    ((string=? h "call")
+                     ;; Each argument made into a slot of its own, then moved to its
+                     ;; register, and the procedure called (C407).
+                     (let* ((args (call-args t)) (n (size args)))
+                       (if (i64> n 6)
+                           (begin (not-yet "" "a call of more than six arguments") c)
+                           (let* ((c (x64-emit-args c args si env))
+                                  (c (x64-moved-args c x64-arg-registers si n)))
+                             (x64-emit c (string-append "call " (x64-proc-symbol (call-name t))))))))
+                    ((string=? h "if")
+                     ;; The test, a bool: #f's word to the else, all else to the then (C405).
+                     (let* ((ps (if-parts t))
+                            (k (x64-fresh-label c)) (no (x64-label c "else" k)) (past (x64-label c "fi" k))
+                            (c (x64-labelled c))
+                            (c (x64-emit-expr c (car ps) si env))
+                            (c (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))))
+                            (c (x64-emit c (string-append "je " no)))
+                            (c (x64-emit-expr c (second ps) si env))
+                            (c (x64-emit c (string-append "jmp " past)))
+                            (c (x64-emit-label c no))
+                            (c (x64-emit-expr c (third ps) si env)))
+                       (x64-emit-label c past)))
+                    ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env))
+                    ((string=? h "seq") (x64-emit-seq c (seq-terms t) si env))
+                    (else (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))))
 
-(define-rec
-  (x64-max-slots (subr kfx (sexps i64) i64)
-    (lambda (xs m) (if (null? xs) m (x64-max-slots (cdr xs) (let ((k (x64-slots-of (car xs)))) (if (i64> k m) k m)))))))
+        (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic)) x64-code)
+          (lambda (c bs body si env inner)
+            "Each binding's value made where the `let` is (`env`), into a slot of
+             its own; then the body, the binders in scope (`inner`) (C404)."
+            (if (null? bs)
+                (x64-emit-expr c body si inner)
+                (let* ((b (items (car bs)))
+                       (k (tagcase (car b) (num (n f p) n) (else other (the i64 -1))))
+                       (c (x64-emit-expr c (third b) si env))
+                       (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
+                  (x64-emit-let c (cdr bs) body (i64+ si 1) env (cons (x64-at k si) inner))))))
 
-"`asm PATH`: the program: each global's cell; each procedure; then
- `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
- value definitions and expressions in order."
-(define q-asm qbody
-  (lambda (d run path)
-    (let* ((keys (kc-keys d run path))
-           (its (kc-items-of d run "asm-item" path keys))
-           (l0s (kc-items-of d run "l0-item" path keys))
-           (kinds (map item-kind l0s))
-           (names (map item-name l0s))
-           (frame (x64-frame (x64-max-slots (filter (lambda ((x sexp)) (i64> (x64-slots-of x) -1)) its) 0))))
-      (string-list-append
-        (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\n")
-         (append (map2 (lambda ((k string) (n string)) (if (string=? k "global") (string-append (x64-global-symbol n) ":\n    .quad 0\n") "")) kinds names)
-          (append (list "    .text\n")
-           (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
-            (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
-                          "    subq $" (i64->string frame) ", %rsp\n")
-             (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
-              (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
-               (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
-                       (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
+        (x64-emit-args (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
+          (lambda (c args si env)
+            "Each argument made into a slot of its own, from `si`."
+            (if (null? args)
+                c
+                (let* ((c (x64-emit-expr c (car args) si env))
+                       (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
+                  (x64-emit-args c (cdr args) (i64+ si 1) env)))))
+
+        (x64-emit-seq (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
+          (lambda (c ts si env)
+            "Each in turn, the last's value kept."
+            (if (null? ts) c (x64-emit-seq (x64-emit-expr c (car ts) si env) (cdr ts) si env))))
+
+        (x64-emit-unary (subr kfx (x64-code string) x64-code)
+          (lambda (c n)
+            "Code that makes `%rax`, the argument, the primitive `n`'s value."
+            (cond ((string=? n "not") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))) "e"))
+                  ((string=? n "null?") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-nil) ", %rax"))) "e"))
+                  ((string=? n "zero?") (x64-boolean-if (x64-emit c "testq %rax, %rax") "e"))
+                  ;; (c << 8 | 67) >> 5 is c << 3 | 2; the tag bits cleared, a fixnum.
+                  ((string=? n "char->integer") (x64-emit (x64-emit c "shrq $5, %rax") "andq $-8, %rax"))
+                  ((string=? n "integer->char")
+                   ;; A Unicode scalar value: 0 to 0x10ffff, but not 0xd800 to 0xdfff.
+                   (let* ((c (x64-emit c "movq %rax, %rdx"))
+                          (c (x64-emit c "sarq $3, %rdx"))
+                          (c (x64-emit c "cmpq $1114111, %rdx"))
+                          (c (x64-failing-if c "a" x64-fail-not-a-char))
+                          (c (x64-emit c "leaq -55296(%rdx), %rcx"))
+                          (c (x64-emit c "cmpq $2047, %rcx"))
+                          (c (x64-failing-if c "be" x64-fail-not-a-char))
+                          (c (x64-emit c "shlq $8, %rdx"))
+                          (c (x64-emit c "orq $67, %rdx")))
+                     (x64-emit c "movq %rdx, %rax")))
+                  ;; A pair is its cell's address, tag 1: its car at -1 from the
+                  ;; value, its cdr at 7 (C406).
+                  ((or (string=? n "car") (string=? n "cdr"))
+                   (let* ((c (x64-emit c "movq %rax, %rdx"))
+                          (c (x64-emit c "andq $7, %rdx"))
+                          (c (x64-emit c "cmpq $1, %rdx"))
+                          (c (x64-failing-if c "ne" x64-fail-not-a-pair)))
+                     (x64-emit c (if (string=? n "car") "movq -1(%rax), %rax" "movq 7(%rax), %rax"))))
+                  ((string=? n "pair?")
+                   (x64-boolean-if (x64-emit (x64-emit (x64-emit c "movq %rax, %rdx") "andq $7, %rdx") "cmpq $1, %rdx") "e"))
+                  (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
+
+        (x64-emit-binary (subr kfx (x64-code string) x64-code)
+          (lambda (c n)
+            "Code that makes `%rax`, the first argument, and `%rcx`, the second,
+             the primitive `n`'s value. A fixnum is its value times 8: a sum or a
+             difference of two is the sum's, its overflow the 64-bit one; a
+             product, one of them shifted back first."
+            (cond ((string-member? n x64-comparisons)
+                   (x64-boolean-if (x64-emit c "cmpq %rcx, %rax") (x64-condition n)))
+                  ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
+                  ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
+                  ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
+                  ;; Two words from the heap, `%r15` its next free one and `%r14` its
+                  ;; end: no collector yet, so a heap used up fails (C406).
+                  ((string=? n "cons")
+                   (let* ((c (x64-emit c "leaq 16(%r15), %rdx"))
+                          (c (x64-emit c "cmpq %r14, %rdx"))
+                          (c (x64-failing-if c "a" x64-fail-heap))
+                          (c (x64-emit c "movq %rax, 0(%r15)"))
+                          (c (x64-emit c "movq %rcx, 8(%r15)"))
+                          (c (x64-emit c "leaq 1(%r15), %rax")))
+                     (x64-emit c "movq %rdx, %r15")))
+                  ((string=? n "max") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovl %rcx, %rax"))
+                  ((string=? n "min") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovg %rcx, %rax"))
+                  ((or (string=? n "quotient") (string=? n "remainder") (string=? n "modulo"))
+                   (let* ((c (x64-emit c "testq %rcx, %rcx"))
+                          (c (x64-failing-if c "e" x64-fail-division))
+                          (c (x64-emit c "sarq $3, %rax"))
+                          (c (x64-emit c "sarq $3, %rcx"))
+                          (c (x64-emit c "cqto"))
+                          (c (x64-emit c "idivq %rcx")))
+                     (cond ((string=? n "quotient")
+                            ;; Only the least fixnum by -1 is past a fixnum.
+                            (let* ((c (x64-emit c (string-append "movabsq $" (string-append (i64->string x64-fixnum-max) ", %rdx"))))
+                                   (c (x64-emit c "cmpq %rdx, %rax"))
+                                   (c (x64-failing-if c "g" x64-fail-past-fixnum)))
+                              (x64-emit c "shlq $3, %rax")))
+                           ((string=? n "remainder") (x64-emit (x64-emit c "movq %rdx, %rax") "shlq $3, %rax"))
+                           (else
+                            ;; The remainder, of the divisor's sign: where the two
+                            ;; differ and it is not 0, the divisor added.
+                            (let* ((k (x64-fresh-label c)) (past (x64-label c "mod" k))
+                                   (c (x64-labelled c))
+                                   (c (x64-emit c "movq %rdx, %rax"))
+                                   (c (x64-emit c "testq %rax, %rax"))
+                                   (c (x64-emit c (string-append "je " past)))
+                                   (c (x64-emit c "movq %rax, %rdx"))
+                                   (c (x64-emit c "xorq %rcx, %rdx"))
+                                   (c (x64-emit c (string-append "jns " past)))
+                                   (c (x64-emit c "addq %rcx, %rax"))
+                                   (c (x64-emit-label c past)))
+                              (x64-emit c "shlq $3, %rax"))))))
+                  (else (begin (error (string-append "kc: the native back end has no primitive " n)) c))))))
+
+      "The frame's bytes: its slots, and 8 more if that keeps the stack aligned
+       (entered 8 below a multiple of 16, two registers pushed)."
+      (define x64-frame (subr kfx (i64) i64)
+        (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
+
+      "A procedure's frame: its slots, rounded so that, entered 8 below a
+       multiple of 16, it calls at one."
+      (define x64-frame-of-call (subr kfx (i64) i64)
+        (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
+
+      "`asm-item PATH KEY`: a form's code (C407), `(asm SLOTS CODE FAILS)`: a
+       procedure's whole function, its frame in it; a value definition's or an
+       expression's code for `kc_entry`, as many slots as it uses, and what it
+       ends with (a definition's value stored in its cell; an expression's value
+       given to the runtime's `kc_show`, which writes it); its failures' calls."
+      (define-rec
+        (x64-params-at (subr kfx (sexps i64 (listof x64-at acyclic)) (listof x64-at acyclic))
+          (lambda (ps i env)
+            (if (null? ps) env
+                (x64-params-at (cdr ps) (i64+ i 1) (cons (x64-at (tagcase (car (items (car ps))) (num (k f p) k) (else other -1)) i) env))))))
+
+      (define-rec
+        (x64-stored-params (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
+          (lambda (c regs i n)
+            (if (or (i64>= i n) (null? regs)) c
+                (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
+
+      (define x64-asm-item-text (subr kfx (i64 (listof string acyclic) (listof string acyclic)) string)
+        (lambda (slots ls fails)
+          (string-list-append
+            (list "(asm " (i64->string slots) " "
+                  (kc-datum (str (string-list-append (reverse ls)) "" 0)) " "
+                  (kc-datum (str (string-list-append (reverse fails)) "" 0)) ")")))))
+
+    (define q-asm-item qbody
+      (lambda (d run a)
+        (let* ((path (arg-first a)) (key (arg-rest a)) (i (l0-item d run path key)) (k (item-kind i))
+               (px (x64-name key)))
+          (cond ((string=? k "proc")
+                 (let* ((ps (item-params i)) (n (size ps)))
+                   (if (i64> n 6)
+                       (not-yet path "a procedure of more than six parameters")
+                       (tagcase (x64-emit-expr (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n)
+                                               (item-body i) n (x64-params-at ps 0 nil))
+                         (x64-code (ls m slots fails px2)
+                           (let ((frame (x64-frame-of-call slots)))
+                             (x64-asm-item-text 0
+                               (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" (i64->string frame) ", %rsp\n"))))
+                               ;; Its frame made first, its code after (`ls` is newest first).
+                               (append fails (list (string-list-append (list "    addq $" (i64->string frame) ", %rsp\n    ret\n")))))))))))
+                ((string=? k "global")
+                 (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
+                   (x64-code (ls m slots fails px2)
+                     (x64-asm-item-text slots (cons (string-list-append (list "    movq %rax, " (x64-global-symbol (item-name i)) "(%rip)\n")) ls) fails))))
+                (else
+                 (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
+                   (x64-code (ls m slots fails px2)
+                     (x64-asm-item-text slots (cons "    movq %rax, %rdi\n    call kc_show\n" ls) fails))))))))
+
+    (hide
+      (define x64-asm-of (subr qe (db runner string string) sexp)
+        (lambda (d run path key) (car (read-all (db-get d run (string-append "asm-item " (string-append path (string-append " " key)))) "asm" 1))))
+
+      (define x64-part (subr kfx (sexp i64) string)
+        (lambda (x i) (tagcase (sexp-at (items x) i) (str (s f p) s) (else other ""))))
+
+      (define x64-slots-of (subr kfx (sexp) i64)
+        (lambda (x) (tagcase (second (items x)) (num (k f p) k) (else other 0))))
+
+      (define-rec
+        (x64-max-slots (subr kfx (sexps i64) i64)
+          (lambda (xs m) (if (null? xs) m (x64-max-slots (cdr xs) (let ((k (x64-slots-of (car xs)))) (if (i64> k m) k m))))))))
+
+    "`asm PATH`: the program: each global's cell; each procedure; then
+     `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
+     value definitions and expressions in order."
+    (define q-asm qbody
+      (lambda (d run path)
+        (let* ((keys (kc-keys d run path))
+               (its (kc-items-of d run "asm-item" path keys))
+               (l0s (kc-items-of d run "l0-item" path keys))
+               (kinds (map item-kind l0s))
+               (names (map item-name l0s))
+               (frame (x64-frame (x64-max-slots (filter (lambda ((x sexp)) (i64> (x64-slots-of x) -1)) its) 0))))
+          (string-list-append
+            (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\n")
+             (append (map2 (lambda ((k string) (n string)) (if (string=? k "global") (string-append (x64-global-symbol n) ":\n    .quad 0\n") "")) kinds names)
+              (append (list "    .text\n")
+               (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
+                (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
+                              "    subq $" (i64->string frame) ", %rsp\n")
+                 (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
+                  (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+                   (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
+                           (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))))

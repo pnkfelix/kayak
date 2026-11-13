@@ -10,92 +10,106 @@
  --stats, how many query bodies ran, and which queries they
  were, on the standard error."
 
-(define-effect driving (maxeff qe (io args) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+(define kc-driver
+  (module
+    (hide
+      (import kc-front key-arg key-name q-forms q-keys q-form q-interface q-scope q-checked q-type q-kfx)
+      (import kc-l0 q-l0-item)
+      (import kc-rust q-rust-item q-rust)
+      (import kc-x64 q-asm-item q-asm))
 
-"Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399)."
-(define kc-whose string (string-append "kc " kc-identity))
+    (define-effect driving (maxeff qe (io args) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
 
-(define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
-  (lambda (message status)
-    (begin (tagcase (write-err (string-append "kc: " (string-append message "\n"))) (done u #u) (failed e #u)) (exit status))))
+    (hide
+      "Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399)."
+      (define kc-whose string (string-append "kc " kc-identity))
 
-(define read-text (subr driving (string) string)
-  (lambda (path)
-    (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-      (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
-      (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
+      (define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
+        (lambda (message status)
+          (begin (tagcase (write-err (string-append "kc: " (string-append message "\n"))) (done u #u) (failed e #u)) (exit status))))
 
-(define read-text-or-none (subr driving (string) string)
-  (lambda (path)
-    (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-      (data b (tagcase (utf8->string b) (text s s) (bad k "")))
-      (failed e ""))))
+      (define read-text (subr driving (string) string)
+        (lambda (path)
+          (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
+            (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
+            (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-(define write-text (subr driving (string string) unit)
-  (lambda (path text)
-    (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
-      (done u #u)
-      (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
+      (define read-text-or-none (subr driving (string) string)
+        (lambda (path)
+          (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
+            (data b (tagcase (utf8->string b) (text s s) (bad k "")))
+            (failed e ""))))
 
-"Every query, by name."
-(define-rec
-  (kc-run (subr qe (db string) string)
-    (lambda (d k)
-      (let ((q (key-name k)) (a (key-arg k)))
-        (cond ((string=? q "checked") (q-checked d kc-run a))
-              ((string=? q "kfx") (q-kfx d kc-run a))
-              ((string=? q "forms") (q-forms d kc-run a))
-              ((string=? q "keys") (q-keys d kc-run a))
-              ((string=? q "form") (q-form d kc-run a))
-              ((string=? q "interface") (q-interface d kc-run a))
-              ((string=? q "scope") (q-scope d kc-run a))
-              ((string=? q "type") (q-type d kc-run a))
-              ((string=? q "l0-item") (q-l0-item d kc-run a))
-              ((string=? q "rust-item") (q-rust-item d kc-run a))
-              ((string=? q "rust") (q-rust d kc-run a))
-              ((string=? q "asm-item") (q-asm-item d kc-run a))
-              ((string=? q "asm") (q-asm d kc-run a))
-              (else (begin (error (string-append "kc: no query " k)) "")))))))
+      (define write-text (subr driving (string string) unit)
+        (lambda (path text)
+          (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
+            (done u #u)
+            (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-(define-rec
-  (ran-names (subr kfx ((listof string acyclic) i64) string)
-    (lambda (ks n)
-      "The first `n` of `ks`, oldest first, each after a space."
-      (if (or (null? ks) (i64<= n 0)) "" (string-append (ran-names (cdr ks) (i64- n 1)) (string-append " " (key-name (car ks))))))))
+      "Every query, by name."
+      (define-rec
+        (kc-run (subr qe (db string) string)
+          (lambda (d k)
+            (let ((q (key-name k)) (a (key-arg k)))
+              (cond ((string=? q "checked") (q-checked d kc-run a))
+                    ((string=? q "kfx") (q-kfx d kc-run a))
+                    ((string=? q "forms") (q-forms d kc-run a))
+                    ((string=? q "keys") (q-keys d kc-run a))
+                    ((string=? q "form") (q-form d kc-run a))
+                    ((string=? q "interface") (q-interface d kc-run a))
+                    ((string=? q "scope") (q-scope d kc-run a))
+                    ((string=? q "type") (q-type d kc-run a))
+                    ((string=? q "l0-item") (q-l0-item d kc-run a))
+                    ((string=? q "rust-item") (q-rust-item d kc-run a))
+                    ((string=? q "rust") (q-rust d kc-run a))
+                    ((string=? q "asm-item") (q-asm-item d kc-run a))
+                    ((string=? q "asm") (q-asm d kc-run a))
+                    (else (begin (error (string-append "kc: no query " k)) "")))))))
 
-(define-datatype opts (opts string bool (listof string acyclic)))
+      (define-rec
+        (ran-names (subr kfx ((listof string acyclic) i64) string)
+          (lambda (ks n)
+            "The first `n` of `ks`, oldest first, each after a space."
+            (if (or (null? ks) (i64<= n 0)) "" (string-append (ran-names (cdr ks) (i64- n 1)) (string-append " " (key-name (car ks))))))))
 
-(define-rec
-  (opts-of (subr kfx ((listof string acyclic) string bool (listof string acyclic)) opts)
-    (lambda (as db stats rest)
-      (cond ((null? as) (opts db stats (reverse rest)))
-            ((and (string=? (car as) "--db") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) (car (cdr as)) stats rest))
-            ((string=? (car as) "--stats") (opts-of (cdr as) db #t rest))
-            (else (opts-of (cdr as) db stats (cons (car as) rest)))))))
+      (define-datatype opts (opts string bool (listof string acyclic)))
 
-(define main (subr driving () int)
-  (lambda ()
-    (tagcase (opts-of (the (listof string acyclic) (args)) "" #f nil)
-      (opts (dbp stats rest)
-        (let ((d (if (string=? dbp "") (db-make) (db-of-text (read-text-or-none dbp) kc-whose))))
-          (if (null? rest)
-              (fail-with "usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT)" 2)
-              (let* ((what (car rest)) (file (if (null? (cdr rest)) "" (car (cdr rest)))))
-                (begin
-                  (if (string=? file "") (fail-with "a FILE is wanted" 2) #u)
-                  (db-set! d (string-append "text " file) (read-text file) 0)
-                  (let ((before (db-runs d)))
+      (define-rec
+        (opts-of (subr kfx ((listof string acyclic) string bool (listof string acyclic)) opts)
+          (lambda (as db stats rest)
+            (cond ((null? as) (opts db stats (reverse rest)))
+                  ((and (string=? (car as) "--db") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) (car (cdr as)) stats rest))
+                  ((string=? (car as) "--stats") (opts-of (cdr as) db #t rest))
+                  (else (opts-of (cdr as) db stats (cons (car as) rest))))))))
+
+    (define kc-main (subr driving () int)
+      (lambda ()
+        (tagcase (opts-of (the (listof string acyclic) (args)) "" #f nil)
+          (opts (dbp stats rest)
+            (let ((d (if (string=? dbp "") (db-make) (db-of-text (read-text-or-none dbp) kc-whose))))
+              (if (null? rest)
+                  (fail-with "usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT)" 2)
+                  (let* ((what (car rest)) (file (if (null? (cdr rest)) "" (car (cdr rest)))))
                     (begin
-                      (cond ((string=? what "--check") (begin (db-get d kc-run (string-append "checked " file)) #u))
-                            ((or (string=? what "--rust") (string=? what "--asm"))
-                             (if (null? (cdr (cdr rest)))
-                                 (fail-with "an OUT is wanted" 2)
-                                 (write-text (car (cdr (cdr rest)))
-                                             (db-get d kc-run (string-append (if (string=? what "--rust") "rust " "asm ") file)))))
-                            (else (fail-with (string-append "not an option: " what) 2)))
-                      (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string (i64- (db-runs d) before))
-                                                                      (string-append " query bodies ran:" (string-append (ran-names (db-ran d) (i64- (db-runs d) before)) "\n")))))
-                                  (done u #u) (failed e #u))
-                          #u)
-                      (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose)))
-                      0))))))))))
+                      (if (string=? file "") (fail-with "a FILE is wanted" 2) #u)
+                      (db-set! d (string-append "text " file) (read-text file) 0)
+                      (let ((before (db-runs d)))
+                        (begin
+                          (cond ((string=? what "--check") (begin (db-get d kc-run (string-append "checked " file)) #u))
+                                ((or (string=? what "--rust") (string=? what "--asm"))
+                                 (if (null? (cdr (cdr rest)))
+                                     (fail-with "an OUT is wanted" 2)
+                                     (write-text (car (cdr (cdr rest)))
+                                                 (db-get d kc-run (string-append (if (string=? what "--rust") "rust " "asm ") file)))))
+                                (else (fail-with (string-append "not an option: " what) 2)))
+                          (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string (i64- (db-runs d) before))
+                                                                          (string-append " query bodies ran:" (string-append (ran-names (db-ran d) (i64- (db-runs d) before)) "\n")))))
+                                      (done u #u) (failed e #u))
+                              #u)
+                          (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose)))
+                          0))))))))))))
+
+(import kc-driver (effect driving))
+
+"kc's entry: the driver's."
+(define main (subr driving () int) (lambda () (with kc-driver (kc-main))))

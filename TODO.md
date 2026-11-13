@@ -1542,9 +1542,6 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - The checker refuses `(null? '())` ("a type null? is called at that
   nothing here says"), which Fixpt takes (`#t`): stricter, a gap (found by
   kc's step 3, C402).
-- kc's files share one namespace with the checker's (kc.unit), so a name
-  of kc's meets one of the checker's (`labelled`, `got`): kc's files as
-  modules, their helpers hidden, as `restrict.kfx` is.
 - The checker refuses `(cons (list 1) (list 2))` ("a int is expected
   here"), which Fixpt takes as a pair whose tail is a list of another
   type, `((1) 2)`: stricter, a gap (found by kc's step 7, C406).

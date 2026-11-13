@@ -17,274 +17,296 @@
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
  (C407): a program of many forms, each an item of its own (`l0-item`)."
 
-(define fixnum-max i64 1152921504606846975)
+(define kc-l0
+  (module
+    (hide
+      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of (type qbody)))
 
-(define unary-primitives (listof string acyclic) (list "not" "null?" "zero?" "char->integer" "integer->char" "car" "cdr" "pair?"))
-(define binary-primitives (listof string acyclic)
-  (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
-        "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
+    (hide
+      (define fixnum-max i64 1152921504606846975)
 
-(define not-yet (subr kfx (string string) string)
-  (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
+      (define unary-primitives (listof string acyclic) (list "not" "null?" "zero?" "char->integer" "integer->char" "car" "cdr" "pair?"))
 
-"Names in scope while a term is made: each bound name, innermost first,
- and its binder's number."
-(define-datatype l0-bound (l0-bound string i64))
+      (define binary-primitives (listof string acyclic)
+        (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
+              "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?")))
 
-"A term made, as text, and the next binder's number."
-(define-datatype l0-made (l0-made string i64))
+    (define not-yet (subr kfx (string string) string)
+      (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
 
-"Parameters made: their text, the scope with them, and the next number."
-(define-datatype l0-made-params (l0-made-params string (listof l0-bound acyclic) i64))
+    (hide
+      "Names in scope while a term is made: each bound name, innermost first,
+       and its binder's number."
+      (define-datatype l0-bound (l0-bound string i64))
 
-(define-rec
-  (l0-number-of (subr kfx (string (listof l0-bound acyclic)) i64)
-    (lambda (n env)
-      "`n`'s binder's number, or -1 if no binding form binds it."
-      (cond ((null? env) (the i64 -1))
-            ((tagcase (car env) (l0-bound (m k) (string=? m n))) (tagcase (car env) (l0-bound (m k) k)))
-            (else (l0-number-of n (cdr env)))))))
+      "A term made, as text, and the next binder's number."
+      (define-datatype l0-made (l0-made string i64))
 
-(define-rec
-  (l0-global-kind (subr kfx (string sexps) string)
-    (lambda (n scope)
-      "What the program's definitions before this form make `n`: `proc`,
-       `value`, or `` (the newest, should one be defined again)."
-      (if (null? scope)
-          ""
-          (let ((i (items (car scope))))
-            (if (and (not (null? (cdr i))) (sym-is? (second i) n))
-                (tagcase (car i) (sym (k f p) k) (else other ""))
-                (l0-global-kind n (cdr scope))))))))
+      "Parameters made: their text, the scope with them, and the next number."
+      (define-datatype l0-made-params (l0-made-params string (listof l0-bound acyclic) i64))
 
-(define-rec
-  (l0-of (subr kfx (string sexps (listof l0-bound acyclic) i64 sexp) l0-made)
-    (lambda (path scope env next e)
-      "The term of `e`, an expression, its names bound as `env` says; the
-       binders it makes numbered from `next`."
-      (tagcase e
-        (num (k f p)
-          (if (or (i64> k fixnum-max) (i64< k (i64- 0 (i64+ fixnum-max 1))))
-              (l0-made (not-yet path "an integer past a fixnum") next)
-              (l0-made (string-append "(int " (string-append (i64->string k) ")")) next)))
-        (chr (c f p) (l0-made (string-append "(char " (string-append (i64->string (char->i64 c)) ")")) next))
-        (sym (n f p)
-          (let ((k (l0-number-of n env)))
-            (cond ((i64>= k 0) (l0-made (string-list-append (list "(var " (i64->string k) " " n ")")) next))
-                  ((string=? (l0-global-kind n scope) "value") (l0-made (string-append "(gvar " (string-append n ")")) next))
-                  ((string=? (l0-global-kind n scope) "proc") (l0-made (not-yet path (string-append "a procedure as a value, " n)) next))
-                  ((string=? n "#t") (l0-made "(bool 1)" next))
-                  ((string=? n "#f") (l0-made "(bool 0)" next))
-                  ((string=? n "#u") (l0-made "(unit)" next))
-                  ((string=? n "nil") (l0-made "(nil)" next))
-                  (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
-        (lst (xs f l p)
-          (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
-            (cond ((and (i64>= (l0-number-of h env) 0) (not (string=? h ""))) (l0-made (not-yet path (string-append "a call of a local, " h)) next))
-                  ((string=? (l0-global-kind h scope) "proc")
-                   ;; A call of a procedure the program defines (C407).
-                   (tagcase (l0-terms path scope env next (cdr xs) nil)
-                     (l0-made (args n1) (l0-made (string-list-append (list "(call " h (if (string=? args "") "" " ") args ")")) n1))))
-                  ((string=? (l0-global-kind h scope) "value") (l0-made (not-yet path (string-append "a call of a global's value, " h)) next))
-                  ((and (string=? h "quote") (i64= (size xs) 2) (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
-                   (l0-made "(nil)" next))
-                  ((and (string=? h "let") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
-                   (l0-let path scope env next (items (second xs)) (cdr (cdr xs)) nil env))
-                  ((and (string=? h "let*") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
-                   ;; Each binding a `let` of its own, the next inside it.
-                   (l0-of path scope env next
-                          (let ((bs (items (second xs))))
-                            (if (or (null? bs) (null? (cdr bs)))
-                                (lst (cons (sym "let" f p) (cdr xs)) f l p)
-                                (lst (list (sym "let" f p) (lst (list (car bs)) f l p)
-                                           (lst (cons (sym "let*" f p) (cons (lst (cdr bs) f l p) (cdr (cdr xs)))) f l p))
-                                     f l p)))))
-                  ((string=? h "begin") (l0-seq path scope env next (cdr xs) nil))
-                  ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
-                  ((and (string=? h "list") (not (null? (cdr xs))))
-                   (l0-of path scope env next
-                          (lst (list (sym "cons" f p) (second xs)
-                                     (if (null? (cdr (cdr xs))) (sym "nil" f p) (lst (cons (car xs) (cdr (cdr xs))) f l p)))
-                               f l p)))
-                  ((and (string=? h "if") (i64= (size xs) 4))
-                   (tagcase (l0-of path scope env next (second xs))
-                     (l0-made (a n1)
-                       (tagcase (l0-of path scope env n1 (third xs))
-                         (l0-made (b n2)
-                           (tagcase (l0-of path scope env n2 (fourth xs))
-                             (l0-made (c n3) (l0-made (string-list-append (list "(if " a " " b " " c ")")) n3))))))))
-                  ;; The derived conditionals, as `if`s (C405).
-                  ((string=? h "and")
-                   (l0-of path scope env next
-                          (cond ((null? (cdr xs)) (sym "#t" f p))
-                                ((null? (cdr (cdr xs))) (second xs))
-                                (else (lst (list (sym "if" f p) (second xs) (lst (cons (car xs) (cdr (cdr xs))) f l p) (sym "#f" f p)) f l p)))))
-                  ((string=? h "or")
-                   (l0-of path scope env next
-                          (cond ((null? (cdr xs)) (sym "#f" f p))
-                                ((null? (cdr (cdr xs))) (second xs))
-                                (else (lst (list (sym "if" f p) (second xs) (sym "#t" f p) (lst (cons (car xs) (cdr (cdr xs))) f l p)) f l p)))))
-                  ((string=? h "cond") (l0-of path scope env next (l0-cond-as-if path (cdr xs) f l p)))
-                  ((and (string=? h "case") (i64>= (size xs) 3))
-                   ;; The key once, in a binder of its own, then each clause's
-                   ;; data compared with it, each by its kind's equality.
-                   (let ((key (string-append "%case" (i64->string next))))
-                     (l0-of path scope env next
-                            (lst (list (sym "let" f p) (lst (list (lst (list (sym key f p) (second xs)) f l p)) f l p)
-                                       (l0-case-as-if path key (cdr (cdr xs)) f l p))
-                                 f l p))))
-                  ((and (i64= (size xs) 2) (string-member? h unary-primitives))
-                   (tagcase (l0-of path scope env next (second xs))
-                     (l0-made (a n1) (l0-made (string-list-append (list "(prim " h " " a ")")) n1))))
-                  ((and (i64= (size xs) 3) (string-member? h binary-primitives))
-                   (tagcase (l0-of path scope env next (second xs))
-                     (l0-made (a n1)
-                       (tagcase (l0-of path scope env n1 (third xs))
-                         (l0-made (b n2) (l0-made (string-list-append (list "(prim " h " " a " " b ")")) n2))))))
-                  (else (l0-made (not-yet path (string-append "a form, " h)) next)))))
-        (else other (l0-made (not-yet path "this expression") next)))))
+      (define-rec
+        (l0-number-of (subr kfx (string (listof l0-bound acyclic)) i64)
+          (lambda (n env)
+            "`n`'s binder's number, or -1 if no binding form binds it."
+            (cond ((null? env) (the i64 -1))
+                  ((tagcase (car env) (l0-bound (m k) (string=? m n))) (tagcase (car env) (l0-bound (m k) k)))
+                  (else (l0-number-of n (cdr env)))))))
 
-  (l0-terms (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps (listof string acyclic)) l0-made)
-    (lambda (path scope env next es done)
-      "Expressions' terms, in order, spaced."
-      (if (null? es)
-          (l0-made (words-of (reverse done)) next)
-          (tagcase (l0-of path scope env next (car es))
-            (l0-made (t n1) (l0-terms path scope env n1 (cdr es) (cons t done)))))))
+      (define-rec
+        (l0-global-kind (subr kfx (string sexps) string)
+          (lambda (n scope)
+            "What the program's definitions before this form make `n`: `proc`,
+             `value`, or `` (the newest, should one be defined again)."
+            (if (null? scope)
+                ""
+                (let ((i (items (car scope))))
+                  (if (and (not (null? (cdr i))) (sym-is? (second i) n))
+                      (tagcase (car i) (sym (k f p) k) (else other ""))
+                      (l0-global-kind n (cdr scope))))))))
 
-  (l0-cond-as-if (subr kfx (string sexps string i64 i64) sexp)
-    (lambda (path clauses f l p)
-      "`cond`'s clauses as `if`s; it must end with `else`, as Fixpt has it."
-      (if (null? clauses)
-          (sym (not-yet path "a cond with no else") f p)
-          (let ((c (items (car clauses))))
-            (if (sym-is? (car c) "else")
-                (lst (cons (sym "begin" f p) (cdr c)) f l p)
-                (lst (list (sym "if" f p) (car c) (lst (cons (sym "begin" f p) (cdr c)) f l p)
-                           (l0-cond-as-if path (cdr clauses) f l p))
-                     f l p))))))
+      (define-rec
+        (l0-of (subr kfx (string sexps (listof l0-bound acyclic) i64 sexp) l0-made)
+          (lambda (path scope env next e)
+            "The term of `e`, an expression, its names bound as `env` says; the
+             binders it makes numbered from `next`."
+            (tagcase e
+              (num (k f p)
+                (if (or (i64> k fixnum-max) (i64< k (i64- 0 (i64+ fixnum-max 1))))
+                    (l0-made (not-yet path "an integer past a fixnum") next)
+                    (l0-made (string-append "(int " (string-append (i64->string k) ")")) next)))
+              (chr (c f p) (l0-made (string-append "(char " (string-append (i64->string (char->i64 c)) ")")) next))
+              (sym (n f p)
+                (let ((k (l0-number-of n env)))
+                  (cond ((i64>= k 0) (l0-made (string-list-append (list "(var " (i64->string k) " " n ")")) next))
+                        ((string=? (l0-global-kind n scope) "value") (l0-made (string-append "(gvar " (string-append n ")")) next))
+                        ((string=? (l0-global-kind n scope) "proc") (l0-made (not-yet path (string-append "a procedure as a value, " n)) next))
+                        ((string=? n "#t") (l0-made "(bool 1)" next))
+                        ((string=? n "#f") (l0-made "(bool 0)" next))
+                        ((string=? n "#u") (l0-made "(unit)" next))
+                        ((string=? n "nil") (l0-made "(nil)" next))
+                        (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
+              (lst (xs f l p)
+                (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
+                  (cond ((and (i64>= (l0-number-of h env) 0) (not (string=? h ""))) (l0-made (not-yet path (string-append "a call of a local, " h)) next))
+                        ((string=? (l0-global-kind h scope) "proc")
+                         ;; A call of a procedure the program defines (C407).
+                         (tagcase (l0-terms path scope env next (cdr xs) nil)
+                           (l0-made (args n1) (l0-made (string-list-append (list "(call " h (if (string=? args "") "" " ") args ")")) n1))))
+                        ((string=? (l0-global-kind h scope) "value") (l0-made (not-yet path (string-append "a call of a global's value, " h)) next))
+                        ((and (string=? h "quote") (i64= (size xs) 2) (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
+                         (l0-made "(nil)" next))
+                        ((and (string=? h "let") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                         (l0-let path scope env next (items (second xs)) (cdr (cdr xs)) nil env))
+                        ((and (string=? h "let*") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                         ;; Each binding a `let` of its own, the next inside it.
+                         (l0-of path scope env next
+                                (let ((bs (items (second xs))))
+                                  (if (or (null? bs) (null? (cdr bs)))
+                                      (lst (cons (sym "let" f p) (cdr xs)) f l p)
+                                      (lst (list (sym "let" f p) (lst (list (car bs)) f l p)
+                                                 (lst (cons (sym "let*" f p) (cons (lst (cdr bs) f l p) (cdr (cdr xs)))) f l p))
+                                           f l p)))))
+                        ((string=? h "begin") (l0-seq path scope env next (cdr xs) nil))
+                        ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
+                        ((and (string=? h "list") (not (null? (cdr xs))))
+                         (l0-of path scope env next
+                                (lst (list (sym "cons" f p) (second xs)
+                                           (if (null? (cdr (cdr xs))) (sym "nil" f p) (lst (cons (car xs) (cdr (cdr xs))) f l p)))
+                                     f l p)))
+                        ((and (string=? h "if") (i64= (size xs) 4))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1)
+                             (tagcase (l0-of path scope env n1 (third xs))
+                               (l0-made (b n2)
+                                 (tagcase (l0-of path scope env n2 (fourth xs))
+                                   (l0-made (c n3) (l0-made (string-list-append (list "(if " a " " b " " c ")")) n3))))))))
+                        ;; The derived conditionals, as `if`s (C405).
+                        ((string=? h "and")
+                         (l0-of path scope env next
+                                (cond ((null? (cdr xs)) (sym "#t" f p))
+                                      ((null? (cdr (cdr xs))) (second xs))
+                                      (else (lst (list (sym "if" f p) (second xs) (lst (cons (car xs) (cdr (cdr xs))) f l p) (sym "#f" f p)) f l p)))))
+                        ((string=? h "or")
+                         (l0-of path scope env next
+                                (cond ((null? (cdr xs)) (sym "#f" f p))
+                                      ((null? (cdr (cdr xs))) (second xs))
+                                      (else (lst (list (sym "if" f p) (second xs) (sym "#t" f p) (lst (cons (car xs) (cdr (cdr xs))) f l p)) f l p)))))
+                        ((string=? h "cond") (l0-of path scope env next (l0-cond-as-if path (cdr xs) f l p)))
+                        ((and (string=? h "case") (i64>= (size xs) 3))
+                         ;; The key once, in a binder of its own, then each clause's
+                         ;; data compared with it, each by its kind's equality.
+                         (let ((key (string-append "%case" (i64->string next))))
+                           (l0-of path scope env next
+                                  (lst (list (sym "let" f p) (lst (list (lst (list (sym key f p) (second xs)) f l p)) f l p)
+                                             (l0-case-as-if path key (cdr (cdr xs)) f l p))
+                                       f l p))))
+                        ((and (i64= (size xs) 2) (string-member? h unary-primitives))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1) (l0-made (string-list-append (list "(prim " h " " a ")")) n1))))
+                        ((and (i64= (size xs) 3) (string-member? h binary-primitives))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1)
+                             (tagcase (l0-of path scope env n1 (third xs))
+                               (l0-made (b n2) (l0-made (string-list-append (list "(prim " h " " a " " b ")")) n2))))))
+                        (else (l0-made (not-yet path (string-append "a form, " h)) next)))))
+              (else other (l0-made (not-yet path "this expression") next)))))
 
-  (l0-case-as-if (subr kfx (string string sexps string i64 i64) sexp)
-    (lambda (path key clauses f l p)
-      "`case`'s clauses as `if`s on the key's binder `key`."
-      (if (null? clauses)
-          (sym (not-yet path "a case with no else") f p)
-          (let ((c (items (car clauses))))
-            (if (sym-is? (car c) "else")
-                (lst (cons (sym "begin" f p) (cdr c)) f l p)
-                (lst (list (sym "if" f p)
-                           (lst (cons (sym "or" f p)
-                                      (map (lambda ((d sexp))
-                                             ;; Each datum by its own kind's equality.
-                                             (lst (list (sym (tagcase d (num (k f2 p2) "=") (chr (ch f2 p2) "char=?") (else other "eq?")) f p) (sym key f p) d) f l p))
-                                           (items (car c))))
-                                f l p)
-                           (lst (cons (sym "begin" f p) (cdr c)) f l p)
-                           (l0-case-as-if path key (cdr clauses) f l p))
-                     f l p))))))
+        (l0-terms (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps (listof string acyclic)) l0-made)
+          (lambda (path scope env next es done)
+            "Expressions' terms, in order, spaced."
+            (if (null? es)
+                (l0-made (words-of (reverse done)) next)
+                (tagcase (l0-of path scope env next (car es))
+                  (l0-made (t n1) (l0-terms path scope env n1 (cdr es) (cons t done)))))))
 
-  (l0-let (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps sexps (listof string acyclic) (listof l0-bound acyclic)) l0-made)
-    (lambda (path scope env next bindings body done inner)
-      "A `let`: each binding's value made where the `let` is (`env`), its
-       binder numbered and in scope in the body (`inner`), not in the other
-       values; `done` the bindings made, the newest first."
-      (if (null? bindings)
-          (tagcase (l0-seq path scope inner next body nil)
-            (l0-made (b n1) (l0-made (string-list-append (list "(let (" (words-of (reverse done)) ") " b ")")) n1)))
-          (let* ((bx (items (car bindings)))
-                 (name (tagcase (car bx) (sym (n f p) n) (lst (ys f l p) (tagcase (car ys) (sym (n f2 p2) n) (else other ""))) (else other ""))))
-            (tagcase (l0-of path scope env (i64+ next 1) (car (reverse bx)))
-              (l0-made (v n1)
-                (l0-let path scope env n1 (cdr bindings) body
-                        (cons (string-list-append (list "(" (i64->string next) " " name " " v ")")) done)
-                        (cons (l0-bound name next) inner))))))))
+        (l0-cond-as-if (subr kfx (string sexps string i64 i64) sexp)
+          (lambda (path clauses f l p)
+            "`cond`'s clauses as `if`s; it must end with `else`, as Fixpt has it."
+            (if (null? clauses)
+                (sym (not-yet path "a cond with no else") f p)
+                (let ((c (items (car clauses))))
+                  (if (sym-is? (car c) "else")
+                      (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                      (lst (list (sym "if" f p) (car c) (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                                 (l0-cond-as-if path (cdr clauses) f l p))
+                           f l p))))))
 
-  (l0-seq (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps (listof string acyclic)) l0-made)
-    (lambda (path scope env next es done)
-      "A body, its expressions in turn: one, itself; more, `(seq ...)`."
-      (if (null? es)
-          (if (and (not (null? done)) (null? (cdr done)))
-              (l0-made (car done) next)
-              (l0-made (string-append "(seq " (string-append (words-of (reverse done)) ")")) next))
-          (tagcase (l0-of path scope env next (car es))
-            (l0-made (t n1) (l0-seq path scope env n1 (cdr es) (cons t done))))))))
+        (l0-case-as-if (subr kfx (string string sexps string i64 i64) sexp)
+          (lambda (path key clauses f l p)
+            "`case`'s clauses as `if`s on the key's binder `key`."
+            (if (null? clauses)
+                (sym (not-yet path "a case with no else") f p)
+                (let ((c (items (car clauses))))
+                  (if (sym-is? (car c) "else")
+                      (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                      (lst (list (sym "if" f p)
+                                 (lst (cons (sym "or" f p)
+                                            (map (lambda ((d sexp))
+                                                   ;; Each datum by its own kind's equality.
+                                                   (lst (list (sym (tagcase d (num (k f2 p2) "=") (chr (ch f2 p2) "char=?") (else other "eq?")) f p) (sym key f p) d) f l p))
+                                                 (items (car c))))
+                                      f l p)
+                                 (lst (cons (sym "begin" f p) (cdr c)) f l p)
+                                 (l0-case-as-if path key (cdr clauses) f l p))
+                           f l p))))))
 
-"`l0-item PATH KEY`: the form KEY of the checked program as an item of
- the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
- procedure the program defines (its parameters numbered first), `(global
- NAME TERM)` of any other definition, `(expr TERM)` of any other form. Its
- names are the program's definitions before it (`scope`), then the
- standard ones; a reference to a global's value `(gvar NAME)`, a call of
- a global procedure `(call NAME ARG ...)`."
-(define-rec
-  (l0-params (subr kfx (sexps i64 (listof l0-bound acyclic) (listof string acyclic)) l0-made-params)
-    (lambda (ps k env done)
-      (if (null? ps)
-          (l0-made-params (words-of (reverse done)) env k)
-          (let ((n (tagcase (car ps) (sym (m f p) m) (lst (ys f l p) (tagcase (car ys) (sym (m f2 p2) m) (else other ""))) (else other ""))))
-            (l0-params (cdr ps) (i64+ k 1) (cons (l0-bound n k) env)
-                       (cons (string-list-append (list "(" (i64->string k) " " n ")")) done)))))))
+        (l0-let (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps sexps (listof string acyclic) (listof l0-bound acyclic)) l0-made)
+          (lambda (path scope env next bindings body done inner)
+            "A `let`: each binding's value made where the `let` is (`env`), its
+             binder numbered and in scope in the body (`inner`), not in the other
+             values; `done` the bindings made, the newest first."
+            (if (null? bindings)
+                (tagcase (l0-seq path scope inner next body nil)
+                  (l0-made (b n1) (l0-made (string-list-append (list "(let (" (words-of (reverse done)) ") " b ")")) n1)))
+                (let* ((bx (items (car bindings)))
+                       (name (tagcase (car bx) (sym (n f p) n) (lst (ys f l p) (tagcase (car ys) (sym (n f2 p2) n) (else other ""))) (else other ""))))
+                  (tagcase (l0-of path scope env (i64+ next 1) (car (reverse bx)))
+                    (l0-made (v n1)
+                      (l0-let path scope env n1 (cdr bindings) body
+                              (cons (string-list-append (list "(" (i64->string next) " " name " " v ")")) done)
+                              (cons (l0-bound name next) inner))))))))
 
-(define q-l0-item qbody
-  (lambda (d run a)
-    (let* ((path (arg-first a)) (key (arg-rest a)))
-      (begin
-        (db-get d run (string-append "checked " path))
-        (let ((f (kc-form d run path key))
-              (scope (items (car (read-all (db-get d run (string-append "scope " (string-append path (string-append " " key)))) "scope" 1)))))
-          (if (string=? (form-name f) "")
-              (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
-              (let ((l (lambda-of (define-value f))))
-                (if (null? l)
-                    (tagcase (l0-of path scope nil 0 (define-value f))
-                      (l0-made (t n) (string-list-append (list "(global " (form-name f) " " t ")"))))
-                    ;; Its own name in its scope too: it may call itself.
-                    (let* ((lx (items (car l)))
-                           (scope (cons (car (read-all (db-get d run (string-append "interface " (string-append path (string-append " " key)))) "scope" 1)) scope)))
-                      (tagcase (l0-params (items (second lx)) 0 nil nil)
-                        (l0-made-params (ps env k)
-                          (tagcase (l0-seq path scope env k (cdr (cdr lx)) nil)
-                            (l0-made (b n) (string-list-append (list "(proc " (form-name f) " (" ps ") " b ")")))))))))))))))
+        (l0-seq (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps (listof string acyclic)) l0-made)
+          (lambda (path scope env next es done)
+            "A body, its expressions in turn: one, itself; more, `(seq ...)`."
+            (if (null? es)
+                (if (and (not (null? done)) (null? (cdr done)))
+                    (l0-made (car done) next)
+                    (l0-made (string-append "(seq " (string-append (words-of (reverse done)) ")")) next))
+                (tagcase (l0-of path scope env next (car es))
+                  (l0-made (t n1) (l0-seq path scope env n1 (cdr es) (cons t done))))))))
 
-"An item of the program, as a term."
-(define l0-item (subr qe (db runner string string) sexp)
-  (lambda (d run path key) (car (read-all (db-get d run (string-append "l0-item " (string-append path (string-append " " key)))) "l0" 1))))
+      "`l0-item PATH KEY`: the form KEY of the checked program as an item of
+       the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
+       procedure the program defines (its parameters numbered first), `(global
+       NAME TERM)` of any other definition, `(expr TERM)` of any other form. Its
+       names are the program's definitions before it (`scope`), then the
+       standard ones; a reference to a global's value `(gvar NAME)`, a call of
+       a global procedure `(call NAME ARG ...)`."
+      (define-rec
+        (l0-params (subr kfx (sexps i64 (listof l0-bound acyclic) (listof string acyclic)) l0-made-params)
+          (lambda (ps k env done)
+            (if (null? ps)
+                (l0-made-params (words-of (reverse done)) env k)
+                (let ((n (tagcase (car ps) (sym (m f p) m) (lst (ys f l p) (tagcase (car ys) (sym (m f2 p2) m) (else other ""))) (else other ""))))
+                  (l0-params (cdr ps) (i64+ k 1) (cons (l0-bound n k) env)
+                             (cons (string-list-append (list "(" (i64->string k) " " n ")")) done))))))))
 
-"A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`)."
-(define term-head (subr kfx (sexp) string)
-  (lambda (t) (tagcase t (lst (xs f l p) (tagcase (car xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
-"An item's kind (`proc`, `global`, `expr`), name, parameters (each
- `(K NAME)`), body or term; a `(call NAME ARG ...)`'s name and arguments."
-(define item-kind (subr kfx (sexp) string) (lambda (i) (term-head i)))
-(define item-name (subr kfx (sexp) string)
-  (lambda (i) (tagcase i (lst (xs f l p) (if (null? (cdr xs)) "" (tagcase (second xs) (sym (n f2 p2) n) (else other "")))) (else other ""))))
-(define item-params (subr kfx (sexp) sexps)
-  (lambda (i) (tagcase i (lst (xs f l p) (items (third xs))) (else other nil))))
-(define item-body (subr kfx (sexp) sexp)
-  (lambda (i) (tagcase i (lst (xs f l p) (car (reverse xs))) (else other i))))
-(define call-name (subr kfx (sexp) string) (lambda (t) (item-name t)))
-(define call-args (subr kfx (sexp) sexps)
-  (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
+    (define q-l0-item qbody
+      (lambda (d run a)
+        (let* ((path (arg-first a)) (key (arg-rest a)))
+          (begin
+            (db-get d run (string-append "checked " path))
+            (let ((f (kc-form d run path key))
+                  (scope (items (car (read-all (db-get d run (string-append "scope " (string-append path (string-append " " key)))) "scope" 1)))))
+              (if (string=? (form-name f) "")
+                  (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
+                  (let ((l (lambda-of (define-value f))))
+                    (if (null? l)
+                        (tagcase (l0-of path scope nil 0 (define-value f))
+                          (l0-made (t n) (string-list-append (list "(global " (form-name f) " " t ")"))))
+                        ;; Its own name in its scope too: it may call itself.
+                        (let* ((lx (items (car l)))
+                               (scope (cons (car (read-all (db-get d run (string-append "interface " (string-append path (string-append " " key)))) "scope" 1)) scope)))
+                          (tagcase (l0-params (items (second lx)) 0 nil nil)
+                            (l0-made-params (ps env k)
+                              (tagcase (l0-seq path scope env k (cdr (cdr lx)) nil)
+                                (l0-made (b n) (string-list-append (list "(proc " (form-name f) " (" ps ") " b ")")))))))))))))))
 
-"A `(var K NAME)`'s number; a `(let ...)`'s bindings, each `(K NAME E)`,
- and body; a `(seq ...)`'s terms."
-(define var-number (subr kfx (sexp) i64)
-  (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (num (k f2 p2) k) (else other (the i64 -1)))) (else other (the i64 -1)))))
-(define let-bindings (subr kfx (sexp) sexps)
-  (lambda (t) (tagcase t (lst (xs f l p) (items (second xs))) (else other nil))))
-(define let-body (subr kfx (sexp) sexp)
-  (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t))))
-(define if-parts (subr kfx (sexp) sexps)
-  (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
-(define seq-terms (subr kfx (sexp) sexps)
-  (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
+    "An item of the program, as a term."
+    (define l0-item (subr qe (db runner string string) sexp)
+      (lambda (d run path key) (car (read-all (db-get d run (string-append "l0-item " (string-append path (string-append " " key)))) "l0" 1))))
 
-"A `(prim NAME ARG ...)`'s name, its first argument, and its arguments."
-(define prim-name (subr kfx (sexp) string)
-  (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
-(define prim-arg (subr kfx (sexp) sexp)
-  (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t))))
-(define prim-args (subr kfx (sexp) sexps)
-  (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
-(define term-number (subr kfx (sexp) i64)
-  (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))
+    "A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`)."
+    (define term-head (subr kfx (sexp) string)
+      (lambda (t) (tagcase t (lst (xs f l p) (tagcase (car xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
+
+    "An item's kind (`proc`, `global`, `expr`), name, parameters (each
+     `(K NAME)`), body or term; a `(call NAME ARG ...)`'s name and arguments."
+    (define item-kind (subr kfx (sexp) string) (lambda (i) (term-head i)))
+
+    (define item-name (subr kfx (sexp) string)
+      (lambda (i) (tagcase i (lst (xs f l p) (if (null? (cdr xs)) "" (tagcase (second xs) (sym (n f2 p2) n) (else other "")))) (else other ""))))
+
+    (define item-params (subr kfx (sexp) sexps)
+      (lambda (i) (tagcase i (lst (xs f l p) (items (third xs))) (else other nil))))
+
+    (define item-body (subr kfx (sexp) sexp)
+      (lambda (i) (tagcase i (lst (xs f l p) (car (reverse xs))) (else other i))))
+
+    (define call-name (subr kfx (sexp) string) (lambda (t) (item-name t)))
+
+    (define call-args (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
+
+    "A `(var K NAME)`'s number; a `(let ...)`'s bindings, each `(K NAME E)`,
+     and body; a `(seq ...)`'s terms."
+    (define var-number (subr kfx (sexp) i64)
+      (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (num (k f2 p2) k) (else other (the i64 -1)))) (else other (the i64 -1)))))
+
+    (define let-bindings (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (items (second xs))) (else other nil))))
+
+    (define let-body (subr kfx (sexp) sexp)
+      (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t))))
+
+    (define if-parts (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
+
+    (define seq-terms (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
+
+    "A `(prim NAME ARG ...)`'s name, its first argument, and its arguments."
+    (define prim-name (subr kfx (sexp) string)
+      (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
+
+    (hide
+      (define prim-arg (subr kfx (sexp) sexp)
+        (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t)))))
+
+    (define prim-args (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
+
+    (define term-number (subr kfx (sexp) i64)
+      (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))))

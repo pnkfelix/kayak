@@ -26,249 +26,232 @@ use super::*;
 // scope PATH KEY        the interfaces of the forms before it, in order
 
 // A query's body.
-pub type Qbody = &'static dyn Fn(Db, Runner, Str) -> Str;
+pub mod kc_front {
+    use super::*;
 
-// The argument of a key: what follows its first space.
-pub fn after_first_space(mut cs: List<char>) -> Str {
-    loop {
-        if null_p(cs) {
-            return str_lit("");
-        } else if char_eq_p(car(cs), ' ') {
-            return list_to_string(cdr(cs));
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
+    pub type Qbody = &'static dyn Fn(Db, Runner, Str) -> Str;
 
-#[inline]
-pub fn key_arg(k: Str) -> Str {
-    after_first_space(string_chars(k))
-}
-
-pub fn before_first_space(mut cs: List<char>, mut acc: List<char>) -> Str {
-    loop {
-        if (null_p(cs) || char_eq_p(car(cs), ' ')) {
-            return list_to_string(reverse(acc));
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-#[inline]
-pub fn key_name(k: Str) -> Str {
-    before_first_space(string_chars(k), nil::<char>())
-}
-
-// A key's argument of two parts, PATH and KEY: the path, and what follows
-// its first space (a path has none, the harness's, as kc's own keys).
-#[inline]
-pub fn arg_first(a: Str) -> Str {
-    key_name(a)
-}
-
-#[inline]
-pub fn arg_rest(a: Str) -> Str {
-    key_arg(a)
-}
-
-#[inline]
-pub fn kc_language(path: Str) -> Str {
-    if has_suffix_p(path, str_lit(".kfx")) {
-        str_lit("kfx")
-    } else {
-        str_lit("fx26")
-    }
-}
-
-/// `n` in hexadecimal, before `acc`.
-pub fn kc_hex(n: i64, acc: Str) -> Str {
-    let d = i64_remainder(n, 16i64);
-    let c = list_to_string(kayak_rt::heap_cons(i64_to_char(if i64_lt(d, 10i64) {
-        i64_plus(d, 48i64)
-    } else {
-        i64_plus(d, 87i64)
-    }), kayak_rt::nil()));
-    let acc = string_append(c, acc);
-    if i64_lt(n, 16i64) {
-        acc
-    } else {
-        kc_hex(i64_quotient(n, 16i64), acc)
-    }
-}
-
-/// A string's characters as the reader reads them back, the newest first.
-pub fn kc_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else {
-            let c = car(cs);
-            let k = char_to_i64(c);
-            let w = if char_eq_p(c, '"') {
-                str_lit("\\\"")
-            } else if char_eq_p(c, '\\') {
-                str_lit("\\\\")
-            } else if char_eq_p(c, '\n') {
-                str_lit("\\n")
-            } else if char_eq_p(c, '\t') {
-                str_lit("\\t")
-            } else if i64_lt(k, 32i64) {
-                string_append(str_lit("\\x"), string_append(kc_hex(k, str_lit("")), str_lit(";")))
+    // The argument of a key: what follows its first space.
+    pub fn after_first_space(mut cs: List<char>) -> Str {
+        loop {
+            if null_p(cs) {
+                return str_lit("");
+            } else if char_eq_p(car(cs), ' ') {
+                return list_to_string(cdr(cs));
             } else {
-                list_to_string(kayak_rt::heap_cons(c, kayak_rt::nil()))
-            };
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(w, acc));
-            continue;
+                cs = cdr(cs);
+                continue;
+            }
         }
     }
-}
 
-/// A datum as text the reader reads back as it: a character by its code
-/// (`#\x20`), a string with its escapes (C407).
-pub fn kc_datum(e: &'static Sexp) -> Str {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(s, f, p) => {
-            s
-        }
-        Sexp::Num(k, f, p) => {
-            i64_to_string(k)
-        }
-        Sexp::Big(text, f, p) => {
-            text
-        }
-        Sexp::Real(t, f, p) => {
-            t
-        }
-        Sexp::Chr(c, f, p) => {
-            string_append(str_lit("#\\x"), kc_hex(char_to_i64(c), str_lit("")))
-        }
-        Sexp::Str(s, f, p) => {
-            string_append(str_lit("\""), string_append(string_list_append(reverse(kc_escaped(string_chars(s), nil::<Str>()))), str_lit("\"")))
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            string_append(str_lit("("), string_append(kc_data(xs), str_lit(")")))
+    #[inline]
+    pub fn key_arg(k: Str) -> Str {
+        after_first_space(string_chars(k))
+    }
+
+    pub fn before_first_space(mut cs: List<char>, mut acc: List<char>) -> Str {
+        loop {
+            if (null_p(cs) || char_eq_p(car(cs), ' ')) {
+                return list_to_string(reverse(acc));
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
         }
     }
-}
 
-pub fn kc_data(xs: Sexps) -> Str {
-    if null_p(xs) {
-        str_lit("")
-    } else if null_p(cdr(xs)) {
-        kc_datum(car(xs))
-    } else {
-        string_append(kc_datum(car(xs)), string_append(str_lit(" "), kc_data(cdr(xs))))
+    #[inline]
+    pub fn key_name(k: Str) -> Str {
+        before_first_space(string_chars(k), nil::<char>())
     }
-}
 
-// Each of `ks` asked of the database after `prefix`, in order: their values
-// (KFX's `map` takes no procedure that reads the database).
-pub fn kc_get_all(d: Db, run: Runner, prefix: Str, ks: List<Str>) -> List<Str> {
-    if null_p(ks) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(db_get(d, run, string_append(prefix, car(ks))), kc_get_all(d, run, prefix, cdr(ks)))
+    // A key's argument of two parts, PATH and KEY: the path, and what follows
+    // its first space (a path has none, the harness's, as kc's own keys).
+    #[inline]
+    pub fn arg_first(a: Str) -> Str {
+        key_name(a)
     }
-}
 
-// Each of `ks`, of a file's forms, asked as `QUERY PATH KEY`, read as data.
-pub fn kc_items_of(d: Db, run: Runner, query: Str, path: Str, ks: List<Str>) -> Sexps {
-    map(lambda1s(move |t: Str| {
-        car(read_all(t, query, 1i64))
-    }), kc_get_all(d, run, string_append(query, string_append(str_lit(" "), string_append(path, str_lit(" ")))), ks))
-}
+    #[inline]
+    pub fn arg_rest(a: Str) -> Str {
+        key_arg(a)
+    }
 
-// A file's forms, as read.
-#[inline]
-pub fn kc_forms(d: Db, run: Runner, path: Str) -> Sexps {
-    read_all(db_get(d, run, string_append(str_lit("text "), path)), path, 1i64)
-}
+    #[inline]
+    pub fn kc_language(path: Str) -> Str {
+        if has_suffix_p(path, str_lit(".kfx")) {
+            str_lit("kfx")
+        } else {
+            str_lit("fx26")
+        }
+    }
 
-/// A definition's name; `` of any other form.
-pub fn form_name(f: &'static Sexp) -> Str {
-    let tagcase_ = f;
-    match *tagcase_ {
-        Sexp::Lst(xs, fl, l, p) => {
-            if (i64_gt_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("define"))) {
-                let tagcase_ = second(xs);
-                match *tagcase_ {
-                    Sexp::Sym(n, f2, p2) => {
-                        n
+    /// `n` in hexadecimal, before `acc`.
+    pub fn kc_hex(n: i64, acc: Str) -> Str {
+        let d = i64_remainder(n, 16i64);
+        let c = list_to_string(kayak_rt::heap_cons(i64_to_char(if i64_lt(d, 10i64) {
+            i64_plus(d, 48i64)
+        } else {
+            i64_plus(d, 87i64)
+        }), kayak_rt::nil()));
+        let acc = string_append(c, acc);
+        if i64_lt(n, 16i64) {
+            acc
+        } else {
+            kc_hex(i64_quotient(n, 16i64), acc)
+        }
+    }
+
+    /// A string's characters as the reader reads them back, the newest first.
+    pub fn kc_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else {
+                let c = car(cs);
+                let k = char_to_i64(c);
+                let w = if char_eq_p(c, '"') {
+                    str_lit("\\\"")
+                } else if char_eq_p(c, '\\') {
+                    str_lit("\\\\")
+                } else if char_eq_p(c, '\n') {
+                    str_lit("\\n")
+                } else if char_eq_p(c, '\t') {
+                    str_lit("\\t")
+                } else if i64_lt(k, 32i64) {
+                    string_append(str_lit("\\x"), string_append(kc_hex(k, str_lit("")), str_lit(";")))
+                } else {
+                    list_to_string(kayak_rt::heap_cons(c, kayak_rt::nil()))
+                };
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(w, acc));
+                continue;
+            }
+        }
+    }
+
+    /// A datum as text the reader reads back as it: a character by its code
+    /// (`#\x20`), a string with its escapes (C407).
+    pub fn kc_datum(e: &'static Sexp) -> Str {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(s, f, p) => {
+                s
+            }
+            Sexp::Num(k, f, p) => {
+                i64_to_string(k)
+            }
+            Sexp::Big(text, f, p) => {
+                text
+            }
+            Sexp::Real(t, f, p) => {
+                t
+            }
+            Sexp::Chr(c, f, p) => {
+                string_append(str_lit("#\\x"), kc_hex(char_to_i64(c), str_lit("")))
+            }
+            Sexp::Str(s, f, p) => {
+                string_append(str_lit("\""), string_append(string_list_append(reverse(kc_escaped(string_chars(s), nil::<Str>()))), str_lit("\"")))
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                string_append(str_lit("("), string_append(kc_data(xs), str_lit(")")))
+            }
+        }
+    }
+
+    pub fn kc_data(xs: Sexps) -> Str {
+        if null_p(xs) {
+            str_lit("")
+        } else if null_p(cdr(xs)) {
+            kc_datum(car(xs))
+        } else {
+            string_append(kc_datum(car(xs)), string_append(str_lit(" "), kc_data(cdr(xs))))
+        }
+    }
+
+    // Each of `ks` asked of the database after `prefix`, in order: their values
+    // (KFX's `map` takes no procedure that reads the database).
+    pub fn kc_get_all(d: Db, run: Runner, prefix: Str, ks: List<Str>) -> List<Str> {
+        if null_p(ks) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(db_get(d, run, string_append(prefix, car(ks))), kc_get_all(d, run, prefix, cdr(ks)))
+        }
+    }
+
+    // Each of `ks`, of a file's forms, asked as `QUERY PATH KEY`, read as data.
+    pub fn kc_items_of(d: Db, run: Runner, query: Str, path: Str, ks: List<Str>) -> Sexps {
+        map(lambda1s(move |t: Str| {
+            car(read_all(t, query, 1i64))
+        }), kc_get_all(d, run, string_append(query, string_append(str_lit(" "), string_append(path, str_lit(" ")))), ks))
+    }
+
+    // A file's forms, as read.
+    #[inline]
+    pub fn kc_forms(d: Db, run: Runner, path: Str) -> Sexps {
+        read_all(db_get(d, run, string_append(str_lit("text "), path)), path, 1i64)
+    }
+
+    /// A definition's name; `` of any other form.
+    pub fn form_name(f: &'static Sexp) -> Str {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Sexp::Lst(xs, fl, l, p) => {
+                if (i64_gt_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("define"))) {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
                     }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
-                    }
+                } else {
+                    str_lit("")
                 }
-            } else {
+            }
+            _ => {
+                let other = tagcase_;
                 str_lit("")
             }
         }
-        _ => {
-            let other = tagcase_;
-            str_lit("")
-        }
     }
-}
 
-/// Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
-/// are no definition came before.
-pub fn forms_keyed(mut fs: Sexps, mut k: i64, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(fs) {
-            return acc;
-        } else {
-            let n = form_name(car(fs));
-            if string_eq_p(n, str_lit("")) {
-                (fs, k, acc) = (cdr(fs), i64_plus(k, 1i64), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("(#expr"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
-                continue;
+    /// Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
+    /// are no definition came before.
+    pub fn forms_keyed(mut fs: Sexps, mut k: i64, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(fs) {
+                return acc;
             } else {
-                (fs, acc) = (cdr(fs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
-                continue;
+                let n = form_name(car(fs));
+                if string_eq_p(n, str_lit("")) {
+                    (fs, k, acc) = (cdr(fs), i64_plus(k, 1i64), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("(#expr"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
+                    continue;
+                } else {
+                    (fs, acc) = (cdr(fs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
+                    continue;
+                }
             }
         }
     }
-}
 
-// `forms PATH`.
-#[inline]
-pub fn q_forms(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    string_append(str_lit("("), string_append(words_of(reverse(forms_keyed(kc_forms(d, run, path), 0i64, nil::<Str>()))), str_lit(")")))
-}
-
-#[inline]
-pub fn keyed_forms(d: Db, run: Runner, path: Str) -> Sexps {
-    items(car(read_all(db_get(d, run, string_append(str_lit("forms "), path)), str_lit("forms"), 1i64)))
-}
-
-#[inline]
-pub fn keyed_key(x: &'static Sexp) -> Str {
-    let tagcase_ = car(items(x));
-    match *tagcase_ {
-        Sexp::Sym(n, f, p) => {
-            n
-        }
-        _ => {
-            let other = tagcase_;
-            str_lit("")
-        }
+    // `forms PATH`.
+    #[inline]
+    pub fn q_forms(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
+        string_append(str_lit("("), string_append(words_of(reverse(forms_keyed(kc_forms(d, run, path), 0i64, nil::<Str>()))), str_lit(")")))
     }
-}
 
-// `keys PATH`.
-#[inline]
-pub fn q_keys(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    string_append(str_lit("("), string_append(words_of(map(&keyed_key, keyed_forms(d, run, path))), str_lit(")")))
-}
+    #[inline]
+    pub fn keyed_forms(d: Db, run: Runner, path: Str) -> Sexps {
+        items(car(read_all(db_get(d, run, string_append(str_lit("forms "), path)), str_lit("forms"), 1i64)))
+    }
 
-pub fn kc_keys(d: Db, run: Runner, path: Str) -> List<Str> {
-    map(lambda1s(move |x: &'static Sexp| {
-        let tagcase_ = x;
+    #[inline]
+    pub fn keyed_key(x: &'static Sexp) -> Str {
+        let tagcase_ = car(items(x));
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
                 n
@@ -278,137 +261,158 @@ pub fn kc_keys(d: Db, run: Runner, path: Str) -> List<Str> {
                 str_lit("")
             }
         }
-    }), items(car(read_all(db_get(d, run, string_append(str_lit("keys "), path)), str_lit("keys"), 1i64))))
-}
-
-// `form PATH KEY`.
-pub fn q_form(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-    let found = filter(lambda1s(move |x: &'static Sexp| {
-        string_eq_p(keyed_key(x), arg_rest(a))
-    }), keyed_forms(d, run, arg_first(a)));
-    if null_p(found) {
-        str_lit("()")
-    } else {
-        kc_datum(second(items(car(found))))
     }
-}
 
-#[inline]
-pub fn kc_form(d: Db, run: Runner, path: Str, key: Str) -> &'static Sexp {
-    car(read_all(db_get(d, run, string_append(str_lit("form "), string_append(path, string_append(str_lit(" "), key)))), path, 1i64))
-}
+    // `keys PATH`.
+    #[inline]
+    pub fn q_keys(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
+        string_append(str_lit("("), string_append(words_of(map(&keyed_key, keyed_forms(d, run, path))), str_lit(")")))
+    }
 
-// A definition's value, and whether it is a `lambda` (perhaps under `the`).
-#[inline]
-pub fn define_value(f: &'static Sexp) -> &'static Sexp {
-    car(reverse(items(f)))
-}
-
-/// A value's `lambda`, as a list of one, or none.
-pub fn lambda_of(v: &'static Sexp) -> Sexps {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if (not(null_p(xs)) && sym_is_p(car(xs), str_lit("lambda")) && i64_gt_eq(size(xs), 3i64)) {
-                kayak_rt::heap_cons(v, kayak_rt::nil())
-            } else {
-                nil::<&'static Sexp>()
+    pub fn kc_keys(d: Db, run: Runner, path: Str) -> List<Str> {
+        map(lambda1s(move |x: &'static Sexp| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
             }
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<&'static Sexp>()
-        }
+        }), items(car(read_all(db_get(d, run, string_append(str_lit("keys "), path)), str_lit("keys"), 1i64))))
     }
-}
 
-// `interface PATH KEY`.
-pub fn q_interface(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-    let f = kc_form(d, run, arg_first(a), arg_rest(a));
-    if string_eq_p(form_name(f), str_lit("")) {
-        str_lit("(expr)")
-    } else {
-        let l = lambda_of(define_value(f));
-        if null_p(l) {
-            string_append(str_lit("(value "), string_append(form_name(f), str_lit(")")))
-        } else {
-            string_list_append(kayak_rt::heap_cons(str_lit("(proc "), kayak_rt::heap_cons(form_name(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(size(items(second(items(car(l)))))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
-        }
-    }
-}
-
-pub fn keys_before(mut ks: List<Str>, mut key: Str, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(ks) {
-            return reverse(acc);
-        } else if string_eq_p(car(ks), key) {
-            return reverse(acc);
-        } else {
-            (ks, acc) = (cdr(ks), kayak_rt::heap_cons(car(ks), acc));
-            continue;
-        }
-    }
-}
-
-// `scope PATH KEY`.
-pub fn q_scope(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-    let path = arg_first(a);
-    string_append(str_lit("("), string_append(words_of(kc_get_all(d, run, string_append(str_lit("interface "), string_append(path, str_lit(" "))), keys_before(kc_keys(d, run, path), arg_rest(a), nil::<Str>()))), str_lit(")")))
-}
-
-// `checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;
-// the types the checker found of the definitions written with none, each
-// `(NAME TYPE)` (C407). A refusal ends the run (the checker's, as kfx's),
-// for now.
-pub fn q_checked(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    let forms = kc_forms(d, run, path);
-    let v = check_program(forms);
-    if string_eq_p(kc_language(path), str_lit("kfx")) {
-        restrictions::restrict(forms, verdict_facts(v))
-    } else {
-        ()
-    };
-    string_append(str_lit("("), string_append(words_of(map(lambda1s(move |t: &'static Typed| {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Typed::Typed(n, ty) => {
-                string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(ty), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
-            }
-        }
-    }), verdict_typeds(v))), str_lit(")")))
-}
-
-// `type PATH NAME`: a definition's type, as written, or as the checker
-// found it (C407).
-pub fn q_type(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-    let path = arg_first(a);
-    let name = arg_rest(a);
-    let f = kc_form(d, run, path, name);
-    if i64_eq(size(items(f)), 4i64) {
-        kc_datum(third(items(f)))
-    } else {
+    // `form PATH KEY`.
+    pub fn q_form(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
         let found = filter(lambda1s(move |x: &'static Sexp| {
-            sym_is_p(car(items(x)), name)
-        }), items(car(read_all(db_get(d, run, string_append(str_lit("checked "), path)), str_lit("checked"), 1i64))));
+            string_eq_p(keyed_key(x), arg_rest(a))
+        }), keyed_forms(d, run, arg_first(a)));
         if null_p(found) {
             str_lit("()")
         } else {
             kc_datum(second(items(car(found))))
         }
     }
-}
 
-#[inline]
-pub fn kc_type(d: Db, run: Runner, path: Str, name: Str) -> &'static Sexp {
-    car(read_all(db_get(d, run, string_append(str_lit("type "), string_append(path, string_append(str_lit(" "), name)))), str_lit("type"), 1i64))
-}
+    #[inline]
+    pub fn kc_form(d: Db, run: Runner, path: Str, key: Str) -> &'static Sexp {
+        car(read_all(db_get(d, run, string_append(str_lit("form "), string_append(path, string_append(str_lit(" "), key)))), path, 1i64))
+    }
 
-// `kfx PATH`: the file checked and passing KFX's restrictions, whatever its
-// name says, as the Rust back end needs it; `ok`.
-pub fn q_kfx(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    let forms = kc_forms(d, run, path);
-    let v = check_program(forms);
-    restrictions::restrict(forms, verdict_facts(v));
-    str_lit("ok")
+    // A definition's value, and whether it is a `lambda` (perhaps under `the`).
+    #[inline]
+    pub fn define_value(f: &'static Sexp) -> &'static Sexp {
+        car(reverse(items(f)))
+    }
+
+    /// A value's `lambda`, as a list of one, or none.
+    pub fn lambda_of(v: &'static Sexp) -> Sexps {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (not(null_p(xs)) && sym_is_p(car(xs), str_lit("lambda")) && i64_gt_eq(size(xs), 3i64)) {
+                    kayak_rt::heap_cons(v, kayak_rt::nil())
+                } else {
+                    nil::<&'static Sexp>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    // `interface PATH KEY`.
+    pub fn q_interface(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
+        let f = kc_form(d, run, arg_first(a), arg_rest(a));
+        if string_eq_p(form_name(f), str_lit("")) {
+            str_lit("(expr)")
+        } else {
+            let l = lambda_of(define_value(f));
+            if null_p(l) {
+                string_append(str_lit("(value "), string_append(form_name(f), str_lit(")")))
+            } else {
+                string_list_append(kayak_rt::heap_cons(str_lit("(proc "), kayak_rt::heap_cons(form_name(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(size(items(second(items(car(l)))))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+            }
+        }
+    }
+
+    pub fn keys_before(mut ks: List<Str>, mut key: Str, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(ks) {
+                return reverse(acc);
+            } else if string_eq_p(car(ks), key) {
+                return reverse(acc);
+            } else {
+                (ks, acc) = (cdr(ks), kayak_rt::heap_cons(car(ks), acc));
+                continue;
+            }
+        }
+    }
+
+    // `scope PATH KEY`.
+    pub fn q_scope(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
+        let path = arg_first(a);
+        string_append(str_lit("("), string_append(words_of(kc_get_all(d, run, string_append(str_lit("interface "), string_append(path, str_lit(" "))), keys_before(kc_keys(d, run, path), arg_rest(a), nil::<Str>()))), str_lit(")")))
+    }
+
+    // `checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;
+    // the types the checker found of the definitions written with none, each
+    // `(NAME TYPE)` (C407). A refusal ends the run (the checker's, as kfx's),
+    // for now.
+    pub fn q_checked(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
+        let forms = kc_forms(d, run, path);
+        let v = check_program(forms);
+        if string_eq_p(kc_language(path), str_lit("kfx")) {
+            restrictions::restrict(forms, verdict_facts(v))
+        } else {
+            ()
+        };
+        string_append(str_lit("("), string_append(words_of(map(lambda1s(move |t: &'static Typed| {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Typed::Typed(n, ty) => {
+                    string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(ty), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                }
+            }
+        }), verdict_typeds(v))), str_lit(")")))
+    }
+
+    // `type PATH NAME`: a definition's type, as written, or as the checker
+    // found it (C407).
+    pub fn q_type(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
+        let path = arg_first(a);
+        let name = arg_rest(a);
+        let f = kc_form(d, run, path, name);
+        if i64_eq(size(items(f)), 4i64) {
+            kc_datum(third(items(f)))
+        } else {
+            let found = filter(lambda1s(move |x: &'static Sexp| {
+                sym_is_p(car(items(x)), name)
+            }), items(car(read_all(db_get(d, run, string_append(str_lit("checked "), path)), str_lit("checked"), 1i64))));
+            if null_p(found) {
+                str_lit("()")
+            } else {
+                kc_datum(second(items(car(found))))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn kc_type(d: Db, run: Runner, path: Str, name: Str) -> &'static Sexp {
+        car(read_all(db_get(d, run, string_append(str_lit("type "), string_append(path, string_append(str_lit(" "), name)))), str_lit("type"), 1i64))
+    }
+
+    // `kfx PATH`: the file checked and passing KFX's restrictions, whatever its
+    // name says, as the Rust back end needs it; `ok`.
+    pub fn q_kfx(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
+        let forms = kc_forms(d, run, path);
+        let v = check_program(forms);
+        restrictions::restrict(forms, verdict_facts(v));
+        str_lit("ok")
+    }
 }
 

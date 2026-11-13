@@ -11473,3 +11473,25 @@ the checker writing a recursive type by its abbreviation's name rather
 than as `%mu NAME`, a symbol the reader cannot read back; the emitter
 finding a named sum's tags; the tags' `const` assertion hashing each tag
 once, which rustc otherwise gave up on at some 170 tags).
+
+## C411. kc's files as modules (2026-11-13)
+
+The user: "Do you think we should move kc's files into modules first?",
+then "Go for it". kc's files shared one namespace with the checker's
+(`kc.unit` lists both), so that a name of kc's met one of the checker's
+(`got`, `labelled`, `but-last`: renamed one by one, C401 to C407).
+
+Each of kc's files is now a module, as `restrict.kfx` is (C92): `kc-front`,
+`kc-l0`, `kc-rust`, `kc-x64`, `kc-driver`. What no other file uses is in a
+`hide`; what one does, the file gives, and its user imports it by name in
+a `hide` of its own (`(import kc-front arg-first ... (type qbody))`,
+FX-26's `import`, C119), so that each file says what it takes of which.
+A module may hide several runs of definitions between those it gives, so
+each file keeps its order. `main` stays at the top level, Rust's entry,
+calling the driver's `kc-main`; `kc-identity`, which
+`compiler-identity.py` writes, too.
+
+The names kc prefixed to keep apart from the checker's (`x64-`, `kc-`)
+are left as they are: a rename would be churn, and a new name of kc's may
+now be any name. 172 programs as before (`kc-steps.py`), every one by
+native code, 30 by Rust.

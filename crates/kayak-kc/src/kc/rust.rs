@@ -17,301 +17,422 @@ use super::*;
 // A primitive's kayak-rt function: its name as kfx spells it in Rust
 // (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
 // `_plus`), as kayak-rt names FX-26's standard operations (C402, C403).
-#[inline]
-pub fn rust_primitive(n: Str) -> Str {
-    mangle(n)
-}
+pub mod kc_rust {
+    use super::*;
 
-// A variable's Rust name, of a `(var K NAME)` or a binding `(K NAME E)`:
-// its number, then its name as kfx spells it.
-pub fn rust_variable(t: &'static Sexp) -> Str {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            let ys = if sym_is_p(car(xs), str_lit("var")) {
-                cdr(xs)
-            } else {
-                xs
-            };
-            string_list_append(kayak_rt::heap_cons(str_lit("v"), kayak_rt::heap_cons({
-                let tagcase_ = car(ys);
-                match *tagcase_ {
-                    Sexp::Num(k, f2, p2) => {
-                        i64_to_string(k)
+    #[inline]
+    pub fn arg_first() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
+        &kc_front::arg_first
+    }
+
+    #[inline]
+    pub fn arg_rest() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
+        &kc_front::arg_rest
+    }
+
+    #[inline]
+    pub fn kc_hex() -> &'static (dyn Fn(i64, Str) -> Str + Send + Sync) {
+        &kc_front::kc_hex
+    }
+
+    #[inline]
+    pub fn kc_datum() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_front::kc_datum
+    }
+
+    #[inline]
+    pub fn kc_items_of() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str, List<Str>) -> List<&'static Sexp> {
+        &kc_front::kc_items_of
+    }
+
+    #[inline]
+    pub fn kc_keys() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> List<Str> {
+        &kc_front::kc_keys
+    }
+
+    #[inline]
+    pub fn kc_type() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> &'static Sexp {
+        &kc_front::kc_type
+    }
+
+    pub type Qbody = kc_front::Qbody;
+
+    #[inline]
+    pub fn not_yet() -> &'static (dyn Fn(Str, Str) -> Str + Send + Sync) {
+        &kc_l0::not_yet
+    }
+
+    #[inline]
+    pub fn l0_item() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> &'static Sexp {
+        &kc_l0::l0_item
+    }
+
+    #[inline]
+    pub fn term_head() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_l0::term_head
+    }
+
+    #[inline]
+    pub fn item_kind() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_l0::item_kind
+    }
+
+    #[inline]
+    pub fn item_name() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_l0::item_name
+    }
+
+    #[inline]
+    pub fn item_params() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::item_params
+    }
+
+    #[inline]
+    pub fn item_body() -> &'static (dyn Fn(&'static Sexp) -> &'static Sexp + Send + Sync) {
+        &kc_l0::item_body
+    }
+
+    #[inline]
+    pub fn call_name() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_l0::call_name
+    }
+
+    #[inline]
+    pub fn call_args() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::call_args
+    }
+
+    #[inline]
+    pub fn let_bindings() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::let_bindings
+    }
+
+    #[inline]
+    pub fn let_body() -> &'static (dyn Fn(&'static Sexp) -> &'static Sexp + Send + Sync) {
+        &kc_l0::let_body
+    }
+
+    #[inline]
+    pub fn if_parts() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::if_parts
+    }
+
+    #[inline]
+    pub fn seq_terms() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::seq_terms
+    }
+
+    #[inline]
+    pub fn prim_name() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_l0::prim_name
+    }
+
+    #[inline]
+    pub fn prim_args() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::prim_args
+    }
+
+    #[inline]
+    pub fn term_number() -> &'static (dyn Fn(&'static Sexp) -> i64 + Send + Sync) {
+        &kc_l0::term_number
+    }
+
+    #[inline]
+    pub fn rust_primitive(n: Str) -> Str {
+        mangle(n)
+    }
+
+    // A variable's Rust name, of a `(var K NAME)` or a binding `(K NAME E)`:
+    // its number, then its name as kfx spells it.
+    pub fn rust_variable(t: &'static Sexp) -> Str {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let ys = if sym_is_p(car(xs), str_lit("var")) {
+                    cdr(xs)
+                } else {
+                    xs
+                };
+                string_list_append(kayak_rt::heap_cons(str_lit("v"), kayak_rt::heap_cons({
+                    let tagcase_ = car(ys);
+                    match *tagcase_ {
+                        Sexp::Num(k, f2, p2) => {
+                            i64_to_string(k)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
                     }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
+                }, kayak_rt::heap_cons(str_lit("_"), kayak_rt::heap_cons(mangle_bare({
+                    let tagcase_ = second(ys);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
                     }
-                }
-            }, kayak_rt::heap_cons(str_lit("_"), kayak_rt::heap_cons(mangle_bare({
-                let tagcase_ = second(ys);
-                match *tagcase_ {
-                    Sexp::Sym(n, f2, p2) => {
-                        n
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
-                    }
-                }
-            }), kayak_rt::nil())))))
+                }), kayak_rt::nil())))))
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
         }
-        _ => {
-            let other = tagcase_;
+    }
+
+    #[inline]
+    pub fn rust_but_last(xs: Sexps) -> Sexps {
+        if (null_p(xs) || null_p(cdr(xs))) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(car(xs), rust_but_last(cdr(xs)))
+        }
+    }
+
+    // A global's Rust names: its procedure's, its cell's, its reader's.
+    #[inline]
+    pub fn rust_proc_name(n: Str) -> Str {
+        string_append(str_lit("kcp_"), mangle_bare(n))
+    }
+
+    #[inline]
+    pub fn rust_cell_name(n: Str) -> Str {
+        string_append(str_lit("KCG_"), mangle_bare(n))
+    }
+
+    #[inline]
+    pub fn rust_global_name(n: Str) -> Str {
+        string_append(str_lit("kcg_"), mangle_bare(n))
+    }
+
+    /// A term as a Rust expression of kayak-rt's.
+    pub fn rust_of(t: &'static Sexp) -> Str {
+        let (h, n) = (term_head()(t), term_number()(t));
+        if string_eq_p(h, str_lit("var")) {
+            rust_variable(t)
+        } else if string_eq_p(h, str_lit("gvar")) {
+            string_append(rust_global_name(item_name()(t)), str_lit("()"))
+        } else if string_eq_p(h, str_lit("call")) {
+            string_list_append(kayak_rt::heap_cons(rust_proc_name(call_name()(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_args(call_args()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
+        } else if string_eq_p(h, str_lit("if")) {
+            let ps = if_parts()(t);
+            string_list_append(kayak_rt::heap_cons(str_lit("if "), kayak_rt::heap_cons(rust_of(car(ps)), kayak_rt::heap_cons(str_lit(" { "), kayak_rt::heap_cons(rust_of(second(ps)), kayak_rt::heap_cons(str_lit(" } else { "), kayak_rt::heap_cons(rust_of(third(ps)), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil()))))))))
+        } else if string_eq_p(h, str_lit("let")) {
+            string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |b: &'static Sexp| {
+                string_list_append(kayak_rt::heap_cons(str_lit("let "), kayak_rt::heap_cons(rust_variable(b), kayak_rt::heap_cons(str_lit(" = "), kayak_rt::heap_cons(rust_of(third(items(b))), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))))
+            }), let_bindings()(t)), kayak_rt::heap_cons(rust_of(let_body()(t)), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
+        } else if string_eq_p(h, str_lit("seq")) {
+            string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |e: &'static Sexp| {
+                string_list_append(kayak_rt::heap_cons(str_lit("let _ = "), kayak_rt::heap_cons(rust_of(e), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))
+            }), rust_but_last(seq_terms()(t))), kayak_rt::heap_cons(rust_of(car(reverse(seq_terms()(t)))), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("cons"))) {
+            string_list_append(kayak_rt::heap_cons(str_lit("heap_cons("), kayak_rt::heap_cons(rust_args(prim_args()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("pair?"))) {
+            string_list_append(kayak_rt::heap_cons(str_lit("(!null_p("), kayak_rt::heap_cons(rust_of(car(prim_args()(t))), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("eq?"))) {
+            string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(car(prim_args()(t))), kayak_rt::heap_cons(str_lit(" == "), kayak_rt::heap_cons(rust_of(second(prim_args()(t))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+        } else if string_eq_p(h, str_lit("prim")) {
+            string_list_append(kayak_rt::heap_cons(rust_primitive(prim_name()(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_args(prim_args()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
+        } else if string_eq_p(h, str_lit("int")) {
+            string_append(str_lit("int_lit("), string_append(i64_to_string(n), str_lit("i64)")))
+        } else if string_eq_p(h, str_lit("bool")) {
+            if i64_eq(n, 1i64) {
+                str_lit("true")
+            } else {
+                str_lit("false")
+            }
+        } else if string_eq_p(h, str_lit("char")) {
+            string_append(str_lit("'\\u{"), string_append(kc_hex()(n, str_lit("")), str_lit("}'")))
+        } else if string_eq_p(h, str_lit("unit")) {
+            str_lit("()")
+        } else if string_eq_p(h, str_lit("nil")) {
+            str_lit("nil()")
+        } else {
+            error(string_append(str_lit("kc: the Rust back end has no term "), h));
             str_lit("")
         }
     }
-}
 
-#[inline]
-pub fn rust_but_last(xs: Sexps) -> Sexps {
-    if (null_p(xs) || null_p(cdr(xs))) {
-        nil::<&'static Sexp>()
-    } else {
-        kayak_rt::heap_cons(car(xs), rust_but_last(cdr(xs)))
-    }
-}
-
-// A global's Rust names: its procedure's, its cell's, its reader's.
-#[inline]
-pub fn rust_proc_name(n: Str) -> Str {
-    string_append(str_lit("kcp_"), mangle_bare(n))
-}
-
-#[inline]
-pub fn rust_cell_name(n: Str) -> Str {
-    string_append(str_lit("KCG_"), mangle_bare(n))
-}
-
-#[inline]
-pub fn rust_global_name(n: Str) -> Str {
-    string_append(str_lit("kcg_"), mangle_bare(n))
-}
-
-/// A term as a Rust expression of kayak-rt's.
-pub fn rust_of(t: &'static Sexp) -> Str {
-    let (h, n) = (term_head(t), term_number(t));
-    if string_eq_p(h, str_lit("var")) {
-        rust_variable(t)
-    } else if string_eq_p(h, str_lit("gvar")) {
-        string_append(rust_global_name(item_name(t)), str_lit("()"))
-    } else if string_eq_p(h, str_lit("call")) {
-        string_list_append(kayak_rt::heap_cons(rust_proc_name(call_name(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_args(call_args(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
-    } else if string_eq_p(h, str_lit("if")) {
-        let ps = if_parts(t);
-        string_list_append(kayak_rt::heap_cons(str_lit("if "), kayak_rt::heap_cons(rust_of(car(ps)), kayak_rt::heap_cons(str_lit(" { "), kayak_rt::heap_cons(rust_of(second(ps)), kayak_rt::heap_cons(str_lit(" } else { "), kayak_rt::heap_cons(rust_of(third(ps)), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil()))))))))
-    } else if string_eq_p(h, str_lit("let")) {
-        string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |b: &'static Sexp| {
-            string_list_append(kayak_rt::heap_cons(str_lit("let "), kayak_rt::heap_cons(rust_variable(b), kayak_rt::heap_cons(str_lit(" = "), kayak_rt::heap_cons(rust_of(third(items(b))), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))))
-        }), let_bindings(t)), kayak_rt::heap_cons(rust_of(let_body(t)), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
-    } else if string_eq_p(h, str_lit("seq")) {
-        string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |e: &'static Sexp| {
-            string_list_append(kayak_rt::heap_cons(str_lit("let _ = "), kayak_rt::heap_cons(rust_of(e), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))
-        }), rust_but_last(seq_terms(t))), kayak_rt::heap_cons(rust_of(car(reverse(seq_terms(t)))), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
-    } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("cons"))) {
-        string_list_append(kayak_rt::heap_cons(str_lit("heap_cons("), kayak_rt::heap_cons(rust_args(prim_args(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))
-    } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("pair?"))) {
-        string_list_append(kayak_rt::heap_cons(str_lit("(!null_p("), kayak_rt::heap_cons(rust_of(car(prim_args(t))), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))
-    } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("eq?"))) {
-        string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(car(prim_args(t))), kayak_rt::heap_cons(str_lit(" == "), kayak_rt::heap_cons(rust_of(second(prim_args(t))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
-    } else if string_eq_p(h, str_lit("prim")) {
-        string_list_append(kayak_rt::heap_cons(rust_primitive(prim_name(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_args(prim_args(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
-    } else if string_eq_p(h, str_lit("int")) {
-        string_append(str_lit("int_lit("), string_append(i64_to_string(n), str_lit("i64)")))
-    } else if string_eq_p(h, str_lit("bool")) {
-        if i64_eq(n, 1i64) {
-            str_lit("true")
+    pub fn rust_args(ts: Sexps) -> Str {
+        if null_p(ts) {
+            str_lit("")
+        } else if null_p(cdr(ts)) {
+            rust_of(car(ts))
         } else {
-            str_lit("false")
+            string_append(rust_of(car(ts)), string_append(str_lit(", "), rust_args(cdr(ts))))
         }
-    } else if string_eq_p(h, str_lit("char")) {
-        string_append(str_lit("'\\u{"), string_append(kc_hex(n, str_lit("")), str_lit("}'")))
-    } else if string_eq_p(h, str_lit("unit")) {
-        str_lit("()")
-    } else if string_eq_p(h, str_lit("nil")) {
-        str_lit("nil()")
-    } else {
-        error(string_append(str_lit("kc: the Rust back end has no term "), h));
-        str_lit("")
     }
-}
 
-pub fn rust_args(ts: Sexps) -> Str {
-    if null_p(ts) {
-        str_lit("")
-    } else if null_p(cdr(ts)) {
-        rust_of(car(ts))
-    } else {
-        string_append(rust_of(car(ts)), string_append(str_lit(", "), rust_args(cdr(ts))))
-    }
-}
-
-// A type as kayak-rt's Rust type.
-pub fn rust_type(path: Str, t: &'static Sexp) -> Str {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Sexp::Sym(n, f, p) => {
-            if (string_eq_p(n, str_lit("int")) || string_eq_p(n, str_lit("nat"))) {
-                str_lit("Int")
-            } else if string_eq_p(n, str_lit("bool")) {
-                str_lit("bool")
-            } else if string_eq_p(n, str_lit("char")) {
-                str_lit("char")
-            } else if string_eq_p(n, str_lit("unit")) {
-                str_lit("()")
-            } else {
-                not_yet(path, string_append(str_lit("a Rust type of "), n))
+    // A type as kayak-rt's Rust type.
+    pub fn rust_type(path: Str, t: &'static Sexp) -> Str {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if (string_eq_p(n, str_lit("int")) || string_eq_p(n, str_lit("nat"))) {
+                    str_lit("Int")
+                } else if string_eq_p(n, str_lit("bool")) {
+                    str_lit("bool")
+                } else if string_eq_p(n, str_lit("char")) {
+                    str_lit("char")
+                } else if string_eq_p(n, str_lit("unit")) {
+                    str_lit("()")
+                } else {
+                    not_yet()(path, string_append(str_lit("a Rust type of "), n))
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if sym_is_p(car(xs), str_lit("nat")) {
+                    str_lit("Int")
+                } else if sym_is_p(car(xs), str_lit("listof")) {
+                    string_append(str_lit("List<"), string_append(rust_type(path, second(xs)), str_lit(">")))
+                } else {
+                    not_yet()(path, string_append(str_lit("a Rust type of "), kc_datum()(t)))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                not_yet()(path, str_lit("a Rust type of this"))
             }
         }
-        Sexp::Lst(xs, f, l, p) => {
-            if sym_is_p(car(xs), str_lit("nat")) {
-                str_lit("Int")
-            } else if sym_is_p(car(xs), str_lit("listof")) {
-                string_append(str_lit("List<"), string_append(rust_type(path, second(xs)), str_lit(">")))
-            } else {
-                not_yet(path, string_append(str_lit("a Rust type of "), kc_datum(t)))
+    }
+
+    #[inline]
+    pub fn rust_param_types(path: Str, ts: Sexps) -> List<Str> {
+        if null_p(ts) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(rust_type(path, car(ts)), rust_param_types(path, cdr(ts)))
+        }
+    }
+
+    // A procedure's type's parts: `(subr EFFECT (PARAM ...) RESULT)`.
+    pub fn subr_params(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if i64_eq(size(xs), 4i64) {
+                    items(third(xs))
+                } else {
+                    nil::<&'static Sexp>()
+                }
             }
-        }
-        _ => {
-            let other = tagcase_;
-            not_yet(path, str_lit("a Rust type of this"))
-        }
-    }
-}
-
-#[inline]
-pub fn rust_param_types(path: Str, ts: Sexps) -> List<Str> {
-    if null_p(ts) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(rust_type(path, car(ts)), rust_param_types(path, cdr(ts)))
-    }
-}
-
-// A procedure's type's parts: `(subr EFFECT (PARAM ...) RESULT)`.
-pub fn subr_params(t: &'static Sexp) -> Sexps {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if i64_eq(size(xs), 4i64) {
-                items(third(xs))
-            } else {
+            _ => {
+                let other = tagcase_;
                 nil::<&'static Sexp>()
             }
         }
-        _ => {
-            let other = tagcase_;
-            nil::<&'static Sexp>()
-        }
     }
-}
 
-pub fn subr_result(t: &'static Sexp) -> &'static Sexp {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if i64_eq(size(xs), 4i64) {
-                fourth(xs)
-            } else {
+    pub fn subr_result(t: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if i64_eq(size(xs), 4i64) {
+                    fourth(xs)
+                } else {
+                    t
+                }
+            }
+            _ => {
+                let other = tagcase_;
                 t
             }
         }
-        _ => {
-            let other = tagcase_;
-            t
-        }
     }
-}
 
-pub fn rust_params(ps: Sexps, ts: List<Str>) -> List<Str> {
-    if (null_p(ps) || null_p(ts)) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(string_append(rust_variable(car(ps)), string_append(str_lit(": "), car(ts))), rust_params(cdr(ps), cdr(ts)))
-    }
-}
-
-pub fn words_of_commas(ws: List<Str>) -> Str {
-    if null_p(ws) {
-        str_lit("")
-    } else if null_p(cdr(ws)) {
-        car(ws)
-    } else {
-        string_append(car(ws), string_append(str_lit(", "), words_of_commas(cdr(ws))))
-    }
-}
-
-pub fn sexp_at(mut xs: Sexps, mut i: i64) -> &'static Sexp {
-    loop {
-        if i64_eq(i, 0i64) {
-            return car(xs);
+    pub fn rust_params(ps: Sexps, ts: List<Str>) -> List<Str> {
+        if (null_p(ps) || null_p(ts)) {
+            nil::<Str>()
         } else {
-            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
-            continue;
+            kayak_rt::heap_cons(string_append(rust_variable(car(ps)), string_append(str_lit(": "), car(ts))), rust_params(cdr(ps), cdr(ts)))
         }
     }
-}
 
-#[inline]
-pub fn item_text(x: &'static Sexp, i: i64) -> Str {
-    let tagcase_ = sexp_at(items(x), i);
-    match *tagcase_ {
-        Sexp::Str(s, f, p) => {
-            s
-        }
-        _ => {
-            let other = tagcase_;
+    pub fn words_of_commas(ws: List<Str>) -> Str {
+        if null_p(ws) {
             str_lit("")
+        } else if null_p(cdr(ws)) {
+            car(ws)
+        } else {
+            string_append(car(ws), string_append(str_lit(", "), words_of_commas(cdr(ws))))
         }
     }
-}
 
-// `rust-item PATH KEY`: a form's Rust, `(proc TEXT)` of a procedure's
-// function, `(global CELL INIT)` of a value definition's cell and the
-// statement that sets it, `(expr STMT)` of an expression's statement.
-pub fn q_rust_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-    let path = arg_first(a);
-    let key = arg_rest(a);
-    let i = l0_item(d, run, path, key);
-    let k = item_kind(i);
-    if string_eq_p(k, str_lit("proc")) {
-        let t = kc_type(d, run, path, item_name(i));
-        if not(sym_is_p(car(items(t)), str_lit("subr"))) {
-            not_yet(path, string_append(str_lit("a procedure whose type is not a subr's, "), item_name(i)))
-        } else {
-            string_append(str_lit("(proc "), string_append(kc_datum(str(string_list_append(kayak_rt::heap_cons(str_lit("pub fn "), kayak_rt::heap_cons(rust_proc_name(item_name(i)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(words_of_commas(rust_params(item_params(i), rust_param_types(path, subr_params(t)))), kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(rust_type(path, subr_result(t)), kayak_rt::heap_cons(str_lit(" {\n    "), kayak_rt::heap_cons(rust_of(item_body(i)), kayak_rt::heap_cons(str_lit("\n}\n"), kayak_rt::nil())))))))))), str_lit(""), 0i64)), str_lit(")")))
+    pub fn sexp_at(mut xs: Sexps, mut i: i64) -> &'static Sexp {
+        loop {
+            if i64_eq(i, 0i64) {
+                return car(xs);
+            } else {
+                (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+                continue;
+            }
         }
-    } else if string_eq_p(k, str_lit("global")) {
-        let ty = rust_type(path, kc_type(d, run, path, item_name(i)));
-        string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(kc_datum(str(string_list_append(kayak_rt::heap_cons(str_lit("thread_local! { static "), kayak_rt::heap_cons(rust_cell_name(item_name(i)), kayak_rt::heap_cons(str_lit(": std::cell::Cell<Option<"), kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit(">> = const { std::cell::Cell::new(None) }; }\n"), kayak_rt::heap_cons(str_lit("fn "), kayak_rt::heap_cons(rust_global_name(item_name(i)), kayak_rt::heap_cons(str_lit("() -> "), kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit(" { "), kayak_rt::heap_cons(rust_cell_name(item_name(i)), kayak_rt::heap_cons(str_lit(".with(|c| c.get().unwrap()) }\n"), kayak_rt::nil()))))))))))))), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(str(string_list_append(kayak_rt::heap_cons(str_lit("    "), kayak_rt::heap_cons(rust_cell_name(item_name(i)), kayak_rt::heap_cons(str_lit(".with(|c| c.set(Some("), kayak_rt::heap_cons(rust_of(item_body(i)), kayak_rt::heap_cons(str_lit(")));\n"), kayak_rt::nil())))))), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
-    } else {
-        let t = item_body(i);
-        string_append(str_lit("(expr "), string_append(kc_datum(str(string_list_append(kayak_rt::heap_cons(str_lit("    last = String::new();\n    Show::show(&"), kayak_rt::heap_cons(if string_eq_p(term_head(t), str_lit("nil")) {
-            str_lit("nil::<()>()")
-        } else {
-            rust_of(t)
-        }, kayak_rt::heap_cons(str_lit(", &mut last);\n"), kayak_rt::nil())))), str_lit(""), 0i64)), str_lit(")")))
     }
-}
 
-pub fn q_rust(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    db_get(d, run, string_append(str_lit("kfx "), path));
-    let its = kc_items_of(d, run, str_lit("rust-item"), path, kc_keys(d, run, path));
-    string_list_append(append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("#![allow(unused)]\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::nil()))))), append(map(lambda1s(move |x: &'static Sexp| {
-        if sym_is_p(car(items(x)), str_lit("expr")) {
-            str_lit("")
-        } else {
-            item_text(x, 1i64)
+    #[inline]
+    pub fn item_text(x: &'static Sexp, i: i64) -> Str {
+        let tagcase_ = sexp_at(items(x), i);
+        match *tagcase_ {
+            Sexp::Str(s, f, p) => {
+                s
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
         }
-    }), its), append(kayak_rt::heap_cons(str_lit("\npub fn main() -> Str {\n    let mut last = String::new();\n"), kayak_rt::nil()), append(map(lambda1s(move |x: &'static Sexp| {
-        if sym_is_p(car(items(x)), str_lit("global")) {
-            item_text(x, 2i64)
-        } else if sym_is_p(car(items(x)), str_lit("expr")) {
-            item_text(x, 1i64)
+    }
+
+    // `rust-item PATH KEY`: a form's Rust, `(proc TEXT)` of a procedure's
+    // function, `(global CELL INIT)` of a value definition's cell and the
+    // statement that sets it, `(expr STMT)` of an expression's statement.
+    pub fn q_rust_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
+        let path = arg_first()(a);
+        let key = arg_rest()(a);
+        let i = l0_item()(d, run, path, key);
+        let k = item_kind()(i);
+        if string_eq_p(k, str_lit("proc")) {
+            let t = kc_type()(d, run, path, item_name()(i));
+            if not(sym_is_p(car(items(t)), str_lit("subr"))) {
+                not_yet()(path, string_append(str_lit("a procedure whose type is not a subr's, "), item_name()(i)))
+            } else {
+                string_append(str_lit("(proc "), string_append(kc_datum()(str(string_list_append(kayak_rt::heap_cons(str_lit("pub fn "), kayak_rt::heap_cons(rust_proc_name(item_name()(i)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(words_of_commas(rust_params(item_params()(i), rust_param_types(path, subr_params(t)))), kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(rust_type(path, subr_result(t)), kayak_rt::heap_cons(str_lit(" {\n    "), kayak_rt::heap_cons(rust_of(item_body()(i)), kayak_rt::heap_cons(str_lit("\n}\n"), kayak_rt::nil())))))))))), str_lit(""), 0i64)), str_lit(")")))
+            }
+        } else if string_eq_p(k, str_lit("global")) {
+            let ty = rust_type(path, kc_type()(d, run, path, item_name()(i)));
+            string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(kc_datum()(str(string_list_append(kayak_rt::heap_cons(str_lit("thread_local! { static "), kayak_rt::heap_cons(rust_cell_name(item_name()(i)), kayak_rt::heap_cons(str_lit(": std::cell::Cell<Option<"), kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit(">> = const { std::cell::Cell::new(None) }; }\n"), kayak_rt::heap_cons(str_lit("fn "), kayak_rt::heap_cons(rust_global_name(item_name()(i)), kayak_rt::heap_cons(str_lit("() -> "), kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit(" { "), kayak_rt::heap_cons(rust_cell_name(item_name()(i)), kayak_rt::heap_cons(str_lit(".with(|c| c.get().unwrap()) }\n"), kayak_rt::nil()))))))))))))), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum()(str(string_list_append(kayak_rt::heap_cons(str_lit("    "), kayak_rt::heap_cons(rust_cell_name(item_name()(i)), kayak_rt::heap_cons(str_lit(".with(|c| c.set(Some("), kayak_rt::heap_cons(rust_of(item_body()(i)), kayak_rt::heap_cons(str_lit(")));\n"), kayak_rt::nil())))))), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
         } else {
-            str_lit("")
+            let t = item_body()(i);
+            string_append(str_lit("(expr "), string_append(kc_datum()(str(string_list_append(kayak_rt::heap_cons(str_lit("    last = String::new();\n    Show::show(&"), kayak_rt::heap_cons(if string_eq_p(term_head()(t), str_lit("nil")) {
+                str_lit("nil::<()>()")
+            } else {
+                rust_of(t)
+            }, kayak_rt::heap_cons(str_lit(", &mut last);\n"), kayak_rt::nil())))), str_lit(""), 0i64)), str_lit(")")))
         }
-    }), its), kayak_rt::heap_cons(str_lit("    shown(last)\n}\n"), kayak_rt::nil()))))))
+    }
+
+    pub fn q_rust(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
+        db_get(d, run, string_append(str_lit("kfx "), path));
+        let its = kc_items_of()(d, run, str_lit("rust-item"), path, kc_keys()(d, run, path));
+        string_list_append(append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("#![allow(unused)]\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::nil()))))), append(map(lambda1s(move |x: &'static Sexp| {
+            if sym_is_p(car(items(x)), str_lit("expr")) {
+                str_lit("")
+            } else {
+                item_text(x, 1i64)
+            }
+        }), its), append(kayak_rt::heap_cons(str_lit("\npub fn main() -> Str {\n    let mut last = String::new();\n"), kayak_rt::nil()), append(map(lambda1s(move |x: &'static Sexp| {
+            if sym_is_p(car(items(x)), str_lit("global")) {
+                item_text(x, 2i64)
+            } else if sym_is_p(car(items(x)), str_lit("expr")) {
+                item_text(x, 1i64)
+            } else {
+                str_lit("")
+            }
+        }), its), kayak_rt::heap_cons(str_lit("    shown(last)\n}\n"), kayak_rt::nil()))))))
+    }
 }
 
