@@ -359,6 +359,421 @@ pub mod kc_front {
         }
     }
 
+    // Modules (C425): a top-level module's items made top-level forms of their
+    // own, each named `m..x`, the module's own names renamed so in them (a
+    // binder of the same name hiding it, as the checker's scopes do); the
+    // module itself the product of what it gives, in order, as Fixpt makes
+    // a module's value; `(with m E)` of such a module `E` its names renamed
+    // so; `(import m x ...)` each `(define x m..x)`. A module given as a
+    // value (`with` of a variable), a maker, a module in a module: not yet.
+    pub enum Kmod {
+        Kmod(Str, List<Str>),
+    }
+
+    pub fn kmod(f0: Str, f1: List<Str>) -> &'static Kmod {
+        kayak_rt::heap_alloc(Kmod::Kmod(f0, f1))
+    }
+
+    pub enum Renaming {
+        Renaming(Str, Str),
+    }
+
+    pub fn renaming(f0: Str, f1: Str) -> &'static Renaming {
+        kayak_rt::heap_alloc(Renaming::Renaming(f0, f1))
+    }
+
+    pub fn renaming_of(mut n: Str, mut rs: List<&'static Renaming>) -> Str {
+        loop {
+            if null_p(rs) {
+                return str_lit("");
+            } else if {
+                let tagcase_ = car(rs);
+                match *tagcase_ {
+                    Renaming::Renaming(a, b) => {
+                        string_eq_p(a, n)
+                    }
+                }
+            } {
+                let tagcase_ = car(rs);
+                match *tagcase_ {
+                    Renaming::Renaming(a, b) => {
+                        return b;
+                    }
+                }
+            } else {
+                rs = cdr(rs);
+                continue;
+            }
+        }
+    }
+
+    pub fn renamings_without(mut rs: List<&'static Renaming>, mut ns: List<Str>) -> List<&'static Renaming> {
+        loop {
+            if null_p(rs) {
+                return nil::<&'static kc_front::Renaming>();
+            } else if {
+                let tagcase_ = car(rs);
+                match *tagcase_ {
+                    Renaming::Renaming(a, b) => {
+                        string_member_p(a, ns)
+                    }
+                }
+            } {
+                rs = cdr(rs);
+                continue;
+            } else {
+                return kayak_rt::heap_cons(car(rs), renamings_without(cdr(rs), ns));
+            }
+        }
+    }
+
+    pub fn binder_name(b: &'static Sexp) -> Str {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                n
+            }
+            Sexp::Lst(ys, f, l, p) => {
+                if null_p(ys) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = car(ys);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
+    /// `e`, each name `rs` renames that no binder in it hides renamed.
+    pub fn renamed(e: &'static Sexp, rs: List<&'static Renaming>) -> &'static Sexp {
+        if null_p(rs) {
+            e
+        } else {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    let to = renaming_of(n, rs);
+                    if string_eq_p(to, str_lit("")) {
+                        e
+                    } else {
+                        sym(to, f, p)
+                    }
+                }
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        e
+                    } else if sym_is_p(car(xs), str_lit("quote")) {
+                        e
+                    } else if (sym_is_p(car(xs), str_lit("lambda")) && i64_gt_eq(size(xs), 3i64)) {
+                        lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), renamed_all(cdr(cdr(xs)), renamings_without(rs, map(&binder_name, items(second(xs))))))), f, l, p)
+                    } else if (sym_is_p(car(xs), str_lit("let")) && i64_gt_eq(size(xs), 3i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(lst(map(lambda1s(move |b: &'static Sexp| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Sexp::Lst(bs, f2, l2, p2) => {
+                                    lst(kayak_rt::heap_cons(car(bs), renamed_all(cdr(bs), rs)), f2, l2, p2)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    b
+                                }
+                            }
+                        }), items(second(xs))), f, l, p), renamed_all(cdr(cdr(xs)), renamings_without(rs, map(&binder_name, items(second(xs))))))), f, l, p)
+                    } else if (sym_is_p(car(xs), str_lit("let*")) && i64_gt_eq(size(xs), 3i64)) {
+                        lst(kayak_rt::heap_cons(car(xs), let_star_renamed(items(second(xs)), cdr(cdr(xs)), rs, nil::<&'static Sexp>(), f, l, p)), f, l, p)
+                    } else if (sym_is_p(car(xs), str_lit("tagcase")) && i64_gt_eq(size(xs), 2i64)) {
+                        lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(renamed(second(xs), rs), map(lambda1s(move |a: &'static Sexp| {
+                            let tagcase_ = a;
+                            match *tagcase_ {
+                                Sexp::Lst(r#as, f2, l2, p2) => {
+                                    if null_p(r#as) {
+                                        a
+                                    } else {
+                                        let hidden = {
+                                            let tagcase_ = second(r#as);
+                                            match *tagcase_ {
+                                                Sexp::Lst(bs, f3, l3, p3) => {
+                                                    map(&binder_name, bs)
+                                                }
+                                                Sexp::Sym(n, f3, p3) => {
+                                                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    nil::<Str>()
+                                                }
+                                            }
+                                        };
+                                        lst(kayak_rt::heap_cons(car(r#as), kayak_rt::heap_cons(second(r#as), renamed_all(cdr(cdr(r#as)), renamings_without(rs, hidden)))), f2, l2, p2)
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    a
+                                }
+                            }
+                        }), cdr(cdr(xs))))), f, l, p)
+                    } else {
+                        lst(renamed_all(xs, rs), f, l, p)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    e
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn renamed_all(es: Sexps, rs: List<&'static Renaming>) -> Sexps {
+        map(lambda1s(move |e: &'static Sexp| {
+            renamed(e, rs)
+        }), es)
+    }
+
+    pub fn let_star_renamed(mut bs: Sexps, mut body: Sexps, mut rs: List<&'static Renaming>, mut done: Sexps, mut f: Str, mut l: i64, mut p: i64) -> Sexps {
+        loop {
+            if null_p(bs) {
+                return kayak_rt::heap_cons(lst(reverse(done), f, l, p), renamed_all(body, rs));
+            } else {
+                let b = car(bs);
+                (bs, rs, done) = (cdr(bs), renamings_without(rs, kayak_rt::heap_cons(binder_name(b), kayak_rt::nil())), kayak_rt::heap_cons({
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            lst(kayak_rt::heap_cons(car(ys), renamed_all(cdr(ys), rs)), f2, l2, p2)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            b
+                        }
+                    }
+                }, done));
+                continue;
+            }
+        }
+    }
+
+    pub fn module_of(mut n: Str, mut ms: List<&'static Kmod>) -> List<&'static Kmod> {
+        loop {
+            if null_p(ms) {
+                return nil::<&'static kc_front::Kmod>();
+            } else if {
+                let tagcase_ = car(ms);
+                match *tagcase_ {
+                    Kmod::Kmod(m, es) => {
+                        string_eq_p(m, n)
+                    }
+                }
+            } {
+                return kayak_rt::heap_cons(car(ms), kayak_rt::nil());
+            } else {
+                ms = cdr(ms);
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn qualified(m: Str, ns: List<Str>) -> List<&'static Renaming> {
+        map(lambda1s(move |n: Str| {
+            renaming(n, string_append(m, string_append(str_lit(".."), n)))
+        }), ns)
+    }
+
+    /// Each `(with m E)` of a module `ms` knows, its `E` with `m`'s names.
+    pub fn withs_expanded(mut e: &'static Sexp, mut ms: List<&'static Kmod>) -> &'static Sexp {
+        loop {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        return e;
+                    } else if sym_is_p(car(xs), str_lit("quote")) {
+                        return e;
+                    } else if (sym_is_p(car(xs), str_lit("with")) && i64_eq(size(xs), 3i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                not(null_p(module_of(n, ms)))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        let tagcase_ = car(module_of(sym_name(second(xs)), ms));
+                        match *tagcase_ {
+                            Kmod::Kmod(m, es) => {
+                                e = renamed(third(xs), qualified(m, es));
+                                continue;
+                            }
+                        }
+                    } else {
+                        return lst(map(lambda1s(move |x: &'static Sexp| {
+                            withs_expanded(x, ms)
+                        }), xs), f, l, p);
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return e;
+                }
+            }
+        }
+    }
+
+    /// A module's items, `hide`s opened, each marked hidden or not:
+    /// `(hidden ITEM)`, `(given ITEM)`.
+    pub fn module_items(mut its: Sexps, mut hidden: bool, mut acc: List<&'static Sexp>) -> Sexps {
+        loop {
+            if null_p(its) {
+                return reverse(acc);
+            } else {
+                let it = car(its);
+                if head_is_p(it, str_lit("hide")) {
+                    (its, acc) = (cdr(its), onto(reverse(module_items(cdr(items(it)), true, nil::<&'static Sexp>())), acc));
+                    continue;
+                } else {
+                    (its, acc) = (cdr(its), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(if hidden {
+                        str_lit("hidden")
+                    } else {
+                        str_lit("given")
+                    }, str_lit(""), 0i64), kayak_rt::heap_cons(it, kayak_rt::nil())), str_lit(""), 0i64, 0i64), acc));
+                    continue;
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn item_defined(it: &'static Sexp) -> Str {
+        if head_is_p(it, str_lit("define")) {
+            form_name(it)
+        } else {
+            if type_form_p(it) {
+                type_form_name(it)
+            } else {
+                str_lit("")
+            }
+        }
+    }
+
+    #[inline]
+    pub fn module_form_p(f: &'static Sexp) -> bool {
+        (head_is_p(f, str_lit("define")) && i64_gt_eq(size(items(f)), 3i64) && head_is_p(car(reverse(items(f))), str_lit("module")))
+    }
+
+    pub fn fields_of_names(mut ns: List<Str>, mut i: i64, mut acc: Sexps) -> Sexps {
+        loop {
+            if null_p(ns) {
+                return reverse(acc);
+            } else {
+                (ns, i, acc) = (cdr(ns), i64_plus(i, 1i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(num(i, str_lit(""), 0i64), kayak_rt::heap_cons(sym(car(ns), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn modules_expanded(mut fs: Sexps, mut ms: List<&'static Kmod>, mut acc: Sexps) -> Sexps {
+        loop {
+            if null_p(fs) {
+                return reverse(acc);
+            } else {
+                let f = car(fs);
+                if module_form_p(f) {
+                    let m = form_name(f);
+                    let its = module_items(cdr(items(car(reverse(items(f))))), false, nil::<&'static Sexp>());
+                    let names = filter(lambda1s(move |n: Str| {
+                        not(string_eq_p(n, str_lit("")))
+                    }), map(lambda1s(move |x: &'static Sexp| {
+                        item_defined(second(items(x)))
+                    }), its));
+                    let given = concat(map(lambda1s(move |x: &'static Sexp| {
+                        if (sym_is_p(car(items(x)), str_lit("given")) && head_is_p(second(items(x)), str_lit("define"))) {
+                            the::<Strings>(kayak_rt::heap_cons(form_name(second(items(x))), kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), its));
+                    let rs = qualified(m, names);
+                    let defs = map(lambda1s(move |x: &'static Sexp| {
+                        let it = withs_expanded(second(items(x)), ms);
+                        let tagcase_ = it;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(renamed(second(ys), rs), renamed_all(cdr(cdr(ys)), rs))), f2, l2, p2)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                it
+                            }
+                        }
+                    }), its);
+                    let value = lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(m, str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("product"), str_lit(""), 0i64), fields_of_names(map(lambda1s(move |n: Str| {
+                        string_append(m, string_append(str_lit(".."), n))
+                    }), given), 1i64, nil::<&'static Sexp>())), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64);
+                    (fs, ms, acc) = (cdr(fs), kayak_rt::heap_cons(kmod(m, given), ms), kayak_rt::heap_cons(value, onto(reverse(defs), acc)));
+                    continue;
+                } else if (head_is_p(f, str_lit("import")) && i64_gt_eq(size(items(f)), 2i64) && {
+                    let tagcase_ = second(items(f));
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            not(null_p(module_of(n, ms)))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    let m = sym_name(second(items(f)));
+                    (fs, acc) = (cdr(fs), onto(reverse(concat(map(lambda1s(move |x: &'static Sexp| {
+                        let tagcase_ = x;
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(x, kayak_rt::heap_cons(sym(string_append(m, string_append(str_lit(".."), n)), str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    }), cdr(cdr(items(f)))))), acc));
+                    continue;
+                } else {
+                    (fs, acc) = (cdr(fs), kayak_rt::heap_cons(withs_expanded(f, ms), acc));
+                    continue;
+                }
+            }
+        }
+    }
+
     // `kc-load! PATH TEXT`: the file `PATH`'s text, read once, and the inputs
     // made of it (C414): each form's datum and position, the keys in order; a
     // form no longer there, `()`. An input set to what it was is no change
@@ -384,7 +799,7 @@ pub mod kc_front {
             });
             let keyed = map(lambda1s(move |t: Str| {
                 car(read_all(t, str_lit("forms"), 1i64))
-            }), reverse(forms_keyed(read_all(text, path, 1i64), 0i64, nil::<Str>())));
+            }), reverse(forms_keyed(modules_expanded(read_all(text, path, 1i64), nil::<&'static kc_front::Kmod>(), nil::<&'static Sexp>()), 0i64, nil::<Str>())));
             let keys = map(kd, keyed);
             let keys_text = string_append(str_lit("("), string_append(words_of(keys), str_lit(")")));
             let old = db_node(d, key1(str_lit("keys"), path));
@@ -553,7 +968,7 @@ pub mod kc_front {
     // other does, its work kept, and a `kc serve` goes on.
     pub fn q_checked(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
         let text = db_get(d, run, key1(str_lit("text"), path));
-        let forms = read_all(text, path, 1i64);
+        let forms = import_items(read_all(text, path, 1i64));
         let texts = incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms));
         let side = string_append(str_lit("check-memos "), path);
         let old = (&queries::memos_of_text)(db_side(d, side), str_lit("kc"));

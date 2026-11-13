@@ -199,6 +199,164 @@
                   (db-set! d (key2 "position" path (car ks)) "-1" 0)
                   (kc-unset-forms! d path (cdr ks))))))))
 
+    (hide
+      "Modules (C425): a top-level module's items made top-level forms of their
+       own, each named `m..x`, the module's own names renamed so in them (a
+       binder of the same name hiding it, as the checker's scopes do); the
+       module itself the product of what it gives, in order, as Fixpt makes
+       a module's value; `(with m E)` of such a module `E` its names renamed
+       so; `(import m x ...)` each `(define x m..x)`. A module given as a
+       value (`with` of a variable), a maker, a module in a module: not yet."
+      (define-datatype kmod (kmod string (listof string acyclic)))
+      (define-datatype renaming (renaming string string))
+
+      (define-rec
+        (renaming-of (subr kfx (string (listof renaming acyclic)) string)
+          (lambda (n rs)
+            (cond ((null? rs) "")
+                  ((tagcase (car rs) (renaming (a b) (string=? a n))) (tagcase (car rs) (renaming (a b) b)))
+                  (else (renaming-of n (cdr rs)))))))
+
+      (define-rec
+        (renamings-without (subr kfx ((listof renaming acyclic) (listof string acyclic)) (listof renaming acyclic))
+          (lambda (rs ns)
+            (cond ((null? rs) nil)
+                  ((tagcase (car rs) (renaming (a b) (string-member? a ns))) (renamings-without (cdr rs) ns))
+                  (else (cons (car rs) (renamings-without (cdr rs) ns)))))))
+
+      (define binder-name (subr kfx (sexp) string)
+        (lambda (b) (tagcase b (sym (n f p) n) (lst (ys f l p) (if (null? ys) "" (tagcase (car ys) (sym (n f2 p2) n) (else other "")))) (else other ""))))
+
+      (define-rec
+        (renamed (subr kfx (sexp (listof renaming acyclic)) sexp)
+          (lambda (e rs)
+            "`e`, each name `rs` renames that no binder in it hides renamed."
+            (if (null? rs)
+                e
+                (tagcase e
+                  (sym (n f p) (let ((to (renaming-of n rs))) (if (string=? to "") e (sym to f p))))
+                  (lst (xs f l p)
+                    (cond ((null? xs) e)
+                          ((sym-is? (car xs) "quote") e)
+                          ((and (sym-is? (car xs) "lambda") (i64>= (size xs) 3))
+                           (lst (cons (car xs) (cons (second xs) (renamed-all (cdr (cdr xs)) (renamings-without rs (map binder-name (items (second xs))))))) f l p))
+                          ((and (sym-is? (car xs) "let") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                           (lst (cons (car xs) (cons (lst (map (lambda ((b sexp)) (tagcase b (lst (bs f2 l2 p2) (lst (cons (car bs) (renamed-all (cdr bs) rs)) f2 l2 p2)) (else other b))) (items (second xs))) f l p)
+                                                     (renamed-all (cdr (cdr xs)) (renamings-without rs (map binder-name (items (second xs)))))))
+                                f l p))
+                          ((and (sym-is? (car xs) "let*") (i64>= (size xs) 3))
+                           (lst (cons (car xs) (let*-renamed (items (second xs)) (cdr (cdr xs)) rs nil f l p)) f l p))
+                          ((and (sym-is? (car xs) "tagcase") (i64>= (size xs) 2))
+                           (lst (cons (car xs) (cons (renamed (second xs) rs)
+                                                     (map (lambda ((a sexp))
+                                                            (tagcase a
+                                                              (lst (as f2 l2 p2)
+                                                                (if (null? as) a
+                                                                    (let ((hidden (tagcase (second as) (lst (bs f3 l3 p3) (map binder-name bs)) (sym (n f3 p3) (the strings (list n))) (else other nil))))
+                                                                      (lst (cons (car as) (cons (second as) (renamed-all (cdr (cdr as)) (renamings-without rs hidden)))) f2 l2 p2))))
+                                                              (else other a)))
+                                                          (cdr (cdr xs)))))
+                                f l p))
+                          (else (lst (renamed-all xs rs) f l p))))
+                  (else other e)))))
+        (renamed-all (subr kfx (sexps (listof renaming acyclic)) sexps)
+          (lambda (es rs) (map (lambda ((e sexp)) (renamed e rs)) es)))
+        (let*-renamed (subr kfx (sexps sexps (listof renaming acyclic) sexps string i64 i64) sexps)
+          (lambda (bs body rs done f l p)
+            (if (null? bs)
+                (cons (lst (reverse done) f l p) (renamed-all body rs))
+                (let ((b (car bs)))
+                  (let*-renamed (cdr bs) body (renamings-without rs (list (binder-name b)))
+                                (cons (tagcase b (lst (ys f2 l2 p2) (lst (cons (car ys) (renamed-all (cdr ys) rs)) f2 l2 p2)) (else other b)) done)
+                                f l p))))))
+
+      (define-rec
+        (module-of (subr kfx (string (listof kmod acyclic)) (listof kmod acyclic))
+          (lambda (n ms)
+            (cond ((null? ms) nil)
+                  ((tagcase (car ms) (kmod (m es) (string=? m n))) (list (car ms)))
+                  (else (module-of n (cdr ms)))))))
+
+      (define qualified (subr kfx (string (listof string acyclic)) (listof renaming acyclic))
+        (lambda (m ns) (map (lambda ((n string)) (renaming n (string-append m (string-append ".." n)))) ns)))
+
+      (define-rec
+        (withs-expanded (subr kfx (sexp (listof kmod acyclic)) sexp)
+          (lambda (e ms)
+            "Each `(with m E)` of a module `ms` knows, its `E` with `m`'s names."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) e)
+                      ((sym-is? (car xs) "quote") e)
+                      ((and (sym-is? (car xs) "with") (i64= (size xs) 3)
+                            (tagcase (second xs) (sym (n f2 p2) (not (null? (module-of n ms)))) (else other #f)))
+                       (tagcase (car (module-of (sym-name (second xs)) ms))
+                         (kmod (m es) (withs-expanded (renamed (third xs) (qualified m es)) ms))))
+                      (else (lst (map (lambda ((x sexp)) (withs-expanded x ms)) xs) f l p))))
+              (else other e)))))
+
+      (define-rec
+        (module-items (subr kfx (sexps bool (listof sexp acyclic)) sexps)
+          (lambda (its hidden acc)
+            "A module's items, `hide`s opened, each marked hidden or not:
+             `(hidden ITEM)`, `(given ITEM)`."
+            (if (null? its)
+                (reverse acc)
+                (let ((it (car its)))
+                  (if (head-is? it "hide")
+                      (module-items (cdr its) hidden (onto (reverse (module-items (cdr (items it)) #t nil)) acc))
+                      (module-items (cdr its) hidden (cons (lst (list (sym (if hidden "hidden" "given") "" 0) it) "" 0 0) acc))))))))
+
+      (define item-defined (subr kfx (sexp) string)
+        (lambda (it) (if (head-is? it "define") (form-name it) (if (type-form? it) (type-form-name it) ""))))
+
+      (define module-form? (subr kfx (sexp) bool)
+        (lambda (f) (and (head-is? f "define") (i64>= (size (items f)) 3) (head-is? (car (reverse (items f))) "module"))))
+
+      (define-rec
+        (fields-of-names (subr kfx ((listof string acyclic) i64 sexps) sexps)
+          (lambda (ns i acc)
+            (if (null? ns) (reverse acc)
+                (fields-of-names (cdr ns) (i64+ i 1) (cons (lst (list (num i "" 0) (sym (car ns) "" 0)) "" 0 0) acc))))))
+
+      (define-rec
+        (modules-expanded (subr kfx (sexps (listof kmod acyclic) sexps) sexps)
+          (lambda (fs ms acc)
+            (if (null? fs)
+                (reverse acc)
+                (let ((f (car fs)))
+                  (cond ((module-form? f)
+                         (let* ((m (form-name f))
+                                (its (module-items (cdr (items (car (reverse (items f))))) #f nil))
+                                (names (filter (lambda ((n string)) (not (string=? n ""))) (map (lambda ((x sexp)) (item-defined (second (items x)))) its)))
+                                (given (concat (map (lambda ((x sexp)) (if (and (sym-is? (car (items x)) "given") (head-is? (second (items x)) "define"))
+                                                                          (the strings (list (form-name (second (items x)))))
+                                                                          nil))
+                                                    its)))
+                                (rs (qualified m names))
+                                (defs (map (lambda ((x sexp))
+                                             (let ((it (withs-expanded (second (items x)) ms)))
+                                               (tagcase it
+                                                 (lst (ys f2 l2 p2)
+                                                   (lst (cons (car ys) (cons (renamed (second ys) rs) (renamed-all (cdr (cdr ys)) rs))) f2 l2 p2))
+                                                 (else other it))))
+                                           its))
+                                (value (lst (list (sym "define" "" 0) (sym m "" 0)
+                                                  (lst (cons (sym "product" "" 0) (fields-of-names (map (lambda ((n string)) (string-append m (string-append ".." n))) given) 1 nil)) "" 0 0))
+                                            "" 0 0)))
+                           (modules-expanded (cdr fs) (cons (kmod m given) ms) (cons value (onto (reverse defs) acc)))))
+                        ((and (head-is? f "import") (i64>= (size (items f)) 2)
+                              (tagcase (second (items f)) (sym (n f2 p2) (not (null? (module-of n ms)))) (else other #f)))
+                         (let ((m (sym-name (second (items f)))))
+                           (modules-expanded (cdr fs) ms
+                             (onto (reverse (concat (map (lambda ((x sexp))
+                                                           (tagcase x
+                                                             (sym (n f2 p2) (the sexps (list (lst (list (sym "define" "" 0) x (sym (string-append m (string-append ".." n)) "" 0)) "" 0 0))))
+                                                             (else other nil)))
+                                                         (cdr (cdr (items f))))))
+                                   acc))))
+                        (else (modules-expanded (cdr fs) ms (cons (withs-expanded f ms) acc))))))))))
+
     "`kc-load! PATH TEXT`: the file `PATH`'s text, read once, and the inputs
      made of it (C414): each form's datum and position, the keys in order; a
      form no longer there, `()`. An input set to what it was is no change
@@ -211,7 +369,7 @@
             ;; again.
             #u
         (let* ((kd (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
-               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (read-all text path 1) 0 nil))))
+               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (modules-expanded (read-all text path 1) nil nil) 0 nil))))
                (keys (map kd keyed))
                (keys-text (string-append "(" (string-append (words-of keys) ")")))
                (old (db-node d (key1 "keys" path)))
@@ -311,7 +469,9 @@
         ;; change to the checker's state replayed. Content-addressed, the
         ;; memos are no input: they spare work, and change no value.
         (let* ((text (db-get d run (key1 "text" path)))
-               (forms (read-all text path 1))
+               ;; FX-26's `import` expanded as it is read, as kfx's `with-loads`
+               ;; does (C425).
+               (forms (import-items (read-all text path 1)))
                (texts (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms))))
                (side (string-append "check-memos " path))
                (old ((with queries memos-of-text) (db-side d side) "kc")))

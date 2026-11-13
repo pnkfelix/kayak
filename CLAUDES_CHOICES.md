@@ -12080,3 +12080,31 @@ set and read, written out, `set`'s unit, a global counter, a local ref, two
 closures each over a ref of its own, refs of strings and of lists, a ref of
 a ref, and a sum kept in a ref by a loop of 100000 tail calls (1000 in
 KFX, which has no tail calls in Rust: C413).
+
+## C425. kc, step 13: modules (2026-11-13)
+
+The user: "Yep keep going". A module's value, as Fixpt makes it, is the
+product of the values it gives, in order (`#<product of N>`); `with` takes
+its names by their places (the checker's).
+
+**In the front end, as datatypes are** (C423): a top-level module's items
+are made top-level forms of their own, each named `m..x` (the checker's
+spelling of a module's name, C89), its hidden items too, the module's
+names renamed so inside them, a binder of the same name hiding one (a
+lambda's parameters, a `let`'s, a `let*`'s in turn, a `tagcase` arm's;
+nothing inside a `quote`); the module itself `(define m (product (1 m..x)
+...))` of what it gives. `(with m E)` of such a module is `E` its names
+renamed so; `(import m x ...)` is each `(define x m..x)`. So each item is
+an item as any, keyed by its name, and an edit inside one reaches what
+looks it up, as a procedure's does (C416). The checker is given the text as
+written, `import`s expanded as kfx's `with-loads` expands them
+(`import-items`; it had none, so an `import` was an unbound name to it).
+
+Not yet: a module given as a value (`with` of a variable: its names'
+places are its type's), a maker, a module in a module, `extend`; and a
+module's value in Rust (a product, C423), so step 13 has no KFX programs.
+
+`tests/kc/step13/`: 10 programs, Fixpt's answers: `with` of values and
+procedures, a module written out, `hide`, `import`, a parameter hiding a
+module's name, two modules one using the other, a recursive procedure, a
+string, a ref hidden in one (a counter), a datatype in one.
