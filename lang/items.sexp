@@ -972,6 +972,7 @@
 (emitter-call "alloc" kayak)
 (emitter-call "as_str" kayak)
 (emitter-call "at" kayak)
+(emitter-call "attempt" kayak)
 (emitter-call "bloblet_written" kayak)
 (emitter-call "blobref_at" kayak)
 (emitter-call "blobref_plus" kayak)

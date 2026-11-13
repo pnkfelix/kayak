@@ -741,7 +741,6 @@ pub mod kc_l0 {
     pub fn q_l0_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
         let path = arg_first()(a);
         let key = arg_rest()(a);
-        db_get(d, run, string_append(str_lit("checked "), path));
         let f = kc_form()(d, run, path, key);
         let scope = kc_scope()(d, run, path, key, f);
         if string_eq_p(form_name()(f), str_lit("")) {

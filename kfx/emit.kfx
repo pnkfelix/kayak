@@ -2948,6 +2948,29 @@
                         (acc (if (null? payload) acc (put ">" (put-type (in-heap c) (second (car payload)) (put "::<" acc)))))
                         (acc (put "\", " (put tag (put "\") }, \"" (put tag (put "(const { kayak_rt::tag_hash(\"" acc)))))))
                    (put ")" (put-exp c (second xs) n (value) acc))))
+                ((and (string=? h "attempt") (i64= (size xs) 2) (head-is? (second xs) "lambda") (i64= (size (items (second (items (second xs))))) 1))
+                 "FX-26's `attempt` (C415): kayak-rt's, its body a closure, which a
+                  failure unwinds out of; its handler, a `lambda` of the message,
+                  a closure of the message too. In an `async` function (the async
+                  mode, C371), both `async` blocks, and the whole awaited."
+                 (let* ((hx (items (second xs)))
+                        (pn (param-name (car (items (second hx)))))
+                        (m (mangle pn))
+                        (async (async-here? c))
+                        (mark (if async "%async" "%sync"))
+                        (body (with-locals c (list mark "%infallible")))
+                        (handler (with-locals c (list mark "%infallible" pn)))
+                        (acc (put (if async "kayak_rt::attempt_async(async move { " "kayak_rt::attempt(|| { ") acc))
+                        (acc (put-exp body (car xs) n (value) acc))
+                        (acc (put (string-list-append (list " }, |" m ": Str| " (if async "async move " ""))) acc))
+                        (acc (put-block handler (cdr (cdr hx)) n (value) acc)))
+                   (put (if async ").await" ")") acc)))
+                ((and (string=? h "attempt") (i64= (size xs) 2) (not (async-mode? c)))
+                 "`attempt` with a handler that is no `lambda`: a procedure of the
+                  message, called."
+                 (put ")" (put-exp c (second xs) n (value) (put " }, " (put-exp c (car xs) n (value) (put "kayak_rt::attempt(|| { " acc))))))
+                ((string=? h "attempt")
+                 (begin (error "kfx: an `attempt` whose handler is no `lambda`, in the async mode, which kfx does not write yet (C415)") acc))
                 ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
                 ((string=? h "list") (put-list c xs n acc))
                 ((and (string=? h "quasiquote") (tagcase (car xs) (lst (ys f l p) #t) (else other #f)))

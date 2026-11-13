@@ -6500,7 +6500,7 @@ pub mod expressions {
         if not(i64_eq(size(xs), 4i64)) {
             match refuse(v, str_lit("`(attempt-within milliseconds expression on-failure on-timeout)`")) {}
         } else {
-            let tagcase_ = attempt_form(v, s, kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::nil())));
+            let tagcase_ = attempt_form(v, kfx_restricted(v, s, str_lit("`(attempt-within ms e on-failure on-timeout)` is FX-26's form, which KFX does not have yet")), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::nil())));
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     let tagcase_ = synth(v, s, car(xs));
@@ -6583,12 +6583,12 @@ pub mod expressions {
     /// cancellable, as a `race` branch is, so that a failure half way leaves
     /// nothing another could see; `on-failure` a procedure of the message,
     /// a string, run after, whose result fits `e`'s type. Its effect both
-    /// theirs and `nondet`. Not KFX's yet.
+    /// theirs and `nondet`. KFX's too (C415).
     pub fn attempt_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
         if not(i64_eq(size(xs), 2i64)) {
             match refuse(v, str_lit("`(attempt expression on-failure)`")) {}
         } else {
-            let s = kfx_restricted(v, s, str_lit("`(attempt e on-failure)` is FX-26's form, which KFX does not have yet"));
+            let s = s;
             let tagcase_ = synth(v, s, car(xs));
             match *tagcase_ {
                 Res::Res(t, es, s) => {

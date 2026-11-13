@@ -11650,3 +11650,90 @@ database read and written whole at every run (0.9 s of `same` at 5000),
 which `kayak serve`, keeping it in memory, would not do. And an error is
 not yet a value in the database: a run that fails keeps none of its
 work, so the error itself is found again in full at each run.
+
+## C415. kc's two whole-program costs: the check memoized, refusals as values, `kc serve` (2026-11-13)
+
+The user: "Okay. Address those two costs next" (C414's: `checked`, the
+whole program checked at every edit; and the database read and written
+whole at every run).
+
+**The check, memoized** (`kc/front.kfx`'s `checked`). kfx has checked
+with memos since C55/C384 (`--cache`): each top-level form's check a memo,
+its change to the checker's state, addressed by a fingerprint of the
+form's text, of the bindings of the names it reads, and of the chain of
+forms before it, so that a form whose memo is found is not checked again,
+its change replayed. kc now checks so too, the memos kept in a side store
+of the database (`lib/db.kfx`'s `db-side`, `db-side-put!`: text under a
+name, no query's input or value, no revision, written and read with the
+nodes). Content-addressed, the memos may spare work and change no value,
+so no query depends on them. Checked under gdb at 5000 procedures, one
+body edited: one form checked, 5001 replayed.
+
+So that kc may have them without kfx's emitter, the checker's memos are a
+file of their own, `kfx/incr-check.kfx` (module `incremental-check`), the
+emitter's memos left in `incr.kfx`, which includes it (so `with
+incremental` finds both, as before). Its one use of the emitter's,
+`concat-strings`, is `string-list-append`, the same.
+
+**Refusals as values.** A refusal is the checker's `error`, a panic: the
+run ended there, its work lost, and a server would end with it. FX-26 has
+`attempt` (Fixpt b41a7fb, Heist's F1): `(attempt e on-failure)`, `e`'s
+value, or `on-failure` of a failure's message; `e` must be cancellable.
+kayak's checker took it (C297) but KFX did not: now it does (C415), kfx's
+emitter writing `kayak_rt::attempt(|| { E }, |m: Str| { BODY })`, a
+`catch_unwind`, its handler, a `lambda` of the message, a closure in place;
+in an `async` function (the async mode, C371),
+`kayak_rt::attempt_async(async move { E }, |m: Str| async move { BODY }).await`,
+the body polled inside `catch_unwind`, each poll; a handler that is no
+`lambda` is called as a procedure of the message (not yet in the async
+mode); the panic hook keeps quiet about a failure an `attempt` catches
+(`tests/kfx/attempt.kfx`: `42 7 failed: a negative number`, Fixpt's). `attempt-within`, whose refusal had been `attempt`'s, is
+refused on its own (KFX's `attempt` has no timeout yet). Of Fixpt's
+programs, kfx takes 226 now (219 at C409), every one agreeing.
+KFX ⊂ FX-26 is kept: the form is FX-26's, the checker's rules for it
+Fixpt's. `checked` attempts the check (the `kfx` effect writes nothing)
+and is `(ok TYPES)` or `(refused MESSAGE)`; the driver asks it first and,
+refused, says the message and ends with status 1, its database written as
+any run's is. `qe`, the queries' effect, has `nondet` now, `attempt`'s:
+what a failure says is the machine's, and a database is one compiler's.
+
+**`kc serve`** (`kc/main.kfx`): requests a line each on the standard
+input (`check FILE`, `asm FILE OUT`, `rust FILE OUT`, `save`, `quit`),
+answered a line each (`ok N`, `refused N MESSAGE`, `error MESSAGE`; with
+--stats the bodies' names after a tab). The database stays in memory, so
+a request pays for its edit, not for 23 MB read and written whole (the
+memos made it larger) at 5000 procedures. The first form of the
+compilation service of `compilation-service.md`. A `not yet` of kc's own
+is still an `error` that ends it (kc's limits, not the program's).
+
+**What the bench found on the way**: with a refusal a value, a check's
+value went `ok`, `refused`, `ok` across an error and its undoing, and
+every `l0-item`, which read `checked` (to be of a checked program), ran
+again: 1000 of them. Nothing of `checked`'s value is used there (the types
+are `type`'s, by name), and the driver asks `checked` first, so `l0-item`
+reads it no more. The bench's needs for the error steps: `checked`; for
+the undo, `checked`, and the edited form's `interface` and `l0-item`
+(made again, as the engine keeps a query's last value, not each before it,
+and found as they were, so nothing after them runs). Every step's bodies
+are now exactly its need.
+
+**Measured** (`bench/kc.tsv`, best of 3; kc's compile, `serve`'s, Fixpt's
+whole `eval`; the link and run 0.15-0.25 s more for kc):
+
+| N | step | kc | serve | Fixpt |
+|---|---|---|---|---|
+| 1000 | same | 0.16 s | 0.04 s | 0.66 s |
+| 1000 | body | 0.31 s | 0.17 s | 0.66 s |
+| 1000 | error | 0.20 s | 0.08 s | 0.33 s |
+| 1000 | undo | 0.25 s | 0.12 s | 0.66 s |
+| 5000 | same | 0.90 s | 0.25 s | 4.77 s |
+| 5000 | body | 1.79 s | 1.09 s | 4.77 s |
+| 5000 | error | 1.12 s | 0.45 s | 1.91 s |
+| 5000 | undo | 1.50 s | 0.83 s | 4.78 s |
+
+(At 5000 before: body 2.54 s, same 0.92 s.) What is still of the whole
+program, in serve: the memoized check walks every form, a memo replayed
+each (about 0.12 ms a form: 0.6 s at 5000); and the driver reads the file
+whole, each form's input set (most to what it was). A form's check as a
+query of its own, keyed by the interfaces it reads, would make an edit's
+check the edited form's alone.

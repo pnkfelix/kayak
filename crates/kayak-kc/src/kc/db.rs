@@ -42,6 +42,11 @@ use super::*;
 // passes are pure); over effects and regions when a client needs it.
 // A cycle of asks is refused, as an error.
 
+// `nondet` (C415): a body may `attempt` a pass, so that a refusal is its
+// value and not the end of the run; what a failure says is the machine's,
+// which a database of one compiler's (its identity in its first line) has
+// one of.
+
 // A node: whether it is an input; the revision it was verified in; the one
 // its value changed in; its value's fingerprint; what it read, in order;
 // the least durability of that (an input's, its own); its value.
@@ -395,6 +400,27 @@ pub fn db_node(d: Db, k: Str) -> List<&'static Node> {
 #[inline]
 pub fn db_put_x(d: Db, k: Str, n: &'static Node) -> () {
     set(d.1, nm_put(get(d.1), k, n))
+}
+
+// A side store (C415): text kept with the database under a name, no
+// query's input and no query's value: no revision for it, nothing depends
+// on it. For what is content-addressed, whose use can spare work and change
+// no value (the checker's memos, each keyed by a fingerprint of all it was
+// made from); kept as the nodes are, under `%side NAME`, and so written and
+// read with them.
+#[inline]
+pub fn db_side(d: Db, k: Str) -> Str {
+    let n = db_node(d, string_append(str_lit("%side "), k));
+    if null_p(n) {
+        str_lit("")
+    } else {
+        node_value(car(n))
+    }
+}
+
+#[inline]
+pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
+    db_put_x(d, string_append(str_lit("%side "), k), node(true, 0i64, 0i64, 0i64, nil::<Str>(), 0i64, text))
 }
 
 // Input `k` set to `text`, of durability `du`: a new revision if its value

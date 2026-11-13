@@ -2930,7 +2930,9 @@
            `nondet` too, never `(io clock)`. Not KFX's yet."
           (if (not (i64= (size xs) 4))
               (refuse v "`(attempt-within milliseconds expression on-failure on-timeout)`")
-              (tagcase (attempt-form v s (list (second xs) (third xs)))
+              ;; KFX's `attempt` has no timeout yet (C415: its refusal had been
+              ;; `attempt`'s).
+              (tagcase (attempt-form v (kfx-restricted v s "`(attempt-within ms e on-failure on-timeout)` is FX-26's form, which KFX does not have yet") (list (second xs) (third xs)))
                 (res (t es s)
                   (tagcase (synth v s (car xs))
                     (res (mt mes s)
@@ -2957,10 +2959,11 @@
            cancellable, as a `race` branch is, so that a failure half way leaves
            nothing another could see; `on-failure` a procedure of the message,
            a string, run after, whose result fits `e`'s type. Its effect both
-           theirs and `nondet`. Not KFX's yet."
+           theirs and `nondet`. KFX's too (C415)."
           (if (not (i64= (size xs) 2))
               (refuse v "`(attempt expression on-failure)`")
-              (let ((s (kfx-restricted v s "`(attempt e on-failure)` is FX-26's form, which KFX does not have yet")))
+              ;; KFX's since C415: kayak-rt's `attempt`, a `catch_unwind`.
+              (let ((s s))
                 (tagcase (synth v s (car xs))
                   (res (t es s)
                     (let* ((es (map (lambda ((a string)) (resolve-atom s a)) es))

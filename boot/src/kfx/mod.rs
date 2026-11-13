@@ -26,6 +26,8 @@ pub mod emit_tops;
 pub use emit_tops::*;
 pub mod query;
 pub use query::*;
+pub mod incr_check;
+pub use incr_check::*;
 pub mod incr;
 pub use incr::*;
 pub mod compile;

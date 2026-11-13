@@ -13,6 +13,7 @@ restrict.kfx
 emit.kfx
 emit-tops.kfx
 ../lib/query.kfx
+incr-check.kfx
 incr.kfx
 compile.kfx
 ../lib/runner.kfx

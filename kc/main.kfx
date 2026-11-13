@@ -3,22 +3,36 @@
    kc [--db DB] --check FILE         the file checked
    kc [--db DB] --rust FILE OUT      its Rust, to OUT (KFX)
    kc [--db DB] --asm FILE OUT       its x86-64 assembly, to OUT
+   kc [--db DB] serve                requests, a line each, on the
+                                     standard input (C415)
 
  With --db, the database is read from DB first (if it is there and kc's)
  and written back after, so that a run begins with the last run's graph
  and values: only what an edit could have changed runs again. With
  --stats, how many query bodies ran, and which queries they
- were, on the standard error."
+ were, on the standard error.
+
+ A checker's refusal is the `checked` query's value (C415): said, and the
+ run ends with status 1, its database written back as any run's is.
+
+ `serve` (C415) keeps the database in memory between requests, so that a
+ request pays for what its edit changed alone, not for the database read
+ and written whole. A request, a line: `check FILE`, `asm FILE OUT`,
+ `rust FILE OUT`, `save` (the database to DB, if given), `quit`; the file
+ read anew at each. Its answer, a line: `ok N`, `refused N MESSAGE` (the
+ message on one line), or `error MESSAGE`, `N` the query bodies run; with
+ --stats, their names after a tab. At the end of the input the database
+ is written to DB, as at `save`."
 
 (define kc-driver
   (module
     (hide
-      (import kc-front key-arg key-name kc-load! q-form q-position q-interface q-checked q-type q-kfx)
+      (import kc-front key-arg key-name kc-load! kc-refusal q-form q-position q-interface q-checked q-type q-kfx)
       (import kc-l0 q-l0-item)
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm))
 
-    (define-effect driving (maxeff qe (io args) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+    (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
 
     (hide
       "Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399)."
@@ -80,32 +94,94 @@
                   ((string=? (car as) "--stats") (opts-of (cdr as) db #t rest))
                   (else (opts-of (cdr as) db stats (cons (car as) rest))))))))
 
+    (hide
+      "A request's outcome: refused (the checker's message), or not; and
+       what it ran."
+      (define-datatype answer (answer bool string i64 string))
+
+      (define-rec
+        (words-in (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (cs word acc)
+            "A request's words, apart at its spaces, in order."
+            (cond ((null? cs) (reverse (if (null? word) acc (cons (list->string (reverse word)) acc))))
+                  ((char=? (car cs) #\space) (words-in (cdr cs) nil (if (null? word) acc (cons (list->string (reverse word)) acc))))
+                  (else (words-in (cdr cs) (cons (car cs) word) acc))))))
+
+      (define-rec
+        (one-line (subr kfx ((listof char acyclic) (listof char acyclic)) string)
+          (lambda (cs acc)
+            (cond ((null? cs) (list->string (reverse acc)))
+                  ((or (char=? (car cs) #\newline) (char=? (car cs) #\tab)) (one-line (cdr cs) (cons #\space acc)))
+                  (else (one-line (cdr cs) (cons (car cs) acc)))))))
+
+      (define request (subr driving (db string string string) answer)
+        (lambda (d what file out)
+          "`what` (`check`, `asm`, `rust`) of `file`, its output to `out`: the
+           file read, its forms set (`kc-load!`), checked, and, if it passes,
+           its code asked for."
+          (let ((before (db-runs d)))
+            (begin
+              (kc-load! d kc-run file (read-text file))
+              (let ((refused (kc-refusal (db-get d kc-run (string-append "checked " file)))))
+                (begin
+                  (if (and (string=? refused "") (not (string=? what "check")))
+                      (write-text out (db-get d kc-run (string-append (if (string=? what "rust") "rust " "asm ") file)))
+                      #u)
+                  (answer (not (string=? refused "")) refused (i64- (db-runs d) before)
+                          (ran-names (db-ran d) (i64- (db-runs d) before)))))))))
+
+      (define said (subr (maxeff (io stdout)) (string) unit)
+        (lambda (s) (tagcase (write-out (string-append s "\n")) (done u #u) (failed e #u))))
+
+      (define-rec
+        (serve (subr driving (db string bool) int)
+          (lambda (d dbp stats)
+            "Requests until the input ends, or `quit`."
+            (tagcase (read-line)
+              (line s
+                (let* ((ws (words-in (string-chars s) nil nil))
+                       (n (size ws)))
+                  (cond ((and (i64= n 1) (string=? (car ws) "quit")) (begin (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose))) 0))
+                        ((and (i64= n 1) (string=? (car ws) "save"))
+                         (begin (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose))) (said "ok 0") (serve d dbp stats)))
+                        ((or (and (i64= n 2) (string=? (car ws) "check"))
+                             (and (i64= n 3) (or (string=? (car ws) "asm") (string=? (car ws) "rust"))))
+                         (tagcase (request d (car ws) (car (cdr ws)) (if (i64= n 3) (car (cdr (cdr ws))) ""))
+                           (answer (no msg k names)
+                             (begin
+                               (said (string-list-append (list (if no "refused " "ok ") (i64->string k)
+                                                               (if no (string-append " " (one-line (string-chars msg) nil)) "")
+                                                               (if stats (string-append "\t" names) ""))))
+                               (serve d dbp stats)))))
+                        (else (begin (said (string-append "error not a request: " s)) (serve d dbp stats))))))
+              (eof u (begin (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose))) 0))
+              (failed e (begin (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose))) 1)))))))
+
     (define kc-main (subr driving () int)
       (lambda ()
         (tagcase (opts-of (the (listof string acyclic) (args)) "" #f nil)
           (opts (dbp stats rest)
             (let ((d (if (string=? dbp "") (db-make) (db-of-text (read-text-or-none dbp) kc-whose))))
-              (if (null? rest)
-                  (fail-with "usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT)" 2)
-                  (let* ((what (car rest)) (file (if (null? (cdr rest)) "" (car (cdr rest)))))
-                    (begin
-                      (if (string=? file "") (fail-with "a FILE is wanted" 2) #u)
-                      (kc-load! d kc-run file (read-text file))
-                      (let ((before (db-runs d)))
-                        (begin
-                          (cond ((string=? what "--check") (begin (db-get d kc-run (string-append "checked " file)) #u))
-                                ((or (string=? what "--rust") (string=? what "--asm"))
-                                 (if (null? (cdr (cdr rest)))
-                                     (fail-with "an OUT is wanted" 2)
-                                     (write-text (car (cdr (cdr rest)))
-                                                 (db-get d kc-run (string-append (if (string=? what "--rust") "rust " "asm ") file)))))
-                                (else (fail-with (string-append "not an option: " what) 2)))
-                          (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string (i64- (db-runs d) before))
-                                                                          (string-append " query bodies ran:" (string-append (ran-names (db-ran d) (i64- (db-runs d) before)) "\n")))))
-                                      (done u #u) (failed e #u))
-                              #u)
-                          (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose)))
-                          0))))))))))))
+              (cond ((null? rest)
+                     (fail-with "usage: kc [--db DB] [--stats] (--check FILE | --rust FILE OUT | --asm FILE OUT | serve)" 2))
+                    ((string=? (car rest) "serve") (serve d dbp stats))
+                    (else
+                     (let* ((what (car rest)) (file (if (null? (cdr rest)) "" (car (cdr rest)))))
+                       (begin
+                         (if (string=? file "") (fail-with "a FILE is wanted" 2) #u)
+                         (if (not (or (string=? what "--check") (string=? what "--rust") (string=? what "--asm")))
+                             (fail-with (string-append "not an option: " what) 2)
+                             #u)
+                         (if (and (not (string=? what "--check")) (null? (cdr (cdr rest)))) (fail-with "an OUT is wanted" 2) #u)
+                         (tagcase (request d (if (string=? what "--check") "check" (if (string=? what "--rust") "rust" "asm")) file
+                                           (if (string=? what "--check") "" (car (cdr (cdr rest)))))
+                           (answer (no msg k names)
+                             (begin
+                               (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string k) (string-append " query bodies ran:" (string-append names "\n")))))
+                                           (done u #u) (failed e #u))
+                                   #u)
+                               (if (string=? dbp "") #u (write-text dbp (db-text d kc-whose)))
+                               (if no (begin (tagcase (write-err (string-append msg "\n")) (done u #u) (failed e #u)) 1) 0)))))))))))))))
 
 (import kc-driver (effect driving))
 

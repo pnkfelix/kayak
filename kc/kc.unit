@@ -13,6 +13,7 @@
 ../kfx/check-defs.kfx
 ../kfx/restrict.kfx
 ../lib/query.kfx
+../kfx/incr-check.kfx
 ../lib/db.kfx
 front.kfx
 l0.kfx

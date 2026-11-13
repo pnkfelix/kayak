@@ -192,6 +192,80 @@ pub(crate) fn fail(message: &str) -> ! {
     panic!("{message}")
 }
 
+thread_local! {
+    /// How many `attempt`s the running code is inside (C415).
+    static ATTEMPTING: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+static QUIET_HOOK: std::sync::Once = std::sync::Once::new();
+
+/// FX-26's `(attempt e on-failure)` (C415; Fixpt's `docs/fx26.md`,
+/// `attempt`): `body`'s value, or, should it fail (`error`, a trap that
+/// panics), `on_failure` of what the failure says. The checker has made
+/// `body` cancellable (it writes nothing another could see), so unwinding
+/// out of it half way leaves nothing to undo. A failure caught is not
+/// written: the panic hook says only those no `attempt` is around.
+pub fn attempt<T>(body: impl FnOnce() -> T, on_failure: impl Fn(Str) -> T) -> T {
+    quiet_hook();
+    ATTEMPTING.with(|a| a.set(a.get() + 1));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(body));
+    ATTEMPTING.with(|a| a.set(a.get() - 1));
+    match r {
+        Ok(v) => v,
+        Err(e) => on_failure(leak_string(panic_message(e))),
+    }
+}
+
+/// `attempt` in an `async` function (C415, the async mode): `body` polled,
+/// each poll inside `catch_unwind`, so that a failure in it, whenever it
+/// comes, is `on_failure`'s of its message.
+pub async fn attempt_async<T, H: std::future::Future<Output = T>>(
+    body: impl std::future::Future<Output = T>,
+    on_failure: impl FnOnce(Str) -> H,
+) -> T {
+    struct Caught<F>(std::pin::Pin<Box<F>>);
+    impl<F: std::future::Future> std::future::Future for Caught<F> {
+        type Output = Result<F::Output, Box<dyn std::any::Any + Send>>;
+        fn poll(
+            mut self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Self::Output> {
+            ATTEMPTING.with(|a| a.set(a.get() + 1));
+            let r =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.0.as_mut().poll(cx)));
+            ATTEMPTING.with(|a| a.set(a.get() - 1));
+            match r {
+                Ok(std::task::Poll::Ready(v)) => std::task::Poll::Ready(Ok(v)),
+                Ok(std::task::Poll::Pending) => std::task::Poll::Pending,
+                Err(e) => std::task::Poll::Ready(Err(e)),
+            }
+        }
+    }
+    quiet_hook();
+    match (Caught(Box::pin(body))).await {
+        Ok(v) => v,
+        Err(e) => on_failure(leak_string(panic_message(e))).await,
+    }
+}
+
+fn panic_message(e: Box<dyn std::any::Any + Send>) -> String {
+    e.downcast_ref::<String>()
+        .cloned()
+        .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+        .unwrap_or_default()
+}
+
+fn quiet_hook() {
+    QUIET_HOOK.call_once(|| {
+        let said = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            if ATTEMPTING.with(|a| a.get()) == 0 {
+                said(info)
+            }
+        }));
+    });
+}
+
 // Procedures: a `lambda` that is a value is a closure, made a
 // `&'static dyn Fn` by the helper of its arity, so that its parameters'
 // and result's types are found from where it is used.

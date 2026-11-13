@@ -271,20 +271,62 @@
         (kc-scope-names d run path (kc-position d run path key) (sexp-names f nil))))
 
     ;;; ------------------------------------------------------------ checking
-    "`checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;
-     the types the checker found of the definitions written with none, each
-     `(NAME TYPE)` (C407). A refusal ends the run (the checker's, as kfx's),
-     for now."
+    (hide
+      "What a check comes to (C415): the types found, as text, and the memos
+       made; or a refusal's message."
+      (define-datatype check-outcome (check-passed string memos) (check-refused string))
+
+      (define check-outcome-of (subr kfx (string sexps strings memos) check-outcome)
+        (lambda (path forms texts old)
+          (tagcase (with incremental-check (check-program-memo forms texts old #f))
+            (checked-memo (done found made)
+              (begin
+                (if (string=? (kc-language path) "kfx") (with restrictions (restrict forms (cv-facts done))) #u)
+                (check-passed (words-of (map (lambda ((t typed)) (tagcase t (typed (n ty) (string-list-append (list "(" n " " (kc-datum ty) ")")))))
+                                             found))
+                              made)))))))
+
+    "`checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file:
+     `(ok (NAME TYPE) ...)`, the types the checker found of the definitions
+     written with none (C407); or `(refused MESSAGE)`, the checker's refusal
+     (C415), a value as any other, so that a run that meets one ends as any
+     other does, its work kept, and a `kc serve` goes on."
     (define q-checked qbody
       (lambda (d run path)
-        (let* ((forms (kc-forms d run path))
-               (v (check-program forms)))
-          (begin
-            (if (string=? (kc-language path) "kfx") (with restrictions (restrict forms (verdict-facts v))) #u)
-            (string-append "("
-              (string-append (words-of (map (lambda ((t typed)) (tagcase t (typed (n ty) (string-list-append (list "(" n " " (kc-datum ty) ")")))))
-                                            (verdict-typeds v)))
-                             ")"))))))
+        ;; Checked with the memos the last check left (C415, kfx's of C384):
+        ;; a form whose text, and the bindings of the names it reads, and the
+        ;; forms before it, are as they were, is not checked again, its
+        ;; change to the checker's state replayed. Content-addressed, the
+        ;; memos are no input: they spare work, and change no value.
+        (let* ((text (db-get d run (string-append "text " path)))
+               (forms (read-all text path 1))
+               (texts (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms))))
+               (side (string-append "check-memos " path))
+               (old ((with queries memos-of-text) (db-side d side) "kc")))
+          ;; The checker's refusal, an `error`, caught (FX-26's `attempt`): the
+          ;; check writes nothing, so a refusal half way leaves nothing to undo;
+          ;; the memos are kept as they were.
+          (tagcase (attempt (check-outcome-of path forms texts old) (lambda ((m string)) (check-refused m)))
+            (check-passed (t made)
+              (begin
+                (db-side-put! d side ((with queries memos-text) made "kc"))
+                (string-append "(ok " (string-append t ")"))))
+            (check-refused (m) (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")")))))))
+
+    "A `checked`'s value: its refusal's message, `` if it passed; the types
+     it found."
+    (define kc-refusal (subr kfx (string) string)
+      (lambda (v)
+        (let ((x (items (car (read-all v "checked" 1)))))
+          (if (sym-is? (car x) "refused") (tagcase (second x) (str (m f p) m) (else other "?")) ""))))
+
+    (hide
+      (define kc-checked-types (subr qe (db runner string) sexps)
+        (lambda (d run path)
+          (let ((v (db-get d run (string-append "checked " path))))
+            (if (string=? (kc-refusal v) "")
+                (cdr (items (car (read-all v "checked" 1))))
+                (begin (error (kc-refusal v)) nil))))))
 
     "`type PATH NAME`: a definition's type, as written, or as the checker
      found it (C407)."
@@ -295,7 +337,7 @@
           (if (i64= (size (items f)) 4)
               (kc-datum (third (items f)))
               (let ((found (filter (lambda ((x sexp)) (sym-is? (car (items x)) name))
-                                   (items (car (read-all (db-get d run (string-append "checked " path)) "checked" 1))))))
+                                   (kc-checked-types d run path))))
                 (if (null? found) "()" (kc-datum (second (items (car found))))))))))
 
     (define kc-type (subr qe (db runner string string) sexp)
@@ -305,6 +347,9 @@
      name says, as the Rust back end needs it; `ok`."
     (define q-kfx qbody
       (lambda (d run path)
-        (let* ((forms (kc-forms d run path))
-               (v (check-program forms)))
-          (begin (with restrictions (restrict forms (verdict-facts v))) "ok"))))))
+        ;; A `.kfx` file's check restricts it already (C415): not checked twice.
+        (if (string=? (kc-language path) "kfx")
+            (begin (db-get d run (string-append "checked " path)) "ok")
+            (let* ((forms (kc-forms d run path))
+                   (v (check-program forms)))
+              (begin (with restrictions (restrict forms (verdict-facts v))) "ok")))))))

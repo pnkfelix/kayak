@@ -207,7 +207,7 @@ def runtime_fns():
 def emitter_called(rt):
     """kayak-rt's functions the emitter's Rust literals call."""
     out = set()
-    for p in ("kfx/emit.kfx", "kfx/emit-tops.kfx", "kfx/incr.kfx", "kfx/compile.kfx"):
+    for p in ("kfx/emit.kfx", "kfx/emit-tops.kfx", "kfx/incr-check.kfx", "kfx/incr.kfx", "kfx/compile.kfx"):
         for m in re.finditer(r'"((?:[^"\\]|\\.)*)"', read(p)):
             for n in re.finditer(r"\b([a-z_][a-z0-9_]*)(?:::<[^>(]*>)?\(", m.group(1)):
                 if n.group(1) in rt:

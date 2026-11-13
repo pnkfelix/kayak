@@ -37,7 +37,11 @@
  passes are pure); over effects and regions when a client needs it.
  A cycle of asks is refused, as an error."
 
-(define-effect qe (maxeff (read @globals) spin (read @q) (write @q) (alloc @q)))
+"`nondet` (C415): a body may `attempt` a pass, so that a refusal is its
+ value and not the end of the run; what a failure says is the machine's,
+ which a database of one compiler's (its identity in its first line) has
+ one of."
+(define-effect qe (maxeff (read @globals) spin nondet (read @q) (write @q) (alloc @q)))
 
 "A node: whether it is an input; the revision it was verified in; the one
  its value changed in; its value's fingerprint; what it read, in order;
@@ -184,6 +188,20 @@
 
 (define db-put! (subr qe (db string node) unit)
   (lambda (d k n) (set (extract d nodes) (nm-put (get (extract d nodes)) k n))))
+
+"A side store (C415): text kept with the database under a name, no
+ query's input and no query's value: no revision for it, nothing depends
+ on it. For what is content-addressed, whose use can spare work and change
+ no value (the checker's memos, each keyed by a fingerprint of all it was
+ made from); kept as the nodes are, under `%side NAME`, and so written and
+ read with them."
+(define db-side (subr qe (db string) string)
+  (lambda (d k)
+    (let ((n (db-node d (string-append "%side " k))))
+      (if (null? n) "" (node-value (car n))))))
+
+(define db-side-put! (subr qe (db string string) unit)
+  (lambda (d k text) (db-put! d (string-append "%side " k) (node #t 0 0 0 nil 0 text))))
 
 "Input `k` set to `text`, of durability `du`: a new revision if its value
  is new."

@@ -66,7 +66,7 @@ section below where it has one; here the order, and what each is.
    runtime's code declares one).
 4b. **FX-26's features since the pin moved to 5731f52 (C263)**, which
    kayak's checker refuses for now (so their programs are not in the
-   passing lists): `attempt` in KFX (the checker, the engine and tier 1
+   passing lists): `attempt` in KFX (KFX's since C415; the checker, the engine and tier 1
    have it, C297; the processes' primitives are C295's and C298's); `type-at`;
    `load-moduleof`, `load-input-moduleof`, `load-typeof`,
    `load-input-typeof`; `restrict`; a top-level `include`; a file's
@@ -1545,12 +1545,14 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - The checker refuses `(cons (list 1) (list 2))` ("a int is expected
   here"), which Fixpt takes as a pair whose tail is a list of another
   type, `((1) 2)`: stricter, a gap (found by kc's step 7, C406).
-- kc's edit loop (C414, `scripts/kc-bench.py`): `checked`, the checker over
-  the whole program at every edit, made incremental (a form's checking a
-  query of its own, its inputs its form and the interfaces it names); the
-  database not read and written whole each run (`kayak serve`, or a
-  database read lazily); a refusal kept as a value, so that a failed run
-  keeps its work.
+- kc's edit loop (C414, C415, `scripts/kc-bench.py`): the check is
+  memoized and a refusal a value, and `kc serve` keeps the database in
+  memory; still of the whole program, the memoized check's walk over every
+  form (0.6 s at 5000 procedures): a form's check a query of its own, its
+  inputs its form and the bindings it reads. A `not yet` of kc's own still
+  ends `kc serve` (an `attempt` around a request needs the request
+  cancellable, which a database's writes are not). The database read
+  lazily, for the command line's runs (23 MB at 5000 procedures).
 - KFX's datatypes stay nominal (C410, the user's choice after the
   measurement): only `sumof` is structural. Were it revisited, the
   checker's types would first have to be shared (Fixpt's arena of

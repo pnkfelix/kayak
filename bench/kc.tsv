@@ -1,28 +1,55 @@
-commit	procedures	step	kc_ms	link_run_ms	fixpt_ms	bodies	beyond_need
-280bcc1bc	100	cold	80.0	123.7	87.6	326	-
-280bcc1bc	100	same	21.4	125.8	87.2	0	none
-280bcc1bc	100	comment	48.9	125.5	88.3	1	none
-280bcc1bc	100	body	53.0	125.2	87.2	5	none
-280bcc1bc	100	error	31.9	0.0	60.1	0	-
-280bcc1bc	100	undo	21.2	123.8	88.0	0	none
-280bcc1bc	100	error2	32.9	0.0	59.8	0	-
-280bcc1bc	100	fix-forward	55.1	125.1	87.1	5	none
-280bcc1bc	100	add	53.9	127.7	88.9	7	-
-280bcc1bc	1000	cold	657.7	148.8	670.7	3026	-
-280bcc1bc	1000	same	168.5	147.8	666.6	0	none
-280bcc1bc	1000	comment	299.0	152.4	667.2	1	none
-280bcc1bc	1000	body	361.2	150.1	669.2	5	none
-280bcc1bc	1000	error	142.7	0.0	336.6	0	-
-280bcc1bc	1000	undo	170.4	148.1	668.6	0	none
-280bcc1bc	1000	error2	139.8	0.0	335.6	0	-
-280bcc1bc	1000	fix-forward	371.2	150.0	668.8	5	none
-280bcc1bc	1000	add	371.3	148.4	666.5	7	-
-280bcc1bc	5000	cold	4447.9	252.1	4855.8	15026	-
-280bcc1bc	5000	same	916.6	253.4	4811.5	0	none
-280bcc1bc	5000	comment	2251.3	253.1	4832.7	1	none
-280bcc1bc	5000	body	2542.1	253.3	4850.5	5	none
-280bcc1bc	5000	error	877.3	0.0	1927.2	0	-
-280bcc1bc	5000	undo	915.0	252.1	4820.6	0	none
-280bcc1bc	5000	error2	875.5	0.0	1947.9	0	-
-280bcc1bc	5000	fix-forward	2565.1	249.2	4885.3	5	none
-280bcc1bc	5000	add	2577.9	253.8	4863.4	7	-
+commit	procedures	step	kc_ms	serve_ms	link_run_ms	fixpt_ms	bodies	beyond_need
+280bcc1bc	100	cold	80.0	-	123.7	87.6	326	-
+280bcc1bc	100	same	21.4	-	125.8	87.2	0	none
+280bcc1bc	100	comment	48.9	-	125.5	88.3	1	none
+280bcc1bc	100	body	53.0	-	125.2	87.2	5	none
+280bcc1bc	100	error	31.9	-	0.0	60.1	0	-
+280bcc1bc	100	undo	21.2	-	123.8	88.0	0	none
+280bcc1bc	100	error2	32.9	-	0.0	59.8	0	-
+280bcc1bc	100	fix-forward	55.1	-	125.1	87.1	5	none
+280bcc1bc	100	add	53.9	-	127.7	88.9	7	-
+280bcc1bc	1000	cold	657.7	-	148.8	670.7	3026	-
+280bcc1bc	1000	same	168.5	-	147.8	666.6	0	none
+280bcc1bc	1000	comment	299.0	-	152.4	667.2	1	none
+280bcc1bc	1000	body	361.2	-	150.1	669.2	5	none
+280bcc1bc	1000	error	142.7	-	0.0	336.6	0	-
+280bcc1bc	1000	undo	170.4	-	148.1	668.6	0	none
+280bcc1bc	1000	error2	139.8	-	0.0	335.6	0	-
+280bcc1bc	1000	fix-forward	371.2	-	150.0	668.8	5	none
+280bcc1bc	1000	add	371.3	-	148.4	666.5	7	-
+280bcc1bc	5000	cold	4447.9	-	252.1	4855.8	15026	-
+280bcc1bc	5000	same	916.6	-	253.4	4811.5	0	none
+280bcc1bc	5000	comment	2251.3	-	253.1	4832.7	1	none
+280bcc1bc	5000	body	2542.1	-	253.3	4850.5	5	none
+280bcc1bc	5000	error	877.3	-	0.0	1927.2	0	-
+280bcc1bc	5000	undo	915.0	-	252.1	4820.6	0	none
+280bcc1bc	5000	error2	875.5	-	0.0	1947.9	0	-
+280bcc1bc	5000	fix-forward	2565.1	-	249.2	4885.3	5	none
+280bcc1bc	5000	add	2577.9	-	253.8	4863.4	7	-
+a366ddc0c	100	cold	83.1	77.1	121.0	86.7	326	-
+a366ddc0c	100	same	19.3	5.9	124.4	85.5	0	none
+a366ddc0c	100	comment	42.8	45.8	123.8	86.8	1	none
+a366ddc0c	100	body	50.1	53.6	124.8	86.8	5	none
+a366ddc0c	100	error	40.2	31.4	0.0	58.2	1	none
+a366ddc0c	100	undo	43.4	37.2	122.7	86.5	3	none
+a366ddc0c	100	error2	40.4	32.5	0.0	59.5	1	none
+a366ddc0c	100	fix-forward	50.3	44.7	121.4	86.9	5	none
+a366ddc0c	100	add	52.9	45.7	123.0	85.3	7	-
+a366ddc0c	1000	cold	709.7	547.4	146.3	654.6	3026	-
+a366ddc0c	1000	same	162.9	35.8	145.6	659.6	0	none
+a366ddc0c	1000	comment	252.7	116.2	149.0	653.4	1	none
+a366ddc0c	1000	body	314.0	169.4	147.3	658.0	5	none
+a366ddc0c	1000	error	203.8	76.3	0.0	328.4	1	none
+a366ddc0c	1000	undo	246.3	116.3	147.8	658.6	3	none
+a366ddc0c	1000	error2	212.2	77.6	0.0	328.3	1	none
+a366ddc0c	1000	fix-forward	311.7	167.2	147.1	658.3	5	none
+a366ddc0c	1000	add	303.9	167.2	145.8	657.3	7	-
+a366ddc0c	5000	cold	5909.9	5042.9	246.2	4771.3	15026	-
+a366ddc0c	5000	same	896.9	249.2	242.4	4767.3	0	none
+a366ddc0c	5000	comment	1495.2	835.1	247.2	4774.6	1	none
+a366ddc0c	5000	body	1787.8	1090.8	246.9	4768.9	5	none
+a366ddc0c	5000	error	1116.6	450.5	0.0	1914.7	1	none
+a366ddc0c	5000	undo	1495.9	826.0	247.8	4777.3	3	none
+a366ddc0c	5000	error2	1098.1	453.0	0.0	1916.0	1	none
+a366ddc0c	5000	fix-forward	1770.7	1080.7	246.1	4780.0	5	none
+a366ddc0c	5000	add	1788.1	1095.8	244.6	4755.2	7	-

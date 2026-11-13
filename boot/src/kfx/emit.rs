@@ -5291,6 +5291,46 @@ pub mod emitter {
                 };
                 let acc = put(str_lit("\", "), put(tag, put(str_lit("\") }, \""), put(tag, put(str_lit("(const { kayak_rt::tag_hash(\""), acc)))));
                 return put(str_lit(")"), put_exp(c, second(xs), n, value(), acc));
+            } else if (string_eq_p(h, str_lit("attempt")) && i64_eq(size(xs), 2i64) && head_is_p(second(xs), str_lit("lambda")) && i64_eq(size(items(second(items(second(xs))))), 1i64)) {
+                // FX-26's `attempt` (C415): kayak-rt's, its body a closure, which a
+                // failure unwinds out of; its handler, a `lambda` of the message,
+                // a closure of the message too. In an `async` function (the async
+                // mode, C371), both `async` blocks, and the whole awaited.
+                let hx = items(second(xs));
+                let pn = param_name(car(items(second(hx))));
+                let m = mangle(pn);
+                let r#async = async_here_p(c);
+                let mark = if r#async {
+                    str_lit("%async")
+                } else {
+                    str_lit("%sync")
+                };
+                let body = with_locals(c, kayak_rt::heap_cons(mark, kayak_rt::heap_cons(str_lit("%infallible"), kayak_rt::nil())));
+                let handler = with_locals(c, kayak_rt::heap_cons(mark, kayak_rt::heap_cons(str_lit("%infallible"), kayak_rt::heap_cons(pn, kayak_rt::nil()))));
+                let acc = put(if r#async {
+                    str_lit("kayak_rt::attempt_async(async move { ")
+                } else {
+                    str_lit("kayak_rt::attempt(|| { ")
+                }, acc);
+                let acc = put_exp(body, car(xs), n, value(), acc);
+                let acc = put(string_list_append(kayak_rt::heap_cons(str_lit(" }, |"), kayak_rt::heap_cons(m, kayak_rt::heap_cons(str_lit(": Str| "), kayak_rt::heap_cons(if r#async {
+                    str_lit("async move ")
+                } else {
+                    str_lit("")
+                }, kayak_rt::nil()))))), acc);
+                let acc = put_block(handler, cdr(cdr(hx)), n, value(), acc);
+                return put(if r#async {
+                    str_lit(").await")
+                } else {
+                    str_lit(")")
+                }, acc);
+            } else if (string_eq_p(h, str_lit("attempt")) && i64_eq(size(xs), 2i64) && not(async_mode_p(c))) {
+                // `attempt` with a handler that is no `lambda`: a procedure of the
+                // message, called.
+                return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit(" }, "), put_exp(c, car(xs), n, value(), put(str_lit("kayak_rt::attempt(|| { "), acc)))));
+            } else if string_eq_p(h, str_lit("attempt")) {
+                error(str_lit("kfx: an `attempt` whose handler is no `lambda`, in the async mode, which kfx does not write yet (C415)"));
+                return acc;
             } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
                 return put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)));
             } else if string_eq_p(h, str_lit("list")) {

@@ -22,6 +22,8 @@ pub mod restrict;
 pub use restrict::*;
 pub mod query;
 pub use query::*;
+pub mod incr_check;
+pub use incr_check::*;
 pub mod db;
 pub use db::*;
 pub mod front;

@@ -472,26 +472,95 @@ pub mod kc_front {
         kc_scope_names(d, run, path, kc_position(d, run, path, key), sexp_names(f, nil::<Str>()))
     }
 
-    // `checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;
-    // the types the checker found of the definitions written with none, each
-    // `(NAME TYPE)` (C407). A refusal ends the run (the checker's, as kfx's),
-    // for now.
+    // What a check comes to (C415): the types found, as text, and the memos
+    // made; or a refusal's message.
+    pub enum CheckOutcome {
+        CheckPassed(Str, Memos),
+        CheckRefused(Str),
+    }
+
+    pub fn check_passed(f0: Str, f1: Memos) -> &'static CheckOutcome {
+        kayak_rt::heap_alloc(CheckOutcome::CheckPassed(f0, f1))
+    }
+
+    pub fn check_refused(f0: Str) -> &'static CheckOutcome {
+        kayak_rt::heap_alloc(CheckOutcome::CheckRefused(f0))
+    }
+
+    pub fn check_outcome_of(path: Str, forms: Sexps, texts: Strings, old: Memos) -> &'static CheckOutcome {
+        let tagcase_ = incremental_check::check_program_memo(forms, texts, old, false);
+        match *tagcase_ {
+            CheckedMemo::CheckedMemo(done, found, made) => {
+                if string_eq_p(kc_language(path), str_lit("kfx")) {
+                    restrictions::restrict(forms, cv_facts(done))
+                } else {
+                    ()
+                };
+                check_passed(words_of(map(lambda1s(move |t: &'static Typed| {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Typed::Typed(n, ty) => {
+                            string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(ty), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                        }
+                    }
+                }), found)), made)
+            }
+        }
+    }
+
+    // `checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file:
+    // `(ok (NAME TYPE) ...)`, the types the checker found of the definitions
+    // written with none (C407); or `(refused MESSAGE)`, the checker's refusal
+    // (C415), a value as any other, so that a run that meets one ends as any
+    // other does, its work kept, and a `kc serve` goes on.
     pub fn q_checked(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-        let forms = kc_forms(d, run, path);
-        let v = check_program(forms);
-        if string_eq_p(kc_language(path), str_lit("kfx")) {
-            restrictions::restrict(forms, verdict_facts(v))
-        } else {
-            ()
-        };
-        string_append(str_lit("("), string_append(words_of(map(lambda1s(move |t: &'static Typed| {
-            let tagcase_ = t;
+        let text = db_get(d, run, string_append(str_lit("text "), path));
+        let forms = read_all(text, path, 1i64);
+        let texts = incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms));
+        let side = string_append(str_lit("check-memos "), path);
+        let old = (&queries::memos_of_text)(db_side(d, side), str_lit("kc"));
+        let tagcase_ = kayak_rt::attempt(|| { check_outcome_of(path, forms, texts, old) }, |m: Str| {
+            check_refused(m)
+        });
+        match *tagcase_ {
+            CheckOutcome::CheckPassed(t, made) => {
+                db_side_put_x(d, side, (&queries::memos_text)(made, str_lit("kc")));
+                string_append(str_lit("(ok "), string_append(t, str_lit(")")))
+            }
+            CheckOutcome::CheckRefused(m) => {
+                string_append(str_lit("(refused "), string_append(kc_datum(str(m, str_lit(""), 0i64)), str_lit(")")))
+            }
+        }
+    }
+
+    // A `checked`'s value: its refusal's message, `` if it passed; the types
+    // it found.
+    pub fn kc_refusal(v: Str) -> Str {
+        let x = items(car(read_all(v, str_lit("checked"), 1i64)));
+        if sym_is_p(car(x), str_lit("refused")) {
+            let tagcase_ = second(x);
             match *tagcase_ {
-                Typed::Typed(n, ty) => {
-                    string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(ty), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                Sexp::Str(m, f, p) => {
+                    m
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("?")
                 }
             }
-        }), verdict_typeds(v))), str_lit(")")))
+        } else {
+            str_lit("")
+        }
+    }
+
+    pub fn kc_checked_types(d: Db, run: Runner, path: Str) -> Sexps {
+        let v = db_get(d, run, string_append(str_lit("checked "), path));
+        if string_eq_p(kc_refusal(v), str_lit("")) {
+            cdr(items(car(read_all(v, str_lit("checked"), 1i64))))
+        } else {
+            error(kc_refusal(v));
+            nil::<&'static Sexp>()
+        }
     }
 
     // `type PATH NAME`: a definition's type, as written, or as the checker
@@ -505,7 +574,7 @@ pub mod kc_front {
         } else {
             let found = filter(lambda1s(move |x: &'static Sexp| {
                 sym_is_p(car(items(x)), name)
-            }), items(car(read_all(db_get(d, run, string_append(str_lit("checked "), path)), str_lit("checked"), 1i64))));
+            }), kc_checked_types(d, run, path));
             if null_p(found) {
                 str_lit("()")
             } else {
@@ -522,10 +591,15 @@ pub mod kc_front {
     // `kfx PATH`: the file checked and passing KFX's restrictions, whatever its
     // name says, as the Rust back end needs it; `ok`.
     pub fn q_kfx(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-        let forms = kc_forms(d, run, path);
-        let v = check_program(forms);
-        restrictions::restrict(forms, verdict_facts(v));
-        str_lit("ok")
+        if string_eq_p(kc_language(path), str_lit("kfx")) {
+            db_get(d, run, string_append(str_lit("checked "), path));
+            str_lit("ok")
+        } else {
+            let forms = kc_forms(d, run, path);
+            let v = check_program(forms);
+            restrictions::restrict(forms, verdict_facts(v));
+            str_lit("ok")
+        }
     }
 }
 

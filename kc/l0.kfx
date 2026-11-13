@@ -316,9 +316,11 @@
 
     (define q-l0-item qbody
       (lambda (d run a)
+        ;; Of a program the checker passed: the driver asks `checked` first
+        ;; (C415). Not read here, so that a check's value changing (a refusal,
+        ;; then none) reaches no item whose form is as it was.
         (let* ((path (arg-first a)) (key (arg-rest a)))
           (begin
-            (db-get d run (string-append "checked " path))
             (let* ((f (kc-form d run path key))
                    ;; The definitions before it that it names (C414).
                    (scope (kc-scope d run path key f)))

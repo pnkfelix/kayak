@@ -15,6 +15,9 @@ timed end to end as a person at the keyboard meets it, best of R:
 
   kc     `kc --db DB --stats --asm`, then `cc` against kayak-kcrt, then the
          program run: the edit's answer, or its error;
+  serve  the same compile asked of one `kc --stats serve` (C415), which keeps
+         its database in memory for the whole session: no database read or
+         written whole at each edit;
   Fixpt  `fixpt eval FILE` on its fastest machine: the same answer, or
          error (its own caches, its `.fasl`s, as it keeps them).
 
@@ -32,9 +35,10 @@ session, each step from the one before:
   fix-forward   fixed another way: a body neither `body`'s nor the error's
   add           a procedure added at the end, and called
 
-Each row: the step; kc's ms, its compile alone, then the link and the run
-(`cc` takes most of that, which a service compiling in memory would not);
-Fixpt's ms; kc's bodies run, and those beyond the need. With --record, each size's rows are
+Each row: the step; kc's ms, its compile alone, then serve's, then the
+link and the run (`cc` takes most of that, which a service compiling in
+memory would not); Fixpt's ms; kc's bodies run, and those beyond the need
+(serve's are the same, or said apart). With --record, each size's rows are
 appended to bench/kc.tsv with the commit, so that the numbers are kept
 step by step (they gate nothing: a speed's change is for discussion).
 """
@@ -91,9 +95,13 @@ def session(n):
         ("same", base, []),
         ("comment", "; an edit that means nothing\n" + base, ["checked"]),
         ("body", body, one),
-        ("error", error, None),
-        ("undo", body, []),
-        ("error2", error, None),
+        # A refusal is `checked`'s value (C415): the run ends as any other,
+        # its work kept; undone, the edited form's interface and item are made
+        # again (the engine keeps a query's last value, not each before it),
+        # and found as they were, so nothing after them runs.
+        ("error", error, ["checked"]),
+        ("undo", body, ["checked", "interface", "l0-item"]),
+        ("error2", error, ["checked"]),
         ("fix-forward", fixed, one),
         ("add", added, None),
     ]
@@ -123,10 +131,11 @@ def beyond(got, need):
 
 
 def said(text, marks):
-    """A failure's message: its first line that begins with one of `marks`."""
-    for line in text.splitlines():
-        for m in marks:
-            if m in line:
+    """A failure's message: the first line with the first of `marks` that
+    one has."""
+    for m in marks:
+        for line in text.splitlines():
+            if m in line and "query bodies ran" not in line:
                 return "! " + line.split(m, 1)[1].strip()[:50]
     return "! ?"
 
@@ -155,6 +164,27 @@ def kc_step(src, db, path, exe):
     return t1 - t0, time.perf_counter() - t1, bodies, (r3.stdout.strip().splitlines() or ["?"])[-1]
 
 
+class Serve:
+    """One `kc --stats serve`, asked a line at a time."""
+
+    def __init__(self):
+        self.p = subprocess.Popen([KC, "--stats", "serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+
+    def ask(self, line):
+        t0 = time.perf_counter()
+        self.p.stdin.write(line + "\n")
+        self.p.stdin.flush()
+        answer = self.p.stdout.readline()
+        t = time.perf_counter() - t0
+        head, _, names = answer.rstrip("\n").partition("\t")
+        return t, sorted(names.split()), head
+
+    def close(self):
+        self.p.stdin.write("quit\n")
+        self.p.stdin.close()
+        self.p.wait()
+
+
 def fixpt_step(fx, path):
     t0 = time.perf_counter()
     r = run([fx, "eval", path], cwd=os.path.dirname(path))
@@ -174,6 +204,7 @@ def bench(n, runs, fx):
         db = os.path.join(d, "kc.db")
         if os.path.exists(db):
             os.remove(db)
+        server = Serve()
         for i, (name, text, need) in enumerate(session(n)):
             # One file for kc, one for Fixpt, so that neither's caches are
             # the other's.
@@ -183,13 +214,21 @@ def bench(n, runs, fx):
             open(fp, "w").write(text)
             kc_t, link_t, bodies, kgot = kc_step(text, db, kp, os.path.join(d, "prog"))
             kt = kc_t + link_t
+            sp = os.path.join(d, "serve", "prog.fx")
+            os.makedirs(os.path.dirname(sp), exist_ok=True)
+            open(sp, "w").write(text)
+            sv_t, sv_bodies, sv_head = server.ask("asm %s %s" % (sp, sp[:-3] + ".s"))
+            if sorted(sv_bodies) != sorted(bodies):
+                kgot = kgot + " (serve ran %s)" % counted(sv_bodies)
             ft, fgot = fixpt_step(fx, fp) if fx else (float("nan"), "-")
             over = beyond(bodies, need) if need is not None else []
             prev = best.get(i)
             if prev is None or kt < prev[1] + prev[2]:
-                best[i] = (name, kc_t, link_t, ft if prev is None else min(ft, prev[3]), len(bodies), over, kgot, fgot, need)
+                best[i] = (name, kc_t, link_t, ft if prev is None else min(ft, prev[3]), len(bodies), over, kgot, fgot, need,
+                           sv_t if prev is None else min(sv_t, prev[9]))
             else:
-                best[i] = prev[:3] + (min(ft, prev[3]),) + prev[4:]
+                best[i] = prev[:3] + (min(ft, prev[3]),) + prev[4:9] + (min(sv_t, prev[9]),)
+        server.close()
     for i in sorted(best):
         rows.append(best[i])
     return rows
@@ -213,17 +252,17 @@ def main():
     out = []
     for n in sizes:
         print("kc-bench: %d procedures, best of %d (ms)" % (n, runs))
-        print("  %-12s %8s %8s %8s %8s %7s  %-24s %s" % ("step", "kc", "+link", "=kc all", "Fixpt", "bodies", "beyond the need", "answers (kc / Fixpt)"))
-        for name, kc_t, link_t, ft, nb, over, kgot, fgot, need in bench(n, runs, fx):
+        print("  %-12s %8s %8s %8s %8s %7s  %-24s %s" % ("step", "kc", "serve", "+link", "Fixpt", "bodies", "beyond the need", "answers (kc / Fixpt)"))
+        for name, kc_t, link_t, ft, nb, over, kgot, fgot, need, sv_t in bench(n, runs, fx):
             extra = "-" if need is None else (counted(over) or "none")
-            print("  %-12s %8.1f %8.1f %8.1f %8.1f %7d  %-24s %s / %s" % (name, kc_t * 1000, link_t * 1000, (kc_t + link_t) * 1000,
+            print("  %-12s %8.1f %8.1f %8.1f %8.1f %7d  %-24s %s / %s" % (name, kc_t * 1000, sv_t * 1000, link_t * 1000,
                                                                        ft * 1000, nb, extra, kgot, fgot))
-            out.append("\t".join([commit, str(n), name, "%.1f" % (kc_t * 1000), "%.1f" % (link_t * 1000), "%.1f" % (ft * 1000), str(nb), extra]))
+            out.append("\t".join([commit, str(n), name, "%.1f" % (kc_t * 1000), "%.1f" % (sv_t * 1000), "%.1f" % (link_t * 1000), "%.1f" % (ft * 1000), str(nb), extra]))
     if record:
         new = not os.path.exists(RECORD)
         with open(RECORD, "a") as f:
             if new:
-                f.write("commit\tprocedures\tstep\tkc_ms\tlink_run_ms\tfixpt_ms\tbodies\tbeyond_need\n")
+                f.write("commit\tprocedures\tstep\tkc_ms\tserve_ms\tlink_run_ms\tfixpt_ms\tbodies\tbeyond_need\n")
             f.write("\n".join(out) + "\n")
 
 

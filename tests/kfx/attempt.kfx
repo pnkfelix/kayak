@@ -1,0 +1,17 @@
+"FX-26's `attempt` (C415): a failure's message, or the body's value; a
+ failure inside a procedure the body calls; an `error` of the program's
+ own; a body that does not fail."
+
+(define first (subr pure ((listof i64 acyclic)) i64) (lambda (l) (car l)))
+
+(define checked (subr pure (i64) i64)
+  (lambda (n) (if (i64< n 0) (error "a negative number") n)))
+
+(define said (subr (maxeff (read @globals) spin nondet) (i64) string)
+  (lambda (n) (attempt (i64->string (checked n)) (lambda ((m string)) (string-append "failed: " m)))))
+
+(define main (subr (maxeff (read @globals) spin nondet) () string)
+  (lambda ()
+    (string-append (i64->string (i64+ (attempt (first nil) (lambda ((m string)) (the i64 40)))
+                                      (attempt (first (list 2)) (lambda ((m string)) (the i64 0)))))
+      (string-append " " (string-append (said 7) (string-append " " (said -1)))))))
