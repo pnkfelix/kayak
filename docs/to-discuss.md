@@ -41,4 +41,13 @@ where it was seen and what it would take.
    `toplevel-qualified-type.fx` it makes kayak's line read `idx` where
    `idx` is a type variable in scope, which misleads. Worth deciding
    whether kayak follows Fixpt here.
+7. **A changed answer goes to a file of this machine's, silently.**
+   `corpus.py --bless` writes a corpus program's answer to `NAME.out` only
+   on the home platform (arm64 macOS) or when there is none; elsewhere, an
+   answer that differs from `NAME.out` goes to `NAME.x86_64-linux.out`
+   (C134's design, for answers that really are a machine's). Twice today
+   it kept a stale shared answer while the platform file held the right
+   one (`shapes.out`, then `db-verify.out`, where it hid for a while that
+   a bug had been fixed). Perhaps `--bless` should say when it writes a
+   platform file, or refuse to unless asked.
 

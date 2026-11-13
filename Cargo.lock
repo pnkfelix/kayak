@@ -31,6 +31,18 @@ name = "kayak-jit"
 version = "0.1.0"
 
 [[package]]
+name = "kayak-kc"
+version = "0.1.0"
+dependencies = [
+ "kayak-rt",
+ "kayak-sys",
+]
+
+[[package]]
+name = "kayak-kcrt"
+version = "0.1.0"
+
+[[package]]
 name = "kayak-reps"
 version = "0.1.0"
 

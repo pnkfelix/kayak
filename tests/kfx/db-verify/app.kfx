@@ -1,0 +1,93 @@
+"The query database (lib/db.kfx, C399) checked against itself from
+ scratch: after each of many random edits, a random query's value from the
+ database that has seen every edit is the value a fresh database, given
+ only the inputs as they are now, makes. Coopt's verifier's rule (and
+ kayak's `incremental.rs` for kfx's memos), for the database itself.
+
+ The inputs `x 0` to `x 4`, each a number 0 to 5, set at a random
+ durability; the queries: `m I`, `x I` mod 3, so that edits often leave a
+ value as it was (early cutoff); `s`, which reads `m 1` and `m 2` if `m 0`
+ is 0, else `m 3` (what it reads depends on what it read: dynamic
+ dependence); `t`, `s` and `m 4` summed; `u`, `big:` and `x 0` if `t` is
+ more than 3, else `small` (reading `x 0` only sometimes). The answer:
+ how many steps, how many disagreed, and how many bodies the database ran
+ against how many the fresh ones did."
+
+(define-rec
+  (digits (subr kfx ((listof char acyclic) i64) i64)
+    (lambda (cs n) (if (null? cs) n (digits (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+(define num (subr kfx (string) i64) (lambda (s) (digits (string-chars s) 0)))
+
+(define-rec
+  (key-after (subr kfx ((listof char acyclic)) string)
+    (lambda (cs) (cond ((null? cs) "") ((char=? (car cs) #\space) (list->string (cdr cs))) (else (key-after (cdr cs)))))))
+
+(define-rec
+  (run (subr qe (db string) string)
+    (lambda (d k)
+      (let ((h (string-ref-i64 k 0)))
+        (cond ((char=? h #\m) (i64->string (i64-remainder (num (db-get d run (string-append "x " (key-after (string-chars k))))) 3)))
+              ((char=? h #\s)
+               (if (string=? (db-get d run "m 0") "0")
+                   (i64->string (i64+ (num (db-get d run "m 1")) (num (db-get d run "m 2"))))
+                   (db-get d run "m 3")))
+              ((char=? h #\t) (i64->string (i64+ (num (db-get d run "s")) (num (db-get d run "m 4")))))
+              ((char=? h #\u) (if (i64> (num (db-get d run "t")) 3) (string-append "big:" (db-get d run "x 0")) "small"))
+              (else (begin (error (string-append "no query " k)) "")))))))
+
+"A linear congruential generator's next state, and a number below `n` of it."
+(define next-seed (subr kfx (i64) i64) (lambda (s) (i64+ (i64* s 6364136223846793005) 1442695040888963407)))
+(define below (subr kfx (i64 i64) i64) (lambda (s n) (i64-remainder (i64-and (i64-quotient s 65536) 2147483647) n)))
+
+(define-rec
+  (nth (subr kfx ((listof i64 acyclic) i64) i64)
+    (lambda (xs i) (if (i64= i 0) (car xs) (nth (cdr xs) (i64- i 1))))))
+(define-rec
+  (put-at (subr kfx ((listof i64 acyclic) i64 i64) (listof i64 acyclic))
+    (lambda (xs i x) (if (i64= i 0) (cons x (cdr xs)) (cons (car xs) (put-at (cdr xs) (i64- i 1) x))))))
+
+(define query-keys (listof string acyclic) (list "m 0" "m 1" "m 2" "m 3" "m 4" "s" "t" "u"))
+(define-rec
+  (nth-key (subr kfx ((listof string acyclic) i64) string)
+    (lambda (ks i) (if (i64= i 0) (car ks) (nth-key (cdr ks) (i64- i 1))))))
+
+"A fresh database with the inputs as they are, and the runs it took."
+(define-rec
+  (set-all! (subr qe (db (listof i64 acyclic) (listof i64 acyclic) i64) unit)
+    (lambda (d vals durs i)
+      (if (null? vals) #u
+          (begin (db-set! d (string-append "x " (i64->string i)) (i64->string (car vals)) (car durs))
+                 (set-all! d (cdr vals) (cdr durs) (i64+ i 1)))))))
+
+(define-datatype tally (tally i64 i64 i64))
+
+(define-rec
+  (steps (subr qe (db i64 i64 (listof i64 acyclic) (listof i64 acyclic) tally) tally)
+    (lambda (d n seed vals durs acc)
+      (if (i64= n 0)
+          acc
+          (let* ((s1 (next-seed seed)) (s2 (next-seed s1)) (s3 (next-seed s2)) (s4 (next-seed s3))
+                 (i (below s1 5)) (x (below s2 6)) (du (below s3 4)) (k (nth-key query-keys (below s4 8)))
+                 (vals (put-at vals i x)) (durs (put-at durs i du)))
+            (begin
+              (db-set! d (string-append "x " (i64->string i)) (i64->string x) du)
+              (let* ((before (db-runs d))
+                     (got (db-get d run k))
+                     (ours (i64- (db-runs d) before))
+                     (fresh (db-make)))
+                (begin
+                  (set-all! fresh vals durs 0)
+                  (let ((want (db-get fresh run k)))
+                    (tagcase acc
+                      (tally (wrong mine theirs)
+                        (steps d (i64- n 1) s4 vals durs
+                               (tally (if (string=? got want) wrong (i64+ wrong 1)) (i64+ mine ours) (i64+ theirs (db-runs fresh)))))))))))))))
+
+(define main (subr qe () string)
+  (lambda ()
+    (let* ((d (db-make)) (vals (the (listof i64 acyclic) (list 0 0 0 0 0))) (durs (the (listof i64 acyclic) (list 0 1 2 3 0))))
+      (begin
+        (set-all! d vals durs 0)
+        (tagcase (steps d 300 20261112 vals durs (tally 0 0 0))
+          (tally (wrong mine theirs)
+            (string-list-append (list "300 steps, " (i64->string wrong) " disagreed; bodies run " (i64->string mine) " against " (i64->string theirs) " from scratch"))))))))

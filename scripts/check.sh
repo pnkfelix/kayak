@@ -52,6 +52,8 @@ step python3 -I scripts/io-programs.py
 step cargo clippy --release --workspace --all-targets --quiet -- -D warnings
 step python3 -I scripts/corpus.py
 step python3 -I scripts/engine-programs.py
+# kc's steps (C399): each back end against Fixpt's answers.
+step python3 -I scripts/kc-steps.py
 step python3 -I scripts/repl-sessions.py
 # C103's REPL, kept to compare with C111's: the same sessions, the same bytes.
 step python3 -I scripts/repl-sessions.py --rust-repl

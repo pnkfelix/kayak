@@ -1,0 +1,54 @@
+"front.kfx: kc's inputs and its front end (docs/research/kc.md, K1).
+
+ Every query's key is its name, a space, and its argument; every body is
+ given the database, the procedure that runs any query (`runner`), and
+ its key's argument, and reads what it needs only through the database.
+ The inputs: `text PATH`, a source file's text. The language of a file is
+ its name's: `.kfx` is KFX, anything else FX-26. One checker for both
+ (kfx's); KFX is what also passes the restriction pass (`restrict.kfx`)."
+
+"A query's body."
+(define-type qbody (subr qe (db runner string) string))
+
+"The argument of a key: what follows its first space."
+(define-rec
+  (after-first-space (subr kfx ((listof char acyclic)) string)
+    (lambda (cs)
+      (cond ((null? cs) "")
+            ((char=? (car cs) #\space) (list->string (cdr cs)))
+            (else (after-first-space (cdr cs)))))))
+
+(define key-arg (subr kfx (string) string) (lambda (k) (after-first-space (string-chars k))))
+
+(define-rec
+  (before-first-space (subr kfx ((listof char acyclic) (listof char acyclic)) string)
+    (lambda (cs acc)
+      (cond ((or (null? cs) (char=? (car cs) #\space)) (list->string (reverse acc)))
+            (else (before-first-space (cdr cs) (cons (car cs) acc)))))))
+
+(define key-name (subr kfx (string) string) (lambda (k) (before-first-space (string-chars k) nil)))
+
+(define kc-language (subr kfx (string) string)
+  (lambda (path) (if (has-suffix? path ".kfx") "kfx" "fx26")))
+
+"A file's forms, as read."
+(define kc-forms (subr qe (db runner string) sexps)
+  (lambda (d run path) (read-all (db-get d run (string-append "text " path)) path 1)))
+
+"`checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;
+ `ok`. A refusal ends the run (the checker's, as kfx's), for now."
+(define q-checked qbody
+  (lambda (d run path)
+    (let* ((forms (kc-forms d run path))
+           (v (check-program forms)))
+      (begin
+        (if (string=? (kc-language path) "kfx") (with restrictions (restrict forms (verdict-facts v))) #u)
+        "ok"))))
+
+"`kfx PATH`: the file checked and passing KFX's restrictions, whatever its
+ name says, as the Rust back end needs it; `ok`."
+(define q-kfx qbody
+  (lambda (d run path)
+    (let* ((forms (kc-forms d run path))
+           (v (check-program forms)))
+      (begin (with restrictions (restrict forms (verdict-facts v))) "ok"))))

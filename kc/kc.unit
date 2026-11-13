@@ -1,0 +1,22 @@
+; kc (docs/research/kc.md): the compiler from scratch, of FX-26 and KFX,
+; its passes queries on the database (lib/db.kfx). First the checker it
+; keeps (kfx's, and the restriction pass that makes KFX of FX-26), then
+; the database, then kc's own files.
+../kfx/base.kfx
+../kfx/read.kfx
+../kfx/names.kfx
+../kfx/check.kfx
+../kfx/reps.kfx
+../kfx/terminate.kfx
+../kfx/check-exprs.kfx
+../kfx/built-in.kfx
+../kfx/check-defs.kfx
+../kfx/restrict.kfx
+../lib/query.kfx
+../lib/db.kfx
+front.kfx
+l0.kfx
+rust.kfx
+x64.kfx
+identity.kfx
+main.kfx

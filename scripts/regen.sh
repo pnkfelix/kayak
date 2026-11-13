@@ -8,8 +8,9 @@
 #
 # usage: scripts/regen.sh [--all] [--check]
 #
-# With --all, then also the Rust kfx makes of the cellular machine and the
-# engine, kept in crates/kayak-cells/src/cells and crates/kayak-fx26/src/fx26
+# With --all, then also the Rust kfx makes of the cellular machine, the
+# engine and kc, kept in crates/kayak-cells/src/cells, crates/kayak-fx26/src/fx26
+# and crates/kayak-kc/src/kc
 # (the first checked by the `generated` test of crates/kayak-checks/tests/
 # cells.rs, the second what `engine-programs.py --bless` writes,
 # without running their programs), and those crates built.
@@ -68,7 +69,8 @@ crate() {
 crates() {
     crate cells/cells.unit crates/kayak-cells/src/cells
     crate fx26/fx26.unit crates/kayak-fx26/src/fx26
-    if [ $check = no ]; then step cargo build --release --quiet -p kayak-cells -p kayak-fx26; fi
+    crate kc/kc.unit crates/kayak-kc/src/kc
+    if [ $check = no ]; then step cargo build --release --quiet -p kayak-cells -p kayak-fx26 -p kayak-kc -p kayak-kcrt; fi
 }
 if [ $check = yes ]; then
     cargo build --release --quiet -p kfx

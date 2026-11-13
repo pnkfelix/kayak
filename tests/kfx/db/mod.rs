@@ -10,5 +10,5 @@ pub mod app;
 pub use app::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_3rev_5nodes_6frames_4last_4runs<A0, A1, A2, A3, A4>(pub A0, pub A1, pub A2, pub A3, pub A4);
+pub struct Product_3rev_5nodes_6frames_4last_4runs_3ran<A0, A1, A2, A3, A4, A5>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5);
 

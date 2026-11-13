@@ -93,6 +93,11 @@ pub mod db;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/db-verify/mod.rs"]
+pub mod db_verify;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/define-star.rs"]
 pub mod define_star;
 
@@ -544,6 +549,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("data-region", data_region::main),
     ("datum", datum::main),
     ("db", db::main),
+    ("db-verify", db_verify::main),
     ("define-star", define_star::main),
     ("effect-poly", effect_poly::main),
     ("eqtables", eqtables::main),

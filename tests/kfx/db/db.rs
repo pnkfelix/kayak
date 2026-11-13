@@ -77,9 +77,9 @@ pub fn frame(f0: Str, f1: List<Str>, f2: i64) -> &'static Frame {
 
 // The database: the revision; the nodes; the queries being run, the
 // innermost first; for each durability, 0 to 3, the revision an input of it
-// or more last changed in; and how many times a body has run (for tests and
-// measures).
-pub type Db = Product_3rev_5nodes_6frames_4last_4runs<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>>;
+// or more last changed in; how many times a body has run, and whose (for tests
+// and measures).
+pub type Db = Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>;
 
 // What runs a query: given the database and a key, its value.
 pub type Runner = &'static dyn Fn(Db, Str) -> Str;
@@ -299,7 +299,7 @@ pub fn node_verified_at(n: &'static Node, r: i64) -> &'static Node {
     }
 }
 
-pub fn nth_i64(mut xs: List<i64>, mut i: i64) -> i64 {
+pub fn db_nth(mut xs: List<i64>, mut i: i64) -> i64 {
     loop {
         if null_p(xs) {
             return 0i64;
@@ -355,7 +355,7 @@ pub fn key_in_p(mut k: Str, mut fs: List<&'static Frame>) -> bool {
 }
 
 pub fn db_make() -> Db {
-    Product_3rev_5nodes_6frames_4last_4runs(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Nmap>>(kayak_rt::heap_new(nm_none())), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)))
+    Product_3rev_5nodes_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Nmap>>(kayak_rt::heap_new(nm_none())), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())))
 }
 
 #[inline]
@@ -366,6 +366,13 @@ pub fn db_revision(d: Db) -> i64 {
 #[inline]
 pub fn db_runs(d: Db) -> i64 {
     get(d.4)
+}
+
+// The keys whose bodies ran, the newest first: so that a test can say what
+// an edit made run again, and what it spared.
+#[inline]
+pub fn db_ran(d: Db) -> List<Str> {
+    get(d.5)
 }
 
 #[inline]
@@ -388,7 +395,11 @@ pub fn db_set_x(d: Db, k: Str, text: Str, du: i64) -> () {
     } else {
         let r = i64_plus(get(d.0), 1i64);
         set(d.0, r);
-        set(d.3, bumped(get(d.3), du, r, 0i64));
+        set(d.3, bumped(get(d.3), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
+            node_durability(car(old))
+        } else {
+            du
+        }, r, 0i64));
         db_put_x(d, k, node(true, r, r, fp, nil::<Str>(), du, text))
     }
 }
@@ -441,7 +452,7 @@ pub fn db_current(d: Db, run: Runner, k: Str) -> Str {
         node_value(car(old))
     } else if i64_eq(node_verified(car(old)), r) {
         node_value(car(old))
-    } else if i64_lt_eq(nth_i64(get(d.3), node_durability(car(old))), node_verified(car(old))) {
+    } else if i64_lt_eq(db_nth(get(d.3), node_durability(car(old))), node_verified(car(old))) {
         db_put_x(d, k, node_verified_at(car(old), r));
         node_value(car(old))
     } else if db_reads_unchanged_p(d, run, node_deps(car(old)), node_verified(car(old))) {
@@ -480,6 +491,7 @@ pub fn db_execute(d: Db, run: Runner, k: Str, old: List<&'static Node>) -> Str {
     let fp = (&queries::fnv_string)(x, queries::fnv_offset());
     set(d.2, cdr(get(d.2)));
     set(d.4, i64_plus(get(d.4), 1i64));
+    set(d.5, kayak_rt::heap_cons(k, get(d.5)));
     {
         let tagcase_ = fr;
         match *tagcase_ {
@@ -560,61 +572,61 @@ pub fn db_text(d: Db, whose: Str) -> Str {
 }
 
 // Reading it: a cursor over the text, `at`, moved past what is read.
-pub enum Got {
-    Got(i64, i64),
+pub enum ReadNum {
+    ReadNum(i64, i64),
 }
 
-pub fn got(f0: i64, f1: i64) -> &'static Got {
-    kayak_rt::heap_alloc(Got::Got(f0, f1))
+pub fn read_num(f0: i64, f1: i64) -> &'static ReadNum {
+    kayak_rt::heap_alloc(ReadNum::ReadNum(f0, f1))
 }
 
-pub enum GotText {
-    GotText(Str, i64),
+pub enum ReadTxt {
+    ReadTxt(Str, i64),
 }
 
-pub fn got_text(f0: Str, f1: i64) -> &'static GotText {
-    kayak_rt::heap_alloc(GotText::GotText(f0, f1))
+pub fn read_txt(f0: Str, f1: i64) -> &'static ReadTxt {
+    kayak_rt::heap_alloc(ReadTxt::ReadTxt(f0, f1))
 }
 
-pub enum GotTexts {
-    GotTexts(List<Str>, i64),
+pub enum ReadTexts {
+    ReadTexts(List<Str>, i64),
 }
 
-pub fn got_texts(f0: List<Str>, f1: i64) -> &'static GotTexts {
-    kayak_rt::heap_alloc(GotTexts::GotTexts(f0, f1))
+pub fn read_texts(f0: List<Str>, f1: i64) -> &'static ReadTexts {
+    kayak_rt::heap_alloc(ReadTexts::ReadTexts(f0, f1))
 }
 
-pub enum GotNumbers {
-    GotNumbers(List<i64>, i64),
+pub enum ReadNums {
+    ReadNums(List<i64>, i64),
 }
 
-pub fn got_numbers(f0: List<i64>, f1: i64) -> &'static GotNumbers {
-    kayak_rt::heap_alloc(GotNumbers::GotNumbers(f0, f1))
+pub fn read_nums(f0: List<i64>, f1: i64) -> &'static ReadNums {
+    kayak_rt::heap_alloc(ReadNums::ReadNums(f0, f1))
 }
 
 /// The decimal number at `i`, after any spaces; and where it ends.
-pub fn number_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool) -> &'static Got {
+pub fn number_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool) -> &'static ReadNum {
     loop {
         if i64_gt_eq(i, n) {
-            return got(0i64, i);
+            return read_num(0i64, i);
         } else if char_eq_p(string_ref_i64(s, i), ' ') {
             i = i64_plus(i, 1i64);
             continue;
         } else if char_eq_p(string_ref_i64(s, i), '-') {
-            return digits_at(s, i64_plus(i, 1i64), n, 0i64, true);
+            return db_digits_at(s, i64_plus(i, 1i64), n, 0i64, true);
         } else {
-            return digits_at(s, i, n, 0i64, false);
+            return db_digits_at(s, i, n, 0i64, false);
         }
     }
 }
 
-pub fn digits_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool) -> &'static Got {
+pub fn db_digits_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool) -> &'static ReadNum {
     loop {
         if (i64_gt_eq(i, n) || {
             let c = string_ref_i64(s, i);
             (char_lt_p(c, '0') || char_gt_p(c, '9'))
         }) {
-            return got(if neg {
+            return read_num(if neg {
                 i64_minus(0i64, acc)
             } else {
                 acc
@@ -627,24 +639,24 @@ pub fn digits_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool
 }
 
 /// The field at `i`, its length, a colon and itself; and where it ends.
-pub fn text_at(s: Str, i: i64, n: i64) -> &'static GotText {
+pub fn text_at(s: Str, i: i64, n: i64) -> &'static ReadTxt {
     let tagcase_ = number_at(s, i, n, 0i64, false);
     match *tagcase_ {
-        Got::Got(len, j) => {
+        ReadNum::ReadNum(len, j) => {
             let from = i64_plus(j, 1i64);
-            got_text(substring(s, i64_to_int(from), i64_to_int(i64_plus(from, len))), i64_plus(from, len))
+            read_txt(substring(s, i64_to_int(from), i64_to_int(i64_plus(from, len))), i64_plus(from, len))
         }
     }
 }
 
-pub fn texts_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<Str>) -> &'static GotTexts {
+pub fn texts_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<Str>) -> &'static ReadTexts {
     loop {
         if i64_lt_eq(count, 0i64) {
-            return got_texts(reverse(acc), i);
+            return read_texts(reverse(acc), i);
         } else {
             let tagcase_ = text_at(s, i, n);
             match *tagcase_ {
-                GotText::GotText(t, j) => {
+                ReadTxt::ReadTxt(t, j) => {
                     (i, count, acc) = (j, i64_minus(count, 1i64), kayak_rt::heap_cons(t, acc));
                     continue;
                 }
@@ -653,14 +665,14 @@ pub fn texts_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: Lis
     }
 }
 
-pub fn numbers_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<i64>) -> &'static GotNumbers {
+pub fn numbers_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<i64>) -> &'static ReadNums {
     loop {
         if i64_lt_eq(count, 0i64) {
-            return got_numbers(reverse(acc), i);
+            return read_nums(reverse(acc), i);
         } else {
             let tagcase_ = number_at(s, i, n, 0i64, false);
             match *tagcase_ {
-                Got::Got(x, j) => {
+                ReadNum::ReadNum(x, j) => {
                     (i, count, acc) = (j, i64_minus(count, 1i64), kayak_rt::heap_cons(x, acc));
                     continue;
                 }
@@ -677,23 +689,23 @@ pub fn nodes_at(mut s: Str, mut i: i64, mut n: i64, mut t: &'static Nmap) -> &'s
         } else {
             let tagcase_ = text_at(s, i, n);
             match *tagcase_ {
-                GotText::GotText(k, j) => {
+                ReadTxt::ReadTxt(k, j) => {
                     let tagcase_ = numbers_at(s, j, n, 6i64, nil::<i64>());
                     match *tagcase_ {
-                        GotNumbers::GotNumbers(ns, j2) => {
+                        ReadNums::ReadNums(ns, j2) => {
                             if not(i64_eq(size(ns), 6i64)) {
                                 return t;
                             } else {
-                                let tagcase_ = texts_at(s, j2, n, nth_i64(ns, 5i64), nil::<Str>());
+                                let tagcase_ = texts_at(s, j2, n, db_nth(ns, 5i64), nil::<Str>());
                                 match *tagcase_ {
-                                    GotTexts::GotTexts(ds, j3) => {
+                                    ReadTexts::ReadTexts(ds, j3) => {
                                         let tagcase_ = text_at(s, j3, n);
                                         match *tagcase_ {
-                                            GotText::GotText(x, j4) => {
+                                            ReadTxt::ReadTxt(x, j4) => {
                                                 if i64_gt(j4, n) {
                                                     return t;
                                                 } else {
-                                                    (i, t) = (i64_plus(j4, 1i64), nm_put(t, k, node(i64_eq(nth_i64(ns, 0i64), 1i64), nth_i64(ns, 1i64), nth_i64(ns, 2i64), nth_i64(ns, 3i64), ds, nth_i64(ns, 4i64), x)));
+                                                    (i, t) = (i64_plus(j4, 1i64), nm_put(t, k, node(i64_eq(db_nth(ns, 0i64), 1i64), db_nth(ns, 1i64), db_nth(ns, 2i64), db_nth(ns, 3i64), ds, db_nth(ns, 4i64), x)));
                                                     continue;
                                                 }
                                             }
@@ -721,7 +733,7 @@ pub fn db_of_text(s: Str, whose: Str) -> Db {
     } else {
         let tagcase_ = numbers_at(s, h, n, i64_plus(durabilities(), 1i64), nil::<i64>());
         match *tagcase_ {
-            GotNumbers::GotNumbers(ns, j) => {
+            ReadNums::ReadNums(ns, j) => {
                 set(d.0, car(ns));
                 set(d.3, cdr(ns));
                 set(d.1, nodes_at(s, i64_plus(j, 1i64), n, nm_none()));

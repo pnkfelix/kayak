@@ -51,14 +51,15 @@
 
 "The database: the revision; the nodes; the queries being run, the
  innermost first; for each durability, 0 to 3, the revision an input of it
- or more last changed in; and how many times a body has run (for tests and
- measures)."
+ or more last changed in; how many times a body has run, and whose (for tests
+ and measures)."
 (define-type db
   (productof (rev (ref i64 @q))
              (nodes (ref nmap @q))
              (frames (ref (listof frame acyclic) @q))
              (last (ref (listof i64 acyclic) @q))
-             (runs (ref i64 @q))))
+             (runs (ref i64 @q))
+             (ran (ref (listof string acyclic) @q))))
 
 "What runs a query: given the database and a key, its value."
 (define-type runner (subr qe (db string) string))
@@ -136,8 +137,8 @@
   (lambda (n r) (tagcase n (node (i v c f ds du x) (node i r c f ds du x)))))
 
 (define-rec
-  (nth-i64 (subr kfx ((listof i64 acyclic) i64) i64)
-    (lambda (xs i) (cond ((null? xs) 0) ((i64= i 0) (car xs)) (else (nth-i64 (cdr xs) (i64- i 1)))))))
+  (db-nth (subr kfx ((listof i64 acyclic) i64) i64)
+    (lambda (xs i) (cond ((null? xs) 0) ((i64= i 0) (car xs)) (else (db-nth (cdr xs) (i64- i 1)))))))
 
 (define-rec
   (bumped (subr kfx ((listof i64 acyclic) i64 i64 i64) (listof i64 acyclic))
@@ -164,10 +165,14 @@
              (nodes (the (ref nmap @q) (new (nm-none))))
              (frames (the (ref (listof frame acyclic) @q) (new nil)))
              (last (the (ref (listof i64 acyclic) @q) (new (zeros durabilities))))
-             (runs (the (ref i64 @q) (new 0))))))
+             (runs (the (ref i64 @q) (new 0)))
+             (ran (the (ref (listof string acyclic) @q) (new nil))))))
 
 (define db-revision (subr qe (db) i64) (lambda (d) (get (extract d rev))))
 (define db-runs (subr qe (db) i64) (lambda (d) (get (extract d runs))))
+"The keys whose bodies ran, the newest first: so that a test can say what
+ an edit made run again, and what it spared."
+(define db-ran (subr qe (db) (listof string acyclic)) (lambda (d) (get (extract d ran))))
 
 (define db-node (subr qe (db string) (listof node acyclic))
   (lambda (d k) (nm-get (get (extract d nodes)) k)))
@@ -186,7 +191,12 @@
           (let ((r (i64+ (get (extract d rev)) 1)))
             (begin
               (set (extract d rev) r)
-              (set (extract d last) (bumped (get (extract d last)) du r 0))
+              ;; At the higher of its durabilities, old and new: what read it
+              ;; when it was of the old one counts on that (C399, found by
+              ;; `db-verify`).
+              (set (extract d last) (bumped (get (extract d last))
+                                            (if (and (not (null? old)) (i64> (node-durability (car old)) du)) (node-durability (car old)) du)
+                                            r 0))
               (db-put! d k (node #t r r fp nil du text))))))))
 
 "That the innermost query being run read `k`, of durability `du`."
@@ -218,7 +228,7 @@
         (cond ((null? old) (db-execute d run k old))
               ((node-input? (car old)) (node-value (car old)))
               ((i64= (node-verified (car old)) r) (node-value (car old)))
-              ((i64<= (nth-i64 (get (extract d last)) (node-durability (car old))) (node-verified (car old)))
+              ((i64<= (db-nth (get (extract d last)) (node-durability (car old))) (node-verified (car old)))
                (begin (db-put! d k (node-verified-at (car old) r)) (node-value (car old))))
               ((db-reads-unchanged? d run (node-deps (car old)) (node-verified (car old)))
                (begin (db-put! d k (node-verified-at (car old) r)) (node-value (car old))))
@@ -249,6 +259,7 @@
           (begin
             (set (extract d frames) (cdr (get (extract d frames))))
             (set (extract d runs) (i64+ (get (extract d runs)) 1))
+            (set (extract d ran) (cons k (get (extract d ran))))
             (tagcase fr
               (frame (fk ds du)
                 (db-put! d k (node #f r (if (and (not (null? old)) (i64= (node-fp (car old)) fp)) (node-changed (car old)) r)
@@ -300,46 +311,46 @@
                           (cons "\n" (nodes-lines (get (extract d nodes)) nil))))))))
 
 "Reading it: a cursor over the text, `at`, moved past what is read."
-(define-datatype got (got i64 i64))
-(define-datatype got-text (got-text string i64))
-(define-datatype got-texts (got-texts (listof string acyclic) i64))
-(define-datatype got-numbers (got-numbers (listof i64 acyclic) i64))
+(define-datatype read-num (read-num i64 i64))
+(define-datatype read-txt (read-txt string i64))
+(define-datatype read-texts (read-texts (listof string acyclic) i64))
+(define-datatype read-nums (read-nums (listof i64 acyclic) i64))
 
 (define-rec
-  (number-at (subr kfx (string i64 i64 i64 bool) got)
+  (number-at (subr kfx (string i64 i64 i64 bool) read-num)
     (lambda (s i n acc neg)
       "The decimal number at `i`, after any spaces; and where it ends."
-      (cond ((i64>= i n) (got 0 i))
+      (cond ((i64>= i n) (read-num 0 i))
             ((char=? (string-ref-i64 s i) #\space) (number-at s (i64+ i 1) n acc neg))
-            ((char=? (string-ref-i64 s i) #\-) (digits-at s (i64+ i 1) n 0 #t))
-            (else (digits-at s i n 0 #f)))))
-  (digits-at (subr kfx (string i64 i64 i64 bool) got)
+            ((char=? (string-ref-i64 s i) #\-) (db-digits-at s (i64+ i 1) n 0 #t))
+            (else (db-digits-at s i n 0 #f)))))
+  (db-digits-at (subr kfx (string i64 i64 i64 bool) read-num)
     (lambda (s i n acc neg)
       (if (or (i64>= i n) (let ((c (string-ref-i64 s i))) (or (char<? c #\0) (char>? c #\9))))
-          (got (if neg (i64- 0 acc) acc) i)
-          (digits-at s (i64+ i 1) n (i64+ (i64* acc 10) (i64- (char->i64 (string-ref-i64 s i)) 48)) neg)))))
+          (read-num (if neg (i64- 0 acc) acc) i)
+          (db-digits-at s (i64+ i 1) n (i64+ (i64* acc 10) (i64- (char->i64 (string-ref-i64 s i)) 48)) neg)))))
 
-(define text-at (subr kfx (string i64 i64) got-text)
+(define text-at (subr kfx (string i64 i64) read-txt)
   (lambda (s i n)
     "The field at `i`, its length, a colon and itself; and where it ends."
     (tagcase (number-at s i n 0 #f)
-      (got (len j)
+      (read-num (len j)
         (let ((from (i64+ j 1)))
-          (got-text (substring s (i64->int from) (i64->int (i64+ from len))) (i64+ from len)))))))
+          (read-txt (substring s (i64->int from) (i64->int (i64+ from len))) (i64+ from len)))))))
 
 (define-rec
-  (texts-at (subr kfx (string i64 i64 i64 (listof string acyclic)) got-texts)
+  (texts-at (subr kfx (string i64 i64 i64 (listof string acyclic)) read-texts)
     (lambda (s i n count acc)
       (if (i64<= count 0)
-          (got-texts (reverse acc) i)
-          (tagcase (text-at s i n) (got-text (t j) (texts-at s j n (i64- count 1) (cons t acc))))))))
+          (read-texts (reverse acc) i)
+          (tagcase (text-at s i n) (read-txt (t j) (texts-at s j n (i64- count 1) (cons t acc))))))))
 
 (define-rec
-  (numbers-at (subr kfx (string i64 i64 i64 (listof i64 acyclic)) got-numbers)
+  (numbers-at (subr kfx (string i64 i64 i64 (listof i64 acyclic)) read-nums)
     (lambda (s i n count acc)
       (if (i64<= count 0)
-          (got-numbers (reverse acc) i)
-          (tagcase (number-at s i n 0 #f) (got (x j) (numbers-at s j n (i64- count 1) (cons x acc))))))))
+          (read-nums (reverse acc) i)
+          (tagcase (number-at s i n 0 #f) (read-num (x j) (numbers-at s j n (i64- count 1) (cons x acc))))))))
 
 (define-rec
   (nodes-at (subr kfx (string i64 i64 nmap) nmap)
@@ -348,19 +359,19 @@
       (if (i64>= (i64+ i 1) n)
           t
           (tagcase (text-at s i n)
-            (got-text (k j)
+            (read-txt (k j)
               (tagcase (numbers-at s j n 6 nil)
-                (got-numbers (ns j2)
+                (read-nums (ns j2)
                   (if (not (i64= (size ns) 6))
                       t
-                      (tagcase (texts-at s j2 n (nth-i64 ns 5) nil)
-                        (got-texts (ds j3)
+                      (tagcase (texts-at s j2 n (db-nth ns 5) nil)
+                        (read-texts (ds j3)
                           (tagcase (text-at s j3 n)
-                            (got-text (x j4)
+                            (read-txt (x j4)
                               (if (i64> j4 n)
                                   t
                                   (nodes-at s (i64+ j4 1) n
-                                            (nm-put t k (node (i64= (nth-i64 ns 0) 1) (nth-i64 ns 1) (nth-i64 ns 2) (nth-i64 ns 3) ds (nth-i64 ns 4) x)))))))))))))))))
+                                            (nm-put t k (node (i64= (db-nth ns 0) 1) (db-nth ns 1) (db-nth ns 2) (db-nth ns 3) ds (db-nth ns 4) x)))))))))))))))))
 
 (define db-of-text (subr qe (string string) db)
   (lambda (s whose)
@@ -373,7 +384,7 @@
       (if (not (and (i64>= n h) (string=? (substring s 0 (i64->int h)) head)))
           d
           (tagcase (numbers-at s h n (i64+ durabilities 1) nil)
-            (got-numbers (ns j)
+            (read-nums (ns j)
               (begin
                 (set (extract d rev) (car ns))
                 (set (extract d last) (cdr ns))

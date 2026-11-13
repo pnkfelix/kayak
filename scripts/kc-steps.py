@@ -1,0 +1,160 @@
+"""kc's steps (docs/research/kc.md): each program of tests/kc/stepN/,
+compiled by each of kc's back ends that takes it, run, and its value
+compared with the one it states (`;; => V`), which must be Fixpt's (the
+pinned Fixpt's `eval`, on the fx-cells-rsinterp machine).
+
+usage: python3 -I scripts/kc-steps.py
+
+  native  every program: `kc --asm`, assembled and linked with the system's
+          cc against crates/kayak-kcrt, run;
+  rust    the KFX programs (`.kfx`): `kc --rust`, each a module of one
+          crate (target/kc-rust), built once and run.
+
+kc runs with one database for the whole sweep (target/kc-steps.db), so a
+second sweep with nothing changed runs no query body: its count is said.
+
+And early cutoff, as kc's database does it (C399): a program compiled,
+then edited to text that means the same (spaces, a comment) runs again
+only what reads the text (`checked`, `l0`), not the back end after it,
+whose input, `l0`'s value, is as it was; edited to another value, the back
+end runs too.
+"""
+
+import os
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TESTS = os.path.join(ROOT, "tests", "kc")
+WORK = os.path.join(ROOT, "target", "kc-steps")
+KC = os.path.join(ROOT, "target", "release", "kc")
+RT = os.path.join(ROOT, "target", "release", "libkayak_kcrt.a")
+LIBS = ["-lgcc_s", "-lutil", "-lrt", "-lpthread", "-lm", "-ldl", "-lc"]
+
+
+def fixpt():
+    rev = open(os.path.join(ROOT, "FIXPT_REV")).read().strip()
+    p = os.path.join(ROOT, "target", "fixpt", "fixpt-" + rev)
+    return p if os.path.exists(p) else None
+
+
+def stated(path):
+    for line in open(path):
+        if line.startswith(";; => "):
+            return line[len(";; => "):].strip()
+    sys.exit("kc-steps: %s states no value" % path)
+
+
+def programs():
+    out = []
+    for step in sorted(os.listdir(TESTS)):
+        d = os.path.join(TESTS, step)
+        if os.path.isdir(d):
+            for f in sorted(os.listdir(d)):
+                if f.endswith(".fx") or f.endswith(".kfx"):
+                    out.append(os.path.join(d, f))
+    return out
+
+
+def run(args, **kw):
+    return subprocess.run(args, capture_output=True, text=True, **kw)
+
+
+def ran(stderr):
+    """The queries `kc --stats` says ran."""
+    for line in stderr.splitlines():
+        if "query bodies ran:" in line:
+            return sorted(line.split("query bodies ran:")[1].split())
+    return None
+
+
+def cutoff():
+    """What runs again after edits: the wrongs found."""
+    p = os.path.join(WORK, "cutoff.fx")
+    db = os.path.join(WORK, "cutoff.db")
+    s = os.path.join(WORK, "cutoff.s")
+    if os.path.exists(db):
+        os.remove(db)
+    wrong = []
+    for text, want in [("42\n", ["asm", "checked", "l0"]),
+                       ("  42   ; the same value, written otherwise\n", ["checked", "l0"]),
+                       ("42\n", ["checked", "l0"]),
+                       ("43\n", ["asm", "checked", "l0"]),
+                       ("43\n", [])]:
+        open(p, "w").write(text)
+        r = run([KC, "--db", db, "--stats", "--asm", p, s])
+        got = ran(r.stderr)
+        if got != want:
+            wrong.append("cutoff: after %r, ran %s, not %s" % (text, got, want))
+    return wrong
+
+
+def main():
+    if sys.argv[1:]:
+        sys.exit(__doc__)
+    os.makedirs(WORK, exist_ok=True)
+    db = os.path.join(ROOT, "target", "kc-steps.db")
+    fx = fixpt()
+    wrong, ran = [], 0
+    ps = programs()
+    for p in ps:
+        name = os.path.relpath(p, TESTS)
+        want = stated(p)
+        if fx:
+            r = run([fx, "--fx26-machine", "fx-cells-rsinterp", "eval", p], cwd=os.path.dirname(p))
+            lines = [l for l in r.stdout.splitlines() if l.strip() and not l.startswith(";")]
+            got = lines[-1].split(" : ")[0] if lines else "(none)"
+            if got != want:
+                wrong.append("%s: states %s, Fixpt gives %s" % (name, want, got))
+        s = os.path.join(WORK, name.replace("/", "--") + ".s")
+        exe = s[:-2]
+        r = run([KC, "--db", db, "--stats", "--asm", p, s])
+        ran += int(r.stderr.split("kc: ")[-1].split()[0]) if "query bodies ran" in r.stderr else 0
+        if r.returncode != 0:
+            wrong.append("%s: kc --asm: %s" % (name, r.stderr.strip()))
+            continue
+        r = run(["cc", "-o", exe, s, RT] + LIBS)
+        if r.returncode != 0:
+            wrong.append("%s: cc: %s" % (name, r.stderr.strip()))
+            continue
+        got = run([exe]).stdout.strip()
+        if got != want:
+            wrong.append("%s: native gives %s, not %s" % (name, got, want))
+    kfx = [p for p in ps if p.endswith(".kfx")]
+    crate = os.path.join(ROOT, "target", "kc-rust")
+    os.makedirs(os.path.join(crate, "src"), exist_ok=True)
+    mods, calls = [], []
+    for i, p in enumerate(kfx):
+        out = os.path.join(crate, "src", "p%d.rs" % i)
+        r = run([KC, "--db", db, "--stats", "--rust", p, out])
+        ran += int(r.stderr.split("kc: ")[-1].split()[0]) if "query bodies ran" in r.stderr else 0
+        if r.returncode != 0:
+            wrong.append("%s: kc --rust: %s" % (os.path.relpath(p, TESTS), r.stderr.strip()))
+            continue
+        mods.append("mod p%d;" % i)
+        calls.append('    println!("{}\\t{}", %r, p%d::main().as_str());' % (os.path.relpath(p, TESTS), i))
+    open(os.path.join(crate, "Cargo.toml"), "w").write(
+        '[package]\nname = "kc-rust"\nversion = "0.1.0"\nedition = "2024"\n\n[workspace]\n\n'
+        '[dependencies]\nkayak-rt = { path = "%s" }\n' % os.path.join(ROOT, "crates", "kayak-rt"))
+    open(os.path.join(crate, "src", "main.rs"), "w").write(
+        "\n".join(mods) + "\n\nfn main() {\n" + "\n".join(calls).replace("'", '"') + "\n}\n")
+    r = run(["cargo", "run", "--release", "-q"], cwd=crate,
+            env=dict(os.environ, CARGO_TARGET_DIR=os.path.join(ROOT, "target", "kc-rust-target")))
+    if r.returncode != 0:
+        wrong.append("rust: the crate does not build or run: %s" % r.stderr.strip()[-2000:])
+    else:
+        for line in r.stdout.splitlines():
+            name, got = line.split("\t")
+            want = stated(os.path.join(TESTS, name))
+            if got != want:
+                wrong.append("%s: rust gives %s, not %s" % (name, got, want))
+    wrong += cutoff()
+    for w in wrong:
+        print("kc-steps: " + w)
+    print("kc-steps: %d programs, %d by native code, %d by Rust; %d wrong; %d query bodies ran%s"
+          % (len(ps), len(ps), len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
+    sys.exit(1 if wrong else 0)
+
+
+if __name__ == "__main__":
+    main()

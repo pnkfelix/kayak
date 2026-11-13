@@ -11052,3 +11052,59 @@ read-back=9/0 edited=10/2 another's-keys=0` (a value, then how many
 bodies ran: an edit to the same length runs only the file's `len`, early
 cutoff sparing `total`; read back from its text, none).
 
+## C399. kc, step 1: integers, end to end, on both back ends (K1) (2026-11-12)
+
+kc's first step, Ghuloum's: a program that is one integer, compiled and
+run, by every back end that takes it, its value Fixpt's.
+- **kc** is `kc/kc.unit`: the checker it keeps (kfx's files, the
+  restriction pass among them), the engine (`lib/query.kfx`,
+  `lib/db.kfx`), then its own files: `front.kfx` (the inputs, `text
+  PATH`; `checked PATH`, as FX-26 or, for a `.kfx` file, as KFX; `kfx
+  PATH`, as KFX whatever the name, which the Rust back end asks), `l0.kfx`
+  (step 1's language, `(int N)`, a fixnum), `rust.kfx` (`rust PATH`, a
+  module whose `main` gives the value as Fixpt writes it, on kayak-rt),
+  `x64.kfx` (`asm PATH`, `kc_entry` giving the value in `%rax` in Fixpt's
+  format), `main.kfx` (the driver: `kc [--db DB] [--stats] (--check FILE
+  | --rust FILE OUT | --asm FILE OUT)`). Every key a query's name and its
+  argument; every body given the database and the one procedure that runs
+  any query, so that kc's files need not name each other in a cycle.
+- **Built** by kfx into `crates/kayak-kc` (the binary `kc`; `regen.sh
+  --all` makes it, as it makes the engine's), and its native code's
+  runtime, `crates/kayak-kcrt`, a static library: at step 1 a `main` that
+  runs `kc_entry` and writes its value. Linked by the system's `cc`.
+- **Its database kept** with `--db`: a second run with nothing changed
+  runs no query body; an edit runs only what read it. The database's
+  first line says whose it is, `kc` and kc's identity, a fingerprint of
+  kc's sources (`kc/identity.kfx`, made by `compiler-identity.py` as
+  kfx's is, C387), so that one kc's database is never another's.
+- **The harness**, `scripts/kc-steps.py`, in the full check: each program
+  of `tests/kc/stepN/` states its value, which must be the pinned Fixpt's
+  `eval`; compiled natively, assembled, linked and run; the KFX ones by
+  the Rust back end too, all as modules of one crate (`target/kc-rust`).
+  Step 1: six programs (0, 42, -7, the fixnums' ends, one `.kfx`), all
+  agreeing; a second sweep runs no query body.
+- **Reuse checked, not argued** (the user: "How are you checking that
+  different inputs that end up yielding equivalent intermediate results
+  allow for the remaining work to be punted"). Early cutoff is sound when
+  a body reads only through the database, its value's text carries all
+  its dependents use, and it is deterministic; a fingerprint's collision
+  (2^-64 a pair) is accepted, not guarded. Checked two ways: the database
+  says which keys ran (`db-ran`, `kc --stats`), and `kc-steps.py` edits a
+  program to text that means the same (`  42   ; ...`) and requires that
+  only `checked` and `l0` ran again, `asm` spared, and to another value
+  that `asm` ran; and `tests/kfx/db-verify.unit`, 300 random edits (at
+  random durabilities) of a graph whose reads depend on what was read and
+  whose values often stay the same, each followed by a random query asked
+  of the database and of a fresh one given only the inputs: they must
+  agree. **It found a bug at once**: 59 of 300 disagreed. An input whose
+  durability was lowered (3 to 0, say) was recorded as changed at the new
+  durability alone, so what had read it at the old one took the
+  durability shortcut and kept a stale value. Now the change counts at the
+  higher of the two (salsa records it so). 0 disagree; the database ran
+  318 bodies where fresh ones ran 717.
+- **Found on the way**: a unit's datatypes are declared ahead across all
+  its files, so a library's names meet the compiler's (`lib/db.kfx`'s
+  `got` was the reader's; `nth-i64` the terminator's): renamed. KFX's
+  `pure` is no effect at all, so a procedure calling another global is
+  `kfx` (reading globals): the engine's helpers say so.
+

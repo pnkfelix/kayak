@@ -1,0 +1,13 @@
+"rust.kfx: kc's Rust back end (docs/research/kc.md), of KFX: `rust PATH`,
+ a module whose `main` gives the program's value as Fixpt writes it."
+
+(define q-rust qbody
+  (lambda (d run path)
+    (begin
+     (db-get d run (string-append "kfx " path))
+     (string-list-append
+      (list "// Made by kc (docs/research/kc.md) from " path ".\n"
+            "use kayak_rt::*;\n\n"
+            "pub fn main() -> Str {\n"
+            "    int_to_string(int_lit(" (i64->string (l0-int d run path)) "i64))\n"
+            "}\n")))))

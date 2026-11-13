@@ -102,6 +102,7 @@ function that prints a value.
   recorded reads in order, revisions, durabilities, verification, early
   cutoff, the graph and memos persisted; synchronous first; tested
   against a from-scratch run.
+- **K0** done (C398). **K1** done (C399).
 - **K1. Step 1 end to end**: kc's driver; the front end (read, check) as
   queries; the passes from checked integers to each back end (Rust:
   a `main` that prints; native: assembly and a runtime that prints);

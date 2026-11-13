@@ -1523,7 +1523,7 @@ Twobit-style optimizations in KFX.
 ## 52. kc (the user, 2026-11-12; `docs/research/kc.md`)
 
 The compiler from scratch, of FX-26 and KFX, its passes queries. K0 the
-engine (`lib/db.kfx`, done, C398); K1 step 1 end to end (the driver, the
+engine (`lib/db.kfx`, done, C398); K1 step 1 end to end (done, C399) (the driver, the
 front end as queries, integers to async Rust and to native code, the
 harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - The engine: generic over effects and regions; values kept decoded in
@@ -1531,4 +1531,8 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   leaves its frame (an error ends the run today); asynchronous bodies on
   kayak-sched (Coopt's: a waited-on query a task); nodes no key reaches
   any longer collected; durability's shortcut measured.
+- kc: a refusal is an error that ends the run, so it is no query's value:
+  a checked program's refusal to be one, said, and kept, as any value.
+- kc: each query reads its file's forms again from the text (`kc-forms`);
+  the forms as a query's value once values are kept decoded.
 

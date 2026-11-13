@@ -1,0 +1,14 @@
+[package]
+name = "kayak-kcrt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+# Its `main` is the program's, which a test harness of its own would
+# declare again: tested through kc's programs (scripts/kc-steps.py).
+test = false
+doctest = false
+
+[dependencies]

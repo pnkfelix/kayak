@@ -1,0 +1,15 @@
+"x64.kfx: kc's native back end, x86-64 (docs/research/kc.md): `asm PATH`,
+ assembly for the system's assembler, of `kc_entry`, which gives the
+ program's value in `%rax`, in Fixpt's format (a fixnum shifted past its
+ three tag bits, tag 0), for the runtime (`crates/kayak-kcrt`) to write."
+
+(define q-asm qbody
+  (lambda (d run path)
+    (string-list-append
+      (list "# Made by kc (docs/research/kc.md) from " path ".\n"
+            "    .text\n"
+            "    .globl kc_entry\n"
+            "kc_entry:\n"
+            "    movabsq $" (i64->string (i64* (l0-int d run path) 8)) ", %rax\n"
+            "    ret\n"
+            "    .section .note.GNU-stack,\"\",@progbits\n"))))

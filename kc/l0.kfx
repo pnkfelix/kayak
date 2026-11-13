@@ -1,0 +1,26 @@
+"l0.kfx: kc's first language (Ghuloum's step 1, docs/research/kc.md): a
+ program that is one integer, its value. `l0 PATH`: the checked program in
+ it, `(int N)`; anything else not yet."
+
+(define fixnum-max i64 1152921504606846975)
+
+(define q-l0 qbody
+  (lambda (d run path)
+    (begin
+      (db-get d run (string-append "checked " path))
+      (let ((forms (kc-forms d run path)))
+        (if (or (null? forms) (not (null? (cdr forms))))
+            (begin (error (string-append "kc: " (string-append path ": not yet: a program of other than one form"))) "")
+            (tagcase (car forms)
+              (num (k f p)
+                (if (or (i64> k fixnum-max) (i64< k (i64- 0 (i64+ fixnum-max 1))))
+                    (begin (error (string-append "kc: " (string-append path ": not yet: an integer past a fixnum"))) "")
+                    (string-append "(int " (string-append (i64->string k) ")"))))
+              (else other (begin (error (string-append "kc: " (string-append path ": not yet: other than an integer"))) ""))))))))
+
+"An `l0` program's integer."
+(define l0-int (subr qe (db runner string) i64)
+  (lambda (d run path)
+    (tagcase (car (read-all (db-get d run (string-append "l0 " path)) "l0" 1))
+      (lst (xs f l p) (tagcase (second xs) (num (k f2 p2) k) (else other 0)))
+      (else other 0))))
