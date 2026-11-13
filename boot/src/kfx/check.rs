@@ -4094,7 +4094,7 @@ pub fn union_members(ts: Tys) -> Tys {
 pub fn allof_emitter_only() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("param-types "), kayak_rt::heap_cons(str_lit("tagcase-sum "), kayak_rt::heap_cons(str_lit("sum-type "), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit("param-types "), kayak_rt::heap_cons(str_lit("tagcase-sum "), kayak_rt::heap_cons(str_lit("tagcase-sum-type "), kayak_rt::heap_cons(str_lit("sum-type "), kayak_rt::nil()))))
     })
 }
 
@@ -13417,8 +13417,9 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         not(string_member_p(l, ms))
                     }), ls))) {
                         // A sum below one of more tags, each of its own there (Fixpt's width
-                        // subtyping, fx26.md; C183); KFX's Rust enums are one each.
-                        fits_each(v, kfx_restricted(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" where a "), string_append(show_ty(s, e), str_lit(" is expected, FX-26's width subtyping, which KFX's Rust enums have not (C183)")))))), ts, map(lambda1s(move |l: Str| {
+                        // subtyping, fx26.md; C183): KFX's too, a sum of fewer tags being
+                        // in Rust the very `Sum` of more (C409).
+                        fits_each(v, s, ts, map(lambda1s(move |l: Str| {
                             label_type(l, ms, us)
                         }), ls))
                     } else {

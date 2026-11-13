@@ -2,43 +2,39 @@
 
 use kayak_rt::*;
 
-#[allow(non_camel_case_types)]
-pub enum Sum_2ok_6failed<A0, A1> {
-    Ok(A0),
-    Failed(A1),
-}
+const _: () = kayak_rt::tags_apart_from_runtime(&["failed", "ok"]);
 
 // FX-26's monitors (C108): Fixpt's `programs/monitors`, in KFX. A process
 // made by `spawn-monitored` that fails, by `error` or a trap, fails no
 // program: its watcher is sent what the failure says, once, however many
 // of its `par`'s branches fail, and the program goes on.
 
-pub type Report = &'static Sum_2ok_6failed<Int, Str>;
+pub type Report = kayak_rt::Sum;
 
 #[inline]
 pub fn failed(m: Str) -> Report {
-    kayak_rt::heap_alloc(Sum_2ok_6failed::<Int, Str>::Failed(m))
+    kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", m)
 }
 
 // What a report counts: an answer, itself; a failure, by what it says.
 pub fn score(r: Report) -> Int {
     let tagcase_ = r;
-    match *tagcase_ {
-        Sum_2ok_6failed::Ok(v) => {
-            v
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("ok") } {
+        let v: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        v
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        if string_eq_p(m, str_lit("bad input")) {
+            int_lit(100)
+        } else if (string_eq_p(m, str_lit("left")) || string_eq_p(m, str_lit("right"))) {
+            int_lit(200)
+        } else if string_eq_p(m, str_lit("")) {
+            int_lit(0)
+        } else {
+            int_lit(50)
         }
-        Sum_2ok_6failed::Failed(m) => {
-            if string_eq_p(m, str_lit("bad input")) {
-                int_lit(100)
-            } else if (string_eq_p(m, str_lit("left")) || string_eq_p(m, str_lit("right"))) {
-                int_lit(200)
-            } else if string_eq_p(m, str_lit("")) {
-                int_lit(0)
-            } else {
-                int_lit(50)
-            }
-        }
-    }
+    } else { unreachable!() }
 }
 
 // A collector of `count` reports, their scores summed into `out`; after
@@ -46,11 +42,11 @@ pub fn score(r: Report) -> Int {
 // process's watcher is sent one message for its failure, however it
 // failed.
 pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<&'static Sum_2ok_6failed<Int, Str>>| {
+    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::Sum>| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
-            fn letrena__r<'r>(r: &'r Region_R<'r>, count: Int, out: ICell<Int>, r#box: Inbox<&'static Sum_2ok_6failed<Int, Str>>) -> () {
+            fn letrena__r<'r>(r: &'r Region_R<'r>, count: Int, out: ICell<Int>, r#box: Inbox<kayak_rt::Sum>) -> () {
                 let go__knot = knot::<&'r dyn Fn(Int, Int) -> ()>();
                 let go = lambda2(move |mut n: Int, mut total: Int| {
                     loop {
@@ -101,8 +97,8 @@ pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
-            fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<&'static Sum_2ok_6failed<Int, Str>>, r#box: Inbox<Int>) -> () {
-                kayak_rt::process::send(collector, alloc(Sum_2ok_6failed::<Int, Str>::Ok(work(kayak_rt::process::receive(r#box)))))
+            fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<kayak_rt::Sum>, r#box: Inbox<Int>) -> () {
+                kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", work(kayak_rt::process::receive(r#box))))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, collector, r#box)
@@ -117,7 +113,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
-            fn letrena__r<'r>(r: &'r Region_R<'r>, r#box: Inbox<Int>, both: bool, collector: Addr<&'static Sum_2ok_6failed<Int, Str>>) -> () {
+            fn letrena__r<'r>(r: &'r Region_R<'r>, r#box: Inbox<Int>, both: bool, collector: Addr<kayak_rt::Sum>) -> () {
                 let n = kayak_rt::process::receive(r#box);
                 {
                     let (a, b) = kayak_rt::process::par2(move || if _eq(n, int_lit(0)) {
@@ -129,7 +125,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
                     } else {
                         _star(n, int_lit(2))
                     });
-                    kayak_rt::process::send(collector, alloc(Sum_2ok_6failed::<Int, Str>::Ok(_plus(a, b))))
+                    kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", _plus(a, b)))
                 }
             }
             let r__arena = Region_R::default();
@@ -146,8 +142,8 @@ pub fn start_divider(collector: Addr<Report>) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
-            fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<&'static Sum_2ok_6failed<Int, Str>>, r#box: Inbox<Int>) -> () {
-                kayak_rt::process::send(collector, alloc(Sum_2ok_6failed::<Int, Str>::Ok(quotient(int_lit(7), kayak_rt::process::receive(r#box)))))
+            fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<kayak_rt::Sum>, r#box: Inbox<Int>) -> () {
+                kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", quotient(int_lit(7), kayak_rt::process::receive(r#box))))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, collector, r#box)

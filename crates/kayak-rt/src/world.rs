@@ -9,8 +9,8 @@
 //! (`standard-shape?`), so a program and kayak-rt name one type.
 
 use crate::{
-    Holds, Int, List, Show, Str, Void, fail, heap_alloc, heap_cons, i64_to_int, int_to_i64,
-    leak_string, nil,
+    Holds, Int, List, Show, Str, Sum, SumOf, Void, fail, heap_cons, i64_to_int, int_to_i64,
+    leak_string, nil, sum_of,
 };
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -21,146 +21,16 @@ use std::time::{Duration, Instant};
 // The standard shapes, as `put-shape-decls` writes a program's.
 
 #[allow(non_camel_case_types)]
-pub enum Sum_4text_3bad<A0, A1> {
-    Text(A0),
-    Bad(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4done_6failed<A0, A1> {
-    Done(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4line_3eof_6failed<A0, A1, A2> {
-    Line(A0),
-    Eof(A1),
-    Failed(A2),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4byte_3eof_6failed<A0, A1, A2> {
-    Byte(A0),
-    Eof(A1),
-    Failed(A2),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_5count_3eof_6failed<A0, A1, A2> {
-    Count(A0),
-    Eof(A1),
-    Failed(A2),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4done_14not_a_terminal_6failed<A0, A1, A2> {
-    Done(A0),
-    NotATerminal(A1),
-    Failed(A2),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4size_14not_a_terminal_6failed<A0, A1, A2> {
-    Size(A0),
-    NotATerminal(A1),
-    Failed(A2),
-}
-
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4rows_7columns<A0, A1>(pub A0, pub A1);
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4data_6failed<A0, A1> {
-    Data(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_5names_6failed<A0, A1> {
-    Names(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4info_6failed<A0, A1> {
-    Info(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_6target_6failed<A0, A1> {
-    Target(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4file_9directory_7symlink_5other<A0, A1, A2, A3> {
-    File(A0),
-    Directory(A1),
-    Symlink(A2),
-    Other(A3),
-}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4kind_4size_8modified_4mode<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
 #[allow(non_camel_case_types)]
-pub enum Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<
-    A0,
-    A1,
-    A2,
-    A3,
-    A4,
-    A5,
-    A6,
-    A7,
-> {
-    NotFound(A0),
-    PermissionDenied(A1),
-    AlreadyExists(A2),
-    NotADirectory(A3),
-    IsADirectory(A4),
-    BrokenPipe(A5),
-    InvalidData(A6),
-    Other(A7),
-}
-
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4kind_6detail<A0, A1>(pub A0, pub A1);
-
-macro_rules! show_sum {
-    ($name:ident < $($a:ident),* > { $($v:ident => $l:literal),* }) => {
-        impl<$($a),*> Show for $name<$($a),*> {
-            fn show(&self, out: &mut String) {
-                match self {
-                    $($name::$v(..) => out.push_str(concat!("#<sum ", $l, ">")),)*
-                }
-            }
-        }
-    };
-}
-
-show_sum!(Sum_4text_3bad<A0, A1> { Text => "text", Bad => "bad" });
-show_sum!(Sum_4done_6failed<A0, A1> { Done => "done", Failed => "failed" });
-show_sum!(Sum_4line_3eof_6failed<A0, A1, A2> { Line => "line", Eof => "eof", Failed => "failed" });
-show_sum!(Sum_4data_6failed<A0, A1> { Data => "data", Failed => "failed" });
-show_sum!(Sum_4byte_3eof_6failed<A0, A1, A2> { Byte => "byte", Eof => "eof", Failed => "failed" });
-show_sum!(Sum_5count_3eof_6failed<A0, A1, A2> { Count => "count", Eof => "eof", Failed => "failed" });
-show_sum!(Sum_4done_14not_a_terminal_6failed<A0, A1, A2> { Done => "done", NotATerminal => "not-a-terminal", Failed => "failed" });
-show_sum!(Sum_4size_14not_a_terminal_6failed<A0, A1, A2> { Size => "size", NotATerminal => "not-a-terminal", Failed => "failed" });
-show_sum!(Sum_5names_6failed<A0, A1> { Names => "names", Failed => "failed" });
-show_sum!(Sum_4info_6failed<A0, A1> { Info => "info", Failed => "failed" });
-show_sum!(Sum_6target_6failed<A0, A1> { Target => "target", Failed => "failed" });
-show_sum!(Sum_4file_9directory_7symlink_5other<A0, A1, A2, A3> { File => "file", Directory => "directory", Symlink => "symlink", Other => "other" });
-show_sum!(Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<A0, A1, A2, A3, A4, A5, A6, A7> {
-    NotFound => "not-found", PermissionDenied => "permission-denied", AlreadyExists => "already-exists",
-    NotADirectory => "not-a-directory", IsADirectory => "is-a-directory", BrokenPipe => "broken-pipe",
-    InvalidData => "invalid-data", Other => "other"
-});
 
 impl<A0, A1> Show for Product_4kind_6detail<A0, A1> {
     fn show(&self, out: &mut String) {
@@ -181,42 +51,23 @@ impl<A0, A1> Show for Product_4rows_7columns<A0, A1> {
 }
 
 /// `io-error`'s kind.
-pub type IoKind = &'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<
-    (),
-    (),
-    (),
-    (),
-    (),
-    (),
-    (),
-    (),
->;
+pub type IoKind = Sum;
 
 /// `io-error`: its kind, for a `tagcase`, and the system's words.
 pub type IoError = Product_4kind_6detail<IoKind, Str>;
 
 pub(crate) fn io_error(e: &std::io::Error) -> IoError {
     use std::io::ErrorKind as K;
-    type S = Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<
-        (),
-        (),
-        (),
-        (),
-        (),
-        (),
-        (),
-        (),
-    >;
-    let kind: IoKind = heap_alloc(match e.kind() {
-        K::NotFound => S::NotFound(()),
-        K::PermissionDenied => S::PermissionDenied(()),
-        K::AlreadyExists => S::AlreadyExists(()),
-        K::NotADirectory => S::NotADirectory(()),
-        K::IsADirectory => S::IsADirectory(()),
-        K::BrokenPipe => S::BrokenPipe(()),
-        K::InvalidData => S::InvalidData(()),
-        _ => S::Other(()),
-    });
+    let kind: IoKind = match e.kind() {
+        K::NotFound => sum_of("not-found", ()),
+        K::PermissionDenied => sum_of("permission-denied", ()),
+        K::AlreadyExists => sum_of("already-exists", ()),
+        K::NotADirectory => sum_of("not-a-directory", ()),
+        K::IsADirectory => sum_of("is-a-directory", ()),
+        K::BrokenPipe => sum_of("broken-pipe", ()),
+        K::InvalidData => sum_of("invalid-data", ()),
+        _ => sum_of("other", ()),
+    };
     Product_4kind_6detail(kind, leak_string(e.to_string()))
 }
 
@@ -360,12 +211,10 @@ pub fn string_to_utf8_in<'r, R: Holds<BytesCells>>(r: &'r R, s: Str) -> BytesAt<
     bytes_in(r, s.as_str().as_bytes().to_vec())
 }
 
-pub fn utf8_to_string(b: BytesAt<'_>) -> &'static Sum_4text_3bad<Str, Int> {
+pub fn utf8_to_string(b: BytesAt<'_>) -> Sum {
     match String::from_utf8(to_vec(b)) {
-        Ok(s) => heap_alloc(Sum_4text_3bad::Text(leak_string(s))),
-        Err(e) => heap_alloc(Sum_4text_3bad::Bad(i64_to_int(
-            e.utf8_error().valid_up_to() as i64,
-        ))),
+        Ok(s) => sum_of("text", leak_string(s)),
+        Err(e) => sum_of("bad", i64_to_int(e.utf8_error().valid_up_to() as i64)),
     }
 }
 
@@ -378,11 +227,11 @@ pub fn utf8_to_string(b: BytesAt<'_>) -> &'static Sum_4text_3bad<Str, Int> {
 // made anew.
 
 /// The 256 results `read-byte` gives of a byte.
-static BYTES: [Sum_4byte_3eof_6failed<u8, (), IoError>; 256] = {
-    let mut a = [const { Sum_4byte_3eof_6failed::Eof(()) }; 256];
+static BYTES: [SumOf<u8>; 256] = {
+    let mut a = [const { SumOf::new("byte", 0u8) }; 256];
     let mut i = 0;
     while i < 256 {
-        a[i] = Sum_4byte_3eof_6failed::Byte(i as u8);
+        a[i] = SumOf::new("byte", i as u8);
         i += 1;
     }
     a
@@ -390,32 +239,35 @@ static BYTES: [Sum_4byte_3eof_6failed<u8, (), IoError>; 256] = {
 
 /// How many counts of `read-bytes` are made once.
 const COUNTS_KEPT: usize = 4096;
-static COUNTS: [Sum_5count_3eof_6failed<Int, (), IoError>; COUNTS_KEPT + 1] = {
-    let mut a = [const { Sum_5count_3eof_6failed::Eof(()) }; COUNTS_KEPT + 1];
+static COUNTS: [SumOf<Int>; COUNTS_KEPT + 1] = {
+    let mut a = [const { SumOf::new("count", Int::Small(0)) }; COUNTS_KEPT + 1];
     let mut i = 0;
     while i <= COUNTS_KEPT {
-        a[i] = Sum_5count_3eof_6failed::Count(Int::Small(i as i64));
+        a[i] = SumOf::new("count", Int::Small(i as i64));
         i += 1;
     }
     a
 };
 
-pub(crate) fn counted(k: usize) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
+pub(crate) fn counted(k: usize) -> Sum {
     if k <= COUNTS_KEPT {
-        &COUNTS[k]
+        COUNTS[k].sum()
     } else {
-        heap_alloc(Sum_5count_3eof_6failed::Count(i64_to_int(k as i64)))
+        sum_of("count", i64_to_int(k as i64))
     }
 }
 
-pub(crate) fn written(r: std::io::Result<()>) -> &'static Sum_4done_6failed<(), IoError> {
+pub(crate) fn written(r: std::io::Result<()>) -> Sum {
     match r {
-        Ok(()) => &Sum_4done_6failed::Done(()),
-        Err(e) => heap_alloc(Sum_4done_6failed::Failed(io_error(&e))),
+        Ok(()) => {
+            static C: SumOf<()> = SumOf::new("done", ());
+            C.sum()
+        }
+        Err(e) => sum_of("failed", io_error(&e)),
     }
 }
 
-pub fn write_out(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub fn write_out(s: Str) -> Sum {
     if crate::async_io::installed() {
         return crate::async_io::write_now(1, s);
     }
@@ -426,7 +278,7 @@ pub fn write_out(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
     )
 }
 
-pub fn write_err(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub fn write_err(s: Str) -> Sum {
     if crate::async_io::installed() {
         return crate::async_io::write_now(2, s);
     }
@@ -588,21 +440,22 @@ pub fn stdin_wait(until: i64) -> bool {
 
 /// The next line, its ending (`\n` or `\r\n`) left off; a line not UTF-8
 /// an `invalid-data` failure, reading going on after it.
-pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
+pub fn read_line() -> Sum {
     line_answer(read_line_bytes())
 }
 
 /// A line read, as `read-line` answers it.
-pub(crate) fn line_answer(
-    r: std::io::Result<Option<Vec<u8>>>,
-) -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
+pub(crate) fn line_answer(r: std::io::Result<Option<Vec<u8>>>) -> Sum {
     match r {
-        Ok(None) => &Sum_4line_3eof_6failed::Eof(()),
-        Ok(Some(line)) => heap_alloc(match String::from_utf8(line) {
-            Ok(s) => Sum_4line_3eof_6failed::Line(leak_string(s)),
-            Err(_) => Sum_4line_3eof_6failed::Failed(invalid_data("a line not UTF-8")),
-        }),
-        Err(e) => heap_alloc(Sum_4line_3eof_6failed::Failed(io_error(&e))),
+        Ok(None) => {
+            static C: SumOf<()> = SumOf::new("eof", ());
+            C.sum()
+        }
+        Ok(Some(line)) => match String::from_utf8(line) {
+            Ok(s) => sum_of("line", leak_string(s)),
+            Err(_) => sum_of("failed", invalid_data("a line not UTF-8")),
+        },
+        Err(e) => sum_of("failed", io_error(&e)),
     }
 }
 
@@ -888,17 +741,20 @@ pub fn code_noted(start: i64, len: i64, name: &str) {
 }
 
 /// The next byte, waiting for one; `eof` at the end.
-pub fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
+pub fn read_byte() -> Sum {
     let mut i = arrived();
     match i.buf.pop_front() {
         Some(b) => {
             drop(i);
             TAKEN.notify_one();
-            &BYTES[b as usize]
+            BYTES[b as usize].sum()
         }
         None => match i.error.take() {
-            Some(e) => heap_alloc(Sum_4byte_3eof_6failed::Failed(io_error(&e))),
-            None => &Sum_4byte_3eof_6failed::Eof(()),
+            Some(e) => sum_of("failed", io_error(&e)),
+            None => {
+                static C: SumOf<()> = SumOf::new("eof", ());
+                C.sum()
+            }
         },
     }
 }
@@ -906,11 +762,7 @@ pub fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
 /// `(read-bytes bv start end)`: waits for one byte, then takes as many as
 /// have come, at most `end - start`, into `bv` from `start`; how many, or
 /// `eof`. None asked for, 0 at once.
-pub fn read_bytes(
-    bv: BytesAt<'_>,
-    start: Int,
-    end: Int,
-) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
+pub fn read_bytes(bv: BytesAt<'_>, start: Int, end: Int) -> Sum {
     let (s, e) = span(bv, start, end, "read-bytes: a span that does not fit");
     if s == e {
         return counted(0);
@@ -918,8 +770,11 @@ pub fn read_bytes(
     let mut i = arrived();
     if i.buf.is_empty() {
         return match i.error.take() {
-            Some(e) => heap_alloc(Sum_5count_3eof_6failed::Failed(io_error(&e))),
-            None => &Sum_5count_3eof_6failed::Eof(()),
+            Some(e) => sum_of("failed", io_error(&e)),
+            None => {
+                static C: SumOf<()> = SumOf::new("eof", ());
+                C.sum()
+            }
         };
     }
     let k = i.buf.len().min(e - s);
@@ -964,18 +819,22 @@ pub(crate) fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
     )
 }
 
-pub(crate) fn moded(
-    r: Option<std::io::Result<String>>,
-) -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+pub(crate) fn moded(r: Option<std::io::Result<String>>) -> Sum {
     match r {
-        None => &Sum_4done_14not_a_terminal_6failed::NotATerminal(()),
-        Some(Ok(_)) => &Sum_4done_14not_a_terminal_6failed::Done(()),
-        Some(Err(e)) => heap_alloc(Sum_4done_14not_a_terminal_6failed::Failed(io_error(&e))),
+        None => {
+            static C: SumOf<()> = SumOf::new("not-a-terminal", ());
+            C.sum()
+        }
+        Some(Ok(_)) => {
+            static C: SumOf<()> = SumOf::new("done", ());
+            C.sum()
+        }
+        Some(Err(e)) => sum_of("failed", io_error(&e)),
     }
 }
 
 /// The terminal in raw mode, its modes before saved the first time.
-pub fn terminal_raw() -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+pub fn terminal_raw() -> Sum {
     moded(terminal_raw_stty())
 }
 
@@ -995,7 +854,7 @@ pub(crate) fn terminal_raw_stty() -> Option<std::io::Result<String>> {
 }
 
 /// The terminal's modes as before raw mode, if it was asked for.
-pub fn terminal_restore() -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+pub fn terminal_restore() -> Sum {
     moded(terminal_restore_stty())
 }
 
@@ -1009,32 +868,28 @@ pub(crate) fn terminal_restore_stty() -> Option<std::io::Result<String>> {
 }
 
 /// The terminal's rows and columns.
-pub fn terminal_size()
--> &'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), IoError> {
+pub fn terminal_size() -> Sum {
     terminal_size_answer(stty(&["size"]))
 }
 
-pub(crate) fn terminal_size_answer(
-    said: Option<std::io::Result<String>>,
-) -> &'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), IoError> {
-    heap_alloc(match said {
-        None => Sum_4size_14not_a_terminal_6failed::NotATerminal(()),
-        Some(Err(e)) => Sum_4size_14not_a_terminal_6failed::Failed(io_error(&e)),
+pub(crate) fn terminal_size_answer(said: Option<std::io::Result<String>>) -> Sum {
+    match said {
+        None => sum_of("not-a-terminal", ()),
+        Some(Err(e)) => sum_of("failed", io_error(&e)),
         Some(Ok(s)) => {
             let ws: Vec<i64> = s
                 .split_whitespace()
                 .filter_map(|w| w.parse().ok())
                 .collect();
             match ws[..] {
-                [rows, columns] => Sum_4size_14not_a_terminal_6failed::Size(
+                [rows, columns] => sum_of(
+                    "size",
                     Product_4rows_7columns(i64_to_int(rows), i64_to_int(columns)),
                 ),
-                _ => Sum_4size_14not_a_terminal_6failed::Failed(invalid_data(
-                    "stty size: no rows and columns",
-                )),
+                _ => sum_of("failed", invalid_data("stty size: no rows and columns")),
             }
         }
-    })
+    }
 }
 
 /// The terminal put back as the run found it, when the run ends, failed or
@@ -1081,7 +936,7 @@ pub fn args() -> List<Str> {
         .fold(nil(), |acc, a| heap_cons(leak_string(a), acc))
 }
 
-pub fn read_file(path: Str) -> &'static Sum_4data_6failed<Bytes, IoError> {
+pub fn read_file(path: Str) -> Sum {
     read_file_answer(read_regular_file(path.as_str()))
 }
 
@@ -1108,18 +963,16 @@ pub(crate) fn read_regular_file(path: &str) -> std::io::Result<Vec<u8>> {
 /// `read-file`'s answer, of what the system gave (C381: in the async mode,
 /// a worker of the runner's reads it; the answer is made here, in the
 /// program's heap).
-pub(crate) fn read_file_answer(
-    r: std::io::Result<Vec<u8>>,
-) -> &'static Sum_4data_6failed<Bytes, IoError> {
-    heap_alloc(match r {
-        Ok(v) => Sum_4data_6failed::Data(bytes_of(v)),
-        Err(e) => Sum_4data_6failed::Failed(io_error(&e)),
-    })
+pub(crate) fn read_file_answer(r: std::io::Result<Vec<u8>>) -> Sum {
+    match r {
+        Ok(v) => sum_of("data", bytes_of(v)),
+        Err(e) => sum_of("failed", io_error(&e)),
+    }
 }
 
 /// The names, sorted by their bytes; a name not UTF-8 an `invalid-data`
 /// failure.
-pub fn list_dir(path: Str) -> &'static Sum_5names_6failed<List<Str>, IoError> {
+pub fn list_dir(path: Str) -> Sum {
     list_dir_answer(list_dir_names(path.as_str()))
 }
 
@@ -1136,83 +989,80 @@ pub(crate) fn list_dir_names(path: &str) -> std::io::Result<Vec<String>> {
     })
 }
 
-pub(crate) fn list_dir_answer(
-    names: std::io::Result<Vec<String>>,
-) -> &'static Sum_5names_6failed<List<Str>, IoError> {
-    heap_alloc(match names {
+pub(crate) fn list_dir_answer(names: std::io::Result<Vec<String>>) -> Sum {
+    match names {
         Ok(mut ns) => {
             ns.sort();
-            Sum_5names_6failed::Names(
+            sum_of(
+                "names",
                 ns.into_iter()
                     .rev()
                     .fold(nil(), |acc, n| heap_cons(leak_string(n), acc)),
             )
         }
-        Err(e) => Sum_5names_6failed::Failed(io_error(&e)),
-    })
+        Err(e) => sum_of("failed", io_error(&e)),
+    }
 }
 
 /// `file-info`'s kind of file.
-pub type FileKind = &'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>;
+pub type FileKind = Sum;
 
 /// `file-info`'s answer: the path itself (`lstat`, a link not followed),
 /// its kind, size, modification time in seconds and permission bits, as
 /// Fixpt's `file_info` (C293).
 pub type FileInfo = Product_4kind_4size_8modified_4mode<FileKind, Int, Int, Int>;
 
-pub fn file_info(path: Str) -> &'static Sum_4info_6failed<FileInfo, IoError> {
+pub fn file_info(path: Str) -> Sum {
     file_info_answer(std::fs::symlink_metadata(path.as_str()))
 }
 
-pub(crate) fn file_info_answer(
-    r: std::io::Result<std::fs::Metadata>,
-) -> &'static Sum_4info_6failed<FileInfo, IoError> {
+pub(crate) fn file_info_answer(r: std::io::Result<std::fs::Metadata>) -> Sum {
     use std::os::unix::fs::MetadataExt;
-    type K = Sum_4file_9directory_7symlink_5other<(), (), (), ()>;
-    heap_alloc(match r {
+    match r {
         Ok(m) => {
             let t = m.file_type();
-            let kind: FileKind = heap_alloc(if t.is_symlink() {
-                K::Symlink(())
+            let kind: FileKind = if t.is_symlink() {
+                sum_of("symlink", ())
             } else if t.is_dir() {
-                K::Directory(())
+                sum_of("directory", ())
             } else if t.is_file() {
-                K::File(())
+                sum_of("file", ())
             } else {
-                K::Other(())
-            });
-            Sum_4info_6failed::Info(Product_4kind_4size_8modified_4mode(
-                kind,
-                i64_to_int(m.len() as i64),
-                i64_to_int(m.mtime()),
-                i64_to_int((m.mode() & 0o7777) as i64),
-            ))
+                sum_of("other", ())
+            };
+            sum_of(
+                "info",
+                Product_4kind_4size_8modified_4mode(
+                    kind,
+                    i64_to_int(m.len() as i64),
+                    i64_to_int(m.mtime()),
+                    i64_to_int((m.mode() & 0o7777) as i64),
+                ),
+            )
         }
-        Err(e) => Sum_4info_6failed::Failed(io_error(&e)),
-    })
+        Err(e) => sum_of("failed", io_error(&e)),
+    }
 }
 
 /// The target of the symbolic link `path` names, as written; one not UTF-8
 /// an `invalid-data` failure (Fixpt's `read_symlink`).
-pub fn read_symlink(path: Str) -> &'static Sum_6target_6failed<Str, IoError> {
+pub fn read_symlink(path: Str) -> Sum {
     read_symlink_answer(std::fs::read_link(path.as_str()))
 }
 
-pub(crate) fn read_symlink_answer(
-    r: std::io::Result<std::path::PathBuf>,
-) -> &'static Sum_6target_6failed<Str, IoError> {
-    heap_alloc(match r {
+pub(crate) fn read_symlink_answer(r: std::io::Result<std::path::PathBuf>) -> Sum {
+    match r {
         Ok(t) => match t.into_os_string().into_string() {
-            Ok(t) => Sum_6target_6failed::Target(leak_string(t)),
-            Err(_) => Sum_6target_6failed::Failed(invalid_data("a target that is not UTF-8")),
+            Ok(t) => sum_of("target", leak_string(t)),
+            Err(_) => sum_of("failed", invalid_data("a target that is not UTF-8")),
         },
-        Err(e) => Sum_6target_6failed::Failed(io_error(&e)),
-    })
+        Err(e) => sum_of("failed", io_error(&e)),
+    }
 }
 
 /// Replaces the file whole and atomically: written beside it, flushed to
 /// the disk, and renamed over it.
-pub fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<(), IoError> {
+pub fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
     written(write_file_bytes(path.as_str(), &to_vec(data)))
 }
 
@@ -1272,39 +1122,9 @@ fn child_news() {
     crate::async_io::wake();
 }
 
-#[allow(non_camel_case_types)]
-pub enum Sum_7started_6failed<A0, A1> {
-    Started(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_7running_6exited_9signalled_7unknown<A0, A1, A2, A3> {
-    Running(A0),
-    Exited(A1),
-    Signalled(A2),
-    Unknown(A3),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_6exited_9signalled_7unknown<A0, A1, A2> {
-    Exited(A0),
-    Signalled(A1),
-    Unknown(A2),
-}
-
-show_sum!(Sum_7started_6failed<A0, A1> { Started => "started", Failed => "failed" });
-show_sum!(Sum_7running_6exited_9signalled_7unknown<A0, A1, A2, A3> {
-    Running => "running", Exited => "exited", Signalled => "signalled", Unknown => "unknown"
-});
-show_sum!(Sum_6exited_9signalled_7unknown<A0, A1, A2> { Exited => "exited", Signalled => "signalled", Unknown => "unknown" });
-
 /// Program `argv`'s first started with the rest as arguments, in `dir`
 /// (this one's, if empty): its number.
-pub fn process_start(
-    argv: crate::ListAt<'_, Str>,
-    dir: Str,
-) -> &'static Sum_7started_6failed<Int, IoError> {
+pub fn process_start(argv: crate::ListAt<'_, Str>, dir: Str) -> Sum {
     use std::os::unix::process::CommandExt as _;
     let mut words = Vec::new();
     let mut l = argv;
@@ -1384,10 +1204,10 @@ pub fn process_start(
         });
         Ok(p as i64)
     })();
-    heap_alloc(match started {
-        Ok(p) => Sum_7started_6failed::Started(i64_to_int(p)),
-        Err(e) => Sum_7started_6failed::Failed(io_error(&e)),
-    })
+    match started {
+        Ok(p) => sum_of("started", i64_to_int(p)),
+        Err(e) => sum_of("failed", io_error(&e)),
+    }
 }
 
 /// How many bytes at the end of `bytes` begin a UTF-8 character not yet
@@ -1454,26 +1274,23 @@ fn ended(c: &mut Child) -> Option<(Option<i32>, Option<i32>)> {
 
 /// Whether process `p` runs: until it has exited and its output has all
 /// been read, so that a last `process-output` after gives the rest.
-pub fn process_status(
-    p: Int,
-) -> &'static Sum_7running_6exited_9signalled_7unknown<(), Int, Int, ()> {
-    type S = Sum_7running_6exited_9signalled_7unknown<(), Int, Int, ()>;
-    heap_alloc(with_child(p, S::Unknown(()), |c| match ended(c) {
-        None => S::Running(()),
+pub fn process_status(p: Int) -> Sum {
+    with_child(p, sum_of("unknown", ()), |c| match ended(c) {
+        None => sum_of("running", ()),
         Some(how) => {
             c.seen_end = true;
             match how {
-                (Some(code), _) => S::Exited(i64_to_int(code.into())),
-                (None, Some(sig)) => S::Signalled(i64_to_int(sig.into())),
-                (None, None) => S::Unknown(()),
+                (Some(code), _) => sum_of("exited", i64_to_int(code.into())),
+                (None, Some(sig)) => sum_of("signalled", i64_to_int(sig.into())),
+                (None, None) => sum_of("unknown", ()),
             }
         }
-    }))
+    })
 }
 
 /// How process `p` ended, waiting until it has and its reader has read
 /// all it wrote (F6).
-pub fn process_exit(p: Int) -> &'static Sum_6exited_9signalled_7unknown<Int, Int, ()> {
+pub fn process_exit(p: Int) -> Sum {
     loop {
         match process_exited(p) {
             Some(how) => return how,
@@ -1484,22 +1301,19 @@ pub fn process_exit(p: Int) -> &'static Sum_6exited_9signalled_7unknown<Int, Int
 
 /// How process `p` ended, if it has and its output is all read; else none
 /// (C381: in the async mode, a task waits for it).
-pub(crate) fn process_exited(
-    p: Int,
-) -> Option<&'static Sum_6exited_9signalled_7unknown<Int, Int, ()>> {
-    type S = Sum_6exited_9signalled_7unknown<Int, Int, ()>;
+pub(crate) fn process_exited(p: Int) -> Option<Sum> {
     let how = with_child(p, Some(None), |c| {
         ended(c).map(|how| {
             c.seen_end = true;
             Some(how)
         })
     })?;
-    Some(heap_alloc(match how {
-        None => S::Unknown(()),
-        Some((Some(code), _)) => S::Exited(i64_to_int(code.into())),
-        Some((None, Some(sig))) => S::Signalled(i64_to_int(sig.into())),
-        Some((None, None)) => S::Unknown(()),
-    }))
+    Some(match how {
+        None => sum_of("unknown", ()),
+        Some((Some(code), _)) => sum_of("exited", i64_to_int(code.into())),
+        Some((None, Some(sig))) => sum_of("signalled", i64_to_int(sig.into())),
+        Some((None, None)) => sum_of("unknown", ()),
+    })
 }
 
 /// The first process with news (F6): output to take, or an end the
@@ -1532,10 +1346,7 @@ pub fn process_output_ready(p: i64) -> bool {
 /// Whether process `p` has ended, its output all read, as `process-status`
 /// says, which then has seen it; or is no process.
 pub fn process_ended(p: i64) -> bool {
-    !matches!(
-        process_status(i64_to_int(p)),
-        Sum_7running_6exited_9signalled_7unknown::Running(())
-    )
+    crate::sum_name(process_status(i64_to_int(p))) != "running"
 }
 
 /// Waits until a child has news (its output read, or ended, or its end
@@ -1566,7 +1377,7 @@ pub fn process_wait(until: i64, stdin: bool) -> bool {
 }
 
 /// `text` written to process `p`'s input.
-pub fn process_write(p: Int, text: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub fn process_write(p: Int, text: Str) -> Sum {
     written(process_write_bytes(
         process_input(p),
         text.as_str().as_bytes(),
@@ -1632,10 +1443,9 @@ mod tests {
             b,
             bytevector_copy(b, int_lit(0), int_lit(4))
         ));
-        match utf8_to_string(bytevector_copy(hi, int_lit(0), int_lit(2))) {
-            Sum_4text_3bad::Bad(k) => assert_eq!(int_to_i64(*k), 1),
-            Sum_4text_3bad::Text(_) => panic!("valid"),
-        }
+        let r = utf8_to_string(bytevector_copy(hi, int_lit(0), int_lit(2)));
+        assert_eq!(crate::sum_name(r), "bad");
+        assert_eq!(int_to_i64(crate::sum_payload::<Int>(r)), 1);
         let mut s = String::new();
         b.show(&mut s);
         assert_eq!(s, "#u8(7 250 104 195)");
@@ -1646,25 +1456,24 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("kayak-world-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = leak_string(dir.join("a.txt").to_string_lossy().into_owned());
-        assert!(matches!(
-            write_file(p, string_to_utf8(str_lit("ay"))),
-            Sum_4done_6failed::Done(())
-        ));
-        match read_file(p) {
-            Sum_4data_6failed::Data(b) => assert_eq!(to_vec(*b), b"ay"),
-            Sum_4data_6failed::Failed(_) => panic!("unread"),
-        }
-        match list_dir(leak_string(dir.to_string_lossy().into_owned())) {
-            Sum_5names_6failed::Names(ns) => assert_eq!(ns.map(|c| c.car.as_str()), Some("a.txt")),
-            Sum_5names_6failed::Failed(_) => panic!("unlisted"),
-        }
+        use crate::{sum_name, sum_payload};
+        assert_eq!(
+            sum_name(write_file(p, string_to_utf8(str_lit("ay")))),
+            "done"
+        );
+        let r = read_file(p);
+        assert_eq!(sum_name(r), "data");
+        assert_eq!(to_vec(sum_payload::<Bytes>(r)), b"ay");
+        let r = list_dir(leak_string(dir.to_string_lossy().into_owned()));
+        assert_eq!(sum_name(r), "names");
+        assert_eq!(
+            sum_payload::<List<Str>>(r).map(|c| c.car.as_str()),
+            Some("a.txt")
+        );
         let none = leak_string(dir.join("none").to_string_lossy().into_owned());
-        match read_file(none) {
-            Sum_4data_6failed::Failed(Product_4kind_6detail(k, _)) => {
-                assert!(matches!(k, Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(())))
-            }
-            Sum_4data_6failed::Data(_) => panic!("read"),
-        }
+        let r = read_file(none);
+        assert_eq!(sum_name(r), "failed");
+        assert_eq!(sum_name(sum_payload::<IoError>(r).0), "not-found");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

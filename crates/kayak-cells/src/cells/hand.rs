@@ -4435,9 +4435,9 @@ pub fn hand_made() -> Ref<List<HandCode>> {
 /// bloblets (bb635fe8, not ported, as no arm64 runs here), its words run
 /// as cells, as Fixpt's arm64 did at 516abc8e. The table of the words'
 /// tables stays, empty, which the routines still read.
-pub fn hand_code_arm64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
+pub fn hand_code_arm64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
-        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(car(get(hand_made()))))
+        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
     } else {
         set(hand_items(), nil::<&'static HandItem>());
         set(hand_data(), nil::<&'static HandItem>());
@@ -4458,12 +4458,12 @@ pub fn hand_code_arm64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         let b = the::<&'static Bloblet<()>>(make_bloblet(_star(int_lit(4), count), ()));
         let bad = all_put_x(b, its, int_lit(0), ls);
         if _gt_eq(bad, int_lit(0)) {
-            kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(string_append(str_lit("tier 2: instruction "), string_append(int_to_string(bad), str_lit(" does not encode")))))
+            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit("tier 2: instruction "), string_append(int_to_string(bad), str_lit(" does not encode"))))
         } else {
             let p = kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b));
             code_named_x(ls, int_lit(4), _star(int_lit(4), count), str_lit("kayak tier 2: the machine"));
             set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
-            kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(p))
+            kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", p)
         }
     }
 }

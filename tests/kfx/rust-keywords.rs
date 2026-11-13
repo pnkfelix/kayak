@@ -6,11 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_2fn_2in<A0, A1>(pub A0, pub A1);
 
-#[allow(non_camel_case_types)]
-pub enum Sum_3dyn_5where<A0, A1> {
-    Dyn(A0),
-    Where(A1),
-}
+const _: () = kayak_rt::tags_apart_from_runtime(&["where", "dyn"]);
 
 // Rust's keywords as names (C41): FX-26 has them, and so KFX, as Rust's raw
 // identifiers, `r#loop`. Only `self`, `super` and `crate`, which no raw
@@ -36,7 +32,7 @@ pub fn r#unsafe() -> &'static Enum {
     kayak_rt::heap_alloc(Enum::Unsafe())
 }
 
-pub type As = &'static Sum_3dyn_5where<i64, i64>;
+pub type As = kayak_rt::Sum;
 
 pub fn r#loop(mut r#move: i64, mut acc: i64) -> i64 {
     loop {
@@ -52,14 +48,14 @@ pub fn r#loop(mut r#move: i64, mut acc: i64) -> i64 {
 #[inline]
 pub fn r#where(s: As) -> i64 {
     let tagcase_ = s;
-    match *tagcase_ {
-        Sum_3dyn_5where::Dyn(r#ref) => {
-            r#ref
-        }
-        Sum_3dyn_5where::Where(r#mut) => {
-            i64_star(10i64, r#mut)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("dyn") } {
+        let r#ref: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
+        r#ref
+    } else if tag_ == const { kayak_rt::tag_hash("where") } {
+        let r#mut: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
+        i64_star(10i64, r#mut)
+    } else { unreachable!() }
 }
 
 #[inline]
@@ -139,7 +135,7 @@ pub fn main() -> Str {
         impl<'r#box> Default for Region_Box<'r#box> { fn default() -> Self { Region_Box { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r#box> Holds<Cons<'r#box, i64>> for Region_Box<'r#box> { fn arena(&self) -> &Arena<Cons<'r#box, i64>> { &self.a0 } }
         fn letrena__box<'r#box>(r#box: &'r#box Region_Box<'r#box>, r#for: i64, r#while: &'r#box (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> Str {
-            let r#pub = build(r#box, r#where(alloc(Sum_3dyn_5where::<i64, i64>::Where(4i64))));
+            let r#pub = build(r#box, r#where(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("where") }, "where", 4i64)));
             i64_to_string(i64_plus(r#loop(3i64, r#mod()), i64_plus(i64_star(10i64, r#for), i64_plus(i64_star(100i64, r#while(2i64, 0i64)), i64_plus(i64_star(1000i64, r#const(r#struct(5i64))), i64_plus(r#impl::r#return(0i64), i64_plus(i64_star(10000i64, car(r#pub)), i64_star(1000000i64, first()))))))))
         }
         let box__arena = Region_Box::default();

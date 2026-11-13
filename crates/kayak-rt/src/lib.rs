@@ -27,6 +27,7 @@ pub mod process;
 mod reps;
 mod show;
 mod stats;
+mod sum;
 pub mod suspend;
 mod syscall;
 mod text;
@@ -55,6 +56,7 @@ pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
+pub use sum::*;
 pub use syscall::*;
 pub use text::*;
 pub use value::{

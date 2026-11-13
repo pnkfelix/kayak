@@ -441,65 +441,65 @@ pub fn bytes_of(v: &'static Val) -> Bytes {
 
 // An I/O error as FX-26 has it: a product of its kind, a sum, and the
 // system's words.
-pub fn io_error_val(e: Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>) -> &'static Val {
+pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> &'static Val {
     let kind = {
         let tagcase_ = e.0;
-        match *tagcase_ {
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(u) => {
-                str_lit("not-found")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::PermissionDenied(u) => {
-                str_lit("permission-denied")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::AlreadyExists(u) => {
-                str_lit("already-exists")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotADirectory(u) => {
-                str_lit("not-a-directory")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::IsADirectory(u) => {
-                str_lit("is-a-directory")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::BrokenPipe(u) => {
-                str_lit("broken-pipe")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::InvalidData(u) => {
-                str_lit("invalid-data")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::Other(u) => {
-                str_lit("other")
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("not-found") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("not-found")
+        } else if tag_ == const { kayak_rt::tag_hash("permission-denied") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("permission-denied")
+        } else if tag_ == const { kayak_rt::tag_hash("already-exists") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("already-exists")
+        } else if tag_ == const { kayak_rt::tag_hash("not-a-directory") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("not-a-directory")
+        } else if tag_ == const { kayak_rt::tag_hash("is-a-directory") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("is-a-directory")
+        } else if tag_ == const { kayak_rt::tag_hash("broken-pipe") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("broken-pipe")
+        } else if tag_ == const { kayak_rt::tag_hash("invalid-data") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("invalid-data")
+        } else if tag_ == const { kayak_rt::tag_hash("other") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("other")
+        } else { unreachable!() }
     };
     v_product(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
 }
 
-pub fn terminal_val(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
+pub fn terminal_val(r: kayak_rt::Sum) -> &'static Val {
     let tagcase_ = r;
-    match *tagcase_ {
-        Sum_4done_14not_a_terminal_6failed::Done(u) => {
-            v_sum(str_lit("done"), v_unit())
-        }
-        Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
-            v_sum(str_lit("not-a-terminal"), v_unit())
-        }
-        Sum_4done_14not_a_terminal_6failed::Failed(e) => {
-            v_sum(str_lit("failed"), io_error_val(e))
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        v_sum(str_lit("done"), v_unit())
+    } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        v_sum(str_lit("not-a-terminal"), v_unit())
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        v_sum(str_lit("failed"), io_error_val(e))
+    } else { unreachable!() }
 }
 
 #[inline]
-pub fn write_outcome(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
+pub fn write_outcome(r: kayak_rt::Sum) -> &'static Val {
     let tagcase_ = r;
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            v_sum(str_lit("done"), v_unit())
-        }
-        Sum_4done_6failed::Failed(e) => {
-            v_sum(str_lit("failed"), io_error_val(e))
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        v_sum(str_lit("done"), v_unit())
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        v_sum(str_lit("failed"), io_error_val(e))
+    } else { unreachable!() }
 }
 
 #[inline]
@@ -1213,43 +1213,43 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
         list_val(strings_vals(get(program_args())))
     } else if string_eq_p(n, str_lit("read-line")) {
         let tagcase_ = read_line();
-        match *tagcase_ {
-            Sum_4line_3eof_6failed::Line(t) => {
-                v_sum(str_lit("line"), v_string(t))
-            }
-            Sum_4line_3eof_6failed::Eof(u) => {
-                v_sum(str_lit("eof"), v_unit())
-            }
-            Sum_4line_3eof_6failed::Failed(e) => {
-                v_sum(str_lit("failed"), io_error_val(e))
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("line") } {
+            let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            v_sum(str_lit("line"), v_string(t))
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            v_sum(str_lit("eof"), v_unit())
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            v_sum(str_lit("failed"), io_error_val(e))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("read-byte")) {
         let tagcase_ = read_byte();
-        match *tagcase_ {
-            Sum_4byte_3eof_6failed::Byte(k) => {
-                v_sum(str_lit("byte"), v_int(u8_to_int(k)))
-            }
-            Sum_4byte_3eof_6failed::Eof(u) => {
-                v_sum(str_lit("eof"), v_unit())
-            }
-            Sum_4byte_3eof_6failed::Failed(e) => {
-                v_sum(str_lit("failed"), io_error_val(e))
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("byte") } {
+            let k: u8 = kayak_rt::sum_payload::<u8>(tagcase_);
+            v_sum(str_lit("byte"), v_int(u8_to_int(k)))
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            v_sum(str_lit("eof"), v_unit())
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            v_sum(str_lit("failed"), io_error_val(e))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("read-bytes")) {
         let tagcase_ = read_bytes(bytes_of(a), val_int(b), val_int(car(cdr(cdr(xs)))));
-        match *tagcase_ {
-            Sum_5count_3eof_6failed::Count(k) => {
-                v_sum(str_lit("count"), v_int(k))
-            }
-            Sum_5count_3eof_6failed::Eof(u) => {
-                v_sum(str_lit("eof"), v_unit())
-            }
-            Sum_5count_3eof_6failed::Failed(e) => {
-                v_sum(str_lit("failed"), io_error_val(e))
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("count") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            v_sum(str_lit("count"), v_int(k))
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            v_sum(str_lit("eof"), v_unit())
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            v_sum(str_lit("failed"), io_error_val(e))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("stdin-ready?")) {
         v_bool(stdin_ready_p())
     } else if string_eq_p(n, str_lit("terminal-raw")) {
@@ -1258,39 +1258,39 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
         terminal_val(terminal_restore())
     } else if string_eq_p(n, str_lit("terminal-size")) {
         let tagcase_ = terminal_size();
-        match *tagcase_ {
-            Sum_4size_14not_a_terminal_6failed::Size(p) => {
-                v_sum(str_lit("size"), v_product(kayak_rt::heap_cons(str_lit("rows"), kayak_rt::heap_cons(str_lit("columns"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_int(p.0), kayak_rt::heap_cons(v_int(p.1), kayak_rt::nil())))))
-            }
-            Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
-                v_sum(str_lit("not-a-terminal"), v_unit())
-            }
-            Sum_4size_14not_a_terminal_6failed::Failed(e) => {
-                v_sum(str_lit("failed"), io_error_val(e))
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("size") } {
+            let p: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
+            v_sum(str_lit("size"), v_product(kayak_rt::heap_cons(str_lit("rows"), kayak_rt::heap_cons(str_lit("columns"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_int(p.0), kayak_rt::heap_cons(v_int(p.1), kayak_rt::nil())))))
+        } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            v_sum(str_lit("not-a-terminal"), v_unit())
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            v_sum(str_lit("failed"), io_error_val(e))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("read-file")) {
-        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(string_of(a)));
-        match *tagcase_ {
-            Sum_4data_6failed::Data(d) => {
-                v_sum(str_lit("data"), v_bytes(d))
-            }
-            Sum_4data_6failed::Failed(e) => {
-                v_sum(str_lit("failed"), io_error_val(e))
-            }
-        }
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(string_of(a)));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let d: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            v_sum(str_lit("data"), v_bytes(d))
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            v_sum(str_lit("failed"), io_error_val(e))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("write-file")) {
         write_outcome(write_file(string_of(a), bytes_of(b)))
     } else if string_eq_p(n, str_lit("list-dir")) {
-        let tagcase_ = the::<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(list_dir(string_of(a)));
-        match *tagcase_ {
-            Sum_5names_6failed::Names(ns) => {
-                v_sum(str_lit("names"), list_val(strings_vals(ns)))
-            }
-            Sum_5names_6failed::Failed(e) => {
-                v_sum(str_lit("failed"), io_error_val(e))
-            }
-        }
+        let tagcase_ = the::<kayak_rt::Sum>(list_dir(string_of(a)));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("names") } {
+            let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
+            v_sum(str_lit("names"), list_val(strings_vals(ns)))
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            v_sum(str_lit("failed"), io_error_val(e))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("append")) {
         list_val(onto_vals(list_of(a), list_of(b)))
     } else if string_eq_p(n, str_lit("make-bytevector")) {
@@ -1314,14 +1314,14 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
         v_bytes(string_to_utf8(string_of(a)))
     } else if string_eq_p(n, str_lit("utf8->string")) {
         let tagcase_ = utf8_to_string(bytes_of(a));
-        match *tagcase_ {
-            Sum_4text_3bad::Text(t) => {
-                v_sum(str_lit("text"), v_string(t))
-            }
-            Sum_4text_3bad::Bad(k) => {
-                v_sum(str_lit("bad"), v_int(k))
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("text") } {
+            let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            v_sum(str_lit("text"), v_string(t))
+        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            v_sum(str_lit("bad"), v_int(k))
+        } else { unreachable!() }
     } else if string_eq_p(n, str_lit("make-flatarray-i64")) {
         v_flat(make_array(val_int(a), b))
     } else if string_eq_p(n, str_lit("flatarray-ref-i64")) {

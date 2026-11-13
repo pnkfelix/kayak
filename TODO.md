@@ -1548,4 +1548,9 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - The checker refuses `(cons (list 1) (list 2))` ("a int is expected
   here"), which Fixpt takes as a pair whose tail is a list of another
   type, `((1) 2)`: stricter, a gap (found by kc's step 7, C406).
+- KFX's datatypes as structural sums too (C409's step 2): FX-26's
+  `define-data` is a macro over `sumof`, so a datatype's subtyping is a
+  sum's. Measure first: the compiler's own data are datatypes.
+- `lang-items.py` lists the emitter's calls of kayak-rt by `NAME(`, so
+  `sum_new::<P>(` and `sum_payload::<T>(` are not listed (C409).
 

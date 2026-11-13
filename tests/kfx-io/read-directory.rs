@@ -8,39 +8,38 @@ use kayak_rt::*;
 #[inline]
 pub fn said(s: Str) -> () {
     let tagcase_ = write_out(string_append(s, str_lit("\n")));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
 pub fn main() -> Int {
     let tagcase_ = read_file(str_lit("."));
-    match *tagcase_ {
-        Sum_4data_6failed::Data(b) => {
-            said(str_lit("read"));
-            int_lit(1)
-        }
-        Sum_4data_6failed::Failed(e) => {
-            said({
-                let tagcase_ = e.0;
-                match *tagcase_ {
-                    Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::IsADirectory(u) => {
-                        str_lit("is-a-directory")
-                    }
-                    _ => {
-                        let k = tagcase_;
-                        str_lit("other")
-                    }
-                }
-            });
-            said(e.1);
-            int_lit(0)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("data") } {
+        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+        said(str_lit("read"));
+        int_lit(1)
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        said({
+            let tagcase_ = e.0;
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("is-a-directory") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                str_lit("is-a-directory")
+            } else {
+                let k = tagcase_;
+                str_lit("other")
+            }
+        });
+        said(e.1);
+        int_lit(0)
+    } else { unreachable!() }
 }
 

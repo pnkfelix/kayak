@@ -37,14 +37,14 @@ pub fn joined(ws: List<Str>) -> Str {
                 loop {
                     if null_p(xs) {
                         let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, buf, int_lit(0), at)));
-                        match *tagcase_ {
-                            Sum_4text_3bad::Text(t) => {
-                                return t;
-                            }
-                            Sum_4text_3bad::Bad(k) => {
-                                return str_lit("?");
-                            }
-                        }
+                        let tag_ = kayak_rt::sum_tag(tagcase_);
+                        if tag_ == const { kayak_rt::tag_hash("text") } {
+                            let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                            return t;
+                        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                            return str_lit("?");
+                        } else { unreachable!() }
                     } else {
                         let b = put_bytes(r, buf, at, car(xs));
                         (buf, at, xs) = (put_bytes(r, b, _plus(at, bytevector_length(string_to_utf8(car(xs)))), str_lit(" ")), _plus(at, _plus(int_lit(1), bytevector_length(string_to_utf8(car(xs))))), cdr(xs));

@@ -11,61 +11,61 @@ use kayak_rt::*;
 #[inline]
 pub fn said(s: Str) -> () {
     let tagcase_ = write_out(string_append(s, str_lit("\n")));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
-pub type ByteResult = &'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>;
+pub type ByteResult = kayak_rt::Sum;
 
 #[inline]
 pub fn code(b: ByteResult) -> Int {
     let tagcase_ = b;
-    match *tagcase_ {
-        Sum_4byte_3eof_6failed::Byte(k) => {
-            u8_to_int(k)
-        }
-        Sum_4byte_3eof_6failed::Eof(u) => {
-            int_lit(-1)
-        }
-        Sum_4byte_3eof_6failed::Failed(e) => {
-            int_lit(-2)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("byte") } {
+        let k: u8 = kayak_rt::sum_payload::<u8>(tagcase_);
+        u8_to_int(k)
+    } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        int_lit(-1)
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        int_lit(-2)
+    } else { unreachable!() }
 }
 
 pub fn terminal() -> Str {
     string_append({
         let tagcase_ = terminal_raw();
-        match *tagcase_ {
-            Sum_4done_14not_a_terminal_6failed::Done(u) => {
-                str_lit("raw")
-            }
-            Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
-                str_lit("no terminal")
-            }
-            Sum_4done_14not_a_terminal_6failed::Failed(e) => {
-                str_lit("failed")
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("done") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("raw")
+        } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("no terminal")
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            str_lit("failed")
+        } else { unreachable!() }
     }, {
         let tagcase_ = terminal_size();
-        match *tagcase_ {
-            Sum_4size_14not_a_terminal_6failed::Size(z) => {
-                string_append(str_lit(", "), string_append(int_to_string(z.0), string_append(str_lit("x"), int_to_string(z.1))))
-            }
-            Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
-                str_lit(", no size")
-            }
-            Sum_4size_14not_a_terminal_6failed::Failed(e) => {
-                str_lit(", failed")
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("size") } {
+            let z: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
+            string_append(str_lit(", "), string_append(int_to_string(z.0), string_append(str_lit("x"), int_to_string(z.1))))
+        } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit(", no size")
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            str_lit(", failed")
+        } else { unreachable!() }
     })
 }
 
@@ -110,35 +110,35 @@ pub fn keyed() -> Int {
 pub fn counted(mut bv: Bytes, mut n: Int) -> Int {
     loop {
         let tagcase_ = read_bytes(bv, int_lit(0), int_lit(4));
-        match *tagcase_ {
-            Sum_5count_3eof_6failed::Count(k) => {
-                n = _plus(n, k);
-                continue;
-            }
-            Sum_5count_3eof_6failed::Eof(u) => {
-                return n;
-            }
-            Sum_5count_3eof_6failed::Failed(e) => {
-                return int_lit(-1);
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("count") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            n = _plus(n, k);
+            continue;
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            return n;
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            return int_lit(-1);
+        } else { unreachable!() }
     }
 }
 
 pub fn main() -> Int {
     let line = {
         let tagcase_ = read_line();
-        match *tagcase_ {
-            Sum_4line_3eof_6failed::Line(s) => {
-                s
-            }
-            Sum_4line_3eof_6failed::Eof(u) => {
-                str_lit("(end)")
-            }
-            Sum_4line_3eof_6failed::Failed(e) => {
-                str_lit("(failed)")
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("line") } {
+            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            s
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("(end)")
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            str_lit("(failed)")
+        } else { unreachable!() }
     };
     let b1 = code(read_byte());
     let b2 = code(read_byte());
@@ -156,14 +156,13 @@ pub fn main() -> Int {
     });
     said({
         let tagcase_ = none;
-        match *tagcase_ {
-            Sum_5count_3eof_6failed::Count(z) => {
-                int_to_string(z)
-            }
-            _ => {
-                let o = tagcase_;
-                str_lit("?")
-            }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("count") } {
+            let z: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            int_to_string(z)
+        } else {
+            let o = tagcase_;
+            str_lit("?")
         }
     });
     said(terminal());

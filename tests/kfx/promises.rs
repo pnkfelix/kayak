@@ -2,11 +2,7 @@
 
 use kayak_rt::*;
 
-#[allow(non_camel_case_types)]
-pub enum Sum_7pending_8resolved<A0, A1> {
-    Pending(A0),
-    Resolved(A1),
-}
+const _: () = kayak_rt::tags_apart_from_runtime(&["resolved", "pending"]);
 
 // A promise and `await` (C45): Fixpt's promise.fx
 // (docs/research/examples/async/), in KFX. The abort's payload is a thunk
@@ -18,7 +14,7 @@ pub type Task = &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>;
 
 pub type Tasks = List<Task>;
 
-pub type Promise = Ref<&'static Sum_7pending_8resolved<Tasks, i64>>;
+pub type Promise = Ref<kayak_rt::Sum>;
 
 #[inline]
 pub fn sched() -> Tag<(), &'static dyn Fn() -> ()> {
@@ -75,17 +71,17 @@ pub async fn yield_x() -> Result<(), Unwind> {
 pub async fn await_x(mut pr: Promise) -> Result<i64, Unwind> {
     loop {
         let tagcase_ = get(pr);
-        match *tagcase_ {
-            Sum_7pending_8resolved::Resolved(v) => {
-                return Ok(v);
-            }
-            Sum_7pending_8resolved::Pending(ws) => {
-                kayak_rt::suspend::body(suspend_x(lambda1(move |k: Task| {
-                    set(pr, kayak_rt::heap_alloc(Sum_7pending_8resolved::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, i64>::Pending(kayak_rt::heap_cons(k, ws))))
-                }))).await?;
-                continue;
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("resolved") } {
+            let v: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
+            return Ok(v);
+        } else if tag_ == const { kayak_rt::tag_hash("pending") } {
+            let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
+            kayak_rt::suspend::body(suspend_x(lambda1(move |k: Task| {
+                set(pr, kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("pending") }, "pending", kayak_rt::heap_cons(k, ws)))
+            }))).await?;
+            continue;
+        } else { unreachable!() }
     }
 }
 
@@ -103,15 +99,15 @@ pub fn enqueue_all_x(mut ks: Tasks) -> () {
 
 pub fn resolve_x(pr: Promise, v: i64) -> () {
     let tagcase_ = get(pr);
-    match *tagcase_ {
-        Sum_7pending_8resolved::Resolved(u) => {
-            ()
-        }
-        Sum_7pending_8resolved::Pending(ws) => {
-            set(pr, kayak_rt::heap_alloc(Sum_7pending_8resolved::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, i64>::Resolved(v)));
-            enqueue_all_x(reverse_tasks(ws, nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("resolved") } {
+        let u: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("pending") } {
+        let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
+        set(pr, kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("resolved") }, "resolved", v));
+        enqueue_all_x(reverse_tasks(ws, nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+    } else { unreachable!() }
 }
 
 pub async fn run_x() -> Result<(), Unwind> {
@@ -158,7 +154,7 @@ pub async fn spawn_x(thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) ->
 pub fn fut() -> Promise {
     kayak_rt::kept_constant!(ONCE: Promise);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_7pending_8resolved::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, i64>::Pending(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())))
+        kayak_rt::heap_new(kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("pending") }, "pending", nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
     })
 }
 

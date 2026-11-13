@@ -20,34 +20,34 @@ pub fn show_names(mut ns: List<Str>) -> () {
 #[inline]
 pub fn put(path: Str, text: Str) -> () {
     let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
-pub fn text_of(r: &'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> Str {
+pub fn text_of(r: kayak_rt::Sum) -> Str {
     let tagcase_ = r;
-    match *tagcase_ {
-        Sum_4data_6failed::Data(b) => {
-            let tagcase_ = utf8_to_string(b);
-            match *tagcase_ {
-                Sum_4text_3bad::Text(s) => {
-                    s
-                }
-                Sum_4text_3bad::Bad(k) => {
-                    str_lit("not UTF-8")
-                }
-            }
-        }
-        Sum_4data_6failed::Failed(e) => {
-            e.1
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("data") } {
+        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+        let tagcase_ = utf8_to_string(b);
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("text") } {
+            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            s
+        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            str_lit("not UTF-8")
+        } else { unreachable!() }
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        e.1
+    } else { unreachable!() }
 }
 
 pub fn main() -> Int {
@@ -55,34 +55,33 @@ pub fn main() -> Int {
     put(str_lit("a.txt"), str_lit("ay"));
     put(str_lit("b.txt"), str_lit("bee, again"));
     {
-        let tagcase_ = the::<&'static Sum_5names_6failed<List<Str>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(list_dir(str_lit(".")));
-        match *tagcase_ {
-            Sum_5names_6failed::Names(ns) => {
-                show_names(ns)
-            }
-            Sum_5names_6failed::Failed(e) => {
-                ()
-            }
-        }
+        let tagcase_ = the::<kayak_rt::Sum>(list_dir(str_lit(".")));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("names") } {
+            let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
+            show_names(ns)
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            ()
+        } else { unreachable!() }
     };
-    write_out(string_append(text_of(the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(str_lit("b.txt")))), str_lit("\n")));
-    let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(str_lit("none.txt")));
-    match *tagcase_ {
-        Sum_4data_6failed::Data(b) => {
-            int_lit(0)
+    write_out(string_append(text_of(the::<kayak_rt::Sum>(read_file(str_lit("b.txt")))), str_lit("\n")));
+    let tagcase_ = the::<kayak_rt::Sum>(read_file(str_lit("none.txt")));
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("data") } {
+        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+        int_lit(0)
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        let tagcase_ = e.0;
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("not-found") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            int_lit(5)
+        } else {
+            let k = tagcase_;
+            int_lit(6)
         }
-        Sum_4data_6failed::Failed(e) => {
-            let tagcase_ = e.0;
-            match *tagcase_ {
-                Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(u) => {
-                    int_lit(5)
-                }
-                _ => {
-                    let k = tagcase_;
-                    int_lit(6)
-                }
-            }
-        }
-    }
+    } else { unreachable!() }
 }
 

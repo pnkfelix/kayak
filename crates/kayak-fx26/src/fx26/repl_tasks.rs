@@ -2641,14 +2641,14 @@ pub mod tasks {
             ()
         } else {
             let tagcase_ = write_file(get(f.39), the::<BytesAt<'r>>(string_to_utf8(rev_to_string(history_text(get(f.36), 500i64, nil::<char>())))));
-            match *tagcase_ {
-                Sum_4done_6failed::Done(u) => {
-                    ()
-                }
-                Sum_4done_6failed::Failed(e) => {
-                    ()
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("done") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                ()
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                ()
+            } else { unreachable!() }
         }
     }
 
@@ -2656,25 +2656,25 @@ pub mod tasks {
         if string_eq_p(get(f.39), str_lit("")) {
             ()
         } else {
-            let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(get(f.39)));
-            match *tagcase_ {
-                Sum_4data_6failed::Data(b) => {
-                    let tagcase_ = utf8_to_string(b);
-                    match *tagcase_ {
-                        Sum_4text_3bad::Text(t) => {
-                            set(f.36, oldest_first_strings(map(lambda1s(move |l: Str| {
-                                rev_to_string(unescaped(string_chars(l), nil::<char>()))
-                            }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
-                        }
-                        Sum_4text_3bad::Bad(k) => {
-                            ()
-                        }
-                    }
-                }
-                Sum_4data_6failed::Failed(e) => {
+            let tagcase_ = the::<kayak_rt::Sum>(read_file(get(f.39)));
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("data") } {
+                let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+                let tagcase_ = utf8_to_string(b);
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("text") } {
+                    let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                    set(f.36, oldest_first_strings(map(lambda1s(move |l: Str| {
+                        rev_to_string(unescaped(string_chars(l), nil::<char>()))
+                    }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
+                } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                    let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
                     ()
-                }
-            }
+                } else { unreachable!() }
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                ()
+            } else { unreachable!() }
         }
     }
 
@@ -2891,23 +2891,23 @@ pub mod tasks {
 
     /// `,load FILE`: the file's forms, one entry.
     pub fn f_loaded_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, path: Str, now: i64) -> () {
-        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
-        match *tagcase_ {
-            Sum_4data_6failed::Data(b) => {
-                let tagcase_ = utf8_to_string(b);
-                match *tagcase_ {
-                    Sum_4text_3bad::Text(t) => {
-                        f_submit_x(f, t, path, false, now)
-                    }
-                    Sum_4text_3bad::Bad(k) => {
-                        f_said_x(f, string_append(path, str_lit(": not UTF-8")), now)
-                    }
-                }
-            }
-            Sum_4data_6failed::Failed(e) => {
-                f_said_x(f, string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now)
-            }
-        }
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            let tagcase_ = utf8_to_string(b);
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                f_submit_x(f, t, path, false, now)
+            } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                f_said_x(f, string_append(path, str_lit(": not UTF-8")), now)
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            f_said_x(f, string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now)
+        } else { unreachable!() }
     }
 
     pub fn f_pending_text<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, now: i64) -> Str {
@@ -3395,14 +3395,14 @@ pub mod tasks {
     #[inline]
     pub fn f_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, now: i64) -> () {
         let tagcase_ = write_out(f_screen_x(f, now));
-        match *tagcase_ {
-            Sum_4done_6failed::Done(u) => {
-                ()
-            }
-            Sum_4done_6failed::Failed(e) => {
-                ()
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("done") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            ()
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            ()
+        } else { unreachable!() }
     }
 
     /// The session begun: the checker's environment, the history, the
@@ -3429,19 +3429,18 @@ pub mod tasks {
 
     // A key read, as the key's code, or -1 at the input's end (which asks to
     // leave, as ^D does).
-    pub type ByteRead = &'static Sum_4byte_3eof_6failed<u8, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>;
+    pub type ByteRead = kayak_rt::Sum;
 
     pub fn f_byte_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<&'static Asked>>, RefAt<'r, &'static Cv>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<&'static Relayed>>, b: ByteRead) -> () {
         let tagcase_ = b;
-        match *tagcase_ {
-            Sum_4byte_3eof_6failed::Byte(k) => {
-                f_key_x(f, int_to_i64(u8_to_int(k)), now_ms())
-            }
-            _ => {
-                let other = tagcase_;
-                set(f.47, true);
-                set(f.30, true)
-            }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("byte") } {
+            let k: u8 = kayak_rt::sum_payload::<u8>(tagcase_);
+            f_key_x(f, int_to_i64(u8_to_int(k)), now_ms())
+        } else {
+            let other = tagcase_;
+            set(f.47, true);
+            set(f.30, true)
         }
     }
 
@@ -3661,52 +3660,48 @@ pub mod tasks {
     pub fn repl_x(history: Str) -> Int {
         let live = {
             let tagcase_ = terminal_raw();
-            match *tagcase_ {
-                Sum_4done_14not_a_terminal_6failed::Done(u) => {
-                    true
-                }
-                _ => {
-                    let o = tagcase_;
-                    false
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("done") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                true
+            } else {
+                let o = tagcase_;
+                false
             }
         };
         let sized = {
             let tagcase_ = terminal_size();
-            match *tagcase_ {
-                Sum_4size_14not_a_terminal_6failed::Size(z) => {
-                    (_gt(z.0, int_lit(0)) && _gt(z.1, int_lit(0)))
-                }
-                _ => {
-                    let o = tagcase_;
-                    false
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("size") } {
+                let z: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
+                (_gt(z.0, int_lit(0)) && _gt(z.1, int_lit(0)))
+            } else {
+                let o = tagcase_;
+                false
             }
         };
         let height = if sized {
             let tagcase_ = terminal_size();
-            match *tagcase_ {
-                Sum_4size_14not_a_terminal_6failed::Size(z) => {
-                    int_to_i64(z.0)
-                }
-                _ => {
-                    let o = tagcase_;
-                    the::<i64>(24i64)
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("size") } {
+                let z: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
+                int_to_i64(z.0)
+            } else {
+                let o = tagcase_;
+                the::<i64>(24i64)
             }
         } else {
             the::<i64>(24i64)
         };
         let width = if sized {
             let tagcase_ = terminal_size();
-            match *tagcase_ {
-                Sum_4size_14not_a_terminal_6failed::Size(z) => {
-                    int_to_i64(z.1)
-                }
-                _ => {
-                    let o = tagcase_;
-                    the::<i64>(80i64)
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("size") } {
+                let z: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
+                int_to_i64(z.1)
+            } else {
+                let o = tagcase_;
+                the::<i64>(80i64)
             }
         } else {
             the::<i64>(80i64)
@@ -3880,80 +3875,80 @@ pub mod tasks {
     /// the same; what a terminal of 24 rows and 80 columns would be sent
     /// (the REPL's tests). The input ends after the last line.
     pub fn scripted_x(path: Str) -> Int {
-        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
-        match *tagcase_ {
-            Sum_4data_6failed::Failed(e) => {
-                write_err(string_append(str_lit("kayak-fx26: "), string_append(path, string_append(str_lit(": "), string_append(e.1, str_lit("\n"))))));
-                int_lit(66)
-            }
-            Sum_4data_6failed::Data(bv) => {
-                let arrivals = arrivals_of(split_bytes(bytes_of(bv, 0i64, int_to_i64(bytevector_length(bv))), 10i64, nil::<i64>(), nil::<List<i64>>()));
-                repl_start_x();
-                set(m_live(), true);
-                let relay = relay_made();
-                let front = the::<Addr<&'static Told>>(kayak_rt::process::spawn_monitored(relay, &front_failure, move |r#box: kayak_rt::Inbox<&'static tasks::Told>| {
-                    let _ = {
-                        struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
-                        impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
-                        fn letrena__p<'p>(p: &'p Region_P<'p>, relay: Addr<&'static tasks::Relayed>, arrivals: List<&'static tasks::Arrival>) -> () {
-                            let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<&'static Asked>>, RefAt<'p, &'static Cv>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<&'static Relayed>>>(f_new(relay));
-                            write_out(f_started_x(f, true, 24i64, 80i64, str_lit("")));
-                            let go__knot = knot::<&'p dyn Fn(List<&'static Arrival>, i64, bool) -> ()>();
-                            let go = lambda3(move |mut r#as: List<&'static Arrival>, mut clock: i64, mut ended: bool| {
-                                loop {
-                                    let left = f_arrived_x(f, r#as, clock);
-                                    let now_ended = if (null_p(left) && not(ended)) {
-                                        set(f.30, true);
-                                        true
-                                    } else {
-                                        ended
-                                    };
-                                    let reply = the::<ICell<&'static Ran>>(make_icell());
-                                    f_speculating_x(f, clock);
-                                    f_asked_x(f, round_ended(clock, reply));
-                                    f_requests_sent_x(f);
-                                    let tagcase_ = kayak_rt::process::icell_get(reply);
-                                    match *tagcase_ {
-                                        Ran::Ran(news, after, idle) => {
-                                            f_each_news_x(f, news, after);
-                                            f_written_x(f, after);
-                                            if f_over_p(f) {
-                                                write_out(str_lit("\u{d}\n"));
-                                                return kayak_rt::process::send(relay, from_front(front_ended()));
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            write_err(string_append(str_lit("kayak-fx26: "), string_append(path, string_append(str_lit(": "), string_append(e.1, str_lit("\n"))))));
+            int_lit(66)
+        } else if tag_ == const { kayak_rt::tag_hash("data") } {
+            let bv: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            let arrivals = arrivals_of(split_bytes(bytes_of(bv, 0i64, int_to_i64(bytevector_length(bv))), 10i64, nil::<i64>(), nil::<List<i64>>()));
+            repl_start_x();
+            set(m_live(), true);
+            let relay = relay_made();
+            let front = the::<Addr<&'static Told>>(kayak_rt::process::spawn_monitored(relay, &front_failure, move |r#box: kayak_rt::Inbox<&'static tasks::Told>| {
+                let _ = {
+                    struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
+                    impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+                    fn letrena__p<'p>(p: &'p Region_P<'p>, relay: Addr<&'static tasks::Relayed>, arrivals: List<&'static tasks::Arrival>) -> () {
+                        let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<&'static Asked>>, RefAt<'p, &'static Cv>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<&'static Relayed>>>(f_new(relay));
+                        write_out(f_started_x(f, true, 24i64, 80i64, str_lit("")));
+                        let go__knot = knot::<&'p dyn Fn(List<&'static Arrival>, i64, bool) -> ()>();
+                        let go = lambda3(move |mut r#as: List<&'static Arrival>, mut clock: i64, mut ended: bool| {
+                            loop {
+                                let left = f_arrived_x(f, r#as, clock);
+                                let now_ended = if (null_p(left) && not(ended)) {
+                                    set(f.30, true);
+                                    true
+                                } else {
+                                    ended
+                                };
+                                let reply = the::<ICell<&'static Ran>>(make_icell());
+                                f_speculating_x(f, clock);
+                                f_asked_x(f, round_ended(clock, reply));
+                                f_requests_sent_x(f);
+                                let tagcase_ = kayak_rt::process::icell_get(reply);
+                                match *tagcase_ {
+                                    Ran::Ran(news, after, idle) => {
+                                        f_each_news_x(f, news, after);
+                                        f_written_x(f, after);
+                                        if f_over_p(f) {
+                                            write_out(str_lit("\u{d}\n"));
+                                            return kayak_rt::process::send(relay, from_front(front_ended()));
+                                        } else {
+                                            (r#as, clock, ended) = (left, if not(idle) {
+                                                after
+                                            } else if null_p(left) {
+                                                i64_plus(after, 80i64)
                                             } else {
-                                                (r#as, clock, ended) = (left, if not(idle) {
-                                                    after
-                                                } else if null_p(left) {
-                                                    i64_plus(after, 80i64)
-                                                } else {
-                                                    let tagcase_ = car(left);
-                                                    match *tagcase_ {
-                                                        Arrival::Arrival(t, bs) => {
-                                                            if i64_gt(t, i64_plus(after, 1i64)) {
-                                                                t
-                                                            } else {
-                                                                i64_plus(after, 1i64)
-                                                            }
+                                                let tagcase_ = car(left);
+                                                match *tagcase_ {
+                                                    Arrival::Arrival(t, bs) => {
+                                                        if i64_gt(t, i64_plus(after, 1i64)) {
+                                                            t
+                                                        } else {
+                                                            i64_plus(after, 1i64)
                                                         }
                                                     }
-                                                }, now_ended);
-                                                continue;
-                                            }
+                                                }
+                                            }, now_ended);
+                                            continue;
                                         }
                                     }
                                 }
-                            });
-                            go__knot.set(go);
-                            go(arrivals, 0i64, false)
-                        }
-                        let p__arena = Region_P::default();
-                        letrena__p(&p__arena, relay, arrivals)
-                    };
-                }));
-                machine_scripted_x(relay, nil::<&'static tasks::Asked>());
-                int_lit(0)
-            }
-        }
+                            }
+                        });
+                        go__knot.set(go);
+                        go(arrivals, 0i64, false)
+                    }
+                    let p__arena = Region_P::default();
+                    letrena__p(&p__arena, relay, arrivals)
+                };
+            }));
+            machine_scripted_x(relay, nil::<&'static tasks::Asked>());
+            int_lit(0)
+        } else { unreachable!() }
     }
 }
 

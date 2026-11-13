@@ -8,45 +8,44 @@ use kayak_rt::*;
 #[inline]
 pub fn said(n: Int, s: Str) -> () {
     let tagcase_ = write_out(string_append(int_to_string(n), string_append(str_lit(": "), string_append(s, str_lit("\n")))));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
 pub fn echo(mut n: Int) -> Int {
     loop {
         let tagcase_ = read_line();
-        match *tagcase_ {
-            Sum_4line_3eof_6failed::Line(s) => {
-                said(n, s);
-                n = _plus(n, int_lit(1));
-                continue;
-            }
-            Sum_4line_3eof_6failed::Eof(u) => {
-                return n;
-            }
-            Sum_4line_3eof_6failed::Failed(e) => {
-                said(n, {
-                    let tagcase_ = e.0;
-                    match *tagcase_ {
-                        Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::InvalidData(u) => {
-                            str_lit("bad")
-                        }
-                        _ => {
-                            let k = tagcase_;
-                            str_lit("?")
-                        }
-                    }
-                });
-                n = _plus(n, int_lit(1));
-                continue;
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("line") } {
+            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            said(n, s);
+            n = _plus(n, int_lit(1));
+            continue;
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            return n;
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            said(n, {
+                let tagcase_ = e.0;
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("invalid-data") } {
+                    let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                    str_lit("bad")
+                } else {
+                    let k = tagcase_;
+                    str_lit("?")
+                }
+            });
+            n = _plus(n, int_lit(1));
+            continue;
+        } else { unreachable!() }
     }
 }
 

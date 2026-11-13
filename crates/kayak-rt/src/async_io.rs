@@ -23,11 +23,9 @@
 //!   millisecond; a write to one's input, which waits for it to read, is
 //!   a worker's.
 
-use crate::world::{
-    BytesAt, IoError, Sum_4byte_3eof_6failed, Sum_4done_6failed, Sum_4line_3eof_6failed,
-    Sum_5count_3eof_6failed, input,
-};
-use crate::{Int, Str, heap_alloc};
+use crate::world::{BytesAt, IoError, input};
+use crate::{Int, Str};
+use crate::{Sum, SumOf, sum_of};
 use kayak_runner::live::Live;
 use kayak_runner::{Answer, Fd, Op, Runner, STDIN};
 use kayak_sched::Inbox;
@@ -143,14 +141,17 @@ fn failed_with(m: String) -> IoError {
     crate::world::io_error(&std::io::Error::new(kind, m))
 }
 
-fn written(a: Answer) -> &'static Sum_4done_6failed<(), IoError> {
+fn written(a: Answer) -> Sum {
     match a {
-        Answer::Err(m) => heap_alloc(Sum_4done_6failed::Failed(failed_with(m))),
-        _ => &Sum_4done_6failed::Done(()),
+        Answer::Err(m) => sum_of("failed", failed_with(m)),
+        _ => {
+            static C: SumOf<()> = SumOf::new("done", ());
+            C.sum()
+        }
     }
 }
 
-async fn write(fd: u32, s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+async fn write(fd: u32, s: Str) -> Sum {
     let Some(cx) = crate::suspend::task_cx() else {
         return write_now(fd, s);
     };
@@ -162,17 +163,17 @@ async fn write(fd: u32, s: Str) -> &'static Sum_4done_6failed<(), IoError> {
 }
 
 /// `(write-out s)`, the task waiting until it is written.
-pub async fn write_out(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub async fn write_out(s: Str) -> Sum {
     write(1, s).await
 }
 
 /// `(write-err s)`.
-pub async fn write_err(s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub async fn write_err(s: Str) -> Sum {
     write(2, s).await
 }
 
 /// A write where nothing may wait: submitted, its answer not awaited.
-pub(crate) fn write_now(fd: u32, s: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub(crate) fn write_now(fd: u32, s: Str) -> Sum {
     let token = submit(Op::Write {
         fd: Fd(fd),
         bytes: s.as_str().as_bytes().to_vec(),
@@ -180,7 +181,10 @@ pub(crate) fn write_now(fd: u32, s: Str) -> &'static Sum_4done_6failed<(), IoErr
     if let Some(cx) = crate::suspend::task_cx() {
         cx.abandon(token);
     }
-    &Sum_4done_6failed::Done(())
+    {
+        static C: SumOf<()> = SumOf::new("done", ());
+        C.sum()
+    }
 }
 
 /// A read wants more of the standard input: its task, started at the
@@ -251,7 +255,7 @@ async fn input_ready(line: bool) {
 }
 
 /// `(read-line)`, the task waiting for its line.
-pub async fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
+pub async fn read_line() -> Sum {
     let mut line = Vec::new();
     loop {
         input_ready(true).await;
@@ -287,17 +291,13 @@ pub async fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
 }
 
 /// `(read-byte)`.
-pub async fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
+pub async fn read_byte() -> Sum {
     input_ready(false).await;
     crate::world::read_byte()
 }
 
 /// `(read-bytes bv start end)`: none asked for, 0 at once.
-pub async fn read_bytes(
-    bv: BytesAt<'_>,
-    start: Int,
-    end: Int,
-) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
+pub async fn read_bytes(bv: BytesAt<'_>, start: Int, end: Int) -> Sum {
     let (s, e) = crate::world::span(bv, start, end, "read-bytes: a span that does not fit");
     if s == e {
         return crate::world::counted(0);
@@ -334,9 +334,7 @@ async fn on_worker<R: Send + 'static>(
 }
 
 /// `(read-file path)`.
-pub async fn read_file(
-    path: Str,
-) -> &'static crate::world::Sum_4data_6failed<crate::world::Bytes, IoError> {
+pub async fn read_file(path: Str) -> crate::Sum {
     let path = path.as_str().to_string();
     crate::world::read_file_answer(
         on_worker("read-file", move || crate::world::read_regular_file(&path)).await,
@@ -344,7 +342,7 @@ pub async fn read_file(
 }
 
 /// `(write-file path data)`: the bytes taken now, written by a worker.
-pub async fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6failed<(), IoError> {
+pub async fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
     let (path, bytes) = (path.as_str().to_string(), crate::world::to_vec(data));
     crate::world::written(
         on_worker("write-file", move || {
@@ -355,9 +353,7 @@ pub async fn write_file(path: Str, data: BytesAt<'_>) -> &'static Sum_4done_6fai
 }
 
 /// `(list-dir path)`.
-pub async fn list_dir(
-    path: Str,
-) -> &'static crate::world::Sum_5names_6failed<crate::List<Str>, IoError> {
+pub async fn list_dir(path: Str) -> crate::Sum {
     let path = path.as_str().to_string();
     crate::world::list_dir_answer(
         on_worker("list-dir", move || crate::world::list_dir_names(&path)).await,
@@ -365,9 +361,7 @@ pub async fn list_dir(
 }
 
 /// `(file-info path)`.
-pub async fn file_info(
-    path: Str,
-) -> &'static crate::world::Sum_4info_6failed<crate::world::FileInfo, IoError> {
+pub async fn file_info(path: Str) -> crate::Sum {
     let path = path.as_str().to_string();
     crate::world::file_info_answer(
         on_worker("file-info", move || std::fs::symlink_metadata(path)).await,
@@ -375,7 +369,7 @@ pub async fn file_info(
 }
 
 /// `(read-symlink path)`.
-pub async fn read_symlink(path: Str) -> &'static crate::world::Sum_6target_6failed<Str, IoError> {
+pub async fn read_symlink(path: Str) -> crate::Sum {
     let path = path.as_str().to_string();
     crate::world::read_symlink_answer(
         on_worker("read-symlink", move || std::fs::read_link(path)).await,
@@ -383,23 +377,17 @@ pub async fn read_symlink(path: Str) -> &'static crate::world::Sum_6target_6fail
 }
 
 /// `(terminal-raw)`.
-pub async fn terminal_raw()
--> &'static crate::world::Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+pub async fn terminal_raw() -> crate::Sum {
     crate::world::moded(on_worker("terminal-raw", crate::world::terminal_raw_stty).await)
 }
 
 /// `(terminal-restore)`.
-pub async fn terminal_restore()
--> &'static crate::world::Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+pub async fn terminal_restore() -> crate::Sum {
     crate::world::moded(on_worker("terminal-restore", crate::world::terminal_restore_stty).await)
 }
 
 /// `(terminal-size)`.
-pub async fn terminal_size() -> &'static crate::world::Sum_4size_14not_a_terminal_6failed<
-    crate::world::Product_4rows_7columns<Int, Int>,
-    (),
-    IoError,
-> {
+pub async fn terminal_size() -> crate::Sum {
     crate::world::terminal_size_answer(
         on_worker("terminal-size", || crate::world::stty(&["size"])).await,
     )
@@ -407,7 +395,7 @@ pub async fn terminal_size() -> &'static crate::world::Sum_4size_14not_a_termina
 
 /// `(process-write p text)`: written by a worker, which waits for the
 /// process to read it.
-pub async fn process_write(p: Int, text: Str) -> &'static Sum_4done_6failed<(), IoError> {
+pub async fn process_write(p: Int, text: Str) -> Sum {
     let (input, bytes) = (
         crate::world::process_input(p),
         text.as_str().as_bytes().to_vec(),
@@ -422,8 +410,6 @@ pub async fn process_write(p: Int, text: Str) -> &'static Sum_4done_6failed<(), 
 
 /// `(process-exit p)`: the task waiting until process `p` has ended and
 /// its output is all read.
-pub async fn process_exit(
-    p: Int,
-) -> &'static crate::world::Sum_6exited_9signalled_7unknown<Int, Int, ()> {
+pub async fn process_exit(p: Int) -> crate::Sum {
     crate::async_process::wait_for_outside(move || crate::world::process_exited(p)).await
 }

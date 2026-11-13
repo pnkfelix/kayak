@@ -10,17 +10,7 @@ pub struct Product_1x_1y<A0, A1>(pub A0, pub A1);
 #[derive(Clone, Copy)]
 pub struct Product_1w_1h<A0, A1>(pub A0, pub A1);
 
-#[allow(non_camel_case_types)]
-pub enum Sum_6circle_4rect<A0, A1> {
-    Circle(A0),
-    Rect(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4span_4none<A0, A1> {
-    Span(A0),
-    None(A1),
-}
+const _: () = kayak_rt::tags_apart_from_runtime(&["rect", "circle", "none", "span"]);
 
 // FX-26's products and sums, structural: a generic Rust type for each list
 // of labels, `Product_x_y<A0, A1>` a tuple struct, `Sum_circle_rect<A0, A1>`
@@ -28,53 +18,53 @@ pub enum Sum_4span_4none<A0, A1> {
 
 pub type Point = Product_1x_1y<i64, i64>;
 
-pub type Shape = &'static Sum_6circle_4rect<i64, Product_1w_1h<i64, i64>>;
+pub type Shape = kayak_rt::Sum;
 
 // A member bound whole, `(rect q ...)`, its fields `extract`ed: a product
 // with names of its own is not taken apart by position (Fixpt's TODO §191,
 // C393).
 pub fn area(s: Shape) -> i64 {
     let tagcase_ = s;
-    match *tagcase_ {
-        Sum_6circle_4rect::Circle(r) => {
-            i64_star(3i64, i64_star(r, r))
-        }
-        Sum_6circle_4rect::Rect(q) => {
-            i64_star(q.0, q.1)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("circle") } {
+        let r: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
+        i64_star(3i64, i64_star(r, r))
+    } else if tag_ == const { kayak_rt::tag_hash("rect") } {
+        let q: Product_1w_1h<i64, i64> = kayak_rt::sum_payload::<Product_1w_1h<i64, i64>>(tagcase_);
+        i64_star(q.0, q.1)
+    } else { unreachable!() }
 }
 
 // A product labelled by position, a `tupleof`, taken apart, `(span (a b)
 // ...)`; made by `tuple`.
-pub type Stretch = &'static Sum_4span_4none<Product_11_12<i64, i64>, ()>;
+pub type Stretch = kayak_rt::Sum;
 
 #[inline]
 pub fn span_length(s: Stretch) -> i64 {
     let tagcase_ = s;
-    match *tagcase_ {
-        Sum_4span_4none::Span(product_) => {
-            let a = product_.0;
-            let b = product_.1;
-            i64_minus(b, a)
-        }
-        Sum_4span_4none::None(u) => {
-            0i64
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("span") } {
+        let product_: Product_11_12<i64, i64> = kayak_rt::sum_payload::<Product_11_12<i64, i64>>(tagcase_);
+        let a = product_.0;
+        let b = product_.1;
+        
+        i64_minus(b, a)
+    } else if tag_ == const { kayak_rt::tag_hash("none") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        0i64
+    } else { unreachable!() }
 }
 
 #[inline]
 pub fn width(s: Shape) -> i64 {
     let tagcase_ = s;
-    match *tagcase_ {
-        Sum_6circle_4rect::Rect(q) => {
-            q.0
-        }
-        _ => {
-            let z = tagcase_;
-            0i64
-        }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("rect") } {
+        let q: Product_1w_1h<i64, i64> = kayak_rt::sum_payload::<Product_1w_1h<i64, i64>>(tagcase_);
+        q.0
+    } else {
+        let z = tagcase_;
+        0i64
     }
 }
 
@@ -95,7 +85,7 @@ pub fn swap(p: Product_11_12<i64, i64>) -> Product_11_12<i64, i64> {
 }
 
 pub fn main() -> Str {
-    let shapes = the::<List<Shape>>(kayak_rt::heap_cons(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(3i64, 4i64))), kayak_rt::heap_cons(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Circle(2i64)), kayak_rt::nil())));
-    i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(kayak_rt::heap_alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(5i64, 6i64))))), i64_plus(i64_star(10000i64, swap(pair(7i64, 8i64)).0), i64_star(100000i64, span_length(kayak_rt::heap_alloc(Sum_4span_4none::<Product_11_12<i64, i64>, ()>::Span(Product_11_12(2i64, 9i64))))))))))
+    let shapes = the::<List<Shape>>(kayak_rt::heap_cons(kayak_rt::sum_new::<Product_1w_1h<i64, i64>>(const { kayak_rt::tag_hash("rect") }, "rect", Product_1w_1h(3i64, 4i64)), kayak_rt::heap_cons(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 2i64), kayak_rt::nil())));
+    i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(kayak_rt::sum_new::<Product_1w_1h<i64, i64>>(const { kayak_rt::tag_hash("rect") }, "rect", Product_1w_1h(5i64, 6i64)))), i64_plus(i64_star(10000i64, swap(pair(7i64, 8i64)).0), i64_star(100000i64, span_length(kayak_rt::sum_new::<Product_11_12<i64, i64>>(const { kayak_rt::tag_hash("span") }, "span", Product_11_12(2i64, 9i64)))))))))
 }
 

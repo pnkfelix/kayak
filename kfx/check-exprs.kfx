@@ -3116,14 +3116,13 @@
                 ((string=? h "product") (product-form v s xs nil))
                 ((string=? h "sum")
                  "A sum with nothing expected: a sum of its one tag (Fixpt's `(sumof
-                  (tag T))`, below any with that tag; C183); KFX's Rust enum is said by
-                  its type, which must be written."
+                  (tag T))`, below any with that tag; C183). KFX's too, since a sum's
+                  Rust is kayak-rt's one `Sum`, whatever its tags (C409)."
                  (if (not (i64= (size xs) 2))
                      (refuse v "(sum tag e)")
                      (tagcase (synth v s (second xs))
                        (res (t es s)
-                         (res (ty-shape #f (list (label-of (car xs))) (list t)) es
-                              (kfx-restricted v s "a sum whose type is not known here: write it, (the (sumof ...) (sum ...)) (C183)"))))))
+                         (res (ty-shape #f (list (label-of (car xs))) (list t)) es s)))))
                 ((string=? h "extract")
                  (if (not (i64= (size xs) 2))
                      (refuse v "(extract e label)")
@@ -3450,7 +3449,10 @@
                                     ;; whose tag its subject lacks cannot run, skipped.
                                     (arms (if in-allof (filter (lambda ((a sexp)) (arm-live? v ls a)) (cdr xs)) (cdr xs)))
                                     (s (if in-allof (arms-noted v s ls (cdr xs) (show-ty s t)) s)))
-                               (with-effs (tag-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "tagcase-sum " (words-of ls)))
+                               ;; Its tags, and its type, whose tags' payloads' types the
+                               ;; emitter reads each arm's payload at (C409).
+                               (with-effs (tag-arms v (note-fact (note-fact s (cv-file v) (cv-pos v) (string-append "tagcase-sum " (words-of ls)))
+                                                                 (cv-file v) (cv-pos v) (string-append "tagcase-sum-type " (show-sexp (ty-sexp v s (zonk s t)))))
                                                     (walk s t) (map sum-arm arms) (sum-variants v ls ts (unholed arms)) expected)
                                           es))))
                        (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no datatype")))))))))))
@@ -3759,15 +3761,12 @@
                         (let* ((sum-whole (tagcase (walk s whole) (ty-shape (p ls ts) (and (not p) (i64< (size vs) (size ls)) (not (null? vs)))) (else other #f)))
                                (seen (if sum-whole
                                          ;; A sum's `else` sees only the tags not named
-                                         ;; (Fixpt's fx26.md; C183); KFX's enum is one.
+                                         ;; (Fixpt's fx26.md; C183), the same sum in
+                                         ;; KFX's Rust, whatever its tags (C409).
                                          (ty-shape #f (map (lambda ((x variant)) (tagcase x (variant (tag fields) tag))) vs)
                                                    (map (lambda ((x variant)) (tagcase x (variant (tag fields) (if (null? fields) (ty-unit) (car fields))))) vs))
                                          whole)))
-                          (body (with-binds v (list (local v (name-of v (second arm)) seen)))
-                                (if (and sum-whole (string-member? (name-of v (second arm)) (names-in-all (cdr (cdr arm)))))
-                                    (kfx-restricted v s "a tagcase's else of a sum, named, narrowed to the tags not named, FX-26's, which KFX's Rust enums have not (C183)")
-                                    s)
-                                (cdr (cdr arm)) expected))
+                          (body (with-binds v (list (local v (name-of v (second arm)) seen))) s (cdr (cdr arm)) expected))
                         (refuse v "a tagcase's else is its last arm"))
                     (let* ((fields (variant-fields v (show-ty s whole) tag vs))
                            (listed (and (i64> (size arm) 1) (tagcase (second arm) (lst (xs f l p) #t) (else other #f))))
@@ -4551,10 +4550,17 @@
                                                  t)
                                   #u)
                               (res (projected v (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs) t) (session-effs v (naming-effs s n wher t (cv-group v)))
-                                   (let ((s (if (null? (tagcase (car xs) (sym (n2 f2 p2) (scope-bind n2 v)) (else other nil)))
+                                   ;; Its type binders' arguments, for the emitter's turbofish:
+                                   ;; rustc may have nothing else to infer them from, a sum
+                                   ;; saying none of its payloads' types (C409).
+                                   (let ((s (note-turbofish (if (null? (tagcase (car xs) (sym (n2 f2 p2) (scope-bind n2 v)) (else other nil)))
                                                 ;; A control primitive's, no binding of the program's (C105).
                                                 (note-fact s (cv-file v) (cv-pos v) "control")
-                                                s)))
+                                                s)
+                                            ;; At the procedure's name, where the emitter writes
+                                            ;; it, in whatever wraps it (an async adapter).
+                                            (datum-file (car xs)) (datum-pos (car xs))
+                                            (proj-type-args v (filter (lambda ((b string)) (not (has-prefix? b "%"))) tvars) (cdr xs)))))
                                    (tagcase (car xs)
                                      (sym (name at-file at-pos)
                                        "A global that may suspend, as a value: its future boxed, as a
@@ -4594,6 +4600,17 @@
                                  (go (note-types s (cv-file v) (cv-pos v) (string-append "rneed-" (string-append (sym-name (second ws)) (string-append "@" (region-string s place)))) (list need))
                                      (cdr needs)))))))
             (go s (facts-after (cv-facts v) (string-append "place-needs " (string-append n " ")))))))
+
+      (proj-type-args (subr kfx (cv strings sexps) tys)
+        (lambda (v tvars args)
+          "The types a proj gives its type binders, in order: not its regions,
+           effects, functions, sizes or conventions, which Rust erases."
+          (cond ((or (null? tvars) (null? args) (has-prefix? (car tvars) "%")) nil)
+                ((or (char=? (string-ref-i64 (car tvars) 0) #\') (char=? (string-ref-i64 (car tvars) 0) #\~)
+                     (char=? (string-ref-i64 (car tvars) 0) #\^) (char=? (string-ref-i64 (car tvars) 0) #\#)
+                     (string=? (binder-kind (car tvars)) "conv"))
+                 (proj-type-args v (cdr tvars) (cdr args)))
+                (else (cons (parse-type v (cv-tvars v) (car args)) (proj-type-args v (cdr tvars) (cdr args)))))))
 
       (projected (subr kfx (cv strings sexps ty) ty)
         (lambda (v tvars args t)

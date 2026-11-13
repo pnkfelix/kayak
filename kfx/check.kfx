@@ -1805,7 +1805,7 @@
  `allof`'s members may note apart (C354): the Rust types of a lambda's
  parameters, of a `tagcase`'s sum, of a sum built (C358). The FX-26
  compilers (`fx26/`) read none of them."
-(define allof-emitter-only strings (list "param-types " "tagcase-sum " "sum-type "))
+(define allof-emitter-only strings (list "param-types " "tagcase-sum " "tagcase-sum-type " "sum-type "))
 
 "An `allof`'s members (C354): an `allof` among them its members; and a
  member's convention, `` for a plain `subr`, a convention's own, or `?` for
@@ -5448,9 +5448,9 @@
                      (fits-each v s ts us))
                     ((and (not p) (not q) (not (any? (lambda ((l string)) (not (string-member? l ms))) ls)))
                      "A sum below one of more tags, each of its own there (Fixpt's width
-                      subtyping, fx26.md; C183); KFX's Rust enums are one each."
-                     (fits-each v (kfx-restricted v s (string-append "a " (string-append (show-ty s a) (string-append " where a " (string-append (show-ty s e) " is expected, FX-26's width subtyping, which KFX's Rust enums have not (C183)")))))
-                                ts (map (lambda ((l string)) (label-type l ms us)) ls)))
+                      subtyping, fx26.md; C183): KFX's too, a sum of fewer tags being
+                      in Rust the very `Sum` of more (C409)."
+                     (fits-each v s ts (map (lambda ((l string)) (label-type l ms us)) ls)))
                     (else (mismatch v s a e))))
             (else other (mismatch v s a e))))
         (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v (fits v s x y) y x) xr yr)) (else other (mismatch v s a e))))

@@ -41,7 +41,7 @@ pub fn visited(f0: Strings, f1: Strings) -> &'static Visited {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, comefrom_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, charging_p, runner_io_names, charge_statement, put_charged_loop, chars_have_p, chars_start_p, kfx_callee_p, kfx_call_head_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_constructors, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, named_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, as_ifs, put_exp, put_ok_lift, call_box, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, put_par_futures, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, comefrom_effect_p, fact_at_p, maker_form_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, in_async_mode_p, charging_p, runner_io_names, charge_statement, put_charged_loop, chars_have_p, chars_start_p, kfx_callee_p, kfx_call_head_p, mfact_p, boxed_call_p, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_constructors, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, named_lifetime, atoms_in, element_lifetime, put_fields_tuple, heap_made_p, lived_arguments, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, as_ifs, put_exp, put_ok_lift, call_box, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_sum_tagcase, put_sum_arms, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_placed_list, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, put_par_futures, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -1026,6 +1026,18 @@ pub mod writing {
         put_constructors(inner, d, lived, params, cdr(xs), acc)
     }
 
+    /// Type parameters, each as Rust names it, each followed by `,`.
+    pub fn put_generics_list(mut ps: Strings, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(ps) {
+                return acc;
+            } else {
+                (ps, acc) = (cdr(ps), put(str_lit(", "), put(camel(car(ps)), acc)));
+                continue;
+            }
+        }
+    }
+
     /// A generative type: a new type, a newtype in Rust, and its conversions.
     pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
         let t = type_head_name(car(xs));
@@ -1040,6 +1052,11 @@ pub mod writing {
             str_lit("(pub ")
         }, acc);
         let acc = put_type(c, second(xs), acc);
+        let acc = if null_p(params) {
+            acc
+        } else {
+            put(str_lit(")>"), put_generics_list(params, put(str_lit(", std::marker::PhantomData<("), acc)))
+        };
         let acc = put(if inside {
             if in_async_mode_p(c) {
                 str_lit(");\n\nasync fn up_")
@@ -1062,17 +1079,34 @@ pub mod writing {
         let acc = put_generics_of(params, false, acc);
         let acc = put(str_lit(" {\n    "), acc);
         let acc = put(camel(t), acc);
-        let acc = put(if inside {
+        let acc = put(if null_p(params) {
+            str_lit("")
+        } else {
+            str_lit("(x, std::marker::PhantomData")
+        }, acc);
+        let acc = put(if (inside && null_p(params)) {
             if in_async_mode_p(c) {
                 str_lit("(x)\n}\n\nasync fn down_")
             } else {
                 str_lit("(x)\n}\n\nfn down_")
             }
-        } else {
+        } else if inside {
+            if in_async_mode_p(c) {
+                str_lit(")\n}\n\nasync fn down_")
+            } else {
+                str_lit(")\n}\n\nfn down_")
+            }
+        } else if null_p(params) {
             if in_async_mode_p(c) {
                 str_lit("(x)\n}\n\npub async fn down_")
             } else {
                 str_lit("(x)\n}\n\npub fn down_")
+            }
+        } else {
+            if in_async_mode_p(c) {
+                str_lit(")\n}\n\npub async fn down_")
+            } else {
+                str_lit(")\n}\n\npub fn down_")
             }
         }, acc);
         let acc = put(mangle(t), acc);
@@ -1531,9 +1565,39 @@ pub mod writing {
         }), cdr(cdr(ys))))), str_lit(""), 0i64, 0i64)
     }
 
-    #[inline]
+    /// The tags of the sums' keys, each once.
+    pub fn sum_tags_of(mut keys: Strings, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(keys) {
+                return acc;
+            } else if has_prefix_p(car(keys), str_lit("S ")) {
+                (keys, acc) = (cdr(keys), onto(filter(lambda1s(move |t: Str| {
+                    not(string_member_p(t, acc))
+                }), split_words(after_prefix(car(keys), str_lit("S ")))), acc));
+                continue;
+            } else {
+                keys = cdr(keys);
+                continue;
+            }
+        }
+    }
+
+    /// The program's products, declared; its sums, kayak-rt's one `Sum`, need
+    /// none (C409), but that their tags, and kayak-rt's, hash apart, asserted
+    /// as rustc builds: a collision fails the build, never takes a wrong arm.
     pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
-        put_shape_decls(program_shapes(c, forms), shows, uses_blobrefs_p(c), acc)
+        let keys = program_shapes(c, forms);
+        let tags = reverse_strings(sum_tags_of(keys, nil::<Str>()), nil::<Str>());
+        let acc = put_shape_decls(filter(lambda1s(move |k: Str| {
+            not(has_prefix_p(k, str_lit("S ")))
+        }), keys), shows, uses_blobrefs_p(c), acc);
+        if null_p(tags) {
+            acc
+        } else {
+            put(str_lit("]);\n\n"), put(words_of_sep(map(lambda1s(move |t: Str| {
+                string_append(str_lit("\""), string_append(t, str_lit("\"")))
+            }), tags), str_lit(", ")), put(str_lit("const _: () = kayak_rt::tags_apart_from_runtime(&["), acc)))
+        }
     }
 
     /// In toplevel mode, a module's datatypes' and generative types' `Show`,

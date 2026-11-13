@@ -19,33 +19,8 @@ pub struct Product_2at_1k<A0, A1>(pub A0, pub A1);
 pub struct Product_3tag_5ready_8sleeping_5clock<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
 #[allow(non_camel_case_types)]
-pub enum Sum_5empty_4full<A0, A1> {
-    Empty(A0),
-    Full(A1),
-}
-
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4path_4text<A0, A1>(pub A0, pub A1);
-
-#[allow(non_camel_case_types)]
-pub enum Sum_9read_line_5write_5clock_9read_file_10write_file<A0, A1, A2, A3, A4> {
-    ReadLine(A0),
-    Write(A1),
-    Clock(A2),
-    ReadFile(A3),
-    WriteFile(A4),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4line_3eof_4done_4time_4text_6failed<A0, A1, A2, A3, A4, A5> {
-    Line(A0),
-    Eof(A1),
-    Done(A2),
-    Time(A3),
-    Text(A4),
-    Failed(A5),
-}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -62,4 +37,6 @@ pub struct Product_2op_5reply<A0, A1>(pub A0, pub A1);
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4loop_5filed_5steps<A0, A1, A2>(pub A0, pub A1, pub A2);
+
+const _: () = kayak_rt::tags_apart_from_runtime(&["full", "empty", "write-file", "read-file", "clock", "write", "read-line", "failed", "text", "time", "done", "eof", "line"]);
 

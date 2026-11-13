@@ -28,10 +28,10 @@ pub fn down_feet(x: Feet) -> i64 {
 }
 
 #[derive(Clone, Copy)]
-pub struct Stack<T: Copy + 'static>(pub List<T>);
+pub struct Stack<T: Copy + 'static>(pub List<T>, std::marker::PhantomData<(T, )>);
 
 pub fn up_stack<T: Copy + 'static>(x: List<T>) -> Stack<T> {
-    Stack(x)
+    Stack(x, std::marker::PhantomData)
 }
 
 pub fn down_stack<T: Copy + 'static>(x: Stack<T>) -> List<T> {

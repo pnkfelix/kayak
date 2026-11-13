@@ -484,14 +484,14 @@ pub fn word_written(name: Str, xs: Citems) -> Str {
             let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
             w_word_x(r, b, n, name, xs);
             let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, get(b), int_lit(0), i64_to_int(get(n)))));
-            match *tagcase_ {
-                Sum_4text_3bad::Text(t) => {
-                    t
-                }
-                Sum_4text_3bad::Bad(k) => {
-                    str_lit("")
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                t
+            } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                str_lit("")
+            } else { unreachable!() }
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena, name, xs)

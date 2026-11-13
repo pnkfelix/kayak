@@ -478,6 +478,11 @@ pub mod strings;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/structural-sums.rs"]
+pub mod structural_sums;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/tails.rs"]
 pub mod tails;
 
@@ -639,6 +644,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("shapes", shapes::main),
     ("standard", standard::main),
     ("strings", strings::main),
+    ("structural-sums", structural_sums::main),
     ("tails", tails::main),
     ("tasks", tasks_main),
     ("terminate", terminate::main),

@@ -35,21 +35,20 @@ pub fn faulty(s: Seed<'static>, rate: i64, inner: &'static dyn Fn(i64, Op) -> ka
     lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
         let on_file = {
             let tagcase_ = o;
-            match *tagcase_ {
-                Sum_9read_line_5write_5clock_9read_file_10write_file::ReadFile(p) => {
-                    true
-                }
-                Sum_9read_line_5write_5clock_9read_file_10write_file::WriteFile(f) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("read-file") } {
+                let p: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                true
+            } else if tag_ == const { kayak_rt::tag_hash("write-file") } {
+                let f: Product_4path_4text<Str, Str> = kayak_rt::sum_payload::<Product_4path_4text<Str, Str>>(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         };
         if (on_file && i64_lt((&below_x)(s, 100i64), rate)) {
-            Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Failed(str_lit("a fault, injected"))))
+            Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit("a fault, injected")))
         } else {
             Ok(kayak_rt::suspend::body(inner(n, o)).await?)
         }
@@ -58,7 +57,7 @@ pub fn faulty(s: Seed<'static>, rate: i64, inner: &'static dyn Fn(i64, Op) -> ka
 
 // The `k`th of a list of operations filed, and the rest, in order.
 #[inline]
-pub fn nth_filed(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, k: i64) -> Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>> {
+pub fn nth_filed(fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, k: i64) -> Product_2op_5reply<Op, Ref<kayak_rt::Sum>> {
     if i64_eq(k, 0i64) {
         car(fs)
     } else {
@@ -66,7 +65,7 @@ pub fn nth_filed(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<L
     }
 }
 
-pub fn without_nth(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, k: i64) -> List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>> {
+pub fn without_nth(fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, k: i64) -> List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>> {
     if i64_eq(k, 0i64) {
         cdr(fs)
     } else {
@@ -75,7 +74,7 @@ pub fn without_nth(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full
 }
 
 #[inline]
-pub fn filed_count(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, n: i64) -> i64 {
+pub fn filed_count(fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, n: i64) -> i64 {
     if null_p(fs) {
         n
     } else {
@@ -86,14 +85,14 @@ pub fn filed_count(fs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full
 // Run the tasks until none is left, as `run-world!` does, but answering one
 // operation filed at a time, the one the seed picks, then running what it
 // made ready.
-pub async fn run_seeded_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>>, Ref<i64>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, s: Seed<'static>) -> Result<(), Unwind> {
+pub async fn run_seeded_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, s: Seed<'static>) -> Result<(), Unwind> {
     kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_ready_x(a__0))))(wl.0)).await?;
     let fs = get(wl.1);
     if not(null_p(fs)) {
         let k = (&below_x)(s, (&filed_count)(fs, 0i64));
         let f = (&nth_filed)(fs, k);
         set(wl.1, (&without_nth)(fs, k));
-        kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, kayak_rt::heap_cons(f, nil::<Product_2op_5reply<&'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>>>()))).await?;
+        kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, kayak_rt::heap_cons(f, nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>()))).await?;
         Ok(kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(run_seeded_x(a__0, a__1, a__2))))(wl, answer, s)).await?)
     } else if (&sleeping_p)(wl.0) {
         (&wake_first_x)(wl.0);

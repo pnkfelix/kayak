@@ -72,7 +72,7 @@ pub async fn number_from(f: &'static dyn Fn(char) -> kayak_rt::suspend::Body<Int
 // Hex letters let through, each its value: the handler gives one, and the
 // parse goes on where it was.
 pub fn lax(s: Str) -> Int {
-    kayak_rt::suspend::block(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(with_handler(a__0, a__1))))(lambda1s(move |ch: char| kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::block(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(with_handler::<char, Int, Int>(a__0, a__1))))(lambda1s(move |ch: char| kayak_rt::suspend::body(async move {
         Ok(_plus(int_lit(10), _minus(char_to_integer(ch), char_to_integer('a'))))
     })), lambda1(move |key: MarkKey<&'static dyn Fn(char) -> kayak_rt::suspend::Body<Int>>| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(number_from(lambda1(move |ch: char| kayak_rt::suspend::body(async move {
@@ -84,8 +84,8 @@ pub fn lax(s: Str) -> Int {
 // Any character that is no digit makes the whole -1: the handler escapes
 // to a `handle` around it, a restart.
 pub fn strict(s: Str) -> Int {
-    kayak_rt::suspend::block(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(handle(a__0, a__1))))(lambda1(move |t: Tag<Int, Str>| kayak_rt::suspend::body(async move {
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(with_handler(a__0, a__1))))(lambda1(move |ch: char| kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::block(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(handle::<Int, Str>(a__0, a__1))))(lambda1(move |t: Tag<Int, Str>| kayak_rt::suspend::body(async move {
+        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(with_handler::<char, Int, Int>(a__0, a__1))))(lambda1(move |ch: char| kayak_rt::suspend::body(async move {
             (return Err(unwind(t, string_append(str_lit("no digit: "), char_to_string(ch)))))
         })), lambda1(move |key: MarkKey<&'static dyn Fn(char) -> kayak_rt::suspend::Body<Int>>| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(number_from(lambda1(move |ch: char| kayak_rt::suspend::body(async move {

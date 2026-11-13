@@ -1,0 +1,36 @@
+"FX-26's sums, structural, in KFX (C409): a sum of fewer tags where one of
+ more is expected (width subtyping), through a list too, which no copy
+ makes; a sum whose type nothing says; and a `tagcase`'s `else`, the sum
+ seen at the tags no arm names. KFX had refused each (C183): each set of
+ tags was a Rust enum of its own. Each sum is now kayak-rt's one `Sum`, its
+ tag a fixed hash of its name, so a narrower sum is the wider as it is."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type shape (sumof (circle i64) (rect (productof (w i64) (h i64))) (dot unit)))
+(define-type round (sumof (circle i64)))
+
+(define area (subr kfx (shape) i64)
+  (lambda (s) (tagcase s (circle r (i64* 3 (i64* r r))) (rect q (i64* (extract q w) (extract q h))) (dot u 0))))
+
+(define-rec
+  (areas (subr kfx ((listof shape acyclic)) i64)
+    (lambda (ss) (if (null? ss) 0 (i64+ (area (car ss)) (areas (cdr ss)))))))
+
+"Width subtyping: a `round` where a `shape` is wanted, and a list of them."
+(define one round (sum circle 1))
+(define rounds (listof round acyclic) (list (sum circle 2) (sum circle 3)))
+
+"An `else`: the shapes no arm names, a sum of the rest, given back whole."
+(define not-round (subr kfx (shape) i64)
+  (lambda (s) (tagcase s (circle r -1) (else rest (area rest)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (i64->string (area one))
+      (string-append " "
+        (string-append (i64->string (areas rounds))
+          (string-append " "
+            (string-append (i64->string (not-round (sum rect (product (w 4) (h 5)))))
+              (string-append " "
+                (string-append (i64->string (not-round (sum circle 9)))
+                  ;; A sum whose type nothing says: `(sumof (dot unit))`, a shape.
+                  (string-append " " (i64->string (area (sum dot #u)))))))))))))

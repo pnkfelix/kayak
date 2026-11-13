@@ -40,68 +40,66 @@ pub fn fail_with(message: Str, status: Int) -> Void {
 }
 
 pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(path)))).await?;
-    match *tagcase_ {
-        Sum_4line_3eof_4done_4time_4text_6failed::Text(s) => {
-            Ok(s)
-        }
-        Sum_4line_3eof_4done_4time_4text_6failed::Failed(m) => {
-            Ok(match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
-        }
-        _ => {
-            let other = tagcase_;
-            Ok(match fail_with(string_append(str_lit("cannot read "), path), int_lit(1)) {})
-        }
+    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", path))).await?;
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("text") } {
+        let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        Ok(s)
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        Ok(match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
+    } else {
+        let other = tagcase_;
+        Ok(match fail_with(string_append(str_lit("cannot read "), path), int_lit(1)) {})
     }
 }
 
 pub async fn write_text(rt: Drt, path: Str, text: Str) -> Result<(), Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::WriteFile(Product_4path_4text(path, text))))).await?;
-    match *tagcase_ {
-        Sum_4line_3eof_4done_4time_4text_6failed::Done(u) => {
-            Ok(())
-        }
-        Sum_4line_3eof_4done_4time_4text_6failed::Failed(m) => {
-            Ok(match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
-        }
-        _ => {
-            let other = tagcase_;
-            Ok(match fail_with(string_append(str_lit("cannot write "), path), int_lit(1)) {})
-        }
+    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Product_4path_4text<Str, Str>>(const { kayak_rt::tag_hash("write-file") }, "write-file", Product_4path_4text(path, text)))).await?;
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        Ok(())
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        Ok(match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
+    } else {
+        let other = tagcase_;
+        Ok(match fail_with(string_append(str_lit("cannot write "), path), int_lit(1)) {})
     }
 }
 
 // The same, done directly, for the log itself.
 pub fn read_text_now(path: Str) -> Str {
-    let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
-    match *tagcase_ {
-        Sum_4data_6failed::Data(b) => {
-            let tagcase_ = utf8_to_string(b);
-            match *tagcase_ {
-                Sum_4text_3bad::Text(s) => {
-                    s
-                }
-                Sum_4text_3bad::Bad(k) => {
-                    match fail_with(string_append(str_lit("cannot read "), string_append(path, str_lit(": it is not UTF-8"))), int_lit(1)) {}
-                }
-            }
-        }
-        Sum_4data_6failed::Failed(e) => {
-            match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
-        }
-    }
+    let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("data") } {
+        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+        let tagcase_ = utf8_to_string(b);
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("text") } {
+            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            s
+        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            match fail_with(string_append(str_lit("cannot read "), string_append(path, str_lit(": it is not UTF-8"))), int_lit(1)) {}
+        } else { unreachable!() }
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+    } else { unreachable!() }
 }
 
 pub fn write_text_now(path: Str, text: Str) -> () {
     let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+    } else { unreachable!() }
 }
 
 // Manifests
@@ -179,7 +177,7 @@ pub async fn write_outputs(mut rt: Drt, mut dir: Str, mut os: Outputs) -> Result
 
 // The compiler, run.
 pub async fn put_out(rt: Drt, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
     Ok(())
 }
 
@@ -249,15 +247,14 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let text = kayak_rt::suspend::body(read_text(rt, unit)).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(unit), lines_from(string_chars(text), nil::<char>()))).await?;
         let old = {
-            let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(cache)))).await?;
-            match *tagcase_ {
-                Sum_4line_3eof_4done_4time_4text_6failed::Text(t) => {
-                    queries::memos_of_text(t, compiler_identity())
-                }
-                _ => {
-                    let other = tagcase_;
-                    nil::<&'static Memo>()
-                }
+            let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", cache))).await?;
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                queries::memos_of_text(t, compiler_identity())
+            } else {
+                let other = tagcase_;
+                nil::<&'static Memo>()
             }
         };
         let tagcase_ = compile_units_memo(program, old, runtime_unit_p(text));
@@ -288,15 +285,15 @@ pub fn reverse_log(mut xs: Log<'static>, mut acc: Log<'static>) -> Log<'static> 
 pub async fn main() -> Result<Int, Unwind> {
     let r#as = the::<Strings>(args());
     if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--record")) && not(null_p(cdr(r#as)))) {
-        let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>()));
-        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&recording)((&live)(), log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()));
+        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under::<Int>(a__0, a__1))))((&recording)((&live)(), log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
-        write_text_now(car(cdr(r#as)), (&log_text)(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>())));
+        write_text_now(car(cdr(r#as)), (&log_text)(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())));
         Ok(status)
     } else if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--replay")) && not(null_p(cdr(r#as)))) {
         let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new((&log_of_text)(read_text_now(car(cdr(r#as))))));
-        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&replaying)(log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under::<Int>(a__0, a__1))))((&replaying)(log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
         if null_p(get(log)) {
@@ -306,7 +303,7 @@ pub async fn main() -> Result<Int, Unwind> {
             Ok(int_lit(1))
         }
     } else {
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&live)(), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under::<Int>(a__0, a__1))))((&live)(), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, r#as)).await?)
         })))).await?)
     }

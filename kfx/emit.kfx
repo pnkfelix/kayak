@@ -1778,15 +1778,12 @@
                      (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                     ((sym-is? (car xs) "select")
                      (put (type-path c (sym-name (second xs)) (sym-name (third xs))) acc))
-                    ((or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
-                     (let* ((product (sym-is? (car xs) "productof"))
-                            (fs (map items (cdr xs)))
-                            (acc (put (shape-name product (map (lambda ((f sexps)) (label-of (car f))) fs))
-                                      (if product acc (put "&'static " acc)))))
-                       ;; A sum is the heap's, `&'static`: its parts at no
-                       ;; place's lifetime (a region's bytes there the heap's,
-                       ;; C267).
-                       (if (null? fs) acc (put ">" (put-types (if product c (in-heap c)) (map second fs) (put "<" acc))))))
+                    ;; A sum, of whatever tags: kayak-rt's one `Sum` (C409).
+                    ((sym-is? (car xs) "sumof") (put "kayak_rt::Sum" acc))
+                    ((sym-is? (car xs) "productof")
+                     (let* ((fs (map items (cdr xs)))
+                            (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))
+                       (if (null? fs) acc (put ">" (put-types c (map second fs) (put "<" acc))))))
                     ((and (sym-is? (car xs) "poly")
                           (not (any? (lambda ((b sexp)) (not (sym-is? (second (items b)) "region"))) (items (second xs)))))
                      "A type polymorphic in regions alone (rank 2, C107): its body's,
@@ -2295,11 +2292,18 @@
                                                    (fallible "| kayak_rt::suspend::body(")
                                                    (else "| kayak_rt::suspend::boxed("))
                                              acc))
-                                   ;; Named as `put-var` names it: a module item by its path.
-                                   (acc (put (if (string=? (local-kind s (ctx-locals c)) "item") (item-path c s) (mangle s)) acc))
+                                   ;; Named as `put-var` names it: a module item by its path;
+                                   ;; a `proj`'s, its types after it (C409).
+                                   (acc (put-turbofish c e (put (if (string=? (local-kind s (ctx-locals c)) "item") (item-path c s) (mangle s)) acc)))
                                    (acc (put "(" acc))
                                    (acc (put-arg-names 0 arity acc)))
                               (put (if prim ")) }))" ")))") acc)))
+                           ;; A poly procedure a `proj` names, its type binders'
+                           ;; arguments after it, as the checker found them: a sum's
+                           ;; payloads' types are not in its Rust type, for rustc to
+                           ;; infer them from (C409).
+                           ((and (plain-callee? c s) (not (string=? (fact-with c e "turbofish ") "")))
+                            (put-turbofish c e (put-var c s acc)))
                            (else (put-var c s acc))))
                    (lst (xs src-file src-line src-pos)
                      (cond ((and (fact-in? fs e "void-call") (not (abort? c e))) (put " {}" (put-call c e xs n t (put "match " acc))))
@@ -2588,8 +2592,9 @@
         (lambda (c e xs n t acc)
           "A `tagcase` as statements: its value bound once, then a `match`; of a
            sum, its enum's name from the tags the checker found."
-          (if (not (string=? (fact-with c e "blob-tagcase ") ""))
-              (put-flat-tagcase c e xs n t acc)
+          (cond ((not (string=? (fact-with c e "blob-tagcase ") "")) (put-flat-tagcase c e xs n t acc))
+                ((not (string=? (fact-with c e "tagcase-sum-type ") "")) (put-sum-tagcase c e xs n t acc))
+                (else
           (let* ((tags (fact-with c e "tagcase-sum "))
                  (dt (fact-with c e "tagcase-datatype "))
                  ;; A datatype's enum as the checker found it (C408); a shape's
@@ -2600,7 +2605,54 @@
                  (acc (put-nl n (put ";" acc)))
                  (acc (put "match *tagcase_ {" acc))
                  (acc (put-tagcase-arms c sum (if (string=? dt "") "" (datatype-path-here c dt)) (cdr xs) (i64+ n 1) t acc)))
-            (put "}" (put-nl n acc))))))
+            (put "}" (put-nl n acc)))))))
+
+      (put-sum-tagcase (subr kfx (ctx sexp sexps i64 tail chars) chars)
+        (lambda (c e xs n t acc)
+          "A `tagcase` on a structural sum (C409): the sum, and its tag's
+           discriminant, read once; each arm an `if` on that, its payload read
+           at the type the checker found for the arm's tag; `else`'s the sum
+           as it is; with no `else`, a tag no arm names cannot be (the checker
+           found every tag the sum may have)."
+          (let* ((ty (car (read-all (fact-with c e "tagcase-sum-type ") "" 1)))
+                 (fields (map items (cdr (items ty))))
+                 (acc (put "let tagcase_ = " acc))
+                 (acc (put-exp c (car xs) n (value) acc))
+                 (acc (put-nl n (put ";" acc)))
+                 (acc (put-nl n (put "let tag_ = kayak_rt::sum_tag(tagcase_);" acc))))
+            (put-sum-arms c fields (cdr xs) n t #t acc))))
+
+      (put-sum-arms (subr kfx (ctx (listof sexps acyclic) sexps i64 tail bool chars) chars)
+        (lambda (c fields arms n t first acc)
+          (if (null? arms)
+              (if first (put "unreachable!()" acc) (put " else { unreachable!() }" acc))
+              (let* ((arm (items (car arms)))
+                     (tag (sym-name (car arm)))
+                     (else? (string=? tag "else"))
+                     (whole? (tagcase (second arm) (sym (x at-file at-pos) #t) (else other #f)))
+                     (bound (if (or else? whole?)
+                                (the strings (list (sym-name (second arm))))
+                                (map sym-name (items (second arm)))))
+                     (payload (filter (lambda ((f sexps)) (string=? (label-of (car f)) tag)) fields))
+                     (acc (cond (else? (put (if first "{" " else {") acc))
+                                (else (put " {" (put "\") }" (put tag (put "kayak_rt::tag_hash(\"" (put "tag_ == const { " (put (if first "if " " else if ") acc)))))))))
+                     (acc (cond (else?
+                                 (put ";" (put "tagcase_" (put " = " (put (mangle (sym-name (second arm))) (put "let " (put-nl (i64+ n 1) acc)))))))
+                                ((null? payload) (begin (error (string-append "kfx: a tagcase's tag its sum has not: " tag)) acc))
+                                (whole?
+                                 (put ">(tagcase_);" (put-type (in-heap c) (second (car payload))
+                                   (put " = kayak_rt::sum_payload::<" (put-type (in-heap c) (second (car payload))
+                                     (put ": " (put (mangle (sym-name (second arm))) (put "let " (put-nl (i64+ n 1) acc)))))))))
+                                ((null? (items (second arm))) acc)
+                                (else
+                                 (put-fields-of (items (second arm)) 0 (i64+ n 1)
+                                   (put-nl (i64+ n 1)
+                                     (put ">(tagcase_);" (put-type (in-heap c) (second (car payload))
+                                       (put " = kayak_rt::sum_payload::<" (put-type (in-heap c) (second (car payload))
+                                         (put "let product_: " (put-nl (i64+ n 1) acc)))))))))))
+                     (acc (put-stmts (with-locals c bound) (cdr (cdr arm)) (i64+ n 1) (hide t bound) (put-nl (i64+ n 1) acc)))
+                     (acc (put "}" (put-nl n acc))))
+                (if else? acc (put-sum-arms c fields (cdr arms) n t #f acc))))))
 
       (put-flat-tagcase (subr kfx (ctx sexp sexps i64 tail chars) chars)
         (lambda (c e xs n t acc)
@@ -2884,16 +2936,18 @@
                         (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc))))
                        (else (put ")" (put (fact-with c e "blob-offset ") (put ").field(" (put-exp c (car xs) n (value) (put "(" acc))))))))
                 ((string=? h "sum")
-                 "A sum's enum written with its type's arguments, which only the type
-                  expected, as the checker found it, says."
-                 (let* ((ty (car (read-all (fact-with c e "sum-type ") "" 1)))
-                        (fs (map items (cdr (items ty))))
-                        (acc (put (heap-alloc c) acc))
-                        (acc (put (shape-name #f (map (lambda ((f sexps)) (label-of (car f))) fs)) acc))
-                        (acc (put ">::" (put-types c (map second fs) (put "::<" acc))))
-                        (acc (put (variant-name (label-of (car xs))) acc))
-                        (acc (put "(" acc)))
-                   (put "))" (put-exp c (second xs) n (value) acc))))
+                 "A sum (C409): its tag's discriminant, made as rustc builds, its
+                  name, and its payload, at the type the checker found for the tag
+                  in the sum expected, if it found one; else as Rust finds it."
+                 (let* ((tag (label-of (car xs)))
+                        (st (fact-with c e "sum-type "))
+                        (payload (if (string=? st "") nil
+                                     (filter (lambda ((f sexps)) (string=? (label-of (car f)) tag))
+                                             (map items (cdr (items (car (read-all st "" 1))))))))
+                        (acc (put "kayak_rt::sum_new" acc))
+                        (acc (if (null? payload) acc (put ">" (put-type (in-heap c) (second (car payload)) (put "::<" acc)))))
+                        (acc (put "\", " (put tag (put "\") }, \"" (put tag (put "(const { kayak_rt::tag_hash(\"" acc)))))))
+                   (put ")" (put-exp c (second xs) n (value) acc))))
                 ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
                 ((string=? h "list") (put-list c xs n acc))
                 ((and (string=? h "quasiquote") (tagcase (car xs) (lst (ys f l p) #t) (else other #f)))

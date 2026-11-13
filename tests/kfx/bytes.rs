@@ -47,14 +47,14 @@ pub fn doubled_x(mut bv: Bytes, mut i: Int) -> () {
 #[inline]
 pub fn text_length(bv: Bytes) -> Int {
     let tagcase_ = utf8_to_string(bv);
-    match *tagcase_ {
-        Sum_4text_3bad::Text(s) => {
-            string_length(s)
-        }
-        Sum_4text_3bad::Bad(k) => {
-            _minus(int_lit(0), k)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("text") } {
+        let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        string_length(s)
+    } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+        let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        _minus(int_lit(0), k)
+    } else { unreachable!() }
 }
 
 #[inline]

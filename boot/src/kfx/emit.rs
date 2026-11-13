@@ -3323,24 +3323,17 @@ pub mod emitter {
                         return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))));
                     } else if sym_is_p(car(xs), str_lit("select")) {
                         return put(type_path(c, sym_name(second(xs)), sym_name(third(xs))), acc);
-                    } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
-                        let product = sym_is_p(car(xs), str_lit("productof"));
+                    } else if sym_is_p(car(xs), str_lit("sumof")) {
+                        return put(str_lit("kayak_rt::Sum"), acc);
+                    } else if sym_is_p(car(xs), str_lit("productof")) {
                         let fs = map(&items, cdr(xs));
-                        let acc = put(shape_name(product, map(lambda1s(move |f: Sexps| {
+                        let acc = put(shape_name(true, map(lambda1s(move |f: Sexps| {
                             label_of(car(f))
-                        }), fs)), if product {
-                            acc
-                        } else {
-                            put(str_lit("&'static "), acc)
-                        });
+                        }), fs)), acc);
                         if null_p(fs) {
                             return acc;
                         } else {
-                            return put(str_lit(">"), put_types(if product {
-                                c
-                            } else {
-                                in_heap(c)
-                            }, map(&second, fs), put(str_lit("<"), acc)));
+                            return put(str_lit(">"), put_types(c, map(&second, fs), put(str_lit("<"), acc)));
                         }
                     } else if (sym_is_p(car(xs), str_lit("poly")) && not(any_p(lambda1s(move |b: &'static Sexp| {
                         not(sym_is_p(second(items(b)), str_lit("region")))
@@ -4309,11 +4302,11 @@ pub mod emitter {
                         } else {
                             str_lit("| kayak_rt::suspend::boxed(")
                         }, acc);
-                        let acc = put(if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
+                        let acc = put_turbofish(c, e, put(if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
                             item_path(c, s)
                         } else {
                             mangle(s)
-                        }, acc);
+                        }, acc));
                         let acc = put(str_lit("("), acc);
                         let acc = put_arg_names(0i64, arity, acc);
                         put(if prim {
@@ -4321,6 +4314,8 @@ pub mod emitter {
                         } else {
                             str_lit(")))")
                         }, acc)
+                    } else if (plain_callee_p(c, s) && not(string_eq_p(fact_with(c, e, str_lit("turbofish ")), str_lit("")))) {
+                        put_turbofish(c, e, put_var(c, s, acc))
                     } else {
                         put_var(c, s, acc)
                     }
@@ -4749,6 +4744,8 @@ pub mod emitter {
     pub fn put_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
         if not(string_eq_p(fact_with(c, e, str_lit("blob-tagcase ")), str_lit(""))) {
             put_flat_tagcase(c, e, xs, n, t, acc)
+        } else if not(string_eq_p(fact_with(c, e, str_lit("tagcase-sum-type ")), str_lit(""))) {
+            put_sum_tagcase(c, e, xs, n, t, acc)
         } else {
             let tags = fact_with(c, e, str_lit("tagcase-sum "));
             let dt = fact_with(c, e, str_lit("tagcase-datatype "));
@@ -4767,6 +4764,87 @@ pub mod emitter {
                 datatype_path_here(c, dt)
             }, cdr(xs), i64_plus(n, 1i64), t, acc);
             put(str_lit("}"), put_nl(n, acc))
+        }
+    }
+
+    /// A `tagcase` on a structural sum (C409): the sum, and its tag's
+    /// discriminant, read once; each arm an `if` on that, its payload read
+    /// at the type the checker found for the arm's tag; `else`'s the sum
+    /// as it is; with no `else`, a tag no arm names cannot be (the checker
+    /// found every tag the sum may have).
+    pub fn put_sum_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let ty = car(read_all(fact_with(c, e, str_lit("tagcase-sum-type ")), str_lit(""), 1i64));
+        let fields = map(&items, cdr(items(ty)));
+        let acc = put(str_lit("let tagcase_ = "), acc);
+        let acc = put_exp(c, car(xs), n, value(), acc);
+        let acc = put_nl(n, put(str_lit(";"), acc));
+        let acc = put_nl(n, put(str_lit("let tag_ = kayak_rt::sum_tag(tagcase_);"), acc));
+        put_sum_arms(c, fields, cdr(xs), n, t, true, acc)
+    }
+
+    pub fn put_sum_arms(c: &'static Ctx, fields: List<Sexps>, arms: Sexps, n: i64, t: &'static Tail, first: bool, acc: Chars) -> Chars {
+        if null_p(arms) {
+            if first {
+                put(str_lit("unreachable!()"), acc)
+            } else {
+                put(str_lit(" else { unreachable!() }"), acc)
+            }
+        } else {
+            let arm = items(car(arms));
+            let tag = sym_name(car(arm));
+            let else_p = string_eq_p(tag, str_lit("else"));
+            let whole_p = {
+                let tagcase_ = second(arm);
+                match *tagcase_ {
+                    Sexp::Sym(x, at_file, at_pos) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            };
+            let bound = if (else_p || whole_p) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
+            } else {
+                map(&sym_name, items(second(arm)))
+            };
+            let payload = filter(lambda1s(move |f: Sexps| {
+                string_eq_p(label_of(car(f)), tag)
+            }), fields);
+            let acc = if else_p {
+                put(if first {
+                    str_lit("{")
+                } else {
+                    str_lit(" else {")
+                }, acc)
+            } else {
+                put(str_lit(" {"), put(str_lit("\") }"), put(tag, put(str_lit("kayak_rt::tag_hash(\""), put(str_lit("tag_ == const { "), put(if first {
+                    str_lit("if ")
+                } else {
+                    str_lit(" else if ")
+                }, acc))))))
+            };
+            let acc = if else_p {
+                put(str_lit(";"), put(str_lit("tagcase_"), put(str_lit(" = "), put(mangle(sym_name(second(arm))), put(str_lit("let "), put_nl(i64_plus(n, 1i64), acc))))))
+            } else if null_p(payload) {
+                error(string_append(str_lit("kfx: a tagcase's tag its sum has not: "), tag));
+                acc
+            } else if whole_p {
+                put(str_lit(">(tagcase_);"), put_type(in_heap(c), second(car(payload)), put(str_lit(" = kayak_rt::sum_payload::<"), put_type(in_heap(c), second(car(payload)), put(str_lit(": "), put(mangle(sym_name(second(arm))), put(str_lit("let "), put_nl(i64_plus(n, 1i64), acc))))))))
+            } else if null_p(items(second(arm))) {
+                acc
+            } else {
+                put_fields_of(items(second(arm)), 0i64, i64_plus(n, 1i64), put_nl(i64_plus(n, 1i64), put(str_lit(">(tagcase_);"), put_type(in_heap(c), second(car(payload)), put(str_lit(" = kayak_rt::sum_payload::<"), put_type(in_heap(c), second(car(payload)), put(str_lit("let product_: "), put_nl(i64_plus(n, 1i64), acc))))))))
+            };
+            let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), put_nl(i64_plus(n, 1i64), acc));
+            let acc = put(str_lit("}"), put_nl(n, acc));
+            if else_p {
+                acc
+            } else {
+                put_sum_arms(c, fields, cdr(arms), n, t, false, acc)
+            }
         }
     }
 
@@ -5193,18 +5271,26 @@ pub mod emitter {
                     return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
                 }
             } else if string_eq_p(h, str_lit("sum")) {
-                // A sum's enum written with its type's arguments, which only the type
-                // expected, as the checker found it, says.
-                let ty = car(read_all(fact_with(c, e, str_lit("sum-type ")), str_lit(""), 1i64));
-                let fs = map(&items, cdr(items(ty)));
-                let acc = put(heap_alloc(c), acc);
-                let acc = put(shape_name(false, map(lambda1s(move |f: Sexps| {
-                    label_of(car(f))
-                }), fs)), acc);
-                let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
-                let acc = put(variant_name(label_of(car(xs))), acc);
-                let acc = put(str_lit("("), acc);
-                return put(str_lit("))"), put_exp(c, second(xs), n, value(), acc));
+                // A sum (C409): its tag's discriminant, made as rustc builds, its
+                // name, and its payload, at the type the checker found for the tag
+                // in the sum expected, if it found one; else as Rust finds it.
+                let tag = label_of(car(xs));
+                let st = fact_with(c, e, str_lit("sum-type "));
+                let payload = if string_eq_p(st, str_lit("")) {
+                    nil::<List<&'static Sexp>>()
+                } else {
+                    filter(lambda1s(move |f: Sexps| {
+                        string_eq_p(label_of(car(f)), tag)
+                    }), map(&items, cdr(items(car(read_all(st, str_lit(""), 1i64))))))
+                };
+                let acc = put(str_lit("kayak_rt::sum_new"), acc);
+                let acc = if null_p(payload) {
+                    acc
+                } else {
+                    put(str_lit(">"), put_type(in_heap(c), second(car(payload)), put(str_lit("::<"), acc)))
+                };
+                let acc = put(str_lit("\", "), put(tag, put(str_lit("\") }, \""), put(tag, put(str_lit("(const { kayak_rt::tag_hash(\""), acc)))));
+                return put(str_lit(")"), put_exp(c, second(xs), n, value(), acc));
             } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
                 return put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)));
             } else if string_eq_p(h, str_lit("list")) {

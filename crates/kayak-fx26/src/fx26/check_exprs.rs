@@ -6928,15 +6928,15 @@ pub mod expressions {
                 return product_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("sum")) {
                 // A sum with nothing expected: a sum of its one tag (Fixpt's `(sumof
-                // (tag T))`, below any with that tag; C183); KFX's Rust enum is said by
-                // its type, which must be written.
+                // (tag T))`, below any with that tag; C183). KFX's too, since a sum's
+                // Rust is kayak-rt's one `Sum`, whatever its tags (C409).
                 if not(i64_eq(size(xs), 2i64)) {
                     return match refuse(v, str_lit("(sum tag e)")) {};
                 } else {
                     let tagcase_ = synth(v, s, second(xs));
                     match *tagcase_ {
                         Res::Res(t, es, s) => {
-                            return res(ty_shape(false, kayak_rt::heap_cons(label_of(car(xs)), kayak_rt::nil()), kayak_rt::heap_cons(t, kayak_rt::nil())), es, kfx_restricted(v, s, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...)) (C183)")));
+                            return res(ty_shape(false, kayak_rt::heap_cons(label_of(car(xs)), kayak_rt::nil()), kayak_rt::heap_cons(t, kayak_rt::nil())), es, s);
                         }
                     }
                 }
@@ -7706,7 +7706,7 @@ pub mod expressions {
                                 } else {
                                     s
                                 };
-                                with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, unholed(arms)), expected), es)
+                                with_effs(tag_arms(v, note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum-type "), show_sexp(ty_sexp(v, s, zonk(s, t))))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, unholed(arms)), expected), es)
                             }
                         }
                         _ => {
@@ -8565,11 +8565,7 @@ pub mod expressions {
                         } else {
                             whole
                         };
-                        body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), seen), kayak_rt::nil())), if (sum_whole && string_member_p(name_of(v, second(arm)), names_in_all(cdr(cdr(arm))))) {
-                            kfx_restricted(v, s, str_lit("a tagcase's else of a sum, named, narrowed to the tags not named, FX-26's, which KFX's Rust enums have not (C183)"))
-                        } else {
-                            s
-                        }, cdr(cdr(arm)), expected)
+                        body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), seen), kayak_rt::nil())), s, cdr(cdr(arm)), expected)
                     } else {
                         match refuse(v, str_lit("a tagcase's else is its last arm")) {}
                     }
@@ -10358,7 +10354,7 @@ pub mod expressions {
                                                     return res(projected(v, filter(lambda1s(move |b: Str| {
                                                         not(has_prefix_p(b, str_lit("%")))
                                                     }), tvars), cdr(xs), t), session_effs(v, naming_effs(s, n, wher, t, cv_group(v))), {
-                                                        let s = if null_p({
+                                                        let s = note_turbofish(if null_p({
                                                             let tagcase_ = car(xs);
                                                             match *tagcase_ {
                                                                 Sexp::Sym(n2, f2, p2) => {
@@ -10373,7 +10369,9 @@ pub mod expressions {
                                                             note_fact(s, cv_file(v), cv_pos(v), str_lit("control"))
                                                         } else {
                                                             s
-                                                        };
+                                                        }, datum_file(car(xs)), datum_pos(car(xs)), proj_type_args(v, filter(lambda1s(move |b: Str| {
+                                                            not(has_prefix_p(b, str_lit("%")))
+                                                        }), tvars), cdr(xs)));
                                                         let tagcase_ = car(xs);
                                                         match *tagcase_ {
                                                             Sexp::Sym(name, at_file, at_pos) => {
@@ -10460,6 +10458,21 @@ pub mod expressions {
         });
         go__knot.set(go);
         go(s, facts_after(cv_facts(v), string_append(str_lit("place-needs "), string_append(n, str_lit(" ")))))
+    }
+
+    /// The types a proj gives its type binders, in order: not its regions,
+    /// effects, functions, sizes or conventions, which Rust erases.
+    pub fn proj_type_args(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps) -> Tys {
+        loop {
+            if (null_p(tvars) || null_p(args) || has_prefix_p(car(tvars), str_lit("%"))) {
+                return nil::<&'static Ty>();
+            } else if (char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') || char_eq_p(string_ref_i64(car(tvars), 0i64), '~') || char_eq_p(string_ref_i64(car(tvars), 0i64), '^') || char_eq_p(string_ref_i64(car(tvars), 0i64), '#') || string_eq_p(binder_kind(car(tvars)), str_lit("conv"))) {
+                (tvars, args) = (cdr(tvars), cdr(args));
+                continue;
+            } else {
+                return kayak_rt::heap_cons(parse_type(v, cv_tvars(v), car(args)), proj_type_args(v, cdr(tvars), cdr(args)));
+            }
+        }
     }
 
     pub fn projected(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps, mut t: &'static Ty) -> &'static Ty {

@@ -545,6 +545,11 @@
                  (acc (put "}\n\n" acc)))
             (put-constructors inner d lived params (cdr xs) acc))))
 
+      (define put-generics-list (subr kfx (strings chars) chars)
+        (lambda (ps acc)
+          "Type parameters, each as Rust names it, each followed by `,`."
+          (if (null? ps) acc (put-generics-list (cdr ps) (put ", " (put (camel (car ps)) acc))))))
+
       (define put-generative (subr kfx (ctx sexps chars) chars)
         (lambda (c xs acc)
           "A generative type: a new type, a newtype in Rust, and its conversions."
@@ -556,6 +561,10 @@
                  (acc (put-generics-of params #t acc))
                  (acc (put (if inside "(" "(pub ") acc))
                  (acc (put-type c (second xs) acc))
+                 ;; Its parameters, held: a sum's payloads' types are not in its
+                 ;; Rust type (C409), and a parameter only they use would be
+                 ;; none of the newtype's.
+                 (acc (if (null? params) acc (put ")>" (put-generics-list params (put ", std::marker::PhantomData<(" acc)))))
                  ;; In the async mode (C373), as every procedure, `async`.
                  (acc (put (if inside (if (in-async-mode? c) ");\n\nasync fn up_" ");\n\nfn up_") (if (in-async-mode? c) ");\n\npub async fn up_" ");\n\npub fn up_")) acc))
                  (acc (put (mangle t) acc))
@@ -567,7 +576,12 @@
                  (acc (put-generics-of params #f acc))
                  (acc (put " {\n    " acc))
                  (acc (put (camel t) acc))
-                 (acc (put (if inside (if (in-async-mode? c) "(x)\n}\n\nasync fn down_" "(x)\n}\n\nfn down_") (if (in-async-mode? c) "(x)\n}\n\npub async fn down_" "(x)\n}\n\npub fn down_")) acc))
+                 (acc (put (if (null? params) "" "(x, std::marker::PhantomData") acc))
+                 (acc (put (cond ((and inside (null? params)) (if (in-async-mode? c) "(x)\n}\n\nasync fn down_" "(x)\n}\n\nfn down_"))
+                                 (inside (if (in-async-mode? c) ")\n}\n\nasync fn down_" ")\n}\n\nfn down_"))
+                                 ((null? params) (if (in-async-mode? c) "(x)\n}\n\npub async fn down_" "(x)\n}\n\npub fn down_"))
+                                 (else (if (in-async-mode? c) ")\n}\n\npub async fn down_" ")\n}\n\npub fn down_")))
+                           acc))
                  (acc (put (mangle t) acc))
                  (acc (put-generics-of params #t acc))
                  (acc (put "(x: " acc))
@@ -870,8 +884,28 @@
         (let ((ys (items lam)))
           (lst (cons (car ys) (cons (lst (cons (sym p "" 0) (items (second ys))) "" 0 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr (cdr ys))))) "" 0 0))))
 
+    (define-rec
+      (sum-tags-of (subr kfx (strings strings) strings)
+        (lambda (keys acc)
+          "The tags of the sums' keys, each once."
+          (cond ((null? keys) acc)
+                ((has-prefix? (car keys) "S ")
+                 (sum-tags-of (cdr keys) (onto (filter (lambda ((t string)) (not (string-member? t acc))) (split-words (after-prefix (car keys) "S "))) acc)))
+                (else (sum-tags-of (cdr keys) acc))))))
+
     (define put-shapes (subr kfx (ctx sexps bool chars) chars)
-      (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows (uses-blobrefs? c) acc)))
+      (lambda (c forms shows acc)
+        "The program's products, declared; its sums, kayak-rt's one `Sum`, need
+         none (C409), but that their tags, and kayak-rt's, hash apart, asserted
+         as rustc builds: a collision fails the build, never takes a wrong arm."
+        (let* ((keys (program-shapes c forms))
+               (tags (reverse-strings (sum-tags-of keys nil) nil))
+               (acc (put-shape-decls (filter (lambda ((k string)) (not (has-prefix? k "S "))) keys) shows (uses-blobrefs? c) acc)))
+          (if (null? tags)
+              acc
+              (put "]);\n\n"
+                   (put (words-of-sep (map (lambda ((t string)) (string-append "\"" (string-append t "\""))) tags) ", ")
+                        (put "const _: () = kayak_rt::tags_apart_from_runtime(&[" acc)))))))
 
     (define put-show-generatives (subr kfx (sexps chars) chars)
       (lambda (forms acc)

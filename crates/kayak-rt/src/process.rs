@@ -345,9 +345,7 @@ impl Waitable for Stdin {
 
 /// A key arm's value, once chosen: what `read-byte` gives, which does not
 /// wait.
-pub fn read_byte(
-    _: &Stdin,
-) -> &'static crate::world::Sum_4byte_3eof_6failed<u8, (), crate::world::IoError> {
+pub fn read_byte(_: &Stdin) -> crate::Sum {
     crate::world::read_byte()
 }
 
@@ -411,9 +409,7 @@ impl Waitable for ProcessNews {
 pub fn process_output(w: &ProcessOutput) -> crate::Str {
     crate::world::process_output(w.0)
 }
-pub fn process_exit(
-    w: &ProcessExit,
-) -> &'static crate::world::Sum_6exited_9signalled_7unknown<crate::Int, crate::Int, ()> {
+pub fn process_exit(w: &ProcessExit) -> crate::Sum {
     crate::world::process_exit(w.0)
 }
 pub fn process_news(_: &ProcessNews) -> crate::Int {

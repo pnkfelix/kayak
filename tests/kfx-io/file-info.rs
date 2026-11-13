@@ -9,75 +9,74 @@ use kayak_rt::*;
 #[inline]
 pub fn put(path: Str, text: Str) -> () {
     let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
 #[inline]
-pub fn kind_name(k: &'static Sum_4file_9directory_7symlink_5other<(), (), (), ()>) -> Str {
+pub fn kind_name(k: kayak_rt::Sum) -> Str {
     let tagcase_ = k;
-    match *tagcase_ {
-        Sum_4file_9directory_7symlink_5other::File(u) => {
-            str_lit("file")
-        }
-        Sum_4file_9directory_7symlink_5other::Directory(u) => {
-            str_lit("directory")
-        }
-        Sum_4file_9directory_7symlink_5other::Symlink(u) => {
-            str_lit("symlink")
-        }
-        Sum_4file_9directory_7symlink_5other::Other(u) => {
-            str_lit("other")
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("file") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        str_lit("file")
+    } else if tag_ == const { kayak_rt::tag_hash("directory") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        str_lit("directory")
+    } else if tag_ == const { kayak_rt::tag_hash("symlink") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        str_lit("symlink")
+    } else if tag_ == const { kayak_rt::tag_hash("other") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        str_lit("other")
+    } else { unreachable!() }
 }
 
 pub fn said(path: Str) -> Str {
     let tagcase_ = file_info(path);
-    match *tagcase_ {
-        Sum_4info_6failed::Info(i) => {
-            string_append(kind_name(i.0), string_append(str_lit(" "), string_append(int_to_string(i.1), string_append(if _gt(i.2, int_lit(0)) {
-                str_lit(" modified")
-            } else {
-                str_lit(" never")
-            }, if _gt(i.3, int_lit(0)) {
-                str_lit(" with a mode")
-            } else {
-                str_lit(" no mode")
-            }))))
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("info") } {
+        let i: Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int> = kayak_rt::sum_payload::<Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int>>(tagcase_);
+        string_append(kind_name(i.0), string_append(str_lit(" "), string_append(int_to_string(i.1), string_append(if _gt(i.2, int_lit(0)) {
+            str_lit(" modified")
+        } else {
+            str_lit(" never")
+        }, if _gt(i.3, int_lit(0)) {
+            str_lit(" with a mode")
+        } else {
+            str_lit(" no mode")
+        }))))
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        let tagcase_ = e.0;
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("not-found") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("not found")
+        } else {
+            let other = tagcase_;
+            str_lit("failed")
         }
-        Sum_4info_6failed::Failed(e) => {
-            let tagcase_ = e.0;
-            match *tagcase_ {
-                Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(u) => {
-                    str_lit("not found")
-                }
-                _ => {
-                    let other = tagcase_;
-                    str_lit("failed")
-                }
-            }
-        }
-    }
+    } else { unreachable!() }
 }
 
 #[inline]
 pub fn link(path: Str) -> Str {
     let tagcase_ = read_symlink(path);
-    match *tagcase_ {
-        Sum_6target_6failed::Target(t) => {
-            string_append(str_lit("a link to "), t)
-        }
-        Sum_6target_6failed::Failed(e) => {
-            str_lit("no link")
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("target") } {
+        let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        string_append(str_lit("a link to "), t)
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        str_lit("no link")
+    } else { unreachable!() }
 }
 
 pub fn main() -> Int {

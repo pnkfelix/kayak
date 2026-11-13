@@ -6,8 +6,8 @@
 
 use crate::world::{bytes_of, to_vec};
 use crate::{
-    Bytes, BytesAt, Int, List, Show, Str, Symbol, fail, heap_alloc, heap_cons, i64_to_int,
-    int_to_i64, leak_string, nil, string_to_symbol, symbol_to_string,
+    Bytes, BytesAt, Int, List, Show, Str, Sum, Symbol, fail, heap_cons, i64_to_int, int_to_i64,
+    leak_string, nil, string_to_symbol, sum_name, sum_of, sum_payload, symbol_to_string,
 };
 use kayak_reps::{Arg, Builder, Const};
 
@@ -22,17 +22,6 @@ pub struct Product_11_12_13<A0, A1, A2>(pub A0, pub A1, pub A2);
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15<A0, A1, A2, A3, A4>(pub A0, pub A1, pub A2, pub A3, pub A4);
-
-#[allow(non_camel_case_types)]
-pub enum Sum_4node_5bound_4hole_5const_3sym_3int_4flag<A0, A1, A2, A3, A4, A5, A6> {
-    Node(A0),
-    Bound(A1),
-    Hole(A2),
-    Const(A3),
-    Sym(A4),
-    Int(A5),
-    Flag(A6),
-}
 
 impl<A0, A1> Show for Product_11_12<A0, A1> {
     fn show(&self, out: &mut String) {
@@ -52,32 +41,10 @@ impl<A0, A1, A2, A3, A4> Show for Product_11_12_13_14_15<A0, A1, A2, A3, A4> {
     }
 }
 
-impl<A0, A1, A2, A3, A4, A5, A6> Show
-    for Sum_4node_5bound_4hole_5const_3sym_3int_4flag<A0, A1, A2, A3, A4, A5, A6>
-{
-    fn show(&self, out: &mut String) {
-        out.push_str(match self {
-            Self::Node(..) => "#<sum node>",
-            Self::Bound(..) => "#<sum bound>",
-            Self::Hole(..) => "#<sum hole>",
-            Self::Const(..) => "#<sum const>",
-            Self::Sym(..) => "#<sum sym>",
-            Self::Int(..) => "#<sum int>",
-            Self::Flag(..) => "#<sum flag>",
-        })
-    }
-}
-
-/// An operand, as the standard procedures give and take it.
-pub type RepOperand = &'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<
-    Int,
-    Product_11_12<Int, Int>,
-    Int,
-    Product_11_12_13<Str, Int, Str>,
-    Symbol,
-    Int,
-    bool,
->;
+/// An operand, as the standard procedures give and take it: a sum (C409),
+/// `(sumof (node int) (bound (tupleof int int)) (hole int) (const (tupleof
+/// string int string)) (sym symbol) (int int) (flag bool))`.
+pub type RepOperand = Sum;
 
 /// A node: its slot, its head, whether it is a set, its binders' names, its
 /// operands.
@@ -103,15 +70,6 @@ fn small(n: Int) -> Result<i64, String> {
 /// The rep the checker's nodes make, made canonical; its binary form
 /// (Fixpt's `rep_of_nodes`).
 fn rep_of(nodes: List<RepNode>, holes: List<Symbol>, root: Int) -> Result<kayak_reps::Rep, String> {
-    type S<'a> = Sum_4node_5bound_4hole_5const_3sym_3int_4flag<
-        Int,
-        Product_11_12<Int, Int>,
-        Int,
-        Product_11_12_13<Str, Int, Str>,
-        Symbol,
-        Int,
-        bool,
-    >;
     let nodes = items(nodes);
     let slots = nodes
         .iter()
@@ -134,16 +92,20 @@ fn rep_of(nodes: List<RepNode>, holes: List<Symbol>, root: Int) -> Result<kayak_
             .collect();
         let mut args = Vec::new();
         for arg in items(node.4) {
-            args.push(match arg {
-                S::Node(i) => Arg::Node(small(*i)? as u32),
-                S::Bound(p) => Arg::Bound {
-                    binder: small(p.0)? as u32,
-                    pos: small(p.1)? as u32,
-                },
-                S::Hole(i) => *hole_args
-                    .get(small(*i)? as usize)
+            args.push(match sum_name(arg) {
+                "node" => Arg::Node(small(sum_payload::<Int>(arg))? as u32),
+                "bound" => {
+                    let p = sum_payload::<Product_11_12<Int, Int>>(arg);
+                    Arg::Bound {
+                        binder: small(p.0)? as u32,
+                        pos: small(p.1)? as u32,
+                    }
+                }
+                "hole" => *hole_args
+                    .get(small(sum_payload::<Int>(arg))? as usize)
                     .ok_or("a hole not named")?,
-                S::Const(p) => {
+                "const" => {
+                    let p = sum_payload::<Product_11_12_13<Str, Int, Str>>(arg);
                     let generative = p.0.as_str().to_string();
                     let which = small(p.1)? as u32;
                     let kind = p.2.as_str().to_string();
@@ -153,9 +115,10 @@ fn rep_of(nodes: List<RepNode>, holes: List<Symbol>, root: Int) -> Result<kayak_
                         kind,
                     })
                 }
-                S::Sym(s) => Arg::Sym(b.name(symbol_to_string(*s).as_str())),
-                S::Int(k) => Arg::Int(small(*k)?),
-                S::Flag(f) => Arg::Flag(*f),
+                "sym" => Arg::Sym(b.name(symbol_to_string(sum_payload::<Symbol>(arg)).as_str())),
+                "int" => Arg::Int(small(sum_payload::<Int>(arg))?),
+                "flag" => Arg::Flag(sum_payload::<bool>(arg)),
+                other => return Err(format!("an operand tagged {other}")),
             });
         }
         let refs: Vec<&str> = binders.iter().map(String::as_str).collect();
@@ -188,15 +151,6 @@ pub fn rep_nodes(
     bytes: BytesAt<'_>,
     gens: List<Str>,
 ) -> Product_11_12<List<RepNode>, List<Symbol>> {
-    type S = Sum_4node_5bound_4hole_5const_3sym_3int_4flag<
-        Int,
-        Product_11_12<Int, Int>,
-        Int,
-        Product_11_12_13<Str, Int, Str>,
-        Symbol,
-        Int,
-        bool,
-    >;
     let rep = match kayak_reps::binary::decode(&to_vec(bytes), kayak_reps::heap::validate_all()) {
         Ok(r) => r,
         Err(why) => fail(&format!("rep-nodes: {why}")),
@@ -215,30 +169,30 @@ pub fn rep_nodes(
             let args: Vec<RepOperand> = node
                 .args
                 .iter()
-                .map(|a| {
-                    let s: S = match *a {
-                        Arg::Node(i) => S::Node(int(i as i64)),
-                        Arg::Bound { binder, pos } => {
-                            S::Bound(Product_11_12(int(binder as i64), int(pos as i64)))
-                        }
-                        Arg::Hole(i) => S::Hole(int(i as i64)),
-                        Arg::Const(i) => {
-                            let c = &rep.consts[i as usize];
-                            let which = keys
-                                .iter()
-                                .position(|k| *k == c.key)
-                                .map_or(-1, |w| w as i64);
-                            S::Const(Product_11_12_13(
+                .map(|a| match *a {
+                    Arg::Node(i) => sum_of("node", int(i as i64)),
+                    Arg::Bound { binder, pos } => {
+                        sum_of("bound", Product_11_12(int(binder as i64), int(pos as i64)))
+                    }
+                    Arg::Hole(i) => sum_of("hole", int(i as i64)),
+                    Arg::Const(i) => {
+                        let c = &rep.consts[i as usize];
+                        let which = keys
+                            .iter()
+                            .position(|k| *k == c.key)
+                            .map_or(-1, |w| w as i64);
+                        sum_of(
+                            "const",
+                            Product_11_12_13(
                                 leak_string(c.name.clone()),
                                 int(which),
                                 leak_string(c.kind.clone()),
-                            ))
-                        }
-                        Arg::Sym(i) => S::Sym(sym(rep.name(i))),
-                        Arg::Int(v) => S::Int(int(v)),
-                        Arg::Flag(b) => S::Flag(b),
-                    };
-                    heap_alloc(s)
+                            ),
+                        )
+                    }
+                    Arg::Sym(i) => sum_of("sym", sym(rep.name(i))),
+                    Arg::Int(v) => sum_of("int", int(v)),
+                    Arg::Flag(b) => sum_of("flag", b),
                 })
                 .collect();
             let binders: Vec<Symbol> = node.binders.iter().map(|&b| sym(rep.name(b))).collect();

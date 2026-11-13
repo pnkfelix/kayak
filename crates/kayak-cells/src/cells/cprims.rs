@@ -3842,50 +3842,50 @@ pub fn io_sum_x(tag: Str, v: i64) -> i64 {
     frozen2_x(k_sum(), symbol_x(tag), v)
 }
 
-pub fn io_failed_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>) -> i64 {
+pub fn io_failed_x(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> i64 {
     let kind = {
         let tagcase_ = e.0;
-        match *tagcase_ {
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(u) => {
-                str_lit("not-found")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::PermissionDenied(u) => {
-                str_lit("permission-denied")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::AlreadyExists(u) => {
-                str_lit("already-exists")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotADirectory(u) => {
-                str_lit("not-a-directory")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::IsADirectory(u) => {
-                str_lit("is-a-directory")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::BrokenPipe(u) => {
-                str_lit("broken-pipe")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::InvalidData(u) => {
-                str_lit("invalid-data")
-            }
-            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::Other(u) => {
-                str_lit("other")
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("not-found") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("not-found")
+        } else if tag_ == const { kayak_rt::tag_hash("permission-denied") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("permission-denied")
+        } else if tag_ == const { kayak_rt::tag_hash("already-exists") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("already-exists")
+        } else if tag_ == const { kayak_rt::tag_hash("not-a-directory") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("not-a-directory")
+        } else if tag_ == const { kayak_rt::tag_hash("is-a-directory") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("is-a-directory")
+        } else if tag_ == const { kayak_rt::tag_hash("broken-pipe") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("broken-pipe")
+        } else if tag_ == const { kayak_rt::tag_hash("invalid-data") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("invalid-data")
+        } else if tag_ == const { kayak_rt::tag_hash("other") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("other")
+        } else { unreachable!() }
     };
     io_sum_x(str_lit("failed"), frozen2_x(k_product(), io_sum_x(kind, v_unit_word()), make_string_x(e.1)))
 }
 
 #[inline]
-pub fn io_done_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
+pub fn io_done_x(r: kayak_rt::Sum) -> i64 {
     let tagcase_ = r;
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            io_sum_x(str_lit("done"), v_unit_word())
-        }
-        Sum_4done_6failed::Failed(e) => {
-            io_failed_x(e)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        io_sum_x(str_lit("done"), v_unit_word())
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        io_failed_x(e)
+    } else { unreachable!() }
 }
 
 /// The failure kayak-rt kept, as `io-failed!` makes one.
@@ -3951,19 +3951,19 @@ pub fn line_read_x() -> i64 {
 }
 
 #[inline]
-pub fn terminal_done_x(r: &'static Sum_4done_14not_a_terminal_6failed<(), (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
+pub fn terminal_done_x(r: kayak_rt::Sum) -> i64 {
     let tagcase_ = r;
-    match *tagcase_ {
-        Sum_4done_14not_a_terminal_6failed::Done(u) => {
-            io_sum_x(str_lit("done"), v_unit_word())
-        }
-        Sum_4done_14not_a_terminal_6failed::NotATerminal(u) => {
-            io_sum_x(str_lit("not-a-terminal"), v_unit_word())
-        }
-        Sum_4done_14not_a_terminal_6failed::Failed(e) => {
-            io_failed_x(e)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        io_sum_x(str_lit("done"), v_unit_word())
+    } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        io_sum_x(str_lit("not-a-terminal"), v_unit_word())
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        io_failed_x(e)
+    } else { unreachable!() }
 }
 
 #[inline]
@@ -4002,19 +4002,19 @@ pub fn bytes_from_kfx_x(mut kb: Bytes, mut v: i64, mut at: i64, mut i: i64, mut 
     }
 }
 
-pub fn process_how_x(h: &'static Sum_6exited_9signalled_7unknown<Int, Int, ()>) -> i64 {
+pub fn process_how_x(h: kayak_rt::Sum) -> i64 {
     let tagcase_ = h;
-    match *tagcase_ {
-        Sum_6exited_9signalled_7unknown::Exited(c) => {
-            io_sum_x(str_lit("exited"), fix(int_to_i64(c)))
-        }
-        Sum_6exited_9signalled_7unknown::Signalled(c) => {
-            io_sum_x(str_lit("signalled"), fix(int_to_i64(c)))
-        }
-        Sum_6exited_9signalled_7unknown::Unknown(u) => {
-            io_sum_x(str_lit("unknown"), v_unit_word())
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("exited") } {
+        let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        io_sum_x(str_lit("exited"), fix(int_to_i64(c)))
+    } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+        let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        io_sum_x(str_lit("signalled"), fix(int_to_i64(c)))
+    } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        io_sum_x(str_lit("unknown"), v_unit_word())
+    } else { unreachable!() }
 }
 
 pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
@@ -4033,17 +4033,17 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
         line_read_x()
     } else if i64_eq(op, o_read_byte()) {
         let tagcase_ = read_byte();
-        match *tagcase_ {
-            Sum_4byte_3eof_6failed::Byte(k) => {
-                io_sum_x(str_lit("byte"), fix(int_to_i64(u8_to_int(k))))
-            }
-            Sum_4byte_3eof_6failed::Eof(u) => {
-                io_sum_x(str_lit("eof"), v_unit_word())
-            }
-            Sum_4byte_3eof_6failed::Failed(e) => {
-                io_failed_x(e)
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("byte") } {
+            let k: u8 = kayak_rt::sum_payload::<u8>(tagcase_);
+            io_sum_x(str_lit("byte"), fix(int_to_i64(u8_to_int(k))))
+        } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            io_sum_x(str_lit("eof"), v_unit_word())
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            io_failed_x(e)
+        } else { unreachable!() }
     } else if i64_eq(op, o_read_bytes()) {
         if not(is_kind_p(a, k_bytevector())) {
             expected_x(str_lit("a bytevector"))
@@ -4058,18 +4058,18 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
             } else {
                 let kb = the::<Bytes>(make_bytevector(i64_to_int(i64_minus(end, at)), int_to_u8(int_lit(0))));
                 let tagcase_ = read_bytes(kb, int_lit(0), i64_to_int(i64_minus(end, at)));
-                match *tagcase_ {
-                    Sum_5count_3eof_6failed::Count(k) => {
-                        bytes_from_kfx_x(kb, a, at, 0i64, int_to_i64(k));
-                        io_sum_x(str_lit("count"), fix(int_to_i64(k)))
-                    }
-                    Sum_5count_3eof_6failed::Eof(u) => {
-                        io_sum_x(str_lit("eof"), v_unit_word())
-                    }
-                    Sum_5count_3eof_6failed::Failed(e) => {
-                        io_failed_x(e)
-                    }
-                }
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("count") } {
+                    let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                    bytes_from_kfx_x(kb, a, at, 0i64, int_to_i64(k));
+                    io_sum_x(str_lit("count"), fix(int_to_i64(k)))
+                } else if tag_ == const { kayak_rt::tag_hash("eof") } {
+                    let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                    io_sum_x(str_lit("eof"), v_unit_word())
+                } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                    let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                    io_failed_x(e)
+                } else { unreachable!() }
             }
         }
     } else if i64_eq(op, o_stdin_ready()) {
@@ -4080,105 +4080,105 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
         terminal_done_x(terminal_restore())
     } else if i64_eq(op, o_terminal_size()) {
         let tagcase_ = terminal_size();
-        match *tagcase_ {
-            Sum_4size_14not_a_terminal_6failed::Size(p) => {
-                io_sum_x(str_lit("size"), frozen2_x(k_product(), fix(int_to_i64(p.0)), fix(int_to_i64(p.1))))
-            }
-            Sum_4size_14not_a_terminal_6failed::NotATerminal(u) => {
-                io_sum_x(str_lit("not-a-terminal"), v_unit_word())
-            }
-            Sum_4size_14not_a_terminal_6failed::Failed(e) => {
-                io_failed_x(e)
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("size") } {
+            let p: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
+            io_sum_x(str_lit("size"), frozen2_x(k_product(), fix(int_to_i64(p.0)), fix(int_to_i64(p.1))))
+        } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            io_sum_x(str_lit("not-a-terminal"), v_unit_word())
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            io_failed_x(e)
+        } else { unreachable!() }
     } else if i64_eq(op, o_args()) {
         args_list_x(get(run_args()))
     } else if i64_eq(op, o_read_file()) {
         if str_p(a) {
-            let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(string_text(a)));
-            match *tagcase_ {
-                Sum_4data_6failed::Data(d) => {
-                    let n = int_to_i64(bytevector_length(d));
-                    let v = make_bv_x(n);
-                    bytes_from_kfx_x(d, v, 0i64, 0i64, n);
-                    io_sum_x(str_lit("data"), v)
-                }
-                Sum_4data_6failed::Failed(e) => {
-                    io_failed_x(e)
-                }
-            }
+            let tagcase_ = the::<kayak_rt::Sum>(read_file(string_text(a)));
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("data") } {
+                let d: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+                let n = int_to_i64(bytevector_length(d));
+                let v = make_bv_x(n);
+                bytes_from_kfx_x(d, v, 0i64, 0i64, n);
+                io_sum_x(str_lit("data"), v)
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                io_failed_x(e)
+            } else { unreachable!() }
         } else {
             expected_x(str_lit("a string"))
         }
     } else if i64_eq(op, o_list_dir()) {
         if str_p(a) {
-            let tagcase_ = the::<&'static Sum_5names_6failed<List<Str>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(list_dir(string_text(a)));
-            match *tagcase_ {
-                Sum_5names_6failed::Names(ns) => {
-                    io_sum_x(str_lit("names"), strings_list_x(ns))
-                }
-                Sum_5names_6failed::Failed(e) => {
-                    io_failed_x(e)
-                }
-            }
+            let tagcase_ = the::<kayak_rt::Sum>(list_dir(string_text(a)));
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("names") } {
+                let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
+                io_sum_x(str_lit("names"), strings_list_x(ns))
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                io_failed_x(e)
+            } else { unreachable!() }
         } else {
             expected_x(str_lit("a string"))
         }
     } else if i64_eq(op, o_file_info()) {
         if str_p(a) {
             let tagcase_ = file_info(string_text(a));
-            match *tagcase_ {
-                Sum_4info_6failed::Info(i) => {
-                    io_sum_x(str_lit("info"), frozen4_x(k_product(), io_sum_x({
-                        let tagcase_ = i.0;
-                        match *tagcase_ {
-                            Sum_4file_9directory_7symlink_5other::File(u) => {
-                                str_lit("file")
-                            }
-                            Sum_4file_9directory_7symlink_5other::Directory(u) => {
-                                str_lit("directory")
-                            }
-                            Sum_4file_9directory_7symlink_5other::Symlink(u) => {
-                                str_lit("symlink")
-                            }
-                            Sum_4file_9directory_7symlink_5other::Other(u) => {
-                                str_lit("other")
-                            }
-                        }
-                    }, v_unit_word()), fix(int_to_i64(i.1)), fix(int_to_i64(i.2)), fix(int_to_i64(i.3))))
-                }
-                Sum_4info_6failed::Failed(e) => {
-                    io_failed_x(e)
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("info") } {
+                let i: Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int> = kayak_rt::sum_payload::<Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int>>(tagcase_);
+                io_sum_x(str_lit("info"), frozen4_x(k_product(), io_sum_x({
+                    let tagcase_ = i.0;
+                    let tag_ = kayak_rt::sum_tag(tagcase_);
+                    if tag_ == const { kayak_rt::tag_hash("file") } {
+                        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                        str_lit("file")
+                    } else if tag_ == const { kayak_rt::tag_hash("directory") } {
+                        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                        str_lit("directory")
+                    } else if tag_ == const { kayak_rt::tag_hash("symlink") } {
+                        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                        str_lit("symlink")
+                    } else if tag_ == const { kayak_rt::tag_hash("other") } {
+                        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                        str_lit("other")
+                    } else { unreachable!() }
+                }, v_unit_word()), fix(int_to_i64(i.1)), fix(int_to_i64(i.2)), fix(int_to_i64(i.3))))
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                io_failed_x(e)
+            } else { unreachable!() }
         } else {
             expected_x(str_lit("a string"))
         }
     } else if i64_eq(op, o_read_symlink()) {
         if str_p(a) {
             let tagcase_ = read_symlink(string_text(a));
-            match *tagcase_ {
-                Sum_6target_6failed::Target(t) => {
-                    io_sum_x(str_lit("target"), make_string_x(t))
-                }
-                Sum_6target_6failed::Failed(e) => {
-                    io_failed_x(e)
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("target") } {
+                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                io_sum_x(str_lit("target"), make_string_x(t))
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                io_failed_x(e)
+            } else { unreachable!() }
         } else {
             expected_x(str_lit("a string"))
         }
     } else if i64_eq(op, o_process_start()) {
         if str_p(b) {
             let tagcase_ = process_start(heap_strings(a), string_text(b));
-            match *tagcase_ {
-                Sum_7started_6failed::Started(p) => {
-                    io_sum_x(str_lit("started"), fix(int_to_i64(p)))
-                }
-                Sum_7started_6failed::Failed(e) => {
-                    io_failed_x(e)
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("started") } {
+                let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                io_sum_x(str_lit("started"), fix(int_to_i64(p)))
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                io_failed_x(e)
+            } else { unreachable!() }
         } else {
             expected_x(str_lit("a string"))
         }
@@ -4186,20 +4186,20 @@ pub fn io_op_x(op: i64, a: i64, b: i64, c: i64) -> i64 {
         make_string_x(process_output(i64_to_int(fix_val(a))))
     } else if i64_eq(op, o_process_status()) {
         let tagcase_ = process_status(i64_to_int(fix_val(a)));
-        match *tagcase_ {
-            Sum_7running_6exited_9signalled_7unknown::Running(u) => {
-                io_sum_x(str_lit("running"), v_unit_word())
-            }
-            Sum_7running_6exited_9signalled_7unknown::Exited(c) => {
-                io_sum_x(str_lit("exited"), fix(int_to_i64(c)))
-            }
-            Sum_7running_6exited_9signalled_7unknown::Signalled(c) => {
-                io_sum_x(str_lit("signalled"), fix(int_to_i64(c)))
-            }
-            Sum_7running_6exited_9signalled_7unknown::Unknown(u) => {
-                io_sum_x(str_lit("unknown"), v_unit_word())
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("running") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            io_sum_x(str_lit("running"), v_unit_word())
+        } else if tag_ == const { kayak_rt::tag_hash("exited") } {
+            let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            io_sum_x(str_lit("exited"), fix(int_to_i64(c)))
+        } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+            let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            io_sum_x(str_lit("signalled"), fix(int_to_i64(c)))
+        } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            io_sum_x(str_lit("unknown"), v_unit_word())
+        } else { unreachable!() }
     } else if i64_eq(op, o_process_write()) {
         if str_p(b) {
             io_done_x(process_write(i64_to_int(fix_val(a)), string_text(b)))
@@ -4515,19 +4515,19 @@ pub fn rp_int(w: i64) -> Int {
 pub fn rp_operand_of(s: i64) -> RpOperand {
     let (tag, v) = (symbol_text(slot_of(s, 2i64)), slot_of(s, 3i64));
     if string_eq_p(tag, str_lit("node")) {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(rp_int(v))))
+        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", rp_int(v)))
     } else if string_eq_p(tag, str_lit("bound")) {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Bound(Product_11_12(rp_int(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64))))))
+        the::<RpOperand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(rp_int(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)))))
     } else if string_eq_p(tag, str_lit("hole")) {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(rp_int(v))))
+        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("hole") }, "hole", rp_int(v)))
     } else if string_eq_p(tag, str_lit("const")) {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Const(Product_11_12_13(string_text(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)), string_text(slot_of(v, 4i64))))))
+        the::<RpOperand>(kayak_rt::sum_new::<Product_11_12_13<Str, Int, Str>>(const { kayak_rt::tag_hash("const") }, "const", Product_11_12_13(string_text(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)), string_text(slot_of(v, 4i64)))))
     } else if string_eq_p(tag, str_lit("sym")) {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(string_to_symbol(symbol_text(v)))))
+        the::<RpOperand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", string_to_symbol(symbol_text(v))))
     } else if string_eq_p(tag, str_lit("int")) {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(rp_int(v))))
+        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("int") }, "int", rp_int(v)))
     } else {
-        the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Flag(i64_eq(v, v_true()))))
+        the::<RpOperand>(kayak_rt::sum_new::<bool>(const { kayak_rt::tag_hash("flag") }, "flag", i64_eq(v, v_true())))
     }
 }
 
@@ -4554,7 +4554,7 @@ pub fn rp_operands_of(l: i64) -> RpOperands {
     if is_pair_p(l) {
         kayak_rt::heap_cons(rp_operand_of(pair_car(l)), rp_operands_of(pair_cdr(l)))
     } else {
-        nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()
+        nil::<kayak_rt::Sum>()
     }
 }
 
@@ -4563,7 +4563,7 @@ pub fn rp_nodes_of(l: i64) -> RpNodes {
         let n = pair_car(l);
         kayak_rt::heap_cons(the::<RpNode>(Product_11_12_13_14_15(rp_int(slot_of(n, 2i64)), string_to_symbol(symbol_text(slot_of(n, 3i64))), i64_eq(slot_of(n, 4i64), v_true()), rp_symbols_of(slot_of(n, 5i64)), rp_operands_of(slot_of(n, 6i64)))), rp_nodes_of(pair_cdr(l)))
     } else {
-        nil::<Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>>>()
+        nil::<Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<kayak_rt::Sum>>>()
     }
 }
 
@@ -4594,29 +4594,29 @@ pub fn frozen5_x(k: i64, v: i64, w: i64, x: i64, y: i64, z: i64) -> i64 {
 
 pub fn rp_operand_word_x(o: RpOperand) -> i64 {
     let tagcase_ = o;
-    match *tagcase_ {
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(n) => {
-            fx26_sum_x(str_lit("node"), rp_word(n))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
-            fx26_sum_x(str_lit("bound"), frozen2_x(k_product(), rp_word(p.0), rp_word(p.1)))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(n) => {
-            fx26_sum_x(str_lit("hole"), rp_word(n))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Const(p) => {
-            fx26_sum_x(str_lit("const"), frozen3_x(k_product(), make_string_x(p.0), rp_word(p.1), make_string_x(p.2)))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Sym(y) => {
-            fx26_sum_x(str_lit("sym"), symbol_x(symbol_to_string(y)))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Int(n) => {
-            fx26_sum_x(str_lit("int"), rp_word(n))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Flag(b) => {
-            fx26_sum_x(str_lit("flag"), boolean(b))
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("node") } {
+        let n: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        fx26_sum_x(str_lit("node"), rp_word(n))
+    } else if tag_ == const { kayak_rt::tag_hash("bound") } {
+        let p: Product_11_12<Int, Int> = kayak_rt::sum_payload::<Product_11_12<Int, Int>>(tagcase_);
+        fx26_sum_x(str_lit("bound"), frozen2_x(k_product(), rp_word(p.0), rp_word(p.1)))
+    } else if tag_ == const { kayak_rt::tag_hash("hole") } {
+        let n: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        fx26_sum_x(str_lit("hole"), rp_word(n))
+    } else if tag_ == const { kayak_rt::tag_hash("const") } {
+        let p: Product_11_12_13<Str, Int, Str> = kayak_rt::sum_payload::<Product_11_12_13<Str, Int, Str>>(tagcase_);
+        fx26_sum_x(str_lit("const"), frozen3_x(k_product(), make_string_x(p.0), rp_word(p.1), make_string_x(p.2)))
+    } else if tag_ == const { kayak_rt::tag_hash("sym") } {
+        let y: Symbol = kayak_rt::sum_payload::<Symbol>(tagcase_);
+        fx26_sum_x(str_lit("sym"), symbol_x(symbol_to_string(y)))
+    } else if tag_ == const { kayak_rt::tag_hash("int") } {
+        let n: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        fx26_sum_x(str_lit("int"), rp_word(n))
+    } else if tag_ == const { kayak_rt::tag_hash("flag") } {
+        let b: bool = kayak_rt::sum_payload::<bool>(tagcase_);
+        fx26_sum_x(str_lit("flag"), boolean(b))
+    } else { unreachable!() }
 }
 
 pub fn rp_symbols_word_x(ys: List<Symbol>) -> i64 {

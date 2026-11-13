@@ -1224,14 +1224,14 @@ pub mod session {
             ()
         } else {
             let tagcase_ = write_file(get(history_path()), the::<Bytes>(string_to_utf8(rev_to_string(history_text(get(history()), 500i64, nil::<char>())))));
-            match *tagcase_ {
-                Sum_4done_6failed::Done(u) => {
-                    ()
-                }
-                Sum_4done_6failed::Failed(e) => {
-                    ()
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("done") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                ()
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                ()
+            } else { unreachable!() }
         }
     }
 
@@ -1239,25 +1239,25 @@ pub mod session {
         if string_eq_p(get(history_path()), str_lit("")) {
             ()
         } else {
-            let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(get(history_path())));
-            match *tagcase_ {
-                Sum_4data_6failed::Data(b) => {
-                    let tagcase_ = utf8_to_string(b);
-                    match *tagcase_ {
-                        Sum_4text_3bad::Text(t) => {
-                            set(history(), oldest_first_strings(map(lambda1s(move |l: Str| {
-                                rev_to_string(unescaped(string_chars(l), nil::<char>()))
-                            }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
-                        }
-                        Sum_4text_3bad::Bad(k) => {
-                            ()
-                        }
-                    }
-                }
-                Sum_4data_6failed::Failed(e) => {
+            let tagcase_ = the::<kayak_rt::Sum>(read_file(get(history_path())));
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("data") } {
+                let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+                let tagcase_ = utf8_to_string(b);
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("text") } {
+                    let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                    set(history(), oldest_first_strings(map(lambda1s(move |l: Str| {
+                        rev_to_string(unescaped(string_chars(l), nil::<char>()))
+                    }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
+                } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                    let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
                     ()
-                }
-            }
+                } else { unreachable!() }
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                ()
+            } else { unreachable!() }
         }
     }
 
@@ -1481,23 +1481,23 @@ pub mod session {
 
     /// `,load FILE`: the file's forms, one entry.
     pub fn loaded_x(path: Str, now: i64) -> () {
-        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
-        match *tagcase_ {
-            Sum_4data_6failed::Data(b) => {
-                let tagcase_ = utf8_to_string(b);
-                match *tagcase_ {
-                    Sum_4text_3bad::Text(t) => {
-                        submit_x(t, path, false, now)
-                    }
-                    Sum_4text_3bad::Bad(k) => {
-                        said_x(string_append(path, str_lit(": not UTF-8")), now)
-                    }
-                }
-            }
-            Sum_4data_6failed::Failed(e) => {
-                said_x(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now)
-            }
-        }
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            let tagcase_ = utf8_to_string(b);
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                submit_x(t, path, false, now)
+            } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                said_x(string_append(path, str_lit(": not UTF-8")), now)
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            said_x(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now)
+        } else { unreachable!() }
     }
 
     pub fn pending_text(now: i64) -> Str {

@@ -68,15 +68,5 @@ pub mod machine;
 pub use machine::*;
 pub mod main;
 pub use main::*;
-#[allow(non_camel_case_types)]
-pub enum Sum_4made_6failed<A0, A1> {
-    Made(A0),
-    Failed(A1),
-}
-
-#[allow(non_camel_case_types)]
-pub enum Sum_12made_address_10no_address<A0, A1> {
-    MadeAddress(A0),
-    NoAddress(A1),
-}
+const _: () = kayak_rt::tags_apart_from_runtime(&["failed", "made", "no-address", "made-address"]);
 

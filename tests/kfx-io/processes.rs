@@ -11,22 +11,22 @@ pub fn wait_for(mut p: Int, mut acc: Str) -> Str {
     loop {
         let more = string_append(acc, process_output(p));
         let tagcase_ = process_status(p);
-        match *tagcase_ {
-            Sum_7running_6exited_9signalled_7unknown::Exited(c) => {
-                return string_append(more, string_append(str_lit("exited "), int_to_string(c)));
-            }
-            Sum_7running_6exited_9signalled_7unknown::Signalled(s) => {
-                return string_append(more, string_append(str_lit("signalled "), int_to_string(s)));
-            }
-            Sum_7running_6exited_9signalled_7unknown::Unknown(u) => {
-                return string_append(more, str_lit("unknown"));
-            }
-            Sum_7running_6exited_9signalled_7unknown::Running(u) => {
-                sleep_until(i64_plus(clock(), 1000000i64));
-                acc = more;
-                continue;
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("exited") } {
+            let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            return string_append(more, string_append(str_lit("exited "), int_to_string(c)));
+        } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+            let s: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            return string_append(more, string_append(str_lit("signalled "), int_to_string(s)));
+        } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            return string_append(more, str_lit("unknown"));
+        } else if tag_ == const { kayak_rt::tag_hash("running") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            sleep_until(i64_plus(clock(), 1000000i64));
+            acc = more;
+            continue;
+        } else { unreachable!() }
     }
 }
 
@@ -37,55 +37,54 @@ pub fn script() -> Str {
 
 pub fn ended(p: Int) -> Str {
     let tagcase_ = process_exit(p);
-    match *tagcase_ {
-        Sum_6exited_9signalled_7unknown::Exited(c) => {
-            string_append(str_lit("exited "), int_to_string(c))
-        }
-        Sum_6exited_9signalled_7unknown::Signalled(s) => {
-            string_append(str_lit("signalled "), int_to_string(s))
-        }
-        Sum_6exited_9signalled_7unknown::Unknown(u) => {
-            str_lit("unknown")
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("exited") } {
+        let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        string_append(str_lit("exited "), int_to_string(c))
+    } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+        let s: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        string_append(str_lit("signalled "), int_to_string(s))
+    } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        str_lit("unknown")
+    } else { unreachable!() }
 }
 
 pub fn main() -> Int {
     {
         let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit("/bin/sh"), kayak_rt::heap_cons(str_lit("-c"), kayak_rt::heap_cons(script(), kayak_rt::nil())))), str_lit(""));
-        match *tagcase_ {
-            Sum_7started_6failed::Started(p) => {
-                process_write(p, str_lit("hi\n"));
-                process_close_input(p);
-                write_out(string_append(wait_for(p, str_lit("")), str_lit("\n")));
-                write_out(string_append(str_lit("then "), string_append(ended(p), str_lit("\n"))))
-            }
-            Sum_7started_6failed::Failed(e) => {
-                write_out(str_lit("failed\n"))
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("started") } {
+            let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            process_write(p, str_lit("hi\n"));
+            process_close_input(p);
+            write_out(string_append(wait_for(p, str_lit("")), str_lit("\n")));
+            write_out(string_append(str_lit("then "), string_append(ended(p), str_lit("\n"))))
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            write_out(str_lit("failed\n"))
+        } else { unreachable!() }
     };
     {
         let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit("/no/such/program"), kayak_rt::nil())), str_lit(""));
-        match *tagcase_ {
-            Sum_7started_6failed::Started(p) => {
-                write_out(str_lit("started\n"))
-            }
-            Sum_7started_6failed::Failed(e) => {
-                write_out({
-                    let tagcase_ = e.0;
-                    match *tagcase_ {
-                        Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(u) => {
-                            str_lit("failed not-found\n")
-                        }
-                        _ => {
-                            let y = tagcase_;
-                            str_lit("failed other\n")
-                        }
-                    }
-                })
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("started") } {
+            let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            write_out(str_lit("started\n"))
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            write_out({
+                let tagcase_ = e.0;
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("not-found") } {
+                    let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                    str_lit("failed not-found\n")
+                } else {
+                    let y = tagcase_;
+                    str_lit("failed other\n")
+                }
+            })
+        } else { unreachable!() }
     };
     write_out(string_append(str_lit("news "), string_append(int_to_string(process_news()), str_lit("\n"))));
     int_lit(0)

@@ -12,9 +12,5 @@ pub struct Product_2at_1k<A0, A1>(pub A0, pub A1);
 #[derive(Clone, Copy)]
 pub struct Product_3tag_5ready_8sleeping_5clock<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
-#[allow(non_camel_case_types)]
-pub enum Sum_5empty_4full<A0, A1> {
-    Empty(A0),
-    Full(A1),
-}
+const _: () = kayak_rt::tags_apart_from_runtime(&["full", "empty"]);
 

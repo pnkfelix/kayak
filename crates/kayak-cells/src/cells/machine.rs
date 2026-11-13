@@ -2335,14 +2335,14 @@ pub fn run_word_x(w: i64, steps: i64) -> &'static Ran {
     if enter_x(w) {
         if get(hand_on()) {
             let tagcase_ = hand_code_x();
-            match *tagcase_ {
-                Sum_4made_6failed::Made(m) => {
-                    hand_run_x(m, 0i64)
-                }
-                Sum_4made_6failed::Failed(why) => {
-                    trap_x(why)
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("made") } {
+                let m: &'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int = kayak_rt::sum_payload::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(tagcase_);
+                hand_run_x(m, 0i64)
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                trap_x(why)
+            } else { unreachable!() }
         } else {
             run_x(0i64)
         }
@@ -2431,14 +2431,14 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
         set(clo(), c);
         if get(hand_on()) {
             let tagcase_ = hand_code_x();
-            match *tagcase_ {
-                Sum_4made_6failed::Made(m) => {
-                    hand_run_x(m, 0i64)
-                }
-                Sum_4made_6failed::Failed(why) => {
-                    trap_x(why)
-                }
-            }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("made") } {
+                let m: &'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int = kayak_rt::sum_payload::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(tagcase_);
+                hand_run_x(m, 0i64)
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                trap_x(why)
+            } else { unreachable!() }
         } else {
             run_x(0i64)
         }

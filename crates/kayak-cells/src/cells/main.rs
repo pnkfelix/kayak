@@ -21,14 +21,14 @@ use super::*;
 #[inline]
 pub fn say(s: Str) -> () {
     let tagcase_ = write_out(s);
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
 #[inline]
@@ -38,23 +38,23 @@ pub fn fail_with(message: Str, status: Int) -> Void {
 }
 
 pub fn read_text(path: Str) -> Str {
-    let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
-    match *tagcase_ {
-        Sum_4data_6failed::Data(b) => {
-            let tagcase_ = utf8_to_string(b);
-            match *tagcase_ {
-                Sum_4text_3bad::Text(s) => {
-                    s
-                }
-                Sum_4text_3bad::Bad(k) => {
-                    match fail_with(string_append(path, str_lit(": not UTF-8")), int_lit(1)) {}
-                }
-            }
-        }
-        Sum_4data_6failed::Failed(e) => {
-            match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
-        }
-    }
+    let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("data") } {
+        let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+        let tagcase_ = utf8_to_string(b);
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("text") } {
+            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            s
+        } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            match fail_with(string_append(path, str_lit(": not UTF-8")), int_lit(1)) {}
+        } else { unreachable!() }
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+    } else { unreachable!() }
 }
 
 #[inline]
@@ -398,44 +398,44 @@ pub fn profile_shown_x() -> () {
     let by_line = if string_eq_p(file, str_lit("")) {
         str_lit("no line tables: the listing is not kayak's (`kayak-fx26 --cells`)\n")
     } else {
-        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(file));
-        match *tagcase_ {
-            Sum_4data_6failed::Data(b) => {
-                let tagcase_ = utf8_to_string(b);
-                match *tagcase_ {
-                    Sum_4text_3bad::Text(src) => {
-                        let cs = string_chars(src);
-                        let starts = starts_noted_x(cs, make_flatarray_i64(i64_plus(1i64, newlines(cs, 0i64)), 0i64), 0i64, 0i64);
-                        let lines = lines_of(cs, nil::<char>(), nil::<List<char>>());
-                        let ls = lines_tallied_x(ts, file, starts, false, tally_made(256i64));
-                        let ps = lines_tallied_x(ts, file, starts, true, tally_made(256i64));
-                        string_append(most_shown(ls, total, 15i64, lambda1(move |l: i64| {
-                            string_append(file, string_append(str_lit(":"), string_append(i64_to_string(l), string_append(str_lit("  "), cut(spaces_dropped(nth_line(lines, i64_minus(l, 1i64))), 60i64, nil::<char>())))))
-                        }), str_lit("the source lines that ran the most:\n")), most_shown(ps, total, 15i64, lambda1(move |q: i64| {
-                            let p = i64_minus(q, 1i64);
-                            let l = line_of(starts, p, 0i64, i64_minus(flatarray_length_i64(starts), 1i64));
-                            string_append(i64_to_string(i64_plus(l, 1i64)), string_append(str_lit(":"), string_append(i64_to_string(i64_minus(p, flatarray_ref_i64(starts, l))), string_append(str_lit("  "), cut(chars_dropped(cs, p), 50i64, nil::<char>())))))
-                        }), str_lit("the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n")))
-                    }
-                    Sum_4text_3bad::Bad(k) => {
-                        string_append(file, str_lit(": not UTF-8\n"))
-                    }
-                }
-            }
-            Sum_4data_6failed::Failed(e) => {
-                string_append(str_lit("cannot read "), string_append(file, str_lit("\n")))
-            }
-        }
+        let tagcase_ = the::<kayak_rt::Sum>(read_file(file));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("data") } {
+            let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
+            let tagcase_ = utf8_to_string(b);
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("text") } {
+                let src: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                let cs = string_chars(src);
+                let starts = starts_noted_x(cs, make_flatarray_i64(i64_plus(1i64, newlines(cs, 0i64)), 0i64), 0i64, 0i64);
+                let lines = lines_of(cs, nil::<char>(), nil::<List<char>>());
+                let ls = lines_tallied_x(ts, file, starts, false, tally_made(256i64));
+                let ps = lines_tallied_x(ts, file, starts, true, tally_made(256i64));
+                string_append(most_shown(ls, total, 15i64, lambda1(move |l: i64| {
+                    string_append(file, string_append(str_lit(":"), string_append(i64_to_string(l), string_append(str_lit("  "), cut(spaces_dropped(nth_line(lines, i64_minus(l, 1i64))), 60i64, nil::<char>())))))
+                }), str_lit("the source lines that ran the most:\n")), most_shown(ps, total, 15i64, lambda1(move |q: i64| {
+                    let p = i64_minus(q, 1i64);
+                    let l = line_of(starts, p, 0i64, i64_minus(flatarray_length_i64(starts), 1i64));
+                    string_append(i64_to_string(i64_plus(l, 1i64)), string_append(str_lit(":"), string_append(i64_to_string(i64_minus(p, flatarray_ref_i64(starts, l))), string_append(str_lit("  "), cut(chars_dropped(cs, p), 50i64, nil::<char>())))))
+                }), str_lit("the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n")))
+            } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+                let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                string_append(file, str_lit(": not UTF-8\n"))
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            string_append(str_lit("cannot read "), string_append(file, str_lit("\n")))
+        } else { unreachable!() }
     };
     let tagcase_ = write_err(string_append(head, string_append(by_line, by_word)));
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("done") } {
+        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+        ()
+    } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+        let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+        ()
+    } else { unreachable!() }
 }
 
 pub fn cells_main() -> Int {

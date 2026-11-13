@@ -3690,9 +3690,9 @@ pub fn ywords_compiled_x(mut ws: List<&'static NamedSlot>, mut k: Int) -> Int {
 /// first, then its code. Then, with `--compiled`, each of the listing's
 /// words compiled to its own code (`yword-made!`), where there is a code
 /// area for it; else none, its cells run.
-pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
+pub fn hand_code_x64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
-        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(car(get(hand_made()))))
+        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
     } else {
         set(y_items(), nil::<&'static XItem>());
         set(y_data(), nil::<&'static XItem>());
@@ -3731,7 +3731,7 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         } else {
             ()
         };
-        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(p))
+        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", p)
     }
 }
 
@@ -3775,16 +3775,16 @@ pub fn words_read_compiled_x(had_words: i64, had_regs: i64) -> () {
 
 /// Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or
 /// x86_64's; elsewhere none.
-pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
+pub fn hand_code_x() -> kayak_rt::Sum {
     let target = car(the::<List<Str>>(native_convention()));
     if (get(hand_fixpt_calls()) && string_eq_p(target, str_lit("(target arm64)"))) {
-        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(str_lit("--fixpt-calls: x86_64's alone (C140)")))
+        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit("--fixpt-calls: x86_64's alone (C140)"))
     } else if string_eq_p(target, str_lit("(target arm64)")) {
         hand_code_arm64_x()
     } else if string_eq_p(target, str_lit("(target x86_64)")) {
         hand_code_x64_x()
     } else {
-        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(string_append(str_lit("tier 2: no machine for "), target)))
+        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit("tier 2: no machine for "), target))
     }
 }
 
@@ -3802,17 +3802,17 @@ pub fn address_made() -> Ref<List<AddressCode>> {
     })
 }
 
-pub fn address_code_x() -> &'static Sum_12made_address_10no_address<AddressCode, Str> {
+pub fn address_code_x() -> kayak_rt::Sum {
     let target = car(the::<List<Str>>(native_convention()));
     if not(null_p(get(address_made()))) {
-        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::MadeAddress(car(get(address_made()))))
+        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made-address") }, "made-address", car(get(address_made())))
     } else if string_eq_p(target, str_lit("(target x86_64)")) {
         let bs = the::<List<Int>>(append((&x86::x86_lea)(int_lit(0), y_rdi(), int_lit(-4)), append((&x86::x86_shift_imm)(s_shl(), int_lit(0), int_lit(3)), (&x86::x86_ret)())));
         let b = the::<&'static Bloblet<()>>(make_bloblet(y_length(bs, int_lit(0)), ()));
         let u = y_bytes_x(b, bs, int_lit(0));
         let p = kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b));
         set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
-        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::MadeAddress(p))
+        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made-address") }, "made-address", p)
     } else if string_eq_p(target, str_lit("(target arm64)")) {
         let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(12), ()));
         let u = {
@@ -3822,9 +3822,9 @@ pub fn address_code_x() -> &'static Sum_12made_address_10no_address<AddressCode,
         };
         let p = kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b));
         set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
-        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::MadeAddress(p))
+        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made-address") }, "made-address", p)
     } else {
-        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::NoAddress(string_append(str_lit("no native code for "), target)))
+        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("no-address") }, "no-address", string_append(str_lit("no native code for "), target))
     }
 }
 
@@ -3885,27 +3885,27 @@ pub fn heap_addressed_x() -> bool {
         false
     } else {
         let tagcase_ = address_code_x();
-        match *tagcase_ {
-            Sum_12made_address_10no_address::MadeAddress(p) => {
-                let first = the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64));
-                let m = the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64));
-                let o = the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64));
-                set(mem(), m);
-                set(other(), o);
-                set(vbase(), int_to_i64(p(m)));
-                set(to_vbase(), int_to_i64(p(o)));
-                set(limit(), 1048576i64);
-                code_area_made_x(p, first, i64_plus(if i64_gt(get(vbase()), get(to_vbase())) {
-                    get(vbase())
-                } else {
-                    get(to_vbase())
-                }, i64_star(8i64, heap_capacity())));
-                true
-            }
-            Sum_12made_address_10no_address::NoAddress(why) => {
-                false
-            }
-        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("made-address") } {
+            let p: &'static dyn Fn(FlatArray<i64>) -> Int = kayak_rt::sum_payload::<&'static dyn Fn(FlatArray<i64>) -> Int>(tagcase_);
+            let first = the::<FlatArray<i64>>(make_flatarray_i64(code_capacity(), 0i64));
+            let m = the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64));
+            let o = the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64));
+            set(mem(), m);
+            set(other(), o);
+            set(vbase(), int_to_i64(p(m)));
+            set(to_vbase(), int_to_i64(p(o)));
+            set(limit(), 1048576i64);
+            code_area_made_x(p, first, i64_plus(if i64_gt(get(vbase()), get(to_vbase())) {
+                get(vbase())
+            } else {
+                get(to_vbase())
+            }, i64_star(8i64, heap_capacity())));
+            true
+        } else if tag_ == const { kayak_rt::tag_hash("no-address") } {
+            let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            false
+        } else { unreachable!() }
     }
 }
 

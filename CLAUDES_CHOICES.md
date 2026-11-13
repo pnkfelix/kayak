@@ -11368,3 +11368,77 @@ them: `#[repr(u64)]` gives up Rust's niche layout, so every enum the
 compiler uses would grow. So it is kept for where structural sums are,
 kc's Rust back end of FX-26's `sumof`s (`docs/research/kc.md`).
 
+## C409. KFX's sums structural: one `Sum`, its tags hashed (2026-11-13)
+
+The user, of C408's keeping hashed discriminants out of KFX: "I think this
+choice is going to make it harder for KFX to reflect FX26's structural
+subtyping rules"; then "Yep" to: KFX's structural sums (`sumof`) first,
+its datatypes after a measurement. And: "we shouldn't ever encounter
+SipHash colliding, right?"
+
+**The representation** (`crates/kayak-rt/src/sum.rs`). A sum, of whatever
+tags, is kayak-rt's one `Sum`, `&'static SumHead`: a cell of its tag's
+discriminant, a fixed hash of the tag's name (`tag_hash`, SipHash-2-4, a
+fixed key of kayak's, a `const fn`, checked against the reference vector),
+its tag's name (for writing it, `#<sum TAG>`, as Fixpt does), and its
+payload's type, then its payload. Not reinterpreted enums (a `&Big` to a
+smaller `Small`'s cell would be undefined in Rust whatever the prefix):
+the cell is erased, so a sum of fewer tags is a sum of more as it is, a
+list of them a list of the more as it is, and a union's member is the sum
+as it is. The one unsafe operation, `sum_payload::<T>`, reads the payload
+at the type the reader says; what makes it sound is that a checked
+program gives each tag of a sum one payload type, and that every cell
+carries its payload's type (`fn() -> TypeId`, so a cell may be a `const`
+table's), which every read checks: kfx's idea of a primitive's sum and
+kayak-rt's are two, which rustc no longer compares, so a disagreement
+fails loudly, never reads at the wrong type.
+
+**Collisions** (the user's question): for n tags, about n²/2^65, some
+10^-12 for ten thousand; but not left to the odds, since an erased sum
+has no enum for rustc to refuse a duplicate discriminant in. kfx writes,
+in each program, `const _: () = kayak_rt::tags_apart_from_runtime(&[...])`
+of the program's tags, which rustc evaluates as it builds: a collision,
+among them or with kayak-rt's own (`RUNTIME_TAGS`, themselves asserted
+apart), fails the build.
+
+**The emitter**: a `sumof` type is `kayak_rt::Sum`; `(sum tag e)` is
+`sum_new::<P>(const { tag_hash("tag") }, "tag", e)`, `P` the tag's payload
+type in the sum the checker found expected (`sum-type`), or Rust's
+inference where it found none; a `tagcase` of a sum reads the tag once and
+is an `if` on each arm's tag's discriminant, the payload read at the type
+the scrutinee's sum gives that tag (a new fact, `tagcase-sum-type`), or
+taken apart as a product; `else` binds the sum as it is; no arm, no
+`else`, `unreachable!()`. No sum is declared any more, only products.
+
+**What it lifts**: KFX now takes FX-26's width subtyping of sums, a sum
+whose type nothing says, and a `tagcase`'s `else` seen at the tags no arm
+names (the three C183 refusals): `tests/kfx-stricter/sum-width.kfx` and
+`sum-unknown.kfx` gone, `tests/kfx/structural-sums.kfx` instead (a narrower
+sum, and a list of them, where the wider is wanted; `3 39 20 -1 0`,
+Fixpt's). Of Fixpt's programs, kfx now takes 219 (212 before), every one
+agreeing.
+
+**What the erasure cost, and the fixes**:
+- kayak-rt's own sums (the I/O primitives' answers, `rep-nodes`'
+  operands) are `Sum`s, made by `sum_of` and its static cells (the bytes'
+  and counts' tables `SumOf::new` in a `const`), taken apart by name.
+- rustc had inferred a poly procedure's type arguments from a sum's enum's;
+  a `Sum` says none. The checker now notes a `proj`'s type binders'
+  arguments (`proj-type-args`; not its regions, effects, functions, sizes,
+  conventions) at the procedure's name, and the emitter writes them as a
+  turbofish after it, wherever it writes the name (plainly, or in the async
+  mode's adapter).
+- A generative type whose parameter only its sum's payloads used would use
+  none in Rust: each now holds its parameters in a `PhantomData`.
+- **The bootstrap**: `boot/`'s compiler was written with the enums, which
+  the new kayak-rt has not; built three steps: the seed and its first
+  generation on the committed kayak-rt (the new emitter, written the old
+  way), then the second generation, written the new way, on the new
+  kayak-rt, the fixed point after it.
+
+**Measured**, the compiler compiling itself, best of three: 2.31 s and
+1.215 GB at most, from 2.27 s and 1.206 GB (2% and 0.7%, the new source
+larger too). The compiler's own data are datatypes, not structural sums,
+so this says little of step 2 (KFX's datatypes as structural sums too, as
+FX-26's `define-data` makes them), which waits on a measurement of its own.
+

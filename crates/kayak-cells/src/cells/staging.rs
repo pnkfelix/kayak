@@ -556,20 +556,19 @@ pub fn rp_index_in(mut xs: Strings, mut n: Str, mut i: Int) -> Int {
 /// An evidence's operand, its nodes `off` past, its holes by name in `all`.
 pub fn rp_moved(a: RpOperand, off: Int, own: List<Symbol>, all: Strings) -> RpOperand {
     let tagcase_ = a;
-    match *tagcase_ {
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
-            the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(_plus(j, off))))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
-            the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Bound(Product_11_12(_plus(p.0, off), p.1))))
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
-            the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(rp_index_in(all, nth_symbol(own, h), int_lit(0)))))
-        }
-        _ => {
-            let other = tagcase_;
-            a
-        }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("node") } {
+        let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", _plus(j, off)))
+    } else if tag_ == const { kayak_rt::tag_hash("bound") } {
+        let p: Product_11_12<Int, Int> = kayak_rt::sum_payload::<Product_11_12<Int, Int>>(tagcase_);
+        the::<RpOperand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(_plus(p.0, off), p.1)))
+    } else if tag_ == const { kayak_rt::tag_hash("hole") } {
+        let h: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("hole") }, "hole", rp_index_in(all, nth_symbol(own, h), int_lit(0))))
+    } else {
+        let other = tagcase_;
+        a
     }
 }
 
@@ -642,7 +641,7 @@ pub fn rp_of_evidence(p: &'static Rpp, all: Strings) -> RpOperand {
         Rpp::Rpp(n, off, ns, hs) => {
             let root = rp_node_at(ns, int_lit(0));
             if null_p(root) {
-                the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Int(int_lit(0))))
+                the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("int") }, "int", int_lit(0)))
             } else {
                 rp_moved(car(car(root).4), off, hs, all)
             }
@@ -654,38 +653,36 @@ pub fn rp_of_evidence(p: &'static Rpp, all: Strings) -> RpOperand {
 /// a set's members spliced.
 pub fn rp_filled_args(r#as: RpOperands, set: bool, holes: List<Symbol>, ps: List<&'static Rpp>, all: Strings, ns_all: RpNodes) -> RpOperands {
     if null_p(r#as) {
-        nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>()
+        nil::<kayak_rt::Sum>()
     } else {
         let rest = rp_filled_args(cdr(r#as), set, holes, ps, all, ns_all);
         let tagcase_ = car(r#as);
-        match *tagcase_ {
-            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
-                let found = rp_placed_at(ps, nth_symbol(holes, h));
-                if null_p(found) {
-                    kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Hole(rp_index_in(all, nth_symbol(holes, h), int_lit(0))))), rest)
-                } else {
-                    let of = rp_of_evidence(car(found), all);
-                    let tagcase_ = of;
-                    match *tagcase_ {
-                        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
-                            let n = rp_node_at(ns_all, j);
-                            if (set && not(null_p(n)) && car(n).2) {
-                                onto(car(n).4, rest)
-                            } else {
-                                kayak_rt::heap_cons(of, rest)
-                            }
-                        }
-                        _ => {
-                            let z = tagcase_;
-                            kayak_rt::heap_cons(of, rest)
-                        }
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("hole") } {
+            let h: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            let found = rp_placed_at(ps, nth_symbol(holes, h));
+            if null_p(found) {
+                kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("hole") }, "hole", rp_index_in(all, nth_symbol(holes, h), int_lit(0)))), rest)
+            } else {
+                let of = rp_of_evidence(car(found), all);
+                let tagcase_ = of;
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("node") } {
+                    let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                    let n = rp_node_at(ns_all, j);
+                    if (set && not(null_p(n)) && car(n).2) {
+                        onto(car(n).4, rest)
+                    } else {
+                        kayak_rt::heap_cons(of, rest)
                     }
+                } else {
+                    let z = tagcase_;
+                    kayak_rt::heap_cons(of, rest)
                 }
             }
-            _ => {
-                let other = tagcase_;
-                kayak_rt::heap_cons(car(r#as), rest)
-            }
+        } else {
+            let other = tagcase_;
+            kayak_rt::heap_cons(car(r#as), rest)
         }
     }
 }
@@ -707,25 +704,23 @@ pub fn rp_var_aliases(before: RpNodes, after: RpNodes) -> List<&'static Rpalias>
         let (rest, x) = (rp_var_aliases(cdr(before), cdr(after)), car(before));
         if (string_eq_p(symbol_to_string(x.1), str_lit("var")) && i64_eq(size(x.4), 1i64) && {
             let tagcase_ = car(x.4);
-            match *tagcase_ {
-                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("hole") } {
+                let h: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         } && not({
             let tagcase_ = car(car(after).4);
-            match *tagcase_ {
-                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(h) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("hole") } {
+                let h: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })) {
             kayak_rt::heap_cons(rpalias(x.0, car(car(after).4)), rest)
@@ -738,33 +733,32 @@ pub fn rp_var_aliases(before: RpNodes, after: RpNodes) -> List<&'static Rpalias>
 pub fn rp_aliased(mut als: List<&'static Rpalias>, mut a: RpOperand) -> RpOperand {
     loop {
         let tagcase_ = a;
-        match *tagcase_ {
-            Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
-                if null_p(als) {
-                    return a;
-                } else if {
-                    let tagcase_ = car(als);
-                    match *tagcase_ {
-                        Rpalias::Rpalias(k, f) => {
-                            _eq(k, j)
-                        }
-                    }
-                } {
-                    let tagcase_ = car(als);
-                    match *tagcase_ {
-                        Rpalias::Rpalias(k, f) => {
-                            return f;
-                        }
-                    }
-                } else {
-                    als = cdr(als);
-                    continue;
-                }
-            }
-            _ => {
-                let other = tagcase_;
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("node") } {
+            let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            if null_p(als) {
                 return a;
+            } else if {
+                let tagcase_ = car(als);
+                match *tagcase_ {
+                    Rpalias::Rpalias(k, f) => {
+                        _eq(k, j)
+                    }
+                }
+            } {
+                let tagcase_ = car(als);
+                match *tagcase_ {
+                    Rpalias::Rpalias(k, f) => {
+                        return f;
+                    }
+                }
+            } else {
+                als = cdr(als);
+                continue;
             }
+        } else {
+            let other = tagcase_;
+            return a;
         }
     }
 }
@@ -816,15 +810,14 @@ pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
                 }), x.4))
             }), filled);
             rexp(onto(mine, moved), all, {
-                let tagcase_ = rp_aliased(aliases, the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(root))));
-                match *tagcase_ {
-                    Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
-                        j
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        root
-                    }
+                let tagcase_ = rp_aliased(aliases, the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", root)));
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("node") } {
+                    let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                    j
+                } else {
+                    let other = tagcase_;
+                    root
                 }
             }, d)
         }
@@ -833,47 +826,43 @@ pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
 
 pub fn rp_same_p(a: RpOperand, b: RpOperand) -> bool {
     let tagcase_ = a;
-    match *tagcase_ {
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(j) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Node(k) => {
-                    _eq(j, k)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(j) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Hole(k) => {
-                    _eq(j, k)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(p) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Sum_4node_5bound_4hole_5const_3sym_3int_4flag::Bound(q) => {
-                    (_eq(p.0, q.0) && _eq(p.1, q.1))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        _ => {
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("node") } {
+        let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        let tagcase_ = b;
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("node") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            _eq(j, k)
+        } else {
             let other = tagcase_;
             false
         }
+    } else if tag_ == const { kayak_rt::tag_hash("hole") } {
+        let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        let tagcase_ = b;
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("hole") } {
+            let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            _eq(j, k)
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } else if tag_ == const { kayak_rt::tag_hash("bound") } {
+        let p: Product_11_12<Int, Int> = kayak_rt::sum_payload::<Product_11_12<Int, Int>>(tagcase_);
+        let tagcase_ = b;
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("bound") } {
+            let q: Product_11_12<Int, Int> = kayak_rt::sum_payload::<Product_11_12<Int, Int>>(tagcase_);
+            (_eq(p.0, q.0) && _eq(p.1, q.1))
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } else {
+        let other = tagcase_;
+        false
     }
 }
 
@@ -881,7 +870,7 @@ pub fn rp_same_p(a: RpOperand, b: RpOperand) -> bool {
 pub fn rp_once(mut r#as: RpOperands) -> RpOperands {
     loop {
         if null_p(r#as) {
-            return nil::<&'static Sum_4node_5bound_4hole_5const_3sym_3int_4flag<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>>();
+            return nil::<kayak_rt::Sum>();
         } else if any_p(lambda1s(move |b: RpOperand| {
             rp_same_p(car(r#as), b)
         }), cdr(r#as)) {
@@ -924,7 +913,7 @@ pub fn fresh_evidence_x(mut holes: Strings, mut named: Strings) -> List<&'static
         } else {
             let k = get(fresh_regions());
             set(fresh_regions(), i64_plus(k, 1i64));
-            return kayak_rt::heap_cons(rpe(car(holes), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(0), symbol_lit(str_lit("evidence")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Node(int_lit(1)))), kayak_rt::nil())), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(1), symbol_lit(str_lit("rconst")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::heap_alloc(Sum_4node_5bound_4hole_5const_3sym_3int_4flag::<Int, Product_11_12<Int, Int>, Int, Product_11_12_13<Str, Int, Str>, Symbol, Int, bool>::Sym(string_to_symbol(string_append(str_lit("%region-"), i64_to_string(k)))))), kayak_rt::nil())), kayak_rt::nil())), nil::<Symbol>()), fresh_evidence_x(cdr(holes), named));
+            return kayak_rt::heap_cons(rpe(car(holes), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(0), symbol_lit(str_lit("evidence")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(1))), kayak_rt::nil())), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(1), symbol_lit(str_lit("rconst")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", string_to_symbol(string_append(str_lit("%region-"), i64_to_string(k))))), kayak_rt::nil())), kayak_rt::nil())), nil::<Symbol>()), fresh_evidence_x(cdr(holes), named));
         }
     }
 }

@@ -179,24 +179,24 @@ pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn
 
 // An ivar: a cell written once, whose readers wait until it is.
 #[inline]
-pub fn make_ivar<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>> {
-    kayak_rt::heap_new(the::<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>>(kayak_rt::heap_alloc(Sum_5empty_4full::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>::Empty(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))))
+pub fn make_ivar<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Ref<kayak_rt::Sum> {
+    kayak_rt::heap_new(the::<kayak_rt::Sum>(kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("empty") }, "empty", nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())))
 }
 
 // Its value, waited for.
-pub async fn ivar_get_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>>) -> Result<A, Unwind> {
+pub async fn ivar_get_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>) -> Result<A, Unwind> {
     let tagcase_ = get(iv);
-    match *tagcase_ {
-        Sum_5empty_4full::Full(v) => {
-            Ok(v)
-        }
-        Sum_5empty_4full::Empty(ws) => {
-            kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
-                Ok(set(iv, kayak_rt::heap_alloc(Sum_5empty_4full::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>::Empty(kayak_rt::heap_cons(k, ws)))))
-            })))).await?;
-            Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x(a__0, a__1))))(lp, iv)).await?)
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("full") } {
+        let v: A = kayak_rt::sum_payload::<A>(tagcase_);
+        Ok(v)
+    } else if tag_ == const { kayak_rt::tag_hash("empty") } {
+        let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
+        kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
+            Ok(set(iv, kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("empty") }, "empty", kayak_rt::heap_cons(k, ws))))
+        })))).await?;
+        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x::<A>(a__0, a__1))))(lp, iv)).await?)
+    } else { unreachable!() }
 }
 
 pub fn enqueue_all_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, ks: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>) -> () {
@@ -210,16 +210,16 @@ pub fn enqueue_all_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static d
 
 // Written, its waiters made ready in the order they came. Written twice
 // is an error.
-pub fn ivar_put_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>>, v: A) -> () {
+pub fn ivar_put_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>, v: A) -> () {
     let tagcase_ = get(iv);
-    match *tagcase_ {
-        Sum_5empty_4full::Full(w) => {
-            error(str_lit("ivar-put!: written twice"))
-        }
-        Sum_5empty_4full::Empty(ws) => {
-            set(iv, kayak_rt::heap_alloc(Sum_5empty_4full::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>::Full(v)));
-            (&enqueue_all_x)(lp, (&reverse_tasks)(ws, nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
-        }
-    }
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("full") } {
+        let w: A = kayak_rt::sum_payload::<A>(tagcase_);
+        error(str_lit("ivar-put!: written twice"))
+    } else if tag_ == const { kayak_rt::tag_hash("empty") } {
+        let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
+        set(iv, kayak_rt::sum_new::<A>(const { kayak_rt::tag_hash("full") }, "full", v));
+        (&enqueue_all_x)(lp, (&reverse_tasks)(ws, nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+    } else { unreachable!() }
 }
 
