@@ -12062,3 +12062,21 @@ between expressions), products and `extract`, the empty product, sums and
 `tagcase` whole and `else`, datatypes shown, taken apart, of an empty
 variant, in lists, recursive (a tree summed), returning closures, of
 strings, and a `tagcase` in tail position looping 100000 times.
+
+## C424. kc, step 12: refs (2026-11-13)
+
+The user: "Yep keep going" (step 12, assignment). FX-26 assigns through refs
+alone (`set!` is unbound): `new`, `get`, `set`, `(ref T r)`, constants of
+the initial environment as FX-87's are.
+
+**Native, in Fixpt's layout** (`make_box`): a ref a box, a bloblet of kind
+10, one field and a trailer, from the heap; its value the field 2 back, as
+an array's first element is (C422): `get` a load, `set` a store and unit.
+The runtime writes one as Fixpt does, `#<box V>`. **Rust**: kayak-rt's
+`Ref<T>`, `new`, `get`, `set`.
+
+`tests/kc/step12/`: 10 FX-26 programs and 9 KFX, Fixpt's answers: a ref
+set and read, written out, `set`'s unit, a global counter, a local ref, two
+closures each over a ref of its own, refs of strings and of lists, a ref of
+a ref, and a sum kept in a ref by a loop of 100000 tail calls (1000 in
+KFX, which has no tail calls in Rust: C413).

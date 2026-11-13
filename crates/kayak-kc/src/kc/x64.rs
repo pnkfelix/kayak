@@ -728,7 +728,7 @@ pub mod kc_x64 {
     /// `si`, its variables where `env` says.
     pub fn x64_emit_expr(c: &'static X64Code, t: &'static Sexp, si: i64, env: List<&'static X64At>) -> &'static X64Code {
         let h = term_head()(t);
-        if (string_eq_p(h, str_lit("prim")) && i64_lt(size(prim_args()(t)), 3i64)) {
+        if (string_eq_p(h, str_lit("prim")) && i64_lt(size(prim_args()(t)), 3i64) && not(string_eq_p(prim_name()(t), str_lit("new")))) {
             let args = prim_args()(t);
             if null_p(cdr(args)) {
                 x64_emit_unary(x64_emit_expr(c, car(args), si, env), prim_name()(t))
@@ -792,6 +792,10 @@ pub mod kc_x64 {
             x64_emit_bloblet(c, 36i64, si, 2i64)
         } else if string_eq_p(h, str_lit("tagcase")) {
             x64_emit_tagcase(c, t, si, env, str_lit(""))
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("new"))) {
+            let c = x64_emit_expr(c, car(prim_args()(t)), si, env);
+            let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
+            x64_emit_bloblet(c, 10i64, si, 1i64)
         } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("array-set!"))) {
             let args = prim_args()(t);
             let c = x64_emit_args(c, args, si, env);
@@ -1107,6 +1111,8 @@ pub mod kc_x64 {
             x64_emit(x64_emit(c, str_lit("movq -4(%rax), %rax")), str_lit("shlq $3, %rax"))
         } else if string_eq_p(n, str_lit("symbol->string")) {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_symbol_to_string"))
+        } else if string_eq_p(n, str_lit("get")) {
+            x64_emit(c, str_lit("movq -20(%rax), %rax"))
         } else if string_eq_p(n, str_lit("array-length")) {
             x64_emit(x64_emit(c, str_lit("movq -12(%rax), %rax")), str_lit("subq $13, %rax"))
         } else if string_eq_p(n, str_lit("string->symbol")) {
@@ -1212,6 +1218,8 @@ pub mod kc_x64 {
             let c = x64_emit(c, str_lit("movq %rsi, 8(%r15,%rax,8)"));
             let c = x64_emit(c, str_lit("leaq 4(%rdx), %rax"));
             x64_emit(c, str_lit("movq %rdx, %r15"))
+        } else if string_eq_p(n, str_lit("set")) {
+            x64_emit(x64_emit(c, str_lit("movq %rcx, -20(%rax)")), str_lit("movq $27, %rax"))
         } else if string_eq_p(n, str_lit("string=?")) {
             x64_calling(c, str_lit("kc_string_eq"))
         } else if string_eq_p(n, str_lit("string<?")) {

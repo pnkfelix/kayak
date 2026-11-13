@@ -16,6 +16,7 @@
  and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
  (C407): a program of many forms, each an item of its own (`l0-item`).
+ Step 12: refs, `new`, `get`, `set` (C424); FX-26 assigns through them alone.
  Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
  `(sum \"TAG\" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
  item's code, `(none)`.
@@ -38,12 +39,14 @@
               ;; Step 11 (C421).
               "string-length" "symbol->string" "string->symbol" "string?" "symbol?"
               ;; Step 11's arrays (C422).
-              "array-length"))
+              "array-length"
+              ;; Step 12's refs (C424).
+              "new" "get"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
               "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"
-              "string-ref" "string=?" "string<?" "string-append" "make-array" "array-ref"))
+              "string-ref" "string=?" "string<?" "string-append" "make-array" "array-ref" "set"))
 
       (define ternary-primitives (listof string acyclic) (list "substring" "array-set!")))
 

@@ -111,6 +111,7 @@ const fn null() -> u64 {
 const KIND_STRING: u64 = 1;
 const KIND_SYMBOL: u64 = 2;
 const KIND_CLOSURE: u64 = 8;
+const KIND_BOX: u64 = 10;
 const KIND_BLOBLET: u64 = 32;
 const KIND_SUM: u64 = 36;
 const KIND_PRODUCT: u64 = 37;
@@ -343,6 +344,8 @@ fn atom(v: u64) -> String {
             }
             KIND_SYMBOL => string_text(kc_symbol_to_string(v)),
             KIND_CLOSURE => "#<procedure>".into(),
+            // A ref, Fixpt's box, by what it holds (C424).
+            KIND_BOX => format!("#<box {}>", written(word(v - TAG_BLOBLET - 16))),
             // A sum, by its tag; a product, by how many fields (C423), as
             // Fixpt writes them: its tag field 2 back, a symbol.
             KIND_SUM => format!(

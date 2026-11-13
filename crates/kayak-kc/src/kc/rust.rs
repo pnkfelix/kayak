@@ -292,6 +292,8 @@ pub mod kc_rust {
                     str_lit("Int")
                 } else if sym_is_p(car(xs), str_lit("listof")) {
                     string_append(str_lit("List<"), string_append(rust_type(path, second(xs)), str_lit(">")))
+                } else if (sym_is_p(car(xs), str_lit("ref")) && i64_eq(size(xs), 3i64)) {
+                    string_append(str_lit("Ref<"), string_append(rust_type(path, second(xs)), str_lit(">")))
                 } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64)) {
                     string_append(str_lit("Array<"), string_append(rust_type(path, second(xs)), str_lit(">")))
                 } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 4i64)) {

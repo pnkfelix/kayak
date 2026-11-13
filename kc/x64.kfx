@@ -359,7 +359,7 @@
             "Code that leaves `t`'s value in `%rax`, using the frame's slots from
              `si`, its variables where `env` says."
             (let ((h (term-head t)))
-              (cond ((and (string=? h "prim") (i64< (size (prim-args t)) 3))
+              (cond ((and (string=? h "prim") (i64< (size (prim-args t)) 3) (not (string=? (prim-name t) "new")))
                      (let ((args (prim-args t)))
                        (if (null? (cdr args))
                            (x64-emit-unary (x64-emit-expr c (car args) si env) (prim-name t))
@@ -417,6 +417,11 @@
                             (c (x64-emit c (string-append "movq %rax, " (x64-slot si)))))
                        (x64-emit-bloblet c 36 si 2)))
                     ((string=? h "tagcase") (x64-emit-tagcase c t si env ""))
+                    ((and (string=? h "prim") (string=? (prim-name t) "new"))
+                     ;; A ref, Fixpt's box (kind 10): its one field the value (C424).
+                     (let* ((c (x64-emit-expr c (car (prim-args t)) si env))
+                            (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
+                       (x64-emit-bloblet c 10 si 1)))
                     ((and (string=? h "prim") (string=? (prim-name t) "array-set!"))
                      ;; The array, the index and the value into slots, then into
                      ;; `%rax`, `%rcx`, `%rdx`; the index checked as `array-ref`'s
@@ -629,6 +634,8 @@
                   ;; A string's length is its first word, at its suffix (C421).
                   ((string=? n "string-length") (x64-emit (x64-emit c "movq -4(%rax), %rax") "shlq $3, %rax"))
                   ((string=? n "symbol->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_symbol_to_string"))
+                  ;; A ref's value, its field 2 back (C424).
+                  ((string=? n "get") (x64-emit c "movq -20(%rax), %rax"))
                   ;; Its fields less the trailer, from the trailer's distance (C422).
                   ((string=? n "array-length") (x64-emit (x64-emit c "movq -12(%rax), %rax") "subq $13, %rax"))
                   ((string=? n "string->symbol") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_intern"))
@@ -714,6 +721,7 @@
                           (c (x64-emit c "movq %rsi, 8(%r15,%rax,8)"))
                           (c (x64-emit c "leaq 4(%rdx), %rax")))
                      (x64-emit c "movq %rdx, %r15")))
+                  ((string=? n "set") (x64-emit (x64-emit c "movq %rcx, -20(%rax)") "movq $27, %rax"))
                   ((string=? n "string=?") (x64-calling c "kc_string_eq"))
                   ((string=? n "string<?") (x64-calling c "kc_string_lt"))
                   ((string=? n "string-append") (x64-calling c "kc_string_append"))
