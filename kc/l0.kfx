@@ -23,7 +23,7 @@
 (define kc-l0
   (module
     (hide
-      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of kc-datum (type qbody)))
+      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of kc-datum kc-scope (type qbody)))
 
     (hide
       (define fixnum-max i64 1152921504606846975)
@@ -319,8 +319,9 @@
         (let* ((path (arg-first a)) (key (arg-rest a)))
           (begin
             (db-get d run (string-append "checked " path))
-            (let ((f (kc-form d run path key))
-                  (scope (items (car (read-all (db-get d run (string-append "scope " (string-append path (string-append " " key)))) "scope" 1)))))
+            (let* ((f (kc-form d run path key))
+                   ;; The definitions before it that it names (C414).
+                   (scope (kc-scope d run path key f)))
               (if (string=? (form-name f) "")
                   (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
                   (let ((l (lambda-of (define-value f))))

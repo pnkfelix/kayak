@@ -82,17 +82,19 @@ def cutoff():
     if os.path.exists(db):
         os.remove(db)
     wrong = []
-    for text, want in [("42\n", ["asm", "asm-item", "checked", "form", "forms", "keys", "l0-item", "scope"]),
-                       # The same datum: its forms' text the same, all else spared.
-                       ("  42   ; the same value, written otherwise\n", ["checked", "forms"]),
-                       ("42\n", ["checked", "forms"]),
-                       ("43\n", ["asm", "asm-item", "checked", "form", "forms", "keys", "l0-item"]),
+    # The forms are inputs, set by the driver from one reading of the text
+    # (C414): no query reads the whole program but the checker.
+    for text, want in [("42\n", ["asm", "asm-item", "checked", "l0-item"]),
+                       # The same datum: the forms' inputs the same, all else spared.
+                       ("  42   ; the same value, written otherwise\n", ["checked"]),
+                       ("42\n", ["checked"]),
+                       ("43\n", ["asm", "asm-item", "checked", "l0-item"]),
                        ("43\n", []),
                        # Two procedures and a call: one body edited, the other's
-                       # form, item and code spared; the interfaces the same, so
-                       # no scope again (C407).
+                       # form, item and code spared; the edited one's interface the
+                       # same, so no other item again (C407, C414).
                        (TWO % "(+ n 1)", None),
-                       (TWO % "(+ n 2)", ["asm", "asm-item", "checked", "form", "form", "form", "forms", "interface", "keys", "l0-item"])]:
+                       (TWO % "(+ n 2)", ["asm", "asm-item", "checked", "interface", "l0-item"])]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--asm", p, s])
         got = ran(r.stderr)

@@ -8,7 +8,11 @@ use super::*;
 // Every query's key is its name, a space, and its argument; every body is
 // given the database, the procedure that runs any query (`runner`), and
 // its key's argument, and reads what it needs only through the database.
-// The inputs: `text PATH`, a source file's text. The language of a file is
+// The inputs, set by `kc-load!` from one reading of a source file's text
+// (C414): `text PATH`, the text; `keys PATH`; each form's `form PATH KEY`
+// and `position PATH KEY`. Syntax alone, so that the driver may make it
+// where a query would be re-run whole at every edit, each of its parts
+// re-read by every form's queries. The language of a file is
 // its name's: `.kfx` is KFX, anything else FX-26. One checker for both
 // (kfx's); KFX is what also passes the restriction pass (`restrict.kfx`).
 //
@@ -18,12 +22,18 @@ use super::*;
 // form runs again only what reads it, and an edit that leaves a
 // definition's interface as it was stops there (early cutoff):
 //
-// forms PATH            each form's key and datum, as text
-// keys PATH             the keys, in order
-// form PATH KEY         that form's datum
+// keys PATH             the keys, in order (an input)
+// form PATH KEY         that form's datum (an input; `()` of a key
+// that is no form's, a name the program does not
+// define)
+// position PATH KEY     where that form is among them (an input)
 // interface PATH KEY    a definition's kind: `(proc NAME ARITY)` or
-// `(value NAME)`; `(expr)` of any other form
-// scope PATH KEY        the interfaces of the forms before it, in order
+// `(value NAME)`; `(expr)` of any other form, and
+// of a name the program does not define
+//
+// A form's scope is not a query of its own (C414): what a form needs of
+// the program's names, it asks of each name it mentions (`kc-scope`), so
+// that an edit elsewhere does not reach it.
 
 // A query's body.
 pub mod kc_front {
@@ -238,35 +248,96 @@ pub mod kc_front {
         }
     }
 
-    // `forms PATH`.
-    #[inline]
-    pub fn q_forms(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-        string_append(str_lit("("), string_append(words_of(reverse(forms_keyed(kc_forms(d, run, path), 0i64, nil::<Str>()))), str_lit(")")))
-    }
-
-    #[inline]
-    pub fn keyed_forms(d: Db, run: Runner, path: Str) -> Sexps {
-        items(car(read_all(db_get(d, run, string_append(str_lit("forms "), path)), str_lit("forms"), 1i64)))
-    }
-
-    #[inline]
-    pub fn keyed_key(x: &'static Sexp) -> Str {
-        let tagcase_ = car(items(x));
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                n
-            }
-            _ => {
-                let other = tagcase_;
-                str_lit("")
+    /// Each `(KEY DATUM)`'s inputs, `i` its position.
+    pub fn kc_set_forms_x(mut d: Db, mut path: Str, mut keyed: Sexps, mut i: i64) -> () {
+        loop {
+            if null_p(keyed) {
+                return ();
+            } else {
+                let x = items(car(keyed));
+                let k = {
+                    let tagcase_ = car(x);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                db_set_x(d, string_list_append(kayak_rt::heap_cons(str_lit("form "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(k, kayak_rt::nil()))))), kc_datum(second(x)), 0i64);
+                db_set_x(d, string_list_append(kayak_rt::heap_cons(str_lit("position "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(k, kayak_rt::nil()))))), i64_to_string(i), 0i64);
+                (keyed, i) = (cdr(keyed), i64_plus(i, 1i64));
+                continue;
             }
         }
     }
 
-    // `keys PATH`.
-    #[inline]
-    pub fn q_keys(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-        string_append(str_lit("("), string_append(words_of(map(&keyed_key, keyed_forms(d, run, path))), str_lit(")")))
+    /// Each of `ks`, a form no longer there: no form, and no position.
+    pub fn kc_unset_forms_x(mut d: Db, mut path: Str, mut ks: List<Str>) -> () {
+        loop {
+            if null_p(ks) {
+                return ();
+            } else {
+                db_set_x(d, string_list_append(kayak_rt::heap_cons(str_lit("form "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(car(ks), kayak_rt::nil()))))), str_lit("()"), 0i64);
+                db_set_x(d, string_list_append(kayak_rt::heap_cons(str_lit("position "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(car(ks), kayak_rt::nil()))))), str_lit("-1"), 0i64);
+                ks = cdr(ks);
+                continue;
+            }
+        }
+    }
+
+    // `kc-load! PATH TEXT`: the file `PATH`'s text, read once, and the inputs
+    // made of it (C414): each form's datum and position, the keys in order; a
+    // form no longer there, `()`. An input set to what it was is no change
+    // (`db-set!`), so a run with the text as it was changes nothing.
+    pub fn kc_load_x(d: Db, run: Runner, path: Str, text: Str) -> () {
+        let kd = lambda1s(move |x: &'static Sexp| {
+            let tagcase_ = car(items(x));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        });
+        let keyed = map(lambda1s(move |t: Str| {
+            car(read_all(t, str_lit("forms"), 1i64))
+        }), reverse(forms_keyed(read_all(text, path, 1i64), 0i64, nil::<Str>())));
+        let keys = map(kd, keyed);
+        let keys_text = string_append(str_lit("("), string_append(words_of(keys), str_lit(")")));
+        let old = db_node(d, string_append(str_lit("keys "), path));
+        let old_keys = if null_p(old) {
+            nil::<Str>()
+        } else {
+            map(lambda1s(move |x: &'static Sexp| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            }), items(car(read_all(node_value(car(old)), str_lit("keys"), 1i64))))
+        };
+        db_set_x(d, string_append(str_lit("text "), path), text, 0i64);
+        kc_set_forms_x(d, path, keyed, 0i64);
+        if (not(null_p(old)) && not(string_eq_p(node_value(car(old)), keys_text))) {
+            kc_unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
+                not(string_member_p(k, keys))
+            }), old_keys))
+        } else {
+            ()
+        };
+        db_set_x(d, string_append(str_lit("keys "), path), keys_text, 0i64)
     }
 
     pub fn kc_keys(d: Db, run: Runner, path: Str) -> List<Str> {
@@ -284,16 +355,16 @@ pub mod kc_front {
         }), items(car(read_all(db_get(d, run, string_append(str_lit("keys "), path)), str_lit("keys"), 1i64))))
     }
 
-    // `form PATH KEY`.
+    // `form PATH KEY` of a key `kc-load!` set none of: a name the program does
+    // not define, `()`; and `position PATH KEY`, -1 (C414).
+    #[inline]
     pub fn q_form(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-        let found = filter(lambda1s(move |x: &'static Sexp| {
-            string_eq_p(keyed_key(x), arg_rest(a))
-        }), keyed_forms(d, run, arg_first(a)));
-        if null_p(found) {
-            str_lit("()")
-        } else {
-            kc_datum(second(items(car(found))))
-        }
+        str_lit("()")
+    }
+
+    #[inline]
+    pub fn q_position(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
+        str_lit("-1")
     }
 
     #[inline]
@@ -340,23 +411,65 @@ pub mod kc_front {
         }
     }
 
-    pub fn keys_before(mut ks: List<Str>, mut key: Str, mut acc: List<Str>) -> List<Str> {
+    /// The names `e` mentions, each once.
+    pub fn sexp_names(e: &'static Sexp, acc: List<Str>) -> List<Str> {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if string_member_p(n, acc) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(n, acc)
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                sexps_names(xs, acc)
+            }
+            _ => {
+                let other = tagcase_;
+                acc
+            }
+        }
+    }
+
+    pub fn sexps_names(mut es: Sexps, mut acc: List<Str>) -> List<Str> {
         loop {
-            if null_p(ks) {
-                return reverse(acc);
-            } else if string_eq_p(car(ks), key) {
-                return reverse(acc);
+            if null_p(es) {
+                return acc;
             } else {
-                (ks, acc) = (cdr(ks), kayak_rt::heap_cons(car(ks), acc));
+                (es, acc) = (cdr(es), sexp_names(car(es), acc));
                 continue;
             }
         }
     }
 
-    // `scope PATH KEY`.
-    pub fn q_scope(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-        let path = arg_first(a);
-        string_append(str_lit("("), string_append(words_of(kc_get_all(d, run, string_append(str_lit("interface "), string_append(path, str_lit(" "))), keys_before(kc_keys(d, run, path), arg_rest(a), nil::<Str>()))), str_lit(")")))
+    #[inline]
+    pub fn kc_position(d: Db, run: Runner, path: Str, key: Str) -> i64 {
+        string_to_i64(db_get(d, run, string_list_append(kayak_rt::heap_cons(str_lit("position "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(key, kayak_rt::nil())))))))
+    }
+
+    pub fn kc_scope_names(mut d: Db, mut run: Runner, mut path: Str, mut at: i64, mut ns: List<Str>) -> Sexps {
+        loop {
+            if null_p(ns) {
+                return nil::<&'static Sexp>();
+            } else {
+                let i = car(read_all(db_get(d, run, string_list_append(kayak_rt::heap_cons(str_lit("interface "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(car(ns), kayak_rt::nil())))))), str_lit("scope"), 1i64));
+                if (not(sym_is_p(car(items(i)), str_lit("expr"))) && i64_lt(kc_position(d, run, path, car(ns)), at)) {
+                    return kayak_rt::heap_cons(i, kc_scope_names(d, run, path, at, cdr(ns)));
+                } else {
+                    ns = cdr(ns);
+                    continue;
+                }
+            }
+        }
+    }
+
+    // The definitions before form `key` that its datum `f` names: their
+    // interfaces (C414), each read by its name alone, so that what this form
+    // depends on is the names it mentions and where they are defined.
+    #[inline]
+    pub fn kc_scope(d: Db, run: Runner, path: Str, key: Str, f: &'static Sexp) -> Sexps {
+        kc_scope_names(d, run, path, kc_position(d, run, path, key), sexp_names(f, nil::<Str>()))
     }
 
     // `checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file;

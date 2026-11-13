@@ -13,7 +13,7 @@
 (define kc-driver
   (module
     (hide
-      (import kc-front key-arg key-name q-forms q-keys q-form q-interface q-scope q-checked q-type q-kfx)
+      (import kc-front key-arg key-name kc-load! q-form q-position q-interface q-checked q-type q-kfx)
       (import kc-l0 q-l0-item)
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm))
@@ -53,11 +53,9 @@
             (let ((q (key-name k)) (a (key-arg k)))
               (cond ((string=? q "checked") (q-checked d kc-run a))
                     ((string=? q "kfx") (q-kfx d kc-run a))
-                    ((string=? q "forms") (q-forms d kc-run a))
-                    ((string=? q "keys") (q-keys d kc-run a))
                     ((string=? q "form") (q-form d kc-run a))
                     ((string=? q "interface") (q-interface d kc-run a))
-                    ((string=? q "scope") (q-scope d kc-run a))
+                    ((string=? q "position") (q-position d kc-run a))
                     ((string=? q "type") (q-type d kc-run a))
                     ((string=? q "l0-item") (q-l0-item d kc-run a))
                     ((string=? q "rust-item") (q-rust-item d kc-run a))
@@ -92,7 +90,7 @@
                   (let* ((what (car rest)) (file (if (null? (cdr rest)) "" (car (cdr rest)))))
                     (begin
                       (if (string=? file "") (fail-with "a FILE is wanted" 2) #u)
-                      (db-set! d (string-append "text " file) (read-text file) 0)
+                      (kc-load! d kc-run file (read-text file))
                       (let ((before (db-runs d)))
                         (begin
                           (cond ((string=? what "--check") (begin (db-get d kc-run (string-append "checked " file)) #u))

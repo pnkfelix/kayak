@@ -62,6 +62,11 @@ pub mod kc_l0 {
         &kc_front::kc_datum
     }
 
+    #[inline]
+    pub fn kc_scope() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str, &'static Sexp) -> List<&'static Sexp> {
+        &kc_front::kc_scope
+    }
+
     pub type Qbody = kc_front::Qbody;
 
     #[inline]
@@ -737,7 +742,8 @@ pub mod kc_l0 {
         let path = arg_first()(a);
         let key = arg_rest()(a);
         db_get(d, run, string_append(str_lit("checked "), path));
-        let (f, scope) = (kc_form()(d, run, path, key), items(car(read_all(db_get(d, run, string_append(str_lit("scope "), string_append(path, string_append(str_lit(" "), key)))), str_lit("scope"), 1i64))));
+        let f = kc_form()(d, run, path, key);
+        let scope = kc_scope()(d, run, path, key, f);
         if string_eq_p(form_name()(f), str_lit("")) {
             let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, f);
             match *tagcase_ {

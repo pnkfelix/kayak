@@ -1545,6 +1545,12 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - The checker refuses `(cons (list 1) (list 2))` ("a int is expected
   here"), which Fixpt takes as a pair whose tail is a list of another
   type, `((1) 2)`: stricter, a gap (found by kc's step 7, C406).
+- kc's edit loop (C414, `scripts/kc-bench.py`): `checked`, the checker over
+  the whole program at every edit, made incremental (a form's checking a
+  query of its own, its inputs its form and the interfaces it names); the
+  database not read and written whole each run (`kayak serve`, or a
+  database read lazily); a refusal kept as a value, so that a failed run
+  keeps its work.
 - KFX's datatypes stay nominal (C410, the user's choice after the
   measurement): only `sumof` is structural. Were it revisited, the
   checker's types would first have to be shared (Fixpt's arena of

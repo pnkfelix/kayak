@@ -11578,3 +11578,75 @@ through a closure (a lambda applied in tail position that tail-calls the
 procedure); with a closure as an argument; with six arguments; one
 recursion not in tail position, of ten thousand. Without tail calls each
 loop of a million overflows the stack. 210 programs in all, none wrong.
+
+## C414. kc against Fixpt, edit by edit; the forms as inputs (2026-11-13)
+
+The user: "once kc can handle something approaching a real program, I will
+want us to start benchmarking it relative to Fixpt, especially when it
+comes to responsiveness to incremental changes to code. Actually maybe we
+should make such evaluations part of our workflow now?"; then "make sure
+that we cover edits that introduce errors and then undo them, as well as
+introducing an error followed by fixing forward (in a way where the final
+code is still different from the original) ... I want to check that we
+are leveraging incremental compilation cache in smart way, where we don't
+throw things away too eagerly".
+
+**The bench** (`scripts/kc-bench.py`): a program of N procedures put
+through a session of edits: cold; the same again; a comment added; one
+body edited; that body made a type error; undone; the error again; fixed
+forward to a third body; a procedure added and called. Each step timed
+end to end, as one at the keyboard meets it: kc's compile (`--db`), then
+`cc` and the run; Fixpt's `fixpt eval` on its fastest machine. And for
+kc, the query bodies that ran, against what the edit needs at least: a
+body beyond that is work thrown away. With `--record`, the rows go to
+`bench/kc.tsv` with the commit; a step's numbers are for discussion, not
+a gate (timings are noisy). To be run at each of kc's steps.
+
+**What it found, at once**: one body edited of a thousand ran `form` a
+thousand times and `keys` again, 15.8 s against Fixpt's 0.67 s; cold,
+21 s. Every `form PATH KEY` read `forms PATH`, the whole program as text,
+and so was re-run at every edit, each re-reading all of it (a value is
+text): quadratic. `scope PATH KEY`, each form's interfaces of every form
+before it, was quadratic too when cold. The database's early cutoff
+stopped each re-run, so nothing beyond them ran: the waste was in the
+re-runs themselves.
+
+**The fix** (`kc/front.kfx`): what is syntax alone is inputs, set by the
+driver from one reading of the text (`kc-load!`): each form's `form PATH
+KEY` and `position PATH KEY`, and `keys PATH`; a form no longer there is
+set `()`, its position -1. An input set to what it was is no change
+(`db-set!`), so an edit of one form changes one input. A form's scope is
+no query: `l0-item` asks, of each name its form mentions, `interface PATH
+NAME` (a name the program does not define is `(expr)`: `form` of a key no
+form has is `()`), and `position` of those defined, so that what an item
+depends on is the names it mentions. The salsa way, a tracked struct for
+each item, in an engine whose values are text. `forms`, `scope` and the
+`keys` query are gone. kc-steps' cutoff checks now ask less: an edit of
+one body of two runs `asm`, `asm-item`, `checked`, `interface`,
+`l0-item`, each once.
+
+**Measured** (best of 3, kc's compile alone, then Fixpt's whole `eval`):
+
+| N | step | kc | Fixpt | bodies | beyond the need |
+|---|---|---|---|---|---|
+| 1000 | cold | 0.66 s | 0.67 s | 3026 | |
+| 1000 | same | 0.17 s | 0.67 s | 0 | none |
+| 1000 | body | 0.36 s | 0.67 s | 5 | none |
+| 1000 | error | 0.14 s | 0.34 s | | |
+| 1000 | undo | 0.17 s | 0.67 s | 0 | none |
+| 1000 | fix-forward | 0.37 s | 0.67 s | 5 | none |
+| 5000 | body | 2.54 s | 4.85 s | 5 | none |
+| 5000 | same | 0.92 s | 4.81 s | 0 | none |
+
+(`cc` and the run add 0.15-0.25 s to kc's.) An error ends kc's run before
+the database is written back, so an undo finds the database as it was
+before the error, and runs nothing; a fix forward runs the edited form's
+queries alone. Nothing is thrown away eagerly, as the session measures it.
+
+**What is left, both whole-program**: `checked`, the checker over the
+whole text at every edit (at 5000 procedures, 1.3 s of the 2.5 s; the
+comment's edit runs it alone), the next to make incremental; and the
+database read and written whole at every run (0.9 s of `same` at 5000),
+which `kayak serve`, keeping it in memory, would not do. And an error is
+not yet a value in the database: a run that fails keeps none of its
+work, so the error itself is found again in full at each run.

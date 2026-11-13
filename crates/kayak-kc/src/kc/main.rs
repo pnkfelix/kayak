@@ -28,13 +28,8 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn q_forms() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
-        &kc_front::q_forms
-    }
-
-    #[inline]
-    pub fn q_keys() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
-        &kc_front::q_keys
+    pub fn kc_load_x() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> () {
+        &kc_front::kc_load_x
     }
 
     #[inline]
@@ -43,13 +38,13 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn q_interface() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
-        &kc_front::q_interface
+    pub fn q_position() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_position
     }
 
     #[inline]
-    pub fn q_scope() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
-        &kc_front::q_scope
+    pub fn q_interface() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> Str {
+        &kc_front::q_interface
     }
 
     #[inline]
@@ -173,16 +168,12 @@ pub mod kc_driver {
             q_checked()(d, &kc_run, a)
         } else if string_eq_p(q, str_lit("kfx")) {
             q_kfx()(d, &kc_run, a)
-        } else if string_eq_p(q, str_lit("forms")) {
-            q_forms()(d, &kc_run, a)
-        } else if string_eq_p(q, str_lit("keys")) {
-            q_keys()(d, &kc_run, a)
         } else if string_eq_p(q, str_lit("form")) {
             q_form()(d, &kc_run, a)
         } else if string_eq_p(q, str_lit("interface")) {
             q_interface()(d, &kc_run, a)
-        } else if string_eq_p(q, str_lit("scope")) {
-            q_scope()(d, &kc_run, a)
+        } else if string_eq_p(q, str_lit("position")) {
+            q_position()(d, &kc_run, a)
         } else if string_eq_p(q, str_lit("type")) {
             q_type()(d, &kc_run, a)
         } else if string_eq_p(q, str_lit("l0-item")) {
@@ -258,7 +249,7 @@ pub mod kc_driver {
                     } else {
                         ()
                     };
-                    db_set_x(d, string_append(str_lit("text "), file), read_text(file), 0i64);
+                    kc_load_x()(d, &kc_run, file, read_text(file));
                     let before = db_runs(d);
                     if string_eq_p(what, str_lit("--check")) {
                         db_get(d, &kc_run, string_append(str_lit("checked "), file));
