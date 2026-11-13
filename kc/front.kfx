@@ -110,10 +110,11 @@
 
     (define form-name (subr kfx (sexp) string)
       (lambda (f)
-        "A definition's name; `` of any other form."
+        "A definition's name, `define`'s or `define*`'s (C426: its effect found
+         from its lambda, its code a `define`'s); `` of any other form."
         (tagcase f
           (lst (xs fl l p)
-            (if (and (i64>= (size xs) 3) (sym-is? (car xs) "define"))
+            (if (and (i64>= (size xs) 3) (or (sym-is? (car xs) "define") (sym-is? (car xs) "define*")))
                 (tagcase (second xs) (sym (n f2 p2) n) (else other ""))
                 ""))
           (else other ""))))
@@ -159,6 +160,17 @@
                   (else other (constructors-keyed (cdr vs) acc)))))))
 
       (define-rec
+        (rec-members-keyed (subr kfx (sexps bool (listof string acyclic)) (listof string acyclic))
+          (lambda (ms same acc)
+            "A `define-rec`'s members, `(NAME TYPE LAMBDA)`, each `(define NAME TYPE
+             LAMBDA)`, all but the first marked at the first's position."
+            (if (null? ms)
+                acc
+                (let* ((xs (items (car ms))) (n (tagcase (car xs) (sym (s f p) s) (else other "?"))))
+                  (rec-members-keyed (cdr ms) #t
+                    (cons (string-list-append (list "(" n " " (kc-datum (lst (cons (sym "define" "" 0) xs) "" 0 0)) (if same " same)" ")"))) acc)))))))
+
+      (define-rec
         (forms-keyed (subr kfx (sexps i64 (listof string acyclic)) (listof string acyclic))
           (lambda (fs k acc)
             "Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
@@ -171,6 +183,10 @@
                   (cond ((type-form? (car fs))
                          (let ((acc (cons (string-list-append (list "(%type:" (type-form-name (car fs)) " " (kc-datum (car fs)) ")")) acc)))
                            (forms-keyed (cdr fs) k (if (head-is? (car fs) "define-datatype") (constructors-keyed (cdr (cdr (items (car fs)))) acc) acc))))
+                        ((head-is? (car fs) "define-rec")
+                         ;; Each member a definition of its own, at one position
+                         ;; (C426).
+                         (forms-keyed (cdr fs) k (rec-members-keyed (cdr (items (car fs))) #f acc)))
                         ((string=? n "")
                          (forms-keyed (cdr fs) (i64+ k 1) (cons (string-list-append (list "(#expr" (i64->string k) " " (kc-datum (car fs)) ")")) acc)))
                         (else (forms-keyed (cdr fs) k (cons (string-list-append (list "(" n " " (kc-datum (car fs)) ")")) acc)))))))))
@@ -178,15 +194,19 @@
       (define-rec
         (kc-set-forms! (subr qe (db string sexps i64) unit)
           (lambda (d path keyed i)
-            "Each `(KEY DATUM)`'s inputs, `i` its position."
+            "Each `(KEY DATUM)`'s inputs, `i` its position; `(KEY DATUM same)`
+             at the position of the one before, a `define-rec`'s member
+             (C426), so that its group's members see each other."
             (if (null? keyed)
                 #u
                 (let* ((x (items (car keyed)))
-                       (k (tagcase (car x) (sym (n f p) n) (else other ""))))
+                       (k (tagcase (car x) (sym (n f p) n) (else other "")))
+                       (same (i64= (size x) 3))
+                       (at (if same (i64- i 1) i)))
                   (begin
                     (db-set! d (key2 "form" path k) (kc-datum (second x)) 0)
-                    (db-set! d (key2 "position" path k) (i64->string i) 0)
-                    (kc-set-forms! d path (cdr keyed) (i64+ i 1))))))))
+                    (db-set! d (key2 "position" path k) (i64->string at) 0)
+                    (kc-set-forms! d path (cdr keyed) (i64+ at 1))))))))
 
       (define-rec
         (kc-unset-forms! (subr qe (db string (listof string acyclic)) unit)
@@ -436,7 +456,7 @@
     (define kc-scope-entry (subr qe (db runner string i64 string) sexp)
       (lambda (d run path at name)
         (let ((i (car (read-all (db-get d run (key2 "interface" path name)) "scope" 1))))
-          (if (and (or (sym-is? (car (items i)) "proc") (sym-is? (car (items i)) "value")) (i64< (kc-position d run path name) at))
+          (if (and (or (sym-is? (car (items i)) "proc") (sym-is? (car (items i)) "value")) (i64<= (kc-position d run path name) at))
               i
               (lst (list (sym "none" "" 0) (sym name "" 0)) "" 0 0)))))
 

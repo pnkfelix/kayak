@@ -12108,3 +12108,35 @@ module's value in Rust (a product, C423), so step 13 has no KFX programs.
 procedures, a module written out, `hide`, `import`, a parameter hiding a
 module's name, two modules one using the other, a recursive procedure, a
 string, a ref hidden in one (a counter), a datatype in one.
+
+## C426. kc: `define*`, `define-rec`, `letrec`, `plambda`, `proj` (2026-11-13)
+
+The user: "Yep keep going". Before step 14, a sweep of kc over Fixpt's
+corpus (`tests/fx26/programs`, 1169 programs) for what stops it: 77
+compiled; the checker stopped 688 (most meant to be refused; but 154 for
+`define-syntax`, FX-26's macros, which kfx's checker has not, 49 for
+`load-module`, 19 for `module-parameters`); `not yet` of a form 384, most
+`define*` (138), `plambda` (37), `letrec` (36), `make-icell` (28), `up-t`
+(14), `make-bloblet` (13), prompts (11), `letrena` (10), `define-rec` (7),
+`proj` (7). The cheapest first, here:
+
+- **`define*`**: a definition whose effect is found from its lambda; its
+  code a `define`'s (`form-name`).
+- **`plambda`, `proj`**: a poly's value and one instantiated, their types
+  the checker's, their code the value's; `((proj F T ...) ARG ...)` is `(F
+  ARG ...)`.
+- **`define-rec`**: each member a definition of its own, all at the
+  group's position (`(KEY DATUM same)`), so that each sees the others (a
+  name is in scope at a position not after its own, `<=`).
+- **`letrec`**: `(letrec ((K NAME) ...) (VALUE ...) BODY)`, its binders in
+  scope in each value (each a lambda, FX-26's rule) and the body. Natively
+  Ghuloum's way: the binders' slots 0; each closure made, its free values
+  as the slots then are; each closure's free values that are the group's
+  binders patched from their slots, now made; the body, in tail position
+  where the `letrec` is. Rust: `not yet` (closures that name each other).
+
+`tests/kc/forms/`: 7 programs, Fixpt's answers: `define*`, recursive too;
+`define-rec` of `even?` and `odd?` (100001 deep, tail calls); `letrec`,
+recursive, mutual (a million deep), capturing a procedure's parameter;
+`plambda` and `proj`. Found on the way: kayak's checker refuses `((proj new
+@h) 5)`, which Fixpt takes (TODO).

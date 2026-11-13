@@ -17,6 +17,8 @@
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
  (C407): a program of many forms, each an item of its own (`l0-item`).
  Step 12: refs, `new`, `get`, `set` (C424); FX-26 assigns through them alone.
+ `(letrec ((K NAME) ...) (VALUE ...) BODY)` (C426); `plambda` and `proj`
+ their values.
  Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
  `(sum \"TAG\" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
  item's code, `(none)`.
@@ -148,6 +150,8 @@
                 (cond ((null? xs) acc)
                       ((sym-is? (car xs) "lambda") acc)
                       ((sym-is? (car xs) "let") (l0-let-bound-all (cdr (cdr xs)) (l0-let-bound-all (items (second xs)) (onto (l0-numbers-of (items (second xs))) acc))))
+                      ;; A `letrec`'s binders (C426).
+                      ((sym-is? (car xs) "letrec") (l0-let-bound-all (cdr (cdr xs)) (onto (l0-numbers-of (items (second xs))) acc)))
                       ;; A `tagcase`'s arms' binders (C423).
                       ((sym-is? (car xs) "parts") (l0-let-bound (fourth xs) (onto (l0-numbers-of (items (third xs))) acc)))
                       ((sym-is? (car xs) "whole") (l0-let-bound (fourth xs) (onto (l0-numbers-of (list (third xs))) acc)))
@@ -203,7 +207,11 @@
                         (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
               (lst (xs f l p)
                 (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
-                  (cond ((or (string=? h "") (and (i64>= (l0-number-of h env) 0) (not (string=? h "")))
+                  (cond ((and (string=? h "") (head-is? (car xs) "proj"))
+                         ;; `((proj F T ...) ARG ...)`: `(F ARG ...)`, its types the
+                         ;; checker's (C426).
+                         (l0-of path scope env next (lst (cons (second (items (car xs))) (cdr xs)) f l p)))
+                        ((or (string=? h "") (and (i64>= (l0-number-of h env) 0) (not (string=? h "")))
                              (string=? (l0-global-kind h scope) "value"))
                          ;; A call of a procedure as a value: a local's, a global
                          ;; value's, any expression's (C412).
@@ -243,6 +251,22 @@
                         ((string=? h "begin") (l0-seq path scope env next (cdr xs) nil))
                         ;; `(the T e)`: `e`, its type the checker's (C422).
                         ((and (string=? h "the") (i64= (size xs) 3)) (l0-of path scope env next (third xs)))
+                        ;; A poly's value, and one instantiated: their types the
+                        ;; checker's, their code the value's (C426).
+                        ((and (string=? h "plambda") (i64= (size xs) 3)) (l0-of path scope env next (third xs)))
+                        ((and (string=? h "proj") (i64>= (size xs) 2)) (l0-of path scope env next (second xs)))
+                        ((and (string=? h "letrec") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                         ;; Its binders numbered first, each in scope in every value
+                         ;; (each a lambda, FX-26's rule) and in the body (C426).
+                         (let* ((bs (items (second xs)))
+                                (names (map (lambda ((b sexp)) (tagcase (car (items b)) (sym (n f2 p2) n) (else other "?"))) bs)))
+                           (tagcase (l0-params (map (lambda ((n string)) (sym n "" 0)) names) next env nil)
+                             (l0-made-params (ps inner k)
+                               (tagcase (l0-terms path scope inner k (map (lambda ((b sexp)) (car (reverse (items b)))) bs) nil)
+                                 (l0-made (vs n1)
+                                   (tagcase (l0-seq path scope inner n1 (cdr (cdr xs)) nil)
+                                     (l0-made (body n2)
+                                       (l0-made (string-list-append (list "(letrec (" ps ") (" vs ") " body ")")) n2)))))))))
                         ;; Products of their fields by position, `(1 E) (2 E) ...`
                         ;; (C423): a field by name needs its type's order, which
                         ;; kc has not yet from the checker.
@@ -523,6 +547,13 @@
 
     "A `tagcase`'s scrutinee and arms; an arm's kind, tag, binders, body
      (C423)."
+    "A `(letrec ((K NAME) ...) (VALUE ...) BODY)`'s binders and values (C426)."
+    (define letrec-binders (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (items (second xs))) (else other nil))))
+
+    (define letrec-values (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (items (third xs))) (else other nil))))
+
     (define tagcase-arms (subr kfx (sexp) sexps)
       (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
 

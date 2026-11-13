@@ -1542,6 +1542,9 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - The checker refuses `(null? '())` ("a type null? is called at that
   nothing here says"), which Fixpt takes (`#t`): stricter, a gap (found by
   kc's step 3, C402).
+- The checker refuses `((proj new @h) 5)` ("a proj of new given the wrong
+  number of arguments"), which Fixpt takes: 8 of Fixpt's programs (C426's
+  sweep of kc over the corpus).
 - The checker refuses `(cons (list 1) (list 2))` ("a int is expected
   here"), which Fixpt takes as a pair whose tail is a list of another
   type, `((1) 2)`: stricter, a gap (found by kc's step 7, C406).

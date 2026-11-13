@@ -159,12 +159,13 @@ pub mod kc_front {
         read_all(db_get(d, run, key1(str_lit("text"), path)), path, 1i64)
     }
 
-    /// A definition's name; `` of any other form.
+    /// A definition's name, `define`'s or `define*`'s (C426: its effect found
+    /// from its lambda, its code a `define`'s); `` of any other form.
     pub fn form_name(f: &'static Sexp) -> Str {
         let tagcase_ = f;
         match *tagcase_ {
             Sexp::Lst(xs, fl, l, p) => {
-                if (i64_gt_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("define"))) {
+                if (i64_gt_eq(size(xs), 3i64) && (sym_is_p(car(xs), str_lit("define")) || sym_is_p(car(xs), str_lit("define*")))) {
                     let tagcase_ = second(xs);
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
@@ -290,6 +291,36 @@ pub mod kc_front {
         }
     }
 
+    /// A `define-rec`'s members, `(NAME TYPE LAMBDA)`, each `(define NAME TYPE
+    /// LAMBDA)`, all but the first marked at the first's position.
+    pub fn rec_members_keyed(mut ms: Sexps, mut same: bool, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(ms) {
+                return acc;
+            } else {
+                let xs = items(car(ms));
+                let n = {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(s, f, p) => {
+                            s
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("?")
+                        }
+                    }
+                };
+                (ms, same, acc) = (cdr(ms), true, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), xs), str_lit(""), 0i64, 0i64)), kayak_rt::heap_cons(if same {
+                    str_lit(" same)")
+                } else {
+                    str_lit(")")
+                }, kayak_rt::nil())))))), acc));
+                continue;
+            }
+        }
+    }
+
     /// Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
     /// are no definition, nor a type's, came before. A datatype's form is
     /// followed by its constructors' (C423), each a form of its own, keyed
@@ -307,6 +338,9 @@ pub mod kc_front {
                     } else {
                         acc
                     });
+                } else if head_is_p(car(fs), str_lit("define-rec")) {
+                    (fs, acc) = (cdr(fs), rec_members_keyed(cdr(items(car(fs))), false, acc));
+                    continue;
                 } else if string_eq_p(n, str_lit("")) {
                     (fs, k, acc) = (cdr(fs), i64_plus(k, 1i64), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("(#expr"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
                     continue;
@@ -318,7 +352,9 @@ pub mod kc_front {
         }
     }
 
-    /// Each `(KEY DATUM)`'s inputs, `i` its position.
+    /// Each `(KEY DATUM)`'s inputs, `i` its position; `(KEY DATUM same)`
+    /// at the position of the one before, a `define-rec`'s member
+    /// (C426), so that its group's members see each other.
     pub fn kc_set_forms_x(mut d: Db, mut path: Str, mut keyed: Sexps, mut i: i64) -> () {
         loop {
             if null_p(keyed) {
@@ -337,9 +373,15 @@ pub mod kc_front {
                         }
                     }
                 };
+                let same = i64_eq(size(x), 3i64);
+                let at = if same {
+                    i64_minus(i, 1i64)
+                } else {
+                    i
+                };
                 db_set_x(d, key2(str_lit("form"), path, k), kc_datum(second(x)), 0i64);
-                db_set_x(d, key2(str_lit("position"), path, k), i64_to_string(i), 0i64);
-                (keyed, i) = (cdr(keyed), i64_plus(i, 1i64));
+                db_set_x(d, key2(str_lit("position"), path, k), i64_to_string(at), 0i64);
+                (keyed, i) = (cdr(keyed), i64_plus(at, 1i64));
                 continue;
             }
         }
@@ -918,7 +960,7 @@ pub mod kc_front {
     // up, each alone.
     pub fn kc_scope_entry(d: Db, run: Runner, path: Str, at: i64, name: Str) -> &'static Sexp {
         let i = car(read_all(db_get(d, run, key2(str_lit("interface"), path, name)), str_lit("scope"), 1i64));
-        if ((sym_is_p(car(items(i)), str_lit("proc")) || sym_is_p(car(items(i)), str_lit("value"))) && i64_lt(kc_position(d, run, path, name), at)) {
+        if ((sym_is_p(car(items(i)), str_lit("proc")) || sym_is_p(car(items(i)), str_lit("value"))) && i64_lt_eq(kc_position(d, run, path, name), at)) {
             i
         } else {
             lst(kayak_rt::heap_cons(sym(str_lit("none"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(name, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)

@@ -39,7 +39,7 @@
   (module
     (hide
       (import kc-front kc-hex kc-datum kc-items-of kc-keys (type qbody))
-      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params lambda-free app-fn app-args gproc-arity tagcase-arms)
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params lambda-free app-fn app-args gproc-arity tagcase-arms letrec-binders letrec-values)
       (import kc-rust sexp-at))
 
     (hide
@@ -350,6 +350,42 @@
                                   (i64+ si 1) (i64+ j 1) m)))))
 
       (define-rec
+        (x64-zeroed (subr kfx (x64-code i64 i64) x64-code)
+          (lambda (c si n) (if (i64<= n 0) c (x64-zeroed (x64-emit c (string-append "movq $0, " (x64-slot si))) (i64+ si 1) (i64- n 1))))))
+
+      (define-rec
+        (x64-free-patched (subr kfx (x64-code sexps i64 i64 (listof i64 acyclic) (listof x64-at acyclic)) x64-code)
+          (lambda (c fv j slot group env)
+            "Of the closure in slot `slot`, each free value `j` on that is one of
+             the group's binders (their numbers `group`) set from its slot."
+            (if (null? fv)
+                c
+                (let ((k (tagcase (car (items (car fv))) (num (n f p) n) (else other (the i64 -1)))))
+                  (x64-free-patched
+                    (if (i64-in? k group)
+                        (x64-emit (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (x64-slot-of k env)) ", %rcx")))
+                                            (string-append "movq " (string-append (x64-slot slot) ", %rax")))
+                                  (string-append "movq %rcx, " (string-append (i64->string (i64- -36 (i64* 8 j))) "(%rax)")))
+                        c)
+                    (cdr fv) (i64+ j 1) slot group env))))))
+
+      (define-rec
+        (i64-in? (subr kfx (i64 (listof i64 acyclic)) bool)
+          (lambda (k ks) (cond ((null? ks) #f) ((i64= (car ks) k) #t) (else (i64-in? k (cdr ks)))))))
+
+      (define-rec
+        (x64-letrec-patched (subr kfx (x64-code sexps i64 i64 sexps (listof x64-at acyclic)) x64-code)
+          (lambda (c vs si i bs env)
+            (if (null? vs)
+                c
+                (x64-letrec-patched
+                  (if (string=? (term-head (car vs)) "lambda")
+                      (x64-free-patched c (lambda-free (car vs)) 0 (i64+ si i)
+                                        (map (lambda ((b sexp)) (tagcase (car (items b)) (num (n f p) n) (else other (the i64 -1)))) bs) env)
+                      c)
+                  (cdr vs) si (i64+ i 1) bs env)))))
+
+      (define-rec
         (x64-but-last (subr kfx (sexps) sexps)
           (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (x64-but-last (cdr xs)))))))
 
@@ -417,6 +453,7 @@
                             (c (x64-emit c (string-append "movq %rax, " (x64-slot si)))))
                        (x64-emit-bloblet c 36 si 2)))
                     ((string=? h "tagcase") (x64-emit-tagcase c t si env ""))
+                    ((string=? h "letrec") (x64-emit-letrec c t si env ""))
                     ((and (string=? h "prim") (string=? (prim-name t) "new"))
                      ;; A ref, Fixpt's box (kind 10): its one field the value (C424).
                      (let* ((c (x64-emit-expr c (car (prim-args t)) si env))
@@ -508,6 +545,7 @@
                        (x64-emit-tail c (third ps) si env fr)))
                     ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env fr))
                     ((string=? h "tagcase") (x64-emit-tagcase c t si env fr))
+                    ((string=? h "letrec") (x64-emit-letrec c t si env fr))
                     ((string=? h "seq")
                      (let ((ts (seq-terms t)))
                        (x64-emit-tail (x64-emit-seq c (x64-but-last ts) si env) (car (reverse ts)) si env fr)))
@@ -528,6 +566,30 @@
                        (x64-emit c "jmp *-28(%r10)")))
                     (else
                      (x64-emit (x64-emit (x64-emit-expr c t si env) (string-append "addq $" (string-append fr ", %rsp"))) "ret"))))))
+
+        (x64-emit-letrec (subr kfx (x64-code sexp i64 (listof x64-at acyclic) string) x64-code)
+          (lambda (c t si env fr)
+            "A `letrec` (C426): its binders' slots from `si`, 0 first; each value,
+             a lambda, made into its binder's slot, its free values as the slots
+             are then; then each closure's free values that are the group's
+             binders patched from their slots, now each made (Ghuloum's way);
+             then the body, in tail position if `fr` is given."
+            (let* ((bs (letrec-binders t)) (n (size bs))
+                   (env2 (x64-params-at bs si env))
+                   (c (x64-using c (i64+ si n)))
+                   (c (x64-zeroed c si n))
+                   (c (x64-letrec-values c (letrec-values t) si (i64+ si n) env2))
+                   (c (x64-letrec-patched c (letrec-values t) si 0 bs env2)))
+              (if (string=? fr "")
+                  (x64-emit-expr c (car (reverse (items t))) (i64+ si n) env2)
+                  (x64-emit-tail c (car (reverse (items t))) (i64+ si n) env2 fr)))))
+
+        (x64-letrec-values (subr kfx (x64-code sexps i64 i64 (listof x64-at acyclic)) x64-code)
+          (lambda (c vs at si env)
+            (if (null? vs)
+                c
+                (let ((c (x64-emit-expr c (car vs) si env)))
+                  (x64-letrec-values (x64-emit c (string-append "movq %rax, " (x64-slot at))) (cdr vs) (i64+ at 1) si env)))))
 
         (x64-emit-tagcase (subr kfx (x64-code sexp i64 (listof x64-at acyclic) string) x64-code)
           (lambda (c t si env fr)

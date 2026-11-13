@@ -22,6 +22,8 @@ use super::*;
 // `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
 // (C407): a program of many forms, each an item of its own (`l0-item`).
 // Step 12: refs, `new`, `get`, `set` (C424); FX-26 assigns through them alone.
+// `(letrec ((K NAME) ...) (VALUE ...) BODY)` (C426); `plambda` and `proj`
+// their values.
 // Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
 // `(sum "TAG" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
 // item's code, `(none)`.
@@ -356,6 +358,8 @@ pub mod kc_l0 {
                         return acc;
                     } else if sym_is_p(car(xs), str_lit("let")) {
                         return l0_let_bound_all(cdr(cdr(xs)), l0_let_bound_all(items(second(xs)), onto(l0_numbers_of(items(second(xs))), acc)));
+                    } else if sym_is_p(car(xs), str_lit("letrec")) {
+                        return l0_let_bound_all(cdr(cdr(xs)), onto(l0_numbers_of(items(second(xs))), acc));
                     } else if sym_is_p(car(xs), str_lit("parts")) {
                         (t, acc) = (fourth(xs), onto(l0_numbers_of(items(third(xs))), acc));
                         continue;
@@ -494,7 +498,10 @@ pub mod kc_l0 {
                             }
                         }
                     };
-                    if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || string_eq_p(l0_global_kind(h, scope), str_lit("value"))) {
+                    if (string_eq_p(h, str_lit("")) && head_is_p(car(xs), str_lit("proj"))) {
+                        e = lst(kayak_rt::heap_cons(second(items(car(xs))), cdr(xs)), f, l, p);
+                        continue;
+                    } else if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || string_eq_p(l0_global_kind(h, scope), str_lit("value"))) {
                         let tagcase_ = l0_terms(path, scope, env, next, xs, nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(ts, n1) => {
@@ -603,6 +610,57 @@ pub mod kc_l0 {
                     } else if (string_eq_p(h, str_lit("the")) && i64_eq(size(xs), 3i64)) {
                         e = third(xs);
                         continue;
+                    } else if (string_eq_p(h, str_lit("plambda")) && i64_eq(size(xs), 3i64)) {
+                        e = third(xs);
+                        continue;
+                    } else if (string_eq_p(h, str_lit("proj")) && i64_gt_eq(size(xs), 2i64)) {
+                        e = second(xs);
+                        continue;
+                    } else if (string_eq_p(h, str_lit("letrec")) && i64_gt_eq(size(xs), 3i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        let bs = items(second(xs));
+                        let names = map(lambda1s(move |b: &'static Sexp| {
+                            let tagcase_ = car(items(b));
+                            match *tagcase_ {
+                                Sexp::Sym(n, f2, p2) => {
+                                    n
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("?")
+                                }
+                            }
+                        }), bs);
+                        let tagcase_ = l0_params(map(lambda1s(move |n: Str| {
+                            sym(n, str_lit(""), 0i64)
+                        }), names), next, env, nil::<Str>());
+                        match *tagcase_ {
+                            L0MadeParams::L0MadeParams(ps, inner, k) => {
+                                let tagcase_ = l0_terms(path, scope, inner, k, map(lambda1s(move |b: &'static Sexp| {
+                                    car(reverse(items(b)))
+                                }), bs), nil::<Str>());
+                                match *tagcase_ {
+                                    L0Made::L0Made(vs, n1) => {
+                                        let tagcase_ = l0_seq(path, scope, inner, n1, cdr(cdr(xs)), nil::<Str>());
+                                        match *tagcase_ {
+                                            L0Made::L0Made(body, n2) => {
+                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(letrec ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(vs, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(body, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n2);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     } else if string_eq_p(h, str_lit("product")) {
                         if not(l0_positional_p(cdr(xs), 1i64)) {
                             return l0_made(not_yet(path, str_lit("a product's fields by name")), next);
@@ -1353,6 +1411,36 @@ pub mod kc_l0 {
 
     // A `tagcase`'s scrutinee and arms; an arm's kind, tag, binders, body
     // (C423).
+
+    // A `(letrec ((K NAME) ...) (VALUE ...) BODY)`'s binders and values (C426).
+    #[inline]
+    pub fn letrec_binders(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                items(second(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    #[inline]
+    pub fn letrec_values(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                items(third(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
     #[inline]
     pub fn tagcase_arms(t: &'static Sexp) -> Sexps {
         let tagcase_ = t;

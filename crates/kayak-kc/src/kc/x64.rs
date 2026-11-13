@@ -185,6 +185,16 @@ pub mod kc_x64 {
     }
 
     #[inline]
+    pub fn letrec_binders() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::letrec_binders
+    }
+
+    #[inline]
+    pub fn letrec_values() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::letrec_values
+    }
+
+    #[inline]
     pub fn sexp_at() -> &'static (dyn Fn(List<&'static Sexp>, i64) -> &'static Sexp + Send + Sync) {
         &kc_rust::sexp_at
     }
@@ -715,6 +725,85 @@ pub mod kc_x64 {
         }
     }
 
+    pub fn x64_zeroed(mut c: &'static X64Code, mut si: i64, mut n: i64) -> &'static X64Code {
+        loop {
+            if i64_lt_eq(n, 0i64) {
+                return c;
+            } else {
+                (c, si, n) = (x64_emit(c, string_append(str_lit("movq $0, "), x64_slot(si))), i64_plus(si, 1i64), i64_minus(n, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// Of the closure in slot `slot`, each free value `j` on that is one of
+    /// the group's binders (their numbers `group`) set from its slot.
+    pub fn x64_free_patched(mut c: &'static X64Code, mut fv: Sexps, mut j: i64, mut slot: i64, mut group: List<i64>, mut env: List<&'static X64At>) -> &'static X64Code {
+        loop {
+            if null_p(fv) {
+                return c;
+            } else {
+                let k = {
+                    let tagcase_ = car(items(car(fv)));
+                    match *tagcase_ {
+                        Sexp::Num(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            the::<i64>(-1i64)
+                        }
+                    }
+                };
+                (c, fv, j) = (if i64_in_p(k, group) {
+                    x64_emit(x64_emit(x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(x64_slot_of(k, env)), str_lit(", %rcx")))), string_append(str_lit("movq "), string_append(x64_slot(slot), str_lit(", %rax")))), string_append(str_lit("movq %rcx, "), string_append(i64_to_string(i64_minus(-36i64, i64_star(8i64, j))), str_lit("(%rax)"))))
+                } else {
+                    c
+                }, cdr(fv), i64_plus(j, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn i64_in_p(mut k: i64, mut ks: List<i64>) -> bool {
+        loop {
+            if null_p(ks) {
+                return false;
+            } else if i64_eq(car(ks), k) {
+                return true;
+            } else {
+                ks = cdr(ks);
+                continue;
+            }
+        }
+    }
+
+    pub fn x64_letrec_patched(mut c: &'static X64Code, mut vs: Sexps, mut si: i64, mut i: i64, mut bs: Sexps, mut env: List<&'static X64At>) -> &'static X64Code {
+        loop {
+            if null_p(vs) {
+                return c;
+            } else {
+                (c, vs, i) = (if string_eq_p(term_head()(car(vs)), str_lit("lambda")) {
+                    x64_free_patched(c, lambda_free()(car(vs)), 0i64, i64_plus(si, i), map(lambda1s(move |b: &'static Sexp| {
+                        let tagcase_ = car(items(b));
+                        match *tagcase_ {
+                            Sexp::Num(n, f, p) => {
+                                n
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                the::<i64>(-1i64)
+                            }
+                        }
+                    }), bs), env)
+                } else {
+                    c
+                }, cdr(vs), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
     #[inline]
     pub fn x64_but_last(xs: Sexps) -> Sexps {
         if (null_p(xs) || null_p(cdr(xs))) {
@@ -792,6 +881,8 @@ pub mod kc_x64 {
             x64_emit_bloblet(c, 36i64, si, 2i64)
         } else if string_eq_p(h, str_lit("tagcase")) {
             x64_emit_tagcase(c, t, si, env, str_lit(""))
+        } else if string_eq_p(h, str_lit("letrec")) {
+            x64_emit_letrec(c, t, si, env, str_lit(""))
         } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("new"))) {
             let c = x64_emit_expr(c, car(prim_args()(t)), si, env);
             let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
@@ -905,6 +996,8 @@ pub mod kc_x64 {
                 return x64_emit_let(c, let_bindings()(t), let_body()(t), si, env, env, fr);
             } else if string_eq_p(h, str_lit("tagcase")) {
                 return x64_emit_tagcase(c, t, si, env, fr);
+            } else if string_eq_p(h, str_lit("letrec")) {
+                return x64_emit_letrec(c, t, si, env, fr);
             } else if string_eq_p(h, str_lit("seq")) {
                 let ts = seq_terms()(t);
                 (c, t) = (x64_emit_seq(c, x64_but_last(ts), si, env), car(reverse(ts)));
@@ -929,6 +1022,35 @@ pub mod kc_x64 {
             } else {
                 return x64_emit(x64_emit(x64_emit_expr(c, t, si, env), string_append(str_lit("addq $"), string_append(fr, str_lit(", %rsp")))), str_lit("ret"));
             }
+        }
+    }
+
+    /// A `letrec` (C426): its binders' slots from `si`, 0 first; each value,
+    /// a lambda, made into its binder's slot, its free values as the slots
+    /// are then; then each closure's free values that are the group's
+    /// binders patched from their slots, now each made (Ghuloum's way);
+    /// then the body, in tail position if `fr` is given.
+    pub fn x64_emit_letrec(c: &'static X64Code, t: &'static Sexp, si: i64, env: List<&'static X64At>, fr: Str) -> &'static X64Code {
+        let bs = letrec_binders()(t);
+        let n = size(bs);
+        let env2 = x64_params_at(bs, si, env);
+        let c = x64_using(c, i64_plus(si, n));
+        let c = x64_zeroed(c, si, n);
+        let c = x64_letrec_values(c, letrec_values()(t), si, i64_plus(si, n), env2);
+        let c = x64_letrec_patched(c, letrec_values()(t), si, 0i64, bs, env2);
+        if string_eq_p(fr, str_lit("")) {
+            x64_emit_expr(c, car(reverse(items(t))), i64_plus(si, n), env2)
+        } else {
+            x64_emit_tail(c, car(reverse(items(t))), i64_plus(si, n), env2, fr)
+        }
+    }
+
+    pub fn x64_letrec_values(c: &'static X64Code, vs: Sexps, at: i64, si: i64, env: List<&'static X64At>) -> &'static X64Code {
+        if null_p(vs) {
+            c
+        } else {
+            let c = x64_emit_expr(c, car(vs), si, env);
+            x64_letrec_values(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(at))), cdr(vs), i64_plus(at, 1i64), si, env)
         }
     }
 
