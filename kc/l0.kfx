@@ -6,8 +6,12 @@
  `null?`, `zero?`, `char->integer`, `integer->char`. Anything else: not
  yet. Step 4: binary primitives (C403), `(prim NAME A B)`: `+`, `-`,
  `*`, `quotient`, `remainder`, `modulo`, `max`, `min`, `=`, `<`, `<=`,
- `>`, `>=`, the `char` comparisons, `eq?`. No binding form yet, so a
- primitive's name is the standard one."
+ `>`, `>=`, the `char` comparisons, `eq?`. Step 5: `let` (C404),
+ `(let ((K NAME E) ...) BODY)`, each binder numbered apart from every
+ other in the program, its uses `(var K NAME)` (so that what follows
+ never meets two binders of one name); `let*` as `let`s nested; a body of
+ more than one expression, and `begin`, `(seq E ...)`. A name a binding
+ form binds is a variable, shadowing a primitive's or `nil`'s."
 
 (define fixnum-max i64 1152921504606846975)
 
@@ -19,31 +23,93 @@
 (define not-yet (subr kfx (string string) string)
   (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
 
+"Names in scope while a term is made: each bound name, innermost first,
+ and its binder's number."
+(define-datatype l0-bound (l0-bound string i64))
+
+"A term made, as text, and the next binder's number."
+(define-datatype l0-made (l0-made string i64))
+
 (define-rec
-  (l0-of (subr kfx (string sexp) string)
-    (lambda (path e)
-      "The term of `e`, an expression."
+  (l0-number-of (subr kfx (string (listof l0-bound acyclic)) i64)
+    (lambda (n env)
+      "`n`'s binder's number, or -1 if no binding form binds it."
+      (cond ((null? env) (the i64 -1))
+            ((tagcase (car env) (l0-bound (m k) (string=? m n))) (tagcase (car env) (l0-bound (m k) k)))
+            (else (l0-number-of n (cdr env)))))))
+
+(define-rec
+  (l0-of (subr kfx (string (listof l0-bound acyclic) i64 sexp) l0-made)
+    (lambda (path env next e)
+      "The term of `e`, an expression, its names bound as `env` says; the
+       binders it makes numbered from `next`."
       (tagcase e
         (num (k f p)
           (if (or (i64> k fixnum-max) (i64< k (i64- 0 (i64+ fixnum-max 1))))
-              (not-yet path "an integer past a fixnum")
-              (string-append "(int " (string-append (i64->string k) ")"))))
-        (chr (c f p) (string-append "(char " (string-append (i64->string (char->i64 c)) ")")))
+              (l0-made (not-yet path "an integer past a fixnum") next)
+              (l0-made (string-append "(int " (string-append (i64->string k) ")")) next)))
+        (chr (c f p) (l0-made (string-append "(char " (string-append (i64->string (char->i64 c)) ")")) next))
         (sym (n f p)
-          (cond ((string=? n "#t") "(bool 1)")
-                ((string=? n "#f") "(bool 0)")
-                ((string=? n "#u") "(unit)")
-                ((string=? n "nil") "(nil)")
-                (else (not-yet path (string-append "a variable, " n)))))
+          (let ((k (l0-number-of n env)))
+            (cond ((i64>= k 0) (l0-made (string-list-append (list "(var " (i64->string k) " " n ")")) next))
+                  ((string=? n "#t") (l0-made "(bool 1)" next))
+                  ((string=? n "#f") (l0-made "(bool 0)" next))
+                  ((string=? n "#u") (l0-made "(unit)" next))
+                  ((string=? n "nil") (l0-made "(nil)" next))
+                  (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
         (lst (xs f l p)
-          (cond ((and (i64= (size xs) 2) (sym-is? (car xs) "quote") (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
-                 "(nil)")
-                ((and (i64= (size xs) 2) (tagcase (car xs) (sym (n f2 p2) (string-member? n unary-primitives)) (else other #f)))
-                 (string-append "(prim " (string-append (sym-name (car xs)) (string-append " " (string-append (l0-of path (second xs)) ")")))))
-                ((and (i64= (size xs) 3) (tagcase (car xs) (sym (n f2 p2) (string-member? n binary-primitives)) (else other #f)))
-                 (string-list-append (list "(prim " (sym-name (car xs)) " " (l0-of path (second xs)) " " (l0-of path (third xs)) ")")))
-                (else (not-yet path "a form"))))
-        (else other (not-yet path "this expression"))))))
+          (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
+            (cond ((and (i64>= (l0-number-of h env) 0) (not (string=? h ""))) (l0-made (not-yet path (string-append "a call of a local, " h)) next))
+                  ((and (string=? h "quote") (i64= (size xs) 2) (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
+                   (l0-made "(nil)" next))
+                  ((and (string=? h "let") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                   (l0-let path env next (items (second xs)) (cdr (cdr xs)) nil env))
+                  ((and (string=? h "let*") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                   ;; Each binding a `let` of its own, the next inside it.
+                   (l0-of path env next
+                          (let ((bs (items (second xs))))
+                            (if (or (null? bs) (null? (cdr bs)))
+                                (lst (cons (sym "let" f p) (cdr xs)) f l p)
+                                (lst (list (sym "let" f p) (lst (list (car bs)) f l p)
+                                           (lst (cons (sym "let*" f p) (cons (lst (cdr bs) f l p) (cdr (cdr xs)))) f l p))
+                                     f l p)))))
+                  ((string=? h "begin") (l0-seq path env next (cdr xs) nil))
+                  ((and (i64= (size xs) 2) (string-member? h unary-primitives))
+                   (tagcase (l0-of path env next (second xs))
+                     (l0-made (a n1) (l0-made (string-list-append (list "(prim " h " " a ")")) n1))))
+                  ((and (i64= (size xs) 3) (string-member? h binary-primitives))
+                   (tagcase (l0-of path env next (second xs))
+                     (l0-made (a n1)
+                       (tagcase (l0-of path env n1 (third xs))
+                         (l0-made (b n2) (l0-made (string-list-append (list "(prim " h " " a " " b ")")) n2))))))
+                  (else (l0-made (not-yet path (string-append "a form, " h)) next)))))
+        (else other (l0-made (not-yet path "this expression") next)))))
+
+  (l0-let (subr kfx (string (listof l0-bound acyclic) i64 sexps sexps (listof string acyclic) (listof l0-bound acyclic)) l0-made)
+    (lambda (path env next bindings body done inner)
+      "A `let`: each binding's value made where the `let` is (`env`), its
+       binder numbered and in scope in the body (`inner`), not in the other
+       values; `done` the bindings made, the newest first."
+      (if (null? bindings)
+          (tagcase (l0-seq path inner next body nil)
+            (l0-made (b n1) (l0-made (string-list-append (list "(let (" (words-of (reverse done)) ") " b ")")) n1)))
+          (let* ((bx (items (car bindings)))
+                 (name (tagcase (car bx) (sym (n f p) n) (lst (ys f l p) (tagcase (car ys) (sym (n f2 p2) n) (else other ""))) (else other ""))))
+            (tagcase (l0-of path env (i64+ next 1) (car (reverse bx)))
+              (l0-made (v n1)
+                (l0-let path env n1 (cdr bindings) body
+                        (cons (string-list-append (list "(" (i64->string next) " " name " " v ")")) done)
+                        (cons (l0-bound name next) inner))))))))
+
+  (l0-seq (subr kfx (string (listof l0-bound acyclic) i64 sexps (listof string acyclic)) l0-made)
+    (lambda (path env next es done)
+      "A body, its expressions in turn: one, itself; more, `(seq ...)`."
+      (if (null? es)
+          (if (and (not (null? done)) (null? (cdr done)))
+              (l0-made (car done) next)
+              (l0-made (string-append "(seq " (string-append (words-of (reverse done)) ")")) next))
+          (tagcase (l0-of path env next (car es))
+            (l0-made (t n1) (l0-seq path env n1 (cdr es) (cons t done))))))))
 
 (define q-l0 qbody
   (lambda (d run path)
@@ -52,7 +118,7 @@
       (let ((forms (kc-forms d run path)))
         (if (or (null? forms) (not (null? (cdr forms))))
             (not-yet path "a program of other than one form")
-            (l0-of path (car forms)))))))
+            (tagcase (l0-of path nil 0 (car forms)) (l0-made (t n) t)))))))
 
 "An `l0` program's term."
 (define l0-term (subr qe (db runner string) sexp)
@@ -61,6 +127,17 @@
 "A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`)."
 (define term-head (subr kfx (sexp) string)
   (lambda (t) (tagcase t (lst (xs f l p) (tagcase (car xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
+"A `(var K NAME)`'s number; a `(let ...)`'s bindings, each `(K NAME E)`,
+ and body; a `(seq ...)`'s terms."
+(define var-number (subr kfx (sexp) i64)
+  (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (num (k f2 p2) k) (else other (the i64 -1)))) (else other (the i64 -1)))))
+(define let-bindings (subr kfx (sexp) sexps)
+  (lambda (t) (tagcase t (lst (xs f l p) (items (second xs))) (else other nil))))
+(define let-body (subr kfx (sexp) sexp)
+  (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t))))
+(define seq-terms (subr kfx (sexp) sexps)
+  (lambda (t) (tagcase t (lst (xs f l p) (cdr xs)) (else other nil))))
+
 "A `(prim NAME ARG ...)`'s name, its first argument, and its arguments."
 (define prim-name (subr kfx (sexp) string)
   (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))

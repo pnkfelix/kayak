@@ -10,6 +10,21 @@
              (acc (string-append c acc)))
         (if (i64< n 16) acc (hex-digits (i64-quotient n 16) acc))))))
 
+"A variable's Rust name, of a `(var K NAME)` or a binding `(K NAME E)`:
+ its number, then its name as kfx spells it."
+(define rust-variable (subr kfx (sexp) string)
+  (lambda (t)
+    (tagcase t
+      (lst (xs f l p)
+        (let ((ys (if (sym-is? (car xs) "var") (cdr xs) xs)))
+          (string-list-append (list "v" (tagcase (car ys) (num (k f2 p2) (i64->string k)) (else other "")) "_"
+                                    (mangle-bare (tagcase (second ys) (sym (n f2 p2) n) (else other "")))))))
+      (else other ""))))
+
+(define-rec
+  (rust-but-last (subr kfx (sexps) sexps)
+    (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (rust-but-last (cdr xs)))))))
+
 "A primitive's kayak-rt function: its name as kfx spells it in Rust
  (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
  `_plus`), as kayak-rt names FX-26's standard operations (C402, C403)."
@@ -20,7 +35,20 @@
   (lambda (t)
     "A term as a Rust expression of kayak-rt's."
     (let ((h (term-head t)) (n (term-number t)))
-      (cond ((and (string=? h "prim") (string=? (prim-name t) "eq?"))
+      (cond ((string=? h "var") (rust-variable t))
+            ((string=? h "let")
+             ;; Each binder's name its own (`l0`'s numbers), so Rust's `let`s
+             ;; in turn are the parallel `let`'s bindings (C404).
+             (string-list-append
+               (append (list "{ ")
+                       (append (map (lambda ((b sexp)) (string-list-append (list "let " (rust-variable b) " = " (rust-of (third (items b))) "; "))) (let-bindings t))
+                               (list (rust-of (let-body t)) " }")))))
+            ((string=? h "seq")
+             (string-list-append
+               (append (list "{ ")
+                       (append (map (lambda ((e sexp)) (string-list-append (list "let _ = " (rust-of e) "; "))) (rust-but-last (seq-terms t)))
+                               (list (rust-of (car (reverse (seq-terms t)))) " }")))))
+            ((and (string=? h "prim") (string=? (prim-name t) "eq?"))
              ;; Of immediates, which are equal as values (C403).
              (string-list-append (list "(" (rust-of (car (prim-args t))) " == " (rust-of (second (prim-args t))) ")")))
             ((string=? h "prim")

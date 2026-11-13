@@ -8,7 +8,8 @@
 
  Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
  `emit-expr`, C402); a primitive's first arguments are kept in the frame's
- slots, `8 * i(%rsp)`, while the rest are made (C403). `kc_entry`'s frame
+ slots, `8 * i(%rsp)`, while the rest are made (C403), and each variable a
+ `let` binds in a slot of its own (C404). `kc_entry`'s frame
  is as many slots as the code uses, and 8 bytes more where that keeps the
  stack aligned for a call (it is entered 8 below a multiple of 16), so
  that a failure may call the runtime's `kc_fail`, which writes Fixpt's
@@ -94,24 +95,55 @@
           ((or (string=? n ">") (string=? n "char>?")) "g")
           (else "ge"))))
 
+"Where each variable is: its binder's number and its slot."
+(define-datatype x64-at (x64-at i64 i64))
+
 (define-rec
-  (x64-emit-expr (subr kfx (x64-code sexp i64) x64-code)
-    (lambda (c t si)
+  (x64-slot-of (subr kfx (i64 (listof x64-at acyclic)) i64)
+    (lambda (k env)
+      (cond ((null? env) (the i64 -1))
+            ((tagcase (car env) (x64-at (j s) (i64= j k))) (tagcase (car env) (x64-at (j s) s)))
+            (else (x64-slot-of k (cdr env)))))))
+
+(define-rec
+  (x64-emit-expr (subr kfx (x64-code sexp i64 (listof x64-at acyclic)) x64-code)
+    (lambda (c t si env)
       "Code that leaves `t`'s value in `%rax`, using the frame's slots from
-       `si`."
-      (if (string=? (term-head t) "prim")
-          (let ((args (prim-args t)))
-            (if (null? (cdr args))
-                (x64-emit-unary (x64-emit-expr c (car args) si) (prim-name t))
-                ;; The first in slot `si` while the second is made; then the
-                ;; first in `%rax`, the second in `%rcx`.
-                (let* ((c (x64-emit-expr c (car args) si))
-                       (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
-                       (c (x64-emit-expr c (second args) (i64+ si 1)))
-                       (c (x64-emit c "movq %rax, %rcx"))
-                       (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax")))))
-                  (x64-emit-binary c (prim-name t)))))
-          (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))
+       `si`, its variables where `env` says."
+      (let ((h (term-head t)))
+        (cond ((string=? h "prim")
+               (let ((args (prim-args t)))
+                 (if (null? (cdr args))
+                     (x64-emit-unary (x64-emit-expr c (car args) si env) (prim-name t))
+                     ;; The first in slot `si` while the second is made; then the
+                     ;; first in `%rax`, the second in `%rcx`.
+                     (let* ((c (x64-emit-expr c (car args) si env))
+                            (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
+                            (c (x64-emit-expr c (second args) (i64+ si 1) env))
+                            (c (x64-emit c "movq %rax, %rcx"))
+                            (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax")))))
+                       (x64-emit-binary c (prim-name t))))))
+              ((string=? h "var") (x64-emit c (string-append "movq " (string-append (x64-slot (x64-slot-of (var-number t) env)) ", %rax"))))
+              ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env))
+              ((string=? h "seq") (x64-emit-seq c (seq-terms t) si env))
+              (else (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))))
+
+  (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic)) x64-code)
+    (lambda (c bs body si env inner)
+      "Each binding's value made where the `let` is (`env`), into a slot of
+       its own; then the body, the binders in scope (`inner`) (C404)."
+      (if (null? bs)
+          (x64-emit-expr c body si inner)
+          (let* ((b (items (car bs)))
+                 (k (tagcase (car b) (num (n f p) n) (else other (the i64 -1))))
+                 (c (x64-emit-expr c (third b) si env))
+                 (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
+            (x64-emit-let c (cdr bs) body (i64+ si 1) env (cons (x64-at k si) inner))))))
+
+  (x64-emit-seq (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
+    (lambda (c ts si env)
+      "Each in turn, the last's value kept."
+      (if (null? ts) c (x64-emit-seq (x64-emit-expr c (car ts) si env) (cdr ts) si env))))
 
   (x64-emit-unary (subr kfx (x64-code string) x64-code)
     (lambda (c n)
@@ -184,7 +216,7 @@
 
 (define q-asm qbody
   (lambda (d run path)
-    (tagcase (x64-emit-expr (x64-code nil 0 0 nil) (l0-term d run path) 0)
+    (tagcase (x64-emit-expr (x64-code nil 0 0 nil) (l0-term d run path) 0 nil)
       (x64-code (ls n slots fails)
         (string-list-append
           (append (list "# Made by kc (docs/research/kc.md) from " path ".\n"

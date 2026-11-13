@@ -21,6 +21,57 @@ pub fn hex_digits(n: i64, acc: Str) -> Str {
     }
 }
 
+// A variable's Rust name, of a `(var K NAME)` or a binding `(K NAME E)`:
+// its number, then its name as kfx spells it.
+pub fn rust_variable(t: &'static Sexp) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let ys = if sym_is_p(car(xs), str_lit("var")) {
+                cdr(xs)
+            } else {
+                xs
+            };
+            string_list_append(kayak_rt::heap_cons(str_lit("v"), kayak_rt::heap_cons({
+                let tagcase_ = car(ys);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        i64_to_string(k)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            }, kayak_rt::heap_cons(str_lit("_"), kayak_rt::heap_cons(mangle_bare({
+                let tagcase_ = second(ys);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            }), kayak_rt::nil())))))
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+#[inline]
+pub fn rust_but_last(xs: Sexps) -> Sexps {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons(car(xs), rust_but_last(cdr(xs)))
+    }
+}
+
 // A primitive's kayak-rt function: its name as kfx spells it in Rust
 // (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
 // `_plus`), as kayak-rt names FX-26's standard operations (C402, C403).
@@ -32,7 +83,17 @@ pub fn rust_primitive(n: Str) -> Str {
 /// A term as a Rust expression of kayak-rt's.
 pub fn rust_of(t: &'static Sexp) -> Str {
     let (h, n) = (term_head(t), term_number(t));
-    if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("eq?"))) {
+    if string_eq_p(h, str_lit("var")) {
+        rust_variable(t)
+    } else if string_eq_p(h, str_lit("let")) {
+        string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |b: &'static Sexp| {
+            string_list_append(kayak_rt::heap_cons(str_lit("let "), kayak_rt::heap_cons(rust_variable(b), kayak_rt::heap_cons(str_lit(" = "), kayak_rt::heap_cons(rust_of(third(items(b))), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))))
+        }), let_bindings(t)), kayak_rt::heap_cons(rust_of(let_body(t)), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
+    } else if string_eq_p(h, str_lit("seq")) {
+        string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |e: &'static Sexp| {
+            string_list_append(kayak_rt::heap_cons(str_lit("let _ = "), kayak_rt::heap_cons(rust_of(e), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))
+        }), rust_but_last(seq_terms(t))), kayak_rt::heap_cons(rust_of(car(reverse(seq_terms(t)))), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
+    } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("eq?"))) {
         string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(car(prim_args(t))), kayak_rt::heap_cons(str_lit(" == "), kayak_rt::heap_cons(rust_of(second(prim_args(t))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
     } else if string_eq_p(h, str_lit("prim")) {
         string_list_append(kayak_rt::heap_cons(rust_primitive(prim_name(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_args(prim_args(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))

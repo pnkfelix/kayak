@@ -11218,3 +11218,25 @@ not any number).
 - Tests: `tests/kc/step4/`, 37 programs (four KFX), three of them
   failures; 72 in all, every one Fixpt's answer on each back end.
 
+## C404. kc, step 5: `let` (2026-11-12)
+
+Ghuloum's fifth step: local variables.
+- **The core language**: `(let ((K NAME E) ...) BODY)` and `(var K NAME)`,
+  `l0` resolving each name as it makes the term and numbering every binder
+  apart from every other in the program, so that the passes after it
+  never meet two binders of one name (the nanopass convention). A name a
+  binding form binds is a variable, shadowing a primitive's (`(let ((not
+  5)) (+ not 1))`) or `nil`'s. `let` is parallel: each value made where the
+  `let` is. `let*` is `let`s nested; a body of more than one expression,
+  and `begin`, `(seq E ...)`, each made (a discarded one may still fail).
+  A call of a local is not yet (procedures are step 8's).
+- **Native**: each variable in a slot of its own, its value moved there
+  once made; a use, a load.
+- **Rust**: Rust's own `let`s in turn, each named by its number and its
+  name as kfx spells it (`v1_y`), which keeps a parallel `let`'s binders
+  from seeing each other; `seq` a block of `let _ =`s. kayak-rt's `Int` is
+  `Copy`, so a variable used twice is no move; values that are not will
+  need it said (when strings and the heap come).
+- Tests: `tests/kc/step5/`, 19 programs (three KFX); 91 in all, every one
+  Fixpt's answer on each back end.
+
