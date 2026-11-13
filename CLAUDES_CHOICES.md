@@ -12016,3 +12016,49 @@ array as Fixpt does a bloblet, `#<bloblet N fields 0 bytes>`.
 `tests/kc/step11/`: 8 FX-26 programs and 7 KFX more: reads, writes, the
 empty array, one written out, one under `the`, of strings, filled and summed
 in loops, made in a procedure. 270 programs in all, 68 by Rust, none wrong.
+
+## C423. kc: types in its core: abbreviations, products, sums, datatypes (2026-11-13)
+
+The user: "Yes" (per-form checks, then types in kc's core: C420 found the
+first was a quadratic bug, and step 11 the second's need, symbols); "Go
+ahead".
+
+**A type's form is no code**: `define-type`, `define-datatype`,
+`define-effect`, `define-generative` (`type-form?`) are keyed
+`%type:NAME`, so that one added leaves the keys of the expressions after it
+as they were (`#exprN` counts the others), and are items of kind `none`,
+of no code in either back end. An item depends on the interfaces of the
+names it looks up (C416), and a type's name is none it looks up, so an edit
+of a type reaches the checker alone, as C423's question asked of it.
+
+**Datatypes as Fixpt's parser makes them** (`parser.fx`'s
+`expand-datatype`): a datatype's form is followed, in the front end's
+forms, by each variant's constructor, a form of its own keyed by its name,
+`(define C (lambda (%x1 ...) (sum C (product (1 %x1) ...))))`, so that an
+item that calls `circle` reads `circle`'s interface as it would a
+procedure's. The checker checks the text as written.
+
+**L0**: `(product E ...)` of fields by position (`(1 E) (2 E) ...`; a field
+by name needs its type's order, which kc has not yet from the checker:
+`not yet`); `(extract E K)`; `(sum "TAG" E)`; `(tagcase E ARM ...)`, an arm
+`(parts "TAG" ((K NAME) ...) BODY)` taking its product apart, `(whole "TAG"
+(K NAME) BODY)` binding it, or `(else (K NAME) BODY)` binding the sum; its
+binders numbered as any (C404), so a lambda's free variables leave them out.
+
+**Native, in Fixpt's layout**: a product a bloblet of kind 37, its fields
+in order, a trailer; a sum one of kind 36, its tag (a symbol, interned:
+C421) and its payload. A value `i` is the field `i + 2` back from the
+value, as an array's element (C422): `extract` a load. `tagcase`: the sum
+into a slot; each arm's tag's symbol compared with the sum's, the first
+the same binding its payload, whole or its fields, or the sum; its body in
+tail position where the `tagcase` is (C413). The runtime writes them as
+Fixpt does, `#<sum TAG>`, `#<product of N>`.
+
+**Rust**: a type's form no item; sums and products `not yet` (KFX's
+datatypes are nominal in kfx's Rust, C410, a mapping of their own to make).
+
+`tests/kc/types/`: 16 programs of Fixpt's answers: abbreviations (one
+between expressions), products and `extract`, the empty product, sums and
+`tagcase` whole and `else`, datatypes shown, taken apart, of an empty
+variant, in lists, recursive (a tree summed), returning closures, of
+strings, and a `tagcase` in tail position looping 100000 times.

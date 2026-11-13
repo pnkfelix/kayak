@@ -180,6 +180,11 @@ pub mod kc_x64 {
     }
 
     #[inline]
+    pub fn tagcase_arms() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::tagcase_arms
+    }
+
+    #[inline]
     pub fn sexp_at() -> &'static (dyn Fn(List<&'static Sexp>, i64) -> &'static Sexp + Send + Sync) {
         &kc_rust::sexp_at
     }
@@ -568,6 +573,54 @@ pub mod kc_x64 {
         x64_emit(c, str_lit("addq %rax, %rsi"))
     }
 
+    // A symbol named `name` in `%rax` (C421): interned by the runtime the
+    // first time it is met, and kept in a cell of its name's, common to every
+    // object that names it.
+    pub fn x64_emit_symbol(c: &'static X64Code, name: Str) -> &'static X64Code {
+        let k = x64_fresh_label(c);
+        let l = x64_label(c, str_lit("str"), k);
+        let done = x64_label(c, str_lit("sym"), k);
+        let c = x64_labelled(c);
+        let cell = string_append(str_lit("kcy_"), x64_name(name));
+        let c = x64_data(c, string_append(x64_string_data(l, name), string_append(str_lit("    .comm "), string_append(cell, str_lit(",8,8\n")))));
+        let c = x64_emit(c, string_append(str_lit("movq "), string_append(cell, str_lit("(%rip), %rax"))));
+        let c = x64_emit(c, str_lit("testq %rax, %rax"));
+        let c = x64_emit(c, string_append(str_lit("jne "), done));
+        let c = x64_emit(c, string_append(str_lit("leaq "), string_append(l, str_lit("+4(%rip), %rdi"))));
+        let c = x64_emit(c, str_lit("call kc_intern"));
+        let c = x64_emit(c, string_append(str_lit("movq %rax, "), string_append(cell, str_lit("(%rip)"))));
+        x64_emit_label(c, done)
+    }
+
+    // A bloblet of kind `kind` of the `n` values in the slots from `si`, in
+    // order, and a trailer, from the heap, in `%rax` (C423; Fixpt's sums,
+    // kind 36, its tag and its payload; products, kind 37, its fields):
+    // value `i` the field `i + 2` back from the value, as an array's
+    // element is.
+    pub fn x64_stored_values(mut c: &'static X64Code, mut si: i64, mut i: i64, mut n: i64) -> &'static X64Code {
+        loop {
+            if i64_gt_eq(i, n) {
+                return c;
+            } else {
+                (c, i) = (x64_emit(x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(i64_plus(si, i)), str_lit(", %rcx")))), string_append(str_lit("movq %rcx, "), string_append(i64_to_string(i64_star(8i64, i64_minus(n, i))), str_lit("(%r15)")))), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn x64_emit_bloblet(c: &'static X64Code, kind: i64, si: i64, n: i64) -> &'static X64Code {
+        let bytes = i64_star(8i64, i64_plus(n, 2i64));
+        let c = x64_emit(c, string_append(str_lit("leaq "), string_append(i64_to_string(bytes), str_lit("(%r15), %rdx"))));
+        let c = x64_emit(c, str_lit("cmpq %r14, %rdx"));
+        let c = x64_failing_if(c, str_lit("a"), x64_fail_heap());
+        let c = x64_emit(c, string_append(str_lit("movabsq $"), string_append(i64_to_string(i64_plus(i64_plus(6i64, i64_star(kind, 8i64)), i64_star(i64_plus(n, 1i64), 16384i64))), str_lit(", %rcx"))));
+        let c = x64_emit(c, str_lit("movq %rcx, 0(%r15)"));
+        let c = x64_stored_values(c, si, 0i64, n);
+        let c = x64_emit(c, string_append(str_lit("movq $"), string_append(i64_to_string(i64_plus(5i64, i64_star(i64_plus(n, 1i64), 8i64))), string_append(str_lit(", "), string_append(i64_to_string(i64_star(8i64, i64_plus(n, 1i64))), str_lit("(%r15)"))))));
+        let c = x64_emit(c, string_append(str_lit("leaq "), string_append(i64_to_string(i64_plus(bytes, 4i64)), str_lit("(%r15), %rax"))));
+        x64_emit(c, str_lit("movq %rdx, %r15"))
+    }
+
     // Where each variable is: its binder's number and its slot.
     pub enum X64At {
         X64At(i64, i64),
@@ -636,6 +689,33 @@ pub mod kc_x64 {
     }
 
     #[inline]
+    pub fn term_at_number(t: &'static Sexp, i: i64) -> i64 {
+        let tagcase_ = car(reverse(items(t)));
+        match *tagcase_ {
+            Sexp::Num(k, f, p) => {
+                k
+            }
+            _ => {
+                let other = tagcase_;
+                0i64
+            }
+        }
+    }
+
+    /// A product's fields, from `%rdx`, field `j` (from 1) at `-12 - 8j`,
+    /// each to its slot from `si`.
+    pub fn x64_fields_bound(mut c: &'static X64Code, mut si: i64, mut j: i64, mut m: i64) -> &'static X64Code {
+        loop {
+            if i64_gt(j, m) {
+                return c;
+            } else {
+                (c, si, j) = (x64_emit(x64_emit(c, string_append(str_lit("movq "), string_append(i64_to_string(i64_minus(-12i64, i64_star(8i64, j))), str_lit("(%rdx), %rsi")))), string_append(str_lit("movq %rsi, "), x64_slot(si))), i64_plus(si, 1i64), i64_plus(j, 1i64));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
     pub fn x64_but_last(xs: Sexps) -> Sexps {
         if (null_p(xs) || null_p(cdr(xs))) {
             nil::<&'static Sexp>()
@@ -696,19 +776,22 @@ pub mod kc_x64 {
             let c = x64_data(c, x64_string_data(l, term_text()(t)));
             x64_emit(c, string_append(str_lit("leaq "), string_append(l, str_lit("+4(%rip), %rax"))))
         } else if string_eq_p(h, str_lit("symbol")) {
-            let k = x64_fresh_label(c);
-            let l = x64_label(c, str_lit("str"), k);
-            let done = x64_label(c, str_lit("sym"), k);
-            let c = x64_labelled(c);
-            let cell = string_append(str_lit("kcy_"), x64_name(term_text()(t)));
-            let c = x64_data(c, string_append(x64_string_data(l, term_text()(t)), string_append(str_lit("    .comm "), string_append(cell, str_lit(",8,8\n")))));
-            let c = x64_emit(c, string_append(str_lit("movq "), string_append(cell, str_lit("(%rip), %rax"))));
-            let c = x64_emit(c, str_lit("testq %rax, %rax"));
-            let c = x64_emit(c, string_append(str_lit("jne "), done));
-            let c = x64_emit(c, string_append(str_lit("leaq "), string_append(l, str_lit("+4(%rip), %rdi"))));
-            let c = x64_emit(c, str_lit("call kc_intern"));
-            let c = x64_emit(c, string_append(str_lit("movq %rax, "), string_append(cell, str_lit("(%rip)"))));
-            x64_emit_label(c, done)
+            x64_emit_symbol(c, term_text()(t))
+        } else if string_eq_p(h, str_lit("product")) {
+            let args = cdr(items(t));
+            let c = x64_emit_args(c, args, si, env);
+            x64_emit_bloblet(c, 37i64, si, size(args))
+        } else if string_eq_p(h, str_lit("extract")) {
+            let c = x64_emit_expr(c, second(items(t)), si, env);
+            x64_emit(c, string_append(str_lit("movq "), string_append(i64_to_string(i64_minus(-12i64, i64_star(8i64, term_at_number(t, 2i64)))), str_lit("(%rax), %rax"))))
+        } else if string_eq_p(h, str_lit("sum")) {
+            let c = x64_emit_expr(c, third(items(t)), i64_plus(si, 1i64), env);
+            let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(i64_plus(si, 1i64)))), i64_plus(si, 2i64));
+            let c = x64_emit_symbol(c, term_text()(t));
+            let c = x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si)));
+            x64_emit_bloblet(c, 36i64, si, 2i64)
+        } else if string_eq_p(h, str_lit("tagcase")) {
+            x64_emit_tagcase(c, t, si, env, str_lit(""))
         } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("array-set!"))) {
             let args = prim_args()(t);
             let c = x64_emit_args(c, args, si, env);
@@ -816,6 +899,8 @@ pub mod kc_x64 {
                 return x64_emit_tail(c, third(ps), si, env, fr);
             } else if string_eq_p(h, str_lit("let")) {
                 return x64_emit_let(c, let_bindings()(t), let_body()(t), si, env, env, fr);
+            } else if string_eq_p(h, str_lit("tagcase")) {
+                return x64_emit_tagcase(c, t, si, env, fr);
             } else if string_eq_p(h, str_lit("seq")) {
                 let ts = seq_terms()(t);
                 (c, t) = (x64_emit_seq(c, x64_but_last(ts), si, env), car(reverse(ts)));
@@ -840,6 +925,95 @@ pub mod kc_x64 {
             } else {
                 return x64_emit(x64_emit(x64_emit_expr(c, t, si, env), string_append(str_lit("addq $"), string_append(fr, str_lit(", %rsp")))), str_lit("ret"));
             }
+        }
+    }
+
+    /// A `tagcase` (C423): the sum into slot `si`; each arm, in turn, its
+    /// tag's symbol compared with the sum's (field 2, at -20); the first
+    /// that is the same binds its payload (field 3, at -28), whole or its
+    /// product's fields, or, `else`, the sum, in the slots after, and its
+    /// body is the `tagcase`'s, in tail position if `fr`, its function's
+    /// frame, is given. No arm: none can be, the checker found.
+    pub fn x64_emit_tagcase(c: &'static X64Code, t: &'static Sexp, si: i64, env: List<&'static X64At>, fr: Str) -> &'static X64Code {
+        let k = x64_fresh_label(c);
+        let past = x64_label(c, str_lit("esac"), k);
+        let c = x64_labelled(c);
+        let c = x64_emit_expr(c, second(items(t)), si, env);
+        let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
+        let c = x64_emit_arms(c, tagcase_arms()(t), si, env, fr, past);
+        let c = x64_emit(x64_emit(c, str_lit("movl $7, %edi")), str_lit("call kc_fail"));
+        if string_eq_p(fr, str_lit("")) {
+            x64_emit_label(c, past)
+        } else {
+            c
+        }
+    }
+
+    pub fn x64_emit_arms(c: &'static X64Code, arms: Sexps, si: i64, env: List<&'static X64At>, fr: Str, past: Str) -> &'static X64Code {
+        if null_p(arms) {
+            c
+        } else {
+            let a = items(car(arms));
+            let kind = {
+                let tagcase_ = car(a);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            };
+            let k = x64_fresh_label(c);
+            let next = x64_label(c, str_lit("arm"), k);
+            let c = x64_labelled(c);
+            let c = if string_eq_p(kind, str_lit("else")) {
+                c
+            } else {
+                let c = x64_emit_symbol(c, {
+                    let tagcase_ = second(a);
+                    match *tagcase_ {
+                        Sexp::Str(s, f, p) => {
+                            s
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                });
+                let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(si), str_lit(", %rcx"))));
+                let c = x64_emit(c, str_lit("cmpq -20(%rcx), %rax"));
+                x64_emit(c, string_append(str_lit("jne "), next))
+            };
+            let binders = if string_eq_p(kind, str_lit("else")) {
+                kayak_rt::heap_cons(second(a), kayak_rt::nil())
+            } else if string_eq_p(kind, str_lit("whole")) {
+                kayak_rt::heap_cons(third(a), kayak_rt::nil())
+            } else {
+                items(third(a))
+            };
+            let body = car(reverse(a));
+            let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(si), str_lit(", %rcx"))));
+            let c = if string_eq_p(kind, str_lit("else")) {
+                x64_emit(c, string_append(str_lit("movq %rcx, "), x64_slot(i64_plus(si, 1i64))))
+            } else if string_eq_p(kind, str_lit("whole")) {
+                x64_emit(x64_emit(c, str_lit("movq -28(%rcx), %rdx")), string_append(str_lit("movq %rdx, "), x64_slot(i64_plus(si, 1i64))))
+            } else {
+                x64_fields_bound(x64_emit(c, str_lit("movq -28(%rcx), %rdx")), i64_plus(si, 1i64), 1i64, size(binders))
+            };
+            let n = size(binders);
+            let c = x64_using(c, i64_plus(i64_plus(si, 1i64), n));
+            let env2 = x64_params_at(binders, i64_plus(si, 1i64), env);
+            let c = if string_eq_p(fr, str_lit("")) {
+                x64_emit(x64_emit_expr(c, body, i64_plus(i64_plus(si, 1i64), n), env2), string_append(str_lit("jmp "), past))
+            } else {
+                x64_emit_tail(c, body, i64_plus(i64_plus(si, 1i64), n), env2, fr)
+            };
+            let c = x64_emit_label(c, next);
+            x64_emit_arms(c, cdr(arms), si, env, fr, past)
         }
     }
 
@@ -1121,7 +1295,9 @@ pub mod kc_x64 {
         let i = l0_item()(d, run, path, key);
         let k = item_kind()(i);
         let px = x64_name(key);
-        if string_eq_p(k, str_lit("proc")) {
+        if string_eq_p(k, str_lit("none")) {
+            str_lit("(asm 0 \"\" \"\")")
+        } else if string_eq_p(k, str_lit("proc")) {
             let ps = item_params()(i);
             let n = size(ps);
             if i64_gt(n, 6i64) {

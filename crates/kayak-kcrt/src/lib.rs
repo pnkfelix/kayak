@@ -112,6 +112,8 @@ const KIND_STRING: u64 = 1;
 const KIND_SYMBOL: u64 = 2;
 const KIND_CLOSURE: u64 = 8;
 const KIND_BLOBLET: u64 = 32;
+const KIND_SUM: u64 = 36;
+const KIND_PRODUCT: u64 = 37;
 const TAG_HEADER: u64 = 0b110;
 const TAG_TRAILER: u64 = 0b101;
 
@@ -341,6 +343,13 @@ fn atom(v: u64) -> String {
             }
             KIND_SYMBOL => string_text(kc_symbol_to_string(v)),
             KIND_CLOSURE => "#<procedure>".into(),
+            // A sum, by its tag; a product, by how many fields (C423), as
+            // Fixpt writes them: its tag field 2 back, a symbol.
+            KIND_SUM => format!(
+                "#<sum {}>",
+                string_text(kc_symbol_to_string(word(v - TAG_BLOBLET - 16)))
+            ),
+            KIND_PRODUCT => format!("#<product of {}>", (word(v - TAG_BLOBLET - 8) >> 3) - 1),
             // An array (C422), as Fixpt writes a bloblet: its fields with its
             // trailer.
             KIND_BLOBLET => format!(
@@ -365,6 +374,8 @@ pub extern "C" fn kc_fail(what: u64) -> ! {
         // kc's own, not Fixpt's: its integers are fixnums alone, as yet.
         2 => "kc: not yet: an integer past a fixnum",
         3 => "division by zero",
+        // kc's own: the checker finds every tag a sum may have its arm.
+        7 => "kc: a sum no arm of its tagcase is for",
         _ => "a failure kc's runtime has no words for",
     };
     eprintln!("evaluation failed: {message}");

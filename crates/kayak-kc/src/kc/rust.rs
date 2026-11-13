@@ -467,7 +467,9 @@ pub mod kc_rust {
         let key = a_key;
         let i = l0_item()(d, run, path, key);
         let k = item_kind()(i);
-        if string_eq_p(k, str_lit("proc")) {
+        if string_eq_p(k, str_lit("none")) {
+            str_lit("(none)")
+        } else if string_eq_p(k, str_lit("proc")) {
             let t = kc_type()(d, run, path, item_name()(i));
             if not(sym_is_p(car(items(t)), str_lit("subr"))) {
                 not_yet()(path, string_append(str_lit("a procedure whose type is not a subr's, "), item_name()(i)))
@@ -491,7 +493,7 @@ pub mod kc_rust {
         db_get(d, run, key1(str_lit("kfx"), path));
         let its = kc_items_of()(d, run, str_lit("rust-item"), path, kc_keys()(d, run, path));
         string_list_append(append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("#![allow(unused)]\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::nil()))))), append(map(lambda1s(move |x: &'static Sexp| {
-            if sym_is_p(car(items(x)), str_lit("expr")) {
+            if (sym_is_p(car(items(x)), str_lit("expr")) || sym_is_p(car(items(x)), str_lit("none"))) {
                 str_lit("")
             } else {
                 item_text(x, 1i64)

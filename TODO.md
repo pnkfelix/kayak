@@ -1551,7 +1551,10 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   form (0.6 s at 5000 procedures): a form's check a query of its own, its
   inputs its form and the bindings it reads. A `not yet` of kc's own still
   ends `kc serve` (an `attempt` around a request needs the request
-  cancellable, which a database's writes are not). `kc build` (C419): objects no longer listed
+  cancellable, which a database's writes are not). kc's types (C423): a product's field by name
+  (`extract p x`, `(product (x ..))`), its position the checker's (kfx's
+  emitter reads an `extract-index` fact; kc's `checked` keeps no facts
+  yet); sums, products and datatypes in kc's Rust back end. `kc build` (C419): objects no longer listed
   pruned from `EXE.o.d/`; an edited procedure an object of its own (weak
   symbols in its run) should reassembling its run of 64 ever be seen.
 - KFX's datatypes stay nominal (C410, the user's choice after the

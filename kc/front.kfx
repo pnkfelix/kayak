@@ -118,18 +118,62 @@
                 ""))
           (else other ""))))
 
+    "Whether a form defines a type, an effect or a datatype (C423): no code
+     of its own; its key `%type:NAME`, so that one added leaves the keys of
+     the expressions after it as they were."
+    (define type-form? (subr kfx (sexp) bool)
+      (lambda (f)
+        (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-effect") (head-is? f "define-generative"))))
+
     (hide
+      (define type-form-name (subr kfx (sexp) string)
+        (lambda (f)
+          (if (i64< (size (items f)) 2) "?"
+              (tagcase (second (items f))
+                (sym (n f2 p2) n)
+                (lst (ys f2 l2 p2) (if (null? ys) "?" (tagcase (car ys) (sym (n f3 p3) n) (else other "?"))))
+                (else other "?")))))
+
+      (define-rec
+        (field-names (subr kfx (i64 i64 (listof string acyclic)) (listof string acyclic))
+          (lambda (i n acc) (if (i64> i n) (reverse acc) (field-names (i64+ i 1) n (cons (string-append "%x" (i64->string i)) acc))))))
+
+      (define-rec
+        (fields-numbered (subr kfx ((listof string acyclic) i64 (listof string acyclic)) (listof string acyclic))
+          (lambda (xs i acc) (if (null? xs) (reverse acc) (fields-numbered (cdr xs) (i64+ i 1) (cons (string-list-append (list "(" (i64->string i) " " (car xs) ")")) acc))))))
+
+      (define-rec
+        (constructors-keyed (subr kfx (sexps (listof string acyclic)) (listof string acyclic))
+          (lambda (vs acc)
+            "A datatype's variants' constructors, as Fixpt's parser makes them
+             (`parser.fx`'s `expand-datatype`): each a procedure of its
+             fields, a sum of its name's tag of the product of them."
+            (if (null? vs)
+                acc
+                (tagcase (car vs)
+                  (lst (ys f l p)
+                    (let* ((c (tagcase (car ys) (sym (n f2 p2) n) (else other "?")))
+                           (xs (field-names 1 (i64- (size ys) 1) nil)))
+                      (constructors-keyed (cdr vs)
+                        (cons (string-list-append (list "(" c " (define " c " (lambda (" (words-of xs) ") (sum " c " (product" (if (null? xs) "" " ") (words-of (fields-numbered xs 1 nil)) ")))))")) acc))))
+                  (else other (constructors-keyed (cdr vs) acc)))))))
+
       (define-rec
         (forms-keyed (subr kfx (sexps i64 (listof string acyclic)) (listof string acyclic))
           (lambda (fs k acc)
             "Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
-             are no definition came before."
+             are no definition, nor a type's, came before. A datatype's form is
+             followed by its constructors' (C423), each a form of its own, keyed
+             by its name, as a procedure's is."
             (if (null? fs)
                 acc
                 (let ((n (form-name (car fs))))
-                  (if (string=? n "")
-                      (forms-keyed (cdr fs) (i64+ k 1) (cons (string-list-append (list "(#expr" (i64->string k) " " (kc-datum (car fs)) ")")) acc))
-                      (forms-keyed (cdr fs) k (cons (string-list-append (list "(" n " " (kc-datum (car fs)) ")")) acc))))))))
+                  (cond ((type-form? (car fs))
+                         (let ((acc (cons (string-list-append (list "(%type:" (type-form-name (car fs)) " " (kc-datum (car fs)) ")")) acc)))
+                           (forms-keyed (cdr fs) k (if (head-is? (car fs) "define-datatype") (constructors-keyed (cdr (cdr (items (car fs)))) acc) acc))))
+                        ((string=? n "")
+                         (forms-keyed (cdr fs) (i64+ k 1) (cons (string-list-append (list "(#expr" (i64->string k) " " (kc-datum (car fs)) ")")) acc)))
+                        (else (forms-keyed (cdr fs) k (cons (string-list-append (list "(" n " " (kc-datum (car fs)) ")")) acc)))))))))
 
       (define-rec
         (kc-set-forms! (subr qe (db string sexps i64) unit)
@@ -212,12 +256,14 @@
     (define q-interface qbody
       (lambda (d run a-path a-key)
         (let ((f (kc-form d run a-path a-key)))
-          (if (string=? (form-name f) "")
-              "(expr)"
+          (cond ((type-form? f) "(none)")
+                ((string=? (form-name f) "")
+              "(expr)")
+              (else
               (let ((l (lambda-of (define-value f))))
                 (if (null? l)
                     (string-append "(value " (string-append (form-name f) ")"))
-                    (string-list-append (list "(proc " (form-name f) " " (i64->string (size (items (second (items (car l)))))) ")"))))))))
+                    (string-list-append (list "(proc " (form-name f) " " (i64->string (size (items (second (items (car l)))))) ")")))))))))
 
     "Where form `key` is among the forms."
     (define kc-position (subr qe (db runner string string) i64)
@@ -232,7 +278,7 @@
     (define kc-scope-entry (subr qe (db runner string i64 string) sexp)
       (lambda (d run path at name)
         (let ((i (car (read-all (db-get d run (key2 "interface" path name)) "scope" 1))))
-          (if (and (not (sym-is? (car (items i)) "expr")) (i64< (kc-position d run path name) at))
+          (if (and (or (sym-is? (car (items i)) "proc") (sym-is? (car (items i)) "value")) (i64< (kc-position d run path name) at))
               i
               (lst (list (sym "none" "" 0) (sym name "" 0)) "" 0 0)))))
 

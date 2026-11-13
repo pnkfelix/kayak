@@ -16,6 +16,9 @@
  and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
  (C407): a program of many forms, each an item of its own (`l0-item`).
+ Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
+ `(sum \"TAG\" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
+ item's code, `(none)`.
  Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string \"TEXT\")`, `(symbol
  \"NAME\")`, the strings' primitives, `substring` of three arguments.
  Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
@@ -25,7 +28,7 @@
 (define kc-l0
   (module
     (hide
-      (import kc-front form-name kc-form define-value lambda-of kc-datum kc-scope-entry kc-position (type qbody)))
+      (import kc-front form-name kc-form define-value lambda-of kc-datum kc-scope-entry kc-position type-form? (type qbody)))
 
     (hide
       (define fixnum-max i64 1152921504606846975)
@@ -142,10 +145,22 @@
                 (cond ((null? xs) acc)
                       ((sym-is? (car xs) "lambda") acc)
                       ((sym-is? (car xs) "let") (l0-let-bound-all (cdr (cdr xs)) (l0-let-bound-all (items (second xs)) (onto (l0-numbers-of (items (second xs))) acc))))
+                      ;; A `tagcase`'s arms' binders (C423).
+                      ((sym-is? (car xs) "parts") (l0-let-bound (fourth xs) (onto (l0-numbers-of (items (third xs))) acc)))
+                      ((sym-is? (car xs) "whole") (l0-let-bound (fourth xs) (onto (l0-numbers-of (list (third xs))) acc)))
+                      ((sym-is? (car xs) "else") (l0-let-bound (third xs) (onto (l0-numbers-of (list (second xs))) acc)))
                       (else (l0-let-bound-all xs acc))))
               (else other acc))))
         (l0-let-bound-all (subr kfx (sexps (listof i64 acyclic)) (listof i64 acyclic))
           (lambda (ts acc) (if (null? ts) acc (l0-let-bound-all (cdr ts) (l0-let-bound (car ts) acc))))))
+
+      (define-rec
+        (l0-positional? (subr kfx (sexps i64) bool)
+          (lambda (fs k)
+            "Whether a product's fields are labelled 1, 2, ... in order."
+            (cond ((null? fs) #t)
+                  ((tagcase (car (items (car fs))) (num (n f p) (i64= n k)) (else other #f)) (l0-positional? (cdr fs) (i64+ k 1)))
+                  (else #f)))))
 
       (define-rec
         (l0-free (subr kfx (sexps (listof i64 acyclic) sexps) sexps)
@@ -225,6 +240,28 @@
                         ((string=? h "begin") (l0-seq path scope env next (cdr xs) nil))
                         ;; `(the T e)`: `e`, its type the checker's (C422).
                         ((and (string=? h "the") (i64= (size xs) 3)) (l0-of path scope env next (third xs)))
+                        ;; Products of their fields by position, `(1 E) (2 E) ...`
+                        ;; (C423): a field by name needs its type's order, which
+                        ;; kc has not yet from the checker.
+                        ((string=? h "product")
+                         (if (not (l0-positional? (cdr xs) 1))
+                             (l0-made (not-yet path "a product's fields by name") next)
+                             (tagcase (l0-terms path scope env next (map (lambda ((f sexp)) (second (items f))) (cdr xs)) nil)
+                               (l0-made (ts n1) (l0-made (string-list-append (list "(product" (if (string=? ts "") "" " ") ts ")")) n1)))))
+                        ((and (string=? h "extract") (i64= (size xs) 3))
+                         (tagcase (third xs)
+                           (num (k f2 p2)
+                             (tagcase (l0-of path scope env next (second xs))
+                               (l0-made (t n1) (l0-made (string-list-append (list "(extract " t " " (i64->string k) ")")) n1))))
+                           (else other (l0-made (not-yet path "a product's field by name") next))))
+                        ((and (string=? h "sum") (i64= (size xs) 3))
+                         (tagcase (l0-of path scope env next (third xs))
+                           (l0-made (t n1) (l0-made (string-list-append (list "(sum " (kc-datum (str (sym-name (second xs)) "" 0)) " " t ")")) n1))))
+                        ((and (string=? h "tagcase") (i64>= (size xs) 3))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (t n1)
+                             (tagcase (l0-arms path scope env n1 (cdr (cdr xs)) nil)
+                               (l0-made (arms n2) (l0-made (string-list-append (list "(tagcase " t " " arms ")")) n2))))))
                         ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
                         ((and (string=? h "list") (not (null? (cdr xs))))
                          (l0-of path scope env next
@@ -279,6 +316,30 @@
                 (l0-made (words-of (reverse done)) next)
                 (tagcase (l0-of path scope env next (car es))
                   (l0-made (t n1) (l0-terms path scope env n1 (cdr es) (cons t done)))))))
+
+        (l0-arms (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps (listof string acyclic)) l0-made)
+          (lambda (path scope env next arms done)
+            "A `tagcase`'s arms (C423): `(parts \"TAG\" ((K NAME) ...) BODY)` of
+             one that takes its payload apart, a product; `(whole \"TAG\" (K NAME)
+             BODY)` of one that binds it whole; `(else (K NAME) BODY)`, the sum."
+            (if (null? arms)
+                (l0-made (words-of (reverse done)) next)
+                (let* ((a (items (car arms)))
+                       (tag (sym-name (car a)))
+                       (head (cond ((string=? tag "else") "else")
+                                   ((tagcase (second a) (lst (ys f l p) #t) (else other #f)) "parts")
+                                   (else "whole")))
+                       (names (if (string=? head "parts") (items (second a)) (list (second a)))))
+                  (tagcase (l0-params names next env nil)
+                    (l0-made-params (ps inner k)
+                      (tagcase (l0-seq path scope inner k (cdr (cdr a)) nil)
+                        (l0-made (b n1)
+                          (l0-arms path scope env n1 (cdr arms)
+                                   (cons (string-list-append
+                                           (cond ((string=? head "else") (list "(else " ps " " b ")"))
+                                                 ((string=? head "parts") (list "(parts " (kc-datum (str tag "" 0)) " (" ps ") " b ")"))
+                                                 (else (list "(whole " (kc-datum (str tag "" 0)) " " ps " " b ")"))))
+                                         done))))))))))
 
         (l0-cond-as-if (subr kfx (string sexps string i64 i64) sexp)
           (lambda (path clauses f l p)
@@ -340,7 +401,8 @@
     (hide
       (define l0-item-text (subr kfx (string sexp sexps) string)
         (lambda (path f scope)
-          "Form `f` as an item, its names' entries `scope`."
+          "Form `f` as an item, its names' entries `scope`; a type's, none."
+          (if (type-form? f) "(none)"
           (if (string=? (form-name f) "")
               (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
               (let ((l (lambda-of (define-value f))))
@@ -351,7 +413,7 @@
                       (tagcase (l0-params (items (second lx)) 0 nil nil)
                         (l0-made-params (ps env k)
                           (tagcase (l0-seq path scope env k (cdr (cdr lx)) nil)
-                            (l0-made (b n) (string-list-append (list "(proc " (form-name f) " (" ps ") " b ")"))))))))))))
+                            (l0-made (b n) (string-list-append (list "(proc " (form-name f) " (" ps ") " b ")")))))))))))))
 
       (define-rec
         (l0-item-of (subr qe (db runner string i64 sexp sexps) string)
@@ -454,6 +516,11 @@
       (lambda (t) (tagcase t (lst (xs f l p) (second xs)) (else other t))))
 
     (define app-args (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
+
+    "A `tagcase`'s scrutinee and arms; an arm's kind, tag, binders, body
+     (C423)."
+    (define tagcase-arms (subr kfx (sexp) sexps)
       (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
 
     (define gproc-arity (subr kfx (sexp) i64)

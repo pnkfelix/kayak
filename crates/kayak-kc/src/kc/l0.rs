@@ -21,6 +21,9 @@ use super::*;
 // and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
 // `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
 // (C407): a program of many forms, each an item of its own (`l0-item`).
+// Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
+// `(sum "TAG" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
+// item's code, `(none)`.
 // Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string "TEXT")`, `(symbol
 // "NAME")`, the strings' primitives, `substring` of three arguments.
 // Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
@@ -62,6 +65,11 @@ pub mod kc_l0 {
     #[inline]
     pub fn kc_position() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> i64 {
         &kc_front::kc_position
+    }
+
+    #[inline]
+    pub fn type_form_p() -> &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync) {
+        &kc_front::type_form_p
     }
 
     pub type Qbody = kc_front::Qbody;
@@ -336,23 +344,34 @@ pub mod kc_l0 {
         }
     }
 
-    pub fn l0_let_bound(t: &'static Sexp, acc: List<i64>) -> List<i64> {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                if null_p(xs) {
-                    acc
-                } else if sym_is_p(car(xs), str_lit("lambda")) {
-                    acc
-                } else if sym_is_p(car(xs), str_lit("let")) {
-                    l0_let_bound_all(cdr(cdr(xs)), l0_let_bound_all(items(second(xs)), onto(l0_numbers_of(items(second(xs))), acc)))
-                } else {
-                    l0_let_bound_all(xs, acc)
+    pub fn l0_let_bound(mut t: &'static Sexp, mut acc: List<i64>) -> List<i64> {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        return acc;
+                    } else if sym_is_p(car(xs), str_lit("lambda")) {
+                        return acc;
+                    } else if sym_is_p(car(xs), str_lit("let")) {
+                        return l0_let_bound_all(cdr(cdr(xs)), l0_let_bound_all(items(second(xs)), onto(l0_numbers_of(items(second(xs))), acc)));
+                    } else if sym_is_p(car(xs), str_lit("parts")) {
+                        (t, acc) = (fourth(xs), onto(l0_numbers_of(items(third(xs))), acc));
+                        continue;
+                    } else if sym_is_p(car(xs), str_lit("whole")) {
+                        (t, acc) = (fourth(xs), onto(l0_numbers_of(kayak_rt::heap_cons(third(xs), kayak_rt::nil())), acc));
+                        continue;
+                    } else if sym_is_p(car(xs), str_lit("else")) {
+                        (t, acc) = (third(xs), onto(l0_numbers_of(kayak_rt::heap_cons(second(xs), kayak_rt::nil())), acc));
+                        continue;
+                    } else {
+                        return l0_let_bound_all(xs, acc);
+                    }
                 }
-            }
-            _ => {
-                let other = tagcase_;
-                acc
+                _ => {
+                    let other = tagcase_;
+                    return acc;
+                }
             }
         }
     }
@@ -364,6 +383,31 @@ pub mod kc_l0 {
             } else {
                 (ts, acc) = (cdr(ts), l0_let_bound(car(ts), acc));
                 continue;
+            }
+        }
+    }
+
+    /// Whether a product's fields are labelled 1, 2, ... in order.
+    pub fn l0_positional_p(mut fs: Sexps, mut k: i64) -> bool {
+        loop {
+            if null_p(fs) {
+                return true;
+            } else if {
+                let tagcase_ = car(items(car(fs)));
+                match *tagcase_ {
+                    Sexp::Num(n, f, p) => {
+                        i64_eq(n, k)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                (fs, k) = (cdr(fs), i64_plus(k, 1i64));
+                continue;
+            } else {
+                return false;
             }
         }
     }
@@ -558,6 +602,58 @@ pub mod kc_l0 {
                     } else if (string_eq_p(h, str_lit("the")) && i64_eq(size(xs), 3i64)) {
                         e = third(xs);
                         continue;
+                    } else if string_eq_p(h, str_lit("product")) {
+                        if not(l0_positional_p(cdr(xs), 1i64)) {
+                            return l0_made(not_yet(path, str_lit("a product's fields by name")), next);
+                        } else {
+                            let tagcase_ = l0_terms(path, scope, env, next, map(lambda1s(move |f: &'static Sexp| {
+                                second(items(f))
+                            }), cdr(xs)), nil::<Str>());
+                            match *tagcase_ {
+                                L0Made::L0Made(ts, n1) => {
+                                    return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(product"), kayak_rt::heap_cons(if string_eq_p(ts, str_lit("")) {
+                                        str_lit("")
+                                    } else {
+                                        str_lit(" ")
+                                    }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))), n1);
+                                }
+                            }
+                        }
+                    } else if (string_eq_p(h, str_lit("extract")) && i64_eq(size(xs), 3i64)) {
+                        let tagcase_ = third(xs);
+                        match *tagcase_ {
+                            Sexp::Num(k, f2, p2) => {
+                                let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                                match *tagcase_ {
+                                    L0Made::L0Made(t, n1) => {
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(extract "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return l0_made(not_yet(path, str_lit("a product's field by name")), next);
+                            }
+                        }
+                    } else if (string_eq_p(h, str_lit("sum")) && i64_eq(size(xs), 3i64)) {
+                        let tagcase_ = l0_of(path, scope, env, next, third(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(t, n1) => {
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(sum "), kayak_rt::heap_cons(kc_datum()(str(sym_name(second(xs)), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                            }
+                        }
+                    } else if (string_eq_p(h, str_lit("tagcase")) && i64_gt_eq(size(xs), 3i64)) {
+                        let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(t, n1) => {
+                                let tagcase_ = l0_arms(path, scope, env, n1, cdr(cdr(xs)), nil::<Str>());
+                                match *tagcase_ {
+                                    L0Made::L0Made(arms, n2) => {
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(tagcase "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(arms, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n2);
+                                    }
+                                }
+                            }
+                        }
                     } else if (string_eq_p(h, str_lit("list")) && not(null_p(cdr(xs)))) {
                         e = lst(kayak_rt::heap_cons(sym(str_lit("cons"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(if null_p(cdr(cdr(xs))) {
                             sym(str_lit("nil"), f, p)
@@ -656,6 +752,61 @@ pub mod kc_l0 {
                     L0Made::L0Made(t, n1) => {
                         (next, es, done) = (n1, cdr(es), kayak_rt::heap_cons(t, done));
                         continue;
+                    }
+                }
+            }
+        }
+    }
+
+    /// A `tagcase`'s arms (C423): `(parts "TAG" ((K NAME) ...) BODY)` of
+    /// one that takes its payload apart, a product; `(whole "TAG" (K NAME)
+    /// BODY)` of one that binds it whole; `(else (K NAME) BODY)`, the sum.
+    pub fn l0_arms(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut arms: Sexps, mut done: List<Str>) -> &'static L0Made {
+        loop {
+            if null_p(arms) {
+                return l0_made(words_of(reverse(done)), next);
+            } else {
+                let a = items(car(arms));
+                let tag = sym_name(car(a));
+                let head = if string_eq_p(tag, str_lit("else")) {
+                    str_lit("else")
+                } else if {
+                    let tagcase_ = second(a);
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    str_lit("parts")
+                } else {
+                    str_lit("whole")
+                };
+                let names = if string_eq_p(head, str_lit("parts")) {
+                    items(second(a))
+                } else {
+                    kayak_rt::heap_cons(second(a), kayak_rt::nil())
+                };
+                let tagcase_ = l0_params(names, next, env, nil::<Str>());
+                match *tagcase_ {
+                    L0MadeParams::L0MadeParams(ps, inner, k) => {
+                        let tagcase_ = l0_seq(path, scope, inner, k, cdr(cdr(a)), nil::<Str>());
+                        match *tagcase_ {
+                            L0Made::L0Made(b, n1) => {
+                                (next, arms, done) = (n1, cdr(arms), kayak_rt::heap_cons(string_list_append(if string_eq_p(head, str_lit("else")) {
+                                    kayak_rt::heap_cons(str_lit("(else "), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
+                                } else if string_eq_p(head, str_lit("parts")) {
+                                    kayak_rt::heap_cons(str_lit("(parts "), kayak_rt::heap_cons(kc_datum()(str(tag, str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))
+                                } else {
+                                    kayak_rt::heap_cons(str_lit("(whole "), kayak_rt::heap_cons(kc_datum()(str(tag, str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))
+                                }), done));
+                                continue;
+                            }
+                        }
                     }
                 }
             }
@@ -776,33 +927,37 @@ pub mod kc_l0 {
         }
     }
 
-    /// Form `f` as an item, its names' entries `scope`.
+    /// Form `f` as an item, its names' entries `scope`; a type's, none.
     pub fn l0_item_text(path: Str, f: &'static Sexp, scope: Sexps) -> Str {
-        if string_eq_p(form_name()(f), str_lit("")) {
-            let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, f);
-            match *tagcase_ {
-                L0Made::L0Made(t, n) => {
-                    string_append(str_lit("(expr "), string_append(t, str_lit(")")))
-                }
-            }
+        if type_form_p()(f) {
+            str_lit("(none)")
         } else {
-            let l = lambda_of()(define_value()(f));
-            if null_p(l) {
-                let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, define_value()(f));
+            if string_eq_p(form_name()(f), str_lit("")) {
+                let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, f);
                 match *tagcase_ {
                     L0Made::L0Made(t, n) => {
-                        string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                        string_append(str_lit("(expr "), string_append(t, str_lit(")")))
                     }
                 }
             } else {
-                let lx = items(car(l));
-                let tagcase_ = l0_params(items(second(lx)), 0i64, nil::<&'static kc_l0::L0Bound>(), nil::<Str>());
-                match *tagcase_ {
-                    L0MadeParams::L0MadeParams(ps, env, k) => {
-                        let tagcase_ = l0_seq(path, scope, env, k, cdr(cdr(lx)), nil::<Str>());
-                        match *tagcase_ {
-                            L0Made::L0Made(b, n) => {
-                                string_list_append(kayak_rt::heap_cons(str_lit("(proc "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
+                let l = lambda_of()(define_value()(f));
+                if null_p(l) {
+                    let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, define_value()(f));
+                    match *tagcase_ {
+                        L0Made::L0Made(t, n) => {
+                            string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                        }
+                    }
+                } else {
+                    let lx = items(car(l));
+                    let tagcase_ = l0_params(items(second(lx)), 0i64, nil::<&'static kc_l0::L0Bound>(), nil::<Str>());
+                    match *tagcase_ {
+                        L0MadeParams::L0MadeParams(ps, env, k) => {
+                            let tagcase_ = l0_seq(path, scope, env, k, cdr(cdr(lx)), nil::<Str>());
+                            match *tagcase_ {
+                                L0Made::L0Made(b, n) => {
+                                    string_list_append(kayak_rt::heap_cons(str_lit("(proc "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
+                                }
                             }
                         }
                     }
@@ -1183,6 +1338,22 @@ pub mod kc_l0 {
 
     #[inline]
     pub fn app_args(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                cdr(cdr(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    // A `tagcase`'s scrutinee and arms; an arm's kind, tag, binders, body
+    // (C423).
+    #[inline]
+    pub fn tagcase_arms(t: &'static Sexp) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {

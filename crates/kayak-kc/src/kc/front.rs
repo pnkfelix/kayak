@@ -186,15 +186,128 @@ pub mod kc_front {
         }
     }
 
+    // Whether a form defines a type, an effect or a datatype (C423): no code
+    // of its own; its key `%type:NAME`, so that one added leaves the keys of
+    // the expressions after it as they were.
+    #[inline]
+    pub fn type_form_p(f: &'static Sexp) -> bool {
+        (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("define-generative")))
+    }
+
+    pub fn type_form_name(f: &'static Sexp) -> Str {
+        if i64_lt(size(items(f)), 2i64) {
+            str_lit("?")
+        } else {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, f2, p2) => {
+                    n
+                }
+                Sexp::Lst(ys, f2, l2, p2) => {
+                    if null_p(ys) {
+                        str_lit("?")
+                    } else {
+                        let tagcase_ = car(ys);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f3, p3) => {
+                                n
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("?")
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("?")
+                }
+            }
+        }
+    }
+
+    pub fn field_names(mut i: i64, mut n: i64, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if i64_gt(i, n) {
+                return reverse(acc);
+            } else {
+                (i, acc) = (i64_plus(i, 1i64), kayak_rt::heap_cons(string_append(str_lit("%x"), i64_to_string(i)), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn fields_numbered(mut xs: List<Str>, mut i: i64, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(xs) {
+                return reverse(acc);
+            } else {
+                (xs, i, acc) = (cdr(xs), i64_plus(i, 1i64), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(i64_to_string(i), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
+                continue;
+            }
+        }
+    }
+
+    /// A datatype's variants' constructors, as Fixpt's parser makes them
+    /// (`parser.fx`'s `expand-datatype`): each a procedure of its
+    /// fields, a sum of its name's tag of the product of them.
+    pub fn constructors_keyed(mut vs: Sexps, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(vs) {
+                return acc;
+            } else {
+                let tagcase_ = car(vs);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        let c = {
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Sexp::Sym(n, f2, p2) => {
+                                    n
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("?")
+                                }
+                            }
+                        };
+                        let xs = field_names(1i64, i64_minus(size(ys), 1i64), nil::<Str>());
+                        (vs, acc) = (cdr(vs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(c, kayak_rt::heap_cons(str_lit(" (define "), kayak_rt::heap_cons(c, kayak_rt::heap_cons(str_lit(" (lambda ("), kayak_rt::heap_cons(words_of(xs), kayak_rt::heap_cons(str_lit(") (sum "), kayak_rt::heap_cons(c, kayak_rt::heap_cons(str_lit(" (product"), kayak_rt::heap_cons(if null_p(xs) {
+                            str_lit("")
+                        } else {
+                            str_lit(" ")
+                        }, kayak_rt::heap_cons(words_of(fields_numbered(xs, 1i64, nil::<Str>())), kayak_rt::heap_cons(str_lit(")))))"), kayak_rt::nil()))))))))))))), acc));
+                        continue;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        vs = cdr(vs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
     /// Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
-    /// are no definition came before.
+    /// are no definition, nor a type's, came before. A datatype's form is
+    /// followed by its constructors' (C423), each a form of its own, keyed
+    /// by its name, as a procedure's is.
     pub fn forms_keyed(mut fs: Sexps, mut k: i64, mut acc: List<Str>) -> List<Str> {
         loop {
             if null_p(fs) {
                 return acc;
             } else {
                 let n = form_name(car(fs));
-                if string_eq_p(n, str_lit("")) {
+                if type_form_p(car(fs)) {
+                    let acc = kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("(%type:"), kayak_rt::heap_cons(type_form_name(car(fs)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc);
+                    return forms_keyed(cdr(fs), k, if head_is_p(car(fs), str_lit("define-datatype")) {
+                        constructors_keyed(cdr(cdr(items(car(fs)))), acc)
+                    } else {
+                        acc
+                    });
+                } else if string_eq_p(n, str_lit("")) {
                     (fs, k, acc) = (cdr(fs), i64_plus(k, 1i64), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("(#expr"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), acc));
                     continue;
                 } else {
@@ -363,7 +476,9 @@ pub mod kc_front {
     // `interface PATH KEY`.
     pub fn q_interface(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
         let f = kc_form(d, run, a_path, a_key);
-        if string_eq_p(form_name(f), str_lit("")) {
+        if type_form_p(f) {
+            str_lit("(none)")
+        } else if string_eq_p(form_name(f), str_lit("")) {
             str_lit("(expr)")
         } else {
             let l = lambda_of(define_value(f));
@@ -388,7 +503,7 @@ pub mod kc_front {
     // up, each alone.
     pub fn kc_scope_entry(d: Db, run: Runner, path: Str, at: i64, name: Str) -> &'static Sexp {
         let i = car(read_all(db_get(d, run, key2(str_lit("interface"), path, name)), str_lit("scope"), 1i64));
-        if (not(sym_is_p(car(items(i)), str_lit("expr"))) && i64_lt(kc_position(d, run, path, name), at)) {
+        if ((sym_is_p(car(items(i)), str_lit("proc")) || sym_is_p(car(items(i)), str_lit("value"))) && i64_lt(kc_position(d, run, path, name), at)) {
             i
         } else {
             lst(kayak_rt::heap_cons(sym(str_lit("none"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(name, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)

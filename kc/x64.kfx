@@ -39,7 +39,7 @@
   (module
     (hide
       (import kc-front kc-hex kc-datum kc-items-of kc-keys (type qbody))
-      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params lambda-free app-fn app-args gproc-arity)
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params lambda-free app-fn app-args gproc-arity tagcase-arms)
       (import kc-rust sexp-at))
 
     (hide
@@ -270,6 +270,49 @@
                  (c (x64-emit c "negq %rsi")))
             (x64-emit c "addq %rax, %rsi"))))
 
+      "A symbol named `name` in `%rax` (C421): interned by the runtime the
+       first time it is met, and kept in a cell of its name's, common to every
+       object that names it."
+      (define x64-emit-symbol (subr kfx (x64-code string) x64-code)
+        (lambda (c name)
+          (let* ((k (x64-fresh-label c)) (l (x64-label c "str" k)) (done (x64-label c "sym" k)) (c (x64-labelled c))
+                 (cell (string-append "kcy_" (x64-name name)))
+                 (c (x64-data c (string-append (x64-string-data l name) (string-append "    .comm " (string-append cell ",8,8\n")))))
+                 (c (x64-emit c (string-append "movq " (string-append cell "(%rip), %rax"))))
+                 (c (x64-emit c "testq %rax, %rax"))
+                 (c (x64-emit c (string-append "jne " done)))
+                 (c (x64-emit c (string-append "leaq " (string-append l "+4(%rip), %rdi"))))
+                 (c (x64-emit c "call kc_intern"))
+                 (c (x64-emit c (string-append "movq %rax, " (string-append cell "(%rip)")))))
+            (x64-emit-label c done))))
+
+      "A bloblet of kind `kind` of the `n` values in the slots from `si`, in
+       order, and a trailer, from the heap, in `%rax` (C423; Fixpt's sums,
+       kind 36, its tag and its payload; products, kind 37, its fields):
+       value `i` the field `i + 2` back from the value, as an array's
+       element is."
+      (define-rec
+        (x64-stored-values (subr kfx (x64-code i64 i64 i64) x64-code)
+          (lambda (c si i n)
+            (if (i64>= i n)
+                c
+                (x64-stored-values (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si i)) ", %rcx")))
+                                             (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64- n i))) "(%r15)")))
+                                   si (i64+ i 1) n)))))
+
+      (define x64-emit-bloblet (subr kfx (x64-code i64 i64 i64) x64-code)
+        (lambda (c kind si n)
+          (let* ((bytes (i64* 8 (i64+ n 2)))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string bytes) "(%r15), %rdx"))))
+                 (c (x64-emit c "cmpq %r14, %rdx"))
+                 (c (x64-failing-if c "a" x64-fail-heap))
+                 (c (x64-emit c (string-append "movabsq $" (string-append (i64->string (i64+ (i64+ 6 (i64* kind 8)) (i64* (i64+ n 1) 16384))) ", %rcx"))))
+                 (c (x64-emit c "movq %rcx, 0(%r15)"))
+                 (c (x64-stored-values c si 0 n))
+                 (c (x64-emit c (string-append "movq $" (string-append (i64->string (i64+ 5 (i64* (i64+ n 1) 8))) (string-append ", " (string-append (i64->string (i64* 8 (i64+ n 1))) "(%r15)"))))))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string (i64+ bytes 4)) "(%r15), %rax")))))
+            (x64-emit c "movq %rdx, %r15"))))
+
       "Where each variable is: its binder's number and its slot."
       (define-datatype x64-at (x64-at i64 i64))
 
@@ -291,6 +334,20 @@
           (lambda (c regs i n)
             (if (or (i64>= i n) (null? regs)) c
                 (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
+
+      (define term-at-number (subr kfx (sexp i64) i64)
+        (lambda (t i) (tagcase (car (reverse (items t))) (num (k f p) k) (else other 0))))
+
+      (define-rec
+        (x64-fields-bound (subr kfx (x64-code i64 i64 i64) x64-code)
+          (lambda (c si j m)
+            "A product's fields, from `%rdx`, field `j` (from 1) at `-12 - 8j`,
+             each to its slot from `si`."
+            (if (i64> j m)
+                c
+                (x64-fields-bound (x64-emit (x64-emit c (string-append "movq " (string-append (i64->string (i64- -12 (i64* 8 j))) "(%rdx), %rsi")))
+                                            (string-append "movq %rsi, " (x64-slot si)))
+                                  (i64+ si 1) (i64+ j 1) m)))))
 
       (define-rec
         (x64-but-last (subr kfx (sexps) sexps)
@@ -343,20 +400,23 @@
                      (let* ((k (x64-fresh-label c)) (l (x64-label c "str" k)) (c (x64-labelled c))
                             (c (x64-data c (x64-string-data l (term-text t)))))
                        (x64-emit c (string-append "leaq " (string-append l "+4(%rip), %rax")))))
-                    ((string=? h "symbol")
-                     ;; Interned by the runtime the first time it is met, and kept
-                     ;; in a cell of its name's, common to every object that names
-                     ;; it, so that one name is one symbol, `eq?` to itself (C421).
-                     (let* ((k (x64-fresh-label c)) (l (x64-label c "str" k)) (done (x64-label c "sym" k)) (c (x64-labelled c))
-                            (cell (string-append "kcy_" (x64-name (term-text t))))
-                            (c (x64-data c (string-append (x64-string-data l (term-text t)) (string-append "    .comm " (string-append cell ",8,8\n")))))
-                            (c (x64-emit c (string-append "movq " (string-append cell "(%rip), %rax"))))
-                            (c (x64-emit c "testq %rax, %rax"))
-                            (c (x64-emit c (string-append "jne " done)))
-                            (c (x64-emit c (string-append "leaq " (string-append l "+4(%rip), %rdi"))))
-                            (c (x64-emit c "call kc_intern"))
-                            (c (x64-emit c (string-append "movq %rax, " (string-append cell "(%rip)")))))
-                       (x64-emit-label c done)))
+                    ((string=? h "symbol") (x64-emit-symbol c (term-text t)))
+                    ;; Products, sums, `extract`, `tagcase` (C423).
+                    ((string=? h "product")
+                     (let* ((args (cdr (items t))) (c (x64-emit-args c args si env)))
+                       (x64-emit-bloblet c 37 si (size args))))
+                    ((string=? h "extract")
+                     (let ((c (x64-emit-expr c (second (items t)) si env)))
+                       (x64-emit c (string-append "movq " (string-append (i64->string (i64- -12 (i64* 8 (term-at-number t 2)))) "(%rax), %rax")))))
+                    ((string=? h "sum")
+                     ;; Its payload into the slot after the tag's, the tag (a
+                     ;; symbol, interned) into its own; then the two.
+                     (let* ((c (x64-emit-expr c (third (items t)) (i64+ si 1) env))
+                            (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 1)))) (i64+ si 2)))
+                            (c (x64-emit-symbol c (term-text t)))
+                            (c (x64-emit c (string-append "movq %rax, " (x64-slot si)))))
+                       (x64-emit-bloblet c 36 si 2)))
+                    ((string=? h "tagcase") (x64-emit-tagcase c t si env ""))
                     ((and (string=? h "prim") (string=? (prim-name t) "array-set!"))
                      ;; The array, the index and the value into slots, then into
                      ;; `%rax`, `%rcx`, `%rdx`; the index checked as `array-ref`'s
@@ -442,6 +502,7 @@
                             (c (x64-emit-label c no)))
                        (x64-emit-tail c (third ps) si env fr)))
                     ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env fr))
+                    ((string=? h "tagcase") (x64-emit-tagcase c t si env fr))
                     ((string=? h "seq")
                      (let ((ts (seq-terms t)))
                        (x64-emit-tail (x64-emit-seq c (x64-but-last ts) si env) (car (reverse ts)) si env fr)))
@@ -462,6 +523,51 @@
                        (x64-emit c "jmp *-28(%r10)")))
                     (else
                      (x64-emit (x64-emit (x64-emit-expr c t si env) (string-append "addq $" (string-append fr ", %rsp"))) "ret"))))))
+
+        (x64-emit-tagcase (subr kfx (x64-code sexp i64 (listof x64-at acyclic) string) x64-code)
+          (lambda (c t si env fr)
+            "A `tagcase` (C423): the sum into slot `si`; each arm, in turn, its
+             tag's symbol compared with the sum's (field 2, at -20); the first
+             that is the same binds its payload (field 3, at -28), whole or its
+             product's fields, or, `else`, the sum, in the slots after, and its
+             body is the `tagcase`'s, in tail position if `fr`, its function's
+             frame, is given. No arm: none can be, the checker found."
+            (let* ((k (x64-fresh-label c)) (past (x64-label c "esac" k)) (c (x64-labelled c))
+                   (c (x64-emit-expr c (second (items t)) si env))
+                   (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
+                   (c (x64-emit-arms c (tagcase-arms t) si env fr past))
+                   (c (x64-emit (x64-emit c "movl $7, %edi") "call kc_fail")))
+              (if (string=? fr "") (x64-emit-label c past) c))))
+
+        (x64-emit-arms (subr kfx (x64-code sexps i64 (listof x64-at acyclic) string string) x64-code)
+          (lambda (c arms si env fr past)
+            (if (null? arms)
+                c
+                (let* ((a (items (car arms)))
+                       (kind (tagcase (car a) (sym (n f p) n) (else other "")))
+                       (k (x64-fresh-label c)) (next (x64-label c "arm" k)) (c (x64-labelled c))
+                       (c (if (string=? kind "else")
+                              c
+                              (let* ((c (x64-emit-symbol c (tagcase (second a) (str (s f p) s) (else other ""))))
+                                     (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rcx"))))
+                                     (c (x64-emit c "cmpq -20(%rcx), %rax")))
+                                (x64-emit c (string-append "jne " next)))))
+                       (binders (cond ((string=? kind "else") (list (second a)))
+                                      ((string=? kind "whole") (list (third a)))
+                                      (else (items (third a)))))
+                       (body (car (reverse a)))
+                       (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rcx"))))
+                       (c (cond ((string=? kind "else") (x64-emit c (string-append "movq %rcx, " (x64-slot (i64+ si 1)))))
+                                ((string=? kind "whole") (x64-emit (x64-emit c "movq -28(%rcx), %rdx") (string-append "movq %rdx, " (x64-slot (i64+ si 1)))))
+                                (else (x64-fields-bound (x64-emit c "movq -28(%rcx), %rdx") (i64+ si 1) 1 (size binders)))))
+                       (n (size binders))
+                       (c (x64-using c (i64+ (i64+ si 1) n)))
+                       (env2 (x64-params-at binders (i64+ si 1) env))
+                       (c (if (string=? fr "")
+                              (x64-emit (x64-emit-expr c body (i64+ (i64+ si 1) n) env2) (string-append "jmp " past))
+                              (x64-emit-tail c body (i64+ (i64+ si 1) n) env2 fr)))
+                       (c (x64-emit-label c next)))
+                  (x64-emit-arms c (cdr arms) si env fr past)))))
 
         (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic) string) x64-code)
           (lambda (c bs body si env inner fr)
@@ -669,7 +775,8 @@
       (lambda (d run a-path a-key)
         (let* ((path a-path) (key a-key) (i (l0-item d run path key)) (k (item-kind i))
                (px (x64-name key)))
-          (cond ((string=? k "proc")
+          (cond ((string=? k "none") "(asm 0 \"\" \"\")")
+                ((string=? k "proc")
                  (let* ((ps (item-params i)) (n (size ps)))
                    (if (i64> n 6)
                        (not-yet path "a procedure of more than six parameters")

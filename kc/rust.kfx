@@ -184,7 +184,8 @@
     (define q-rust-item qbody
       (lambda (d run a-path a-key)
         (let* ((path a-path) (key a-key) (i (l0-item d run path key)) (k (item-kind i)))
-          (cond ((string=? k "proc")
+          (cond ((string=? k "none") "(none)")
+                ((string=? k "proc")
                  (let* ((t (kc-type d run path (item-name i))))
                    (if (not (sym-is? (car (items t)) "subr"))
                        (not-yet path (string-append "a procedure whose type is not a subr's, " (item-name i)))
@@ -227,7 +228,7 @@
               (append (list "// Made by kc (docs/research/kc.md) from " path ".\n"
                             "#![allow(unused)]\n"
                             "use kayak_rt::*;\n\n")
-                      (append (map (lambda ((x sexp)) (if (sym-is? (car (items x)) "expr") "" (item-text x 1))) its)
+                      (append (map (lambda ((x sexp)) (if (or (sym-is? (car (items x)) "expr") (sym-is? (car (items x)) "none")) "" (item-text x 1))) its)
                               (append (list "\npub fn main() -> Str {\n    let mut last = String::new();\n")
                                       (append (map (lambda ((x sexp)) (cond ((sym-is? (car (items x)) "global") (item-text x 2))
                                                                             ((sym-is? (car (items x)) "expr") (item-text x 1))
