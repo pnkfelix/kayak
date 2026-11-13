@@ -1,0 +1,5 @@
+; The query database (lib/db.kfx), and a program that uses it.
+../../kfx/base.kfx
+../../lib/query.kfx
+../../lib/db.kfx
+db/app.kfx

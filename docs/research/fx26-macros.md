@@ -1,6 +1,10 @@
 # FX-26 as Fixpt has it: macros first, then the rest, then the runtime
 
-Status: plan, 2026-11-12, at Fixpt's pin 4e13016. The user: "start
+Status: plan, 2026-11-12, at Fixpt's pin 4e13016. **Its order is
+superseded the same day by `kc.md`** (a compiler from scratch, of FX-26
+and KFX, its passes queries): the measurements below, the reading of
+Fixpt's macros and stage 0 (`#%toplevel`, C397, in the checker kc keeps)
+stand; the expander's stages become kc's passes, in kc's order. The user: "start
 implementing FX26 to match Fixpt. It's had a lot of new features. And its
 runtime got a lot better". The order, the user's choice the same day:
 features first (track A), then performance through the planned Rust

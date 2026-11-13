@@ -1,0 +1,59 @@
+"The query database (lib/db.kfx, kc's K0): what runs again as inputs
+ change, and what does not. Inputs `file NAME`, the files' texts, and
+ `files`, their names; queries `len NAME`, a file's length, and `total`,
+ the lengths summed. Each line says what an ask gave and how many bodies
+ ran for it: none when nothing changed; a file edited to the same length
+ runs its `len` alone (early cutoff); to another, `total` too; and a
+ database read back from its text runs none, and one read back as
+ another's has nothing."
+
+(define-rec
+  (words-from (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse (if (null? w) acc (cons (list->string (reverse w)) acc))))
+            ((char=? (car cs) #\space) (words-from (cdr cs) nil (if (null? w) acc (cons (list->string (reverse w)) acc))))
+            (else (words-from (cdr cs) (cons (car cs) w) acc))))))
+
+(define after-space (subr kfx (string) string)
+  (lambda (k)
+    (let ((ws (words-from (string-chars k) nil nil)))
+      (if (null? (cdr ws)) "" (car (cdr ws))))))
+
+(define-rec
+  (digits (subr kfx ((listof char acyclic) i64) i64)
+    (lambda (cs n) (if (null? cs) n (digits (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+(define string->i64-of (subr kfx (string) i64) (lambda (s) (digits (string-chars s) 0)))
+
+(define-rec
+  (run (subr qe (db string) string)
+    (lambda (d k)
+      (let ((q (car (words-from (string-chars k) nil nil))))
+        (cond ((string=? q "len") (i64->string (string-length-i64 (db-get d run (string-append "file " (after-space k))))))
+              ((string=? q "total") (i64->string (sum-lens d (words-from (string-chars (db-get d run "files")) nil nil) 0)))
+              (else (begin (error (string-append "no query " k)) ""))))))
+  (sum-lens (subr qe (db (listof string acyclic) i64) i64)
+    (lambda (d ns acc)
+      (if (null? ns) acc (sum-lens d (cdr ns) (i64+ acc (string->i64-of (db-get d run (string-append "len " (car ns))))))))))
+
+"An ask of `total`: its value and the bodies it ran."
+(define asked (subr qe (db string) string)
+  (lambda (d what)
+    (let* ((before (db-runs d)) (v (db-get d run "total")))
+      (string-append what (string-append "=" (string-append v (string-append "/" (i64->string (i64- (db-runs d) before)))))))))
+
+(define main (subr qe () string)
+  (lambda ()
+    (let ((d (db-make)))
+      (begin
+        (db-set! d "files" "a b" 2)
+        (db-set! d "file a" "xyz" 0)
+        (db-set! d "file b" "hello" 0)
+        (let* ((first (asked d "first"))
+               (again (asked d "again"))
+               (same (begin (db-set! d "file a" "abc" 0) (asked d "same-length")))
+               (longer (begin (db-set! d "file b" "hello!" 0) (asked d "longer")))
+               (d2 (db-of-text (db-text d "test") "test"))
+               (read-back (asked d2 "read-back"))
+               (edited (begin (db-set! d2 "file a" "abcd" 0) (asked d2 "edited")))
+               (other (string-append "another's-keys=" (i64->string (size (db-keys (db-of-text (db-text d "test") "another")))))))
+          (string-list-append (list first " " again " " same " " longer " " read-back " " edited " " other)))))))

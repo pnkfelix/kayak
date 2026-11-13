@@ -11003,3 +11003,52 @@ Stage 0 is `#%toplevel`, which every expansion uses (Fixpt's `docs/fx26.md`,
   both; kayak's `toplevel/shadowed.fx`, a shadowed global and a shadowed
   standard name, its words Fixpt's exactly.
 
+## C398. kc, a compiler from scratch; its query database (K0) (2026-11-12)
+
+The user, in turn: "think harder about making this as incremental as
+possible. I want the system to eg store the dynamic dependence graph,
+salsa style"; "think of Kayak as being a compilation service rather than
+a batch compiler"; "part of me thinks you should plan to start from
+scratch, maybe in the style of Abdulaziz Ghuloum's micro pass compiler
+tutorial"; and "your new compiler should start off treating both FX26
+and KFX as its source languages. And it should handle transpiling KFX to
+async Rust as one backend, and then also compile both FX26 and KFX to
+whatever other backends you choose to make (obviously one native one with
+our own async and parallel runtime and incremental GC ... maybe wasm)".
+Answering `compilation-service.md`'s questions: the engine in KFX, both
+builds; the graph persisted.
+
+The plan of record is `docs/research/kc.md`: kc, one compiler in KFX, of
+FX-26 and KFX (KFX a mode of one checker), its back ends async Rust (of
+KFX), native code on kayak's own runtime (of both), perhaps wasm; many
+small passes, each a query per definition; grown in Ghuloum's steps, each
+a working compiler checked against Fixpt's answers; the service its long
+form. What it keeps (the reader, the checker, the corpus, the lang items,
+Coopt's runtime crates) and retires once it covers them (kfx's emitter,
+`fx26/cg*`, `cells/`, the IR engine) is there; parity with Fixpt becomes
+answers, not listings. `fx26-macros.md`'s order is superseded; its stage
+0 stands. Choices kc.md makes, to revisit: native code first as x86-64
+assembly through the system's `cc` (this machine has `cc`, `as`, `ld`,
+`wasm-ld`), kc in `kc/`.
+
+K0, the engine (`lib/db.kfx`), salsa's design after Coopt's `coopt-query`:
+inputs set at a durability (0 a draft to 3 fixed), a new revision when a
+value is new; each query run in a frame that records what it reads, in
+order, and the least durability of that; asking a node: current if
+verified this revision, or if no input of its least durability changed
+since (the per-durability revisions, `last`), or if every read, made
+current in order, changed no later than it was verified; else run again,
+keeping its revision of change if its value's fingerprint is the same
+(early cutoff). Cycles refused. Values and keys are text at the engine's
+level, which makes the whole database text to keep (`db-text`,
+`db-of-text`, a first line saying the format and whose it is), and its
+type names no procedure: the bodies are one dispatching procedure the
+client gives each ask. Synchronous, one region `@q`, one effect `qe`: the
+compiler's passes are pure; generic in both when a client needs it.
+
+Tested by `tests/kfx/db.unit`, in the corpus, so on Fixpt as FX-26 and as
+kfx's Rust alike: `first=8/3 again=8/0 same-length=8/1 longer=9/2
+read-back=9/0 edited=10/2 another's-keys=0` (a value, then how many
+bodies ran: an edit to the same length runs only the file's `len`, early
+cutoff sparing `total`; read back from its text, none).
+

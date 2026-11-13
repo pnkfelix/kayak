@@ -1520,3 +1520,15 @@ Twobit-style optimizations in KFX.
 - A family through `#%toplevel` reads its arguments at the top level too
   (C397): to read them in place.
 
+## 52. kc (the user, 2026-11-12; `docs/research/kc.md`)
+
+The compiler from scratch, of FX-26 and KFX, its passes queries. K0 the
+engine (`lib/db.kfx`, done, C398); K1 step 1 end to end (the driver, the
+front end as queries, integers to async Rust and to native code, the
+harness); K2 onward Ghuloum's steps; the service after K2's first steps.
+- The engine: generic over effects and regions; values kept decoded in
+  memory beside their text (each read decodes it now); a body that fails
+  leaves its frame (an error ends the run today); asynchronous bodies on
+  kayak-sched (Coopt's: a waited-on query a task); nodes no key reaches
+  any longer collected; durability's shortcut measured.
+

@@ -88,6 +88,11 @@ pub mod datum;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/db/mod.rs"]
+pub mod db;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/define-star.rs"]
 pub mod define_star;
 
@@ -538,6 +543,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("data", data::main),
     ("data-region", data_region::main),
     ("datum", datum::main),
+    ("db", db::main),
     ("define-star", define_star::main),
     ("effect-poly", effect_poly::main),
     ("eqtables", eqtables::main),
