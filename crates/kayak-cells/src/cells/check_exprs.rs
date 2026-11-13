@@ -7685,7 +7685,7 @@ pub mod expressions {
                                 if null_p(variants_of(v, d)) {
                                     match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
                                 } else {
-                                    with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
+                                    with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-datatype "), d)), walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
                                 }
                             }
                         }

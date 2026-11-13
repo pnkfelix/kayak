@@ -498,6 +498,14 @@
           "A datatype's enum, a module's named by its path."
           (if (null? (dotted d)) (camel d) (string-append (mangle (car (dotted d))) (string-append "::" (camel (car (cdr (dotted d)))))))))
 
+      (define datatype-path-here (subr kfx (ctx string) string)
+        (lambda (c d)
+          "`datatype-path`, but a datatype of the module being written by its
+           own name (C408)."
+          (if (and (not (null? (dotted d))) (string=? (car (dotted d)) (after-in (ctx-locals c))))
+              (camel (car (cdr (dotted d))))
+              (datatype-path d))))
+
       (define-rec
         (desc-type (subr kfx (ctx string strings) sexps)
           (lambda (c s ls)
@@ -2533,8 +2541,10 @@
                      (acc (put-block c (cdr arm) n t acc)))
                 (put-case-arms c kind (cdr arms) n t acc)))))
 
-      (put-tagcase-arms (subr kfx (ctx string sexps i64 tail chars) chars)
-        (lambda (c sum arms n t acc)
+      (put-tagcase-arms (subr kfx (ctx string string sexps i64 tail chars) chars)
+        (lambda (c sum dt arms n t acc)
+          "`sum`, a shape's enum, or ``; `dt`, a datatype's enum as the checker
+           found it, or `` (C408), else found by its tag."
           (if (null? arms)
               acc
               (let* ((arm (items (car arms)))
@@ -2551,7 +2561,10 @@
                                      (acc (put "let " acc))
                                      (acc (put (mangle (sym-name (second arm))) acc)))
                                 (put-nl (i64+ n 1) (put " = tagcase_;" acc)))
-                              (let* ((acc (put (if (string=? sum "") (datatype-path (tag-datatype tag (ctx-tags c))) sum) acc))
+                              (let* ((acc (put (cond ((not (string=? sum "")) sum)
+                                                     ((not (string=? dt "")) dt)
+                                                     (else (datatype-path (tag-datatype tag (ctx-tags c)))))
+                                               acc))
                                      (acc (put "::" acc))
                                      (acc (put (variant-name tag) acc))
                                      (acc (put "(" acc)))
@@ -2561,7 +2574,7 @@
                                                            (put-nl (i64+ n 1) (put "product_) => {" acc))))))))
                      (acc (put-stmts (with-locals c bound) (cdr (cdr arm)) (i64+ n 1) (hide t bound) acc))
                      (acc (put "}" (put-nl n acc))))
-                (put-tagcase-arms c sum (cdr arms) n t acc)))))
+                (put-tagcase-arms c sum dt (cdr arms) n t acc)))))
 
       (put-fields-of (subr kfx (sexps i64 i64 chars) chars)
         (lambda (names i n acc)
@@ -2578,12 +2591,15 @@
           (if (not (string=? (fact-with c e "blob-tagcase ") ""))
               (put-flat-tagcase c e xs n t acc)
           (let* ((tags (fact-with c e "tagcase-sum "))
+                 (dt (fact-with c e "tagcase-datatype "))
+                 ;; A datatype's enum as the checker found it (C408); a shape's
+                 ;; from its tags.
                  (sum (if (string=? tags "") "" (shape-name #f (split-words tags))))
                  (acc (put "let tagcase_ = " acc))
                  (acc (put-exp c (car xs) n (value) acc))
                  (acc (put-nl n (put ";" acc)))
                  (acc (put "match *tagcase_ {" acc))
-                 (acc (put-tagcase-arms c sum (cdr xs) (i64+ n 1) t acc)))
+                 (acc (put-tagcase-arms c sum (if (string=? dt "") "" (datatype-path-here c dt)) (cdr xs) (i64+ n 1) t acc)))
             (put "}" (put-nl n acc))))))
 
       (put-flat-tagcase (subr kfx (ctx sexp sexps i64 tail chars) chars)

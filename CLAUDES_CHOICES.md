@@ -11334,3 +11334,37 @@ so that kc is incremental below the whole program.
   database, so kc asks a query of each key by a procedure of its own
   (`kc-get-all`).
 
+## C408. KFX: two datatypes may share a tag (2026-11-13)
+
+The user, of kc's names meeting the checker's: "Given that FX sums and
+unions are structural ... can't you map keywords to unique u64, eg by
+SipHashing them, and then manually assign those uid's as discriminants?";
+then "Why not retrofit the emitter? You might benefit from this extension
+to the KFX language in your own C immediate work."
+
+KFX had refused a module's datatype whose tag another datatype has (C19,
+C86: `tests/kfx-stricter/module-tag.kfx`), FX-26 taking it (its tags are
+the sum's, found by its type), because kfx's emitter found the enum of a
+`tagcase`'s arms by the tag alone (`tag-datatype`). Two things were
+tangled there: which enum an arm is of, and what a tag is at run time.
+The first is what the restriction needed: the checker now notes, at each
+`tagcase` of a datatype, which one (`tagcase-datatype D`), and the
+emitter writes the arms' enum from it (a module's own datatype by its bare
+name inside the module, `datatype-path-here`), the tag's lookup only
+where no fact says (code the checker did not see). The refusal is gone;
+`tests/kfx/module-shared-tag.kfx` has the program's `point` and a
+module's `place` both tagged `pt`, taken apart inside the module and out
+(`7 9 0`, Fixpt's), and the stricter test is no more. Elsewhere the Rust
+is as it was, but for three of this machine's programs, whose loaded
+module's datatype is now named by the module that defines it.
+
+The second, tags as `u64`s hashed from their names and given to Rust as
+explicit discriminants (`#[repr(u64)]` with fields, stable since Rust
+1.66; two tags hashing alike in one enum a duplicate discriminant, which
+rustc refuses), buys structural sums: one tag one discriminant in every
+sum that has it, so widening a sum to a larger is no re-tagging, and a
+keyword a plain value. KFX's datatypes do not need it, and it would cost
+them: `#[repr(u64)]` gives up Rust's niche layout, so every enum the
+compiler uses would grow. So it is kept for where structural sums are,
+kc's Rust back end of FX-26's `sumof`s (`docs/research/kc.md`).
+

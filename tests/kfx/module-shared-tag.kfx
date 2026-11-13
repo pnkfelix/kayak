@@ -1,0 +1,17 @@
+"Two datatypes with one tag, `pt`: the program's and a module's, which
+ FX-26 takes (its tags are the sum's, found by its type). KFX's emitter
+ had found a datatype by its tag, so refused it (C19, `kfx-stricter`); it
+ finds a `tagcase`'s enum by the datatype the checker found (C408)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype point (pt i64 i64) (origin))
+(define m
+  (module
+    (define-datatype place (pt i64) (nowhere))
+    (define where (subr kfx (place) i64) (lambda (p) (tagcase p (pt (k) k) (nowhere () -1))))
+    (define here (subr kfx (i64) place) (lambda (k) (pt k)))))
+(define across (subr kfx (point) i64) (lambda (p) (tagcase p (pt (x y) (i64+ x y)) (origin () 0))))
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (i64->string (across (pt 3 4)))
+                   (string-append " " (string-append (i64->string ((with m where) ((with m here) 9)))
+                                                     (string-append " " (i64->string (across (origin)))))))))

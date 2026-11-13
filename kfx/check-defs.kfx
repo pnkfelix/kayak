@@ -1904,10 +1904,10 @@
       (if (null? forms)
           nil
           (let ((f (car forms)))
-            (cond ((and (head-is? f "define-datatype")
-                        (any? (lambda ((vt sexp)) (tag-taken? (label-of (car (items vt))) (cv-dts v))) (cdr (cdr (items f)))))
-                   (refuse v "a module's datatype whose tag another datatype has: KFX's tags name one datatype each"))
-                  ((or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
+            ;; A module's datatype may have a tag another datatype has: the
+            ;; emitter finds a `tagcase`'s enum by the datatype the checker
+            ;; found, not by its tags (C408).
+            (cond ((or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
                    (let ((name (head-name v (second (items f)))))
                      (if (dt-named? name (cv-dts v))
                          (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))

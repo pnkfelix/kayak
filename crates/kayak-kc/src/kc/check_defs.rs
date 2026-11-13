@@ -3362,11 +3362,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
             return nil::<Str>();
         } else {
             let f = car(forms);
-            if (head_is_p(f, str_lit("define-datatype")) && any_p(lambda1s(move |vt: &'static Sexp| {
-                tag_taken_p(label_of(car(items(vt))), cv_dts(v))
-            }), cdr(cdr(items(f))))) {
-                return match refuse(v, str_lit("a module's datatype whose tag another datatype has: KFX's tags name one datatype each")) {};
-            } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
+            if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
                 let name = head_name(v, second(items(f)));
                 if dt_named_p(name, cv_dts(v)) {
                     return match refuse(v, string_append(str_lit("a module's type named as the program's: KFX names them apart, "), name)) {};

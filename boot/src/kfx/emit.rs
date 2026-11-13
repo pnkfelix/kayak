@@ -992,6 +992,16 @@ pub mod emitter {
         }
     }
 
+    /// `datatype-path`, but a datatype of the module being written by its
+    /// own name (C408).
+    pub fn datatype_path_here(c: &'static Ctx, d: Str) -> Str {
+        if (not(null_p(dotted(d))) && string_eq_p(car(dotted(d)), after_in(ctx_locals(c)))) {
+            camel(car(cdr(dotted(d))))
+        } else {
+            datatype_path(d)
+        }
+    }
+
     /// What a module parameter's described type `s`, opened by a `with`,
     /// describes, as a list of one; or none.
     pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
@@ -4664,7 +4674,9 @@ pub mod emitter {
         }
     }
 
-    pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+    /// `sum`, a shape's enum, or ``; `dt`, a datatype's enum as the checker
+    /// found it, or `` (C408), else found by its tag.
+    pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, dt: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
         if null_p(arms) {
             acc
         } else {
@@ -4696,10 +4708,12 @@ pub mod emitter {
                 let acc = put(mangle(sym_name(second(arm))), acc);
                 put_nl(i64_plus(n, 1i64), put(str_lit(" = tagcase_;"), acc))
             } else {
-                let acc = put(if string_eq_p(sum, str_lit("")) {
-                    datatype_path(tag_datatype(tag, ctx_tags(c)))
-                } else {
+                let acc = put(if not(string_eq_p(sum, str_lit(""))) {
                     sum
+                } else if not(string_eq_p(dt, str_lit(""))) {
+                    dt
+                } else {
+                    datatype_path(tag_datatype(tag, ctx_tags(c)))
                 }, acc);
                 let acc = put(str_lit("::"), acc);
                 let acc = put(variant_name(tag), acc);
@@ -4714,7 +4728,7 @@ pub mod emitter {
             };
             let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
             let acc = put(str_lit("}"), put_nl(n, acc));
-            put_tagcase_arms(c, sum, cdr(arms), n, t, acc)
+            put_tagcase_arms(c, sum, dt, cdr(arms), n, t, acc)
         }
     }
 
@@ -4737,6 +4751,7 @@ pub mod emitter {
             put_flat_tagcase(c, e, xs, n, t, acc)
         } else {
             let tags = fact_with(c, e, str_lit("tagcase-sum "));
+            let dt = fact_with(c, e, str_lit("tagcase-datatype "));
             let sum = if string_eq_p(tags, str_lit("")) {
                 str_lit("")
             } else {
@@ -4746,7 +4761,11 @@ pub mod emitter {
             let acc = put_exp(c, car(xs), n, value(), acc);
             let acc = put_nl(n, put(str_lit(";"), acc));
             let acc = put(str_lit("match *tagcase_ {"), acc);
-            let acc = put_tagcase_arms(c, sum, cdr(xs), i64_plus(n, 1i64), t, acc);
+            let acc = put_tagcase_arms(c, sum, if string_eq_p(dt, str_lit("")) {
+                str_lit("")
+            } else {
+                datatype_path_here(c, dt)
+            }, cdr(xs), i64_plus(n, 1i64), t, acc);
             put(str_lit("}"), put_nl(n, acc))
         }
     }

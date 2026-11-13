@@ -251,7 +251,7 @@ pub mod cv {
     pub fn cx_items(x: &'static CvSx) -> CvSxs {
         let tagcase_ = x;
         match *tagcase_ {
-            made__input__4590__convention_types::CvSx::CxList(xs) => {
+            made__load__0__fx26_convention::CvSx::CxList(xs) => {
                 xs
             }
             _ => {
@@ -265,7 +265,7 @@ pub mod cv {
     pub fn cx_name_of(x: &'static CvSx) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
-            made__input__4590__convention_types::CvSx::CxName(n) => {
+            made__load__0__fx26_convention::CvSx::CxName(n) => {
                 n
             }
             _ => {
@@ -279,7 +279,7 @@ pub mod cv {
     pub fn cx_int_of(x: &'static CvSx) -> Int {
         let tagcase_ = x;
         match *tagcase_ {
-            made__input__4590__convention_types::CvSx::CxInt(n) => {
+            made__load__0__fx26_convention::CvSx::CxInt(n) => {
                 n
             }
             _ => {

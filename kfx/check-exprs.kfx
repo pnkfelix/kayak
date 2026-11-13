@@ -3436,7 +3436,9 @@
                                  (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum"))))))
                          (if (null? (variants-of v d))
                              (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
-                         (with-effs (tag-arms v s (walk s t) (cdr xs)
+                         ;; Which datatype, for the emitter, which finds its enum by
+                         ;; it, not by a tag, which two datatypes may share (C408).
+                         (with-effs (tag-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "tagcase-datatype " d)) (walk s t) (cdr xs)
                                               (instantiate-variants (family-of v d) args (variants-of v d))
                                               expected)
                                     es))))

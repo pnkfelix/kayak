@@ -348,6 +348,11 @@ pub mod module_poly_val;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/module-shared-tag.rs"]
+pub mod module_shared_tag;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/module-strings.rs"]
 pub mod module_strings;
 
@@ -608,6 +613,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("module-params", module_params::main),
     ("module-place", module_place::main),
     ("module-poly-val", module_poly_val::main),
+    ("module-shared-tag", module_shared_tag::main),
     ("module-strings", module_strings::main),
     ("modules", modules::main),
     ("monitors", monitors::main),

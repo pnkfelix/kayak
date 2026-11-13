@@ -110,3 +110,18 @@ function that prints a value.
 - **K2 onward**: Ghuloum's steps, each with its tests.
 - **The service** (`kayak serve`) once the engine has a client worth
   keeping warm: after K2's first steps.
+
+## Sums in the Rust back end (the user, 2026-11-13; C408)
+
+FX-26's sums and unions are structural: a tag is the sum's, the same tag
+in every sum that has it. kc's Rust back end will write each sum type's
+enum with explicit discriminants, `#[repr(u64)]`, each tag's a fixed hash
+of its name (SipHash, a fixed key): one tag one discriminant everywhere,
+so that widening a sum to one with more tags keeps each value's
+discriminant (a plain match, or a reinterpretation where the payloads'
+layouts agree), and a keyword is a plain `u64`. A collision within one
+enum is a duplicate discriminant, which rustc refuses: never silent. Which
+enum an arm or a construction is of comes from the term's type, as the
+checker found it, never from a tag alone (as kfx's emitter now does, C408).
+The native back end keeps Fixpt's own representation of sums.
+
